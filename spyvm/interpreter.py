@@ -20,6 +20,7 @@ class Interpreter(object):
 
     _w_last_active_context = None
     cnt = 0
+    _last_indent = ""
     
     def __init__(self, space, image_name=""):
         self._w_active_context = None
@@ -49,9 +50,10 @@ class Interpreter(object):
             return option.bc_trace
         return option.prim_trace
 
-    def step(self):
+    def step(self, s_active_context=None):
         """NOT_RPYTHON: only for testing"""
-        s_active_context = self.s_active_context()
+        if s_active_context is None:         # tests only
+            s_active_context = self.s_active_context()
         next = s_active_context.getNextBytecode()
         bytecodeimpl = BYTECODE_TABLE[next]
 
@@ -82,14 +84,14 @@ class Interpreter(object):
         # we_are_translated returns false on top of CPython and true when
         # translating the interpreter
         if not objectmodel.we_are_translated():
-            while True:
-                self.step()
+            step = Interpreter.step
         else:
+            step = bytecode_step_translated
+        while True:
             s_active_context = self.s_active_context()
-            next = s_active_context.getNextBytecode()
-            bytecode_loop_translated(self, s_active_context, next)
+            step(self, s_active_context)
 
-        
+
 class ReturnFromTopLevel(Exception):
     def __init__(self, object):
         self.object = object
@@ -226,7 +228,7 @@ class __extend__(ContextPartShadow):
                 func = primitives.prim_table[code]
                 try:
                     # note: argcount does not include rcvr
-                    w_result = func(interp, argcount)
+                    func(interp, argcount)
                     return
                 except primitives.PrimitiveFailedError:
                     if interp.should_trace(True):
@@ -235,8 +237,8 @@ class __extend__(ContextPartShadow):
         arguments = self.pop_and_return_n(argcount)
         frame = method.create_frame(self.space, receiver, arguments,
                                     self.w_self())
-        interp.store_w_active_context(frame)
         self.pop()
+        interp.store_w_active_context(frame)
 
     def _return(self, object, interp, w_return_to):
         # for tests, when returning from the top-level context
@@ -555,8 +557,8 @@ def make_bytecode_dispatch_translated():
     # interpreter, the bytecode dispatching is not implemented as a
     # list lookup and an indirect call but as a switch.
 
-    code = ["def bytecode_loop_translated(self, context, bytecode):"]
-    code.append("    while 1:")
+    code = ["def bytecode_step_translated(self, context):"]
+    code.append("    bytecode = context.getNextBytecode()")
     prefix = ""
     for entry in BYTECODE_RANGES:
         if len(entry) == 2:
@@ -565,16 +567,14 @@ def make_bytecode_dispatch_translated():
             numbers = range(entry[0], entry[1]+1)
         cond = " or ".join(["bytecode == %s" % (i, )
                                 for i in numbers])
-        code.append("        %sif %s:" % (prefix, cond, ))
-        code.append("            context.%s(self)" % (entry[-1], ))
-        code.append("            context = self.s_active_context()")
-        code.append("            bytecode = context.getNextBytecode()")
+        code.append("    %sif %s:" % (prefix, cond, ))
+        code.append("        context.%s(self)" % (entry[-1], ))
         prefix = "el"
-    code.append("bytecode_loop_translated._always_inline_ = True")
+    code.append("bytecode_step_translated._always_inline_ = True")
     source = py.code.Source("\n".join(code))
     print source
     miniglob = {}
     exec source.compile() in miniglob
-    return miniglob["bytecode_loop_translated"]
+    return miniglob["bytecode_step_translated"]
     
-bytecode_loop_translated = make_bytecode_dispatch_translated()
+bytecode_step_translated = make_bytecode_dispatch_translated()
