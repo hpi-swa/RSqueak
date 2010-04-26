@@ -401,6 +401,7 @@ class GenericObject(object):
                 self.space, i, self.decode_pointer(self.chunk.data[i]).w_object)
         bbytes = self.get_bytes()[(w_compiledmethod.literalsize + 1)*4:]
         w_compiledmethod.bytes = bbytes
+        w_compiledmethod._version = model.VersionTag()
 
 class ImageChunk(object):
     """ A chunk knows the information from the header, but the body of the

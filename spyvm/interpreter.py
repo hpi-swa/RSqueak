@@ -5,7 +5,7 @@ from spyvm.shadow import ContextPartShadow
 from spyvm.conftest import option
 from spyvm import wrapper
 
-from pypy.rlib import objectmodel, unroll
+from pypy.rlib import objectmodel, unroll, jit
 
 class MissingBytecode(Exception):
     """Bytecode not implemented yet."""
@@ -94,17 +94,25 @@ class Interpreter(object):
         """Interpret the bytecode of the current active context until
         the context changes (by a return opcode or by app-level whacking).
         """
-        # we_are_translated returns false on top of CPython and true when
-        # translating the interpreter
-        if not objectmodel.we_are_translated():
-            step = Interpreter.step
-        else:
-            step = bytecode_step_translated
         s_current_active_context = self.s_active_context()
         while True:
-            step(self, s_current_active_context)
+            jitdriver.jit_merge_point(
+                versiontag = s_current_active_context.w_method()._version,
+                pc         = s_current_active_context._pc,
+                interp     = self,
+                context    = s_current_active_context)
+            # we_are_translated returns false on top of CPython and true when
+            # translating the interpreter
+            if not objectmodel.we_are_translated():
+                self.step(s_current_active_context)
+            else:
+                bytecode_step_translated(self, s_current_active_context)
             if s_current_active_context is not self.s_active_context():
                 return
+
+
+jitdriver = jit.JitDriver(greens=['versiontag', 'pc'],
+                          reds=['interp', 'context'])
 
 
 class ReturnFromTopLevel(Exception):
@@ -377,34 +385,43 @@ class __extend__(ContextPartShadow):
     def experimentalBytecode(self, interp):
         raise MissingBytecode("experimentalBytecode")
 
-    def jump(self,offset):
+    def jump(self, offset, interp):
         self.store_pc(self.pc() + offset)
+        if offset < 0:
+            jitdriver.can_enter_jit(
+                versiontag = self.w_method()._version,
+                pc         = self._pc,
+                interp     = interp,
+                context    = self)
 
-    def jumpConditional(self,bool,position):
-        if self.top() == bool:
-            self.jump(position)
-        self.pop()
+    def jumpConditional(self, bool, position, interp):
+        if self.pop() == bool:
+            self.jump(position, interp)
 
     def shortJumpPosition(self):
         return (self.currentBytecode & 7) + 1
 
     def shortUnconditionalJump(self, interp):
-        self.jump(self.shortJumpPosition())
+        self.jump(self.shortJumpPosition(), interp)
 
     def shortConditionalJump(self, interp):
-        self.jumpConditional(interp.space.w_false, self.shortJumpPosition())
+        self.jumpConditional(interp.space.w_false, self.shortJumpPosition(),
+                             interp)
 
     def longUnconditionalJump(self, interp):
-        self.jump((((self.currentBytecode & 7) - 4) << 8) + self.getbytecode())
+        self.jump((((self.currentBytecode & 7) - 4) << 8) + self.getbytecode(),
+                  interp)
 
     def longJumpPosition(self):
         return ((self.currentBytecode & 3) << 8) + self.getbytecode()
 
     def longJumpIfTrue(self, interp):
-        self.jumpConditional(interp.space.w_true, self.longJumpPosition())
+        self.jumpConditional(interp.space.w_true, self.longJumpPosition(),
+                             interp)
 
     def longJumpIfFalse(self, interp):
-        self.jumpConditional(interp.space.w_false, self.longJumpPosition())
+        self.jumpConditional(interp.space.w_false, self.longJumpPosition(),
+                             interp)
 
 
     bytecodePrimAdd = make_call_primitive_bytecode(primitives.ADD, "+", 1)

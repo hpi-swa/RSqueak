@@ -463,6 +463,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def __init__(self, bytecount=0, header=0):
         self.setheader(header)
         self.bytes = ["\x00"] * bytecount
+        self._version = VersionTag()
 
     def become(self, w_other):
         if not isinstance(w_other, W_CompiledMethod):
@@ -476,6 +477,8 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         self.literalsize, w_other.literalsize = w_other.literalsize, self.literalsize
         self.w_compiledin, w_other.w_compiledin = w_other.w_compiledin, self.w_compiledin
         self.islarge, w_other.islarge = w_other.islarge, self.islarge
+        self._version = VersionTag()
+        w_other._version = VersionTag()
         W_AbstractObjectWithIdentityHash._become(self, w_other)
         return True
 
@@ -523,16 +526,12 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 
     def invariant(self):
         return (W_Object.invariant(self) and
-                hasattr(self, 'literals') and
                 self.literals is not None and 
-                hasattr(self, 'bytes') and
                 self.bytes is not None and 
-                hasattr(self, 'argsize') and
                 self.argsize is not None and 
-                hasattr(self, 'tempsize') and
                 self.tempsize is not None and 
-                hasattr(self, 'primitive') and
-                self.primitive is not None)       
+                self.primitive is not None and
+                self._version is not None)
 
     def size(self):
         return self.headersize() + self.getliteralsize() + len(self.bytes) 
@@ -614,6 +613,10 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def setchar(self, index0, character):
         assert index0 >= 0
         self.bytes[index0] = character
+        self._version = VersionTag()
+
+class VersionTag(object):
+    pass
 
 # Use black magic to create w_nil without running the constructor,
 # thus allowing it to be used even in the constructor of its own
