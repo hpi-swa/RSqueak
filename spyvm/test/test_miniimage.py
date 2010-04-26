@@ -234,6 +234,15 @@ def test_compile_method():
     perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
     assert perform(w(10), "fib").is_same_object(w(89))
 
+def test_compile_method_2():
+    sourcecode = """foo
+                        | x |
+                        x := self.
+                        [ x < 100 ] whileTrue: [ x := x + 1 ].
+                        ^x"""
+    perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
+    assert perform(w(10), "foo").is_same_object(w(100))
+
 
 def w(any): 
     # XXX could put this on the space?
