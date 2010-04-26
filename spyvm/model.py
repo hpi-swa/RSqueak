@@ -462,7 +462,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 
     def __init__(self, bytecount=0, header=0):
         self.setheader(header)
-        self.bytes = "\x00"*bytecount
+        self.bytes = ["\x00"] * bytecount
 
     def become(self, w_other):
         if not isinstance(w_other, W_CompiledMethod):
@@ -613,8 +613,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 
     def setchar(self, index0, character):
         assert index0 >= 0
-        self.bytes = (self.bytes[:index0] + character +
-                      self.bytes[index0 + 1:])
+        self.bytes[index0] = character
 
 # Use black magic to create w_nil without running the constructor,
 # thus allowing it to be used even in the constructor of its own

@@ -418,7 +418,7 @@ def test_new_method():
     assert w_method.literalat0(space, 0).value == 1025
     assert w_method.literalsize == 2
     assert w_method.literalat0(space, 1).is_same_object(space.w_nil)
-    assert w_method.bytes == "\x00" * len(bytecode)
+    assert w_method.bytes == ["\x00"] * len(bytecode)
 
 def test_image_name():
     w_v = prim(primitives.IMAGE_NAME, [2])

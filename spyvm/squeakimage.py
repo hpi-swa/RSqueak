@@ -400,7 +400,7 @@ class GenericObject(object):
             w_compiledmethod.literalatput0(
                 self.space, i, self.decode_pointer(self.chunk.data[i]).w_object)
         bbytes = self.get_bytes()[(w_compiledmethod.literalsize + 1)*4:]
-        w_compiledmethod.bytes = ''.join(bbytes)
+        w_compiledmethod.bytes = bbytes
 
 class ImageChunk(object):
     """ A chunk knows the information from the header, but the body of the
