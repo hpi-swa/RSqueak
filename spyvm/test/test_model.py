@@ -86,7 +86,7 @@ def test_w_compiledin():
 def test_compiledmethod_setchar():
     w_method = model.W_CompiledMethod(3)
     w_method.setchar(0, "c")
-    assert w_method.bytes == "c\x00\x00"
+    assert w_method.bytes == list("c\x00\x00")
 
 def test_hashes():
     w_five = model.W_SmallInteger(5)
@@ -101,7 +101,7 @@ def test_hashes():
 
 def test_compiledmethod_at0():
     w_method = model.W_CompiledMethod()
-    w_method.bytes = "abc"
+    w_method.bytes = list("abc")
     w_method.header = 100
     w_method.literals = [ 'lit1', 'lit2' ]
     w_method.literalsize = 2
