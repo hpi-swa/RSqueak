@@ -18,6 +18,7 @@ class IllegalStoreError(Exception):
 
 class Interpreter(object):
 
+    allow_recursive_calls = True
     _w_last_active_context = None
     cnt = 0
     _last_indent = ""
@@ -33,6 +34,11 @@ class Interpreter(object):
     def store_w_active_context(self, w_context):
         assert isinstance(w_context, model.W_PointersObject)
         self._w_active_context = w_context
+
+    def store_w_active_context_and_call(self, w_context):
+        self.store_w_active_context(w_context)
+        if self.allow_recursive_calls:
+            self.loop_recursive()
 
     def s_active_context(self):
         return self.w_active_context().as_context_get_shadow(self.space)
@@ -81,15 +87,24 @@ class Interpreter(object):
         bytecodeimpl(s_active_context, self)
 
     def loop(self):
+        while True:
+            self.loop_recursive()
+
+    def loop_recursive(self):
+        """Interpret the bytecode of the current active context until
+        the context changes (by a return opcode or by app-level whacking).
+        """
         # we_are_translated returns false on top of CPython and true when
         # translating the interpreter
         if not objectmodel.we_are_translated():
             step = Interpreter.step
         else:
             step = bytecode_step_translated
+        s_current_active_context = self.s_active_context()
         while True:
-            s_active_context = self.s_active_context()
-            step(self, s_active_context)
+            step(self, s_current_active_context)
+            if s_current_active_context is not self.s_active_context():
+                return
 
 
 class ReturnFromTopLevel(Exception):
@@ -238,7 +253,7 @@ class __extend__(ContextPartShadow):
         frame = method.create_frame(self.space, receiver, arguments,
                                     self.w_self())
         self.pop()
-        interp.store_w_active_context(frame)
+        interp.store_w_active_context_and_call(frame)
 
     def _return(self, object, interp, w_return_to):
         # for tests, when returning from the top-level context

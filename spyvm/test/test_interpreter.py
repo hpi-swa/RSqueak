@@ -78,6 +78,7 @@ def new_interpreter(bytes, receiver=space.w_nil):
     w_frame = w_method.create_frame(space, receiver, ["foo", "bar"])
     interp = interpreter.Interpreter(space)
     interp.store_w_active_context(w_frame)
+    interp.allow_recursive_calls = False
     return interp
 
 def test_create_frame():
@@ -409,6 +410,16 @@ def sendBytecodesTest(w_class, w_object, bytecodes):
         assert callerContext.as_context_get_shadow(space).stack() == []
         interp.step()
         interp.step()
+        assert interp.w_active_context() == callerContext
+        assert interp.s_active_context().stack() == [result]
+        #
+        # Also test that it works if allow_recursive_calls is True
+        interp = new_interpreter(bytecodes)
+        interp.allow_recursive_calls = True     # <-- difference is here
+        interp.w_active_context().as_methodcontext_get_shadow(space).w_method().literals = fakeliterals(space, "foo")
+        interp.s_active_context().push(w_object)
+        callerContext = interp.w_active_context()
+        interp.step()    # the step should recursively execute the whole method
         assert interp.w_active_context() == callerContext
         assert interp.s_active_context().stack() == [result]
 

@@ -287,12 +287,10 @@ def perform(w_receiver, selector, *arguments_w):
     assert w_method
     w_frame = w_method.create_frame(space, w_receiver, list(arguments_w))
     interp.store_w_active_context(w_frame)
-    while True:
-        try:
-            interp.step()
-            #print interp.s_active_context.stack
-        except interpreter.ReturnFromTopLevel, e:
-            return e.object
+    try:
+        interp.loop()
+    except interpreter.ReturnFromTopLevel, e:
+        return e.object
 
 def test_step_forged_image():
     from spyvm import wrapper
