@@ -2,7 +2,7 @@ import py
 from spyvm.shadow import ContextPartShadow, MethodContextShadow, BlockContextShadow
 from spyvm import model, constants, primitives
 from spyvm.shadow import ContextPartShadow
-from spyvm.conftest import option
+from spyvm import conftest
 from spyvm import wrapper
 
 from pypy.rlib import objectmodel, unroll
@@ -44,11 +44,11 @@ class Interpreter(object):
             return e.object
 
     def should_trace(self, primitives=False):
-        if objectmodel.we_are_translated():
+        if objectmodel.we_are_translated() or conftest.option is None:
             return False
         if not primitives:
-            return option.bc_trace
-        return option.prim_trace
+            return conftest.option.bc_trace
+        return conftest.option.prim_trace
 
     def step(self, s_active_context=None):
         """NOT_RPYTHON: only for testing"""
