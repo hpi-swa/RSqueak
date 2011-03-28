@@ -7,7 +7,7 @@ from spyvm.error import PrimitiveFailedError, \
     PrimitiveNotYetWrittenError
 from spyvm import wrapper
 
-from pypy.rlib import rarithmetic, unroll
+from pypy.rlib import rarithmetic, rfloat, unroll
 
 def assert_bounds(n0, minimum, maximum):
     if not minimum <= n0 < maximum:
@@ -274,9 +274,9 @@ def func(interp, f):
 @expose_primitive(FLOAT_LOG_N, unwrap_spec=[float])
 def func(interp, f): 
     if f == 0:
-        res = -rarithmetic.INFINITY
+        res = -rfloat.INFINITY
     elif f < 0:
-        res = rarithmetic.NAN
+        res = rfloat.NAN
     else:
         res = math.log(f)
     return interp.space.wrap_float(res)
