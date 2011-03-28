@@ -1,3 +1,4 @@
+import autopath1
 import os, sys
 from spyvm import model, interpreter, primitives, shadow, constants
 from spyvm.tool.analyseimage import create_squeakimage
