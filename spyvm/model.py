@@ -424,7 +424,7 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         return self.words[n]
         
     def setword(self, n, word):
-        self.words[n] = word        
+        self.words[n] = r_uint(word)
 
     def size(self):
         return len(self.words)   

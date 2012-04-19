@@ -217,7 +217,7 @@ class ObjSpace(object):
             val = w_value.value
             if val < 0:
                 raise UnwrappingError("got negative integer")
-            return w_value.value
+            return r_uint(w_value.value)
         if isinstance(w_value, model.W_BytesObject):
             # TODO: Completely untested! This failed translation bigtime...
             # XXX Probably we want to allow all subclasses

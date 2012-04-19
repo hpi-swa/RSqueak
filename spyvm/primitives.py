@@ -202,7 +202,7 @@ def func(interp, receiver, argument):
     # left shift, must fail if we lose bits beyond 32
     if argument > 0:
         try:
-            shifted = rarithmetic.ovfcheck_lshift(receiver, argument)
+            shifted = rarithmetic.ovfcheck(receiver << argument)
         except OverflowError:
             raise PrimitiveFailedError()
         return interp.space.wrap_int(shifted)

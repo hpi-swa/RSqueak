@@ -315,7 +315,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
     __metaclass__ = extendabletype
 
     def __init__(self, space, w_self):
-        from pypy.interpreter.miscutils import FixedStack
+        from spyvm.fixedstack import FixedStack
 
         self._w_sender = space.w_nil
         self._stack = FixedStack()
