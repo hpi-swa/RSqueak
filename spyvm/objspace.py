@@ -167,7 +167,7 @@ class ObjSpace(object):
     def wrap_uint(self, val):
         if val < 0:
             raise WrappingError("negative integer")
-        if intmask(val) > 0:
+        if intmask(val) >= 0:
             try:
                 return self.wrap_int(intmask(val))
             except WrappingError:
