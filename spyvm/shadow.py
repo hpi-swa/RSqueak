@@ -1,7 +1,7 @@
 import weakref
 from spyvm import model, constants, error
-from pypy.tool.pairtype import extendabletype
-from pypy.rlib import rarithmetic
+from rpython.tool.pairtype import extendabletype
+from rpython.rlib import rarithmetic
 
 class AbstractShadow(object):
     """A shadow is an optional extra bit of information that

@@ -7,7 +7,7 @@ from spyvm.error import PrimitiveFailedError, \
     PrimitiveNotYetWrittenError
 from spyvm import wrapper
 
-from pypy.rlib import rarithmetic, rfloat, unroll
+from rpython.rlib import rarithmetic, rfloat, unroll
 
 def assert_bounds(n0, minimum, maximum):
     if not minimum <= n0 < maximum:
@@ -45,7 +45,7 @@ char = object()
 
 def expose_primitive(code, unwrap_spec=None, no_result=False):
     # some serious magic, don't look
-    from pypy.rlib.unroll import unrolling_iterable
+    from rpython.rlib.unroll import unrolling_iterable
     # heuristics to give it a nice name
     name = None
     for key, value in globals().iteritems():
@@ -620,7 +620,7 @@ def fake_bytes_left(interp):
 @expose_primitive(INC_GC, unwrap_spec=[object])
 @expose_primitive(FULL_GC, unwrap_spec=[object])
 def func(interp, w_arg): # Squeak pops the arg and ignores it ... go figure
-    from pypy.rlib import rgc
+    from rpython.rlib import rgc
     rgc.collect()
     return fake_bytes_left(interp)
 

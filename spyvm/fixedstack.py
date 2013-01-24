@@ -4,7 +4,7 @@ A Fixed stack for SPy.
 
 import types
 
-from pypy.rlib.rarithmetic import r_uint
+from rpython.rlib.rarithmetic import r_uint
 
 class FixedStack(object):
     _annspecialcase_ = "specialize:ctr_location" # polymorphic

@@ -5,7 +5,7 @@ from spyvm.shadow import ContextPartShadow
 from spyvm import conftest
 from spyvm import wrapper
 
-from pypy.rlib import objectmodel, unroll
+from rpython.rlib import objectmodel, unroll
 
 class MissingBytecode(Exception):
     """Bytecode not implemented yet."""

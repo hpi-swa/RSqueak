@@ -1,4 +1,4 @@
-from pypy.rlib import unroll
+from rpython.rlib import unroll
 
 class BitSplitter(dict):
     def __getitem__(self, lengths):

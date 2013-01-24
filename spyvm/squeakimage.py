@@ -4,7 +4,7 @@ from spyvm import constants
 from spyvm import model
 from spyvm.tool.bitmanipulation import splitter
 
-from pypy.rlib import objectmodel
+from rpython.rlib import objectmodel
 
 def chrs2int(b):
     assert len(b) == 4
@@ -360,7 +360,7 @@ class GenericObject(object):
         w_pointersobject.hash = self.chunk.hash12
 
     def fillin_wordsobject(self, w_wordsobject):
-        from pypy.rlib.rarithmetic import r_uint
+        from rpython.rlib.rarithmetic import r_uint
         w_wordsobject.words = [r_uint(x) for x in self.chunk.data]
         w_class = self.g_class.w_object
         assert isinstance(w_class, model.W_PointersObject)

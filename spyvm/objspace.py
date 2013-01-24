@@ -2,8 +2,8 @@ from spyvm import constants
 from spyvm import model
 from spyvm import shadow
 from spyvm.error import UnwrappingError, WrappingError
-from pypy.rlib.objectmodel import instantiate
-from pypy.rlib.rarithmetic import intmask, r_uint
+from rpython.rlib.objectmodel import instantiate
+from rpython.rlib.rarithmetic import intmask, r_uint
 
 class ObjSpace(object):
     def __init__(self):

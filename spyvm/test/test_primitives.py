@@ -6,7 +6,7 @@ from spyvm import constants
 from spyvm import primitives
 from spyvm import objspace
 
-from pypy.rlib.rfloat import INFINITY, NAN, isinf, isnan
+from rpython.rlib.rfloat import INFINITY, NAN, isinf, isnan
 
 mockclass = objspace.bootstrap_class
 

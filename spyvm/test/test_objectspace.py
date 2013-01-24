@@ -27,7 +27,7 @@ def test_metaclass_of_metaclass_is_an_instance_of_metaclass():
     assert w_Metaclass.w_class.w_class is w_Metaclass
 
 def test_ruint():
-    from pypy.rlib.rarithmetic import r_uint
+    from rpython.rlib.rarithmetic import r_uint
     import sys
     for num in [0, 1, 41, 100, 2**31, sys.maxint + 1]:
         num = r_uint(num)

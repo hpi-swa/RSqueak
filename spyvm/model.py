@@ -18,10 +18,10 @@ import sys
 from spyvm.tool.bitmanipulation import splitter
 from spyvm import constants, error
 
-from pypy.rlib import rrandom, objectmodel
-from pypy.rlib.rarithmetic import intmask, r_uint
-from pypy.tool.pairtype import extendabletype
-from pypy.rlib.objectmodel import instantiate
+from rpython.rlib import rrandom, objectmodel
+from rpython.rlib.rarithmetic import intmask, r_uint
+from rpython.tool.pairtype import extendabletype
+from rpython.rlib.objectmodel import instantiate
 
 class W_Object(object):
     """Root of Squeak model, abstract."""
