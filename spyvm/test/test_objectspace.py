@@ -28,25 +28,30 @@ def test_metaclass_of_metaclass_is_an_instance_of_metaclass():
     assert w_Metaclass.w_class.w_class is w_Metaclass
 
 def test_ruint():
+    """
+    | a b |
+    a := (9223372036854775808).
+    b := LargePositiveInteger new: a size + 1.
+    1 to: a size do: [:index |
+        b digitAt: index put: (a digitAt: index)].
+    b digitAt: (a size + 1) put: 1.
+    b.
+    => 27670116110564327424
+    """
+
     from rpython.rlib.rarithmetic import r_uint
-    for num in [0, 1, 41, 100, 2**31]:
+    for num in [0, 1, 41, 100, 2**31, sys.maxint + 1]:
         num = r_uint(num)
         assert space.unwrap_uint(space.wrap_uint(num)) == num
-    for num in [-1, -100]:
-        py.test.raises(objspace.WrappingError, space.wrap_uint, num)
+    for num in [-1, -100, -sys.maxint]:
+        with py.test.raises(objspace.WrappingError):
+            space.wrap_uint(num)
     for obj in [space.wrap_char('a'), space.wrap_int(-1)]:
-        py.test.raises(objspace.UnwrappingError, space.unwrap_uint, obj)
+        with py.test.raises(objspace.UnwrappingError):
+            space.unwrap_uint(obj)
     byteobj = space.wrap_uint(sys.maxint + 1)
     byteobj.bytes.append('\x01')
-    py.test.raises(objspace.UnwrappingError, space.unwrap_uint, byteobj)
-
-@py.test.skipif("sys.maxint > 2147483647")
-def test_ruint_max():
-    from rpython.rlib.rarithmetic import r_uint
-    num = r_uint(sys.maxint + 1)
-    assert space.unwrap_uint(space.wrap_uint(num)) == num
-    num = -sys.maxint
-    py.test.raises(objspace.WrappingError, space.wrap_uint, num)
-
-    
+    num = space.unwrap_uint(byteobj)
+    # should not raise. see docstring.
+  
 

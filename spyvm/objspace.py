@@ -173,8 +173,10 @@ class ObjSpace(object):
             except WrappingError:
                 pass
         # XXX this is not really working well on 64 bit machines
-        w_result = model.W_BytesObject(self.classtable['w_LargePositiveInteger'], 4)
-        for i in range(4):
+        import math
+        bytes_len = max(4, int(math.log(val, 0xff)) + 1)
+        w_result = model.W_BytesObject(self.classtable['w_LargePositiveInteger'], bytes_len)
+        for i in range(bytes_len):
             w_result.setchar(i, chr(intmask((val >> i*8) & 255)))
         return w_result
 
@@ -221,12 +223,10 @@ class ObjSpace(object):
         if isinstance(w_value, model.W_BytesObject):
             # TODO: Completely untested! This failed translation bigtime...
             # XXX Probably we want to allow all subclasses
-            if not (w_value.getclass(self).is_same_object(
-                self.w_LargePositiveInteger) and
-                w_value.size() == 4):
+            if not w_value.getclass(self).is_same_object(self.w_LargePositiveInteger):
                 raise UnwrappingError("Failed to convert bytes to word")
             word = 0 
-            for i in range(4):
+            for i in range(w_value.size()):
                 word += r_uint(ord(w_value.getchar(i))) << 8*i
             return word
         else:
