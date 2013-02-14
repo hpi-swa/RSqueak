@@ -79,7 +79,8 @@ class TestLLtype(LLJitMixin):
             try:
                 while True:
                     counter += 1
-                    interp.bytecode_step_translated()
+                    s_active_context = interp.s_active_context()
+                    interp.bytecode_step_translated(s_active_context)
                     if counter == 100000:
                         counter = 0
             except interpreter.ReturnFromTopLevel, e:

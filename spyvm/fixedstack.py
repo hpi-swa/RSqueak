@@ -7,7 +7,7 @@ import types
 from rpython.rlib.rarithmetic import r_uint
 
 class FixedStack(object):
-    _annspecialcase_ = "specialize:ctr_location" # polymorphic
+    # _annspecialcase_ = "specialize:ctr_location" # polymorphic
     
     def __init__(self):
         pass
