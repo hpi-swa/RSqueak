@@ -361,6 +361,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
 class W_BytesObject(W_AbstractObjectWithClassReference):
     def __init__(self, w_class, size):
         W_AbstractObjectWithClassReference.__init__(self, w_class)
+        assert isinstance(size, int)
         self.bytes = ['\x00'] * size
 
     def at0(self, space, index0):

@@ -75,16 +75,9 @@ class TestLLtype(LLJitMixin):
 
         interp = tinyBenchmarks()
         def interp_w():
-            counter = 0
-            try:
-                while True:
-                    counter += 1
-                    s_active_context = interp.s_active_context()
-                    interp.bytecode_step_translated(s_active_context)
-                    if counter == 100000:
-                        counter = 0
-            except interpreter.ReturnFromTopLevel, e:
-                w_result = e.object
+            interp.interpret()
 
-        self.meta_interp(interp_w, [], listcomp=True, listops=True, backendopt=True)
+        self.meta_interp(interp_w, [], listcomp=True, listops=True,
+                        #backendopt=True
+                        )
         
