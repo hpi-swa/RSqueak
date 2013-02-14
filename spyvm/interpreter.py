@@ -17,7 +17,7 @@ class MissingBytecode(Exception):
 class IllegalStoreError(Exception):
     """Illegal Store."""
 
-def get_printable_location(self, pc, w_method):
+def get_printable_location(pc, self, w_method):
     return '%d: %s' % (pc, w_method.bytes[pc])
 
 class Interpreter(object):
@@ -26,7 +26,7 @@ class Interpreter(object):
     cnt = 0
     _last_indent = ""
     jit_driver = jit.JitDriver(
-        greens = ['self', 'pc', 'w_method'],
+        greens = ['pc', 'self', 'w_method'],
         reds = ['s_active_context'],
         get_printable_location = get_printable_location
     )
@@ -228,7 +228,7 @@ class __extend__(ContextPartShadow):
             code = method.primitive
             if interp.should_trace():
                 print "%sActually calling primitive %d" % (interp._last_indent, code,)
-            if objectmodel.we_are_translated():
+            if False: #objectmodel.we_are_translated():
                 for i, func in primitives.unrolling_prim_table:
                     if i == code:
                         try:

@@ -7,7 +7,7 @@ from spyvm.error import PrimitiveFailedError, \
     PrimitiveNotYetWrittenError
 from spyvm import wrapper
 
-from rpython.rlib import rarithmetic, rfloat, unroll
+from rpython.rlib import rarithmetic, rfloat, unroll, jit
 
 def assert_bounds(n0, minimum, maximum):
     if not minimum <= n0 < maximum:
@@ -619,6 +619,7 @@ def fake_bytes_left(interp):
 
 @expose_primitive(INC_GC, unwrap_spec=[object])
 @expose_primitive(FULL_GC, unwrap_spec=[object])
+@jit.dont_look_inside
 def func(interp, w_arg): # Squeak pops the arg and ignores it ... go figure
     from rpython.rlib import rgc
     rgc.collect()
