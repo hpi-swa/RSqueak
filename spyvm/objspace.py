@@ -172,7 +172,7 @@ class ObjSpace(object):
                 return self.wrap_int(intmask(val))
             except WrappingError:
                 pass
-        # XXX this is not really working well on 64 bit machines
+        # XXX is math allowed here?
         import math
         bytes_len = max(4, int(math.log(val, 0xff)) + 1)
         w_result = model.W_BytesObject(self.classtable['w_LargePositiveInteger'], bytes_len)
