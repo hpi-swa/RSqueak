@@ -25,7 +25,7 @@ def setup():
             globals()[name] = make_getter(entry)
 setup()
 
-def run_with_faked_methods(methods, func):
+def run_with_faked_methods(methods, func, active_context=None):
 
     # Install faked compiled methods that just invoke the primitive:
     for (w_class, primnum, argsize, methname) in methods:
@@ -38,7 +38,7 @@ def run_with_faked_methods(methods, func):
         
         assert space.w_nil._shadow is None
     try:
-        func()
+        func(active_context) if active_context else func()
     finally:
         # Uninstall those methods:
         assert space.w_nil._shadow is None
@@ -120,7 +120,7 @@ def test_unknownBytecode():
 # push bytecodes
 def test_pushReceiverBytecode():
     interp = new_interpreter(pushReceiverBytecode)
-    interp.step()
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().top().is_same_object(
             interp.w_active_context().as_methodcontext_get_shadow(space).w_receiver())
 
@@ -132,9 +132,9 @@ def test_pushReceiverVariableBytecode(bytecode = (pushReceiverVariableBytecode(0
     w_demo.store(space, 1, "bar")
     w_demo.store(space, 2, "baz")
     interp = new_interpreter(bytecode, receiver = w_demo)
-    interp.step()
-    interp.step()
-    interp.step()
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().stack() == ["egg", "bar", "baz"]
 
 def test_pushTemporaryVariableBytecode(bytecode=(pushTemporaryVariableBytecode(0) +
@@ -142,9 +142,9 @@ def test_pushTemporaryVariableBytecode(bytecode=(pushTemporaryVariableBytecode(0
                                                  pushTemporaryVariableBytecode(2))):
     interp = new_interpreter(bytecode)
     interp.w_active_context().as_methodcontext_get_shadow(space).settemp(2, "temp")
-    interp.step()
-    interp.step()
-    interp.step()
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().stack() == ["foo", "bar", "temp"]
 
 def test_pushLiteralConstantBytecode(bytecode=pushLiteralConstantBytecode(0) +
@@ -152,9 +152,9 @@ def test_pushLiteralConstantBytecode(bytecode=pushLiteralConstantBytecode(0) +
                                               pushLiteralConstantBytecode(2)):
     interp = new_interpreter(bytecode)
     interp.w_active_context().as_methodcontext_get_shadow(space).w_method().literals = fakeliterals(space, "a", "b", "c")
-    interp.step()
-    interp.step()
-    interp.step()
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().stack() == [fakesymbol("a"),
                                              fakesymbol("b"),
                                              fakesymbol("c")]
@@ -165,7 +165,7 @@ def test_pushLiteralVariableBytecode(bytecode=pushLiteralVariableBytecode(0)):
     w_association.store(space, 1, "myvalue")
     interp = new_interpreter(bytecode)
     interp.w_active_context().as_methodcontext_get_shadow(space).w_method().literals = fakeliterals(space, w_association)
-    interp.step()
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().stack() == ["myvalue"]
 
 def test_storeAndPopReceiverVariableBytecode(bytecode=storeAndPopReceiverVariableBytecode,
@@ -175,8 +175,8 @@ def test_storeAndPopReceiverVariableBytecode(bytecode=storeAndPopReceiverVariabl
         w_object = shadow.new()
         interp = new_interpreter(pushConstantTrueBytecode + bytecode(index))
         interp.w_active_context().as_methodcontext_get_shadow(space).store_w_receiver(w_object)
-        interp.step()
-        interp.step()
+        interp.step(interp.s_active_context())
+        interp.step(interp.s_active_context())
         if popped:
             assert interp.s_active_context().stack() == []
         else:
@@ -192,8 +192,8 @@ def test_storeAndPopTemporaryVariableBytecode(bytecode=storeAndPopTemporaryVaria
     for index in range(8):
         interp = new_interpreter(pushConstantTrueBytecode + bytecode(index))
         #interp.w_active_context().as_methodcontext_get_shadow(space).temps = [None] * 8
-        interp.step()
-        interp.step()
+        interp.step(interp.s_active_context())
+        interp.step(interp.s_active_context())
         assert interp.s_active_context().stack() == []
         interp.w_active_context().as_methodcontext_get_shadow(space)
         for test_index in range(8):
@@ -205,141 +205,141 @@ def test_storeAndPopTemporaryVariableBytecode(bytecode=storeAndPopTemporaryVaria
 
 def test_pushConstantTrueBytecode():
     interp = new_interpreter(pushConstantTrueBytecode)
-    interp.step()
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().pop().is_same_object(space.w_true)
     assert interp.s_active_context().stack() == []
 
 def test_pushConstantFalseBytecode():
     interp = new_interpreter(pushConstantFalseBytecode)
-    interp.step()
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().pop().is_same_object(space.w_false)
     assert interp.s_active_context().stack() == []
 
 def test_pushConstantNilBytecode():
     interp = new_interpreter(pushConstantNilBytecode)
-    interp.step()
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().pop().is_same_object(space.w_nil)
     assert interp.s_active_context().stack() == []
 
 def test_pushConstantMinusOneBytecode():
     interp = new_interpreter(pushConstantMinusOneBytecode)
-    interp.step()
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().pop().is_same_object(space.w_minus_one)
     assert interp.s_active_context().stack() == []
 
 def test_pushConstantZeroBytecode():
     interp = new_interpreter(pushConstantZeroBytecode)
-    interp.step()
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().pop().is_same_object(space.w_zero)
     assert interp.s_active_context().stack() == []
     
 def test_pushConstantOneBytecode():
     interp = new_interpreter(pushConstantOneBytecode)
-    interp.step()
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().pop().is_same_object(space.w_one)
     assert interp.s_active_context().stack() == []
 
 def test_pushConstantTwoBytecode():
     interp = new_interpreter(pushConstantTwoBytecode)
-    interp.step()
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().pop().is_same_object(space.w_two)
     assert interp.s_active_context().stack() == []
 
 def test_pushActiveContextBytecode():
     interp = new_interpreter(pushActiveContextBytecode)
-    interp.step()
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().pop() == interp.w_active_context()
     assert interp.s_active_context().stack() == []
     
 def test_duplicateTopBytecode():
     interp = new_interpreter(pushConstantZeroBytecode + duplicateTopBytecode)
-    interp.step()
-    interp.step()
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().stack() == [space.w_zero, space.w_zero]
     
 def test_bytecodePrimBitAnd():
     interp = new_interpreter(pushConstantOneBytecode + pushConstantTwoBytecode + bytecodePrimBitAnd)
-    interp.step()
-    interp.step()
-    interp.step()
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().pop().value == 0
     assert interp.s_active_context().stack() == []
     
 def test_bytecodePrimBitOr():
     interp = new_interpreter(pushConstantOneBytecode + pushConstantTwoBytecode + bytecodePrimBitOr)
-    interp.step()
-    interp.step()
-    interp.step()
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().pop().value == 3
     assert interp.s_active_context().stack() == []
 
 def test_bytecodePrimBitShift():
     interp = new_interpreter(pushConstantOneBytecode + pushConstantTwoBytecode + bytecodePrimBitShift)
-    interp.step()
-    interp.step()
-    interp.step()
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().pop().value == 4
     assert interp.s_active_context().stack() == []
     
 def test_bytecodePrimClass():
     interp = new_interpreter(pushConstantOneBytecode + bytecodePrimClass)
-    interp.step()
-    interp.step()
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().pop() == space.w_SmallInteger
     assert interp.s_active_context().stack() == []
     
 def test_bytecodePrimSubtract():
     interp = new_interpreter(pushConstantOneBytecode + pushConstantTwoBytecode + bytecodePrimSubtract)
-    interp.step()
-    interp.step()
-    interp.step()
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().pop().value == -1
     assert interp.s_active_context().stack() == []
 
 def test_bytecodePrimMultiply():
     interp = new_interpreter(pushConstantMinusOneBytecode + pushConstantTwoBytecode + bytecodePrimMultiply)
-    interp.step()
-    interp.step()
-    interp.step()
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().pop().value == -2
     assert interp.s_active_context().stack() == []
     
 def test_bytecodePrimDivide():
     interp = new_interpreter(pushConstantTwoBytecode + pushConstantMinusOneBytecode + bytecodePrimDivide)
-    interp.step()
-    interp.step()
-    interp.step()
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().pop().value == -2    
     assert interp.s_active_context().stack() == []
     
 def test_bytecodePrimDiv():
     interp = new_interpreter(pushConstantTwoBytecode + pushConstantMinusOneBytecode + bytecodePrimDiv)
-    interp.step()
-    interp.step()
-    interp.step()
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().pop().value == -2
     assert interp.s_active_context().stack() == []
 
 def test_bytecodePrimMod():
     interp = new_interpreter(pushConstantTwoBytecode + pushConstantMinusOneBytecode + bytecodePrimMod)
-    interp.step()
-    interp.step()
-    interp.step()
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().pop().value == 0
     assert interp.s_active_context().stack() == []
 
 def test_bytecodePrimEquivalent():
     interp = new_interpreter(pushConstantTwoBytecode + pushConstantMinusOneBytecode + bytecodePrimEquivalent)
-    interp.step()
-    interp.step()
-    interp.step()
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().pop() == space.w_false
     assert interp.s_active_context().stack() == []
     
     interp = new_interpreter(pushConstantOneBytecode + pushConstantOneBytecode + bytecodePrimEquivalent)
-    interp.step()
-    interp.step()
-    interp.step()
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().pop() == space.w_true
     assert interp.s_active_context().stack() == []
     
@@ -351,7 +351,8 @@ def test_bytecodePrimNew():
     interp.s_active_context().push(w_fakeclass)
     run_with_faked_methods(
         [[w_fakeclassclass, primitives.NEW, 0, "new"]],
-        interp.step)
+        interp.step,
+        interp.s_active_context())
     w_fakeinst = interp.s_active_context().pop()
     assert interp.s_active_context().stack() == []
     assert w_fakeinst.getclass(space).is_same_object(w_fakeclass)
@@ -366,7 +367,8 @@ def test_bytecodePrimNewWithArg():
     interp.s_active_context().push(space.w_two)
     run_with_faked_methods(
         [[w_fakeclassclass, primitives.NEW_WITH_ARG, 1, "new:"]],
-        interp.step)
+        interp.step,
+        interp.s_active_context())
     w_fakeinst = interp.s_active_context().pop()
     assert interp.s_active_context().stack() == []
     assert w_fakeinst.getclass(space).is_same_object(w_fakeclass)
@@ -379,7 +381,8 @@ def test_bytecodePrimSize():
     interp.s_active_context().push(w_fakeinst)
     run_with_faked_methods(
         [[w_fakeclass, primitives.SIZE, 0, "size"]],
-        interp.step)
+        interp.step,
+        interp.s_active_context())
     assert interp.s_active_context().pop().value == 5
     assert interp.s_active_context().stack() == []
 
@@ -401,14 +404,14 @@ def sendBytecodesTest(w_class, w_object, bytecodes):
         interp.w_active_context().as_methodcontext_get_shadow(space).w_method().literals = fakeliterals(space, "foo")
         interp.s_active_context().push(w_object)
         callerContext = interp.w_active_context()
-        interp.step()
+        interp.step(interp.s_active_context())
         assert interp.s_active_context().w_sender() == callerContext
         assert interp.s_active_context().stack() == []
         assert interp.w_active_context().as_methodcontext_get_shadow(space).w_receiver().is_same_object(w_object)
         assert interp.w_active_context().as_methodcontext_get_shadow(space).w_method().is_same_object(shadow.s_methoddict().methoddict["foo"])
         assert callerContext.as_context_get_shadow(space).stack() == []
-        interp.step()
-        interp.step()
+        interp.step(interp.s_active_context())
+        interp.step(interp.s_active_context())
         assert interp.w_active_context() == callerContext
         assert interp.s_active_context().stack() == [result]
 
@@ -443,7 +446,7 @@ def test_send_to_primitive():
         interp.s_active_context().push(space.wrap_int(50))
         interp.s_active_context().push(space.wrap_int(8))
         callerContext = interp.w_active_context()
-        interp.step()
+        interp.step(interp.s_active_context())
         assert interp.w_active_context() is callerContext
         assert len(interp.s_active_context().stack()) == 1
         w_result = interp.s_active_context().pop()
@@ -458,9 +461,9 @@ def test_makePoint():
     interp = new_interpreter(pushConstantZeroBytecode +
                              pushConstantOneBytecode +
                              bytecodePrimMakePoint)
-    interp.step()
-    interp.step()
-    interp.step()
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
     w_point = interp.s_active_context().top()
     from spyvm.wrapper import PointWrapper
     point = PointWrapper(interp.space, w_point)
@@ -471,55 +474,55 @@ def test_longJumpIfTrue():
     interp = new_interpreter(longJumpIfTrue(0) + chr(15) + longJumpIfTrue(0) + chr(15))
     interp.s_active_context().push(space.w_false)
     pc = interp.s_active_context().pc() + 2
-    interp.step()
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().pc() == pc
     interp.s_active_context().push(space.w_true)
     pc = interp.s_active_context().pc() + 2
-    interp.step()
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().pc() == pc + 15
 
 def test_longJumpIfFalse():
     interp = new_interpreter(pushConstantTrueBytecode + longJumpIfFalse(0) + chr(15) +
                              pushConstantFalseBytecode + longJumpIfFalse(0) + chr(15))
-    interp.step()
+    interp.step(interp.s_active_context())
     pc = interp.s_active_context().pc() + 2
-    interp.step()
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().pc() == pc
-    interp.step()
+    interp.step(interp.s_active_context())
     pc = interp.s_active_context().pc() + 2
-    interp.step()
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().pc() == pc + 15
 
 def test_longUnconditionalJump():
     interp = new_interpreter(longUnconditionalJump(4) + chr(15))
     pc = interp.s_active_context().pc() + 2
-    interp.step()
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().pc() == pc + 15
 
 def test_shortUnconditionalJump():
     interp = new_interpreter(chr(145))
     pc = interp.s_active_context().pc() + 1
-    interp.step()
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().pc() == pc + 2
 
 def test_shortConditionalJump():
     interp = new_interpreter(pushConstantTrueBytecode + shortConditionalJump(3) +
                              pushConstantFalseBytecode + shortConditionalJump(3))
-    interp.step()
+    interp.step(interp.s_active_context())
     pc = interp.s_active_context().pc() + 1
-    interp.step()
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().pc() == pc
-    interp.step()
+    interp.step(interp.s_active_context())
     pc = interp.s_active_context().pc() + 1
-    interp.step()
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().pc() == pc + 4
 
 def test_popStackBytecode():
     interp = new_interpreter(pushConstantTrueBytecode +
                              popStackBytecode)
-    interp.step()
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().stack() == [space.w_true]
-    interp.step()
+    interp.step(interp.s_active_context())
     assert interp.s_active_context().stack() == []
 
 def test_extendedPushBytecode():
@@ -543,8 +546,8 @@ def storeAssociation(bytecode):
     w_association.store(space, 1, "myvalue")
     interp = new_interpreter(pushConstantOneBytecode + bytecode)
     interp.w_active_context().as_methodcontext_get_shadow(space).w_method().literals = fakeliterals(space, w_association)
-    interp.step()
-    interp.step()
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context())
     assert w_association.fetch(space, 1).is_same_object(space.w_one)
 
 def test_extendedStoreAndPopBytecode():
@@ -570,7 +573,7 @@ def test_callPrimitiveAndPush_fallback():
     w_object = shadow.new()
     interp.s_active_context().push(w_object)
     interp.s_active_context().push(space.w_one)
-    interp.step()
+    interp.step(interp.s_active_context())
     assert interp.w_active_context().as_methodcontext_get_shadow(space).w_method() == shadow.s_methoddict().methoddict["+"]
     assert interp.s_active_context().w_receiver() is w_object
     assert interp.w_active_context().as_methodcontext_get_shadow(space).gettemp(0).is_same_object(space.w_one)
@@ -586,7 +589,7 @@ def test_bytecodePrimBool():
     for i in range(6):
         interp.s_active_context().push(space.w_one)
         interp.s_active_context().push(space.w_two)
-        interp.step()
+        interp.step(interp.s_active_context())
     assert interp.s_active_context().stack() == [space.w_true, space.w_false,
                                           space.w_true, space.w_false,
                                           space.w_false, space.w_true]
@@ -618,11 +621,11 @@ def test_singleExtendedSuperBytecode(bytecode=singleExtendedSuperBytecode + chr(
     interp = new_interpreter(bytecodes)
     interp.w_active_context().as_methodcontext_get_shadow(space).w_method().literals = fakeliterals(space, "foo")
     interp.s_active_context().push(w_object)
-    interp.step()
+    interp.step(interp.s_active_context())
     for w_specificclass in [w_super, w_supersuper]:
         callerContext = interp.w_active_context()
-        interp.step()
-        interp.step()
+        interp.step(interp.s_active_context())
+        interp.step(interp.s_active_context())
         assert interp.s_active_context().w_sender() == callerContext
         assert interp.s_active_context().stack() == []
         assert interp.w_active_context().as_methodcontext_get_shadow(space).w_receiver() == w_object

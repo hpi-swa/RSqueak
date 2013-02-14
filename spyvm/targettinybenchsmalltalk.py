@@ -1,4 +1,4 @@
-import autopath1
+# import autopath1
 import os, sys
 from spyvm import model, interpreter, primitives, shadow, constants
 from spyvm.tool.analyseimage import create_squeakimage
@@ -65,3 +65,6 @@ def target(*args):
 
 def jitpolicy(driver):
     return JitPolicy()
+
+if __name__ == "__main__":
+    entry_point(sys.argv)

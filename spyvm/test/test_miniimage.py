@@ -197,7 +197,7 @@ def test_lookup_abs_in_integer(int=10):
 
     while True:
         try:
-            interp.step()
+            interp.step(interp.s_active_context())
         except interpreter.ReturnFromTopLevel, e:
             assert e.object.value == abs(int)
             return
@@ -289,7 +289,7 @@ def perform(w_receiver, selector, *arguments_w):
     interp.store_w_active_context(w_frame)
     while True:
         try:
-            interp.step()
+            interp.step(interp.s_active_context())
             #print interp.s_active_context.stack
         except interpreter.ReturnFromTopLevel, e:
             return e.object
@@ -313,10 +313,10 @@ def test_step_run_something():
     interp.store_w_active_context(s_ctx.w_self())
     assert isinstance(s_ctx, shadow.MethodContextShadow)
     assert interp.s_active_context().top().is_same_object(space.w_true)
-    interp.step()
-    interp.step() 
+    interp.step(interp.s_active_context())
+    interp.step(interp.s_active_context()) 
     assert interp.s_active_context().top().value == 1
-    interp.step() 
+    interp.step(interp.s_active_context()) 
     assert interp.s_active_context().top().value == 2
-    interp.step() 
+    interp.step(interp.s_active_context()) 
     assert interp.s_active_context().top().value == 3

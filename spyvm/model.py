@@ -498,6 +498,8 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         return space.w_CompiledMethod
 
     def getliteral(self, index):
+        if len(self.literals) <= index:
+            import pdb; pdb.set_trace()
                                     # We changed this part
         return self.literals[index] #+ constants.LITERAL_START]
 
