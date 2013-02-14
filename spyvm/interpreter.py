@@ -5,6 +5,7 @@ from spyvm.shadow import ContextPartShadow
 from spyvm import conftest
 from spyvm import wrapper
 
+from rpython.rlib import jit
 from rpython.rlib import objectmodel, unroll
 
 class MissingBytecode(Exception):
@@ -16,11 +17,19 @@ class MissingBytecode(Exception):
 class IllegalStoreError(Exception):
     """Illegal Store."""
 
+def get_printable_location(self, pc, w_method):
+    return '%d: %s' % (pc, w_method.bytes[pc])
+
 class Interpreter(object):
 
     _w_last_active_context = None
     cnt = 0
     _last_indent = ""
+    jit_driver = jit.JitDriver(
+        greens = ['self', 'pc', 'w_method'],
+        reds = ['s_active_context'],
+        get_printable_location = get_printable_location
+    )
     
     def __init__(self, space, image_name=""):
         self._w_active_context = None
@@ -81,15 +90,18 @@ class Interpreter(object):
         bytecodeimpl(s_active_context, self)
 
     def loop(self):
-        # we_are_translated returns false on top of CPython and true when
-        # translating the interpreter
-        if not objectmodel.we_are_translated():
-            step = Interpreter.step
-        else:
-            step = bytecode_step_translated
         while True:
             s_active_context = self.s_active_context()
-            step(self, s_active_context)
+            pc = s_active_context._pc
+            w_method = s_active_context.w_method()
+
+            self.jit_driver.jit_merge_point(
+                self = self,
+                pc = pc,
+                w_method = w_method,
+                s_active_context = s_active_context)
+
+            self.step(s_active_context)
 
 
 class ReturnFromTopLevel(Exception):
@@ -461,7 +473,6 @@ class __extend__(ContextPartShadow):
     def bytecodePrimPointY(self, interp):
         self._sendSelfSelector("y", 0, interp)
 
-
 BYTECODE_RANGES = [
             (  0,  15, "pushReceiverVariableBytecode"),
             ( 16,  31, "pushTemporaryVariableBytecode"),
@@ -578,3 +589,8 @@ def make_bytecode_dispatch_translated():
     return miniglob["bytecode_step_translated"]
     
 bytecode_step_translated = make_bytecode_dispatch_translated()
+
+# we_are_translated returns false on top of CPython and true when
+# translating the interpreter
+# if objectmodel.we_are_translated():
+Interpreter.step = bytecode_step_translated

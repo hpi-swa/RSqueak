@@ -3,6 +3,8 @@ import os, sys
 from spyvm import model, interpreter, primitives, shadow, constants
 from spyvm.tool.analyseimage import create_squeakimage
 
+from rpython.jit.codewriter.policy import JitPolicy
+
 # This loads the whole mini.image in advance.  At run-time,
 # it executes the tinyBenchmark.  In this way we get an RPython
 # "image" frozen into the executable, mmap'ed by the OS from
@@ -44,7 +46,7 @@ def entry_point(argv):
     try:
         while True:
             counter += 1
-            interp.step()
+            interp.interpret()
             if counter == 100000:
                 counter = 0
                 os.write(2, '#')
@@ -60,3 +62,6 @@ def entry_point(argv):
 
 def target(*args):
     return entry_point, None
+
+def jitpolicy(driver):
+    return JitPolicy()
