@@ -16,7 +16,7 @@ from rpython.jit.metainterp.test.test_ajit import LLJitMixin
 
 from spyvm import model, interpreter, primitives, shadow
 from spyvm import objspace
-from spyvm.tool.analyseimage import create_testimage
+from spyvm.tool.analyseimage import create_squeakimage, create_testimage
 
 
 mockclass = objspace.bootstrap_class
@@ -78,4 +78,3 @@ class TestLLtype(LLJitMixin):
             interp.interpret()
 
         self.meta_interp(interp_w, [], listcomp=True, listops=True, backendopt=True)
-        

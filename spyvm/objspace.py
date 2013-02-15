@@ -205,9 +205,9 @@ class ObjSpace(object):
         a wrapped smalltalk array
         """
         lstlen = len(lst_w)
-        res = self.w_Array.as_class_get_shadow().new(lstlen)
+        res = self.w_Array.as_class_get_shadow(self).new(lstlen)
         for i in range(lstlen):
-            res.storevarpointer(i, lit[i])
+            res.storevarpointer(i, lst_w[i])
         return res
 
     def unwrap_int(self, w_value):

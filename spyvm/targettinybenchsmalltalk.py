@@ -1,6 +1,6 @@
 import os, sys
 from spyvm import model, interpreter, primitives, shadow, constants
-from spyvm.tool.analyseimage import create_squeakimage
+from spyvm.tool.analyseimage import create_squeakimage, create_testimage
 
 from rpython.jit.codewriter.policy import JitPolicy
 
@@ -19,13 +19,13 @@ sys.setrecursionlimit(100000)
 def tinyBenchmarks():
     from spyvm import objspace
     space = objspace.ObjSpace()
-    image = create_squeakimage(space)
+    image = create_testimage(space)
     interp = interpreter.Interpreter(space)
 
     w_object = model.W_SmallInteger(0)
 
     s_class = w_object.shadow_of_my_class(space)
-    w_method = s_class.lookup("tinyBenchmarks")
+    w_method = s_class.lookup("loopTest")
 
     assert w_method
     w_frame = w_method.create_frame(space, w_object, [])

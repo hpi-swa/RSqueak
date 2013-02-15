@@ -829,3 +829,14 @@ def test_runwithtrace():
     test_storeAndPopReceiverVariableBytecode()
     test_bc_objectAtAndAtPut()
     option.bc_trace = bc_trace
+
+# Closure Bytecodes
+def test_bc_pushNewArrayPopIntoArray(bytecode=pushNewArrayPopIntoArray):
+    py.test.skip("Fails, since pushNewArrayPopIntoArray is not yet implemented")
+    interp = new_interpreter(bytecode + chr(0x83))
+    context = interp.s_active_context()
+    context.push(fakeliterals("egg"))
+    context.push(fakeliterals("bar"))
+    context.push(fakeliterals("baz"))
+    interp.step(interp.s_active_context())
+    assert context.pop() == fakeliterals(["egg", "bar", "baz"])
