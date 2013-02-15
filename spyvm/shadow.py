@@ -1,7 +1,7 @@
 import weakref
 from spyvm import model, constants, error
 from rpython.tool.pairtype import extendabletype
-from rpython.rlib import rarithmetic
+from rpython.rlib import rarithmetic, jit
 
 class AbstractShadow(object):
     """A shadow is an optional extra bit of information that
@@ -445,6 +445,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
         return self.s_home().w_method()
 
     def getbytecode(self):
+        jit.promote(self._pc)
         assert self._pc >= 0
         bytecode = self.w_method().bytes[self._pc]
         currentBytecode = ord(bytecode)

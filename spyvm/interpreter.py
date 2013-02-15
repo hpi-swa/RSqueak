@@ -18,7 +18,9 @@ class IllegalStoreError(Exception):
     """Illegal Store."""
 
 def get_printable_location(pc, self, w_method):
-    return '%d: %s' % (pc, w_method.bytes[pc])
+    bc = ord(w_method.bytes[pc])
+    return '%d: [%s]%s' % (pc, hex(bc), BYTECODE_NAMES[bc])
+
 
 class Interpreter(object):
 
@@ -26,9 +28,9 @@ class Interpreter(object):
     cnt = 0
     _last_indent = ""
     jit_driver = jit.JitDriver(
-        greens = ['pc', 'self', 'w_method'],
-        reds = ['s_active_context'],
-        get_printable_location = get_printable_location
+        greens=['pc', 'self', 'w_method'],
+        reds=['s_active_context'],
+        get_printable_location=get_printable_location
     )
     
     def __init__(self, space, image_name=""):
@@ -96,11 +98,8 @@ class Interpreter(object):
             w_method = s_active_context.w_method()
 
             self.jit_driver.jit_merge_point(
-                self = self,
-                pc = pc,
-                w_method = w_method,
-                s_active_context = s_active_context)
-
+                pc=pc, self=self, w_method=w_method,
+                s_active_context=s_active_context)
             self.step(s_active_context)
 
 
@@ -548,6 +547,20 @@ BYTECODE_RANGES = [
             ]
 
 
+def initialize_bytecode_names():
+    result = [None] * 256
+    for entry in BYTECODE_RANGES:
+        if len(entry) == 2:
+            positions = [entry[0]]
+        else:
+            positions = range(entry[0], entry[1]+1)
+        for pos in positions:
+            result[pos] = entry[-1]
+    assert None not in result
+    return result
+
+BYTECODE_NAMES = initialize_bytecode_names()
+
 def initialize_bytecode_table():
     result = [None] * 256
     for entry in BYTECODE_RANGES:
@@ -559,6 +572,7 @@ def initialize_bytecode_table():
             result[pos] = getattr(ContextPartShadow, entry[-1])
     assert None not in result
     return result
+
 
 BYTECODE_TABLE = initialize_bytecode_table()
 
@@ -594,3 +608,4 @@ bytecode_step_translated = make_bytecode_dispatch_translated()
 # translating the interpreter
 # if objectmodel.we_are_translated():
 Interpreter.step = bytecode_step_translated
+

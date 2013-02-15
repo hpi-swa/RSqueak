@@ -16,7 +16,7 @@ from rpython.jit.metainterp.test.test_ajit import LLJitMixin
 
 from spyvm import model, interpreter, primitives, shadow
 from spyvm import objspace
-from spyvm.tool.analyseimage import create_squeakimage
+from spyvm.tool.analyseimage import create_testimage
 
 
 mockclass = objspace.bootstrap_class
@@ -51,18 +51,18 @@ sys.setrecursionlimit(100000)
 class TestLLtype(LLJitMixin):
     
 
-    def test_tiny_benchmarks(self):
+    def test_miniloop(self):
 
-        def tinyBenchmarks():
+        def miniloop():
             from spyvm import objspace
             space = objspace.ObjSpace()
-            image = create_squeakimage(space)
+            image = create_testimage(space)
             interp = interpreter.Interpreter(space)
 
             w_object = model.W_SmallInteger(0)
 
             s_class = w_object.shadow_of_my_class(space)
-            w_method = s_class.lookup("tinyBenchmarks")
+            w_method = s_class.lookup("loopTest")
 
             assert w_method
             w_frame = w_method.create_frame(space, w_object, [])
@@ -73,11 +73,9 @@ class TestLLtype(LLJitMixin):
             from spyvm.interpreter import BYTECODE_TABLE
             return interp
 
-        interp = tinyBenchmarks()
+        interp = miniloop()
         def interp_w():
             interp.interpret()
 
-        self.meta_interp(interp_w, [], listcomp=True, listops=True,
-                        #backendopt=True
-                        )
+        self.meta_interp(interp_w, [], listcomp=True, listops=True, backendopt=True)
         

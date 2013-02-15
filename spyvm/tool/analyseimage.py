@@ -6,17 +6,28 @@ from spyvm import interpreter
 import sys
 
 mini_image = py.path.local(__file__).dirpath().dirpath().join('mini.image')
+minitest_image = py.path.local(__file__).dirpath().dirpath().join('minitest.image')
 
 def get_miniimage(space):
     return squeakimage.ImageReader(space, squeakimage.Stream(mini_image.open()))
 
-def create_squeakimage(space):
-    example = get_miniimage(space)
-    example.initialize()
+def get_minitestimage(space):
+    return squeakimage.ImageReader(space, squeakimage.Stream(minitest_image.open()))
+
+def create_image(space, image_reader):
+    image_reader.initialize()
     
     image = squeakimage.SqueakImage()
-    image.from_reader(space, example)
+    image.from_reader(space, image_reader)
     return image
+
+
+def create_squeakimage(space):
+    return create_image(space, get_miniimage(space))
+
+def create_testimage(space):
+    return create_image(space, get_minitestimage(space))
+
 
 def printStringsInImage():
     image = create_squeakimage()

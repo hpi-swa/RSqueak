@@ -4,6 +4,7 @@ A Fixed stack for SPy.
 
 import types
 
+from rpython.rlib import jit
 from rpython.rlib.rarithmetic import r_uint
 
 class FixedStack(object):
@@ -29,18 +30,20 @@ class FixedStack(object):
         return s
     
     def push(self, item):
-        ptr = self.ptr
+        ptr = jit.promote(self.ptr)
         self.items[ptr] = item
         self.ptr = ptr + 1
     
     def pop(self):
-        ptr = self.ptr - 1
+        ptr = jit.promote(self.ptr) - 1
         ret = self.items[ptr]   # you get OverflowError if the stack is empty
         self.items[ptr] = None
         self.ptr = ptr
         return ret
-    
+
+    @jit.unroll_safe
     def drop(self, n):
+        jit.promote(self.ptr)
         while n > 0:
             n -= 1
             self.ptr -= 1
