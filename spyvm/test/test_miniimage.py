@@ -154,9 +154,10 @@ def test_special_classes0():
     assert str(w.getclass(space)) == "Symbol class" # for some strange reason not a symbol
     
     
-    """SO_DOES_NOT_UNDERSTAND = 20
+    """
+    SO_DOES_NOT_UNDERSTAND = 20
     SO_CANNOT_RETURN = 21
-    # no clue what 22 is doing
+    SO_PROCESS_SIGNALIGN_LOW_SPACE = 22 # the process that triggered the low space semaphore. mostly nil
     SO_SPECIAL_SELECTORS_ARRAY = 23
     SO_CHARACTER_TABLE_ARRAY = 24
     SO_MUST_BE_BOOLEAN = 25
@@ -169,14 +170,15 @@ def test_special_classes0():
     SO_LARGEPOSITIVEINTEGER_ZERO = 32
     SO_A_POINT = 33
     SO_CANNOT_INTERPRET = 34
-    SO_A_METHODCONTEXT = 35
-    # no clue what 36 is doing
-    SO_A_BLOCKCONTEXT = 37
-    SO_AN_ARRAY = 38
+    SO_A_METHODCONTEXT = 35 # deprecated in closure images
+    SO_BLOCKCLOSURE_CLASS = 36 
+    SO_A_BLOCKCONTEXT = 37 # deprecated in closure images
+    SO_EXTERNAL_OBJECTS_ARRAY = 38
     SO_PSEUDOCONTEXT_CLASS = 39
     SO_TRANSLATEDMETHOD_CLASS = 40
     SO_FINALIZATION_SEMPAHORE = 41
-    SO_LARGENEGATIVEINTEGER_CLASS = 42"""
+    SO_LARGENEGATIVEINTEGER_CLASS = 42
+    """
 
 
 
