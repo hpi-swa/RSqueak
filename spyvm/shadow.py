@@ -445,9 +445,10 @@ class ContextPartShadow(AbstractRedirectingShadow):
         return self.s_home().w_method()
 
     def method(self):
-        methodshadow = self.w_method().as_compiledmethod_get_shadow(self.space)
-        jit.promote(methodshadow)
-        return methodshadow
+        w_method = jit.promote(self.w_method())
+        return jit.promote(
+            w_method.as_compiledmethod_get_shadow(self.space)
+        )
 
     def getbytecode(self):
         jit.promote(self._pc)
@@ -714,8 +715,9 @@ class MethodContextShadow(ContextPartShadow):
 
 
 class CompiledMethodShadow(object):
+    _immutable_fields_ = ["bytecode", "literals[*]", "bytecodeoffset", "literalsize", "tempsize"]
+
     def __init__(self, w_compiledmethod):
-        self.w_compiledmethod = w_compiledmethod
         self.bytecode = "".join(w_compiledmethod.bytes)
         self.literals = w_compiledmethod.literals
         self.bytecodeoffset = w_compiledmethod.bytecodeoffset()

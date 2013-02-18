@@ -451,6 +451,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         bytecodes  (variable)
     """
 
+    _immutable_fields_ = ["_shadow?"]
 ### Extension from Squeak 3.9 doc, which we do not implement:
 ###        trailer (variable)
 ###    The trailer has two variant formats.  In the first variant, the last
