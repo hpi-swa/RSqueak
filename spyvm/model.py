@@ -539,6 +539,9 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def size(self):
         return self.headersize() + self.getliteralsize() + len(self.bytes) 
 
+    def gettempsize(self):
+        return self.tempsize
+
     def getliteralsize(self):
         return self.literalsize * constants.BYTES_PER_WORD
 
