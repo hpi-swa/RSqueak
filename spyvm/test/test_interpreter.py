@@ -832,11 +832,21 @@ def test_runwithtrace():
 
 # Closure Bytecodes
 def test_bc_pushNewArrayPopIntoArray(bytecode=pushNewArrayPopIntoArray):
-    py.test.skip("Fails, since pushNewArrayPopIntoArray is not yet implemented")
     interp = new_interpreter(bytecode + chr(0x83))
     context = interp.s_active_context()
-    context.push(fakeliterals("egg"))
-    context.push(fakeliterals("bar"))
-    context.push(fakeliterals("baz"))
+    context.push(fakeliterals(space, "egg"))
+    context.push(fakeliterals(space, "bar"))
+    context.push(fakeliterals(space, "baz"))
     interp.step(interp.s_active_context())
-    assert context.pop() == fakeliterals(["egg", "bar", "baz"])
+    array = context.pop()
+    assert array.at0(space, 0) == fakeliterals(space, "egg")
+    assert array.at0(space, 1) == fakeliterals(space, "bar")
+    assert array.at0(space, 2) == fakeliterals(space, "baz")
+
+def test_bc_pushNewArray(bytecode=pushNewArrayPopIntoArray):
+    interp = new_interpreter(bytecode + chr(0x07))
+    context = interp.s_active_context()
+    interp.step(interp.s_active_context())
+    array = context.pop()
+    assert array.size() == 7
+    assert array.at0(space, 0) == space.w_nil

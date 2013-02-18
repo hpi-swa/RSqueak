@@ -370,14 +370,14 @@ class __extend__(ContextPartShadow):
 
     # closure bytecodes
     def pushNewArrayPopIntoArray(self, interp):
-        popIntoArray, arraySize = splitter[1, 7](self.getbytecode())
+        arraySize, popIntoArray = splitter[7, 1](self.getbytecode())
         newArray = None
-        #if popIntoArray == 1:
-        #    newArray = interp.space.wrap_list(self.pop_and_return_n(arraySize))
-        #else:
-        #    newArray = interp.space.w_Array.as_class_get_shadow(interp.space).new(arraySize)
+        if popIntoArray == 1:
+            newArray = interp.space.wrap_list(self.pop_and_return_n(arraySize))
+        else:
+            newArray = interp.space.w_Array.as_class_get_shadow(interp.space).new(arraySize)
         self.push(newArray)
-        raise MissingBytecode("not yet implemented: pushNewArray")
+        # rraise MissingBytecode("not yet implemented: pushNewArray")
 
     def experimentalBytecode(self, interp):
         raise MissingBytecode("experimentalBytecode")
