@@ -73,9 +73,7 @@ SO_SEMAPHORE_CLASS = 18
 SO_CHARACTER_CLASS = 19
 SO_DOES_NOT_UNDERSTAND = 20
 SO_CANNOT_RETURN = 21
-
-# XXX no clue what 22 is doing, lookup in Squeak: ObjectMemory >> initializeSpecialObjectIndices
-
+SO_PROCESS_SIGNALIGN_LOW_SPACE = 22 # the process that triggered the low space semaphore. mostly nil
 SO_SPECIAL_SELECTORS_ARRAY = 23
 SO_CHARACTER_TABLE_ARRAY = 24
 SO_MUST_BE_BOOLEAN = 25
@@ -88,9 +86,9 @@ SO_FLOAT_ZERO = 31
 SO_LARGEPOSITIVEINTEGER_ZERO = 32
 SO_A_POINT = 33
 SO_CANNOT_INTERPRET = 34
-SO_A_METHODCONTEXT = 35
-# no clue what 36 is doing
-SO_A_BLOCKCONTEXT = 37
+SO_A_METHODCONTEXT = 35 # deprecated in closure images
+SO_BLOCKCLOSURE_CLASS = 36 
+SO_A_BLOCKCONTEXT = 37 # deprecated in closure images
 SO_AN_ARRAY = 38
 SO_PSEUDOCONTEXT_CLASS = 39
 SO_TRANSLATEDMETHOD_CLASS = 40
@@ -106,6 +104,7 @@ classes_in_special_object_table = {
     "Float" : SO_FLOAT_CLASS,
     "MethodContext" : SO_METHODCONTEXT_CLASS,
     "BlockContext" : SO_BLOCKCONTEXT_CLASS,
+    "BlockClosure" : SO_BLOCKCLOSURE_CLASS,
     "Point" : SO_POINT_CLASS,
     "LargePositiveInteger" : SO_LARGEPOSITIVEINTEGER_CLASS,
 #    "Display" : SO_DISPLAY_CLASS,
