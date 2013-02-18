@@ -1,9 +1,7 @@
 import py
 from spyvm.shadow import ContextPartShadow, MethodContextShadow, BlockContextShadow
-from spyvm import model, constants, primitives
-from spyvm.shadow import ContextPartShadow
-from spyvm import conftest
-from spyvm import wrapper
+from spyvm import model, constants, primitives, conftest, wrapper
+from spyvm.tool.bitmanipulation import splitter
 
 from rpython.rlib import jit
 from rpython.rlib import objectmodel, unroll
@@ -370,8 +368,40 @@ class __extend__(ContextPartShadow):
     def popStackBytecode(self, interp):
         self.pop()
 
+    # closure bytecodes
+    def pushNewArrayPopIntoArray(self, interp):
+        popIntoArray, arraySize = splitter[1, 7](self.getbytecode())
+        newArray = None
+        #if popIntoArray == 1:
+        #    newArray = interp.space.wrap_list(self.pop_and_return_n(arraySize))
+        #else:
+        #    newArray = interp.space.w_Array.as_class_get_shadow(interp.space).new(arraySize)
+        self.push(newArray)
+        raise MissingBytecode("not yet implemented: pushNewArray")
+
     def experimentalBytecode(self, interp):
         raise MissingBytecode("experimentalBytecode")
+
+    def pushTempAtInTempVectorAt(self, interp):
+        k = self.getbytecode()
+        j = self.getbytecode()
+        raise MissingBytecode("not yet implemented: pushTempAt k inTempVectorAt j")
+
+    def storeTempAtInTempVectorAt(self, interp):
+        k = self.getbytecode()
+        j = self.getbytecode()
+        raise MissingBytecode("not yet implemented: storeTempAt k inTempVectorAt j")
+
+    def popAndStoreTempAtInTempVectorAt(self, interp):
+        k = self.getbytecode()
+        j = self.getbytecode()
+        raise MissingBytecode("not yet implemented: popAndstoreTempAt k inTempVectorAt j")
+
+    def pushClosureNumCopiedNumArgsBlockSize(self, interp):
+        l, k = splitter[4, 4](self.getbytecode())
+        j = self.getbytecode()
+        i = self.getbytecode()
+        raise MissingBytecode("not yet implemented: pushClosureNumCopied l numArgs k blockSize ij")
 
     def jump(self,offset):
         self.store_pc(self.pc() + offset)
@@ -505,7 +535,12 @@ BYTECODE_RANGES = [
             (135, "popStackBytecode"),
             (136, "duplicateTopBytecode"),
             (137, "pushActiveContextBytecode"),
-            (138, 143, "experimentalBytecode"),
+            (138, "pushNewArrayPopIntoArray"),
+            (139, "experimentalBytecode"),
+            (140, "pushTempAtInTempVectorAt"),
+            (141, "storeTempAtInTempVectorAt"),
+            (142, "popAndStoreTempAtInTempVectorAt"),
+            (143, "pushClosureNumCopiedNumArgsBlockSize"),
             (144, 151, "shortUnconditionalJump"),
             (152, 159, "shortConditionalJump"),
             (160, 167, "longUnconditionalJump"),
