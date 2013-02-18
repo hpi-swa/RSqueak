@@ -461,10 +461,11 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 ###    variables.  The number of bytes used for this purpose is the value of
 ###    the last byte in the method.
 
+    _shadow = None
+
     def __init__(self, bytecount=0, header=0):
         self.setheader(header)
         self.bytes = ["\x00"] * bytecount
-        self._shadow = None
 
     def become(self, w_other):
         if not isinstance(w_other, W_CompiledMethod):
@@ -478,6 +479,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         self.literalsize, w_other.literalsize = w_other.literalsize, self.literalsize
         self.w_compiledin, w_other.w_compiledin = w_other.w_compiledin, self.w_compiledin
         self.islarge, w_other.islarge = w_other.islarge, self.islarge
+        self._shadow = w_other._shadow = None
         W_AbstractObjectWithIdentityHash._become(self, w_other)
         return True
 
