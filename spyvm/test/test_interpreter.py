@@ -885,3 +885,12 @@ def test_popAndStoreTempAtInTempVectorAt(bytecode = popAndStoreTempAtInTempVecto
     assert temp_array.at0(space, 2) == fakeliterals(space, "bar")
     assert context.top() == fakeliterals(space, "english")
 
+def test_pushClosureNumCopiedNumArgsBlockSize(bytecode = pushClosureNumCopiedNumArgsBlockSize):
+    for i in range(0, 65536, 7):
+            interp = new_interpreter(bytecode + chr(2) + chr(i >> 8) + chr(i & 0xFF))
+            context = interp.s_active_context()
+            pc = context.pc()
+            # create/find a method with an appropriate blockClosure
+            interp.step(interp.s_active_context())
+            assert context.pc() == pc + 4 + i
+            # assert that the right blockClosure has been pushed

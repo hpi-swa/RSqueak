@@ -403,10 +403,35 @@ class __extend__(ContextPartShadow):
         indirectTemps.atput0(self, k, context.pop())
 
     def pushClosureNumCopiedNumArgsBlockSize(self, interp):
-        l, k = splitter[4, 4](self.getbytecode())
+        """ Copied from Blogpost: http://www.mirandabanda.org/cogblog/2008/07/22/closures-part-ii-the-bytecodes/
+        ContextPart>>pushClosureCopyNumCopiedValues: numCopied numArgs: numArgs blockSize: blockSize
+        "Simulate the action of a 'closure copy' bytecode whose result is the
+         new BlockClosure for the following code"
+        | copiedValues |
+        numCopied > 0
+                 ifTrue:
+                          [copiedValues := Array new: numCopied.
+                           numCopied to: 1 by: -1 do:
+                                   [:i|
+                                   copiedValues at: i put: self pop]]
+                 ifFalse:
+                          [copiedValues := nil].
+        self push: (BlockClosure new
+                                   outerContext: self
+                                   startpc: pc
+                                   numArgs: numArgs
+                                   copiedValues: copiedValues).
+        self jump: blockSize
+        """
+        numArgs, numCopied = splitter[4, 4](self.getbytecode())
         j = self.getbytecode()
         i = self.getbytecode()
-        raise MissingBytecode("not yet implemented: pushClosureNumCopied l numArgs k blockSize ij")
+        blockSize = (j << 8) | i
+        copiedValues = interp.space.w_nil
+        if numCopied > 0:
+            copiedValues = interp.space.wrap_list(self.pop_and_return_n(numCopied))
+        self.push(interp.space.w_nil)
+        self.jump(blockSize)
 
     def jump(self,offset):
         self.store_pc(self.pc() + offset)
