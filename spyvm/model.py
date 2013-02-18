@@ -464,6 +464,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def __init__(self, bytecount=0, header=0):
         self.setheader(header)
         self.bytes = ["\x00"] * bytecount
+        self._shadow = None
 
     def become(self, w_other):
         if not isinstance(w_other, W_CompiledMethod):
@@ -573,6 +574,15 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         self.primitive = primitive
         self.w_compiledin = None
         self.islarge = islarge
+
+    def setbytes(self, bytes):
+        self.bytes = bytes
+
+    def as_compiledmethod_get_shadow(self, space):
+        from shadow import CompiledMethodShadow
+        if self._shadow is None:
+            self._shadow = CompiledMethodShadow(self)
+        return self._shadow
 
     def literalat0(self, space, index0):
         if index0 == 0:

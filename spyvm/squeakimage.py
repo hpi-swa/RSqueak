@@ -373,6 +373,7 @@ class GenericObject(object):
         w_bytesobject.w_class = w_class
         w_bytesobject.bytes = self.get_bytes()
         w_bytesobject.hash = self.chunk.hash12 # XXX check this
+
     def get_bytes(self):
         bytes = []
         if self.reader.swap:
@@ -400,7 +401,7 @@ class GenericObject(object):
             w_compiledmethod.literalatput0(
                 self.space, i, self.decode_pointer(self.chunk.data[i]).w_object)
         bbytes = self.get_bytes()[(w_compiledmethod.literalsize + 1)*4:]
-        w_compiledmethod.bytes = bbytes
+        w_compiledmethod.setbytes(bbytes)
 
 class ImageChunk(object):
     """ A chunk knows the information from the header, but the body of the

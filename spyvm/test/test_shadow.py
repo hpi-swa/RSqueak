@@ -181,3 +181,9 @@ def test_replace_to_bc():
     assert ([s_newobject.fetch(i) for i in range(s_newobject.size())] ==
             [s_object.fetch(i) for i in range(s_newobject.size())])
     assert w_object._shadow is s_newobject
+
+def test_compiledmethodshadow():
+    w_compiledmethod = model.W_CompiledMethod()
+    w_compiledmethod.setbytes(list("abc"))
+    shadow = w_compiledmethod.as_compiledmethod_get_shadow(space)
+    assert shadow.bytecode == "abc"

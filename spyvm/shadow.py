@@ -706,3 +706,9 @@ class MethodContextShadow(ContextPartShadow):
 
     def myblocksize(self):
         return self.size() - self.tempsize()
+
+
+class CompiledMethodShadow(object):
+    def __init__(self, w_compiledmethod):
+        self.w_compiledmethod = w_compiledmethod
+        self.bytecode = "".join(w_compiledmethod.bytes)
