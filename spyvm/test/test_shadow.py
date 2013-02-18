@@ -184,13 +184,15 @@ def test_replace_to_bc():
 
 def test_compiledmethodshadow():
     from test_model import joinbits
-    header = joinbits([0,2,0,0,0,0],[9,8,1,6,4,1])
+    header = joinbits([0,2,0,1,0,0],[9,8,1,6,4,1])
 
     w_compiledmethod = model.W_CompiledMethod(3, header)
     w_compiledmethod.setbytes(list("abc"))
     shadow = w_compiledmethod.as_compiledmethod_get_shadow(space)
     assert shadow.bytecode == "abc"
     assert shadow.bytecodeoffset == 12
+    assert shadow.literalsize == 8 # 12 - 4byte header
+    assert shadow.tempsize == 1
 
     w_compiledmethod.literalatput0(space, 1, 17)
     w_compiledmethod.literalatput0(space, 2, 41)

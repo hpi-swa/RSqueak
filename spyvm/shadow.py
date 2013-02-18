@@ -714,3 +714,5 @@ class CompiledMethodShadow(object):
         self.bytecode = "".join(w_compiledmethod.bytes)
         self.literals = w_compiledmethod.literals
         self.bytecodeoffset = w_compiledmethod.bytecodeoffset()
+        self.literalsize = w_compiledmethod.getliteralsize()
+        self.tempsize = w_compiledmethod.gettempsize()
