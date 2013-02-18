@@ -602,7 +602,8 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         self.atput0(space, index0, w_v)
 
     def at0(self, space, index0):
-        if index0 <= self.getliteralsize():
+        if index0 < self.bytecodeoffset():
+            # XXX: find out what happens if unaligned
             return self.literalat0(space, index0 / constants.BYTES_PER_WORD)
         else:
             # From blue book:
@@ -610,19 +611,18 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
             # CompiledMethod's literal frame.
             # This, in turn, indicates where the 
             # CompiledMethod's bytecodes start. 
-            index0 = index0 - self.getliteralsize() - self.headersize()
+            index0 = index0 - self.bytecodeoffset()
             assert index0 < len(self.bytes)
             return space.wrap_int(ord(self.bytes[index0]))
         
     def atput0(self, space, index0, w_value):
-        byteoffset = self.getliteralsize() + self.headersize()
-        if index0 < byteoffset:
+        if index0 < self.bytecodeoffset():
             if index0 % constants.BYTES_PER_WORD != 0:
                 raise error.PrimitiveFailedError("improper store")
             self.literalatput0(space, index0 / constants.BYTES_PER_WORD, w_value)
         else:
             # XXX use to-be-written unwrap_char
-            index0 = index0 - byteoffset
+            index0 = index0 - self.bytecodeoffset()
             assert index0 < len(self.bytes)
             self.setchar(index0, chr(space.unwrap_int(w_value)))
 
