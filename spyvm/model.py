@@ -596,6 +596,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
             self.setheader(header)
         else:
             self.literals[index0-1] = w_value
+        self._shadow = None
 
     def store(self, space, index0, w_v):
         self.atput0(space, index0, w_v)
@@ -628,6 +629,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def setchar(self, index0, character):
         assert index0 >= 0
         self.bytes[index0] = character
+        self._shadow = None
 
 # Use black magic to create w_nil without running the constructor,
 # thus allowing it to be used even in the constructor of its own

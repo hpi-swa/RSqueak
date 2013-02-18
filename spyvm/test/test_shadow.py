@@ -183,7 +183,23 @@ def test_replace_to_bc():
     assert w_object._shadow is s_newobject
 
 def test_compiledmethodshadow():
-    w_compiledmethod = model.W_CompiledMethod()
+    from test_model import joinbits
+    header = joinbits([0,2,0,0,0,0],[9,8,1,6,4,1])
+
+    w_compiledmethod = model.W_CompiledMethod(3, header)
     w_compiledmethod.setbytes(list("abc"))
     shadow = w_compiledmethod.as_compiledmethod_get_shadow(space)
     assert shadow.bytecode == "abc"
+
+    w_compiledmethod.literalatput0(space, 1, 17)
+    w_compiledmethod.literalatput0(space, 2, 41)
+    assert w_compiledmethod._shadow is None
+
+    shadow = w_compiledmethod.as_compiledmethod_get_shadow(space)
+    assert shadow.literals == [17, 41]
+
+    w_compiledmethod.atput0(space, 14, space.wrap_int(ord("x")))
+    assert w_compiledmethod._shadow is None
+
+    shadow = w_compiledmethod.as_compiledmethod_get_shadow(space)
+    assert shadow.bytecode == "abx"
