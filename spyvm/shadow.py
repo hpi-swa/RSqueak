@@ -713,3 +713,4 @@ class CompiledMethodShadow(object):
         self.w_compiledmethod = w_compiledmethod
         self.bytecode = "".join(w_compiledmethod.bytes)
         self.literals = w_compiledmethod.literals
+        self.bytecodeoffset = w_compiledmethod.bytecodeoffset()

@@ -190,6 +190,7 @@ def test_compiledmethodshadow():
     w_compiledmethod.setbytes(list("abc"))
     shadow = w_compiledmethod.as_compiledmethod_get_shadow(space)
     assert shadow.bytecode == "abc"
+    assert shadow.bytecodeoffset == 12
 
     w_compiledmethod.literalatput0(space, 1, 17)
     w_compiledmethod.literalatput0(space, 2, 41)
