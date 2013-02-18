@@ -81,7 +81,7 @@ def test_w_compiledin():
     supershadow.installmethod("foo", model.W_CompiledMethod(0))
     classshadow = w_class.as_class_get_shadow(space)
     classshadow.initialize_methoddict()
-    assert classshadow.lookup("foo").w_compiledin is w_super
+    assert classshadow.lookup("foo").as_compiledmethod_get_shadow(space).w_compiledin is w_super
 
 def test_compiledmethod_setchar():
     w_method = model.W_CompiledMethod(3)
@@ -103,7 +103,7 @@ def test_compiledmethod_at0():
     w_method = model.W_CompiledMethod()
     w_method.bytes = list("abc")
     w_method.header = 100
-    w_method.literals = [ 'lit1', 'lit2' ]
+    w_method.setliterals(['lit1', 'lit2'])
     w_method.literalsize = 2
     assert space.unwrap_int(w_method.at0(space, 0)) == 100
     assert w_method.at0(space, 4) == 'lit1'

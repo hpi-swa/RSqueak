@@ -15,8 +15,8 @@ class MissingBytecode(Exception):
 class IllegalStoreError(Exception):
     """Illegal Store."""
 
-def get_printable_location(pc, self, w_method):
-    bc = ord(w_method.bytes[pc])
+def get_printable_location(pc, self, method):
+    bc = ord(method.bytecode[pc])
     return '%d: [%s]%s' % (pc, hex(bc), BYTECODE_NAMES[bc])
 
 
@@ -26,7 +26,7 @@ class Interpreter(object):
     cnt = 0
     _last_indent = ""
     jit_driver = jit.JitDriver(
-        greens=['pc', 'self', 'w_method'],
+        greens=['pc', 'self', 'method'],
         reds=['s_active_context'],
         get_printable_location=get_printable_location
     )
@@ -93,10 +93,10 @@ class Interpreter(object):
         while True:
             s_active_context = self.s_active_context()
             pc = s_active_context._pc
-            w_method = s_active_context.w_method()
+            method = s_active_context.method()
 
             self.jit_driver.jit_merge_point(
-                pc=pc, self=self, w_method=w_method,
+                pc=pc, self=self, method=method,
                 s_active_context=s_active_context)
             self.step(s_active_context)
 
@@ -141,14 +141,14 @@ class __extend__(ContextPartShadow):
 
     def pushLiteralConstantBytecode(self, interp):
         index = self.currentBytecode & 31
-        self.push(self.w_method().getliteral(index))
+        self.push(self.method().getliteral(index))
 
     def pushLiteralVariableBytecode(self, interp):
         # this bytecode assumes that literals[index] is an Association
         # which is an object with two named vars, and fetches the second
         # named var (the value).
         index = self.currentBytecode & 31
-        w_association = self.w_method().getliteral(index)
+        w_association = self.method().getliteral(index)
         association = wrapper.AssociationWrapper(self.space, w_association)
         self.push(association.value())
 
@@ -193,7 +193,7 @@ class __extend__(ContextPartShadow):
 
     # send, return bytecodes
     def sendLiteralSelectorBytecode(self, interp):
-        selector = self.w_method().getliteralsymbol(self.currentBytecode & 15)
+        selector = self.method().getliteralsymbol(self.currentBytecode & 15)
         argcount = ((self.currentBytecode >> 4) & 3) - 1
         self._sendSelfSelector(selector, argcount, interp)
 
@@ -203,7 +203,7 @@ class __extend__(ContextPartShadow):
                            receiver, receiver.shadow_of_my_class(self.space))
 
     def _sendSuperSelector(self, selector, argcount, interp):
-        w_compiledin = self.w_method().compiledin()
+        w_compiledin = self.method().w_compiledin
         assert isinstance(w_compiledin, model.W_PointersObject)
         s_compiledin = w_compiledin.as_class_get_shadow(self.space)
         self._sendSelector(selector, argcount, interp, self.w_receiver(),
@@ -289,9 +289,9 @@ class __extend__(ContextPartShadow):
         elif variableType == 1:
             self.push(self.gettemp(variableIndex))
         elif variableType == 2:
-            self.push(self.w_method().getliteral(variableIndex))
+            self.push(self.method().getliteral(variableIndex))
         elif variableType == 3:
-            w_association = self.w_method().getliteral(variableIndex)
+            w_association = self.method().getliteral(variableIndex)
             association = wrapper.AssociationWrapper(self.space, w_association)
             self.push(association.value())
         else:
@@ -306,7 +306,7 @@ class __extend__(ContextPartShadow):
         elif variableType == 2:
             raise IllegalStoreError
         elif variableType == 3:
-            w_association = self.w_method().getliteral(variableIndex)
+            w_association = self.method().getliteral(variableIndex)
             association = wrapper.AssociationWrapper(self.space, w_association)
             association.store_value(self.top())
 
@@ -316,7 +316,7 @@ class __extend__(ContextPartShadow):
 
     def getExtendedSelectorArgcount(self):
         descriptor = self.getbytecode()
-        return ((self.w_method().getliteralsymbol(descriptor & 31)),
+        return ((self.method().getliteralsymbol(descriptor & 31)),
                 (descriptor >> 5))
 
     def singleExtendedSendBytecode(self, interp):
@@ -329,21 +329,21 @@ class __extend__(ContextPartShadow):
         opType = second >> 5
         if opType == 0:
             # selfsend
-            self._sendSelfSelector(self.w_method().getliteralsymbol(third),
+            self._sendSelfSelector(self.method().getliteralsymbol(third),
                                    second & 31, interp)
         elif opType == 1:
             # supersend
-            self._sendSuperSelector(self.w_method().getliteralsymbol(third),
+            self._sendSuperSelector(self.method().getliteralsymbol(third),
                                     second & 31, interp)
         elif opType == 2:
             # pushReceiver
             self.push(self.w_receiver().fetch(self.space, third))
         elif opType == 3:
             # pushLiteralConstant
-            self.push(self.w_method().getliteral(third))
+            self.push(self.method().getliteral(third))
         elif opType == 4:
             # pushLiteralVariable
-            w_association = self.w_method().getliteral(third)
+            w_association = self.method().getliteral(third)
             association = wrapper.AssociationWrapper(self.space, w_association)
             self.push(association.value())
         elif opType == 5:
@@ -351,7 +351,7 @@ class __extend__(ContextPartShadow):
         elif opType == 6:
             self.w_receiver().store(self.space, third, self.pop())
         elif opType == 7:
-            w_association = self.w_method().getliteral(third)
+            w_association = self.method().getliteral(third)
             association = wrapper.AssociationWrapper(self.space, w_association)
             association.store_value(self.top())
 
@@ -361,7 +361,7 @@ class __extend__(ContextPartShadow):
 
     def secondExtendedSendBytecode(self, interp):
         descriptor = self.getbytecode()
-        selector = self.w_method().getliteralsymbol(descriptor & 63)
+        selector = self.method().getliteralsymbol(descriptor & 63)
         argcount = descriptor >> 6
         self._sendSelfSelector(selector, argcount, interp)
 

@@ -1,5 +1,5 @@
 import weakref
-from spyvm import model, constants, error
+from spyvm import model, constants, error, wrapper
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib import rarithmetic, jit
 
@@ -249,11 +249,12 @@ class ClassShadow(AbstractCachingShadow):
             self.w_methoddict._store(1, model.W_PointersObject(None, 0))
             self.s_methoddict().invalid = False
 
-    def installmethod(self, selector, method):
+    def installmethod(self, selector, w_method):
         "NOT_RPYTHON"     # this is only for testing.
         self.initialize_methoddict()
-        self.s_methoddict().methoddict[selector] = method
-        if isinstance(method, model.W_CompiledMethod):
+        self.s_methoddict().methoddict[selector] = w_method
+        if isinstance(w_method, model.W_CompiledMethod):
+            method = w_method.as_compiledmethod_get_shadow(self.space)
             method.w_compiledin = self.w_self()
 
 class MethodDictionaryShadow(AbstractCachingShadow):
@@ -715,7 +716,8 @@ class MethodContextShadow(ContextPartShadow):
 
 
 class CompiledMethodShadow(object):
-    _immutable_fields_ = ["bytecode", "literals[*]", "bytecodeoffset", "literalsize", "tempsize"]
+    _immutable_fields_ = ["bytecode", "literals[*]", "bytecodeoffset",
+                          "literalsize", "tempsize", "w_compiledin"]
 
     def __init__(self, w_compiledmethod):
         self.bytecode = "".join(w_compiledmethod.bytes)
@@ -723,3 +725,24 @@ class CompiledMethodShadow(object):
         self.bytecodeoffset = w_compiledmethod.bytecodeoffset()
         self.literalsize = w_compiledmethod.getliteralsize()
         self.tempsize = w_compiledmethod.gettempsize()
+
+        self.w_compiledin = None
+        if self.literals:
+            # (Blue book, p 607) All CompiledMethods that contain
+            # extended-super bytecodes have the clain which they are found as
+            # their last literal variable.   
+            # Last of the literals is an association with compiledin
+            # as a class
+            w_association = self.literals[-1]
+            if isinstance(w_association, model.W_PointersObject) and w_association.size() >= 2:
+                # XXX XXX XXX where to get a space from here
+                association = wrapper.AssociationWrapper(None, w_association)
+                self.w_compiledin = association.value()
+
+    def getliteral(self, index):
+        return self.literals[index]
+
+    def getliteralsymbol(self, index):
+        w_literal = self.getliteral(index)
+        assert isinstance(w_literal, model.W_BytesObject)
+        return w_literal.as_string()    # XXX performance issue here

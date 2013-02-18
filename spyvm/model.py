@@ -478,37 +478,13 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         self.bytes, w_other.bytes = w_other.bytes, self.bytes
         self.header, w_other.header = w_other.header, self.header
         self.literalsize, w_other.literalsize = w_other.literalsize, self.literalsize
-        self.w_compiledin, w_other.w_compiledin = w_other.w_compiledin, self.w_compiledin
         self.islarge, w_other.islarge = w_other.islarge, self.islarge
         self._shadow = w_other._shadow = None
         W_AbstractObjectWithIdentityHash._become(self, w_other)
         return True
 
-    def compiledin(self):  
-        if self.w_compiledin is None:
-            from spyvm import wrapper
-            # (Blue book, p 607) All CompiledMethods that contain
-            # extended-super bytecodes have the clain which they are found as
-            # their last literal variable.   
-            # Last of the literals is an association with compiledin
-            # as a class
-            w_association = self.literals[-1]
-            # XXX XXX XXX where to get a space from here
-            association = wrapper.AssociationWrapper(None, w_association)
-            self.w_compiledin = association.value()
-        return self.w_compiledin
-
     def getclass(self, space):
         return space.w_CompiledMethod
-
-    def getliteral(self, index):
-                                    # We changed this part
-        return self.literals[index] #+ constants.LITERAL_START]
-
-    def getliteralsymbol(self, index):
-        w_literal = self.getliteral(index)
-        assert isinstance(w_literal, W_BytesObject)
-        return w_literal.as_string()    # XXX performance issue here
 
     def create_frame(self, space, receiver, arguments, sender = None):
         from spyvm import shadow
@@ -578,8 +554,13 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         self.tempsize = tempsize
         assert self.tempsize >= self.argsize
         self.primitive = primitive
-        self.w_compiledin = None
         self.islarge = islarge
+
+    def setliterals(self, literals):
+        """NOT RPYTHON
+           Only for testing"""
+        self.literals = literals
+        self._shadow = None
 
     def setbytes(self, bytes):
         self.bytes = bytes

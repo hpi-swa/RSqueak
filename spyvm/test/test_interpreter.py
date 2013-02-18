@@ -32,7 +32,7 @@ def run_with_faked_methods(methods, func, active_context=None):
         s_class = w_class.as_class_get_shadow(space)
         prim_meth = model.W_CompiledMethod(0)
         prim_meth.primitive = primnum
-        prim_meth.w_compiledin = w_class
+        # prim_meth.w_compiledin = w_class
         prim_meth.argsize = argsize
         s_class.installmethod(methname, prim_meth)
         
@@ -75,6 +75,7 @@ def new_interpreter(bytes, receiver=space.w_nil):
     w_method.bytes = bytes
     w_method.argsize=2
     w_method.tempsize=8
+    w_method.setliterals([model.W_PointersObject(None, 2)])
     w_frame = w_method.create_frame(space, receiver, ["foo", "bar"])
     interp = interpreter.Interpreter(space)
     interp.store_w_active_context(w_frame)
@@ -151,7 +152,7 @@ def test_pushLiteralConstantBytecode(bytecode=pushLiteralConstantBytecode(0) +
                                               pushLiteralConstantBytecode(1) +
                                               pushLiteralConstantBytecode(2)):
     interp = new_interpreter(bytecode)
-    interp.w_active_context().as_methodcontext_get_shadow(space).w_method().literals = fakeliterals(space, "a", "b", "c")
+    interp.w_active_context().as_methodcontext_get_shadow(space).w_method().setliterals(fakeliterals(space, "a", "b", "c"))
     interp.step(interp.s_active_context())
     interp.step(interp.s_active_context())
     interp.step(interp.s_active_context())
@@ -164,7 +165,7 @@ def test_pushLiteralVariableBytecode(bytecode=pushLiteralVariableBytecode(0)):
     w_association.store(space, 0, "mykey")
     w_association.store(space, 1, "myvalue")
     interp = new_interpreter(bytecode)
-    interp.w_active_context().as_methodcontext_get_shadow(space).w_method().literals = fakeliterals(space, w_association)
+    interp.w_active_context().as_methodcontext_get_shadow(space).w_method().setliterals( fakeliterals(space, w_association))
     interp.step(interp.s_active_context())
     assert interp.s_active_context().stack() == ["myvalue"]
 
@@ -401,7 +402,7 @@ def sendBytecodesTest(w_class, w_object, bytecodes):
         w_method.bytes = pushConstantOneBytecode + bytecode
         shadow.installmethod("foo", w_method)
         interp = new_interpreter(bytecodes)
-        interp.w_active_context().as_methodcontext_get_shadow(space).w_method().literals = fakeliterals(space, "foo")
+        interp.w_active_context().as_methodcontext_get_shadow(space).w_method().setliterals(fakeliterals(space, "foo"))
         interp.s_active_context().push(w_object)
         callerContext = interp.w_active_context()
         interp.step(interp.s_active_context())
@@ -428,11 +429,11 @@ def test_fibWithArgument():
     method.bytes = bytecode
     method.argsize = 1
     method.tempsize = 1
-    method.literals = fakeliterals(space, "fib:")
+    method.setliterals(fakeliterals(space, "fib:"))
     shadow.installmethod("fib:", method)
     w_object = shadow.new()
     interp = new_interpreter(sendLiteralSelectorBytecode(16) + returnTopFromMethod)
-    interp.w_active_context().as_methodcontext_get_shadow(space).w_method().literals = fakeliterals(space, "fib:")
+    interp.w_active_context().as_methodcontext_get_shadow(space).w_method().setliterals(fakeliterals(space, "fib:"))
     interp.s_active_context().push(w_object)
     interp.s_active_context().push(space.wrap_int(8))
     result = interp.interpret()
@@ -442,7 +443,7 @@ def test_send_to_primitive():
 
     def test():
         interp = new_interpreter(sendLiteralSelectorBytecode(1 + 16))
-        interp.w_active_context().as_methodcontext_get_shadow(space).w_method().literals = fakeliterals(space, "foo", "sub")
+        interp.w_active_context().as_methodcontext_get_shadow(space).w_method().setliterals(fakeliterals(space, "foo", "sub"))
         interp.s_active_context().push(space.wrap_int(50))
         interp.s_active_context().push(space.wrap_int(8))
         callerContext = interp.w_active_context()
@@ -545,7 +546,7 @@ def storeAssociation(bytecode):
     w_association.store(space, 0, "mykey")
     w_association.store(space, 1, "myvalue")
     interp = new_interpreter(pushConstantOneBytecode + bytecode)
-    interp.w_active_context().as_methodcontext_get_shadow(space).w_method().literals = fakeliterals(space, w_association)
+    interp.w_active_context().as_methodcontext_get_shadow(space).w_method().setliterals(fakeliterals(space, w_association))
     interp.step(interp.s_active_context())
     interp.step(interp.s_active_context())
     assert w_association.fetch(space, 1).is_same_object(space.w_one)
@@ -609,17 +610,17 @@ def test_singleExtendedSuperBytecode(bytecode=singleExtendedSuperBytecode + chr(
     # which does a call to its super
     meth1 = model.W_CompiledMethod(2)
     meth1.bytes = pushReceiverBytecode + bytecode
+    meth1.setliterals(fakeliterals(space, "foo"))
     w_class.as_class_get_shadow(space).installmethod("foo", meth1)
     # and that one again to its super
     meth2 = model.W_CompiledMethod(2)
     meth2.bytes = pushReceiverBytecode + bytecode
+    meth2.setliterals(fakeliterals(space, "foo"))
     w_super.as_class_get_shadow(space).installmethod("foo", meth2)
     meth3 = model.W_CompiledMethod(0)
     w_supersuper.as_class_get_shadow(space).installmethod("foo", meth3)
-    meth1.literals = fakeliterals(space, "foo")
-    meth2.literals = fakeliterals(space, "foo")
     interp = new_interpreter(bytecodes)
-    interp.w_active_context().as_methodcontext_get_shadow(space).w_method().literals = fakeliterals(space, "foo")
+    interp.w_active_context().as_methodcontext_get_shadow(space).w_method().setliterals(fakeliterals(space, "foo"))
     interp.s_active_context().push(w_object)
     interp.step(interp.s_active_context())
     for w_specificclass in [w_super, w_supersuper]:
@@ -665,7 +666,7 @@ def test_doubleExtendedDoAnythinBytecode():
 def interpret_bc(bcodes, literals, receiver=space.w_nil):
     bcode = "".join([chr(x) for x in bcodes])
     interp = new_interpreter(bcode, receiver=receiver)
-    interp.w_active_context().as_methodcontext_get_shadow(space).w_method().literals = literals
+    interp.w_active_context().as_methodcontext_get_shadow(space).w_method().setliterals(literals)
     return interp.interpret()
 
 # tests: bytecodePrimValue & bytecodePrimValueWithArg
@@ -804,7 +805,7 @@ def test_bc_objectAtAndAtPut():
     #   ^ self objectAt: 2 put: 3.   changes the first literal to 3
     #   ^ self objectAt: 2.          yields the new first literal (3)
     prim_meth = model.W_CompiledMethod(header=1024)
-    prim_meth.literals = fakeliterals(space, 22)
+    prim_meth.setliterals(fakeliterals(space, 22))
     oal = fakeliterals(space, "objectAt:")
     oalp = fakeliterals(space, "objectAt:put:", 3)
     def test():
