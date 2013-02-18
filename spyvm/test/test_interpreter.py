@@ -32,7 +32,6 @@ def run_with_faked_methods(methods, func, active_context=None):
         s_class = w_class.as_class_get_shadow(space)
         prim_meth = model.W_CompiledMethod(0)
         prim_meth.primitive = primnum
-        # prim_meth.w_compiledin = w_class
         prim_meth.argsize = argsize
         s_class.installmethod(methname, prim_meth)
         
