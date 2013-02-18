@@ -614,11 +614,14 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
             return space.wrap_int(ord(self.bytes[index0]))
         
     def atput0(self, space, index0, w_value):
-        if index0 <= self.getliteralsize():
+        byteoffset = self.getliteralsize() + self.headersize()
+        if index0 < byteoffset:
+            if index0 % constants.BYTES_PER_WORD != 0:
+                raise error.PrimitiveFailedError("improper store")
             self.literalatput0(space, index0 / constants.BYTES_PER_WORD, w_value)
         else:
             # XXX use to-be-written unwrap_char
-            index0 = index0 - self.getliteralsize() - self.headersize()
+            index0 = index0 - byteoffset
             assert index0 < len(self.bytes)
             self.setchar(index0, chr(space.unwrap_int(w_value)))
 

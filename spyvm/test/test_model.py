@@ -1,7 +1,7 @@
 import py
 from spyvm import model, shadow
 from spyvm.shadow import MethodNotFound
-from spyvm import objspace
+from spyvm import objspace, error
 
 mockclass = objspace.bootstrap_class
 
@@ -129,6 +129,14 @@ def test_compiledmethod_atput0():
     assert space.unwrap_int(w_method.at0(space, 12)) == ord('a')
     assert space.unwrap_int(w_method.at0(space, 13)) == ord('b')
     assert space.unwrap_int(w_method.at0(space, 14)) == ord('c')
+
+def test_compiledmethod_atput0_not_aligned():
+    header = joinbits([0,2,0,0,0,0],[9,8,1,6,4,1])
+    w_method = model.W_CompiledMethod(3, header)
+    with py.test.raises(error.PrimitiveFailedError):
+        w_method.atput0(space, 7, 'lit1')
+    with py.test.raises(error.PrimitiveFailedError):
+        w_method.atput0(space, 9, space.wrap_int(5))
 
 def test_is_same_object(w_o1=model.W_PointersObject(None,0), w_o2=None):
     if w_o2 is None:
