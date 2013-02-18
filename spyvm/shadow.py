@@ -419,14 +419,14 @@ class ContextPartShadow(AbstractRedirectingShadow):
         if w_pc.is_same_object(self.space.w_nil):
             return
         pc = self.space.unwrap_int(w_pc)
-        pc -= self.w_method().bytecodeoffset()
+        pc -= self.method().bytecodeoffset
         pc -= 1
         self.store_pc(pc)
 
     def wrap_pc(self):
         pc = self.pc()
         pc += 1
-        pc += self.w_method().bytecodeoffset()
+        pc += self.method().bytecodeoffset
         return self.space.wrap_int(pc)
 
     def pc(self):
@@ -444,10 +444,15 @@ class ContextPartShadow(AbstractRedirectingShadow):
     def w_method(self):
         return self.s_home().w_method()
 
+    def method(self):
+        methodshadow = self.w_method().as_compiledmethod_get_shadow(self.space)
+        jit.promote(methodshadow)
+        return methodshadow
+
     def getbytecode(self):
         jit.promote(self._pc)
         assert self._pc >= 0
-        bytecode = self.w_method().bytes[self._pc]
+        bytecode = self.method().bytecode[self._pc]
         currentBytecode = ord(bytecode)
         self._pc += 1
         return currentBytecode
@@ -556,12 +561,12 @@ class BlockContextShadow(ContextPartShadow):
 
     def unwrap_store_initialip(self, w_value):
         initialip = self.space.unwrap_int(w_value)
-        initialip -= 1 + self.w_method().getliteralsize()
+        initialip -= 1 + self.method().literalsize
         self.store_initialip(initialip)
 
     def wrap_initialip(self):
         initialip = self.initialip()
-        initialip += 1 + self.w_method().getliteralsize()
+        initialip += 1 + self.method().literalsize
         return self.space.wrap_int(initialip)
 
     def unwrap_store_eargc(self, w_value):
@@ -670,7 +675,7 @@ class MethodContextShadow(ContextPartShadow):
         ContextPartShadow.attach_shadow(self)
 
     def tempsize(self):
-        return self.w_method().tempsize
+        return self.method().tempsize
 
     def w_method(self):
         return self._w_method
