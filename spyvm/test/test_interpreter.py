@@ -850,3 +850,38 @@ def test_bc_pushNewArray(bytecode=pushNewArrayPopIntoArray):
     array = context.pop()
     assert array.size() == 7
     assert array.at0(space, 0) == space.w_nil
+
+def test_pushTempAt0InTempVectorAt0(bytecode = pushTempAtInTempVectorAt):
+    interp = new_interpreter(bytecode + chr(0) + chr(0))
+    context = interp.s_active_context()
+    context.push(fakeliterals(space, "jam"))
+    context.settemp(0, space.w_Array.as_class_get_shadow(interp.space).new(2))
+    interp.step(interp.s_active_context())
+    assert context.top() == space.w_nil
+
+def setupTempArrayAndContext(bytecode):
+    # both indizes are 0-relative
+    interp = new_interpreter(bytecode + chr(2) + chr(1))
+    context = interp.s_active_context()
+    context.push(fakeliterals(space, "english"))
+    context.push(fakeliterals(space, "bar"))
+    temp_array = space.w_Array.as_class_get_shadow(interp.space).new(3)
+    temp_array.atput0(space, 2, fakeliterals(space, "pub"))
+    context.settemp(1, temp_array)
+    interp.step(interp.s_active_context())
+    return context, temp_array
+
+def test_pushTempAt3InTempVectorAt1(bytecode = pushTempAtInTempVectorAt):
+    context, _ = setupTempArrayAndContext(bytecode)
+    assert context.top() == fakeliterals(space, "pub")
+
+def test_storeTempAtInTempVectorAt(bytecode = storeTempAtInTempVectorAt):
+    context, temp_array = setupTempArrayAndContext(bytecode)
+    assert context.top() == fakeliterals(space, "bar")
+    assert temp_array.at0(space, 2) == fakeliterals(space, "bar")
+
+def test_popAndStoreTempAtInTempVectorAt(bytecode = popAndStoreTempAtInTempVectorAt):
+    context, temp_array = setupTempArrayAndContext(bytecode)
+    assert temp_array.at0(space, 2) == fakeliterals(space, "bar")
+    assert context.top() == fakeliterals(space, "english")
+

@@ -377,7 +377,6 @@ class __extend__(ContextPartShadow):
         else:
            newArray = interp.space.w_Array.as_class_get_shadow(interp.space).new(arraySize)
         self.push(newArray)
-        # raise MissingBytecode("not yet implemented: pushNewArray")
 
     def experimentalBytecode(self, interp):
         raise MissingBytecode("experimentalBytecode")
@@ -385,17 +384,23 @@ class __extend__(ContextPartShadow):
     def pushTempAtInTempVectorAt(self, interp):
         k = self.getbytecode()
         j = self.getbytecode()
-        raise MissingBytecode("not yet implemented: pushTempAt k inTempVectorAt j")
+        context = interp.s_active_context()
+        indirectTemps = context.gettemp(j)
+        context.push(indirectTemps.at0(self, k))
 
     def storeTempAtInTempVectorAt(self, interp):
         k = self.getbytecode()
         j = self.getbytecode()
-        raise MissingBytecode("not yet implemented: storeTempAt k inTempVectorAt j")
+        context = interp.s_active_context()
+        indirectTemps = context.gettemp(j)
+        indirectTemps.atput0(self, k, context.top())
 
     def popAndStoreTempAtInTempVectorAt(self, interp):
         k = self.getbytecode()
         j = self.getbytecode()
-        raise MissingBytecode("not yet implemented: popAndstoreTempAt k inTempVectorAt j")
+        context = interp.s_active_context()
+        indirectTemps = context.gettemp(j)
+        indirectTemps.atput0(self, k, context.pop())
 
     def pushClosureNumCopiedNumArgsBlockSize(self, interp):
         l, k = splitter[4, 4](self.getbytecode())
