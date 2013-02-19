@@ -23,5 +23,4 @@ Shadows:
 [ ] Fix invalidation of methoddictshadow when the w_self of its values array changes
 
 Lars ToDo
-[ ] Tests for the new bytecodes.
-[ ] Guess method names for JIT debugging, e.g. changing MethodDictShadow
+[ ] different image with BlockClosure instead of BlockContext

@@ -382,26 +382,23 @@ class __extend__(ContextPartShadow):
     def experimentalBytecode(self, interp):
         raise MissingBytecode("experimentalBytecode")
 
+    def _extract_index_and_temps(self):
+        index_in_array = self.getbytecode()
+        index_of_array = self.getbytecode()
+        w_indirectTemps = self.gettemp(index_of_array)
+        return index_in_array, w_indirectTemps
+
     def pushTempAtInTempVectorAt(self, interp):
-        k = self.getbytecode()
-        j = self.getbytecode()
-        context = interp.s_active_context()
-        indirectTemps = context.gettemp(j)
-        context.push(indirectTemps.at0(self, k))
+        index_in_array, w_indirectTemps = self._extract_index_and_temps()
+        self.push(w_indirectTemps.at0(self.space, index_in_array))
 
     def storeTempAtInTempVectorAt(self, interp):
-        k = self.getbytecode()
-        j = self.getbytecode()
-        context = interp.s_active_context()
-        indirectTemps = context.gettemp(j)
-        indirectTemps.atput0(self, k, context.top())
+        index_in_array, w_indirectTemps = self._extract_index_and_temps()
+        w_indirectTemps.atput0(self.space, index_in_array, self.top())
 
     def popAndStoreTempAtInTempVectorAt(self, interp):
-        k = self.getbytecode()
-        j = self.getbytecode()
-        context = interp.s_active_context()
-        indirectTemps = context.gettemp(j)
-        indirectTemps.atput0(self, k, context.pop())
+        index_in_array, w_indirectTemps = self._extract_index_and_temps()
+        w_indirectTemps.atput0(self.space, index_in_array, self.pop())
 
     def pushClosureNumCopiedNumArgsBlockSize(self, interp):
         """ Copied from Blogpost: http://www.mirandabanda.org/cogblog/2008/07/22/closures-part-ii-the-bytecodes/
