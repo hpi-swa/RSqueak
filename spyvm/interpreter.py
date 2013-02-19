@@ -438,7 +438,7 @@ class __extend__(ContextPartShadow):
         if numCopied > 0:
             copiedValues = self.pop_and_return_n(numCopied)
             for i0 in range(numCopied):
-                w_closure.atput0(space, i0, copiedValues[i0])
+                closure.atput0(i0, copiedValues[i0])
         self.push(w_closure)
         self.jump(blockSize)
 

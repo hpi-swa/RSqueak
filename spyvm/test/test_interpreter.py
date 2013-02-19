@@ -908,5 +908,5 @@ def test_pushClosureNumCopied2NumArgsBlockSize(bytecode = pushClosureNumCopiedNu
     closure = wrapper.BlockClosureWrapper(space, context.top())
     assert closure.startpc() == pc + 4
     assert closure.outerContext() is context._w_self
-    assert closure.w_self.at0(space, 0) == "english"
-    assert closure.w_self.at0(space, 1) == "bar"
+    assert closure.at0(0) == "english"
+    assert closure.at0(1) == "bar"

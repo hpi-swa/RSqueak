@@ -22,6 +22,14 @@ class Wrapper(object):
         except IndexError:
             raise WrapperException("Unexpected instance layout. Too small")
 
+class VarsizedWrapper(Wrapper):
+    def at0(self, i0):
+        return self.w_self.at0(self.space, i0)
+
+    def atput0(self, i0, w_value):
+        return self.w_self.atput0(self.space, i0, w_value)
+
+
 def make_getter(index0):
     def getter(self):
         return self.read(index0)
@@ -47,7 +55,8 @@ def make_int_setter(index0):
 
 def make_int_getter_setter(index0):
     return make_int_getter(index0), make_int_setter(index0)
-   
+
+
 class LinkWrapper(Wrapper):
     next_link, store_next_link = make_getter_setter(0)
 
@@ -205,7 +214,7 @@ class PointWrapper(Wrapper):
     y, store_y = make_int_getter_setter(1)
 
  
-class BlockClosureWrapper(Wrapper):
+class BlockClosureWrapper(VarsizedWrapper):
     outerContext, store_outerContext = make_getter_setter(0)
     startpc, store_startpc = make_int_getter_setter(1)
     numArgs, store_numArgs = make_int_getter_setter(2)
