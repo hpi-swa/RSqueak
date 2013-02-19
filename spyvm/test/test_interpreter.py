@@ -1,6 +1,6 @@
 import py
 from spyvm import model, interpreter, primitives, shadow
-from spyvm import objspace
+from spyvm import objspace, wrapper
 
 mockclass = objspace.bootstrap_class
 
@@ -868,7 +868,7 @@ def setupTempArrayAndContext(bytecode):
     temp_array = space.w_Array.as_class_get_shadow(interp.space).new(3)
     temp_array.atput0(space, 2, fakeliterals(space, "pub"))
     context.settemp(1, temp_array)
-    interp.step(interp.s_active_context())
+    interp.step(context)
     return context, temp_array
 
 def test_pushTempAt3InTempVectorAt1(bytecode = pushTempAtInTempVectorAt):
@@ -885,12 +885,28 @@ def test_popAndStoreTempAtInTempVectorAt(bytecode = popAndStoreTempAtInTempVecto
     assert temp_array.at0(space, 2) == fakeliterals(space, "bar")
     assert context.top() == fakeliterals(space, "english")
 
-def test_pushClosureNumCopiedNumArgsBlockSize(bytecode = pushClosureNumCopiedNumArgsBlockSize):
-    for i in range(0, 65536, 7):
-            interp = new_interpreter(bytecode + chr(2) + chr(i >> 8) + chr(i & 0xFF))
-            context = interp.s_active_context()
-            pc = context.pc()
-            # create/find a method with an appropriate blockClosure
-            interp.step(interp.s_active_context())
-            assert context.pc() == pc + 4 + i
-            # assert that the right blockClosure has been pushed
+def test_pushClosureNumCopied0NumArgsBlockSize(bytecode = pushClosureNumCopiedNumArgsBlockSize):
+    for i in (0, 0xF0, 0x0FF0, 0xFFF0):
+        interp = new_interpreter(bytecode + chr(2) + chr(i >> 8) + chr(i & 0xFF))
+        context = interp.s_active_context()
+        pc = context.pc()
+        # create/find a method with an appropriate blockClosure
+        interp.step(context)
+        assert context.pc() == pc + 4 + i
+        closure = wrapper.BlockClosureWrapper(space, context.top())
+        assert closure.startpc() == pc + 4
+        assert closure.outerContext() is context._w_self
+
+def test_pushClosureNumCopied2NumArgsBlockSize(bytecode = pushClosureNumCopiedNumArgsBlockSize):
+    interp = new_interpreter(bytecode + chr(0x23) + chr(0) + chr(0))
+    context = interp.s_active_context()
+    context.push("english")
+    context.push("bar")
+    pc = context.pc()
+    interp.step(context)
+    assert context.pc() == pc + 4
+    closure = wrapper.BlockClosureWrapper(space, context.top())
+    assert closure.startpc() == pc + 4
+    assert closure.outerContext() is context._w_self
+    assert closure.w_self.at0(space, 0) == "english"
+    assert closure.w_self.at0(space, 1) == "bar"

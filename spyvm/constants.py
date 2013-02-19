@@ -42,6 +42,9 @@ MTHDCTX_RECEIVER_MAP = 4
 MTHDCTX_RECEIVER = 5
 MTHDCTX_TEMP_FRAME_START = 6
 
+# BlockClosure < Object
+BLOCKCLOSURE_SIZE = 3
+
 # ___________________________________________________________________________
 # Miscellaneous constants
 
@@ -104,7 +107,7 @@ classes_in_special_object_table = {
     "Float" : SO_FLOAT_CLASS,
     "MethodContext" : SO_METHODCONTEXT_CLASS,
     "BlockContext" : SO_BLOCKCONTEXT_CLASS,
-    # "BlockClosure" : SO_BLOCKCLOSURE_CLASS,
+    "BlockClosure" : SO_BLOCKCLOSURE_CLASS,
     "Point" : SO_POINT_CLASS,
     "LargePositiveInteger" : SO_LARGEPOSITIVEINTEGER_CLASS,
 #    "Display" : SO_DISPLAY_CLASS,

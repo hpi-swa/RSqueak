@@ -423,17 +423,26 @@ class __extend__(ContextPartShadow):
                                    copiedValues: copiedValues).
         self jump: blockSize
         """
+        space = self.space
         numArgs, numCopied = splitter[4, 4](self.getbytecode())
         j = self.getbytecode()
         i = self.getbytecode()
         blockSize = (j << 8) | i
-        copiedValues = interp.space.w_nil
+        #create new instance of BlockClosure
+        BlockClosureShadow = space.w_BlockClosure.as_class_get_shadow(space)
+        w_closure = BlockClosureShadow.new(numCopied)
+        closure = wrapper.BlockClosureWrapper(space, w_closure)
+        closure.store_outerContext(self._w_self)
+        closure.store_startpc(self.pc())
+        closure.store_numArgs(numArgs)
         if numCopied > 0:
-            copiedValues = interp.space.wrap_list(self.pop_and_return_n(numCopied))
-        self.push(interp.space.w_nil)
+            copiedValues = self.pop_and_return_n(numCopied)
+            for i0 in range(numCopied):
+                w_closure.atput0(space, i0, copiedValues[i0])
+        self.push(w_closure)
         self.jump(blockSize)
 
-    def jump(self,offset):
+    def jump(self, offset):
         self.store_pc(self.pc() + offset)
 
     def jumpConditional(self,bool,position):

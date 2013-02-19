@@ -113,7 +113,9 @@ class ObjSpace(object):
         define_cls("w_Semaphore", "w_LinkedList")
         define_cls("w_BlockContext", "w_ContextPart",
                    instvarsize=constants.BLKCTX_STACK_START)
-
+        define_cls("w_BlockClosure", "w_Object",
+                   instvarsize=constants.BLOCKCLOSURE_SIZE,
+                   varsized=True)
         # make better accessors for classes that can be found in special object
         # table
         for name in constants.classes_in_special_object_table.keys():

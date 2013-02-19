@@ -204,6 +204,12 @@ class PointWrapper(Wrapper):
     x, store_x = make_int_getter_setter(0)
     y, store_y = make_int_getter_setter(1)
 
+ 
+class BlockClosureWrapper(Wrapper):
+    outerContext, store_outerContext = make_getter_setter(0)
+    startpc, store_startpc = make_int_getter_setter(1)
+    numArgs, store_numArgs = make_int_getter_setter(2)
+
 # XXX Wrappers below are not used yet.
 class OffsetWrapper(Wrapper):
     offset_x  = make_int_getter(0)
@@ -217,4 +223,3 @@ class MaskWrapper(Wrapper):
 
 class CursorWrapper(MaskWrapper):
     offset   = make_getter(4)
- 
