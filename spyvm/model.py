@@ -308,10 +308,9 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     @objectmodel.specialize.arg(2)
     def as_special_get_shadow(self, space, TheClass):
         shadow = self._shadow
-        if shadow is None:
-            shadow = self.attach_shadow_of_class(space, TheClass)
-        elif not isinstance(shadow, TheClass):
-            shadow.detach_shadow()
+        if not isinstance(shadow, TheClass):
+            if shadow is not None:
+                shadow.detach_shadow()
             shadow = self.attach_shadow_of_class(space, TheClass)
         shadow.sync_shadow()
         return shadow
