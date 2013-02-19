@@ -317,10 +317,8 @@ class ContextPartShadow(AbstractRedirectingShadow):
     __metaclass__ = extendabletype
 
     def __init__(self, space, w_self):
-        from spyvm.fixedstack import FixedStack
 
         self._w_sender = space.w_nil
-        self._stack = FixedStack()
         self.currentBytecode = -1
         AbstractRedirectingShadow.__init__(self, space, w_self)
 
@@ -339,7 +337,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
         if n0 == constants.CTXPART_STACKP_INDEX:
             return self.wrap_stackpointer()
         if self.stackstart() <= n0 < self.external_stackpointer():
-            return self._stack.top(self.stackdepth() - (n0-self.stackstart()) - 1)
+            return self.peek(self.stackdepth() - (n0-self.stackstart()) - 1)
         if self.external_stackpointer() <= n0 < self.stackend():
             return self.space.w_nil
         else:
@@ -354,7 +352,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
         if n0 == constants.CTXPART_STACKP_INDEX:
             return self.unwrap_store_stackpointer(w_value)
         if self.stackstart() <= n0 < self.external_stackpointer():
-            return self._stack.set_top(w_value,
+            return self.set_top(w_value,
                                        self.stackdepth() - (n0-self.stackstart()) - 1)
             return
         if self.external_stackpointer() <= n0 < self.stackend():
@@ -375,10 +373,10 @@ class ContextPartShadow(AbstractRedirectingShadow):
         if size < depth:
             # TODO Warn back to user
             assert size >= 0
-            self._stack.drop(depth - size)
+            self.pop_n(depth - size)
         else:
             for i in range(depth, size):
-                self._stack.push(self.space.w_nil)
+                self.push(self.space.w_nil)
 
     def wrap_stackpointer(self):
         return self.space.wrap_int(self.stackdepth() + 
@@ -478,17 +476,24 @@ class ContextPartShadow(AbstractRedirectingShadow):
     # ______________________________________________________________________
     # Stack Manipulation
     def init_stack(self):
-        self._stack.setup(self.stackend() - self.stackstart())
+        self._stack_ptr = rarithmetic.r_uint(0) # we point after the last element
+        self._stack_items = [None] * (self.stackend() - self.stackstart())
 
     def stack(self):
         """NOT_RPYTHON""" # purely for testing
-        return self._stack.items[:self.stackdepth()]
+        return self._stack_items[:self.stackdepth()]
 
     def pop(self):
-        return self._stack.pop()
+        ptr = jit.promote(self._stack_ptr) - 1
+        ret = self._stack_items[ptr]   # you get OverflowError if the stack is empty
+        self._stack_items[ptr] = None
+        self._stack_ptr = ptr
+        return ret
 
     def push(self, w_v):
-        self._stack.push(w_v)
+        ptr = jit.promote(self._stack_ptr)
+        self._stack_items[ptr] = w_v
+        self._stack_ptr = ptr + 1
 
     def push_all(self, lst):
         for elt in lst:
@@ -496,18 +501,28 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
     def top(self):
         return self.peek(0)
-        
-    def peek(self, idx):
-        return self._stack.top(idx)
 
+    def set_top(self, value, position=0):
+        rpos = rarithmetic.r_uint(position)
+        self._stack_items[self._stack_ptr + ~rpos] = value
+
+    def peek(self, idx):
+        rpos = rarithmetic.r_uint(idx)
+        return self._stack_items[self._stack_ptr + ~rpos]
+
+    @jit.unroll_safe
     def pop_n(self, n):
-        self._stack.drop(n)
+        jit.promote(self._stack_ptr)
+        while n > 0:
+            n -= 1
+            self._stack_ptr -= 1
+            self._stack_items[self._stack_ptr] = None
 
     def stackdepth(self):
-        return rarithmetic.intmask(self._stack.depth())
+        return rarithmetic.intmask(self._stack_ptr)
 
     def pop_and_return_n(self, n):
-        result = [self._stack.top(i) for i in range(n - 1, -1, -1)]
+        result = [self.peek(i) for i in range(n - 1, -1, -1)]
         self.pop_n(n)
         return result
 
