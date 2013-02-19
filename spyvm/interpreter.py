@@ -17,7 +17,8 @@ class IllegalStoreError(Exception):
 
 def get_printable_location(pc, self, method):
     bc = ord(method.bytecode[pc])
-    return '%d: [%s]%s' % (pc, hex(bc), BYTECODE_NAMES[bc])
+    name = method._w_self._likely_methodname
+    return '%d: [%s]%s (%s)' % (pc, hex(bc), BYTECODE_NAMES[bc], name)
 
 
 class Interpreter(object):

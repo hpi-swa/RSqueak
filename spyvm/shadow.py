@@ -282,6 +282,7 @@ class MethodDictionaryShadow(AbstractCachingShadow):
                     raise ClassShadowError("the methoddict must contain "
                                            "CompiledMethods only for now")
                 self.methoddict[selector] = w_compiledmethod
+                w_compiledmethod._likely_methodname = selector
 
 
 class AbstractRedirectingShadow(AbstractShadow):
@@ -716,10 +717,12 @@ class MethodContextShadow(ContextPartShadow):
 
 
 class CompiledMethodShadow(object):
-    _immutable_fields_ = ["bytecode", "literals[*]", "bytecodeoffset",
+    _immutable_fields_ = ["_w_self", "bytecode",
+                          "literals[*]", "bytecodeoffset",
                           "literalsize", "tempsize", "w_compiledin"]
 
     def __init__(self, w_compiledmethod):
+        self._w_self = w_compiledmethod
         self.bytecode = "".join(w_compiledmethod.bytes)
         self.literals = w_compiledmethod.literals
         self.bytecodeoffset = w_compiledmethod.bytecodeoffset()

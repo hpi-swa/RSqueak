@@ -463,6 +463,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 ###    the last byte in the method.
 
     _shadow = None
+    _likely_methodname = "<unknown>"
 
     def __init__(self, bytecount=0, header=0):
         self.setheader(header)
