@@ -12,7 +12,8 @@ from spyvm import objspace
 
 def setup_module(module, filename='mini.image'):
     space = objspace.ObjSpace()
-    module.mini_image = py.path.local(__file__).dirpath().dirpath().join(filename)
+    from spyvm.tool.analyseimage import image_dir
+    module.mini_image = image_dir.join(filename)
     module.reader = open_miniimage(space)
     reader.initialize()
     module.image = squeakimage.SqueakImage()

@@ -5,8 +5,10 @@ from spyvm import model
 from spyvm import interpreter 
 import sys
 
-mini_image = py.path.local(__file__).dirpath().dirpath().join('mini.image')
-minitest_image = py.path.local(__file__).dirpath().dirpath().join('minitest.image')
+image_dir = py.path.local(__file__).dirpath().dirpath().dirpath('images')
+
+mini_image = image_dir.join('mini.image')
+minitest_image = image_dir.join('minitest.image')
 
 def get_miniimage(space):
     return squeakimage.ImageReader(space, squeakimage.Stream(mini_image.open()))
