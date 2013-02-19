@@ -5,29 +5,29 @@ class Wrapper(object):
     def __init__(self, space, w_self):
         if not isinstance(w_self, model.W_PointersObject):
             raise WrapperException("Unexpected instance given to wrapper")
-        self.w_self = w_self
+        self._w_self = w_self
         self.space = space
 
     def read(self, index0):
         try:
-            return self.w_self.fetch(self.space, index0)
+            return self._w_self.fetch(self.space, index0)
             # XXX Index error never raised after translation
         except IndexError:
             raise WrapperException("Unexpected instance layout. Too small")
 
     def write(self, index0, w_new):
         try:
-            self.w_self.store(self.space, index0, w_new)
+            self._w_self.store(self.space, index0, w_new)
             # XXX Index error never raised after translation
         except IndexError:
             raise WrapperException("Unexpected instance layout. Too small")
 
 class VarsizedWrapper(Wrapper):
     def at0(self, i0):
-        return self.w_self.at0(self.space, i0)
+        return self._w_self.at0(self.space, i0)
 
     def atput0(self, i0, w_value):
-        return self.w_self.atput0(self.space, i0, w_value)
+        return self._w_self.atput0(self.space, i0, w_value)
 
 
 def make_getter(index0):
@@ -69,11 +69,11 @@ class ProcessWrapper(LinkWrapper):
         sched = scheduler(self.space)
         priority = self.priority()
         process_list = sched.get_process_list(priority)
-        process_list.add_process(self.w_self)
+        process_list.add_process(self._w_self)
 
     def activate(self, interp):
         sched = scheduler(self.space)
-        sched.store_active_process(self.w_self)
+        sched.store_active_process(self._w_self)
         interp.store_w_active_context(self.suspended_context())
         self.store_suspended_context(interp.space.w_nil)
         self.store_my_list(interp.space.w_nil)
@@ -94,7 +94,7 @@ class ProcessWrapper(LinkWrapper):
             self.put_to_sleep()
 
     def is_active_process(self):
-        return self.w_self.is_same_object(scheduler(self.space).active_process())
+        return self._w_self.is_same_object(scheduler(self.space).active_process())
 
     def suspend(self, interp):
         if self.is_active_process():
@@ -103,7 +103,7 @@ class ProcessWrapper(LinkWrapper):
             process = ProcessWrapper(self.space, w_process).activate(interp)
         else:
             process_list = ProcessListWrapper(self.space, self.my_list())
-            process_list.remove(self.w_self)
+            process_list.remove(self._w_self)
             self.store_my_list(interp.space.w_nil)
 
 class LinkedListWrapper(Wrapper):
@@ -145,7 +145,7 @@ class LinkedListWrapper(Wrapper):
                     w_tail = LinkWrapper(self.space, w_next).next_link()
                     current.store_next_link(w_tail)
                     if w_tail.is_same_object(self.space.w_nil):
-                        self.store_last_link(current.w_self)
+                        self.store_last_link(current._w_self)
                     return
                 current = LinkWrapper(self.space, w_next)
                 w_next = current.next_link()
@@ -154,7 +154,7 @@ class LinkedListWrapper(Wrapper):
 class ProcessListWrapper(LinkedListWrapper):
     def add_process(self, w_process):
         self.add_last_link(w_process)
-        ProcessWrapper(self.space, w_process).store_my_list(self.w_self)
+        ProcessWrapper(self.space, w_process).store_my_list(self._w_self)
 
 class AssociationWrapper(Wrapper):
     key = make_getter(0)
