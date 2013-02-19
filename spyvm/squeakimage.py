@@ -69,9 +69,12 @@ class CorruptImageError(Exception):
 
 # ____________________________________________________________
 
+# XXX hack to read Cog images.
+# TODO implement Cog float byte reversal
+SUPPORTED_VERSIONS = [6502, 6505]
+
 class ImageReader(object):
     
-
     def __init__(self, space, stream):
         self.space = space
         self.stream = stream
@@ -94,10 +97,10 @@ class ImageReader(object):
     def read_header(self):
         # 1 word version
         version = self.stream.peek()
-        if version != 0x1966:
+        if version not in SUPPORTED_VERSIONS:
             self.stream.swap = True
             version = self.stream.peek()
-            if version != 0x1966:
+            if version not in SUPPORTED_VERSIONS:
                 raise CorruptImageError
         version = self.stream.next()
         #------
