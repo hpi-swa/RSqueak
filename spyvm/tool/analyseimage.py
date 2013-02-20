@@ -11,10 +11,10 @@ mini_image = image_dir.join('mini.image')
 minitest_image = image_dir.join('minitest.image')
 
 def get_miniimage(space):
-    return squeakimage.ImageReader(space, squeakimage.Stream(mini_image.open()))
+    return squeakimage.reader_for_image(space, squeakimage.Stream(mini_image.open()))
 
 def get_minitestimage(space):
-    return squeakimage.ImageReader(space, squeakimage.Stream(minitest_image.open()))
+    return squeakimage.reader_for_image(space, squeakimage.Stream(minitest_image.open()))
 
 def create_image(space, image_reader):
     image_reader.initialize()

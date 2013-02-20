@@ -45,7 +45,7 @@ def entry_point(argv):
     else:
         print "usage:", argv[0], "<image name>"
         return -1
-    reader = squeakimage.ImageReader(space, squeakimage.Stream(DummyFile(filename)))
+    reader = squeakimage.reader_for_image(space, squeakimage.Stream(DummyFile(filename)))
     reader.initialize()
     image = squeakimage.SqueakImage()
     image.from_reader(space, reader)

@@ -21,7 +21,7 @@ def setup_module(module, filename='mini.image'):
     module.space = space
     
 def open_miniimage(space):
-    return squeakimage.ImageReader(space, squeakimage.Stream(mini_image.open()))
+    return squeakimage.reader_for_image(space, squeakimage.Stream(mini_image.open()))
 
 def get_reader():
     return reader

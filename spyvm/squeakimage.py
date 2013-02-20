@@ -6,19 +6,39 @@ from spyvm.tool.bitmanipulation import splitter
 
 from rpython.rlib import objectmodel
 
-def chrs2int(b):
+def chrs2int(b, unsigned):
     assert len(b) == 4
     first = ord(b[0]) # big endian
-    if first & 0x80 != 0:
-        first = first - 0x100
-    return first << 24 | ord(b[1]) << 16 | ord(b[2]) << 8 | ord(b[3])
+    if not unsigned:
+        if first & 0x80 != 0:
+            first = first - 0x100
+    return (first << 24 | ord(b[1]) << 16 | ord(b[2]) << 8 | ord(b[3]))
 
-def swapped_chrs2int(b):
+def swapped_chrs2int(b, unsigned):
     assert len(b) == 4
     first = ord(b[3]) # little endian
-    if first & 0x80 != 0:
-        first = first - 0x100
-    return first << 24 | ord(b[2]) << 16 | ord(b[1]) << 8 | ord(b[0])
+    if not unsigned:
+        if first & 0x80 != 0:
+            first = first - 0x100
+    return (first << 24 | ord(b[2]) << 16 | ord(b[1]) << 8 | ord(b[0]))
+
+def chrs2long(b, unsigned):
+    assert len(b) == 8
+    first = ord(b[0]) # big endian
+    if not unsigned:
+        if first & 0x80 != 0:
+            first = first - 0x100
+    return (      first << 56 | ord(b[1]) << 48 | ord(b[2]) << 40 | ord(b[3]) << 32
+            | ord(b[4]) << 24 | ord(b[5]) << 16 | ord(b[6]) <<  8 | ord(b[7])      )
+
+def swapped_chrs2long(b, unsigned):
+    assert len(b) == 8
+    first = ord(b[7]) # little endian
+    if not unsigned:
+        if first & 0x80 != 0:
+            first = first - 0x100
+    return (      first << 56 | ord(b[6]) << 48 | ord(b[5]) << 40 | ord(b[4]) << 32
+            | ord(b[3]) << 24 | ord(b[2]) << 16 | ord(b[1]) <<  8 | ord(b[0])      )
 
 
 # ____________________________________________________________
@@ -32,23 +52,50 @@ class Stream(object):
             self.data = inputfile.read()
         finally:
             inputfile.close()
-        self.swap = False
-        self.pos = 0
-        self.count = 0
+        self.reset()
 
     def peek(self):
         if self.pos >= len(self.data):
             raise IndexError
-        if self.swap:
-            return swapped_chrs2int( self.data[self.pos:self.pos+4] )
+        data_peek = self.data[self.pos:self.pos + self.word_size]
+        if self.use_long_read:
+            if self.swap:
+                return swapped_chrs2long(data_peek, False)
+            else:
+                return chrs2long(data_peek, False)
         else:
-            return chrs2int( self.data[self.pos:self.pos+4] )
+            if self.swap:
+                return swapped_chrs2int(data_peek, False)
+            else:
+                return chrs2int(data_peek, False)
+
+    def peek_unsigned(self):
+        if self.pos >= len(self.data):
+            raise IndexError
+        data_peek = self.data[self.pos:self.pos + self.word_size]
+        if self.use_long_read:
+            if self.swap:
+                return swapped_chrs2long(data_peek, True)
+            else:
+                return chrs2long(data_peek, True)
+        else:
+            if self.swap:
+                return swapped_chrs2int(data_peek, True)
+            else:
+                return chrs2int(data_peek, True)
+    
 
     def next(self):
         integer = self.peek()
-        self.pos += 4
-        self.count += 4
+        self.pos += self.word_size
+        self.count += self.word_size
         return integer
+
+    def reset(self):
+        self.swap = False
+        self.pos = 0
+        self.count = 0
+        self.be_32bit()
 
     def reset_count(self):
         self.count = 0
@@ -59,25 +106,114 @@ class Stream(object):
         self.pos += jump
         self.count += jump
 
+    def skipwords(self, jump):
+        self.skipbytes(jump * self.word_size)
+        assert (self.pos + jump) <= len(self.data)
+        self.pos += jump
+        self.count += jump
+
+
+    def length(self):
+        return len(self.data)
+
     def close(self):
         pass # already closed
 
+    def be_64bit(self):
+        self.word_size = 8
+        self.use_long_read = True
+
+    def be_32bit(self):
+        self.word_size = 4
+        self.use_long_read = False
 
 
 class CorruptImageError(Exception):
     pass
 
+class UnsupportedImageError(Exception):
+    pass
+
 # ____________________________________________________________
 
-# XXX hack to read Cog images.
-# TODO implement Cog float byte reversal
-SUPPORTED_VERSIONS = [6502, 6505]
+class ImageVersion(object):
+
+    def __init__(self, magic, is_big_endian, is_64bit, has_closures, has_floats_reversed):
+        self.magic = magic
+        self.is_big_endian = is_big_endian
+        self.is_64bit = is_64bit
+        self.has_closures = has_closures
+        self.has_floats_reversed = has_floats_reversed
+
+image_versions = {
+    0x00001966:         ImageVersion(6502,  True,  False, False, False),
+    0x66190000:         ImageVersion(6502,  False, False, False, False),
+    0x00001968:         ImageVersion(6504,  True,  False, True,  False),
+    0x68190000:         ImageVersion(6504,  False, False, True,  False),
+    0x00001969:         ImageVersion(6505,  True,  False, True,  True ),
+    0x69190000:         ImageVersion(6505,  False, False, True,  True ),
+    0x000109A0:         ImageVersion(68000, True,  True,  False, False),
+    0xA009010000000000: ImageVersion(68000, False, True,  False, False),
+    0x00000000000109A2: ImageVersion(68002, True,  True,  True,  False),
+    0xA209010000000000: ImageVersion(68002, False, True,  True,  False),
+    0x00000000000109A3: ImageVersion(68003, True,  True,  True,  True ),
+    0xA309010000000000: ImageVersion(68003, False, True,  True,  True ),
+}
+
+    
+def version(magic):
+    ver = image_versions.get(magic, None)
+    if ver is None:
+        raise CorruptImageError
+    # if ver.is_64bit or ver.has_floats_reversed:
+    #     raise UnsupportedImageError
+    return ver
+
+possible_image_offset = 512
+
+def version_from_stream(stream):
+    # 32 bit
+    try:
+        return version(stream.peek_unsigned())
+    except CorruptImageError as e:
+        if stream.length() > possible_image_offset + 4:
+            stream.skipbytes(possible_image_offset)
+            try:
+                return version(stream.peek_unsigned())
+            except CorruptImageError:
+                pass # raise original error
+        # 64 bit
+        stream.reset()
+        stream.be_64bit()
+        try:
+            v = version(stream.peek_unsigned())
+            assert v.is_64bit
+            return v
+        except CorruptImageError as e:
+            if stream.length() > possible_image_offset + 4:
+                stream.skipbytes(possible_image_offset)
+                try:
+                    v = version(stream.peek_unsigned())
+                    assert v.is_64bit
+                    return v
+                except CorruptImageError:
+                    pass # raise original error
+        raise
+
+    
+    
+def reader_for_image(space, stream):
+    ver = version_from_stream(stream)
+    if not ver.is_big_endian:
+        stream.swap = True
+    return ImageReader(space, stream, ver)
 
 class ImageReader(object):
     
-    def __init__(self, space, stream):
+    def __init__(self, space, stream, version):
         self.space = space
         self.stream = stream
+        self.version = version
         # dictionary mapping old address to chunk object
         self.chunks = {}
         self.chunklist = []
@@ -94,15 +230,13 @@ class ImageReader(object):
         self.init_w_objects()
         self.fillin_w_objects()
 
-    def read_header(self):
+    def read_version(self):
         # 1 word version
-        version = self.stream.peek()
-        if version not in SUPPORTED_VERSIONS:
-            self.stream.swap = True
-            version = self.stream.peek()
-            if version not in SUPPORTED_VERSIONS:
-                raise CorruptImageError
-        version = self.stream.next()
+        magic = self.stream.next()
+        assert self.version.magic == magic
+
+    def read_header(self):
+        self.read_version()
         #------
         # 1 word headersize
         headersize = self.stream.next()
@@ -118,8 +252,7 @@ class ImageReader(object):
         print "savedwindowssize", savedwindowssize
         fullscreenflag = self.stream.next()
         extravmmemory = self.stream.next()
-        # we called 9 times next, 1 word = 4 byte
-        self.stream.skipbytes(headersize - (9 * 4))
+        self.stream.skipbytes(headersize - self.stream.pos)
 
     def read_body(self):
         import sys
