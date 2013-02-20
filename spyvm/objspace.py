@@ -1,6 +1,4 @@
-from spyvm import constants
-from spyvm import model
-from spyvm import shadow
+from spyvm import constants, model, shadow, wrapper
 from spyvm.error import UnwrappingError, WrappingError
 from rpython.rlib.objectmodel import instantiate
 from rpython.rlib.rarithmetic import intmask, r_uint
@@ -265,6 +263,16 @@ class ObjSpace(object):
     def _freeze_(self):
         return True
 
+    def newClosure(self, outerContext, pc, numArgs, copiedValues):
+        BlockClosureShadow = self.w_BlockClosure.as_class_get_shadow(self)
+        w_closure = BlockClosureShadow.new(len(copiedValues))
+        closure = wrapper.BlockClosureWrapper(self, w_closure)
+        closure.store_outerContext(outerContext)
+        closure.store_startpc(pc)
+        closure.store_numArgs(numArgs)
+        for i0 in range(len(copiedValues)):
+            closure.atput0(i0, copiedValues[i0])
+        return w_closure, closure
 
 def bootstrap_class(space, instsize, w_superclass=None, w_metaclass=None,
                     name='?', format=shadow.POINTERS, varsized=False):

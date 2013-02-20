@@ -834,18 +834,18 @@ def func(interp, argument_count):
     
 @expose_primitive(VALUE_WITH_ARGS, unwrap_spec=[object, list],
                   no_result=True)
-def func(interp, w_block_ctx, l_args):
+def func(interp, w_block_ctx, args_w):
 
     assert isinstance(w_block_ctx, model.W_PointersObject)
     s_block_ctx = w_block_ctx.as_blockcontext_get_shadow(interp.space)
     exp_arg_cnt = s_block_ctx.expected_argument_count()
 
-    if len(l_args) != exp_arg_cnt:
+    if len(args_w) != exp_arg_cnt:
         raise PrimitiveFailedError()
     
     # Push all the items from the array
     for i in range(exp_arg_cnt):
-        s_block_ctx.push(l_args[i])
+        s_block_ctx.push(args_w[i])
 
     # XXX Check original logic. Image does not test this anyway
     # because falls back to value + internal implementation

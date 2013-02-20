@@ -400,15 +400,6 @@ class __extend__(ContextPartShadow):
         index_in_array, w_indirectTemps = self._extract_index_and_temps()
         w_indirectTemps.atput0(self.space, index_in_array, self.pop())
 
-    def _newClosure(self, numArgs, pc, numCopied):
-        BlockClosureShadow = self.space.w_BlockClosure.as_class_get_shadow(self.space)
-        w_closure = BlockClosureShadow.new(numCopied)
-        closure = wrapper.BlockClosureWrapper(self.space, w_closure)
-        closure.store_outerContext(self._w_self)
-        closure.store_startpc(pc)
-        closure.store_numArgs(numArgs)
-        return closure, w_closure
-
     def pushClosureCopyCopiedValuesBytecode(self, interp):
         """ Copied from Blogpost: http://www.mirandabanda.org/cogblog/2008/07/22/closures-part-ii-the-bytecodes/
         ContextPart>>pushClosureCopyNumCopiedValues: numCopied numArgs: numArgs blockSize: blockSize
@@ -436,11 +427,8 @@ class __extend__(ContextPartShadow):
         i = self.getbytecode()
         blockSize = (j << 8) | i
         #create new instance of BlockClosure
-        closure, w_closure = self._newClosure(numArgs, self.pc(), numCopied)
-        if numCopied > 0:
-            copiedValues = self.pop_and_return_n(numCopied)
-            for i0 in range(numCopied):
-                closure.atput0(i0, copiedValues[i0])
+        w_closure, closure = space.newClosure(self._w_self, self.pc(), numArgs, 
+                                            self.pop_and_return_n(numCopied))
         self.push(w_closure)
         self.jump(blockSize)
 

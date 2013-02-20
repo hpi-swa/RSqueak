@@ -30,6 +30,7 @@ def wrap(x):
     if isinstance(x, model.W_Object): return x
     if isinstance(x, str) and len(x) == 1: return space.wrap_char(x)
     if isinstance(x, str): return space.wrap_string(x)
+    if isinstance(x, list): return space.wrap_list(x)
     raise NotImplementedError
     
 def mock(stack):
