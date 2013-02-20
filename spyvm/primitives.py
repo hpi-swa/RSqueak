@@ -97,6 +97,9 @@ def expose_primitive(code, unwrap_spec=None, no_result=False):
                     elif spec is str:
                         assert isinstance(w_arg, model.W_BytesObject)
                         args += (w_arg.as_string(), )
+                    elif spec is list:
+                        assert isinstance(w_arg, model.W_PointersObject)
+                        args += (interp.space.unwrap_array(w_arg), )
                     elif spec is char:
                         args += (unwrap_char(w_arg), )
                     else:
@@ -829,25 +832,20 @@ def func(interp, argument_count):
     frame.pop()
     finalize_block_ctx(interp, s_block_ctx, frame.w_self())
     
-@expose_primitive(VALUE_WITH_ARGS, unwrap_spec=[object, object],
+@expose_primitive(VALUE_WITH_ARGS, unwrap_spec=[object, list],
                   no_result=True)
-def func(interp, w_block_ctx, w_args):
+def func(interp, w_block_ctx, l_args):
 
     assert isinstance(w_block_ctx, model.W_PointersObject)
     s_block_ctx = w_block_ctx.as_blockcontext_get_shadow(interp.space)
     exp_arg_cnt = s_block_ctx.expected_argument_count()
 
-    # Check that our arguments have pointers format and the right size:
-    if not w_args.getclass(interp.space).is_same_object(
-            interp.space.w_Array):
-        raise PrimitiveFailedError()
-    if w_args.size() != exp_arg_cnt:
+    if len(l_args) != exp_arg_cnt:
         raise PrimitiveFailedError()
     
-    assert isinstance(w_args, model.W_PointersObject)
     # Push all the items from the array
     for i in range(exp_arg_cnt):
-        s_block_ctx.push(w_args.at0(interp.space, i))
+        s_block_ctx.push(l_args[i])
 
     # XXX Check original logic. Image does not test this anyway
     # because falls back to value + internal implementation
@@ -911,6 +909,21 @@ def func(interp, w_rcvr):
     # XXX we currently don't care about bad flushes :) XXX
     # raise PrimitiveNotYetWrittenError()
     return w_rcvr
+
+# ___________________________________________________________________________
+# BlockClosure Primitives
+
+CLOSURE_COPY_WITH_COPIED_VALUES = 200
+CLOSURE_VALUE = 201
+CLOSURE_VALUE_ = 202
+CLOSURE_VALUE_VALUE = 203
+CLOSURE_VALUE_VALUE_VALUE = 204
+CLOSURE_VALUE_VALUE_VALUE_VALUE = 205
+CLOSURE_VALUE_WITH_ARGS = 206 #valueWithArguments:
+
+@expose_primitive(CLOSURE_VALUE_WITH_ARGS, unwrap_spec=[object, list])
+def func(interp, w_block_closure, l_args):
+    pass
 
 # ___________________________________________________________________________
 # PrimitiveLoadInstVar

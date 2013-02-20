@@ -254,6 +254,14 @@ class ObjSpace(object):
         elif isinstance(w_v, model.W_SmallInteger): return float(w_v.value)
         raise UnwrappingError()
 
+    def unwrap_array(self, w_array):
+        # Check that our argument has pointers format and the class:
+        if not w_array.getclass(self).is_same_object(self.w_Array):
+            raise PrimitiveFailedError()
+        assert isinstance(w_array, model.W_PointersObject)
+        
+        return [w_array.at0(self, i) for i in range(w_array.size())]
+        
     def _freeze_(self):
         return True
 
