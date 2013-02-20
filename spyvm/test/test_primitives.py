@@ -16,7 +16,7 @@ class MockFrame(model.W_PointersObject):
     def __init__(self, stack):
         self._vars = [None] * 6 + stack
         s_self = self.as_blockcontext_get_shadow()
-        s_self.init_stack()
+        s_self.init_stack_and_temps()
         s_self.reset_stack()
         s_self.push_all(stack)
         s_self.store_expected_argument_count(0)

@@ -473,26 +473,31 @@ class ContextPartShadow(AbstractRedirectingShadow):
     def settemp(self, index, w_value):
         self.s_home().settemp(index, w_value)
 
+    @jit.unroll_safe
+    def init_stack_and_temps(self):
+        stacksize = self.stackend() - self.stackstart()
+        tempsize = self.tempsize()
+        self._temps_and_stack = [None] * (stacksize + tempsize)
+        for i in range(tempsize):
+            self._temps_and_stack[i] = self.space.w_nil
+        self._stack_ptr = rarithmetic.r_uint(tempsize) # we point after the last element
+
     # ______________________________________________________________________
     # Stack Manipulation
-    def init_stack(self):
-        self._stack_ptr = rarithmetic.r_uint(0) # we point after the last element
-        self._stack_items = [None] * (self.stackend() - self.stackstart())
-
     def stack(self):
         """NOT_RPYTHON""" # purely for testing
-        return self._stack_items[:self.stackdepth()]
+        return self._temps_and_stack[self.tempsize():self._stack_ptr]
 
     def pop(self):
         ptr = jit.promote(self._stack_ptr) - 1
-        ret = self._stack_items[ptr]   # you get OverflowError if the stack is empty
-        self._stack_items[ptr] = None
+        ret = self._temps_and_stack[ptr]   # you get OverflowError if the stack is empty
+        self._temps_and_stack[ptr] = None
         self._stack_ptr = ptr
         return ret
 
     def push(self, w_v):
         ptr = jit.promote(self._stack_ptr)
-        self._stack_items[ptr] = w_v
+        self._temps_and_stack[ptr] = w_v
         self._stack_ptr = ptr + 1
 
     def push_all(self, lst):
@@ -504,11 +509,11 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
     def set_top(self, value, position=0):
         rpos = rarithmetic.r_uint(position)
-        self._stack_items[self._stack_ptr + ~rpos] = value
+        self._temps_and_stack[self._stack_ptr + ~rpos] = value
 
     def peek(self, idx):
         rpos = rarithmetic.r_uint(idx)
-        return self._stack_items[self._stack_ptr + ~rpos]
+        return self._temps_and_stack[self._stack_ptr + ~rpos]
 
     @jit.unroll_safe
     def pop_n(self, n):
@@ -516,10 +521,10 @@ class ContextPartShadow(AbstractRedirectingShadow):
         while n > 0:
             n -= 1
             self._stack_ptr -= 1
-            self._stack_items[self._stack_ptr] = None
+            self._temps_and_stack[self._stack_ptr] = None
 
     def stackdepth(self):
-        return rarithmetic.intmask(self._stack_ptr)
+        return rarithmetic.intmask(self._stack_ptr - self.tempsize())
 
     def pop_and_return_n(self, n):
         result = [self.peek(i) for i in range(n - 1, -1, -1)]
@@ -548,7 +553,7 @@ class BlockContextShadow(ContextPartShadow):
         s_result.store_initialip(initialip)
         s_result.store_w_home(w_home)
         s_result.store_pc(initialip)
-        s_result.init_stack()
+        s_result.init_stack_and_temps()
         return w_result
 
     def fetch(self, n0):
@@ -574,7 +579,7 @@ class BlockContextShadow(ContextPartShadow):
     def attach_shadow(self):
         # Make sure the home context is updated first
         self.copy_from_w_self(constants.BLKCTX_HOME_INDEX)
-        self.init_stack()
+        self.init_stack_and_temps()
         ContextPartShadow.attach_shadow(self)
 
     def unwrap_store_initialip(self, w_value):
@@ -649,10 +654,9 @@ class MethodContextShadow(ContextPartShadow):
             s_result.store_w_sender(w_sender)
         s_result.store_w_receiver(w_receiver)
         s_result.store_pc(0)
-        s_result._temps = [space.w_nil] * w_method.tempsize
+        s_result.init_stack_and_temps()
         for i in range(len(arguments)):
             s_result.settemp(i, arguments[i])
-        s_result.init_stack()
         return w_result
 
     def fetch(self, n0):
@@ -687,9 +691,7 @@ class MethodContextShadow(ContextPartShadow):
     def attach_shadow(self):
         # Make sure the method is updated first
         self.copy_from_w_self(constants.MTHDCTX_METHOD)
-        self.init_stack()
-        # And that there is space for the temps
-        self._temps = [self.space.w_nil] * self.tempsize()
+        self.init_stack_and_temps()
         ContextPartShadow.attach_shadow(self)
 
     def tempsize(self):
@@ -709,10 +711,10 @@ class MethodContextShadow(ContextPartShadow):
         self._w_receiver = w_receiver
 
     def gettemp(self, index0):
-        return self._temps[index0]
+        return self._temps_and_stack[index0]
 
     def settemp(self, index0, w_value):
-        self._temps[index0] = w_value
+        self._temps_and_stack[index0] = w_value
 
     def w_home(self):
         return self.w_self()
