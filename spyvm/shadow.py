@@ -526,6 +526,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
     def stackdepth(self):
         return rarithmetic.intmask(self._stack_ptr - self.tempsize())
 
+    @jit.unroll_safe
     def pop_and_return_n(self, n):
         result = [self.peek(i) for i in range(n - 1, -1, -1)]
         self.pop_n(n)
@@ -637,6 +638,7 @@ class MethodContextShadow(ContextPartShadow):
         ContextPartShadow.__init__(self, space, w_self)
 
     @staticmethod
+    @jit.unroll_safe
     def make_context(space, w_method, w_receiver,
                      arguments, w_sender=None):
         # From blue book: normal mc have place for 12 temps+maxstack
