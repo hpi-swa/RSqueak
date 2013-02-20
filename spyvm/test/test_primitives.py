@@ -16,7 +16,7 @@ class MockFrame(model.W_PointersObject):
     def __init__(self, stack):
         self._vars = [None] * 6 + stack
         s_self = self.as_blockcontext_get_shadow()
-        s_self.init_stack()
+        s_self.init_stack_and_temps()
         s_self.reset_stack()
         s_self.push_all(stack)
         s_self.store_expected_argument_count(0)
@@ -30,6 +30,7 @@ def wrap(x):
     if isinstance(x, model.W_Object): return x
     if isinstance(x, str) and len(x) == 1: return space.wrap_char(x)
     if isinstance(x, str): return space.wrap_string(x)
+    if isinstance(x, list): return space.wrap_list(x)
     raise NotImplementedError
     
 def mock(stack):

@@ -370,7 +370,7 @@ class __extend__(ContextPartShadow):
         self.pop()
 
     # closure bytecodes
-    def pushNewArrayPopIntoArray(self, interp):
+    def pushNewArrayBytecode(self, interp):
         arraySize, popIntoArray = splitter[7, 1](self.getbytecode())
         newArray = None
         if popIntoArray == 1:
@@ -388,19 +388,19 @@ class __extend__(ContextPartShadow):
         w_indirectTemps = self.gettemp(index_of_array)
         return index_in_array, w_indirectTemps
 
-    def pushTempAtInTempVectorAt(self, interp):
+    def pushRemoteTempLongBytecode(self, interp):
         index_in_array, w_indirectTemps = self._extract_index_and_temps()
         self.push(w_indirectTemps.at0(self.space, index_in_array))
 
-    def storeTempAtInTempVectorAt(self, interp):
+    def storeRemoteTempLongBytecode(self, interp):
         index_in_array, w_indirectTemps = self._extract_index_and_temps()
         w_indirectTemps.atput0(self.space, index_in_array, self.top())
 
-    def popAndStoreTempAtInTempVectorAt(self, interp):
+    def storeAndPopRemoteTempLongBytecode(self, interp):
         index_in_array, w_indirectTemps = self._extract_index_and_temps()
         w_indirectTemps.atput0(self.space, index_in_array, self.pop())
 
-    def pushClosureNumCopiedNumArgsBlockSize(self, interp):
+    def pushClosureCopyCopiedValuesBytecode(self, interp):
         """ Copied from Blogpost: http://www.mirandabanda.org/cogblog/2008/07/22/closures-part-ii-the-bytecodes/
         ContextPart>>pushClosureCopyNumCopiedValues: numCopied numArgs: numArgs blockSize: blockSize
         "Simulate the action of a 'closure copy' bytecode whose result is the
@@ -427,16 +427,8 @@ class __extend__(ContextPartShadow):
         i = self.getbytecode()
         blockSize = (j << 8) | i
         #create new instance of BlockClosure
-        BlockClosureShadow = space.w_BlockClosure.as_class_get_shadow(space)
-        w_closure = BlockClosureShadow.new(numCopied)
-        closure = wrapper.BlockClosureWrapper(space, w_closure)
-        closure.store_outerContext(self._w_self)
-        closure.store_startpc(self.pc())
-        closure.store_numArgs(numArgs)
-        if numCopied > 0:
-            copiedValues = self.pop_and_return_n(numCopied)
-            for i0 in range(numCopied):
-                closure.atput0(i0, copiedValues[i0])
+        w_closure, closure = space.newClosure(self._w_self, self.pc(), numArgs, 
+                                            self.pop_and_return_n(numCopied))
         self.push(w_closure)
         self.jump(blockSize)
 
@@ -572,12 +564,12 @@ BYTECODE_RANGES = [
             (135, "popStackBytecode"),
             (136, "duplicateTopBytecode"),
             (137, "pushActiveContextBytecode"),
-            (138, "pushNewArrayPopIntoArray"),
+            (138, "pushNewArrayBytecode"),
             (139, "experimentalBytecode"),
-            (140, "pushTempAtInTempVectorAt"),
-            (141, "storeTempAtInTempVectorAt"),
-            (142, "popAndStoreTempAtInTempVectorAt"),
-            (143, "pushClosureNumCopiedNumArgsBlockSize"),
+            (140, "pushRemoteTempLongBytecode"),
+            (141, "storeRemoteTempLongBytecode"),
+            (142, "storeAndPopRemoteTempLongBytecode"),
+            (143, "pushClosureCopyCopiedValuesBytecode"),
             (144, 151, "shortUnconditionalJump"),
             (152, 159, "shortConditionalJump"),
             (160, 167, "longUnconditionalJump"),

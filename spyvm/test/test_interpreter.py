@@ -831,7 +831,7 @@ def test_runwithtrace():
     option.bc_trace = bc_trace
 
 # Closure Bytecodes
-def test_bc_pushNewArrayPopIntoArray(bytecode=pushNewArrayPopIntoArray):
+def test_bc_pushNewArrayBytecode(bytecode=pushNewArrayBytecode):
     interp = new_interpreter(bytecode + chr(0x83))
     context = interp.s_active_context()
     context.push(fakeliterals(space, "egg"))
@@ -843,7 +843,7 @@ def test_bc_pushNewArrayPopIntoArray(bytecode=pushNewArrayPopIntoArray):
     assert array.at0(space, 1) == fakeliterals(space, "bar")
     assert array.at0(space, 2) == fakeliterals(space, "baz")
 
-def test_bc_pushNewArray(bytecode=pushNewArrayPopIntoArray):
+def test_bc_pushNewArray(bytecode=pushNewArrayBytecode):
     interp = new_interpreter(bytecode + chr(0x07))
     context = interp.s_active_context()
     interp.step(interp.s_active_context())
@@ -851,7 +851,7 @@ def test_bc_pushNewArray(bytecode=pushNewArrayPopIntoArray):
     assert array.size() == 7
     assert array.at0(space, 0) == space.w_nil
 
-def test_pushTempAt0InTempVectorAt0(bytecode = pushTempAtInTempVectorAt):
+def test_bc_pushRemoteTempLongBytecode(bytecode = pushRemoteTempLongBytecode):
     interp = new_interpreter(bytecode + chr(0) + chr(0))
     context = interp.s_active_context()
     context.push(fakeliterals(space, "jam"))
@@ -871,21 +871,21 @@ def setupTempArrayAndContext(bytecode):
     interp.step(context)
     return context, temp_array
 
-def test_pushTempAt3InTempVectorAt1(bytecode = pushTempAtInTempVectorAt):
+def test_bc_pushRemoteTempLongBytecode2(bytecode = pushRemoteTempLongBytecode):
     context, _ = setupTempArrayAndContext(bytecode)
     assert context.top() == fakeliterals(space, "pub")
 
-def test_storeTempAtInTempVectorAt(bytecode = storeTempAtInTempVectorAt):
+def test_bc_storeRemoteTempLongBytecode(bytecode = storeRemoteTempLongBytecode):
     context, temp_array = setupTempArrayAndContext(bytecode)
     assert context.top() == fakeliterals(space, "bar")
     assert temp_array.at0(space, 2) == fakeliterals(space, "bar")
 
-def test_popAndStoreTempAtInTempVectorAt(bytecode = popAndStoreTempAtInTempVectorAt):
+def test_bc_storeAndPopRemoteTempLongBytecode(bytecode = storeAndPopRemoteTempLongBytecode):
     context, temp_array = setupTempArrayAndContext(bytecode)
     assert temp_array.at0(space, 2) == fakeliterals(space, "bar")
     assert context.top() == fakeliterals(space, "english")
 
-def test_pushClosureNumCopied0NumArgsBlockSize(bytecode = pushClosureNumCopiedNumArgsBlockSize):
+def test_bc_pushClosureCopyCopied0ValuesBytecode(bytecode = pushClosureCopyCopiedValuesBytecode):
     for i in (0, 0xF0, 0x0FF0, 0xFFF0):
         interp = new_interpreter(bytecode + chr(2) + chr(i >> 8) + chr(i & 0xFF))
         context = interp.s_active_context()
@@ -897,7 +897,7 @@ def test_pushClosureNumCopied0NumArgsBlockSize(bytecode = pushClosureNumCopiedNu
         assert closure.startpc() == pc + 4
         assert closure.outerContext() is context._w_self
 
-def test_pushClosureNumCopied2NumArgsBlockSize(bytecode = pushClosureNumCopiedNumArgsBlockSize):
+def test_bc_pushClosureCopyCopied2ValuesBytecode(bytecode = pushClosureCopyCopiedValuesBytecode):
     interp = new_interpreter(bytecode + chr(0x23) + chr(0) + chr(0))
     context = interp.s_active_context()
     context.push("english")
