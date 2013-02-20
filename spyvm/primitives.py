@@ -97,6 +97,9 @@ def expose_primitive(code, unwrap_spec=None, no_result=False):
                     elif spec is str:
                         assert isinstance(w_arg, model.W_BytesObject)
                         args += (w_arg.as_string(), )
+                    elif spec is list:
+                        assert isinstance(w_arg, model.W_PointersObject)
+                        args += (interp.space.unwrap_array(w_arg), )
                     elif spec is char:
                         args += (unwrap_char(w_arg), )
                     else:
@@ -829,25 +832,20 @@ def func(interp, argument_count):
     frame.pop()
     finalize_block_ctx(interp, s_block_ctx, frame.w_self())
     
-@expose_primitive(VALUE_WITH_ARGS, unwrap_spec=[object, object],
+@expose_primitive(VALUE_WITH_ARGS, unwrap_spec=[object, list],
                   no_result=True)
-def func(interp, w_block_ctx, w_args):
+def func(interp, w_block_ctx, args_w):
 
     assert isinstance(w_block_ctx, model.W_PointersObject)
     s_block_ctx = w_block_ctx.as_blockcontext_get_shadow(interp.space)
     exp_arg_cnt = s_block_ctx.expected_argument_count()
 
-    # Check that our arguments have pointers format and the right size:
-    if not w_args.getclass(interp.space).is_same_object(
-            interp.space.w_Array):
-        raise PrimitiveFailedError()
-    if w_args.size() != exp_arg_cnt:
+    if len(args_w) != exp_arg_cnt:
         raise PrimitiveFailedError()
     
-    assert isinstance(w_args, model.W_PointersObject)
     # Push all the items from the array
     for i in range(exp_arg_cnt):
-        s_block_ctx.push(w_args.at0(interp.space, i))
+        s_block_ctx.push(args_w[i])
 
     # XXX Check original logic. Image does not test this anyway
     # because falls back to value + internal implementation
@@ -911,6 +909,80 @@ def func(interp, w_rcvr):
     # XXX we currently don't care about bad flushes :) XXX
     # raise PrimitiveNotYetWrittenError()
     return w_rcvr
+
+# ___________________________________________________________________________
+# BlockClosure Primitives
+
+CLOSURE_COPY_WITH_COPIED_VALUES = 200
+CLOSURE_VALUE = 201
+CLOSURE_VALUE_ = 202
+CLOSURE_VALUE_VALUE = 203
+CLOSURE_VALUE_VALUE_VALUE = 204
+CLOSURE_VALUE_VALUE_VALUE_VALUE = 205
+CLOSURE_VALUE_WITH_ARGS = 206 #valueWithArguments:
+CLOSURE_VALUE_NO_CONTEXT_SWITCH = 221
+CLOSURE_VALUE_NO_CONTEXT_SWITCH_ = 222
+
+@expose_primitive(CLOSURE_COPY_WITH_COPIED_VALUES, unwrap_spec=[object, int, list])
+def func(interp, outerContext, numArgs, copiedValues):
+    frame = interp.s_active_context()
+    w_context, s_context = interp.space.newClosure(outerContext, frame.pc(), 
+                                                        numArgs, copiedValues)
+    frame.push(w_context)
+
+
+def activateClosure(w_block_closure, args_w, mayContextSwitch=True):
+    if not w_block_closure.getclass(interp.space).is_same_object(
+            interp.space.w_BlockClosure):
+        raise PrimitiveFailedError()
+    if not w_block_closure.numArgs == len(args_w):
+        raise PrimitiveFailedError()
+    if not w_block_closure.outerContext.getclass(interp.space).issubclass(
+            interp.space.w_ContextPart):
+        raise PrimitiveFailedError()
+    w_closureMethod = w_block_closure.w_method()
+    assert isinstance(w_closureMethod, W_CompiledMethod)
+    assert w_block_closure is not w_block_closure.outerContext
+    numCopied = w_block_closure.size()
+
+    s_block_closure = w_block_closure.as_blockclosure_get_shadow(interp.space)
+    s_block_closure.push_all(args_w)
+
+    s_block_closure.store_pc(s_block_closure.initialip())
+    s_block_closure.store_w_sender(frame)
+
+
+@expose_primitive(CLOSURE_VALUE, unwrap_spec=[object])
+def func(interp, w_block_closure):
+    activateClosure(w_block_closure, [])
+
+@expose_primitive(CLOSURE_VALUE_, unwrap_spec=[object, object])
+def func(interp, w_block_closure, w_a0):
+    activateClosure(w_block_closure, [w_a0])
+
+@expose_primitive(CLOSURE_VALUE_VALUE, unwrap_spec=[object, object, object])
+def func(interp, w_block_closure, w_a0, w_a1):
+    activateClosure(w_block_closure, [w_a0, w_a1])
+
+@expose_primitive(CLOSURE_VALUE_VALUE_VALUE, unwrap_spec=[object, object, object, object])
+def func(interp, w_block_closure, w_a0, w_a1, w_a2):
+    activateClosure(w_block_closure, [w_a0, w_a1, w_a2])
+
+@expose_primitive(CLOSURE_VALUE_VALUE_VALUE_VALUE, unwrap_spec=[object, object, object, object, object])
+def func(interp, w_block_closure, w_a0, w_a1, w_a2, w_a3):
+    activateClosure(w_block_closure, [w_a0, w_a1, w_a2, w_a3])
+
+@expose_primitive(CLOSURE_VALUE_WITH_ARGS, unwrap_spec=[object, list])
+def func(interp, w_block_closure, args_w):
+    activateClosure(w_block_closure, args_w)
+
+@expose_primitive(CLOSURE_VALUE_NO_CONTEXT_SWITCH, unwrap_spec=[object])
+def func(interp, w_block_closure):
+    activateClosure(w_block_closure, [], mayContextSwitch=False)
+
+@expose_primitive(CLOSURE_VALUE_NO_CONTEXT_SWITCH_, unwrap_spec=[object, object])
+def func(interp, w_block_closure, w_a0):
+    activateClosure(w_block_closure, [w_a0], mayContextSwitch=False)
 
 # ___________________________________________________________________________
 # PrimitiveLoadInstVar
