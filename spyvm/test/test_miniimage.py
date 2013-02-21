@@ -17,9 +17,23 @@ def setup_module(module, filename='mini.image'):
     module.reader = open_miniimage(space)
     reader.initialize()
     module.image = squeakimage.SqueakImage()
-    module.image.from_reader(space, get_reader())
+    module.image.from_reader(space, reader)
     module.space = space
-    
+
+def find_symbol(name):
+    w_dnu = image.special(constants.SO_DOES_NOT_UNDERSTAND)
+    assert str(w_dnu) == "doesNotUnderstand:"
+    w_Symbol = w_dnu.getclass(space)
+    for chunk in reader.chunklist:
+        w_obj = chunk.g_object.w_object
+        if not isinstance(w_obj, model.W_BytesObject):
+            continue
+        if not w_obj.getclass(space).is_same_object(w_Symbol):
+            continue
+        if w_obj.as_string() == name:
+            return w_obj
+    return perform(space.wrap_string(name), "asSymbol")
+
 def open_miniimage(space):
     return squeakimage.ImageReader(space, squeakimage.Stream(mini_image.open()))
 
@@ -192,7 +206,7 @@ def test_lookup_abs_in_integer(int=10):
     # Should get this from w_object
     w_smallint_class = image.special(constants.SO_SMALLINTEGER_CLASS)
     s_class = w_object.shadow_of_my_class(space)
-    w_method = s_class.lookup("abs")
+    w_method = s_class.lookup(find_symbol("abs"))
 
     assert w_method
     w_frame = w_method.create_frame(space, w_object, [])
@@ -286,7 +300,11 @@ def test_become():
 def perform(w_receiver, selector, *arguments_w):
     interp = interpreter.Interpreter(space)
     s_class = w_receiver.shadow_of_my_class(space)
-    w_method = s_class.lookup(selector)
+    if isinstance(selector, str):
+        w_selector = find_symbol(selector)
+    else:
+        w_selector = selector
+    w_method = s_class.lookup(w_selector)
     assert w_method
     w_frame = w_method.create_frame(space, w_receiver, list(arguments_w))
     interp.store_w_active_context(w_frame)

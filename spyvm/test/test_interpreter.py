@@ -1,6 +1,6 @@
 import py
 from spyvm import model, interpreter, primitives, shadow
-from spyvm import objspace, wrapper
+from spyvm import objspace, wrapper, constants
 
 mockclass = objspace.bootstrap_class
 
@@ -25,7 +25,7 @@ def setup():
             globals()[name] = make_getter(entry)
 setup()
 
-def run_with_faked_methods(methods, func, active_context=None):
+def run_with_faked_primitive_methods(methods, func, active_context=None):
 
     # Install faked compiled methods that just invoke the primitive:
     for (w_class, primnum, argsize, methname) in methods:
@@ -33,8 +33,17 @@ def run_with_faked_methods(methods, func, active_context=None):
         prim_meth = model.W_CompiledMethod(0)
         prim_meth.primitive = primnum
         prim_meth.argsize = argsize
-        s_class.installmethod(methname, prim_meth)
-        
+        symbol = fakesymbol(methname)
+        # somewhat evil:
+        try:
+            index = constants.find_selectorindex(methname)
+        except ValueError:
+            pass
+        else:
+            space.w_special_selectors.atput0(space, index, symbol)
+            assert space.get_special_selector(methname) is symbol
+        s_class.installmethod(symbol, prim_meth)
+
         assert space.w_nil._shadow is None
     try:
         func(active_context) if active_context else func()
@@ -43,7 +52,7 @@ def run_with_faked_methods(methods, func, active_context=None):
         assert space.w_nil._shadow is None
         for (w_class, _, _, methname) in methods:
             s_class = w_class.as_class_get_shadow(space)
-            del s_class.s_methoddict().methoddict[methname]
+            del s_class.s_methoddict().methoddict[fakesymbol(methname)]
 
 def fakesymbol(s, _cache={}):
     try:
@@ -349,7 +358,7 @@ def test_bytecodePrimNew():
                             w_metaclass=w_fakeclassclass)
     interp = new_interpreter(bytecodePrimNew)
     interp.s_active_context().push(w_fakeclass)
-    run_with_faked_methods(
+    run_with_faked_primitive_methods(
         [[w_fakeclassclass, primitives.NEW, 0, "new"]],
         interp.step,
         interp.s_active_context())
@@ -365,7 +374,7 @@ def test_bytecodePrimNewWithArg():
     interp = new_interpreter(bytecodePrimNewWithArg)
     interp.s_active_context().push(w_fakeclass)
     interp.s_active_context().push(space.w_two)
-    run_with_faked_methods(
+    run_with_faked_primitive_methods(
         [[w_fakeclassclass, primitives.NEW_WITH_ARG, 1, "new:"]],
         interp.step,
         interp.s_active_context())
@@ -379,7 +388,7 @@ def test_bytecodePrimSize():
     w_fakeinst = w_fakeclass.as_class_get_shadow(space).new(5)
     interp = new_interpreter(bytecodePrimSize)
     interp.s_active_context().push(w_fakeinst)
-    run_with_faked_methods(
+    run_with_faked_primitive_methods(
         [[w_fakeclass, primitives.SIZE, 0, "size"]],
         interp.step,
         interp.s_active_context())
@@ -399,16 +408,18 @@ def sendBytecodesTest(w_class, w_object, bytecodes):
         shadow = w_class.as_class_get_shadow(space)
         w_method = model.W_CompiledMethod(2)
         w_method.bytes = pushConstantOneBytecode + bytecode
-        shadow.installmethod("foo", w_method)
+        literals = fakeliterals(space, "foo")
+        w_foo = literals[0]
+        shadow.installmethod(w_foo, w_method)
         interp = new_interpreter(bytecodes)
-        interp.w_active_context().as_methodcontext_get_shadow(space).w_method().setliterals(fakeliterals(space, "foo"))
+        interp.w_active_context().as_methodcontext_get_shadow(space).w_method().setliterals(literals)
         interp.s_active_context().push(w_object)
         callerContext = interp.w_active_context()
         interp.step(interp.s_active_context())
         assert interp.s_active_context().w_sender() == callerContext
         assert interp.s_active_context().stack() == []
         assert interp.w_active_context().as_methodcontext_get_shadow(space).w_receiver().is_same_object(w_object)
-        assert interp.w_active_context().as_methodcontext_get_shadow(space).w_method().is_same_object(shadow.s_methoddict().methoddict["foo"])
+        assert interp.w_active_context().as_methodcontext_get_shadow(space).w_method().is_same_object(shadow.s_methoddict().methoddict[w_foo])
         assert callerContext.as_context_get_shadow(space).stack() == []
         interp.step(interp.s_active_context())
         interp.step(interp.s_active_context())
@@ -428,11 +439,12 @@ def test_fibWithArgument():
     method.bytes = bytecode
     method.argsize = 1
     method.tempsize = 1
-    method.setliterals(fakeliterals(space, "fib:"))
-    shadow.installmethod("fib:", method)
+    literals = fakeliterals(space, "fib:")
+    method.setliterals(literals)
+    shadow.installmethod(literals[0], method)
     w_object = shadow.new()
     interp = new_interpreter(sendLiteralSelectorBytecode(16) + returnTopFromMethod)
-    interp.w_active_context().as_methodcontext_get_shadow(space).w_method().setliterals(fakeliterals(space, "fib:"))
+    interp.w_active_context().as_methodcontext_get_shadow(space).w_method().setliterals(literals)
     interp.s_active_context().push(w_object)
     interp.s_active_context().push(space.wrap_int(8))
     result = interp.interpret()
@@ -442,7 +454,7 @@ def test_send_to_primitive():
 
     def test():
         interp = new_interpreter(sendLiteralSelectorBytecode(1 + 16))
-        interp.w_active_context().as_methodcontext_get_shadow(space).w_method().setliterals(fakeliterals(space, "foo", "sub"))
+        interp.w_active_context().as_methodcontext_get_shadow(space).w_method().setliterals(fakeliterals(space, "foo", "-"))
         interp.s_active_context().push(space.wrap_int(50))
         interp.s_active_context().push(space.wrap_int(8))
         callerContext = interp.w_active_context()
@@ -452,9 +464,9 @@ def test_send_to_primitive():
         w_result = interp.s_active_context().pop()
         assert space.unwrap_int(w_result) == 42
         
-    run_with_faked_methods(
+    run_with_faked_primitive_methods(
         [[space.w_SmallInteger, primitives.SUBTRACT,
-          1, "sub"]],
+          1, "-"]],
         test)
 
 def test_makePoint():
@@ -568,13 +580,16 @@ def test_callPrimitiveAndPush_fallback():
     w_method.argsize = 1
     w_method.tempsize = 1
     w_method.literalsize = 1
-    shadow.installmethod("+", w_method) 
-    
+    w_symbol = fakesymbol("+")
+    shadow.installmethod(w_symbol, w_method)
+    # slightly evil
+    space.w_special_selectors.atput0(space, constants.find_selectorindex("+"), w_symbol)
+
     w_object = shadow.new()
     interp.s_active_context().push(w_object)
     interp.s_active_context().push(space.w_one)
     interp.step(interp.s_active_context())
-    assert interp.w_active_context().as_methodcontext_get_shadow(space).w_method() == shadow.s_methoddict().methoddict["+"]
+    assert interp.w_active_context().as_methodcontext_get_shadow(space).w_method() == shadow.s_methoddict().methoddict[w_symbol]
     assert interp.s_active_context().w_receiver() is w_object
     assert interp.w_active_context().as_methodcontext_get_shadow(space).gettemp(0).is_same_object(space.w_one)
     assert interp.s_active_context().stack() == []
@@ -609,17 +624,19 @@ def test_singleExtendedSuperBytecode(bytecode=singleExtendedSuperBytecode + chr(
     # which does a call to its super
     meth1 = model.W_CompiledMethod(2)
     meth1.bytes = pushReceiverBytecode + bytecode
-    meth1.setliterals(fakeliterals(space, "foo"))
-    w_class.as_class_get_shadow(space).installmethod("foo", meth1)
+    literals = fakeliterals(space, "foo")
+    foo = literals[0]
+    meth1.setliterals(literals)
+    w_class.as_class_get_shadow(space).installmethod(foo, meth1)
     # and that one again to its super
     meth2 = model.W_CompiledMethod(2)
     meth2.bytes = pushReceiverBytecode + bytecode
-    meth2.setliterals(fakeliterals(space, "foo"))
-    w_super.as_class_get_shadow(space).installmethod("foo", meth2)
+    meth2.setliterals(fakeliterals(space, foo))
+    w_super.as_class_get_shadow(space).installmethod(foo, meth2)
     meth3 = model.W_CompiledMethod(0)
-    w_supersuper.as_class_get_shadow(space).installmethod("foo", meth3)
+    w_supersuper.as_class_get_shadow(space).installmethod(foo, meth3)
     interp = new_interpreter(bytecodes)
-    interp.w_active_context().as_methodcontext_get_shadow(space).w_method().setliterals(fakeliterals(space, "foo"))
+    interp.w_active_context().as_methodcontext_get_shadow(space).w_method().setliterals(literals)
     interp.s_active_context().push(w_object)
     interp.step(interp.s_active_context())
     for w_specificclass in [w_super, w_supersuper]:
@@ -629,7 +646,7 @@ def test_singleExtendedSuperBytecode(bytecode=singleExtendedSuperBytecode + chr(
         assert interp.s_active_context().w_sender() == callerContext
         assert interp.s_active_context().stack() == []
         assert interp.w_active_context().as_methodcontext_get_shadow(space).w_receiver() == w_object
-        meth = w_specificclass.as_class_get_shadow(space).s_methoddict().methoddict["foo"]
+        meth = w_specificclass.as_class_get_shadow(space).s_methoddict().methoddict[foo]
         assert interp.w_active_context().as_methodcontext_get_shadow(space).w_method() == meth
         assert callerContext.as_context_get_shadow(space).stack() == []
 
@@ -703,7 +720,7 @@ def test_bc_x_plus_y():
             [ 137, 119, 200, 164, 6, 105, 104, 16, 17,
               176, 125, 33, 34, 240, 124 ],
             fakeliterals(space, "value:value:", space.wrap_int(3), space.wrap_int(4))).value == 7
-    run_with_faked_methods(
+    run_with_faked_primitive_methods(
         [[space.w_BlockContext, primitives.VALUE,
           2, "value:value:"]],
         test)
@@ -741,7 +758,7 @@ def test_bc_value_with_args():
               125, 33, 224, 124 ],
             fakeliterals(space, "valueWithArguments:",
                          [3, 2])).value == 1
-    run_with_faked_methods(
+    run_with_faked_primitive_methods(
         [[space.w_BlockContext, primitives.VALUE_WITH_ARGS,
           1, "valueWithArguments:"]],
         test)
@@ -752,7 +769,7 @@ def test_bc_primBytecodeAt_string():
         assert interpret_bc(
             [ 32, 118, 192, 124],
             fakeliterals(space, "a")) == space.wrap_char("a")
-    run_with_faked_methods(
+    run_with_faked_primitive_methods(
         [[space.w_String, primitives.STRING_AT, 1, "at:"]],
         test)
     
@@ -762,7 +779,7 @@ def test_bc_primBytecodeAtPut_string():
         assert interpret_bc(
             [ 32, 118, 33, 193, 124 ],
             fakeliterals(space, "a", space.wrap_char("b"))) == space.wrap_char("b")
-    run_with_faked_methods(
+    run_with_faked_primitive_methods(
         [[space.w_String, primitives.STRING_AT_PUT, 2, "at:put:"]],
         test)
 
@@ -777,7 +794,7 @@ def test_bc_primBytecodeAt_with_instvars():
             [112, 118, 192, 124],
             fakeliterals(space, ),
             receiver=w_fakeinst)) == "b"
-    run_with_faked_methods(
+    run_with_faked_primitive_methods(
         [[w_fakeclass, primitives.AT, 1, "at:"]],
         test)
 
@@ -794,7 +811,7 @@ def test_bc_primBytecodeAtPut_with_instvars():
             receiver=w_fakeinst)) == "b"
         assert space.unwrap_char(w_fakeinst.fetch(space, 0)) == "a"
         assert space.unwrap_char(w_fakeinst.fetch(space, 1)) == "b"
-    run_with_faked_methods(
+    run_with_faked_primitive_methods(
         [[w_fakeclass, primitives.AT_PUT, 2, "at:put:"]],
         test)
 
@@ -816,7 +833,7 @@ def test_bc_objectAtAndAtPut():
             [112, 119, 33, 240, 124], oalp, receiver=prim_meth).value == 3
         assert interpret_bc(
             [112, 119, 224, 124], oal, receiver=prim_meth).value == 3
-    run_with_faked_methods(
+    run_with_faked_primitive_methods(
         [[space.w_CompiledMethod, primitives.OBJECT_AT, 1, "objectAt:"],
          [space.w_CompiledMethod, primitives.OBJECT_AT_PUT, 2, "objectAt:put:"]],
         test)

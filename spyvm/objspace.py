@@ -1,6 +1,6 @@
 from spyvm import constants, model, shadow, wrapper
 from spyvm.error import UnwrappingError, WrappingError
-from rpython.rlib.objectmodel import instantiate
+from rpython.rlib.objectmodel import instantiate, specialize
 from rpython.rlib.rarithmetic import intmask, r_uint
 
 class ObjSpace(object):
@@ -147,14 +147,22 @@ class ObjSpace(object):
         self.w_zero = model.W_SmallInteger(0)
         self.w_one = model.W_SmallInteger(1)
         self.w_two = model.W_SmallInteger(2)
-        self.objtable = {}
+        w_special_selectors = model.W_PointersObject(
+            self.classtable['w_Array'], len(constants.SPECIAL_SELECTORS) * 2)
+        self.w_special_selectors = w_special_selectors
 
+        self.objtable = {}
         for name in constants.objects_in_special_object_table:
             name = "w_" + name
             try:
                 self.objtable[name] = locals()[name]
             except KeyError, e:
                 self.objtable[name] = None
+
+    @specialize.arg(1)
+    def get_special_selector(self, selector):
+        i0 = constants.find_selectorindex(selector)
+        return self.w_special_selectors.at0(self, i0)
 
     # methods for wrapping and unwrapping stuff
 
@@ -255,7 +263,7 @@ class ObjSpace(object):
     def unwrap_array(self, w_array):
         # Check that our argument has pointers format and the class:
         if not w_array.getclass(self).is_same_object(self.w_Array):
-            raise PrimitiveFailedError()
+            raise UnwrappingError()
         assert isinstance(w_array, model.W_PointersObject)
         
         return [w_array.at0(self, i) for i in range(w_array.size())]

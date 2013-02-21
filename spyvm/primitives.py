@@ -856,10 +856,10 @@ def func(interp, argcount):
     raise PrimitiveFailedError()
 
 @expose_primitive(PERFORM_WITH_ARGS,
-                  unwrap_spec=[object, str, object],
+                  unwrap_spec=[object, object, object],
                   no_result=True)
-def func(interp, w_rcvr, sel, w_args):
-    w_method = w_rcvr.shadow_of_my_class(interp.space).lookup(sel)
+def func(interp, w_rcvr, w_sel, w_args):
+    w_method = w_rcvr.shadow_of_my_class(interp.space).lookup(w_sel)
     assert w_method
 
     w_frame = w_method.create_frame(interp.space, w_rcvr,

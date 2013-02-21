@@ -62,7 +62,7 @@ SO_BITMAP_CLASS = 4
 SO_SMALLINTEGER_CLASS = 5
 SO_STRING_CLASS = 6
 SO_ARRAY_CLASS = 7
-SO_SMALLTALK = 8 # Deperacted
+SO_SMALLTALK = 8 # Deprecated
 SO_FLOAT_CLASS = 9
 SO_METHODCONTEXT_CLASS = 10
 SO_BLOCKCONTEXT_CLASS = 11
@@ -128,9 +128,25 @@ objects_in_special_object_table = {
     "false": SO_FALSE,
     "charactertable": SO_CHARACTER_TABLE_ARRAY,
     "schedulerassociationpointer" : SO_SCHEDULERASSOCIATIONPOINTER,
+    "special_selectors": SO_SPECIAL_SELECTORS_ARRAY,
     "smalltalkdict" : SO_SMALLTALK,
 }
 
 LONG_BIT = 32
 TAGGED_MAXINT = 2 ** (LONG_BIT - 2) - 1
 TAGGED_MININT = -2 ** (LONG_BIT - 2)
+
+
+# Entries into SO_SPECIAL_SELECTORS_ARRAY:
+#(#+ 1 #- 1 #< 1 #> 1 #<= 1 #>= 1 #= 1 #~= 1 #* 1 #/ 1 #\\ 1 #@ 1 #bitShift: 1 #// 1 #bitAnd: 1 #bitOr: 1 #at: 1 #at:put: 2 #size 0 #next 0 #nextPut: 1 #atEnd 0 #== 1 #class 0 #blockCopy: 1 #value 0 #value: 1 #do: 1 #new 0 #new: 1 #x 0 #y 0)
+
+
+SPECIAL_SELECTORS = ['+', '-', '<', '>', '<=', '>=', '=', '~=', '*', '/', '\\\\',
+                     '@', 'bitShift:', '//', 'bitAnd:', 'bitOr:', 'at:',
+                     'at:put:', 'size', 'next', 'nextPut:', 'atEnd', '==',
+                     'class', 'blockCopy:', 'value', 'value:', 'do:', 'new',
+                     'new:', 'x', 'y']
+
+def find_selectorindex(selector):
+    return SPECIAL_SELECTORS.index(selector) * 2
+find_selectorindex._annspecialcase_ = "specialize:memo"

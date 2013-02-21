@@ -69,7 +69,10 @@ def test_methoddict():
                'bar': model.W_CompiledMethod(0)}
     w_class = build_smalltalk_class("Demo", 0x90, methods=methods)
     classshadow = w_class.as_class_get_shadow(space)
-    assert classshadow.s_methoddict().methoddict == methods
+    methoddict = classshadow.s_methoddict().methoddict
+    assert len(methods) == len(methoddict)
+    for w_key, value in methoddict.items():
+        assert methods[w_key.as_string()] is value
 
 def method(tempsize=3,argsize=2, bytes="abcde"):
     w_m = model.W_CompiledMethod()

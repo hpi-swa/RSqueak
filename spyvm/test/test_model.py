@@ -6,6 +6,8 @@ from spyvm import objspace, error
 mockclass = objspace.bootstrap_class
 
 space = objspace.ObjSpace()
+w_foo = space.wrap_string("foo")
+w_bar = space.wrap_string("bar")
 
 def joinbits(values, lengths):
     result = 0
@@ -59,29 +61,29 @@ def test_word_object():
 def test_method_lookup():
     w_class = mockclass(space, 0)
     shadow = w_class.as_class_get_shadow(space)
-    shadow.installmethod("foo", 1)
-    shadow.installmethod("bar", 2)
+    shadow.installmethod(w_foo, 1)
+    shadow.installmethod(w_bar, 2)
     w_subclass = mockclass(space, 0, w_superclass=w_class)
     subshadow = w_subclass.as_class_get_shadow(space)
     assert subshadow.s_superclass() is shadow
-    subshadow.installmethod("foo", 3)
+    subshadow.installmethod(w_foo, 3)
     shadow.initialize_methoddict()
     subshadow.initialize_methoddict()
-    assert shadow.lookup("foo") == 1
-    assert shadow.lookup("bar") == 2
+    assert shadow.lookup(w_foo) == 1
+    assert shadow.lookup(w_bar) == 2
     py.test.raises(MethodNotFound, shadow.lookup, "zork")
-    assert subshadow.lookup("foo") == 3
-    assert subshadow.lookup("bar") == 2
+    assert subshadow.lookup(w_foo) == 3
+    assert subshadow.lookup(w_bar) == 2
     py.test.raises(MethodNotFound, subshadow.lookup, "zork")
 
 def test_w_compiledin():
     w_super = mockclass(space, 0)
     w_class = mockclass(space, 0, w_superclass=w_super)
     supershadow = w_super.as_class_get_shadow(space)
-    supershadow.installmethod("foo", model.W_CompiledMethod(0))
+    supershadow.installmethod(w_foo, model.W_CompiledMethod(0))
     classshadow = w_class.as_class_get_shadow(space)
     classshadow.initialize_methoddict()
-    assert classshadow.lookup("foo").as_compiledmethod_get_shadow(space).w_compiledin is w_super
+    assert classshadow.lookup(w_foo).as_compiledmethod_get_shadow(space).w_compiledin is w_super
 
 def test_compiledmethod_setchar():
     w_method = model.W_CompiledMethod(3)

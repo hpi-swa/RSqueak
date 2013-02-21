@@ -115,13 +115,14 @@ def make_call_primitive_bytecode(primitive, selector, argcount):
         # else that the user put in a class in an 'at:' method.
         # The rule of thumb is that primitives with only int and float
         # in their unwrap_spec are safe.
+        # XXX move next line out of callPrimitive?
         func = primitives.prim_table[primitive]
         try:
             func(interp, argcount)
             return
         except primitives.PrimitiveFailedError:
             pass
-        self._sendSelfSelector(selector, argcount, interp)
+        self._sendSelfSelectorSpecial(selector, argcount, interp)
     return callPrimitive
 
 # ___________________________________________________________________________
@@ -194,31 +195,31 @@ class __extend__(ContextPartShadow):
 
     # send, return bytecodes
     def sendLiteralSelectorBytecode(self, interp):
-        selector = self.method().getliteralsymbol(self.currentBytecode & 15)
+        w_selector = self.method().getliteral(self.currentBytecode & 15)
         argcount = ((self.currentBytecode >> 4) & 3) - 1
-        self._sendSelfSelector(selector, argcount, interp)
+        self._sendSelfSelector(w_selector, argcount, interp)
 
-    def _sendSelfSelector(self, selector, argcount, interp):
+    def _sendSelfSelector(self, w_selector, argcount, interp):
         receiver = self.peek(argcount)
-        self._sendSelector(selector, argcount, interp,
+        self._sendSelector(w_selector, argcount, interp,
                            receiver, receiver.shadow_of_my_class(self.space))
 
-    def _sendSuperSelector(self, selector, argcount, interp):
+    def _sendSuperSelector(self, w_selector, argcount, interp):
         w_compiledin = self.method().w_compiledin
         assert isinstance(w_compiledin, model.W_PointersObject)
         s_compiledin = w_compiledin.as_class_get_shadow(self.space)
-        self._sendSelector(selector, argcount, interp, self.w_receiver(),
+        self._sendSelector(w_selector, argcount, interp, self.w_receiver(),
                            s_compiledin.s_superclass())
 
-    def _sendSelector(self, selector, argcount, interp,
+    def _sendSelector(self, w_selector, argcount, interp,
                       receiver, receiverclassshadow):
         if interp.should_trace():
             print "%sSending selector %r to %r with: %r" % (
-                interp._last_indent, selector, receiver,
+                interp._last_indent, w_selector.as_string(), receiver,
                 [self.peek(argcount-1-i) for i in range(argcount)])
             pass
         assert argcount >= 0
-        method = receiverclassshadow.lookup(selector)
+        method = receiverclassshadow.lookup(w_selector)
         # XXX catch MethodNotFound here and send doesNotUnderstand:
         # AK shouln't that be done in lookup itself, please check what spec says about DNU in case of super sends.
         if method.primitive:
@@ -242,7 +243,7 @@ class __extend__(ContextPartShadow):
                     return
                 except primitives.PrimitiveFailedError:
                     if interp.should_trace(True):
-                        print "PRIMITIVE FAILED: %d %s" % (method.primitive, selector,)
+                        print "PRIMITIVE FAILED: %d %s" % (method.primitive, w_selector.as_string(),)
                     pass # ignore this error and fall back to the Smalltalk version
         arguments = self.pop_and_return_n(argcount)
         frame = method.create_frame(self.space, receiver, arguments,
@@ -317,12 +318,12 @@ class __extend__(ContextPartShadow):
 
     def getExtendedSelectorArgcount(self):
         descriptor = self.getbytecode()
-        return ((self.method().getliteralsymbol(descriptor & 31)),
+        return ((self.method().getliteral(descriptor & 31)),
                 (descriptor >> 5))
 
     def singleExtendedSendBytecode(self, interp):
-        selector, argcount = self.getExtendedSelectorArgcount()
-        self._sendSelfSelector(selector, argcount, interp)
+        w_selector, argcount = self.getExtendedSelectorArgcount()
+        self._sendSelfSelector(w_selector, argcount, interp)
 
     def doubleExtendedDoAnythingBytecode(self, interp):
         second = self.getbytecode()
@@ -330,11 +331,11 @@ class __extend__(ContextPartShadow):
         opType = second >> 5
         if opType == 0:
             # selfsend
-            self._sendSelfSelector(self.method().getliteralsymbol(third),
+            self._sendSelfSelector(self.method().getliteral(third),
                                    second & 31, interp)
         elif opType == 1:
             # supersend
-            self._sendSuperSelector(self.method().getliteralsymbol(third),
+            self._sendSuperSelector(self.method().getliteral(third),
                                     second & 31, interp)
         elif opType == 2:
             # pushReceiver
@@ -357,14 +358,14 @@ class __extend__(ContextPartShadow):
             association.store_value(self.top())
 
     def singleExtendedSuperBytecode(self, interp):
-        selector, argcount = self.getExtendedSelectorArgcount()
-        self._sendSuperSelector(selector, argcount, interp)
+        w_selector, argcount = self.getExtendedSelectorArgcount()
+        self._sendSuperSelector(w_selector, argcount, interp)
 
     def secondExtendedSendBytecode(self, interp):
         descriptor = self.getbytecode()
-        selector = self.method().getliteralsymbol(descriptor & 63)
+        w_selector = self.method().getliteral(descriptor & 63)
         argcount = descriptor >> 6
-        self._sendSelfSelector(selector, argcount, interp)
+        self._sendSelfSelector(w_selector, argcount, interp)
 
     def popStackBytecode(self, interp):
         self.pop()
@@ -479,27 +480,32 @@ class __extend__(ContextPartShadow):
     bytecodePrimBitAnd = make_call_primitive_bytecode(primitives.BIT_AND, "bitAnd:", 1)
     bytecodePrimBitOr = make_call_primitive_bytecode(primitives.BIT_OR, "bitOr:", 1)
 
+    @objectmodel.specialize.arg(1)
+    def _sendSelfSelectorSpecial(self, selector, numargs, interp):
+        w_selector = self.space.get_special_selector(selector)
+        return self._sendSelfSelector(w_selector, numargs, interp)
+
     def bytecodePrimAt(self, interp):
         # n.b.: depending on the type of the receiver, this may invoke
         # primitives.AT, primitives.STRING_AT, or something else for all
-        # I know.  
-        self._sendSelfSelector("at:", 1, interp)
+        # I know.
+        self._sendSelfSelectorSpecial("at:", 1, interp)
 
     def bytecodePrimAtPut(self, interp):
         # n.b. as above
-        self._sendSelfSelector("at:put:", 2, interp)
+        self._sendSelfSelectorSpecial("at:put:", 2, interp)
 
     def bytecodePrimSize(self, interp):
-        self._sendSelfSelector("size", 0, interp)
+        self._sendSelfSelectorSpecial("size", 0, interp)
 
     def bytecodePrimNext(self, interp):
-        self._sendSelfSelector("next", 0, interp)
+        self._sendSelfSelectorSpecial("next", 0, interp)
 
     def bytecodePrimNextPut(self, interp):
-        self._sendSelfSelector("nextPut:", 1, interp)
+        self._sendSelfSelectorSpecial("nextPut:", 1, interp)
 
     def bytecodePrimAtEnd(self, interp):
-        self._sendSelfSelector("atEnd", 0, interp)
+        self._sendSelfSelectorSpecial("atEnd", 0, interp)
 
     def bytecodePrimEquivalent(self, interp):
         # short-circuit: classes cannot override the '==' method,
@@ -517,19 +523,19 @@ class __extend__(ContextPartShadow):
     bytecodePrimValueWithArg = make_call_primitive_bytecode(primitives.VALUE, "value:", 1)
 
     def bytecodePrimDo(self, interp):
-        self._sendSelfSelector("do:", 1, interp)
+        self._sendSelfSelectorSpecial("do:", 1, interp)
 
     def bytecodePrimNew(self, interp):
-        self._sendSelfSelector("new", 0, interp)
+        self._sendSelfSelectorSpecial("new", 0, interp)
 
     def bytecodePrimNewWithArg(self, interp):
-        self._sendSelfSelector("new:", 1, interp)
+        self._sendSelfSelectorSpecial("new:", 1, interp)
 
     def bytecodePrimPointX(self, interp):
-        self._sendSelfSelector("x", 0, interp)
+        self._sendSelfSelectorSpecial("x", 0, interp)
 
     def bytecodePrimPointY(self, interp):
-        self._sendSelfSelector("y", 0, interp)
+        self._sendSelfSelectorSpecial("y", 0, interp)
 
 BYTECODE_RANGES = [
             (  0,  15, "pushReceiverVariableBytecode"),

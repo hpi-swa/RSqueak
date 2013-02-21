@@ -232,15 +232,15 @@ class ClassShadow(AbstractCachingShadow):
     def __repr__(self):
         return "<ClassShadow %s>" % (self.name or '?',)
 
-    def lookup(self, selector):
+    def lookup(self, w_selector):
         look_in_shadow = self
         while look_in_shadow is not None:
             try:
-                w_method = look_in_shadow.s_methoddict().methoddict[selector]
+                w_method = look_in_shadow.s_methoddict().methoddict[w_selector]
                 return w_method
             except KeyError, e:
                 look_in_shadow = look_in_shadow.s_superclass()
-        raise MethodNotFound(self, selector)
+        raise MethodNotFound(self, w_selector)
 
     def initialize_methoddict(self):
         "NOT_RPYTHON"     # this is only for testing.
@@ -249,10 +249,11 @@ class ClassShadow(AbstractCachingShadow):
             self.w_methoddict._store(1, model.W_PointersObject(None, 0))
             self.s_methoddict().invalid = False
 
-    def installmethod(self, selector, w_method):
+    def installmethod(self, w_selector, w_method):
         "NOT_RPYTHON"     # this is only for testing.
+        assert not isinstance(w_selector, str)
         self.initialize_methoddict()
-        self.s_methoddict().methoddict[selector] = w_method
+        self.s_methoddict().methoddict[w_selector] = w_method
         if isinstance(w_method, model.W_CompiledMethod):
             method = w_method.as_compiledmethod_get_shadow(self.space)
             method.w_compiledin = self.w_self()
@@ -276,12 +277,12 @@ class MethodDictionaryShadow(AbstractCachingShadow):
             if not w_selector.is_same_object(self.space.w_nil):
                 if not isinstance(w_selector, model.W_BytesObject):
                     raise ClassShadowError("bogus selector in method dict")
-                selector = w_selector.as_string()
                 w_compiledmethod = w_values._fetch(i)
                 if not isinstance(w_compiledmethod, model.W_CompiledMethod):
                     raise ClassShadowError("the methoddict must contain "
                                            "CompiledMethods only for now")
-                self.methoddict[selector] = w_compiledmethod
+                self.methoddict[w_selector] = w_compiledmethod
+                selector = w_selector.as_string()
                 w_compiledmethod._likely_methodname = selector
 
 
@@ -738,7 +739,8 @@ class MethodContextShadow(ContextPartShadow):
 class CompiledMethodShadow(object):
     _immutable_fields_ = ["_w_self", "bytecode",
                           "literals[*]", "bytecodeoffset",
-                          "literalsize", "tempsize", "w_compiledin"]
+                          "literalsize", "tempsize", "primitive",
+                          "w_compiledin"]
 
     def __init__(self, w_compiledmethod):
         self._w_self = w_compiledmethod
@@ -747,6 +749,7 @@ class CompiledMethodShadow(object):
         self.bytecodeoffset = w_compiledmethod.bytecodeoffset()
         self.literalsize = w_compiledmethod.getliteralsize()
         self.tempsize = w_compiledmethod.gettempsize()
+        self.primitive = w_compiledmethod.primitive
 
         self.w_compiledin = None
         if self.literals:
