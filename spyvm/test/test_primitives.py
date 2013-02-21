@@ -443,6 +443,31 @@ def test_directory_delimitor():
     assert space.unwrap_char(w_c) == os.path.sep
 
 
+def test_primitive_closure_copyClosure():
+    from test_interpreter import new_interpreter
+    interp = new_interpreter("<never called, but used for method generation>")
+    w_block = prim(200, map(wrap, ["anActiveContext", 2, [wrap(1), wrap(2)]]), 
+            interp.w_active_context())
+    assert w_block is not space.w_nil
+    w_w_block = wrapper.BlockClosureWrapper(space, w_block)
+    assert w_w_block.startpc() is 0
+    assert w_w_block.at0(0) == wrap(1)
+    assert w_w_block.at0(1) == wrap(2)
+    assert w_w_block.numArgs() is 2
+
+def test_primitive_closure_value():
+    from test_interpreter import new_interpreter
+    interp = new_interpreter("<never called, but used for method generation>",
+        space=space)
+    s_initial_context = interp.s_active_context()
+    
+    closure, _ = space.newClosure(interp.w_active_context(), 4, 0, space.w_nil)
+    s_initial_context.push(closure)
+
+    prim_table[201](interp, 0)
+    assert interp.s_active_context().w_closure_or_nil is closure
+    assert interp.s_active_context().s_sender() is s_initial_context
+    assert interp.s_active_context().w_receiver() is space.w_nil
 
 # Note:
 #   primitives.NEXT is unimplemented as it is a performance optimization

@@ -265,12 +265,13 @@ class ObjSpace(object):
 
     def newClosure(self, outerContext, pc, numArgs, copiedValues):
         BlockClosureShadow = self.w_BlockClosure.as_class_get_shadow(self)
-        w_closure = BlockClosureShadow.new(len(copiedValues))
+        numCopied = 0 if copiedValues is self.w_nil else len(copiedValues)
+        w_closure = BlockClosureShadow.new(numCopied)
         closure = wrapper.BlockClosureWrapper(self, w_closure)
         closure.store_outerContext(outerContext)
         closure.store_startpc(pc)
         closure.store_numArgs(numArgs)
-        for i0 in range(len(copiedValues)):
+        for i0 in range(numCopied):
             closure.atput0(i0, copiedValues[i0])
         return w_closure, closure
 

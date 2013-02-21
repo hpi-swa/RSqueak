@@ -215,9 +215,29 @@ class PointWrapper(Wrapper):
 
  
 class BlockClosureWrapper(VarsizedWrapper):
-    outerContext, store_outerContext = make_getter_setter(0)
-    startpc, store_startpc = make_int_getter_setter(1)
-    numArgs, store_numArgs = make_int_getter_setter(2)
+    outerContext, store_outerContext = make_getter_setter(constants.BLKCLSR_OUTER_CONTEXT)
+    startpc, store_startpc = make_int_getter_setter(constants.BLKCLSR_STARTPC)
+    numArgs, store_numArgs = make_int_getter_setter(constants.BLKCLSR_NUMARGS)
+
+    def asContextWithSender(self, w_aContext, arguments):
+        from spyvm import shadow
+        s_outerContext = self.outerContext().get_shadow(self.space)
+        w_method = s_outerContext.w_method()
+        w_receiver = s_outerContext.w_receiver()
+        w_new_frame = shadow.MethodContextShadow.make_context(self.space , w_method, w_receiver,
+                     arguments, w_sender=w_aContext, pc=self.startpc(), closure=self)
+        return w_new_frame
+
+    def tempsize(self):
+        # We ignore the number of temps a block has, because the first 
+        # bytecodes of the block will initialize them for us. We will only 
+        # use this information for decinding where the stack pointer should be 
+        # initialy.
+        # For a finding the correct number, see BlockClosure>#numTemps in an Image.
+        return self.size() + self.numArgs()
+    
+    def size(self):
+        return self._w_self.size() - constants.BLKCLSR_SIZE
 
 # XXX Wrappers below are not used yet.
 class OffsetWrapper(Wrapper):

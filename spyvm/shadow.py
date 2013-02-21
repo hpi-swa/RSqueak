@@ -640,7 +640,7 @@ class MethodContextShadow(ContextPartShadow):
     @staticmethod
     @jit.unroll_safe
     def make_context(space, w_method, w_receiver,
-                     arguments, w_sender=None):
+                     arguments, w_sender=None, closure=None, pc=0):
         # From blue book: normal mc have place for 12 temps+maxstack
         # mc for methods with islarge flag turned on 32
         size = 12 + w_method.islarge * 20 + w_method.argsize
@@ -658,10 +658,15 @@ class MethodContextShadow(ContextPartShadow):
         if w_sender:
             s_result.store_w_sender(w_sender)
         s_result.store_w_receiver(w_receiver)
-        s_result.store_pc(0)
+        s_result.store_pc(pc)
         s_result.init_stack_and_temps()
-        for i in range(len(arguments)):
-            s_result.settemp(i, arguments[i])
+        
+        argc = len(arguments)
+        for i0 in range(argc):
+            s_result.settemp(i0, arguments[i0])
+        if closure is not None: 
+            for i0 in range(closure.size()):
+                s_result.settemp(i0+argc, closure.at0(i0))
         return w_result
 
     def fetch(self, n0):
@@ -699,7 +704,11 @@ class MethodContextShadow(ContextPartShadow):
         ContextPartShadow.attach_shadow(self)
 
     def tempsize(self):
-        return self.method().tempsize
+        if self.w_closure_or_nil == self.space.w_nil:
+            return self.method().tempsize
+        else:
+            return wrapper.BlockClosureWrapper(self.space, 
+                                self.w_closure_or_nil).tempsize()
 
     def w_method(self):
         return self._w_method
