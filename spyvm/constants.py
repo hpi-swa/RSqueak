@@ -38,12 +38,15 @@ BLKCTX_STACK_START = 6
 
 # MethodContext < ContextPart
 MTHDCTX_METHOD = 3
-MTHDCTX_RECEIVER_MAP = 4
+MTHDCTX_CLOSURE_OR_NIL = 4
 MTHDCTX_RECEIVER = 5
 MTHDCTX_TEMP_FRAME_START = 6
 
 # BlockClosure < Object
-BLOCKCLOSURE_SIZE = 3
+BLKCLSR_OUTER_CONTEXT = 0
+BLKCLSR_STARTPC = 1
+BLKCLSR_NUMARGS = 2
+BLKCLSR_SIZE = 3
 
 # ___________________________________________________________________________
 # Miscellaneous constants

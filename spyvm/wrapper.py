@@ -1,4 +1,4 @@
-from spyvm import model
+from spyvm import model, constants
 from spyvm.error import FatalError, WrapperException
 
 class Wrapper(object):

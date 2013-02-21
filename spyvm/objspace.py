@@ -112,7 +112,7 @@ class ObjSpace(object):
         define_cls("w_BlockContext", "w_ContextPart",
                    instvarsize=constants.BLKCTX_STACK_START)
         define_cls("w_BlockClosure", "w_Object",
-                   instvarsize=constants.BLOCKCLOSURE_SIZE,
+                   instvarsize=constants.BLKCLSR_SIZE,
                    varsized=True)
         # make better accessors for classes that can be found in special object
         # table
@@ -255,7 +255,7 @@ class ObjSpace(object):
     def unwrap_array(self, w_array):
         # Check that our argument has pointers format and the class:
         if not w_array.getclass(self).is_same_object(self.w_Array):
-            raise PrimitiveFailedError()
+            raise UnwrappingError()
         assert isinstance(w_array, model.W_PointersObject)
         
         return [w_array.at0(self, i) for i in range(w_array.size())]

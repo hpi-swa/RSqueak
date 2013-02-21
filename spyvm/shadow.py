@@ -633,7 +633,7 @@ class BlockContextShadow(ContextPartShadow):
 
 class MethodContextShadow(ContextPartShadow):
     def __init__(self, space, w_self):
-        self.w_receiver_map = space.w_nil
+        self.w_closure_or_nil = space.w_nil
         self._w_receiver = None
         ContextPartShadow.__init__(self, space, w_self)
 
@@ -651,6 +651,9 @@ class MethodContextShadow(ContextPartShadow):
         # XXX could hack some more to never have to create the _vars of w_result
         s_result = MethodContextShadow(space, w_result)
         w_result.store_shadow(s_result)
+        if closure is not None: 
+            s_result.w_closure_or_nil = closure._w_self
+        
         s_result.store_w_method(w_method)
         if w_sender:
             s_result.store_w_sender(w_sender)
@@ -664,12 +667,11 @@ class MethodContextShadow(ContextPartShadow):
     def fetch(self, n0):
         if n0 == constants.MTHDCTX_METHOD:
             return self.w_method()
-        if n0 == constants.MTHDCTX_RECEIVER_MAP:
-            return self.w_receiver_map
+        if n0 == constants.MTHDCTX_CLOSURE_OR_NIL:
+            return self.w_closure_or_nil
         if n0 == constants.MTHDCTX_RECEIVER:
             return self.w_receiver()
-        if (0 <= n0-constants.MTHDCTX_TEMP_FRAME_START <
-                 self.tempsize()):
+        if (0 <= n0-constants.MTHDCTX_TEMP_FRAME_START < self.tempsize()):
             return self.gettemp(n0-constants.MTHDCTX_TEMP_FRAME_START)
         else:
             return ContextPartShadow.fetch(self, n0)
@@ -677,8 +679,8 @@ class MethodContextShadow(ContextPartShadow):
     def store(self, n0, w_value):
         if n0 == constants.MTHDCTX_METHOD:
             return self.store_w_method(w_value)
-        if n0 == constants.MTHDCTX_RECEIVER_MAP:
-            self.w_receiver_map = w_value
+        if n0 == constants.MTHDCTX_CLOSURE_OR_NIL:
+            self.w_closure_or_nil = w_value
             return
         if n0 == constants.MTHDCTX_RECEIVER:
             self.store_w_receiver(w_value)

@@ -87,7 +87,7 @@ def methodcontext(w_sender=space.w_nil, pc=1, stackpointer=0, stacksize=5,
     w_object.store(space, constants.CTXPART_STACKP_INDEX, space.wrap_int(method.tempsize+stackpointer))
     w_object.store(space, constants.MTHDCTX_METHOD, method)
     # XXX
-    w_object.store(space, constants.MTHDCTX_RECEIVER_MAP, '???')
+    w_object.store(space, constants.MTHDCTX_CLOSURE_OR_NIL, space.w_nil)
     w_object.store(space, constants.MTHDCTX_RECEIVER, 'receiver')
 
     w_object.store(space, constants.MTHDCTX_TEMP_FRAME_START, 'el')

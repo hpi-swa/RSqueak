@@ -2,9 +2,7 @@ import py
 import math
 from spyvm.primitives import prim_table, PrimitiveFailedError
 from spyvm import model, shadow, interpreter
-from spyvm import constants
-from spyvm import primitives
-from spyvm import objspace
+from spyvm import constants, primitives, objspace, wrapper
 
 from rpython.rlib.rfloat import INFINITY, NAN, isinf, isnan
 
@@ -20,6 +18,7 @@ class MockFrame(model.W_PointersObject):
         s_self.reset_stack()
         s_self.push_all(stack)
         s_self.store_expected_argument_count(0)
+    
     def as_blockcontext_get_shadow(self):
         self._shadow = shadow.BlockContextShadow(space, self)
         return self._shadow
@@ -33,15 +32,20 @@ def wrap(x):
     if isinstance(x, list): return space.wrap_list(x)
     raise NotImplementedError
     
-def mock(stack):
+def mock(stack, context = None):
     mapped_stack = [wrap(x) for x in stack]
-    frame = MockFrame(mapped_stack)
+    if context is None:
+        frame = MockFrame(mapped_stack)
+    else:
+        frame = context
+        for i in range(len(stack)):
+            frame.as_context_get_shadow(space).push(stack[i])
     interp = interpreter.Interpreter(space)
     interp.store_w_active_context(frame)
     return (interp, len(stack))
 
-def prim(code, stack):
-    interp, argument_count = mock(stack)
+def prim(code, stack, context = None):
+    interp, argument_count = mock(stack, context)
     prim_table[code](interp, argument_count-1)
     res = interp.s_active_context().pop()
     assert not interp.s_active_context().stackdepth() # check args are consumed
