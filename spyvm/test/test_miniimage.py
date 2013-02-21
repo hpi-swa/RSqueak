@@ -21,17 +21,8 @@ def setup_module(module, filename='mini.image'):
     module.space = space
 
 def find_symbol(name):
-    w_dnu = image.special(constants.SO_DOES_NOT_UNDERSTAND)
-    assert str(w_dnu) == "doesNotUnderstand:"
-    w_Symbol = w_dnu.getclass(space)
-    for chunk in reader.chunklist:
-        w_obj = chunk.g_object.w_object
-        if not isinstance(w_obj, model.W_BytesObject):
-            continue
-        if not w_obj.getclass(space).is_same_object(w_Symbol):
-            continue
-        if w_obj.as_string() == name:
-            return w_obj
+    if name == "asSymbol":
+        return image.w_asSymbol
     return perform(space.wrap_string(name), "asSymbol")
 
 def open_miniimage(space):
@@ -298,6 +289,9 @@ def test_become():
     assert space.unwrap_int(w_result) == 42
        
 def perform(w_receiver, selector, *arguments_w):
+    return perform_with_space(space, w_receiver, selector, *arguments_w)
+
+def perform_with_space(space, w_receiver, selector, *arguments_w):
     interp = interpreter.Interpreter(space)
     s_class = w_receiver.shadow_of_my_class(space)
     if isinstance(selector, str):

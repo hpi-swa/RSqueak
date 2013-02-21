@@ -223,6 +223,25 @@ class SqueakImage(object):
         for name, idx in constants.objects_in_special_object_table.items():
             space.objtable["w_" + name] = self.special_objects[idx]
 
+        self.w_asSymbol = self.find_asSymbol(space, reader)
+
+    def find_asSymbol(self, space, reader):
+        w_dnu = self.special(constants.SO_DOES_NOT_UNDERSTAND)
+        assert w_dnu.as_string() == "doesNotUnderstand:"
+        w_Symbol = w_dnu.getclass(space)
+        w_obj = None
+        # bit annoying that we have to hunt through the image :-(
+        for chunk in reader.chunklist:
+            w_obj = chunk.g_object.w_object
+            if not isinstance(w_obj, model.W_BytesObject):
+                continue
+            if not w_obj.getclass(space).is_same_object(w_Symbol):
+                continue
+            if w_obj.as_string() == "asSymbol":
+                break
+        assert w_obj is not None
+        return w_obj
+
     def special(self, index):
         return self.special_objects[index]
 
