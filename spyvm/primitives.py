@@ -926,7 +926,7 @@ CLOSURE_VALUE_NO_CONTEXT_SWITCH_ = 222
 @expose_primitive(CLOSURE_COPY_WITH_COPIED_VALUES, unwrap_spec=[object, int, list])
 def func(interp, outerContext, numArgs, copiedValues):
     frame = interp.s_active_context()
-    w_context, s_context = interp.space.newClosure(outerContext, frame.pc(), 
+    w_context = interp.space.newClosure(outerContext, frame.pc(), 
                                                         numArgs, copiedValues)
     return w_context
 

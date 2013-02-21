@@ -427,7 +427,7 @@ class __extend__(ContextPartShadow):
         i = self.getbytecode()
         blockSize = (j << 8) | i
         #create new instance of BlockClosure
-        w_closure, closure = space.newClosure(self._w_self, self.pc(), numArgs, 
+        w_closure = space.newClosure(self._w_self, self.pc(), numArgs, 
                                             self.pop_and_return_n(numCopied))
         self.push(w_closure)
         self.jump(blockSize)

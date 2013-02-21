@@ -461,7 +461,7 @@ def test_primitive_closure_value():
         space=space)
     s_initial_context = interp.s_active_context()
     
-    closure, _ = space.newClosure(interp.w_active_context(), 4, 0, space.w_nil)
+    closure = space.newClosure(interp.w_active_context(), 4, 0, [])
     s_initial_context.push(closure)
 
     prim_table[201](interp, 0)

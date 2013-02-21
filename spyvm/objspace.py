@@ -265,7 +265,7 @@ class ObjSpace(object):
 
     def newClosure(self, outerContext, pc, numArgs, copiedValues):
         BlockClosureShadow = self.w_BlockClosure.as_class_get_shadow(self)
-        numCopied = 0 if copiedValues is self.w_nil else len(copiedValues)
+        numCopied = len(copiedValues)
         w_closure = BlockClosureShadow.new(numCopied)
         closure = wrapper.BlockClosureWrapper(self, w_closure)
         closure.store_outerContext(outerContext)
@@ -273,7 +273,7 @@ class ObjSpace(object):
         closure.store_numArgs(numArgs)
         for i0 in range(numCopied):
             closure.atput0(i0, copiedValues[i0])
-        return w_closure, closure
+        return w_closure
 
 def bootstrap_class(space, instsize, w_superclass=None, w_metaclass=None,
                     name='?', format=shadow.POINTERS, varsized=False):
