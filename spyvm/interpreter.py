@@ -32,9 +32,10 @@ class Interpreter(object):
         get_printable_location=get_printable_location
     )
     
-    def __init__(self, space, image_name=""):
+    def __init__(self, space, image=None, image_name=""):
         self._w_active_context = None
         self.space = space
+        self.image = image
         self.image_name = image_name
 
     def w_active_context(self):
@@ -100,6 +101,22 @@ class Interpreter(object):
                 pc=pc, self=self, method=method,
                 s_active_context=s_active_context)
             self.step(s_active_context)
+
+    def perform(self, w_receiver, selector, *arguments_w):
+        if selector == "asSymbol":
+            w_selector = self.image.w_asSymbol
+        else:
+            w_selector = self.perform(self.space.wrap_string(selector), "asSymbol")
+        s_class = w_receiver.shadow_of_my_class(self.space)
+        w_method = s_class.lookup(w_selector)
+        assert w_method
+        w_frame = w_method.create_frame(self.space, w_receiver, list(arguments_w))
+        self.store_w_active_context(w_frame)
+        while True:
+            try:
+                self.loop()
+            except ReturnFromTopLevel, e:
+                return e.object
 
 
 class ReturnFromTopLevel(Exception):

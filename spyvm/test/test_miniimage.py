@@ -19,6 +19,7 @@ def setup_module(module, filename='mini.image'):
     module.image = squeakimage.SqueakImage()
     module.image.from_reader(space, reader)
     module.space = space
+    module.interp = interpreter.Interpreter(space, image)
 
 def find_symbol(name):
     if name == "asSymbol":
@@ -188,30 +189,13 @@ def test_special_classes0():
 
 
 
-def test_lookup_abs_in_integer(int=10):
-    image = get_image()
-    interp = interpreter.Interpreter(space)
+def test_lookup_abs_in_integer():
+    for value in [10, -3, 0]:
 
-    w_object = model.W_SmallInteger(int)
+        w_object = model.W_SmallInteger(value)
+        w_res = interp.perform(w_object, "abs")
+        assert w_res.value == abs(value)
 
-    # Should get this from w_object
-    w_smallint_class = image.special(constants.SO_SMALLINTEGER_CLASS)
-    s_class = w_object.shadow_of_my_class(space)
-    w_method = s_class.lookup(find_symbol("abs"))
-
-    assert w_method
-    w_frame = w_method.create_frame(space, w_object, [])
-    interp.store_w_active_context(w_frame)
-
-    while True:
-        try:
-            interp.step(interp.s_active_context())
-        except interpreter.ReturnFromTopLevel, e:
-            assert e.object.value == abs(int)
-            return
-
-def test_lookup_neg_abs_in_integer():
-    test_lookup_abs_in_integer(-3)
 
 def test_map_mirrors_to_classtable():
     w_compiledmethod_class = image.special(constants.SO_COMPILEDMETHOD_CLASS)
@@ -289,25 +273,8 @@ def test_become():
     assert space.unwrap_int(w_result) == 42
        
 def perform(w_receiver, selector, *arguments_w):
-    return perform_with_space(space, w_receiver, selector, *arguments_w)
+    return interp.perform(w_receiver, selector, *arguments_w)
 
-def perform_with_space(space, w_receiver, selector, *arguments_w):
-    interp = interpreter.Interpreter(space)
-    s_class = w_receiver.shadow_of_my_class(space)
-    if isinstance(selector, str):
-        w_selector = find_symbol(selector)
-    else:
-        w_selector = selector
-    w_method = s_class.lookup(w_selector)
-    assert w_method
-    w_frame = w_method.create_frame(space, w_receiver, list(arguments_w))
-    interp.store_w_active_context(w_frame)
-    while True:
-        try:
-            interp.step(interp.s_active_context())
-            #print interp.s_active_context.stack
-        except interpreter.ReturnFromTopLevel, e:
-            return e.object
 
 def test_step_forged_image():
     from spyvm import wrapper

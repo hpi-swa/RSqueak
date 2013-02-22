@@ -49,32 +49,20 @@ setup()
 sys.setrecursionlimit(100000)
 
 class TestLLtype(LLJitMixin):
-    
 
     def test_miniloop(self):
 
-        def miniloop():
-            from spyvm import objspace
-            space = objspace.ObjSpace()
-            image = create_testimage(space)
-            interp = interpreter.Interpreter(space)
+        from spyvm import objspace
+        space = objspace.ObjSpace()
+        image = create_testimage(space)
+        interp = interpreter.Interpreter(space, image)
+
+
+        counter = 0
+
+        def interp_w():
 
             w_object = model.W_SmallInteger(0)
-
-            s_class = w_object.shadow_of_my_class(space)
-            w_method = s_class.lookup("loopTest")
-
-            assert w_method
-            w_frame = w_method.create_frame(space, w_object, [])
-            interp.store_w_active_context(w_frame)
-
-            counter = 0
-
-            from spyvm.interpreter import BYTECODE_TABLE
-            return interp
-
-        interp = miniloop()
-        def interp_w():
-            interp.interpret()
+            interp.perform(w_object, "loopTest")
 
         self.meta_interp(interp_w, [], listcomp=True, listops=True, backendopt=True)
