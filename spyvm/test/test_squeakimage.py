@@ -35,18 +35,14 @@ SIMPLE_VERSION_HEADER_LE = pack("<i", 6502)
 # ----- tests ------------------------------------------------
 
 def test_chrs2int():
-    assert 1 == chrs2int('\x00\x00\x00\x01', False)
-    assert -1 == chrs2int('\xFF\xFF\xFF\xFF', False)
-    assert 1 == chrs2int('\x00\x00\x00\x01', True)
-    assert 0xFFFFFFFF == chrs2int('\xFF\xFF\xFF\xFF', True)
+    assert 1 == chrs2int('\x00\x00\x00\x01')
+    assert -1 == chrs2int('\xFF\xFF\xFF\xFF')
 
 def test_chrs2long():
-    assert 1 == chrs2long('\x00\x00\x00\x00\x00\x00\x00\x01', False)
-    assert -1 == chrs2long('\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF', False)
-    assert 1 == chrs2long('\x00\x00\x00\x00\x00\x00\x00\x01', True)
-    assert 0xFFFFFFFFFFFFFFFF == chrs2long('\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF', True)
-    assert 68002 == chrs2long(pack(">Q", 68002), False)
-    assert 68002 == swapped_chrs2long(pack("<Q", 68002), False)
+    assert 1 == chrs2long('\x00\x00\x00\x00\x00\x00\x00\x01')
+    assert -1 == chrs2long('\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF')
+    assert 68002 == chrs2long(pack(">Q", 68002))
+    assert 68002 == swapped_chrs2long(pack("<Q", 68002))
 
 def test_stream():
     stream = imagestream_mock(SIMPLE_VERSION_HEADER)

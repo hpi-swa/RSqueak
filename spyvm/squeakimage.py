@@ -6,37 +6,33 @@ from spyvm.tool.bitmanipulation import splitter
 
 from rpython.rlib import objectmodel
 
-def chrs2int(b, unsigned):
+def chrs2int(b):
     assert len(b) == 4
     first = ord(b[0]) # big endian
-    if not unsigned:
-        if first & 0x80 != 0:
-            first = first - 0x100
+    if first & 0x80 != 0:
+        first = first - 0x100
     return (first << 24 | ord(b[1]) << 16 | ord(b[2]) << 8 | ord(b[3]))
 
-def swapped_chrs2int(b, unsigned):
+def swapped_chrs2int(b):
     assert len(b) == 4
     first = ord(b[3]) # little endian
-    if not unsigned:
-        if first & 0x80 != 0:
-            first = first - 0x100
+    if first & 0x80 != 0:
+        first = first - 0x100
     return (first << 24 | ord(b[2]) << 16 | ord(b[1]) << 8 | ord(b[0]))
 
-def chrs2long(b, unsigned):
+def chrs2long(b):
     assert len(b) == 8
     first = ord(b[0]) # big endian
-    if not unsigned:
-        if first & 0x80 != 0:
-            first = first - 0x100
+    if first & 0x80 != 0:
+        first = first - 0x100
     return (      first << 56 | ord(b[1]) << 48 | ord(b[2]) << 40 | ord(b[3]) << 32
             | ord(b[4]) << 24 | ord(b[5]) << 16 | ord(b[6]) <<  8 | ord(b[7])      )
 
-def swapped_chrs2long(b, unsigned):
+def swapped_chrs2long(b):
     assert len(b) == 8
     first = ord(b[7]) # little endian
-    if not unsigned:
-        if first & 0x80 != 0:
-            first = first - 0x100
+    if first & 0x80 != 0:
+        first = first - 0x100
     return (      first << 56 | ord(b[6]) << 48 | ord(b[5]) << 40 | ord(b[4]) << 32
             | ord(b[3]) << 24 | ord(b[2]) << 16 | ord(b[1]) <<  8 | ord(b[0])      )
 
@@ -60,29 +56,14 @@ class Stream(object):
         data_peek = self.data[self.pos:self.pos + self.word_size]
         if self.use_long_read:
             if self.swap:
-                return swapped_chrs2long(data_peek, False)
+                return swapped_chrs2long(data_peek)
             else:
-                return chrs2long(data_peek, False)
+                return chrs2long(data_peek)
         else:
             if self.swap:
-                return swapped_chrs2int(data_peek, False)
+                return swapped_chrs2int(data_peek)
             else:
-                return chrs2int(data_peek, False)
-
-    def peek_unsigned(self):
-        if self.pos >= len(self.data):
-            raise IndexError
-        data_peek = self.data[self.pos:self.pos + self.word_size]
-        if self.use_long_read:
-            if self.swap:
-                return swapped_chrs2long(data_peek, True)
-            else:
-                return chrs2long(data_peek, True)
-        else:
-            if self.swap:
-                return swapped_chrs2int(data_peek, True)
-            else:
-                return chrs2int(data_peek, True)
+                return chrs2int(data_peek)
     
 
     def next(self):
@@ -152,12 +133,18 @@ image_versions = {
     0x68190000:         ImageVersion(6504,  False, False, True,  False),
     0x00001969:         ImageVersion(6505,  True,  False, True,  True ),
     0x69190000:         ImageVersion(6505,  False, False, True,  True ),
-    0x000109A0:         ImageVersion(68000, True,  True,  False, False),
-    0xA009010000000000: ImageVersion(68000, False, True,  False, False),
+    0x00000000000109A0: ImageVersion(68000, True,  True,  False, False),
+   -0x5ff6ff0000000000:
+    # signed version of 0xA009010000000000: 
+                        ImageVersion(68000, False, True,  False, False),
     0x00000000000109A2: ImageVersion(68002, True,  True,  True,  False),
-    0xA209010000000000: ImageVersion(68002, False, True,  True,  False),
+   -0x5df6ff0000000000:
+    # signed version of 0xA209010000000000: 
+			ImageVersion(68002, False, True,  True,  False),
     0x00000000000109A3: ImageVersion(68003, True,  True,  True,  True ),
-    0xA309010000000000: ImageVersion(68003, False, True,  True,  True ),
+   -0x5cf6ff0000000000:
+    # signed version of 0xA309010000000000: 
+			ImageVersion(68003, False, True,  True,  True ),
 }
 
     
@@ -174,26 +161,26 @@ possible_image_offset = 512
 def version_from_stream(stream):
     # 32 bit
     try:
-        return version(stream.peek_unsigned())
+        return version(stream.peek())
     except CorruptImageError as e:
         if stream.length() > possible_image_offset + 4:
             stream.skipbytes(possible_image_offset)
             try:
-                return version(stream.peek_unsigned())
+                return version(stream.peek())
             except CorruptImageError:
                 pass # raise original error
         # 64 bit
         stream.reset()
         stream.be_64bit()
         try:
-            v = version(stream.peek_unsigned())
+            v = version(stream.peek())
             assert v.is_64bit
             return v
         except CorruptImageError as e:
             if stream.length() > possible_image_offset + 4:
                 stream.skipbytes(possible_image_offset)
                 try:
-                    v = version(stream.peek_unsigned())
+                    v = version(stream.peek())
                     assert v.is_64bit
                     return v
                 except CorruptImageError:
