@@ -2,9 +2,7 @@ import py
 import math
 from spyvm.primitives import prim_table, PrimitiveFailedError
 from spyvm import model, shadow, interpreter
-from spyvm import constants
-from spyvm import primitives
-from spyvm import objspace
+from spyvm import constants, primitives, objspace, wrapper
 
 from rpython.rlib.rfloat import INFINITY, NAN, isinf, isnan
 
@@ -20,6 +18,7 @@ class MockFrame(model.W_PointersObject):
         s_self.reset_stack()
         s_self.push_all(stack)
         s_self.store_expected_argument_count(0)
+    
     def as_blockcontext_get_shadow(self):
         self._shadow = shadow.BlockContextShadow(space, self)
         return self._shadow
@@ -33,15 +32,20 @@ def wrap(x):
     if isinstance(x, list): return space.wrap_list(x)
     raise NotImplementedError
     
-def mock(stack):
+def mock(stack, context = None):
     mapped_stack = [wrap(x) for x in stack]
-    frame = MockFrame(mapped_stack)
+    if context is None:
+        frame = MockFrame(mapped_stack)
+    else:
+        frame = context
+        for i in range(len(stack)):
+            frame.as_context_get_shadow(space).push(stack[i])
     interp = interpreter.Interpreter(space)
     interp.store_w_active_context(frame)
     return (interp, len(stack))
 
-def prim(code, stack):
-    interp, argument_count = mock(stack)
+def prim(code, stack, context = None):
+    interp, argument_count = mock(stack, context)
     prim_table[code](interp, argument_count-1)
     res = interp.s_active_context().pop()
     assert not interp.s_active_context().stackdepth() # check args are consumed
@@ -439,6 +443,57 @@ def test_directory_delimitor():
     assert space.unwrap_char(w_c) == os.path.sep
 
 
+def test_primitive_closure_copyClosure():
+    from test_interpreter import new_interpreter
+    interp = new_interpreter("<never called, but used for method generation>")
+    w_block = prim(200, map(wrap, ["anActiveContext", 2, [wrap(1), wrap(2)]]), 
+            interp.w_active_context())
+    assert w_block is not space.w_nil
+    w_w_block = wrapper.BlockClosureWrapper(space, w_block)
+    assert w_w_block.startpc() is 0
+    assert w_w_block.at0(0) == wrap(1)
+    assert w_w_block.at0(1) == wrap(2)
+    assert w_w_block.numArgs() is 2
+
+def build_up_closure_environment(args, copiedValues=[]):
+    from test_interpreter import new_interpreter
+    interp = new_interpreter("<never called, but used for method generation>",
+        space=space)
+    s_initial_context = interp.s_active_context()
+    
+    size_arguments = len(args)
+    closure = space.newClosure(interp.w_active_context(), 4, #pc 
+                                size_arguments, copiedValues)
+    s_initial_context.push_all([closure] + args)
+    prim_table[201 + size_arguments](interp, size_arguments)
+    return interp, s_initial_context, closure, interp.s_active_context()
+
+def test_primitive_closure_value():
+    interp, s_initial_context, closure, s_new_context = build_up_closure_environment([])
+
+    assert s_new_context.w_closure_or_nil is closure
+    assert s_new_context.s_sender() is s_initial_context
+    assert s_new_context.w_receiver() is space.w_nil
+
+def test_primitive_closure_value_value():
+    interp, s_initial_context, closure, s_new_context = build_up_closure_environment(["first arg", "second arg"])
+
+    assert s_new_context.w_closure_or_nil is closure
+    assert s_new_context.s_sender() is s_initial_context
+    assert s_new_context.w_receiver() is space.w_nil
+    assert s_new_context.gettemp(0) == "first arg"
+    assert s_new_context.gettemp(1) == "second arg"
+
+def test_primitive_closure_value_value_with_temps():
+    interp, s_initial_context, closure, s_new_context = build_up_closure_environment(["first arg", "second arg"],
+        copiedValues=['some value'])
+
+    assert s_new_context.w_closure_or_nil is closure
+    assert s_new_context.s_sender() is s_initial_context
+    assert s_new_context.w_receiver() is space.w_nil
+    assert s_new_context.gettemp(0) == "first arg"
+    assert s_new_context.gettemp(1) == "second arg"
+    assert s_new_context.gettemp(2) == "some value"
 
 # Note:
 #   primitives.NEXT is unimplemented as it is a performance optimization

@@ -634,14 +634,14 @@ class BlockContextShadow(ContextPartShadow):
 
 class MethodContextShadow(ContextPartShadow):
     def __init__(self, space, w_self):
-        self.w_receiver_map = space.w_nil
+        self.w_closure_or_nil = space.w_nil
         self._w_receiver = None
         ContextPartShadow.__init__(self, space, w_self)
 
     @staticmethod
     @jit.unroll_safe
     def make_context(space, w_method, w_receiver,
-                     arguments, w_sender=None):
+                     arguments, w_sender=None, closure=None, pc=0):
         # From blue book: normal mc have place for 12 temps+maxstack
         # mc for methods with islarge flag turned on 32
         size = 12 + w_method.islarge * 20 + w_method.argsize
@@ -652,25 +652,32 @@ class MethodContextShadow(ContextPartShadow):
         # XXX could hack some more to never have to create the _vars of w_result
         s_result = MethodContextShadow(space, w_result)
         w_result.store_shadow(s_result)
+        if closure is not None: 
+            s_result.w_closure_or_nil = closure._w_self
+        
         s_result.store_w_method(w_method)
         if w_sender:
             s_result.store_w_sender(w_sender)
         s_result.store_w_receiver(w_receiver)
-        s_result.store_pc(0)
+        s_result.store_pc(pc)
         s_result.init_stack_and_temps()
-        for i in range(len(arguments)):
-            s_result.settemp(i, arguments[i])
+        
+        argc = len(arguments)
+        for i0 in range(argc):
+            s_result.settemp(i0, arguments[i0])
+        if closure is not None: 
+            for i0 in range(closure.size()):
+                s_result.settemp(i0+argc, closure.at0(i0))
         return w_result
 
     def fetch(self, n0):
         if n0 == constants.MTHDCTX_METHOD:
             return self.w_method()
-        if n0 == constants.MTHDCTX_RECEIVER_MAP:
-            return self.w_receiver_map
+        if n0 == constants.MTHDCTX_CLOSURE_OR_NIL:
+            return self.w_closure_or_nil
         if n0 == constants.MTHDCTX_RECEIVER:
             return self.w_receiver()
-        if (0 <= n0-constants.MTHDCTX_TEMP_FRAME_START <
-                 self.tempsize()):
+        if (0 <= n0-constants.MTHDCTX_TEMP_FRAME_START < self.tempsize()):
             return self.gettemp(n0-constants.MTHDCTX_TEMP_FRAME_START)
         else:
             return ContextPartShadow.fetch(self, n0)
@@ -678,8 +685,8 @@ class MethodContextShadow(ContextPartShadow):
     def store(self, n0, w_value):
         if n0 == constants.MTHDCTX_METHOD:
             return self.store_w_method(w_value)
-        if n0 == constants.MTHDCTX_RECEIVER_MAP:
-            self.w_receiver_map = w_value
+        if n0 == constants.MTHDCTX_CLOSURE_OR_NIL:
+            self.w_closure_or_nil = w_value
             return
         if n0 == constants.MTHDCTX_RECEIVER:
             self.store_w_receiver(w_value)
@@ -698,7 +705,11 @@ class MethodContextShadow(ContextPartShadow):
         ContextPartShadow.attach_shadow(self)
 
     def tempsize(self):
-        return self.method().tempsize
+        if self.w_closure_or_nil == self.space.w_nil:
+            return self.method().tempsize
+        else:
+            return wrapper.BlockClosureWrapper(self.space, 
+                                self.w_closure_or_nil).tempsize()
 
     def w_method(self):
         return self._w_method

@@ -76,7 +76,7 @@ def fakeliterals(space, *literals):
         return lit
     return [fakeliteral(lit) for lit in literals]
 
-def new_interpreter(bytes, receiver=space.w_nil):
+def new_interpreter(bytes, receiver=space.w_nil, space=space):
     assert isinstance(bytes, str)
     w_method = model.W_CompiledMethod(len(bytes))
     w_method.islarge = 1

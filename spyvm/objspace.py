@@ -112,7 +112,7 @@ class ObjSpace(object):
         define_cls("w_BlockContext", "w_ContextPart",
                    instvarsize=constants.BLKCTX_STACK_START)
         define_cls("w_BlockClosure", "w_Object",
-                   instvarsize=constants.BLOCKCLOSURE_SIZE,
+                   instvarsize=constants.BLKCLSR_SIZE,
                    varsized=True)
         # make better accessors for classes that can be found in special object
         # table
@@ -273,14 +273,15 @@ class ObjSpace(object):
 
     def newClosure(self, outerContext, pc, numArgs, copiedValues):
         BlockClosureShadow = self.w_BlockClosure.as_class_get_shadow(self)
-        w_closure = BlockClosureShadow.new(len(copiedValues))
+        numCopied = len(copiedValues)
+        w_closure = BlockClosureShadow.new(numCopied)
         closure = wrapper.BlockClosureWrapper(self, w_closure)
         closure.store_outerContext(outerContext)
         closure.store_startpc(pc)
         closure.store_numArgs(numArgs)
-        for i0 in range(len(copiedValues)):
+        for i0 in range(numCopied):
             closure.atput0(i0, copiedValues[i0])
-        return w_closure, closure
+        return w_closure
 
 def bootstrap_class(space, instsize, w_superclass=None, w_metaclass=None,
                     name='?', format=shadow.POINTERS, varsized=False):
