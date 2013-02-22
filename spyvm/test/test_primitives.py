@@ -455,19 +455,45 @@ def test_primitive_closure_copyClosure():
     assert w_w_block.at0(1) == wrap(2)
     assert w_w_block.numArgs() is 2
 
-def test_primitive_closure_value():
+def build_up_closure_environment(args, copiedValues=[]):
     from test_interpreter import new_interpreter
     interp = new_interpreter("<never called, but used for method generation>",
         space=space)
     s_initial_context = interp.s_active_context()
     
-    closure = space.newClosure(interp.w_active_context(), 4, 0, [])
-    s_initial_context.push(closure)
+    size_arguments = len(args)
+    closure = space.newClosure(interp.w_active_context(), 4, #pc 
+                                size_arguments, copiedValues)
+    s_initial_context.push_all([closure] + args)
+    prim_table[201 + size_arguments](interp, size_arguments)
+    return interp, s_initial_context, closure, interp.s_active_context()
 
-    prim_table[201](interp, 0)
-    assert interp.s_active_context().w_closure_or_nil is closure
-    assert interp.s_active_context().s_sender() is s_initial_context
-    assert interp.s_active_context().w_receiver() is space.w_nil
+def test_primitive_closure_value():
+    interp, s_initial_context, closure, s_new_context = build_up_closure_environment([])
+
+    assert s_new_context.w_closure_or_nil is closure
+    assert s_new_context.s_sender() is s_initial_context
+    assert s_new_context.w_receiver() is space.w_nil
+
+def test_primitive_closure_value_value():
+    interp, s_initial_context, closure, s_new_context = build_up_closure_environment(["first arg", "second arg"])
+
+    assert s_new_context.w_closure_or_nil is closure
+    assert s_new_context.s_sender() is s_initial_context
+    assert s_new_context.w_receiver() is space.w_nil
+    assert s_new_context.gettemp(0) == "first arg"
+    assert s_new_context.gettemp(1) == "second arg"
+
+def test_primitive_closure_value_value_with_temps():
+    interp, s_initial_context, closure, s_new_context = build_up_closure_environment(["first arg", "second arg"],
+        copiedValues=['some value'])
+
+    assert s_new_context.w_closure_or_nil is closure
+    assert s_new_context.s_sender() is s_initial_context
+    assert s_new_context.w_receiver() is space.w_nil
+    assert s_new_context.gettemp(0) == "first arg"
+    assert s_new_context.gettemp(1) == "second arg"
+    assert s_new_context.gettemp(2) == "some value"
 
 # Note:
 #   primitives.NEXT is unimplemented as it is a performance optimization
