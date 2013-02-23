@@ -60,9 +60,14 @@ class TestLLtype(LLJitMixin):
 
         counter = 0
 
-        def interp_w():
+        w_selector = interp.perform(space.wrap_string("loopTest"), "asSymbol")
+        w_object = model.W_SmallInteger(0)
+        s_class = w_object.shadow_of_my_class(space)
+        w_method = s_class.lookup(w_selector)
+        w_frame = w_method.create_frame(space, w_object, [])
+        interp.store_w_active_context(w_frame)
 
-            w_object = model.W_SmallInteger(0)
-            interp.perform(w_object, "loopTest")
+        def interp_w():
+            interp.loop()
 
         self.meta_interp(interp_w, [], listcomp=True, listops=True, backendopt=True)
