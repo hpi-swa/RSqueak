@@ -97,9 +97,9 @@ class Interpreter(object):
         else:
             w_selector = self.perform(self.space.wrap_string(selector), "asSymbol")
         s_class = w_receiver.shadow_of_my_class(self.space)
-        w_method = s_class.lookup(w_selector)
-        assert w_method
-        w_frame = w_method.create_frame(self.space, w_receiver, list(arguments_w))
+        s_method = s_class.lookup(w_selector)
+        assert s_method
+        w_frame = s_method.create_frame(self.space, w_receiver, list(arguments_w))
         try:
             self.loop(w_frame)
         except ReturnFromTopLevel, e:
@@ -222,12 +222,12 @@ class __extend__(ContextPartShadow):
                 [self.peek(argcount-1-i) for i in range(argcount)])
             pass
         assert argcount >= 0
-        method = receiverclassshadow.lookup(w_selector)
+        s_method = receiverclassshadow.lookup(w_selector)
         # XXX catch MethodNotFound here and send doesNotUnderstand:
         # AK shouln't that be done in lookup itself, please check what spec says about DNU in case of super sends.
-        if method.primitive:
+        if s_method.primitive:
             # the primitive pushes the result (if any) onto the stack itself
-            code = method.primitive
+            code = s_method.primitive
             if interp.should_trace():
                 print "%sActually calling primitive %d" % (interp._last_indent, code,)
             if False: #objectmodel.we_are_translated():
@@ -244,10 +244,10 @@ class __extend__(ContextPartShadow):
                     return func(interp, self, argcount)
                 except primitives.PrimitiveFailedError:
                     if interp.should_trace(True):
-                        print "PRIMITIVE FAILED: %d %s" % (method.primitive, w_selector.as_string(),)
+                        print "PRIMITIVE FAILED: %d %s" % (s_method.primitive, w_selector.as_string(),)
                     pass # ignore this error and fall back to the Smalltalk version
         arguments = self.pop_and_return_n(argcount)
-        w_frame = method.create_frame(self.space, receiver, arguments,
+        w_frame = s_method.create_frame(self.space, receiver, arguments,
                                       self.w_self())
         self.pop()
         return w_frame

@@ -227,9 +227,9 @@ class BlockClosureWrapper(VarsizedWrapper):
     def asContextWithSender(self, w_aContext, arguments):
         from spyvm import shadow
         s_outerContext = self.outerContext().get_shadow(self.space)
-        w_method = s_outerContext.w_method()
+        s_method = s_outerContext.w_method().as_compiledmethod_get_shadow(self.space)
         w_receiver = s_outerContext.w_receiver()
-        w_new_frame = shadow.MethodContextShadow.make_context(self.space , w_method, w_receiver,
+        w_new_frame = shadow.MethodContextShadow.make_context(self.space, s_method, w_receiver,
                      arguments, w_sender=w_aContext, pc=self.startpc(), closure=self)
         return w_new_frame
 

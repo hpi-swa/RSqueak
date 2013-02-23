@@ -59,14 +59,19 @@ def test_word_object():
     py.test.raises(IndexError, lambda: w_bytes.getword(20))
 
 def test_method_lookup():
-    w_class = mockclass(space, 0)
+    class mockmethod(object):
+        def __init__(self, val):
+            self.val = val
+        def as_compiledmethod_get_shadow(self, space):
+            return self.val
+    w_class = mockclass(space, mockmethod(0))
     shadow = w_class.as_class_get_shadow(space)
-    shadow.installmethod(w_foo, 1)
-    shadow.installmethod(w_bar, 2)
+    shadow.installmethod(w_foo, mockmethod(1))
+    shadow.installmethod(w_bar, mockmethod(2))
     w_subclass = mockclass(space, 0, w_superclass=w_class)
     subshadow = w_subclass.as_class_get_shadow(space)
     assert subshadow.s_superclass() is shadow
-    subshadow.installmethod(w_foo, 3)
+    subshadow.installmethod(w_foo, mockmethod(3))
     shadow.initialize_methoddict()
     subshadow.initialize_methoddict()
     assert shadow.lookup(w_foo) == 1
@@ -83,7 +88,7 @@ def test_w_compiledin():
     supershadow.installmethod(w_foo, model.W_CompiledMethod(0))
     classshadow = w_class.as_class_get_shadow(space)
     classshadow.initialize_methoddict()
-    assert classshadow.lookup(w_foo).as_compiledmethod_get_shadow(space).w_compiledin is w_super
+    assert classshadow.lookup(w_foo).w_compiledin is w_super
 
 def test_compiledmethod_setchar():
     w_method = model.W_CompiledMethod(3)

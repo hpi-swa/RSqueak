@@ -244,10 +244,13 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     
     _shadow = None # Default value
 
+    @jit.unroll_safe
     def __init__(self, w_class, size):
         """Create new object with size = fixed + variable size."""
         W_AbstractObjectWithClassReference.__init__(self, w_class)
-        self._vars = [w_nil] * size
+        vars = self._vars = [None] * size
+        for i in range(size): # do it by hand for the JIT's sake
+            vars[i] = w_nil
 
     def at0(self, space, index0):
         # To test, at0 = in varsize part
@@ -485,13 +488,6 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 
     def getclass(self, space):
         return space.w_CompiledMethod
-
-    def create_frame(self, space, receiver, arguments, sender = None):
-        from spyvm import shadow
-        assert len(arguments) == self.argsize
-        w_new = shadow.MethodContextShadow.make_context(
-                space, self, receiver, arguments, sender)
-        return w_new
 
     def __str__(self):
         from spyvm.interpreter import BYTECODE_TABLE

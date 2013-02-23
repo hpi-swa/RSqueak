@@ -85,7 +85,7 @@ def new_frame(bytes, receiver=space.w_nil, space=space):
     w_method.argsize=2
     w_method.tempsize=8
     w_method.setliterals([model.W_PointersObject(None, 2)])
-    w_frame = w_method.create_frame(space, receiver, ["foo", "bar"])
+    w_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(space, receiver, ["foo", "bar"])
     return w_frame, w_frame.as_context_get_shadow(space)
 
 def test_create_frame():
@@ -94,7 +94,7 @@ def test_create_frame():
     w_method.islarge = 1
     w_method.argsize=2
     w_method.tempsize=8
-    w_frame = w_method.create_frame(space, "receiver", ["foo", "bar"])
+    w_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(space, "receiver", ["foo", "bar"])
     s_frame = w_frame.as_context_get_shadow(space)
     assert s_frame.w_receiver() == "receiver"
     assert s_frame.gettemp(0) == "foo"

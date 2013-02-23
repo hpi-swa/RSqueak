@@ -857,10 +857,11 @@ def func(interp, s_frame, argcount):
                   unwrap_spec=[object, object, object],
                   result_is_new_frame=True)
 def func(interp, s_frame, w_rcvr, w_sel, w_args):
-    w_method = w_rcvr.shadow_of_my_class(interp.space).lookup(w_sel)
-    assert w_method
+    s_method = w_rcvr.shadow_of_my_class(interp.space).lookup(w_sel)
+    assert s_method
 
-    w_frame = w_method.create_frame(interp.space, w_rcvr,
+    w_frame = s_method.create_frame(
+        interp.space, w_rcvr,
         [w_args.fetch(interp.space, i) for i in range(w_args.size())])
 
     w_frame.as_context_get_shadow(interp.space).store_w_sender(s_frame.w_self())

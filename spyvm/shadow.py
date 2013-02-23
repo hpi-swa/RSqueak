@@ -176,7 +176,7 @@ class ClassShadow(AbstractCachingShadow):
         return w_new
 
     def s_methoddict(self):
-        return self.w_methoddict.as_methoddict_get_shadow(self.space)
+        return jit.promote(self.w_methoddict.as_methoddict_get_shadow(self.space))
 
     def s_superclass(self):
         if self.w_superclass is None:
@@ -226,12 +226,14 @@ class ClassShadow(AbstractCachingShadow):
     def __repr__(self):
         return "<ClassShadow %s>" % (self.name or '?',)
 
+    @jit.unroll_safe
     def lookup(self, w_selector):
         look_in_shadow = self
+        jit.promote(w_selector)
         while look_in_shadow is not None:
             w_method = look_in_shadow.s_methoddict().find_selector(w_selector)
             if w_method is not None:
-                return w_method
+                return w_method.as_compiledmethod_get_shadow(self.space)
             look_in_shadow = look_in_shadow.s_superclass()
         raise MethodNotFound(self, w_selector)
 
@@ -628,11 +630,11 @@ class MethodContextShadow(ContextPartShadow):
 
     @staticmethod
     @jit.unroll_safe
-    def make_context(space, w_method, w_receiver,
+    def make_context(space, s_method, w_receiver,
                      arguments, w_sender=None, closure=None, pc=0):
         # From blue book: normal mc have place for 12 temps+maxstack
         # mc for methods with islarge flag turned on 32
-        size = 12 + w_method.islarge * 20 + w_method.argsize
+        size = 12 + s_method.islarge * 20 + s_method.argsize
         w_result = space.w_MethodContext.as_class_get_shadow(space).new(size)
         assert isinstance(w_result, model.W_PointersObject)
         # create and attach a shadow manually, to not have to carefully put things
@@ -643,7 +645,7 @@ class MethodContextShadow(ContextPartShadow):
         if closure is not None: 
             s_result.w_closure_or_nil = closure._w_self
         
-        s_result.store_w_method(w_method)
+        s_result.store_w_method(s_method.w_self())
         if w_sender:
             s_result.store_w_sender(w_sender)
         s_result.store_w_receiver(w_receiver)
@@ -739,6 +741,7 @@ class CompiledMethodShadow(object):
     _immutable_fields_ = ["_w_self", "bytecode",
                           "literals[*]", "bytecodeoffset",
                           "literalsize", "tempsize", "primitive",
+                          "argsize", "islarge",
                           "w_compiledin"]
 
     def __init__(self, w_compiledmethod):
@@ -749,6 +752,8 @@ class CompiledMethodShadow(object):
         self.literalsize = w_compiledmethod.getliteralsize()
         self.tempsize = w_compiledmethod.gettempsize()
         self.primitive = w_compiledmethod.primitive
+        self.argsize = w_compiledmethod.argsize
+        self.islarge = w_compiledmethod.islarge
 
         self.w_compiledin = None
         if self.literals:
@@ -763,6 +768,9 @@ class CompiledMethodShadow(object):
                 association = wrapper.AssociationWrapper(None, w_association)
                 self.w_compiledin = association.value()
 
+    def w_self(self):
+        return self._w_self
+
     def getliteral(self, index):
         return self.literals[index]
 
@@ -770,3 +778,9 @@ class CompiledMethodShadow(object):
         w_literal = self.getliteral(index)
         assert isinstance(w_literal, model.W_BytesObject)
         return w_literal.as_string()    # XXX performance issue here
+
+    def create_frame(self, space, receiver, arguments, sender = None):
+        assert len(arguments) == self.argsize
+        w_new = MethodContextShadow.make_context(
+                space, self, receiver, arguments, sender)
+        return w_new
