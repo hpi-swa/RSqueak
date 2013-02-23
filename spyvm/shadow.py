@@ -502,7 +502,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
     def peek(self, idx):
         rpos = rarithmetic.r_uint(idx)
-        return self._temps_and_stack[self._stack_ptr + ~rpos]
+        return self._temps_and_stack[jit.promote(self._stack_ptr) + ~rpos]
 
     @jit.unroll_safe
     def pop_n(self, n):

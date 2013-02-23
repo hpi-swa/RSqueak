@@ -41,22 +41,21 @@ def mock(stack, context = None):
         for i in range(len(stack)):
             frame.as_context_get_shadow(space).push(stack[i])
     interp = interpreter.Interpreter(space)
-    interp.store_w_active_context(frame)
-    return (interp, len(stack))
+    return (interp, frame, len(stack))
 
 def prim(code, stack, context = None):
-    interp, argument_count = mock(stack, context)
-    prim_table[code](interp, argument_count-1)
-    res = interp.s_active_context().pop()
-    assert not interp.s_active_context().stackdepth() # check args are consumed
+    interp, w_frame, argument_count = mock(stack, context)
+    prim_table[code](interp, w_frame.as_context_get_shadow(space), argument_count-1)
+    res = w_frame.as_context_get_shadow(space).pop()
+    assert not w_frame.as_context_get_shadow(space).stackdepth() # check args are consumed
     return res
 
 def prim_fails(code, stack):
-    interp, argument_count = mock(stack)
-    orig_stack = list(interp.s_active_context().stack())
-    py.test.raises(PrimitiveFailedError,
-                   "prim_table[code](interp, argument_count - 1)")
-    assert interp.s_active_context().stack() == orig_stack
+    interp, w_frame, argument_count = mock(stack)
+    orig_stack = list(w_frame.as_context_get_shadow(space).stack())
+    with py.test.raises(PrimitiveFailedError):
+        prim_table[code](interp, w_frame.as_context_get_shadow(space), argument_count - 1)
+    assert w_frame.as_context_get_shadow(space).stack() == orig_stack
         
 # smallinteger tests
 def test_small_int_add():
@@ -444,10 +443,11 @@ def test_directory_delimitor():
 
 
 def test_primitive_closure_copyClosure():
-    from test_interpreter import new_interpreter
-    interp = new_interpreter("<never called, but used for method generation>")
+    from test_interpreter import new_frame
+    w_frame, s_frame = new_frame("<never called, but used for method generation>",
+            space=space)
     w_block = prim(200, map(wrap, ["anActiveContext", 2, [wrap(1), wrap(2)]]), 
-            interp.w_active_context())
+            w_frame)
     assert w_block is not space.w_nil
     w_w_block = wrapper.BlockClosureWrapper(space, w_block)
     assert w_w_block.startpc() is 0
@@ -456,27 +456,27 @@ def test_primitive_closure_copyClosure():
     assert w_w_block.numArgs() is 2
 
 def build_up_closure_environment(args, copiedValues=[]):
-    from test_interpreter import new_interpreter
-    interp = new_interpreter("<never called, but used for method generation>",
+    from test_interpreter import new_frame
+    w_frame, s_initial_context = new_frame("<never called, but used for method generation>",
         space=space)
-    s_initial_context = interp.s_active_context()
     
     size_arguments = len(args)
-    closure = space.newClosure(interp.w_active_context(), 4, #pc 
+    closure = space.newClosure(w_frame, 4, #pc 
                                 size_arguments, copiedValues)
     s_initial_context.push_all([closure] + args)
-    prim_table[201 + size_arguments](interp, size_arguments)
-    return interp, s_initial_context, closure, interp.s_active_context()
+    interp = interpreter.Interpreter(space)
+    w_active_context = prim_table[201 + size_arguments](interp, s_initial_context, size_arguments)
+    return s_initial_context, closure, w_active_context.as_context_get_shadow(space)
 
 def test_primitive_closure_value():
-    interp, s_initial_context, closure, s_new_context = build_up_closure_environment([])
+    s_initial_context, closure, s_new_context = build_up_closure_environment([])
 
     assert s_new_context.w_closure_or_nil is closure
     assert s_new_context.s_sender() is s_initial_context
     assert s_new_context.w_receiver() is space.w_nil
 
 def test_primitive_closure_value_value():
-    interp, s_initial_context, closure, s_new_context = build_up_closure_environment(["first arg", "second arg"])
+    s_initial_context, closure, s_new_context = build_up_closure_environment(["first arg", "second arg"])
 
     assert s_new_context.w_closure_or_nil is closure
     assert s_new_context.s_sender() is s_initial_context
@@ -485,7 +485,7 @@ def test_primitive_closure_value_value():
     assert s_new_context.gettemp(1) == "second arg"
 
 def test_primitive_closure_value_value_with_temps():
-    interp, s_initial_context, closure, s_new_context = build_up_closure_environment(["first arg", "second arg"],
+    s_initial_context, closure, s_new_context = build_up_closure_environment(["first arg", "second arg"],
         copiedValues=['some value'])
 
     assert s_new_context.w_closure_or_nil is closure

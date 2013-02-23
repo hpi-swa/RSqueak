@@ -211,12 +211,11 @@ def test_runimage():
     py.test.skip("This method actually runs an image. Fails since no graphical primitives yet")
     from spyvm import wrapper
     ap = wrapper.ProcessWrapper(space, wrapper.scheduler(space).active_process())
-    s_ctx = ap.suspended_context().as_methodcontext_get_shadow(space)
+    w_ctx = ap.suspended_context()
     ap.store_suspended_context(space.w_nil)
 
     interp = interpreter.Interpreter(space)
-    interp.store_w_active_context(s_ctx.w_self())
-    interp.interpret()
+    interp.interpret_with_w_frame(w_ctx)
 
 def test_compile_method():
     sourcecode = """fib 
@@ -288,17 +287,17 @@ def test_step_run_something():
     setup_module(test_miniimage, filename='running-something-mini.image')
     from spyvm import wrapper
     ap = wrapper.ProcessWrapper(space, wrapper.scheduler(space).active_process())
-    s_ctx = ap.suspended_context().as_context_get_shadow(space)
+    w_ctx = ap.suspended_context()
+    s_ctx = w_ctx.as_context_get_shadow(space)
     ap.store_suspended_context(space.w_nil)
 
     interp = interpreter.Interpreter(space)
-    interp.store_w_active_context(s_ctx.w_self())
     assert isinstance(s_ctx, shadow.MethodContextShadow)
-    assert interp.s_active_context().top().is_same_object(space.w_true)
-    interp.step(interp.s_active_context())
-    interp.step(interp.s_active_context()) 
-    assert interp.s_active_context().top().value == 1
-    interp.step(interp.s_active_context()) 
-    assert interp.s_active_context().top().value == 2
-    interp.step(interp.s_active_context()) 
-    assert interp.s_active_context().top().value == 3
+    assert s_ctx.top().is_same_object(space.w_true)
+    interp.step(s_ctx)
+    interp.step(s_ctx)
+    assert s_ctx.top().value == 1
+    interp.step(s_ctx)
+    assert s_ctx.top().value == 2
+    interp.step(s_ctx)
+    assert s_ctx.top().value == 3

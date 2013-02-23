@@ -33,24 +33,13 @@ class Interpreter(object):
     )
     
     def __init__(self, space, image=None, image_name=""):
-        self._w_active_context = None
         self.space = space
         self.image = image
         self.image_name = image_name
 
-    def w_active_context(self):
-        return self._w_active_context
-
-    def store_w_active_context(self, w_context):
-        assert isinstance(w_context, model.W_PointersObject)
-        self._w_active_context = w_context
-
-    def s_active_context(self):
-        return self.w_active_context().as_context_get_shadow(self.space)
-
-    def interpret(self):
+    def interpret_with_w_frame(self, w_frame):
         try:
-            self.loop()
+            self.loop(w_frame)
         except ReturnFromTopLevel, e:
             return e.object
 
@@ -61,10 +50,8 @@ class Interpreter(object):
             return conftest.option.bc_trace
         return conftest.option.prim_trace
 
-    def step(self, s_active_context=None):
+    def step(self, s_active_context):
         """NOT_RPYTHON: only for testing"""
-        if s_active_context is None:         # tests only
-            s_active_context = self.s_active_context()
         next = s_active_context.getbytecode()
         bytecodeimpl = BYTECODE_TABLE[next]
 
@@ -89,18 +76,20 @@ class Interpreter(object):
                 s_active_context.pc(),
                 next, bytecodeimpl.__name__,)
 
-        bytecodeimpl(s_active_context, self, next)
+        return bytecodeimpl(s_active_context, self, next)
 
-    def loop(self):
+    def loop(self, w_active_context):
+        s_active_context = w_active_context.as_context_get_shadow(self.space)
         while True:
-            s_active_context = self.s_active_context()
             pc = s_active_context._pc
             method = s_active_context.method()
 
             self.jit_driver.jit_merge_point(
                 pc=pc, self=self, method=method,
                 s_active_context=s_active_context)
-            self.step(s_active_context)
+            w_new_context = self.step(s_active_context)
+            if w_new_context is not None:
+                s_active_context = w_new_context.as_context_get_shadow(self.space)
 
     def perform(self, w_receiver, selector, *arguments_w):
         if selector == "asSymbol":
@@ -111,9 +100,8 @@ class Interpreter(object):
         w_method = s_class.lookup(w_selector)
         assert w_method
         w_frame = w_method.create_frame(self.space, w_receiver, list(arguments_w))
-        self.store_w_active_context(w_frame)
         try:
-            self.loop()
+            self.loop(w_frame)
         except ReturnFromTopLevel, e:
             return e.object
 
@@ -134,11 +122,10 @@ def make_call_primitive_bytecode(primitive, selector, argcount):
         # XXX move next line out of callPrimitive?
         func = primitives.prim_table[primitive]
         try:
-            func(interp, argcount)
-            return
+            return func(interp, self, argcount)
         except primitives.PrimitiveFailedError:
             pass
-        self._sendSelfSelectorSpecial(selector, argcount, interp)
+        return self._sendSelfSelectorSpecial(selector, argcount, interp)
     return callPrimitive
 
 # ___________________________________________________________________________
@@ -213,19 +200,19 @@ class __extend__(ContextPartShadow):
     def sendLiteralSelectorBytecode(self, interp, current_bytecode):
         w_selector = self.method().getliteral(current_bytecode & 15)
         argcount = ((current_bytecode >> 4) & 3) - 1
-        self._sendSelfSelector(w_selector, argcount, interp)
+        return self._sendSelfSelector(w_selector, argcount, interp)
 
     def _sendSelfSelector(self, w_selector, argcount, interp):
         receiver = self.peek(argcount)
-        self._sendSelector(w_selector, argcount, interp,
-                           receiver, receiver.shadow_of_my_class(self.space))
+        return self._sendSelector(w_selector, argcount, interp,
+                                  receiver, receiver.shadow_of_my_class(self.space))
 
     def _sendSuperSelector(self, w_selector, argcount, interp):
         w_compiledin = self.method().w_compiledin
         assert isinstance(w_compiledin, model.W_PointersObject)
         s_compiledin = w_compiledin.as_class_get_shadow(self.space)
-        self._sendSelector(w_selector, argcount, interp, self.w_receiver(),
-                           s_compiledin.s_superclass())
+        return self._sendSelector(w_selector, argcount, interp, self.w_receiver(),
+                                  s_compiledin.s_superclass())
 
     def _sendSelector(self, w_selector, argcount, interp,
                       receiver, receiverclassshadow):
@@ -247,50 +234,48 @@ class __extend__(ContextPartShadow):
                 for i, func in primitives.unrolling_prim_table:
                     if i == code:
                         try:
-                            func(interp, argcount)
-                            return
+                            return func(interp, self, argcount)
                         except primitives.PrimitiveFailedError:
                             break
             else:
                 func = primitives.prim_table[code]
                 try:
                     # note: argcount does not include rcvr
-                    func(interp, argcount)
-                    return
+                    return func(interp, self, argcount)
                 except primitives.PrimitiveFailedError:
                     if interp.should_trace(True):
                         print "PRIMITIVE FAILED: %d %s" % (method.primitive, w_selector.as_string(),)
                     pass # ignore this error and fall back to the Smalltalk version
         arguments = self.pop_and_return_n(argcount)
-        frame = method.create_frame(self.space, receiver, arguments,
-                                    self.w_self())
+        w_frame = method.create_frame(self.space, receiver, arguments,
+                                      self.w_self())
         self.pop()
-        interp.store_w_active_context(frame)
+        return w_frame
 
     def _return(self, object, interp, w_return_to):
         # for tests, when returning from the top-level context
         if w_return_to.is_same_object(self.space.w_nil):
             raise ReturnFromTopLevel(object)
         w_return_to.as_context_get_shadow(self.space).push(object)
-        interp.store_w_active_context(w_return_to)
+        return w_return_to
 
     def returnReceiver(self, interp, current_bytecode):
-        self._return(self.w_receiver(), interp, self.s_home().w_sender())
+        return self._return(self.w_receiver(), interp, self.s_home().w_sender())
 
     def returnTrue(self, interp, current_bytecode):
-        self._return(interp.space.w_true, interp, self.s_home().w_sender())
+        return self._return(interp.space.w_true, interp, self.s_home().w_sender())
 
     def returnFalse(self, interp, current_bytecode):
-        self._return(interp.space.w_false, interp, self.s_home().w_sender())
+        return self._return(interp.space.w_false, interp, self.s_home().w_sender())
 
     def returnNil(self, interp, current_bytecode):
-        self._return(interp.space.w_nil, interp, self.s_home().w_sender())
+        return self._return(interp.space.w_nil, interp, self.s_home().w_sender())
 
     def returnTopFromMethod(self, interp, current_bytecode):
-        self._return(self.top(), interp, self.s_home().w_sender())
+        return self._return(self.top(), interp, self.s_home().w_sender())
 
     def returnTopFromBlock(self, interp, current_bytecode):
-        self._return(self.top(), interp, self.w_sender())
+        return self._return(self.top(), interp, self.w_sender())
 
     def unknownBytecode(self, interp, current_bytecode):
         raise MissingBytecode("unknownBytecode")
@@ -339,7 +324,7 @@ class __extend__(ContextPartShadow):
 
     def singleExtendedSendBytecode(self, interp, current_bytecode):
         w_selector, argcount = self.getExtendedSelectorArgcount()
-        self._sendSelfSelector(w_selector, argcount, interp)
+        return self._sendSelfSelector(w_selector, argcount, interp)
 
     def doubleExtendedDoAnythingBytecode(self, interp, current_bytecode):
         second = self.getbytecode()
@@ -347,12 +332,12 @@ class __extend__(ContextPartShadow):
         opType = second >> 5
         if opType == 0:
             # selfsend
-            self._sendSelfSelector(self.method().getliteral(third),
-                                   second & 31, interp)
+            return self._sendSelfSelector(self.method().getliteral(third),
+                                          second & 31, interp)
         elif opType == 1:
             # supersend
-            self._sendSuperSelector(self.method().getliteral(third),
-                                    second & 31, interp)
+            return self._sendSuperSelector(self.method().getliteral(third),
+                                           second & 31, interp)
         elif opType == 2:
             # pushReceiver
             self.push(self.w_receiver().fetch(self.space, third))
@@ -375,13 +360,13 @@ class __extend__(ContextPartShadow):
 
     def singleExtendedSuperBytecode(self, interp, current_bytecode):
         w_selector, argcount = self.getExtendedSelectorArgcount()
-        self._sendSuperSelector(w_selector, argcount, interp)
+        return self._sendSuperSelector(w_selector, argcount, interp)
 
     def secondExtendedSendBytecode(self, interp, current_bytecode):
         descriptor = self.getbytecode()
         w_selector = self.method().getliteral(descriptor & 63)
         argcount = descriptor >> 6
-        self._sendSelfSelector(w_selector, argcount, interp)
+        return self._sendSelfSelector(w_selector, argcount, interp)
 
     def popStackBytecode(self, interp, current_bytecode):
         self.pop()
@@ -506,33 +491,33 @@ class __extend__(ContextPartShadow):
         # n.b.: depending on the type of the receiver, this may invoke
         # primitives.AT, primitives.STRING_AT, or something else for all
         # I know.
-        self._sendSelfSelectorSpecial("at:", 1, interp)
+        return self._sendSelfSelectorSpecial("at:", 1, interp)
 
     def bytecodePrimAtPut(self, interp, current_bytecode):
         # n.b. as above
-        self._sendSelfSelectorSpecial("at:put:", 2, interp)
+        return self._sendSelfSelectorSpecial("at:put:", 2, interp)
 
     def bytecodePrimSize(self, interp, current_bytecode):
-        self._sendSelfSelectorSpecial("size", 0, interp)
+        return self._sendSelfSelectorSpecial("size", 0, interp)
 
     def bytecodePrimNext(self, interp, current_bytecode):
-        self._sendSelfSelectorSpecial("next", 0, interp)
+        return self._sendSelfSelectorSpecial("next", 0, interp)
 
     def bytecodePrimNextPut(self, interp, current_bytecode):
-        self._sendSelfSelectorSpecial("nextPut:", 1, interp)
+        return self._sendSelfSelectorSpecial("nextPut:", 1, interp)
 
     def bytecodePrimAtEnd(self, interp, current_bytecode):
-        self._sendSelfSelectorSpecial("atEnd", 0, interp)
+        return self._sendSelfSelectorSpecial("atEnd", 0, interp)
 
     def bytecodePrimEquivalent(self, interp, current_bytecode):
         # short-circuit: classes cannot override the '==' method,
         # which cannot fail
-        primitives.prim_table[primitives.EQUIVALENT](interp, 1)
+        primitives.prim_table[primitives.EQUIVALENT](interp, self, 1)
 
     def bytecodePrimClass(self, interp, current_bytecode):
         # short-circuit: classes cannot override the 'class' method,
         # which cannot fail
-        primitives.prim_table[primitives.CLASS](interp, 0)
+        primitives.prim_table[primitives.CLASS](interp, self, 0)
 
 
     bytecodePrimBlockCopy = make_call_primitive_bytecode(primitives.BLOCK_COPY, "blockCopy:", 1)
@@ -540,19 +525,19 @@ class __extend__(ContextPartShadow):
     bytecodePrimValueWithArg = make_call_primitive_bytecode(primitives.VALUE, "value:", 1)
 
     def bytecodePrimDo(self, interp, current_bytecode):
-        self._sendSelfSelectorSpecial("do:", 1, interp)
+        return self._sendSelfSelectorSpecial("do:", 1, interp)
 
     def bytecodePrimNew(self, interp, current_bytecode):
-        self._sendSelfSelectorSpecial("new", 0, interp)
+        return self._sendSelfSelectorSpecial("new", 0, interp)
 
     def bytecodePrimNewWithArg(self, interp, current_bytecode):
-        self._sendSelfSelectorSpecial("new:", 1, interp)
+        return self._sendSelfSelectorSpecial("new:", 1, interp)
 
     def bytecodePrimPointX(self, interp, current_bytecode):
-        self._sendSelfSelectorSpecial("x", 0, interp)
+        return self._sendSelfSelectorSpecial("x", 0, interp)
 
     def bytecodePrimPointY(self, interp, current_bytecode):
-        self._sendSelfSelectorSpecial("y", 0, interp)
+        return self._sendSelfSelectorSpecial("y", 0, interp)
 
 BYTECODE_RANGES = [
             (  0,  15, "pushReceiverVariableBytecode"),
@@ -680,7 +665,7 @@ def make_bytecode_dispatch_translated():
         cond = " or ".join(["bytecode == %s" % (i, )
                                 for i in numbers])
         code.append("    %sif %s:" % (prefix, cond, ))
-        code.append("        context.%s(self, bytecode)" % (entry[-1], ))
+        code.append("        return context.%s(self, bytecode)" % (entry[-1], ))
         prefix = "el"
     code.append("bytecode_step_translated._always_inline_ = True")
     source = py.code.Source("\n".join(code))

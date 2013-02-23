@@ -71,40 +71,43 @@ class ProcessWrapper(LinkWrapper):
         process_list = sched.get_process_list(priority)
         process_list.add_process(self._w_self)
 
-    def activate(self, interp):
+    def activate(self, w_current_frame):
         sched = scheduler(self.space)
         sched.store_active_process(self._w_self)
-        interp.store_w_active_context(self.suspended_context())
-        self.store_suspended_context(interp.space.w_nil)
-        self.store_my_list(interp.space.w_nil)
+        w_frame = self.suspended_context()
+        self.store_suspended_context(self.space.w_nil)
+        self.store_my_list(self.space.w_nil)
+        return w_frame
 
-    def deactivate(self, interp):
+    def deactivate(self, w_current_frame):
         self.put_to_sleep()
-        self.store_suspended_context(interp.w_active_context())
+        self.store_suspended_context(w_current_frame)
 
-    def resume(self, interp):
+    def resume(self, w_current_frame):
         sched = scheduler(self.space)
         active_process = ProcessWrapper(self.space, sched.active_process())
         active_priority = active_process.priority()
         priority = self.priority()
         if priority > active_priority:
-            active_process.deactivate(interp)
-            self.activate(interp)
+            active_process.deactivate(w_current_frame)
+            return self.activate(w_current_frame)
         else:
             self.put_to_sleep()
+            return w_current_frame
 
     def is_active_process(self):
         return self._w_self.is_same_object(scheduler(self.space).active_process())
 
-    def suspend(self, interp):
+    def suspend(self, w_current_frame):
         if self.is_active_process():
-            assert self.my_list().is_same_object(interp.space.w_nil)
+            assert self.my_list().is_same_object(self.space.w_nil)
             w_process = scheduler(self.space).highest_priority_process()
-            process = ProcessWrapper(self.space, w_process).activate(interp)
+            return ProcessWrapper(self.space, w_process).activate(w_current_frame)
         else:
             process_list = ProcessListWrapper(self.space, self.my_list())
             process_list.remove(self._w_self)
-            self.store_my_list(interp.space.w_nil)
+            self.store_my_list(self.space.w_nil)
+            return w_current_frame
 
 class LinkedListWrapper(Wrapper):
     first_link, store_first_link = make_getter_setter(0)
@@ -171,7 +174,7 @@ class SchedulerWrapper(Wrapper):
 
     def highest_priority_process(self):
         w_lists = self.priority_list()
-        # Asserts as W_PointersObject
+        # Asserts as W_PointersObjectonion in the varnish. 
         lists = Wrapper(self.space, w_lists)
         
         for i in range(w_lists.size() - 1, -1, -1):
@@ -192,22 +195,24 @@ class SemaphoreWrapper(LinkedListWrapper):
 
     excess_signals, store_excess_signals = make_int_getter_setter(2)
 
-    def signal(self, interp):
+    def signal(self, w_current_frame):
         if self.is_empty_list():
             value = self.excess_signals()
             self.store_excess_signals(value + 1)
+            return w_current_frame
         else:
             process = self.remove_first_link_of_list()
-            ProcessWrapper(self.space, process).resume(interp)
+            return ProcessWrapper(self.space, process).resume(w_current_frame)
 
-    def wait(self, interp):
+    def wait(self, w_current_frame):
         excess = self.excess_signals()
-        w_process = scheduler(interp.space).active_process()
+        w_process = scheduler(self.space).active_process()
         if excess > 0:
             self.store_excess_signals(excess - 1)
+            return w_current_frame
         else:
             self.add_last_link(w_process)
-            ProcessWrapper(self.space, w_process).suspend(interp)
+            return ProcessWrapper(self.space, w_process).suspend(w_current_frame)
 
 class PointWrapper(Wrapper):
     x, store_x = make_int_getter_setter(0)
