@@ -8,26 +8,14 @@ from spyvm import constants
 
 def tinyBenchmarks(space, image_name):
     interp = interpreter.Interpreter(space, image_name=image_name)
-
-    w_object = model.W_SmallInteger(0)
-
-    s_class = w_object.shadow_of_my_class(space)
-    w_method = s_class.lookup("tinyBenchmarks")
-
-    assert w_method
-    w_frame = w_method.create_frame(space, w_object, [])
-    interp.store_w_active_context(w_frame)
-
-    counter = 0
-
-    from spyvm.interpreter import BYTECODE_TABLE
     return interp
 
 
-def run_benchmarks(interp):
+def run_benchmarks(interp, number, benchmark):
     counter = 0
+    w_object = model.W_SmallInteger(number)
     try:
-        interp.loop()
+        interp.perform(w_object, "tinyBenchmarks")
     except interpreter.ReturnFromTopLevel, e:
         w_result = e.object
 
@@ -42,6 +30,12 @@ space = objspace.ObjSpace()
 def entry_point(argv):
     if len(argv) > 1:
         filename = argv[1]
+        if len(argv) > 3:
+            number = int(argv[2])
+            benchmark = argv[3]
+        else:
+            number = 0
+            benchmark = "tinyBenchmarks"
     else:
         print "usage:", argv[0], "<image name>"
         return -1
@@ -49,14 +43,19 @@ def entry_point(argv):
     reader.initialize()
     image = squeakimage.SqueakImage()
     image.from_reader(space, reader)
-    interp = tinyBenchmarks(space, filename)
-    run_benchmarks(interp)
+    interp = interpreter.Interpreter(space, image, filename)
+    run_benchmarks(interp, number, benchmark)
     return 0
 
 # _____ Define and setup target ___
 
 def target(*args):
     return entry_point, None
+
+def jitpolicy(self):
+    from rpython.jit.codewriter.policy import JitPolicy
+    return JitPolicy()
+
 
 class DummyFile:
     def __init__(self,filename):
