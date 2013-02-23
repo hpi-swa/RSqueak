@@ -1,7 +1,7 @@
 from spyvm import constants, model, shadow, wrapper
 from spyvm.error import UnwrappingError, WrappingError
 from rpython.rlib.objectmodel import instantiate, specialize
-from rpython.rlib.rarithmetic import intmask, r_uint
+from rpython.rlib.rarithmetic import intmask, r_uint, int_between
 
 class ObjSpace(object):
     def __init__(self):
@@ -168,7 +168,7 @@ class ObjSpace(object):
 
     def wrap_int(self, val):
         from spyvm import constants
-        if constants.TAGGED_MININT <= val <= constants.TAGGED_MAXINT:
+        if int_between(constants.TAGGED_MININT, val, constants.TAGGED_MAXINT + 1):
             return model.W_SmallInteger(val)
         raise WrappingError("integer too large to fit into a tagged pointer")
 
