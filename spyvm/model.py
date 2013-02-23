@@ -18,7 +18,7 @@ import sys
 from spyvm.tool.bitmanipulation import splitter
 from spyvm import constants, error
 
-from rpython.rlib import rrandom, objectmodel
+from rpython.rlib import rrandom, objectmodel, jit
 from rpython.rlib.rarithmetic import intmask, r_uint
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib.objectmodel import instantiate
@@ -321,7 +321,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
 
     def as_class_get_shadow(self, space):
         from spyvm.shadow import ClassShadow
-        return self.as_special_get_shadow(space, ClassShadow)
+        return jit.promote(self.as_special_get_shadow(space, ClassShadow))
 
     def as_blockcontext_get_shadow(self, space):
         from spyvm.shadow import BlockContextShadow

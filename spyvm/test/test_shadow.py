@@ -178,9 +178,7 @@ def test_replace_to_bc():
     s_object.detach_shadow()
     s_classshadow = shadow.ClassShadow(space, w_object)
     w_object._shadow = s_classshadow
-    s_classshadow.invalid = False
     s_newobject = w_object.as_blockcontext_get_shadow(space)
-    assert s_classshadow.invalid
     assert ([s_newobject.fetch(i) for i in range(s_newobject.size())] ==
             [s_object.fetch(i) for i in range(s_newobject.size())])
     assert w_object._shadow is s_newobject

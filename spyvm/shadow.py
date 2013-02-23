@@ -27,8 +27,6 @@ class AbstractShadow(object):
 class AbstractCachingShadow(AbstractShadow):
     def __init__(self, space, w_self):
         AbstractShadow.__init__(self, space, w_self)
-        self.invalid = True
-        self.invalidate_shadow()
 
     def detach_shadow(self):
         self.invalidate_shadow()
@@ -36,19 +34,16 @@ class AbstractCachingShadow(AbstractShadow):
     def invalidate_shadow(self):
         """This should get called whenever the base Smalltalk
         object changes."""
-        if not self.invalid:
-            self.invalid = True
+        self._w_self.store_shadow(None)
 
     def attach_shadow(self):
         self.update_shadow()
 
     def sync_shadow(self):
-        if self.invalid:
-            self.update_shadow()
+        pass
 
     def update_shadow(self):
         self.w_self().store_shadow(self)
-        self.invalid = False
         self.sync_cache()
 
     def sync_cache(self):
@@ -77,14 +72,13 @@ class ClassShadow(AbstractCachingShadow):
     """A shadow for Smalltalk objects that are classes
     (i.e. used as the class of another Smalltalk object).
     """
+
+    _immutable_fields_ = ["name", "instance_size", "instance_varsized", "instance_kind", "w_methoddict", "s_methoddict", "w_superclass"]
+
     name = None
     def __init__(self, space, w_self):
         self.name = ""
         AbstractCachingShadow.__init__(self, space, w_self)
-    def invalidate_shadow(self):
-        AbstractCachingShadow.invalidate_shadow(self)
-        self.w_methoddict = None
-        self.w_superclass = None
 
     def getname(self):
         return "%s class" % (self.name or '?',)
@@ -235,11 +229,10 @@ class ClassShadow(AbstractCachingShadow):
     def lookup(self, w_selector):
         look_in_shadow = self
         while look_in_shadow is not None:
-            try:
-                w_method = look_in_shadow.s_methoddict().methoddict[w_selector]
+            w_method = look_in_shadow.s_methoddict().find_selector(w_selector)
+            if w_method is not None:
                 return w_method
-            except KeyError, e:
-                look_in_shadow = look_in_shadow.s_superclass()
+            look_in_shadow = look_in_shadow.s_superclass()
         raise MethodNotFound(self, w_selector)
 
     def initialize_methoddict(self):
@@ -260,9 +253,9 @@ class ClassShadow(AbstractCachingShadow):
 
 class MethodDictionaryShadow(AbstractCachingShadow):
 
-    def invalidate_shadow(self):
-        AbstractCachingShadow.invalidate_shadow(self)
-        self.methoddict = None
+    @jit.elidable
+    def find_selector(self, w_selector):
+        return self.methoddict.get(w_selector, None)
 
     def sync_cache(self):
         w_values = self.w_self()._fetch(constants.METHODDICT_VALUES_INDEX)
