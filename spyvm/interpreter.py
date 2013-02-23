@@ -112,11 +112,10 @@ class Interpreter(object):
         assert w_method
         w_frame = w_method.create_frame(self.space, w_receiver, list(arguments_w))
         self.store_w_active_context(w_frame)
-        while True:
-            try:
-                self.loop()
-            except ReturnFromTopLevel, e:
-                return e.object
+        try:
+            self.loop()
+        except ReturnFromTopLevel, e:
+            return e.object
 
 
 class ReturnFromTopLevel(Exception):
