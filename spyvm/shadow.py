@@ -320,7 +320,6 @@ class ContextPartShadow(AbstractRedirectingShadow):
     def __init__(self, space, w_self):
 
         self._w_sender = space.w_nil
-        self.currentBytecode = -1
         AbstractRedirectingShadow.__init__(self, space, w_self)
 
 
@@ -458,10 +457,6 @@ class ContextPartShadow(AbstractRedirectingShadow):
         currentBytecode = ord(bytecode)
         self._pc += 1
         return currentBytecode
-
-    def getNextBytecode(self):
-        self.currentBytecode = self.getbytecode()
-        return self.currentBytecode
 
     # ______________________________________________________________________
     # Temporary Variables

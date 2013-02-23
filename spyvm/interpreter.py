@@ -65,7 +65,7 @@ class Interpreter(object):
         """NOT_RPYTHON: only for testing"""
         if s_active_context is None:         # tests only
             s_active_context = self.s_active_context()
-        next = s_active_context.getNextBytecode()
+        next = s_active_context.getbytecode()
         bytecodeimpl = BYTECODE_TABLE[next]
 
         if self.should_trace():
@@ -89,7 +89,7 @@ class Interpreter(object):
                 s_active_context.pc(),
                 next, bytecodeimpl.__name__,)
 
-        bytecodeimpl(s_active_context, self)
+        bytecodeimpl(s_active_context, self, next)
 
     def loop(self):
         while True:
@@ -123,7 +123,7 @@ class ReturnFromTopLevel(Exception):
         self.object = object
 
 def make_call_primitive_bytecode(primitive, selector, argcount):
-    def callPrimitive(self, interp):
+    def callPrimitive(self, interp, current_bytecode):
         # WARNING: this is used for bytecodes for which it is safe to
         # directly call the primitive.  In general, it is not safe: for
         # example, depending on the type of the receiver, bytecodePrimAt
@@ -149,70 +149,70 @@ def make_call_primitive_bytecode(primitive, selector, argcount):
 # __extend__ adds new methods to the ContextPartShadow class
 class __extend__(ContextPartShadow):
     # push bytecodes
-    def pushReceiverVariableBytecode(self, interp):
-        index = self.currentBytecode & 15
+    def pushReceiverVariableBytecode(self, interp, current_bytecode):
+        index = current_bytecode & 15
         self.push(self.w_receiver().fetch(self.space, index))
 
-    def pushTemporaryVariableBytecode(self, interp):
-        index = self.currentBytecode & 15
+    def pushTemporaryVariableBytecode(self, interp, current_bytecode):
+        index = current_bytecode & 15
         self.push(self.gettemp(index))
 
-    def pushLiteralConstantBytecode(self, interp):
-        index = self.currentBytecode & 31
+    def pushLiteralConstantBytecode(self, interp, current_bytecode):
+        index = current_bytecode & 31
         self.push(self.method().getliteral(index))
 
-    def pushLiteralVariableBytecode(self, interp):
+    def pushLiteralVariableBytecode(self, interp, current_bytecode):
         # this bytecode assumes that literals[index] is an Association
         # which is an object with two named vars, and fetches the second
         # named var (the value).
-        index = self.currentBytecode & 31
+        index = current_bytecode & 31
         w_association = self.method().getliteral(index)
         association = wrapper.AssociationWrapper(self.space, w_association)
         self.push(association.value())
 
-    def storeAndPopReceiverVariableBytecode(self, interp):
-        index = self.currentBytecode & 7
+    def storeAndPopReceiverVariableBytecode(self, interp, current_bytecode):
+        index = current_bytecode & 7
         self.w_receiver().store(self.space, index, self.pop())
 
-    def storeAndPopTemporaryVariableBytecode(self, interp):
-        index = self.currentBytecode & 7
+    def storeAndPopTemporaryVariableBytecode(self, interp, current_bytecode):
+        index = current_bytecode & 7
         self.settemp(index, self.pop())
 
     # push bytecodes
-    def pushReceiverBytecode(self, interp):
+    def pushReceiverBytecode(self, interp, current_bytecode):
         self.push(self.w_receiver())
 
-    def pushConstantTrueBytecode(self, interp):
+    def pushConstantTrueBytecode(self, interp, current_bytecode):
         self.push(interp.space.w_true)
 
-    def pushConstantFalseBytecode(self, interp):
+    def pushConstantFalseBytecode(self, interp, current_bytecode):
         self.push(interp.space.w_false)
 
-    def pushConstantNilBytecode(self, interp):
+    def pushConstantNilBytecode(self, interp, current_bytecode):
         self.push(interp.space.w_nil)
 
-    def pushConstantMinusOneBytecode(self, interp):
+    def pushConstantMinusOneBytecode(self, interp, current_bytecode):
         self.push(interp.space.w_minus_one)
 
-    def pushConstantZeroBytecode(self, interp):
+    def pushConstantZeroBytecode(self, interp, current_bytecode):
         self.push(interp.space.w_zero)
 
-    def pushConstantOneBytecode(self, interp):
+    def pushConstantOneBytecode(self, interp, current_bytecode):
         self.push(interp.space.w_one)
 
-    def pushConstantTwoBytecode(self, interp):
+    def pushConstantTwoBytecode(self, interp, current_bytecode):
         self.push(interp.space.w_two)
 
-    def pushActiveContextBytecode(self, interp):
+    def pushActiveContextBytecode(self, interp, current_bytecode):
         self.push(self.w_self())
 
-    def duplicateTopBytecode(self, interp):
+    def duplicateTopBytecode(self, interp, current_bytecode):
         self.push(self.top())
 
     # send, return bytecodes
-    def sendLiteralSelectorBytecode(self, interp):
-        w_selector = self.method().getliteral(self.currentBytecode & 15)
-        argcount = ((self.currentBytecode >> 4) & 3) - 1
+    def sendLiteralSelectorBytecode(self, interp, current_bytecode):
+        w_selector = self.method().getliteral(current_bytecode & 15)
+        argcount = ((current_bytecode >> 4) & 3) - 1
         self._sendSelfSelector(w_selector, argcount, interp)
 
     def _sendSelfSelector(self, w_selector, argcount, interp):
@@ -274,25 +274,25 @@ class __extend__(ContextPartShadow):
         w_return_to.as_context_get_shadow(self.space).push(object)
         interp.store_w_active_context(w_return_to)
 
-    def returnReceiver(self, interp):
+    def returnReceiver(self, interp, current_bytecode):
         self._return(self.w_receiver(), interp, self.s_home().w_sender())
 
-    def returnTrue(self, interp):
+    def returnTrue(self, interp, current_bytecode):
         self._return(interp.space.w_true, interp, self.s_home().w_sender())
 
-    def returnFalse(self, interp):
+    def returnFalse(self, interp, current_bytecode):
         self._return(interp.space.w_false, interp, self.s_home().w_sender())
 
-    def returnNil(self, interp):
+    def returnNil(self, interp, current_bytecode):
         self._return(interp.space.w_nil, interp, self.s_home().w_sender())
 
-    def returnTopFromMethod(self, interp):
+    def returnTopFromMethod(self, interp, current_bytecode):
         self._return(self.top(), interp, self.s_home().w_sender())
 
-    def returnTopFromBlock(self, interp):
+    def returnTopFromBlock(self, interp, current_bytecode):
         self._return(self.top(), interp, self.w_sender())
 
-    def unknownBytecode(self, interp):
+    def unknownBytecode(self, interp, current_bytecode):
         raise MissingBytecode("unknownBytecode")
 
     def extendedVariableTypeAndIndex(self):
@@ -300,7 +300,7 @@ class __extend__(ContextPartShadow):
         descriptor = self.getbytecode()
         return ((descriptor >> 6) & 3), (descriptor & 63)
 
-    def extendedPushBytecode(self, interp):
+    def extendedPushBytecode(self, interp, current_bytecode):
         variableType, variableIndex = self.extendedVariableTypeAndIndex()
         if variableType == 0:
             self.push(self.w_receiver().fetch(self.space, variableIndex))
@@ -315,7 +315,7 @@ class __extend__(ContextPartShadow):
         else:
             assert 0
         
-    def extendedStoreBytecode(self, interp):
+    def extendedStoreBytecode(self, interp, current_bytecode):
         variableType, variableIndex = self.extendedVariableTypeAndIndex()
         if variableType == 0:
             self.w_receiver().store(self.space, variableIndex, self.top())
@@ -328,8 +328,8 @@ class __extend__(ContextPartShadow):
             association = wrapper.AssociationWrapper(self.space, w_association)
             association.store_value(self.top())
 
-    def extendedStoreAndPopBytecode(self, interp):
-        self.extendedStoreBytecode(interp)
+    def extendedStoreAndPopBytecode(self, interp, current_bytecode):
+        self.extendedStoreBytecode(interp, current_bytecode)
         self.pop()
 
     def getExtendedSelectorArgcount(self):
@@ -337,11 +337,11 @@ class __extend__(ContextPartShadow):
         return ((self.method().getliteral(descriptor & 31)),
                 (descriptor >> 5))
 
-    def singleExtendedSendBytecode(self, interp):
+    def singleExtendedSendBytecode(self, interp, current_bytecode):
         w_selector, argcount = self.getExtendedSelectorArgcount()
         self._sendSelfSelector(w_selector, argcount, interp)
 
-    def doubleExtendedDoAnythingBytecode(self, interp):
+    def doubleExtendedDoAnythingBytecode(self, interp, current_bytecode):
         second = self.getbytecode()
         third = self.getbytecode()
         opType = second >> 5
@@ -373,21 +373,21 @@ class __extend__(ContextPartShadow):
             association = wrapper.AssociationWrapper(self.space, w_association)
             association.store_value(self.top())
 
-    def singleExtendedSuperBytecode(self, interp):
+    def singleExtendedSuperBytecode(self, interp, current_bytecode):
         w_selector, argcount = self.getExtendedSelectorArgcount()
         self._sendSuperSelector(w_selector, argcount, interp)
 
-    def secondExtendedSendBytecode(self, interp):
+    def secondExtendedSendBytecode(self, interp, current_bytecode):
         descriptor = self.getbytecode()
         w_selector = self.method().getliteral(descriptor & 63)
         argcount = descriptor >> 6
         self._sendSelfSelector(w_selector, argcount, interp)
 
-    def popStackBytecode(self, interp):
+    def popStackBytecode(self, interp, current_bytecode):
         self.pop()
 
     # closure bytecodes
-    def pushNewArrayBytecode(self, interp):
+    def pushNewArrayBytecode(self, interp, current_bytecode):
         arraySize, popIntoArray = splitter[7, 1](self.getbytecode())
         newArray = None
         if popIntoArray == 1:
@@ -396,7 +396,7 @@ class __extend__(ContextPartShadow):
            newArray = interp.space.w_Array.as_class_get_shadow(interp.space).new(arraySize)
         self.push(newArray)
 
-    def experimentalBytecode(self, interp):
+    def experimentalBytecode(self, interp, current_bytecode):
         raise MissingBytecode("experimentalBytecode")
 
     def _extract_index_and_temps(self):
@@ -405,19 +405,19 @@ class __extend__(ContextPartShadow):
         w_indirectTemps = self.gettemp(index_of_array)
         return index_in_array, w_indirectTemps
 
-    def pushRemoteTempLongBytecode(self, interp):
+    def pushRemoteTempLongBytecode(self, interp, current_bytecode):
         index_in_array, w_indirectTemps = self._extract_index_and_temps()
         self.push(w_indirectTemps.at0(self.space, index_in_array))
 
-    def storeRemoteTempLongBytecode(self, interp):
+    def storeRemoteTempLongBytecode(self, interp, current_bytecode):
         index_in_array, w_indirectTemps = self._extract_index_and_temps()
         w_indirectTemps.atput0(self.space, index_in_array, self.top())
 
-    def storeAndPopRemoteTempLongBytecode(self, interp):
+    def storeAndPopRemoteTempLongBytecode(self, interp, current_bytecode):
         index_in_array, w_indirectTemps = self._extract_index_and_temps()
         w_indirectTemps.atput0(self.space, index_in_array, self.pop())
 
-    def pushClosureCopyCopiedValuesBytecode(self, interp):
+    def pushClosureCopyCopiedValuesBytecode(self, interp, current_bytecode):
         """ Copied from Blogpost: http://www.mirandabanda.org/cogblog/2008/07/22/closures-part-ii-the-bytecodes/
         ContextPart>>pushClosureCopyNumCopiedValues: numCopied numArgs: numArgs blockSize: blockSize
         "Simulate the action of a 'closure copy' bytecode whose result is the
@@ -453,30 +453,31 @@ class __extend__(ContextPartShadow):
         self.store_pc(self.pc() + offset)
 
     def jumpConditional(self,bool,position):
-        if self.top() == bool:
+        if self.top() == bool: # XXX this seems wrong?
             self.jump(position)
         self.pop()
 
-    def shortJumpPosition(self):
-        return (self.currentBytecode & 7) + 1
+    def shortJumpPosition(self, current_bytecode):
+        return (current_bytecode & 7) + 1
 
-    def shortUnconditionalJump(self, interp):
-        self.jump(self.shortJumpPosition())
+    def shortUnconditionalJump(self, interp, current_bytecode):
+        self.jump(self.shortJumpPosition(current_bytecode))
 
-    def shortConditionalJump(self, interp):
-        self.jumpConditional(interp.space.w_false, self.shortJumpPosition())
+    def shortConditionalJump(self, interp, current_bytecode):
+        self.jumpConditional(
+                interp.space.w_false, self.shortJumpPosition(current_bytecode))
 
-    def longUnconditionalJump(self, interp):
-        self.jump((((self.currentBytecode & 7) - 4) << 8) + self.getbytecode())
+    def longUnconditionalJump(self, interp, current_bytecode):
+        self.jump((((current_bytecode & 7) - 4) << 8) + self.getbytecode())
 
-    def longJumpPosition(self):
-        return ((self.currentBytecode & 3) << 8) + self.getbytecode()
+    def longJumpPosition(self, current_bytecode):
+        return ((current_bytecode & 3) << 8) + self.getbytecode()
 
-    def longJumpIfTrue(self, interp):
-        self.jumpConditional(interp.space.w_true, self.longJumpPosition())
+    def longJumpIfTrue(self, interp, current_bytecode):
+        self.jumpConditional(interp.space.w_true, self.longJumpPosition(current_bytecode))
 
-    def longJumpIfFalse(self, interp):
-        self.jumpConditional(interp.space.w_false, self.longJumpPosition())
+    def longJumpIfFalse(self, interp, current_bytecode):
+        self.jumpConditional(interp.space.w_false, self.longJumpPosition(current_bytecode))
 
 
     bytecodePrimAdd = make_call_primitive_bytecode(primitives.ADD, "+", 1)
@@ -501,34 +502,34 @@ class __extend__(ContextPartShadow):
         w_selector = self.space.get_special_selector(selector)
         return self._sendSelfSelector(w_selector, numargs, interp)
 
-    def bytecodePrimAt(self, interp):
+    def bytecodePrimAt(self, interp, current_bytecode):
         # n.b.: depending on the type of the receiver, this may invoke
         # primitives.AT, primitives.STRING_AT, or something else for all
         # I know.
         self._sendSelfSelectorSpecial("at:", 1, interp)
 
-    def bytecodePrimAtPut(self, interp):
+    def bytecodePrimAtPut(self, interp, current_bytecode):
         # n.b. as above
         self._sendSelfSelectorSpecial("at:put:", 2, interp)
 
-    def bytecodePrimSize(self, interp):
+    def bytecodePrimSize(self, interp, current_bytecode):
         self._sendSelfSelectorSpecial("size", 0, interp)
 
-    def bytecodePrimNext(self, interp):
+    def bytecodePrimNext(self, interp, current_bytecode):
         self._sendSelfSelectorSpecial("next", 0, interp)
 
-    def bytecodePrimNextPut(self, interp):
+    def bytecodePrimNextPut(self, interp, current_bytecode):
         self._sendSelfSelectorSpecial("nextPut:", 1, interp)
 
-    def bytecodePrimAtEnd(self, interp):
+    def bytecodePrimAtEnd(self, interp, current_bytecode):
         self._sendSelfSelectorSpecial("atEnd", 0, interp)
 
-    def bytecodePrimEquivalent(self, interp):
+    def bytecodePrimEquivalent(self, interp, current_bytecode):
         # short-circuit: classes cannot override the '==' method,
         # which cannot fail
         primitives.prim_table[primitives.EQUIVALENT](interp, 1)
 
-    def bytecodePrimClass(self, interp):
+    def bytecodePrimClass(self, interp, current_bytecode):
         # short-circuit: classes cannot override the 'class' method,
         # which cannot fail
         primitives.prim_table[primitives.CLASS](interp, 0)
@@ -538,19 +539,19 @@ class __extend__(ContextPartShadow):
     bytecodePrimValue = make_call_primitive_bytecode(primitives.VALUE, "value", 0)
     bytecodePrimValueWithArg = make_call_primitive_bytecode(primitives.VALUE, "value:", 1)
 
-    def bytecodePrimDo(self, interp):
+    def bytecodePrimDo(self, interp, current_bytecode):
         self._sendSelfSelectorSpecial("do:", 1, interp)
 
-    def bytecodePrimNew(self, interp):
+    def bytecodePrimNew(self, interp, current_bytecode):
         self._sendSelfSelectorSpecial("new", 0, interp)
 
-    def bytecodePrimNewWithArg(self, interp):
+    def bytecodePrimNewWithArg(self, interp, current_bytecode):
         self._sendSelfSelectorSpecial("new:", 1, interp)
 
-    def bytecodePrimPointX(self, interp):
+    def bytecodePrimPointX(self, interp, current_bytecode):
         self._sendSelfSelectorSpecial("x", 0, interp)
 
-    def bytecodePrimPointY(self, interp):
+    def bytecodePrimPointY(self, interp, current_bytecode):
         self._sendSelfSelectorSpecial("y", 0, interp)
 
 BYTECODE_RANGES = [
@@ -669,7 +670,7 @@ def make_bytecode_dispatch_translated():
     # list lookup and an indirect call but as a switch.
 
     code = ["def bytecode_step_translated(self, context):"]
-    code.append("    bytecode = context.getNextBytecode()")
+    code.append("    bytecode = context.getbytecode()")
     prefix = ""
     for entry in BYTECODE_RANGES:
         if len(entry) == 2:
@@ -679,7 +680,7 @@ def make_bytecode_dispatch_translated():
         cond = " or ".join(["bytecode == %s" % (i, )
                                 for i in numbers])
         code.append("    %sif %s:" % (prefix, cond, ))
-        code.append("        context.%s(self)" % (entry[-1], ))
+        code.append("        context.%s(self, bytecode)" % (entry[-1], ))
         prefix = "el"
     code.append("bytecode_step_translated._always_inline_ = True")
     source = py.code.Source("\n".join(code))

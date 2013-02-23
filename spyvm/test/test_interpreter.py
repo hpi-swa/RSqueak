@@ -103,9 +103,9 @@ def test_create_frame():
     assert s_frame.gettemp(2) is space.w_nil
     s_frame.settemp(2, "spam")
     assert s_frame.gettemp(2) == "spam"
-    assert s_frame.getNextBytecode() == ord("h")
-    assert s_frame.getNextBytecode() == ord("e")
-    assert s_frame.getNextBytecode() == ord("l")
+    assert s_frame.getbytecode() == ord("h")
+    assert s_frame.getbytecode() == ord("e")
+    assert s_frame.getbytecode() == ord("l")
 
 def test_push_pop():
     interp = new_interpreter("")
