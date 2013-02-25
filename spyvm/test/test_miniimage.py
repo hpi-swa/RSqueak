@@ -301,3 +301,8 @@ def test_step_run_something():
     assert s_ctx.top().value == 2
     interp.step(s_ctx)
     assert s_ctx.top().value == 3
+
+def test_create_new_symbol():
+    w_result = perform(w("someString"), "asSymbol")
+    assert w_result is not None
+    assert w_result.as_string() == "someString"
