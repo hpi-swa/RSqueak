@@ -264,14 +264,22 @@ class ImageReader(object):
             chunk.g_object.init_w_object()
 
     def assign_prebuilt_constants(self):
-        # assign w_objects for objects that are already in classtable
-        for name, so_index in constants.classes_in_special_object_table.items():
-            w_object = self.space.classtable["w_" + name]
-            self.special_object(so_index).w_object = w_object
         # assign w_objects for objects that are already in objtable
         for name, so_index in constants.objects_in_special_object_table.items():
             w_object = self.space.objtable["w_" + name]
-            self.special_object(so_index).w_object = w_object
+            if self.special_object(so_index).w_object is None:
+                self.special_object(so_index).w_object = w_object
+            else:
+                if self.special_object(0).w_object is not self.space.w_nil:
+                   raise Warning('Object found in multiple places in the special objects array')
+        # assign w_objects for objects that are already in classtable
+        for name, so_index in constants.classes_in_special_object_table.items():
+            w_object = self.space.classtable["w_" + name]
+            if self.special_object(so_index).w_object is None:
+                self.special_object(so_index).w_object = w_object
+            else:
+                if self.special_object(0).w_object is not self.space.w_nil:
+                   raise Warning('Object found in multiple places in the special objects array')
 
     def special_object(self, index):
         special = self.chunks[self.specialobjectspointer].g_object.pointers

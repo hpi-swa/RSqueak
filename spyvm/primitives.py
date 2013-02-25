@@ -930,7 +930,7 @@ def func(interp, s_frame, outerContext, numArgs, copiedValues):
 
 
 def activateClosure(interp, s_frame, w_block, args_w, mayContextSwitch=True):
-    # XXX may context switch is ignored
+    # XXX mayContextSwitch is ignored
     space = interp.space
     if not w_block.getclass(space).is_same_object(
             space.w_BlockClosure):

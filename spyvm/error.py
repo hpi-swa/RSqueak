@@ -23,5 +23,5 @@ class FatalError(SmalltalkException):
     def __init__(self, msg):
         self.msg = msg
 
-class BlockCannotReturnError(PrimitiveFailedError):
+class BlockCannotReturnError(SmalltalkException):
 	pass

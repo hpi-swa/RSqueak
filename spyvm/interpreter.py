@@ -258,6 +258,8 @@ class __extend__(ContextPartShadow):
             raise ReturnFromTopLevel(object)
         # widow this context
         self.store_pc(None)
+        self.store_w_sender(self.space.w_nil)
+
         w_return_to.as_context_get_shadow(self.space).push(object)
         return w_return_to
 
