@@ -930,6 +930,7 @@ def func(interp, s_frame, outerContext, numArgs, copiedValues):
 
 
 def activateClosure(interp, s_frame, w_block, args_w, mayContextSwitch=True):
+    # XXX may context switch is ignored
     space = interp.space
     if not w_block.getclass(space).is_same_object(
             space.w_BlockClosure):
@@ -939,8 +940,7 @@ def activateClosure(interp, s_frame, w_block, args_w, mayContextSwitch=True):
         raise PrimitiveFailedError()
     outer_ctxt_class = block.outerContext().getclass(space)
     if not (outer_ctxt_class is space.w_MethodContext
-                or outer_ctxt_class is space.w_BlockContext
-                or outer_ctxt_class is space.w_BlockClosure):
+                or outer_ctxt_class is space.w_BlockContext):
         raise PrimitiveFailedError()
     
     # additionally to the smalltalk implementation, this also pushes

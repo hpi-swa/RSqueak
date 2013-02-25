@@ -256,6 +256,8 @@ class __extend__(ContextPartShadow):
         # for tests, when returning from the top-level context
         if w_return_to.is_same_object(self.space.w_nil):
             raise ReturnFromTopLevel(object)
+        # widow this context
+        self.store_pc(None)
         w_return_to.as_context_get_shadow(self.space).push(object)
         return w_return_to
 
@@ -272,6 +274,7 @@ class __extend__(ContextPartShadow):
         return self._return(interp.space.w_nil, interp, self.s_home().w_sender())
 
     def returnTopFromMethod(self, interp, current_bytecode):
+        # overwritten in MethodContextShadow
         return self._return(self.top(), interp, self.s_home().w_sender())
 
     def returnTopFromBlock(self, interp, current_bytecode):

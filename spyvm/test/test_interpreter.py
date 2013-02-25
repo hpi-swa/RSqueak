@@ -923,3 +923,29 @@ def test_bc_pushClosureCopyCopied2ValuesBytecode(bytecode = pushClosureCopyCopie
     assert closure.outerContext() is s_frame._w_self
     assert closure.at0(0) == "english"
     assert closure.at0(1) == "bar"
+
+def test_blockclosure_valuevalue():
+    #someTest
+    #   ^ [ :a :b | a + b ] value: 1 value: 2
+    def test():
+        assert interpret_bc(
+            [ 0x8f, 2, 0, 4, 16, 17, 0xb0, 0x7d, 0x76, 0x77, 0xf0, 0x7c ],
+            fakeliterals(space, "value:value:", )).value == 3
+    run_with_faked_primitive_methods(
+        [[space.w_BlockClosure, primitives.CLOSURE_VALUE_VALUE,
+            2, "value:value:"]],
+        test)
+
+def test_blockclosure_return():
+    #someTest
+    #   [ :a :b | ^ a + b ] value: 1 value: 2.
+    #   ^ 1
+    def test():
+        assert interpret_bc(
+            [ 0x8f, 2, 0, 4, 16, 17, 0xb0, 0x7c, 
+            0x76, 0x77, 0xf0, 0x87, 0x76, 0x7c ],
+            fakeliterals(space, "value:value:", )).value == 3
+    run_with_faked_primitive_methods(
+        [[space.w_BlockClosure, primitives.CLOSURE_VALUE_VALUE,
+            2, "value:value:"]],
+        test)

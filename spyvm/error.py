@@ -22,3 +22,6 @@ class WrapperException(SmalltalkException):
 class FatalError(SmalltalkException):
     def __init__(self, msg):
         self.msg = msg
+
+class BlockCannotReturnError(PrimitiveFailedError):
+	pass
