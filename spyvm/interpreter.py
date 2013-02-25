@@ -257,7 +257,7 @@ class __extend__(ContextPartShadow):
         if w_return_to.is_same_object(self.space.w_nil):
             raise ReturnFromTopLevel(object)
         # widow this context
-        self.store_pc(None)
+        self.store_pc(-1)
         self.store_w_sender(self.space.w_nil)
 
         w_return_to.as_context_get_shadow(self.space).push(object)

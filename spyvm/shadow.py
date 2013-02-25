@@ -742,7 +742,7 @@ class MethodContextShadow(ContextPartShadow):
             s_outerContext = self.w_closure_or_nil.fetch(self.space, 
                     constants.BLKCLSR_OUTER_CONTEXT).get_shadow(self.space)
             # XXX check whether we can actually return from that context
-            if s_outerContext.pc() == None:
+            if s_outerContext.pc() == -1:
                 raise error.BlockCannotReturnError()
             s_outerContext._return(self.top(), interp, 
                                     s_outerContext.s_home().w_sender())
