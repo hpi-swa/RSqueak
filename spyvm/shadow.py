@@ -317,7 +317,6 @@ class ContextPartShadow(AbstractRedirectingShadow):
         self._w_sender = space.w_nil
         AbstractRedirectingShadow.__init__(self, space, w_self)
 
-
     @staticmethod
     def is_block_context(w_pointers, space):
         method_or_argc = w_pointers.fetch(space, constants.MTHDCTX_METHOD)
@@ -749,6 +748,12 @@ class MethodContextShadow(ContextPartShadow):
         else:
             return self._return(self.top(), interp, self.s_home().w_sender())
 
+    def __str__(self):
+        retval = '\nMethodContext of:'
+        retval += self.w_method().as_string(markBytecode=self.pc())
+        retval += "Stackptr: %i" % self._stack_ptr
+        retval += "\nStack   : " + str(self.stack())
+        return retval
 
 class CompiledMethodShadow(object):
     _immutable_fields_ = ["_w_self", "bytecode",

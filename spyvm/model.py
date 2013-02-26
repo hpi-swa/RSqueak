@@ -490,11 +490,15 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         return space.w_CompiledMethod
 
     def __str__(self):
+        return self.as_string()
+
+    def as_string(self, markBytecode=0):
         from spyvm.interpreter import BYTECODE_TABLE
         j = 1
         retval  = "\nMethodname: " + self._likely_methodname 
         retval += "\nBytecode:------------\n"
         for i in self.bytes:
+            retval += '->' if j is markBytecode else '  '
             retval += ('%0.2i: 0x%0.2x(%0.3i) ' % (j ,ord(i), ord(i))) + BYTECODE_TABLE[ord(i)].__name__ + "\n"
             j += 1
         return retval + "---------------------\n"
