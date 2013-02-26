@@ -492,11 +492,12 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def __str__(self):
         from spyvm.interpreter import BYTECODE_TABLE
         j = 1
-        retval = "\n\nBytecode:\n---------------------\n"
+        retval  = "\nMethodname: " + self._likely_methodname 
+        retval += "\nBytecode:------------\n"
         for i in self.bytes:
-            retval += str(j) + ": " + BYTECODE_TABLE[ord(i)].__name__ + " " + str(ord(i)) + "\n"
+            retval += ('%0.2i: 0x%0.2x(%0.3i) ' % (j ,ord(i), ord(i))) + BYTECODE_TABLE[ord(i)].__name__ + "\n"
             j += 1
-        return retval + "\n---------------------\n"
+        return retval + "---------------------\n"
 
     def invariant(self):
         return (W_Object.invariant(self) and
