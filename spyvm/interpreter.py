@@ -128,6 +128,22 @@ def make_call_primitive_bytecode(primitive, selector, argcount):
         return self._sendSelfSelectorSpecial(selector, argcount, interp)
     return callPrimitive
 
+def make_call_primitive_bytecode_classbased(a_class_name, a_primitive, alternative_class_name, alternative_primitive, selector, argcount):
+    def callPrimitive(self, interp, current_bytecode):
+        rcvr = self.peek(argcount)
+        receiver_class = rcvr.getclass(self.space)
+        try:
+            if receiver_class is getattr(self.space, a_class_name):
+                func = primitives.prim_table[a_primitive]
+                return func(interp, self, argcount)
+            elif receiver_class is getattr(self.space, alternative_class_name):
+                func = primitives.prim_table[alternative_primitive]
+                return func(interp, self, argcount)
+        except primitives.PrimitiveFailedError:
+            pass
+        return self._sendSelfSelectorSpecial(selector, argcount, interp)
+    return callPrimitive
+
 # ___________________________________________________________________________
 # Bytecode Implementations:
 #
@@ -524,10 +540,9 @@ class __extend__(ContextPartShadow):
         # which cannot fail
         primitives.prim_table[primitives.CLASS](interp, self, 0)
 
-
     bytecodePrimBlockCopy = make_call_primitive_bytecode(primitives.BLOCK_COPY, "blockCopy:", 1)
-    bytecodePrimValue = make_call_primitive_bytecode(primitives.VALUE, "value", 0)
-    bytecodePrimValueWithArg = make_call_primitive_bytecode(primitives.VALUE, "value:", 1)
+    bytecodePrimValue = make_call_primitive_bytecode_classbased("w_BlockContext", primitives.VALUE, "w_BlockClosure", primitives.CLOSURE_VALUE, "value", 0)
+    bytecodePrimValueWithArg = make_call_primitive_bytecode_classbased("w_BlockContext", primitives.VALUE, "w_BlockClosure", primitives.CLOSURE_VALUE_, "value:", 1)
 
     def bytecodePrimDo(self, interp, current_bytecode):
         return self._sendSelfSelectorSpecial("do:", 1, interp)
