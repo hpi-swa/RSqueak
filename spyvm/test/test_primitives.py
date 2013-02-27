@@ -446,14 +446,28 @@ def test_primitive_closure_copyClosure():
     from test_interpreter import new_frame
     w_frame, s_frame = new_frame("<never called, but used for method generation>",
             space=space)
-    w_block = prim(200, map(wrap, ["anActiveContext", 2, [wrap(1), wrap(2)]]), 
-            w_frame)
+    w_block = prim(primitives.CLOSURE_COPY_WITH_COPIED_VALUES, map(wrap, 
+                    ["anActiveContext", 2, [wrap(1), wrap(2)]]), w_frame)
     assert w_block is not space.w_nil
     w_w_block = wrapper.BlockClosureWrapper(space, w_block)
     assert w_w_block.startpc() is 0
     assert w_w_block.at0(0) == wrap(1)
     assert w_w_block.at0(1) == wrap(2)
     assert w_w_block.numArgs() is 2
+
+def test_primitive_string_copy():
+    w_r = prim(primitives.STRING_REPLACE, ["aaaaa", 1, 5, "ababab", 1])
+    assert w_r.as_string() == "ababa"
+    w_r = prim(primitives.STRING_REPLACE, ["aaaaa", 1, 5, "ababab", 2])
+    assert w_r.as_string() == "babab"
+    w_r = prim(primitives.STRING_REPLACE, ["aaaaa", 2, 5, "ccccc", 1])
+    assert w_r.as_string() == "acccc"
+    w_r = prim(primitives.STRING_REPLACE, ["aaaaa", 2, 4, "ccccc", 1])
+    assert w_r.as_string() == "accca"
+    prim_fails(primitives.STRING_REPLACE, ["aaaaa", 0, 4, "ccccc", 1])
+    prim_fails(primitives.STRING_REPLACE, ["aaaaa", 1, 6, "ccccc", 2])
+    prim_fails(primitives.STRING_REPLACE, ["aaaaa", 2, 6, "ccccc", 1])
+    prim_fails(primitives.STRING_REPLACE, [['a', 'b'], 1, 4, "ccccc", 1])
 
 def build_up_closure_environment(args, copiedValues=[]):
     from test_interpreter import new_frame
@@ -465,7 +479,7 @@ def build_up_closure_environment(args, copiedValues=[]):
                                 size_arguments, copiedValues)
     s_initial_context.push_all([closure] + args)
     interp = interpreter.Interpreter(space)
-    w_active_context = prim_table[201 + size_arguments](interp, s_initial_context, size_arguments)
+    w_active_context = prim_table[primitives.CLOSURE_VALUE + size_arguments](interp, s_initial_context, size_arguments)
     return s_initial_context, closure, w_active_context.as_context_get_shadow(space)
 
 def test_primitive_closure_value():

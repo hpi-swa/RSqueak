@@ -496,6 +496,31 @@ def func(interp, s_frame, w_rcvr):
     interp.space.objtable['w_display'] = w_rcvr
     return w_rcvr
 
+@expose_primitive(STRING_REPLACE, unwrap_spec=[object, index1_0, index1_0, object, index1_0])
+def func(interp, s_frame, w_rcvr, start, stop, w_replacement, repStart):
+    """replaceFrom: start to: stop with: replacement startingAt: repStart 
+    Primitive. This destructively replaces elements from start to stop in the 
+    receiver starting at index, repStart, in the collection, replacement. Answer 
+    the receiver. Range checks are performed in the primitive only. Essential 
+    for Pharo Candle Symbols.
+    | index repOff |
+    repOff := repStart - start.
+    index := start - 1.
+    [(index := index + 1) <= stop]
+        whileTrue: [self at: index put: (replacement at: repOff + index)]"""
+    if (start < 0 or start - 1 > stop or repStart < 0):
+        raise PrimitiveFailedError()
+    if w_rcvr.__class__ is not w_replacement.__class__:
+        raise PrimitiveFailedError()
+    if (w_rcvr.size() <= stop
+            or w_replacement.size() < repStart + (stop - start)):
+        raise PrimitiveFailedError()
+    repOff = repStart - start
+    for i0 in range(start, stop + 1):
+        w_rcvr.atput0(interp.space, i0, w_replacement.at0(interp.space, repOff + i0))
+    return w_rcvr
+
+
 @expose_primitive(SCREEN_SIZE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
     # XXX get the real screen size
