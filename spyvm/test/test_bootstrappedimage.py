@@ -7,15 +7,13 @@ from spyvm.test.test_miniimage import perform, w
 testhelper.setup_module(testhelper, filename='bootstrapped.image')
 
 def test_retrieve_symbol():
-    py.test.skip("This method will fail, because the bytecodes are not adjusted for blockclosures, yet.")
-    perform(testhelper.image.w_asSymbol, "asSymbol")
+    w_result = perform(testhelper.image.w_asSymbol, "asSymbol")
+    assert w_result is testhelper.image.w_asSymbol
 
 def test_create_new_symbol():
-    py.test.skip("This method is based upon the above.")
-    #import pdb; pdb.set_trace()
     w_result = perform(w("someString"), "asSymbol")
     assert w_result is not None
-    assert w_result.as_string() is "someString"
+    assert w_result.as_string() == "someString"
     
 
 #def test_hazelnut():

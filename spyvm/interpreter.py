@@ -96,12 +96,21 @@ class Interpreter(object):
             w_selector = self.image.w_asSymbol
         else:
             w_selector = self.perform(self.space.wrap_string(selector), "asSymbol")
-        s_class = w_receiver.shadow_of_my_class(self.space)
-        s_method = s_class.lookup(w_selector)
-        assert s_method
-        w_frame = s_method.create_frame(self.space, w_receiver, list(arguments_w))
+
+        w_method = model.W_CompiledMethod()
+        w_method.setbytes([chr(124)]) #returnTopFromMethod
+        s_method = w_method.as_compiledmethod_get_shadow(self.space)
+        s_frame = MethodContextShadow.make_context(
+                self.space, s_method, w_receiver, [], None).get_shadow(self.space)
+        s_frame.push(w_receiver)
+        s_frame.push_all(list(arguments_w))
         try:
-            self.loop(w_frame)
+            w_new_frame = s_frame._sendSelfSelector(w_selector, len(arguments_w), self)
+            if w_new_frame == None:
+                # which means that we tried to call a primitive method
+                return s_frame.pop()
+            else:
+                self.loop(w_new_frame)
         except ReturnFromTopLevel, e:
             return e.object
 

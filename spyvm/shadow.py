@@ -750,7 +750,7 @@ class MethodContextShadow(ContextPartShadow):
 
     def __str__(self):
         retval = '\nMethodContext of:'
-        retval += self.w_method().as_string(markBytecode=self.pc())
+        retval += self.w_method().as_string(markBytecode=self.pc() + 1)
         retval += "Stackptr: %i" % self._stack_ptr
         retval += "\nStack   : " + str(self.stack())
         return retval
