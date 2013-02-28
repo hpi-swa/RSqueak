@@ -44,3 +44,13 @@ def test_create_new_symbol():
 
 def test_all_pointers_are_valid():
     tools.test_all_pointers_are_valid()
+    tools.test_lookup_abs_in_integer()
+
+def test_tinyBenchmarks():
+    # we can't find PCSystem, because Smalltalkdict is nil...
+    import time
+    t0 = time.time()
+    sends = perform(w(20), 'benchFib')
+    t1 = time.time()
+    t = t1 - t0
+    print str(tools.space.unwrap_int(sends)/t) + " sends per second"
