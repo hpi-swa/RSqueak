@@ -701,7 +701,7 @@ class MethodContextShadow(ContextPartShadow):
         ContextPartShadow.attach_shadow(self)
 
     def tempsize(self):
-        if self.w_closure_or_nil == self.space.w_nil:
+        if not self.is_closure_context():
             return self.method().tempsize
         else:
             return wrapper.BlockClosureWrapper(self.space, 
@@ -743,17 +743,20 @@ class MethodContextShadow(ContextPartShadow):
         return self.size() - self.tempsize()
 
     def returnTopFromMethod(self, interp, current_bytecode):
-        if self.w_closure_or_nil is not self.space.w_nil:
+        if self.is_closure_context():
             # this is a context for a blockClosure
             s_outerContext = self.w_closure_or_nil.fetch(self.space, 
                     constants.BLKCLSR_OUTER_CONTEXT).get_shadow(self.space)
             # XXX check whether we can actually return from that context
             if s_outerContext.pc() == -1:
                 raise error.BlockCannotReturnError()
-            s_outerContext._return(self.top(), interp, 
+            return s_outerContext._return(self.top(), interp, 
                                     s_outerContext.s_home().w_sender())
         else:
             return self._return(self.top(), interp, self.s_home().w_sender())
+
+    def is_closure_context(self):
+        return self.w_closure_or_nil is not self.space.w_nil
 
     def __str__(self):
         retval = '\nMethodContext of:'

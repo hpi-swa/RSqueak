@@ -504,13 +504,20 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def as_string(self, markBytecode=0):
         from spyvm.interpreter import BYTECODE_TABLE
         j = 1
-        retval  = "\nMethodname: " + self._likely_methodname 
+        retval  = "\nMethodname: " + self.get_identifier_string() 
         retval += "\nBytecode:------------\n"
         for i in self.bytes:
             retval += '->' if j is markBytecode else '  '
             retval += ('%0.2i: 0x%0.2x(%0.3i) ' % (j ,ord(i), ord(i))) + BYTECODE_TABLE[ord(i)].__name__ + "\n"
             j += 1
         return retval + "---------------------\n"
+
+    def get_identifier_string(self):
+        try:
+            classname = self.literals[-1]._shadow.getname()
+        except (IndexError, AttributeError):
+            classname = "<unknown>"
+        return "%s>>#%s" % (classname, self._likely_methodname)
 
     def invariant(self):
         return (W_Object.invariant(self) and

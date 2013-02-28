@@ -90,11 +90,8 @@ class Interpreter(object):
             w_new_context = self.step(s_active_context)
             if w_new_context is not None:
                 s_active_context = w_new_context.as_context_get_shadow(self.space)
-                # m = s_active_context.w_method()
-                # try:
-                #     print m.literals[-1]._vars[-1], ">>", m._likely_methodname
-                # except IndexError, AttributeError:
-                #     print  "? >>", m._likely_methodname
+                #method = s_active_context.w_method()
+                #print method.get_identifier_string()
 
     def perform(self, w_receiver, selector, *arguments_w):
         if isinstance(selector, str):
