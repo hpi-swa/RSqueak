@@ -529,6 +529,13 @@ class ContextPartShadow(AbstractRedirectingShadow):
     def tempsize(self):
         raise NotImplementedError()
 
+    def store_instances_array(self, list_w):
+        # used for primitives 77 & 78
+        self.instances_w = list_w
+
+    def instances_array(self):
+        return self.instances_w
+
 class BlockContextShadow(ContextPartShadow):
 
     @staticmethod

@@ -445,13 +445,41 @@ def func(interp, s_frame, w_class):
     # This primitive returns some instance of the class on the stack.
     # Not sure quite how to do this; maintain a weak list of all
     # existing instances or something?
-    raise PrimitiveNotYetWrittenError()
+    from rpython.rlib import rgc
+
+    match_w = []
+    roots = [gcref for gcref in rgc.get_rpy_roots() if gcref]
+    pending = roots[:]
+    while pending:
+        gcref = pending.pop()
+        if not rgc.get_gcflag_extra(gcref):
+            rgc.toggle_gcflag_extra(gcref)
+            w_obj = rgc.try_cast_gcref_to_instance(model.W_Object, gcref)
+            if (w_obj is not None and w_obj.has_class() 
+                and w_obj.getclass(interp.space) is w_class):
+                match_w.append(w_obj)
+            pending.extend(rgc.get_rpy_referents(gcref))
+
+    while pending:
+        gcref = pending.pop()
+        if rgc.get_gcflag_extra(gcref):
+            rgc.toggle_gcflag_extra(gcref)
+            pending.extend(rgc.get_rpy_referents(gcref))
+
+    s_frame.store_instances_array(match_w)
+    try:
+        return match_w.pop()
+    except IndexError:
+        raise PrimitiveFailedError()
 
 @expose_primitive(NEXT_INSTANCE, unwrap_spec=[object])
 def func(interp, s_frame, w_obj):
     # This primitive is used to iterate through all instances of a class:
     # it returns the "next" instance after w_obj.
-    raise PrimitiveNotYetWrittenError()
+    try:
+        return s_frame.instances_array().pop()
+    except IndexError:
+        raise PrimitiveFailedError()
 
 @expose_primitive(NEW_METHOD, unwrap_spec=[object, int, int])
 def func(interp, s_frame, w_class, bytecount, header):

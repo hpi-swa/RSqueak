@@ -103,6 +103,12 @@ class W_Object(object):
     def clone(self, space):
         raise NotImplementedError
 
+    def has_class(self):
+        """All Smalltalk objects should have classes. Unfortuantely for
+        bootstrapping the metaclass-cycle and during testing, that is not
+        true for some W_PointersObjects"""
+        return True
+
 class W_SmallInteger(W_Object):
     """Boxed integer value"""
     # TODO can we tell pypy that its never larger then 31-bit?
@@ -210,7 +216,7 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     Float)."""
 
     def __init__(self, w_class):
-        if w_class is not None:     # it's None only for testing
+        if w_class is not None:     # it's None only for testing and space generation
             assert isinstance(w_class, W_PointersObject)
         self.w_class = w_class
 
@@ -237,6 +243,9 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     def _become(self, w_other):
         self.w_class, w_other.w_class = w_other.w_class, self.w_class
         W_AbstractObjectWithIdentityHash._become(self, w_other)
+
+    def has_class(self):
+        return self.w_class is not None
         
 
 class W_PointersObject(W_AbstractObjectWithClassReference):

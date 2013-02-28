@@ -90,12 +90,20 @@ class Interpreter(object):
             w_new_context = self.step(s_active_context)
             if w_new_context is not None:
                 s_active_context = w_new_context.as_context_get_shadow(self.space)
+                # m = s_active_context.w_method()
+                # try:
+                #     print m.literals[-1]._vars[-1], ">>", m._likely_methodname
+                # except IndexError, AttributeError:
+                #     print  "? >>", m._likely_methodname
 
     def perform(self, w_receiver, selector, *arguments_w):
-        if selector == "asSymbol":
-            w_selector = self.image.w_asSymbol
+        if isinstance(selector, str):
+            if selector == "asSymbol":
+                w_selector = self.image.w_asSymbol
+            else:
+                w_selector = self.perform(self.space.wrap_string(selector), "asSymbol")
         else:
-            w_selector = self.perform(self.space.wrap_string(selector), "asSymbol")
+            w_selector = selector
 
         w_method = model.W_CompiledMethod()
         w_method.setbytes([chr(124)]) #returnTopFromMethod
