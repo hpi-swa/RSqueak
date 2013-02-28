@@ -5,10 +5,32 @@ Implement primitives:
 [ ] SPECIAL_OBJECTS_ARRAY = 129
 [ ] LOW_SPACE_SEMAPHORE = 124
 [ ] INTERRUPT_SEMAPHORE = 134
+[ ] SIGNAL_AT_MILLISECONDS = 136
 [ ] SIGNAL_AT_BYTES_LEFT = 125
 [ ] IMAGE_NAME = 121
-[ ] BE_CURSOR  = 101
+[ ] EXIT_TO_DEBUGGER = 114 # essential
+[ ] QUIT = 113 # essential
+[ ] PERFORM_IN_SUPERCLASS = 100 # essential, for the debugger
+[ ] SNAPSHOT = 97 # essential, see also comment in only sender (as of Squeak 4.3)
+[ ] SMALLINT_AS_FLOAT = 40 # essential
+# the following are for graphics
+[ ] BE_CURSOR  = 101 # this primitive has two different implementations, dependent on the argument count
 [ ] BE_DISPLAY = 102
+[ ] GET_NEXT_EVENT = 94
+
+ReValidate primitives
+[ ] FLUSH_CACHE = 89 # ignored at the moment
+[ ] VALUE_NO_CONTEXT_SWITCH = 221/222 # no context switch flag is ignored
+[ ] STRING_AT = 63 # see comment there
+[ ] OBJECT_AT_PUT = 69 # uncomment assert?
+[ ] AT_PUT, SIZE 61/62 # because of its use in LargePositiveInteger>>#digitAt:put: and WideSymbol
+
+Primitives in Question
+[ ] FLOAT_AT = 38
+[ ] FLOAT_AT_PUT = 39
+
+Plugins
+[ ] BitBlt
 
 Interpreter:
 [ ] Replace hardcoded fallback selectors with selectors from SpecialSelectorsArray

@@ -181,7 +181,7 @@ def func(interp, s_frame, receiver, argument):
         raise PrimitiveFailedError()
     return interp.space.wrap_int(receiver % argument)
 
-# #// -- return the result of a division, rounded towards negative zero
+# #// -- return the result of a division, rounded towards negative infinity
 @expose_primitive(DIV, unwrap_spec=[int, int])
 def func(interp, s_frame, receiver, argument):
     if argument == 0:
@@ -220,6 +220,7 @@ def func(interp, s_frame, receiver, argument):
 # Float Primitives
 
 _FLOAT_OFFSET = 40
+SMALLINT_AS_FLOAT = 40
 FLOAT_ADD = 41
 FLOAT_SUBTRACT = 42
 # NB: 43 ... 48 are implemented above
@@ -1047,6 +1048,13 @@ def func(interp, s_frame, w_block_closure):
 @expose_primitive(CLOSURE_VALUE_NO_CONTEXT_SWITCH_, unwrap_spec=[object, object], result_is_new_frame=True)
 def func(interp, s_frame, w_block_closure, w_a0):
     return activateClosure(interp, s_frame, w_block_closure, [w_a0], mayContextSwitch=False)
+
+# ___________________________________________________________________________
+# Override the default primitive to give latitude to the VM in context management.
+
+CTXT_AT = 210
+CTXT_AT_PUT = 211
+CTXT_SIZE = 212
 
 # ___________________________________________________________________________
 # PrimitiveLoadInstVar
