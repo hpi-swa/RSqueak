@@ -24,6 +24,11 @@ def test_symbol_asSymbol():
     w_result = perform(tools.image.w_asSymbol, "asSymbol")
     assert w_result is tools.image.w_asSymbol
 
+def test_create_new_symbol():
+    w_result = perform(w("someString"), "asSymbol")
+    assert w_result is not None
+    assert w_result.as_string() == "someString"
+
 def test_retrieve_symbol():
     """asSymbol
     "This is the only place that new Symbols are created. A Symbol is created 
@@ -36,11 +41,6 @@ def test_retrieve_symbol():
     w_result = perform(w("someString"), "asSymbol")
     w_anotherSymbol = perform(w("someString"), "asSymbol")
     assert w_result is w_anotherSymbol
-
-def test_create_new_symbol():
-    w_result = perform(w("someString"), "asSymbol")
-    assert w_result is not None
-    assert w_result.as_string() == "someString"
 
 def test_all_pointers_are_valid():
     tools.test_all_pointers_are_valid()

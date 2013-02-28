@@ -460,11 +460,11 @@ def func(interp, s_frame, w_class):
                 match_w.append(w_obj)
             pending.extend(rgc.get_rpy_referents(gcref))
 
-    while pending:
-        gcref = pending.pop()
+    while roots:
+        gcref = roots.pop()
         if rgc.get_gcflag_extra(gcref):
             rgc.toggle_gcflag_extra(gcref)
-            pending.extend(rgc.get_rpy_referents(gcref))
+            roots.extend(rgc.get_rpy_referents(gcref))
 
     s_frame.store_instances_array(match_w)
     try:
@@ -472,14 +472,22 @@ def func(interp, s_frame, w_class):
     except IndexError:
         raise PrimitiveFailedError()
 
+def next_instance(space, list_of_objects, w_obj):
+    try:
+        retval = list_of_objects.pop()
+        # just in case, that one of the objects in the list changes its class
+        if retval.getclass(space).is_same_object(w_obj.getclass(space)):
+            return retval
+        else:
+            return next_instance(space, list_of_objects, w_obj)
+    except IndexError:
+        raise PrimitiveFailedError()
+
 @expose_primitive(NEXT_INSTANCE, unwrap_spec=[object])
 def func(interp, s_frame, w_obj):
     # This primitive is used to iterate through all instances of a class:
     # it returns the "next" instance after w_obj.
-    try:
-        return s_frame.instances_array().pop()
-    except IndexError:
-        raise PrimitiveFailedError()
+    return next_instance(interp.space, s_frame.instances_array(), w_obj)
 
 @expose_primitive(NEW_METHOD, unwrap_spec=[object, int, int])
 def func(interp, s_frame, w_class, bytecount, header):
