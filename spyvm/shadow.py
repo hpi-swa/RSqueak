@@ -432,6 +432,13 @@ class ContextPartShadow(AbstractRedirectingShadow):
     def stackpointer_offset(self):
         raise NotImplementedError()
 
+    def mark_returned(self):
+        self.store_pc(-1)
+        self.store_w_sender(self.space.w_nil)
+
+    def is_returned(self):
+        return self.pc() == -1 and self.w_sender is self.space.w_nil
+
     # ______________________________________________________________________
     # Method that contains the bytecode for this method/block context
 

@@ -90,8 +90,6 @@ class Interpreter(object):
             w_new_context = self.step(s_active_context)
             if w_new_context is not None:
                 s_active_context = w_new_context.as_context_get_shadow(self.space)
-                #method = s_active_context.w_method()
-                #print method.get_identifier_string()
 
     def perform(self, w_receiver, selector, *arguments_w):
         if isinstance(selector, str):
@@ -250,7 +248,6 @@ class __extend__(ContextPartShadow):
             print "%sSending selector %r to %r with: %r" % (
                 interp._last_indent, w_selector.as_string(), receiver,
                 [self.peek(argcount-1-i) for i in range(argcount)])
-            pass
         assert argcount >= 0
         s_method = receiverclassshadow.lookup(w_selector)
         # XXX catch MethodNotFound here and send doesNotUnderstand:
@@ -285,12 +282,11 @@ class __extend__(ContextPartShadow):
     def _return(self, object, interp, w_return_to):
         # for tests, when returning from the top-level context
         if w_return_to.is_same_object(self.space.w_nil):
-            raise ReturnFromTopLevel(object)
-        # widow this context
-        self.store_pc(-1)
-        self.store_w_sender(self.space.w_nil)
+            raise ReturnFromTopLevel(return_value)
+        # make this context a returned one
+        self.mark_returned()
 
-        w_return_to.as_context_get_shadow(self.space).push(object)
+        w_return_to.as_context_get_shadow(self.space).push(return_value)
         return w_return_to
 
     def returnReceiver(self, interp, current_bytecode):
