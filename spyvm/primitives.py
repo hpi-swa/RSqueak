@@ -67,7 +67,7 @@ def expose_primitive(code, unwrap_spec=None, no_result=False, result_is_new_fram
             def wrapped(interp, s_frame, argument_count_m1):
                 w_result = func(interp, s_frame, argument_count_m1)
                 if result_is_new_frame:
-                    return w_result
+                    return interp.stack_frame(w_result)
                 if not no_result:
                     assert w_result is not None
                     s_frame.push(w_result)
@@ -110,7 +110,7 @@ def expose_primitive(code, unwrap_spec=None, no_result=False, result_is_new_fram
                 # needs to be updated
                 s_frame.pop_n(len_unwrap_spec)   # only if no exception occurs!
                 if result_is_new_frame:
-                    return w_result
+                    return interp.stack_frame(w_result)
                 elif not no_result:
                     assert w_result is not None
                     s_frame.push(w_result)

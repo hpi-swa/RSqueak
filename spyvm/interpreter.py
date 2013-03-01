@@ -26,16 +26,19 @@ class Interpreter(object):
     _w_last_active_context = None
     cnt = 0
     _last_indent = ""
+    _loop = True
     jit_driver = jit.JitDriver(
         greens=['pc', 'self', 'method'],
         reds=['s_active_context'],
         get_printable_location=get_printable_location
     )
     
-    def __init__(self, space, image=None, image_name=""):
+    def __init__(self, space, image=None, image_name="", max_stack_depth=500):
         self.space = space
         self.image = image
         self.image_name = image_name
+        self.max_stack_depth = max_stack_depth
+        self._loop = False
 
     def interpret_with_w_frame(self, w_frame):
         try:
@@ -79,6 +82,7 @@ class Interpreter(object):
         return bytecodeimpl(s_active_context, self, next)
 
     def loop(self, w_active_context):
+        self._loop = True
         s_active_context = w_active_context.as_context_get_shadow(self.space)
         while True:
             pc = s_active_context._pc
@@ -87,8 +91,12 @@ class Interpreter(object):
             self.jit_driver.jit_merge_point(
                 pc=pc, self=self, method=method,
                 s_active_context=s_active_context)
-            w_new_context = self.step(s_active_context)
+            try:
+                w_new_context = self.step(s_active_context)
+            except StackOverflow, e:
+                w_new_context = e.w_context
             if w_new_context is not None:
+                # we return to the context mentioned -> mark all contexts in between as mark_returned
                 s_active_context = w_new_context.as_context_get_shadow(self.space)
 
     def perform(self, w_receiver, selector, *arguments_w):
@@ -117,10 +125,48 @@ class Interpreter(object):
         except ReturnFromTopLevel, e:
             return e.object
 
+    def stack_frame(self, w_new_frame):
+        if not self._loop:
+            return w_new_frame # this test is done to not loop in test, 
+                               # but rather step just once where wanted
+        if self.max_stack_depth == 1:
+            raise StackOverflow(w_new_frame)
+        #method = s_active_context.w_method()
+        #print method.get_identifier_string()
+        interp = StackedInterpreter(self.space, self.image, self.image_name, 
+                                    self.max_stack_depth - 1)
+        return interp.loop(w_new_frame)
+
+class StackedInterpreter(Interpreter):
+    def __init__(self, space, image, image_name, max_stack_depth):
+        self.space = space
+        self.image = image
+        self.image_name = image_name
+        self.max_stack_depth = max_stack_depth
+
+    def loop(self, w_active_context):
+        s_active_context = w_active_context.as_context_get_shadow(self.space)
+        while True:
+            pc = s_active_context._pc
+            method = s_active_context.method()
+
+            self.jit_driver.jit_merge_point(
+                pc=pc, self=self, method=method,
+                s_active_context=s_active_context)
+            w_return_to_context = self.step(s_active_context)
+            if (w_return_to_context is not None 
+                    and w_return_to_context is not w_active_context):
+                assert w_return_to_context._shadow._w_sender is not w_active_context
+                w_active_context.as_context_get_shadow(self.space).mark_returned()
+                return w_return_to_context
 
 class ReturnFromTopLevel(Exception):
     def __init__(self, object):
         self.object = object
+
+class StackOverflow(Exception):
+    def __init__(self, w_top_context):
+        self.w_context = w_top_context
 
 def make_call_primitive_bytecode(primitive, selector, argcount):
     def callPrimitive(self, interp, current_bytecode):
@@ -277,9 +323,9 @@ class __extend__(ContextPartShadow):
         w_frame = s_method.create_frame(self.space, receiver, arguments,
                                       self.w_self())
         self.pop()
-        return w_frame
+        return interp.stack_frame(w_frame)
 
-    def _return(self, object, interp, w_return_to):
+    def _return(self, return_value, interp, w_return_to):
         # for tests, when returning from the top-level context
         if w_return_to.is_same_object(self.space.w_nil):
             raise ReturnFromTopLevel(return_value)

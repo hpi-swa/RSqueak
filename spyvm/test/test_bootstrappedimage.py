@@ -50,7 +50,7 @@ def test_tinyBenchmarks():
     # we can't find PCSystem, because Smalltalkdict is nil...
     import time
     t0 = time.time()
-    sends = perform(w(20), 'benchFib')
+    sends = perform(w(5), 'benchFib')
     t1 = time.time()
     t = t1 - t0
     print str(tools.space.unwrap_int(sends)/t) + " sends per second"
