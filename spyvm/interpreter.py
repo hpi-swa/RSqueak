@@ -53,34 +53,6 @@ class Interpreter(object):
             return conftest.option.bc_trace
         return conftest.option.prim_trace
 
-    def step(self, s_active_context):
-        """NOT_RPYTHON: only for testing"""
-        next = s_active_context.getbytecode()
-        bytecodeimpl = BYTECODE_TABLE[next]
-
-        if self.should_trace():
-            if self._w_last_active_context != self.w_active_context():
-                cnt = 0
-                p = self.w_active_context()
-                # AK make method
-                while not p.is_same_object(self.space.w_nil):
-                    cnt += 1
-                                              # Do not update the context
-                                              # for this action.
-                    p = p.as_context_get_shadow(self.space).w_sender()
-                self._last_indent = "  " * cnt
-                self._w_last_active_context = self.w_active_context()
-
-            print "%sStack=%s" % (
-                self._last_indent,
-                repr(s_active_context.stack()),)
-            print "%sBytecode at %d (%d:%s):" % (
-                self._last_indent,
-                s_active_context.pc(),
-                next, bytecodeimpl.__name__,)
-
-        return bytecodeimpl(s_active_context, self, next)
-
     def loop(self, w_active_context):
         self._loop = True
         s_active_context = w_active_context.as_context_get_shadow(self.space)
@@ -303,22 +275,14 @@ class __extend__(ContextPartShadow):
             code = s_method.primitive
             if interp.should_trace():
                 print "%sActually calling primitive %d" % (interp._last_indent, code,)
-            if False: #objectmodel.we_are_translated():
-                for i, func in primitives.unrolling_prim_table:
-                    if i == code:
-                        try:
-                            return func(interp, self, argcount)
-                        except primitives.PrimitiveFailedError:
-                            break
-            else:
-                func = primitives.prim_table[code]
-                try:
-                    # note: argcount does not include rcvr
-                    return func(interp, self, argcount)
-                except primitives.PrimitiveFailedError:
-                    if interp.should_trace(True):
-                        print "PRIMITIVE FAILED: %d %s" % (s_method.primitive, w_selector.as_string(),)
-                    pass # ignore this error and fall back to the Smalltalk version
+            func = primitives.prim_table[code]
+            try:
+                # note: argcount does not include rcvr
+                return func(interp, self, argcount)
+            except primitives.PrimitiveFailedError:
+                if interp.should_trace(True):
+                    print "PRIMITIVE FAILED: %d %s" % (s_method.primitive, w_selector.as_string(),)
+                pass # ignore this error and fall back to the Smalltalk version
         arguments = self.pop_and_return_n(argcount)
         w_frame = s_method.create_frame(self.space, receiver, arguments,
                                       self.w_self())
