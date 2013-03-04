@@ -530,6 +530,9 @@ def func(interp, s_frame, w_rcvr):
 
 @expose_primitive(BE_DISPLAY, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
+    if not isinstance(w_rcvr, model.W_PointersObject) or w_rcvr.size() < 4:
+        raise PrimitiveFailedError
+    # the fields required are bits (a pointer to a Bitmap), width, height, depth
     interp.space.objtable['w_display'] = w_rcvr
     return w_rcvr
 

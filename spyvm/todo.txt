@@ -15,7 +15,7 @@ Implement primitives:
 [ ] SMALLINT_AS_FLOAT = 40 # essential
 # the following are for graphics
 [ ] BE_CURSOR  = 101 # this primitive has two different implementations, dependent on the argument count
-[ ] BE_DISPLAY = 102
+[ ] DRAW_RECTANGLE = 127
 [ ] GET_NEXT_EVENT = 94
 
 ReValidate primitives

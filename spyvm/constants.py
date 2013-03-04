@@ -71,7 +71,7 @@ SO_METHODCONTEXT_CLASS = 10
 SO_BLOCKCONTEXT_CLASS = 11
 SO_POINT_CLASS = 12
 SO_LARGEPOSITIVEINTEGER_CLASS = 13
-SO_DISPLAY_CLASS = 14
+SO_DISPLAY_OBJECT = 14
 SO_MESSAGE_CLASS = 15
 SO_COMPILEDMETHOD_CLASS = 16
 SO_LOW_SPACE_SEMAPHORE = 17
@@ -113,7 +113,6 @@ classes_in_special_object_table = {
     "BlockClosure" : SO_BLOCKCLOSURE_CLASS,
     "Point" : SO_POINT_CLASS,
     "LargePositiveInteger" : SO_LARGEPOSITIVEINTEGER_CLASS,
-#    "Display" : SO_DISPLAY_CLASS,
 #    "Message" : SO_MESSAGE_CLASS,
     "CompiledMethod" : SO_COMPILEDMETHOD_CLASS,
     "Semaphore" : SO_SEMAPHORE_CLASS,
@@ -133,6 +132,7 @@ objects_in_special_object_table = {
     "schedulerassociationpointer" : SO_SCHEDULERASSOCIATIONPOINTER,
     "special_selectors": SO_SPECIAL_SELECTORS_ARRAY,
     "smalltalkdict" : SO_SMALLTALK,
+    "display" : SO_DISPLAY_OBJECT,
 }
 
 LONG_BIT = 32
