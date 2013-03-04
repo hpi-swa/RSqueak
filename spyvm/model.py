@@ -113,6 +113,7 @@ class W_SmallInteger(W_Object):
     """Boxed integer value"""
     # TODO can we tell pypy that its never larger then 31-bit?
     __slots__ = ('value',)     # the only allowed slot here
+    _immutable_fields_ = ["value"]
 
     def __init__(self, value):
         self.value = value
