@@ -312,6 +312,12 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
     __metaclass__ = extendabletype
 
+    # _virtualizable2_ = [
+    #     "_w_sender", "_pc", "_w_sender",
+    #     "_temps_and_stack[*]", "_stack_ptr",
+    #     "_w_self", "_w_self_size"
+    # ]
+
     def __init__(self, space, w_self):
 
         self._w_sender = space.w_nil
@@ -331,7 +337,9 @@ class ContextPartShadow(AbstractRedirectingShadow):
         if n0 == constants.CTXPART_STACKP_INDEX:
             return self.wrap_stackpointer()
         if self.stackstart() <= n0 < self.external_stackpointer():
-            return self.peek(self.stackdepth() - (n0-self.stackstart()) - 1)
+            temp_i = self.stackdepth() - (n0-self.stackstart()) - 1
+            assert temp_i >= 0
+            return self.peek(temp_i)
         if self.external_stackpointer() <= n0 < self.stackend():
             return self.space.w_nil
         else:
@@ -345,10 +353,10 @@ class ContextPartShadow(AbstractRedirectingShadow):
             return self.store_unwrap_pc(w_value)
         if n0 == constants.CTXPART_STACKP_INDEX:
             return self.unwrap_store_stackpointer(w_value)
-        if self.stackstart() <= n0 < self.external_stackpointer():
-            return self.set_top(w_value,
-                                       self.stackdepth() - (n0-self.stackstart()) - 1)
-            return
+        if self.stackstart() <= n0 < self.external_stackpointer(): # XXX can be simplified?
+            temp_i = self.stackdepth() - (n0-self.stackstart()) - 1
+            assert temp_i >= 0
+            return self.set_top(w_value, temp_i)
         if self.external_stackpointer() <= n0 < self.stackend():
             return
         else:
@@ -553,6 +561,7 @@ class BlockContextShadow(ContextPartShadow):
         contextsize = w_home.as_methodcontext_get_shadow(space).myblocksize()
         w_result = model.W_PointersObject(space.w_BlockContext, contextsize)
         s_result = BlockContextShadow(space, w_result)
+        s_result = jit.hint(s_result, access_directly=True, fresh_virtualizable=True)
         w_result.store_shadow(s_result)
         s_result.store_expected_argument_count(argcnt)
         s_result.store_initialip(initialip)
@@ -581,6 +590,7 @@ class BlockContextShadow(ContextPartShadow):
         else:
             return ContextPartShadow.store(self, n0, w_value)
 
+    @jit.dont_look_inside
     def attach_shadow(self):
         # Make sure the home context is updated first
         self.copy_from_w_self(constants.BLKCTX_HOME_INDEX)
@@ -637,6 +647,7 @@ class BlockContextShadow(ContextPartShadow):
 
 class MethodContextShadow(ContextPartShadow):
 
+
     def __init__(self, space, w_self):
         self.w_closure_or_nil = space.w_nil
         self._w_receiver = None
@@ -655,6 +666,8 @@ class MethodContextShadow(ContextPartShadow):
         # into the right places in the W_PointersObject
         # XXX could hack some more to never have to create the _vars of w_result
         s_result = MethodContextShadow(space, w_result)
+        s_result = jit.hint(s_result, access_directly=True, fresh_virtualizable=True)
+        
         w_result.store_shadow(s_result)
         if closure is not None: 
             s_result.w_closure_or_nil = closure._w_self
@@ -681,8 +694,9 @@ class MethodContextShadow(ContextPartShadow):
             return self.w_closure_or_nil
         if n0 == constants.MTHDCTX_RECEIVER:
             return self.w_receiver()
-        if (0 <= n0-constants.MTHDCTX_TEMP_FRAME_START < self.tempsize()):
-            return self.gettemp(n0-constants.MTHDCTX_TEMP_FRAME_START)
+        temp_i = n0-constants.MTHDCTX_TEMP_FRAME_START
+        if (0 <= temp_i < self.tempsize()):
+            return self.gettemp(temp_i)
         else:
             return ContextPartShadow.fetch(self, n0)
 
@@ -695,13 +709,13 @@ class MethodContextShadow(ContextPartShadow):
         if n0 == constants.MTHDCTX_RECEIVER:
             self.store_w_receiver(w_value)
             return
-        if (0 <= n0-constants.MTHDCTX_TEMP_FRAME_START <
-                 self.tempsize()):
-            return self.settemp(n0-constants.MTHDCTX_TEMP_FRAME_START,
-                                w_value)
+        temp_i = n0-constants.MTHDCTX_TEMP_FRAME_START
+        if (0 <=  temp_i < self.tempsize()):
+            return self.settemp(temp_i, w_value)
         else:
             return ContextPartShadow.store(self, n0, w_value)
     
+    @jit.dont_look_inside
     def attach_shadow(self):
         # Make sure the method is updated first
         self.copy_from_w_self(constants.MTHDCTX_METHOD)

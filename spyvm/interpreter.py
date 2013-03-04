@@ -29,6 +29,7 @@ class Interpreter(object):
     jit_driver = jit.JitDriver(
         greens=['pc', 'self', 'method'],
         reds=['s_active_context', 'w_active_context'],
+        #virtualizables=['s_active_context'],
         get_printable_location=get_printable_location
     )
     
@@ -695,7 +696,7 @@ def make_bytecode_dispatch_translated():
         prefix = "el"
     code.append("bytecode_step_translated._always_inline_ = True")
     source = py.code.Source("\n".join(code))
-    print source
+    #print source
     miniglob = {}
     exec source.compile() in miniglob
     return miniglob["bytecode_step_translated"]
