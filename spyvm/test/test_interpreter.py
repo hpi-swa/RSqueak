@@ -962,7 +962,7 @@ def test_stacking_interpreter():
     #         ifFalse: [ (testBlock value: aNumber - 1) + aNumber ]].
     # ^ testBlock value: 11
     import operator
-    interp = interpreter.Interpreter(space, max_stack_depth=2)
+    interp = interpreter.Interpreter(space, max_stack_depth=3)
     #create a method with the correct bytecodes and a literal
     bytes = reduce(operator.add, map(chr, [0x8a, 0x01, 0x68, 0x10, 0x8f, 0x11, 
         0x00, 0x11, 0x10, 0x75, 0xb6, 0x9a, 0x75, 0xa4, 0x09, 0x8c, 0x00, 0x01, 
@@ -984,9 +984,49 @@ def test_stacking_interpreter():
     except interpreter.StackOverflow, e:
         assert False
     try:
-        interp = interpreter.StackedInterpreter(space, None, "", 10)
-        interp.loop(w_method.as_compiledmethod_get_shadow(space).create_frame(space, space.wrap_int(0), []))
+        interp = interpreter.Interpreter(space, None, "", max_stack_depth=10)
+        interp.c_loop(w_method.as_compiledmethod_get_shadow(space).create_frame(space, space.wrap_int(0), []))
     except interpreter.StackOverflow, e:
         assert e.w_context.getclass(space) is space.w_MethodContext
     except interpreter.ReturnFromTopLevel, e:
+        assert False
+
+class StackTestInterpreter(interpreter.Interpreter):
+    def stack_frame(self, w_frame):
+        import sys
+        stack_depth = self.max_stack_depth - self.stack_depth
+        for i in range(stack_depth + 1):
+            assert sys._getframe(4 + i * 6).f_code.co_name == 'c_loop'
+        assert sys._getframe(5 + stack_depth * 6).f_code.co_name == 'loop'
+        return interpreter.Interpreter.stack_frame(self, w_frame)
+
+def test_actual_stackdepth():
+    # | testBlock |
+    # testBlock := [ :aNumber |
+    #     aNumber = 0
+    #         ifTrue: [ 2 ]
+    #         ifFalse: [ (testBlock value: aNumber - 1) + aNumber ]].
+    # ^ testBlock value: 11
+    import operator
+    interp = StackTestInterpreter(space, max_stack_depth=10)
+    #create a method with the correct bytecodes and a literal
+    bytes = reduce(operator.add, map(chr, [0x8a, 0x01, 0x68, 0x10, 0x8f, 0x11,
+        0x00, 0x11, 0x10, 0x75, 0xb6, 0x9a, 0x77, 0xa4, 0x09, 0x8c, 0x00, 0x01,
+        0x10, 0x76, 0xb1, 0xca, 0x10, 0xb0, 0x7d, 0x8e, 0x00, 0x00, 0x8c, 0x00,
+        0x00, 0x20, 0xca, 0x7c]))
+
+    w_method = model.W_CompiledMethod(len(bytes))
+    w_method.islarge = 1
+    w_method.bytes = bytes
+    w_method.argsize=0
+    w_method.tempsize=1
+    w_method.setliterals([space.wrap_int(11)])
+
+    #create a frame for that method
+    w_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(space, space.wrap_int(0), [])
+    try:
+        interp.loop(w_frame)
+    except interpreter.ReturnFromTopLevel, e:
+        assert space.unwrap_int(e.object) == 68
+    except interpreter.StackOverflow, e:
         assert False

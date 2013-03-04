@@ -26,10 +26,9 @@ class Interpreter(object):
     _w_last_active_context = None
     cnt = 0
     _last_indent = ""
-    _loop = True
     jit_driver = jit.JitDriver(
         greens=['pc', 'self', 'method'],
-        reds=['s_active_context'],
+        reds=['s_active_context', 'w_active_context'],
         get_printable_location=get_printable_location
     )
     
@@ -38,6 +37,7 @@ class Interpreter(object):
         self.image = image
         self.image_name = image_name
         self.max_stack_depth = max_stack_depth
+        self.stack_depth = max_stack_depth
         self._loop = False
 
     def interpret_with_w_frame(self, w_frame):
@@ -54,7 +54,17 @@ class Interpreter(object):
         return conftest.option.prim_trace
 
     def loop(self, w_active_context):
+        # just a trampoline for the actual loop implemented in c_loop
         self._loop = True
+        w_new_context = w_active_context
+        while True:
+            try:
+                w_new_context = self.c_loop(w_new_context)
+            except StackOverflow, e:
+                self.stack_depth = self.max_stack_depth
+                w_new_context = e.w_context
+
+    def c_loop(self, w_active_context):
         s_active_context = w_active_context.as_context_get_shadow(self.space)
         while True:
             pc = s_active_context._pc
@@ -62,14 +72,25 @@ class Interpreter(object):
 
             self.jit_driver.jit_merge_point(
                 pc=pc, self=self, method=method,
-                s_active_context=s_active_context)
-            try:
-                w_new_context = self.step(s_active_context)
-            except StackOverflow, e:
-                w_new_context = e.w_context
-            if w_new_context is not None:
-                # we return to the context mentioned -> mark all contexts in between as mark_returned
-                s_active_context = w_new_context.as_context_get_shadow(self.space)
+                s_active_context=s_active_context,
+                w_active_context=w_active_context)
+            w_return_to_context = self.step(s_active_context)
+            if (w_return_to_context is not None
+                    and not w_return_to_context.is_same_object(w_active_context)):
+                w_active_context.as_context_get_shadow(self.space).mark_returned()
+                return w_return_to_context
+
+    def stack_frame(self, w_new_frame):
+        if not self._loop:
+            return w_new_frame # this test is done to not loop in test,
+                               # but rather step just once where wanted
+        if self.stack_depth == 1:
+            raise StackOverflow(w_new_frame)
+
+        self.stack_depth = self.stack_depth - 1
+        retval = self.c_loop(w_new_frame)
+        self.stack_depth = self.stack_depth + 1
+        return retval
 
     def perform(self, w_receiver, selector, *arguments_w):
         if isinstance(selector, str):
@@ -96,41 +117,6 @@ class Interpreter(object):
                 self.loop(w_new_frame)
         except ReturnFromTopLevel, e:
             return e.object
-
-    def stack_frame(self, w_new_frame):
-        if not self._loop:
-            return w_new_frame # this test is done to not loop in test, 
-                               # but rather step just once where wanted
-        if self.max_stack_depth == 1:
-            raise StackOverflow(w_new_frame)
-        #method = s_active_context.w_method()
-        #print method.get_identifier_string()
-        interp = StackedInterpreter(self.space, self.image, self.image_name, 
-                                    self.max_stack_depth - 1)
-        return interp.loop(w_new_frame)
-
-class StackedInterpreter(Interpreter):
-    def __init__(self, space, image, image_name, max_stack_depth):
-        self.space = space
-        self.image = image
-        self.image_name = image_name
-        self.max_stack_depth = max_stack_depth
-
-    def loop(self, w_active_context):
-        s_active_context = w_active_context.as_context_get_shadow(self.space)
-        while True:
-            pc = s_active_context._pc
-            method = s_active_context.method()
-
-            self.jit_driver.jit_merge_point(
-                pc=pc, self=self, method=method,
-                s_active_context=s_active_context)
-            w_return_to_context = self.step(s_active_context)
-            if (w_return_to_context is not None 
-                    and w_return_to_context is not w_active_context):
-                assert w_return_to_context._shadow._w_sender is not w_active_context
-                w_active_context.as_context_get_shadow(self.space).mark_returned()
-                return w_return_to_context
 
 class ReturnFromTopLevel(Exception):
     def __init__(self, object):

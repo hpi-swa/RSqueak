@@ -636,6 +636,7 @@ class BlockContextShadow(ContextPartShadow):
         return 0
 
 class MethodContextShadow(ContextPartShadow):
+
     def __init__(self, space, w_self):
         self.w_closure_or_nil = space.w_nil
         self._w_receiver = None
@@ -757,10 +758,10 @@ class MethodContextShadow(ContextPartShadow):
             # XXX check whether we can actually return from that context
             if s_outerContext.pc() == -1:
                 raise error.BlockCannotReturnError()
-            return s_outerContext._return(self.top(), interp, 
-                                    s_outerContext.s_home().w_sender())
+            return_to_context = s_outerContext.s_home().w_sender()
         else:
-            return self._return(self.top(), interp, self.s_home().w_sender())
+            return_to_context = self.s_home().w_sender()
+        return self._return(self.top(), interp, return_to_context)
 
     def is_closure_context(self):
         return self.w_closure_or_nil is not self.space.w_nil
