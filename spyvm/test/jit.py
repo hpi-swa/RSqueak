@@ -69,4 +69,4 @@ class TestLLtype(LLJitMixin):
         def interp_w():
             interp.loop(w_frame)
 
-        self.meta_interp(interp_w, [], listcomp=True, listops=True, backendopt=True)
+        self.meta_interp(interp_w, [], listcomp=True, listops=True, backendopt=True, inline=True)
