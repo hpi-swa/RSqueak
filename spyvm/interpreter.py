@@ -38,7 +38,7 @@ class Interpreter(object):
         self.image = image
         self.image_name = image_name
         self.max_stack_depth = max_stack_depth
-        self.stack_depth = max_stack_depth
+        self.remaining_stack_depth = max_stack_depth
         self._loop = False
 
     def interpret_with_w_frame(self, w_frame):
@@ -62,7 +62,7 @@ class Interpreter(object):
             try:
                 w_new_context = self.c_loop(w_new_context)
             except StackOverflow, e:
-                self.stack_depth = self.max_stack_depth
+                self.remaining_stack_depth = self.max_stack_depth
                 w_new_context = e.w_context
 
     def c_loop(self, w_active_context):
@@ -85,12 +85,12 @@ class Interpreter(object):
         if not self._loop:
             return w_new_frame # this test is done to not loop in test,
                                # but rather step just once where wanted
-        if self.stack_depth == 1:
+        if self.remaining_stack_depth == 1:
             raise StackOverflow(w_new_frame)
 
-        self.stack_depth = self.stack_depth - 1
+        self.remaining_stack_depth -= 1
         retval = self.c_loop(w_new_frame)
-        self.stack_depth = self.stack_depth + 1
+        self.remaining_stack_depth += 1
         return retval
 
     def perform(self, w_receiver, selector, *arguments_w):
