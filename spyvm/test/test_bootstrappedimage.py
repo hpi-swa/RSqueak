@@ -17,14 +17,16 @@ def initialize_class(w_class):
                         w_class.shadow_of_my_class(tools.space))
     perform(w_class, initialize_symbol)
 
-#initialize String class, because equality testing requires a class var set.
-initialize_class(w("string").getclass(tools.space))
+def test_initialize_string_class():
+    #initialize String class, because equality testing requires a class var set.
+    initialize_class(w("string").getclass(tools.space))
 
 def test_symbol_asSymbol():
     w_result = perform(tools.image.w_asSymbol, "asSymbol")
     assert w_result is tools.image.w_asSymbol
 
 def test_create_new_symbol():
+    py.test.skip("This test takes quite long and is actually included in test_retrieve_symbol.")
     w_result = perform(w("someString"), "asSymbol")
     assert w_result is not None
     assert w_result.as_string() == "someString"

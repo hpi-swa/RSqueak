@@ -190,8 +190,9 @@ def test_float_truncate():
 
 def test_at():
     w_obj = mockclass(space, 0, varsized=True).as_class_get_shadow(space).new(1)
-    w_obj.store(space, 0, "foo")
-    assert prim(primitives.AT, [w_obj, 1]) == "foo"
+    foo = wrap("foo")
+    w_obj.store(space, 0, foo)
+    assert prim(primitives.AT, [w_obj, 1]) is foo
 
 def test_invalid_at():
     w_obj = mockclass(space, 0).as_class_get_shadow(space).new()
@@ -480,8 +481,8 @@ def build_up_closure_environment(args, copiedValues=[]):
                                 size_arguments, copiedValues)
     s_initial_context.push_all([closure] + args)
     interp = interpreter.Interpreter(space)
-    w_active_context = prim_table[primitives.CLOSURE_VALUE + size_arguments](interp, s_initial_context, size_arguments)
-    return s_initial_context, closure, w_active_context.as_context_get_shadow(space)
+    s_active_context = prim_table[primitives.CLOSURE_VALUE + size_arguments](interp, s_initial_context, size_arguments)
+    return s_initial_context, closure, s_active_context
 
 def test_primitive_closure_value():
     s_initial_context, closure, s_new_context = build_up_closure_environment([])

@@ -105,15 +105,21 @@ def expose_primitive(code, unwrap_spec=None, no_result=False, result_is_new_fram
                     else:
                         raise NotImplementedError(
                             "unknown unwrap_spec %s" % (spec, ))
-                w_result = func(interp, s_frame, *args)
-                # After calling primitive, reload context-shadow in case it
-                # needs to be updated
-                s_frame.pop_n(len_unwrap_spec)   # only if no exception occurs!
                 if result_is_new_frame:
-                    return interp.stack_frame(w_result)
-                elif not no_result:
-                    assert w_result is not None
-                    s_frame.push(w_result)
+                    s_new_frame = func(interp, s_frame, *args)
+                    # After calling primitive, reload context-shadow in case it
+                    # needs to be updated
+                    s_frame.pop_n(len_unwrap_spec)   # only if no exception occurs!
+                    return interp.stack_frame(s_new_frame)
+                else:
+                    w_result = func(interp, s_frame, *args)
+                    # After calling primitive, reload context-shadow in case it
+                    # needs to be updated
+                    s_frame.pop_n(len_unwrap_spec)   # only if no exception occurs!
+                    if not no_result:
+                        assert w_result is not None
+                        assert isinstance(w_result, model.W_Object)
+                        s_frame.push(w_result)
         wrapped.func_name = "wrap_prim_" + name
         prim_table[code] = wrapped
         prim_table_implemented_only.append((code, wrapped))
@@ -849,16 +855,16 @@ def func(interp, s_frame, w_context, argcnt):
     # The block bytecodes are stored inline: so we skip past the
     # byteodes to invoke this primitive to find them (hence +2)
     initialip = s_frame.pc() + 2
-    w_new_context = shadow.BlockContextShadow.make_context(
+    s_new_context = shadow.BlockContextShadow.make_context(
         interp.space,
         w_method_context, interp.space.w_nil, argcnt, initialip)
-    return w_new_context
+    return s_new_context.w_self()
 
-def finalize_block_ctx(interp, s_block_ctx, w_frame):
+def finalize_block_ctx(interp, s_block_ctx, s_frame):
     # Set some fields
     s_block_ctx.store_pc(s_block_ctx.initialip())
-    s_block_ctx.store_w_sender(w_frame)
-    return s_block_ctx.w_self()
+    s_block_ctx.store_s_sender(s_frame)
+    return s_block_ctx
 
 @expose_primitive(VALUE, result_is_new_frame=True)
 def func(interp, s_frame, argument_count):
@@ -893,7 +899,7 @@ def func(interp, s_frame, argument_count):
     s_block_ctx.push_all(block_args)
 
     s_frame.pop()
-    return finalize_block_ctx(interp, s_block_ctx, s_frame.w_self())
+    return finalize_block_ctx(interp, s_block_ctx, s_frame)
 
 @expose_primitive(VALUE_WITH_ARGS, unwrap_spec=[object, list],
                   result_is_new_frame=True)
@@ -912,7 +918,7 @@ def func(interp, s_frame, w_block_ctx, args_w):
 
     # XXX Check original logic. Image does not test this anyway
     # because falls back to value + internal implementation
-    return finalize_block_ctx(interp, s_block_ctx, s_frame.w_self())
+    return finalize_block_ctx(interp, s_block_ctx, s_frame)
 
 @expose_primitive(PERFORM)
 def func(interp, s_frame, argcount):
@@ -925,12 +931,12 @@ def func(interp, s_frame, w_rcvr, w_sel, w_args):
     s_method = w_rcvr.shadow_of_my_class(interp.space).lookup(w_sel)
     assert s_method
 
-    w_frame = s_method.create_frame(
+    s_new_frame = s_method.create_frame(
         interp.space, w_rcvr,
         [w_args.fetch(interp.space, i) for i in range(w_args.size())])
 
-    w_frame.as_context_get_shadow(interp.space).store_w_sender(s_frame.w_self())
-    return w_frame
+    s_new_frame.store_w_sender(s_frame.w_self())
+    return s_new_frame
 
 @expose_primitive(SIGNAL, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
@@ -957,7 +963,7 @@ def func(interp, s_frame, w_rcvr,):
         interp.space.w_Process):
         raise PrimitiveFailedError()
     s_frame.push(w_rcvr) # w_rcvr is the result in the old frame
-    return wrapper.ProcessWrapper(interp.space, w_rcvr).resume(s_frame.w_self())
+    return wrapper.ProcessWrapper(interp.space, w_rcvr).resume(s_frame.w_self()).as_context_get_shadow(interp.space)
 
 @expose_primitive(SUSPEND, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr, result_is_new_frame=True):
@@ -966,7 +972,7 @@ def func(interp, s_frame, w_rcvr, result_is_new_frame=True):
         interp.space.w_Process):
         raise PrimitiveFailedError()
     s_frame.push(w_rcvr) # w_rcvr is the result in the old frame
-    return wrapper.ProcessWrapper(interp.space, w_rcvr).suspend(s_frame.w_self())
+    return wrapper.ProcessWrapper(interp.space, w_rcvr).suspend(s_frame.w_self()).as_context_get_shadow(interp.space)
 
 @expose_primitive(FLUSH_CACHE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
@@ -1010,14 +1016,13 @@ def activateClosure(interp, s_frame, w_block, args_w, mayContextSwitch=True):
     
     # additionally to the smalltalk implementation, this also pushes
     # args and copiedValues
-    w_new_frame = block.asContextWithSender(
-                            s_frame.w_self(), args_w)
-    w_closureMethod = w_new_frame.get_shadow(space).w_method()
+    s_new_frame = block.asContextWithSender(s_frame.w_self(), args_w)
+    w_closureMethod = s_new_frame.w_method()
 
     assert isinstance(w_closureMethod, model.W_CompiledMethod)
     assert w_block is not block.outerContext()
 
-    return w_new_frame
+    return s_new_frame
 
 
 @expose_primitive(CLOSURE_VALUE, unwrap_spec=[object], result_is_new_frame=True)

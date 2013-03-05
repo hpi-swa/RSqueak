@@ -8,7 +8,10 @@ space = objspace.ObjSpace()
 interp = interpreter.Interpreter(space)
 def step_in_interp(ctxt): # due to missing resets in between tests
     interp._loop = False
-    return interp.step(ctxt)
+    return_value = interp.step(ctxt)
+    if return_value is not None:
+        return return_value.w_self()
+    return None
 
 # expose the bytecode's values as global constants.
 # Bytecodes that have a whole range are exposed as global functions:
@@ -88,8 +91,8 @@ def new_frame(bytes, receiver=space.w_nil, space=space):
     w_method.argsize=2
     w_method.tempsize=8
     w_method.setliterals([model.W_PointersObject(None, 2)])
-    w_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(space, receiver, ["foo", "bar"])
-    return w_frame, w_frame.as_context_get_shadow(space)
+    s_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(space, receiver, ["foo", "bar"])
+    return s_frame.w_self(), s_frame
 
 def test_create_frame():
     w_method = model.W_CompiledMethod(len("hello"))
@@ -97,8 +100,8 @@ def test_create_frame():
     w_method.islarge = 1
     w_method.argsize=2
     w_method.tempsize=8
-    w_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(space, "receiver", ["foo", "bar"])
-    s_frame = w_frame.as_context_get_shadow(space)
+    s_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(space, "receiver", ["foo", "bar"])
+    w_frame = s_frame.w_self()
     assert s_frame.w_receiver() == "receiver"
     assert s_frame.gettemp(0) == "foo"
     assert s_frame.gettemp(1) == "bar"
@@ -976,7 +979,7 @@ def test_stacking_interpreter():
     w_method.setliterals([space.wrap_int(11)])
 
     #create a frame for that method
-    w_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(space, space.wrap_int(0), [])
+    w_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(space, space.wrap_int(0), []).w_self()
     try:
         interp.loop(w_frame)
     except interpreter.ReturnFromTopLevel, e:
@@ -1023,7 +1026,7 @@ def test_actual_stackdepth():
     w_method.setliterals([space.wrap_int(11)])
 
     #create a frame for that method
-    w_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(space, space.wrap_int(0), [])
+    w_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(space, space.wrap_int(0), []).w_self()
     try:
         interp.loop(w_frame)
     except interpreter.ReturnFromTopLevel, e:

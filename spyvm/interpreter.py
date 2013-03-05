@@ -28,7 +28,7 @@ class Interpreter(object):
     _last_indent = ""
     jit_driver = jit.JitDriver(
         greens=['pc', 'self', 'method'],
-        reds=['s_active_context', 'w_active_context'],
+        reds=['s_active_context'],
         #virtualizables=['s_active_context'],
         get_printable_location=get_printable_location
     )
@@ -57,39 +57,38 @@ class Interpreter(object):
     def loop(self, w_active_context):
         # just a trampoline for the actual loop implemented in c_loop
         self._loop = True
-        w_new_context = w_active_context
+        s_new_context = w_active_context.as_context_get_shadow(self.space)
         while True:
             try:
-                w_new_context = self.c_loop(w_new_context)
+                s_new_context = self.c_loop(s_new_context)
             except StackOverflow, e:
                 self.remaining_stack_depth = self.max_stack_depth
-                w_new_context = e.w_context
+                s_new_context = e.s_context
 
-    def c_loop(self, w_active_context):
-        s_active_context = w_active_context.as_context_get_shadow(self.space)
+    def c_loop(self, s_context):
+        s_active_context = s_context
         while True:
             pc = s_active_context._pc
-            method = s_active_context.method()
+            method = s_active_context.s_method()
 
             self.jit_driver.jit_merge_point(
                 pc=pc, self=self, method=method,
-                s_active_context=s_active_context,
-                w_active_context=w_active_context)
-            w_return_to_context = self.step(s_active_context)
-            if (w_return_to_context is not None
-                    and not w_return_to_context.is_same_object(w_active_context)):
-                w_active_context.as_context_get_shadow(self.space).mark_returned()
-                return w_return_to_context
+                s_active_context=s_active_context)
+            s_return_to_context = self.step(s_active_context)
+            if (s_return_to_context is not None
+                    and s_return_to_context is not s_context):
+                s_active_context.mark_returned()
+                return s_return_to_context
 
-    def stack_frame(self, w_new_frame):
+    def stack_frame(self, s_new_frame):
         if not self._loop:
-            return w_new_frame # this test is done to not loop in test,
+            return s_new_frame # this test is done to not loop in test,
                                # but rather step just once where wanted
         if self.remaining_stack_depth == 1:
-            raise StackOverflow(w_new_frame)
+            raise StackOverflow(s_new_frame)
 
         self.remaining_stack_depth -= 1
-        retval = self.c_loop(w_new_frame)
+        retval = self.c_loop(s_new_frame)
         self.remaining_stack_depth += 1
         return retval
 
@@ -106,16 +105,16 @@ class Interpreter(object):
         w_method.setbytes([chr(124)]) #returnTopFromMethod
         s_method = w_method.as_compiledmethod_get_shadow(self.space)
         s_frame = MethodContextShadow.make_context(
-                self.space, s_method, w_receiver, [], None).get_shadow(self.space)
+                self.space, s_method, w_receiver, [], None)
         s_frame.push(w_receiver)
         s_frame.push_all(list(arguments_w))
         try:
-            w_new_frame = s_frame._sendSelfSelector(w_selector, len(arguments_w), self)
-            if w_new_frame == None:
+            s_new_frame = s_frame._sendSelfSelector(w_selector, len(arguments_w), self)
+            if s_new_frame == None:
                 # which means that we tried to call a primitive method
                 return s_frame.pop()
             else:
-                self.loop(w_new_frame)
+                self.loop(s_new_frame.w_self())
         except ReturnFromTopLevel, e:
             return e.object
 
@@ -124,8 +123,8 @@ class ReturnFromTopLevel(Exception):
         self.object = object
 
 class StackOverflow(Exception):
-    def __init__(self, w_top_context):
-        self.w_context = w_top_context
+    def __init__(self, s_top_context):
+        self.s_context = s_top_context
 
 def make_call_primitive_bytecode(primitive, selector, argcount):
     def callPrimitive(self, interp, current_bytecode):
@@ -179,14 +178,14 @@ class __extend__(ContextPartShadow):
 
     def pushLiteralConstantBytecode(self, interp, current_bytecode):
         index = current_bytecode & 31
-        self.push(self.method().getliteral(index))
+        self.push(self.s_method().getliteral(index))
 
     def pushLiteralVariableBytecode(self, interp, current_bytecode):
         # this bytecode assumes that literals[index] is an Association
         # which is an object with two named vars, and fetches the second
         # named var (the value).
         index = current_bytecode & 31
-        w_association = self.method().getliteral(index)
+        w_association = self.s_method().getliteral(index)
         association = wrapper.AssociationWrapper(self.space, w_association)
         self.push(association.value())
 
@@ -231,7 +230,7 @@ class __extend__(ContextPartShadow):
 
     # send, return bytecodes
     def sendLiteralSelectorBytecode(self, interp, current_bytecode):
-        w_selector = self.method().getliteral(current_bytecode & 15)
+        w_selector = self.s_method().getliteral(current_bytecode & 15)
         argcount = ((current_bytecode >> 4) & 3) - 1
         return self._sendSelfSelector(w_selector, argcount, interp)
 
@@ -241,7 +240,7 @@ class __extend__(ContextPartShadow):
                                   receiver, receiver.shadow_of_my_class(self.space))
 
     def _sendSuperSelector(self, w_selector, argcount, interp):
-        w_compiledin = self.method().w_compiledin
+        w_compiledin = self.s_method().w_compiledin
         assert isinstance(w_compiledin, model.W_PointersObject)
         s_compiledin = w_compiledin.as_class_get_shadow(self.space)
         return self._sendSelector(w_selector, argcount, interp, self.w_receiver(),
@@ -271,39 +270,41 @@ class __extend__(ContextPartShadow):
                     print "PRIMITIVE FAILED: %d %s" % (s_method.primitive, w_selector.as_string(),)
                 pass # ignore this error and fall back to the Smalltalk version
         arguments = self.pop_and_return_n(argcount)
-        w_frame = s_method.create_frame(self.space, receiver, arguments,
-                                      self.w_self())
+        s_frame = s_method.create_frame(self.space, receiver, arguments, self)
         self.pop()
-        return interp.stack_frame(w_frame)
+        return interp.stack_frame(s_frame)
 
-    def _return(self, return_value, interp, w_return_to):
+    def _return(self, return_value, interp, s_return_to):
         # for tests, when returning from the top-level context
-        if w_return_to.is_same_object(self.space.w_nil):
+        if s_return_to is None:
             raise ReturnFromTopLevel(return_value)
+        # unfortunately, the assert below is not true for some tests
+        # assert self._stack_ptr == self.tempsize()
+        
         # make this context a returned one
         self.mark_returned()
 
-        w_return_to.as_context_get_shadow(self.space).push(return_value)
-        return w_return_to
+        s_return_to.push(return_value)
+        return s_return_to
 
     def returnReceiver(self, interp, current_bytecode):
-        return self._return(self.w_receiver(), interp, self.s_home().w_sender())
+        return self._return(self.w_receiver(), interp, self.s_home().s_sender())
 
     def returnTrue(self, interp, current_bytecode):
-        return self._return(interp.space.w_true, interp, self.s_home().w_sender())
+        return self._return(interp.space.w_true, interp, self.s_home().s_sender())
 
     def returnFalse(self, interp, current_bytecode):
-        return self._return(interp.space.w_false, interp, self.s_home().w_sender())
+        return self._return(interp.space.w_false, interp, self.s_home().s_sender())
 
     def returnNil(self, interp, current_bytecode):
-        return self._return(interp.space.w_nil, interp, self.s_home().w_sender())
+        return self._return(interp.space.w_nil, interp, self.s_home().s_sender())
 
     def returnTopFromMethod(self, interp, current_bytecode):
         # overwritten in MethodContextShadow
-        return self._return(self.top(), interp, self.s_home().w_sender())
+        return self._return(self.pop(), interp, self.s_home().s_sender())
 
     def returnTopFromBlock(self, interp, current_bytecode):
-        return self._return(self.top(), interp, self.w_sender())
+        return self._return(self.pop(), interp, self.s_sender())
 
     def unknownBytecode(self, interp, current_bytecode):
         raise MissingBytecode("unknownBytecode")
@@ -320,9 +321,9 @@ class __extend__(ContextPartShadow):
         elif variableType == 1:
             self.push(self.gettemp(variableIndex))
         elif variableType == 2:
-            self.push(self.method().getliteral(variableIndex))
+            self.push(self.s_method().getliteral(variableIndex))
         elif variableType == 3:
-            w_association = self.method().getliteral(variableIndex)
+            w_association = self.s_method().getliteral(variableIndex)
             association = wrapper.AssociationWrapper(self.space, w_association)
             self.push(association.value())
         else:
@@ -337,7 +338,7 @@ class __extend__(ContextPartShadow):
         elif variableType == 2:
             raise IllegalStoreError
         elif variableType == 3:
-            w_association = self.method().getliteral(variableIndex)
+            w_association = self.s_method().getliteral(variableIndex)
             association = wrapper.AssociationWrapper(self.space, w_association)
             association.store_value(self.top())
 
@@ -347,7 +348,7 @@ class __extend__(ContextPartShadow):
 
     def getExtendedSelectorArgcount(self):
         descriptor = self.getbytecode()
-        return ((self.method().getliteral(descriptor & 31)),
+        return ((self.s_method().getliteral(descriptor & 31)),
                 (descriptor >> 5))
 
     def singleExtendedSendBytecode(self, interp, current_bytecode):
@@ -360,21 +361,21 @@ class __extend__(ContextPartShadow):
         opType = second >> 5
         if opType == 0:
             # selfsend
-            return self._sendSelfSelector(self.method().getliteral(third),
+            return self._sendSelfSelector(self.s_method().getliteral(third),
                                           second & 31, interp)
         elif opType == 1:
             # supersend
-            return self._sendSuperSelector(self.method().getliteral(third),
+            return self._sendSuperSelector(self.s_method().getliteral(third),
                                            second & 31, interp)
         elif opType == 2:
             # pushReceiver
             self.push(self.w_receiver().fetch(self.space, third))
         elif opType == 3:
             # pushLiteralConstant
-            self.push(self.method().getliteral(third))
+            self.push(self.s_method().getliteral(third))
         elif opType == 4:
             # pushLiteralVariable
-            w_association = self.method().getliteral(third)
+            w_association = self.s_method().getliteral(third)
             association = wrapper.AssociationWrapper(self.space, w_association)
             self.push(association.value())
         elif opType == 5:
@@ -382,7 +383,7 @@ class __extend__(ContextPartShadow):
         elif opType == 6:
             self.w_receiver().store(self.space, third, self.pop())
         elif opType == 7:
-            w_association = self.method().getliteral(third)
+            w_association = self.s_method().getliteral(third)
             association = wrapper.AssociationWrapper(self.space, w_association)
             association.store_value(self.top())
 
@@ -392,7 +393,7 @@ class __extend__(ContextPartShadow):
 
     def secondExtendedSendBytecode(self, interp, current_bytecode):
         descriptor = self.getbytecode()
-        w_selector = self.method().getliteral(descriptor & 63)
+        w_selector = self.s_method().getliteral(descriptor & 63)
         argcount = descriptor >> 6
         return self._sendSelfSelector(w_selector, argcount, interp)
 
@@ -457,7 +458,7 @@ class __extend__(ContextPartShadow):
         i = self.getbytecode()
         blockSize = (j << 8) | i
         #create new instance of BlockClosure
-        w_closure = space.newClosure(self._w_self, self.pc(), numArgs, 
+        w_closure = space.newClosure(self.w_self(), self.pc(), numArgs, 
                                             self.pop_and_return_n(numCopied))
         self.push(w_closure)
         self.jump(blockSize)

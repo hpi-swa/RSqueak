@@ -64,9 +64,9 @@ class TestLLtype(LLJitMixin):
         w_object = model.W_SmallInteger(0)
         s_class = w_object.shadow_of_my_class(space)
         s_method = s_class.lookup(w_selector)
-        w_frame = s_method.create_frame(space, w_object, [])
+        s_frame = s_method.create_frame(space, w_object, [])
 
         def interp_w():
-            interp.loop(w_frame)
+            interp.loop(s_frame.w_self())
 
         self.meta_interp(interp_w, [], listcomp=True, listops=True, backendopt=True, inline=True)
