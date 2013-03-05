@@ -28,8 +28,8 @@ class Interpreter(object):
     _last_indent = ""
     jit_driver = jit.JitDriver(
         greens=['pc', 'self', 'method'],
-        reds=['s_active_context'],
-        #virtualizables=['s_active_context'],
+        reds=['mark', 's_context'],
+        #virtualizables=['s_context'],
         get_printable_location=get_printable_location
     )
     
@@ -60,25 +60,31 @@ class Interpreter(object):
         s_new_context = w_active_context.as_context_get_shadow(self.space)
         while True:
             try:
-                s_new_context = self.c_loop(s_new_context)
+                s_new_context = self.c_loop(s_new_context, mark=False)
             except StackOverflow, e:
                 self.remaining_stack_depth = self.max_stack_depth
                 s_new_context = e.s_context
+            except Return, nlr:
+                while s_new_context is not nlr.s_target_context:
+                    s_new_context, _ = s_new_context.s_sender(), s_new_context.mark_returned()
+                s_new_context.push(nlr.value)
 
-    def c_loop(self, s_context):
-        s_active_context = s_context
+    def c_loop(self, s_context, mark=True):
         while True:
-            pc = s_active_context._pc
-            method = s_active_context.s_method()
+            pc = s_context._pc
+            method = s_context.s_method()
 
             self.jit_driver.jit_merge_point(
                 pc=pc, self=self, method=method,
-                s_active_context=s_active_context)
-            s_return_to_context = self.step(s_active_context)
-            if (s_return_to_context is not None
-                    and s_return_to_context is not s_context):
-                s_active_context.mark_returned()
-                return s_return_to_context
+                mark=mark, s_context=s_context)
+            try:
+                self.step(s_context)
+            except Return, nlr:
+                if nlr.s_target_context is not s_context:
+                    if mark: s_context.mark_returned()
+                    raise nlr
+                else:
+                    s_context.push(nlr.value)
 
     def stack_frame(self, s_new_frame):
         if not self._loop:
@@ -88,8 +94,10 @@ class Interpreter(object):
             raise StackOverflow(s_new_frame)
 
         self.remaining_stack_depth -= 1
-        retval = self.c_loop(s_new_frame)
-        self.remaining_stack_depth += 1
+        try:
+            retval = self.c_loop(s_new_frame)
+        finally:
+            self.remaining_stack_depth += 1
         return retval
 
     def perform(self, w_receiver, selector, *arguments_w):
@@ -109,7 +117,11 @@ class Interpreter(object):
         s_frame.push(w_receiver)
         s_frame.push_all(list(arguments_w))
         try:
-            s_new_frame = s_frame._sendSelfSelector(w_selector, len(arguments_w), self)
+            try:
+                s_new_frame = s_frame._sendSelfSelector(w_selector, len(arguments_w), self)
+            except Return, nlr:
+                s_new_frame = nlr.s_target_context
+                nlr.s_target_context.push(nlr.value)
             if s_new_frame == None:
                 # which means that we tried to call a primitive method
                 return s_frame.pop()
@@ -125,6 +137,10 @@ class ReturnFromTopLevel(Exception):
 class StackOverflow(Exception):
     def __init__(self, s_top_context):
         self.s_context = s_top_context
+class Return(Exception):
+    def __init__(self, object, s_context):
+        self.value = object
+        self.s_target_context = s_context
 
 def make_call_primitive_bytecode(primitive, selector, argcount):
     def callPrimitive(self, interp, current_bytecode):
@@ -281,11 +297,7 @@ class __extend__(ContextPartShadow):
         # unfortunately, the assert below is not true for some tests
         # assert self._stack_ptr == self.tempsize()
         
-        # make this context a returned one
-        self.mark_returned()
-
-        s_return_to.push(return_value)
-        return s_return_to
+        raise Return(return_value, s_return_to)
 
     def returnReceiver(self, interp, current_bytecode):
         return self._return(self.w_receiver(), interp, self.s_home().s_sender())
@@ -695,7 +707,7 @@ def make_bytecode_dispatch_translated():
         code.append("    %sif %s:" % (prefix, cond, ))
         code.append("        return context.%s(self, bytecode)" % (entry[-1], ))
         prefix = "el"
-    code.append("bytecode_step_translated._always_inline_ = True")
+    # code.append("bytecode_step_translated._always_inline_ = True")
     source = py.code.Source("\n".join(code))
     #print source
     miniglob = {}

@@ -8,10 +8,13 @@ space = objspace.ObjSpace()
 interp = interpreter.Interpreter(space)
 def step_in_interp(ctxt): # due to missing resets in between tests
     interp._loop = False
-    return_value = interp.step(ctxt)
-    if return_value is not None:
-        return return_value.w_self()
-    return None
+    try:
+        retval = interp.step(ctxt)
+        if retval is not None:
+            return retval.w_self()
+    except interpreter.Return, nlr:
+        nlr.s_target_context.push(nlr.value)
+        return nlr.s_target_context.w_self()
 
 # expose the bytecode's values as global constants.
 # Bytecodes that have a whole range are exposed as global functions:
@@ -988,9 +991,10 @@ def test_stacking_interpreter():
         assert False
     try:
         interp = interpreter.Interpreter(space, None, "", max_stack_depth=10)
+        interp._loop = True
         interp.c_loop(w_method.as_compiledmethod_get_shadow(space).create_frame(space, space.wrap_int(0), []))
     except interpreter.StackOverflow, e:
-        assert e.w_context.getclass(space) is space.w_MethodContext
+        assert isinstance(e.s_context, shadow.MethodContextShadow)
     except interpreter.ReturnFromTopLevel, e:
         assert False
 
