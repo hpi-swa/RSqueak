@@ -28,7 +28,7 @@ class Interpreter(object):
     _last_indent = ""
     jit_driver = jit.JitDriver(
         greens=['pc', 'self', 'method'],
-        reds=['mark', 's_context'],
+        reds=['s_context'],
         #virtualizables=['s_context'],
         get_printable_location=get_printable_location
     )
@@ -59,29 +59,31 @@ class Interpreter(object):
         self._loop = True
         s_new_context = w_active_context.as_context_get_shadow(self.space)
         while True:
+            s_sender = s_new_context.s_sender()
             try:
-                s_new_context = self.c_loop(s_new_context, mark=False)
+                s_new_context = self.c_loop(s_new_context)
             except StackOverflow, e:
                 self.remaining_stack_depth = self.max_stack_depth
                 s_new_context = e.s_context
             except Return, nlr:
                 while s_new_context is not nlr.s_target_context:
-                    s_new_context, _ = s_new_context.s_sender(), s_new_context.mark_returned()
+                    s_new_context.mark_returned()
+                    s_new_context = s_sender
                 s_new_context.push(nlr.value)
 
-    def c_loop(self, s_context, mark=True):
+    def c_loop(self, s_context):
         while True:
             pc = s_context._pc
             method = s_context.s_method()
 
             self.jit_driver.jit_merge_point(
                 pc=pc, self=self, method=method,
-                mark=mark, s_context=s_context)
+                s_context=s_context)
             try:
                 self.step(s_context)
             except Return, nlr:
                 if nlr.s_target_context is not s_context:
-                    if mark: s_context.mark_returned()
+                    s_context.mark_returned()
                     raise nlr
                 else:
                     s_context.push(nlr.value)
@@ -707,7 +709,6 @@ def make_bytecode_dispatch_translated():
         code.append("    %sif %s:" % (prefix, cond, ))
         code.append("        return context.%s(self, bytecode)" % (entry[-1], ))
         prefix = "el"
-    # code.append("bytecode_step_translated._always_inline_ = True")
     source = py.code.Source("\n".join(code))
     #print source
     miniglob = {}
