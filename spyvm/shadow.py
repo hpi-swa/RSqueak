@@ -7,6 +7,8 @@ class AbstractShadow(object):
     """A shadow is an optional extra bit of information that
     can be attached at run-time to any Smalltalk object.
     """
+    _attr_ = ['_w_self']
+    
     def __init__(self, space, w_self):
         self.space = space
         self._w_self = w_self
@@ -25,6 +27,8 @@ class AbstractShadow(object):
     def sync_shadow(self): pass
    
 class AbstractCachingShadow(AbstractShadow):
+    _attr_ = []
+
     def __init__(self, space, w_self):
         AbstractShadow.__init__(self, space, w_self)
 
@@ -282,6 +286,8 @@ class MethodDictionaryShadow(AbstractCachingShadow):
 
 
 class AbstractRedirectingShadow(AbstractShadow):
+    _attr_ = ['_w_self_size']
+
     def __init__(self, space, w_self):
         AbstractShadow.__init__(self, space, w_self)
         if w_self is not None:
@@ -319,12 +325,14 @@ class AbstractRedirectingShadow(AbstractShadow):
 class ContextPartShadow(AbstractRedirectingShadow):
 
     __metaclass__ = extendabletype
+    _attr_ = ['_s_sender', '_pc', '_temps_and_stack', 
+            '_stack_ptr', 'instances_w']
 
-    # _virtualizable2_ = [
-    #     "_s_sender", "_pc",
-    #     "_temps_and_stack[*]", "_stack_ptr",
-    #     "_w_self", "_w_self_size"
-    # ]
+    _virtualizable2_ = [
+        "_s_sender", "_pc",
+        "_temps_and_stack[*]", "_stack_ptr",
+        "_w_self", "_w_self_size"
+    ]
 
     def __init__(self, space, w_self):
         self._s_sender = None
@@ -464,7 +472,9 @@ class ContextPartShadow(AbstractRedirectingShadow):
     # Method that contains the bytecode for this method/block context
 
     def w_method(self):
-        return self.s_home().w_method()
+        retval = self.s_home().w_method()
+        assert isinstance(retval, model.W_CompiledMethod)
+        return retval
 
     def s_method(self):
         w_method = jit.promote(self.w_method())
@@ -585,6 +595,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
 
 class BlockContextShadow(ContextPartShadow):
+    _attr_ = ['_w_home', '_initialip', '_eargc']
 
     @staticmethod
     def make_context(space, w_home, s_sender, argcnt, initialip):
@@ -679,11 +690,12 @@ class BlockContextShadow(ContextPartShadow):
         return 0
 
 class MethodContextShadow(ContextPartShadow):
-
+    _attr_ = ['w_closure_or_nil', '_w_receiver', '__w_method']
 
     def __init__(self, space, w_self):
         self.w_closure_or_nil = space.w_nil
-        self._w_receiver = None
+        self._w_receiver = space.w_nil
+        self.__w_method = None
         ContextPartShadow.__init__(self, space, w_self)
 
     @staticmethod
@@ -761,11 +773,13 @@ class MethodContextShadow(ContextPartShadow):
                                 self.w_closure_or_nil).tempsize()
 
     def w_method(self):
-        return self._w_method
+        retval = self.__w_method
+        assert isinstance(retval, model.W_CompiledMethod)
+        return retval
 
     def store_w_method(self, w_method):
         assert isinstance(w_method, model.W_CompiledMethod)
-        self._w_method = w_method
+        self.__w_method = w_method
 
     def w_receiver(self):
         return self._w_receiver
