@@ -1,5 +1,6 @@
 import py
 import os
+import sys
 from spyvm import constants
 from spyvm import model
 from spyvm.tool.bitmanipulation import splitter
@@ -134,6 +135,10 @@ image_versions = {
     0x00001969:         ImageVersion(6505,  True,  False, True,  True ),
     0x69190000:         ImageVersion(6505,  False, False, True,  True ),
     0x00000000000109A0: ImageVersion(68000, True,  True,  False, False),
+}
+
+if sys.maxint == 2 ** 63 - 1:
+    image_versions.update({
    -0x5ff6ff0000000000:
     # signed version of 0xA009010000000000: 
                         ImageVersion(68000, False, True,  False, False),
@@ -145,7 +150,7 @@ image_versions = {
    -0x5cf6ff0000000000:
     # signed version of 0xA309010000000000: 
 			ImageVersion(68003, False, True,  True,  True ),
-}
+})
 
     
 def version(magic):
