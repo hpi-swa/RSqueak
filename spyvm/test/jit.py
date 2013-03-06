@@ -46,7 +46,7 @@ setup()
 # Tests
 #
 
-sys.setrecursionlimit(100000)
+# sys.setrecursionlimit(100000)
 
 class TestLLtype(LLJitMixin):
 

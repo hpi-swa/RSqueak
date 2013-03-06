@@ -13,7 +13,7 @@ from rpython.jit.codewriter.policy import JitPolicy
 # XXX this only compiles if sys.recursionlimit is high enough!
 # On non-Linux platforms I don't know if there is enough stack to
 # compile...
-sys.setrecursionlimit(100000)
+#sys.setrecursionlimit(100000)
 
 def setup():
     from spyvm import objspace
