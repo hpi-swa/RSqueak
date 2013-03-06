@@ -798,8 +798,10 @@ class MethodContextShadow(ContextPartShadow):
     def returnTopFromMethod(self, interp, current_bytecode):
         if self.is_closure_context():
             # this is a context for a blockClosure
-            s_outerContext = self.w_closure_or_nil.fetch(self.space, 
-                    constants.BLKCLSR_OUTER_CONTEXT).get_shadow(self.space)
+            w_outerContext = self.w_closure_or_nil.fetch(self.space, 
+                constants.BLKCLSR_OUTER_CONTEXT)
+            assert isinstance(w_outerContext, model.W_PointersObject)
+            s_outerContext = w_outerContext.as_context_get_shadow(self.space)
             # XXX check whether we can actually return from that context
             if s_outerContext.pc() == -1:
                 raise error.BlockCannotReturnError()
