@@ -492,24 +492,26 @@ def test_primitive_closure_value():
     assert s_new_context.w_receiver() is space.w_nil
 
 def test_primitive_closure_value_value():
-    s_initial_context, closure, s_new_context = build_up_closure_environment(["first arg", "second arg"])
+    s_initial_context, closure, s_new_context = build_up_closure_environment([
+            wrap("first arg"), wrap("second arg")])
 
     assert s_new_context.w_closure_or_nil is closure
     assert s_new_context.s_sender() is s_initial_context
     assert s_new_context.w_receiver() is space.w_nil
-    assert s_new_context.gettemp(0) == "first arg"
-    assert s_new_context.gettemp(1) == "second arg"
+    assert s_new_context.gettemp(0).as_string() == "first arg"
+    assert s_new_context.gettemp(1).as_string() == "second arg"
 
 def test_primitive_closure_value_value_with_temps():
-    s_initial_context, closure, s_new_context = build_up_closure_environment(["first arg", "second arg"],
-        copiedValues=['some value'])
+    s_initial_context, closure, s_new_context = build_up_closure_environment(
+            [wrap("first arg"), wrap("second arg")],
+        copiedValues=[wrap('some value')])
 
     assert s_new_context.w_closure_or_nil is closure
     assert s_new_context.s_sender() is s_initial_context
     assert s_new_context.w_receiver() is space.w_nil
-    assert s_new_context.gettemp(0) == "first arg"
-    assert s_new_context.gettemp(1) == "second arg"
-    assert s_new_context.gettemp(2) == "some value"
+    assert s_new_context.gettemp(0).as_string() == "first arg"
+    assert s_new_context.gettemp(1).as_string() == "second arg"
+    assert s_new_context.gettemp(2).as_string() == "some value"
 
 def test_primitive_some_instance():
     someInstance = map(space.wrap_list, [[1], [2]])

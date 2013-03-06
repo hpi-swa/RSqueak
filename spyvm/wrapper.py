@@ -1,5 +1,5 @@
 from spyvm import model, constants
-from spyvm.error import FatalError, WrapperException
+from spyvm.error import FatalError, WrapperException, PrimitiveFailedError
 
 class Wrapper(object):
     def __init__(self, space, w_self):

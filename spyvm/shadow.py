@@ -298,12 +298,16 @@ class AbstractRedirectingShadow(AbstractShadow):
 
     def attach_shadow(self):
         AbstractShadow.attach_shadow(self)
+        w_self = self.w_self()
+        assert isinstance(w_self, model.W_PointersObject)
         for i in range(self._w_self_size):
             self.copy_from_w_self(i)
-        self.w_self()._vars = None
+        w_self._vars = None
 
     def detach_shadow(self):
-        self.w_self()._vars = [self.space.w_nil] * self._w_self_size
+        w_self = self.w_self()
+        assert isinstance(w_self, model.W_PointersObject)
+        w_self._vars = [self.space.w_nil] * self._w_self_size
         for i in range(self._w_self_size):
             self.copy_to_w_self(i)
 
@@ -325,6 +329,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
     def __init__(self, space, w_self):
         self._s_sender = None
         AbstractRedirectingShadow.__init__(self, space, w_self)
+        self.instances_w = None
 
     @staticmethod
     def is_block_context(w_pointers, space):

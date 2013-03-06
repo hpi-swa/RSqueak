@@ -25,7 +25,8 @@ from rpython.rlib.objectmodel import instantiate
 
 class W_Object(object):
     """Root of Squeak model, abstract."""
-    __slots__ = ()    # no RPython-level instance variables allowed in W_Object
+    _attrs_ = []    # no RPython-level instance variables allowed in W_Object
+    _settled_ = True
 
     def size(self):
         """Return bytesize that conforms to Blue Book.
@@ -112,6 +113,7 @@ class W_Object(object):
 class W_SmallInteger(W_Object):
     """Boxed integer value"""
     # TODO can we tell pypy that its never larger then 31-bit?
+    _attrs_ = ['value'] 
     __slots__ = ('value',)     # the only allowed slot here
     _immutable_fields_ = ["value"]
 
@@ -152,6 +154,8 @@ class W_SmallInteger(W_Object):
 
 class W_Float(W_Object):
     """Boxed float value."""
+    _attrs_ = ['value']
+
     def __init__(self, value):
         self.value = value
 
@@ -191,6 +195,8 @@ class W_Float(W_Object):
 class W_AbstractObjectWithIdentityHash(W_Object):
     """Object with explicit hash (ie all except small
     ints and floats)."""
+    _attrs_ = ['hash']
+
     #XXX maybe this is too extreme, but it's very random
     hash_generator = rrandom.Random()
     UNASSIGNED_HASH = sys.maxint
@@ -215,6 +221,7 @@ class W_AbstractObjectWithIdentityHash(W_Object):
 class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     """Objects with arbitrary class (ie not CompiledMethod, SmallInteger or
     Float)."""
+    _attrs_ = ['w_class']
 
     def __init__(self, w_class):
         if w_class is not None:     # it's None only for testing and space generation
@@ -251,6 +258,7 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
 
 class W_PointersObject(W_AbstractObjectWithClassReference):
     """Common object."""
+    _attrs_ = ['_shadow', '_vars']
     
     _shadow = None # Default value
 
@@ -371,6 +379,8 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         return w_result
 
 class W_BytesObject(W_AbstractObjectWithClassReference):
+    _attrs_ = ['bytes']
+
     def __init__(self, w_class, size):
         W_AbstractObjectWithClassReference.__init__(self, w_class)
         assert isinstance(size, int)
@@ -421,6 +431,8 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         return w_result
 
 class W_WordsObject(W_AbstractObjectWithClassReference):
+    _attrs_ = ['words']
+
     def __init__(self, w_class, size):
         W_AbstractObjectWithClassReference.__init__(self, w_class)
         self.words = [r_uint(0)] * size
