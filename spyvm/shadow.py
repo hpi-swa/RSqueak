@@ -605,6 +605,7 @@ class BlockContextShadow(ContextPartShadow):
         contextsize = w_home.as_methodcontext_get_shadow(space).myblocksize()
         w_result = model.W_PointersObject(space.w_BlockContext, contextsize)
         s_result = BlockContextShadow(space, w_result)
+        s_result_non_fresh = s_result # XXX: find a better solution to translation err
         s_result = jit.hint(s_result, access_directly=True, fresh_virtualizable=True)
         w_result.store_shadow(s_result)
         s_result.store_expected_argument_count(argcnt)
@@ -612,7 +613,7 @@ class BlockContextShadow(ContextPartShadow):
         s_result.store_w_home(w_home)
         s_result.store_pc(initialip)
         s_result.init_stack_and_temps()
-        return s_result
+        return s_result_non_fresh
 
     def fetch(self, n0):
         if n0 == constants.BLKCTX_HOME_INDEX:
@@ -710,6 +711,7 @@ class MethodContextShadow(ContextPartShadow):
 
         s_new_context = MethodContextShadow(space, None)
         s_new_context._w_self_size = size
+        s_new_context_non_fresh = s_new_context # XXX: find a better solution to translation err
         s_new_context = jit.hint(s_new_context, access_directly=True, fresh_virtualizable=True)
         
         if closure is not None: 
@@ -728,7 +730,7 @@ class MethodContextShadow(ContextPartShadow):
         if closure is not None: 
             for i0 in range(closure.size()):
                 s_new_context.settemp(i0+argc, closure.at0(i0))
-        return s_new_context
+        return s_new_context_non_fresh
 
     def fetch(self, n0):
         if n0 == constants.MTHDCTX_METHOD:
