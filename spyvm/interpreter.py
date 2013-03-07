@@ -33,7 +33,7 @@ class Interpreter(object):
         get_printable_location=get_printable_location
     )
     
-    def __init__(self, space, image=None, image_name="", max_stack_depth=500):
+    def __init__(self, space, image=None, image_name="", max_stack_depth=100):
         self.space = space
         self.image = image
         self.image_name = image_name
