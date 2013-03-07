@@ -968,7 +968,7 @@ def func(interp, s_frame, w_rcvr,):
     w_frame = interp.space.unwrap_pointersobject(w_frame)
     return w_frame.as_context_get_shadow(interp.space)
 
-@expose_primitive(SUSPEND, unwrap_spec=[object])
+@expose_primitive(SUSPEND, unwrap_spec=[object], result_is_new_frame=True)
 def func(interp, s_frame, w_rcvr, result_is_new_frame=True):
     # XXX we might want to disable this check
     if not w_rcvr.getclass(interp.space).is_same_object(
