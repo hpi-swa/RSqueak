@@ -44,11 +44,17 @@ def swapped_chrs2long(b):
 
 class Stream(object):
     """ Simple input stream """
-    def __init__(self, inputfile):
-        try:
-            self.data = inputfile.read()
-        finally:
-            inputfile.close()
+    def __init__(self, inputfile=None, data=None):
+        if inputfile is None and data is None:
+            raise RuntimeError("need to supply either inputfile or data")
+
+        if inputfile:
+            try:
+                self.data = inputfile.read()
+            finally:
+                inputfile.close()
+        else:
+            self.data = data
         self.reset()
 
     def peek(self):
@@ -360,7 +366,7 @@ class SqueakImage(object):
 
     def find_asSymbol(self, space, reader):
         w_dnu = self.special(constants.SO_DOES_NOT_UNDERSTAND)
-        assert w_dnu.as_string() == "doesNotUnderstand:"
+        # assert w_dnu.as_string() == "doesNotUnderstand:"
         w_Symbol = w_dnu.getclass(space)
         w_obj = None
         # bit annoying that we have to hunt through the image :-(

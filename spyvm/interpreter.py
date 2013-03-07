@@ -124,7 +124,7 @@ class Interpreter(object):
             except Return, nlr:
                 s_new_frame = nlr.s_target_context
                 nlr.s_target_context.push(nlr.value)
-            if s_new_frame == None:
+            if s_new_frame is None:
                 # which means that we tried to call a primitive method
                 return s_frame.pop()
             else:
