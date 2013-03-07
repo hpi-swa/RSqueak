@@ -532,6 +532,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
         self._temps_and_stack[ptr] = w_v
         self._stack_ptr = ptr + 1
 
+    @jit.unroll_safe
     def push_all(self, lst):
         for elt in lst:
             self.push(elt)

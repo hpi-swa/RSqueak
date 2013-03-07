@@ -74,10 +74,15 @@ class Interpreter(object):
     def c_loop(self, s_context):
         # padding = ' ' * (self.max_stack_depth - self.remaining_stack_depth)
         # print padding + s_context.short_str()
+        old_pc = 0
         while True:
             pc = s_context._pc
             method = s_context.s_method()
-
+            if pc < old_pc:
+                self.jit_driver.can_enter_jit(
+                    pc=pc, self=self, method=method,
+                    s_context=s_context)
+            old_pc = pc
             self.jit_driver.jit_merge_point(
                 pc=pc, self=self, method=method,
                 s_context=s_context)
