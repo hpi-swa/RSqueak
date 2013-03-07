@@ -72,6 +72,8 @@ class Interpreter(object):
                 s_new_context.push(nlr.value)
 
     def c_loop(self, s_context):
+        # padding = ' ' * (self.max_stack_depth - self.remaining_stack_depth)
+        # print padding + s_context.short_str()
         while True:
             pc = s_context._pc
             method = s_context.s_method()

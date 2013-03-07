@@ -690,6 +690,10 @@ class BlockContextShadow(ContextPartShadow):
         # A blockcontext doesn't have any temps
         return 0
 
+    def short_str(self):
+        return 'BlockContext of %s (%i)' % (self.w_method().get_identifier_string(),
+                    self.pc() + 1)
+
 class MethodContextShadow(ContextPartShadow):
     _attr_ = ['w_closure_or_nil', '_w_receiver', '__w_method']
 
@@ -835,6 +839,10 @@ class MethodContextShadow(ContextPartShadow):
         retval += "Stackptr: %i (this is an empty ascending stack)" % (self._stack_ptr - self.tempsize())
         retval += "\nStack   : " + str(self.stack())
         return retval
+
+    def short_str(self):
+        block = '[] of' if self.is_closure_context() else ''
+        return '%s %s (%i)' % (block, self.w_method().get_identifier_string(), self.pc() + 1)
 
 class CompiledMethodShadow(object):
     _immutable_fields_ = ["_w_self", "bytecode",
