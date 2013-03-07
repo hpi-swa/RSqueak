@@ -11,10 +11,12 @@ from spyvm.tool.analyseimage import create_image
 def _run_benchmark(interp, number, benchmark):
     w_object = model.W_SmallInteger(number)
     try:
-        interp.perform(w_object, benchmark)
+        w_result = interp.perform(w_object, benchmark)
     except interpreter.ReturnFromTopLevel, e:
         w_result = e.object
+    if w_result:
         assert isinstance(w_result, model.W_BytesObject)
+        print '\n'
         print w_result.as_string()
         return 0
     return -1
