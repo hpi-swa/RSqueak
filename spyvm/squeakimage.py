@@ -366,7 +366,8 @@ class SqueakImage(object):
 
     def find_asSymbol(self, space, reader):
         w_dnu = self.special(constants.SO_DOES_NOT_UNDERSTAND)
-        # assert w_dnu.as_string() == "doesNotUnderstand:"
+        assert isinstance(w_dnu, model.W_BytesObject)
+        assert w_dnu.as_string() == "doesNotUnderstand:"
         w_Symbol = w_dnu.getclass(space)
         w_obj = None
         # bit annoying that we have to hunt through the image :-(
