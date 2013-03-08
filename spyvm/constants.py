@@ -150,7 +150,7 @@ SPECIAL_SELECTORS = ['+', '-', '<', '>', '<=', '>=', '=', '~=', '*', '/', '\\\\'
                      'at:put:', 'size', 'next', 'nextPut:', 'atEnd', '==',
                      'class', 'blockCopy:', 'value', 'value:', 'do:', 'new',
                      'new:', 'x', 'y']
-@elidable
+
 def find_selectorindex(selector):
     return SPECIAL_SELECTORS.index(selector) * 2
 find_selectorindex._annspecialcase_ = "specialize:memo"

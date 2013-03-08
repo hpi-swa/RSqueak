@@ -893,12 +893,15 @@ class CompiledMethodShadow(object):
                 space, self, receiver, arguments, sender)
         return s_new
 
-class CachedArrayShadow(AbstractCachingShadow):
-    _attr_ = ['version']
+class Version:
+    pass
+
+class CachedObjectShadow(AbstractCachingShadow):
+    _immutable_fields_ = ['version?']
 
     def __init__(self, space, w_self):
         AbstractCachingShadow.__init__(self, space, w_self)
-        self.version = 0
+        self.version = Version()
 
     def fetch(self, n0):
         jit.promote(self)
@@ -912,8 +915,8 @@ class CachedArrayShadow(AbstractCachingShadow):
         return self._w_self._fetch(n0)
 
     def store(self, n0, w_value):
-        self.version = self.version + 1
+        self.version = Version()
         return self._w_self._store(n0, w_value)
 
     def update_shadow(self):
-        self.version = self.version + 1
+        self.version = Version()
