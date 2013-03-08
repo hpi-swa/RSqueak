@@ -528,12 +528,15 @@ KBD_NEXT = 108
 KBD_PEEK = 109
 
 
+@expose_primitive(GET_NEXT_EVENT, unwrap_spec=[object])
+def func(interp, s_frame, w_rcvr):
+    raise PrimitiveNotYetWrittenError()
+
 @expose_primitive(BE_CURSOR, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
     # TODO: Use info from cursor object.
     interp.space.objtable['w_cursor'] = w_rcvr
     return w_rcvr
-
 
 @expose_primitive(BE_DISPLAY, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
@@ -643,6 +646,7 @@ NOOP = 122
 VALUE_UNINTERRUPTABLY = 123
 LOW_SPACE_SEMAPHORE = 124
 SIGNAL_AT_BYTES_LEFT = 125
+DRAW_RECTANGLE = 127
 
 @expose_primitive(IMAGE_NAME)
 def func(interp, s_frame, argument_count):
@@ -663,6 +667,10 @@ def func(interp, s_frame, w_reciver, i):
 def func(interp, s_frame, w_reciver, i):
     # dont know when the space runs out
     return w_reciver
+
+@expose_primitive(DRAW_RECTANGLE, unwrap_spec=[object, int, int, int, int])
+def func(interp, s_frame, w_rcvr, left, right, top, bottom):
+    raise PrimitiveNotYetWrittenError()
 
 
 # ___________________________________________________________________________
