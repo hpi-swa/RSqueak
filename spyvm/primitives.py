@@ -758,9 +758,9 @@ DIRECTORY_DELTE = 163
 def func(interp, s_frame, w_rcvr, fd):
     try:
         os.close(fd)
-        return w_rcvr
     except OSError:
         raise PrimitiveFailedError()
+    return w_rcvr
 
 @expose_primitive(FILE_OPEN, unwrap_spec=[object, str, object])
 def func(interp, s_frame, w_rcvr, filename, w_writeable_flag):
@@ -769,17 +769,21 @@ def func(interp, s_frame, w_rcvr, filename, w_writeable_flag):
             filename,
             (os.O_RDWR | os.O_CREAT | os.O_TRUNC) if w_writeable_flag is interp.space.w_true else os.O_RDONLY
         )
-        return interp.space.wrap_int(fd)
     except OSError:
         raise PrimitiveFailedError()
+    return interp.space.wrap_int(fd)
 
 @expose_primitive(FILE_WRITE, unwrap_spec=[object, int, str, int, int])
 def func(interp, s_frame, w_rcvr, fd, src, start, count):
+    start = start - 1
+    end = start + count
+    if end < 0 or start < 0:
+        raise PrimitiveFailedError()
     try:
-        os.write(fd, src[start - 1:start + count - 1])
-        return w_rcvr
+        os.write(fd, src[start:end])
     except OSError:
         raise PrimitiveFailedError()
+    return w_rcvr
 
 @expose_primitive(DIRECTORY_DELIMITOR, unwrap_spec=[object])
 def func(interp, s_frame, _):

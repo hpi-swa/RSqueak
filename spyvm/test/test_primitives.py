@@ -487,6 +487,18 @@ def test_file_write(monkeypatch):
     finally:
         monkeypatch.undo()
 
+def test_file_write_errors(monkeypatch):
+    with py.test.raises(PrimitiveFailedError):
+        w_c = prim(
+            primitives.FILE_WRITE,
+            [1, space.wrap_int(42), space.wrap_string("hello"), space.wrap_int(-1), space.wrap_int(3)]
+        )
+    with py.test.raises(PrimitiveFailedError):
+        w_c = prim(
+            primitives.FILE_WRITE,
+            [1, space.wrap_int(42), space.wrap_string("hello"), space.wrap_int(2), space.wrap_int(-1)]
+        )
+
 def test_directory_delimitor():
     import os.path
     w_c = prim(primitives.DIRECTORY_DELIMITOR, [1])
