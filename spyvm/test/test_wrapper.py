@@ -144,11 +144,13 @@ class TestScheduler(object):
 
     def test_suspend_active(self):
         process, old_process = self.make_processes(4, 2, space.w_false)
-        old_process.suspend(space.w_true)
+        w_fake_context = model.W_Object()
+        old_process.suspend(w_fake_context)
         process_list = wrapper.scheduler(space).get_process_list(old_process.priority())
         assert process_list.first_link() is process_list.last_link()
         assert process_list.first_link() is space.w_nil
         assert old_process.my_list() is space.w_nil
+        assert old_process.suspended_context() is w_fake_context
         assert wrapper.scheduler(space).active_process() is process._w_self
 
     def new_process_consistency(self, process, old_process, w_active_context,
@@ -181,7 +183,7 @@ class TestScheduler(object):
 
     def test_activate(self):
         process, old_process = self.make_processes(4, 2, space.w_false)
-        w_frame = process.activate(space.w_true)
+        w_frame = process.activate()
         self.new_process_consistency(process, old_process, w_frame,
                                          space.w_true, space.w_false)
 

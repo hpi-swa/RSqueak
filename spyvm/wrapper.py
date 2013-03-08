@@ -71,13 +71,15 @@ class ProcessWrapper(LinkWrapper):
         process_list = sched.get_process_list(priority)
         process_list.add_process(self._w_self)
 
-    def activate(self, w_current_frame):
+    def activate(self):
+        from spyvm.interpreter import ProcessSwitch
+        assert not self.is_active_process()
         sched = scheduler(self.space)
         sched.store_active_process(self._w_self)
         w_frame = self.suspended_context()
         self.store_suspended_context(self.space.w_nil)
         self.store_my_list(self.space.w_nil)
-        return w_frame
+        raise ProcessSwitch(w_frame.as_context_get_shadow(self.space))
 
     def deactivate(self, w_current_frame):
         self.put_to_sleep()
@@ -90,7 +92,7 @@ class ProcessWrapper(LinkWrapper):
         priority = self.priority()
         if priority > active_priority:
             active_process.deactivate(w_current_frame)
-            return self.activate(w_current_frame)
+            return self.activate()
         else:
             self.put_to_sleep()
             return w_current_frame
@@ -102,7 +104,8 @@ class ProcessWrapper(LinkWrapper):
         if self.is_active_process():
             assert self.my_list().is_same_object(self.space.w_nil)
             w_process = scheduler(self.space).highest_priority_process()
-            return ProcessWrapper(self.space, w_process).activate(w_current_frame)
+            self.store_suspended_context(w_current_frame)
+            return ProcessWrapper(self.space, w_process).activate()
         else:
             process_list = ProcessListWrapper(self.space, self.my_list())
             process_list.remove(self._w_self)

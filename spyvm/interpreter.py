@@ -70,6 +70,9 @@ class Interpreter(object):
                     s_new_context.mark_returned()
                     s_new_context = s_sender
                 s_new_context.push(nlr.value)
+            except ProcessSwitch, p:
+                self.remaining_stack_depth = self.max_stack_depth
+                s_new_context = p.s_new_context
 
     def c_loop(self, s_context):
         # padding = ' ' * (self.max_stack_depth - self.remaining_stack_depth)
@@ -146,10 +149,16 @@ class ReturnFromTopLevel(Exception):
 class StackOverflow(Exception):
     def __init__(self, s_top_context):
         self.s_context = s_top_context
+
 class Return(Exception):
     def __init__(self, object, s_context):
         self.value = object
         self.s_target_context = s_context
+
+class ProcessSwitch(Exception):
+    def __init__(self, s_context):
+        self.s_new_context = s_context
+
 
 def make_call_primitive_bytecode(primitive, selector, argcount):
     def callPrimitive(self, interp, current_bytecode):
