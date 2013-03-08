@@ -4,7 +4,7 @@
 # view jit.
 #
 
-import sys
+import sys, os
 from rpython import conftest
 class o:
     view = False
@@ -15,8 +15,9 @@ from rpython.jit.metainterp.test.test_ajit import LLJitMixin
 
 
 from spyvm import model, interpreter, primitives, shadow
-from spyvm import objspace
+from spyvm import objspace, squeakimage
 from spyvm.tool.analyseimage import create_squeakimage, create_testimage
+from rpython.rlib.streamio import open_file_as_stream
 
 
 mockclass = objspace.bootstrap_class
@@ -46,7 +47,7 @@ setup()
 # Tests
 #
 
-# sys.setrecursionlimit(100000)
+sys.setrecursionlimit(5000)
 
 class TestLLtype(LLJitMixin):
 
@@ -54,19 +55,12 @@ class TestLLtype(LLJitMixin):
 
         from spyvm import objspace
         space = objspace.ObjSpace()
+        
         image = create_testimage(space)
         interp = interpreter.Interpreter(space, image)
-
-
-        counter = 0
-
-        w_selector = interp.perform(space.wrap_string("loopTest"), "asSymbol")
-        w_object = model.W_SmallInteger(0)
-        s_class = w_object.shadow_of_my_class(space)
-        s_method = s_class.lookup(w_selector)
-        s_frame = s_method.create_frame(space, w_object, [])
-
+        w_selector = interp.perform(space.wrap_string('loopTest'), "asSymbol")
+        assert isinstance(w_selector, model.W_BytesObject)
         def interp_w():
-            interp.loop(s_frame.w_self())
+            interp.perform(model.W_SmallInteger(1000), w_selector)
 
         self.meta_interp(interp_w, [], listcomp=True, listops=True, backendopt=True, inline=True)
