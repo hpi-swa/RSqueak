@@ -149,6 +149,7 @@ class ObjSpace(object):
         self.w_two = model.W_SmallInteger(2)
         w_special_selectors = model.W_PointersObject(
             self.classtable['w_Array'], len(constants.SPECIAL_SELECTORS) * 2)
+        w_special_selectors.as_cached_array_get_shadow(self)
         self.w_special_selectors = w_special_selectors
 
         self.objtable = {}

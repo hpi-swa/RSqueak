@@ -365,6 +365,10 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         from spyvm.shadow import MethodDictionaryShadow
         return self.as_special_get_shadow(space, MethodDictionaryShadow)
 
+    def as_cached_array_get_shadow(self, space):
+        from spyvm.shadow import CachedArrayShadow
+        return self.as_special_get_shadow(space, CachedArrayShadow)
+
     def become(self, w_other):
         if not isinstance(w_other, W_PointersObject):
             return False

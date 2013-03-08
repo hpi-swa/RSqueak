@@ -58,7 +58,7 @@ class TestLLtype(LLJitMixin):
         
         image = create_testimage(space)
         interp = interpreter.Interpreter(space, image)
-        w_selector = interp.perform(space.wrap_string('loopTest'), "asSymbol")
+        w_selector = interp.perform(space.wrap_string('loopTest3'), "asSymbol")
         assert isinstance(w_selector, model.W_BytesObject)
         def interp_w():
             interp.perform(model.W_SmallInteger(1000), w_selector)
