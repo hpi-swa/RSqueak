@@ -32,7 +32,9 @@ def wrap(x):
     if isinstance(x, str): return space.wrap_string(x)
     if isinstance(x, list): return space.wrap_list(x)
     raise NotImplementedError
-    
+
+IMAGENAME = "anImage.image"
+
 def mock(stack, context = None):
     mapped_stack = [wrap(x) for x in stack]
     if context is None:
@@ -41,7 +43,7 @@ def mock(stack, context = None):
         frame = context
         for i in range(len(stack)):
             frame.as_context_get_shadow(space).push(stack[i])
-    interp = interpreter.Interpreter(space)
+    interp = interpreter.Interpreter(space, image_name=IMAGENAME)
     return (interp, frame, len(stack))
 
 def prim(code, stack, context = None):
@@ -428,7 +430,7 @@ def test_new_method():
 
 def test_image_name():
     w_v = prim(primitives.IMAGE_NAME, [2])
-    assert w_v.bytes == []
+    assert w_v.bytes == list(IMAGENAME)
     
 def test_clone():
     w_obj = mockclass(space, 1, varsized=True).as_class_get_shadow(space).new(1)

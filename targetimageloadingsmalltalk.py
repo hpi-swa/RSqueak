@@ -51,7 +51,7 @@ def _arg_missing(argv, idx, arg):
 
 def entry_point(argv):
     idx = 1
-    image = None
+    path = None
     number = 0
     benchmark = None
 
@@ -73,20 +73,20 @@ def entry_point(argv):
             _arg_missing(argv, idx, arg)
             benchmark = argv[idx + 1]
             idx += 1
-        elif image is None:
-            image = argv[idx]
+        elif path is None:
+            path = argv[idx]
         else:
             _usage(argv)
             return -1
         idx += 1
 
-    if image is None:
-        image = "Squeak.image"
+    if path is None:
+        path = "Squeak.image"
 
     try:
-        f = open_file_as_stream(image)
+        f = open_file_as_stream(path)
     except OSError as e:
-        os.write(2, "%s -- %s (LoadError)\n" % (os.strerror(e.errno), image))
+        os.write(2, "%s -- %s (LoadError)\n" % (os.strerror(e.errno), path))
         return 1
     try:
         imagedata = f.readall()
@@ -95,7 +95,7 @@ def entry_point(argv):
 
     image_reader = squeakimage.reader_for_image(space, squeakimage.Stream(data=imagedata))
     image = create_image(space, image_reader)
-    interp = interpreter.Interpreter(space, image)
+    interp = interpreter.Interpreter(space, image, image_name=os.path.abspath(path))
     if benchmark is not None:
         return _run_benchmark(interp, number, benchmark)
     else:
