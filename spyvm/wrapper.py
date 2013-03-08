@@ -79,6 +79,7 @@ class ProcessWrapper(LinkWrapper):
         w_frame = self.suspended_context()
         self.store_suspended_context(self.space.w_nil)
         self.store_my_list(self.space.w_nil)
+        assert isinstance(w_frame, model.W_PointersObject)
         raise ProcessSwitch(w_frame.as_context_get_shadow(self.space))
 
     def deactivate(self, w_current_frame):
