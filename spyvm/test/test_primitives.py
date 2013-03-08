@@ -1,4 +1,5 @@
 import py
+import os
 import math
 from spyvm.primitives import prim_table, PrimitiveFailedError
 from spyvm import model, shadow, interpreter
@@ -32,7 +33,9 @@ def wrap(x):
     if isinstance(x, str): return space.wrap_string(x)
     if isinstance(x, list): return space.wrap_list(x)
     raise NotImplementedError
-    
+
+IMAGENAME = "anImage.image"
+
 def mock(stack, context = None):
     mapped_stack = [wrap(x) for x in stack]
     if context is None:
@@ -41,7 +44,7 @@ def mock(stack, context = None):
         frame = context
         for i in range(len(stack)):
             frame.as_context_get_shadow(space).push(stack[i])
-    interp = interpreter.Interpreter(space)
+    interp = interpreter.Interpreter(space, image_name=IMAGENAME)
     return (interp, frame, len(stack))
 
 def prim(code, stack, context = None):
@@ -428,7 +431,7 @@ def test_new_method():
 
 def test_image_name():
     w_v = prim(primitives.IMAGE_NAME, [2])
-    assert w_v.bytes == []
+    assert w_v.bytes == list(IMAGENAME)
     
 def test_clone():
     w_obj = mockclass(space, 1, varsized=True).as_class_get_shadow(space).new(1)
@@ -438,11 +441,68 @@ def test_clone():
     w_obj.atput0(space, 0, space.wrap_int(2))
     assert space.unwrap_int(w_v.at0(space, 0)) == 1
     
+def test_file_open_write(monkeypatch):
+    def open_write(filename, mode):
+        assert filename == "nonexistant"
+        assert mode == os.O_RDWR | os.O_CREAT | os.O_TRUNC
+        return 42
+    monkeypatch.setattr(os, "open", open_write)
+    try:
+        w_c = prim(primitives.FILE_OPEN, [1, space.wrap_string("nonexistant"), space.w_true])
+    finally:
+        monkeypatch.undo()
+    assert space.unwrap_int(w_c) == 42
+
+def test_file_open_read(monkeypatch):
+    def open_read(filename, mode):
+        assert filename == "file"
+        assert mode == os.O_RDONLY
+        return 42
+    monkeypatch.setattr(os, "open", open_read)
+    try:
+        w_c = prim(primitives.FILE_OPEN, [1, space.wrap_string("file"), space.w_false])
+    finally:
+        monkeypatch.undo()
+    assert space.unwrap_int(w_c) == 42
+
+def test_file_close(monkeypatch):
+    def close(fd):
+        assert fd == 42
+    monkeypatch.setattr(os, "close", close)
+    try:
+        w_c = prim(primitives.FILE_CLOSE, [1, space.wrap_int(42)])
+    finally:
+        monkeypatch.undo()
+
+def test_file_write(monkeypatch):
+    def write(fd, string):
+        assert fd == 42
+        assert string == "ell"
+    monkeypatch.setattr(os, "write", write)
+    try:
+        w_c = prim(
+            primitives.FILE_WRITE,
+            [1, space.wrap_int(42), space.wrap_string("hello"), space.wrap_int(2), space.wrap_int(3)]
+        )
+    finally:
+        monkeypatch.undo()
+
+def test_file_write_errors(monkeypatch):
+    with py.test.raises(PrimitiveFailedError):
+        w_c = prim(
+            primitives.FILE_WRITE,
+            [1, space.wrap_int(42), space.wrap_string("hello"), space.wrap_int(-1), space.wrap_int(3)]
+        )
+    with py.test.raises(PrimitiveFailedError):
+        w_c = prim(
+            primitives.FILE_WRITE,
+            [1, space.wrap_int(42), space.wrap_string("hello"), space.wrap_int(2), space.wrap_int(-1)]
+        )
+
 def test_directory_delimitor():
     import os.path
     w_c = prim(primitives.DIRECTORY_DELIMITOR, [1])
     assert space.unwrap_char(w_c) == os.path.sep
-
 
 def test_primitive_closure_copyClosure():
     from test_interpreter import new_frame

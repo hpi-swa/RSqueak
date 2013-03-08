@@ -1,10 +1,13 @@
 import py
-from spyvm import wrapper
-from spyvm import model
+from spyvm import wrapper, model, interpreter, objspace
 from spyvm.error import WrapperException, FatalError
-from spyvm import objspace
+
+from spyvm.test.test_interpreter import new_frame as new_frame_tuple
 
 space = objspace.ObjSpace()
+
+def new_frame():
+    return new_frame_tuple("")[0]
 
 def test_simpleread():
     w_o = model.W_PointersObject(None, 2)
@@ -143,18 +146,20 @@ class TestScheduler(object):
         assert process.my_list() is space.w_nil
 
     def test_suspend_active(self):
-        process, old_process = self.make_processes(4, 2, space.w_false)
-        old_process.suspend(space.w_true)
+        suspended_context = new_frame()
+        process, old_process = self.make_processes(4, 2, suspended_context)
+        current_context = new_frame()
+        with py.test.raises(interpreter.ProcessSwitch):
+            old_process.suspend(current_context)
         process_list = wrapper.scheduler(space).get_process_list(old_process.priority())
         assert process_list.first_link() is process_list.last_link()
         assert process_list.first_link() is space.w_nil
         assert old_process.my_list() is space.w_nil
+        assert old_process.suspended_context() is current_context
         assert wrapper.scheduler(space).active_process() is process._w_self
 
-    def new_process_consistency(self, process, old_process, w_active_context,
-                                    old_active_context, new_active_context):
+    def new_process_consistency(self, process, old_process, w_active_context):
         scheduler = wrapper.scheduler(space)
-        assert w_active_context is new_active_context
         assert scheduler.active_process() is process._w_self
         priority_list = wrapper.scheduler(space).get_process_list(process.priority())
         assert priority_list.first_link() is priority_list.last_link()
@@ -180,23 +185,29 @@ class TestScheduler(object):
 
 
     def test_activate(self):
-        process, old_process = self.make_processes(4, 2, space.w_false)
-        w_frame = process.activate(space.w_true)
-        self.new_process_consistency(process, old_process, w_frame,
-                                         space.w_true, space.w_false)
+        sleepingcontext = new_frame()
+        process, old_process = self.make_processes(4, 2, sleepingcontext)
+        try:
+            process.activate()
+        except interpreter.ProcessSwitch, e:
+            w_frame = e.s_new_context._w_self
+        self.new_process_consistency(process, old_process, w_frame)
 
     def test_resume(self):
-        process, old_process = self.make_processes(4, 2, space.w_false)
-        w_frame = process.resume(space.w_true)
-        self.new_process_consistency(process, old_process, w_frame,
-                                         space.w_true, space.w_false)
-        self.old_process_consistency(old_process, space.w_true)
+        sleepingcontext = new_frame()
+        currentcontext = new_frame()
+        process, old_process = self.make_processes(4, 2, sleepingcontext)
+        try:
+            process.resume(currentcontext)
+        except interpreter.ProcessSwitch, e:
+            w_frame = e.s_new_context._w_self
+        self.new_process_consistency(process, old_process, w_frame)
+        self.old_process_consistency(old_process, currentcontext)
 
         # Does not reactivate old_process because lower priority
         w_frame = old_process.resume(w_frame)
-        self.new_process_consistency(process, old_process, w_frame,
-                                         space.w_true, space.w_false)
-        self.old_process_consistency(old_process, space.w_true)
+        self.new_process_consistency(process, old_process, w_frame)
+        self.old_process_consistency(old_process, currentcontext)
 
     def test_semaphore_excess_signal(self):
         semaphore = new_semaphore()
@@ -217,8 +228,11 @@ class TestScheduler(object):
 
     def test_semaphore_wait(self):
         semaphore = new_semaphore()
-        process, old_process = self.make_processes(4, 2, space.w_false)
-        semaphore.wait(space.w_true)
+        suspendedcontext = new_frame()
+        currentcontext = new_frame()
+        process, old_process = self.make_processes(4, 2, suspendedcontext)
+        with py.test.raises(interpreter.ProcessSwitch):
+            semaphore.wait(currentcontext)
         assert semaphore.first_link() is old_process._w_self
         assert wrapper.scheduler(space).active_process() is process._w_self
 
@@ -226,11 +240,14 @@ class TestScheduler(object):
         semaphore = new_semaphore()
         self.space = space
         semaphore.signal(self)
-        process, old_process = self.make_processes(4, 2, space.w_false)
-        semaphore.wait(space.w_true)
+        suspendedcontext = new_frame()
+        currentcontext = new_frame()
+        process, old_process = self.make_processes(4, 2, suspendedcontext)
+        semaphore.wait(currentcontext)
         assert semaphore.is_empty_list()
         assert wrapper.scheduler(space).active_process() is old_process._w_self
-        semaphore.wait(space.w_true)
+        with py.test.raises(interpreter.ProcessSwitch):
+            semaphore.wait(currentcontext)
         assert semaphore.first_link() is old_process._w_self
         assert wrapper.scheduler(space).active_process() is process._w_self
 
@@ -238,21 +255,28 @@ class TestScheduler(object):
 
     def test_semaphore_wait_signal(self):
         semaphore = new_semaphore()
-        process, old_process = self.make_processes(4, 2, space.w_false)
+        suspendedcontext = new_frame()
+        currentcontext = new_frame()
+        process, old_process = self.make_processes(4, 2, suspendedcontext)
 
-        semaphore.wait(space.w_true)
+        with py.test.raises(interpreter.ProcessSwitch):
+            semaphore.wait(currentcontext)
+            
         assert wrapper.scheduler(space).active_process() is process._w_self
-        semaphore.signal(space.w_true)
+        semaphore.signal(currentcontext)
         assert wrapper.scheduler(space).active_process() is process._w_self
         process_list = wrapper.scheduler(space).get_process_list(old_process.priority())
         assert process_list.remove_first_link_of_list() is old_process._w_self
 
         process.write(2, space.wrap_int(1))
-        old_process.resume(space.w_true)
+        with py.test.raises(interpreter.ProcessSwitch):
+            old_process.resume(currentcontext)
         assert wrapper.scheduler(space).active_process() is old_process._w_self
-        semaphore.wait(space.w_true)
+        with py.test.raises(interpreter.ProcessSwitch):
+            semaphore.wait(currentcontext)
         assert wrapper.scheduler(space).active_process() is process._w_self
-        semaphore.signal(space.w_true)
+        with py.test.raises(interpreter.ProcessSwitch):
+            semaphore.signal(currentcontext)
         assert wrapper.scheduler(space).active_process() is old_process._w_self
 
         process_list = wrapper.scheduler(space).get_process_list(process.priority())
