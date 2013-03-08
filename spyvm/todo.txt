@@ -44,3 +44,18 @@ Squeakimage:
 Shadows:
 [ ] Fix invalidation of methoddictshadow when the w_self of its values array changes
 
+
+Optimizations:
+use integer tagging primitives to get more compact code:
+    def wrap_int(self, val):
+        from rpython.rlib import rerased
+        try:
+            return model.W_SmallInteger(rerased.erase_int(val))
+        except OverflowError:
+            raise WrappingError("integer too large to fit into a tagged pointer")
+
+make classes
+
+
+Unclarities:
+[ ] should image loading invalidate the shadows of the precreated objects?

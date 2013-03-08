@@ -892,3 +892,31 @@ class CompiledMethodShadow(object):
         s_new = MethodContextShadow.make_context(
                 space, self, receiver, arguments, sender)
         return s_new
+
+class Version:
+    pass
+
+class CachedObjectShadow(AbstractCachingShadow):
+    _immutable_fields_ = ['version?']
+
+    def __init__(self, space, w_self):
+        AbstractCachingShadow.__init__(self, space, w_self)
+        self.version = Version()
+
+    def fetch(self, n0):
+        jit.promote(self)
+        version = self.version
+        jit.promote(version)
+        return self.safe_fetch(n0, version)
+
+    @jit.elidable
+    def safe_fetch(self, n0, version):
+        assert version is self.version
+        return self._w_self._fetch(n0)
+
+    def store(self, n0, w_value):
+        self.version = Version()
+        return self._w_self._store(n0, w_value)
+
+    def update_shadow(self):
+        self.version = Version()

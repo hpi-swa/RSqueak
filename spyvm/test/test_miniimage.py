@@ -47,9 +47,9 @@ def test_miniimageexists():
 def test_read_header():
     reader = open_miniimage(space)
     reader.read_header()
-    assert reader.endofmemory == 0x93174
-    assert reader.oldbaseaddress == 0x6649000
-    assert reader.specialobjectspointer == 0x6668380
+    assert reader.endofmemory == 655196
+    assert reader.oldbaseaddress == -1220960256
+    assert reader.specialobjectspointer == -1220832384
 
 def test_read_all_header(): 
     reader = open_miniimage(space)

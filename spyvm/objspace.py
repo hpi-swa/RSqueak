@@ -162,7 +162,8 @@ class ObjSpace(object):
     @specialize.arg(1)
     def get_special_selector(self, selector):
         i0 = constants.find_selectorindex(selector)
-        return self.w_special_selectors.at0(self, i0)
+        self.w_special_selectors.as_cached_object_get_shadow(self)
+        return self.w_special_selectors.fetch(self, i0)
 
     # methods for wrapping and unwrapping stuff
 

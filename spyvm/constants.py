@@ -1,3 +1,4 @@
+from rpython.rlib.jit import elidable
 # ___________________________________________________________________________
 # Slot Names
 

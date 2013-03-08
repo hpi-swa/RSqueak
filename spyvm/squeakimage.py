@@ -491,6 +491,9 @@ class GenericObject(object):
                 self.w_object = objectmodel.instantiate(model.W_CompiledMethod)
             else:
                 assert 0, "not reachable"
+        else:
+            #XXX invalidate shadow here
+            pass
         return self.w_object
 
     def fillin_w_object(self):

@@ -1,4 +1,4 @@
-import sys
+import sys, time
 import os
 
 from rpython.rlib.streamio import open_file_as_stream
@@ -10,14 +10,17 @@ from spyvm.tool.analyseimage import create_image
 
 def _run_benchmark(interp, number, benchmark):
     w_object = model.W_SmallInteger(number)
+    t1 = time.time()
     try:
         w_result = interp.perform(w_object, benchmark)
     except interpreter.ReturnFromTopLevel, e:
         w_result = e.object
+    t2 = time.time()
     if w_result:
-        assert isinstance(w_result, model.W_BytesObject)
-        print '\n'
-        print w_result.as_string()
+        if isinstance(w_result, model.W_BytesObject):
+            print '\n'
+            print w_result.as_string()
+        print "took %s seconds" % (t2 - t1)
         return 0
     return -1
 
