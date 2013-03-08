@@ -764,11 +764,12 @@ def func(interp, s_frame, w_rcvr, fd):
 
 @expose_primitive(FILE_OPEN, unwrap_spec=[object, str, object])
 def func(interp, s_frame, w_rcvr, filename, w_writeable_flag):
+    if w_writeable_flag is interp.space.w_true:
+        mode = os.O_RDWR | os.O_CREAT | os.O_TRUNC
+    else:
+        mode = os.O_RDONLY
     try:
-        fd = os.open(
-            filename,
-            (os.O_RDWR | os.O_CREAT | os.O_TRUNC) if w_writeable_flag is interp.space.w_true else os.O_RDONLY
-        )
+        fd = os.open(filename, mode, 0666)
     except OSError:
         raise PrimitiveFailedError()
     return interp.space.wrap_int(fd)
