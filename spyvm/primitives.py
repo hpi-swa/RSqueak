@@ -1,3 +1,4 @@
+import os
 import inspect
 import math
 import operator
@@ -753,10 +754,35 @@ DIRECTORY_DELIMITOR = 161
 DIRECTORY_LOOKUP = 162
 DIRECTORY_DELTE = 163
 
+@expose_primitive(FILE_CLOSE, unwrap_spec=[object, int])
+def func(interp, s_frame, w_rcvr, fd):
+    try:
+        os.close(fd)
+        return w_rcvr
+    except OSError:
+        raise PrimitiveFailedError()
+
+@expose_primitive(FILE_OPEN, unwrap_spec=[object, str, object])
+def func(interp, s_frame, w_rcvr, filename, w_writeable_flag):
+    try:
+        fd = os.open(
+            filename,
+            (os.O_RDWR | os.O_CREAT | os.O_TRUNC) if w_writeable_flag is interp.space.w_true else os.O_RDONLY
+        )
+        return interp.space.wrap_int(fd)
+    except OSError:
+        raise PrimitiveFailedError()
+
+@expose_primitive(FILE_WRITE, unwrap_spec=[object, int, str, int, int])
+def func(interp, s_frame, w_rcvr, fd, src, start, count):
+    try:
+        os.write(fd, src[start - 1:start + count - 1])
+        return w_rcvr
+    except OSError:
+        raise PrimitiveFailedError()
 
 @expose_primitive(DIRECTORY_DELIMITOR, unwrap_spec=[object])
 def func(interp, s_frame, _):
-    import os.path
     return interp.space.wrap_char(os.path.sep)
 
 

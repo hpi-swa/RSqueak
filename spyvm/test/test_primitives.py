@@ -1,4 +1,5 @@
 import py
+import os
 import math
 from spyvm.primitives import prim_table, PrimitiveFailedError
 from spyvm import model, shadow, interpreter
@@ -440,11 +441,56 @@ def test_clone():
     w_obj.atput0(space, 0, space.wrap_int(2))
     assert space.unwrap_int(w_v.at0(space, 0)) == 1
     
+def test_file_open_write(monkeypatch):
+    def open_write(filename, mode):
+        assert filename == "nonexistant"
+        assert mode == os.O_RDWR | os.O_CREAT | os.O_TRUNC
+        return 42
+    monkeypatch.setattr(os, "open", open_write)
+    try:
+        w_c = prim(primitives.FILE_OPEN, [1, space.wrap_string("nonexistant"), space.w_true])
+    finally:
+        monkeypatch.undo()
+    assert space.unwrap_int(w_c) == 42
+
+def test_file_open_read(monkeypatch):
+    def open_read(filename, mode):
+        assert filename == "file"
+        assert mode == os.O_RDONLY
+        return 42
+    monkeypatch.setattr(os, "open", open_read)
+    try:
+        w_c = prim(primitives.FILE_OPEN, [1, space.wrap_string("file"), space.w_false])
+    finally:
+        monkeypatch.undo()
+    assert space.unwrap_int(w_c) == 42
+
+def test_file_close(monkeypatch):
+    def close(fd):
+        assert fd == 42
+    monkeypatch.setattr(os, "close", close)
+    try:
+        w_c = prim(primitives.FILE_CLOSE, [1, space.wrap_int(42)])
+    finally:
+        monkeypatch.undo()
+
+def test_file_write(monkeypatch):
+    def write(fd, string):
+        assert fd == 42
+        assert string == "ell"
+    monkeypatch.setattr(os, "write", write)
+    try:
+        w_c = prim(
+            primitives.FILE_WRITE,
+            [1, space.wrap_int(42), space.wrap_string("hello"), space.wrap_int(2), space.wrap_int(3)]
+        )
+    finally:
+        monkeypatch.undo()
+
 def test_directory_delimitor():
     import os.path
     w_c = prim(primitives.DIRECTORY_DELIMITOR, [1])
     assert space.unwrap_char(w_c) == os.path.sep
-
 
 def test_primitive_closure_copyClosure():
     from test_interpreter import new_frame
