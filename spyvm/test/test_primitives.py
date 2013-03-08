@@ -403,6 +403,17 @@ def test_full_gc():
     # Should not fail :-)
     prim(primitives.FULL_GC, [42]) # Dummy arg
 
+def test_interrupt_semaphore():
+    prim(primitives.INTERRUPT_SEMAPHORE, [1, space.w_true])
+    assert space.objtable["w_interrupt_semaphore"] is space.w_nil
+
+    class SemaphoreInst(model.W_Object):
+        def getclass(self, space):
+            return space.w_Semaphore
+    w_semaphore = SemaphoreInst()
+    prim(primitives.INTERRUPT_SEMAPHORE, [1, w_semaphore])
+    assert space.objtable["w_interrupt_semaphore"] is w_semaphore
+
 def test_seconds_clock():
     import time
     now = int(time.time())
@@ -442,7 +453,7 @@ def test_clone():
     assert space.unwrap_int(w_v.at0(space, 0)) == 1
     
 def test_file_open_write(monkeypatch):
-    def open_write(filename, mode):
+    def open_write(filename, mode, perm):
         assert filename == "nonexistant"
         assert mode == os.O_RDWR | os.O_CREAT | os.O_TRUNC
         return 42
@@ -454,7 +465,7 @@ def test_file_open_write(monkeypatch):
     assert space.unwrap_int(w_c) == 42
 
 def test_file_open_read(monkeypatch):
-    def open_read(filename, mode):
+    def open_read(filename, mode, perm):
         assert filename == "file"
         assert mode == os.O_RDONLY
         return 42

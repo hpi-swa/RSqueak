@@ -133,6 +133,7 @@ objects_in_special_object_table = {
     "special_selectors": SO_SPECIAL_SELECTORS_ARRAY,
     "smalltalkdict" : SO_SMALLTALK,
     "display" : SO_DISPLAY_OBJECT,
+    "interrupt_semaphore" : SO_USER_INTERRUPT_SEMAPHORE,
 }
 
 LONG_BIT = 32

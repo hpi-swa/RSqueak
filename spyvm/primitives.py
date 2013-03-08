@@ -675,11 +675,11 @@ def func(interp, s_frame, w_rcvr, left, right, top, bottom):
 
 
 # ___________________________________________________________________________
-# Squeak Miscellaneous Primitives (128-149)
+# Squeak Miscellaneous Primitives (128-134)
 BECOME = 128
 FULL_GC = 130
 INC_GC = 131
-CLONE = 148
+INTERRUPT_SEMAPHORE = 134
 
 @expose_primitive(BECOME, unwrap_spec=[object, object])
 def func(interp, s_frame, w_rcvr, w_new):
@@ -710,12 +710,16 @@ def func(interp, s_frame, w_arg): # Squeak pops the arg and ignores it ... go fi
     rgc.collect()
     return fake_bytes_left(interp)
 
-@expose_primitive(CLONE, unwrap_spec=[object])
-def func(interp, s_frame, w_arg):
-    return w_arg.clone(interp.space)
+@expose_primitive(INTERRUPT_SEMAPHORE, unwrap_spec=[object, object])
+def func(interp, s_frame, w_rcvr, w_semaphore):
+    if w_semaphore.getclass(interp.space).is_same_object(interp.space.w_Semaphore):
+        interp.space.objtable['w_interrupt_semaphore'] = w_semaphore
+    else:
+        interp.space.objtable['w_interrupt_semaphore'] = interp.space.w_nil
+    return w_rcvr
 
 #____________________________________________________________________________
-# Time Primitives
+# Time Primitives (135 - 137)
 MILLISECOND_CLOCK = 135
 SECONDS_CLOCK = 137
 
@@ -734,6 +738,16 @@ def func(interp, s_frame, w_arg):
     sec_since_epoch = rarithmetic.r_uint(time.time())
     sec_since_1901 = sec_since_epoch + secs_between_1901_and_1970
     return interp.space.wrap_uint(sec_since_1901)
+
+
+#____________________________________________________________________________
+# Misc Primitives (138 - 149)
+CLONE = 148
+
+@expose_primitive(CLONE, unwrap_spec=[object])
+def func(interp, s_frame, w_arg):
+    return w_arg.clone(interp.space)
+
 
 # ___________________________________________________________________________
 # File primitives (150-169)
