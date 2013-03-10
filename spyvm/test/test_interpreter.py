@@ -62,7 +62,8 @@ def run_with_faked_primitive_methods(methods, func, active_context=None):
         assert space.w_nil._shadow is None
         for (w_class, _, _, methname) in methods:
             s_class = w_class.as_class_get_shadow(space)
-            del s_class.s_methoddict().methoddict[fakesymbol(methname)]
+            s_class.update()
+            s_class.s_methoddict().update()
 
 def fakesymbol(s, _cache={}):
     try:

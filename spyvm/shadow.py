@@ -23,40 +23,37 @@ class AbstractShadow(object):
     def getname(self):
         return repr(self)
     def attach_shadow(self): pass
-    def detach_shadow(self): pass
-    def sync_shadow(self): pass
-   
+    def synchronize(self): pass
+
 class AbstractCachingShadow(AbstractShadow):
+    _immutable_fields_ = ['version?']
     _attr_ = []
 
     def __init__(self, space, w_self):
         AbstractShadow.__init__(self, space, w_self)
-
-    def detach_shadow(self):
-        self.invalidate_shadow()
-
-    def invalidate_shadow(self):
-        """This should get called whenever the base Smalltalk
-        object changes."""
-        self._w_self.store_shadow(None)
+        self.version = Version()
 
     def attach_shadow(self):
-        self.update_shadow()
-
-    def sync_shadow(self):
-        pass
-
-    def update_shadow(self):
         self.w_self().store_shadow(self)
+        self.update()
+
+    def update(self):
+        """This should get called whenever the base Smalltalk
+        object changes."""
         self.sync_cache()
+
+    def synchronize(self):
+        self.update()
 
     def sync_cache(self):
         raise NotImplementedError()
 
     def store(self, n0, w_value):
-        self.invalidate_shadow()
         AbstractShadow.store(self, n0, w_value)
+        self.update()
 
+class Version:
+    pass
 # ____________________________________________________________ 
 
 POINTERS = 0
@@ -77,55 +74,63 @@ class ClassShadow(AbstractCachingShadow):
     (i.e. used as the class of another Smalltalk object).
     """
 
-    _immutable_fields_ = ["name", "instance_size", "instance_varsized", "instance_kind", "w_methoddict", "s_methoddict", "w_superclass"]
+    _attr_ = ["name", "instance_size", "instance_varsized", "instance_kind", "w_methoddict", "s_methoddict", "w_superclass"]
 
-    name = None
     def __init__(self, space, w_self):
-        self.name = ""
+        # fields added here should also be in objspace.py:60ff, 300ff
+        self.name = ''
         AbstractCachingShadow.__init__(self, space, w_self)
 
     def getname(self):
         return "%s class" % (self.name or '?',)
 
     def sync_cache(self):
+        from spyvm.objspace import UnwrappingError
         "Update the ClassShadow with data from the w_self class."
 
         w_self = self.w_self()
-        # read and painfully decode the format
-        classformat = self.space.unwrap_int(
-            w_self._fetch(constants.CLASS_FORMAT_INDEX))
-        # The classformat in Squeak, as an integer value, is:
-        #    <2 bits=instSize//64><5 bits=cClass><4 bits=instSpec>
-        #                                    <6 bits=instSize\\64><1 bit=0>
-        # In Slang the value is read directly as a boxed integer, so that
-        # the code gets a "pointer" whose bits are set as above, but
-        # shifted one bit to the left and with the lowest bit set to 1.
+        if w_self.size() == 0:
+            return
 
-        # compute the instance size (really the size, not the number of bytes)
-        instsize_lo = (classformat >> 1) & 0x3F
-        instsize_hi = (classformat >> (9 + 1)) & 0xC0
-        self.instance_size = (instsize_lo | instsize_hi) - 1  # subtract hdr
-        # decode the instSpec
-        format = (classformat >> 7) & 15
-        self.instance_varsized = format >= 2
-        if format < 4:
-            self.instance_kind = POINTERS
-        elif format == 4:
-            self.instance_kind = WEAK_POINTERS
-        elif format == 6:
-            self.instance_kind = WORDS
-            if self.instance_size != 0:
-                raise ClassShadowError("can't have both words and a non-zero "
-                                       "base instance size")
-        elif 8 <= format <= 11:
-            self.instance_kind = BYTES
-            if self.instance_size != 0:
-                raise ClassShadowError("can't have both bytes and a non-zero "
-                                       "base instance size")
-        elif 12 <= format <= 15:
-            self.instance_kind = COMPILED_METHOD
-        else:
-            raise ClassShadowError("unknown format %d" % (format,))
+        # read and painfully decode the format
+        try:
+            classformat = self.space.unwrap_int(
+                w_self._fetch(constants.CLASS_FORMAT_INDEX))
+            # The classformat in Squeak, as an integer value, is:
+            #    <2 bits=instSize//64><5 bits=cClass><4 bits=instSpec>
+            #                                    <6 bits=instSize\\64><1 bit=0>
+            # In Slang the value is read directly as a boxed integer, so that
+            # the code gets a "pointer" whose bits are set as above, but
+            # shifted one bit to the left and with the lowest bit set to 1.
+
+            # compute the instance size (really the size, not the number of bytes)
+            instsize_lo = (classformat >> 1) & 0x3F
+            instsize_hi = (classformat >> (9 + 1)) & 0xC0
+            self.instance_size = (instsize_lo | instsize_hi) - 1  # subtract hdr
+            # decode the instSpec
+            format = (classformat >> 7) & 15
+            self.instance_varsized = format >= 2
+            if format < 4:
+                self.instance_kind = POINTERS
+            elif format == 4:
+                self.instance_kind = WEAK_POINTERS
+            elif format == 6:
+                self.instance_kind = WORDS
+                if self.instance_size != 0:
+                    raise ClassShadowError("can't have both words and a non-zero "
+                                           "base instance size")
+            elif 8 <= format <= 11:
+                self.instance_kind = BYTES
+                if self.instance_size != 0:
+                    raise ClassShadowError("can't have both bytes and a non-zero "
+                                           "base instance size")
+            elif 12 <= format <= 15:
+                self.instance_kind = COMPILED_METHOD
+            else:
+                raise ClassShadowError("unknown format %d" % (format,))
+        except UnwrappingError:
+            assert w_self._fetch(constants.CLASS_FORMAT_INDEX) is self.space.w_nil
+            pass # not enough information stored in w_self, yet
 
         self.guess_class_name()
 
@@ -140,8 +145,11 @@ class ClassShadow(AbstractCachingShadow):
         else:
             assert isinstance(w_superclass, model.W_PointersObject)
             self.w_superclass = w_superclass
+        self.version = Version()
 
     def guess_class_name(self):
+        if self.name != '':
+            return self.name
         w_self = self.w_self()
         w_name = None
 
@@ -164,6 +172,9 @@ class ClassShadow(AbstractCachingShadow):
 
         if isinstance(w_name, model.W_BytesObject):
             self.name = w_name.as_string()
+        else:
+            self.name = None
+        self.version = Version()
 
     def new(self, extrasize=0):
         w_cls = self.w_self()
@@ -215,15 +226,6 @@ class ClassShadow(AbstractCachingShadow):
         " Number of named instance variables for each instance of this class "
         return self.instance_size
 
-    def inherits_from(self, s_superclass):
-        classshadow = self
-        while classshadow is not None:
-            if classshadow is s_superclass:
-                return True
-            classshadow = classshadow.s_superclass()
-        else:
-            return False
-
     # _______________________________________________________________
     # Methods for querying the format word, taken from the blue book:
 
@@ -241,12 +243,25 @@ class ClassShadow(AbstractCachingShadow):
             look_in_shadow = look_in_shadow.s_superclass()
         raise MethodNotFound(self, w_selector)
 
+    # _______________________________________________________________
+    # Methods used only in testing
+
+    def inherits_from(self, s_superclass):
+        classshadow = self
+        while classshadow is not None:
+            if classshadow is s_superclass:
+                return True
+            classshadow = classshadow.s_superclass()
+        else:
+            return False
+
     def initialize_methoddict(self):
         "NOT_RPYTHON"     # this is only for testing.
         if self.w_methoddict is None:
             self.w_methoddict = model.W_PointersObject(None, 2)
             self.w_methoddict._store(1, model.W_PointersObject(None, 0))
-            self.s_methoddict().invalid = False
+            self.s_methoddict().sync_cache()
+        self.s_methoddict().invalid = False
 
     def installmethod(self, w_selector, w_method):
         "NOT_RPYTHON"     # this is only for testing.
@@ -259,16 +274,36 @@ class ClassShadow(AbstractCachingShadow):
 
 class MethodDictionaryShadow(AbstractCachingShadow):
 
-    @jit.elidable
+    _immutable_fields_ = ['invalid?']
+
+    def __init__(self, space, w_self):
+        self.invalid = True
+        AbstractCachingShadow.__init__(self, space, w_self)
+
     def find_selector(self, w_selector):
+        if self.invalid:
+            self.sync_cache()
+        jit.promote(self)
+        version = self.version
+        jit.promote(version)
+        return self._safe_find_selector(w_selector, version)
+
+    @jit.elidable
+    def _safe_find_selector(self, w_selector, version):
+        assert version is self.version
         return self.methoddict.get(w_selector, None)
+
+    def update(self):
+        # Sync_cache at this point has not the desired effect, because in
+        # the Smalltalk Implementation, the dictionary changes first. Afterwards
+        # its contents array is filled with the value belonging to the new key.
+        self.invalid = True
 
     def sync_cache(self):
         w_values = self.w_self()._fetch(constants.METHODDICT_VALUES_INDEX)
         assert isinstance(w_values, model.W_PointersObject)
-        s_values = w_values.get_shadow(self.space)
-        # XXX Should add!
-        # s_values.notifyinvalid(self)
+        s_values = w_values.as_observed_get_shadow(self.space)
+        s_values.notify(self)
         size = self.w_self().size() - constants.METHODDICT_NAMES_INDEX
         self.methoddict = {}
         for i in range(size):
@@ -283,6 +318,8 @@ class MethodDictionaryShadow(AbstractCachingShadow):
                 self.methoddict[w_selector] = w_compiledmethod
                 selector = w_selector.as_string()
                 w_compiledmethod._likely_methodname = selector
+        self.version = Version()
+        self.invalid = False
 
 
 class AbstractRedirectingShadow(AbstractShadow):
@@ -310,12 +347,12 @@ class AbstractRedirectingShadow(AbstractShadow):
             self.copy_from_w_self(i)
         w_self._vars = None
 
-    def detach_shadow(self):
-        w_self = self.w_self()
-        assert isinstance(w_self, model.W_PointersObject)
-        w_self._vars = [self.space.w_nil] * self._w_self_size
-        for i in range(self._w_self_size):
-            self.copy_to_w_self(i)
+    # def detach_shadow(self):
+    #     w_self = self.w_self()
+    #     assert isinstance(w_self, model.W_PointersObject)
+    #     w_self._vars = [self.space.w_nil] * self._w_self_size
+    #     for i in range(self._w_self_size):
+    #         self.copy_to_w_self(i)
 
     def copy_from_w_self(self, n0):
         self.store(n0, self.w_self()._fetch(n0))
@@ -846,14 +883,31 @@ class MethodContextShadow(ContextPartShadow):
         return '%s %s (%i)' % (block, self.w_method().get_identifier_string(), self.pc() + 1)
 
 class CompiledMethodShadow(object):
-    _immutable_fields_ = ["_w_self", "bytecode",
-                          "literals[*]", "bytecodeoffset",
-                          "literalsize", "tempsize", "primitive",
-                          "argsize", "islarge",
-                          "w_compiledin"]
+    _attr_ = ["_w_self", "bytecode",
+              "literals[*]", "bytecodeoffset",
+              "literalsize", "tempsize", "primitive",
+              "argsize", "islarge",
+              "w_compiledin"]
+    _immutable_fields_ = ["version?", "_w_self"]
 
     def __init__(self, w_compiledmethod):
         self._w_self = w_compiledmethod
+        self.update()
+
+    def w_self(self):
+        return self._w_self
+
+    def getliteral(self, index):
+        return self.literals[index]
+
+    def getliteralsymbol(self, index):
+        w_literal = self.getliteral(index)
+        assert isinstance(w_literal, model.W_BytesObject)
+        return w_literal.as_string()    # XXX performance issue here
+
+    def update(self):
+        w_compiledmethod = self._w_self
+        self.version = Version()
         self.bytecode = "".join(w_compiledmethod.bytes)
         self.literals = w_compiledmethod.literals
         self.bytecodeoffset = w_compiledmethod.bytecodeoffset()
@@ -876,32 +930,13 @@ class CompiledMethodShadow(object):
                 association = wrapper.AssociationWrapper(None, w_association)
                 self.w_compiledin = association.value()
 
-    def w_self(self):
-        return self._w_self
-
-    def getliteral(self, index):
-        return self.literals[index]
-
-    def getliteralsymbol(self, index):
-        w_literal = self.getliteral(index)
-        assert isinstance(w_literal, model.W_BytesObject)
-        return w_literal.as_string()    # XXX performance issue here
-
     def create_frame(self, space, receiver, arguments, sender = None):
         assert len(arguments) == self.argsize
         s_new = MethodContextShadow.make_context(
                 space, self, receiver, arguments, sender)
         return s_new
 
-class Version:
-    pass
-
 class CachedObjectShadow(AbstractCachingShadow):
-    _immutable_fields_ = ['version?']
-
-    def __init__(self, space, w_self):
-        AbstractCachingShadow.__init__(self, space, w_self)
-        self.version = Version()
 
     def fetch(self, n0):
         jit.promote(self)
@@ -918,5 +953,20 @@ class CachedObjectShadow(AbstractCachingShadow):
         self.version = Version()
         return self._w_self._store(n0, w_value)
 
-    def update_shadow(self):
+    def update(self):
         self.version = Version()
+
+class ObserveeShadow(AbstractShadow):
+    _attr_ = ['dependent']
+    def __init__(self, space, w_self):
+        AbstractShadow.__init__(self, space, w_self)
+        self.dependent = None
+
+    def store(self, n0, w_value):
+        AbstractShadow.store(self, n0, w_value)
+        self.dependent.update()
+
+    def notify(self, dependent):
+        if self.dependent is not None and dependent is not self.dependent:
+            raise RuntimeError('Meant to be observed by only one value, so far')
+        self.dependent = dependent

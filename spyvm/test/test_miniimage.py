@@ -270,7 +270,7 @@ def test_become():
     perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
     w_result = perform(w(10), "testBecome")
     assert space.unwrap_int(w_result) == 42
-       
+
 def perform(w_receiver, selector, *arguments_w):
     return interp.perform(w_receiver, selector, *arguments_w)
 
@@ -281,6 +281,20 @@ def test_step_forged_image():
     s_ctx = ap.suspended_context().as_context_get_shadow(space)
     assert isinstance(s_ctx, shadow.MethodContextShadow)
     assert s_ctx.top().is_same_object(space.w_true)
+
+def test_cached_methoddict_compile():
+    sourcecode = """fib
+                        ^self < 2
+                            ifTrue: [ 1 ]
+                            ifFalse: [ ((self - 1) fib + (self - 2) fib) + 1 ]"""
+    perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
+    assert perform(w(5), "fib").is_same_object(w(15))
+    sourcecode = """fib
+                        ^self < 2
+                            ifTrue: [ 1 ]
+                            ifFalse: [ (self - 1) fib + (self - 2) fib ]"""
+    perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
+    assert perform(w(10), "fib").is_same_object(w(89))
 
 def test_step_run_something():
     from spyvm.test import test_miniimage

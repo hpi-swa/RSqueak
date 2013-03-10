@@ -236,11 +236,11 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
         return "<%s %s>" % (self.__class__.__name__, self)
 
     def __str__(self):
-        if isinstance(self, W_PointersObject) and self._shadow is not None:
+        if isinstance(self, W_PointersObject) and self.has_shadow():
             return self._shadow.getname()
         else:
             name = None
-            if self.w_class._shadow is not None:
+            if self.w_class.has_shadow():
                 name = self.w_class._shadow.name
             return "a %s" % (name or '?',)
 
@@ -269,6 +269,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         vars = self._vars = [None] * size
         for i in range(size): # do it by hand for the JIT's sake
             vars[i] = w_nil
+        self._shadow = None
 
     def at0(self, space, index0):
         # To test, at0 = in varsize part
@@ -279,7 +280,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         self.store(space, index0 + self.instsize(space), w_value)
 
     def fetch(self, space, n0):
-        if self._shadow is not None:
+        if self.has_shadow():
             return self._shadow.fetch(n0)
         return self._fetch(n0)
 
@@ -287,7 +288,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         return self._vars[n0]
         
     def store(self, space, n0, w_value):    
-        if self._shadow is not None:
+        if self.has_shadow():
             return self._shadow.store(n0, w_value)
         return self._store(n0, w_value)
 
@@ -305,7 +306,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         return self.varsize(space)
 
     def size(self):
-        if self._shadow is not None:
+        if self.has_shadow():
             return self._shadow.size()
         return self._size()
 
@@ -317,12 +318,13 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
                 isinstance(self._vars, list))
 
     def store_shadow(self, shadow):
+        assert self._shadow is None or self._shadow is shadow
         self._shadow = shadow
 
     @objectmodel.specialize.arg(2)
     def attach_shadow_of_class(self, space, TheClass):
         shadow = TheClass(space, self)
-        self._shadow = shadow
+        self.store_shadow(shadow)
         shadow.attach_shadow()
         return shadow
 
@@ -331,9 +333,9 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         shadow = self._shadow
         if not isinstance(shadow, TheClass):
             if shadow is not None:
-                shadow.detach_shadow()
+                raise DetachingShadowError(shadow, TheClass)
             shadow = self.attach_shadow_of_class(space, TheClass)
-        shadow.sync_shadow()
+            shadow.synchronize()
         return shadow
 
     def get_shadow(self, space):
@@ -368,6 +370,13 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     def as_cached_object_get_shadow(self, space):
         from spyvm.shadow import CachedObjectShadow
         return self.as_special_get_shadow(space, CachedObjectShadow)
+
+    def as_observed_get_shadow(self, space):
+        from spyvm.shadow import ObserveeShadow
+        return self.as_special_get_shadow(space, ObserveeShadow)
+
+    def has_shadow(self):
+        return self._shadow is not None
 
     def become(self, w_other):
         if not isinstance(w_other, W_PointersObject):
@@ -508,7 +517,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         self.header, w_other.header = w_other.header, self.header
         self.literalsize, w_other.literalsize = w_other.literalsize, self.literalsize
         self.islarge, w_other.islarge = w_other.islarge, self.islarge
-        self._shadow = w_other._shadow = None
+        self._shadow, w_other._shadow = w_other._shadow, self._shadow
         W_AbstractObjectWithIdentityHash._become(self, w_other)
         return True
 
@@ -594,12 +603,13 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         """NOT RPYTHON
            Only for testing"""
         self.literals = literals
-        self._shadow = None
+        if self.has_shadow():
+            self._shadow.update()
 
     def setbytes(self, bytes):
         self.bytes = bytes
 
-    def as_compiledmethod_get_shadow(self, space):
+    def as_compiledmethod_get_shadow(self, space=None):
         from shadow import CompiledMethodShadow
         if self._shadow is None:
             self._shadow = CompiledMethodShadow(self)
@@ -617,7 +627,8 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
             self.setheader(header)
         else:
             self.literals[index0-1] = w_value
-        self._shadow = None
+        if self.has_shadow():
+            self._shadow.update()
 
     def store(self, space, index0, w_v):
         self.atput0(space, index0, w_v)
@@ -650,7 +661,16 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def setchar(self, index0, character):
         assert index0 >= 0
         self.bytes[index0] = character
-        self._shadow = None
+        if self.has_shadow():
+            self._shadow.update()
+
+    def has_shadow(self):
+        return self._shadow is not None
+
+class DetachingShadowError(Exception):
+    def __init__(self, old_shadow, new_shadow_class):
+        self.old_shadow = old_shadow
+        self.new_shadow_class = new_shadow_class
 
 # Use black magic to create w_nil without running the constructor,
 # thus allowing it to be used even in the constructor of its own

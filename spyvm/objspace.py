@@ -55,8 +55,10 @@ class ObjSpace(object):
         # XXX
         proto_shadow = instantiate(shadow.ClassShadow)
         proto_shadow.space = self
-        proto_shadow.invalid = False
+        proto_shadow.name = ''
         proto_shadow.w_superclass = w_Class
+        proto_shadow.version = shadow.Version()
+        w_ProtoObjectClass._shadow = None
         w_ProtoObjectClass.store_shadow(proto_shadow)
         # at this point, all classes that still lack a w_class are themselves
         # metaclasses
@@ -299,10 +301,10 @@ def bootstrap_class(space, instsize, w_superclass=None, w_metaclass=None,
     s._w_self = w_class
     s.w_superclass = w_superclass
     s.name = name
+    s.version = shadow.Version()
     s.instance_size = instsize
     s.instance_kind = format
     s.w_methoddict = None
     s.instance_varsized = varsized or format != shadow.POINTERS
-    s.invalid = False
     w_class.store_shadow(s)
     return w_class

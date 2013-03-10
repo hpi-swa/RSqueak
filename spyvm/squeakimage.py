@@ -227,6 +227,7 @@ class ImageReader(object):
         self.init_g_objects()
         self.init_w_objects()
         self.fillin_w_objects()
+        self.synchronize_shadows()
 
     def read_version(self):
         # 1 word version
@@ -299,6 +300,12 @@ class ImageReader(object):
     def fillin_w_objects(self):
         for chunk in self.chunks.itervalues():
             chunk.g_object.fillin_w_object()
+
+    def synchronize_shadows(self):
+        for chunk in self.chunks.itervalues():
+            casted = chunk.g_object.w_object
+            if isinstance(casted, model.W_PointersObject) and casted.has_shadow():
+                casted._shadow.update()
 
     def init_compactclassesarray(self):
         """ from the blue book (CompiledMethod Symbol Array PseudoContext LargePositiveInteger nil MethodDictionary Association Point Rectangle nil TranslatedMethod BlockContext MethodContext nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil ) """
@@ -491,9 +498,6 @@ class GenericObject(object):
                 self.w_object = objectmodel.instantiate(model.W_CompiledMethod)
             else:
                 assert 0, "not reachable"
-        else:
-            #XXX invalidate shadow here
-            pass
         return self.w_object
 
     def fillin_w_object(self):
@@ -515,9 +519,6 @@ class GenericObject(object):
 
     def fillin_pointersobject(self, w_pointersobject):
         assert self.pointers is not None
-        # XXX is the following needed?
-        if w_pointersobject._shadow is not None:
-            w_pointersobject._shadow.detach_shadow()
         w_pointersobject._vars = [g_object.w_object for g_object in self.pointers]
         w_class = self.g_class.w_object
         assert isinstance(w_class, model.W_PointersObject)
