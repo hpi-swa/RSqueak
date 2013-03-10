@@ -74,7 +74,7 @@ class ClassShadow(AbstractCachingShadow):
     (i.e. used as the class of another Smalltalk object).
     """
 
-    _attr_ = ["name", "instance_size", "instance_varsized", "instance_kind", "w_methoddict", "s_methoddict", "w_superclass"]
+    _attr_ = ["name", "instance_size", "instance_varsized", "instance_kind", "w_methoddict", "s_methoddict", "_s_superclass"]
 
     def __init__(self, space, w_self):
         # fields added here should also be in objspace.py:60ff, 300ff
@@ -141,10 +141,10 @@ class ClassShadow(AbstractCachingShadow):
 
         w_superclass = w_self._fetch(constants.CLASS_SUPERCLASS_INDEX)
         if w_superclass.is_same_object(self.space.w_nil):
-            self.w_superclass = None
+            self._s_superclass = None
         else:
             assert isinstance(w_superclass, model.W_PointersObject)
-            self.w_superclass = w_superclass
+            self._s_superclass = w_superclass.as_class_get_shadow(self.space)
         self.version = Version()
 
     def guess_class_name(self):
@@ -194,9 +194,9 @@ class ClassShadow(AbstractCachingShadow):
         return jit.promote(self.w_methoddict.as_methoddict_get_shadow(self.space))
 
     def s_superclass(self):
-        if self.w_superclass is None:
+        if self._s_superclass is None:
             return None
-        return self.w_superclass.as_class_get_shadow(self.space)
+        return self._s_superclass
 
     # _______________________________________________________________
     # Methods for querying the format word, taken from the blue book:
@@ -226,22 +226,36 @@ class ClassShadow(AbstractCachingShadow):
         " Number of named instance variables for each instance of this class "
         return self.instance_size
 
+    def store_w_superclass(self, w_class):
+        if w_class is None:
+            self._s_superclass = None
+        else:
+            self._s_superclass = w_class.as_class_get_shadow(self.space)
+
     # _______________________________________________________________
     # Methods for querying the format word, taken from the blue book:
 
     def __repr__(self):
         return "<ClassShadow %s>" % (self.name or '?',)
 
-    @jit.unroll_safe
     def lookup(self, w_selector):
+        jit.promote(self)
+        version = self.version
+        jit.promote(version)
+        return self.safe_lookup(w_selector, version)
+
+    @jit.unroll_safe
+    def safe_lookup(self, w_selector, version):
+        assert version is self.version
         look_in_shadow = self
         jit.promote(w_selector)
         while look_in_shadow is not None:
             w_method = look_in_shadow.s_methoddict().find_selector(w_selector)
             if w_method is not None:
                 return w_method.as_compiledmethod_get_shadow(self.space)
-            look_in_shadow = look_in_shadow.s_superclass()
+            look_in_shadow = look_in_shadow._s_superclass
         raise MethodNotFound(self, w_selector)
+
 
     # _______________________________________________________________
     # Methods used only in testing

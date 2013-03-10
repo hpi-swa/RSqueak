@@ -259,9 +259,9 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
 class W_PointersObject(W_AbstractObjectWithClassReference):
     """Common object."""
     _attrs_ = ['_shadow', '_vars']
-    
-    _shadow = None # Default value
 
+    _shadow = None # Default value
+    
     @jit.unroll_safe
     def __init__(self, w_class, size):
         """Create new object with size = fixed + variable size."""
@@ -269,7 +269,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         vars = self._vars = [None] * size
         for i in range(size): # do it by hand for the JIT's sake
             vars[i] = w_nil
-        self._shadow = None
+        self._shadow = None # Default value
 
     def at0(self, space, index0):
         # To test, at0 = in varsize part
@@ -382,7 +382,11 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         if not isinstance(w_other, W_PointersObject):
             return False
         self._vars, w_other._vars = w_other._vars, self._vars
+        # switching means also switching shadows
         self._shadow, w_other._shadow = w_other._shadow, self._shadow
+        # shadow links are in both directions -> also update shadows
+        if    self.has_shadow():    self._shadow._w_self = self
+        if w_other.has_shadow(): w_other._shadow._w_self = w_other
         W_AbstractObjectWithClassReference._become(self, w_other)
         return True
         
@@ -499,10 +503,11 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 ###    variables.  The number of bytes used for this purpose is the value of
 ###    the last byte in the method.
 
-    _shadow = None
+    _shadow = None # Default value
     _likely_methodname = "<unknown>"
 
     def __init__(self, bytecount=0, header=0):
+        self._shadow = None
         self.setheader(header)
         self.bytes = ["\x00"] * bytecount
 

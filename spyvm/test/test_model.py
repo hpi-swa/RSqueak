@@ -213,7 +213,9 @@ def test_become_with_shadow():
     res = w_clsa.become(w_clsb)
     assert res
     assert w_clsa.as_class_get_shadow(space) is s_clsb
+    assert s_clsa._w_self is w_clsb
     assert w_clsb.as_class_get_shadow(space) is s_clsa
+    assert s_clsb._w_self is w_clsa
 
 def test_word_atput():
     i = model.W_SmallInteger(100)
