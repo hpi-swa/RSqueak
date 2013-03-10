@@ -282,7 +282,9 @@ def test_step_forged_image():
     assert isinstance(s_ctx, shadow.MethodContextShadow)
     assert s_ctx.top().is_same_object(space.w_true)
 
-def test_cached_methoddict_compile():
+def test_cached_methoddict():
+    py.test.skip('Should test the same as test_shadow.test_cached_methoddict, as long '
+                'as the implementation of MethodDictionary>>#at:put does not change.')
     sourcecode = """fib
                         ^self < 2
                             ifTrue: [ 1 ]

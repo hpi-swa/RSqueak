@@ -227,3 +227,29 @@ def test_observee_shadow():
     else:
         assert False
 
+def test_cached_methoddict():
+    # create a methoddict
+    foo = model.W_CompiledMethod(0)
+    bar = model.W_CompiledMethod(0)
+    baz = model.W_CompiledMethod(0)
+    methods = {'foo': foo,
+               'bar': bar}
+    w_class = build_smalltalk_class("Demo", 0x90, methods=methods)
+    s_class = w_class.as_class_get_shadow(space)
+    s_methoddict = s_class.s_methoddict()
+    s_methoddict.sync_cache()
+    i = 0
+    key = s_methoddict.w_self()._fetch(constants.METHODDICT_NAMES_INDEX+i)
+    while key is space.w_nil:
+        key = s_methoddict.w_self()._fetch(constants.METHODDICT_NAMES_INDEX+i)
+        i = i + 1
+
+    assert (s_class.lookup(key) is foo.as_compiledmethod_get_shadow(space)
+            or s_class.lookup(key) is bar.as_compiledmethod_get_shadow(space))
+    # change that entry
+    w_array = s_class.w_methoddict()._fetch(constants.METHODDICT_VALUES_INDEX)
+    version = s_methoddict.version
+    w_array.atput0(space, i, baz)
+
+    assert s_class.lookup(key) is baz.as_compiledmethod_get_shadow(space)
+    assert version is not s_methoddict.version

@@ -191,6 +191,9 @@ class ClassShadow(AbstractCachingShadow):
             raise NotImplementedError(self.instance_kind)
         return w_new
 
+    def w_methoddict(self):
+        return self.w_self()._fetch(constants.CLASS_METHODDICT_INDEX)
+
     def s_methoddict(self):
         jit.promote(self._s_methoddict.version)
         return self._s_methoddict
@@ -292,9 +295,11 @@ class ClassShadow(AbstractCachingShadow):
 class MethodDictionaryShadow(AbstractCachingShadow):
 
     _immutable_fields_ = ['invalid?']
+    _attr_ = ['methoddict']
 
     def __init__(self, space, w_self):
         self.invalid = True
+        self.methoddict = {}
         AbstractCachingShadow.__init__(self, space, w_self)
 
     def find_selector(self, w_selector):
@@ -996,4 +1001,3 @@ class ObserveeShadow(AbstractShadow):
         self.dependent = dependent
 
     def update(self): pass
-    
