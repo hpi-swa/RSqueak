@@ -281,8 +281,7 @@ class MethodDictionaryShadow(AbstractCachingShadow):
         AbstractCachingShadow.__init__(self, space, w_self)
 
     def find_selector(self, w_selector):
-        if self.invalid:
-            self.sync_cache()
+        assert not self.invalid
         jit.promote(self)
         version = self.version
         jit.promote(version)
@@ -293,11 +292,18 @@ class MethodDictionaryShadow(AbstractCachingShadow):
         assert version is self.version
         return self.methoddict.get(w_selector, None)
 
-    def update(self):
-        # Sync_cache at this point has not the desired effect, because in
+    # Remove update call for changes to ourselves:
+    # Whenever a method is added, it's keyword is added to w_self, then the
+    # w_compiled_method is added to our observee.
+        # Sync_cache at this point would not have the desired effect, because in
         # the Smalltalk Implementation, the dictionary changes first. Afterwards
         # its contents array is filled with the value belonging to the new key.
+    def store(self, n0, w_value):
+        AbstractShadow.store(self, n0, w_value)
         self.invalid = True
+
+    def update(self):
+        self.sync_cache()
 
     def sync_cache(self):
         w_values = self.w_self()._fetch(constants.METHODDICT_VALUES_INDEX)
@@ -313,8 +319,10 @@ class MethodDictionaryShadow(AbstractCachingShadow):
                     raise ClassShadowError("bogus selector in method dict")
                 w_compiledmethod = w_values._fetch(i)
                 if not isinstance(w_compiledmethod, model.W_CompiledMethod):
-                    raise ClassShadowError("the methoddict must contain "
-                                           "CompiledMethods only for now")
+                    raise ClassShadowError("The methoddict must contain "
+                                       "CompiledMethods only, for now. "
+                                       "If the value observed is nil, our "
+                                       "invalidating mechanism may be broken.")
                 self.methoddict[w_selector] = w_compiledmethod
                 selector = w_selector.as_string()
                 w_compiledmethod._likely_methodname = selector
