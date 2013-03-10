@@ -335,7 +335,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
             if shadow is not None:
                 raise DetachingShadowError(shadow, TheClass)
             shadow = self.attach_shadow_of_class(space, TheClass)
-            shadow.synchronize()
+            shadow.update()
         return shadow
 
     def get_shadow(self, space):

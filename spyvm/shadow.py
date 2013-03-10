@@ -23,7 +23,7 @@ class AbstractShadow(object):
     def getname(self):
         return repr(self)
     def attach_shadow(self): pass
-    def synchronize(self): pass
+    def update(self): pass
 
 class AbstractCachingShadow(AbstractShadow):
     _immutable_fields_ = ['version?']
@@ -41,9 +41,6 @@ class AbstractCachingShadow(AbstractShadow):
         """This should get called whenever the base Smalltalk
         object changes."""
         self.sync_cache()
-
-    def synchronize(self):
-        self.update()
 
     def sync_cache(self):
         raise NotImplementedError()
@@ -139,6 +136,7 @@ class ClassShadow(AbstractCachingShadow):
         assert isinstance(w_methoddict, model.W_PointersObject)
         if not w_methoddict.is_same_object(self.space.w_nil):
             self._s_methoddict = w_methoddict.as_methoddict_get_shadow(self.space)
+            self._s_methoddict.s_class = self
 
         w_superclass = w_self._fetch(constants.CLASS_SUPERCLASS_INDEX)
         if w_superclass.is_same_object(self.space.w_nil):
@@ -195,7 +193,6 @@ class ClassShadow(AbstractCachingShadow):
         return self.w_self()._fetch(constants.CLASS_METHODDICT_INDEX)
 
     def s_methoddict(self):
-        jit.promote(self._s_methoddict.version)
         return self._s_methoddict
 
     def s_superclass(self):
@@ -292,27 +289,22 @@ class ClassShadow(AbstractCachingShadow):
             method = w_method.as_compiledmethod_get_shadow(self.space)
             method.w_compiledin = self.w_self()
 
-class MethodDictionaryShadow(AbstractCachingShadow):
+class MethodDictionaryShadow(AbstractShadow):
 
-    _immutable_fields_ = ['invalid?']
+    _immutable_fields_ = ['invalid?', 's_class']
     _attr_ = ['methoddict']
 
     def __init__(self, space, w_self):
         self.invalid = True
+        self.s_class = None
         self.methoddict = {}
-        AbstractCachingShadow.__init__(self, space, w_self)
+        AbstractShadow.__init__(self, space, w_self)
 
     def find_selector(self, w_selector):
         assert not self.invalid
-        jit.promote(self)
-        version = self.version
-        jit.promote(version)
-        return self._safe_find_selector(w_selector, version)
-
-    @jit.elidable
-    def _safe_find_selector(self, w_selector, version):
-        assert version is self.version
         return self.methoddict.get(w_selector, None)
+
+    def update(self): return self.sync_cache()
 
     # Remove update call for changes to ourselves:
     # Whenever a method is added, it's keyword is added to w_self, then the
@@ -347,7 +339,8 @@ class MethodDictionaryShadow(AbstractCachingShadow):
                 self.methoddict[w_selector] = w_compiledmethod
                 selector = w_selector.as_string()
                 w_compiledmethod._likely_methodname = selector
-        self.version = Version()
+        if self.s_class:
+            self.s_class.version = Version()
         self.invalid = False
 
 

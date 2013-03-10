@@ -248,8 +248,8 @@ def test_cached_methoddict():
             or s_class.lookup(key) is bar.as_compiledmethod_get_shadow(space))
     # change that entry
     w_array = s_class.w_methoddict()._fetch(constants.METHODDICT_VALUES_INDEX)
-    version = s_methoddict.version
+    version = s_class.version
     w_array.atput0(space, i, baz)
 
     assert s_class.lookup(key) is baz.as_compiledmethod_get_shadow(space)
-    assert version is not s_methoddict.version
+    assert version is not s_class.version
