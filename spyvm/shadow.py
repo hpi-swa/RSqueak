@@ -74,10 +74,10 @@ class ClassShadow(AbstractCachingShadow):
     (i.e. used as the class of another Smalltalk object).
     """
 
-    _attr_ = ["name", "instance_size", "instance_varsized", "instance_kind", "w_methoddict", "s_methoddict", "_s_superclass"]
+    _attr_ = ["name", "instance_size", "instance_varsized", "instance_kind", "_s_methoddict", "_s_superclass"]
 
     def __init__(self, space, w_self):
-        # fields added here should also be in objspace.py:60ff, 300ff
+        # fields added here should also be in objspace.py:56ff, 300ff
         self.name = ''
         AbstractCachingShadow.__init__(self, space, w_self)
 
@@ -137,7 +137,8 @@ class ClassShadow(AbstractCachingShadow):
         # read the methoddict
         w_methoddict = w_self._fetch(constants.CLASS_METHODDICT_INDEX)
         assert isinstance(w_methoddict, model.W_PointersObject)
-        self.w_methoddict = w_methoddict
+        if not w_methoddict.is_same_object(self.space.w_nil):
+            self._s_methoddict = w_methoddict.as_methoddict_get_shadow(self.space)
 
         w_superclass = w_self._fetch(constants.CLASS_SUPERCLASS_INDEX)
         if w_superclass.is_same_object(self.space.w_nil):
@@ -191,7 +192,8 @@ class ClassShadow(AbstractCachingShadow):
         return w_new
 
     def s_methoddict(self):
-        return jit.promote(self.w_methoddict.as_methoddict_get_shadow(self.space))
+        jit.promote(self._s_methoddict.version)
+        return self._s_methoddict
 
     def s_superclass(self):
         if self._s_superclass is None:
@@ -271,9 +273,10 @@ class ClassShadow(AbstractCachingShadow):
 
     def initialize_methoddict(self):
         "NOT_RPYTHON"     # this is only for testing.
-        if self.w_methoddict is None:
-            self.w_methoddict = model.W_PointersObject(None, 2)
-            self.w_methoddict._store(1, model.W_PointersObject(None, 0))
+        if self._s_methoddict is None:
+            w_methoddict = model.W_PointersObject(None, 2)
+            w_methoddict._store(1, model.W_PointersObject(None, 0))
+            self._s_methoddict = w_methoddict.as_methoddict_get_shadow(self.space)
             self.s_methoddict().sync_cache()
         self.s_methoddict().invalid = False
 
@@ -316,10 +319,9 @@ class MethodDictionaryShadow(AbstractCachingShadow):
         AbstractShadow.store(self, n0, w_value)
         self.invalid = True
 
-    def update(self):
-        self.sync_cache()
-
     def sync_cache(self):
+        if self.w_self().size() == 0:
+            return
         w_values = self.w_self()._fetch(constants.METHODDICT_VALUES_INDEX)
         assert isinstance(w_values, model.W_PointersObject)
         s_values = w_values.as_observed_get_shadow(self.space)
@@ -992,3 +994,6 @@ class ObserveeShadow(AbstractShadow):
         if self.dependent is not None and dependent is not self.dependent:
             raise RuntimeError('Meant to be observed by only one value, so far')
         self.dependent = dependent
+
+    def update(self): pass
+    

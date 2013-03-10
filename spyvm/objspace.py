@@ -299,7 +299,7 @@ def bootstrap_class(space, instsize, w_superclass=None, w_metaclass=None,
     s.version = shadow.Version()
     s.instance_size = instsize
     s.instance_kind = format
-    s.w_methoddict = None
+    s._s_methoddict = None
     s.instance_varsized = varsized or format != shadow.POINTERS
     w_class.store_shadow(s)
     return w_class
