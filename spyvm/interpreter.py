@@ -295,7 +295,7 @@ class __extend__(ContextPartShadow):
             code = s_method.primitive
             if interp.should_trace():
                 print "%sActually calling primitive %d" % (interp._last_indent, code,)
-            func = primitives.prim_table[code]
+            func = primitives.prim_holder.prim_table[code]
             try:
                 # note: argcount does not include rcvr
                 return func(interp, self, argcount)

@@ -81,7 +81,7 @@ class ClassShadow(AbstractCachingShadow):
         # fields added here should also be in objspace.py:56ff, 300ff
         self.name = ''
         self._s_superclass = None
-        self.subclass_s = set()
+        self.subclass_s = {}
         AbstractCachingShadow.__init__(self, space, w_self)
 
     def getname(self):
@@ -247,8 +247,11 @@ class ClassShadow(AbstractCachingShadow):
             self._s_superclass = s_scls
             self._s_superclass.attach_s_class(self)
 
-    def attach_s_class(self, s_other): self.subclass_s.add(s_other)
-    def detach_s_class(self, s_other): self.subclass_s.remove(s_other)
+    def attach_s_class(self, s_other):
+        self.subclass_s[s_other] = None
+
+    def detach_s_class(self, s_other):
+        del self.subclass_s[s_other]
 
     def changed(self):
         self.superclass_changed(Version())
@@ -270,9 +273,10 @@ class ClassShadow(AbstractCachingShadow):
         jit.promote(self)
         version = self.version
         jit.promote(version)
-        return self.safe_lookup(w_selector, version)
+        w_method = self.safe_lookup(w_selector, version)
+        return w_method.as_compiledmethod_get_shadow(self.space)
 
-    @jit.unroll_safe
+    @jit.elidable
     def safe_lookup(self, w_selector, version):
         assert version is self.version
         look_in_shadow = self
@@ -280,7 +284,7 @@ class ClassShadow(AbstractCachingShadow):
         while look_in_shadow is not None:
             w_method = look_in_shadow.s_methoddict().find_selector(w_selector)
             if w_method is not None:
-                return w_method.as_compiledmethod_get_shadow(self.space)
+                return w_method
             look_in_shadow = look_in_shadow._s_superclass
         raise MethodNotFound(self, w_selector)
 
@@ -946,6 +950,14 @@ class CompiledMethodShadow(object):
         return self._w_self
 
     def getliteral(self, index):
+        jit.promote(self)
+        version = self.version
+        jit.promote(version)
+        return self.safe_getliteral(index, version)
+
+    @jit.elidable
+    def safe_getliteral(self, index, version):
+        assert version is self.version
         return self.literals[index]
 
     def getliteralsymbol(self, index):

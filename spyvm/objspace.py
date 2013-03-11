@@ -295,7 +295,7 @@ def bootstrap_class(space, instsize, w_superclass=None, w_metaclass=None,
     s.space = space
     s.version = shadow.Version()
     s._w_self = w_class
-    s.subclass_s = set()
+    s.subclass_s = {}
     s._s_superclass = None
     s.store_w_superclass(w_superclass)
     s.name = name

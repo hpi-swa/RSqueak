@@ -35,6 +35,12 @@ def make_failing(code):
 # Squeak has primitives all the way up to 575
 # So all optional primitives will default to the bytecode implementation
 prim_table = [make_failing(i) for i in range(576)]
+
+class PrimitiveHolder(object):
+    _immutable_fields_ = ["prim_table[*]"]
+
+prim_holder = PrimitiveHolder()
+prim_holder.prim_table = prim_table
 # clean up namespace:
 del i
 prim_table_implemented_only = []
