@@ -369,6 +369,14 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         from spyvm.shadow import CachedObjectShadow
         return self.as_special_get_shadow(space, CachedObjectShadow)
 
+    def as_bitblt_get_shadow(self, space):
+        from spyvm.shadow import BitBltShadow
+        return self.as_special_get_shadow(space, BitBltShadow)
+
+    def as_form_get_shadow(self, space):
+        from spyvm.shadow import FormShadow
+        return self.as_special_get_shadow(space, FormShadow)
+
     def become(self, w_other):
         if not isinstance(w_other, W_PointersObject):
             return False

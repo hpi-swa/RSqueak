@@ -513,7 +513,7 @@ SET_DISPLAY_MODE = 92
 INPUT_SEMAPHORE = 93
 GET_NEXT_EVENT = 94
 INPUT_WORD = 95
-OBSOLETE_INDEXED = 96
+BITBLT_COPY_BITS = 96 # OBSOLETE_INDEXED = 96
 SNAPSHOT = 97
 STORE_IMAGE_SEGMENT = 98
 LOAD_IMAGE_SEGMENT = 99
@@ -521,7 +521,7 @@ PERFORM_IN_SUPERCLASS = 100
 BE_CURSOR = 101
 BE_DISPLAY = 102
 SCAN_CHARACTERS = 103
-# OBSOLETE_INDEXED = 104 # also 96
+OBSOLETE_INDEXED = 104 # also 96
 STRING_REPLACE = 105
 SCREEN_SIZE = 106
 MOUSE_BUTTONS = 107
@@ -532,6 +532,21 @@ KBD_PEEK = 109
 @expose_primitive(GET_NEXT_EVENT, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
     raise PrimitiveNotYetWrittenError()
+
+@expose_primitive(BITBLT_COPY_BITS, unwrap_spec=[object])
+def func(interp, s_frame, w_rcvr):
+    if not isinstance(w_rcvr, model.W_PointersObject) or w_rcvr.size() < 15:
+        raise PrimitiveFailedError
+    # See BlueBook p.356ff
+    s_bitblt = w_rcvr.as_bitblt_get_shadow(interp.space)
+    s_bitblt.clip_range()
+    if s_bitblt.w <= 0 or s_bitblt.h <= 0:
+        return w_rcvr # null range
+    s_bitblt.compute_masks()
+    s_bitblt.check_overlap()
+    s_bitblt.calculate_offsets()
+    s_bitblt.copy_loop()
+    return w_rcvr
 
 @expose_primitive(BE_CURSOR, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
@@ -671,6 +686,7 @@ def func(interp, s_frame, w_reciver, i):
 
 @expose_primitive(DRAW_RECTANGLE, unwrap_spec=[object, int, int, int, int])
 def func(interp, s_frame, w_rcvr, left, right, top, bottom):
+    import pdb; pdb.set_trace()
     raise PrimitiveNotYetWrittenError()
 
 
