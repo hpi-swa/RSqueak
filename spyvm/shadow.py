@@ -49,6 +49,9 @@ class AbstractCachingShadow(AbstractShadow):
         AbstractShadow.store(self, n0, w_value)
         self.update()
 
+    def change(self):
+        self.version = Version()
+
 class Version:
     pass
 # ____________________________________________________________ 
@@ -71,11 +74,14 @@ class ClassShadow(AbstractCachingShadow):
     (i.e. used as the class of another Smalltalk object).
     """
 
-    _attr_ = ["name", "instance_size", "instance_varsized", "instance_kind", "_s_methoddict", "_s_superclass"]
+    _attr_ = ["name", "instance_size", "instance_varsized", "instance_kind",
+                "_s_methoddict", "_s_superclass", "subclass_s"]
 
     def __init__(self, space, w_self):
         # fields added here should also be in objspace.py:56ff, 300ff
         self.name = ''
+        self._s_superclass = None
+        self.subclass_s = set()
         AbstractCachingShadow.__init__(self, space, w_self)
 
     def getname(self):
@@ -143,8 +149,8 @@ class ClassShadow(AbstractCachingShadow):
             self._s_superclass = None
         else:
             assert isinstance(w_superclass, model.W_PointersObject)
-            self._s_superclass = w_superclass.as_class_get_shadow(self.space)
-        self.version = Version()
+            self.store_w_superclass(w_superclass)
+        self.changed()
 
     def guess_class_name(self):
         if self.name != '':
@@ -173,7 +179,7 @@ class ClassShadow(AbstractCachingShadow):
             self.name = w_name.as_string()
         else:
             self.name = None
-        self.version = Version()
+        self.changed()
 
     def new(self, extrasize=0):
         w_cls = self.w_self()
@@ -232,7 +238,27 @@ class ClassShadow(AbstractCachingShadow):
         if w_class is None:
             self._s_superclass = None
         else:
-            self._s_superclass = w_class.as_class_get_shadow(self.space)
+            s_scls = w_class.as_class_get_shadow(self.space)
+            if self._s_superclass is s_scls: 
+                return
+            elif (self._s_superclass is not None 
+                and self._s_superclass is not s_scls):
+                self._s_superclass.detach_s_class(self)
+            self._s_superclass = s_scls
+            self._s_superclass.attach_s_class(self)
+
+    def attach_s_class(self, s_other): self.subclass_s.add(s_other)
+    def detach_s_class(self, s_other): self.subclass_s.remove(s_other)
+
+    def changed(self):
+        self.superclass_changed(Version())
+
+    # this is done, because the class-hierarchy contains cycles
+    def superclass_changed(self, version):
+        if self.version is not version:
+            self.version = version
+            for s_class in self.subclass_s:
+                s_class.superclass_changed(version)
 
     # _______________________________________________________________
     # Methods for querying the format word, taken from the blue book:
@@ -340,7 +366,7 @@ class MethodDictionaryShadow(AbstractShadow):
                 selector = w_selector.as_string()
                 w_compiledmethod._likely_methodname = selector
         if self.s_class:
-            self.s_class.version = Version()
+            self.s_class.changed()
         self.invalid = False
 
 
@@ -975,8 +1001,7 @@ class CachedObjectShadow(AbstractCachingShadow):
         self.version = Version()
         return self._w_self._store(n0, w_value)
 
-    def update(self):
-        self.version = Version()
+    def update(self): pass
 
 class ObserveeShadow(AbstractShadow):
     _attr_ = ['dependent']

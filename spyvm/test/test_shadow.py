@@ -253,3 +253,24 @@ def test_cached_methoddict():
 
     assert s_class.lookup(key) is baz.as_compiledmethod_get_shadow(space)
     assert version is not s_class.version
+
+def test_updating_class_changes_subclasses():
+    w_parent = build_smalltalk_class("Demo", 0x90,
+            methods={'bar': model.W_CompiledMethod(0)})
+    w_class = build_smalltalk_class("Demo", 0x90,
+            methods={'foo': model.W_CompiledMethod(0)}, w_superclass=w_parent)
+    s_class = w_class.as_class_get_shadow(space)
+    version = s_class.version
+
+    w_method = model.W_CompiledMethod(0)
+    key = space.wrap_string('foo')
+
+    s_md = w_parent.as_class_get_shadow(space).s_methoddict()
+    s_md.sync_cache()
+    w_ary = s_md._w_self._fetch(constants.METHODDICT_VALUES_INDEX)
+    s_md._w_self.atput0(space, 0, key)
+    w_ary.atput0(space, 0, w_method)
+
+    assert s_class.lookup(key) is w_method.as_compiledmethod_get_shadow(space)
+    assert s_class.version is not version
+    assert s_class.version is w_parent.as_class_get_shadow(space).version
