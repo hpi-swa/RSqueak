@@ -800,12 +800,8 @@ class MethodContextShadow(ContextPartShadow):
     @jit.unroll_safe
     def make_context(space, s_method, w_receiver,
                      arguments, s_sender=None, closure=None, pc=0):
-        # From blue book: normal mc have place for 12 temps+maxstack
-        # mc for methods with islarge flag turned on 32
-        size = (12 + s_method.islarge * 20 + s_method.argsize 
-            + space.w_MethodContext.as_class_get_shadow(space).instsize())
-        # The last summand is needed, because we calculate i.a. our stackdepth relative of the size of w_self.
-
+        # The summand is needed, because we calculate i.a. our stackdepth relative of the size of w_self.
+        size = s_method.compute_frame_size() + space.w_MethodContext.as_class_get_shadow(space).instsize()
         s_new_context = MethodContextShadow(space, None)
         s_new_context._w_self_size = size
         s_new_context_non_fresh = s_new_context # XXX: find a better solution to translation err
@@ -955,6 +951,12 @@ class CompiledMethodShadow(object):
     @make_elidable_after_versioning
     def getliteral(self, index):
         return self.literals[index]
+
+    @make_elidable_after_versioning
+    def compute_frame_size(self):
+        # From blue book: normal mc have place for 12 temps+maxstack
+        # mc for methods with islarge flag turned on 32
+        return 12 + self.islarge * 20 + self.argsize
 
     def getliteralsymbol(self, index):
         w_literal = self.getliteral(index)
