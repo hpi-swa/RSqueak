@@ -221,11 +221,14 @@ class W_AbstractObjectWithIdentityHash(W_Object):
 class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     """Objects with arbitrary class (ie not CompiledMethod, SmallInteger or
     Float)."""
-    _attrs_ = ['w_class']
+    _attrs_ = ['w_class', 's_class']
+    s_class = None
 
     def __init__(self, w_class):
         if w_class is not None:     # it's None only for testing and space generation
             assert isinstance(w_class, W_PointersObject)
+            if w_class.has_shadow():
+                self.s_class = w_class.as_class_get_shadow(w_class._shadow.space)
         self.w_class = w_class
 
     def getclass(self, space):
@@ -250,11 +253,16 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
 
     def _become(self, w_other):
         self.w_class, w_other.w_class = w_other.w_class, self.w_class
+        self.s_class, w_other.s_class = w_other.s_class, self.s_class
         W_AbstractObjectWithIdentityHash._become(self, w_other)
 
     def has_class(self):
         return self.w_class is not None
-        
+
+    def shadow_of_my_class(self, space):
+        if self.s_class is None:
+            self.s_class = self.w_class.as_class_get_shadow(space)
+        return self.s_class
 
 class W_PointersObject(W_AbstractObjectWithClassReference):
     """Common object."""

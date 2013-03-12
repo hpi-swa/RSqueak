@@ -644,6 +644,7 @@ def func(interp, s_frame, w_arg, w_rcvr):
         raise PrimitiveFailedError()
 
     w_rcvr.w_class = w_arg.w_class
+    w_rcvr.s_class = w_arg.s_class
 
 # ___________________________________________________________________________
 # Miscellaneous Primitives (120-127)

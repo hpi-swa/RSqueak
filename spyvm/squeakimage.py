@@ -523,6 +523,7 @@ class GenericObject(object):
         w_class = self.g_class.w_object
         assert isinstance(w_class, model.W_PointersObject)
         w_pointersobject.w_class = w_class
+        w_pointersobject.s_class = None
         w_pointersobject.hash = self.chunk.hash12
 
     def fillin_wordsobject(self, w_wordsobject):
