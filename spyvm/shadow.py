@@ -273,8 +273,7 @@ class ClassShadow(AbstractCachingShadow):
         jit.promote(self)
         version = self.version
         jit.promote(version)
-        w_method = self.safe_lookup(w_selector, version)
-        return w_method.as_compiledmethod_get_shadow(self.space)
+        return self.safe_lookup(w_selector, version)
 
     @jit.elidable
     def safe_lookup(self, w_selector, version):
@@ -282,9 +281,9 @@ class ClassShadow(AbstractCachingShadow):
         look_in_shadow = self
         jit.promote(w_selector)
         while look_in_shadow is not None:
-            w_method = look_in_shadow.s_methoddict().find_selector(w_selector)
-            if w_method is not None:
-                return w_method
+            s_method = look_in_shadow.s_methoddict().find_selector(w_selector)
+            if s_method is not None:
+                return s_method
             look_in_shadow = look_in_shadow._s_superclass
         raise MethodNotFound(self, w_selector)
 
@@ -314,10 +313,10 @@ class ClassShadow(AbstractCachingShadow):
         "NOT_RPYTHON"     # this is only for testing.
         assert not isinstance(w_selector, str)
         self.initialize_methoddict()
-        self.s_methoddict().methoddict[w_selector] = w_method
+        s_method = w_method.as_compiledmethod_get_shadow(self.space)
+        self.s_methoddict().methoddict[w_selector] = s_method
         if isinstance(w_method, model.W_CompiledMethod):
-            method = w_method.as_compiledmethod_get_shadow(self.space)
-            method.w_compiledin = self.w_self()
+            s_method.w_compiledin = self.w_self()
 
 class MethodDictionaryShadow(AbstractShadow):
 
@@ -366,7 +365,7 @@ class MethodDictionaryShadow(AbstractShadow):
                                        "CompiledMethods only, for now. "
                                        "If the value observed is nil, our "
                                        "invalidating mechanism may be broken.")
-                self.methoddict[w_selector] = w_compiledmethod
+                self.methoddict[w_selector] = w_compiledmethod.as_compiledmethod_get_shadow(self.space)
                 selector = w_selector.as_string()
                 w_compiledmethod._likely_methodname = selector
         if self.s_class:

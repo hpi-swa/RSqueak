@@ -73,7 +73,7 @@ def test_methoddict():
     methoddict = classshadow.s_methoddict().methoddict
     assert len(methods) == len(methoddict)
     for w_key, value in methoddict.items():
-        assert methods[w_key.as_string()] is value
+        assert methods[w_key.as_string()].as_compiledmethod_get_shadow(space) is value
 
 def method(tempsize=3,argsize=2, bytes="abcde"):
     w_m = model.W_CompiledMethod()

@@ -298,9 +298,6 @@ def test_cached_methoddict():
     perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
     assert perform(w(10), "fib").is_same_object(w(89))
 
-def test_get_env():
-    import pdb; pdb.set_trace()
-
 def test_step_run_something():
     from spyvm.test import test_miniimage
     setup_module(test_miniimage, filename='running-something-mini.image')
