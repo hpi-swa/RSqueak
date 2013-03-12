@@ -186,7 +186,7 @@ def test_compiledmethodshadow():
     assert shadow.bytecode == "abc"
     assert shadow.bytecodeoffset == 12
     assert shadow.literalsize == 8 # 12 - 4byte header
-    assert shadow.tempsize == 1
+    assert shadow.tempsize() == 1
 
     w_compiledmethod.literalatput0(space, 1, 17)
     w_compiledmethod.literalatput0(space, 2, 41)

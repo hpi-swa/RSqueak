@@ -3,6 +3,16 @@ from spyvm import model, constants, error, wrapper
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib import rarithmetic, jit
 
+def make_elidable_after_versioning(func):
+    @jit.elidable
+    def elidable_func(self, version, *args):
+        return func(self, *args)
+    def meth(self, *args):
+        jit.promote(self)
+        version = jit.promote(self.version)
+        return elidable_func(self, version, *args)
+    return meth
+
 class AbstractShadow(object):
     """A shadow is an optional extra bit of information that
     can be attached at run-time to any Smalltalk object.
@@ -74,7 +84,7 @@ class ClassShadow(AbstractCachingShadow):
     (i.e. used as the class of another Smalltalk object).
     """
 
-    _attr_ = ["name", "instance_size", "instance_varsized", "instance_kind",
+    _attr_ = ["name", "_instance_size", "instance_varsized", "instance_kind",
                 "_s_methoddict", "_s_superclass", "subclass_s"]
 
     def __init__(self, space, w_self):
@@ -109,7 +119,7 @@ class ClassShadow(AbstractCachingShadow):
             # compute the instance size (really the size, not the number of bytes)
             instsize_lo = (classformat >> 1) & 0x3F
             instsize_hi = (classformat >> (9 + 1)) & 0xC0
-            self.instance_size = (instsize_lo | instsize_hi) - 1  # subtract hdr
+            self._instance_size = (instsize_lo | instsize_hi) - 1  # subtract hdr
             # decode the instSpec
             format = (classformat >> 7) & 15
             self.instance_varsized = format >= 2
@@ -119,12 +129,12 @@ class ClassShadow(AbstractCachingShadow):
                 self.instance_kind = WEAK_POINTERS
             elif format == 6:
                 self.instance_kind = WORDS
-                if self.instance_size != 0:
+                if self.instsize() != 0:
                     raise ClassShadowError("can't have both words and a non-zero "
                                            "base instance size")
             elif 8 <= format <= 11:
                 self.instance_kind = BYTES
-                if self.instance_size != 0:
+                if self.instsize() != 0:
                     raise ClassShadowError("can't have both bytes and a non-zero "
                                            "base instance size")
             elif 12 <= format <= 15:
@@ -184,7 +194,7 @@ class ClassShadow(AbstractCachingShadow):
     def new(self, extrasize=0):
         w_cls = self.w_self()
         if self.instance_kind == POINTERS:
-            w_new = model.W_PointersObject(w_cls, self.instance_size+extrasize)
+            w_new = model.W_PointersObject(w_cls, self.instsize()+extrasize)
         elif self.instance_kind == WORDS:
             w_new = model.W_WordsObject(w_cls, extrasize)
         elif self.instance_kind == BYTES:
@@ -226,13 +236,15 @@ class ClassShadow(AbstractCachingShadow):
         " True if instances of this class have data stored as numerical bytes "
         return self.format == BYTES
 
+    @make_elidable_after_versioning
     def isvariable(self):
         " True if instances of this class have indexed inst variables "
         return self.instance_varsized
 
+    @make_elidable_after_versioning
     def instsize(self):
         " Number of named instance variables for each instance of this class "
-        return self.instance_size
+        return self._instance_size
 
     def store_w_superclass(self, w_class):
         if w_class is None:
@@ -269,17 +281,9 @@ class ClassShadow(AbstractCachingShadow):
     def __repr__(self):
         return "<ClassShadow %s>" % (self.name or '?',)
 
+    @make_elidable_after_versioning
     def lookup(self, w_selector):
-        jit.promote(self)
-        version = self.version
-        jit.promote(version)
-        return self.safe_lookup(w_selector, version)
-
-    @jit.elidable
-    def safe_lookup(self, w_selector, version):
-        assert version is self.version
         look_in_shadow = self
-        jit.promote(w_selector)
         while look_in_shadow is not None:
             s_method = look_in_shadow.s_methoddict().find_selector(w_selector)
             if s_method is not None:
@@ -573,7 +577,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
     def getbytecode(self):
         jit.promote(self._pc)
         assert self._pc >= 0
-        bytecode = self.s_method().bytecode[self._pc]
+        bytecode = self.s_method().getbytecode(self._pc)
         currentBytecode = ord(bytecode)
         self._pc += 1
         return currentBytecode
@@ -667,7 +671,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
         if self._w_self is not None:
             return self._w_self
         else:
-            size = self.size() - self.space.w_MethodContext.as_class_get_shadow(self.space).instance_size
+            size = self.size() - self.space.w_MethodContext.as_class_get_shadow(self.space).instsize()
             space = self.space
             w_self = space.w_MethodContext.as_class_get_shadow(space).new(size)
             w_self.store_shadow(self)
@@ -799,7 +803,7 @@ class MethodContextShadow(ContextPartShadow):
         # From blue book: normal mc have place for 12 temps+maxstack
         # mc for methods with islarge flag turned on 32
         size = (12 + s_method.islarge * 20 + s_method.argsize 
-            + space.w_MethodContext.as_class_get_shadow(space).instance_size)
+            + space.w_MethodContext.as_class_get_shadow(space).instsize())
         # The last summand is needed, because we calculate i.a. our stackdepth relative of the size of w_self.
 
         s_new_context = MethodContextShadow(space, None)
@@ -862,7 +866,7 @@ class MethodContextShadow(ContextPartShadow):
 
     def tempsize(self):
         if not self.is_closure_context():
-            return self.s_method().tempsize
+            return self.s_method().tempsize()
         else:
             return wrapper.BlockClosureWrapper(self.space, 
                                 self.w_closure_or_nil).tempsize()
@@ -948,15 +952,8 @@ class CompiledMethodShadow(object):
     def w_self(self):
         return self._w_self
 
+    @make_elidable_after_versioning
     def getliteral(self, index):
-        jit.promote(self)
-        version = self.version
-        jit.promote(version)
-        return self.safe_getliteral(index, version)
-
-    @jit.elidable
-    def safe_getliteral(self, index, version):
-        assert version is self.version
         return self.literals[index]
 
     def getliteralsymbol(self, index):
@@ -971,8 +968,8 @@ class CompiledMethodShadow(object):
         self.literals = w_compiledmethod.literals
         self.bytecodeoffset = w_compiledmethod.bytecodeoffset()
         self.literalsize = w_compiledmethod.getliteralsize()
-        self.tempsize = w_compiledmethod.gettempsize()
-        self.primitive = w_compiledmethod.primitive
+        self._tempsize = w_compiledmethod.gettempsize()
+        self._primitive = w_compiledmethod.primitive
         self.argsize = w_compiledmethod.argsize
         self.islarge = w_compiledmethod.islarge
 
@@ -989,11 +986,23 @@ class CompiledMethodShadow(object):
                 association = wrapper.AssociationWrapper(None, w_association)
                 self.w_compiledin = association.value()
 
+    @make_elidable_after_versioning
+    def tempsize(self):
+        return self._tempsize
+
+    @make_elidable_after_versioning
+    def primitive(self):
+        return self._primitive
+
     def create_frame(self, space, receiver, arguments, sender = None):
         assert len(arguments) == self.argsize
         s_new = MethodContextShadow.make_context(
                 space, self, receiver, arguments, sender)
         return s_new
+
+    @make_elidable_after_versioning
+    def getbytecode(self, pc):
+        return self.bytecode[pc]
 
 class CachedObjectShadow(AbstractCachingShadow):
 

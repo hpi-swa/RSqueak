@@ -290,9 +290,9 @@ class __extend__(ContextPartShadow):
         s_method = receiverclassshadow.lookup(w_selector)
         # XXX catch MethodNotFound here and send doesNotUnderstand:
         # AK shouln't that be done in lookup itself, please check what spec says about DNU in case of super sends.
-        if s_method.primitive:
+        code = s_method.primitive()
+        if code:
             # the primitive pushes the result (if any) onto the stack itself
-            code = s_method.primitive
             if interp.should_trace():
                 print "%sActually calling primitive %d" % (interp._last_indent, code,)
             func = primitives.prim_holder.prim_table[code]
