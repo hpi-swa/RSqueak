@@ -192,6 +192,35 @@ class W_Float(W_Object):
     def clone(self, space):
         return self
 
+    def at0(self, space, index0):
+        return self.fetch(space, index0)
+
+    def atput0(self, space, index0, w_value):
+        self.store(space, index0, w_value)
+
+    def fetch(self, space, n0):
+        from rpython.rlib.rstruct.ieee import float_pack
+        r = float_pack(self.value, 8) # C double
+        if n0 == 0:
+            return space.wrap_uint(r_uint(intmask(r >> 32)))
+        else:
+            assert n0 == 1
+            return space.wrap_uint(r_uint(intmask(r)))
+
+    def store(self, space, n0, w_obj):
+        from rpython.rlib.rstruct.ieee import float_unpack, float_pack
+        from rpython.rlib.rarithmetic import r_ulonglong
+
+        uint = r_ulonglong(space.unwrap_uint(w_obj))
+        r = float_pack(self.value, 8)
+        if n0 == 0:
+            r = ((r << 32) >> 32) | (uint << 32)
+        else:
+            assert n0 == 1
+            r = ((r >> 32) << 32) | uint
+        self.value = float_unpack(r, 8)
+
+
 class W_AbstractObjectWithIdentityHash(W_Object):
     """Object with explicit hash (ie all except small
     ints and floats)."""

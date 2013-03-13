@@ -178,7 +178,7 @@ class ObjSpace(object):
                 return self.wrap_int(intmask(val))
             except WrappingError:
                 pass
-        # XXX is math allowed here?
+        # XXX this code sucks
         import math
         bytes_len = int(math.log(val) / math.log(0xff)) + 1
         bytes_len = 4 if 4 > bytes_len else bytes_len

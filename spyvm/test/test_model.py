@@ -238,3 +238,21 @@ def test_word_at():
     r = b.at0(space, 0)
     assert isinstance(r, model.W_BytesObject)
     assert r.size() == 4
+
+def test_float_at():
+    b = model.W_Float(64.0)
+    r = b.fetch(space, 0)
+    assert isinstance(r, model.W_BytesObject)
+    assert r.size() == 4
+    assert r.bytes == [chr(0), chr(0), chr(80), chr(64)]
+    r = b.fetch(space, 1)
+    assert isinstance(r, model.W_SmallInteger)
+    assert r.value == 0
+
+def test_float_at_put():
+    target = model.W_Float(1.0)
+    for f in [1.0, -1.0, 1.1, 64.4, -0.0]:
+        source = model.W_Float(f)
+        target.store(space, 0, source.fetch(space, 0))
+        target.store(space, 1, source.fetch(space, 1))
+        assert target.value == f
