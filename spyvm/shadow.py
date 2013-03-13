@@ -1075,7 +1075,7 @@ class BitBltShadow(AbstractCachingShadow):
         try:
             self.dest_form = self.fetch(0).as_form_get_shadow(self.space)
         except error.PrimitiveFailedError, e:
-            self.detach_shadow()
+            self.w_self()._shadow = None
             raise e
         w_source_form = self.fetch(1)
         if w_source_form is self.space.w_nil:
@@ -1084,7 +1084,7 @@ class BitBltShadow(AbstractCachingShadow):
             try:
                 self.source_form = w_source_form.as_form_get_shadow(self.space)
             except error.PrimitiveFailedError, e:
-                self.detach_shadow()
+                self.w_self()._shadow = None
                 raise e
         w_halftone_form = self.fetch(2)
         if w_halftone_form is not self.space.w_nil:
@@ -1280,7 +1280,7 @@ class FormShadow(AbstractCachingShadow):
         if isinstance(self.w_bits, model.W_WordsObject):
             self.bits = self.w_bits.words
         else:
-            self.detach_shadow()
+            self.w_self()._shadow = None
             raise error.PrimitiveFailedError
         self.width = self.space.unwrap_int(self.fetch(1))
         self.height = self.space.unwrap_int(self.fetch(2))
@@ -1294,5 +1294,5 @@ class FormShadow(AbstractCachingShadow):
         if isinstance(self.w_bits, model.W_WordsObject):
             self.w_bits.words[:] = bits
         else:
-            self.detach_shadow()
+            self.w_self()._shadow = None
             raise error.PrimitiveFailedError
