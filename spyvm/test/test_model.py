@@ -1,4 +1,5 @@
 import py
+import math
 from spyvm import model, shadow
 from spyvm.shadow import MethodNotFound
 from spyvm import objspace, error
@@ -251,8 +252,11 @@ def test_float_at():
 
 def test_float_at_put():
     target = model.W_Float(1.0)
-    for f in [1.0, -1.0, 1.1, 64.4, -0.0]:
+    for f in [1.0, -1.0, 1.1, 64.4, -0.0, float('nan'), float('inf')]:
         source = model.W_Float(f)
         target.store(space, 0, source.fetch(space, 0))
         target.store(space, 1, source.fetch(space, 1))
-        assert target.value == f
+        if math.isnan(f):
+            assert math.isnan(target.value)
+        else:
+            assert target.value == f
