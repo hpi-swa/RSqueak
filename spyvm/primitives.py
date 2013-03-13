@@ -990,18 +990,19 @@ def func(interp, s_frame, argcount):
     raise PrimitiveFailedError()
 
 @expose_primitive(PERFORM_WITH_ARGS,
-                  unwrap_spec=[object, object, object],
-                  result_is_new_frame=True)
-def func(interp, s_frame, w_rcvr, w_sel, w_args):
-    s_method = w_rcvr.shadow_of_my_class(interp.space).lookup(w_sel)
-    assert s_method
+                  unwrap_spec=[object, object, list],
+                  no_result=True)
+def func(interp, s_frame, w_rcvr, w_selector, args_w):
+    stackvalues = s_frame.pop_and_return_n(3)
+    argcount = len(args_w)
+    s_frame.push(w_rcvr)
+    s_frame.push_all(args_w)
+    try:
+        s_frame._sendSelector(w_selector, argcount, interp,
+                      w_rcvr, w_rcvr.shadow_of_my_class(interp.space))
+    finally:
+        s_frame.push_all(stackvalues)
 
-    s_new_frame = s_method.create_frame(
-        interp.space, w_rcvr,
-        [w_args.fetch(interp.space, i) for i in range(w_args.size())])
-
-    s_new_frame.store_w_sender(s_frame.w_self())
-    return s_new_frame
 
 @expose_primitive(SIGNAL, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
