@@ -156,6 +156,12 @@ class W_Float(W_Object):
     """Boxed float value."""
     _attrs_ = ['value']
 
+    def fillin_fromwords(self, space, high, low):
+        from rpython.rlib.rstruct.ieee import float_unpack
+        from rpython.rlib.rarithmetic import r_ulonglong
+        r = (r_ulonglong(high) << 32) | low
+        self.value = float_unpack(r, 8)
+
     def __init__(self, value):
         self.value = value
 

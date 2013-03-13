@@ -461,8 +461,14 @@ class GenericObject(object):
     def iswords(self):
         return self.format == 6
 
+    def isfloat(self):
+        return self.iswords() and self.space.w_Float.is_same_object(self.g_class.w_object)
+
     def ispointers(self):
         return self.format < 5 #TODO, what about compiled methods?
+
+    def iscompiledmethod(self):
+        return 12 <= self.format <= 15
 
     def init_w_object(self):
         """ 0      no fields
@@ -483,18 +489,20 @@ class GenericObject(object):
         if self.w_object is None:
             # the instantiate call circumvents the constructors
             # and makes empty objects
-            if self.format < 5:
+            if self.ispointers():
                 # XXX self.format == 4 is weak
                 self.w_object = objectmodel.instantiate(model.W_PointersObject)
             elif self.format == 5:
                 raise CorruptImageError("Unknown format 5")
-            elif self.format == 6:
+            elif self.isfloat():
+                self.w_object = objectmodel.instantiate(model.W_Float)
+            elif self.iswords():
                 self.w_object = objectmodel.instantiate(model.W_WordsObject)
             elif self.format == 7:
                 raise CorruptImageError("Unknown format 7, no 64-bit support yet :-)")
-            elif 8 <= self.format <= 11:
+            elif self.isbytes():
                 self.w_object = objectmodel.instantiate(model.W_BytesObject)
-            elif 12 <= self.format <= 15:
+            elif self.iscompiledmethod():
                 self.w_object = objectmodel.instantiate(model.W_CompiledMethod)
             else:
                 assert 0, "not reachable"
@@ -506,6 +514,8 @@ class GenericObject(object):
         casted = self.w_object
         if isinstance(casted, model.W_PointersObject):
             self.fillin_pointersobject(casted)
+        elif isinstance(casted, model.W_Float):
+            self.fillin_floatobject(casted)
         elif isinstance(casted, model.W_WordsObject):
             self.fillin_wordsobject(casted)
         elif isinstance(casted, model.W_BytesObject):
@@ -525,6 +535,15 @@ class GenericObject(object):
         w_pointersobject.w_class = w_class
         w_pointersobject.s_class = None
         w_pointersobject.hash = self.chunk.hash12
+
+    def fillin_floatobject(self, w_floatobject):
+        from rpython.rlib.rarithmetic import r_uint
+        words = [r_uint(x) for x in self.chunk.data]
+        if len(words) != 2:
+            raise CorruptImageError("Expected 2 words in Float, got %d" % len(words))
+        w_class = self.g_class.w_object
+        assert isinstance(w_class, model.W_PointersObject)
+        w_floatobject.fillin_fromwords(self.space, words[0], words[1])
 
     def fillin_wordsobject(self, w_wordsobject):
         from rpython.rlib.rarithmetic import r_uint
