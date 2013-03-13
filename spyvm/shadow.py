@@ -1014,7 +1014,7 @@ class BitBltShadow(AbstractCachingShadow):
         if self.sx + self.w > self.source_form.width:
             self.w = self.w - (self.sx + self.w - self.source_form.width)
         if self.sy < 0:
-            self.dy = self.dy - self.su
+            self.dy = self.dy - self.sy
             self.h = self.h + self.sy
             self.sy = 0
         if self.sy + self.h > self.source_form.height:
