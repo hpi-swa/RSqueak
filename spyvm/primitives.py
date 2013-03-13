@@ -35,6 +35,12 @@ def make_failing(code):
 # Squeak has primitives all the way up to 575
 # So all optional primitives will default to the bytecode implementation
 prim_table = [make_failing(i) for i in range(576)]
+
+class PrimitiveHolder(object):
+    _immutable_fields_ = ["prim_table[*]"]
+
+prim_holder = PrimitiveHolder()
+prim_holder.prim_table = prim_table
 # clean up namespace:
 del i
 prim_table_implemented_only = []
@@ -242,6 +248,10 @@ FLOAT_SIN = 56
 FLOAT_ARCTAN = 57
 FLOAT_LOG_N = 58
 FLOAT_EXP = 59
+
+@expose_primitive(SMALLINT_AS_FLOAT, unwrap_spec=[int])
+def func(interp, s_frame, i):
+    return interp.space.wrap_float(float(i))
 
 math_ops = {
     FLOAT_ADD: operator.add,
@@ -653,6 +663,7 @@ def func(interp, s_frame, w_arg, w_rcvr):
         raise PrimitiveFailedError()
 
     w_rcvr.w_class = w_arg.w_class
+    w_rcvr.s_class = w_arg.s_class
 
 # ___________________________________________________________________________
 # Miscellaneous Primitives (120-127)

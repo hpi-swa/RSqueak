@@ -53,11 +53,8 @@ class ObjSpace(object):
         w_Class = self.classtable["w_Class"]
         w_Metaclass = self.classtable["w_Metaclass"]
         # XXX
-        proto_shadow = instantiate(shadow.ClassShadow)
-        proto_shadow.space = self
-        proto_shadow.invalid = False
-        proto_shadow.w_superclass = w_Class
-        w_ProtoObjectClass.store_shadow(proto_shadow)
+        proto_shadow = w_ProtoObjectClass._shadow
+        proto_shadow.store_w_superclass(w_Class)
         # at this point, all classes that still lack a w_class are themselves
         # metaclasses
         for nm, w_cls_obj in self.classtable.items():
@@ -181,7 +178,7 @@ class ObjSpace(object):
                 return self.wrap_int(intmask(val))
             except WrappingError:
                 pass
-        # XXX is math allowed here?
+        # XXX this code sucks
         import math
         bytes_len = int(math.log(val) / math.log(0xff)) + 1
         bytes_len = 4 if 4 > bytes_len else bytes_len
@@ -296,13 +293,15 @@ def bootstrap_class(space, instsize, w_superclass=None, w_metaclass=None,
     # XXX
     s = instantiate(shadow.ClassShadow)
     s.space = space
+    s.version = shadow.Version()
     s._w_self = w_class
-    s.w_superclass = w_superclass
+    s.subclass_s = {}
+    s._s_superclass = None
+    s.store_w_superclass(w_superclass)
     s.name = name
-    s.instance_size = instsize
+    s._instance_size = instsize
     s.instance_kind = format
-    s.w_methoddict = None
+    s._s_methoddict = None
     s.instance_varsized = varsized or format != shadow.POINTERS
-    s.invalid = False
     w_class.store_shadow(s)
     return w_class

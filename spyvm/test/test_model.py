@@ -1,4 +1,5 @@
 import py
+import math
 from spyvm import model, shadow
 from spyvm.shadow import MethodNotFound
 from spyvm import objspace, error
@@ -213,7 +214,9 @@ def test_become_with_shadow():
     res = w_clsa.become(w_clsb)
     assert res
     assert w_clsa.as_class_get_shadow(space) is s_clsb
+    assert s_clsa._w_self is w_clsb
     assert w_clsb.as_class_get_shadow(space) is s_clsa
+    assert s_clsb._w_self is w_clsa
 
 def test_word_atput():
     i = model.W_SmallInteger(100)
@@ -236,3 +239,24 @@ def test_word_at():
     r = b.at0(space, 0)
     assert isinstance(r, model.W_BytesObject)
     assert r.size() == 4
+
+def test_float_at():
+    b = model.W_Float(64.0)
+    r = b.fetch(space, 0)
+    assert isinstance(r, model.W_BytesObject)
+    assert r.size() == 4
+    assert r.bytes == [chr(0), chr(0), chr(80), chr(64)]
+    r = b.fetch(space, 1)
+    assert isinstance(r, model.W_SmallInteger)
+    assert r.value == 0
+
+def test_float_at_put():
+    target = model.W_Float(1.0)
+    for f in [1.0, -1.0, 1.1, 64.4, -0.0, float('nan'), float('inf')]:
+        source = model.W_Float(f)
+        target.store(space, 0, source.fetch(space, 0))
+        target.store(space, 1, source.fetch(space, 1))
+        if math.isnan(f):
+            assert math.isnan(target.value)
+        else:
+            assert target.value == f

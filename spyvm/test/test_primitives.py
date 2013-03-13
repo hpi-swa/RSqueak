@@ -167,6 +167,9 @@ def test_small_int_bit_shift_fail():
     prim_fails(primitives.BIT_SHIFT, [4, 29])
     prim_fails(primitives.BIT_SHIFT, [4, 28])
 
+def test_smallint_as_float():
+    assert prim(primitives.SMALLINT_AS_FLOAT, [12]).value == 12.0
+
 def test_float_add():
     assert prim(primitives.FLOAT_ADD, [1.0,2.0]).value == 3.0
     assert prim(primitives.FLOAT_ADD, [3.0,4.5]).value == 7.5

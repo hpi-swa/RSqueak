@@ -53,9 +53,3 @@ use integer tagging primitives to get more compact code:
             return model.W_SmallInteger(rerased.erase_int(val))
         except OverflowError:
             raise WrappingError("integer too large to fit into a tagged pointer")
-
-make classes
-
-
-Unclarities:
-[ ] should image loading invalidate the shadows of the precreated objects?

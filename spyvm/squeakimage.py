@@ -227,6 +227,7 @@ class ImageReader(object):
         self.init_g_objects()
         self.init_w_objects()
         self.fillin_w_objects()
+        self.synchronize_shadows()
 
     def read_version(self):
         # 1 word version
@@ -299,6 +300,12 @@ class ImageReader(object):
     def fillin_w_objects(self):
         for chunk in self.chunks.itervalues():
             chunk.g_object.fillin_w_object()
+
+    def synchronize_shadows(self):
+        for chunk in self.chunks.itervalues():
+            casted = chunk.g_object.w_object
+            if isinstance(casted, model.W_PointersObject) and casted.has_shadow():
+                casted._shadow.update()
 
     def init_compactclassesarray(self):
         """ from the blue book (CompiledMethod Symbol Array PseudoContext LargePositiveInteger nil MethodDictionary Association Point Rectangle nil TranslatedMethod BlockContext MethodContext nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil ) """
@@ -454,8 +461,14 @@ class GenericObject(object):
     def iswords(self):
         return self.format == 6
 
+    def isfloat(self):
+        return self.iswords() and self.space.w_Float.is_same_object(self.g_class.w_object)
+
     def ispointers(self):
         return self.format < 5 #TODO, what about compiled methods?
+
+    def iscompiledmethod(self):
+        return 12 <= self.format <= 15
 
     def init_w_object(self):
         """ 0      no fields
@@ -476,24 +489,23 @@ class GenericObject(object):
         if self.w_object is None:
             # the instantiate call circumvents the constructors
             # and makes empty objects
-            if self.format < 5:
+            if self.ispointers():
                 # XXX self.format == 4 is weak
                 self.w_object = objectmodel.instantiate(model.W_PointersObject)
             elif self.format == 5:
                 raise CorruptImageError("Unknown format 5")
-            elif self.format == 6:
+            elif self.isfloat():
+                self.w_object = objectmodel.instantiate(model.W_Float)
+            elif self.iswords():
                 self.w_object = objectmodel.instantiate(model.W_WordsObject)
             elif self.format == 7:
                 raise CorruptImageError("Unknown format 7, no 64-bit support yet :-)")
-            elif 8 <= self.format <= 11:
+            elif self.isbytes():
                 self.w_object = objectmodel.instantiate(model.W_BytesObject)
-            elif 12 <= self.format <= 15:
+            elif self.iscompiledmethod():
                 self.w_object = objectmodel.instantiate(model.W_CompiledMethod)
             else:
                 assert 0, "not reachable"
-        else:
-            #XXX invalidate shadow here
-            pass
         return self.w_object
 
     def fillin_w_object(self):
@@ -502,6 +514,8 @@ class GenericObject(object):
         casted = self.w_object
         if isinstance(casted, model.W_PointersObject):
             self.fillin_pointersobject(casted)
+        elif isinstance(casted, model.W_Float):
+            self.fillin_floatobject(casted)
         elif isinstance(casted, model.W_WordsObject):
             self.fillin_wordsobject(casted)
         elif isinstance(casted, model.W_BytesObject):
@@ -515,14 +529,21 @@ class GenericObject(object):
 
     def fillin_pointersobject(self, w_pointersobject):
         assert self.pointers is not None
-        # XXX is the following needed?
-        if w_pointersobject._shadow is not None:
-            w_pointersobject._shadow.detach_shadow()
         w_pointersobject._vars = [g_object.w_object for g_object in self.pointers]
         w_class = self.g_class.w_object
         assert isinstance(w_class, model.W_PointersObject)
         w_pointersobject.w_class = w_class
+        w_pointersobject.s_class = None
         w_pointersobject.hash = self.chunk.hash12
+
+    def fillin_floatobject(self, w_floatobject):
+        from rpython.rlib.rarithmetic import r_uint
+        words = [r_uint(x) for x in self.chunk.data]
+        if len(words) != 2:
+            raise CorruptImageError("Expected 2 words in Float, got %d" % len(words))
+        w_class = self.g_class.w_object
+        assert isinstance(w_class, model.W_PointersObject)
+        w_floatobject.fillin_fromwords(self.space, words[0], words[1])
 
     def fillin_wordsobject(self, w_wordsobject):
         from rpython.rlib.rarithmetic import r_uint

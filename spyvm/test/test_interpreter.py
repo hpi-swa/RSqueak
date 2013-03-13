@@ -62,7 +62,8 @@ def run_with_faked_primitive_methods(methods, func, active_context=None):
         assert space.w_nil._shadow is None
         for (w_class, _, _, methname) in methods:
             s_class = w_class.as_class_get_shadow(space)
-            del s_class.s_methoddict().methoddict[fakesymbol(methname)]
+            s_class.update()
+            s_class.s_methoddict().update()
 
 def fakesymbol(s, _cache={}):
     try:
@@ -427,7 +428,7 @@ def sendBytecodesTest(w_class, w_object, bytecodes):
         assert s_active_context.w_sender() == w_frame
         assert s_active_context.stack() == []
         assert w_active_context.as_methodcontext_get_shadow(space).w_receiver().is_same_object(w_object)
-        assert w_active_context.as_methodcontext_get_shadow(space).w_method().is_same_object(shadow.s_methoddict().methoddict[w_foo])
+        assert w_active_context.as_methodcontext_get_shadow(space).w_method().is_same_object(shadow.s_methoddict().methoddict[w_foo].w_self())
         assert s_frame.stack() == []
         step_in_interp(s_active_context)
         w_active_context = step_in_interp(s_active_context)
@@ -598,7 +599,7 @@ def test_callPrimitiveAndPush_fallback():
     s_frame.push(space.w_one)
     w_active_context = step_in_interp(s_frame)
     s_active_context = w_active_context.as_context_get_shadow(space)
-    assert w_active_context.as_methodcontext_get_shadow(space).w_method() == shadow.s_methoddict().methoddict[w_symbol]
+    assert w_active_context.as_methodcontext_get_shadow(space).s_method() == shadow.s_methoddict().methoddict[w_symbol]
     assert s_active_context.w_receiver() is w_object
     assert w_active_context.as_methodcontext_get_shadow(space).gettemp(0).is_same_object(space.w_one)
     assert s_active_context.stack() == []
@@ -659,7 +660,7 @@ def test_singleExtendedSuperBytecode(bytecode=singleExtendedSuperBytecode + chr(
         assert s_active_context.stack() == []
         assert w_active_context.as_methodcontext_get_shadow(space).w_receiver() == w_object
         meth = w_specificclass.as_class_get_shadow(space).s_methoddict().methoddict[foo]
-        assert s_active_context.w_method() == meth
+        assert s_active_context.w_method() == meth.w_self()
         assert s_caller_context.stack() == []
 
 def test_secondExtendedSendBytecode():

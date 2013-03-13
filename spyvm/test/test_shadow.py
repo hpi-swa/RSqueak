@@ -1,5 +1,5 @@
 import random
-from spyvm import model, shadow, constants
+from spyvm import model, shadow, constants, interpreter
 from spyvm import objspace
 
 space = objspace.ObjSpace()
@@ -42,6 +42,7 @@ def build_smalltalk_class(name, format, w_superclass=w_Object,
     w_class.store(space, constants.CLASS_FORMAT_INDEX, space.wrap_int(format))
     if name is not None:
         w_class.store(space, constants.CLASS_NAME_INDEX, space.wrap_string(name))
+    w_class.as_class_get_shadow(space).s_methoddict().sync_cache()
     return w_class
 
 def basicshape(name, format, kind, varsized, instsize):
@@ -72,7 +73,7 @@ def test_methoddict():
     methoddict = classshadow.s_methoddict().methoddict
     assert len(methods) == len(methoddict)
     for w_key, value in methoddict.items():
-        assert methods[w_key.as_string()] is value
+        assert methods[w_key.as_string()].as_compiledmethod_get_shadow(space) is value
 
 def method(tempsize=3,argsize=2, bytes="abcde"):
     w_m = model.W_CompiledMethod()
@@ -152,32 +153,24 @@ def test_methodcontext():
     assert s_object.getbytecode() == 101
     assert s_object.s_home() == s_object
 
-def test_attach_detach_mc():
+def test_attach_mc():
     w_m = method()
     w_object = methodcontext(pc=13, method=w_m)
     old_vars = w_object._vars
     s_object = w_object.as_methodcontext_get_shadow(space)
     assert w_object._vars is None
-    s_object.detach_shadow()
-    assert w_object._vars == old_vars
-    assert w_object._vars is not old_vars
 
-def test_attach_detach_bc():
+def test_attach_bc():
     w_object = blockcontext(pc=13)
     old_vars = w_object._vars
     s_object = w_object.as_blockcontext_get_shadow(space)
     assert w_object._vars is None
-    s_object.detach_shadow()
-    assert w_object._vars == old_vars
-    assert w_object._vars is not old_vars
 
 def test_replace_to_bc():
     w_object = blockcontext(pc=13)
     old_vars = w_object._vars
     s_object = w_object.as_blockcontext_get_shadow(space)
-    s_object.detach_shadow()
-    s_classshadow = shadow.ClassShadow(space, w_object)
-    w_object._shadow = s_classshadow
+    s_object._shadow = None
     s_newobject = w_object.as_blockcontext_get_shadow(space)
     assert ([s_newobject.fetch(i) for i in range(s_newobject.size())] ==
             [s_object.fetch(i) for i in range(s_newobject.size())])
@@ -193,20 +186,17 @@ def test_compiledmethodshadow():
     assert shadow.bytecode == "abc"
     assert shadow.bytecodeoffset == 12
     assert shadow.literalsize == 8 # 12 - 4byte header
-    assert shadow.tempsize == 1
+    assert shadow.tempsize() == 1
 
     w_compiledmethod.literalatput0(space, 1, 17)
     w_compiledmethod.literalatput0(space, 2, 41)
-    assert w_compiledmethod._shadow is None
-
-    shadow = w_compiledmethod.as_compiledmethod_get_shadow(space)
+    assert w_compiledmethod._shadow is not None
     assert shadow.literals == [17, 41]
 
     w_compiledmethod.atput0(space, 14, space.wrap_int(ord("x")))
-    assert w_compiledmethod._shadow is None
 
-    shadow = w_compiledmethod.as_compiledmethod_get_shadow(space)
     assert shadow.bytecode == "abx"
+    assert shadow is w_compiledmethod.as_compiledmethod_get_shadow(space)
 
 def test_cached_object_shadow():
     w_o = space.wrap_list([0, 1, 2, 3, 4, 5, 6, 7])
@@ -217,3 +207,70 @@ def test_cached_object_shadow():
     w_o.atput0(space, 0, 8)
     assert version is not s_o.version
     assert w_o.at0(space, 0) == 8
+
+def test_observee_shadow():
+    notified = False
+    class Observer():
+        def __init__(self): self.notified = False
+        def update(self): self.notified = True
+    o = Observer()
+    w_o = w_Array.as_class_get_shadow(space).new(1)
+    w_o.as_observed_get_shadow(space).notify(o)
+    assert not o.notified
+    w_o.store(space, 0, 1)
+    assert o.notified
+    assert w_o.fetch(space, 0) == 1
+    try:
+        w_o._shadow.notify(Observer())
+    except RuntimeError:
+        pass
+    else:
+        assert False
+
+def test_cached_methoddict():
+    # create a methoddict
+    foo = model.W_CompiledMethod(0)
+    bar = model.W_CompiledMethod(0)
+    baz = model.W_CompiledMethod(0)
+    methods = {'foo': foo,
+               'bar': bar}
+    w_class = build_smalltalk_class("Demo", 0x90, methods=methods)
+    s_class = w_class.as_class_get_shadow(space)
+    s_methoddict = s_class.s_methoddict()
+    s_methoddict.sync_cache()
+    i = 0
+    key = s_methoddict.w_self()._fetch(constants.METHODDICT_NAMES_INDEX+i)
+    while key is space.w_nil:
+        key = s_methoddict.w_self()._fetch(constants.METHODDICT_NAMES_INDEX+i)
+        i = i + 1
+
+    assert (s_class.lookup(key) is foo.as_compiledmethod_get_shadow(space)
+            or s_class.lookup(key) is bar.as_compiledmethod_get_shadow(space))
+    # change that entry
+    w_array = s_class.w_methoddict()._fetch(constants.METHODDICT_VALUES_INDEX)
+    version = s_class.version
+    w_array.atput0(space, i, baz)
+
+    assert s_class.lookup(key) is baz.as_compiledmethod_get_shadow(space)
+    assert version is not s_class.version
+
+def test_updating_class_changes_subclasses():
+    w_parent = build_smalltalk_class("Demo", 0x90,
+            methods={'bar': model.W_CompiledMethod(0)})
+    w_class = build_smalltalk_class("Demo", 0x90,
+            methods={'foo': model.W_CompiledMethod(0)}, w_superclass=w_parent)
+    s_class = w_class.as_class_get_shadow(space)
+    version = s_class.version
+
+    w_method = model.W_CompiledMethod(0)
+    key = space.wrap_string('foo')
+
+    s_md = w_parent.as_class_get_shadow(space).s_methoddict()
+    s_md.sync_cache()
+    w_ary = s_md._w_self._fetch(constants.METHODDICT_VALUES_INDEX)
+    s_md._w_self.atput0(space, 0, key)
+    w_ary.atput0(space, 0, w_method)
+
+    assert s_class.lookup(key) is w_method.as_compiledmethod_get_shadow(space)
+    assert s_class.version is not version
+    assert s_class.version is w_parent.as_class_get_shadow(space).version
