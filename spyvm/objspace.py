@@ -123,7 +123,7 @@ class ObjSpace(object):
             w_cinst.store(self, constants.CHARACTER_VALUE_INDEX,
                           model.W_SmallInteger(i))
             return w_cinst
-        w_charactertable = model.W_PointersObject(
+        w_charactertable = model.W_PointersObject(self,
             self.classtable['w_Array'], 256)
         self.w_charactertable = w_charactertable
         for i in range(256):
@@ -144,7 +144,7 @@ class ObjSpace(object):
         self.w_zero = model.W_SmallInteger(0)
         self.w_one = model.W_SmallInteger(1)
         self.w_two = model.W_SmallInteger(2)
-        w_special_selectors = model.W_PointersObject(
+        w_special_selectors = model.W_PointersObject(self,
             self.classtable['w_Array'], len(constants.SPECIAL_SELECTORS) * 2)
         self.w_special_selectors = w_special_selectors
 
@@ -182,13 +182,13 @@ class ObjSpace(object):
         import math
         bytes_len = int(math.log(val) / math.log(0xff)) + 1
         bytes_len = 4 if 4 > bytes_len else bytes_len
-        w_result = model.W_BytesObject(self.classtable['w_LargePositiveInteger'], bytes_len)
+        w_result = model.W_BytesObject(self, self.classtable['w_LargePositiveInteger'], bytes_len)
         for i in range(bytes_len):
             w_result.setchar(i, chr(intmask((val >> i*8) & 255)))
         return w_result
 
     def wrap_float(self, i):
-        return model.W_Float(i)
+        return model.W_Float(self, i)
 
     def wrap_string(self, string):
         w_inst = self.w_String.as_class_get_shadow(self).new(len(string))
@@ -288,7 +288,7 @@ class ObjSpace(object):
 def bootstrap_class(space, instsize, w_superclass=None, w_metaclass=None,
                     name='?', format=shadow.POINTERS, varsized=False):
     from spyvm import model
-    w_class = model.W_PointersObject(w_metaclass, 0)
+    w_class = model.W_PointersObject(space, w_metaclass, 0)
                                              # a dummy placeholder for testing
     # XXX
     s = instantiate(shadow.ClassShadow)

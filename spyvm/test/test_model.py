@@ -86,13 +86,13 @@ def test_w_compiledin():
     w_super = mockclass(space, 0)
     w_class = mockclass(space, 0, w_superclass=w_super)
     supershadow = w_super.as_class_get_shadow(space)
-    supershadow.installmethod(w_foo, model.W_CompiledMethod(0))
+    supershadow.installmethod(w_foo, model.W_CompiledMethod(space, 0))
     classshadow = w_class.as_class_get_shadow(space)
     classshadow.initialize_methoddict()
     assert classshadow.lookup(w_foo).w_compiledin is w_super
 
 def test_compiledmethod_setchar():
-    w_method = model.W_CompiledMethod(3)
+    w_method = model.W_CompiledMethod(space, 3)
     w_method.setchar(0, "c")
     assert w_method.bytes == list("c\x00\x00")
 
@@ -108,7 +108,7 @@ def test_hashes():
     assert h1 == w_inst.hash
 
 def test_compiledmethod_at0():
-    w_method = model.W_CompiledMethod()
+    w_method = model.W_CompiledMethod(space)
     w_method.bytes = list("abc")
     w_method.header = 100
     w_method.setliterals(['lit1', 'lit2'])
@@ -121,7 +121,7 @@ def test_compiledmethod_at0():
     assert space.unwrap_int(w_method.at0(space, 14)) == ord('c')
 
 def test_compiledmethod_atput0():
-    w_method = model.W_CompiledMethod(3)
+    w_method = model.W_CompiledMethod(space, 3)
     newheader = joinbits([0,2,0,0,0,0],[9,8,1,6,4,1])
     assert w_method.getliteralsize() == 0
     w_method.atput0(space, 0, space.wrap_int(newheader))
@@ -140,37 +140,37 @@ def test_compiledmethod_atput0():
 
 def test_compiledmethod_atput0_not_aligned():
     header = joinbits([0,2,0,0,0,0],[9,8,1,6,4,1])
-    w_method = model.W_CompiledMethod(3, header)
+    w_method = model.W_CompiledMethod(space, 3, header)
     with py.test.raises(error.PrimitiveFailedError):
         w_method.atput0(space, 7, 'lit1')
     with py.test.raises(error.PrimitiveFailedError):
         w_method.atput0(space, 9, space.wrap_int(5))
 
-def test_is_same_object(w_o1=model.W_PointersObject(None,0), w_o2=None):
+def test_is_same_object(w_o1=model.W_PointersObject(space, None,0), w_o2=None):
     if w_o2 is None:
         w_o2 = w_o1
     assert w_o1.is_same_object(w_o2)
     assert w_o2.is_same_object(w_o1)
     
-def test_not_is_same_object(w_o1=model.W_PointersObject(None,0),w_o2=model.W_PointersObject(None,0)):
+def test_not_is_same_object(w_o1=model.W_PointersObject(space, None,0),w_o2=model.W_PointersObject(space, None,0)):
     assert not w_o1.is_same_object(w_o2)
     assert not w_o2.is_same_object(w_o1)
     w_o2 = model.W_SmallInteger(2)
     assert not w_o1.is_same_object(w_o2)
     assert not w_o2.is_same_object(w_o1)
-    w_o2 = model.W_Float(5.5)
+    w_o2 = model.W_Float(space, 5.5)
     assert not w_o1.is_same_object(w_o2)
     assert not w_o2.is_same_object(w_o1)
 
 def test_intfloat_is_same_object():
     test_is_same_object(model.W_SmallInteger(1), model.W_SmallInteger(1))
     test_is_same_object(model.W_SmallInteger(100), model.W_SmallInteger(100))
-    test_is_same_object(model.W_Float(1.100), model.W_Float(1.100))
+    test_is_same_object(model.W_Float(space, 1.100), model.W_Float(space, 1.100))
 
 def test_intfloat_notis_same_object():
-    test_not_is_same_object(model.W_SmallInteger(1), model.W_Float(1))
-    test_not_is_same_object(model.W_Float(100), model.W_SmallInteger(100))
-    test_not_is_same_object(model.W_Float(1.100), model.W_Float(1.200))
+    test_not_is_same_object(model.W_SmallInteger(1), model.W_Float(space, 1))
+    test_not_is_same_object(model.W_Float(space, 100), model.W_SmallInteger(100))
+    test_not_is_same_object(model.W_Float(space, 1.100), model.W_Float(space, 1.200))
     test_not_is_same_object(model.W_SmallInteger(101), model.W_SmallInteger(100))
 
 def test_charis_same_object():
@@ -220,7 +220,7 @@ def test_become_with_shadow():
 
 def test_word_atput():
     i = model.W_SmallInteger(100)
-    b = model.W_WordsObject(None, 1)
+    b = model.W_WordsObject(space, None, 1)
     b.atput0(space, 0, i)
     assert 100 == b.getword(0)
     i = space.classtable['w_LargePositiveInteger'].as_class_get_shadow(space).new(4)
@@ -229,7 +229,7 @@ def test_word_atput():
     assert b.getword(0) == 3221225472
 
 def test_word_at():
-    b = model.W_WordsObject(None, 1)
+    b = model.W_WordsObject(space, None, 1)
     b.setword(0, 100)
     r = b.at0(space, 0)
     assert isinstance(r, model.W_SmallInteger)
@@ -241,7 +241,7 @@ def test_word_at():
     assert r.size() == 4
 
 def test_float_at():
-    b = model.W_Float(64.0)
+    b = model.W_Float(space, 64.0)
     r = b.fetch(space, 0)
     assert isinstance(r, model.W_BytesObject)
     assert r.size() == 4
@@ -251,9 +251,9 @@ def test_float_at():
     assert r.value == 0
 
 def test_float_at_put():
-    target = model.W_Float(1.0)
+    target = model.W_Float(space, 1.0)
     for f in [1.0, -1.0, 1.1, 64.4, -0.0, float('nan'), float('inf')]:
-        source = model.W_Float(f)
+        source = model.W_Float(space, f)
         target.store(space, 0, source.fetch(space, 0))
         target.store(space, 1, source.fetch(space, 1))
         if math.isnan(f):

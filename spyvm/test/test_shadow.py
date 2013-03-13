@@ -36,7 +36,7 @@ def build_smalltalk_class(name, format, w_superclass=w_Object,
                                                w_Metaclass)
     w_methoddict = build_methoddict(methods)
     size = constants.CLASS_NAME_INDEX + 1
-    w_class = model.W_PointersObject(w_classofclass, size)
+    w_class = model.W_PointersObject(space, w_classofclass, size)
     w_class.store(space, constants.CLASS_SUPERCLASS_INDEX, w_superclass)
     w_class.store(space, constants.CLASS_METHODDICT_INDEX, w_methoddict)
     w_class.store(space, constants.CLASS_FORMAT_INDEX, space.wrap_int(format))
@@ -66,8 +66,8 @@ def test_basic_shape():
     yield basicshape, "CompiledMeth", 0xE02,   shadow.COMPILED_METHOD, True, 0
 
 def test_methoddict():
-    methods = {'foo': model.W_CompiledMethod(0),
-               'bar': model.W_CompiledMethod(0)}
+    methods = {'foo': model.W_CompiledMethod(space, 0),
+               'bar': model.W_CompiledMethod(space, 0)}
     w_class = build_smalltalk_class("Demo", 0x90, methods=methods)
     classshadow = w_class.as_class_get_shadow(space)
     methoddict = classshadow.s_methoddict().methoddict
@@ -76,7 +76,7 @@ def test_methoddict():
         assert methods[w_key.as_string()].as_compiledmethod_get_shadow(space) is value
 
 def method(tempsize=3,argsize=2, bytes="abcde"):
-    w_m = model.W_CompiledMethod()
+    w_m = model.W_CompiledMethod(space)
     w_m.bytes = bytes
     w_m.tempsize = tempsize
     w_m.argsize = argsize
@@ -85,7 +85,7 @@ def method(tempsize=3,argsize=2, bytes="abcde"):
 
 def methodcontext(w_sender=space.w_nil, pc=1, stackpointer=0, stacksize=5,
                   method=method()):
-    w_object = model.W_PointersObject(space.w_MethodContext, constants.MTHDCTX_TEMP_FRAME_START+method.tempsize+stacksize)
+    w_object = model.W_PointersObject(space, space.w_MethodContext, constants.MTHDCTX_TEMP_FRAME_START+method.tempsize+stacksize)
     w_object.store(space, constants.CTXPART_SENDER_INDEX, w_sender)
     w_object.store(space, constants.CTXPART_PC_INDEX, space.wrap_int(pc))
     w_object.store(space, constants.CTXPART_STACKP_INDEX, space.wrap_int(method.tempsize+stackpointer))
@@ -99,7 +99,7 @@ def methodcontext(w_sender=space.w_nil, pc=1, stackpointer=0, stacksize=5,
 
 def blockcontext(w_sender=space.w_nil, pc=1, stackpointer=1, stacksize=5,
                   home=methodcontext()):
-    w_object = model.W_PointersObject(space.w_MethodContext, constants.MTHDCTX_TEMP_FRAME_START+stacksize)
+    w_object = model.W_PointersObject(space, space.w_MethodContext, constants.MTHDCTX_TEMP_FRAME_START+stacksize)
     w_object.store(space, constants.CTXPART_SENDER_INDEX, w_sender)
     w_object.store(space, constants.CTXPART_PC_INDEX, space.wrap_int(pc))
     w_object.store(space, constants.CTXPART_STACKP_INDEX, space.wrap_int(stackpointer))
@@ -180,7 +180,7 @@ def test_compiledmethodshadow():
     from test_model import joinbits
     header = joinbits([0,2,0,1,0,0],[9,8,1,6,4,1])
 
-    w_compiledmethod = model.W_CompiledMethod(3, header)
+    w_compiledmethod = model.W_CompiledMethod(space, 3, header)
     w_compiledmethod.setbytes(list("abc"))
     shadow = w_compiledmethod.as_compiledmethod_get_shadow(space)
     assert shadow.bytecode == "abc"
@@ -229,9 +229,9 @@ def test_observee_shadow():
 
 def test_cached_methoddict():
     # create a methoddict
-    foo = model.W_CompiledMethod(0)
-    bar = model.W_CompiledMethod(0)
-    baz = model.W_CompiledMethod(0)
+    foo = model.W_CompiledMethod(space, 0)
+    bar = model.W_CompiledMethod(space, 0)
+    baz = model.W_CompiledMethod(space, 0)
     methods = {'foo': foo,
                'bar': bar}
     w_class = build_smalltalk_class("Demo", 0x90, methods=methods)
@@ -241,8 +241,8 @@ def test_cached_methoddict():
     i = 0
     key = s_methoddict.w_self()._fetch(constants.METHODDICT_NAMES_INDEX+i)
     while key is space.w_nil:
-        key = s_methoddict.w_self()._fetch(constants.METHODDICT_NAMES_INDEX+i)
         i = i + 1
+        key = s_methoddict.w_self()._fetch(constants.METHODDICT_NAMES_INDEX+i)
 
     assert (s_class.lookup(key) is foo.as_compiledmethod_get_shadow(space)
             or s_class.lookup(key) is bar.as_compiledmethod_get_shadow(space))
@@ -250,19 +250,18 @@ def test_cached_methoddict():
     w_array = s_class.w_methoddict()._fetch(constants.METHODDICT_VALUES_INDEX)
     version = s_class.version
     w_array.atput0(space, i, baz)
-
     assert s_class.lookup(key) is baz.as_compiledmethod_get_shadow(space)
     assert version is not s_class.version
 
 def test_updating_class_changes_subclasses():
     w_parent = build_smalltalk_class("Demo", 0x90,
-            methods={'bar': model.W_CompiledMethod(0)})
+            methods={'bar': model.W_CompiledMethod(space, 0)})
     w_class = build_smalltalk_class("Demo", 0x90,
-            methods={'foo': model.W_CompiledMethod(0)}, w_superclass=w_parent)
+            methods={'foo': model.W_CompiledMethod(space, 0)}, w_superclass=w_parent)
     s_class = w_class.as_class_get_shadow(space)
     version = s_class.version
 
-    w_method = model.W_CompiledMethod(0)
+    w_method = model.W_CompiledMethod(space, 0)
     key = space.wrap_string('foo')
 
     s_md = w_parent.as_class_get_shadow(space).s_methoddict()

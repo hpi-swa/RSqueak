@@ -155,6 +155,7 @@ class W_SmallInteger(W_Object):
 class W_Float(W_Object):
     """Boxed float value."""
     _attrs_ = ['value']
+    _immutable_fields_ = ['space']
 
     def fillin_fromwords(self, space, high, low):
         from rpython.rlib.rstruct.ieee import float_unpack
@@ -162,7 +163,8 @@ class W_Float(W_Object):
         r = (r_ulonglong(high) << 32) | low
         self.value = float_unpack(r, 8)
 
-    def __init__(self, value):
+    def __init__(self, space, value):
+        self.space = space
         self.value = value
 
     def getclass(self, space):
@@ -257,14 +259,16 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     """Objects with arbitrary class (ie not CompiledMethod, SmallInteger or
     Float)."""
     _attrs_ = ['w_class', 's_class']
+    _immutable_fields_ = ['space']
     s_class = None
 
-    def __init__(self, w_class):
+    def __init__(self, space, w_class):
         if w_class is not None:     # it's None only for testing and space generation
             assert isinstance(w_class, W_PointersObject)
             if w_class.has_shadow():
                 self.s_class = w_class.as_class_get_shadow(w_class._shadow.space)
         self.w_class = w_class
+        self.space = space
 
     def getclass(self, space):
         assert self.w_class is not None
@@ -306,9 +310,9 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     _shadow = None # Default value
     
     @jit.unroll_safe
-    def __init__(self, w_class, size):
+    def __init__(self, space, w_class, size):
         """Create new object with size = fixed + variable size."""
-        W_AbstractObjectWithClassReference.__init__(self, w_class)
+        W_AbstractObjectWithClassReference.__init__(self, space, w_class)
         vars = self._vars = [None] * size
         for i in range(size): # do it by hand for the JIT's sake
             vars[i] = w_nil
@@ -434,15 +438,15 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         return True
         
     def clone(self, space):
-        w_result = W_PointersObject(self.w_class, len(self._vars))
+        w_result = W_PointersObject(self.space, self.w_class, len(self._vars))
         w_result._vars = [self.fetch(space, i) for i in range(len(self._vars))]
         return w_result
 
 class W_BytesObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['bytes']
 
-    def __init__(self, w_class, size):
-        W_AbstractObjectWithClassReference.__init__(self, w_class)
+    def __init__(self, space, w_class, size):
+        W_AbstractObjectWithClassReference.__init__(self, space, w_class)
         assert isinstance(size, int)
         self.bytes = ['\x00'] * size
 
@@ -486,15 +490,15 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         return self.bytes == other.bytes
 
     def clone(self, space):
-        w_result = W_BytesObject(self.w_class, len(self.bytes))
+        w_result = W_BytesObject(self.space, self.w_class, len(self.bytes))
         w_result.bytes = list(self.bytes)
         return w_result
 
 class W_WordsObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['words']
 
-    def __init__(self, w_class, size):
-        W_AbstractObjectWithClassReference.__init__(self, w_class)
+    def __init__(self, space, w_class, size):
+        W_AbstractObjectWithClassReference.__init__(self, space, w_class)
         self.words = [r_uint(0)] * size
         
     def at0(self, space, index0):
@@ -519,7 +523,7 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
                 isinstance(self.words, list))
 
     def clone(self, space):
-        w_result = W_WordsObject(self.w_class, len(self.words))
+        w_result = W_WordsObject(self.space, self.space, self.w_class, len(self.words))
         w_result.words = list(self.words)
         return w_result
 
@@ -549,7 +553,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     _shadow = None # Default value
     _likely_methodname = "<unknown>"
 
-    def __init__(self, bytecount=0, header=0):
+    def __init__(self, space, bytecount=0, header=0):
         self._shadow = None
         self.setheader(header)
         self.bytes = ["\x00"] * bytecount

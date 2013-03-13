@@ -121,7 +121,7 @@ class Interpreter(object):
         else:
             w_selector = selector
 
-        w_method = model.W_CompiledMethod()
+        w_method = model.W_CompiledMethod(self.space)
         w_method.setbytes([chr(124)]) #returnTopFromMethod
         s_method = w_method.as_compiledmethod_get_shadow(self.space)
         s_frame = MethodContextShadow.make_context(

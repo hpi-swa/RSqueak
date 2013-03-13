@@ -511,7 +511,7 @@ def func(interp, s_frame, w_obj):
 @expose_primitive(NEW_METHOD, unwrap_spec=[object, int, int])
 def func(interp, s_frame, w_class, bytecount, header):
     # We ignore w_class because W_CompiledMethod is special
-    w_method = model.W_CompiledMethod(bytecount, header)
+    w_method = model.W_CompiledMethod(interp.space, bytecount, header)
     return w_method
 
 # ___________________________________________________________________________
