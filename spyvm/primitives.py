@@ -249,6 +249,10 @@ FLOAT_ARCTAN = 57
 FLOAT_LOG_N = 58
 FLOAT_EXP = 59
 
+@expose_primitive(SMALLINT_AS_FLOAT, unwrap_spec=[int])
+def func(interp, s_frame, i):
+    return interp.space.wrap_float(float(i))
+
 math_ops = {
     FLOAT_ADD: operator.add,
     FLOAT_SUBTRACT: operator.sub,
