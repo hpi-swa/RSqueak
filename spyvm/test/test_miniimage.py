@@ -322,3 +322,10 @@ def test_create_new_symbol():
     w_result = perform(w("someString"), "asSymbol")
     assert w_result is not None
     assert w_result.as_string() == "someString"
+
+def test_pi_as_w_float():
+    import math
+    w_result = perform(interp.space.w_Float, "pi")
+    assert w_result is not None
+    assert isinstance(w_result, model.W_Float)
+    assert w_result.value == math.pi
