@@ -298,6 +298,20 @@ def test_cached_methoddict():
     perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
     assert perform(w(10), "fib").is_same_object(w(89))
 
+def test_primitive_perform_with_args():
+    from spyvm.test.test_primitives import prim
+    from spyvm import primitives
+    w_o = space.wrap_list([1, 2, 3])
+    w_methoddict = w_o.shadow_of_my_class(space)._s_superclass._s_superclass.w_methoddict()
+    w_methoddict.as_methoddict_get_shadow(space).sync_cache()
+    selectors_w = w_methoddict._shadow.methoddict.keys()
+    w_sel = None
+    for sel in selectors_w:
+        if sel.as_string() == 'size':
+            w_sel = sel
+    size = prim(primitives.PERFORM_WITH_ARGS, [w_o, w_sel, []])
+    assert size.value == 3
+
 def test_step_run_something():
     from spyvm.test import test_miniimage
     setup_module(test_miniimage, filename='running-something-mini.image')
