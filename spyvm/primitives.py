@@ -4,6 +4,7 @@ import math
 import operator
 from spyvm import model, shadow
 from spyvm import constants
+from spyvm import display
 from spyvm.error import PrimitiveFailedError, \
     PrimitiveNotYetWrittenError
 from spyvm import wrapper
@@ -545,17 +546,37 @@ def func(interp, s_frame, w_rcvr):
 
 @expose_primitive(BITBLT_COPY_BITS, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
+    import time
+
     if not isinstance(w_rcvr, model.W_PointersObject) or w_rcvr.size() < 15:
         raise PrimitiveFailedError
+
+    start = time.time()
+    print "blitting"
+    interp.perform(w_rcvr, "simulateCopyBits")
+    print "blitting finshed after %d ms" % int((time.time() - start) * 1000)
+
+    w_display = interp.space.objtable['w_display']
+    w_dest_form = w_rcvr.fetch(interp.space, 0)
+    if w_dest_form.is_same_object(w_display):
+        w_bits = w_dest_form.fetch(interp.space, 0)
+        assert isinstance(w_bits, model.W_WordsObject)
+        bits = w_bits.words
+        print bits
+        interp.space.display().blit_bits(bits, 0, len(bits)) # TODO: draw only as necessary
     # See BlueBook p.356ff
-    s_bitblt = w_rcvr.as_bitblt_get_shadow(interp.space)
-    s_bitblt.clip_range()
-    if s_bitblt.w <= 0 or s_bitblt.h <= 0:
-        return w_rcvr # null range
-    s_bitblt.compute_masks()
-    s_bitblt.check_overlap()
-    s_bitblt.calculate_offsets()
-    s_bitblt.copy_loop()
+    # s_bitblt.clip_range()
+    # if s_bitblt.w < 0 or s_bitblt.h < 0:
+    #     return w_rcvr # null range
+    # s_bitblt.compute_masks()
+    # s_bitblt.check_overlap()
+    # s_bitblt.calculate_offsets()
+    # start_index = s_bitblt.dest_index
+    # if s_bitblt.dest_form.w_self().is_same_object(w_display):
+        # s_bitblt.copy_loop(interp.space.display())
+    # else:
+    #     s_bitblt.copy_loop()
+    # end_index = s_bitblt.dest_index
     return w_rcvr
 
 @expose_primitive(BE_CURSOR, unwrap_spec=[object])
@@ -570,6 +591,14 @@ def func(interp, s_frame, w_rcvr):
         raise PrimitiveFailedError
     # the fields required are bits (a pointer to a Bitmap), width, height, depth
     interp.space.objtable['w_display'] = w_rcvr
+
+    # XXX: TODO get the initial image TODO: figure out whether we
+    # should decide the width an report it in the other SCREEN_SIZE
+    w = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 1))
+    h = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 2))
+    d = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 3))
+    interp.space.set_display(interp, display.SDLDisplay(w, h, d))
+
     return w_rcvr
 
 @expose_primitive(STRING_REPLACE, unwrap_spec=[object, index1_0, index1_0, object, index1_0])
@@ -673,6 +702,7 @@ NOOP = 122
 VALUE_UNINTERRUPTABLY = 123
 LOW_SPACE_SEMAPHORE = 124
 SIGNAL_AT_BYTES_LEFT = 125
+DEFER_UPDATES = 126
 DRAW_RECTANGLE = 127
 
 @expose_primitive(IMAGE_NAME)
@@ -695,9 +725,16 @@ def func(interp, s_frame, w_reciver, i):
     # dont know when the space runs out
     return w_reciver
 
+@expose_primitive(DEFER_UPDATES, unwrap_spec=[object, object])
+def func(interp, s_frame, w_receiver, w_bool):
+    if w_bool.is_same_object(interp.space.w_true):
+        interp.space.display().set_defer_updates()
+    else:
+        interp.space.display().set_defer_updates()
+
 @expose_primitive(DRAW_RECTANGLE, unwrap_spec=[object, int, int, int, int])
 def func(interp, s_frame, w_rcvr, left, right, top, bottom):
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     raise PrimitiveNotYetWrittenError()
 
 
@@ -1149,6 +1186,12 @@ def func(interp, s_frame, w_block_closure, w_a0):
 CTXT_AT = 210
 CTXT_AT_PUT = 211
 CTXT_SIZE = 212
+
+# ___________________________________________________________________________
+# Drawing
+
+FORCE_DISPLAY_UPDATE = 231
+
 
 # ___________________________________________________________________________
 # PrimitiveLoadInstVar

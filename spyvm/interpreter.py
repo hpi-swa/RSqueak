@@ -75,8 +75,9 @@ class Interpreter(object):
                 s_new_context = p.s_new_context
 
     def c_loop(self, s_context):
-        padding = ' ' * (self.max_stack_depth - self.remaining_stack_depth)
-        print padding + s_context.short_str()
+        # if self.max_stack_depth - self.remaining_stack_depth < 10:
+        #     padding = ' ' * (self.max_stack_depth - self.remaining_stack_depth)
+        #     print padding + s_context.short_str()
         old_pc = 0
         while True:
             pc = s_context._pc
