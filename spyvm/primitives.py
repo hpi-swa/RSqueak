@@ -555,7 +555,7 @@ def func(interp, s_frame, w_rcvr):
     if w_dest_form.is_same_object(interp.space.objtable['w_display']):
         w_bitmap = w_dest_form.fetch(interp.space, 0)
         assert isinstance(w_bitmap, model.W_DisplayBitmap)
-        w_bitmap.display.blit()
+        w_bitmap.flush_to_screen()
 
     return w_rcvr
 

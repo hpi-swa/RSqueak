@@ -595,6 +595,13 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
             mask >>= 1
             pos += 4
 
+    def flush_to_screen(self):
+        self._flush_to_screen_if_dirty(self.version)
+
+    @jit.elidable
+    def _flush_to_screen_if_dirty(self, version):
+        self.display.blit()
+
     def size(self):
         return self._realsize
 
