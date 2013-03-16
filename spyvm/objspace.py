@@ -4,13 +4,10 @@ from rpython.rlib.objectmodel import instantiate, specialize
 from rpython.rlib.rarithmetic import intmask, r_uint, int_between
 
 class ObjSpace(object):
-    _attrs_ = ["_display", "w_simulateCopyBits"]
-
     def __init__(self):
         self.classtable = {}
         self.make_bootstrap_classes()
         self.make_bootstrap_objects()
-        self._display = [None]
 
     def make_bootstrap_classes(self):
         def define_core_cls(name, w_superclass, w_metaclass):
@@ -288,12 +285,6 @@ class ObjSpace(object):
             closure.atput0(i0, copiedValues[i0])
         return w_closure
 
-    def set_display(self, interp, obj):
-        self._display[0] = obj
-
-    def display(self):
-        return self._display[0]
-        
 
 def bootstrap_class(space, instsize, w_superclass=None, w_metaclass=None,
                     name='?', format=shadow.POINTERS, varsized=False):

@@ -530,16 +530,16 @@ class VersionTag():
 
 NATIVE_DEPTH = 32
 class W_DisplayBitmap(W_AbstractObjectWithClassReference):
+    _attrs_ = ['pixelbuffer', '_depth', '_realsize', 'display', 'version']
 
-    _attrs_ = ['pixelbuffer', '_depth', '_size']
-
-    def __init__(self, w_class, size, depth):
+    def __init__(self, w_class, size, depth, display):
         W_AbstractObjectWithClassReference.__init__(self, w_class)
         assert depth == 1 # XXX: Only support B/W for now
         bytelen = NATIVE_DEPTH / depth * size * 4
         self.pixelbuffer = lltype.malloc(rffi.VOIDP.TO, bytelen, flavor='raw')
         self._depth = depth
-        self._size = size
+        self._realsize = size
+        self.display = display
         self.mutate()
 
     def __del__(self):
@@ -599,15 +599,15 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
             pos += 4
 
     def size(self):
-        return self._size
+        return self._realsize
 
     def invariant(self):
         return False
 
     def clone(self, space):
-        w_result = W_WordsObject(self.w_class, self._size)
+        w_result = W_WordsObject(self.w_class, self._realsize)
         n = 0
-        while n < self._size:
+        while n < self._realsize:
             w_result.words[n] = self.getword(n)
             n += 1
         return w_result

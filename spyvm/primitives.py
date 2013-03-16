@@ -557,8 +557,9 @@ def func(interp, s_frame, w_rcvr):
 
     w_dest_form = w_rcvr.fetch(interp.space, 0)
     if w_dest_form.is_same_object(interp.space.objtable['w_display']):
-        import pdb; pdb.set_trace()
-        interp.space.display().blit()
+        w_bitmap = w_dest_form.fetch(interp.space, 0)
+        assert isinstance(w_bitmap, model.W_DisplayBitmap)
+        w_bitmap.display.blit()
 
     print "blitting finshed after %d ms" % int((time.time() - start) * 1000)
     return w_rcvr
@@ -578,20 +579,31 @@ def func(interp, s_frame, w_rcvr):
     # XXX: TODO get the initial image TODO: figure out whether we
     # should decide the width an report it in the other SCREEN_SIZE
     w_bitmap = w_rcvr.fetch(interp.space, 0)
-    assert isinstance(w_bitmap, model.W_WordsObject) or isinstance(w_bitmap, model.W_DisplayBitmap)
     width = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 1))
     height = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 2))
     depth = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 3))
 
-    w_display_bitmap = model.W_DisplayBitmap(w_bitmap.getclass(interp.space), w_bitmap.size(), depth)
-    for idx, word in enumerate(w_bitmap.words):
-        w_display_bitmap.setword(idx, word)
-    w_rcvr.store(interp.space, 0, w_display_bitmap)
+    w_prev_display = interp.space.objtable['w_display']
+    w_prev_bitmap = None
+    if w_prev_display:
+        w_prev_bitmap = w_prev_display.fetch(interp.space, 0)
+    if isinstance(w_prev_bitmap, model.W_DisplayBitmap):
+        sdldisplay = w_prev_bitmap.display
+    else:
+        sdldisplay = display.SDLDisplay()
+    sdldisplay.set_video_mode(width, height, depth)
 
-    sdldisplay = display.SDLDisplay(width, height, depth)
+    if isinstance(w_bitmap, model.W_WordsObject):
+        w_display_bitmap = model.W_DisplayBitmap(w_bitmap.getclass(interp.space), w_bitmap.size(), depth, display)
+        for idx, word in enumerate(w_bitmap.words):
+            w_display_bitmap.setword(idx, word)
+        w_rcvr.store(interp.space, 0, w_display_bitmap)
+    else:
+        assert isinstance(w_bitmap, model.W_DisplayBitmap)
+        w_display_bitmap = w_bitmap
+
     sdldisplay.set_pixelbuffer(w_display_bitmap.pixelbuffer)
     sdldisplay.blit()
-    interp.space.set_display(interp, display)
 
     interp.space.objtable['w_display'] = w_rcvr
     return w_rcvr
@@ -722,10 +734,7 @@ def func(interp, s_frame, w_reciver, i):
 
 @expose_primitive(DEFER_UPDATES, unwrap_spec=[object, object])
 def func(interp, s_frame, w_receiver, w_bool):
-    if w_bool.is_same_object(interp.space.w_true):
-        interp.space.display().set_defer_updates()
-    else:
-        interp.space.display().set_defer_updates()
+    raise PrimitiveNotYetWrittenError()
 
 @expose_primitive(DRAW_RECTANGLE, unwrap_spec=[object, int, int, int, int])
 def func(interp, s_frame, w_rcvr, left, right, top, bottom):
