@@ -343,3 +343,8 @@ def test_pi_as_w_float():
     assert w_result is not None
     assert isinstance(w_result, model.W_Float)
     assert w_result.value == math.pi
+
+def test_new_float_as_w_float():
+    w_result = perform(interp.space.w_Float, "new")
+    assert w_result is not None
+    assert isinstance(w_result, model.W_Float)
