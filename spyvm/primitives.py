@@ -594,12 +594,13 @@ def func(interp, s_frame, w_rcvr):
     sdldisplay.set_video_mode(width, height, depth)
 
     if isinstance(w_bitmap, model.W_WordsObject):
-        w_display_bitmap = model.W_DisplayBitmap(w_bitmap.getclass(interp.space), w_bitmap.size(), depth, display)
+        w_display_bitmap = model.W_DisplayBitmap(w_bitmap.getclass(interp.space), w_bitmap.size(), depth, sdldisplay)
         for idx, word in enumerate(w_bitmap.words):
             w_display_bitmap.setword(idx, word)
         w_rcvr.store(interp.space, 0, w_display_bitmap)
     else:
         assert isinstance(w_bitmap, model.W_DisplayBitmap)
+        assert w_bitmap.display is sdldisplay
         w_display_bitmap = w_bitmap
 
     sdldisplay.set_pixelbuffer(w_display_bitmap.pixelbuffer)
