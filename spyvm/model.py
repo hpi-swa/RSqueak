@@ -525,12 +525,10 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         w_result.words = list(self.words)
         return w_result
 
-class VersionTag():
-    pass
-
 NATIVE_DEPTH = 32
 class W_DisplayBitmap(W_AbstractObjectWithClassReference):
-    _attrs_ = ['pixelbuffer', '_depth', '_realsize', 'display', 'version']
+    _attrs_ = ['pixelbuffer', '_depth', '_realsize', 'display']
+    _immutable_fields_ = ['_depth', '_realsize', 'display']
 
     def __init__(self, w_class, size, depth, display):
         W_AbstractObjectWithClassReference.__init__(self, w_class)
@@ -540,26 +538,17 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
         self._depth = depth
         self._realsize = size
         self.display = display
-        self.mutate()
 
     def __del__(self):
         lltype.free(self.pixelbuffer, flavor='raw')
 
-    def mutate(self):
-        self.version = VersionTag()
-
     def at0(self, space, index0):
-        return self._at0_pure(space, index0, self.version)
-
-    @jit.elidable
-    def _at0_pure(self, space, index0, version):
         val = self.getword(index0)
         return space.wrap_uint(val)
 
     def atput0(self, space, index0, w_value):
         word = space.unwrap_uint(w_value)
         self.setword(index0, word)
-        self.mutate()
 
     # XXX: Only supports 1-bit to 32-bit conversion for now
     @jit.unroll_safe
@@ -596,10 +585,6 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
             pos += 4
 
     def flush_to_screen(self):
-        self._flush_to_screen_if_dirty(self.version)
-
-    @jit.elidable
-    def _flush_to_screen_if_dirty(self, version):
         self.display.blit()
 
     def size(self):
