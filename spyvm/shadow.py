@@ -71,7 +71,8 @@ BYTES = 1
 WORDS = 2
 WEAK_POINTERS = 3
 COMPILED_METHOD = 4
-
+FLOAT = 5
+DISPLAY_SCREEN = 6
 
 class MethodNotFound(error.SmalltalkException):
     pass
@@ -128,7 +129,10 @@ class ClassShadow(AbstractCachingShadow):
             elif format == 4:
                 self.instance_kind = WEAK_POINTERS
             elif format == 6:
-                self.instance_kind = WORDS
+                if self.space.w_Float.is_same_object(self.w_self()):
+                    self.instance_kind = FLOAT
+                else:
+                    self.instance_kind = WORDS
                 if self.instsize() != 0:
                     raise ClassShadowError("can't have both words and a non-zero "
                                            "base instance size")
@@ -201,6 +205,8 @@ class ClassShadow(AbstractCachingShadow):
             w_new = model.W_BytesObject(w_cls, extrasize)
         elif self.instance_kind == COMPILED_METHOD:
             w_new = model.W_CompiledMethod(extrasize)
+        elif self.instance_kind == FLOAT:
+            w_new = model.W_Float(0) # Squeak gives a random piece of memory
         else:
             raise NotImplementedError(self.instance_kind)
         return w_new
