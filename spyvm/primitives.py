@@ -553,30 +553,34 @@ def func(interp, s_frame, w_rcvr):
 
     start = time.time()
     print "blitting"
-    interp.perform(w_rcvr, "simulateCopyBits")
-    print "blitting finshed after %d ms" % int((time.time() - start) * 1000)
+    # interp.perform(w_rcvr, "simulateCopyBits")
 
     w_display = interp.space.objtable['w_display']
-    w_dest_form = w_rcvr.fetch(interp.space, 0)
-    if w_dest_form.is_same_object(w_display):
-        w_bits = w_dest_form.fetch(interp.space, 0)
-        assert isinstance(w_bits, model.W_WordsObject)
-        bits = w_bits.words
-        print bits
-        interp.space.display().blit_bits(bits, 0, len(bits)) # TODO: draw only as necessary
+
     # See BlueBook p.356ff
-    # s_bitblt.clip_range()
-    # if s_bitblt.w < 0 or s_bitblt.h < 0:
-    #     return w_rcvr # null range
-    # s_bitblt.compute_masks()
-    # s_bitblt.check_overlap()
-    # s_bitblt.calculate_offsets()
-    # start_index = s_bitblt.dest_index
-    # if s_bitblt.dest_form.w_self().is_same_object(w_display):
-        # s_bitblt.copy_loop(interp.space.display())
-    # else:
-    #     s_bitblt.copy_loop()
-    # end_index = s_bitblt.dest_index
+    s_bitblt = w_rcvr.as_bitblt_get_shadow(interp.space)
+    s_bitblt.clip_range()
+    if s_bitblt.w < 0 or s_bitblt.h < 0:
+        return w_rcvr # null range
+    s_bitblt.compute_masks()
+    s_bitblt.check_overlap()
+    s_bitblt.calculate_offsets()
+    start_index = s_bitblt.dest_index
+    if s_bitblt.dest_form.w_self().is_same_object(w_display):
+        s_bitblt.copy_loop(interp.space.display())
+    else:
+        bits = s_bitblt.copy_loop()    
+    end_index = s_bitblt.dest_index
+
+    # w_dest_form = w_rcvr.fetch(interp.space, 0)
+    # if w_dest_form.is_same_object(w_display):
+    #     # w_bits = w_dest_form.fetch(interp.space, 0)
+    #     # assert isinstance(w_bits, model.W_WordsObject)
+    #     # bits = w_bits.words
+    #     # print bits
+    #     interp.space.display().blit_bits(bits, start_index, end_index) # TODO: draw only as necessary
+
+    print "blitting finshed after %d ms" % int((time.time() - start) * 1000)
     return w_rcvr
 
 @expose_primitive(BE_CURSOR, unwrap_spec=[object])
