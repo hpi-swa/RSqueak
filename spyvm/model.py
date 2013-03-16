@@ -554,12 +554,10 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
     @jit.elidable
     def _at0_pure(self, space, index0, version):
         val = self.getword(index0)
-        print "Get: [%d] => %d" % (index0, val)
         return space.wrap_uint(val)
 
     def atput0(self, space, index0, w_value):
         word = space.unwrap_uint(w_value)
-        print "Set: [%d] => %d" % (index0, word)
         self.setword(index0, word)
         self.mutate()
 
@@ -572,7 +570,7 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
         for i in xrange(32):
             red = self.pixelbuffer[pos]
             if red == '\0': # Black
-                word &= 1
+                word |= r_uint(1)
             word <<= 1
             pos += 4
         return word
@@ -580,9 +578,8 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
     @jit.unroll_safe
     def setword(self, n, word):
         pixel_per_word = NATIVE_DEPTH / self._depth
-        word = r_uint(0)
         pos = n * pixel_per_word * 4
-        mask = 1
+        mask = r_uint(1)
         mask <<= 31
         for i in xrange(32):
             bit = mask & word

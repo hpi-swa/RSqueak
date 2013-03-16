@@ -549,10 +549,6 @@ def func(interp, s_frame, w_rcvr):
     if not isinstance(w_rcvr, model.W_PointersObject) or w_rcvr.size() < 15:
         raise PrimitiveFailedError
 
-    import time
-    start = time.time()
-    print "blitting"
-
     interp.perform(w_rcvr, "simulateCopyBits")
 
     w_dest_form = w_rcvr.fetch(interp.space, 0)
@@ -561,7 +557,6 @@ def func(interp, s_frame, w_rcvr):
         assert isinstance(w_bitmap, model.W_DisplayBitmap)
         w_bitmap.display.blit()
 
-    print "blitting finshed after %d ms" % int((time.time() - start) * 1000)
     return w_rcvr
 
 @expose_primitive(BE_CURSOR, unwrap_spec=[object])
@@ -584,25 +579,28 @@ def func(interp, s_frame, w_rcvr):
     depth = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 3))
 
     w_prev_display = interp.space.objtable['w_display']
-    w_prev_bitmap = None
+    sdldisplay = None
+
     if w_prev_display:
         w_prev_bitmap = w_prev_display.fetch(interp.space, 0)
-    if isinstance(w_prev_bitmap, model.W_DisplayBitmap):
-        sdldisplay = w_prev_bitmap.display
-    else:
+        if isinstance(w_prev_bitmap, model.W_DisplayBitmap):
+            sdldisplay = w_prev_bitmap.display
+
+    if isinstance(w_bitmap, model.W_DisplayBitmap):
+        assert (sdldisplay is None) or (sdldisplay is w_bitmap.display)
+        sdldisplay = w_bitmap.display
+        w_display_bitmap = w_bitmap
+
+    if not sdldisplay:
         sdldisplay = display.SDLDisplay()
-    sdldisplay.set_video_mode(width, height, depth)
 
     if isinstance(w_bitmap, model.W_WordsObject):
         w_display_bitmap = model.W_DisplayBitmap(w_bitmap.getclass(interp.space), w_bitmap.size(), depth, sdldisplay)
         for idx, word in enumerate(w_bitmap.words):
             w_display_bitmap.setword(idx, word)
         w_rcvr.store(interp.space, 0, w_display_bitmap)
-    else:
-        assert isinstance(w_bitmap, model.W_DisplayBitmap)
-        assert w_bitmap.display is sdldisplay
-        w_display_bitmap = w_bitmap
 
+    sdldisplay.set_video_mode(width, height, depth)
     sdldisplay.set_pixelbuffer(w_display_bitmap.pixelbuffer)
     sdldisplay.blit()
 
