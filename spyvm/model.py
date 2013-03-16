@@ -22,6 +22,8 @@ from rpython.rlib import rrandom, objectmodel, jit
 from rpython.rlib.rarithmetic import intmask, r_uint
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib.objectmodel import instantiate
+from rpython.rtyper.lltypesystem import lltype, rffi
+from rsdl import RSDL, RSDL_helper
 
 class W_Object(object):
     """Root of Squeak model, abstract."""
@@ -421,15 +423,6 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     def has_shadow(self):
         return self._shadow is not None
 
-    def as_bitblt_get_shadow(self, space):
-        from spyvm.shadow import BitBltShadow
-        return self.as_special_get_shadow(space, BitBltShadow)
-
-    def as_form_get_shadow(self, space):
-        from spyvm.shadow import FormShadow
-        return self.as_special_get_shadow(space, FormShadow)
-
-
     def become(self, w_other):
         if not isinstance(w_other, W_PointersObject):
             return False
@@ -531,6 +524,94 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         w_result = W_WordsObject(self.w_class, len(self.words))
         w_result.words = list(self.words)
         return w_result
+
+class VersionTag():
+    pass
+
+NATIVE_DEPTH = 32
+class W_DisplayBitmap(W_AbstractObjectWithClassReference):
+
+    _attrs_ = ['pixelbuffer', '_depth', '_size']
+
+    def __init__(self, w_class, size, depth):
+        W_AbstractObjectWithClassReference.__init__(self, w_class)
+        assert depth == 1 # XXX: Only support B/W for now
+        bytelen = NATIVE_DEPTH / depth * size * 4
+        self.pixelbuffer = lltype.malloc(rffi.VOIDP.TO, bytelen, flavor='raw')
+        self._depth = depth
+        self._size = size
+        self.mutate()
+
+    def __del__(self):
+        lltype.free(self.pixelbuffer, flavor='raw')
+
+    def mutate(self):
+        self.version = VersionTag()
+
+    def at0(self, space, index0):
+        return self._at0_pure(space, index0, self.version)
+
+    @jit.elidable
+    def _at0_pure(self, space, index0, version):
+        val = self.getword(index0)
+        print "Get: [%d] => %d" % (index0, val)
+        return space.wrap_uint(val)
+
+    def atput0(self, space, index0, w_value):
+        word = space.unwrap_uint(w_value)
+        print "Set: [%d] => %d" % (index0, word)
+        self.setword(index0, word)
+        self.mutate()
+
+    # XXX: Only supports 1-bit to 32-bit conversion for now
+    @jit.unroll_safe
+    def getword(self, n):
+        pixel_per_word = NATIVE_DEPTH / self._depth
+        word = r_uint(0)
+        pos = n * pixel_per_word * 4
+        for i in xrange(32):
+            red = self.pixelbuffer[pos]
+            if red == '\0': # Black
+                word &= 1
+            word <<= 1
+            pos += 4
+        return word
+
+    @jit.unroll_safe
+    def setword(self, n, word):
+        pixel_per_word = NATIVE_DEPTH / self._depth
+        word = r_uint(0)
+        pos = n * pixel_per_word * 4
+        mask = 1
+        mask <<= 31
+        for i in xrange(32):
+            bit = mask & word
+            if bit == 0: # white
+                self.pixelbuffer[pos]     = '\xff'
+                self.pixelbuffer[pos + 1] = '\xff'
+                self.pixelbuffer[pos + 2] = '\xff'
+            else:
+                self.pixelbuffer[pos]     = '\0'
+                self.pixelbuffer[pos + 1] = '\0'
+                self.pixelbuffer[pos + 2] = '\0'
+            self.pixelbuffer[pos + 3] = '\xff'
+            mask >>= 1
+            pos += 4
+
+    def size(self):
+        return self._size
+
+    def invariant(self):
+        return False
+
+    def clone(self, space):
+        w_result = W_WordsObject(self.w_class, self._size)
+        n = 0
+        while n < self._size:
+            w_result.words[n] = self.getword(n)
+            n += 1
+        return w_result
+
 
 # XXX Shouldn't compiledmethod have class reference for subclassed compiled
 # methods?

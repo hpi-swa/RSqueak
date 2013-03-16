@@ -546,39 +546,19 @@ def func(interp, s_frame, w_rcvr):
 
 @expose_primitive(BITBLT_COPY_BITS, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    import time
-
     if not isinstance(w_rcvr, model.W_PointersObject) or w_rcvr.size() < 15:
         raise PrimitiveFailedError
 
+    import time
     start = time.time()
     print "blitting"
-    # interp.perform(w_rcvr, "simulateCopyBits")
 
-    w_display = interp.space.objtable['w_display']
+    interp.perform(w_rcvr, "simulateCopyBits")
 
-    # See BlueBook p.356ff
-    s_bitblt = w_rcvr.as_bitblt_get_shadow(interp.space)
-    s_bitblt.clip_range()
-    if s_bitblt.w < 0 or s_bitblt.h < 0:
-        return w_rcvr # null range
-    s_bitblt.compute_masks()
-    s_bitblt.check_overlap()
-    s_bitblt.calculate_offsets()
-    start_index = s_bitblt.dest_index
-    if s_bitblt.dest_form.w_self().is_same_object(w_display):
-        s_bitblt.copy_loop(interp.space.display())
-    else:
-        bits = s_bitblt.copy_loop()    
-    end_index = s_bitblt.dest_index
-
-    # w_dest_form = w_rcvr.fetch(interp.space, 0)
-    # if w_dest_form.is_same_object(w_display):
-    #     # w_bits = w_dest_form.fetch(interp.space, 0)
-    #     # assert isinstance(w_bits, model.W_WordsObject)
-    #     # bits = w_bits.words
-    #     # print bits
-    #     interp.space.display().blit_bits(bits, start_index, end_index) # TODO: draw only as necessary
+    w_dest_form = w_rcvr.fetch(interp.space, 0)
+    if w_dest_form.is_same_object(interp.space.objtable['w_display']):
+        import pdb; pdb.set_trace()
+        interp.space.display().blit()
 
     print "blitting finshed after %d ms" % int((time.time() - start) * 1000)
     return w_rcvr
@@ -594,15 +574,26 @@ def func(interp, s_frame, w_rcvr):
     if not isinstance(w_rcvr, model.W_PointersObject) or w_rcvr.size() < 4:
         raise PrimitiveFailedError
     # the fields required are bits (a pointer to a Bitmap), width, height, depth
-    interp.space.objtable['w_display'] = w_rcvr
 
     # XXX: TODO get the initial image TODO: figure out whether we
     # should decide the width an report it in the other SCREEN_SIZE
-    w = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 1))
-    h = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 2))
-    d = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 3))
-    interp.space.set_display(interp, display.SDLDisplay(w, h, d))
+    w_bitmap = w_rcvr.fetch(interp.space, 0)
+    assert isinstance(w_bitmap, model.W_WordsObject) or isinstance(w_bitmap, model.W_DisplayBitmap)
+    width = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 1))
+    height = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 2))
+    depth = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 3))
 
+    w_display_bitmap = model.W_DisplayBitmap(w_bitmap.getclass(interp.space), w_bitmap.size(), depth)
+    for idx, word in enumerate(w_bitmap.words):
+        w_display_bitmap.setword(idx, word)
+    w_rcvr.store(interp.space, 0, w_display_bitmap)
+
+    sdldisplay = display.SDLDisplay(width, height, depth)
+    sdldisplay.set_pixelbuffer(w_display_bitmap.pixelbuffer)
+    sdldisplay.blit()
+    interp.space.set_display(interp, display)
+
+    interp.space.objtable['w_display'] = w_rcvr
     return w_rcvr
 
 @expose_primitive(STRING_REPLACE, unwrap_spec=[object, index1_0, index1_0, object, index1_0])

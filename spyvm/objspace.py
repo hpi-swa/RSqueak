@@ -11,7 +11,6 @@ class ObjSpace(object):
         self.make_bootstrap_classes()
         self.make_bootstrap_objects()
         self._display = [None]
-        self.w_simulateCopyBits = [None]
 
     def make_bootstrap_classes(self):
         def define_core_cls(name, w_superclass, w_metaclass):
@@ -291,10 +290,6 @@ class ObjSpace(object):
 
     def set_display(self, interp, obj):
         self._display[0] = obj
-        self.w_simulateCopyBits[0] = interp.perform(interp.space.wrap_string("simulateCopyBits"), "asSymbol")
-
-    def w_copyBitsSymbol(self):
-        return self.w_simulateCopyBits[0]
 
     def display(self):
         return self._display[0]
