@@ -578,9 +578,9 @@ def func(interp, s_frame, w_rcvr):
     height = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 2))
     depth = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 3))
 
-    w_prev_display = interp.space.objtable['w_display']
     sdldisplay = None
 
+    w_prev_display = interp.space.objtable['w_display']
     if w_prev_display:
         w_prev_bitmap = w_prev_display.fetch(interp.space, 0)
         if isinstance(w_prev_bitmap, model.W_DisplayBitmap):
@@ -590,11 +590,10 @@ def func(interp, s_frame, w_rcvr):
         assert (sdldisplay is None) or (sdldisplay is w_bitmap.display)
         sdldisplay = w_bitmap.display
         w_display_bitmap = w_bitmap
-
-    if not sdldisplay:
-        sdldisplay = display.SDLDisplay()
-
-    if isinstance(w_bitmap, model.W_WordsObject):
+    else:
+        assert isinstance(w_bitmap, model.W_WordsObject)
+        if not sdldisplay:
+            sdldisplay = display.SDLDisplay()
         w_display_bitmap = model.W_DisplayBitmap(w_bitmap.getclass(interp.space), w_bitmap.size(), depth, sdldisplay)
         for idx, word in enumerate(w_bitmap.words):
             w_display_bitmap.setword(idx, word)
