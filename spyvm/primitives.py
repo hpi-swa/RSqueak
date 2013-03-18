@@ -10,10 +10,7 @@ from spyvm.error import PrimitiveFailedError, \
 from spyvm import wrapper
 
 from rpython.rlib import rarithmetic, rfloat, unroll, jit
-
-
-# for 32bit unwrap spec
-uint = object()
+from rpython.rlib.rarithmetic import r_uint
 
 
 def assert_bounds(n0, minimum, maximum):
@@ -101,9 +98,9 @@ def expose_primitive(code, unwrap_spec=None, no_result=False, result_is_new_fram
                     w_arg = s_frame.peek(index)
                     if spec is int:
                         args += (interp.space.unwrap_int(w_arg), )
-                    elif spec is uint:
+                    elif spec is r_uint:
                         if isinstance(w_arg, model.W_SmallInteger):
-                            args += (interp.space.unwrap_int(w_arg), )
+                            args += (r_uint(interp.space.unwrap_int(w_arg)), )
                         else:
                             args += (interp.space.unwrap_uint(w_arg), )
                     elif spec is index1_0:
@@ -184,7 +181,7 @@ bitwise_binary_ops = {
     }
 for (code,op) in bitwise_binary_ops.items():
     def make_func(op):
-        @expose_primitive(code, unwrap_spec=[uint, uint])
+        @expose_primitive(code, unwrap_spec=[r_uint, r_uint])
         def func(interp, s_frame, receiver, argument):
             res = abs(op(receiver, argument))
             return interp.space.wrap_uint(res)
