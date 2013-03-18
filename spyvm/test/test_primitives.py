@@ -666,6 +666,24 @@ def test_primitive_force_display_update(monkeypatch):
     finally:
         monkeypatch.undo()
 
+def test_bitblt_copy_bits(monkeypatch):
+    class CallCopyBitsSimulation(Exception):
+        pass
+
+    def perform_mock(w_rcvr, string):
+        if string == "simulateCopyBits":
+            raise CallCopyBitsSimulation
+
+    mock_bitblt = model.W_PointersObject(space.w_Point, 15)
+    interp, w_frame, argument_count = mock([mock_bitblt], None)
+
+    try:
+        monkeypatch.setattr(interp, "perform", perform_mock)
+        with py.test.raises(CallCopyBitsSimulation):
+            prim_table[primitives.BITBLT_COPY_BITS](interp, w_frame.as_context_get_shadow(space), argument_count-1)
+    finally:
+        monkeypatch.undo()
+
 # Note:
 #   primitives.NEXT is unimplemented as it is a performance optimization
 #   primitives.NEXT_PUT is unimplemented as it is a performance optimization
