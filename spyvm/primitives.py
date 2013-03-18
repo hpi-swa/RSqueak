@@ -11,11 +11,6 @@ from spyvm import wrapper
 
 from rpython.rlib import rarithmetic, rfloat, unroll, jit
 
-
-# for 32bit unwrap spec
-uint = object()
-
-
 def assert_bounds(n0, minimum, maximum):
     if not minimum <= n0 < maximum:
         raise PrimitiveFailedError()
@@ -101,11 +96,6 @@ def expose_primitive(code, unwrap_spec=None, no_result=False, result_is_new_fram
                     w_arg = s_frame.peek(index)
                     if spec is int:
                         args += (interp.space.unwrap_int(w_arg), )
-                    elif spec is uint:
-                        if isinstance(w_arg, model.W_SmallInteger):
-                            args += (interp.space.unwrap_int(w_arg), )
-                        else:
-                            args += (interp.space.unwrap_uint(w_arg), )
                     elif spec is index1_0:
                         args += (interp.space.unwrap_int(w_arg)-1, )
                     elif spec is float:
@@ -184,10 +174,10 @@ bitwise_binary_ops = {
     }
 for (code,op) in bitwise_binary_ops.items():
     def make_func(op):
-        @expose_primitive(code, unwrap_spec=[uint, uint])
+        @expose_primitive(code, unwrap_spec=[int, int])
         def func(interp, s_frame, receiver, argument):
-            res = abs(op(receiver, argument))
-            return interp.space.wrap_uint(res)
+            res = op(receiver, argument)
+            return interp.space.wrap_int(res)
     make_func(op)
 
 # #/ -- return the result of a division, only succeed if the division is exact
