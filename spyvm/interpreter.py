@@ -1,5 +1,5 @@
 import py
-from spyvm.shadow import ContextPartShadow, MethodContextShadow, BlockContextShadow
+from spyvm.shadow import ContextPartShadow, MethodContextShadow, BlockContextShadow, MethodNotFound
 from spyvm import model, constants, primitives, conftest, wrapper
 from spyvm.tool.bitmanipulation import splitter
 
@@ -287,9 +287,23 @@ class __extend__(ContextPartShadow):
                 interp._last_indent, w_selector.as_string(), receiver,
                 [self.peek(argcount-1-i) for i in range(argcount)])
         assert argcount >= 0
-        s_method = receiverclassshadow.lookup(w_selector)
-        # XXX catch MethodNotFound here and send doesNotUnderstand:
-        # AK shouln't that be done in lookup itself, please check what spec says about DNU in case of super sends.
+        try:
+            s_method = receiverclassshadow.lookup(w_selector)
+        except MethodNotFound:
+            arguments = self.pop_and_return_n(argcount)
+            s_message_class = self.space.classtable["w_Message"].as_class_get_shadow(self.space)
+            w_message = s_message_class.new()
+            w_message.store(self.space, 0, w_selector)
+            w_message.store(self.space, 1, self.space.wrap_list(arguments))
+            try:
+                s_method = receiverclassshadow.lookup(self.space.objtable["w_doesNotUnderstand"])
+            except MethodNotFound:
+                print "Missing doesDoesNotUnderstand in hierarchy of %s" % receiverclassshadow.getname()
+                raise
+            s_frame = s_method.create_frame(self.space, receiver, [w_message], self)
+            self.pop()
+            return interp.stack_frame(s_frame)
+
         code = s_method.primitive()
         if code:
             # the primitive pushes the result (if any) onto the stack itself

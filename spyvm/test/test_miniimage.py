@@ -356,6 +356,13 @@ def test_doesNotUnderstand():
     assert isinstance(w_dnu, model.W_BytesObject)
     assert w_dnu.as_string() == "doesNotUnderstand:"
 
+def test_run_doesNotUnderstand():
+    from spyvm.test import test_miniimage
+    setup_module(test_miniimage, filename='running-something-mini.image')
+    w_result = test_miniimage.interp.perform(test_miniimage.interp.space.wrap_int(0), "runningADNU")
+    assert isinstance(w_result, model.W_BytesObject)
+    assert w_result.as_string() == "foobarThis:doesNotExist:('pypy' 'heya' )"
+
 def test_Message():
     w_message_cls = interp.space.w_Message
     assert w_message_cls is interp.space.classtable["w_Message"]
