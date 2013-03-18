@@ -560,10 +560,10 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
         word = r_uint(0)
         pos = n * pixel_per_word * 4
         for i in xrange(32):
+            word <<= 1
             red = self.pixelbuffer[pos]
             if red == '\0': # Black
                 word |= r_uint(1)
-            word <<= 1
             pos += 4
         return word
 

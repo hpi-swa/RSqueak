@@ -266,3 +266,26 @@ def test_float_hash():
     assert target.gethash() == model.W_Float(1.1).gethash()
     target.store(space, 0, space.wrap_int(42))
     assert target.gethash() != model.W_Float(1.1).gethash()
+
+def test_display_bitmap():
+    target = model.W_DisplayBitmap(space.w_Array, 100, 1, None)
+    target.setword(0, 0xFF00)
+    assert bin(target.getword(0)) == bin(0xFF00)
+    target.setword(0, 0x00FF00FF)
+    assert bin(target.getword(0)) == bin(0x00FF00FF)
+    target.setword(0, 0xFF00FF00)
+    assert bin(target.getword(0)) == bin(0xFF00FF00)
+    for i in xrange(32):
+        if (i + 1) % 4 == 0:
+            assert target.pixelbuffer[i] == "\xff"
+        else:
+            assert target.pixelbuffer[i] == "\x00"
+    for i in xrange(32, 64):
+        assert target.pixelbuffer[i] == "\xff"    
+    for i in xrange(64, 96):
+        if (i + 1) % 4 == 0:
+            assert target.pixelbuffer[i] == "\xff"
+        else:
+            assert target.pixelbuffer[i] == "\x00"
+    for i in xrange(96, 128):
+        assert target.pixelbuffer[i] == "\xff"    
