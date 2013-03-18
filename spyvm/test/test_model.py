@@ -260,3 +260,9 @@ def test_float_at_put():
             assert math.isnan(target.value)
         else:
             assert target.value == f
+
+def test_float_hash():
+    target = model.W_Float(1.1)
+    assert target.gethash() == model.W_Float(1.1).gethash()
+    target.store(space, 0, space.wrap_int(42))
+    assert target.gethash() != model.W_Float(1.1).gethash()
