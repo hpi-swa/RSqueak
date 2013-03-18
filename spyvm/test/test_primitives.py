@@ -670,11 +670,12 @@ def test_bitblt_copy_bits(monkeypatch):
     class CallCopyBitsSimulation(Exception):
         pass
 
+    mock_bitblt = model.W_PointersObject(space.w_Point, 15)
+
     def perform_mock(w_rcvr, string):
-        if string == "simulateCopyBits":
+        if w_rcvr is mock_bitblt and string == "simulateCopyBits":
             raise CallCopyBitsSimulation
 
-    mock_bitblt = model.W_PointersObject(space.w_Point, 15)
     interp, w_frame, argument_count = mock([mock_bitblt], None)
 
     try:
