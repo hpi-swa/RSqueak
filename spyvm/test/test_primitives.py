@@ -643,6 +643,29 @@ def test_primitive_be_display():
     assert space.objtable["w_display"] is mock_display
     assert mock_display.fetch(space, 0) is w_bitmap
 
+def test_primitive_force_display_update(monkeypatch):
+    assert space.objtable["w_display"] is None
+    mock_display = model.W_PointersObject(space.w_Point, 4)
+    w_wordbmp = model.W_WordsObject(space.w_Array, 100)
+    mock_display.store(space, 0, w_wordbmp) # bitmap
+    mock_display.store(space, 1, space.wrap_int(32)) # width
+    mock_display.store(space, 2, space.wrap_int(10)) # height
+    mock_display.store(space, 3, space.wrap_int(1))  # depth
+    prim(primitives.BE_DISPLAY, [mock_display])
+
+    class DisplayFlush(Exception):
+        pass
+
+    def flush_to_screen_mock():
+        raise DisplayFlush
+
+    try:
+        monkeypatch.setattr(mock_display.fetch(space, 0), "flush_to_screen", flush_to_screen_mock)
+        with py.test.raises(DisplayFlush):
+            prim(primitives.FORCE_DISPLAY_UPDATE, [mock_display])
+    finally:
+        monkeypatch.undo()
+
 # Note:
 #   primitives.NEXT is unimplemented as it is a performance optimization
 #   primitives.NEXT_PUT is unimplemented as it is a performance optimization
