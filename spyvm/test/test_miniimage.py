@@ -131,6 +131,8 @@ def test_special_classes0():
     assert str(w) == "Point class" 
     w = image.special(constants.SO_LARGEPOSITIVEINTEGER_CLASS)
     assert str(w) == "LargePositiveInteger class" 
+    w = image.special(constants.SO_MESSAGE_CLASS)
+    assert str(w) == "Message class" 
 
     # to be continued
 
@@ -348,3 +350,17 @@ def test_new_float_as_w_float():
     w_result = perform(interp.space.w_Float, "new")
     assert w_result is not None
     assert isinstance(w_result, model.W_Float)
+
+def test_doesNotUnderstand():
+    w_dnu = interp.space.objtable["w_doesNotUnderstand"]
+    assert isinstance(w_dnu, model.W_BytesObject)
+    assert w_dnu.as_string() == "doesNotUnderstand:"
+
+def test_Message():
+    w_message_cls = interp.space.w_Message
+    assert w_message_cls is interp.space.classtable["w_Message"]
+    assert isinstance(w_message_cls, model.W_PointersObject)
+    s_message_cls = w_message_cls.as_class_get_shadow(interp.space)
+    assert s_message_cls.getname() == "Message class"
+    w_message = s_message_cls.new()
+    assert isinstance(w_message, model.W_PointersObject)
