@@ -2,9 +2,9 @@
 Squeak model.
 
     W_Object
-        W_SmallInteger        
-        W_Float
+        W_SmallInteger
         W_AbstractObjectWithIdentityHash
+            W_Float
             W_AbstractObjectWithClassReference
                 W_PointersObject 
                 W_BytesObject
@@ -21,7 +21,9 @@ from spyvm import constants, error
 from rpython.rlib import rrandom, objectmodel, jit
 from rpython.rlib.rarithmetic import intmask, r_uint
 from rpython.tool.pairtype import extendabletype
-from rpython.rlib.objectmodel import instantiate
+from rpython.rlib.objectmodel import instantiate, compute_hash
+from rpython.rtyper.lltypesystem import lltype, rffi
+from rsdl import RSDL, RSDL_helper
 
 class W_Object(object):
     """Root of Squeak model, abstract."""
@@ -152,7 +154,33 @@ class W_SmallInteger(W_Object):
     def clone(self, space):
         return self
 
-class W_Float(W_Object):
+class W_AbstractObjectWithIdentityHash(W_Object):
+    """Object with explicit hash (ie all except small
+    ints and floats)."""
+    _attrs_ = ['hash']
+
+    #XXX maybe this is too extreme, but it's very random
+    hash_generator = rrandom.Random()
+    UNASSIGNED_HASH = sys.maxint
+
+    hash = UNASSIGNED_HASH # default value
+
+    def setchar(self, n0, character):
+        raise NotImplementedError()
+
+    def gethash(self):
+        if self.hash == self.UNASSIGNED_HASH:
+            self.hash = hash = intmask(self.hash_generator.genrand32()) // 2
+            return hash
+        return self.hash
+
+    def invariant(self):
+        return isinstance(self.hash, int)
+
+    def _become(self, w_other):
+        self.hash, w_other.hash = w_other.hash, self.hash
+
+class W_Float(W_AbstractObjectWithIdentityHash):
     """Boxed float value."""
     _attrs_ = ['value']
 
@@ -170,11 +198,15 @@ class W_Float(W_Object):
         return space.w_Float
 
     def gethash(self):
-        return 41    # XXX check this
+        return compute_hash(self.value)
 
     def invariant(self):
-        return self.value is not None        # XXX but later:
-        #return isinstance(self.value, float)
+        return isinstance(self.value, float)
+
+    def _become(self, w_other):
+        self.value, w_other.value = w_other.value, self.value
+        W_AbstractObjectWithIdentityHash._become(self, w_other)
+
     def __repr__(self):
         return "W_Float(%f)" % self.value
 
@@ -225,33 +257,6 @@ class W_Float(W_Object):
             assert n0 == 1
             r = ((r >> 32) << 32) | uint
         self.value = float_unpack(r, 8)
-
-
-class W_AbstractObjectWithIdentityHash(W_Object):
-    """Object with explicit hash (ie all except small
-    ints and floats)."""
-    _attrs_ = ['hash']
-
-    #XXX maybe this is too extreme, but it's very random
-    hash_generator = rrandom.Random()
-    UNASSIGNED_HASH = sys.maxint
-
-    hash = UNASSIGNED_HASH # default value
-
-    def setchar(self, n0, character):
-        raise NotImplementedError()
-
-    def gethash(self):
-        if self.hash == self.UNASSIGNED_HASH:
-            self.hash = hash = intmask(self.hash_generator.genrand32()) // 2
-            return hash
-        return self.hash
-
-    def invariant(self):
-        return isinstance(self.hash, int)
-
-    def _become(self, w_other):
-        self.hash, w_other.hash = w_other.hash, self.hash
 
 class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     """Objects with arbitrary class (ie not CompiledMethod, SmallInteger or
@@ -522,6 +527,83 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         w_result = W_WordsObject(self.w_class, len(self.words))
         w_result.words = list(self.words)
         return w_result
+
+NATIVE_DEPTH = 32
+class W_DisplayBitmap(W_AbstractObjectWithClassReference):
+    _attrs_ = ['pixelbuffer', '_depth', '_realsize', 'display']
+    _immutable_fields_ = ['_depth', '_realsize', 'display']
+
+    def __init__(self, w_class, size, depth, display):
+        W_AbstractObjectWithClassReference.__init__(self, w_class)
+        assert depth == 1 # XXX: Only support B/W for now
+        bytelen = NATIVE_DEPTH / depth * size * 4
+        self.pixelbuffer = lltype.malloc(rffi.VOIDP.TO, bytelen, flavor='raw')
+        self._depth = depth
+        self._realsize = size
+        self.display = display
+
+    def __del__(self):
+        lltype.free(self.pixelbuffer, flavor='raw')
+
+    def at0(self, space, index0):
+        val = self.getword(index0)
+        return space.wrap_uint(val)
+
+    def atput0(self, space, index0, w_value):
+        word = space.unwrap_uint(w_value)
+        self.setword(index0, word)
+
+    # XXX: Only supports 1-bit to 32-bit conversion for now
+    @jit.unroll_safe
+    def getword(self, n):
+        pixel_per_word = NATIVE_DEPTH / self._depth
+        word = r_uint(0)
+        pos = n * pixel_per_word * 4
+        for i in xrange(32):
+            word <<= 1
+            red = self.pixelbuffer[pos]
+            if red == '\0': # Black
+                word |= r_uint(1)
+            pos += 4
+        return word
+
+    @jit.unroll_safe
+    def setword(self, n, word):
+        pixel_per_word = NATIVE_DEPTH / self._depth
+        pos = n * pixel_per_word * 4
+        mask = r_uint(1)
+        mask <<= 31
+        for i in xrange(32):
+            bit = mask & word
+            if bit == 0: # white
+                self.pixelbuffer[pos]     = '\xff'
+                self.pixelbuffer[pos + 1] = '\xff'
+                self.pixelbuffer[pos + 2] = '\xff'
+            else:
+                self.pixelbuffer[pos]     = '\0'
+                self.pixelbuffer[pos + 1] = '\0'
+                self.pixelbuffer[pos + 2] = '\0'
+            self.pixelbuffer[pos + 3] = '\xff'
+            mask >>= 1
+            pos += 4
+
+    def flush_to_screen(self):
+        self.display.blit()
+
+    def size(self):
+        return self._realsize
+
+    def invariant(self):
+        return False
+
+    def clone(self, space):
+        w_result = W_WordsObject(self.w_class, self._realsize)
+        n = 0
+        while n < self._realsize:
+            w_result.words[n] = self.getword(n)
+            n += 1
+        return w_result
+
 
 # XXX Shouldn't compiledmethod have class reference for subclassed compiled
 # methods?

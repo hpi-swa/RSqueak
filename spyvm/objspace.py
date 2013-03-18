@@ -87,6 +87,7 @@ class ObjSpace(object):
         define_cls("w_SmallInteger", "w_Integer")
         define_cls("w_LargePositiveInteger", "w_Integer", format=shadow.BYTES)
         define_cls("w_Float", "w_Number", format=shadow.BYTES)
+        define_cls("w_Message", "w_Object")
         define_cls("w_Collection", "w_Object")
         define_cls("w_SequenceableCollection", "w_Collection")
         define_cls("w_ArrayedCollection", "w_SequenceableCollection")
@@ -284,6 +285,7 @@ class ObjSpace(object):
         for i0 in range(numCopied):
             closure.atput0(i0, copiedValues[i0])
         return w_closure
+
 
 def bootstrap_class(space, instsize, w_superclass=None, w_metaclass=None,
                     name='?', format=shadow.POINTERS, varsized=False):

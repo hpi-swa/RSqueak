@@ -114,7 +114,7 @@ classes_in_special_object_table = {
     "BlockClosure" : SO_BLOCKCLOSURE_CLASS,
     "Point" : SO_POINT_CLASS,
     "LargePositiveInteger" : SO_LARGEPOSITIVEINTEGER_CLASS,
-#    "Message" : SO_MESSAGE_CLASS,
+    "Message" : SO_MESSAGE_CLASS,
     "CompiledMethod" : SO_COMPILEDMETHOD_CLASS,
     "Semaphore" : SO_SEMAPHORE_CLASS,
     "Character" : SO_CHARACTER_CLASS,
@@ -134,6 +134,7 @@ objects_in_special_object_table = {
     "special_selectors": SO_SPECIAL_SELECTORS_ARRAY,
     "smalltalkdict" : SO_SMALLTALK,
     "display" : SO_DISPLAY_OBJECT,
+    "doesNotUnderstand" : SO_DOES_NOT_UNDERSTAND,
     "interrupt_semaphore" : SO_USER_INTERRUPT_SEMAPHORE,
 }
 

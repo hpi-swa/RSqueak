@@ -47,9 +47,9 @@ def test_miniimageexists():
 def test_read_header():
     reader = open_miniimage(space)
     reader.read_header()
-    assert reader.endofmemory == 655196
-    assert reader.oldbaseaddress == -1220960256
-    assert reader.specialobjectspointer == -1220832384
+    assert reader.endofmemory == 726592
+    assert reader.oldbaseaddress == -1221464064
+    assert reader.specialobjectspointer == -1221336216
 
 def test_read_all_header(): 
     reader = open_miniimage(space)
@@ -113,8 +113,8 @@ def test_scheduler():
    
 def test_special_classes0():
     image = get_image()
-    w = image.special(constants.SO_BITMAP_CLASS)
-    assert str(w) == "Bitmap class" 
+    # w = image.special(constants.SO_BITMAP_CLASS)
+    # assert str(w) == "Bitmap class" 
     w = image.special(constants.SO_SMALLINTEGER_CLASS)
     assert str(w) == "SmallInteger class" 
     w = image.special(constants.SO_STRING_CLASS)
@@ -131,6 +131,8 @@ def test_special_classes0():
     assert str(w) == "Point class" 
     w = image.special(constants.SO_LARGEPOSITIVEINTEGER_CLASS)
     assert str(w) == "LargePositiveInteger class" 
+    w = image.special(constants.SO_MESSAGE_CLASS)
+    assert str(w) == "Message class" 
 
     # to be continued
 
@@ -154,7 +156,7 @@ def test_name_of_shadow_of_specials():
     assert repr(space.w_true.shadow_of_my_class(space)) == "<ClassShadow True>"
     assert repr(space.w_false.shadow_of_my_class(space)) == "<ClassShadow False>"
 
-def test_special_classes0():
+def test_special_objects0():
     image = get_image()
     w = image.special(constants.SO_DOES_NOT_UNDERSTAND)
     assert str(w) == "doesNotUnderstand:"
@@ -348,3 +350,24 @@ def test_new_float_as_w_float():
     w_result = perform(interp.space.w_Float, "new")
     assert w_result is not None
     assert isinstance(w_result, model.W_Float)
+
+def test_doesNotUnderstand():
+    w_dnu = interp.space.objtable["w_doesNotUnderstand"]
+    assert isinstance(w_dnu, model.W_BytesObject)
+    assert w_dnu.as_string() == "doesNotUnderstand:"
+
+def test_run_doesNotUnderstand():
+    from spyvm.test import test_miniimage
+    setup_module(test_miniimage, filename='running-something-mini.image')
+    w_result = test_miniimage.interp.perform(test_miniimage.interp.space.wrap_int(0), "runningADNU")
+    assert isinstance(w_result, model.W_BytesObject)
+    assert w_result.as_string() == "foobarThis:doesNotExist:('pypy' 'heya' )"
+
+def test_Message():
+    w_message_cls = interp.space.w_Message
+    assert w_message_cls is interp.space.classtable["w_Message"]
+    assert isinstance(w_message_cls, model.W_PointersObject)
+    s_message_cls = w_message_cls.as_class_get_shadow(interp.space)
+    assert s_message_cls.getname() == "Message class"
+    w_message = s_message_cls.new()
+    assert isinstance(w_message, model.W_PointersObject)

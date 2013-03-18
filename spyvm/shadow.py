@@ -72,7 +72,6 @@ WORDS = 2
 WEAK_POINTERS = 3
 COMPILED_METHOD = 4
 FLOAT = 5
-DISPLAY_SCREEN = 6
 
 class MethodNotFound(error.SmalltalkException):
     pass
@@ -790,8 +789,11 @@ class BlockContextShadow(ContextPartShadow):
         return 0
 
     def short_str(self):
-        return 'BlockContext of %s (%i)' % (self.w_method().get_identifier_string(),
-                    self.pc() + 1)
+        return 'BlockContext of %s (%s) [%i]' % (
+            self.w_method().get_identifier_string(),
+            self.w_receiver(),
+            self.pc() + 1
+        )
 
 class MethodContextShadow(ContextPartShadow):
     _attr_ = ['w_closure_or_nil', '_w_receiver', '__w_method']
@@ -937,7 +939,12 @@ class MethodContextShadow(ContextPartShadow):
 
     def short_str(self):
         block = '[] of' if self.is_closure_context() else ''
-        return '%s %s (%i)' % (block, self.w_method().get_identifier_string(), self.pc() + 1)
+        return '%s %s (%s) [%i]' % (
+            block,
+            self.w_method().get_identifier_string(),
+            self.w_receiver(),
+            self.pc() + 1
+        )
 
 class CompiledMethodShadow(object):
     _attr_ = ["_w_self", "bytecode",
@@ -1030,6 +1037,7 @@ class CachedObjectShadow(AbstractCachingShadow):
         return self._w_self._store(n0, w_value)
 
     def update(self): pass
+
 
 class ObserveeShadow(AbstractShadow):
     _attr_ = ['dependent']

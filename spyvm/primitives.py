@@ -4,6 +4,7 @@ import math
 import operator
 from spyvm import model, shadow
 from spyvm import constants
+from spyvm import display
 from spyvm.error import PrimitiveFailedError, \
     PrimitiveNotYetWrittenError
 from spyvm import wrapper
@@ -523,7 +524,7 @@ SET_DISPLAY_MODE = 92
 INPUT_SEMAPHORE = 93
 GET_NEXT_EVENT = 94
 INPUT_WORD = 95
-OBSOLETE_INDEXED = 96
+BITBLT_COPY_BITS = 96 # OBSOLETE_INDEXED = 96
 SNAPSHOT = 97
 STORE_IMAGE_SEGMENT = 98
 LOAD_IMAGE_SEGMENT = 99
@@ -531,7 +532,7 @@ PERFORM_IN_SUPERCLASS = 100
 BE_CURSOR = 101
 BE_DISPLAY = 102
 SCAN_CHARACTERS = 103
-# OBSOLETE_INDEXED = 104 # also 96
+OBSOLETE_INDEXED = 104 # also 96
 STRING_REPLACE = 105
 SCREEN_SIZE = 106
 MOUSE_BUTTONS = 107
@@ -542,6 +543,21 @@ KBD_PEEK = 109
 @expose_primitive(GET_NEXT_EVENT, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
     raise PrimitiveNotYetWrittenError()
+
+@expose_primitive(BITBLT_COPY_BITS, unwrap_spec=[object])
+def func(interp, s_frame, w_rcvr):
+    if not isinstance(w_rcvr, model.W_PointersObject) or w_rcvr.size() < 15:
+        raise PrimitiveFailedError
+
+    interp.perform(w_rcvr, "simulateCopyBits")
+
+    w_dest_form = w_rcvr.fetch(interp.space, 0)
+    if w_dest_form.is_same_object(interp.space.objtable['w_display']):
+        w_bitmap = w_dest_form.fetch(interp.space, 0)
+        assert isinstance(w_bitmap, model.W_DisplayBitmap)
+        w_bitmap.flush_to_screen()
+
+    return w_rcvr
 
 @expose_primitive(BE_CURSOR, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
@@ -554,6 +570,39 @@ def func(interp, s_frame, w_rcvr):
     if not isinstance(w_rcvr, model.W_PointersObject) or w_rcvr.size() < 4:
         raise PrimitiveFailedError
     # the fields required are bits (a pointer to a Bitmap), width, height, depth
+
+    # XXX: TODO get the initial image TODO: figure out whether we
+    # should decide the width an report it in the other SCREEN_SIZE
+    w_bitmap = w_rcvr.fetch(interp.space, 0)
+    width = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 1))
+    height = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 2))
+    depth = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 3))
+
+    sdldisplay = None
+
+    w_prev_display = interp.space.objtable['w_display']
+    if w_prev_display:
+        w_prev_bitmap = w_prev_display.fetch(interp.space, 0)
+        if isinstance(w_prev_bitmap, model.W_DisplayBitmap):
+            sdldisplay = w_prev_bitmap.display
+
+    if isinstance(w_bitmap, model.W_DisplayBitmap):
+        assert (sdldisplay is None) or (sdldisplay is w_bitmap.display)
+        sdldisplay = w_bitmap.display
+        w_display_bitmap = w_bitmap
+    else:
+        assert isinstance(w_bitmap, model.W_WordsObject)
+        if not sdldisplay:
+            sdldisplay = display.SDLDisplay()
+        w_display_bitmap = model.W_DisplayBitmap(w_bitmap.getclass(interp.space), w_bitmap.size(), depth, sdldisplay)
+        for idx, word in enumerate(w_bitmap.words):
+            w_display_bitmap.setword(idx, word)
+        w_rcvr.store(interp.space, 0, w_display_bitmap)
+
+    sdldisplay.set_video_mode(width, height, depth)
+    sdldisplay.set_pixelbuffer(w_display_bitmap.pixelbuffer)
+    sdldisplay.blit()
+
     interp.space.objtable['w_display'] = w_rcvr
     return w_rcvr
 
@@ -658,6 +707,7 @@ NOOP = 122
 VALUE_UNINTERRUPTABLY = 123
 LOW_SPACE_SEMAPHORE = 124
 SIGNAL_AT_BYTES_LEFT = 125
+DEFER_UPDATES = 126
 DRAW_RECTANGLE = 127
 
 @expose_primitive(IMAGE_NAME)
@@ -680,8 +730,13 @@ def func(interp, s_frame, w_reciver, i):
     # dont know when the space runs out
     return w_reciver
 
+@expose_primitive(DEFER_UPDATES, unwrap_spec=[object, object])
+def func(interp, s_frame, w_receiver, w_bool):
+    raise PrimitiveNotYetWrittenError()
+
 @expose_primitive(DRAW_RECTANGLE, unwrap_spec=[object, int, int, int, int])
 def func(interp, s_frame, w_rcvr, left, right, top, bottom):
+    # import pdb; pdb.set_trace()
     raise PrimitiveNotYetWrittenError()
 
 
@@ -1133,6 +1188,21 @@ def func(interp, s_frame, w_block_closure, w_a0):
 CTXT_AT = 210
 CTXT_AT_PUT = 211
 CTXT_SIZE = 212
+
+# ___________________________________________________________________________
+# Drawing
+
+FORCE_DISPLAY_UPDATE = 231
+
+@expose_primitive(FORCE_DISPLAY_UPDATE, unwrap_spec=[object])
+def func(interp, s_frame, w_rcvr):
+    w_prev_display = interp.space.objtable['w_display']
+    assert w_prev_display
+    w_prev_bitmap = w_prev_display.fetch(interp.space, 0)
+    assert isinstance(w_prev_bitmap, model.W_DisplayBitmap)
+    w_prev_bitmap.flush_to_screen()
+    return w_rcvr
+
 
 # ___________________________________________________________________________
 # PrimitiveLoadInstVar
