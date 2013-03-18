@@ -540,6 +540,14 @@ KBD_NEXT = 108
 KBD_PEEK = 109
 
 
+@expose_primitive(MOUSE_POINT, unwrap_spec=[object])
+def func(interp, s_frame, w_rcvr):
+    x, y = interp.space.get_display().mouse_point()
+    w_point = model.W_PointersObject(interp.space.w_Point, 2)
+    w_point.store(interp.space, 0, interp.space.wrap_int(x))
+    w_point.store(interp.space, 1, interp.space.wrap_int(y))
+    return w_point
+
 @expose_primitive(GET_NEXT_EVENT, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
     raise PrimitiveNotYetWrittenError()
@@ -593,7 +601,7 @@ def func(interp, s_frame, w_rcvr):
     else:
         assert isinstance(w_bitmap, model.W_WordsObject)
         if not sdldisplay:
-            sdldisplay = display.SDLDisplay()
+            sdldisplay = display.SDLDisplay(interp.image_name)
         w_display_bitmap = model.W_DisplayBitmap(w_bitmap.getclass(interp.space), w_bitmap.size(), depth, sdldisplay)
         for idx, word in enumerate(w_bitmap.words):
             w_display_bitmap.setword(idx, word)
@@ -630,7 +638,6 @@ def func(interp, s_frame, w_rcvr, start, stop, w_replacement, repStart):
         w_rcvr.atput0(interp.space, i0, w_replacement.at0(interp.space, repOff + i0))
     return w_rcvr
 
-
 @expose_primitive(SCREEN_SIZE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
     # XXX get the real screen size
@@ -639,6 +646,20 @@ def func(interp, s_frame, w_rcvr):
     point.store_x(640)
     point.store_y(480)
     return w_res
+
+@expose_primitive(MOUSE_BUTTONS, unwrap_spec=[object])
+def func(interp, s_frame, w_rcvr):
+    btn = interp.space.get_display().mouse_button()
+    return interp.space.wrap_int(btn)
+
+@expose_primitive(KBD_NEXT, unwrap_spec=[object])
+def func(interp, s_frame, w_rcvr):
+    return interp.space.wrap_int(interp.space.get_display().next_keycode())
+
+@expose_primitive(KBD_PEEK, unwrap_spec=[object])
+def func(interp, s_frame, w_rcvr):
+    return interp.space.wrap_int(interp.space.get_display().peek_keycode())
+
 
 # ___________________________________________________________________________
 # Control Primitives

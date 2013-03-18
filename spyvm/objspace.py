@@ -1,5 +1,5 @@
 from spyvm import constants, model, shadow, wrapper
-from spyvm.error import UnwrappingError, WrappingError
+from spyvm.error import UnwrappingError, WrappingError, PrimitiveFailedError
 from rpython.rlib.objectmodel import instantiate, specialize
 from rpython.rlib.rarithmetic import intmask, r_uint, int_between
 
@@ -270,7 +270,15 @@ class ObjSpace(object):
         assert isinstance(w_array, model.W_PointersObject)
         
         return [w_array.at0(self, i) for i in range(w_array.size())]
-        
+
+    def get_display(self):
+        w_display = self.objtable['w_display']
+        if w_display:
+            w_bitmap = w_display.fetch(self, 0)
+            if isinstance(w_bitmap, model.W_DisplayBitmap):
+                return w_bitmap.display
+        raise PrimitiveFailedError()
+
     def _freeze_(self):
         return True
 
