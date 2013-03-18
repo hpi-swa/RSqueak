@@ -2,9 +2,9 @@
 Squeak model.
 
     W_Object
-        W_SmallInteger        
-        W_Float
+        W_SmallInteger
         W_AbstractObjectWithIdentityHash
+            W_Float
             W_AbstractObjectWithClassReference
                 W_PointersObject 
                 W_BytesObject
@@ -21,7 +21,7 @@ from spyvm import constants, error
 from rpython.rlib import rrandom, objectmodel, jit
 from rpython.rlib.rarithmetic import intmask, r_uint
 from rpython.tool.pairtype import extendabletype
-from rpython.rlib.objectmodel import instantiate
+from rpython.rlib.objectmodel import instantiate, compute_hash
 from rpython.rtyper.lltypesystem import lltype, rffi
 from rsdl import RSDL, RSDL_helper
 
@@ -154,7 +154,33 @@ class W_SmallInteger(W_Object):
     def clone(self, space):
         return self
 
-class W_Float(W_Object):
+class W_AbstractObjectWithIdentityHash(W_Object):
+    """Object with explicit hash (ie all except small
+    ints and floats)."""
+    _attrs_ = ['hash']
+
+    #XXX maybe this is too extreme, but it's very random
+    hash_generator = rrandom.Random()
+    UNASSIGNED_HASH = sys.maxint
+
+    hash = UNASSIGNED_HASH # default value
+
+    def setchar(self, n0, character):
+        raise NotImplementedError()
+
+    def gethash(self):
+        if self.hash == self.UNASSIGNED_HASH:
+            self.hash = hash = intmask(self.hash_generator.genrand32()) // 2
+            return hash
+        return self.hash
+
+    def invariant(self):
+        return isinstance(self.hash, int)
+
+    def _become(self, w_other):
+        self.hash, w_other.hash = w_other.hash, self.hash
+
+class W_Float(W_AbstractObjectWithIdentityHash):
     """Boxed float value."""
     _attrs_ = ['value']
 
@@ -172,11 +198,15 @@ class W_Float(W_Object):
         return space.w_Float
 
     def gethash(self):
-        return 41    # XXX check this
+        return compute_hash(self.value)
 
     def invariant(self):
-        return self.value is not None        # XXX but later:
-        #return isinstance(self.value, float)
+        return isinstance(self.value, float)
+
+    def _become(self, w_other):
+        self.value, w_other.value = w_other.value, self.value
+        W_AbstractObjectWithIdentityHash._become(self, w_other)
+
     def __repr__(self):
         return "W_Float(%f)" % self.value
 
@@ -227,33 +257,6 @@ class W_Float(W_Object):
             assert n0 == 1
             r = ((r >> 32) << 32) | uint
         self.value = float_unpack(r, 8)
-
-
-class W_AbstractObjectWithIdentityHash(W_Object):
-    """Object with explicit hash (ie all except small
-    ints and floats)."""
-    _attrs_ = ['hash']
-
-    #XXX maybe this is too extreme, but it's very random
-    hash_generator = rrandom.Random()
-    UNASSIGNED_HASH = sys.maxint
-
-    hash = UNASSIGNED_HASH # default value
-
-    def setchar(self, n0, character):
-        raise NotImplementedError()
-
-    def gethash(self):
-        if self.hash == self.UNASSIGNED_HASH:
-            self.hash = hash = intmask(self.hash_generator.genrand32()) // 2
-            return hash
-        return self.hash
-
-    def invariant(self):
-        return isinstance(self.hash, int)
-
-    def _become(self, w_other):
-        self.hash, w_other.hash = w_other.hash, self.hash
 
 class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     """Objects with arbitrary class (ie not CompiledMethod, SmallInteger or
