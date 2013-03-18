@@ -156,7 +156,7 @@ def test_name_of_shadow_of_specials():
     assert repr(space.w_true.shadow_of_my_class(space)) == "<ClassShadow True>"
     assert repr(space.w_false.shadow_of_my_class(space)) == "<ClassShadow False>"
 
-def test_special_classes0():
+def test_special_objects0():
     image = get_image()
     w = image.special(constants.SO_DOES_NOT_UNDERSTAND)
     assert str(w) == "doesNotUnderstand:"
