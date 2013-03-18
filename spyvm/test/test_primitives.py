@@ -644,7 +644,6 @@ def test_primitive_be_display():
     assert mock_display.fetch(space, 0) is w_bitmap
 
 def test_primitive_force_display_update(monkeypatch):
-    assert space.objtable["w_display"] is None
     mock_display = model.W_PointersObject(space.w_Point, 4)
     w_wordbmp = model.W_WordsObject(space.w_Array, 100)
     mock_display.store(space, 0, w_wordbmp) # bitmap
