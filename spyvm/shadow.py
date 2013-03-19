@@ -211,7 +211,7 @@ class ClassShadow(AbstractCachingShadow):
         elif self.instance_kind == FLOAT:
             w_new = model.W_Float(0) # Squeak gives a random piece of memory
         elif self.instance_kind == LARGE_POSITIVE_INTEGER:
-            if extrasize == 4:
+            if extrasize <= 4:
                 w_new = model.W_LargePositiveInteger1Word(0, extrasize)
             else:
                 w_new = model.W_BytesObject(w_cls, extrasize)
