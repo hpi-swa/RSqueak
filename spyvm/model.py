@@ -325,6 +325,10 @@ class W_Float(W_AbstractObjectWithIdentityHash):
             r = ((r >> 32) << 32) | uint
         self.value = float_unpack(r, 8)
 
+    def size(self):
+        return 2
+
+
 class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     """Objects with arbitrary class (ie not CompiledMethod, SmallInteger or
     Float)."""
