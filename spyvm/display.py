@@ -65,7 +65,8 @@ class SDLDisplay(object):
             RSDL.FreeSurface(self.surface)
         pitch = 4 * self.width
         rmask, gmask, bmask, amask = r_uint(0x000000FF), r_uint(0x0000FF00), r_uint(0x00FF0000), r_uint(0xFF000000)
-        self.surface = RSDL.CreateRGBSurfaceFrom(pixelbuffer, self.width, self.height, 32, pitch,
+        self.surface = RSDL.CreateRGBSurfaceFrom(rffi.cast(rffi.VOIDP, pixelbuffer),
+                                                 self.width, self.height, 32, pitch,
                                                  rmask, gmask, bmask, amask)
         self.has_surface = True
 

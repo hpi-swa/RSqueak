@@ -548,16 +548,22 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         return w_result
 
 NATIVE_DEPTH = 32
+
 class W_DisplayBitmap(W_AbstractObjectWithClassReference):
-    _attrs_ = ['pixelbuffer', '_depth', '_realsize', 'display']
-    _immutable_fields_ = ['_depth', '_realsize', 'display']
+    _attrs_ = ['pixelbuffer', '_realsize', 'display']
+    _immutable_fields_ = ['_realsize', 'display']
+
+    @staticmethod
+    def create(w_class, size, depth, display):
+        if depth == 1:
+            return W_DisplayBitmap1Bit(w_class, size, depth, display)
+        else:
+            raise NotImplementedError("non B/W squeak")
 
     def __init__(self, w_class, size, depth, display):
         W_AbstractObjectWithClassReference.__init__(self, w_class)
-        assert depth == 1 # XXX: Only support B/W for now
-        bytelen = NATIVE_DEPTH / depth * size * 4
-        self.pixelbuffer = lltype.malloc(rffi.VOIDP.TO, bytelen, flavor='raw')
-        self._depth = depth
+        bytelen = NATIVE_DEPTH / depth * size
+        self.pixelbuffer = lltype.malloc(rffi.ULONGP.TO, bytelen, flavor='raw')
         self._realsize = size
         self.display = display
 
@@ -571,35 +577,6 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
     def atput0(self, space, index0, w_value):
         word = space.unwrap_uint(w_value)
         self.setword(index0, word)
-
-    # XXX: Only supports 1-bit to 32-bit conversion for now
-    @jit.unroll_safe
-    def getword(self, n):
-        pixel_per_word = NATIVE_DEPTH / self._depth
-        word = r_uint(0)
-        pos = n * pixel_per_word * 4
-        for i in xrange(32):
-            word <<= 1
-            red = self.pixelbuffer[pos]
-            word |= r_uint(ord(red) & 1)
-            pos += 4
-        return ~word
-
-    @jit.unroll_safe
-    def setword(self, n, word):
-        pixel_per_word = NATIVE_DEPTH / self._depth
-        pos = n * pixel_per_word * 4
-        mask = r_uint(1)
-        mask <<= 31
-        for i in xrange(32):
-            bit = mask & word
-            byte = chr(0xff * (bit == 0))
-            self.pixelbuffer[pos]     = byte
-            self.pixelbuffer[pos + 1] = byte
-            self.pixelbuffer[pos + 2] = byte
-            self.pixelbuffer[pos + 3] = '\xff' # alpha channel
-            mask >>= 1
-            pos += 4
 
     def flush_to_screen(self):
         self.display.blit()
@@ -617,6 +594,37 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
             w_result.words[n] = self.getword(n)
             n += 1
         return w_result
+
+    def getword(self, n):
+        raise NotImplementedError("subclass responsibility")
+
+    def setword(self, n, word):
+        raise NotImplementedError("subclass responsibility")
+
+
+class W_DisplayBitmap1Bit(W_DisplayBitmap):
+    @jit.unroll_safe
+    def getword(self, n):
+        word = r_uint(0)
+        pos = n * NATIVE_DEPTH
+        for i in xrange(32):
+            word <<= 1
+            pixel = self.pixelbuffer[pos]
+            word |= r_uint(pixel & 0x1)
+            pos += 1
+        return ~word
+
+    @jit.unroll_safe
+    def setword(self, n, word):
+        pos = n * NATIVE_DEPTH
+        mask = r_uint(1)
+        mask <<= 31
+        for i in xrange(32):
+            bit = mask & word
+            pixel = r_uint((0x00ffffff * (bit == 0)) | 0xff000000)
+            self.pixelbuffer[pos] = pixel
+            mask >>= 1
+            pos += 1
 
 
 # XXX Shouldn't compiledmethod have class reference for subclassed compiled

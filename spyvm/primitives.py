@@ -602,7 +602,12 @@ def func(interp, s_frame, w_rcvr):
         assert isinstance(w_bitmap, model.W_WordsObject)
         if not sdldisplay:
             sdldisplay = display.SDLDisplay(interp.image_name)
-        w_display_bitmap = model.W_DisplayBitmap(w_bitmap.getclass(interp.space), w_bitmap.size(), depth, sdldisplay)
+        w_display_bitmap = model.W_DisplayBitmap.create(
+            w_bitmap.getclass(interp.space),
+            w_bitmap.size(),
+            depth,
+            sdldisplay
+        )
         for idx, word in enumerate(w_bitmap.words):
             w_display_bitmap.setword(idx, word)
         w_rcvr.store(interp.space, 0, w_display_bitmap)
