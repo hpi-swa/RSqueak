@@ -305,7 +305,6 @@ class ImageReader(object):
         for chunk in self.chunks.itervalues():
             casted = chunk.g_object.w_object
             if isinstance(casted, model.W_PointersObject) and casted.has_shadow():
-                assert hasattr(casted, '_vars')
                 assert casted.size() != 0
                 casted._shadow.update()
 
@@ -508,7 +507,6 @@ class GenericObject(object):
                 self.w_object = objectmodel.instantiate(model.W_CompiledMethod)
             else:
                 assert 0, "not reachable"
-        self.w_object.space = self.space
         return self.w_object
 
     def fillin_w_object(self):
@@ -532,6 +530,7 @@ class GenericObject(object):
 
     def fillin_pointersobject(self, w_pointersobject):
         assert self.pointers is not None
+        w_pointersobject.space = self.space
         w_pointersobject._vars = [g_object.w_object for g_object in self.pointers]
         w_class = self.g_class.w_object
         assert isinstance(w_class, model.W_PointersObject)
@@ -540,6 +539,7 @@ class GenericObject(object):
 
     def fillin_floatobject(self, w_floatobject):
         from rpython.rlib.rarithmetic import r_uint
+        w_floatobject.space = self.space
         words = [r_uint(x) for x in self.chunk.data]
         if len(words) != 2:
             raise CorruptImageError("Expected 2 words in Float, got %d" % len(words))
@@ -549,6 +549,7 @@ class GenericObject(object):
 
     def fillin_wordsobject(self, w_wordsobject):
         from rpython.rlib.rarithmetic import r_uint
+        w_wordsobject.space = self.space
         w_wordsobject.words = [r_uint(x) for x in self.chunk.data]
         w_class = self.g_class.w_object
         assert isinstance(w_class, model.W_PointersObject)
@@ -556,6 +557,7 @@ class GenericObject(object):
         w_wordsobject.hash = self.chunk.hash12 # XXX check this
 
     def fillin_bytesobject(self, w_bytesobject):
+        w_bytesobject.space = self.space
         w_class = self.g_class.w_object
         assert isinstance(w_class, model.W_PointersObject)
         w_bytesobject.s_class = w_class.as_class_get_uninitialized_shadow(self.space)
@@ -583,6 +585,7 @@ class GenericObject(object):
         return bytes[:stop] # omit odd bytes
 
     def fillin_compiledmethod(self, w_compiledmethod):
+        w_compiledmethod.space = self.space
         header = self.chunk.data[0]
         w_compiledmethod.setheader(header>>1) # We untag before giving header
         for i in range(1,w_compiledmethod.literalsize+1):
