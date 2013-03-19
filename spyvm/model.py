@@ -581,10 +581,9 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
         for i in xrange(32):
             word <<= 1
             red = self.pixelbuffer[pos]
-            if red == '\0': # Black
-                word |= r_uint(1)
+            word |= r_uint(ord(red) & 1)
             pos += 4
-        return word
+        return ~word
 
     @jit.unroll_safe
     def setword(self, n, word):
@@ -594,15 +593,11 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
         mask <<= 31
         for i in xrange(32):
             bit = mask & word
-            if bit == 0: # white
-                self.pixelbuffer[pos]     = '\xff'
-                self.pixelbuffer[pos + 1] = '\xff'
-                self.pixelbuffer[pos + 2] = '\xff'
-            else:
-                self.pixelbuffer[pos]     = '\0'
-                self.pixelbuffer[pos + 1] = '\0'
-                self.pixelbuffer[pos + 2] = '\0'
-            self.pixelbuffer[pos + 3] = '\xff'
+            byte = chr(0xff * (bit == 0))
+            self.pixelbuffer[pos]     = byte
+            self.pixelbuffer[pos + 1] = byte
+            self.pixelbuffer[pos + 2] = byte
+            self.pixelbuffer[pos + 3] = '\xff' # alpha channel
             mask >>= 1
             pos += 4
 
