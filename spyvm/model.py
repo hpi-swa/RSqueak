@@ -197,19 +197,11 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
         for idx, byte in enumerate(bytes):
             assert idx < 4
             word |= ord(byte) << (idx * 8)
-        self.value = word
+        self.value = intmask(word)
         self._exposed_size = len(bytes)
 
     def getclass(self, space):
         return space.w_LargePositiveInteger
-
-    def gethash(self):
-        if self.hash == self.UNASSIGNED_HASH:
-            """Integer >> hash
-            (self lastDigit bitShift: 8) + (self digitAt: 1)
-            """
-            self.hash = (self.at0(self.size() - 1) << 8) + self.at0(0)
-        return self.value
 
     def invariant(self):
         return isinstance(self.value, int)
@@ -225,7 +217,7 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
             raise IndexError()
         skew = index0 * 8
         mask = 0xff << skew
-        return space.wrap_int((self.value & mask) >> skew)
+        return space.wrap_int(intmask((self.value & mask) >> skew))
 
     def atput0(self, space, index0, w_byte):
         if index0 >= self.size():
