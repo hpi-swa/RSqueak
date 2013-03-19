@@ -624,7 +624,7 @@ class W_DisplayBitmap1Bit(W_DisplayBitmap):
         mask <<= 31
         for i in xrange(32):
             bit = mask & word
-            pixel = r_uint((0x00ffffff * (bit == 0)) | 0xff000000)
+            pixel = r_uint((0x00ffffff * (bit == 0)) | r_uint(0xff000000))
             self.pixelbuffer[pos] = pixel
             mask >>= 1
             pos += 1
