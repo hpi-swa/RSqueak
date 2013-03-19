@@ -45,12 +45,15 @@ class AbstractCachingShadow(AbstractShadow):
 
     def attach_shadow(self):
         self.w_self().store_shadow(self)
-        self.update()
 
     def update(self):
         """This should get called whenever the base Smalltalk
         object changes."""
-        self.sync_cache()
+        w_self = self.w_self()
+        if isinstance(w_self, model.W_PointersObject):
+            if w_self.size() == 0:
+                return
+        return self.sync_cache()
 
     def sync_cache(self):
         raise NotImplementedError()
@@ -102,8 +105,6 @@ class ClassShadow(AbstractCachingShadow):
         "Update the ClassShadow with data from the w_self class."
 
         w_self = self.w_self()
-        if w_self.size() == 0:
-            return
 
         # read and painfully decode the format
         try:
@@ -350,8 +351,6 @@ class MethodDictionaryShadow(AbstractShadow):
         self.invalid = True
 
     def sync_cache(self):
-        if self.w_self().size() == 0:
-            return
         w_values = self.w_self()._fetch(constants.METHODDICT_VALUES_INDEX)
         assert isinstance(w_values, model.W_PointersObject)
         s_values = w_values.as_observed_get_shadow(self.space)

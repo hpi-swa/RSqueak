@@ -154,7 +154,7 @@ class W_SmallInteger(W_Object):
 
 class W_Float(W_Object):
     """Boxed float value."""
-    _attrs_ = ['value']
+    _attrs_ = ['value', 'space']
     _immutable_fields_ = ['space']
 
     def fillin_fromwords(self, space, high, low):
@@ -258,21 +258,18 @@ class W_AbstractObjectWithIdentityHash(W_Object):
 class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     """Objects with arbitrary class (ie not CompiledMethod, SmallInteger or
     Float)."""
-    _attrs_ = ['w_class', 's_class']
+    _attrs_ = ['s_class', 'space']
     _immutable_fields_ = ['space']
     s_class = None
 
     def __init__(self, space, w_class):
-        if w_class is not None:     # it's None only for testing and space generation
-            assert isinstance(w_class, W_PointersObject)
-            if w_class.has_shadow():
-                self.s_class = w_class.as_class_get_shadow(w_class._shadow.space)
-        self.w_class = w_class
         self.space = space
+        if w_class is not None:# it's None only for testing and space generation
+            assert isinstance(w_class, W_PointersObject)
+            self.s_class = w_class.as_class_get_shadow(space)
 
     def getclass(self, space):
-        assert self.w_class is not None
-        return self.w_class
+        return self.s_class.w_self()
 
     def __repr__(self):
         return "<%s %s>" % (self.__class__.__name__, self)
@@ -282,25 +279,25 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
             return self._shadow.getname()
         else:
             name = None
-            if self.w_class.has_shadow():
-                name = self.w_class._shadow.name
+            if self.s_class is not None:
+                name = self.s_class.name
             return "a %s" % (name or '?',)
 
     def invariant(self):
+        from spyvm.shadow import ClassShadow
         return (W_AbstractObjectWithIdentityHash.invariant(self) and
-                isinstance(self.w_class, W_PointersObject))
+                isinstance(self.s_class.w_self(), W_PointersObject) and
+                isinstance(self.s_class, ClassShadow))
 
     def _become(self, w_other):
-        self.w_class, w_other.w_class = w_other.w_class, self.w_class
         self.s_class, w_other.s_class = w_other.s_class, self.s_class
         W_AbstractObjectWithIdentityHash._become(self, w_other)
 
     def has_class(self):
-        return self.w_class is not None
+        return self.s_class is not None
 
     def shadow_of_my_class(self, space):
-        if self.s_class is None:
-            self.s_class = self.w_class.as_class_get_shadow(space)
+        assert self.s_class is not None
         return self.s_class
 
 class W_PointersObject(W_AbstractObjectWithClassReference):
@@ -393,6 +390,12 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         from spyvm.shadow import ClassShadow
         return jit.promote(self.as_special_get_shadow(space, ClassShadow))
 
+    def as_class_get_uninitialized_shadow(self, space):
+        from spyvm.shadow import ClassShadow
+        if self._shadow is None:
+            self.attach_shadow_of_class(space, ClassShadow)
+        return jit.promote(self._shadow)
+
     def as_blockcontext_get_shadow(self, space):
         from spyvm.shadow import BlockContextShadow
         return self.as_special_get_shadow(space, BlockContextShadow)
@@ -438,7 +441,8 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         return True
         
     def clone(self, space):
-        w_result = W_PointersObject(self.space, self.w_class, len(self._vars))
+        w_result = W_PointersObject(self.space, self.s_class.w_self(),
+                                    len(self._vars))
         w_result._vars = [self.fetch(space, i) for i in range(len(self._vars))]
         return w_result
 
@@ -490,7 +494,8 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         return self.bytes == other.bytes
 
     def clone(self, space):
-        w_result = W_BytesObject(self.space, self.w_class, len(self.bytes))
+        w_result = W_BytesObject(self.space, self.s_class.w_self(),
+                                len(self.bytes))
         w_result.bytes = list(self.bytes)
         return w_result
 
@@ -523,7 +528,8 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
                 isinstance(self.words, list))
 
     def clone(self, space):
-        w_result = W_WordsObject(self.space, self.space, self.w_class, len(self.words))
+        w_result = W_WordsObject(self.space, self.s_class.w_self(),
+                                len(self.words))
         w_result.words = list(self.words)
         return w_result
 

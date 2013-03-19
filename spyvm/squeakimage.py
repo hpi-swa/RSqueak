@@ -305,6 +305,8 @@ class ImageReader(object):
         for chunk in self.chunks.itervalues():
             casted = chunk.g_object.w_object
             if isinstance(casted, model.W_PointersObject) and casted.has_shadow():
+                assert hasattr(casted, '_vars')
+                assert casted.size() != 0
                 casted._shadow.update()
 
     def init_compactclassesarray(self):
@@ -533,8 +535,7 @@ class GenericObject(object):
         w_pointersobject._vars = [g_object.w_object for g_object in self.pointers]
         w_class = self.g_class.w_object
         assert isinstance(w_class, model.W_PointersObject)
-        w_pointersobject.w_class = w_class
-        w_pointersobject.s_class = None
+        w_pointersobject.s_class = w_class.as_class_get_uninitialized_shadow(self.space)
         w_pointersobject.hash = self.chunk.hash12
 
     def fillin_floatobject(self, w_floatobject):
@@ -551,13 +552,13 @@ class GenericObject(object):
         w_wordsobject.words = [r_uint(x) for x in self.chunk.data]
         w_class = self.g_class.w_object
         assert isinstance(w_class, model.W_PointersObject)
-        w_wordsobject.w_class = w_class
+        w_wordsobject.s_class = w_class.as_class_get_uninitialized_shadow(self.space)
         w_wordsobject.hash = self.chunk.hash12 # XXX check this
 
     def fillin_bytesobject(self, w_bytesobject):
         w_class = self.g_class.w_object
         assert isinstance(w_class, model.W_PointersObject)
-        w_bytesobject.w_class = w_class
+        w_bytesobject.s_class = w_class.as_class_get_uninitialized_shadow(self.space)
         w_bytesobject.bytes = self.get_bytes()
         w_bytesobject.hash = self.chunk.hash12 # XXX check this
 

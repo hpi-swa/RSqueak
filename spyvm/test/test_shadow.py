@@ -32,7 +32,7 @@ def build_smalltalk_class(name, format, w_superclass=w_Object,
                           w_classofclass=None, methods={}):
     if w_classofclass is None:
         w_classofclass = build_smalltalk_class(None, 0x94,
-                                               w_superclass.w_class,
+                                               w_superclass.s_class.w_self(),
                                                w_Metaclass)
     w_methoddict = build_methoddict(methods)
     size = constants.CLASS_NAME_INDEX + 1
