@@ -83,6 +83,9 @@ class W_Object(object):
         consult the Blue Book)."""
         raise NotImplementedError()
 
+    def fillin(self, space, g_self):
+        raise NotImplementedError()
+
     def invariant(self):
         return True
 
