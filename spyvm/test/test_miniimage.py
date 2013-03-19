@@ -351,6 +351,39 @@ def test_new_float_as_w_float():
     assert w_result is not None
     assert isinstance(w_result, model.W_Float)
 
+def test_compiling_float():
+    sourcecode = """aFloat
+                        ^ 1.1"""
+    perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
+    w_result = perform(w(10), "aFloat")
+    assert isinstance(w_result, model.W_Float)
+    assert w_result.value == 1.1
+
+def test_existing_large_positive_integer_as_W_LargePositiveInteger1Word():
+    import math
+    w_result = perform(interp.space.w_Float, "pi")
+    assert w_result is not None
+    assert isinstance(w_result, model.W_Float)
+    assert w_result.value == math.pi
+
+def test_large_positive_integer_operations():
+    w_result = perform(interp.space.w_SmallInteger, "maxVal")
+    w_result = perform(w_result, "+", space.wrap_int(42))
+    assert w_result is not None
+    assert isinstance(w_result, model.W_LargePositiveInteger1Word)
+
+    w_result = perform(interp.space.w_SmallInteger, "maxVal")
+    w_result = perform(w_result, "*", w_result)
+    assert w_result is not None
+    assert isinstance(w_result, model.W_BytesObject)
+
+def test_compiling_large_positive_integer():
+    sourcecode = """aLargeInteger
+                        ^ 16rFFFFFFFF"""
+    perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
+    w_result = perform(w(10), "aLargeInteger")
+    assert isinstance(w_result, model.W_LargePositiveInteger1Word)
+
 def test_doesNotUnderstand():
     w_dnu = interp.space.objtable["w_doesNotUnderstand"]
     assert isinstance(w_dnu, model.W_BytesObject)

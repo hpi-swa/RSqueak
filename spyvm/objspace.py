@@ -169,6 +169,8 @@ class ObjSpace(object):
         from spyvm import constants
         if int_between(constants.TAGGED_MININT, val, constants.TAGGED_MAXINT + 1):
             return model.W_SmallInteger(val)
+        elif val > 0:
+            return model.W_LargePositiveInteger1Word(val)
         raise WrappingError("integer too large to fit into a tagged pointer")
 
     def wrap_uint(self, val):
@@ -220,7 +222,10 @@ class ObjSpace(object):
     def unwrap_int(self, w_value):
         if isinstance(w_value, model.W_SmallInteger):
             return w_value.value
-        raise UnwrappingError("expected a W_SmallInteger, got %s" % (w_value,))
+        elif isinstance(w_value, model.W_LargePositiveInteger1Word):
+            if w_value.value > 0:
+                return w_value.value
+        raise UnwrappingError("expected a W_SmallInteger or W_LargePositiveInteger1Word, got %s" % (w_value,))
 
     def unwrap_uint(self, w_value):
         if isinstance(w_value, model.W_SmallInteger):
@@ -228,7 +233,9 @@ class ObjSpace(object):
             if val < 0:
                 raise UnwrappingError("got negative integer")
             return r_uint(w_value.value)
-        if isinstance(w_value, model.W_BytesObject):
+        elif isinstance(w_value, model.W_LargePositiveInteger1Word):
+            return r_uint(w_value.value)
+        elif isinstance(w_value, model.W_BytesObject):
             # TODO: Completely untested! This failed translation bigtime...
             # XXX Probably we want to allow all subclasses
             if not w_value.getclass(self).is_same_object(self.w_LargePositiveInteger):

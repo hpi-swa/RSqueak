@@ -633,7 +633,7 @@ def func(interp, s_frame, w_rcvr, start, stop, w_replacement, repStart):
         whileTrue: [self at: index put: (replacement at: repOff + index)]"""
     if (start < 0 or start - 1 > stop or repStart < 0):
         raise PrimitiveFailedError()
-    if w_rcvr.__class__ is not w_replacement.__class__:
+    if w_rcvr.getclass(interp.space) is not w_replacement.getclass(interp.space):
         raise PrimitiveFailedError()
     if (w_rcvr.size() <= stop
             or w_replacement.size() < repStart + (stop - start)):

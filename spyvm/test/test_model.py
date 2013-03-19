@@ -3,6 +3,7 @@ import math
 from spyvm import model, shadow
 from spyvm.shadow import MethodNotFound
 from spyvm import objspace, error
+from rpython.rlib.rarithmetic import intmask, r_uint
 
 mockclass = objspace.bootstrap_class
 
@@ -243,9 +244,12 @@ def test_word_at():
 def test_float_at():
     b = model.W_Float(64.0)
     r = b.fetch(space, 0)
-    assert isinstance(r, model.W_BytesObject)
+    assert isinstance(r, model.W_LargePositiveInteger1Word)
     assert r.size() == 4
-    assert r.bytes == [chr(0), chr(0), chr(80), chr(64)]
+    assert space.unwrap_int(r.at0(space, 0)) == 0
+    assert space.unwrap_int(r.at0(space, 1)) == 0
+    assert space.unwrap_int(r.at0(space, 2)) == 80
+    assert space.unwrap_int(r.at0(space, 3)) == 64
     r = b.fetch(space, 1)
     assert isinstance(r, model.W_SmallInteger)
     assert r.value == 0
@@ -266,6 +270,22 @@ def test_float_hash():
     assert target.gethash() == model.W_Float(1.1).gethash()
     target.store(space, 0, space.wrap_int(42))
     assert target.gethash() != model.W_Float(1.1).gethash()
+
+def test_large_positive_integer_1word_at():
+    b = model.W_LargePositiveInteger1Word(-1)
+    for i in range(4):
+        r = b.at0(space, i)
+        assert isinstance(r, model.W_SmallInteger)
+        assert space.unwrap_int(r) == 0xff
+    assert b.value == -1
+
+def test_large_positive_integer_1word_at_put():
+    target = model.W_LargePositiveInteger1Word(0)
+    source = model.W_LargePositiveInteger1Word(-1)
+    for i in range(4):
+        target.atput0(space, i, source.at0(space, i))
+        assert target.at0(space, i) == source.at0(space, i)
+    assert hex(r_uint(target.value)) == hex(r_uint(source.value))
 
 def test_display_bitmap():
     target = model.W_DisplayBitmap.create(space.w_Array, 100, 1, None)

@@ -467,6 +467,11 @@ class GenericObject(object):
     def isbytes(self):
         return 8 <= self.format <= 11
 
+    def is32bitlargepositiveinteger(self):
+        return (self.format == 8 and
+                self.space.w_LargePositiveInteger.is_same_object(self.g_class.w_object) and
+                len(self.get_bytes()) <= 4)
+
     def iswords(self):
         return self.format == 6
 
@@ -505,6 +510,8 @@ class GenericObject(object):
                 raise CorruptImageError("Unknown format 5")
             elif self.isfloat():
                 self.w_object = objectmodel.instantiate(model.W_Float)
+            elif self.is32bitlargepositiveinteger():
+                self.w_object = objectmodel.instantiate(model.W_LargePositiveInteger1Word)
             elif self.iswords():
                 self.w_object = objectmodel.instantiate(model.W_WordsObject)
             elif self.format == 7:

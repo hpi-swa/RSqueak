@@ -6,7 +6,7 @@ Squeak model.
         W_AbstractObjectWithIdentityHash
             W_Float
             W_AbstractObjectWithClassReference
-                W_PointersObject 
+                W_PointersObject
                 W_BytesObject
                 W_WordsObject
             W_CompiledMethod
@@ -31,7 +31,7 @@ class W_Object(object):
 
     def size(self):
         """Return bytesize that conforms to Blue Book.
-        
+
         The reported size may differ from the actual size in Spy's object
         space, as memory representation varies depending on PyPy translation."""
         return 0
@@ -77,8 +77,8 @@ class W_Object(object):
         consult the Blue Book)."""
         # TODO check the Blue Book
         raise NotImplementedError()
-        
-    def store(self, space, n0, w_value):    
+
+    def store(self, space, n0, w_value):
         """Access fixed-size part, maybe also variable-sized part (we have to
         consult the Blue Book)."""
         raise NotImplementedError()
@@ -117,7 +117,7 @@ class W_Object(object):
 class W_SmallInteger(W_Object):
     """Boxed integer value"""
     # TODO can we tell pypy that its never larger then 31-bit?
-    _attrs_ = ['value'] 
+    _attrs_ = ['value']
     __slots__ = ('value',)     # the only allowed slot here
     _immutable_fields_ = ["value"]
 
@@ -181,6 +181,67 @@ class W_AbstractObjectWithIdentityHash(W_Object):
 
     def _become(self, w_other):
         self.hash, w_other.hash = w_other.hash, self.hash
+
+class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
+    """Large positive integer for exactly 1 word"""
+    _attrs_ = ["value", "_exposed_size"]
+
+    def __init__(self, value, size=4):
+        self.value = value
+        self._exposed_size = size
+
+    def fillin(self, space, g_self):
+        self.hash = g_self.get_hash()
+        word = 0
+        bytes = g_self.get_bytes()
+        for idx, byte in enumerate(bytes):
+            assert idx < 4
+            word |= ord(byte) << (idx * 8)
+        self.value = word
+        self._exposed_size = len(bytes)
+
+    def getclass(self, space):
+        return space.w_LargePositiveInteger
+
+    def gethash(self):
+        if self.hash == self.UNASSIGNED_HASH:
+            """Integer >> hash
+            (self lastDigit bitShift: 8) + (self digitAt: 1)
+            """
+            self.hash = (self.at0(self.size() - 1) << 8) + self.at0(0)
+        return self.value
+
+    def invariant(self):
+        return isinstance(self.value, int)
+
+    def __repr__(self):
+        return "W_LargePositiveInteger1Word(%d)" % r_uint(self.value)
+
+    def clone(self, space):
+        return W_LargePositiveInteger1Word(self.value)
+
+    def at0(self, space, index0):
+        if index0 >= self.size():
+            raise IndexError()
+        skew = index0 * 8
+        mask = 0xff << skew
+        return space.wrap_int((self.value & mask) >> skew)
+
+    def atput0(self, space, index0, w_byte):
+        if index0 >= self.size():
+            raise IndexError()
+        skew = index0 * 8
+        byte = space.unwrap_int(w_byte)
+        assert byte <= 0xff
+        new_value = self.value & r_uint(~(0xff << skew))
+        new_value |= r_uint(byte << skew)
+        self.value = intmask(new_value)
+
+    def size(self):
+        return self._exposed_size
+
+    def invariant(self):
+        return isinstance(self.value, int)
 
 class W_Float(W_AbstractObjectWithIdentityHash):
     """Boxed float value."""
@@ -315,7 +376,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['_shadow', '_vars']
 
     _shadow = None # Default value
-    
+
     @jit.unroll_safe
     def __init__(self, w_class, size):
         """Create new object with size = fixed + variable size."""
@@ -346,8 +407,8 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
 
     def _fetch(self, n0):
         return self._vars[n0]
-        
-    def store(self, space, n0, w_value):    
+
+    def store(self, space, n0, w_value):
         if self.has_shadow():
             return self._shadow.store(n0, w_value)
         return self._store(n0, w_value)
@@ -449,7 +510,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         if w_other.has_shadow(): w_other._shadow._w_self = w_other
         W_AbstractObjectWithClassReference._become(self, w_other)
         return True
-        
+
     def clone(self, space):
         w_result = W_PointersObject(self.w_class, len(self._vars))
         w_result._vars = [self.fetch(space, i) for i in range(len(self._vars))]
@@ -470,19 +531,19 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
 
     def at0(self, space, index0):
         return space.wrap_int(ord(self.getchar(index0)))
-       
+
     def atput0(self, space, index0, w_value):
         self.setchar(index0, chr(space.unwrap_int(w_value)))
 
     def getchar(self, n0):
         return self.bytes[n0]
-    
+
     def setchar(self, n0, character):
         assert len(character) == 1
         self.bytes[n0] = character
 
     def size(self):
-        return len(self.bytes)    
+        return len(self.bytes)
 
     def __str__(self):
         return self.as_string()
@@ -523,23 +584,23 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         self.words = g_self.get_ruints()
         self.w_class = g_self.get_class()
         self.hash = g_self.get_hash()
-        
+
     def at0(self, space, index0):
         val = self.getword(index0)
         return space.wrap_uint(val)
- 
+
     def atput0(self, space, index0, w_value):
         word = space.unwrap_uint(w_value)
         self.setword(index0, word)
 
     def getword(self, n):
         return self.words[n]
-        
+
     def setword(self, n, word):
         self.words[n] = r_uint(word)
 
     def size(self):
-        return len(self.words)   
+        return len(self.words)
 
     def invariant(self):
         return (W_AbstractObjectWithClassReference.invariant(self) and
@@ -691,7 +752,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def as_string(self, markBytecode=0):
         from spyvm.interpreter import BYTECODE_TABLE
         j = 1
-        retval  = "\nMethodname: " + self.get_identifier_string() 
+        retval  = "\nMethodname: " + self.get_identifier_string()
         retval += "\nBytecode:------------\n"
         for i in self.bytes:
             retval += '->' if j is markBytecode else '  '
@@ -709,18 +770,18 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def invariant(self):
         return (W_Object.invariant(self) and
                 hasattr(self, 'literals') and
-                self.literals is not None and 
+                self.literals is not None and
                 hasattr(self, 'bytes') and
-                self.bytes is not None and 
+                self.bytes is not None and
                 hasattr(self, 'argsize') and
-                self.argsize is not None and 
+                self.argsize is not None and
                 hasattr(self, 'tempsize') and
-                self.tempsize is not None and 
+                self.tempsize is not None and
                 hasattr(self, 'primitive') and
-                self.primitive is not None)       
+                self.primitive is not None)
 
     def size(self):
-        return self.headersize() + self.getliteralsize() + len(self.bytes) 
+        return self.headersize() + self.getliteralsize() + len(self.bytes)
 
     def gettempsize(self):
         return self.tempsize
@@ -789,12 +850,12 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
             # From blue book:
             # The literal count indicates the size of the
             # CompiledMethod's literal frame.
-            # This, in turn, indicates where the 
-            # CompiledMethod's bytecodes start. 
+            # This, in turn, indicates where the
+            # CompiledMethod's bytecodes start.
             index0 = index0 - self.bytecodeoffset()
             assert index0 < len(self.bytes)
             return space.wrap_int(ord(self.bytes[index0]))
-        
+
     def atput0(self, space, index0, w_value):
         if index0 < self.bytecodeoffset():
             if index0 % constants.BYTES_PER_WORD != 0:
