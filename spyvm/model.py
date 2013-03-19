@@ -15,7 +15,6 @@ W_BlockContext and W_MethodContext classes have been replaced by functions
 that create W_PointersObjects of correct size with attached shadows.
 """
 import sys
-from spyvm.tool.bitmanipulation import splitter
 from spyvm import constants, error
 
 from rpython.rlib import rrandom, objectmodel, jit
@@ -193,6 +192,10 @@ class W_Float(W_AbstractObjectWithIdentityHash):
     def __init__(self, value):
         self.value = value
 
+    def fillin(self, space, g_self):
+        high, low = g_self.get_ruints(required_len=2)
+        self.fillin_fromwords(space, high, low)
+
     def getclass(self, space):
         """Return Float from special objects array."""
         return space.w_Float
@@ -318,6 +321,12 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         for i in range(size): # do it by hand for the JIT's sake
             vars[i] = w_nil
         self._shadow = None # Default value
+
+    def fillin(self, space, g_self):
+        self._vars = g_self.get_pointers()
+        self.w_class = g_self.get_class()
+        self.s_class = None
+        self.hash = g_self.get_hash()
 
     def at0(self, space, index0):
         # To test, at0 = in varsize part
@@ -451,6 +460,11 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         assert isinstance(size, int)
         self.bytes = ['\x00'] * size
 
+    def fillin(self, space, g_self):
+        self.w_class = g_self.get_class()
+        self.bytes = g_self.get_bytes()
+        self.hash = g_self.get_hash()
+
     def at0(self, space, index0):
         return space.wrap_int(ord(self.getchar(index0)))
        
@@ -501,6 +515,11 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
     def __init__(self, w_class, size):
         W_AbstractObjectWithClassReference.__init__(self, w_class)
         self.words = [r_uint(0)] * size
+
+    def fillin(self, space, g_self):
+        self.words = g_self.get_ruints()
+        self.w_class = g_self.get_class()
+        self.hash = g_self.get_hash()
         
     def at0(self, space, index0):
         val = self.getword(index0)
@@ -636,6 +655,12 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         self.setheader(header)
         self.bytes = ["\x00"] * bytecount
 
+    def fillin(self, space, g_self):
+        # Implicitely sets the header, including self.literalsize
+        for i, w_object in enumerate(g_self.get_pointers()):
+            self.literalatput0(space, i, w_object)
+        self.setbytes(g_self.get_bytes()[(self.literalsize + 1) * 4:])
+
     def become(self, w_other):
         if not isinstance(w_other, W_CompiledMethod):
             return False
@@ -707,25 +732,12 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         return self.header
 
     def setheader(self, header):
-        """Decode 30-bit method header and apply new format.
-
-        (index 0)  9 bits: main part of primitive number   (#primitive)
-        (index 9)  8 bits: number of literals (#numLiterals)
-        (index 17) 1 bit:  whether a large frame size is needed (#frameSize)
-        (index 18) 6 bits: number of temporary variables (#numTemps)
-        (index 24) 4 bits: number of arguments to the method (#numArgs)
-        (index 28) 1 bit:  high-bit of primitive number (#primitive)
-        (index 29) 1 bit:  flag bit, ignored by the VM  (#flag)
-        """
-        primitive, literalsize, islarge, tempsize, numargs, highbit = (
-            splitter[9,8,1,6,4,1](header))
-        primitive = primitive + (highbit << 10) ##XXX todo, check this
+        primitive, literalsize, islarge, tempsize, argsize = constants.decode_compiled_method_header(header)
         self.literalsize = literalsize
         self.literals = [w_nil] * self.literalsize
         self.header = header
-        self.argsize = numargs
+        self.argsize = argsize
         self.tempsize = tempsize
-        assert self.tempsize >= self.argsize
         self.primitive = primitive
         self.islarge = islarge
 

@@ -299,7 +299,7 @@ class ImageReader(object):
 
     def fillin_w_objects(self):
         for chunk in self.chunks.itervalues():
-            chunk.g_object.fillin_w_object()
+            chunk.g_object.w_object.fillin(self.space, chunk.g_object)
 
     def synchronize_shadows(self):
         for chunk in self.chunks.itervalues():
@@ -429,31 +429,40 @@ class GenericObject(object):
         self.size = chunk.size
         self.hash12 = chunk.hash12
         self.format = chunk.format
-        self.init_class(chunk)
-        self.init_data(chunk) # for pointers
         self.chunk = chunk # for bytes, words and compiledmethod
+        self.init_class()
+        self.init_data() # for pointers
         self.w_object = None
 
-    def init_class(self, chunk):
-        if chunk.iscompact():
-            self.g_class = self.reader.compactclasses[chunk.classid
+    def init_class(self):
+        if self.chunk.iscompact():
+            self.g_class = self.reader.compactclasses[self.chunk.classid
                 - 1].g_object # Smalltalk is 1-based indexed
         else:
-            self.g_class = self.reader.chunks[chunk.classid].g_object
+            self.g_class = self.reader.chunks[self.chunk.classid].g_object
 
-    def init_data(self, chunk):
-        if not self.ispointers(): return
-        self.pointers = [self.decode_pointer(pointer)
-                         for pointer in chunk.data]
-        assert None not in self.pointers
+    def init_data(self):
+        if self.ispointers():
+            self.pointers = self.decode_pointers()
+            assert None not in self.pointers
+        elif self.iscompiledmethod():
+            header = self.chunk.data[0] >> 1 # untag tagged int
+            _, literalsize, _, _, _ = constants.decode_compiled_method_header(header)
+            self.pointers = self.decode_pointers(literalsize + 1) # adjust +1 for the header
 
-    def decode_pointer(self, pointer):
-        if (pointer & 1) == 1:
-            small_int = GenericObject(self.space)
-            small_int.initialize_int(pointer >> 1, self.reader)
-            return small_int
-        else:
-            return self.reader.chunks[pointer].g_object
+    def decode_pointers(self, end=-1):
+        if end == -1:
+            end = len(self.chunk.data)
+        pointers = []
+        for i in range(end):
+            pointer = self.chunk.data[i]
+            if (pointer & 1) == 1:
+                small_int = GenericObject(self.space)
+                small_int.initialize_int(pointer >> 1, self.reader)
+                pointers.append(small_int)
+            else:
+                pointers.append(self.reader.chunks[pointer].g_object)
+        return pointers
 
     def isbytes(self):
         return 8 <= self.format <= 11
@@ -508,58 +517,6 @@ class GenericObject(object):
                 assert 0, "not reachable"
         return self.w_object
 
-    def fillin_w_object(self):
-        # below we are using an RPython idiom to 'cast' self.w_object
-        # and pass the casted reference to the fillin_* methods
-        casted = self.w_object
-        if isinstance(casted, model.W_PointersObject):
-            self.fillin_pointersobject(casted)
-        elif isinstance(casted, model.W_Float):
-            self.fillin_floatobject(casted)
-        elif isinstance(casted, model.W_WordsObject):
-            self.fillin_wordsobject(casted)
-        elif isinstance(casted, model.W_BytesObject):
-            self.fillin_bytesobject(casted)
-        elif isinstance(casted, model.W_CompiledMethod):
-            self.fillin_compiledmethod(casted)
-        else:
-            assert 0
-        if not objectmodel.we_are_translated():
-            assert casted.invariant()
-
-    def fillin_pointersobject(self, w_pointersobject):
-        assert self.pointers is not None
-        w_pointersobject._vars = [g_object.w_object for g_object in self.pointers]
-        w_class = self.g_class.w_object
-        assert isinstance(w_class, model.W_PointersObject)
-        w_pointersobject.w_class = w_class
-        w_pointersobject.s_class = None
-        w_pointersobject.hash = self.chunk.hash12
-
-    def fillin_floatobject(self, w_floatobject):
-        from rpython.rlib.rarithmetic import r_uint
-        words = [r_uint(x) for x in self.chunk.data]
-        if len(words) != 2:
-            raise CorruptImageError("Expected 2 words in Float, got %d" % len(words))
-        w_class = self.g_class.w_object
-        assert isinstance(w_class, model.W_PointersObject)
-        w_floatobject.fillin_fromwords(self.space, words[0], words[1])
-
-    def fillin_wordsobject(self, w_wordsobject):
-        from rpython.rlib.rarithmetic import r_uint
-        w_wordsobject.words = [r_uint(x) for x in self.chunk.data]
-        w_class = self.g_class.w_object
-        assert isinstance(w_class, model.W_PointersObject)
-        w_wordsobject.w_class = w_class
-        w_wordsobject.hash = self.chunk.hash12 # XXX check this
-
-    def fillin_bytesobject(self, w_bytesobject):
-        w_class = self.g_class.w_object
-        assert isinstance(w_class, model.W_PointersObject)
-        w_bytesobject.w_class = w_class
-        w_bytesobject.bytes = self.get_bytes()
-        w_bytesobject.hash = self.chunk.hash12 # XXX check this
-
     def get_bytes(self):
         bytes = []
         if self.reader.swap:
@@ -574,20 +531,29 @@ class GenericObject(object):
                 bytes.append(chr((each >> 16) & 0xff))
                 bytes.append(chr((each >> 8) & 0xff))
                 bytes.append(chr((each >> 0) & 0xff))
-        #strange, for example range(4)[:0] returns [] instead of [0,1,2,3]!
-        #hence what we have to write list[:-odd] as list[:len(list)-odd] instead :(
-        stop = len(bytes)-(self.format & 3)
+        stop = len(bytes) - (self.format & 3)
         assert stop >= 0
         return bytes[:stop] # omit odd bytes
 
-    def fillin_compiledmethod(self, w_compiledmethod):
-        header = self.chunk.data[0]
-        w_compiledmethod.setheader(header>>1) # We untag before giving header
-        for i in range(1,w_compiledmethod.literalsize+1):
-            w_compiledmethod.literalatput0(
-                self.space, i, self.decode_pointer(self.chunk.data[i]).w_object)
-        bbytes = self.get_bytes()[(w_compiledmethod.literalsize + 1)*4:]
-        w_compiledmethod.setbytes(bbytes)
+    def get_ruints(self, required_len=-1):
+        from rpython.rlib.rarithmetic import r_uint
+        words = [r_uint(x) for x in self.chunk.data]
+        if required_len != -1 and len(words) != required_len:
+            raise CorruptImageError("Expected %d words, got %d" % (required_len, len(words)))
+        return words
+
+    def get_pointers(self):
+        assert self.pointers is not None
+        return [g_object.w_object for g_object in self.pointers]
+
+    def get_class(self):
+        w_class = self.g_class.w_object
+        assert isinstance(w_class, model.W_PointersObject)
+        return w_class
+
+    def get_hash(self):
+        return self.chunk.hash12
+
 
 class ImageChunk(object):
     """ A chunk knows the information from the header, but the body of the
