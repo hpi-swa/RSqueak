@@ -241,8 +241,8 @@ def test_cached_methoddict():
     i = 0
     key = s_methoddict.w_self()._fetch(constants.METHODDICT_NAMES_INDEX+i)
     while key is space.w_nil:
-        key = s_methoddict.w_self()._fetch(constants.METHODDICT_NAMES_INDEX+i)
         i = i + 1
+        key = s_methoddict.w_self()._fetch(constants.METHODDICT_NAMES_INDEX+i)
 
     assert (s_class.lookup(key) is foo.as_compiledmethod_get_shadow(space)
             or s_class.lookup(key) is bar.as_compiledmethod_get_shadow(space))

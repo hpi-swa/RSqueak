@@ -69,6 +69,7 @@ class Interpreter(object):
                 while s_new_context is not nlr.s_target_context:
                     s_new_context.mark_returned()
                     s_new_context = s_sender
+                self.remaining_stack_depth = self.max_stack_depth
                 s_new_context.push(nlr.value)
             except ProcessSwitch, p:
                 self.remaining_stack_depth = self.max_stack_depth
@@ -121,24 +122,17 @@ class Interpreter(object):
         else:
             w_selector = selector
 
-        w_method = model.W_CompiledMethod()
-        w_method.setbytes([chr(124)]) #returnTopFromMethod
+        w_method = model.W_CompiledMethod(header=512)
+        w_method.literalatput0(self.space, 1, w_selector)
+        assert len(arguments_w) <= 7
+        w_method.setbytes([chr(131), chr(len(arguments_w) << 5 + 0), chr(124)]) #returnTopFromMethod
         s_method = w_method.as_compiledmethod_get_shadow(self.space)
         s_frame = MethodContextShadow.make_context(
                 self.space, s_method, w_receiver, [], None)
         s_frame.push(w_receiver)
         s_frame.push_all(list(arguments_w))
         try:
-            try:
-                s_new_frame = s_frame._sendSelfSelector(w_selector, len(arguments_w), self)
-            except Return, nlr:
-                s_new_frame = nlr.s_target_context
-                nlr.s_target_context.push(nlr.value)
-            if s_new_frame is None:
-                # which means that we tried to call a primitive method
-                return s_frame.pop()
-            else:
-                self.loop(s_new_frame.w_self())
+            self.loop(s_frame.w_self())
         except ReturnFromTopLevel, e:
             return e.object
 
@@ -296,7 +290,7 @@ class __extend__(ContextPartShadow):
             w_message.store(self.space, 0, w_selector)
             w_message.store(self.space, 1, self.space.wrap_list(arguments))
             try:
-                s_method = receiverclassshadow.lookup(self.space.objtable["w_doesNotUnderstand"])
+                s_method = receiver.shadow_of_my_class(self.space).lookup(self.space.objtable["w_doesNotUnderstand"])
             except MethodNotFound:
                 print "Missing doesDoesNotUnderstand in hierarchy of %s" % receiverclassshadow.getname()
                 raise

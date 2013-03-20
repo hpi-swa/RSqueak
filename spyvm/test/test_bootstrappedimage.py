@@ -43,6 +43,7 @@ def test_retrieve_symbol():
                 ifTrue: [ ^ sym ] ].
     ^ (Symbol basicNew: self size) initFrom: self"""
     w_result = perform(w("someString"), "asSymbol")
+    assert w_result.as_string() == "someString"
     w_anotherSymbol = perform(w("someString"), "asSymbol")
     assert w_result is w_anotherSymbol
 
