@@ -33,7 +33,8 @@ class Interpreter(object):
         get_printable_location=get_printable_location
     )
     
-    def __init__(self, space, image=None, image_name="", max_stack_depth=100):
+    def __init__(self, space, image=None, image_name="",
+                max_stack_depth=constants.MAX_LOOP_DEPTH):
         self.space = space
         self.image = image
         self.image_name = image_name
@@ -118,7 +119,8 @@ class Interpreter(object):
             if selector == "asSymbol":
                 w_selector = self.image.w_asSymbol
             else:
-                w_selector = self.perform(self.space.wrap_string(selector), "asSymbol")
+                w_selector = self.perform(self.space.wrap_string(selector),
+                                            "asSymbol")
         else:
             w_selector = selector
 
@@ -281,22 +283,11 @@ class __extend__(ContextPartShadow):
                 interp._last_indent, w_selector.as_string(), receiver,
                 [self.peek(argcount-1-i) for i in range(argcount)])
         assert argcount >= 0
+
         try:
             s_method = receiverclassshadow.lookup(w_selector)
         except MethodNotFound:
-            arguments = self.pop_and_return_n(argcount)
-            s_message_class = self.space.classtable["w_Message"].as_class_get_shadow(self.space)
-            w_message = s_message_class.new()
-            w_message.store(self.space, 0, w_selector)
-            w_message.store(self.space, 1, self.space.wrap_list(arguments))
-            try:
-                s_method = receiver.shadow_of_my_class(self.space).lookup(self.space.objtable["w_doesNotUnderstand"])
-            except MethodNotFound:
-                print "Missing doesDoesNotUnderstand in hierarchy of %s" % receiverclassshadow.getname()
-                raise
-            s_frame = s_method.create_frame(self.space, receiver, [w_message], self)
-            self.pop()
-            return interp.stack_frame(s_frame)
+            return self._doesNotUnderstand(w_selector, argcount, interp, receiver)
 
         code = s_method.primitive()
         if code:
@@ -313,6 +304,22 @@ class __extend__(ContextPartShadow):
                 pass # ignore this error and fall back to the Smalltalk version
         arguments = self.pop_and_return_n(argcount)
         s_frame = s_method.create_frame(self.space, receiver, arguments, self)
+        self.pop()
+        return interp.stack_frame(s_frame)
+
+    def _doesNotUnderstand(self, w_selector, argcount, interp, receiver):
+        arguments = self.pop_and_return_n(argcount)
+        s_message_class = self.space.classtable["w_Message"].as_class_get_shadow(self.space)
+        w_message = s_message_class.new()
+        w_message.store(self.space, 0, w_selector)
+        w_message.store(self.space, 1, self.space.wrap_list(arguments))
+        s_class = receiver.shadow_of_my_class(self.space)
+        try:
+            s_method = s_class.lookup(self.space.objtable["w_doesNotUnderstand"])
+        except MethodNotFound:
+            print "Missing doesDoesNotUnderstand in hierarchy of %s" % s_class.getname()
+            raise
+        s_frame = s_method.create_frame(self.space, receiver, [w_message], self)
         self.pop()
         return interp.stack_frame(s_frame)
 
