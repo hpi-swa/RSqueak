@@ -369,9 +369,10 @@ class SqueakImage(object):
         for name, idx in constants.objects_in_special_object_table.items():
             space.objtable["w_" + name] = self.special_objects[idx]
 
-        self.w_asSymbol = self.find_asSymbol(space, reader)
+        self.w_asSymbol = self.find_symbol(space, reader, "asSymbol")
+        self.w_simulateCopyBits = self.find_symbol(space, reader, "simulateCopyBits")
 
-    def find_asSymbol(self, space, reader):
+    def find_symbol(self, space, reader, symbol):
         w_dnu = self.special(constants.SO_DOES_NOT_UNDERSTAND)
         assert isinstance(w_dnu, model.W_BytesObject)
         assert w_dnu.as_string() == "doesNotUnderstand:"
@@ -384,7 +385,7 @@ class SqueakImage(object):
                 continue
             if not w_obj.getclass(space).is_same_object(w_Symbol):
                 continue
-            if w_obj.as_string() == "asSymbol":
+            if w_obj.as_string() == symbol:
                 break
         assert w_obj is not None
         return w_obj

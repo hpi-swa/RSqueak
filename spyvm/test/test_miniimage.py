@@ -314,26 +314,6 @@ def test_primitive_perform_with_args():
     size = prim(primitives.PERFORM_WITH_ARGS, [w_o, w_sel, []])
     assert size.value == 3
 
-def test_step_run_something():
-    from spyvm.test import test_miniimage
-    setup_module(test_miniimage, filename='running-something-mini.image')
-    from spyvm import wrapper
-    ap = wrapper.ProcessWrapper(space, wrapper.scheduler(space).active_process())
-    w_ctx = ap.suspended_context()
-    s_ctx = w_ctx.as_context_get_shadow(space)
-    ap.store_suspended_context(space.w_nil)
-
-    interp = interpreter.Interpreter(space)
-    assert isinstance(s_ctx, shadow.MethodContextShadow)
-    assert s_ctx.top().is_same_object(space.w_true)
-    interp.step(s_ctx)
-    interp.step(s_ctx)
-    assert s_ctx.top().value == 1
-    interp.step(s_ctx)
-    assert s_ctx.top().value == 2
-    interp.step(s_ctx)
-    assert s_ctx.top().value == 3
-
 def test_create_new_symbol():
     w_result = perform(w("someString"), "asSymbol")
     assert w_result is not None
@@ -404,3 +384,23 @@ def test_Message():
     assert s_message_cls.getname() == "Message class"
     w_message = s_message_cls.new()
     assert isinstance(w_message, model.W_PointersObject)
+
+def test_step_run_something():
+    from spyvm.test import test_miniimage
+    setup_module(test_miniimage, filename='running-something-mini.image')
+    from spyvm import wrapper
+    ap = wrapper.ProcessWrapper(space, wrapper.scheduler(space).active_process())
+    w_ctx = ap.suspended_context()
+    s_ctx = w_ctx.as_context_get_shadow(space)
+    ap.store_suspended_context(space.w_nil)
+
+    interp = interpreter.Interpreter(space)
+    assert isinstance(s_ctx, shadow.MethodContextShadow)
+    assert s_ctx.top().is_same_object(space.w_true)
+    interp.step(s_ctx)
+    interp.step(s_ctx)
+    assert s_ctx.top().value == 1
+    interp.step(s_ctx)
+    assert s_ctx.top().value == 2
+    interp.step(s_ctx)
+    assert s_ctx.top().value == 3

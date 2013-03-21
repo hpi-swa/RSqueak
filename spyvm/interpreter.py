@@ -62,20 +62,18 @@ class Interpreter(object):
         self._loop = True
         s_new_context = w_active_context.as_context_get_shadow(self.space)
         while True:
+            assert self.remaining_stack_depth == self.max_stack_depth
             s_sender = s_new_context.s_sender()
             try:
                 s_new_context = self.c_loop(s_new_context)
             except StackOverflow, e:
-                self.remaining_stack_depth = self.max_stack_depth
                 s_new_context = e.s_context
             except Return, nlr:
                 while s_new_context is not nlr.s_target_context:
                     s_new_context.mark_returned()
                     s_new_context = s_sender
-                self.remaining_stack_depth = self.max_stack_depth
                 s_new_context.push(nlr.value)
             except ProcessSwitch, p:
-                self.remaining_stack_depth = self.max_stack_depth
                 s_new_context = p.s_new_context
 
     def c_loop(self, s_context):
@@ -119,7 +117,7 @@ class Interpreter(object):
         if not self._loop:
             return s_new_frame # this test is done to not loop in test,
                                # but rather step just once where wanted
-        if self.remaining_stack_depth == 1:
+        if self.remaining_stack_depth <= 1:
             raise StackOverflow(s_new_frame)
 
         self.remaining_stack_depth -= 1

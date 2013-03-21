@@ -557,11 +557,13 @@ def func(interp, s_frame, w_rcvr):
     if not isinstance(w_rcvr, model.W_PointersObject) or w_rcvr.size() < 15:
         raise PrimitiveFailedError
 
-    interp.perform(w_rcvr, "simulateCopyBits")
+    space = interp.space
+    s_frame.push(w_rcvr)
+    s_frame._sendSelfSelector(interp.image.w_simulateCopyBits, 0, interp)
 
-    w_dest_form = w_rcvr.fetch(interp.space, 0)
-    if w_dest_form.is_same_object(interp.space.objtable['w_display']):
-        w_bitmap = w_dest_form.fetch(interp.space, 0)
+    w_dest_form = w_rcvr.fetch(space, 0)
+    if w_dest_form.is_same_object(space.objtable['w_display']):
+        w_bitmap = w_dest_form.fetch(space, 0)
         assert isinstance(w_bitmap, model.W_DisplayBitmap)
         w_bitmap.flush_to_screen()
 

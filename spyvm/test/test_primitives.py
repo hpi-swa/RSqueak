@@ -688,21 +688,29 @@ def test_primitive_force_display_update(monkeypatch):
 def test_bitblt_copy_bits(monkeypatch):
     class CallCopyBitsSimulation(Exception):
         pass
+    class Image():
+        def __init__(self):
+            self.w_simulateCopyBits = "simulateCopyBits"
 
     mock_bitblt = model.W_PointersObject(space.w_Point, 15)
 
-    def perform_mock(w_rcvr, string):
-        if w_rcvr is mock_bitblt and string == "simulateCopyBits":
+    def perform_mock(w_selector, argcount, interp):
+        if w_selector == "simulateCopyBits" or w_selector.as_string() == "simulateCopyBits":
+            assert argcount == 0
             raise CallCopyBitsSimulation
 
     interp, w_frame, argument_count = mock([mock_bitblt], None)
+    if interp.image is None:
+        interp.image = Image()
 
     try:
-        monkeypatch.setattr(interp, "perform", perform_mock)
+        monkeypatch.setattr(w_frame._shadow, "_sendSelfSelector", perform_mock)
         with py.test.raises(CallCopyBitsSimulation):
             prim_table[primitives.BITBLT_COPY_BITS](interp, w_frame.as_context_get_shadow(space), argument_count-1)
     finally:
         monkeypatch.undo()
+    assert w_frame._shadow.pop() is mock_bitblt # the new receiver
+    assert w_frame._shadow.pop() is mock_bitblt # previous state is still there
 
 # Note:
 #   primitives.NEXT is unimplemented as it is a performance optimization
