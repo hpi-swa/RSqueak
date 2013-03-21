@@ -41,6 +41,8 @@ class Interpreter(object):
         self.max_stack_depth = max_stack_depth
         self.remaining_stack_depth = max_stack_depth
         self._loop = False
+        self.next_wakeup_tick = 0
+        self.interrupt_check_counter = constants.INTERRUPT_COUNTER_SIZE
 
     def interpret_with_w_frame(self, w_frame):
         try:
@@ -80,10 +82,15 @@ class Interpreter(object):
         # padding = ' ' * (self.max_stack_depth - self.remaining_stack_depth)
         # print padding + s_context.short_str()
         old_pc = 0
+        if not jit.we_are_jitted():
+            self.quick_check_for_interrupt(s_context)
         while True:
             pc = s_context._pc
             method = s_context.s_method()
             if pc < old_pc:
+                if jit.we_are_jitted():
+                    self.quick_check_for_interrupt(s_context,
+                                    dec=self._get_adapted_tick_counter())
                 self.jit_driver.can_enter_jit(
                     pc=pc, self=self, method=method,
                     s_context=s_context)
@@ -99,6 +106,14 @@ class Interpreter(object):
                     raise nlr
                 else:
                     s_context.push(nlr.value)
+
+    def _get_adapted_tick_counter(self):
+        # Normally, the tick counter is decremented by 1 for every message send.
+        # Since we don't know how many messages are called during this trace, we
+        # just decrement by 10th of the trace length (num of bytecodes).
+        trace_length = jit.current_trace_length()
+        decr_by = int(trace_length // 10)
+        return max(decr_by, 1)
 
     def stack_frame(self, s_new_frame):
         if not self._loop:
@@ -137,6 +152,36 @@ class Interpreter(object):
             self.loop(s_frame.w_self())
         except ReturnFromTopLevel, e:
             return e.object
+
+    def quick_check_for_interrupt(self, s_frame, dec=1):
+        self.interrupt_check_counter -= dec
+        if self.interrupt_check_counter <= 0:
+            self.interrupt_check_counter = constants.INTERRUPT_COUNTER_SIZE
+            self.check_for_interrupts(s_frame)
+
+    def check_for_interrupts(self, s_frame):
+        # parallel to Interpreter>>#checkForInterrupts
+        import time, math
+
+        # Profiling is skipped
+        # We don't adjust the check counter size
+
+        # use the same time value as the primitive MILLISECOND_CLOCK
+        now = int(math.fmod(time.time()*1000, constants.TAGGED_MAXINT/2))
+
+        # XXX the low space semaphore may be signaled here
+        # Process inputs
+        # Process User Interrupt?
+        if not self.next_wakeup_tick == 0 and now >= self.next_wakeup_tick:
+            self.next_wakeup_tick = 0
+            semaphore = self.space.objtable["w_timerSemaphore"]
+            if not semaphore.is_same_object(self.space.w_nil):
+                wrapper.SemaphoreWrapper(self.space, semaphore).signal(s_frame.w_self())
+        # We have no finalization process, so far.
+        # We do not support external semaphores.
+            # In cog, the method to add such a semaphore is only called in GC.
+
+
 
 class ReturnFromTopLevel(Exception):
     def __init__(self, object):

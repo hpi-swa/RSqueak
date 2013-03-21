@@ -90,7 +90,7 @@ SO_MUST_BE_BOOLEAN = 25
 SO_BYTEARRAY_CLASS = 26
 SO_PROCESS_CLASS = 27
 SO_COMPACT_CLASSES_ARRAY = 28
-SO_DELAY_SEMAPHORE = 29
+SO_TIMER_SEMAPHORE = 29
 SO_USER_INTERRUPT_SEMAPHORE = 30
 SO_FLOAT_ZERO = 31
 SO_LARGEPOSITIVEINTEGER_ZERO = 32
@@ -139,6 +139,7 @@ objects_in_special_object_table = {
     "display" : SO_DISPLAY_OBJECT,
     "doesNotUnderstand" : SO_DOES_NOT_UNDERSTAND,
     "interrupt_semaphore" : SO_USER_INTERRUPT_SEMAPHORE,
+    "timerSemaphore" : SO_TIMER_SEMAPHORE,
 }
 
 LONG_BIT = 32
@@ -176,3 +177,10 @@ def decode_compiled_method_header(header):
     primitive = primitive + (highbit << 10) ##XXX todo, check this
     assert tempsize >= numargs
     return primitive, literalsize, islarge, tempsize, numargs
+
+#___________________________________________________________________________
+# Interpreter constants
+#
+
+MAX_LOOP_DEPTH = 100
+INTERRUPT_COUNTER_SIZE = 1000

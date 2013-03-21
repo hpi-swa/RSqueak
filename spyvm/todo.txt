@@ -42,7 +42,8 @@ Squeakimage:
 [ ] Implement image writer
 
 Shadows:
-[ ] Fix invalidation of methoddictshadow when the w_self of its values array changes
+[ ] What to do with shadows when their w_self changes class?
+[ ] Weak references for subclasses
 
 
 Optimizations:
@@ -53,3 +54,5 @@ use integer tagging primitives to get more compact code:
             return model.W_SmallInteger(rerased.erase_int(val))
         except OverflowError:
             raise WrappingError("integer too large to fit into a tagged pointer")
+
+use special class for 1WordLargeIntegers

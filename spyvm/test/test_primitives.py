@@ -411,6 +411,13 @@ def test_primitive_milliseconds_clock():
     stop = prim(primitives.MILLISECOND_CLOCK, [0]).value
     assert start + 250 <= stop
 
+def test_signal_at_milliseconds():
+    import time
+    future = prim(primitives.MILLISECOND_CLOCK, [0]).value + 400
+    sema = space.w_Semaphore.as_class_get_shadow(space).new()
+    prim(primitives.SIGNAL_AT_MILLISECONDS, [space.w_nil, sema, future])
+    assert space.objtable["w_timerSemaphore"] is sema
+
 def test_inc_gc():
     # Should not fail :-)
     prim(primitives.INC_GC, [42]) # Dummy arg

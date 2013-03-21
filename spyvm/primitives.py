@@ -823,13 +823,25 @@ def func(interp, s_frame, w_rcvr, w_semaphore):
 #____________________________________________________________________________
 # Time Primitives (135 - 137)
 MILLISECOND_CLOCK = 135
+SIGNAL_AT_MILLISECONDS = 136
 SECONDS_CLOCK = 137
 
 @expose_primitive(MILLISECOND_CLOCK, unwrap_spec=[object])
 def func(interp, s_frame, w_arg):
-    import time
-    import math
+    import time, math
     return interp.space.wrap_int(int(math.fmod(time.time()*1000, constants.TAGGED_MAXINT/2)))
+
+@expose_primitive(SIGNAL_AT_MILLISECONDS, unwrap_spec=[object, object, int])
+def func(interp, s_frame, w_delay, w_semaphore, timestamp):
+    if not w_semaphore.getclass(interp.space).is_same_object(
+            interp.space.w_Semaphore):
+        interp.space.objtable["w_timerSemaphore"] = interp.space.w_nil
+        interp.next_wakeup_tick = timestamp
+    else:
+        interp.space.objtable["w_timerSemaphore"] = w_semaphore
+        interp.next_wakeup_tick = timestamp
+    return w_delay
+
 
 
 secs_between_1901_and_1970 = rarithmetic.r_uint((69 * 365 + 17) * 24 * 3600)
@@ -1114,7 +1126,7 @@ def func(interp, s_frame, w_rcvr):
     return wrapper.SemaphoreWrapper(interp.space, w_rcvr).wait(s_frame.w_self())
 
 @expose_primitive(RESUME, unwrap_spec=[object], result_is_new_frame=True)
-def func(interp, s_frame, w_rcvr,):
+def func(interp, s_frame, w_rcvr):
     # XXX we might want to disable this check
     if not w_rcvr.getclass(interp.space).is_same_object(
         interp.space.w_Process):
@@ -1125,7 +1137,7 @@ def func(interp, s_frame, w_rcvr,):
     return w_frame.as_context_get_shadow(interp.space)
 
 @expose_primitive(SUSPEND, unwrap_spec=[object], result_is_new_frame=True)
-def func(interp, s_frame, w_rcvr, result_is_new_frame=True):
+def func(interp, s_frame, w_rcvr):
     # XXX we might want to disable this check
     if not w_rcvr.getclass(interp.space).is_same_object(
         interp.space.w_Process):
