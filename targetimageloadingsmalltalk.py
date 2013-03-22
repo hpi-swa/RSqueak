@@ -87,7 +87,7 @@ def entry_point(argv):
         path = "Squeak.image"
 
     try:
-        f = open_file_as_stream(path)
+        f = open_file_as_stream(path, buffering=0)
     except OSError as e:
         os.write(2, "%s -- %s (LoadError)\n" % (os.strerror(e.errno), path))
         return 1
@@ -98,7 +98,7 @@ def entry_point(argv):
 
     image_reader = squeakimage.reader_for_image(space, squeakimage.Stream(data=imagedata))
     image = create_image(space, image_reader)
-    interp = interpreter.Interpreter(space, image, image_name=os.path.abspath(path))
+    interp = interpreter.Interpreter(space, image, image_name=path)
     if benchmark is not None:
         return _run_benchmark(interp, number, benchmark)
     else:
