@@ -758,7 +758,14 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 
     def get_identifier_string(self):
         try:
-            classname = self.literals[-1]._shadow.getname()
+            w_class = self.literals[-1]
+            if isinstance(w_class, W_PointersObject):
+                if w_class._shadow is None:
+                    classname = w_class._fetch(1)._shadow.getname()
+                else:
+                    classname = w_class._shadow.getname()
+            else:
+                classname = "<unknown>"
         except (IndexError, AttributeError):
             classname = "<unknown>"
         return "%s>>#%s" % (classname, self._likely_methodname)
