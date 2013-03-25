@@ -20,6 +20,7 @@ def setup_module(module, filename='mini.image'):
     module.image.from_reader(space, reader)
     module.space = space
     module.interp = interpreter.Interpreter(space, image)
+    return space, module.interp
 
 def find_symbol(name):
     if name == "asSymbol":
