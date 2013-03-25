@@ -798,7 +798,7 @@ class BlockContextShadow(ContextPartShadow):
         return 0
 
     def short_str(self):
-        return 'BlockContext of %s (%s) [%i]' % (
+        return 'BlockContext of %s (%s) [%d]' % (
             self.w_method().get_identifier_string(),
             self.w_receiver(),
             self.pc() + 1
@@ -942,13 +942,13 @@ class MethodContextShadow(ContextPartShadow):
     def __str__(self):
         retval = '\nMethodContext of:'
         retval += self.w_method().as_string(markBytecode=self.pc() + 1)
-        retval += "Stackptr: %i (this is an empty ascending stack)" % (self._stack_ptr - self.tempsize())
+        retval += "Stackptr: %d (this is an empty ascending stack)" % (self._stack_ptr - self.tempsize())
         retval += "\nStack   : " + str(self.stack())
         return retval
 
     def short_str(self):
         block = '[] of' if self.is_closure_context() else ''
-        return '%s %s (%s) [%i]' % (
+        return '%s %s (rcvr: %s) [pc: %d]' % (
             block,
             self.w_method().get_identifier_string(),
             self.w_receiver(),
