@@ -50,6 +50,7 @@ prim_table_implemented_only = []
 # converted to an index0 
 index1_0 = object()
 char = object()
+pos_32bit_int = object()
 
 def expose_primitive(code, unwrap_spec=None, no_result=False, result_is_new_frame=False):
     # some serious magic, don't look
@@ -96,6 +97,8 @@ def expose_primitive(code, unwrap_spec=None, no_result=False, result_is_new_fram
                     w_arg = s_frame.peek(index)
                     if spec is int:
                         args += (interp.space.unwrap_int(w_arg), )
+                    elif spec is pos_32bit_int:
+                        args += (interp.space.unwrap_positive_32bit_int(w_arg),)
                     elif spec is index1_0:
                         args += (interp.space.unwrap_int(w_arg)-1, )
                     elif spec is float:
@@ -174,10 +177,11 @@ bitwise_binary_ops = {
     }
 for (code,op) in bitwise_binary_ops.items():
     def make_func(op):
-        @expose_primitive(code, unwrap_spec=[int, int])
+        @expose_primitive(code, unwrap_spec=[pos_32bit_int, pos_32bit_int])
         def func(interp, s_frame, receiver, argument):
+            from spyvm.model import W_LargePositiveInteger1Word
             res = op(receiver, argument)
-            return interp.space.wrap_int(res)
+            return interp.space.wrap_positive_32bit_int(res)
     make_func(op)
 
 # #/ -- return the result of a division, only succeed if the division is exact

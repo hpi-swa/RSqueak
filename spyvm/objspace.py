@@ -167,10 +167,11 @@ class ObjSpace(object):
 
     def wrap_int(self, val):
         from spyvm import constants
-        if int_between(constants.TAGGED_MININT, val, constants.TAGGED_MAXINT + 1):
+        if int_between(constants.TAGGED_MININT, val,
+                        constants.TAGGED_MAXINT + 1):
             return model.W_SmallInteger(val)
-        elif val > 0:
-            return model.W_LargePositiveInteger1Word(val)
+        # We can't build large integers here, because we don't know what to do
+        # with negativ vals: raise an error or interpret them as 4-byte positive?
         raise WrappingError("integer too large to fit into a tagged pointer")
 
     def wrap_uint(self, val):
@@ -178,7 +179,7 @@ class ObjSpace(object):
             raise WrappingError("negative integer")
         if intmask(val) >= 0:
             try:
-                return self.wrap_int(intmask(val))
+                return self.wrap_positive_32bit_int(intmask(val))
             except WrappingError:
                 pass
         # XXX this code sucks
@@ -189,6 +190,15 @@ class ObjSpace(object):
         for i in range(bytes_len):
             w_result.setchar(i, chr(intmask((val >> i*8) & 255)))
         return w_result
+
+    def wrap_positive_32bit_int(self, val):
+        # This will always return a positive value.
+        # XXX: For now, we assume that val is at most 32bit, i.e. overflows are
+        # checked for before wrapping.
+        if int_between(0, val, constants.TAGGED_MAXINT + 1):
+            return model.W_SmallInteger(val)
+        else:
+            return model.W_LargePositiveInteger1Word(val)
 
     def wrap_float(self, i):
         return model.W_Float(i)
@@ -225,6 +235,8 @@ class ObjSpace(object):
         elif isinstance(w_value, model.W_LargePositiveInteger1Word):
             if w_value.value > 0:
                 return w_value.value
+            else:
+                raise UnwrappingError("The value is negative when interpreted as 32bit value.")
         raise UnwrappingError("expected a W_SmallInteger or W_LargePositiveInteger1Word, got %s" % (w_value,))
 
     def unwrap_uint(self, w_value):
@@ -246,6 +258,14 @@ class ObjSpace(object):
             return word
         else:
             raise UnwrappingError("Got unexpected class in unwrap_uint")
+
+    def unwrap_positive_32bit_int(self, w_value):
+        if isinstance(w_value, model.W_SmallInteger):
+            if w_value.value >= 0:
+                return w_value.value
+        elif isinstance(w_value, model.W_LargePositiveInteger1Word):
+            return w_value.value
+        raise UnwrappingError("Wrong types or negative SmallInteger.")
 
     def unwrap_char(self, w_char):
         from spyvm import constants

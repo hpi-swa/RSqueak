@@ -67,10 +67,10 @@ def test_small_int_add():
     assert prim(primitives.ADD, [3,4]).value == 7
 
 def test_small_int_add_fail():
-    w_result = prim(primitives.ADD, [constants.TAGGED_MAXINT, 2])
-    assert isinstance(w_result, model.W_LargePositiveInteger1Word)
-    assert w_result.value == constants.TAGGED_MAXINT + 2
-    prim_fails(primitives.ADD, [constants.TAGGED_MAXINT, constants.TAGGED_MAXINT * 2])
+    w_result = prim_fails(primitives.ADD, [constants.TAGGED_MAXINT, 2])
+    # assert isinstance(w_result, model.W_LargePositiveInteger1Word)
+    # assert w_result.value == constants.TAGGED_MAXINT + 2
+    # prim_fails(primitives.ADD, [constants.TAGGED_MAXINT, constants.TAGGED_MAXINT * 2])
 
 def test_small_int_minus():
     assert prim(primitives.SUBTRACT, [5,9]).value == -4
@@ -84,9 +84,9 @@ def test_small_int_multiply():
     assert prim(primitives.MULTIPLY, [6,3]).value == 18
 
 def test_small_int_multiply_overflow():
-    w_result = prim(primitives.MULTIPLY, [constants.TAGGED_MAXINT, 2])
-    assert isinstance(w_result, model.W_LargePositiveInteger1Word)
-    assert w_result.value == constants.TAGGED_MAXINT * 2
+    w_result = prim_fails(primitives.MULTIPLY, [constants.TAGGED_MAXINT, 2])
+    #assert isinstance(w_result, model.W_LargePositiveInteger1Word)
+    #assert w_result.value == constants.TAGGED_MAXINT * 2
     prim_fails(primitives.MULTIPLY, [constants.TAGGED_MAXINT, constants.TAGGED_MAXINT])
     prim_fails(primitives.MULTIPLY, [constants.TAGGED_MAXINT, -4])
     prim_fails(primitives.MULTIPLY, [constants.TAGGED_MININT, constants.TAGGED_MAXINT])
@@ -171,9 +171,9 @@ def test_small_int_bit_shift_fail():
     prim_fails(primitives.BIT_SHIFT, [4, 31])
     prim_fails(primitives.BIT_SHIFT, [4, 30])
     prim_fails(primitives.BIT_SHIFT, [4, 29])
-    w_result = prim(primitives.BIT_SHIFT, [4, 28])
-    assert isinstance(w_result, model.W_LargePositiveInteger1Word)
-    assert w_result.value == 4 << 28
+    w_result = prim_fails(primitives.BIT_SHIFT, [4, 28])
+    # assert isinstance(w_result, model.W_LargePositiveInteger1Word)
+    # assert w_result.value == 4 << 28
 
 def test_smallint_as_float():
     assert prim(primitives.SMALLINT_AS_FLOAT, [12]).value == 12.0
