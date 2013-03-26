@@ -33,7 +33,7 @@ class Interpreter(object):
         get_printable_location=get_printable_location
     )
     
-    def __init__(self, space, image=None, image_name="",
+    def __init__(self, space, image=None, image_name="", trace=False,
                 max_stack_depth=constants.MAX_LOOP_DEPTH):
         self.space = space
         self.image = image
@@ -44,7 +44,7 @@ class Interpreter(object):
         self.next_wakeup_tick = 0
         self.interrupt_check_counter = constants.INTERRUPT_COUNTER_SIZE
         # ######################################################################
-        # self.trace = True
+        self.trace = trace
 
     def interpret_with_w_frame(self, w_frame):
         try:
@@ -80,9 +80,9 @@ class Interpreter(object):
 
     def c_loop(self, s_context):
         # ######################################################################
-        # if self.trace:
-        #     padding = ' ' * (self.max_stack_depth - self.remaining_stack_depth)
-        #     print padding + s_context.short_str()
+        if self.trace:
+            padding = ' ' * (self.max_stack_depth - self.remaining_stack_depth)
+            print padding + s_context.short_str()
         old_pc = 0
         if not jit.we_are_jitted():
             self.quick_check_for_interrupt(s_context)
@@ -343,27 +343,31 @@ class __extend__(ContextPartShadow):
                 print "%sActually calling primitive %d" % (interp._last_indent, code,)
             func = primitives.prim_holder.prim_table[code]
             # ##################################################################
-            # if interp.trace:
-            #     print "%s calling primitive %d \t(%s)" % (' ' * (interp.max_stack_depth - interp.remaining_stack_depth),
-            #                                             code, func.func_name)
+            if interp.trace:
+                print "%s calling primitive %d \t(in #%s)" % (
+                    ' ' * (interp.max_stack_depth - interp.remaining_stack_depth),
+                        code, self.w_method()._likely_methodname)
             try:
                 # note: argcount does not include rcvr
                 return func(interp, self, argcount)
             except primitives.PrimitiveFailedError:
                 # ##############################################################
                 # if interp.trace and func.func_name != 'raise_failing_default' and code != 83:
-                #     import pdb; pdb.set_trace()
+                #     # import pdb; pdb.set_trace()
                 #     try:
                 #         func(interp, self, argcount) # will fail again
                 #     except primitives.PrimitiveFailedError:
                 #         pass
+                if interp.trace:
+                    print "%s primitive FAILED" % (
+                    ' ' * (interp.max_stack_depth - interp.remaining_stack_depth),)
 
                 if interp.should_trace(True):
                     print "PRIMITIVE FAILED: %d %s" % (s_method.primitive, w_selector.as_string(),)
                 pass # ignore this error and fall back to the Smalltalk version
         arguments = self.pop_and_return_n(argcount)
         s_frame = s_method.create_frame(self.space, receiver, arguments, self)
-        self.pop()
+        self.pop() # receiver
         return interp.stack_frame(s_frame)
 
     def _doesNotUnderstand(self, w_selector, argcount, interp, receiver):

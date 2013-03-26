@@ -757,18 +757,22 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         return retval + "---------------------\n"
 
     def get_identifier_string(self):
-        try:
-            w_class = self.literals[-1]
-            if isinstance(w_class, W_PointersObject):
-                if w_class._shadow is None:
-                    classname = w_class._fetch(1)._shadow.getname()
-                else:
-                    classname = w_class._shadow.getname()
-            else:
-                classname = "<unknown>"
-        except (IndexError, AttributeError):
-            classname = "<unknown>"
+        from spyvm import shadow
+        classname = '<unknown>'
+        if len(self.literals) > 0:
+            w_candidate = self.literals[-1]
+            if isinstance(w_candidate, W_PointersObject):
+                c_shadow = w_candidate._shadow
+                if c_shadow is None:
+                    w_class = w_candidate._fetch(1)
+                    if isinstance(w_class, W_PointersObject):
+                        d_shadow = w_class._shadow
+                        if isinstance(d_shadow, shadow.ClassShadow):
+                            classname = d_shadow.getname()
+                elif isinstance(shadow, shadow.ClassShadow):
+                    classname = c_shadow.getname()
         return "%s>>#%s" % (classname, self._likely_methodname)
+
 
     def invariant(self):
         return (W_Object.invariant(self) and

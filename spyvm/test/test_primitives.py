@@ -167,13 +167,16 @@ def test_small_int_bit_shift_negative():
     assert prim(primitives.BIT_SHIFT, [-4, 27]).value == -536870912
     
 def test_small_int_bit_shift_fail():
+    from rpython.rlib.rarithmetic import intmask
     prim_fails(primitives.BIT_SHIFT, [4, 32])
     prim_fails(primitives.BIT_SHIFT, [4, 31])
     prim_fails(primitives.BIT_SHIFT, [4, 30])
-    prim_fails(primitives.BIT_SHIFT, [4, 29])
-    w_result = prim_fails(primitives.BIT_SHIFT, [4, 28])
-    # assert isinstance(w_result, model.W_LargePositiveInteger1Word)
-    # assert w_result.value == 4 << 28
+    w_result = prim(primitives.BIT_SHIFT, [4, 29])
+    assert isinstance(w_result, model.W_LargePositiveInteger1Word)
+    assert w_result.value == intmask(4 << 29)
+    w_result = prim(primitives.BIT_SHIFT, [4, 28])
+    assert isinstance(w_result, model.W_LargePositiveInteger1Word)
+    assert w_result.value == 4 << 28
 
 def test_smallint_as_float():
     assert prim(primitives.SMALLINT_AS_FLOAT, [12]).value == 12.0
@@ -709,8 +712,7 @@ def test_bitblt_copy_bits(monkeypatch):
             prim_table[primitives.BITBLT_COPY_BITS](interp, w_frame.as_context_get_shadow(space), argument_count-1)
     finally:
         monkeypatch.undo()
-    assert w_frame._shadow.pop() is mock_bitblt # the new receiver
-    assert w_frame._shadow.pop() is mock_bitblt # previous state is still there
+    assert w_frame._shadow.pop() is mock_bitblt # the receiver
 
 # Note:
 #   primitives.NEXT is unimplemented as it is a performance optimization

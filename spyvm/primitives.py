@@ -52,7 +52,7 @@ index1_0 = object()
 char = object()
 pos_32bit_int = object()
 
-def expose_primitive(code, unwrap_spec=None, no_result=False, result_is_new_frame=False):
+def expose_primitive(code, unwrap_spec=None, no_result=False, result_is_new_frame=False, clean_stack=True):
     # some serious magic, don't look
     from rpython.rlib.unroll import unrolling_iterable
     # heuristics to give it a nice name
@@ -121,13 +121,17 @@ def expose_primitive(code, unwrap_spec=None, no_result=False, result_is_new_fram
                     s_new_frame = func(interp, s_frame, *args)
                     # After calling primitive, reload context-shadow in case it
                     # needs to be updated
-                    s_frame.pop_n(len_unwrap_spec)   # only if no exception occurs!
+                    if clean_stack:
+                        # happens only if no exception occurs!
+                        s_frame.pop_n(len_unwrap_spec)
                     return interp.stack_frame(s_new_frame)
                 else:
                     w_result = func(interp, s_frame, *args)
                     # After calling primitive, reload context-shadow in case it
                     # needs to be updated
-                    s_frame.pop_n(len_unwrap_spec)   # only if no exception occurs!
+                    if clean_stack:
+                        # happens only if no exception occurs!
+                        s_frame.pop_n(len_unwrap_spec)
                     if not no_result:
                         assert w_result is not None
                         assert isinstance(w_result, model.W_Object)
@@ -223,12 +227,20 @@ def func(interp, s_frame, receiver, argument):
     # (http://codespeak.net/pypy/dist/pypy/doc/coding-guide.html#integer-types)
 
     # left shift, must fail if we lose bits beyond 32
+    from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, int_between
     if argument > 0:
-        try:
-            shifted = rarithmetic.ovfcheck(receiver << argument)
-        except OverflowError:
-            raise PrimitiveFailedError()
-        return interp.space.wrap_int(shifted)
+        # argument > 0, therefore the highest bit of upperbound is not set,
+        # i.e. upperbound is positive
+        upperbound = intmask(r_uint(-1) >> argument)
+        if 0 <= receiver <= upperbound:
+            shifted = intmask(receiver << argument)
+            return interp.space.wrap_positive_32bit_int(shifted)
+        else:
+            try:
+                shifted = ovfcheck(receiver << argument)
+            except OverflowError:
+                raise PrimitiveFailedError()
+            return interp.space.wrap_int(shifted)
 
     # right shift, ok to lose bits
     else:
@@ -556,13 +568,12 @@ def func(interp, s_frame, w_rcvr):
 def func(interp, s_frame, w_rcvr):
     raise PrimitiveNotYetWrittenError()
 
-@expose_primitive(BITBLT_COPY_BITS, unwrap_spec=[object])
+@expose_primitive(BITBLT_COPY_BITS, unwrap_spec=[object], clean_stack=False)
 def func(interp, s_frame, w_rcvr):
     if not isinstance(w_rcvr, model.W_PointersObject) or w_rcvr.size() < 15:
         raise PrimitiveFailedError
 
     space = interp.space
-    s_frame.push(w_rcvr)
     s_frame._sendSelfSelector(interp.image.w_simulateCopyBits, 0, interp)
 
     w_dest_form = w_rcvr.fetch(space, 0)
@@ -571,6 +582,7 @@ def func(interp, s_frame, w_rcvr):
         assert isinstance(w_bitmap, model.W_DisplayBitmap)
         w_bitmap.flush_to_screen()
 
+    # in case we return normally, we have to restore the removed w_rcvr
     return w_rcvr
 
 @expose_primitive(BE_CURSOR, unwrap_spec=[object])
@@ -1100,21 +1112,14 @@ def func(interp, s_frame, argcount):
 
 @expose_primitive(PERFORM_WITH_ARGS,
                   unwrap_spec=[object, object, list],
-                  no_result=True)
+                  no_result=True, clean_stack=False)
 def func(interp, s_frame, w_rcvr, w_selector, args_w):
-    stackvalues = s_frame.pop_and_return_n(3)
     argcount = len(args_w)
     # pushing the receiver and args to be popped by _sendSelector
     s_frame.push(w_rcvr)
     s_frame.push_all(args_w)
     s_frame._sendSelector(w_selector, argcount, interp,
                       w_rcvr, w_rcvr.shadow_of_my_class(interp.space))
-    # If we return in a regular way, we need to rebuild the former
-    # stack-contents to be collected by the primitive wrapper, i.a. if
-    # w_selector points to a primitive method. But if we have an exception, the
-    # wrapper will not clean. Therefore we should not put this into a finally.
-    s_frame.push_all(stackvalues)
-
 
 @expose_primitive(SIGNAL, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
