@@ -1100,13 +1100,16 @@ def func(interp, s_frame, argcount):
 def func(interp, s_frame, w_rcvr, w_selector, args_w):
     stackvalues = s_frame.pop_and_return_n(3)
     argcount = len(args_w)
+    # pushing the receiver and args to be popped by _sendSelector
     s_frame.push(w_rcvr)
     s_frame.push_all(args_w)
-    try:
-        s_frame._sendSelector(w_selector, argcount, interp,
+    s_frame._sendSelector(w_selector, argcount, interp,
                       w_rcvr, w_rcvr.shadow_of_my_class(interp.space))
-    finally:
-        s_frame.push_all(stackvalues)
+    # If we return in a regular way, we need to rebuild the former
+    # stack-contents to be collected by the primitive wrapper, i.a. if
+    # w_selector points to a primitive method. But if we have an exception, the
+    # wrapper will not clean. Therefore we should not put this into a finally.
+    s_frame.push_all(stackvalues)
 
 
 @expose_primitive(SIGNAL, unwrap_spec=[object])
