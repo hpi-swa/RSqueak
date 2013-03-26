@@ -43,7 +43,8 @@ class Interpreter(object):
         self._loop = False
         self.next_wakeup_tick = 0
         self.interrupt_check_counter = constants.INTERRUPT_COUNTER_SIZE
-        # self.trace = False
+        # ######################################################################
+        # self.trace = True
 
     def interpret_with_w_frame(self, w_frame):
         try:
@@ -78,6 +79,7 @@ class Interpreter(object):
                 s_new_context = p.s_new_context
 
     def c_loop(self, s_context):
+        # ######################################################################
         # if self.trace:
         #     padding = ' ' * (self.max_stack_depth - self.remaining_stack_depth)
         #     print padding + s_context.short_str()
@@ -340,6 +342,7 @@ class __extend__(ContextPartShadow):
             if interp.should_trace():
                 print "%sActually calling primitive %d" % (interp._last_indent, code,)
             func = primitives.prim_holder.prim_table[code]
+            # ##################################################################
             # if interp.trace:
             #     print "%s calling primitive %d \t(%s)" % (' ' * (interp.max_stack_depth - interp.remaining_stack_depth),
             #                                             code, func.func_name)
@@ -347,8 +350,14 @@ class __extend__(ContextPartShadow):
                 # note: argcount does not include rcvr
                 return func(interp, self, argcount)
             except primitives.PrimitiveFailedError:
-                # if interp.trace:
+                # ##############################################################
+                # if interp.trace and func.func_name != 'raise_failing_default' and code != 83:
                 #     import pdb; pdb.set_trace()
+                #     try:
+                #         func(interp, self, argcount) # will fail again
+                #     except primitives.PrimitiveFailedError:
+                #         pass
+
                 if interp.should_trace(True):
                     print "PRIMITIVE FAILED: %d %s" % (s_method.primitive, w_selector.as_string(),)
                 pass # ignore this error and fall back to the Smalltalk version
