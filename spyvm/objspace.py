@@ -235,7 +235,7 @@ class ObjSpace(object):
         if isinstance(w_value, model.W_SmallInteger):
             return w_value.value
         elif isinstance(w_value, model.W_LargePositiveInteger1Word):
-            if w_value.value > 0:
+            if w_value.value >= 0:
                 return w_value.value
             else:
                 raise UnwrappingError("The value is negative when interpreted as 32bit value.")

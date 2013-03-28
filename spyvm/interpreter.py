@@ -781,38 +781,23 @@ def initialize_bytecode_table():
     assert None not in result
     return result
 
-
+# this table is only used for creating named bytecodes in tests and printing
 BYTECODE_TABLE = initialize_bytecode_table()
 
-
-def make_bytecode_dispatch_translated():
-    # this is a performance optimization: when translating the
-    # interpreter, the bytecode dispatching is not implemented as a
-    # list lookup and an indirect call but as a switch.
-
-    code = ["def bytecode_step_translated(self, context):"]
-    code.append("    bytecode = context.getbytecode()")
-    prefix = ""
-    for entry in BYTECODE_RANGES:
+from rpython.rlib.unroll import unrolling_iterable
+unrolling_ranges = unrolling_iterable(BYTECODE_RANGES)
+def bytecode_step_translated(self, context):
+    bytecode = context.getbytecode()
+    for entry in unrolling_ranges:
         if len(entry) == 2:
-            numbers = [entry[0]]
+            bc, methname = entry
+            if bytecode == bc:
+                return getattr(context, methname)(self, bytecode)
         else:
-            numbers = range(entry[0], entry[1]+1)
-        cond = " or ".join(["bytecode == %s" % (i, )
-                                for i in numbers])
-        code.append("    %sif %s:" % (prefix, cond, ))
-        code.append("        return context.%s(self, bytecode)" % (entry[-1], ))
-        prefix = "el"
-    source = py.code.Source("\n".join(code))
-    #print source
-    miniglob = {}
-    exec source.compile() in miniglob
-    return miniglob["bytecode_step_translated"]
-    
-bytecode_step_translated = make_bytecode_dispatch_translated()
+            start, stop, methname = entry
+            if start <= bytecode <= stop:
+                return getattr(context, methname)(self, bytecode)
+    assert 0, "unreachable"
 
-# we_are_translated returns false on top of CPython and true when
-# translating the interpreter
-# if objectmodel.we_are_translated():
 Interpreter.step = bytecode_step_translated
 
