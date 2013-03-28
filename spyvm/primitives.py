@@ -1115,8 +1115,8 @@ def func(interp, s_frame, argcount):
                   no_result=True, clean_stack=False)
 def func(interp, s_frame, w_rcvr, w_selector, args_w):
     argcount = len(args_w)
-    # pushing the receiver and args to be popped by _sendSelector
-    s_frame.push(w_rcvr)
+    s_frame.pop_n(2) # removing our arguments to be substituted with args_w
+    # pushing the args to be popped by _sendSelector
     s_frame.push_all(args_w)
     s_frame._sendSelector(w_selector, argcount, interp,
                       w_rcvr, w_rcvr.shadow_of_my_class(interp.space))

@@ -185,11 +185,13 @@ class ObjSpace(object):
         # XXX this code sucks
         import math
         bytes_len = int(math.log(val) / math.log(0xff)) + 1
-        bytes_len = 4 if 4 > bytes_len else bytes_len
-        w_result = model.W_BytesObject(self.classtable['w_LargePositiveInteger'], bytes_len)
-        for i in range(bytes_len):
-            w_result.setchar(i, chr(intmask((val >> i*8) & 255)))
-        return w_result
+        if bytes_len <= 4:
+            return self.wrap_positive_32bit_int(intmask(val))
+        else:
+            w_result = model.W_BytesObject(self.classtable['w_LargePositiveInteger'], bytes_len)
+            for i in range(bytes_len):
+                w_result.setchar(i, chr(intmask((val >> i*8) & 255)))
+            return w_result
 
     def wrap_positive_32bit_int(self, val):
         # This will always return a positive value.
