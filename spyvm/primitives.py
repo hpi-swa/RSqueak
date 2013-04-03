@@ -573,13 +573,15 @@ def func(interp, s_frame, w_rcvr):
         raise PrimitiveFailedError
 
     space = interp.space
-    s_frame._sendSelfSelector(interp.image.w_simulateCopyBits, 0, interp)
-
-    w_dest_form = w_rcvr.fetch(space, 0)
-    if w_dest_form.is_same_object(space.objtable['w_display']):
-        w_bitmap = w_dest_form.fetch(space, 0)
-        assert isinstance(w_bitmap, model.W_DisplayBitmap)
-        w_bitmap.flush_to_screen()
+    try:
+        s_frame._sendSelfSelector(interp.image.w_simulateCopyBits, 0, interp)
+    except Return:
+        w_dest_form = w_rcvr.fetch(space, 0)
+        if w_dest_form.is_same_object(space.objtable['w_display']):
+            #import pdb; pdb.set_trace()
+            w_bitmap = w_dest_form.fetch(space, 0)
+            assert isinstance(w_bitmap, model.W_DisplayBitmap)
+            w_bitmap.flush_to_screen()
 
     # in case we return normally, we have to restore the removed w_rcvr
     return w_rcvr
