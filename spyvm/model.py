@@ -117,6 +117,7 @@ class W_Object(object):
     def __repr__(self):
         return self.as_repr_string()
 
+    @jit.elidable
     def as_repr_string(self):
         return "%r" % self
 
@@ -139,6 +140,7 @@ class W_SmallInteger(W_Object):
     def invariant(self):
         return isinstance(self.value, int) and self.value < 0x8000
 
+    @jit.elidable
     def as_repr_string(self):
         return "W_SmallInteger(%d)" % self.value
 
@@ -330,30 +332,29 @@ class W_Float(W_AbstractObjectWithIdentityHash):
 class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     """Objects with arbitrary class (ie not CompiledMethod, SmallInteger or
     Float)."""
-    _attrs_ = ['w_class', 's_class', 'space']
-    s_class = None
+    _attrs_ = ['s_class', 'space']
 
     def __init__(self, space, w_class):
         if w_class is not None:     # it's None only for testing and space generation
             assert isinstance(w_class, W_PointersObject)
-            if w_class.has_shadow():
-                self.s_class = w_class.as_class_get_shadow(w_class._shadow.space)
-        self.w_class = w_class
+            self.s_class = w_class.as_class_get_penumbra(space)
+        else:
+            self.s_class = None
         self.space = space
 
     def getclass(self, space):
-        assert self.w_class is not None
-        return self.w_class
+        return self.shadow_of_my_class(space).w_self()
 
     def __str__(self):
         if isinstance(self, W_PointersObject) and self.has_shadow():
             return self._shadow.getname()
         else:
             name = None
-            if self.w_class.has_shadow():
-                name = self.w_class._shadow.name
+            if self.has_class():
+                name = self.s_class.name
             return "a %s" % (name or '?',)
 
+    @jit.elidable
     def as_repr_string(self):
         return self.as_embellished_string("W_O /w Class", "")
 
@@ -365,20 +366,19 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
                 additionalInformation)
 
     def invariant(self):
+        from spyvm import shadow
         return (W_AbstractObjectWithIdentityHash.invariant(self) and
-                isinstance(self.w_class, W_PointersObject))
+                isinstance(self.s_class, shadow.ClassShadow))
 
     def _become(self, w_other):
-        self.w_class, w_other.w_class = w_other.w_class, self.w_class
         self.s_class, w_other.s_class = w_other.s_class, self.s_class
         W_AbstractObjectWithIdentityHash._become(self, w_other)
 
     def has_class(self):
-        return self.w_class is not None
+        return self.s_class is not None
 
     def shadow_of_my_class(self, space):
-        if self.s_class is None:
-            self.s_class = self.w_class.as_class_get_shadow(space)
+        assert self.s_class is not None
         return self.s_class
 
 class W_PointersObject(W_AbstractObjectWithClassReference):
@@ -398,8 +398,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
 
     def fillin(self, space, g_self):
         self._vars = g_self.get_pointers()
-        self.w_class = g_self.get_class()
-        self.s_class = None
+        self.s_class = g_self.get_class().as_class_get_penumbra(space)
         self.hash = g_self.get_hash()
         self.space = space
 
@@ -481,7 +480,9 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     # Should only be used during squeak-image loading.
     def as_class_get_penumbra(self, space):
         from spyvm.shadow import ClassShadow
-        self.store_shadow(ClassShadow(space, self))
+        assert self._shadow is None or isinstance(self._shadow, ClassShadow)
+        if self._shadow is None:
+            self.store_shadow(ClassShadow(space, self))
         return self._shadow
 
     def as_blockcontext_get_shadow(self, space):
@@ -529,14 +530,15 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         return True
 
     def clone(self, space):
-        w_result = W_PointersObject(self.space, self.w_class, len(self._vars))
+        w_result = W_PointersObject(self.space, self.getclass(space), len(self._vars))
         w_result._vars = [self.fetch(space, i) for i in range(len(self._vars))]
         return w_result
 
+    @jit.elidable
     def as_repr_string(self):
         return W_AbstractObjectWithClassReference.as_embellished_string(self, 
                                 className='W_PointersObject', 
-                                additionalInformation='len(%d)' % self.size())
+                                additionalInformation='len=%d' % self.size())
 
 class W_BytesObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['bytes']
@@ -547,7 +549,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         self.bytes = ['\x00'] * size
 
     def fillin(self, space, g_self):
-        self.w_class = g_self.get_class()
+        self.s_class = g_self.get_class().as_class_get_penumbra(space)
         self.bytes = g_self.get_bytes()
         self.hash = g_self.get_hash()
         self.space = space
@@ -593,7 +595,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         return self.bytes == other.bytes
 
     def clone(self, space):
-        w_result = W_BytesObject(self.space, self.w_class, len(self.bytes))
+        w_result = W_BytesObject(self.space, self.getclass(space), len(self.bytes))
         w_result.bytes = list(self.bytes)
         return w_result
 
@@ -606,7 +608,7 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
 
     def fillin(self, space, g_self):
         self.words = g_self.get_ruints()
-        self.w_class = g_self.get_class()
+        self.s_class = g_self.get_class().as_class_get_penumbra(space)
         self.hash = g_self.get_hash()
         self.space = space
 
@@ -632,7 +634,7 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
                 isinstance(self.words, list))
 
     def clone(self, space):
-        w_result = W_WordsObject(self.space, self.w_class, len(self.words))
+        w_result = W_WordsObject(self.space, self.getclass(space), len(self.words))
         w_result.words = list(self.words)
         return w_result
 
@@ -677,7 +679,7 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
         return False
 
     def clone(self, space):
-        w_result = W_WordsObject(self.space, self.w_class, self._realsize)
+        w_result = W_WordsObject(self.space, self.getclass(space), self._realsize)
         n = 0
         while n < self._realsize:
             w_result.words[n] = self.getword(n)

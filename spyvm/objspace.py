@@ -51,15 +51,15 @@ class ObjSpace(object):
             w_metacls = define_core_cls(meta_nm, self.classtable[meta_super_nm], None)
             define_core_cls(cls_nm, self.classtable[super_cls_nm], w_metacls)
         w_Class = self.classtable["w_Class"]
-        w_Metaclass = self.classtable["w_Metaclass"]
+        s_Metaclass = self.classtable["w_Metaclass"].as_class_get_penumbra(self)
         # XXX
         proto_shadow = w_ProtoObjectClass._shadow
         proto_shadow.store_w_superclass(w_Class)
         # at this point, all classes that still lack a w_class are themselves
         # metaclasses
         for nm, w_cls_obj in self.classtable.items():
-            if w_cls_obj.w_class is None:
-                w_cls_obj.w_class = w_Metaclass
+            if w_cls_obj.s_class is None:
+                w_cls_obj.s_class = s_Metaclass
         
         def define_cls(cls_nm, supercls_nm, instvarsize=0, format=shadow.POINTERS,
                        varsized=False):
@@ -136,7 +136,7 @@ class ObjSpace(object):
         # package, and then patch up its fields here:
         w_nil = self.w_nil = model.w_nil
         w_nil.space = self
-        w_nil.w_class = self.classtable['w_UndefinedObject']
+        w_nil.s_class = self.classtable['w_UndefinedObject'].as_class_get_penumbra(self)
 
         w_true = self.classtable['w_True'].as_class_get_shadow(self).new()
         self.w_true = w_true

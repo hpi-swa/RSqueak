@@ -752,7 +752,6 @@ def func(interp, s_frame, w_arg, w_rcvr):
     if w_arg_class.instsize() != w_rcvr_class.instsize():
         raise PrimitiveFailedError()
 
-    w_rcvr.w_class = w_arg.w_class
     w_rcvr.s_class = w_arg.s_class
 
 # ___________________________________________________________________________

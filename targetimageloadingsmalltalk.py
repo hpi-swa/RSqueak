@@ -9,7 +9,7 @@ from spyvm.tool.analyseimage import create_image
 
 
 def _run_benchmark(interp, number, benchmark):
-    w_object = model.W_SmallInteger(number)
+    w_object = interp.space.wrap_int(number)
     t1 = time.time()
     try:
         w_result = interp.perform(w_object, benchmark)
