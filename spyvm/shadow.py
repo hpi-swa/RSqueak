@@ -201,11 +201,11 @@ class ClassShadow(AbstractCachingShadow):
     def new(self, extrasize=0):
         w_cls = self.w_self()
         if self.instance_kind == POINTERS:
-            w_new = model.W_PointersObject(w_cls, self.instsize()+extrasize)
+            w_new = model.W_PointersObject(self.space, w_cls, self.instsize()+extrasize)
         elif self.instance_kind == WORDS:
-            w_new = model.W_WordsObject(w_cls, extrasize)
+            w_new = model.W_WordsObject(self.space, w_cls, extrasize)
         elif self.instance_kind == BYTES:
-            w_new = model.W_BytesObject(w_cls, extrasize)
+            w_new = model.W_BytesObject(self.space, w_cls, extrasize)
         elif self.instance_kind == COMPILED_METHOD:
             w_new = model.W_CompiledMethod(extrasize)
         elif self.instance_kind == FLOAT:
@@ -214,7 +214,7 @@ class ClassShadow(AbstractCachingShadow):
             if extrasize <= 4:
                 w_new = model.W_LargePositiveInteger1Word(0, extrasize)
             else:
-                w_new = model.W_BytesObject(w_cls, extrasize)
+                w_new = model.W_BytesObject(self.space, w_cls, extrasize)
         else:
             raise NotImplementedError(self.instance_kind)
         return w_new
@@ -321,8 +321,8 @@ class ClassShadow(AbstractCachingShadow):
     def initialize_methoddict(self):
         "NOT_RPYTHON"     # this is only for testing.
         if self._s_methoddict is None:
-            w_methoddict = model.W_PointersObject(None, 2)
-            w_methoddict._store(1, model.W_PointersObject(None, 0))
+            w_methoddict = model.W_PointersObject(self.space, None, 2)
+            w_methoddict._store(1, model.W_PointersObject(self.space, None, 0))
             self._s_methoddict = w_methoddict.as_methoddict_get_shadow(self.space)
             self.s_methoddict().sync_cache()
         self.s_methoddict().invalid = False
@@ -710,7 +710,7 @@ class BlockContextShadow(ContextPartShadow):
         # into the right places in the W_PointersObject
         # XXX could hack some more to never have to create the _vars of w_result
         contextsize = w_home.as_methodcontext_get_shadow(space).myblocksize()
-        w_result = model.W_PointersObject(space.w_BlockContext, contextsize)
+        w_result = model.W_PointersObject(space, space.w_BlockContext, contextsize)
         s_result = BlockContextShadow(space, w_result)
         s_result_non_fresh = s_result # XXX: find a better solution to translation err
         s_result = jit.hint(s_result, access_directly=True, fresh_virtualizable=True)

@@ -217,7 +217,7 @@ def func(interp, s_frame, receiver, argument):
     return interp.space.wrap_int(receiver // argument)
     
 # #bitShift: -- return the shifted value
-@expose_primitive(BIT_SHIFT, unwrap_spec=[int, int])
+@expose_primitive(BIT_SHIFT, unwrap_spec=[pos_32bit_int, int])
 def func(interp, s_frame, receiver, argument):
 
     # TODO: 1 << 100 will overflow to 0. Catch this gracefully by Primitive
@@ -557,7 +557,7 @@ KBD_PEEK = 109
 @expose_primitive(MOUSE_POINT, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
     x, y = interp.space.get_display().mouse_point()
-    w_point = model.W_PointersObject(interp.space.w_Point, 2)
+    w_point = model.W_PointersObject(interp.space, interp.space.w_Point, 2)
     w_point.store(interp.space, 0, interp.space.wrap_int(x))
     w_point.store(interp.space, 1, interp.space.wrap_int(y))
     return w_point
@@ -620,6 +620,7 @@ def func(interp, s_frame, w_rcvr):
         if not sdldisplay:
             sdldisplay = display.SDLDisplay(interp.image_name)
         w_display_bitmap = model.W_DisplayBitmap.create(
+            interp.space,
             w_bitmap.getclass(interp.space),
             w_bitmap.size(),
             depth,

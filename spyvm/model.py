@@ -330,15 +330,16 @@ class W_Float(W_AbstractObjectWithIdentityHash):
 class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     """Objects with arbitrary class (ie not CompiledMethod, SmallInteger or
     Float)."""
-    _attrs_ = ['w_class', 's_class']
+    _attrs_ = ['w_class', 's_class', 'space']
     s_class = None
 
-    def __init__(self, w_class):
+    def __init__(self, space, w_class):
         if w_class is not None:     # it's None only for testing and space generation
             assert isinstance(w_class, W_PointersObject)
             if w_class.has_shadow():
                 self.s_class = w_class.as_class_get_shadow(w_class._shadow.space)
         self.w_class = w_class
+        self.space = space
 
     def getclass(self, space):
         assert self.w_class is not None
@@ -387,9 +388,9 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     _shadow = None # Default value
 
     @jit.unroll_safe
-    def __init__(self, w_class, size):
+    def __init__(self, space, w_class, size):
         """Create new object with size = fixed + variable size."""
-        W_AbstractObjectWithClassReference.__init__(self, w_class)
+        W_AbstractObjectWithClassReference.__init__(self, space, w_class)
         vars = self._vars = [None] * size
         for i in range(size): # do it by hand for the JIT's sake
             vars[i] = w_nil
@@ -400,6 +401,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         self.w_class = g_self.get_class()
         self.s_class = None
         self.hash = g_self.get_hash()
+        self.space = space
 
     def at0(self, space, index0):
         # To test, at0 = in varsize part
@@ -476,6 +478,12 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         from spyvm.shadow import ClassShadow
         return jit.promote(self.as_special_get_shadow(space, ClassShadow))
 
+    # Should only be used during squeak-image loading.
+    def as_class_get_penumbra(self, space):
+        from spyvm.shadow import ClassShadow
+        self.store_shadow(ClassShadow(space, self))
+        return self._shadow
+
     def as_blockcontext_get_shadow(self, space):
         from spyvm.shadow import BlockContextShadow
         return self.as_special_get_shadow(space, BlockContextShadow)
@@ -521,7 +529,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         return True
 
     def clone(self, space):
-        w_result = W_PointersObject(self.w_class, len(self._vars))
+        w_result = W_PointersObject(self.space, self.w_class, len(self._vars))
         w_result._vars = [self.fetch(space, i) for i in range(len(self._vars))]
         return w_result
 
@@ -533,8 +541,8 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
 class W_BytesObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['bytes']
 
-    def __init__(self, w_class, size):
-        W_AbstractObjectWithClassReference.__init__(self, w_class)
+    def __init__(self, space, w_class, size):
+        W_AbstractObjectWithClassReference.__init__(self, space, w_class)
         assert isinstance(size, int)
         self.bytes = ['\x00'] * size
 
@@ -542,6 +550,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         self.w_class = g_self.get_class()
         self.bytes = g_self.get_bytes()
         self.hash = g_self.get_hash()
+        self.space = space
 
     def at0(self, space, index0):
         return space.wrap_int(ord(self.getchar(index0)))
@@ -584,21 +593,22 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         return self.bytes == other.bytes
 
     def clone(self, space):
-        w_result = W_BytesObject(self.w_class, len(self.bytes))
+        w_result = W_BytesObject(self.space, self.w_class, len(self.bytes))
         w_result.bytes = list(self.bytes)
         return w_result
 
 class W_WordsObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['words']
 
-    def __init__(self, w_class, size):
-        W_AbstractObjectWithClassReference.__init__(self, w_class)
+    def __init__(self, space, w_class, size):
+        W_AbstractObjectWithClassReference.__init__(self, space, w_class)
         self.words = [r_uint(0)] * size
 
     def fillin(self, space, g_self):
         self.words = g_self.get_ruints()
         self.w_class = g_self.get_class()
         self.hash = g_self.get_hash()
+        self.space = space
 
     def at0(self, space, index0):
         val = self.getword(index0)
@@ -622,7 +632,7 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
                 isinstance(self.words, list))
 
     def clone(self, space):
-        w_result = W_WordsObject(self.w_class, len(self.words))
+        w_result = W_WordsObject(self.space, self.w_class, len(self.words))
         w_result.words = list(self.words)
         return w_result
 
@@ -633,14 +643,14 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
     _immutable_fields_ = ['_realsize', 'display']
 
     @staticmethod
-    def create(w_class, size, depth, display):
+    def create(space, w_class, size, depth, display):
         if depth == 1:
-            return W_DisplayBitmap1Bit(w_class, size, depth, display)
+            return W_DisplayBitmap1Bit(space, w_class, size, depth, display)
         else:
             raise NotImplementedError("non B/W squeak")
 
-    def __init__(self, w_class, size, depth, display):
-        W_AbstractObjectWithClassReference.__init__(self, w_class)
+    def __init__(self, space, w_class, size, depth, display):
+        W_AbstractObjectWithClassReference.__init__(self, space, w_class)
         bytelen = NATIVE_DEPTH / depth * size
         self.pixelbuffer = lltype.malloc(rffi.ULONGP.TO, bytelen, flavor='raw')
         self._realsize = size
@@ -667,7 +677,7 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
         return False
 
     def clone(self, space):
-        w_result = W_WordsObject(self.w_class, self._realsize)
+        w_result = W_WordsObject(self.space, self.w_class, self._realsize)
         n = 0
         while n < self._realsize:
             w_result.words[n] = self.getword(n)

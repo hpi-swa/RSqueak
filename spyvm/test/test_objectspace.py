@@ -28,6 +28,7 @@ def test_metaclass_of_metaclass_is_an_instance_of_metaclass():
     assert w_Metaclass.w_class.w_class is w_Metaclass
 
 def test_ruint():
+    from spyvm import model
     """
     | a b |
     a := (9223372036854775808).
@@ -40,7 +41,7 @@ def test_ruint():
     """
 
     from rpython.rlib.rarithmetic import r_uint
-    for num in [0, 1, 41, 100, 2**31, sys.maxint + 1]:
+    for num in [0, 1, 41, 100, 2**31, sys.maxint + 1, -1]:
         num = r_uint(num)
         assert space.unwrap_uint(space.wrap_uint(num)) == num
     for num in [-1, -100, -sys.maxint]:
@@ -49,9 +50,10 @@ def test_ruint():
     for obj in [space.wrap_char('a'), space.wrap_int(-1)]:
         with py.test.raises(objspace.UnwrappingError):
             space.unwrap_uint(obj)
-    byteobj = space.wrap_uint(sys.maxint + 1)
-    byteobj.bytes.append('\x01')
-    num = space.unwrap_uint(byteobj)
+    # byteobj = space.wrap_uint(0x100000000)
+    # assert isinstance(byteobj, model.W_BytesObject)
+    # byteobj.bytes.append('\x01')
+    # num = space.unwrap_uint(byteobj)
     # should not raise. see docstring.
   
 

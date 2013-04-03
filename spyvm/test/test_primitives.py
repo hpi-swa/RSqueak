@@ -157,6 +157,7 @@ def test_small_int_bit_shift_positive():
     assert prim(primitives.BIT_SHIFT, [4, 27]).value == 536870912
     
 def test_small_int_bit_shift_negative():
+    py.test.skip("While this would make sense, because of the specification, we dont shift negative numbers")
     assert prim(primitives.BIT_SHIFT, [-4, -3]).value == -1
     assert prim(primitives.BIT_SHIFT, [-4, -2]).value == -1
     assert prim(primitives.BIT_SHIFT, [-4, -1]).value == -2
@@ -444,12 +445,15 @@ def test_seconds_clock():
     import time
     now = int(time.time())
     w_smalltalk_now1 = prim(primitives.SECONDS_CLOCK, [42])
-    assert (now % 256 - ord(w_smalltalk_now1.bytes[0])) % 256 <= 2
     w_smalltalk_now2 = prim(primitives.SECONDS_CLOCK, [42])
-    # the high-order byte should only change by one (and even that is
-    # extreeemely unlikely)
-    assert (ord(w_smalltalk_now2.bytes[-1]) - ord(w_smalltalk_now1.bytes[-1])) <= 1
-
+    # the test now is flaky, because we assume both have the same type
+    if isinstance(w_smalltalk_now1, model.W_BytesObject):
+        assert (now % 256 - ord(w_smalltalk_now1.bytes[0])) % 256 <= 2
+        # the high-order byte should only change by one (and even that is
+        # extreeemely unlikely)
+        assert (ord(w_smalltalk_now2.bytes[-1]) - ord(w_smalltalk_now1.bytes[-1])) <= 1
+    else:
+        assert w_smalltalk_now2.value - w_smalltalk_now1.value <= 1
 
 def test_load_inst_var():
     " try to test the LoadInstVar primitives a little "
@@ -635,8 +639,8 @@ def test_primitive_next_instance():
 
 def test_primitive_be_display():
     assert space.objtable["w_display"] is None
-    mock_display = model.W_PointersObject(space.w_Point, 4)
-    w_wordbmp = model.W_WordsObject(space.w_Array, 100)
+    mock_display = model.W_PointersObject(space, space.w_Point, 4)
+    w_wordbmp = model.W_WordsObject(space, space.w_Array, 100)
     mock_display.store(space, 0, w_wordbmp) # bitmap
     mock_display.store(space, 1, space.wrap_int(32)) # width
     mock_display.store(space, 2, space.wrap_int(10)) # height
@@ -649,8 +653,8 @@ def test_primitive_be_display():
     sdldisplay = w_bitmap.display
     assert isinstance(sdldisplay, display.SDLDisplay)
 
-    mock_display2 = model.W_PointersObject(space.w_Point, 4)
-    mock_display2.store(space, 0, model.W_WordsObject(space.w_Array, 100)) # bitmap
+    mock_display2 = model.W_PointersObject(space, space.w_Point, 4)
+    mock_display2.store(space, 0, model.W_WordsObject(space, space.w_Array, 100)) # bitmap
     mock_display2.store(space, 1, space.wrap_int(32)) # width
     mock_display2.store(space, 2, space.wrap_int(10)) # height
     mock_display2.store(space, 3, space.wrap_int(1))  # depth
@@ -667,8 +671,8 @@ def test_primitive_be_display():
     assert mock_display.fetch(space, 0) is w_bitmap
 
 def test_primitive_force_display_update(monkeypatch):
-    mock_display = model.W_PointersObject(space.w_Point, 4)
-    w_wordbmp = model.W_WordsObject(space.w_Array, 100)
+    mock_display = model.W_PointersObject(space, space.w_Point, 4)
+    w_wordbmp = model.W_WordsObject(space, space.w_Array, 100)
     mock_display.store(space, 0, w_wordbmp) # bitmap
     mock_display.store(space, 1, space.wrap_int(32)) # width
     mock_display.store(space, 2, space.wrap_int(10)) # height
@@ -695,7 +699,7 @@ def test_bitblt_copy_bits(monkeypatch):
         def __init__(self):
             self.w_simulateCopyBits = "simulateCopyBits"
 
-    mock_bitblt = model.W_PointersObject(space.w_Point, 15)
+    mock_bitblt = model.W_PointersObject(space, space.w_Point, 15)
 
     def perform_mock(w_selector, argcount, interp):
         if w_selector == "simulateCopyBits" or w_selector.as_string() == "simulateCopyBits":

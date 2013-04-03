@@ -36,7 +36,7 @@ def build_smalltalk_class(name, format, w_superclass=w_Object,
                                                w_Metaclass)
     w_methoddict = build_methoddict(methods)
     size = constants.CLASS_NAME_INDEX + 1
-    w_class = model.W_PointersObject(w_classofclass, size)
+    w_class = model.W_PointersObject(space, w_classofclass, size)
     w_class.store(space, constants.CLASS_SUPERCLASS_INDEX, w_superclass)
     w_class.store(space, constants.CLASS_METHODDICT_INDEX, w_methoddict)
     w_class.store(space, constants.CLASS_FORMAT_INDEX, space.wrap_int(format))
@@ -85,7 +85,7 @@ def method(tempsize=3,argsize=2, bytes="abcde"):
 
 def methodcontext(w_sender=space.w_nil, pc=1, stackpointer=0, stacksize=5,
                   method=method()):
-    w_object = model.W_PointersObject(space.w_MethodContext, constants.MTHDCTX_TEMP_FRAME_START+method.tempsize+stacksize)
+    w_object = model.W_PointersObject(space, space.w_MethodContext, constants.MTHDCTX_TEMP_FRAME_START+method.tempsize+stacksize)
     w_object.store(space, constants.CTXPART_SENDER_INDEX, w_sender)
     w_object.store(space, constants.CTXPART_PC_INDEX, space.wrap_int(pc))
     w_object.store(space, constants.CTXPART_STACKP_INDEX, space.wrap_int(method.tempsize+stackpointer))
@@ -99,7 +99,7 @@ def methodcontext(w_sender=space.w_nil, pc=1, stackpointer=0, stacksize=5,
 
 def blockcontext(w_sender=space.w_nil, pc=1, stackpointer=1, stacksize=5,
                   home=methodcontext()):
-    w_object = model.W_PointersObject(space.w_MethodContext, constants.MTHDCTX_TEMP_FRAME_START+stacksize)
+    w_object = model.W_PointersObject(space, space.w_MethodContext, constants.MTHDCTX_TEMP_FRAME_START+stacksize)
     w_object.store(space, constants.CTXPART_SENDER_INDEX, w_sender)
     w_object.store(space, constants.CTXPART_PC_INDEX, space.wrap_int(pc))
     w_object.store(space, constants.CTXPART_STACKP_INDEX, space.wrap_int(stackpointer))

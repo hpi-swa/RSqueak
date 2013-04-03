@@ -147,13 +147,13 @@ def test_compiledmethod_atput0_not_aligned():
     with py.test.raises(error.PrimitiveFailedError):
         w_method.atput0(space, 9, space.wrap_int(5))
 
-def test_is_same_object(w_o1=model.W_PointersObject(None,0), w_o2=None):
+def test_is_same_object(w_o1=model.W_PointersObject(space, None,0), w_o2=None):
     if w_o2 is None:
         w_o2 = w_o1
     assert w_o1.is_same_object(w_o2)
     assert w_o2.is_same_object(w_o1)
     
-def test_not_is_same_object(w_o1=model.W_PointersObject(None,0),w_o2=model.W_PointersObject(None,0)):
+def test_not_is_same_object(w_o1=model.W_PointersObject(space, None,0),w_o2=model.W_PointersObject(space, None,0)):
     assert not w_o1.is_same_object(w_o2)
     assert not w_o2.is_same_object(w_o1)
     w_o2 = model.W_SmallInteger(2)
@@ -221,7 +221,7 @@ def test_become_with_shadow():
 
 def test_word_atput():
     i = model.W_SmallInteger(100)
-    b = model.W_WordsObject(None, 1)
+    b = model.W_WordsObject(space, None, 1)
     b.atput0(space, 0, i)
     assert 100 == b.getword(0)
     i = space.classtable['w_LargePositiveInteger'].as_class_get_shadow(space).new(4)
@@ -230,7 +230,7 @@ def test_word_atput():
     assert b.getword(0) == 3221225472
 
 def test_word_at():
-    b = model.W_WordsObject(None, 1)
+    b = model.W_WordsObject(space, None, 1)
     b.setword(0, 100)
     r = b.at0(space, 0)
     assert isinstance(r, model.W_SmallInteger)
@@ -238,7 +238,7 @@ def test_word_at():
 
     b.setword(0, 3221225472)
     r = b.at0(space, 0)
-    assert isinstance(r, model.W_BytesObject)
+    assert isinstance(r, (model.W_BytesObject, model.W_LargePositiveInteger1Word))
     assert r.size() == 4
 
 def test_float_at():
@@ -288,7 +288,7 @@ def test_large_positive_integer_1word_at_put():
     assert hex(r_uint(target.value)) == hex(r_uint(source.value))
 
 def test_display_bitmap():
-    target = model.W_DisplayBitmap.create(space.w_Array, 100, 1, None)
+    target = model.W_DisplayBitmap.create(space, space.w_Array, 100, 1, None)
     target.setword(0, 0xFF00)
     assert bin(target.getword(0)) == bin(0xFF00)
     target.setword(0, 0x00FF00FF)
