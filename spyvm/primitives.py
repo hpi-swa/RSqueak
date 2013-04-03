@@ -3,8 +3,7 @@ import inspect
 import math
 import operator
 from spyvm import model, shadow
-from spyvm import constants
-from spyvm import display
+from spyvm import constants, display
 from spyvm.error import PrimitiveFailedError, \
     PrimitiveNotYetWrittenError
 from spyvm import wrapper
@@ -183,7 +182,6 @@ for (code,op) in bitwise_binary_ops.items():
     def make_func(op):
         @expose_primitive(code, unwrap_spec=[pos_32bit_int, pos_32bit_int])
         def func(interp, s_frame, receiver, argument):
-            from spyvm.model import W_LargePositiveInteger1Word
             res = op(receiver, argument)
             return interp.space.wrap_positive_32bit_int(res)
     make_func(op)
@@ -570,6 +568,7 @@ def func(interp, s_frame, w_rcvr):
 
 @expose_primitive(BITBLT_COPY_BITS, unwrap_spec=[object], clean_stack=False)
 def func(interp, s_frame, w_rcvr):
+    from spyvm.interpreter import Return
     if not isinstance(w_rcvr, model.W_PointersObject) or w_rcvr.size() < 15:
         raise PrimitiveFailedError
 
@@ -868,6 +867,7 @@ secs_between_1901_and_1970 = rarithmetic.r_uint((69 * 365 + 17) * 24 * 3600)
 def func(interp, s_frame, w_arg):
     import time
     sec_since_epoch = rarithmetic.r_uint(time.time())
+    # XXX: overflow check necessary?
     sec_since_1901 = sec_since_epoch + secs_between_1901_and_1970
     return interp.space.wrap_uint(sec_since_1901)
 

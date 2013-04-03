@@ -800,7 +800,7 @@ class BlockContextShadow(ContextPartShadow):
     def short_str(self):
         return 'BlockContext of %s (%s) [%d]' % (
             self.w_method().get_identifier_string(),
-            self.w_receiver(),
+            self.w_receiver().as_repr_string(),
             self.pc() + 1
         )
 
@@ -947,11 +947,11 @@ class MethodContextShadow(ContextPartShadow):
         return retval
 
     def short_str(self):
-        block = '[] of' if self.is_closure_context() else ''
-        return '%s %s (rcvr: %s) [pc: %d]' % (
+        block = '[] of ' if self.is_closure_context() else ''
+        return '%s%s (rcvr: %s) [pc: %d]' % (
             block,
             self.w_method().get_identifier_string(),
-            self.w_receiver(),
+            self.w_receiver().as_repr_string(),
             self.pc() + 1
         )
 

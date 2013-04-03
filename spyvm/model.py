@@ -114,6 +114,12 @@ class W_Object(object):
         true for some W_PointersObjects"""
         return True
 
+    def __repr__(self):
+        return self.as_repr_string()
+
+    def as_repr_string(self):
+        return "%r" % self
+
 class W_SmallInteger(W_Object):
     """Boxed integer value"""
     # TODO can we tell pypy that its never larger then 31-bit?
@@ -133,7 +139,7 @@ class W_SmallInteger(W_Object):
     def invariant(self):
         return isinstance(self.value, int) and self.value < 0x8000
 
-    def __repr__(self):
+    def as_repr_string(self):
         return "W_SmallInteger(%d)" % self.value
 
     def is_same_object(self, other):
@@ -338,9 +344,6 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
         assert self.w_class is not None
         return self.w_class
 
-    def __repr__(self):
-        return "<%s %s>" % (self.__class__.__name__, self)
-
     def __str__(self):
         if isinstance(self, W_PointersObject) and self.has_shadow():
             return self._shadow.getname()
@@ -349,6 +352,16 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
             if self.w_class.has_shadow():
                 name = self.w_class._shadow.name
             return "a %s" % (name or '?',)
+
+    def as_repr_string(self):
+        return self.as_embellished_string("W_O /w Class", "")
+
+    def as_embellished_string(self, className, additionalInformation):
+        from rpython.rlib.objectmodel import current_object_addr_as_int
+        name = self.shadow_of_my_class(self.space).name or "?"
+        return "<%s (a %s) %s>" % (className, name, 
+                #hex(current_object_addr_as_int(self)), 
+                additionalInformation)
 
     def invariant(self):
         return (W_AbstractObjectWithIdentityHash.invariant(self) and
@@ -512,6 +525,11 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         w_result._vars = [self.fetch(space, i) for i in range(len(self._vars))]
         return w_result
 
+    def as_repr_string(self):
+        return W_AbstractObjectWithClassReference.as_embellished_string(self, 
+                                className='W_PointersObject', 
+                                additionalInformation='len(%d)' % self.size())
+
 class W_BytesObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['bytes']
 
@@ -544,8 +562,9 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
     def __str__(self):
         return self.as_string()
 
-    def __repr__(self):
-        return "<W_BytesObject %r>" % (self.as_string(),)
+    def as_repr_string(self):
+        return W_AbstractObjectWithClassReference.as_embellished_string(self, 
+            className='W_BytesObject', additionalInformation=self.as_string())
 
     def as_string(self):
         return "".join(self.bytes)
@@ -745,6 +764,9 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def __str__(self):
         return self.as_string()
 
+    def as_repr_string(self):
+        return "<CompiledMethod %s>" % self.get_identifier_string()
+
     def as_string(self, markBytecode=0):
         from spyvm.interpreter import BYTECODE_TABLE
         j = 1
@@ -763,7 +785,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
             w_candidate = self.literals[-1]
             if isinstance(w_candidate, W_PointersObject):
                 c_shadow = w_candidate._shadow
-                if c_shadow is None:
+                if c_shadow is None and w_candidate.size() >= 2:
                     w_class = w_candidate._fetch(1)
                     if isinstance(w_class, W_PointersObject):
                         d_shadow = w_class._shadow
