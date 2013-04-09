@@ -217,33 +217,14 @@ def func(interp, s_frame, receiver, argument):
     return interp.space.wrap_int(receiver // argument)
     
 # #bitShift: -- return the shifted value
-@expose_primitive(BIT_SHIFT, unwrap_spec=[pos_32bit_int, int])
+@expose_primitive(BIT_SHIFT, unwrap_spec=[object, int])
 def func(interp, s_frame, receiver, argument):
-
-    # TODO: 1 << 100 will overflow to 0. Catch this gracefully by Primitive
     # Failing! Use ovfcheck_lfshift
     # (http://codespeak.net/pypy/dist/pypy/doc/coding-guide.html#integer-types)
-
-    # left shift, must fail if we lose bits beyond 32
-    from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, int_between
     if argument > 0:
-        # argument > 0, therefore the highest bit of upperbound is not set,
-        # i.e. upperbound is positive
-        upperbound = intmask(r_uint(-1) >> argument)
-        if 0 <= receiver <= upperbound:
-            shifted = intmask(receiver << argument)
-            return interp.space.wrap_positive_32bit_int(shifted)
-        else:
-            try:
-                shifted = ovfcheck(receiver << argument)
-            except OverflowError:
-                raise PrimitiveFailedError()
-            return interp.space.wrap_int(shifted)
-
-    # right shift, ok to lose bits
+        return receiver.lshift(interp.space, argument)
     else:
-        return interp.space.wrap_int(receiver >> -argument)
-   
+        return receiver.rshift(interp.space, -argument)
 
 # ___________________________________________________________________________
 # Float Primitives
@@ -578,7 +559,6 @@ def func(interp, s_frame, w_rcvr):
     except Return:
         w_dest_form = w_rcvr.fetch(space, 0)
         if w_dest_form.is_same_object(space.objtable['w_display']):
-            #import pdb; pdb.set_trace()
             w_bitmap = w_dest_form.fetch(space, 0)
             assert isinstance(w_bitmap, model.W_DisplayBitmap)
             w_bitmap.flush_to_screen()

@@ -157,7 +157,6 @@ def test_small_int_bit_shift_positive():
     assert prim(primitives.BIT_SHIFT, [4, 27]).value == 536870912
     
 def test_small_int_bit_shift_negative():
-    py.test.skip("While this would make sense, because of the specification, we dont shift negative numbers")
     assert prim(primitives.BIT_SHIFT, [-4, -3]).value == -1
     assert prim(primitives.BIT_SHIFT, [-4, -2]).value == -1
     assert prim(primitives.BIT_SHIFT, [-4, -1]).value == -2

@@ -32,7 +32,7 @@ class Interpreter(object):
         virtualizables=['s_context'],
         get_printable_location=get_printable_location
     )
-    
+
     def __init__(self, space, image=None, image_name="", trace=False,
                 max_stack_depth=constants.MAX_LOOP_DEPTH):
         self.space = space
@@ -380,6 +380,8 @@ class __extend__(ContextPartShadow):
         try:
             s_method = s_class.lookup(self.space.objtable["w_doesNotUnderstand"])
         except MethodNotFound:
+            from spyvm.shadow import ClassShadow
+            assert isinstance(s_class, ClassShadow)
             print "Missing doesDoesNotUnderstand in hierarchy of %s" % s_class.getname()
             raise
         s_frame = s_method.create_frame(self.space, receiver, [w_message], self)
