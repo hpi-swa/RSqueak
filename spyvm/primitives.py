@@ -321,6 +321,14 @@ def func(interp, s_frame, x, y):
 
 FAIL = 19
 
+@expose_primitive(FAIL)
+def func(interp, s_frame, argcount):
+    from spyvm.interpreter import ReturnFromTopLevel
+    if s_frame.w_method()._likely_methodname == 'doesNotUnderstand:':
+        print 'Probably Debugger called...'
+        raise ReturnFromTopLevel(interp.space.wrap_string("debugger called"))
+    raise PrimitiveFailedError()
+
 # ___________________________________________________________________________
 # Subscript and Stream Primitives
 
