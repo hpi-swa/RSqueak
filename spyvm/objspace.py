@@ -193,11 +193,14 @@ class ObjSpace(object):
         if bytes_len <= 4:
             return self.wrap_positive_32bit_int(intmask(val))
         else:
-            w_result = model.W_BytesObject(self, 
-                        self.classtable['w_LargePositiveInteger'], bytes_len)
-            for i in range(bytes_len):
-                w_result.setchar(i, chr(intmask((val >> i*8) & 255)))
-            return w_result
+            return self._wrap_uint_loop(val, bytes_len)
+
+    def _wrap_uint_loop(self, val, bytes_len):
+        w_result = model.W_BytesObject(self,
+                    self.classtable['w_LargePositiveInteger'], bytes_len)
+        for i in range(bytes_len):
+            w_result.setchar(i, chr(intmask((val >> i*8) & 255)))
+        return w_result
 
     def wrap_positive_32bit_int(self, val):
         # This will always return a positive value.
@@ -298,6 +301,8 @@ class ObjSpace(object):
         if not isinstance(w_v, model.W_PointersObject):
             raise UnwrappingError()
         return w_v
+
+    @jit.look_inside_iff(lambda self, w_array: jit.isconstant(w_array.size()))
     def unwrap_array(self, w_array):
         # Check that our argument has pointers format and the class:
         if not w_array.getclass(self).is_same_object(self.w_Array):
