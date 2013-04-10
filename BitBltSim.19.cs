@@ -94,7 +94,8 @@ computeMasks
 	simDestRaster _ destForm width - 1 // WordSize + 1.
 	sourceForm notNil
 		ifTrue: [simSourceBits _ sourceForm bits.
-				simSourceRaster _ sourceForm width - 1 // WordSize + 1].
+				simSourceRaster _ sourceForm width - 1 // WordSize + 1]
+		ifFalse: [simSourceRaster _ 0].
 	halftoneForm notNil
 		ifTrue: [simHalftoneBits _ halftoneForm bits].
 	simSkew _ (simSx - simDx) bitAnd: WordSize0.
@@ -141,7 +142,9 @@ copyLoop
 				ifTrue:
 					[prevWord _ prevWord bitAnd: simSkewMask.
 						    "XXX: Hack to work around out-of-bounds access"
-					thisWord := simSourceBits at: (simSourceIndex \\ simSourceBits size) + 1.
+					thisWord := (simSourceIndex < 0 or: [simSourceIndex >= simSourceBits size])
+						ifTrue: [simSourceBits at: 1]
+						ifFalse: [simSourceBits at: simSourceIndex + 1].
 										      	 "pick up next word"
 					skewWord _
 						prevWord bitOr: (thisWord bitAnd: simSkewMask bitInvert32).
@@ -190,7 +193,6 @@ sanitizeInput
 
 	destForm unhibernate.
 	sourceForm
-		ifNil: [sourceForm := destForm]
 		ifNotNil: [sourceForm unhibernate].
 	halftoneForm ifNotNil: [
 		(halftoneForm isKindOf: Form)
@@ -220,6 +222,7 @@ simClipRange
 				simDy _ clipY].
 	simDy + simH > (clipY + clipHeight)
 		ifTrue: [simH _ simH - ((simDy + simH) - (clipY + clipHeight))].
+	sourceForm isNil ifTrue: [^nil].
 	simSx < 0
 		ifTrue: [simDx _ simDx - simSx. simW _ simW + simSx. simSx _ 0].
 	simSx + simW > sourceForm width
