@@ -1,5 +1,6 @@
 from spyvm import constants, model, shadow, wrapper
 from spyvm.error import UnwrappingError, WrappingError, PrimitiveFailedError
+from rpython.rlib import jit
 from rpython.rlib.objectmodel import instantiate, specialize
 from rpython.rlib.rarithmetic import intmask, r_uint, int_between
 

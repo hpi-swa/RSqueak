@@ -1,6 +1,7 @@
 from rpython.rlib.rarithmetic import r_uint
 from rpython.rtyper.lltypesystem import lltype, rffi
 from rpython.rlib.runicode import unicode_encode_utf_8
+from rpython.rlib import jit
 
 from rsdl import RSDL, RSDL_helper
 
@@ -58,26 +59,11 @@ class SDLDisplay(object):
         self.depth = d
         self.screen = RSDL.SetVideoMode(w, h, 32, 0)
         assert self.screen
-        # self.fillwhite()
 
-    def set_pixelbuffer(self, pixelbuffer):
-        if self.has_surface:
-            RSDL.FreeSurface(self.surface)
-        pitch = 4 * self.width
-        rmask, gmask, bmask, amask = r_uint(0x000000FF), r_uint(0x0000FF00), r_uint(0x00FF0000), r_uint(0xFF000000)
-        self.surface = RSDL.CreateRGBSurfaceFrom(rffi.cast(rffi.VOIDP, pixelbuffer),
-                                                 self.width, self.height, 32, pitch,
-                                                 rmask, gmask, bmask, amask)
-        self.has_surface = True
+    def get_pixelbuffer(self):
+        return self.screen.c_pixels
 
-    def fillwhite(self):
-        fmt = self.screen.c_format
-        color = RSDL.MapRGB(fmt, 255, 255, 255)
-        RSDL.FillRect(self.screen, lltype.nullptr(RSDL.Rect), color)
-        RSDL.Flip(self.screen)
-
-    def blit(self):
-        RSDL.BlitSurface(self.surface, lltype.nullptr(RSDL.Rect), self.screen, lltype.nullptr(RSDL.Rect))
+    def flip(self):
         RSDL.Flip(self.screen)
 
     def get_next_event(self):

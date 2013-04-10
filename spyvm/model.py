@@ -698,13 +698,10 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
 
     def __init__(self, space, w_class, size, depth, display):
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
-        bytelen = NATIVE_DEPTH / depth * size
-        self.pixelbuffer = lltype.malloc(rffi.ULONGP.TO, bytelen, flavor='raw')
+        self._real_depth_buffer = [0] * size
+        self.pixelbuffer = display.get_pixelbuffer()
         self._realsize = size
         self.display = display
-
-    def __del__(self):
-        lltype.free(self.pixelbuffer, flavor='raw')
 
     def at0(self, space, index0):
         val = self.getword(index0)
@@ -715,7 +712,7 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
         self.setword(index0, word)
 
     def flush_to_screen(self):
-        self.display.blit()
+        self.display.flip()
 
     def size(self):
         return self._realsize
@@ -739,28 +736,23 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
 
 
 class W_DisplayBitmap1Bit(W_DisplayBitmap):
-    @jit.unroll_safe
     def getword(self, n):
-        word = r_uint(0)
-        pos = n * NATIVE_DEPTH
-        for i in xrange(32):
-            word <<= 1
-            pixel = self.pixelbuffer[pos]
-            word |= r_uint(pixel & 0x1)
-            pos += 1
-        return ~word
+        return self._real_depth_buffer[n]
 
     @jit.unroll_safe
     def setword(self, n, word):
-        pos = n * NATIVE_DEPTH
+        self._real_depth_buffer[n] = word
+        pos = n * NATIVE_DEPTH * 4
         mask = r_uint(1)
         mask <<= 31
         for i in xrange(32):
             bit = mask & word
-            pixel = r_uint((0x00ffffff * (bit == 0)) | r_uint(0xff000000))
-            self.pixelbuffer[pos] = pixel
+            self.pixelbuffer[pos] = rffi.r_uchar(0xff * (bit == 0))
+            self.pixelbuffer[pos + 1] = rffi.r_uchar(0xff * (bit == 0))
+            self.pixelbuffer[pos + 2] = rffi.r_uchar(0xff * (bit == 0))
+            self.pixelbuffer[pos + 3] = rffi.r_uchar(0xff)
             mask >>= 1
-            pos += 1
+            pos += 4
 
 
 # XXX Shouldn't compiledmethod have class reference for subclassed compiled
