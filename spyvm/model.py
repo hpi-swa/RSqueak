@@ -17,7 +17,7 @@ that create W_PointersObjects of correct size with attached shadows.
 import sys
 from spyvm import constants, error
 
-from rpython.rlib import rrandom, objectmodel, jit
+from rpython.rlib import rrandom, objectmodel, jit, signature
 from rpython.rlib.rarithmetic import intmask, r_uint
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib.objectmodel import instantiate, compute_hash
@@ -373,7 +373,7 @@ class W_Float(W_AbstractObjectWithIdentityHash):
     def size(self):
         return 2
 
-
+@signature.finishsigs
 class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     """Objects with arbitrary class (ie not CompiledMethod, SmallInteger or
     Float)."""
@@ -422,9 +422,13 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     def has_class(self):
         return self.s_class is not None
 
+    # we would like the following, but that leads to a recursive import
+    #@signature(signature.types.self(), signature.type.any(),
+    #           returns=signature.types.instance(ClassShadow))
     def shadow_of_my_class(self, space):
-        assert self.s_class is not None
-        return self.s_class
+        s_class = self.s_class
+        assert s_class is not None
+        return s_class
 
 class W_PointersObject(W_AbstractObjectWithClassReference):
     """Common object."""
@@ -525,10 +529,13 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     # Should only be used during squeak-image loading.
     def as_class_get_penumbra(self, space):
         from spyvm.shadow import ClassShadow
-        assert self._shadow is None or isinstance(self._shadow, ClassShadow)
-        if self._shadow is None:
-            self.store_shadow(ClassShadow(space, self))
-        return self._shadow
+        s_class = self._shadow
+        if s_class is None:
+            s_class = ClassShadow(space, self)
+            self.store_shadow(s_class)
+        else:
+            assert isinstance(s_class, ClassShadow)
+        return s_class
 
     def as_blockcontext_get_shadow(self, space):
         from spyvm.shadow import BlockContextShadow
