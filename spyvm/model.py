@@ -131,7 +131,8 @@ class W_Object(object):
         raise error.UnwrappingError("Got unexpected class in unwrap_uint")
 
     def fieldtype(self):
-        return object
+        from spyvm.fieldtypes import obj
+        return obj
 
 class W_SmallInteger(W_Object):
     """Boxed integer value"""
@@ -204,7 +205,8 @@ class W_SmallInteger(W_Object):
         return self
 
     def fieldtype(self):
-        return int
+        from spyvm.fieldtypes import SInt
+        return SInt
 
 class W_AbstractObjectWithIdentityHash(W_Object):
     """Object with explicit hash (ie all except small
@@ -310,7 +312,7 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
         return isinstance(self.value, int)
 
     def fieldtype(self):
-        from spyvm.fieldtype import LPI
+        from spyvm.fieldtypes import LPI
         return LPI
 
 class W_Float(W_AbstractObjectWithIdentityHash):
@@ -399,7 +401,8 @@ class W_Float(W_AbstractObjectWithIdentityHash):
         return 2
 
     def fieldtype(self):
-        return float
+        from spyvm.fieldtypes import flt
+        return flt
 
 @signature.finishsigs
 class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
@@ -631,8 +634,8 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
                                 additionalInformation='len=%d' % self.size())
 
     def fieldtype(self):
-        # from spyvm.fieldtype import
-        return object
+        from spyvm.fieldtypes import obj
+        return obj
 
 class W_BytesObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['bytes']

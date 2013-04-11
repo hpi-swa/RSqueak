@@ -1,14 +1,16 @@
 from spyvm import model, shadow
 
-from rpython.rlib import jit, signature
+from rpython.rlib import objectmodel, jit, signature
 
-LPI = object()
-int
-float
+class TypeTag():
+    pass
 
-object
+LPI = TypeTag()
+SInt = TypeTag()
+flt = TypeTag()
+obj = TypeTag()
 
-maps = dict()
+maps = {}
 
 class VarSizedFieldTypes():
     _immutable_fields_ = []
@@ -33,23 +35,24 @@ class FieldTypes(VarSizedFieldTypes):
     _attrs_ = ['types', 'parent', 'siblings', 'diff']
     _settled_ = True
 
-    def __init__(self, types, parent=None, change=(-1, object)):
+    def __init__(self, types, parent=None, change=(-1, obj)):
         self.types = types
         self.parent = parent
         if parent is not None:
-            assert change != (-1, object)
+            assert change != (-1, obj)
         self.diff = change
 
-        self.siblings = dict()
+        self.siblings = {}
 
     def fetch(self, w_object, n0):
         w_result = w_object._vars[n0]
+        assert w_result is not None
         types = self.types
-        if types[n0] is int:
+        if types[n0] is SInt:
             jit.record_known_class(w_result, model.W_SmallInteger)
         elif types[n0] is LPI:
             jit.record_known_class(w_result, model.W_LargePositiveInteger1Word)
-        elif types[n0] is float:
+        elif types[n0] is flt:
             jit.record_known_class(w_result, model.W_Float)
         return w_result
 
@@ -72,14 +75,16 @@ class FieldTypes(VarSizedFieldTypes):
             return self.descent([change])
         else:
             new_fieldtype = parent.ascent([change, self.diff])
-            assert new_fieldtype.types == self.types[0:n0] + [changed_type] + self.types[n0+1:]
+            if not objectmodel.we_are_translated():
+                assert new_fieldtype.types == self.types[0:n0] + [changed_type] + self.types[n0+1:]
             siblings[change] = new_fieldtype
             return new_fieldtype
 
     def ascent(self, changes):
         parent = self.parent
         if parent is None:
-            return self.descent(sorted(changes))
+            sort(changes)
+            return self.descent(changes)
         else:
             change = self.diff
             if changes[0][0] != change[0]:
@@ -105,7 +110,7 @@ class FieldTypes(VarSizedFieldTypes):
     @staticmethod
     def of_length(n):
         if n not in maps:
-            maps[n] = FieldTypes([object] * n)
+            maps[n] = FieldTypes([obj] * n)
         return maps[n]
 
 
@@ -126,8 +131,37 @@ def fieldtypes_of(w_obj):
             typer = FieldTypes.of_length(size)
             for i, w_val in enumerate(vars):
                 changed_type = w_val.fieldtype()
-                if changed_type is not object:
+                if changed_type is not obj:
                     typer = typer.sibling(i, changed_type)
             return typer
     except AttributeError:
         return nilTyper
+
+def sort(an_array):
+    end = len(an_array) - 1
+    sort_quick_inplace(an_array, 0, end)
+
+
+def sort_quick_inplace(an_array, start, end):
+    assert start >= 0 and end < len(an_array)
+
+    def partition(an_array, start, end):
+        key = an_array[start][0]
+        i = start - 1
+        j = end + 1
+        while True:
+            i += 1
+            j -= 1
+            while not an_array[j][0] <= key:
+                j -= 1
+            while not an_array[i][0] >= key:
+                i += 1
+            if j <= i:
+                return j
+            else:
+                an_array[i], an_array[j] = an_array[j], an_array[i]
+
+    if start < end:
+        mid = partition(an_array, start, end)
+        sort_quick_inplace(an_array, start, mid)
+        sort_quick_inplace(an_array, mid + 1, end)
