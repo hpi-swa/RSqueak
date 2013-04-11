@@ -251,24 +251,7 @@ class ObjSpace(object):
         raise UnwrappingError("expected a W_SmallInteger or W_LargePositiveInteger1Word, got %s" % (w_value,))
 
     def unwrap_uint(self, w_value):
-        if isinstance(w_value, model.W_SmallInteger):
-            val = w_value.value
-            if val < 0:
-                raise UnwrappingError("got negative integer")
-            return r_uint(w_value.value)
-        elif isinstance(w_value, model.W_LargePositiveInteger1Word):
-            return r_uint(w_value.value)
-        elif isinstance(w_value, model.W_BytesObject):
-            # TODO: Completely untested! This failed translation bigtime...
-            # XXX Probably we want to allow all subclasses
-            if not w_value.getclass(self).is_same_object(self.w_LargePositiveInteger):
-                raise UnwrappingError("Failed to convert bytes to word")
-            word = 0 
-            for i in range(w_value.size()):
-                word += r_uint(ord(w_value.getchar(i))) << 8*i
-            return word
-        else:
-            raise UnwrappingError("Got unexpected class in unwrap_uint")
+        return w_value.unwrap_uint(self)
 
     def unwrap_positive_32bit_int(self, w_value):
         if isinstance(w_value, model.W_SmallInteger):

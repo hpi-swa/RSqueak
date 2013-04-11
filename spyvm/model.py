@@ -127,6 +127,9 @@ class W_Object(object):
     def rshift(self, space, shift):
         raise error.PrimitiveFailedError()
 
+    def unwrap_uint(self, space):
+        raise error.UnwrappingError("Got unexpected class in unwrap_uint")
+
 class W_SmallInteger(W_Object):
     """Boxed integer value"""
     # TODO can we tell pypy that its never larger then 31-bit?
@@ -164,6 +167,14 @@ class W_SmallInteger(W_Object):
 
     def rshift(self, space, shift):
         return space.wrap_int(self.value >> shift)
+
+    def unwrap_uint(self, space):
+        from rpython.rlib.rarithmetic import r_uint
+        val = self.value
+        if val < 0:
+            raise error.UnwrappingError("got negative integer")
+        return r_uint(val)
+
 
     @jit.elidable
     def as_repr_string(self):
@@ -261,6 +272,10 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
         # the mask is only valid if the highest bit of self.value is set
         # and only in this case we do need such a mask
         return space.wrap_int((self.value >> shift) & mask)
+
+    def unwrap_uint(self, space):
+        from rpython.rlib.rarithmetic import r_uint
+        return r_uint(self.value)
 
     def clone(self, space):
         return W_LargePositiveInteger1Word(self.value)
@@ -650,6 +665,16 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         w_result = W_BytesObject(self.space, self.getclass(space), len(self.bytes))
         w_result.bytes = list(self.bytes)
         return w_result
+
+    def unwrap_uint(self, space):
+        # TODO: Completely untested! This failed translation bigtime...
+        # XXX Probably we want to allow all subclasses
+        if not self.getclass(space).is_same_object(space.w_LargePositiveInteger):
+            raise error.UnwrappingError("Failed to convert bytes to word")
+        word = 0 
+        for i in range(self.size()):
+            word += r_uint(ord(self.getchar(i))) << 8*i
+        return word
 
 class W_WordsObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['words']
