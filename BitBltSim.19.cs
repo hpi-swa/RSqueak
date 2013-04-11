@@ -119,47 +119,37 @@ computeMasks
 
 !BitBlt methodsFor: 'simulation' stamp: 'tfel 3/17/2013 16:17'!
 copyLoop
-	| prevWord thisWord skewWord mergeMask
-	  halftoneWord mergeWord |
-	1 to: simH do: "here is the vertical loop"
+	| prevWord thisWord skewWord mergeMask halftoneWord mergeWord noSimSkewMask |
+	noSimSkewMask _ simSkewMask bitInvert32.
+	1 to: simH do: 
 		[:i | 
-		(halftoneForm notNil)
-			ifTrue:
-				"XXX Accessing simHalftoneBits with wrap-around ... different from BlueBook"
-				[halftoneWord _ simHalftoneBits at: (1 + (simDy \\ simHalftoneBits size)).
+		halftoneForm notNil
+			ifTrue: 
+				[halftoneWord _ simHalftoneBits at: 1 + (simDy \\ simHalftoneBits size).
 				simDy _ simDy + simVDir]
 			ifFalse: [halftoneWord _ AllOnes].
 		skewWord _ halftoneWord.
 		simPreload
-			ifTrue: [prevWord _ simSourceBits at: simSourceIndex + 1.
-					"load the 32bit shifter. TODO: check if this is WordSize dependent"
-					simSourceIndex _ simSourceIndex + simHDir]
+			ifTrue: 
+				[prevWord _ simSourceBits at: simSourceIndex + 1.
+				simSourceIndex _ simSourceIndex + simHDir]
 			ifFalse: [prevWord _ 0].
 		mergeMask _ simMask1.
-		1 to: simNWords do: "here is the inner horizontal loop"
-			[:word |
-			sourceForm notNil "if source is used"
-				ifTrue:
-					[prevWord _ prevWord bitAnd: simSkewMask.
-						    "XXX: Hack to work around out-of-bounds access"
-					thisWord := (simSourceIndex < 0 or: [simSourceIndex >= simSourceBits size])
-						ifTrue: [simSourceBits at: 1]
-						ifFalse: [simSourceBits at: simSourceIndex + 1].
-										      	 "pick up next word"
-					skewWord _
-						prevWord bitOr: (thisWord bitAnd: simSkewMask bitInvert32).
-					prevWord _ thisWord.
-					"Change from BB: bitAnd: AllOnes to stay in word bounds"
-					skewWord _ ((skewWord bitShift: simSkew) bitAnd: AllOnes) bitOr:
-											(skewWord bitShift: simSkew - WordSize)].
-															"WordSize-bit rotate"
-			mergeWord _ self merge: (skewWord bitAnd: halftoneWord)
-								with: (simDestBits at: simDestIndex + 1).
-			simDestBits
-				at: simDestIndex + 1
-				put: ((mergeMask bitAnd: mergeWord)
-								bitOr: (mergeMask bitInvert32
-									bitAnd: (simDestBits at: simDestIndex + 1))).
+		1 to: simNWords do: 
+			[:word | 
+			sourceForm notNil
+				ifTrue: 
+					[thisWord _ (simSourceIndex <= 0 or: [simSourceIndex >= simSourceBits size])
+								ifTrue: [simSourceBits at: 1]
+								ifFalse: [simSourceBits at: simSourceIndex + 1].
+					prevWord _ (prevWord bitAnd: simSkewMask) bitShift: simSkew.
+					skewWord _ prevWord bitOr: ((thisWord bitAnd: noSimSkewMask) bitShift: simSkew - WordSize).
+					prevWord _ thisWord].
+			halftoneForm notNil 
+				ifTrue: [mergeWord _ self merge: (skewWord bitAnd: halftoneWord)
+						with: (simDestBits at: simDestIndex + 1)].
+			simDestBits at: simDestIndex + 1 put: ((mergeMask bitAnd: mergeWord)
+					bitOr: (mergeMask bitInvert32 bitAnd: (simDestBits at: simDestIndex + 1))).
 			simSourceIndex _ simSourceIndex + simHDir.
 			simDestIndex _ simDestIndex + simHDir.
 			word = (simNWords - 1)
