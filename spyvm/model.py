@@ -130,6 +130,9 @@ class W_Object(object):
     def unwrap_uint(self, space):
         raise error.UnwrappingError("Got unexpected class in unwrap_uint")
 
+    def fieldtype(self):
+        return object
+
 class W_SmallInteger(W_Object):
     """Boxed integer value"""
     # TODO can we tell pypy that its never larger then 31-bit?
@@ -199,6 +202,9 @@ class W_SmallInteger(W_Object):
 
     def clone(self, space):
         return self
+
+    def fieldtype(self):
+        return int
 
 class W_AbstractObjectWithIdentityHash(W_Object):
     """Object with explicit hash (ie all except small
@@ -303,6 +309,10 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
     def invariant(self):
         return isinstance(self.value, int)
 
+    def fieldtype(self):
+        from spyvm.fieldtype import LPI
+        return LPI
+
 class W_Float(W_AbstractObjectWithIdentityHash):
     """Boxed float value."""
     _attrs_ = ['value']
@@ -388,6 +398,9 @@ class W_Float(W_AbstractObjectWithIdentityHash):
     def size(self):
         return 2
 
+    def fieldtype(self):
+        return float
+
 @signature.finishsigs
 class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     """Objects with arbitrary class (ie not CompiledMethod, SmallInteger or
@@ -447,24 +460,30 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
 
 class W_PointersObject(W_AbstractObjectWithClassReference):
     """Common object."""
-    _attrs_ = ['_shadow', '_vars']
+    _attrs_ = ['_shadow', '_vars', 'fieldtypes']
 
     _shadow = None # Default value
 
     @jit.unroll_safe
     def __init__(self, space, w_class, size):
+        from spyvm.fieldtypes import fieldtypes_of_length
         """Create new object with size = fixed + variable size."""
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
+
         vars = self._vars = [None] * size
+        self.fieldtypes = fieldtypes_of_length(self.s_class, size)
+
         for i in range(size): # do it by hand for the JIT's sake
             vars[i] = w_nil
         self._shadow = None # Default value
 
     def fillin(self, space, g_self):
+        from spyvm.fieldtypes import fieldtypes_of
         self._vars = g_self.get_pointers()
         self.s_class = g_self.get_class().as_class_get_penumbra(space)
         self.hash = g_self.get_hash()
         self.space = space
+        self.fieldtypes = fieldtypes_of(self)
 
     def at0(self, space, index0):
         # To test, at0 = in varsize part
@@ -480,7 +499,9 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         return self._fetch(n0)
 
     def _fetch(self, n0):
-        return self._vars[n0]
+        # return self._vars[n0]
+        fieldtypes = jit.promote(self.fieldtypes)
+        return fieldtypes.fetch(self, n0)
 
     def store(self, space, n0, w_value):
         if self.has_shadow():
@@ -488,8 +509,9 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         return self._store(n0, w_value)
 
     def _store(self, n0, w_value):
-        self._vars[n0] = w_value
-
+        # self._vars[n0] = w_value
+        fieldtypes = jit.promote(self.fieldtypes)
+        return fieldtypes.store(self, n0, w_value)
 
     def varsize(self, space):
         return self.size() - self.instsize(space)
@@ -597,7 +619,8 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         return True
 
     def clone(self, space):
-        w_result = W_PointersObject(self.space, self.getclass(space), len(self._vars))
+        w_result = W_PointersObject(self.space, self.getclass(space),
+                                    len(self._vars))
         w_result._vars = [self.fetch(space, i) for i in range(len(self._vars))]
         return w_result
 
@@ -606,6 +629,10 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         return W_AbstractObjectWithClassReference.as_embellished_string(self, 
                                 className='W_PointersObject', 
                                 additionalInformation='len=%d' % self.size())
+
+    def fieldtype(self):
+        # from spyvm.fieldtype import
+        return object
 
 class W_BytesObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['bytes']

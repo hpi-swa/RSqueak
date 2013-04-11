@@ -201,7 +201,8 @@ class ClassShadow(AbstractCachingShadow):
     def new(self, extrasize=0):
         w_cls = self.w_self()
         if self.instance_kind == POINTERS:
-            w_new = model.W_PointersObject(self.space, w_cls, self.instsize()+extrasize)
+            size = self.instsize() + extrasize
+            w_new = model.W_PointersObject(self.space, w_cls, size)
         elif self.instance_kind == WORDS:
             w_new = model.W_WordsObject(self.space, w_cls, extrasize)
         elif self.instance_kind == BYTES:
