@@ -2,7 +2,10 @@ import py
 from spyvm import model, interpreter, primitives, shadow
 from spyvm import objspace, wrapper, constants
 
-mockclass = objspace.bootstrap_class
+def mockclass(space, instsize, w_superclass=None, w_metaclass=None,
+                    name='?', format=shadow.POINTERS, varsized=True):
+    return objspace.bootstrap_class(space, instsize, w_superclass, w_metaclass,
+                    name, format, varsized)
 
 space = objspace.ObjSpace()
 interp = interpreter.Interpreter(space)

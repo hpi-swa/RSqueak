@@ -1,5 +1,6 @@
 from spyvm import constants, model, shadow, wrapper
 from spyvm.error import UnwrappingError, WrappingError, PrimitiveFailedError
+from rpython.rlib import jit
 from rpython.rlib.objectmodel import instantiate, specialize
 from rpython.rlib.rarithmetic import intmask, r_uint, int_between
 
@@ -192,11 +193,14 @@ class ObjSpace(object):
         if bytes_len <= 4:
             return self.wrap_positive_32bit_int(intmask(val))
         else:
-            w_result = model.W_BytesObject(self, 
-                        self.classtable['w_LargePositiveInteger'], bytes_len)
-            for i in range(bytes_len):
-                w_result.setchar(i, chr(intmask((val >> i*8) & 255)))
-            return w_result
+            return self._wrap_uint_loop(val, bytes_len)
+
+    def _wrap_uint_loop(self, val, bytes_len):
+        w_result = model.W_BytesObject(self,
+                    self.classtable['w_LargePositiveInteger'], bytes_len)
+        for i in range(bytes_len):
+            w_result.setchar(i, chr(intmask((val >> i*8) & 255)))
+        return w_result
 
     def wrap_positive_32bit_int(self, val):
         # This will always return a positive value.
@@ -247,24 +251,7 @@ class ObjSpace(object):
         raise UnwrappingError("expected a W_SmallInteger or W_LargePositiveInteger1Word, got %s" % (w_value,))
 
     def unwrap_uint(self, w_value):
-        if isinstance(w_value, model.W_SmallInteger):
-            val = w_value.value
-            if val < 0:
-                raise UnwrappingError("got negative integer")
-            return r_uint(w_value.value)
-        elif isinstance(w_value, model.W_LargePositiveInteger1Word):
-            return r_uint(w_value.value)
-        elif isinstance(w_value, model.W_BytesObject):
-            # TODO: Completely untested! This failed translation bigtime...
-            # XXX Probably we want to allow all subclasses
-            if not w_value.getclass(self).is_same_object(self.w_LargePositiveInteger):
-                raise UnwrappingError("Failed to convert bytes to word")
-            word = 0 
-            for i in range(w_value.size()):
-                word += r_uint(ord(w_value.getchar(i))) << 8*i
-            return word
-        else:
-            raise UnwrappingError("Got unexpected class in unwrap_uint")
+        return w_value.unwrap_uint(self)
 
     def unwrap_positive_32bit_int(self, w_value):
         if isinstance(w_value, model.W_SmallInteger):
@@ -297,6 +284,8 @@ class ObjSpace(object):
         if not isinstance(w_v, model.W_PointersObject):
             raise UnwrappingError()
         return w_v
+
+    @jit.look_inside_iff(lambda self, w_array: jit.isconstant(w_array.size()))
     def unwrap_array(self, w_array):
         # Check that our argument has pointers format and the class:
         if not w_array.getclass(self).is_same_object(self.w_Array):

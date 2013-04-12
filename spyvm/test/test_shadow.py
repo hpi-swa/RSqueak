@@ -92,9 +92,9 @@ def methodcontext(w_sender=space.w_nil, pc=1, stackpointer=0, stacksize=5,
     w_object.store(space, constants.MTHDCTX_METHOD, method)
     # XXX
     w_object.store(space, constants.MTHDCTX_CLOSURE_OR_NIL, space.w_nil)
-    w_object.store(space, constants.MTHDCTX_RECEIVER, 'receiver')
+    w_object.store(space, constants.MTHDCTX_RECEIVER, space.wrap_string('receiver'))
 
-    w_object.store(space, constants.MTHDCTX_TEMP_FRAME_START, 'el')
+    w_object.store(space, constants.MTHDCTX_TEMP_FRAME_START, space.wrap_string('el'))
     return w_object
 
 def blockcontext(w_sender=space.w_nil, pc=1, stackpointer=1, stacksize=5,
@@ -106,7 +106,7 @@ def blockcontext(w_sender=space.w_nil, pc=1, stackpointer=1, stacksize=5,
     w_object.store(space, constants.BLKCTX_BLOCK_ARGUMENT_COUNT_INDEX, space.wrap_int(54))
     w_object.store(space, constants.BLKCTX_INITIAL_IP_INDEX, space.wrap_int(17))
     w_object.store(space, constants.BLKCTX_HOME_INDEX, home)
-    w_object.store(space, constants.BLKCTX_STACK_START, 'el')
+    w_object.store(space, constants.BLKCTX_STACK_START, space.wrap_string('el'))
     return w_object
 
 def test_context():
@@ -121,24 +121,24 @@ def test_context():
     assert s_object2.w_self() == w_object2
     assert s_object.s_sender() == None
     assert s_object2.s_sender() == s_object
-    assert s_object.w_receiver() == 'receiver'
+    assert s_object.w_receiver().as_string() == 'receiver'
     s_object2.settemp(0, 'a')
     s_object2.settemp(1, 'b')
     assert s_object2.gettemp(1) == 'b'
     assert s_object2.gettemp(0) == 'a'
     assert s_object.w_method() == w_m
     idx = s_object.stackstart()
-    w_object.store(space, idx, 'f')
-    w_object.store(space, idx + 1, 'g')
-    w_object.store(space, idx + 2, 'h')
-    assert s_object.stack() == ['f', 'g', 'h' ]
-    assert s_object.top() == 'h'
+    w_object.store(space, idx, space.wrap_string('f'))
+    w_object.store(space, idx + 1, space.wrap_string('g'))
+    w_object.store(space, idx + 2, space.wrap_string('h'))
+    assert map(lambda x: x.as_string(), s_object.stack()) == ['f', 'g', 'h' ]
+    assert s_object.top().as_string() == 'h'
     s_object.push('i')
     assert s_object.top() == 'i'
-    assert s_object.peek(1) == 'h'
+    assert s_object.peek(1).as_string() == 'h'
     assert s_object.pop() == 'i'
-    assert s_object.pop_and_return_n(2) == ['g', 'h']
-    assert s_object.pop() == 'f'
+    assert map(lambda x: x.as_string(), s_object.pop_and_return_n(2)) == ['g', 'h']
+    assert s_object.pop().as_string() == 'f'
     assert s_object.external_stackpointer() == s_object.stackstart()
 
 def test_methodcontext():

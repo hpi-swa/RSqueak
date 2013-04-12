@@ -17,7 +17,7 @@ that create W_PointersObjects of correct size with attached shadows.
 import sys
 from spyvm import constants, error
 
-from rpython.rlib import rrandom, objectmodel, jit
+from rpython.rlib import rrandom, objectmodel, jit, signature
 from rpython.rlib.rarithmetic import intmask, r_uint
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib.objectmodel import instantiate, compute_hash
@@ -127,6 +127,13 @@ class W_Object(object):
     def rshift(self, space, shift):
         raise error.PrimitiveFailedError()
 
+    def unwrap_uint(self, space):
+        raise error.UnwrappingError("Got unexpected class in unwrap_uint")
+
+    def fieldtype(self):
+        from spyvm.fieldtypes import obj
+        return obj
+
 class W_SmallInteger(W_Object):
     """Boxed integer value"""
     # TODO can we tell pypy that its never larger then 31-bit?
@@ -165,6 +172,14 @@ class W_SmallInteger(W_Object):
     def rshift(self, space, shift):
         return space.wrap_int(self.value >> shift)
 
+    def unwrap_uint(self, space):
+        from rpython.rlib.rarithmetic import r_uint
+        val = self.value
+        if val < 0:
+            raise error.UnwrappingError("got negative integer")
+        return r_uint(val)
+
+
     @jit.elidable
     def as_repr_string(self):
         return "W_SmallInteger(%d)" % self.value
@@ -188,6 +203,10 @@ class W_SmallInteger(W_Object):
 
     def clone(self, space):
         return self
+
+    def fieldtype(self):
+        from spyvm.fieldtypes import SInt
+        return SInt
 
 class W_AbstractObjectWithIdentityHash(W_Object):
     """Object with explicit hash (ie all except small
@@ -262,6 +281,10 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
         # and only in this case we do need such a mask
         return space.wrap_int((self.value >> shift) & mask)
 
+    def unwrap_uint(self, space):
+        from rpython.rlib.rarithmetic import r_uint
+        return r_uint(self.value)
+
     def clone(self, space):
         return W_LargePositiveInteger1Word(self.value)
 
@@ -287,6 +310,10 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
 
     def invariant(self):
         return isinstance(self.value, int)
+
+    def fieldtype(self):
+        from spyvm.fieldtypes import LPI
+        return LPI
 
 class W_Float(W_AbstractObjectWithIdentityHash):
     """Boxed float value."""
@@ -373,7 +400,11 @@ class W_Float(W_AbstractObjectWithIdentityHash):
     def size(self):
         return 2
 
+    def fieldtype(self):
+        from spyvm.fieldtypes import flt
+        return flt
 
+@signature.finishsigs
 class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     """Objects with arbitrary class (ie not CompiledMethod, SmallInteger or
     Float)."""
@@ -422,30 +453,40 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     def has_class(self):
         return self.s_class is not None
 
+    # we would like the following, but that leads to a recursive import
+    #@signature(signature.types.self(), signature.type.any(),
+    #           returns=signature.types.instance(ClassShadow))
     def shadow_of_my_class(self, space):
-        assert self.s_class is not None
-        return self.s_class
+        s_class = self.s_class
+        assert s_class is not None
+        return s_class
 
 class W_PointersObject(W_AbstractObjectWithClassReference):
     """Common object."""
-    _attrs_ = ['_shadow', '_vars']
+    _attrs_ = ['_shadow', '_vars', 'fieldtypes']
 
     _shadow = None # Default value
 
     @jit.unroll_safe
     def __init__(self, space, w_class, size):
+        from spyvm.fieldtypes import fieldtypes_of_length
         """Create new object with size = fixed + variable size."""
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
+
         vars = self._vars = [None] * size
+        self.fieldtypes = fieldtypes_of_length(self.s_class, size)
+
         for i in range(size): # do it by hand for the JIT's sake
             vars[i] = w_nil
         self._shadow = None # Default value
 
     def fillin(self, space, g_self):
+        from spyvm.fieldtypes import fieldtypes_of
         self._vars = g_self.get_pointers()
         self.s_class = g_self.get_class().as_class_get_penumbra(space)
         self.hash = g_self.get_hash()
         self.space = space
+        self.fieldtypes = fieldtypes_of(self)
 
     def at0(self, space, index0):
         # To test, at0 = in varsize part
@@ -461,7 +502,9 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         return self._fetch(n0)
 
     def _fetch(self, n0):
-        return self._vars[n0]
+        # return self._vars[n0]
+        fieldtypes = jit.promote(self.fieldtypes)
+        return fieldtypes.fetch(self, n0)
 
     def store(self, space, n0, w_value):
         if self.has_shadow():
@@ -469,8 +512,9 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         return self._store(n0, w_value)
 
     def _store(self, n0, w_value):
-        self._vars[n0] = w_value
-
+        # self._vars[n0] = w_value
+        fieldtypes = jit.promote(self.fieldtypes)
+        return fieldtypes.store(self, n0, w_value)
 
     def varsize(self, space):
         return self.size() - self.instsize(space)
@@ -525,10 +569,13 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     # Should only be used during squeak-image loading.
     def as_class_get_penumbra(self, space):
         from spyvm.shadow import ClassShadow
-        assert self._shadow is None or isinstance(self._shadow, ClassShadow)
-        if self._shadow is None:
-            self.store_shadow(ClassShadow(space, self))
-        return self._shadow
+        s_class = self._shadow
+        if s_class is None:
+            s_class = ClassShadow(space, self)
+            self.store_shadow(s_class)
+        else:
+            assert isinstance(s_class, ClassShadow)
+        return s_class
 
     def as_blockcontext_get_shadow(self, space):
         from spyvm.shadow import BlockContextShadow
@@ -575,7 +622,8 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         return True
 
     def clone(self, space):
-        w_result = W_PointersObject(self.space, self.getclass(space), len(self._vars))
+        w_result = W_PointersObject(self.space, self.getclass(space),
+                                    len(self._vars))
         w_result._vars = [self.fetch(space, i) for i in range(len(self._vars))]
         return w_result
 
@@ -584,6 +632,10 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         return W_AbstractObjectWithClassReference.as_embellished_string(self, 
                                 className='W_PointersObject', 
                                 additionalInformation='len=%d' % self.size())
+
+    def fieldtype(self):
+        from spyvm.fieldtypes import obj
+        return obj
 
 class W_BytesObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['bytes']
@@ -644,6 +696,16 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         w_result.bytes = list(self.bytes)
         return w_result
 
+    def unwrap_uint(self, space):
+        # TODO: Completely untested! This failed translation bigtime...
+        # XXX Probably we want to allow all subclasses
+        if not self.getclass(space).is_same_object(space.w_LargePositiveInteger):
+            raise error.UnwrappingError("Failed to convert bytes to word")
+        word = 0 
+        for i in range(self.size()):
+            word += r_uint(ord(self.getchar(i))) << 8*i
+        return word
+
 class W_WordsObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['words']
 
@@ -698,13 +760,10 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
 
     def __init__(self, space, w_class, size, depth, display):
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
-        bytelen = NATIVE_DEPTH / depth * size
-        self.pixelbuffer = lltype.malloc(rffi.ULONGP.TO, bytelen, flavor='raw')
+        self._real_depth_buffer = [0] * size
+        self.pixelbuffer = display.get_pixelbuffer()
         self._realsize = size
         self.display = display
-
-    def __del__(self):
-        lltype.free(self.pixelbuffer, flavor='raw')
 
     def at0(self, space, index0):
         val = self.getword(index0)
@@ -715,7 +774,7 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
         self.setword(index0, word)
 
     def flush_to_screen(self):
-        self.display.blit()
+        self.display.flip()
 
     def size(self):
         return self._realsize
@@ -739,28 +798,23 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
 
 
 class W_DisplayBitmap1Bit(W_DisplayBitmap):
-    @jit.unroll_safe
     def getword(self, n):
-        word = r_uint(0)
-        pos = n * NATIVE_DEPTH
-        for i in xrange(32):
-            word <<= 1
-            pixel = self.pixelbuffer[pos]
-            word |= r_uint(pixel & 0x1)
-            pos += 1
-        return ~word
+        return self._real_depth_buffer[n]
 
     @jit.unroll_safe
     def setword(self, n, word):
-        pos = n * NATIVE_DEPTH
+        self._real_depth_buffer[n] = word
+        pos = n * NATIVE_DEPTH * 4
         mask = r_uint(1)
         mask <<= 31
         for i in xrange(32):
             bit = mask & word
-            pixel = r_uint((0x00ffffff * (bit == 0)) | r_uint(0xff000000))
-            self.pixelbuffer[pos] = pixel
+            self.pixelbuffer[pos] = rffi.r_uchar(0xff * (bit == 0))
+            self.pixelbuffer[pos + 1] = rffi.r_uchar(0xff * (bit == 0))
+            self.pixelbuffer[pos + 2] = rffi.r_uchar(0xff * (bit == 0))
+            self.pixelbuffer[pos + 3] = rffi.r_uchar(0xff)
             mask >>= 1
-            pos += 1
+            pos += 4
 
 
 # XXX Shouldn't compiledmethod have class reference for subclassed compiled
