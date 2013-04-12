@@ -10,35 +10,41 @@ class SDLEventQueue(object):
     def __init__(self, default, maxlen=10):
         assert default
         self.default = default
-        self.ary = []
+        self.contents = []
         self.maxlen = 10
 
     def push(self, event):
-        if len(self.ary) == self.maxlen:
-            self.ary.pop(0)
-        self.ary.append(event)
+        contents = self.contents
+        assert len(contents) <= self.maxlen
+        if len(contents) == self.maxlen:
+            contents.pop(0)
+        contents.append(event)
 
     def shift(self):
-        if not self.ary:
-            self.ary += self.default
-        return self.ary.pop(0)
+        contents = self.contents
+        assert len(contents) <= self.maxlen
+        if contents == []:
+            contents = list(self.default)
+        return contents.pop(0)
 
     def peek(self):
-        if self.ary:
-            return self.ary[0]
+        contents = self.contents
+        assert len(contents) <= self.maxlen
+        if contents:
+            return contents[0]
         else:
             return self.default[0]
 
     def size(self):
-        if not self.ary:
+        if not self.contents:
             return len(self.default)
         else:
-            return len(self.ary)
+            return len(self.contents)
 
 
 class SDLDisplay(object):
     _attrs_ = ["screen", "width", "height", "depth", "surface", "has_surface",
-               "last_mouse_position", "mouse_downs", "mouse_ups", "key_ups", "key_downs"]
+               "last_mouse_position", "last_mouse_buttons", "mouse_downs", "mouse_ups", "key_ups", "key_downs"]
 
     def __init__(self, title):
         assert RSDL.Init(RSDL.INIT_VIDEO) >= 0
@@ -46,6 +52,7 @@ class SDLDisplay(object):
         RSDL.EnableUNICODE(1)
         self.has_surface = False
         self.last_mouse_position = [0, 0]
+        self.last_mouse_buttons = 0
         self.mouse_downs = SDLEventQueue([0])
         self.mouse_ups = SDLEventQueue([0])
         self.key_ups = SDLEventQueue([0])
@@ -74,25 +81,31 @@ class SDLDisplay(object):
                 ok = rffi.cast(lltype.Signed, RSDL.PollEvent(event))
                 if ok == 1:
                     c_type = rffi.getintfield(event, 'c_type')
+                    print ' %d' % c_type,
                     if c_type == RSDL.MOUSEBUTTONDOWN or c_type == RSDL.MOUSEBUTTONUP:
                         b = rffi.cast(RSDL.MouseButtonEventPtr, event)
                         btn = rffi.getintfield(b, 'c_button')
                         if btn == RSDL.BUTTON_LEFT:
-                            btn = 1
+                            button = 4
                         elif btn == RSDL.BUTTON_MIDDLE:
-                            btn = 2
+                            button = 2
                         elif btn == RSDL.BUTTON_RIGHT:
-                            btn = 4
-
-                        if c_type == RSDL.MOUSEBUTTONDOWN:
-                            self.mouse_downs.push(btn)
+                            button = 1
                         else:
-                            self.mouse_ups.push(btn)
+                            assert 0
+                            button = 0
+                        
+                        if c_type == RSDL.MOUSEBUTTONDOWN:
+                            self.mouse_downs.push(button)
+                            self.last_mouse_buttons |= button
+                        else:
+                            self.mouse_ups.push(button)
+                            self.last_mouse_buttons &= ~button
                     elif c_type == RSDL.MOUSEMOTION:
                         m = rffi.cast(RSDL.MouseMotionEventPtr, event)
                         x = rffi.getintfield(m, "c_x")
                         y = rffi.getintfield(m, "c_y")
-                        self.last_mouse_position = [x, y]
+                        self.last_mouse_position = list([x, y])
                     elif c_type == RSDL.KEYUP or c_type == RSDL.KEYDOWN:
                         p = rffi.cast(RSDL.KeyboardEventPtr, event)
                         char = rffi.getintfield(p.c_keysym, 'c_unicode')
@@ -111,7 +124,7 @@ class SDLDisplay(object):
 
     def mouse_button(self):
         self.get_next_event()
-        return self.mouse_ups.shift()
+        return self.last_mouse_buttons
 
     def next_keycode(self):
         self.get_next_event()
