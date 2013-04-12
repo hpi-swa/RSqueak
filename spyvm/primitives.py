@@ -219,8 +219,7 @@ def func(interp, s_frame, receiver, argument):
 # #bitShift: -- return the shifted value
 @expose_primitive(BIT_SHIFT, unwrap_spec=[object, int])
 def func(interp, s_frame, receiver, argument):
-    # Failing! Use ovfcheck_lfshift
-    # (http://codespeak.net/pypy/dist/pypy/doc/coding-guide.html#integer-types)
+    # overflow-checking done in lshift implementations
     if argument > 0:
         return receiver.lshift(interp.space, argument)
     else:
