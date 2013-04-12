@@ -71,7 +71,7 @@ class Stream(object):
                 return swapped_chrs2int(data_peek)
             else:
                 return chrs2int(data_peek)
-    
+
 
     def next(self):
         integer = self.peek()
@@ -146,19 +146,19 @@ image_versions = {
 if sys.maxint == 2 ** 63 - 1:
     image_versions.update({
    -0x5ff6ff0000000000:
-    # signed version of 0xA009010000000000: 
+    # signed version of 0xA009010000000000:
                         ImageVersion(68000, False, True,  False, False),
     0x00000000000109A2: ImageVersion(68002, True,  True,  True,  False),
    -0x5df6ff0000000000:
-    # signed version of 0xA209010000000000: 
-			ImageVersion(68002, False, True,  True,  False),
+    # signed version of 0xA209010000000000:
+                        ImageVersion(68002, False, True,  True,  False),
     0x00000000000109A3: ImageVersion(68003, True,  True,  True,  True ),
    -0x5cf6ff0000000000:
-    # signed version of 0xA309010000000000: 
-			ImageVersion(68003, False, True,  True,  True ),
+    # signed version of 0xA309010000000000:
+                        ImageVersion(68003, False, True,  True,  True ),
 })
 
-    
+
 def version(magic):
     ver = image_versions.get(magic, None)
     if ver is None:
@@ -198,8 +198,8 @@ def version_from_stream(stream):
                     pass # raise original error
         raise
 
-    
-    
+
+
 def reader_for_image(space, stream):
     ver = version_from_stream(stream)
     if not ver.is_big_endian:
@@ -207,7 +207,7 @@ def reader_for_image(space, stream):
     return ImageReader(space, stream, ver)
 
 class ImageReader(object):
-    
+
     def __init__(self, space, stream, version):
         self.space = space
         self.stream = stream
@@ -594,5 +594,3 @@ class ImageChunk(object):
 
     def iscompact(self):
         return 0 < self.classid < 32
-
-

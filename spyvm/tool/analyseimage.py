@@ -1,8 +1,8 @@
 import py
-from spyvm import squeakimage 
-from spyvm import constants 
-from spyvm import model 
-from spyvm import interpreter 
+from spyvm import squeakimage
+from spyvm import constants
+from spyvm import model
+from spyvm import interpreter
 import sys
 
 image_dir = py.path.local(__file__).dirpath().dirpath().dirpath('images')
@@ -11,14 +11,14 @@ mini_image = image_dir.join('mini.image')
 minitest_image = image_dir.join('minitest.image')
 
 def get_miniimage(space):
-    return squeakimage.reader_for_image(space, squeakimage.Stream(mini_image.open()))
+    return squeakimage.reader_for_image(space, squeakimage.Stream(mini_image.open(mode="rb")))
 
 def get_minitestimage(space):
-    return squeakimage.reader_for_image(space, squeakimage.Stream(minitest_image.open()))
+    return squeakimage.reader_for_image(space, squeakimage.Stream(minitest_image.open(mode="rb")))
 
 def create_image(space, image_reader):
     image_reader.initialize()
-    
+
     image = squeakimage.SqueakImage()
     image.from_reader(space, image_reader)
     return image
