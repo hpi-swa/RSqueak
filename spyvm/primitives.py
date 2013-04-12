@@ -46,7 +46,7 @@ del i
 prim_table_implemented_only = []
 
 # indicates that what is pushed is an index1, but it is unwrapped and
-# converted to an index0 
+# converted to an index0
 index1_0 = object()
 char = object()
 pos_32bit_int = object()
@@ -208,14 +208,14 @@ def func(interp, s_frame, receiver, argument):
     if argument == 0:
         raise PrimitiveFailedError()
     return interp.space.wrap_int(receiver // argument)
-    
+
 # #// -- return the result of a division, rounded towards negative infinite
 @expose_primitive(QUO, unwrap_spec=[int, int])
 def func(interp, s_frame, receiver, argument):
     if argument == 0:
         raise PrimitiveFailedError()
     return interp.space.wrap_int(receiver // argument)
-    
+
 # #bitShift: -- return the shifted value
 @expose_primitive(BIT_SHIFT, unwrap_spec=[object, int])
 def func(interp, s_frame, receiver, argument):
@@ -394,7 +394,7 @@ NEW_WITH_ARG = 71
 ARRAY_BECOME_ONE_WAY = 72     # Blue Book: primitiveBecome
 INST_VAR_AT = 73
 INST_VAR_AT_PUT = 74
-AS_OOP = 75                  
+AS_OOP = 75
 STORE_STACKP = 76             # Blue Book: primitiveAsObject
 SOME_INSTANCE = 77
 NEXT_INSTANCE = 78
@@ -481,7 +481,7 @@ def func(interp, s_frame, w_class):
         if not rgc.get_gcflag_extra(gcref):
             rgc.toggle_gcflag_extra(gcref)
             w_obj = rgc.try_cast_gcref_to_instance(model.W_Object, gcref)
-            if (w_obj is not None and w_obj.has_class() 
+            if (w_obj is not None and w_obj.has_class()
                 and w_obj.getclass(interp.space) is w_class):
                 match_w.append(w_obj)
             pending.extend(rgc.get_rpy_referents(gcref))
@@ -525,7 +525,7 @@ def func(interp, s_frame, w_class, bytecount, header):
 # I/O Primitives
 
 MOUSE_POINT = 90
-TEST_DISPLAY_DEPTH = 91 
+TEST_DISPLAY_DEPTH = 91
 SET_DISPLAY_MODE = 92
 INPUT_SEMAPHORE = 93
 GET_NEXT_EVENT = 94
@@ -633,10 +633,10 @@ def func(interp, s_frame, w_rcvr):
 
 @expose_primitive(STRING_REPLACE, unwrap_spec=[object, index1_0, index1_0, object, index1_0])
 def func(interp, s_frame, w_rcvr, start, stop, w_replacement, repStart):
-    """replaceFrom: start to: stop with: replacement startingAt: repStart 
-    Primitive. This destructively replaces elements from start to stop in the 
-    receiver starting at index, repStart, in the collection, replacement. Answer 
-    the receiver. Range checks are performed in the primitive only. Essential 
+    """replaceFrom: start to: stop with: replacement startingAt: repStart
+    Primitive. This destructively replaces elements from start to stop in the
+    receiver starting at index, repStart, in the collection, replacement. Answer
+    the receiver. Range checks are performed in the primitive only. Essential
     for Pharo Candle Symbols.
     | index repOff |
     repOff := repStart - start.
@@ -645,7 +645,7 @@ def func(interp, s_frame, w_rcvr, start, stop, w_replacement, repStart):
         whileTrue: [self at: index put: (replacement at: repOff + index)]"""
     if (start < 0 or start - 1 > stop or repStart < 0):
         raise PrimitiveFailedError()
-    # This test deliberately test for equal W_Object class. The Smalltalk classes 
+    # This test deliberately test for equal W_Object class. The Smalltalk classes
     # might be different (e.g. Symbol and ByteString)
     if w_rcvr.__class__ is not w_replacement.__class__:
         raise PrimitiveFailedError()
@@ -761,7 +761,7 @@ DRAW_RECTANGLE = 127
 def func(interp, s_frame, argument_count):
     if argument_count == 0:
         s_frame.pop()
-        return interp.space.wrap_string(interp.image_name)        
+        return interp.space.wrap_string(interp.image_name)
     elif argument_count == 1:
         pass # XXX
     raise PrimitiveFailedError
@@ -947,7 +947,7 @@ FLOAT_LESSOREQUAL = 45
 FLOAT_GREATEROREQUAL = 46
 FLOAT_EQUAL = 47
 FLOAT_NOTEQUAL = 48
-    
+
 bool_ops = {
     LESSTHAN: operator.lt,
     GREATERTHAN: operator.gt,
@@ -973,7 +973,7 @@ for (code,op) in bool_ops.items():
             w_res = interp.space.wrap_bool(res)
             return w_res
     make_func(op)
-    
+
 # ___________________________________________________________________________
 # Quick Push Const Primitives
 
@@ -1007,7 +1007,7 @@ for (code, name) in [
     (PUSH_TWO, "w_two"),
     ]:
     make_push_const_func(code, name)
-        
+
 # ___________________________________________________________________________
 # Control Primitives
 
@@ -1061,7 +1061,7 @@ def func(interp, s_frame, argument_count):
     if not w_block_ctx.getclass(interp.space).is_same_object(
         interp.space.w_BlockContext):
         raise PrimitiveFailedError()
-    
+
     assert isinstance(w_block_ctx, model.W_PointersObject)
 
     s_block_ctx = w_block_ctx.as_blockcontext_get_shadow(interp.space)
@@ -1091,7 +1091,7 @@ def func(interp, s_frame, w_block_ctx, args_w):
 
     if len(args_w) != exp_arg_cnt:
         raise PrimitiveFailedError()
-    
+
     # Push all the items from the array
     for i in range(exp_arg_cnt):
         s_block_ctx.push(args_w[i])
@@ -1194,7 +1194,7 @@ def activateClosure(interp, s_frame, w_block, args_w, mayContextSwitch=True):
     if not (outer_ctxt_class is space.w_MethodContext
                 or outer_ctxt_class is space.w_BlockContext):
         raise PrimitiveFailedError()
-    
+
     # additionally to the smalltalk implementation, this also pushes
     # args and copiedValues
     s_new_frame = block.asContextWithSender(s_frame.w_self(), args_w)
