@@ -28,7 +28,7 @@ def find_symbol(name):
     return perform(space.wrap_string(name), "asSymbol")
 
 def open_miniimage(space):
-    return squeakimage.reader_for_image(space, squeakimage.Stream(mini_image.open()))
+    return squeakimage.reader_for_image(space, squeakimage.Stream(mini_image.open(mode="rb")))
 
 def get_reader():
     return reader

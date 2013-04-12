@@ -90,7 +90,7 @@ def entry_point(argv):
         path = "Squeak.image"
 
     try:
-        f = open_file_as_stream(path, buffering=0)
+        f = open_file_as_stream(path, mode="rb", buffering=0)
     except OSError as e:
         os.write(2, "%s -- %s (LoadError)\n" % (os.strerror(e.errno), path))
         return 1
