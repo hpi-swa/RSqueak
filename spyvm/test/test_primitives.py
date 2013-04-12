@@ -637,6 +637,7 @@ def test_primitive_next_instance():
     assert w_1 is not w_2
 
 def test_primitive_be_display():
+    py.test.fail("This test leads to a Segfault.")
     assert space.objtable["w_display"] is None
     mock_display = model.W_PointersObject(space, space.w_Point, 4)
     w_wordbmp = model.W_WordsObject(space, space.w_Array, 100)
@@ -670,6 +671,7 @@ def test_primitive_be_display():
     assert mock_display.fetch(space, 0) is w_bitmap
 
 def test_primitive_force_display_update(monkeypatch):
+    py.test.fail("This test leads to a Segfault.")
     mock_display = model.W_PointersObject(space, space.w_Point, 4)
     w_wordbmp = model.W_WordsObject(space, space.w_Array, 100)
     mock_display.store(space, 0, w_wordbmp) # bitmap

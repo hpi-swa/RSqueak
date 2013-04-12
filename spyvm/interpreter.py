@@ -79,10 +79,6 @@ class Interpreter(object):
                 s_new_context = p.s_new_context
 
     def c_loop(self, s_context):
-        # ######################################################################
-        if self.trace:
-            padding = ' ' * (self.max_stack_depth - self.remaining_stack_depth)
-            print padding + s_context.short_str()
         old_pc = 0
         if not jit.we_are_jitted():
             self.quick_check_for_interrupt(s_context)
@@ -112,9 +108,9 @@ class Interpreter(object):
     def _get_adapted_tick_counter(self):
         # Normally, the tick counter is decremented by 1 for every message send.
         # Since we don't know how many messages are called during this trace, we
-        # just decrement by 10th of the trace length (num of bytecodes).
+        # just decrement by 100th of the trace length (num of bytecodes).
         trace_length = jit.current_trace_length()
-        decr_by = int(trace_length // 10)
+        decr_by = int(trace_length // 100)
         return max(decr_by, 1)
 
     def stack_frame(self, s_new_frame):
@@ -325,6 +321,7 @@ class __extend__(ContextPartShadow):
 
     def _sendSelector(self, w_selector, argcount, interp,
                       receiver, receiverclassshadow):
+        assert isinstance(w_selector, model.W_BytesObject)
         if interp.should_trace():
             print "%sSending selector %r to %r with: %r" % (
                 interp._last_indent, w_selector.as_string(), receiver,
@@ -344,9 +341,9 @@ class __extend__(ContextPartShadow):
             func = primitives.prim_holder.prim_table[code]
             # ##################################################################
             if interp.trace:
-                print "%s calling primitive %d \t(in #%s)" % (
+                print "%s calling primitive %d \t(in #%s, named #%s)" % (
                     ' ' * (interp.max_stack_depth - interp.remaining_stack_depth),
-                        code, self.w_method()._likely_methodname)
+                        code, self.w_method()._likely_methodname, w_selector.as_string())
             try:
                 # note: argcount does not include rcvr
                 return func(interp, self, argcount)
@@ -368,6 +365,12 @@ class __extend__(ContextPartShadow):
         arguments = self.pop_and_return_n(argcount)
         s_frame = s_method.create_frame(self.space, receiver, arguments, self)
         self.pop() # receiver
+
+        # ######################################################################
+        if interp.trace:
+            padding = ' ' * (interp.max_stack_depth - interp.remaining_stack_depth)
+            print padding + s_frame.short_str(argcount)
+
         return interp.stack_frame(s_frame)
 
     def _doesNotUnderstand(self, w_selector, argcount, interp, receiver):

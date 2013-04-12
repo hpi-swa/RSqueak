@@ -28,7 +28,6 @@ def assert_valid_index(space, n0, w_obj):
 # completes, and returns a result, or throws a PrimitiveFailedError.
 def make_failing(code):
     def raise_failing_default(interp, s_frame, argument_count):
-#        print "Primitive failed", code
         raise PrimitiveFailedError
     return raise_failing_default
 
@@ -527,7 +526,7 @@ SET_DISPLAY_MODE = 92
 INPUT_SEMAPHORE = 93
 GET_NEXT_EVENT = 94
 INPUT_WORD = 95
-BITBLT_COPY_BITS = 96 # OBSOLETE_INDEXED = 96
+BITBLT_COPY_BITS = 96
 SNAPSHOT = 97
 STORE_IMAGE_SEGMENT = 98
 LOAD_IMAGE_SEGMENT = 99
@@ -541,7 +540,6 @@ SCREEN_SIZE = 106
 MOUSE_BUTTONS = 107
 KBD_NEXT = 108
 KBD_PEEK = 109
-
 
 @expose_primitive(MOUSE_POINT, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):

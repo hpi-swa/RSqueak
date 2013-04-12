@@ -798,7 +798,7 @@ class BlockContextShadow(ContextPartShadow):
         # A blockcontext doesn't have any temps
         return 0
 
-    def short_str(self):
+    def short_str(self, argcount):
         return 'BlockContext of %s (%s) [%d]' % (
             self.w_method().get_identifier_string(),
             self.w_receiver().as_repr_string(),
@@ -947,13 +947,17 @@ class MethodContextShadow(ContextPartShadow):
         retval += "\nStack   : " + str(self.stack())
         return retval
 
-    def short_str(self):
+    def short_str(self, argcount):
         block = '[] of ' if self.is_closure_context() else ''
-        return '%s%s (rcvr: %s) [pc: %d]' % (
+        args = '%d' % argcount
+        for i in range(argcount - 1, -1, -1):
+            args += ': %s' % self.peek(i).as_repr_string()
+        return '%s%s (rcvr: %s) [pc: %d] (%s)' % (
             block,
             self.w_method().get_identifier_string(),
             self.w_receiver().as_repr_string(),
-            self.pc() + 1
+            self.pc() + 1,
+            args
         )
 
 class CompiledMethodShadow(object):
