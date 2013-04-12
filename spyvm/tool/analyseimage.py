@@ -1,8 +1,8 @@
 import py
-from spyvm import squeakimage 
-from spyvm import constants 
-from spyvm import model 
-from spyvm import interpreter 
+from spyvm import squeakimage
+from spyvm import constants
+from spyvm import model
+from spyvm import interpreter
 import sys
 
 image_dir = py.path.local(__file__).dirpath().dirpath().dirpath('images')
@@ -18,7 +18,7 @@ def get_minitestimage(space):
 
 def create_image(space, image_reader):
     image_reader.initialize()
-    
+
     image = squeakimage.SqueakImage()
     image.from_reader(space, image_reader)
     return image

@@ -32,16 +32,16 @@ def open_miniimage(space):
 
 def get_reader():
     return reader
-    
+
 def get_image():
     return image
-    
+
 def get_float_class():
     image = get_image()
     return image.special(constants.SO_FLOAT_CLASS)
 
 # ------ tests ------------------------------------------
-        
+
 def test_miniimageexists():
     assert mini_image.check(dir=False)
 
@@ -52,26 +52,26 @@ def test_read_header():
     assert reader.oldbaseaddress == -1221464064
     assert reader.specialobjectspointer == -1221336216
 
-def test_read_all_header(): 
+def test_read_all_header():
     reader = open_miniimage(space)
     reader.read_header()
     next = reader.stream.peek()
-    assert next != 0 #expects object header, which must not be 0x00000000 
-      
-      
+    assert next != 0 #expects object header, which must not be 0x00000000
+
+
 def test_all_pointers_are_valid():
     reader = get_reader()
     for each in reader.chunks.itervalues():
-        if each.format < 5: 
+        if each.format < 5:
             for pointer in each.data:
                 if (pointer & 1) != 1:
-                    assert pointer in reader.chunks   
-    
-    
+                    assert pointer in reader.chunks
+
+
 def test_there_are_31_compact_classes():
     reader = get_reader()
     assert len(reader.compactclasses) == 31
-    
+
 def test_float_class_size():
     w_float_class = get_float_class()
     assert w_float_class.size() == 9
@@ -81,7 +81,7 @@ def test_float_class_name():
     w_float_class_name = w_float_class.fetch(space, 6)
     assert isinstance(w_float_class_name, model.W_BytesObject)
     assert w_float_class_name.bytes == list("Float")
-    
+
 def test_str_w_object():
     w_float_class = get_float_class()
     w_float_class.as_class_get_shadow(space)
@@ -102,38 +102,38 @@ def test_nil_true_false():
     w = image.special(constants.SO_TRUE)
     w.shadow_of_my_class(space)
     assert str(w) == "a True" #yes, with article
-    
+
 def test_scheduler():
     image = get_image()
     w = image.special(constants.SO_SCHEDULERASSOCIATIONPOINTER)
     w0 = w.fetch(space, 0)
-    assert str(w0) == "Processor" 
+    assert str(w0) == "Processor"
     w0 = w.fetch(space, 1)
     w0.shadow_of_my_class(space)
-    assert str(w0) == "a ProcessorScheduler" 
-   
+    assert str(w0) == "a ProcessorScheduler"
+
 def test_special_classes0():
     image = get_image()
     # w = image.special(constants.SO_BITMAP_CLASS)
-    # assert str(w) == "Bitmap class" 
+    # assert str(w) == "Bitmap class"
     w = image.special(constants.SO_SMALLINTEGER_CLASS)
-    assert str(w) == "SmallInteger class" 
+    assert str(w) == "SmallInteger class"
     w = image.special(constants.SO_STRING_CLASS)
-    assert str(w) == "String class" 
+    assert str(w) == "String class"
     w = image.special(constants.SO_ARRAY_CLASS)
-    assert str(w) == "Array class" 
+    assert str(w) == "Array class"
     w = image.special(constants.SO_FLOAT_CLASS)
-    assert str(w) == "Float class" 
+    assert str(w) == "Float class"
     w = image.special(constants.SO_METHODCONTEXT_CLASS)
-    assert str(w) == "MethodContext class" 
+    assert str(w) == "MethodContext class"
     w = image.special(constants.SO_BLOCKCONTEXT_CLASS)
-    assert str(w) == "BlockContext class" 
+    assert str(w) == "BlockContext class"
     w = image.special(constants.SO_POINT_CLASS)
-    assert str(w) == "Point class" 
+    assert str(w) == "Point class"
     w = image.special(constants.SO_LARGEPOSITIVEINTEGER_CLASS)
-    assert str(w) == "LargePositiveInteger class" 
+    assert str(w) == "LargePositiveInteger class"
     w = image.special(constants.SO_MESSAGE_CLASS)
-    assert str(w) == "Message class" 
+    assert str(w) == "Message class"
 
     # to be continued
 
@@ -144,7 +144,7 @@ def test_special_classes0():
     SO_LOW_SPACE_SEMAPHORE = 17
     SO_SEMAPHORE_CLASS = 18
     SO_CHARACTER_CLASS = 19"""
-    
+
 def test_name_of_shadow_of_specials():
     image = get_image()
     w_doesnot = image.special(constants.SO_DOES_NOT_UNDERSTAND)
@@ -162,8 +162,8 @@ def test_special_objects0():
     w = image.special(constants.SO_DOES_NOT_UNDERSTAND)
     assert str(w) == "doesNotUnderstand:"
     assert str(w.getclass(space)) == "Symbol class" # for some strange reason not a symbol
-    
-    
+
+
     """
     SO_DOES_NOT_UNDERSTAND = 20
     SO_CANNOT_RETURN = 21
@@ -181,7 +181,7 @@ def test_special_objects0():
     SO_A_POINT = 33
     SO_CANNOT_INTERPRET = 34
     SO_A_METHODCONTEXT = 35 # deprecated in closure images
-    SO_BLOCKCLOSURE_CLASS = 36 
+    SO_BLOCKCLOSURE_CLASS = 36
     SO_A_BLOCKCONTEXT = 37 # deprecated in closure images
     SO_EXTERNAL_OBJECTS_ARRAY = 38
     SO_PSEUDOCONTEXT_CLASS = 39
@@ -209,7 +209,7 @@ def test_map_mirrors_to_classtable():
     assert w_true.is_same_object(space.w_true)
     w_false = image.special(constants.SO_FALSE)
     assert w_false.is_same_object(space.w_false)
-    
+
 def test_runimage():
     py.test.skip("This method actually runs an image. Fails since no graphical primitives yet")
     from spyvm import wrapper
@@ -221,32 +221,32 @@ def test_runimage():
     interp.interpret_with_w_frame(w_ctx)
 
 def test_compile_method():
-    sourcecode = """fib 
-                        ^self < 2 
-                            ifTrue: [ 1 ] 
+    sourcecode = """fib
+                        ^self < 2
+                            ifTrue: [ 1 ]
                             ifFalse: [ (self - 1) fib + (self - 2) fib ]"""
     perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
     assert perform(w(10), "fib").is_same_object(w(89))
 
 
-def w(any): 
+def w(any):
     # XXX could put this on the space?
     if any is None:
         return space.w_nil
     if isinstance(any, str):
         # assume never have strings of length 1
-        if len(any) == 1: 
+        if len(any) == 1:
             return space.wrap_chr(any)
         else:
             return space.wrap_string(any)
     if isinstance(any, bool):
         return space.wrap_bool(any)
-    if isinstance(any, int):    
+    if isinstance(any, int):
         return space.wrap_int(any)
     if isinstance(any, float):
         return space.wrap_float(any)
     else:
-        raise Exception    
+        raise Exception
 
 def test_become():
     sourcecode = """
@@ -268,7 +268,7 @@ def test_become():
       (p1 -> p2 = a)       ifFalse: [^10].
       (p1 == a key)        ifFalse: [^11].
       (p2 == a value)      ifFalse: [^12].
-  
+
       ^42"""
     perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
     w_result = perform(w(10), "testBecome")
