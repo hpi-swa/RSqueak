@@ -31,7 +31,7 @@ class VarSizedFieldTypes():
         w_obj._vars[n0] = w_val
 
 class FieldTypes(VarSizedFieldTypes):
-    _immutable_fields_ = ['types']
+    _immutable_fields_ = ['types[*]']
     _attrs_ = ['types', 'parent', 'siblings', 'diff']
     _settled_ = True
 
@@ -63,7 +63,7 @@ class FieldTypes(VarSizedFieldTypes):
             w_object.fieldtypes = self.sibling(n0, changed_type)
         w_object._vars[n0] = w_value
 
-
+    @jit.elidable
     def sibling(self, n0, changed_type):
         assert self.types[n0] is not changed_type
         change = (n0, changed_type)
@@ -108,6 +108,7 @@ class FieldTypes(VarSizedFieldTypes):
 
 
     @staticmethod
+    @jit.elidable
     def of_length(n):
         if n not in maps:
             maps[n] = FieldTypes([obj] * n)
