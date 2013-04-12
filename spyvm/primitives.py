@@ -219,11 +219,15 @@ def func(interp, s_frame, receiver, argument):
 # #bitShift: -- return the shifted value
 @expose_primitive(BIT_SHIFT, unwrap_spec=[object, int])
 def func(interp, s_frame, receiver, argument):
-    # overflow-checking done in lshift implementations
-    if argument > 0:
-        return receiver.lshift(interp.space, argument)
+    from rpython.rlib.rarithmetic import LONG_BIT
+    if -LONG_BIT < argument < LONG_BIT:
+        # overflow-checking done in lshift implementations
+        if argument > 0:
+            return receiver.lshift(interp.space, argument)
+        else:
+            return receiver.rshift(interp.space, -argument)
     else:
-        return receiver.rshift(interp.space, -argument)
+        raise PrimitiveFailedError()
 
 # ___________________________________________________________________________
 # Float Primitives
