@@ -36,6 +36,11 @@ class W_Object(object):
         space, as memory representation varies depending on PyPy translation."""
         return 0
 
+    def instsize(self, space):
+        """Return the size of the object reserved for instance variables.
+        Only returns something non-zero for W_PointersObjects"""
+        return 0
+
     def varsize(self, space):
         """Return bytesize of variable-sized part.
 
