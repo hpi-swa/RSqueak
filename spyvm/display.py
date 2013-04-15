@@ -61,7 +61,7 @@ class SDLDisplay(object):
         assert self.screen
 
     def get_pixelbuffer(self):
-        return self.screen.c_pixels
+        return rffi.cast(rffi.ULONGP, self.screen.c_pixels)
 
     def flip(self):
         RSDL.Flip(self.screen)

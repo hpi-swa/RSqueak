@@ -807,17 +807,15 @@ class W_DisplayBitmap1Bit(W_DisplayBitmap):
     @jit.unroll_safe
     def setword(self, n, word):
         self._real_depth_buffer[n] = word
-        pos = n * NATIVE_DEPTH * 4
+        pos = n * NATIVE_DEPTH
         mask = r_uint(1)
         mask <<= 31
         for i in xrange(32):
             bit = mask & word
-            self.pixelbuffer[pos] = rffi.r_uchar(0xff * (bit == 0))
-            self.pixelbuffer[pos + 1] = rffi.r_uchar(0xff * (bit == 0))
-            self.pixelbuffer[pos + 2] = rffi.r_uchar(0xff * (bit == 0))
-            self.pixelbuffer[pos + 3] = rffi.r_uchar(0xff)
+            pixel = r_uint((0x00ffffff * (bit == 0)) | r_uint(0xff000000))
+            self.pixelbuffer[pos] = pixel
             mask >>= 1
-            pos += 4
+            pos += 1
 
 
 # XXX Shouldn't compiledmethod have class reference for subclassed compiled
