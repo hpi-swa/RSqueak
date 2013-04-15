@@ -1136,7 +1136,7 @@ def func(interp, s_frame, w_rcvr):
     if not w_rcvr.getclass(interp.space).is_same_object(
         interp.space.w_Semaphore):
         raise PrimitiveFailedError()
-    s_frame.push(w_rcvr) # w_rcvr is the result in the old frame
+    # s_frame.push(w_rcvr) # w_rcvr is the result in the old frame
     return wrapper.SemaphoreWrapper(interp.space, w_rcvr).wait(s_frame.w_self())
 
 @expose_primitive(RESUME, unwrap_spec=[object], result_is_new_frame=True)
