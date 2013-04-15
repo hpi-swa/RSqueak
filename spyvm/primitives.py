@@ -577,8 +577,14 @@ def func(interp, s_frame, w_rcvr):
     # in case we return normally, we have to restore the removed w_rcvr
     return w_rcvr
 
-@expose_primitive(BE_CURSOR, unwrap_spec=[object])
-def func(interp, s_frame, w_rcvr):
+@expose_primitive(BE_CURSOR)
+def func(interp, s_frame, argcount):
+    if not (0 <= argcount <= 1):
+        raise PrimitiveFailedError()
+    w_rcvr = s_frame.peek(argcount)
+    if argcount == 1:
+        # TODO: use mask
+        w_mask = s_frame.peek(0)
     # TODO: Use info from cursor object.
     interp.space.objtable['w_cursor'] = w_rcvr
     return w_rcvr
