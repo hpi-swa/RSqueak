@@ -585,7 +585,26 @@ def func(interp, s_frame, argcount):
     if argcount == 1:
         # TODO: use mask
         w_mask = s_frame.peek(0)
-    # TODO: Use info from cursor object.
+        if not isinstance(w_mask, model.W_WordsObject):
+            raise PrimitiveFailedError()
+    else:
+        w_mask = None
+    w_bitmap = w_rcvr.fetch(interp.space, 0)
+    if not isinstance(w_bitmap, model.W_WordsObject):
+        raise PrimitiveFailedError()
+    width = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 1))
+    height = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 2))
+    depth = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 3))
+    hotpt = wrapper.PointWrapper(interp.space, w_rcvr.fetch(interp.space, 4))
+    display.SDLCursor.set(
+        w_bitmap.words,
+        width,
+        height,
+        hotpt.x(),
+        hotpt.y(),
+        w_mask.words if w_mask else None
+    )
+
     interp.space.objtable['w_cursor'] = w_rcvr
     return w_rcvr
 
