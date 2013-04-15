@@ -656,7 +656,7 @@ def func(interp, s_frame, w_rcvr, start, stop, w_replacement, repStart):
     if w_rcvr.__class__ is not w_replacement.__class__:
         raise PrimitiveFailedError()
     if (w_rcvr.size() - w_rcvr.instsize(interp.space) <= stop
-            or w_replacement.size() - w_replacement.instsize(interp.space) < repStart + (stop - start)):
+            or w_replacement.size() - w_replacement.instsize(interp.space) <= repStart + (stop - start)):
         raise PrimitiveFailedError()
     repOff = repStart - start
     for i0 in range(start, stop + 1):
