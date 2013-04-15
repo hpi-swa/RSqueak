@@ -6,50 +6,26 @@ from rpython.rlib import jit
 from rsdl import RSDL, RSDL_helper
 
 
-class SDLEventQueue(object):
-    def __init__(self, default, maxlen=10):
-        assert default
-        self.default = default
-        self.ary = []
-        self.maxlen = 10
-
-    def push(self, event):
-        if len(self.ary) == self.maxlen:
-            self.ary.pop(0)
-        self.ary.append(event)
-
-    def shift(self):
-        if not self.ary:
-            self.ary += self.default
-        return self.ary.pop(0)
-
-    def peek(self):
-        if self.ary:
-            return self.ary[0]
-        else:
-            return self.default[0]
-
-    def size(self):
-        if not self.ary:
-            return len(self.default)
-        else:
-            return len(self.ary)
+MOUSE_BTN_RIGHT = 1
+MOUSE_BTN_MIDDLE = 2
+MOUSE_BTN_LEFT = 4
+MOD_SHIFT  = 8
+MOD_CONTROL = 16
+MOD_ALT = 64
 
 
 class SDLDisplay(object):
     _attrs_ = ["screen", "width", "height", "depth", "surface", "has_surface",
-               "last_mouse_position", "mouse_downs", "mouse_ups", "key_ups", "key_downs"]
+               "mouse_position", "button", "key"]
 
     def __init__(self, title):
         assert RSDL.Init(RSDL.INIT_VIDEO) >= 0
         RSDL.WM_SetCaption(title, "RSqueakVM")
         RSDL.EnableUNICODE(1)
         self.has_surface = False
-        self.last_mouse_position = [0, 0]
-        self.mouse_downs = SDLEventQueue([0])
-        self.mouse_ups = SDLEventQueue([0])
-        self.key_ups = SDLEventQueue([0])
-        self.key_downs = SDLEventQueue([0])
+        self.mouse_position = [0, 0]
+        self.button = 0
+        self.key = 0
 
     def set_video_mode(self, w, h, d):
         assert w > 0 and h > 0
@@ -77,46 +53,60 @@ class SDLDisplay(object):
                     if c_type == RSDL.MOUSEBUTTONDOWN or c_type == RSDL.MOUSEBUTTONUP:
                         b = rffi.cast(RSDL.MouseButtonEventPtr, event)
                         btn = rffi.getintfield(b, 'c_button')
-                        if btn == RSDL.BUTTON_LEFT:
-                            btn = 1
+                        if btn == RSDL.BUTTON_RIGHT:
+                            btn = MOUSE_BTN_RIGHT
                         elif btn == RSDL.BUTTON_MIDDLE:
-                            btn = 2
-                        elif btn == RSDL.BUTTON_RIGHT:
-                            btn = 4
+                            btn = MOUSE_BTN_MIDDLE
+                        elif btn == RSDL.BUTTON_LEFT:
+                            btn = MOUSE_BTN_LEFT
 
                         if c_type == RSDL.MOUSEBUTTONDOWN:
-                            self.mouse_downs.push(btn)
+                            self.button |= btn
                         else:
-                            self.mouse_ups.push(btn)
+                            self.button &= ~btn
                     elif c_type == RSDL.MOUSEMOTION:
                         m = rffi.cast(RSDL.MouseMotionEventPtr, event)
                         x = rffi.getintfield(m, "c_x")
                         y = rffi.getintfield(m, "c_y")
-                        self.last_mouse_position = [x, y]
+                        self.mouse_position = [x, y]
                     elif c_type == RSDL.KEYUP or c_type == RSDL.KEYDOWN:
                         p = rffi.cast(RSDL.KeyboardEventPtr, event)
                         char = rffi.getintfield(p.c_keysym, 'c_unicode')
                         if char != 0:
-                            for c in unicode_encode_utf_8(unichr(char), 1, "ignore"):
-                                if c_type == RSDL.KEYUP:
-                                    self.key_ups.push(ord(c))
+                            chars = unicode_encode_utf_8(unichr(char), 1, "ignore")
+                            if len(chars) == 1:
+                                if c_type == RSDL.KEYDOWN:
+                                    self.key = ord(chars[0])
                                 else:
-                                    self.key_downs.push(ord(c))
+                                    pass # XXX: Todo?
         finally:
             lltype.free(event, flavor='raw')
 
+    def get_modifier_mask(self):
+        RSDL.PumpEvents()
+        mod = RSDL.GetModState()
+        modifier = 0
+        if mod & RSDL.KMOD_CTRL != 0:
+            modifier |= MOD_CONTROL
+        if mod & RSDL.KMOD_SHIFT != 0:
+            modifier |= MOD_SHIFT
+        if mod & RSDL.KMOD_ALT != 0:
+            modifier |= MOD_ALT
+        return modifier
+
     def mouse_point(self):
         self.get_next_event()
-        return self.last_mouse_position
+        return self.mouse_position
 
     def mouse_button(self):
         self.get_next_event()
-        return self.mouse_ups.shift()
+        return self.button | self.get_modifier_mask()
 
     def next_keycode(self):
-        self.get_next_event()
-        return self.key_downs.shift()
+        key = self.key
+        self.key = 0
+        return key
 
     def peek_keycode(self):
         self.get_next_event()
-        return self.key_downs.peek()
+        return self.key
