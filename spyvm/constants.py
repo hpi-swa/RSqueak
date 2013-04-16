@@ -183,4 +183,4 @@ def decode_compiled_method_header(header):
 #
 
 MAX_LOOP_DEPTH = 100
-INTERRUPT_COUNTER_SIZE = 1000
+INTERRUPT_COUNTER_SIZE = 10000
