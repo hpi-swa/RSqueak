@@ -813,6 +813,7 @@ def func(interp, s_frame, w_rcvr, left, right, top, bottom):
 # ___________________________________________________________________________
 # Squeak Miscellaneous Primitives (128-134)
 BECOME = 128
+SPECIAL_OBJECTS_ARRAY = 129
 FULL_GC = 130
 INC_GC = 131
 INTERRUPT_SEMAPHORE = 134
@@ -837,6 +838,10 @@ def func(interp, s_frame, w_rcvr, w_new):
 
 def fake_bytes_left(interp):
     return interp.space.wrap_int(2**20) # XXX we don't know how to do this :-(
+
+@expose_primitive(SPECIAL_OBJECTS_ARRAY, unwrap_spec=[object])
+def func(interp, s_frame, w_rcvr):
+    return interp.space.wrap_list(interp.image.special_objects)
 
 @expose_primitive(INC_GC, unwrap_spec=[object])
 @expose_primitive(FULL_GC, unwrap_spec=[object])
