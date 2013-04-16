@@ -133,7 +133,7 @@ class SDLCursorClass(object):
             data = self.words_to_bytes(len(data_words) * 4, data_words)
             try:
                 mask = self.words_to_bytes(len(data_words) * 4, mask_words)
-                self.cursor = RSDL.CreateCursor(data, mask, w, h, x, y)
+                self.cursor = RSDL.CreateCursor(data, mask, w * 2, h, x, y)
                 self.has_cursor = True
                 RSDL.SetCursor(self.cursor)
             finally:
