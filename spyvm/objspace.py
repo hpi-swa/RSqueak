@@ -135,9 +135,13 @@ class ObjSpace(object):
         # Very special nil hack: in order to allow W_PointersObject's to
         # initialize their fields to nil, we have to create it in the model
         # package, and then patch up its fields here:
-        w_nil = self.w_nil = model.w_nil
-        w_nil.space = self
-        w_nil.s_class = self.classtable['w_UndefinedObject'].as_class_get_penumbra(self)
+        def patch_nil(w_nil):
+            from spyvm.fieldtypes import nilTyper
+            w_nil.space = self
+            w_nil.fieldtypes = nilTyper
+            w_nil.s_class = self.classtable['w_UndefinedObject'].as_class_get_penumbra(self)
+            return w_nil
+        w_nil = self.w_nil = patch_nil(model.w_nil)
 
         w_true = self.classtable['w_True'].as_class_get_shadow(self).new()
         self.w_true = w_true
