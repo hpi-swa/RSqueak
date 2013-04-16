@@ -563,9 +563,13 @@ def func(interp, s_frame, w_rcvr):
         raise PrimitiveFailedError
 
     space = interp.space
+    trace = interp.trace
+    interp.trace = False
     try:
         s_frame._sendSelfSelector(interp.image.w_simulateCopyBits, 0, interp)
+        interp.trace = trace
     except Return:
+        interp.trace = trace
         w_dest_form = w_rcvr.fetch(space, 0)
         if w_dest_form.is_same_object(space.objtable['w_display']):
             w_bitmap = w_dest_form.fetch(space, 0)
