@@ -13,33 +13,33 @@ TestCase subclass: #BitBltSimTest
 !BitBlt methodsFor: 'private'!
 clipRange
 	destX >= clipX
-		ifTrue: 
+		ifTrue:
 			[simSx _ sourceX.
 			simDx _ destX.
 			simW _ width]
-		ifFalse: 
+		ifFalse:
 			[simSx _ sourceX + (clipX - destX).
 			simW _ width - (clipX - destX).
 			simDx _ clipX].
 	simDx + simW > (clipX + clipWidth) ifTrue: [simW _ simW - (simDx + simW - (clipX + clipWidth))].
 	destY >= clipY
-		ifTrue: 
+		ifTrue:
 			[simSy _ sourceY.
 			simDy _ destY.
 			simH _ height]
-		ifFalse: 
+		ifFalse:
 			[simSy _ sourceY + clipY - destY.
 			simH _ height - (clipY - destY).
 			simDy _ clipY].
 	simDy + simH > (clipY + clipHeight) ifTrue: [simH _ simH - (simDy + simH - (clipY + clipHeight))].
 	simSx < 0
-		ifTrue: 
+		ifTrue:
 			[simDx _ simDx - simSx.
 			simW _ simW + simSx.
 			simSx _ 0].
 	simSx + simW > sourceForm width ifTrue: [simW _ simW - (simSx + simW - sourceForm width)].
 	simSy < 0
-		ifTrue: 
+		ifTrue:
 			[simDy _ simDy - simSy.
 			simH _ simH + simSy.
 			simSy _ 0].
@@ -121,33 +121,38 @@ computeMasks
 copyLoop
 	| prevWord thisWord skewWord mergeMask halftoneWord mergeWord noSimSkewMask |
 	noSimSkewMask _ simSkewMask bitInvert32.
-	1 to: simH do: 
-		[:i | 
+	1 to: simH do:
+		[:i |
 		halftoneForm notNil
-			ifTrue: 
+			ifTrue:
 				[halftoneWord _ simHalftoneBits at: 1 + (simDy \\ simHalftoneBits size).
 				simDy _ simDy + simVDir]
 			ifFalse: [halftoneWord _ AllOnes].
 		skewWord _ halftoneWord.
 		simPreload
-			ifTrue: 
+			ifTrue:
 				[prevWord _ simSourceBits at: simSourceIndex + 1.
 				simSourceIndex _ simSourceIndex + simHDir]
 			ifFalse: [prevWord _ 0].
 		mergeMask _ simMask1.
-		1 to: simNWords do: 
-			[:word | 
+		1 to: simNWords do:
+			[:word |
 			sourceForm notNil
-				ifTrue: 
-					[thisWord _ (simSourceIndex <= 0 or: [simSourceIndex >= simSourceBits size])
+				ifTrue:
+					[prevWord _ prevWord bitAnd: simSkewMask.
+						"XXX: Hack to work around out-of-bounds access"
+					thisWord := (simSourceIndex < 0 or: [simSourceIndex >= simSourceBits size])
 								ifTrue: [simSourceBits at: 1]
 								ifFalse: [simSourceBits at: simSourceIndex + 1].
-					prevWord _ (prevWord bitAnd: simSkewMask) bitShift: simSkew.
-					skewWord _ prevWord bitOr: ((thisWord bitAnd: noSimSkewMask) bitShift: simSkew - WordSize).
-					prevWord _ thisWord].
-			halftoneForm notNil 
-				ifTrue: [mergeWord _ self merge: (skewWord bitAnd: halftoneWord)
-						with: (simDestBits at: simDestIndex + 1)].
+															"pick up next word"
+					skewWord _
+							prevWord bitOr: (thisWord bitAnd: simSkewMask bitInvert32).
+					prevWord _ thisWord.
+					"Change from BB: bitAnd: AllOnes to stay in word bounds"
+					skewWord _ ((skewWord bitShift: simSkew) bitAnd: AllOnes) bitOr:
+													(skewWord bitShift: simSkew - WordSize)].
+			mergeWord _ self merge: (skewWord bitAnd: halftoneWord)
+					with: (simDestBits at: simDestIndex + 1).
 			simDestBits at: simDestIndex + 1 put: ((mergeMask bitAnd: mergeWord)
 					bitOr: (mergeMask bitInvert32 bitAnd: (simDestBits at: simDestIndex + 1))).
 			simSourceIndex _ simSourceIndex + simHDir.
@@ -298,19 +303,19 @@ exampleTwo
 		extent: f extent
 		clipRect: Display computeBoundingBox.
 	"paint the gray Form on the screen for a while. "
-	[Sensor anyButtonPressed] whileFalse: 
+	[Sensor anyButtonPressed] whileFalse:
 		[aBitBlt destOrigin: Sensor cursorPoint.
 		aBitBlt simulateCopyBits].
 	Display newDepth: displayDepth.
 	"BitBlt exampleTwo"! !
 
 !BitBlt class methodsFor: 'private' stamp: 'tfel 3/15/2013 14:32'!
-exampleAt: originPoint rule: rule fillColor: mask 
+exampleAt: originPoint rule: rule fillColor: mask
 	"This builds a source and destination form and copies the source to the
 	destination using the specifed rule and mask. It is called from the method
 	named exampleOne. Only works with Display depth of 1"
 
-	| s d border aBitBlt | 
+	| s d border aBitBlt |
 	border:=Form extent: 32@32.
 	border fillBlack.
 	border fill: (1@1 extent: 30@30) fillColor: Color white.
@@ -326,7 +331,7 @@ exampleAt: originPoint rule: rule fillColor: mask
 	d displayOn: Display at: originPoint + (s width @0).
 	border displayOn: Display at: originPoint + (s width @0) rule: Form under.
 
-	d displayOn: Display at: originPoint + (s extent // (2 @ 1)). 
+	d displayOn: Display at: originPoint + (s extent // (2 @ 1)).
 	aBitBlt := BitBlt
 		destForm: Display
 		sourceForm: s
@@ -337,7 +342,7 @@ exampleAt: originPoint rule: rule fillColor: mask
 		extent: s extent
 		clipRect: Display computeBoundingBox.
 	aBitBlt simulateCopyBits.
-	border 
+	border
 		displayOn: Display at: originPoint + (s extent // (2 @ 1))
 		rule: Form under.
 
@@ -468,7 +473,7 @@ bitsForTest: index
 	| results |
 	results := #(
 		#(0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)
-		
+
 		#(0 0 0 0 0 0 0 33554304 33554304 33554304 33554304 33554304 33554304 33554304 33554304 33554304 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)
 
 		#(0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 33554304 33554304 33554304 33554304 33554304 33554304 33554304 33554304 33554304 0 0 0 0 0 0 0)
@@ -511,7 +516,7 @@ runTest: index
 
 !BitBltSimTest methodsFor: 'running-modes' stamp: 'tfel 3/15/2013 14:37'!
 runTestDark: index
-	| s d rule | 
+	| s d rule |
 	rule := index - 1.
 	s := self sourceForm.
 	d := self destForm.
@@ -530,7 +535,7 @@ runTestDark: index
 
 !BitBltSimTest methodsFor: 'running-modes' stamp: 'tfel 3/15/2013 14:30'!
 runTestLarge: index
-	| s d aBitBlt mask rule simD originPoint destOrigin | 
+	| s d aBitBlt mask rule simD originPoint destOrigin |
 	originPoint := path at: index.
 	rule := index - 1.
 	mask := nil.
@@ -553,7 +558,7 @@ runTestLarge: index
 		extent: s extent
 		clipRect: simD computeBoundingBox.
 	aBitBlt simulateCopyBits.
-	
+
 	aBitBlt := BitBlt
 		destForm: d
 		sourceForm: s
@@ -569,7 +574,7 @@ runTestLarge: index
 
 !BitBltSimTest methodsFor: 'running-modes' stamp: 'tfel 3/15/2013 14:43'!
 runTestVisual: index
-	| s d aBitBlt mask rule simD originPoint destOrigin | 
+	| s d aBitBlt mask rule simD originPoint destOrigin |
 	originPoint := path at: index.
 	rule := index - 1.
 	mask := nil.
@@ -592,7 +597,7 @@ runTestVisual: index
 		extent: s extent
 		clipRect: simD computeBoundingBox.
 	aBitBlt simulateCopyBits.
-	
+
 	aBitBlt := BitBlt
 		destForm: d
 		sourceForm: s
@@ -606,7 +611,7 @@ runTestVisual: index
 
 	simD displayOn: Display at: originPoint + (s width @ 0) rule: Form over.
 	d displayOn: Display at: originPoint - (10@0) rule: Form over.
-	
+
 	d bits = simD bits
 		ifTrue: [index asString displayAt: originPoint - 20]
 		ifFalse: [(index asString, ' failed') displayAt: originPoint - 20. self assert: false].! !
