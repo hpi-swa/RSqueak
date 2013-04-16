@@ -575,9 +575,34 @@ def func(interp, s_frame, w_rcvr):
     # in case we return normally, we have to restore the removed w_rcvr
     return w_rcvr
 
-@expose_primitive(BE_CURSOR, unwrap_spec=[object])
-def func(interp, s_frame, w_rcvr):
-    # TODO: Use info from cursor object.
+@expose_primitive(BE_CURSOR)
+def func(interp, s_frame, argcount):
+    if not (0 <= argcount <= 1):
+        raise PrimitiveFailedError()
+    w_rcvr = s_frame.peek(argcount)
+    if argcount == 1:
+        # TODO: use mask
+        w_mask = s_frame.peek(0)
+        if not isinstance(w_mask, model.W_WordsObject):
+            raise PrimitiveFailedError()
+    else:
+        w_mask = None
+    w_bitmap = w_rcvr.fetch(interp.space, 0)
+    if not isinstance(w_bitmap, model.W_WordsObject):
+        raise PrimitiveFailedError()
+    width = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 1))
+    height = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 2))
+    depth = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 3))
+    hotpt = wrapper.PointWrapper(interp.space, w_rcvr.fetch(interp.space, 4))
+    display.SDLCursor.set(
+        w_bitmap.words,
+        width,
+        height,
+        hotpt.x(),
+        hotpt.y(),
+        w_mask.words if w_mask else None
+    )
+
     interp.space.objtable['w_cursor'] = w_rcvr
     return w_rcvr
 
@@ -647,8 +672,8 @@ def func(interp, s_frame, w_rcvr, start, stop, w_replacement, repStart):
     # might be different (e.g. Symbol and ByteString)
     if w_rcvr.__class__ is not w_replacement.__class__:
         raise PrimitiveFailedError()
-    if (w_rcvr.size() <= stop
-            or w_replacement.size() < repStart + (stop - start)):
+    if (w_rcvr.size() - w_rcvr.instsize(interp.space) <= stop
+            or w_replacement.size() - w_replacement.instsize(interp.space) <= repStart + (stop - start)):
         raise PrimitiveFailedError()
     repOff = repStart - start
     for i0 in range(start, stop + 1):
@@ -1128,7 +1153,7 @@ def func(interp, s_frame, w_rcvr):
     if not w_rcvr.getclass(interp.space).is_same_object(
         interp.space.w_Semaphore):
         raise PrimitiveFailedError()
-    s_frame.push(w_rcvr) # w_rcvr is the result in the old frame
+    # s_frame.push(w_rcvr) # w_rcvr is the result in the old frame
     return wrapper.SemaphoreWrapper(interp.space, w_rcvr).wait(s_frame.w_self())
 
 @expose_primitive(RESUME, unwrap_spec=[object], result_is_new_frame=True)
