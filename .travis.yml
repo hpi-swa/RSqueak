@@ -1,0 +1,22 @@
+language: python
+python:
+  - 2.7
+env:
+  matrix:
+    - TEST_TYPE=own
+    - TEST_TYPE=translate
+install:
+  - pip install rsdl --use-mirrors
+  - wget https://bitbucket.org/pypy/pypy/get/default.tar.bz2 -O `pwd`/../pypy.tar.bz2 || wget https://bitbucket.org/pypy/pypy/get/default.tar.bz2 -O `pwd`/../pypy.tar.bz2
+  - tar -xf `pwd`/../pypy.tar.bz2 -C `pwd`/../
+  - mv ../pypy-pypy* ../pypy-pypy
+script:
+  - export PYTHONPATH=$PYTHONPATH:../pypy-pypy/:.
+  - "case \"$TEST_TYPE\" in
+       own)
+         py.test
+         ;;
+      translate)
+        python ../pypy-pypy/rpython/bin/rpython --batch targetimageloadingsmalltalk.py
+        ;;
+    esac"

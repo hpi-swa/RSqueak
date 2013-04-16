@@ -267,15 +267,12 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
         return "W_LargePositiveInteger1Word(%d)" % r_uint(self.value)
 
     def lshift(self, space, shift):
-        from rpython.rlib.rarithmetic import ovfcheck, intmask, r_uint
+        from rpython.rlib.rarithmetic import intmask, r_uint
         # shift > 0, therefore the highest bit of upperbound is not set,
         # i.e. upperbound is positive
         upperbound = intmask(r_uint(-1) >> shift)
         if 0 <= self.value <= upperbound:
-            try:
-                shifted = intmask(ovfcheck(self.value << shift))
-            except OverflowError:
-                raise error.PrimitiveFailedError()
+            shifted = intmask(self.value << shift)
             return space.wrap_positive_32bit_int(shifted)
         else:
             raise error.PrimitiveFailedError()
