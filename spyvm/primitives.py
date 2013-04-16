@@ -582,13 +582,13 @@ def func(interp, s_frame, argcount):
     if not (0 <= argcount <= 1):
         raise PrimitiveFailedError()
     w_rcvr = s_frame.peek(argcount)
+    mask_words = None
     if argcount == 1:
         # TODO: use mask
         w_mask = s_frame.peek(0)
         if not isinstance(w_mask, model.W_WordsObject):
             raise PrimitiveFailedError()
-    else:
-        w_mask = None
+        mask_words = w_mask.words
     w_bitmap = w_rcvr.fetch(interp.space, 0)
     if not isinstance(w_bitmap, model.W_WordsObject):
         raise PrimitiveFailedError()
@@ -602,7 +602,7 @@ def func(interp, s_frame, argcount):
         height,
         hotpt.x(),
         hotpt.y(),
-        w_mask.words if w_mask else None
+        mask_words=mask_words
     )
 
     interp.space.objtable['w_cursor'] = w_rcvr

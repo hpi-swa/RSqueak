@@ -81,7 +81,9 @@ class SDLDisplay(object):
                                 else:
                                     pass # XXX: Todo?
                     elif c_type == RSDL.QUIT:
-                        exit(0)
+                        from spyvm.interpreter import ReturnFromTopLevel
+                        print "Window closed.."
+                        raise SystemExit()
         finally:
             lltype.free(event, flavor='raw')
 
@@ -121,6 +123,7 @@ class SDLCursorClass(object):
     instance = None
 
     def __init__(self):
+        self.cursor = lltype.nullptr(RSDL.CursorPtr.TO)
         self.has_cursor = False
         self.has_display = False
 
@@ -129,10 +132,10 @@ class SDLCursorClass(object):
             return
         if self.has_cursor:
             RSDL.FreeCursor(self.cursor)
+        data = self.words_to_bytes(len(data_words) * 4, data_words)
         try:
-            data = self.words_to_bytes(len(data_words) * 4, data_words)
+            mask = self.words_to_bytes(len(data_words) * 4, mask_words)
             try:
-                mask = self.words_to_bytes(len(data_words) * 4, mask_words)
                 self.cursor = RSDL.CreateCursor(data, mask, w * 2, h, x, y)
                 self.has_cursor = True
                 RSDL.SetCursor(self.cursor)
