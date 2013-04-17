@@ -561,18 +561,14 @@ def func(interp, s_frame, w_rcvr):
     if not isinstance(w_rcvr, model.W_PointersObject) or w_rcvr.size() < 15:
         raise PrimitiveFailedError
 
-    # only allow combinationRules 0-15
+    # only allow combinationRules 0-41
     if interp.space.unwrap_positive_32bit_int(w_rcvr.fetch(interp.space, 3)) > 41:
         raise PrimitiveFailedError
 
     space = interp.space
-    trace = interp.trace
-    interp.trace = False
     try:
         s_frame._sendSelfSelector(interp.image.w_simulateCopyBits, 0, interp)
-        interp.trace = trace
     except Return:
-        interp.trace = trace
         w_dest_form = w_rcvr.fetch(space, 0)
         if w_dest_form.is_same_object(space.objtable['w_display']):
             w_bitmap = w_dest_form.fetch(space, 0)
@@ -704,6 +700,10 @@ def func(interp, s_frame, w_rcvr):
 @expose_primitive(KBD_NEXT, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
     code = interp.space.get_display().next_keycode()
+    if code == ord('t'):
+        interp.trace = True
+    elif code == ord('s'):
+        interp.trace = False
     if code == 0:
         return interp.space.w_nil
     else:
