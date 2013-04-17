@@ -141,7 +141,7 @@ copyLoop
 				ifTrue:
 					[prevWord _ prevWord bitAnd: simSkewMask.
 						"XXX: Hack to work around out-of-bounds access"
-					thisWord := (simSourceIndex < 0 or: [simSourceIndex >= simSourceBits size])
+					thisWord _ (simSourceIndex < 0 or: [simSourceIndex >= simSourceBits size])
 								ifTrue: [simSourceBits at: 1]
 								ifFalse: [simSourceBits at: simSourceIndex + 1].
 															"pick up next word"
@@ -194,7 +194,7 @@ merge: srcWord with: dstWord
 			combinationRule = 22 ifTrue: [^ dstWord]. "OLDrgbDiff"
 			combinationRule = 23 ifTrue: [^ dstWord]. "OLDtallyIntoMap"
 			combinationRule = 24 ifTrue: [^ dstWord]. "alphaBlend"
-			combinationRule = 25 ifTrue: [^ dstWord]. "pixPaint"
+			combinationRule = 25 ifTrue: [^ self pixPaint: srcWord with: dstWord].
 			combinationRule = 26 ifTrue: [^ dstWord]. "pixMask"
 			combinationRule = 27 ifTrue: [^ dstWord]. "rgbMax"
 			combinationRule = 28 ifTrue: [^ dstWord]. "rgbMin"
@@ -212,6 +212,11 @@ merge: srcWord with: dstWord
 			combinationRule = 40 ifTrue: [^ dstWord]. "fixAlpha"
 			combinationRule = 41 ifTrue: [^ dstWord]. "rgbComponentAlpha"].
 	self error: 'Combination Rule is not supported.'! !
+
+!BitBlt methodsFor: 'simulation' stamp: 'tfel 1/1/1981 00:00'!
+pixPaint: srcWord with: dstWord
+	srcWord = 0 ifTrue: [^ dstWord].
+	^ srcWord bitOr: (dstWord bitAnd: srcWord bitInvert32)! !
 
 !BitBlt methodsFor: 'simulation' stamp: 'tfel 3/15/2013 14:49'!
 sanitizeInput
