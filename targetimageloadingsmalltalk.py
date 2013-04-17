@@ -4,7 +4,8 @@ import os
 from rpython.rlib.streamio import open_file_as_stream
 from rpython.rlib import jit
 
-from spyvm import model, interpreter, squeakimage, objspace, wrapper, model
+from spyvm import model, interpreter, squeakimage, objspace, wrapper, model, \
+                error
 from spyvm.tool.analyseimage import create_image
 
 
@@ -15,6 +16,8 @@ def _run_benchmark(interp, number, benchmark):
         w_result = interp.perform(w_object, benchmark)
     except interpreter.ReturnFromTopLevel, e:
         w_result = e.object
+    except error.Exit, e:
+        print e.msg
     t2 = time.time()
     if w_result:
         if isinstance(w_result, model.W_BytesObject):
@@ -30,7 +33,10 @@ def _run_image(interp):
     w_ctx = ap.suspended_context()
     assert isinstance(w_ctx, model.W_PointersObject)
     ap.store_suspended_context(space.w_nil)
-    interp.interpret_with_w_frame(w_ctx)
+    try:
+        interp.interpret_with_w_frame(w_ctx)
+    except error.Exit, e:
+        print e.msg
     return 0
 
 

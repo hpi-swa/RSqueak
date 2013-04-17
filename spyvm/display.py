@@ -80,9 +80,8 @@ class SDLDisplay(object):
                                 else:
                                     pass # XXX: Todo?
                     elif c_type == RSDL.QUIT:
-                        from spyvm.interpreter import ReturnFromTopLevel
-                        print "Window closed.."
-                        raise SystemExit()
+                        from spyvm.error import Exit
+                        raise Exit("Window closed..")
         finally:
             lltype.free(event, flavor='raw')
 

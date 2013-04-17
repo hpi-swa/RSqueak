@@ -325,10 +325,9 @@ FAIL = 19
 
 @expose_primitive(FAIL)
 def func(interp, s_frame, argcount):
-    from spyvm.interpreter import ReturnFromTopLevel
+    from spyvm.error import Exit
     if s_frame.w_method()._likely_methodname == 'doesNotUnderstand:':
-        print 'Probably Debugger called...'
-        raise ReturnFromTopLevel(interp.space.wrap_string("debugger called"))
+        raise Exit('Probably Debugger called...')
     raise PrimitiveFailedError()
 
 # ___________________________________________________________________________
@@ -743,10 +742,14 @@ def func(interp, s_frame, w_rcvr):
 
 @expose_primitive(QUIT, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    raise PrimitiveNotYetWrittenError()
+    from spyvm.error import Exit
+    raise Exit('Quit-Primitive called..')
 
 @expose_primitive(EXIT_TO_DEBUGGER, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
+    from rpython.rlib import objectmodel
+    if not objectmodel.we_are_translated():
+        import pdb; pdb.set_trace()
     raise PrimitiveNotYetWrittenError()
 
 @expose_primitive(CHANGE_CLASS, unwrap_spec=[object, object], no_result=True)
