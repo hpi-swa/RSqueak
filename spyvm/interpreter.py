@@ -393,7 +393,9 @@ class __extend__(ContextPartShadow):
         # ######################################################################
         if interp.trace:
             padding = '#' * (interp.max_stack_depth - interp.remaining_stack_depth)
-            print padding + s_frame.short_str(1)
+            print '%s%s missing: #%s' % (padding, s_frame.short_str(0), w_selector.as_string())
+            if not objectmodel.we_are_translated():
+                import pdb; pdb.set_trace()
 
         return interp.stack_frame(s_frame)
 
