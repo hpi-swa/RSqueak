@@ -165,23 +165,53 @@ copyLoop
 
 !BitBlt methodsFor: 'simulation' stamp: 'tfel 3/17/2013 16:17'!
 merge: srcWord with: dstWord
-	"These are the 16 combination rules."
-	combinationRule = 0 ifTrue: [^ 0].
-	combinationRule = 1 ifTrue: [^ srcWord bitAnd: dstWord].
-	combinationRule = 2 ifTrue: [^ srcWord bitAnd: dstWord bitInvert32].
-	combinationRule = 3 ifTrue: [^ srcWord].
-	combinationRule = 4 ifTrue: [^ srcWord bitInvert32 bitAnd: dstWord].
-	combinationRule = 5 ifTrue: [^ dstWord].
-	combinationRule = 6 ifTrue: [^ srcWord bitXor: dstWord].
-	combinationRule = 7 ifTrue: [^ srcWord bitOr: dstWord].
-	combinationRule = 8 ifTrue: [^ srcWord bitInvert32 bitAnd: dstWord bitInvert32].
-	combinationRule = 9 ifTrue: [^ srcWord bitInvert32 bitXor: dstWord].
-	combinationRule = 10 ifTrue: [^ dstWord bitInvert32].
-	combinationRule = 11 ifTrue: [^ srcWord bitOr: dstWord bitInvert32].
-	combinationRule = 12 ifTrue: [^ srcWord bitInvert32].
-	combinationRule = 13 ifTrue: [^ srcWord bitInvert32 bitOr: dstWord].
-	combinationRule = 14 ifTrue: [^ srcWord bitInvert32 bitOr: dstWord bitInvert32].
-	combinationRule = 15 ifTrue: [^ dstWord]! !
+
+	combinationRule < 16
+		ifTrue: [ "These are the 16 basic combination rules."
+			combinationRule = 0 ifTrue: [^ 0].
+			combinationRule = 1 ifTrue: [^ srcWord bitAnd: dstWord].
+			combinationRule = 2 ifTrue: [^ srcWord bitAnd: dstWord bitInvert32].
+			combinationRule = 3 ifTrue: [^ srcWord].
+			combinationRule = 4 ifTrue: [^ srcWord bitInvert32 bitAnd: dstWord].
+			combinationRule = 5 ifTrue: [^ dstWord].
+			combinationRule = 6 ifTrue: [^ srcWord bitXor: dstWord].
+			combinationRule = 7 ifTrue: [^ srcWord bitOr: dstWord].
+			combinationRule = 8 ifTrue: [^ srcWord bitInvert32 bitAnd: dstWord bitInvert32].
+			combinationRule = 9 ifTrue: [^ srcWord bitInvert32 bitXor: dstWord].
+			combinationRule = 10 ifTrue: [^ dstWord bitInvert32].
+			combinationRule = 11 ifTrue: [^ srcWord bitOr: dstWord bitInvert32].
+			combinationRule = 12 ifTrue: [^ srcWord bitInvert32].
+			combinationRule = 13 ifTrue: [^ srcWord bitInvert32 bitOr: dstWord].
+			combinationRule = 14 ifTrue: [^ srcWord bitInvert32 bitOr: dstWord bitInvert32].
+			combinationRule = 15 ifTrue: [^ dstWord].]
+		ifFalse: [ "These are newer combination rules. (BitBltSimulation class>>#initializeRuleTable)"
+			combinationRule = 16 ifTrue: [^ dstWord]. "unused - was old paint"
+			combinationRule = 17 ifTrue: [^ dstWord]. "unused - was old mask"
+			combinationRule = 18 ifTrue: [^ dstWord]. "addWord"
+			combinationRule = 19 ifTrue: [^ dstWord]. "subWord"
+			combinationRule = 20 ifTrue: [^ dstWord]. "rgbAdd"
+			combinationRule = 21 ifTrue: [^ dstWord]. "rgbSub"
+			combinationRule = 22 ifTrue: [^ dstWord]. "OLDrgbDiff"
+			combinationRule = 23 ifTrue: [^ dstWord]. "OLDtallyIntoMap"
+			combinationRule = 24 ifTrue: [^ dstWord]. "alphaBlend"
+			combinationRule = 25 ifTrue: [^ dstWord]. "pixPaint"
+			combinationRule = 26 ifTrue: [^ dstWord]. "pixMask"
+			combinationRule = 27 ifTrue: [^ dstWord]. "rgbMax"
+			combinationRule = 28 ifTrue: [^ dstWord]. "rgbMin"
+			combinationRule = 29 ifTrue: [^ dstWord]. "rgbMinInvert"
+			combinationRule = 30 ifTrue: [^ dstWord]. "alphaBlendConst"
+			combinationRule = 31 ifTrue: [^ dstWord]. "alphaPaintConst"
+			combinationRule = 32 ifTrue: [^ dstWord]. "rgbDiff"
+			combinationRule = 33 ifTrue: [^ dstWord]. "tallyIntoMap"
+			combinationRule = 34 ifTrue: [^ dstWord]. "alphaBlendScaled"
+			combinationRule = 35 ifTrue: [^ dstWord]. "unused here - only used by FXBlt"
+			combinationRule = 36 ifTrue: [^ dstWord]. "unused here - only used by FXBlt"
+			combinationRule = 37 ifTrue: [^ dstWord]. "rgbMul"
+			combinationRule = 38 ifTrue: [^ dstWord]. "pixSwap"
+			combinationRule = 39 ifTrue: [^ dstWord]. "pixClear"
+			combinationRule = 40 ifTrue: [^ dstWord]. "fixAlpha"
+			combinationRule = 41 ifTrue: [^ dstWord]. "rgbComponentAlpha"].
+	self error: 'Combination Rule is not supported.'! !
 
 !BitBlt methodsFor: 'simulation' stamp: 'tfel 3/15/2013 14:49'!
 sanitizeInput

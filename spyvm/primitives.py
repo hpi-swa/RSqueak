@@ -562,6 +562,10 @@ def func(interp, s_frame, w_rcvr):
     if not isinstance(w_rcvr, model.W_PointersObject) or w_rcvr.size() < 15:
         raise PrimitiveFailedError
 
+    # only allow combinationRules 0-15
+    if interp.space.unwrap_positive_32bit_int(w_rcvr.fetch(interp.space, 3)) > 41:
+        raise PrimitiveFailedError
+
     space = interp.space
     trace = interp.trace
     interp.trace = False
