@@ -146,7 +146,7 @@ copyLoop
 								ifFalse: [simSourceBits at: simSourceIndex + 1].
 															"pick up next word"
 					skewWord _
-							prevWord bitOr: (thisWord bitAnd: simSkewMask bitInvert32).
+							prevWord bitOr: (thisWord bitAnd: noSimSkewMask).
 					prevWord _ thisWord.
 					"Change from BB: bitAnd: AllOnes to stay in word bounds"
 					skewWord _ ((skewWord bitShift: simSkew) bitAnd: AllOnes) bitOr:
@@ -211,7 +211,7 @@ merge: srcWord with: dstWord
 			combinationRule = 39 ifTrue: [^ dstWord]. "pixClear"
 			combinationRule = 40 ifTrue: [^ dstWord]. "fixAlpha"
 			combinationRule = 41 ifTrue: [^ dstWord]. "rgbComponentAlpha"].
-	self error: 'Combination Rule is not supported.'! !
+	self error: 'The Combination Rule(', combinationRule,') is not supported.'! !
 
 !BitBlt methodsFor: 'simulation' stamp: 'tfel 1/1/1981 00:00'!
 pixPaint: srcWord with: dstWord
