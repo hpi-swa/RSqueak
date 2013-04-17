@@ -236,7 +236,7 @@ def make_call_primitive_bytecode_classbased(a_class_name, a_primitive, alternati
 # ___________________________________________________________________________
 # Bytecode Implementations:
 #
-# "self" is always a ContextPartShadow instance.  
+# "self" is always a ContextPartShadow instance.
 
 # __extend__ adds new methods to the ContextPartShadow class
 class __extend__(ContextPartShadow):
@@ -389,6 +389,12 @@ class __extend__(ContextPartShadow):
             raise
         s_frame = s_method.create_frame(self.space, receiver, [w_message], self)
         self.pop()
+
+        # ######################################################################
+        if interp.trace:
+            padding = '#' * (interp.max_stack_depth - interp.remaining_stack_depth)
+            print padding + s_frame.short_str(1)
+
         return interp.stack_frame(s_frame)
 
     def _return(self, return_value, interp, s_return_to):
@@ -397,7 +403,7 @@ class __extend__(ContextPartShadow):
             raise ReturnFromTopLevel(return_value)
         # unfortunately, the assert below is not true for some tests
         # assert self._stack_ptr == self.tempsize()
-        
+
         raise Return(return_value, s_return_to)
 
     def returnReceiver(self, interp, current_bytecode):
@@ -441,7 +447,7 @@ class __extend__(ContextPartShadow):
             self.push(association.value())
         else:
             assert 0
-        
+
     def extendedStoreBytecode(self, interp, current_bytecode):
         variableType, variableIndex = self.extendedVariableTypeAndIndex()
         if variableType == 0:
@@ -571,7 +577,7 @@ class __extend__(ContextPartShadow):
         i = self.getbytecode()
         blockSize = (j << 8) | i
         #create new instance of BlockClosure
-        w_closure = space.newClosure(self.w_self(), self.pc(), numArgs, 
+        w_closure = space.newClosure(self.w_self(), self.pc(), numArgs,
                                             self.pop_and_return_n(numCopied))
         self.push(w_closure)
         self.jump(blockSize)
