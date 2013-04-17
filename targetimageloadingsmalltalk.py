@@ -18,6 +18,7 @@ def _run_benchmark(interp, number, benchmark):
         w_result = e.object
     except error.Exit, e:
         print e.msg
+        w_result = None
     t2 = time.time()
     if w_result:
         if isinstance(w_result, model.W_BytesObject):
