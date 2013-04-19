@@ -873,8 +873,10 @@ class MethodContextShadow(ContextPartShadow):
     
     @jit.dont_look_inside
     def attach_shadow(self):
-        # Make sure the method is updated first
+        # Make sure the method and closure_or_nil are updated first,
+        # otherwise tempsize may be wrong
         self.copy_from_w_self(constants.MTHDCTX_METHOD)
+        self.copy_from_w_self(constants.MTHDCTX_CLOSURE_OR_NIL)
         self.init_stack_and_temps()
         ContextPartShadow.attach_shadow(self)
 
