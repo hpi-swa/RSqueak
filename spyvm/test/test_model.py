@@ -2,7 +2,7 @@ import py
 import math
 from spyvm import model, shadow
 from spyvm.shadow import MethodNotFound
-from spyvm import objspace, error
+from spyvm import objspace, error, display
 from rpython.rlib.rarithmetic import intmask, r_uint
 
 mockclass = objspace.bootstrap_class
@@ -288,7 +288,16 @@ def test_large_positive_integer_1word_at_put():
     assert hex(r_uint(target.value)) == hex(r_uint(source.value))
 
 def test_display_bitmap():
-    target = model.W_DisplayBitmap.create(space, space.w_Array, 100, 1, None)
+    # XXX: Patch SDLDisplay -> get_pixelbuffer() to circumvent
+    # double-free bug
+    def get_pixelbuffer(self):
+        from rpython.rtyper.lltypesystem import lltype, rffi
+        return lltype.malloc(rffi.ULONGP.TO, self.width * self.height * 32, flavor='raw')
+    display.SDLDisplay.get_pixelbuffer = get_pixelbuffer
+    d = display.SDLDisplay("test")
+    d.set_video_mode(10, 10, 1)
+
+    target = model.W_DisplayBitmap.create(space, space.w_Array, 100, 1, d)
     target.setword(0, 0xFF00)
     assert bin(target.getword(0)) == bin(0xFF00)
     target.setword(0, 0x00FF00FF)

@@ -637,7 +637,13 @@ def test_primitive_next_instance():
     assert w_1 is not w_2
 
 def test_primitive_be_display():
-    py.test.fail("This test leads to a Segfault.")
+    # XXX: Patch SDLDisplay -> get_pixelbuffer() to circumvent
+    # double-free bug
+    def get_pixelbuffer(self):
+        from rpython.rtyper.lltypesystem import lltype, rffi
+        return lltype.malloc(rffi.ULONGP.TO, self.width * self.height * 32, flavor='raw')
+    display.SDLDisplay.get_pixelbuffer = get_pixelbuffer
+
     assert space.objtable["w_display"] is None
     mock_display = model.W_PointersObject(space, space.w_Point, 4)
     w_wordbmp = model.W_WordsObject(space, space.w_Array, 100)
@@ -671,7 +677,13 @@ def test_primitive_be_display():
     assert mock_display.fetch(space, 0) is w_bitmap
 
 def test_primitive_force_display_update(monkeypatch):
-    py.test.fail("This test leads to a Segfault.")
+    # XXX: Patch SDLDisplay -> get_pixelbuffer() to circumvent
+    # double-free bug
+    def get_pixelbuffer(self):
+        from rpython.rtyper.lltypesystem import lltype, rffi
+        return lltype.malloc(rffi.ULONGP.TO, self.width * self.height * 32, flavor='raw')
+    display.SDLDisplay.get_pixelbuffer = get_pixelbuffer
+
     mock_display = model.W_PointersObject(space, space.w_Point, 4)
     w_wordbmp = model.W_WordsObject(space, space.w_Array, 100)
     mock_display.store(space, 0, w_wordbmp) # bitmap
@@ -701,6 +713,7 @@ def test_bitblt_copy_bits(monkeypatch):
             self.w_simulateCopyBits = "simulateCopyBits"
 
     mock_bitblt = model.W_PointersObject(space, space.w_Point, 15)
+    mock_bitblt.store(space, 3, space.wrap_int(15)) # combination rule
 
     def perform_mock(w_selector, argcount, interp):
         if w_selector == "simulateCopyBits" or w_selector.as_string() == "simulateCopyBits":
