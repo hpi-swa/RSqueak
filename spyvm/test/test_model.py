@@ -1,5 +1,6 @@
 import py
 import math
+import socket
 from spyvm import model, shadow
 from spyvm.shadow import MethodNotFound
 from spyvm import objspace, error, display
@@ -287,6 +288,7 @@ def test_large_positive_integer_1word_at_put():
         assert target.at0(space, i) == source.at0(space, i)
     assert hex(r_uint(target.value)) == hex(r_uint(source.value))
 
+@pytest.mark.skipif("socket.gethostname() == 'precise32'")
 def test_display_bitmap():
     # XXX: Patch SDLDisplay -> get_pixelbuffer() to circumvent
     # double-free bug
