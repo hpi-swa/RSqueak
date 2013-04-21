@@ -442,8 +442,8 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     def as_embellished_string(self, className, additionalInformation):
         from rpython.rlib.objectmodel import current_object_addr_as_int
         name = self.shadow_of_my_class(self.space).name or "?"
-        return "<%s (a %s) %s>" % (className, name, 
-                #hex(current_object_addr_as_int(self)), 
+        return "<%s (a %s) %s>" % (className, name,
+                #hex(current_object_addr_as_int(self)),
                 additionalInformation)
 
     def invariant(self):
@@ -634,8 +634,8 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
 
     @jit.elidable
     def as_repr_string(self):
-        return W_AbstractObjectWithClassReference.as_embellished_string(self, 
-                                className='W_PointersObject', 
+        return W_AbstractObjectWithClassReference.as_embellished_string(self,
+                                className='W_PointersObject',
                                 additionalInformation='len=%d' % self.size())
 
     def fieldtype(self):
@@ -676,7 +676,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         return self.as_string()
 
     def as_repr_string(self):
-        return W_AbstractObjectWithClassReference.as_embellished_string(self, 
+        return W_AbstractObjectWithClassReference.as_embellished_string(self,
             className='W_BytesObject', additionalInformation=self.as_string())
 
     def as_string(self):
@@ -706,7 +706,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         # XXX Probably we want to allow all subclasses
         if not self.getclass(space).is_same_object(space.w_LargePositiveInteger):
             raise error.UnwrappingError("Failed to convert bytes to word")
-        word = 0 
+        word = 0
         for i in range(self.size()):
             word += r_uint(ord(self.getchar(i))) << 8*i
         return word
@@ -749,6 +749,10 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         w_result = W_WordsObject(self.space, self.getclass(space), len(self.words))
         w_result.words = list(self.words)
         return w_result
+
+    def as_repr_string(self):
+        return W_AbstractObjectWithClassReference.as_embellished_string(self,
+            className='W_WordsObject', additionalInformation=('len=%d' % self.size()))
 
 NATIVE_DEPTH = 32
 
