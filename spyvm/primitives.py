@@ -1288,6 +1288,9 @@ CTXT_AT = 210
 CTXT_AT_PUT = 211
 CTXT_SIZE = 212
 
+prim_table[CTXT_AT] = prim_table[AT]
+prim_table[CTXT_AT_PUT] = prim_table[AT_PUT]
+prim_table[CTXT_SIZE] = prim_table[SIZE]
 # ___________________________________________________________________________
 # Drawing
 
