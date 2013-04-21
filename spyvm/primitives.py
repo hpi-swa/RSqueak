@@ -587,9 +587,17 @@ def func(interp, s_frame, argcount):
     if argcount == 1:
         # TODO: use mask
         w_mask = s_frame.peek(0)
-        if not isinstance(w_mask, model.W_WordsObject):
+        if isinstance(w_mask, model.W_WordsObject):
+            mask_words = w_mask.words
+        elif isinstance(w_mask, model.W_PointersObject):
+            # mask is a form object
+            w_contents = w_mask.fetch(interp.space, 0)
+            if isinstance(w_contents, model.W_WordsObject):
+                w_mask = w_contents.words
+            else:
+                raise PrimitiveFailedError
+        else:
             raise PrimitiveFailedError()
-        mask_words = w_mask.words
     w_bitmap = w_rcvr.fetch(interp.space, 0)
     if not isinstance(w_bitmap, model.W_WordsObject):
         raise PrimitiveFailedError()
