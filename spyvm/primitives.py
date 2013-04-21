@@ -1302,6 +1302,79 @@ def func(interp, s_frame, w_rcvr):
     w_prev_bitmap.flush_to_screen()
     return w_rcvr
 
+# ___________________________________________________________________________
+# VM implementor primitives
+VM_CLEAR_PROFILE = 250
+VM_CONTROL_PROFILING = 251
+VM_PROFILE_SAMPLES_INTO = 252
+VM_PROFILE_INFO_INTO = 253
+VM_PARAMETERS = 254
+INST_VARS_PUT_FROM_STACK = 255 # Never used except in Disney tests.  Remove after 2.3 release.
+
+@expose_primitive(VM_PARAMETERS)
+def func(interp, s_frame, argcount):
+    """Behaviour depends on argument count:
+            0 args: return an Array of VM parameter values;
+            1 arg:  return the indicated VM parameter;
+            2 args: set the VM indicated parameter.
+        VM parameters are numbered as follows:
+            1   end of old-space (0-based, read-only)
+            2   end of young-space (read-only)
+            3   end of memory (read-only)
+            4   allocationCount (read-only)
+            5   allocations between GCs (read-write)
+            6   survivor count tenuring threshold (read-write)
+            7   full GCs since startup (read-only)
+            8   total milliseconds in full GCs since startup (read-only)
+            9   incremental GCs since startup (read-only)
+            10  total milliseconds in incremental GCs since startup (read-only)
+            11  tenures of surving objects since startup (read-only)
+            12-20 specific to the translating VM
+            21  root table size (read-only)
+            22  root table overflows since startup (read-only)
+            23  bytes of extra memory to reserve for VM buffers, plugins, etc.
+            24  memory threshold above which shrinking object memory (rw)
+            25  memory headroom when growing object memory (rw)
+            26  interruptChecksEveryNms - force an ioProcessEvents every N milliseconds, in case the image  is not calling getNextEvent often (rw)
+            27  number of times mark loop iterated for current IGC/FGC (read-only) includes ALL marking
+            28  number of times sweep loop iterated  for current IGC/FGC (read-only)
+            29  number of times make forward loop iterated for current IGC/FGC (read-only)
+            30  number of times compact move loop iterated for current IGC/FGC (read-only)
+            31  number of grow memory requests (read-only)
+            32  number of shrink memory requests (read-only)
+            33  number of root table entries used for current IGC/FGC (read-only)
+            34  number of allocations done before current IGC/FGC (read-only)
+            35  number of survivor objects after current IGC/FGC (read-only)
+            36  millisecond clock when current IGC/FGC completed (read-only)
+            37  number of marked objects for Roots of the world, not including Root Table entries for current IGC/FGC (read-only)
+            38  milliseconds taken by current IGC  (read-only)
+            39  Number of finalization signals for Weak Objects pending when current IGC/FGC completed (read-only)
+            40  BytesPerWord for this image
+            41  imageFormatVersion for the VM
+            42  nil (number of stack pages in use in Stack VM)
+            43  nil (desired number of stack pages in Stack VM)
+            44  nil (size of eden, in bytes in Stack VM)
+            45  nil (desired size of eden in Stack VM)
+            46-55 nil; reserved for VM parameters that persist in the image (such as eden above)
+            56  number of process switches since startup (read-only)
+            57  number of ioProcessEvents calls since startup (read-only)
+            58  number of ForceInterruptCheck calls since startup (read-only)
+            59  number of check event calls since startup (read-only)
+
+        Note: Thanks to Ian Piumarta for this primitive."""
+    if not 0 <= argcount <= 2:
+        raise PrimitiveFailedError
+
+    s_frame.pop() # receiver
+    if argcount == 0:
+        return interp.space.wrap_list([interp.space.wrap_int(0)]*59)
+    s_frame.pop() # index (really the receiver, index has been removed above)
+    if argcount == 1:
+        return interp.space.wrap_int(0)
+    s_frame.pop() # new value
+    if argcount == 2:
+        # return the 'old value'
+        return interp.space.wrap_int(0)
 
 # ___________________________________________________________________________
 # PrimitiveLoadInstVar
