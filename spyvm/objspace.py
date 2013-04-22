@@ -19,7 +19,7 @@ class ObjSpace(object):
                                       name=name[2:])
             self.classtable[name] = w_class
             return w_class
-        
+
         #   A complete minimal setup (including Behavior) would look like this
         #
         #   class:              superclass:         metaclass:
@@ -34,7 +34,7 @@ class ObjSpace(object):
         #   ClassDescription cl Behavior class      *Metaclass
         #   Class class         ClassDescription cl *Metaclass
         #   Metaclass class     ClassDescription cl *Metaclass
-        
+
         #    Class Name            Super class name
         cls_nm_tbl = [
             ["w_Object",           "w_ProtoObject"], # there is not ProtoObject in mini.image
@@ -61,7 +61,7 @@ class ObjSpace(object):
         for nm, w_cls_obj in self.classtable.items():
             if w_cls_obj.s_class is None:
                 w_cls_obj.s_class = s_Metaclass
-        
+
         def define_cls(cls_nm, supercls_nm, instvarsize=0, format=shadow.POINTERS,
                        varsized=False):
             assert cls_nm.startswith("w_")
@@ -295,7 +295,7 @@ class ObjSpace(object):
         if not w_array.getclass(self).is_same_object(self.w_Array):
             raise UnwrappingError()
         assert isinstance(w_array, model.W_PointersObject)
-        
+
         return [w_array.at0(self, i) for i in range(w_array.size())]
 
     def get_display(self):

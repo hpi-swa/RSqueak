@@ -18,7 +18,7 @@ class AbstractShadow(object):
     can be attached at run-time to any Smalltalk object.
     """
     _attr_ = ['_w_self']
-    
+
     def __init__(self, space, w_self):
         self.space = space
         self._w_self = w_self
@@ -64,7 +64,7 @@ class AbstractCachingShadow(AbstractShadow):
 
 class Version:
     pass
-# ____________________________________________________________ 
+# ____________________________________________________________
 
 POINTERS = 0
 BYTES = 1
@@ -266,9 +266,9 @@ class ClassShadow(AbstractCachingShadow):
             self._s_superclass = None
         else:
             s_scls = w_class.as_class_get_shadow(self.space)
-            if self._s_superclass is s_scls: 
+            if self._s_superclass is s_scls:
                 return
-            elif (self._s_superclass is not None 
+            elif (self._s_superclass is not None
                 and self._s_superclass is not s_scls):
                 self._s_superclass.detach_s_class(self)
             self._s_superclass = s_scls
@@ -428,11 +428,11 @@ class AbstractRedirectingShadow(AbstractShadow):
         self.store(n0, self.w_self()._fetch(n0))
     def copy_to_w_self(self, n0):
         self.w_self()._store(n0, self.fetch(n0))
- 
+
 class ContextPartShadow(AbstractRedirectingShadow):
 
     __metaclass__ = extendabletype
-    _attr_ = ['_s_sender', '_pc', '_temps_and_stack', 
+    _attr_ = ['_s_sender', '_pc', '_temps_and_stack',
             '_stack_ptr', 'instances_w']
 
     _virtualizable2_ = [
@@ -504,7 +504,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
                 self.push(self.space.w_nil)
 
     def wrap_stackpointer(self):
-        return self.space.wrap_int(self.stackdepth() + 
+        return self.space.wrap_int(self.stackdepth() +
                                    self.tempsize())
 
     def external_stackpointer(self):
@@ -515,7 +515,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
     def s_home(self):
         return self.w_home().as_methodcontext_get_shadow(self.space)
-    
+
     def stackstart(self):
         raise NotImplementedError()
 
@@ -563,6 +563,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
         return self._pc
 
     def store_pc(self, newpc):
+        assert newpc >= -1
         self._pc = newpc
 
     def stackpointer_offset(self):
@@ -601,7 +602,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
     # Temporary Variables
     #
     # Are always fetched relative to the home method context.
-    
+
     def gettemp(self, index):
         return self.s_home().gettemp(index)
 
@@ -619,7 +620,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
     # ______________________________________________________________________
     # Stack Manipulation
-    
+
     def stack(self):
         """NOT_RPYTHON""" # purely for testing
         return self._temps_and_stack[self.tempsize():self._stack_ptr]
@@ -681,7 +682,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
         raise NotImplementedError()
     # ______________________________________________________________________
     # Marriage of Context Shadows with PointerObjects only when required
-    
+
     def w_self(self):
         if self._w_self is not None:
             return self._w_self
@@ -762,7 +763,7 @@ class BlockContextShadow(ContextPartShadow):
 
     def unwrap_store_eargc(self, w_value):
         self.store_expected_argument_count(self.space.unwrap_int(w_value))
-    
+
     def wrap_eargc(self):
         return self.space.wrap_int(self.expected_argument_count())
 
@@ -774,10 +775,10 @@ class BlockContextShadow(ContextPartShadow):
 
     def initialip(self):
         return self._initialip
-        
+
     def store_initialip(self, initialip):
         self._initialip = initialip
-        
+
     def store_w_home(self, w_home):
         assert isinstance(w_home, model.W_PointersObject)
         self._w_home = w_home
@@ -824,21 +825,21 @@ class MethodContextShadow(ContextPartShadow):
         s_new_context._w_self_size = size
         s_new_context_non_fresh = s_new_context # XXX: find a better solution to translation err
         s_new_context = jit.hint(s_new_context, access_directly=True, fresh_virtualizable=True)
-        
-        if closure is not None: 
+
+        if closure is not None:
             s_new_context.w_closure_or_nil = closure._w_self
-        
+
         s_new_context.store_w_method(s_method.w_self())
         if s_sender:
             s_new_context.store_s_sender(s_sender)
         s_new_context.store_w_receiver(w_receiver)
         s_new_context.store_pc(pc)
         s_new_context.init_stack_and_temps()
-        
+
         argc = len(arguments)
         for i0 in range(argc):
             s_new_context.settemp(i0, arguments[i0])
-        if closure is not None: 
+        if closure is not None:
             for i0 in range(closure.size()):
                 s_new_context.settemp(i0+argc, closure.at0(i0))
         return s_new_context_non_fresh
@@ -870,7 +871,7 @@ class MethodContextShadow(ContextPartShadow):
             return self.settemp(temp_i, w_value)
         else:
             return ContextPartShadow.store(self, n0, w_value)
-    
+
     @jit.dont_look_inside
     def attach_shadow(self):
         # Make sure the method and closure_or_nil are updated first,
@@ -884,7 +885,7 @@ class MethodContextShadow(ContextPartShadow):
         if not self.is_closure_context():
             return self.s_method().tempsize()
         else:
-            return wrapper.BlockClosureWrapper(self.space, 
+            return wrapper.BlockClosureWrapper(self.space,
                                 self.w_closure_or_nil).tempsize()
 
     def w_method(self):
@@ -927,7 +928,7 @@ class MethodContextShadow(ContextPartShadow):
     def returnTopFromMethod(self, interp, current_bytecode):
         if self.is_closure_context():
             # this is a context for a blockClosure
-            w_outerContext = self.w_closure_or_nil.fetch(self.space, 
+            w_outerContext = self.w_closure_or_nil.fetch(self.space,
                 constants.BLKCLSR_OUTER_CONTEXT)
             assert isinstance(w_outerContext, model.W_PointersObject)
             s_outerContext = w_outerContext.as_context_get_shadow(self.space)
@@ -1008,7 +1009,7 @@ class CompiledMethodShadow(object):
         if self.literals:
             # (Blue book, p 607) All CompiledMethods that contain
             # extended-super bytecodes have the clain which they are found as
-            # their last literal variable.   
+            # their last literal variable.
             # Last of the literals is an association with compiledin
             # as a class
             w_association = self.literals[-1]

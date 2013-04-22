@@ -825,7 +825,6 @@ def func(interp, s_frame, w_receiver, w_bool):
 
 @expose_primitive(DRAW_RECTANGLE, unwrap_spec=[object, int, int, int, int])
 def func(interp, s_frame, w_rcvr, left, right, top, bottom):
-    # import pdb; pdb.set_trace()
     raise PrimitiveNotYetWrittenError()
 
 

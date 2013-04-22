@@ -170,7 +170,7 @@ class AssociationWrapper(Wrapper):
 class SchedulerWrapper(Wrapper):
     priority_list = make_getter(0)
     active_process, store_active_process = make_getter_setter(1)
-    
+
     def get_process_list(self, priority):
         lists = Wrapper(self.space, self.priority_list())
 
@@ -178,9 +178,9 @@ class SchedulerWrapper(Wrapper):
 
     def highest_priority_process(self):
         w_lists = self.priority_list()
-        # Asserts as W_PointersObjectonion in the varnish. 
+        # Asserts as W_PointersObjectonion in the varnish.
         lists = Wrapper(self.space, w_lists)
-        
+
         for i in range(w_lists.size() - 1, -1, -1):
             process_list = ProcessListWrapper(self.space, lists.read(i))
             if not process_list.is_empty_list():
@@ -222,7 +222,7 @@ class PointWrapper(Wrapper):
     x, store_x = make_int_getter_setter(0)
     y, store_y = make_int_getter_setter(1)
 
- 
+
 class BlockClosureWrapper(VarsizedWrapper):
     outerContext, store_outerContext = make_getter_setter(constants.BLKCLSR_OUTER_CONTEXT)
     startpc, store_startpc = make_int_getter_setter(constants.BLKCLSR_STARTPC)
@@ -242,13 +242,13 @@ class BlockClosureWrapper(VarsizedWrapper):
         return w_new_frame
 
     def tempsize(self):
-        # We ignore the number of temps a block has, because the first 
-        # bytecodes of the block will initialize them for us. We will only 
-        # use this information for decinding where the stack pointer should be 
+        # We ignore the number of temps a block has, because the first
+        # bytecodes of the block will initialize them for us. We will only
+        # use this information for decinding where the stack pointer should be
         # initialy.
         # For a finding the correct number, see BlockClosure>#numTemps in an Image.
         return self.size() + self.numArgs()
-    
+
     def size(self):
         return self._w_self.size() - constants.BLKCLSR_SIZE
 

@@ -83,7 +83,7 @@ class Interpreter(object):
         if not jit.we_are_jitted():
             self.quick_check_for_interrupt(s_context)
         while True:
-            pc = s_context._pc
+            pc = s_context.pc()
             method = s_context.s_method()
             if pc < old_pc:
                 if jit.we_are_jitted():
