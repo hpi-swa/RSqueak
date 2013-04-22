@@ -458,11 +458,14 @@ def func(interp, s_frame, w_rcvr):
         raise PrimitiveFailedError()
     return interp.space.wrap_int(w_rcvr.gethash())
 
-@expose_primitive(STORE_STACKP, unwrap_spec=[object, object])
-def func(interp, s_frame, w_obj1, w_obj2):
-    # This primitive seems to resize the stack.  I don't think this is
-    # really relevant in our implementation.
-    raise PrimitiveNotYetWrittenError()
+@expose_primitive(STORE_STACKP, unwrap_spec=[object, int])
+def func(interp, s_frame, w_frame, stackp):
+    assert stackp >= 0
+    if not isinstance(w_frame, model.W_PointersObject):
+        raise PrimitiveFailedError
+    s_frame = w_frame.as_context_get_shadow(interp.space)
+    s_frame.store_stackpointer(stackp)
+    return w_frame
 
 @expose_primitive(SOME_INSTANCE, unwrap_spec=[object])
 def func(interp, s_frame, w_class):
