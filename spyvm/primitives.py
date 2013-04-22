@@ -1336,11 +1336,7 @@ def func(interp, s_frame, w_rcvr, time_mu_s):
 
 @expose_primitive(FORCE_DISPLAY_UPDATE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    w_prev_display = interp.space.objtable['w_display']
-    assert w_prev_display
-    w_prev_bitmap = w_prev_display.fetch(interp.space, 0)
-    assert isinstance(w_prev_bitmap, model.W_DisplayBitmap)
-    w_prev_bitmap.flush_to_screen()
+    interp.space.get_display().flip()
     return w_rcvr
 
 # ___________________________________________________________________________
