@@ -554,8 +554,8 @@ def func(interp, s_frame, w_rcvr):
     w_point.store(interp.space, 1, interp.space.wrap_int(y))
     return w_point
 
-@expose_primitive(GET_NEXT_EVENT, unwrap_spec=[object])
-def func(interp, s_frame, w_rcvr):
+@expose_primitive(GET_NEXT_EVENT, unwrap_spec=[object, object])
+def func(interp, s_frame, w_rcvr, w_into):
     raise PrimitiveNotYetWrittenError()
 
 @expose_primitive(BITBLT_COPY_BITS, unwrap_spec=[object], clean_stack=False)
@@ -1302,7 +1302,15 @@ prim_table[CTXT_SIZE] = prim_table[SIZE]
 # ___________________________________________________________________________
 # Drawing
 
+IDLE_FOR_MICROSECONDS = 230
 FORCE_DISPLAY_UPDATE = 231
+
+@expose_primitive(IDLE_FOR_MICROSECONDS, unwrap_spec=[object, int])
+def func(interp, s_frame, w_rcvr, time_mu_s):
+    import time
+    time_s = time_mu_s / 1000000.0
+    time.sleep(time_s)
+    return w_rcvr
 
 @expose_primitive(FORCE_DISPLAY_UPDATE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
