@@ -228,7 +228,7 @@ class BlockClosureWrapper(VarsizedWrapper):
     startpc, store_startpc = make_int_getter_setter(constants.BLKCLSR_STARTPC)
     numArgs, store_numArgs = make_int_getter_setter(constants.BLKCLSR_NUMARGS)
 
-    def asContextWithSender(self, w_aContext, arguments):
+    def asContextWithSender(self, w_context, arguments):
         from spyvm import shadow
         w_outerContext = self.outerContext()
         if not isinstance(w_outerContext, model.W_PointersObject):
@@ -236,9 +236,10 @@ class BlockClosureWrapper(VarsizedWrapper):
         s_outerContext = w_outerContext.as_context_get_shadow(self.space)
         s_method = s_outerContext.w_method().as_compiledmethod_get_shadow(self.space)
         w_receiver = s_outerContext.w_receiver()
+        pc = self.startpc() - s_method.bytecodeoffset - 1
         w_new_frame = shadow.MethodContextShadow.make_context(self.space, s_method, w_receiver,
-                     arguments, s_sender=w_aContext.get_shadow(self.space), 
-                     pc=self.startpc(), closure=self)
+                     arguments, s_sender=w_context.get_shadow(self.space),
+                     pc=pc, closure=self)
         return w_new_frame
 
     def tempsize(self):

@@ -309,13 +309,15 @@ class ObjSpace(object):
     def _freeze_(self):
         return True
 
-    def newClosure(self, outerContext, pc, numArgs, copiedValues):
+    def newClosure(self, w_outer_ctxt, pc, numArgs, copiedValues):
+        assert isinstance(w_outer_ctxt, model.W_PointersObject)
+        pc_with_bytecodeoffset = pc + w_outer_ctxt.as_context_get_shadow(self).s_method().bytecodeoffset + 1
         BlockClosureShadow = self.w_BlockClosure.as_class_get_shadow(self)
         numCopied = len(copiedValues)
         w_closure = BlockClosureShadow.new(numCopied)
         closure = wrapper.BlockClosureWrapper(self, w_closure)
-        closure.store_outerContext(outerContext)
-        closure.store_startpc(pc)
+        closure.store_outerContext(w_outer_ctxt)
+        closure.store_startpc(pc_with_bytecodeoffset)
         closure.store_numArgs(numArgs)
         for i0 in range(numCopied):
             closure.atput0(i0, copiedValues[i0])
