@@ -757,13 +757,15 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
 NATIVE_DEPTH = 32
 
 class W_DisplayBitmap(W_AbstractObjectWithClassReference):
-    _attrs_ = ['pixelbuffer', '_realsize', 'display']
+    _attrs_ = ['pixelbuffer', '_realsize', '_real_depth_buffer', 'display']
     _immutable_fields_ = ['_realsize', 'display']
 
     @staticmethod
     def create(space, w_class, size, depth, display):
         if depth == 1:
             return W_DisplayBitmap1Bit(space, w_class, size, depth, display)
+        elif depth == 32:
+            return W_DisplayBitmap32Bit(space, w_class, size, depth, display)
         else:
             raise NotImplementedError("non B/W squeak")
 
@@ -823,6 +825,14 @@ class W_DisplayBitmap1Bit(W_DisplayBitmap):
             mask >>= 1
             pos += 1
 
+class W_DisplayBitmap32Bit(W_DisplayBitmap):
+    def getword(self, n):
+        return self._real_depth_buffer[n]
+
+    @jit.unroll_safe
+    def setword(self, n, word):
+        self._real_depth_buffer[n] = word
+        self.pixelbuffer[n] = word
 
 # XXX Shouldn't compiledmethod have class reference for subclassed compiled
 # methods?
