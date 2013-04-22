@@ -807,12 +807,12 @@ class BlockContextShadow(ContextPartShadow):
         )
 
 class MethodContextShadow(ContextPartShadow):
-    _attr_ = ['w_closure_or_nil', '_w_receiver', '__w_method']
+    _attr_ = ['w_closure_or_nil', '_w_receiver', '_w_method']
 
     def __init__(self, space, w_self):
         self.w_closure_or_nil = space.w_nil
         self._w_receiver = space.w_nil
-        self.__w_method = None
+        self._w_method = None
         ContextPartShadow.__init__(self, space, w_self)
 
     @staticmethod
@@ -889,13 +889,13 @@ class MethodContextShadow(ContextPartShadow):
                                 self.w_closure_or_nil).tempsize()
 
     def w_method(self):
-        retval = self.__w_method
+        retval = self._w_method
         assert isinstance(retval, model.W_CompiledMethod)
         return retval
 
     def store_w_method(self, w_method):
         assert isinstance(w_method, model.W_CompiledMethod)
-        self.__w_method = w_method
+        self._w_method = w_method
 
     def w_receiver(self):
         return self._w_receiver
@@ -986,7 +986,7 @@ class CompiledMethodShadow(object):
     def compute_frame_size(self):
         # From blue book: normal mc have place for 12 temps+maxstack
         # mc for methods with islarge flag turned on 32
-        return 12 + self.islarge * 20 + self.argsize
+        return 16 + self.islarge * 40 + self.argsize
 
     def getliteralsymbol(self, index):
         w_literal = self.getliteral(index)
