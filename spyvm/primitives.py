@@ -1170,21 +1170,21 @@ def func(interp, s_frame, w_rcvr, w_selector, args_w):
     s_frame._sendSelector(w_selector, argcount, interp,
                       w_rcvr, w_rcvr.shadow_of_my_class(interp.space))
 
-@expose_primitive(SIGNAL, unwrap_spec=[object], clean_stack=False)
+@expose_primitive(SIGNAL, unwrap_spec=[object], clean_stack=False, no_result=True)
 def func(interp, s_frame, w_rcvr):
     # XXX we might want to disable this check
     if not w_rcvr.getclass(interp.space).is_same_object(
         interp.space.w_Semaphore):
         raise PrimitiveFailedError()
-    return wrapper.SemaphoreWrapper(interp.space, w_rcvr).signal(s_frame.w_self())
+    wrapper.SemaphoreWrapper(interp.space, w_rcvr).signal(s_frame.w_self())
 
-@expose_primitive(WAIT, unwrap_spec=[object], clean_stack=False)
+@expose_primitive(WAIT, unwrap_spec=[object], clean_stack=False, no_result=True)
 def func(interp, s_frame, w_rcvr):
     # XXX we might want to disable this check
     if not w_rcvr.getclass(interp.space).is_same_object(
         interp.space.w_Semaphore):
         raise PrimitiveFailedError()
-    return wrapper.SemaphoreWrapper(interp.space, w_rcvr).wait(s_frame.w_self())
+    wrapper.SemaphoreWrapper(interp.space, w_rcvr).wait(s_frame.w_self())
 
 @expose_primitive(RESUME, unwrap_spec=[object], result_is_new_frame=True, clean_stack=False)
 def func(interp, s_frame, w_rcvr):
