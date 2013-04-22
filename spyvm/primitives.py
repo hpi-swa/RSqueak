@@ -27,7 +27,7 @@ def assert_valid_index(space, n0, w_obj):
 # arguments, an interp and an argument_count
 # completes, and returns a result, or throws a PrimitiveFailedError.
 def make_failing(code):
-    def raise_failing_default(interp, s_frame, argument_count):
+    def raise_failing_default(interp, s_frame, argument_count, s_method=None):
         raise PrimitiveFailedError
     return raise_failing_default
 
@@ -50,7 +50,8 @@ index1_0 = object()
 char = object()
 pos_32bit_int = object()
 
-def expose_primitive(code, unwrap_spec=None, no_result=False, result_is_new_frame=False, clean_stack=True):
+def expose_primitive(code, unwrap_spec=None, no_result=False,
+                    result_is_new_frame=False, clean_stack=True, compiled_method=False):
     # some serious magic, don't look
     from rpython.rlib.unroll import unrolling_iterable
     # heuristics to give it a nice name
@@ -71,8 +72,11 @@ def expose_primitive(code, unwrap_spec=None, no_result=False, result_is_new_fram
         assert code not in prim_table
         func.func_name = "prim_" + name
         if unwrap_spec is None:
-            def wrapped(interp, s_frame, argument_count_m1):
-                w_result = func(interp, s_frame, argument_count_m1)
+            def wrapped(interp, s_frame, argument_count_m1, s_method=None):
+                if compiled_method:
+                    w_result = func(interp, s_frame, argument_count_m1, s_method)
+                else:
+                    w_result = func(interp, s_frame, argument_count_m1)
                 if result_is_new_frame:
                     return interp.stack_frame(w_result)
                 if not no_result:
@@ -83,7 +87,7 @@ def expose_primitive(code, unwrap_spec=None, no_result=False, result_is_new_fram
             assert (len_unwrap_spec == len(inspect.getargspec(func)[0]) + 1,
                     "wrong number of arguments")
             unrolling_unwrap_spec = unrolling_iterable(enumerate(unwrap_spec))
-            def wrapped(interp, s_frame, argument_count_m1):
+            def wrapped(interp, s_frame, argument_count_m1, s_method=None):
                 argument_count = argument_count_m1 + 1 # to account for the rcvr
                 assert argument_count == len_unwrap_spec
                 if s_frame.stackdepth() < len_unwrap_spec:
@@ -738,6 +742,7 @@ BYTES_LEFT = 112
 QUIT = 113
 EXIT_TO_DEBUGGER = 114
 CHANGE_CLASS = 115      # Blue Book: primitiveOopsLeft
+EXTERNAL_CALL = 117
 
 @expose_primitive(EQUIVALENT, unwrap_spec=[object, object])
 def func(interp, s_frame, w_arg, w_rcvr):
@@ -790,6 +795,23 @@ def func(interp, s_frame, w_arg, w_rcvr):
         raise PrimitiveFailedError()
 
     w_rcvr.s_class = w_arg.s_class
+
+@expose_primitive(EXTERNAL_CALL, clean_stack=False, no_result=True, compiled_method=True)
+def func(interp, s_frame, argcount, s_method):
+    space = interp.space
+    w_description = s_method.w_self().literalat0(space, 1)
+    if not isinstance(w_description, model.W_PointersObject) or w_description.size() < 2:
+        raise PrimitiveFailedError
+    w_modulename = w_description.at0(space, 0)
+    w_functionname = w_description.at0(space, 1)
+    if not (isinstance(w_modulename, model.W_BytesObject) and
+            isinstance(w_functionname, model.W_BytesObject)):
+        raise PrimitiveFailedError
+    signature = (w_modulename.as_string(), w_functionname.as_string())
+
+    if signature == ('BitBltPlugin', 'primitiveCopyBits'):
+        return prim_holder.prim_table[BITBLT_COPY_BITS](interp, s_frame, argcount, s_method)
+    raise PrimitiveFailedError
 
 # ___________________________________________________________________________
 # Miscellaneous Primitives (120-127)

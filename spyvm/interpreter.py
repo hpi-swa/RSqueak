@@ -346,13 +346,13 @@ class __extend__(ContextPartShadow):
                         code, self.w_method()._likely_methodname, w_selector.as_string())
             try:
                 # note: argcount does not include rcvr
-                return func(interp, self, argcount)
+                return func(interp, self, argcount, s_method)
             except primitives.PrimitiveFailedError:
                 # ##############################################################
                 # if interp.trace and func.func_name != 'raise_failing_default' and code != 83:
                 #     # import pdb; pdb.set_trace()
                 #     try:
-                #         func(interp, self, argcount) # will fail again
+                #         func(interp, self, argcount, s_method) # will fail again
                 #     except primitives.PrimitiveFailedError:
                 #         pass
                 if interp.trace:
