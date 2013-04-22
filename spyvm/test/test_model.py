@@ -17,7 +17,7 @@ def joinbits(values, lengths):
     for each, length in reversed(zip(values, lengths)):
         result = result << length
         result += each
-    return result   
+    return result
 
 
 def test_new():
@@ -56,7 +56,7 @@ def test_word_object():
     assert w_bytes.size() == 20
     assert w_class.as_class_get_shadow(space).instsize() == 0
     assert w_bytes.getword(3) == 0
-    w_bytes.setword(3, 42)  
+    w_bytes.setword(3, 42)
     assert w_bytes.getword(3) == 42
     assert w_bytes.getword(0) == 0
     py.test.raises(IndexError, lambda: w_bytes.getword(20))
@@ -153,7 +153,7 @@ def test_is_same_object(w_o1=model.W_PointersObject(space, None,0), w_o2=None):
         w_o2 = w_o1
     assert w_o1.is_same_object(w_o2)
     assert w_o2.is_same_object(w_o1)
-    
+
 def test_not_is_same_object(w_o1=model.W_PointersObject(space, None,0),w_o2=model.W_PointersObject(space, None,0)):
     assert not w_o1.is_same_object(w_o2)
     assert not w_o2.is_same_object(w_o1)
@@ -190,13 +190,13 @@ def test_become_pointers():
 
     w_clsb = mockclass(space, 4)
     w_b = w_clsb.as_class_get_shadow(space).new()
-    
+
     hasha = w_a.gethash()
     hashb = w_b.gethash()
 
     w_a.store(space, 0, w_b)
     w_b.store(space, 1, w_a)
-    
+
     res = w_a.become(w_b)
     assert res
     assert w_a.gethash() == hashb
@@ -288,7 +288,7 @@ def test_large_positive_integer_1word_at_put():
         assert target.at0(space, i) == source.at0(space, i)
     assert hex(r_uint(target.value)) == hex(r_uint(source.value))
 
-@pytest.mark.skipif("socket.gethostname() == 'precise32'")
+@py.test.mark.skipif("socket.gethostname() == 'precise32'")
 def test_display_bitmap():
     # XXX: Patch SDLDisplay -> get_pixelbuffer() to circumvent
     # double-free bug

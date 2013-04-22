@@ -271,13 +271,13 @@ def test_pushActiveContextBytecode():
     step_in_interp(s_frame)
     assert s_frame.pop() == w_frame
     assert s_frame.stack() == []
-    
+
 def test_duplicateTopBytecode():
     w_frame, s_frame = new_frame(pushConstantZeroBytecode + duplicateTopBytecode)
     step_in_interp(s_frame)
     step_in_interp(s_frame)
     assert s_frame.stack() == [space.w_zero, space.w_zero]
-    
+
 def test_bytecodePrimBitAnd():
     w_frame, s_frame = new_frame(pushConstantOneBytecode + pushConstantTwoBytecode + bytecodePrimBitAnd)
     step_in_interp(s_frame)
@@ -285,7 +285,7 @@ def test_bytecodePrimBitAnd():
     step_in_interp(s_frame)
     assert s_frame.pop().value == 0
     assert s_frame.stack() == []
-    
+
 def test_bytecodePrimBitOr():
     w_frame, s_frame = new_frame(pushConstantOneBytecode + pushConstantTwoBytecode + bytecodePrimBitOr)
     step_in_interp(s_frame)
@@ -301,14 +301,14 @@ def test_bytecodePrimBitShift():
     step_in_interp(s_frame)
     assert s_frame.pop().value == 4
     assert s_frame.stack() == []
-    
+
 def test_bytecodePrimClass():
     w_frame, s_frame = new_frame(pushConstantOneBytecode + bytecodePrimClass)
     step_in_interp(s_frame)
     step_in_interp(s_frame)
     assert s_frame.pop() == space.w_SmallInteger
     assert s_frame.stack() == []
-    
+
 def test_bytecodePrimSubtract():
     w_frame, s_frame = new_frame(pushConstantOneBytecode + pushConstantTwoBytecode + bytecodePrimSubtract)
     step_in_interp(s_frame)
@@ -324,15 +324,15 @@ def test_bytecodePrimMultiply():
     step_in_interp(s_frame)
     assert s_frame.pop().value == -2
     assert s_frame.stack() == []
-    
+
 def test_bytecodePrimDivide():
     w_frame, s_frame = new_frame(pushConstantTwoBytecode + pushConstantMinusOneBytecode + bytecodePrimDivide)
     step_in_interp(s_frame)
     step_in_interp(s_frame)
     step_in_interp(s_frame)
-    assert s_frame.pop().value == -2    
+    assert s_frame.pop().value == -2
     assert s_frame.stack() == []
-    
+
 def test_bytecodePrimDiv():
     w_frame, s_frame = new_frame(pushConstantTwoBytecode + pushConstantMinusOneBytecode + bytecodePrimDiv)
     step_in_interp(s_frame)
@@ -356,14 +356,14 @@ def test_bytecodePrimEquivalent():
     step_in_interp(s_frame)
     assert s_frame.pop() == space.w_false
     assert s_frame.stack() == []
-    
+
     w_frame, s_frame = new_frame(pushConstantOneBytecode + pushConstantOneBytecode + bytecodePrimEquivalent)
     step_in_interp(s_frame)
     step_in_interp(s_frame)
     step_in_interp(s_frame)
     assert s_frame.pop() == space.w_true
     assert s_frame.stack() == []
-    
+
 def test_bytecodePrimNew():
     w_fakeclassclass = mockclass(space, 10, name='fakeclassclass')
     w_fakeclass = mockclass(space, 1, name='fakeclass', varsized=False,
@@ -378,7 +378,7 @@ def test_bytecodePrimNew():
     assert s_frame.stack() == []
     assert w_fakeinst.getclass(space).is_same_object(w_fakeclass)
     assert w_fakeinst.size() == 1
-    
+
 def test_bytecodePrimNewWithArg():
     w_fakeclassclass = mockclass(space, 10, name='fakeclassclass')
     w_fakeclass = mockclass(space, 1, name='fakeclass', varsized=True,
@@ -394,7 +394,7 @@ def test_bytecodePrimNewWithArg():
     assert s_frame.stack() == []
     assert w_fakeinst.getclass(space).is_same_object(w_fakeclass)
     assert w_fakeinst.size() == 3
- 
+
 def test_bytecodePrimSize():
     w_fakeclass = mockclass(space, 2, name='fakeclass', varsized=True)
     w_fakeinst = w_fakeclass.as_class_get_shadow(space).new(5)
@@ -412,8 +412,8 @@ def test_bytecodePrimSize():
 # w_object - the actual object we will be sending the method to
 # bytecodes - the bytecode to be executed
 def sendBytecodesTest(w_class, w_object, bytecodes):
-    for bytecode, result in [ (returnReceiver, w_object), 
-          (returnTrue, space.w_true), 
+    for bytecode, result in [ (returnReceiver, w_object),
+          (returnTrue, space.w_true),
           (returnFalse, space.w_false),
           (returnNil, space.w_nil),
           (returnTopFromMethod, space.w_one) ]:
@@ -443,7 +443,7 @@ def test_sendLiteralSelectorBytecode():
     w_class = mockclass(space, 0)
     w_object = w_class.as_class_get_shadow(space).new()
     sendBytecodesTest(w_class, w_object, sendLiteralSelectorBytecode(0))
-        
+
 def test_fibWithArgument():
     bytecode = ''.join(map(chr, [ 16, 119, 178, 154, 118, 164, 11, 112, 16, 118, 177, 224, 112, 16, 119, 177, 224, 176, 124 ]))
     shadow = mockclass(space, 0).as_class_get_shadow(space)
@@ -475,7 +475,7 @@ def test_send_to_primitive():
         assert len(s_frame.stack()) == 1
         w_result = s_frame.pop()
         assert space.unwrap_int(w_result) == 42
-        
+
     run_with_faked_primitive_methods(
         [[space.w_SmallInteger, primitives.SUBTRACT,
           1, "-"]],
@@ -576,7 +576,7 @@ def storeAssociation(bytecode):
 
 def test_extendedStoreAndPopBytecode():
     test_storeAndPopReceiverVariableBytecode(lambda index: extendedStoreAndPopBytecode + chr((0<<6) + index))
-                
+
     test_storeAndPopTemporaryVariableBytecode(lambda index: extendedStoreAndPopBytecode + chr((1<<6) + index))
 
     py.test.raises(interpreter.IllegalStoreError,
@@ -669,7 +669,7 @@ def test_singleExtendedSuperBytecode(bytecode=singleExtendedSuperBytecode + chr(
 def test_secondExtendedSendBytecode():
     w_class = mockclass(space, 0)
     w_object = w_class.as_class_get_shadow(space).new()
-    sendBytecodesTest(w_class, w_object, secondExtendedSendBytecode + chr(0)) 
+    sendBytecodesTest(w_class, w_object, secondExtendedSendBytecode + chr(0))
 
 def test_doubleExtendedDoAnythinBytecode():
     w_class = mockclass(space, 0)
@@ -706,7 +706,7 @@ def test_bc_3_plus_4():
     # value0
     #   " (self >> #value0) byteCode "
     #   " (self >> #value0) literals "
-    # 
+    #
     #   ^ [ 3 + 4 ] value
     assert interpret_bc(
         [ 137, 117, 200, 164, 4, 32, 33, 176, 125, 201, 124],
@@ -717,7 +717,7 @@ def test_bc_x_plus_x_plus_1():
     # value1
     #   " (self >> #value1) byteCode "
     #   " (self >> #value1) literals "
-    # 
+    #
     #   ^ [ :x | x + x + 1 ] value: 3
     assert interpret_bc(
         [ 137, 118, 200, 164, 7, 104, 16, 16,
@@ -728,7 +728,7 @@ def test_bc_x_plus_y():
     # value2
     #   " (self >> #value2) byteCode "
     #   " (self >> #value2) literals "
-    # 
+    #
     #   ^ [ :x :y | x + y ] value: 3 value: 4
 
     def test():
@@ -745,7 +745,7 @@ def test_bc_push_rcvr_in_block():
     # value1
     #   " (self >> #value1) byteCode "
     #   " (self >> #value1) literals "
-    # 
+    #
     #   ^ [ self ] value
     assert interpret_bc(
         [ 137, 117, 200, 164, 2, 112, 125, 201, 124 ],
@@ -755,7 +755,7 @@ def test_bc_value_return():
     # valueReturn
     #   " (self >> #value1) byteCode "
     #   " (self >> #value1) literals "
-    # 
+    #
     #   [ ^ 1 ] value. ^ 2
     assert interpret_bc(
         [ 137, 117, 200, 164, 2, 118, 124, 201, 135, 119, 124 ],
@@ -765,7 +765,7 @@ def test_bc_value_with_args():
     # valueWithArgs
     #   " (self >> #value1) byteCode "
     #   " (self >> #value1) literals "
-    # 
+    #
     #   [ :a :b | a - b ] valueWithArguments: #(3 2)
     def test():
         val = interpret_bc(
@@ -789,7 +789,7 @@ def test_bc_primBytecodeAt_string():
     run_with_faked_primitive_methods(
         [[space.w_String, primitives.STRING_AT, 1, "at:"]],
         test)
-    
+
 def test_bc_primBytecodeAtPut_string():
     #   ^ 'a' at: 1 put:'b'
     def test():
@@ -922,7 +922,7 @@ def test_bc_pushClosureCopyCopied0ValuesBytecode(bytecode = pushClosureCopyCopie
         step_in_interp(s_frame)
         assert s_frame.pc() == pc + 4 + i
         closure = wrapper.BlockClosureWrapper(space, s_frame.top())
-        assert closure.startpc() == pc + 4
+        assert closure.startpc() == pc + 4 + 4 + 1 # pc + offset + headerword + smalltalk 1-indexing
         assert closure.outerContext() is s_frame._w_self
 
 def test_bc_pushClosureCopyCopied2ValuesBytecode(bytecode = pushClosureCopyCopiedValuesBytecode):
@@ -933,7 +933,7 @@ def test_bc_pushClosureCopyCopied2ValuesBytecode(bytecode = pushClosureCopyCopie
     step_in_interp(s_frame)
     assert s_frame.pc() == pc + 4
     closure = wrapper.BlockClosureWrapper(space, s_frame.top())
-    assert closure.startpc() == pc + 4
+    assert closure.startpc() == pc + 4 + 5
     assert closure.outerContext() is s_frame._w_self
     assert closure.at0(0) == "english"
     assert closure.at0(1) == "bar"
@@ -956,7 +956,7 @@ def test_blockclosure_return():
     #   ^ 1
     def test():
         assert interpret_bc(
-            [ 0x8f, 2, 0, 4, 16, 17, 0xb0, 0x7c, 
+            [ 0x8f, 2, 0, 4, 16, 17, 0xb0, 0x7c,
             0x76, 0x77, 0xf0, 0x87, 0x76, 0x7c ],
             fakeliterals(space, "value:value:", )).value == 3
     run_with_faked_primitive_methods(
@@ -966,7 +966,7 @@ def test_blockclosure_return():
 
 def test_stacking_interpreter():
     # | testBlock |
-    # testBlock := [ :aNumber | 
+    # testBlock := [ :aNumber |
     #     aNumber = 0
     #         ifTrue: [ 0 ]
     #         ifFalse: [ (testBlock value: aNumber - 1) + aNumber ]].
@@ -974,9 +974,9 @@ def test_stacking_interpreter():
     import operator
     interp = interpreter.Interpreter(space, max_stack_depth=3)
     #create a method with the correct bytecodes and a literal
-    bytes = reduce(operator.add, map(chr, [0x8a, 0x01, 0x68, 0x10, 0x8f, 0x11, 
-        0x00, 0x11, 0x10, 0x75, 0xb6, 0x9a, 0x75, 0xa4, 0x09, 0x8c, 0x00, 0x01, 
-        0x10, 0x76, 0xb1, 0xca, 0x10, 0xb0, 0x7d, 0x8e, 0x00, 0x00, 0x8c, 0x00, 
+    bytes = reduce(operator.add, map(chr, [0x8a, 0x01, 0x68, 0x10, 0x8f, 0x11,
+        0x00, 0x11, 0x10, 0x75, 0xb6, 0x9a, 0x75, 0xa4, 0x09, 0x8c, 0x00, 0x01,
+        0x10, 0x76, 0xb1, 0xca, 0x10, 0xb0, 0x7d, 0x8e, 0x00, 0x00, 0x8c, 0x00,
         0x00, 0x20, 0xca, 0x7c]))
     w_method = model.W_CompiledMethod(len(bytes))
     w_method.islarge = 1

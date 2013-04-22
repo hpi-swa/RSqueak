@@ -20,7 +20,7 @@ class MockFrame(model.W_PointersObject):
         s_self.push_all(stack)
         s_self.store_expected_argument_count(0)
         self.s_class = space.w_MethodContext.as_class_get_shadow(space)
-    
+
     def as_blockcontext_get_shadow(self):
         self._shadow = shadow.BlockContextShadow(space, self)
         return self._shadow
@@ -60,7 +60,7 @@ def prim_fails(code, stack):
     with py.test.raises(PrimitiveFailedError):
         prim_table[code](interp, w_frame.as_context_get_shadow(space), argument_count - 1)
     assert w_frame.as_context_get_shadow(space).stack() == orig_stack
-        
+
 # smallinteger tests
 def test_small_int_add():
     assert prim(primitives.ADD, [1,2]).value == 3
@@ -79,7 +79,7 @@ def test_small_int_minus_fail():
     prim_fails(primitives.SUBTRACT, [constants.TAGGED_MININT,1])
     prim_fails(primitives.SUBTRACT,
                [constants.TAGGED_MININT, constants.TAGGED_MAXINT])
-    
+
 def test_small_int_multiply():
     assert prim(primitives.MULTIPLY, [6,3]).value == 18
 
@@ -91,40 +91,40 @@ def test_small_int_multiply_overflow():
     prim_fails(primitives.MULTIPLY, [constants.TAGGED_MAXINT, -4])
     prim_fails(primitives.MULTIPLY, [constants.TAGGED_MININT, constants.TAGGED_MAXINT])
     prim_fails(primitives.MULTIPLY, [constants.TAGGED_MININT, 2])
-    
+
 def test_small_int_divide():
     assert prim(primitives.DIVIDE, [6,3]).value == 2
-    
+
 def test_small_int_divide_fail():
     prim_fails(primitives.DIVIDE, [12, 0])
     prim_fails(primitives.DIVIDE, [12, 7])
-    
+
 def test_small_int_mod():
     assert prim(primitives.MOD, [12,7]).value == 5
 
 def test_small_int_mod_fail():
     prim_fails(primitives.MOD, [12, 0])
-    
+
 def test_small_int_div():
     assert prim(primitives.DIV, [12,3]).value == 4
     assert prim(primitives.DIV, [12,7]).value == 1
 
 def test_small_int_div_fail():
     prim_fails(primitives.DIV, [12, 0])
-    
+
 def test_small_int_quo():
     assert prim(primitives.QUO, [12,3]).value == 4
     assert prim(primitives.QUO, [12,7]).value == 1
 
 def test_small_int_quo_fail():
     prim_fails(primitives.QUO, [12, 0])
-    
+
 def test_small_int_bit_and():
     assert prim(primitives.BIT_AND, [2, 4]).value == 0
     assert prim(primitives.BIT_AND, [2, 3]).value == 2
     assert prim(primitives.BIT_AND, [3, 4]).value == 0
     assert prim(primitives.BIT_AND, [4, 4]).value == 4
-    
+
 def test_small_int_bit_or():
     assert prim(primitives.BIT_OR, [2, 4]).value == 6
     assert prim(primitives.BIT_OR, [2, 3]).value == 3
@@ -145,7 +145,7 @@ def test_small_int_bit_shift():
     assert prim(primitives.BIT_SHIFT, [0, 1]).value == 0
     assert prim(primitives.BIT_SHIFT, [0, 2]).value == 0
     assert prim(primitives.BIT_SHIFT, [0, 3]).value == 0
-    
+
 def test_small_int_bit_shift_positive():
     assert prim(primitives.BIT_SHIFT, [4, -3]).value == 0
     assert prim(primitives.BIT_SHIFT, [4, -2]).value == 1
@@ -155,7 +155,7 @@ def test_small_int_bit_shift_positive():
     assert prim(primitives.BIT_SHIFT, [4, 2]).value == 16
     assert prim(primitives.BIT_SHIFT, [4, 3]).value == 32
     assert prim(primitives.BIT_SHIFT, [4, 27]).value == 536870912
-    
+
 def test_small_int_bit_shift_negative():
     assert prim(primitives.BIT_SHIFT, [-4, -3]).value == -1
     assert prim(primitives.BIT_SHIFT, [-4, -2]).value == -1
@@ -165,7 +165,7 @@ def test_small_int_bit_shift_negative():
     assert prim(primitives.BIT_SHIFT, [-4, 2]).value == -16
     assert prim(primitives.BIT_SHIFT, [-4, 3]).value == -32
     assert prim(primitives.BIT_SHIFT, [-4, 27]).value == -536870912
-    
+
 def test_small_int_bit_shift_fail():
     from rpython.rlib.rarithmetic import intmask
     prim_fails(primitives.BIT_SHIFT, [4, 32])
@@ -224,7 +224,7 @@ def test_at_put():
     w_obj = mockclass(space, 0, varsized=1).as_class_get_shadow(space).new(1)
     assert prim(primitives.AT_PUT, [w_obj, 1, 22]).value == 22
     assert prim(primitives.AT, [w_obj, 1]).value == 22
-    
+
 def test_at_and_at_put_bytes():
     w_str = wrap("abc")
     prim_fails(primitives.AT_PUT, [w_str, 1, "d"])
@@ -236,7 +236,7 @@ def test_at_and_at_put_bytes():
 def test_invalid_at_put():
     w_obj = mockclass(space, 0).as_class_get_shadow(space).new()
     prim_fails(primitives.AT_PUT, [w_obj, 1, 22])
-    
+
 def test_size():
     w_obj = mockclass(space, 0, varsized=True).as_class_get_shadow(space).new(0)
     assert prim(primitives.SIZE, [w_obj]).value == 0
@@ -262,11 +262,11 @@ def test_string_at_put():
 
 def test_invalid_object_at():
     prim_fails(primitives.OBJECT_AT, ["q", constants.CHARACTER_VALUE_INDEX+2])
-    
+
 def test_invalid_object_at_put():
     w_obj = mockclass(space, 1).as_class_get_shadow(space).new()
     prim_fails(primitives.OBJECT_AT_PUT, [w_obj, 2, 42])
-    
+
 def test_string_at_put():
     test_str = wrap("foobar")
     assert prim(primitives.STRING_AT_PUT, [test_str, 4, "c"]) == wrap("c")
@@ -278,19 +278,19 @@ def test_new():
     w_Object = space.classtable['w_Object']
     w_res = prim(primitives.NEW, [w_Object])
     assert w_res.getclass(space).is_same_object(w_Object)
-    
+
 def test_invalid_new():
     prim_fails(primitives.NEW, [space.w_String])
 
 def test_new_with_arg():
     w_res = prim(primitives.NEW_WITH_ARG, [space.w_String, 20])
     assert w_res.getclass(space).is_same_object(space.w_String)
-    assert w_res.size() == 20    
+    assert w_res.size() == 20
 
 def test_invalid_new_with_arg():
     w_Object = space.classtable['w_Object']
     prim_fails(primitives.NEW_WITH_ARG, [w_Object, 20])
-    
+
 def test_inst_var_at():
     # n.b.: 1-based indexing!
     w_v = prim(primitives.INST_VAR_AT,
@@ -314,7 +314,7 @@ def test_inst_var_at_put_invalid():
     # n.b.: 1-based indexing! (and an invalid index)
     prim_fails(primitives.INST_VAR_AT_PUT,
                ["q", constants.CHARACTER_VALUE_INDEX+2, "t"])
-    
+
 def test_class():
     assert prim(primitives.CLASS, ["string"]).is_same_object(space.w_String)
     assert prim(primitives.CLASS, [1]).is_same_object(space.w_SmallInteger)
@@ -357,7 +357,7 @@ def test_float_boolean():
     assert prim(primitives.FLOAT_GREATEROREQUAL, [3.5,4.9]).is_same_object(space.w_false)
     assert prim(primitives.FLOAT_EQUAL, [2.2,2.2]).is_same_object(space.w_true)
     assert prim(primitives.FLOAT_NOTEQUAL, [2.2,2.2]).is_same_object(space.w_false)
-    
+
 def test_block_copy_and_value():
     # see test_interpreter for tests of these opcodes
     return
@@ -406,7 +406,7 @@ def test_times_two_power():
     assert equals_ttp(-1,2,-4)
     assert equals_ttp(1.5,0,1.5)
     assert equals_ttp(1.5,-1,0.75)
-    
+
 def test_primitive_milliseconds_clock():
     import time
     start = prim(primitives.MILLISECOND_CLOCK, [0]).value
@@ -472,7 +472,7 @@ def test_new_method():
 def test_image_name():
     w_v = prim(primitives.IMAGE_NAME, [2])
     assert w_v.bytes == list(IMAGENAME)
-    
+
 def test_clone():
     w_obj = mockclass(space, 1, varsized=True).as_class_get_shadow(space).new(1)
     w_obj.atput0(space, 0, space.wrap_int(1))
@@ -480,7 +480,7 @@ def test_clone():
     assert space.unwrap_int(w_v.at0(space, 0)) == 1
     w_obj.atput0(space, 0, space.wrap_int(2))
     assert space.unwrap_int(w_v.at0(space, 0)) == 1
-    
+
 def test_file_open_write(monkeypatch):
     def open_write(filename, mode, perm):
         assert filename == "nonexistant"
@@ -548,11 +548,13 @@ def test_primitive_closure_copyClosure():
     from test_interpreter import new_frame
     w_frame, s_frame = new_frame("<never called, but used for method generation>",
             space=space)
-    w_block = prim(primitives.CLOSURE_COPY_WITH_COPIED_VALUES, map(wrap, 
-                    ["anActiveContext", 2, [wrap(1), wrap(2)]]), w_frame)
+    w_outer_frame, s_initial_context = new_frame("<never called, but used for method generation>",
+        space=space)
+    w_block = prim(primitives.CLOSURE_COPY_WITH_COPIED_VALUES, map(wrap,
+                    [w_outer_frame, 2, [wrap(1), wrap(2)]]), w_frame)
     assert w_block is not space.w_nil
     w_w_block = wrapper.BlockClosureWrapper(space, w_block)
-    assert w_w_block.startpc() is 0
+    assert w_w_block.startpc() is 5
     assert w_w_block.at0(0) == wrap(1)
     assert w_w_block.at0(1) == wrap(2)
     assert w_w_block.numArgs() is 2
@@ -575,9 +577,9 @@ def build_up_closure_environment(args, copiedValues=[]):
     from test_interpreter import new_frame
     w_frame, s_initial_context = new_frame("<never called, but used for method generation>",
         space=space)
-    
+
     size_arguments = len(args)
-    closure = space.newClosure(w_frame, 4, #pc 
+    closure = space.newClosure(w_frame, 4, #pc
                                 size_arguments, copiedValues)
     s_initial_context.push_all([closure] + args)
     interp = interpreter.Interpreter(space)
@@ -695,11 +697,11 @@ def test_primitive_force_display_update(monkeypatch):
     class DisplayFlush(Exception):
         pass
 
-    def flush_to_screen_mock():
+    def flush_to_screen_mock(self):
         raise DisplayFlush
 
     try:
-        monkeypatch.setattr(mock_display.fetch(space, 0), "flush_to_screen", flush_to_screen_mock)
+        monkeypatch.setattr(space.get_display().__class__, "flip", flush_to_screen_mock)
         with py.test.raises(DisplayFlush):
             prim(primitives.FORCE_DISPLAY_UPDATE, [mock_display])
     finally:

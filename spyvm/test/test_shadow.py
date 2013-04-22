@@ -83,7 +83,7 @@ def method(tempsize=3,argsize=2, bytes="abcde"):
     w_m.literalsize = 2
     return w_m
 
-def methodcontext(w_sender=space.w_nil, pc=1, stackpointer=0, stacksize=5,
+def methodcontext(w_sender=space.w_nil, pc=13, stackpointer=0, stacksize=5,
                   method=method()):
     w_object = model.W_PointersObject(space, space.w_MethodContext, constants.MTHDCTX_TEMP_FRAME_START+method.tempsize+stacksize)
     w_object.store(space, constants.CTXPART_SENDER_INDEX, w_sender)
@@ -97,7 +97,7 @@ def methodcontext(w_sender=space.w_nil, pc=1, stackpointer=0, stacksize=5,
     w_object.store(space, constants.MTHDCTX_TEMP_FRAME_START, space.wrap_string('el'))
     return w_object
 
-def blockcontext(w_sender=space.w_nil, pc=1, stackpointer=1, stacksize=5,
+def blockcontext(w_sender=space.w_nil, pc=13, stackpointer=1, stacksize=5,
                   home=methodcontext()):
     w_object = model.W_PointersObject(space, space.w_MethodContext, constants.MTHDCTX_TEMP_FRAME_START+stacksize)
     w_object.store(space, constants.CTXPART_SENDER_INDEX, w_sender)
