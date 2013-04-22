@@ -9,13 +9,13 @@ from rsdl import RSDL, RSDL_helper
 MOUSE_BTN_RIGHT = 1
 MOUSE_BTN_MIDDLE = 2
 MOUSE_BTN_LEFT = 4
-MOD_SHIFT  = 8
-MOD_CONTROL = 16
-MOD_ALT = 64
+MOD_SHIFT  = 1
+MOD_CONTROL = 2
+MOD_ALT = 16
 
 class SDLDisplay(object):
     _attrs_ = ["screen", "width", "height", "depth", "surface", "has_surface",
-               "mouse_position", "button", "key"]
+               "mouse_position", "button", "key", "interrupt_key"]
 
     def __init__(self, title):
         assert RSDL.Init(RSDL.INIT_VIDEO) >= 0
@@ -77,6 +77,10 @@ class SDLDisplay(object):
                             if len(chars) == 1:
                                 if c_type == RSDL.KEYDOWN:
                                     self.key = ord(chars[0])
+                                    interrupt = self.interrupt_key
+                                    if (interrupt & 0xFF == self.key and
+                                        interrupt >> 8 == self.get_modifier_mask(0)):
+                                            raise KeyboardInterrupt
                                 else:
                                     pass # XXX: Todo?
                     elif c_type == RSDL.QUIT:
@@ -85,7 +89,7 @@ class SDLDisplay(object):
         finally:
             lltype.free(event, flavor='raw')
 
-    def get_modifier_mask(self):
+    def get_modifier_mask(self, shift):
         RSDL.PumpEvents()
         mod = RSDL.GetModState()
         modifier = 0
@@ -95,7 +99,7 @@ class SDLDisplay(object):
             modifier |= MOD_SHIFT
         if mod & RSDL.KMOD_ALT != 0:
             modifier |= MOD_ALT
-        return modifier
+        return modifier << shift
 
     def mouse_point(self):
         self.get_next_event()
@@ -103,16 +107,19 @@ class SDLDisplay(object):
 
     def mouse_button(self):
         self.get_next_event()
-        return self.button | self.get_modifier_mask()
+        return self.button | self.get_modifier_mask(3)
 
     def next_keycode(self):
         key = self.key
         self.key = 0
-        return key
+        return key | self.get_modifier_mask(8)
 
     def peek_keycode(self):
         self.get_next_event()
-        return self.key
+        return self.key | self.get_modifier_mask(8)
+
+    def set_interrupt_key(self, space, encoded_key):
+        self.interrupt_key = encoded_key
 
 
 class SDLCursorClass(object):

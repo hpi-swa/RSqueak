@@ -834,6 +834,7 @@ BECOME = 128
 SPECIAL_OBJECTS_ARRAY = 129
 FULL_GC = 130
 INC_GC = 131
+SET_INTERRUPT_KEY = 133
 INTERRUPT_SEMAPHORE = 134
 
 @expose_primitive(BECOME, unwrap_spec=[object, object])
@@ -868,6 +869,11 @@ def func(interp, s_frame, w_arg): # Squeak pops the arg and ignores it ... go fi
     from rpython.rlib import rgc
     rgc.collect()
     return fake_bytes_left(interp)
+
+@expose_primitive(SET_INTERRUPT_KEY, unwrap_spec=[object, int])
+def func(interp, s_frame, w_rcvr, encoded_key):
+    interp.space.get_display().set_interrupt_key(interp.space, encoded_key)
+    return w_rcvr
 
 @expose_primitive(INTERRUPT_SEMAPHORE, unwrap_spec=[object, object])
 def func(interp, s_frame, w_rcvr, w_semaphore):
