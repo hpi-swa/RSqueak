@@ -764,6 +764,8 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
     def create(space, w_class, size, depth, display):
         if depth == 1:
             return W_DisplayBitmap1Bit(space, w_class, size, depth, display)
+        elif depth == 16:
+            return W_DisplayBitmap32Bit(space, w_class, size, depth, display)
         elif depth == 32:
             return W_DisplayBitmap32Bit(space, w_class, size, depth, display)
         else:
@@ -824,6 +826,22 @@ class W_DisplayBitmap1Bit(W_DisplayBitmap):
             self.pixelbuffer[pos] = pixel
             mask >>= 1
             pos += 1
+
+class W_DisplayBitmap16Bit(W_DisplayBitmap):
+    def getword(self, n):
+        return self._real_depth_buffer[n]
+
+    @jit.unroll_safe
+    def setword(self, n, word):
+        self._real_depth_buffer[n] = word
+        pos = n * NATIVE_DEPTH / 16
+        mask = 0xf
+        for i in range(2):
+            pixel = 0
+            for j in range(4):
+                pixel |= r_uint(word & mask << (8 * j + 4))
+                mask <<= 4
+            self.pixelbuffer[pos + i] = pixel
 
 class W_DisplayBitmap32Bit(W_DisplayBitmap):
     def getword(self, n):
