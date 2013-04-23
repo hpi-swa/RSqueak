@@ -65,13 +65,16 @@ class Interpreter(object):
         s_new_context = w_active_context.as_context_get_shadow(self.space)
         while True:
             assert self.remaining_stack_depth == self.max_stack_depth
+            # Need to save s_sender, c_loop will nil this on return
             s_sender = s_new_context.s_sender()
             try:
                 s_new_context = self.c_loop(s_new_context)
             except StackOverflow, e:
                 s_new_context = e.s_context
             except Return, nlr:
+                s_new_context = s_sender
                 while s_new_context is not nlr.s_target_context:
+                    s_sender = s_new_context.s_sender()
                     s_new_context.mark_returned()
                     s_new_context = s_sender
                 s_new_context.push(nlr.value)
