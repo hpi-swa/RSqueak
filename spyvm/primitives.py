@@ -52,8 +52,6 @@ pos_32bit_int = object()
 
 def expose_primitive(code, unwrap_spec=None, no_result=False,
                     result_is_new_frame=False, clean_stack=True, compiled_method=False):
-    # some serious magic, don't look
-    from rpython.rlib.unroll import unrolling_iterable
     # heuristics to give it a nice name
     name = None
     for key, value in globals().iteritems():
@@ -64,13 +62,33 @@ def expose_primitive(code, unwrap_spec=None, no_result=False,
             else:
                 name = key
 
+    def decorator(func):
+        assert code not in prim_table
+        func.func_name = "prim_" + name
+
+        wrapped = wrap_primitive(
+            unwrap_spec=unwrap_spec, no_result=no_result,
+            result_is_new_frame=result_is_new_frame,
+            clean_stack=clean_stack, compiled_method=compiled_method
+        )(func)
+        wrapped.func_name = "wrap_prim_" + name
+        prim_table[code] = wrapped
+        prim_table_implemented_only.append((code, wrapped))
+        return func
+    return decorator
+
+
+def wrap_primitive(unwrap_spec=None, no_result=False,
+                   result_is_new_frame=False, clean_stack=True,
+                   compiled_method=False):
+    # some serious magic, don't look
+    from rpython.rlib.unroll import unrolling_iterable
+
     assert not (no_result and result_is_new_frame)
     # Because methods always have a receiver, an unwrap_spec of [] is a bug
     assert unwrap_spec is None or unwrap_spec
 
     def decorator(func):
-        assert code not in prim_table
-        func.func_name = "prim_" + name
         if unwrap_spec is None:
             def wrapped(interp, s_frame, argument_count_m1, s_method=None):
                 if compiled_method:
@@ -138,10 +156,7 @@ def expose_primitive(code, unwrap_spec=None, no_result=False,
                         assert w_result is not None
                         assert isinstance(w_result, model.W_Object)
                         s_frame.push(w_result)
-        wrapped.func_name = "wrap_prim_" + name
-        prim_table[code] = wrapped
-        prim_table_implemented_only.append((code, wrapped))
-        return func
+        return wrapped
     return decorator
 
 # ___________________________________________________________________________
