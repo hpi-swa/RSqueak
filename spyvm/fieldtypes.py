@@ -76,7 +76,9 @@ class FieldTypes(VarSizedFieldTypes):
         else:
             new_fieldtype = parent.ascent([change, self.diff])
             if not objectmodel.we_are_translated():
-                assert new_fieldtype.types == self.types[0:n0] + [changed_type] + self.types[n0+1:]
+                new_types = list(self.types)
+                new_types[n0] = changed_type
+                assert new_fieldtype.types == new_types
             siblings[change] = new_fieldtype
             return new_fieldtype
 
@@ -101,6 +103,7 @@ class FieldTypes(VarSizedFieldTypes):
             return siblings[change].descent(changes[1:])
         else:
             new_types = list(self.types)
+            assert new_types[change[0]] == obj
             new_types[change[0]] = change[1]
             new_fieldtype = FieldTypes(new_types, self, change)
             siblings[change] = new_fieldtype
