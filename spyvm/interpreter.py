@@ -79,6 +79,8 @@ class Interpreter(object):
                     s_new_context = s_sender
                 s_new_context.push(nlr.value)
             except ProcessSwitch, p:
+                if self.trace:
+                    print "====== Switch from: %s to: %s ======" % (s_new_context.short_str(0), p.s_new_context.short_str(0))
                 s_new_context = p.s_new_context
 
     def c_loop(self, s_context):
