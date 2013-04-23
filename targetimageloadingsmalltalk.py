@@ -12,6 +12,7 @@ from spyvm.tool.analyseimage import create_image
 def _run_benchmark(interp, number, benchmark):
     scheduler = wrapper.scheduler(interp.space)
     w_hpp = scheduler.highest_priority_process()
+    assert isinstance(w_hpp, model.W_PointersObject)
     w_benchmark_proc = model.W_PointersObject(
         interp.space,
         w_hpp.getclass(interp.space),
