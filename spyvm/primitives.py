@@ -286,8 +286,10 @@ for (code,op) in math_ops.items():
 
 @expose_primitive(FLOAT_TRUNCATED, unwrap_spec=[float])
 def func(interp, s_frame, f):
-    w_res = interp.space.wrap_int(int(f))
-    return w_res
+    try:
+        return interp.space.wrap_int(rarithmetic.ovfcheck_float_to_int(f))
+    except OverflowError:
+        raise PrimitiveFailedError
 
 @expose_primitive(FLOAT_TIMES_TWO_POWER, unwrap_spec=[float, int])
 def func(interp, s_frame, rcvr, arg):
