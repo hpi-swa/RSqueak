@@ -4,21 +4,42 @@ import os
 from rpython.rlib.streamio import open_file_as_stream
 from rpython.rlib import jit
 
-from spyvm import model, interpreter, squeakimage, objspace, wrapper, model, \
-                error
+from spyvm import model, interpreter, squeakimage, objspace, wrapper,\
+    error, shadow
 from spyvm.tool.analyseimage import create_image
 
 
 def _run_benchmark(interp, number, benchmark):
-    w_object = interp.space.wrap_int(number)
+    scheduler = wrapper.scheduler(interp.space)
+    w_hpp = scheduler.highest_priority_process()
+    assert isinstance(w_hpp, model.W_PointersObject)
+    w_benchmark_proc = model.W_PointersObject(
+        interp.space,
+        w_hpp.getclass(interp.space),
+        len(w_hpp._vars)
+    )
+
+    # XXX: Copied from interpreter >> perform
+    w_receiver = interp.space.wrap_int(number)
+    w_selector = interp.perform(interp.space.wrap_string(benchmark), "asSymbol")
+    w_method = model.W_CompiledMethod(header=512)
+    w_method.literalatput0(interp.space, 1, w_selector)
+    w_method.setbytes([chr(131), chr(0), chr(124)]) #returnTopFromMethod
+    s_method = w_method.as_compiledmethod_get_shadow(interp.space)
+    s_frame = shadow.MethodContextShadow.make_context(interp.space, s_method, w_receiver, [], None)
+    s_frame.push(w_receiver)
+    # second variable is suspended context
+    w_benchmark_proc.store(space, 1, s_frame.w_self())
+
+    # third variable is priority
+    priority = 40
+    w_benchmark_proc.store(space, 2, space.wrap_int(priority))
+
+    # make process eligible for scheduling
+    wrapper.ProcessWrapper(interp.space, w_benchmark_proc).put_to_sleep()
+
     t1 = time.time()
-    try:
-        w_result = interp.perform(w_object, benchmark)
-    except interpreter.ReturnFromTopLevel, e:
-        w_result = e.object
-    except error.Exit, e:
-        print e.msg
-        w_result = None
+    w_result = _run_image(interp)
     t2 = time.time()
     if w_result:
         if isinstance(w_result, model.W_BytesObject):
@@ -35,10 +56,9 @@ def _run_image(interp):
     assert isinstance(w_ctx, model.W_PointersObject)
     ap.store_suspended_context(space.w_nil)
     try:
-        interp.interpret_with_w_frame(w_ctx)
+        return interp.interpret_with_w_frame(w_ctx)
     except error.Exit, e:
         print e.msg
-    return 0
 
 
 space = objspace.ObjSpace()
@@ -112,7 +132,8 @@ def entry_point(argv):
     if benchmark is not None:
         return _run_benchmark(interp, number, benchmark)
     else:
-        return _run_image(interp)
+        _run_image(interp)
+        return 0
 
 # _____ Define and setup target ___
 

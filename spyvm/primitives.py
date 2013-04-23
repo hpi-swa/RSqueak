@@ -52,8 +52,6 @@ pos_32bit_int = object()
 
 def expose_primitive(code, unwrap_spec=None, no_result=False,
                     result_is_new_frame=False, clean_stack=True, compiled_method=False):
-    # some serious magic, don't look
-    from rpython.rlib.unroll import unrolling_iterable
     # heuristics to give it a nice name
     name = None
     for key, value in globals().iteritems():
@@ -64,13 +62,33 @@ def expose_primitive(code, unwrap_spec=None, no_result=False,
             else:
                 name = key
 
+    def decorator(func):
+        assert code not in prim_table
+        func.func_name = "prim_" + name
+
+        wrapped = wrap_primitive(
+            unwrap_spec=unwrap_spec, no_result=no_result,
+            result_is_new_frame=result_is_new_frame,
+            clean_stack=clean_stack, compiled_method=compiled_method
+        )(func)
+        wrapped.func_name = "wrap_prim_" + name
+        prim_table[code] = wrapped
+        prim_table_implemented_only.append((code, wrapped))
+        return func
+    return decorator
+
+
+def wrap_primitive(unwrap_spec=None, no_result=False,
+                   result_is_new_frame=False, clean_stack=True,
+                   compiled_method=False):
+    # some serious magic, don't look
+    from rpython.rlib.unroll import unrolling_iterable
+
     assert not (no_result and result_is_new_frame)
     # Because methods always have a receiver, an unwrap_spec of [] is a bug
     assert unwrap_spec is None or unwrap_spec
 
     def decorator(func):
-        assert code not in prim_table
-        func.func_name = "prim_" + name
         if unwrap_spec is None:
             def wrapped(interp, s_frame, argument_count_m1, s_method=None):
                 if compiled_method:
@@ -138,10 +156,7 @@ def expose_primitive(code, unwrap_spec=None, no_result=False,
                         assert w_result is not None
                         assert isinstance(w_result, model.W_Object)
                         s_frame.push(w_result)
-        wrapped.func_name = "wrap_prim_" + name
-        prim_table[code] = wrapped
-        prim_table_implemented_only.append((code, wrapped))
-        return func
+        return wrapped
     return decorator
 
 # ___________________________________________________________________________
@@ -271,8 +286,10 @@ for (code,op) in math_ops.items():
 
 @expose_primitive(FLOAT_TRUNCATED, unwrap_spec=[float])
 def func(interp, s_frame, f):
-    w_res = interp.space.wrap_int(int(f))
-    return w_res
+    try:
+        return interp.space.wrap_int(rarithmetic.ovfcheck_float_to_int(f))
+    except OverflowError:
+        raise PrimitiveFailedError
 
 @expose_primitive(FLOAT_TIMES_TWO_POWER, unwrap_spec=[float, int])
 def func(interp, s_frame, rcvr, arg):
@@ -798,6 +815,8 @@ def func(interp, s_frame, w_arg, w_rcvr):
 
 @expose_primitive(EXTERNAL_CALL, clean_stack=False, no_result=True, compiled_method=True)
 def func(interp, s_frame, argcount, s_method):
+    from spyvm.plugins.socket import SocketPlugin
+
     space = interp.space
     w_description = s_method.w_self().literalat0(space, 1)
     if not isinstance(w_description, model.W_PointersObject) or w_description.size() < 2:
@@ -811,6 +830,8 @@ def func(interp, s_frame, argcount, s_method):
 
     if signature == ('BitBltPlugin', 'primitiveCopyBits'):
         return prim_holder.prim_table[BITBLT_COPY_BITS](interp, s_frame, argcount, s_method)
+    elif signature[0] == "SocketPlugin":
+        return SocketPlugin.call(signature[1], interp, s_frame, argcount, s_method)
     raise PrimitiveFailedError
 
 # ___________________________________________________________________________
@@ -1332,6 +1353,8 @@ def func(interp, s_frame, w_rcvr, time_mu_s):
     import time
     time_s = time_mu_s / 1000000.0
     time.sleep(time_s)
+    interp.interrupt_check_counter = 0
+    interp.quick_check_for_interrupt(s_frame, dec=0)
     return w_rcvr
 
 @expose_primitive(FORCE_DISPLAY_UPDATE, unwrap_spec=[object])
