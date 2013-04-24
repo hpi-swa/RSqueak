@@ -79,7 +79,13 @@ class FieldTypes(VarSizedFieldTypes):
         elif parent is None:
             return self.descent([change])
         else:
-            new_fieldtype = parent.ascent([change, self.diff])
+            if n0 == self.diff[0]:
+                diff = [change]
+            else:
+                diff = [change, self.diff]
+
+            new_fieldtype = parent.ascent(diff)
+
             if not objectmodel.we_are_translated():
                 new_types = list(self.types)
                 new_types[n0] = changed_type
