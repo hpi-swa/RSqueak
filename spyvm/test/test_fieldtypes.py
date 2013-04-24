@@ -2,7 +2,7 @@ import py
 from spyvm import model, fieldtypes
 from spyvm import objspace
 
-from spyvm.fieldtypes import obj, SInt
+from spyvm.fieldtypes import obj, SInt, LPI, flt
 
 def test_simple_changes():
 	a = fieldtypes.FieldTypes.of_length(3)
@@ -31,3 +31,15 @@ def test_numberOfElements():
 	assert len(a.sibling(0, SInt).siblings) == 2
 	assert len(a.sibling(1, SInt).siblings) == 2
 	assert len(a.sibling(2, SInt).siblings) == 1 # link to [o, i, i] not created
+
+def test_multiple_changes():
+	a = fieldtypes.FieldTypes.of_length(3)
+	b = a.sibling(0, SInt)
+	for tag in [LPI, flt]:
+		assert b.sibling(0, tag).types == [tag, obj, obj]
+
+def test_obj_replacement():
+	a = fieldtypes.FieldTypes.of_length(3)
+	b = a.sibling(0, SInt).sibling(1, SInt)
+	c = a.sibling(1, SInt)
+	assert b.sibling(0, obj) is c

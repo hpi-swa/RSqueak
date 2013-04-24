@@ -11,6 +11,9 @@ SInt = TypeTag()
 flt = TypeTag()
 obj = TypeTag()
 
+# may be used during debugging
+# LPI, SInt, flt, obj = 'LPI', 'SInt', 'float', 'object'
+
 class FieldSort(TimSort):
     def lt(self, a, b):
         return a[0] < b[0]
@@ -109,6 +112,8 @@ class FieldTypes(VarSizedFieldTypes):
             return self
 
         change = changes[0]
+        if change[1] is obj:
+            return self.descent(changes[1:])
         siblings = self.siblings
         if change in siblings:
             return siblings[change].descent(changes[1:])
