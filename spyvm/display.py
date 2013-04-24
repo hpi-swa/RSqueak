@@ -24,6 +24,7 @@ class SDLDisplay(object):
         SDLCursor.has_display = True
         self.has_surface = False
         self.mouse_position = [0, 0]
+        self.interrupt_key = 15 << 8 # pushing all four meta keys, of which we support three...
         self.button = 0
         self.key = 0
 
