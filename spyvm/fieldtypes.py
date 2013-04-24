@@ -1,6 +1,7 @@
 from spyvm import model, shadow
 
 from rpython.rlib import objectmodel, jit, signature
+from rpython.rlib.listsort import TimSort
 
 class TypeTag():
     pass
@@ -9,6 +10,10 @@ LPI = TypeTag()
 SInt = TypeTag()
 flt = TypeTag()
 obj = TypeTag()
+
+class FieldSort(TimSort):
+    def lt(self, a, b):
+        return a[0] < b[0]
 
 maps = {}
 
@@ -85,7 +90,7 @@ class FieldTypes(VarSizedFieldTypes):
     def ascent(self, changes):
         parent = self.parent
         if parent is None:
-            sort(changes)
+            FieldSort(changes).sort()
             return self.descent(changes)
         else:
             change = self.diff
@@ -140,32 +145,3 @@ def fieldtypes_of(w_obj):
             return typer
     except AttributeError:
         return nilTyper
-
-def sort(an_array):
-    end = len(an_array) - 1
-    sort_quick_inplace(an_array, 0, end)
-
-
-def sort_quick_inplace(an_array, start, end):
-    assert start >= 0 and end < len(an_array)
-
-    def partition(an_array, start, end):
-        key = an_array[start][0]
-        i = start - 1
-        j = end + 1
-        while True:
-            i += 1
-            j -= 1
-            while not an_array[j][0] <= key:
-                j -= 1
-            while not an_array[i][0] >= key:
-                i += 1
-            if j <= i:
-                return j
-            else:
-                an_array[i], an_array[j] = an_array[j], an_array[i]
-
-    if start < end:
-        mid = partition(an_array, start, end)
-        sort_quick_inplace(an_array, start, mid)
-        sort_quick_inplace(an_array, mid + 1, end)
