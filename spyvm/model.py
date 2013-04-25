@@ -14,7 +14,7 @@ Squeak model.
 W_BlockContext and W_MethodContext classes have been replaced by functions
 that create W_PointersObjects of correct size with attached shadows.
 """
-import sys
+import sys, weakref
 from spyvm import constants, error
 
 from rpython.rlib import rrandom, objectmodel, jit, signature
@@ -468,32 +468,23 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
         assert s_class is not None
         return s_class
 
-class W_PointersObject(W_AbstractObjectWithClassReference):
+class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     """Common object."""
-    _attrs_ = ['_shadow', '_vars', 'fieldtypes']
+    _attrs_ = ['_shadow']
 
     _shadow = None # Default value
 
     @jit.unroll_safe
     def __init__(self, space, w_class, size):
-        from spyvm.fieldtypes import fieldtypes_of_length
         """Create new object with size = fixed + variable size."""
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
-
-        vars = self._vars = [None] * size
-        self.fieldtypes = fieldtypes_of_length(self.s_class, size)
-
-        for i in range(size): # do it by hand for the JIT's sake
-            vars[i] = w_nil
         self._shadow = None # Default value
 
     def fillin(self, space, g_self):
         from spyvm.fieldtypes import fieldtypes_of
-        self._vars = g_self.get_pointers()
         self.s_class = g_self.get_class().as_class_get_penumbra(space)
         self.hash = g_self.get_hash()
         self.space = space
-        self.fieldtypes = fieldtypes_of(self)
 
     def at0(self, space, index0):
         # To test, at0 = in varsize part
@@ -508,20 +499,10 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
             return self._shadow.fetch(n0)
         return self._fetch(n0)
 
-    def _fetch(self, n0):
-        # return self._vars[n0]
-        fieldtypes = jit.promote(self.fieldtypes)
-        return fieldtypes.fetch(self, n0)
-
     def store(self, space, n0, w_value):
         if self.has_shadow():
             return self._shadow.store(n0, w_value)
         return self._store(n0, w_value)
-
-    def _store(self, n0, w_value):
-        # self._vars[n0] = w_value
-        fieldtypes = jit.promote(self.fieldtypes)
-        return fieldtypes.store(self, n0, w_value)
 
     def varsize(self, space):
         return self.size() - self.instsize(space)
@@ -536,13 +517,6 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         if self.has_shadow():
             return self._shadow.size()
         return self._size()
-
-    def _size(self):
-        return len(self._vars)
-
-    def invariant(self):
-        return (W_AbstractObjectWithClassReference.invariant(self) and
-                isinstance(self._vars, list))
 
     def store_shadow(self, shadow):
         assert self._shadow is None or self._shadow is shadow
@@ -617,9 +591,8 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         return self._shadow is not None
 
     def become(self, w_other):
-        if not isinstance(w_other, W_PointersObject):
+        if not isinstance(w_other, W_AbstractPointersObject):
             return False
-        self._vars, w_other._vars = w_other._vars, self._vars
         # switching means also switching shadows
         self._shadow, w_other._shadow = w_other._shadow, self._shadow
         # shadow links are in both directions -> also update shadows
@@ -628,21 +601,105 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         W_AbstractObjectWithClassReference._become(self, w_other)
         return True
 
-    def clone(self, space):
-        w_result = W_PointersObject(self.space, self.getclass(space),
-                                    len(self._vars))
-        w_result._vars = [self.fetch(space, i) for i in range(len(self._vars))]
-        return w_result
-
     @jit.elidable
     def as_repr_string(self):
         return W_AbstractObjectWithClassReference.as_embellished_string(self,
                                 className='W_PointersObject',
                                 additionalInformation='len=%d' % self.size())
 
+class W_PointersObject(W_AbstractPointersObject):
+    _attrs_ = ['_vars', 'fieldtypes']
+
+    @jit.unroll_safe
+    def __init__(self, space, w_class, size):
+        from spyvm.fieldtypes import fieldtypes_of_length
+        """Create new object with size = fixed + variable size."""
+        W_AbstractPointersObject.__init__(self, space, w_class, size)
+        vars = self._vars = [None] * size
+        self.fieldtypes = fieldtypes_of_length(self.s_class, size)
+        for i in range(size): # do it by hand for the JIT's sake
+            vars[i] = w_nil
+
+    def fillin(self, space, g_self):
+        W_AbstractPointersObject.fillin(self, space, g_self)
+        from spyvm.fieldtypes import fieldtypes_of
+        self._vars = g_self.get_pointers()
+        self.fieldtypes = fieldtypes_of(self)
+
+    def _fetch(self, n0):
+        # return self._vars[n0]
+        fieldtypes = jit.promote(self.fieldtypes)
+        return fieldtypes.fetch(self, n0)
+
+    def _store(self, n0, w_value):
+        # self._vars[n0] = w_value
+        fieldtypes = jit.promote(self.fieldtypes)
+        return fieldtypes.store(self, n0, w_value)
+
+    def _size(self):
+        return len(self._vars)
+
+    def invariant(self):
+        return (W_AbstractObjectWithClassReference.invariant(self) and
+                isinstance(self._vars, list))
+
+    def become(self, w_other):
+        if not isinstance(w_other, W_PointersObject):
+            return False
+        self._vars, w_other._vars = w_other._vars, self._vars
+        return W_AbstractPointersObject.become(self, w_other)
+
+    def clone(self, space):
+        w_result = W_PointersObject(self.space, self.getclass(space),
+                                    len(self._vars))
+        w_result._vars = [self.fetch(space, i) for i in range(len(self._vars))]
+        return w_result
+
     def fieldtype(self):
         from spyvm.fieldtypes import obj
         return obj
+
+class W_WeakPointersObject(W_AbstractPointersObject):
+    _attrs_ = ['_weakvars']
+
+    @jit.unroll_safe
+    def __init__(self, space, w_class, size):
+        W_AbstractPointersObject.__init__(self, space, w_class, size)
+        self._weakvars = [weakref.ref(w_nil)] * size
+
+    def fillin(self, space, g_self):
+        raise NotImplementedError("we don't expect weak objects in a fresh image")
+
+    def _fetch(self, n0):
+        weakobj = self._weakvars[n0]
+        return weakobj() or w_nil
+
+    def _store(self, n0, w_value):
+        assert w_value is not None
+        self._weakvars[n0] = weakref.ref(w_value)
+
+    def _size(self):
+        return len(self._weakvars)
+
+    def invariant(self):
+        return (W_AbstractObjectWithClassReference.invariant(self) and
+                isinstance(self._weakvars, list))
+
+    def become(self, w_other):
+        if not isinstance(w_other, W_WeakPointersObject):
+            return False
+        self._weakvars, w_other._weakvars = w_other._weakvars, self._weakvars
+        return W_AbstractPointersObject.become(self, w_other)
+
+    def clone(self, space):
+        w_result = W_WeakPointersObject(self.space, self.getclass(space),
+                                        len(self._weakvars))
+        for i, var in enumerate(self._weakvars):
+            w_obj = var()
+            if w_obj is None:
+                w_obj = w_nil
+            w_result._weakvars[i] = weakref.ref(w_obj)
+        return w_result
 
 class W_BytesObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['bytes']

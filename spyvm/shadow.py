@@ -216,6 +216,9 @@ class ClassShadow(AbstractCachingShadow):
                 w_new = model.W_LargePositiveInteger1Word(0, extrasize)
             else:
                 w_new = model.W_BytesObject(self.space, w_cls, extrasize)
+        elif self.instance_kind == WEAK_POINTERS:
+            size = self.instsize() + extrasize
+            w_new = model.W_WeakPointersObject(self.space, w_cls, size)
         else:
             raise NotImplementedError(self.instance_kind)
         return w_new
