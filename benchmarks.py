@@ -52,7 +52,7 @@ def download_prerequesites():
     f.close()
     with open("image.tar", "w") as f:
         f.write(tar)
-    f = tarfile.open("image.tar"):
+    f = tarfile.open("image.tar")
     f.extractall(".")
     f.close()
     with open("sources.gz", "w") as f:
