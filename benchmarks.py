@@ -2,6 +2,7 @@
 import os
 import socket
 import subprocess
+import sys
 import time
 import urllib
 import urllib2
@@ -46,17 +47,20 @@ def download_prerequesites():
     sources = urllib2.urlopen('http://ftp.squeak.org/4.4/SqueakV41.sources.gz').read()
     with open("image.tgz", "w") as f:
         f.write(image)
-    with gzip.open("image.tgz") as f:
-        tar = f.read()
+    f = gzip.open("image.tgz")
+    tar = f.read()
+    f.close()
     with open("image.tar", "w") as f:
         f.write(tar)
-    with tarfile.open("image.tar") as f:
-        f.extractall(".")
+    f = tarfile.open("image.tar"):
+    f.extractall(".")
+    f.close()
     with open("sources.gz", "w") as f:
         f.write(sources)
-    with gzip.open("sources.gz") as f:
-        with open("SqueakV41.sources", "w") as s:
-            s.write(f.read())
+    f = gzip.open("sources.gz")
+    with open("SqueakV41.sources", "w") as s:
+        s.write(f.read())
+    f.close()
 
 def clean_workspace():
     for f in ["image.tgz", "image.tar", "sources.gz",
@@ -110,11 +114,12 @@ def add(executable, benchmark, result):
 
 
 def run():
+    suffix = ".exe" if sys.platform == "win32" else ""
     for executable in executables:
         for benchmark in benchmarks:
             start = time.time()
             pipe = subprocess.Popen(
-                ["./%s" % executable] + executable_arguments + [benchmark]
+                ["./%s%s" % (executable, suffix)] + executable_arguments + [benchmark]
             )
             pipe.wait()
             result = time.time() - start
