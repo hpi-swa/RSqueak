@@ -32,7 +32,7 @@ def _run_benchmark(interp, number, benchmark):
     w_benchmark_proc.store(space, 1, s_frame.w_self())
 
     # third variable is priority
-    priority = 40
+    priority = space.unwrap_int(w_hpp.fetch(space, 2)) / 2 + 1
     w_benchmark_proc.store(space, 2, space.wrap_int(priority))
 
     # make process eligible for scheduling
