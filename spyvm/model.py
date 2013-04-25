@@ -926,7 +926,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 
     def get_identifier_string(self):
         from spyvm import shadow
-        classname = '<unknown>'
+        classname = '<unknown>  class'
         if len(self.literals) > 0:
             w_candidate = self.literals[-1]
             if isinstance(w_candidate, W_PointersObject):
@@ -939,6 +939,9 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
                             classname = d_shadow.getname()
                 elif isinstance(shadow, shadow.ClassShadow):
                     classname = c_shadow.getname()
+        class_cutoff = len(classname) - 6
+        if class_cutoff > 0:
+            classname = classname[0:class_cutoff]
         return "%s>>#%s" % (classname, self._likely_methodname)
 
 

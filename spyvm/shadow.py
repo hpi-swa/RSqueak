@@ -702,6 +702,15 @@ class ContextPartShadow(AbstractRedirectingShadow):
     def instances_array(self):
         return self.instances_w
 
+    # ______________________________________________________________________
+    # Debugging printout
+
+    def print_stack(self):
+        padding = ret_str = ''
+        if self.s_sender() is not None:
+            padding, ret_str = self.s_sender().print_stack()
+        return padding + ' ', '%s\n%s%s' % (ret_str, padding, self.short_str(0))
+
 
 class BlockContextShadow(ContextPartShadow):
     _attr_ = ['_w_home', '_initialip', '_eargc']
@@ -952,6 +961,13 @@ class MethodContextShadow(ContextPartShadow):
 
     def short_str(self, argcount):
         block = '[] of ' if self.is_closure_context() else ''
+        if argcount == 0:
+            return '%s%s (rcvr: %s) [pc: %d]' % (
+                block,
+                self.w_method().get_identifier_string(),
+                self.w_receiver().as_repr_string(),
+                self.pc() + 1
+            )
         args = '%d' % argcount
         for i in range(argcount - 1, -1, -1):
             args += ': %s' % self.peek(i).as_repr_string()
