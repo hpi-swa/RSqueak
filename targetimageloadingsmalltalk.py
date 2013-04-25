@@ -43,8 +43,7 @@ def _run_benchmark(interp, number, benchmark):
     t2 = time.time()
     if w_result:
         if isinstance(w_result, model.W_BytesObject):
-            print '\n'
-            print w_result.as_string()
+            print w_result.as_string().replace('\r', '\n')
         print "took %s seconds" % (t2 - t1)
         return 0
     return -1
