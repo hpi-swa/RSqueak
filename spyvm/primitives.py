@@ -1352,10 +1352,12 @@ FORCE_DISPLAY_UPDATE = 231
 @expose_primitive(IDLE_FOR_MICROSECONDS, unwrap_spec=[object, int], no_result=True, clean_stack=False)
 def func(interp, s_frame, w_rcvr, time_mu_s):
     import time
+    s_frame.pop()
     time_s = time_mu_s / 1000000.0
+    interp.interrupt_check_counter = 0
+    interp.quick_check_for_interrupt(s_frame, dec=0)
     time.sleep(time_s)
     interp.interrupt_check_counter = 0
-    s_frame.pop()
     interp.quick_check_for_interrupt(s_frame, dec=0)
 
 @expose_primitive(FORCE_DISPLAY_UPDATE, unwrap_spec=[object])
