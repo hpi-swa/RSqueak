@@ -335,6 +335,8 @@ class W_Float(W_AbstractObjectWithIdentityHash):
 
     def fillin(self, space, g_self):
         high, low = g_self.get_ruints(required_len=2)
+        if g_self.reader.version.has_floats_reversed:
+            low, high = high, low
         self.fillin_fromwords(space, high, low)
 
     def getclass(self, space):
