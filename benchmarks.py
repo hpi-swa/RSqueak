@@ -21,7 +21,7 @@ executable_arguments = [["images/%s.image" % SqueakImage, '-m', 'runSPyBenchmark
 def build_data(executable, benchmark, result):
     # Mandatory fields
     return {
-        'commitid': get_commitid(),
+        'commitid': COMMIT_ID,
         'branch': 'default',
         'project': 'lang-smalltalk',
         'executable': executable,
@@ -92,7 +92,7 @@ def clean_workspace():
 def get_commitid():
     try:
         pipe = subprocess.Popen(
-            ["hg", "log", "-l", "1", "--template", "{branch}-{rev} {date|shortdate}"],
+            ["hg", "log", "-l", "1", "--template", "{branch}-{rev}"],
             stdout=subprocess.PIPE
         )
         if pipe.wait() == 0:
@@ -109,6 +109,8 @@ def get_commitid():
     except:
         pass
     raise Exception("commitid not found. not a git or hg repo")
+
+COMMIT_ID = get_commitid()
 
 
 def add(executable, benchmark, result):
@@ -133,7 +135,7 @@ def update_image(suffix):
     with open('update.st', 'w') as f:
         f.write('''Smalltalk snapshot: true andQuit: true.''')
     pipe = subprocess.Popen(
-        ['cogmtlinux/squeak%s images/%s ../update.st' % (suffix, SqueakImage)],
+        ['coglinux/squeak%s images/%s ../update.st' % (suffix, SqueakImage)],
         shell=True)
     pipe.wait()
     os.remove('update.st')
