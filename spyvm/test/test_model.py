@@ -314,3 +314,19 @@ def test_display_bitmap():
         assert target.pixelbuffer[i] == 0xff000000
     for i in xrange(24, 32):
         assert target.pixelbuffer[i] == 0xffffffff
+
+
+def test_weak_pointers():
+    from spyvm.shadow import WEAK_POINTERS
+
+    w_cls = mockclass(space, 1)
+    s_cls = w_cls.as_class_get_shadow(space)
+    s_cls.instance_kind = WEAK_POINTERS
+
+    weak_object = s_cls.new()
+    referenced = model.W_SmallInteger(10)
+    weak_object.store(space, 0, referenced)
+
+    assert weak_object.fetch(space, 0) is referenced
+    del referenced
+    assert weak_object.fetch(space, 0) is space.w_nil
