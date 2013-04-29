@@ -7,19 +7,16 @@ import time
 import urllib
 import urllib2
 
-SqueakImage = "Squeak4.4-12327"
+SqueakImage = "Squeak4.5-12568"
 
 # You need to enter the real URL and have the server running
 CODESPEED_URL = 'http://speed.bithug.org/'
 
 # Executables (assumed to be in the local directory)
-executables = ["targetimageloadingsmalltalk-c"]
+executables = ["targetimageloadingsmalltalk-c", "coglinux/squeak"]
 
 # Arguments (inserted between executable and benchmark)
-executable_arguments = ["%s.image" % SqueakImage, "-m"]
-
-# Benchmarks (run for each executable)
-benchmarks = ["tinyBenchmarks"]
+executable_arguments = [["images/%s.image" % SqueakImage, '-m', 'runSPyBenchmarks'], ["images/%s.image" % SqueakImage, '../benchmarks.st']]
 
 def build_data(executable, benchmark, result):
     # Mandatory fields
@@ -33,49 +30,69 @@ def build_data(executable, benchmark, result):
         'result_value': str(result),
     }
     # Optional fields
-    # data.update({
+    # {
     #     'std_dev': 1.11111, # Optional. Default is blank
     #     'max': 4001.6, # Optional. Default is blank
     #     'min': 3995.1, # Optional. Default is blank
-    # })
+    # }
 
+
+def ungzip(url, name, target):
+    import gzip
+    zip_contents = urllib2.urlopen(url).read()
+    with open(name, "w") as f:
+        f.write(zip_contents)
+    f = gzip.open(name)
+    with open(target, "w") as s:
+        s.write(f.read())
+
+def untar(name, target):
+    import tarfile
+    try:
+        f = tarfile.open(name)
+        f.extractall(target)
+    finally:
+        f.close()
 
 def download_prerequesites():
     clean_workspace()
-    import gzip, tarfile
-    image = urllib2.urlopen("http://ftp.squeak.org/4.4/%s.tgz" % SqueakImage).read()
-    sources = urllib2.urlopen('http://ftp.squeak.org/4.4/SqueakV41.sources.gz').read()
-    with open("image.tgz", "w") as f:
-        f.write(image)
-    f = gzip.open("image.tgz")
-    tar = f.read()
-    f.close()
-    with open("image.tar", "w") as f:
-        f.write(tar)
-    f = tarfile.open("image.tar")
-    f.extractall(".")
-    f.close()
-    with open("sources.gz", "w") as f:
-        f.write(sources)
-    f = gzip.open("sources.gz")
-    with open("SqueakV41.sources", "w") as s:
-        s.write(f.read())
-    f.close()
+    print 'Downloading',
+    download_cog()
+    print 'done'
+
+def download_cog():
+    if sys.platform == "win32":
+        url = "http://www.mirandabanda.org/files/Cog/VM/VM.r2714/cogwin-13.13.2714.zip"
+        unzip(url, 'cogwin.zip', '.')
+    else:
+        url = "http://www.mirandabanda.org/files/Cog/VM/VM.r2714/coglinux-13.13.2714.tgz"
+        print '.',
+        ungzip(url, 'coglinux.tgz', 'coglinux.tar')
+        print '.',
+        untar('coglinux.tar', '.')
 
 def clean_workspace():
-    for f in ["image.tgz", "image.tar", "sources.gz",
-              "SqueakV41.sources",
-              "%s.image" % SqueakImage, "%s.changes" % SqueakImage]:
+    print 'Cleaning workspace',
+    for f in ["image.tgz", "image.tar",
+              'coglinux.tgz', 'coglinux.tar',
+              'cogwin.zip']:
         try:
             os.remove(f)
         except:
             pass
-
+        print '.',
+    for d in ['coglinux', 'cogwin']:
+        try:
+            shutil.rmtree(d)
+        except:
+            pass
+        print '.',
+    print 'done'
 
 def get_commitid():
     try:
         pipe = subprocess.Popen(
-            ["hg", "log", "-l", "1", "--template", "{node}"],
+            ["hg", "log", "-l", "1", "--template", "{branch}-{rev} {date|shortdate}"],
             stdout=subprocess.PIPE
         )
         if pipe.wait() == 0:
@@ -112,19 +129,34 @@ def add(executable, benchmark, result):
     f.close()
     print "Server (%s) response: %s\n" % (CODESPEED_URL, response)
 
+def update_image(suffix):
+    with open('update.st', 'w') as f:
+        f.write('''Smalltalk snapshot: true andQuit: true.''')
+    pipe = subprocess.Popen(
+        ['cogmtlinux/squeak%s images/%s ../update.st' % (suffix, SqueakImage)],
+        shell=True)
+    pipe.wait()
+    os.remove('update.st')
+
 
 def run():
     suffix = ".exe" if sys.platform == "win32" else ""
-    for executable in executables:
-        for benchmark in benchmarks:
-            start = time.time()
-            pipe = subprocess.Popen(
-                ["./%s%s" % (executable, suffix)] + executable_arguments + [benchmark]
-            )
-            pipe.wait()
-            result = time.time() - start
-            add(executable, benchmark, result)
+    update_image(suffix)
 
+    for i, executable in enumerate(executables):
+        print 'Calling %s ...' % executable
+        pipe = subprocess.Popen(
+            ["./%s%s" % (executable, suffix)] + executable_arguments[i],
+            stdout=subprocess.PIPE
+        )
+        out, err = pipe.communicate()
+        errcode = pipe.wait()
+        benchmarks = out.split('\n')
+        print out
+        for s in benchmarks:
+            if ';' in s:
+                name, time = s.split(';')
+                add(executable, name, time)
 
 if __name__ == "__main__":
     download_prerequesites()

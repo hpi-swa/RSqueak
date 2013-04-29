@@ -248,7 +248,7 @@ class ImageReader(object):
         # 1 word last used hash
         lasthash = self.stream.next()
         savedwindowssize = self.stream.next()
-        print "savedwindowssize", savedwindowssize
+        # print "savedwindowssize", savedwindowssize
         fullscreenflag = self.stream.next()
         extravmmemory = self.stream.next()
         self.stream.skipbytes(headersize - self.stream.pos)
