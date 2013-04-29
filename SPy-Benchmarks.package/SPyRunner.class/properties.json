@@ -1,0 +1,14 @@
+{
+	"category" : "SPy-Benchmarks",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "SPyRunner",
+	"pools" : [
+		 ],
+	"super" : "Object",
+	"type" : "normal" }
