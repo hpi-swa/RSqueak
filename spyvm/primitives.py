@@ -816,8 +816,6 @@ def func(interp, s_frame, w_arg, w_rcvr):
 
 @expose_primitive(EXTERNAL_CALL, clean_stack=False, no_result=True, compiled_method=True)
 def func(interp, s_frame, argcount, s_method):
-    from spyvm.plugins.socket import SocketPlugin
-
     space = interp.space
     w_description = s_method.w_self().literalat0(space, 1)
     if not isinstance(w_description, model.W_PointersObject) or w_description.size() < 2:
@@ -832,7 +830,11 @@ def func(interp, s_frame, argcount, s_method):
     if signature == ('BitBltPlugin', 'primitiveCopyBits'):
         return prim_holder.prim_table[BITBLT_COPY_BITS](interp, s_frame, argcount, s_method)
     elif signature[0] == "SocketPlugin":
+        from spyvm.plugins.socket import SocketPlugin
         return SocketPlugin.call(signature[1], interp, s_frame, argcount, s_method)
+    elif signature[0] == "VMDebugging":
+        from spyvm.plugins.vmdebugging import DebuggingPlugin
+        return DebuggingPlugin.call(signature[1], interp, s_frame, argcount, s_method)
     raise PrimitiveFailedError
 
 # ___________________________________________________________________________
