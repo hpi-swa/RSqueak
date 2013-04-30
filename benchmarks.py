@@ -118,6 +118,7 @@ COMMIT_ID = None
 def add(executable, benchmark, result):
     print "Saving result %s for executable %s, benchmark %s" % (
         result, executable, benchmark)
+    global COMMIT_ID
     if COMMIT_ID is None:
         COMMIT_ID = get_commitid()
     data = build_data(executable, benchmark, result)
