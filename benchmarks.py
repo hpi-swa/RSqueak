@@ -194,6 +194,12 @@ Cog = Project(
             "coglinux/squeak",
             cogurl,
             callback=update_image
+        ),
+        Executable(
+            "stackvm",
+            "stackvm/bin/squeak",
+            "http://squeakvm.org/unix/release/Squeak-4.10.2.2614-linux_i386.tar.gz",
+            callback=(lambda x: subprocess.Popen(["mv", "Squeak-4.10.2.2614-linux_i386", "stackvm"]).wait())
         )
     ],
     arguments=['-vm-display-X11', '-headless', "images/%s.image" % SqueakImage, '../benchmarks.st'],
