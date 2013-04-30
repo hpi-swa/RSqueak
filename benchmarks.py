@@ -54,7 +54,7 @@ class Project(object):
     def get_commitid(self):
         try:
             pipe = subprocess.Popen(
-                ["hg", "log", "-l", "1", "--template", "{rev}:{node}"],
+                ["hg", "log", "-l", "1", "--template", "{rev}:{node|short}"],
                 stdout=subprocess.PIPE
             )
             if pipe.wait() == 0:
