@@ -16,7 +16,9 @@ CODESPEED_URL = 'http://speed.bithug.org/'
 executables = ["targetimageloadingsmalltalk-c", "coglinux/squeak"]
 
 # Arguments (inserted between executable and benchmark)
-executable_arguments = [["images/%s.image" % SqueakImage, '-m', 'runSPyBenchmarks'], ["images/%s.image" % SqueakImage, '../benchmarks.st']]
+executable_arguments = [
+    ["images/%s.image" % SqueakImage, '-m', 'runSPyBenchmarks'],
+    ['-vm-display-X11', '-headless', "images/%s.image" % SqueakImage, '../benchmarks.st']]
 
 def build_data(executable, benchmark, result):
     # Mandatory fields
@@ -110,12 +112,14 @@ def get_commitid():
         pass
     raise Exception("commitid not found. not a git or hg repo")
 
-COMMIT_ID = get_commitid()
+COMMIT_ID = None
 
 
 def add(executable, benchmark, result):
     print "Saving result %s for executable %s, benchmark %s" % (
         result, executable, benchmark)
+    if COMMIT_ID is None:
+        COMMIT_ID = get_commitid()
     data = build_data(executable, benchmark, result)
     params = urllib.urlencode(data)
     response = "None"
@@ -135,7 +139,7 @@ def update_image(suffix):
     with open('update.st', 'w') as f:
         f.write('''Smalltalk snapshot: true andQuit: true.''')
     pipe = subprocess.Popen(
-        ['coglinux/squeak%s images/%s ../update.st' % (suffix, SqueakImage)],
+        ['coglinux/squeak%s -vm-display-X11 -headless images/%s ../update.st' % (suffix, SqueakImage)],
         shell=True)
     pipe.wait()
     os.remove('update.st')
@@ -153,8 +157,8 @@ def run():
         )
         out, err = pipe.communicate()
         errcode = pipe.wait()
-        benchmarks = out.split('\n')
         print out
+        benchmarks = out.split('\n')
         for s in benchmarks:
             if ';' in s:
                 name, time = s.split(';')
