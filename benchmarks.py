@@ -154,9 +154,9 @@ class Executable(object):
             callback(self)
 
     def run(self, args):
-        print 'Calling %s ...' % executable
+        print 'Calling %s ...' % self.name
         pipe = subprocess.Popen(
-            ["%s" % executable.path] + args,
+            ["%s" % self.path] + args,
             stdout=subprocess.PIPE
         )
         out, err = pipe.communicate()
