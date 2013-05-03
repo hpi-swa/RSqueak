@@ -347,7 +347,7 @@ class __extend__(ContextPartShadow):
             func = primitives.prim_holder.prim_table[code]
             # ##################################################################
             if interp.trace:
-                print "%s calling primitive %d \t(in #%s, named #%s)" % (
+                print "%s-> primitive %d \t(in #%s, named #%s)" % (
                     ' ' * (interp.max_stack_depth - interp.remaining_stack_depth),
                         code, self.w_method()._likely_methodname, w_selector.as_string())
             try:
@@ -411,7 +411,7 @@ class __extend__(ContextPartShadow):
         # assert self._stack_ptr == self.tempsize()
 
         if interp.trace:
-            print '%sreturning %s' % (interp.padding(), return_value.as_repr_string())
+            print '%s<- %s' % (interp.padding(), return_value.as_repr_string())
         raise Return(return_value, s_return_to)
 
     def returnReceiver(self, interp, current_bytecode):
