@@ -184,7 +184,8 @@ class Interpreter(object):
         # We do not support external semaphores.
             # In cog, the method to add such a semaphore is only called in GC.
 
-
+    def padding(self, symbol=' '):
+        return symbol * (self.max_stack_depth - self.remaining_stack_depth)
 
 class ReturnFromTopLevel(Exception):
     def __init__(self, object):
@@ -373,8 +374,7 @@ class __extend__(ContextPartShadow):
 
         # ######################################################################
         if interp.trace:
-            padding = ' ' * (interp.max_stack_depth - interp.remaining_stack_depth)
-            print padding + s_frame.short_str(argcount)
+            print interp.padding() + s_frame.short_str(argcount)
 
         return interp.stack_frame(s_frame)
 
@@ -397,8 +397,7 @@ class __extend__(ContextPartShadow):
 
         # ######################################################################
         if interp.trace:
-            padding = '#' * (interp.max_stack_depth - interp.remaining_stack_depth)
-            print '%s%s missing: #%s' % (padding, s_frame.short_str(0), w_selector.as_string())
+            print '%s%s missing: #%s' % (interp.padding('#'), s_frame.short_str(0), w_selector.as_string())
             if not objectmodel.we_are_translated():
                 import pdb; pdb.set_trace()
 
@@ -411,6 +410,8 @@ class __extend__(ContextPartShadow):
         # unfortunately, the assert below is not true for some tests
         # assert self._stack_ptr == self.tempsize()
 
+        if interp.trace:
+            print '%sreturning %s' % (interp.padding(), return_value.as_repr_string())
         raise Return(return_value, s_return_to)
 
     def returnReceiver(self, interp, current_bytecode):
