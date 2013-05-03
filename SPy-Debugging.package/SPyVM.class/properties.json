@@ -1,0 +1,14 @@
+{
+	"category" : "SPy-Debugging",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "SPyVM",
+	"pools" : [
+		 ],
+	"super" : "Object",
+	"type" : "normal" }
