@@ -208,7 +208,8 @@ Cog = Project(
 RSqueakVM = Project(
     "lang-smalltalk",
     executables=[
-        Executable("targetimageloadingsmalltalk-c", "./targetimageloadingsmalltalk-c")
+        Executable("rsqueakvm", "./targetimageloadingsmalltalk-c"),
+        Executable("rsqueakvm-nojit", "./targetimageloadingsmalltalk-nojit-c")
     ],
     arguments=["images/%s.image" % SqueakImage, '-m', 'runSPyBenchmarks']
 )
