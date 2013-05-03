@@ -104,7 +104,7 @@ class ProcessWrapper(LinkWrapper):
     def suspend(self, w_current_frame):
         if self.is_active_process():
             assert self.my_list().is_same_object(self.space.w_nil)
-            w_process = scheduler(self.space).highest_priority_process()
+            w_process = scheduler(self.space).pop_highest_priority_process()
             self.store_suspended_context(w_current_frame)
             return ProcessWrapper(self.space, w_process).activate()
         else:
@@ -176,7 +176,7 @@ class SchedulerWrapper(Wrapper):
 
         return ProcessListWrapper(self.space, lists.read(priority))
 
-    def highest_priority_process(self):
+    def pop_highest_priority_process(self):
         w_lists = self.priority_list()
         # Asserts as W_PointersObjectonion in the varnish.
         lists = Wrapper(self.space, w_lists)
@@ -185,6 +185,18 @@ class SchedulerWrapper(Wrapper):
             process_list = ProcessListWrapper(self.space, lists.read(i))
             if not process_list.is_empty_list():
                 return process_list.remove_first_link_of_list()
+
+        raise FatalError("Scheduler could not find a runnable process")
+
+    def highest_priority_process(self):
+        w_lists = self.priority_list()
+        # Asserts as W_PointersObjectonion in the varnish.
+        lists = Wrapper(self.space, w_lists)
+
+        for i in range(w_lists.size() - 1, -1, -1):
+            process_list = ProcessListWrapper(self.space, lists.read(i))
+            if not process_list.is_empty_list():
+                return process_list.first_link()
 
         raise FatalError("Scheduler could not find a runnable process")
 

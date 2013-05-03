@@ -216,15 +216,15 @@ class TestScheduler(object):
         assert semaphore.excess_signals() == 1
 
     def test_highest_priority(self):
-        py.test.raises(FatalError, wrapper.scheduler(space).highest_priority_process)
+        py.test.raises(FatalError, wrapper.scheduler(space).pop_highest_priority_process)
         process, old_process = self.make_processes(4, 2, space.w_false)
         process.put_to_sleep()
         old_process.put_to_sleep()
-        highest = wrapper.scheduler(space).highest_priority_process()
+        highest = wrapper.scheduler(space).pop_highest_priority_process()
         assert highest is process._w_self
-        highest = wrapper.scheduler(space).highest_priority_process()
+        highest = wrapper.scheduler(space).pop_highest_priority_process()
         assert highest is old_process._w_self
-        py.test.raises(FatalError, wrapper.scheduler(space).highest_priority_process)
+        py.test.raises(FatalError, wrapper.scheduler(space).pop_highest_priority_process)
 
     def test_semaphore_wait(self):
         semaphore = new_semaphore()
