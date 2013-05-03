@@ -214,13 +214,14 @@ Cog = Project(
             callback=(lambda x: subprocess.Popen(["mv", "Squeak-4.10.2.2614-linux_i386", "stackvm"]).wait())
         )
     ],
-    arguments=['-vm-display-X11', '-headless', "images/%s.image" % SqueakImage, '../benchmarks.st'],
+    arguments=['-vm-display-null', "images/%s.image" % SqueakImage, '../benchmarks.st'],
     commitid=cogid
 )
 RSqueakVM = Project(
     "lang-smalltalk",
     executables=[
-        Executable("targetimageloadingsmalltalk-c", "./targetimageloadingsmalltalk-c")
+        Executable("rsqueakvm", "./targetimageloadingsmalltalk-c"),
+        Executable("rsqueakvm-nojit", "./targetimageloadingsmalltalk-nojit-c")
     ],
     arguments=["images/%s.image" % SqueakImage, '-m', 'runSPyBenchmarks']
 )
