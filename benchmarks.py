@@ -30,13 +30,19 @@ class Project(object):
             benchmarks = output.split('\n')
             for s in benchmarks:
                 if ';' in s:
-                    name, time = s.split(';')
-                    self.add(executable, name, time)
+                    results = s.split(';')
+                    if len(results) == 2:
+                        self.add(executable, *results)
+                    elif len(results) == 4:
+                        self.add(executble, *results)
 
-    def add(self, executable, benchmark, result):
+    def add(self, executable, benchmark, result, min=None, max=None):
         print "Saving result %s for executable %s, benchmark %s" % (
             result, executable, benchmark)
-        data = self.build_data(executable, benchmark, result)
+        if min is max is None:
+            data = self.build_data(executable, benchmark, result)
+        else:
+            data = self.build_extended_data(executable, benchmark, result, min, max)
         params = urllib.urlencode(data)
         response = "None"
         print "Saving result for executable %s, revision %s, benchmark %s" % (
@@ -89,7 +95,13 @@ class Project(object):
         #     'max': 4001.6, # Optional. Default is blank
         #     'min': 3995.1, # Optional. Default is blank
         # }
-
+    def build_data_extended(self, executable, benchmark, result, min, max):
+        return dict(self.build_data(executable, benchmark, result),
+            **{
+                'min': str(min),
+                'max': str(max)
+            }
+        )
 
 class Archive(object):
     def __init__(self, filename, target, func):
