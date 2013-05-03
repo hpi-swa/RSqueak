@@ -1003,7 +1003,7 @@ def test_stacking_interpreter():
         assert False
 
 class StackTestInterpreter(interpreter.Interpreter):
-    def stack_frame(self, w_frame):
+    def stack_frame(self, w_frame, may_interrupt=True):
         import sys
         stack_depth = self.max_stack_depth - self.remaining_stack_depth
         for i in range(stack_depth + 1):

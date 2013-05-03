@@ -83,9 +83,9 @@ class Interpreter(object):
                     print "====== Switch from: %s to: %s ======" % (s_new_context.short_str(0), p.s_new_context.short_str(0))
                 s_new_context = p.s_new_context
 
-    def c_loop(self, s_context):
+    def c_loop(self, s_context, may_context_switch=True):
         old_pc = 0
-        if not jit.we_are_jitted():
+        if not jit.we_are_jitted() and may_context_switch:
             self.quick_check_for_interrupt(s_context)
         while True:
             pc = s_context.pc()
@@ -118,7 +118,7 @@ class Interpreter(object):
         decr_by = int(trace_length // 100)
         return max(decr_by, 1)
 
-    def stack_frame(self, s_new_frame):
+    def stack_frame(self, s_new_frame, may_context_switch=True):
         if not self._loop:
             return s_new_frame # this test is done to not loop in test,
                                # but rather step just once where wanted
@@ -127,7 +127,7 @@ class Interpreter(object):
 
         self.remaining_stack_depth -= 1
         try:
-            retval = self.c_loop(s_new_frame)
+            retval = self.c_loop(s_new_frame, may_context_switch)
         finally:
             self.remaining_stack_depth += 1
         return retval

@@ -51,7 +51,8 @@ char = object()
 pos_32bit_int = object()
 
 def expose_primitive(code, unwrap_spec=None, no_result=False,
-                    result_is_new_frame=False, clean_stack=True, compiled_method=False):
+                    result_is_new_frame=False, may_context_switch=True,
+                    clean_stack=True, compiled_method=False):
     # heuristics to give it a nice name
     name = None
     for key, value in globals().iteritems():
@@ -68,7 +69,7 @@ def expose_primitive(code, unwrap_spec=None, no_result=False,
 
         wrapped = wrap_primitive(
             unwrap_spec=unwrap_spec, no_result=no_result,
-            result_is_new_frame=result_is_new_frame,
+            result_is_new_frame=result_is_new_frame, may_context_switch=may_context_switch,
             clean_stack=clean_stack, compiled_method=compiled_method
         )(func)
         wrapped.func_name = "wrap_prim_" + name
@@ -79,12 +80,14 @@ def expose_primitive(code, unwrap_spec=None, no_result=False,
 
 
 def wrap_primitive(unwrap_spec=None, no_result=False,
-                   result_is_new_frame=False, clean_stack=True,
-                   compiled_method=False):
+                   result_is_new_frame=False, may_context_switch=True,
+                   clean_stack=True, compiled_method=False):
     # some serious magic, don't look
     from rpython.rlib.unroll import unrolling_iterable
 
     assert not (no_result and result_is_new_frame)
+    assert may_context_switch or result_is_new_frame
+
     # Because methods always have a receiver, an unwrap_spec of [] is a bug
     assert unwrap_spec is None or unwrap_spec
 
@@ -96,7 +99,7 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                 else:
                     w_result = func(interp, s_frame, argument_count_m1)
                 if result_is_new_frame:
-                    return interp.stack_frame(w_result)
+                    return interp.stack_frame(w_result, may_context_switch)
                 if not no_result:
                     assert w_result is not None
                     s_frame.push(w_result)
@@ -144,7 +147,7 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                     if clean_stack:
                         # happens only if no exception occurs!
                         s_frame.pop_n(len_unwrap_spec)
-                    return interp.stack_frame(s_new_frame)
+                    return interp.stack_frame(s_new_frame, may_context_switch)
                 else:
                     w_result = func(interp, s_frame, *args)
                     # After calling primitive, reload context-shadow in case it
@@ -1278,8 +1281,7 @@ def func(interp, s_frame, outerContext, numArgs, copiedValues):
     return w_context
 
 
-def activateClosure(interp, s_frame, w_block, args_w, mayContextSwitch=True):
-    # XXX mayContextSwitch is ignored
+def activateClosure(interp, s_frame, w_block, args_w):
     space = interp.space
     if not w_block.getclass(space).is_same_object(
             space.w_BlockClosure):
@@ -1327,13 +1329,13 @@ def func(interp, s_frame, w_block_closure, w_a0, w_a1, w_a2, w_a3):
 def func(interp, s_frame, w_block_closure, args_w):
     return activateClosure(interp, s_frame, w_block_closure, args_w)
 
-@expose_primitive(CLOSURE_VALUE_NO_CONTEXT_SWITCH, unwrap_spec=[object], result_is_new_frame=True)
+@expose_primitive(CLOSURE_VALUE_NO_CONTEXT_SWITCH, unwrap_spec=[object], result_is_new_frame=True, may_context_switch=False)
 def func(interp, s_frame, w_block_closure):
-    return activateClosure(interp, s_frame, w_block_closure, [], mayContextSwitch=False)
+    return activateClosure(interp, s_frame, w_block_closure, [])
 
-@expose_primitive(CLOSURE_VALUE_NO_CONTEXT_SWITCH_, unwrap_spec=[object, object], result_is_new_frame=True)
+@expose_primitive(CLOSURE_VALUE_NO_CONTEXT_SWITCH_, unwrap_spec=[object, object], result_is_new_frame=True, may_context_switch=False)
 def func(interp, s_frame, w_block_closure, w_a0):
-    return activateClosure(interp, s_frame, w_block_closure, [w_a0], mayContextSwitch=False)
+    return activateClosure(interp, s_frame, w_block_closure, [w_a0])
 
 # ___________________________________________________________________________
 # Override the default primitive to give latitude to the VM in context management.

@@ -261,7 +261,7 @@ class TestScheduler(object):
 
         with py.test.raises(interpreter.ProcessSwitch):
             semaphore.wait(currentcontext)
-            
+
         assert wrapper.scheduler(space).active_process() is process._w_self
         semaphore.signal(currentcontext)
         assert wrapper.scheduler(space).active_process() is process._w_self
