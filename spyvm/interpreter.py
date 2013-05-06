@@ -75,6 +75,8 @@ class Interpreter(object):
                 s_new_context = s_sender
                 while s_new_context is not nlr.s_target_context:
                     s_sender = s_new_context.s_sender()
+                    if not s_new_context.is_closure_context() and s_new_context.s_method().primitive() == 198:
+                        s_new_context.activate_unwind_context(self)
                     s_new_context.mark_returned()
                     s_new_context = s_sender
                 s_new_context.push(nlr.value)
@@ -105,6 +107,8 @@ class Interpreter(object):
                 self.step(s_context)
             except Return, nlr:
                 if nlr.s_target_context is not s_context:
+                    if not s_context.is_closure_context() and s_context.s_method().primitive() == 198:
+                        s_context.activate_unwind_context(self)
                     s_context.mark_returned()
                     raise nlr
                 else:
@@ -413,6 +417,20 @@ class __extend__(ContextPartShadow):
         if interp.trace:
             print '%s<- %s' % (interp.padding(), return_value.as_repr_string())
         raise Return(return_value, s_return_to)
+
+    def activate_unwind_context(self, interp):
+        # the first temp is executed flag for both #ensure: and #ifCurtailed:
+        if self.gettemp(1) is self.space.w_nil:
+            self.settemp(1, self.space.w_true) # mark unwound
+            self.push(self.gettemp(0)) # push the first argument
+            try:
+                self.bytecodePrimValue(interp, 0)
+            except Return, nlr:
+                if self is nlr.s_target_context:
+                    return
+                else:
+                    self.mark_returned()
+                    raise nlr
 
     def returnReceiver(self, interp, current_bytecode):
         return self._return(self.w_receiver(), interp, self.s_home().s_sender())

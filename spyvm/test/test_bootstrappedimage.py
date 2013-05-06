@@ -15,7 +15,7 @@ def find_symbol_in_methoddict_of(string, s_class):
             return each
 
 def initialize_class(w_class):
-    initialize_symbol = find_symbol_in_methoddict_of("initialize", 
+    initialize_symbol = find_symbol_in_methoddict_of("initialize",
                         w_class.shadow_of_my_class(tools.space))
     perform(w_class, initialize_symbol)
 
@@ -35,7 +35,7 @@ def test_create_new_symbol():
 
 def test_retrieve_symbol():
     """asSymbol
-    "This is the only place that new Symbols are created. A Symbol is created 
+    "This is the only place that new Symbols are created. A Symbol is created
     if and only if there is not already a Symbol with its contents in existance."
     Symbol
         allInstancesDo: [ :sym |
