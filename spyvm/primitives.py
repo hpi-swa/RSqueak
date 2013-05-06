@@ -487,8 +487,11 @@ def func(interp, s_frame, w_frame, stackp):
     assert stackp >= 0
     if not isinstance(w_frame, model.W_PointersObject):
         raise PrimitiveFailedError
-    s_frame = w_frame.as_context_get_shadow(interp.space)
-    s_frame.store_stackpointer(stackp)
+    if w_frame.has_shadow():
+        s_frame = w_frame.as_context_get_shadow(interp.space)
+        s_frame.store_stackpointer(stackp)
+    else:
+        w_frame.store(interp.space, constants.CTXPART_STACKP_INDEX, stackp)
     return w_frame
 
 @expose_primitive(SOME_INSTANCE, unwrap_spec=[object])
