@@ -638,6 +638,46 @@ def test_primitive_next_instance():
     assert w_2.getclass(space) is space.w_Array
     assert w_1 is not w_2
 
+def test_primitive_value_no_context_switch(monkeypatch):
+    class Context_switched(Exception):
+        pass
+    class Stepping(Exception):
+        pass
+
+    def quick_check_for_interrupt(s_frame, dec=1):
+        raise Context_switched
+    def step(s_frame):
+        raise Stepping
+
+    from test_interpreter import new_frame
+    w_frame, s_initial_context = new_frame("<never called, but used for method generation>",
+        space=space)
+
+    closure = space.newClosure(w_frame, 4, 0, [])
+    s_frame = w_frame.as_methodcontext_get_shadow(space)
+    interp = interpreter.Interpreter(space, image_name=IMAGENAME)
+    interp._loop = True
+
+    try:
+        monkeypatch.setattr(interp, "quick_check_for_interrupt", quick_check_for_interrupt)
+        monkeypatch.setattr(interp, "step", step)
+        try:
+            s_frame.push(closure)
+            prim_table[primitives.CLOSURE_VALUE](interp, s_frame, 0)
+        except Context_switched:
+            assert True
+        except Stepping:
+            assert False
+        try:
+            s_frame.push(closure)
+            prim_table[primitives.CLOSURE_VALUE_NO_CONTEXT_SWITCH](interp, s_frame, 0)
+        except Context_switched:
+            assert False
+        except Stepping:
+            assert True
+    finally:
+        monkeypatch.undo()
+
 def test_primitive_be_display():
     # XXX: Patch SDLDisplay -> get_pixelbuffer() to circumvent
     # double-free bug
