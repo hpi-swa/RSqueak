@@ -967,7 +967,7 @@ class MethodContextShadow(ContextPartShadow):
         if argcount == 0:
             return '%s%s (rcvr: %s) [pc: %d]' % (
                 block,
-                self.w_method().get_identifier_string(),
+                self.method_str(),
                 self.w_receiver().as_repr_string(),
                 self.pc() + 1
             )
@@ -976,11 +976,14 @@ class MethodContextShadow(ContextPartShadow):
             args += ': %s' % self.peek(i).as_repr_string()
         return '%s%s (rcvr: %s) [pc: %d] (%s)' % (
             block,
-            self.w_method().get_identifier_string(),
+            self.method_str(),
             self.w_receiver().as_repr_string(),
             self.pc() + 1,
             args
         )
+
+    def method_str(self):
+        return self.w_method().get_identifier_string()
 
 class CompiledMethodShadow(object):
     _attr_ = ["_w_self", "bytecode",
