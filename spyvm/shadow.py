@@ -811,6 +811,9 @@ class BlockContextShadow(ContextPartShadow):
         # A blockcontext doesn't have any temps
         return 0
 
+    def is_closure_context(self):
+        return True
+
     def short_str(self, argcount):
         return 'BlockContext of %s (%s) [%d]' % (
             self.w_method().get_identifier_string(),
