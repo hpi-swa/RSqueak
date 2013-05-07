@@ -155,6 +155,8 @@ class Interpreter(object):
                 self.space, s_method, w_receiver, [], None)
         s_frame.push(w_receiver)
         s_frame.push_all(list(arguments_w))
+
+        self.interrupt_check_counter = constants.INTERRUPT_COUNTER_SIZE
         try:
             self.loop(s_frame.w_self())
         except ReturnFromTopLevel, e:

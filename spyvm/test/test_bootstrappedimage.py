@@ -50,13 +50,3 @@ def test_retrieve_symbol():
 def test_all_pointers_are_valid():
     tools.test_all_pointers_are_valid()
     tools.test_lookup_abs_in_integer()
-
-def test_tinyBenchmarks():
-    py.test.skip("Waste of time, because it doesn't assert anything.")
-    # we can't find PCSystem, because Smalltalkdict is nil...
-    import time
-    t0 = time.time()
-    sends = perform(w(5), 'benchFib')
-    t1 = time.time()
-    t = t1 - t0
-    print str(tools.space.unwrap_int(sends)/t) + " sends per second"
