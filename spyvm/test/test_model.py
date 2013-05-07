@@ -316,6 +316,7 @@ def test_display_bitmap():
         assert target.pixelbuffer[i] == 0xffffffff
 
 
+@py.test.mark.skipif("socket.gethostname() == 'precise32'")
 def test_weak_pointers():
     from spyvm.shadow import WEAK_POINTERS
 
