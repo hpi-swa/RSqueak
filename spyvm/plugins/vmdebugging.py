@@ -23,7 +23,7 @@ def halt(interp, s_frame, w_rcvr):
     if not we_are_translated():
         import pdb; pdb.set_trace()
     else:
-        print s_frame.print_stack()[1]
+        print s_frame.print_stack()
         print s_frame
         raise Exit('Halt is not well defined when translated.')
     return w_rcvr
