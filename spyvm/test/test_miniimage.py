@@ -193,10 +193,10 @@ def test_special_objects0():
 
 
 def test_lookup_abs_in_integer():
+    w_abs = interp.perform(w("abs"), "asSymbol")
     for value in [10, -3, 0]:
-
         w_object = model.W_SmallInteger(value)
-        w_res = interp.perform(w_object, "abs")
+        w_res = interp.perform(w_object, w_abs)
         assert w_res.value == abs(value)
 
 

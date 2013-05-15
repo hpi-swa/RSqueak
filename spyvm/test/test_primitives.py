@@ -616,11 +616,14 @@ def test_primitive_closure_value_value_with_temps():
     assert s_new_context.gettemp(2).as_string() == "some value"
 
 def test_primitive_some_instance():
+    py.test.skip('Takes too long.')
+    import gc; gc.collect()
     someInstance = map(space.wrap_list, [[1], [2]])
     w_r = prim(primitives.SOME_INSTANCE, [space.w_Array])
     assert w_r.getclass(space) is space.w_Array
 
 def test_primitive_next_instance():
+    py.test.skip('Takes too long.')
     someInstances = map(space.wrap_list, [[2], [3]])
     from test_interpreter import new_frame
     w_frame, s_context = new_frame("<never called, but needed for method generation>",
