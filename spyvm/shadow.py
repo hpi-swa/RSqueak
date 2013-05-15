@@ -493,8 +493,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
         # the stackpointer in the W_PointersObject starts counting at the
         # tempframe start
         # Stackpointer from smalltalk world == stacksize in python world
-        self.store_stackpointer(self.space.unwrap_int(w_sp1) -
-                                self.tempsize())
+        self.store_stackpointer(self.space.unwrap_int(w_sp1))
 
     def store_stackpointer(self, size):
         depth = self.stackdepth()
@@ -507,8 +506,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
                 self.push(self.space.w_nil)
 
     def wrap_stackpointer(self):
-        return self.space.wrap_int(self.stackdepth() +
-                                   self.tempsize())
+        return self.space.wrap_int(self.stackdepth())
 
     def external_stackpointer(self):
         return self.stackdepth() + self.stackstart()
@@ -669,7 +667,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
             self._temps_and_stack[self._stack_ptr] = None
 
     def stackdepth(self):
-        return rarithmetic.intmask(self._stack_ptr - self.tempsize())
+        return rarithmetic.intmask(self._stack_ptr)
 
     @jit.unroll_safe
     def pop_and_return_n(self, n):
@@ -941,8 +939,7 @@ class MethodContextShadow(ContextPartShadow):
         return constants.MTHDCTX_TEMP_FRAME_START
 
     def stackstart(self):
-        return (constants.MTHDCTX_TEMP_FRAME_START +
-                self.tempsize())
+        return (constants.MTHDCTX_TEMP_FRAME_START)
 
     def myblocksize(self):
         return self.size() - self.tempsize()
