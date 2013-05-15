@@ -89,9 +89,9 @@ class Interpreter(object):
         old_pc = 0
         if not jit.we_are_jitted() and may_context_switch:
             self.quick_check_for_interrupt(s_context)
+        method = s_context.s_method()
         while True:
             pc = s_context.pc()
-            method = s_context.s_method()
             if pc < old_pc:
                 if jit.we_are_jitted():
                     self.quick_check_for_interrupt(s_context,
