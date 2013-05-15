@@ -2,11 +2,12 @@ import py
 from spyvm import squeakimage, model, constants
 from spyvm import interpreter, shadow, objspace
 from spyvm.test import test_miniimage as tools
-from spyvm.test.test_miniimage import perform, w
+from spyvm.test.test_miniimage import w
 
-tools.setup_module(tools, filename='Squeak4.5-12568.image')
-space = tools.space
-interp = tools.interp
+def setup():
+    tools.setup_module(tools, filename='Squeak4.5-12568.image')
+    global space = tools.space
+    global interp = tools.interp
 
 def find_symbol_in_methoddict_of(string, s_class):
     s_methoddict = s_class.s_methoddict()
