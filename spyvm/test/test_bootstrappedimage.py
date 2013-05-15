@@ -2,6 +2,7 @@ import py
 from spyvm import squeakimage, model, constants
 from spyvm import interpreter, shadow, objspace
 from spyvm.test import test_miniimage as tools
+from spyvm.test.test_miniimage import perform, w
 
 def setup():
     tools.setup_module(tools, filename='bootstrapped.image')
@@ -17,19 +18,19 @@ def find_symbol_in_methoddict_of(string, s_class):
 def initialize_class(w_class):
     initialize_symbol = find_symbol_in_methoddict_of("initialize",
                         w_class.shadow_of_my_class(tools.space))
-    tools.perform(w_class, initialize_symbol)
+    perform(w_class, initialize_symbol)
 
 def test_initialize_string_class():
     #initialize String class, because equality testing requires a class var set.
-    initialize_class(tools.w("string").getclass(tools.space))
+    initialize_class(w("string").getclass(tools.space))
 
 def test_symbol_asSymbol():
-    w_result = tools.perform(tools.image.w_asSymbol, "asSymbol")
+    w_result = perform(tools.image.w_asSymbol, "asSymbol")
     assert w_result is tools.image.w_asSymbol
 
 def test_create_new_symbol():
     py.test.skip("This test takes quite long and is actually included in test_retrieve_symbol.")
-    w_result = tools.perform(tools.w("someString"), "asSymbol")
+    w_result = perform(w("someString"), "asSymbol")
     assert w_result is not None
     assert w_result.as_string() == "someString"
 
@@ -42,10 +43,11 @@ def test_retrieve_symbol():
             self = sym
                 ifTrue: [ ^ sym ] ].
     ^ (Symbol basicNew: self size) initFrom: self"""
-    w_result = tools.perform(tools.w("someString"), "asSymbol")
+    w_result = perform(w("someString"), "asSymbol")
     assert w_result.as_string() == "someString"
-    w_anotherSymbol = tools.perform(tools.w("someString"), "asSymbol")
+    w_anotherSymbol = perform(w("someString"), "asSymbol")
     assert w_result is w_anotherSymbol
 
-test_all_pointers_are_valid = tools.test_all_pointers_are_valid
-test_lookup_abs_in_integer = tools.test_lookup_abs_in_integer
+def test_all_pointers_are_valid():
+    tools.test_all_pointers_are_valid()
+    tools.test_lookup_abs_in_integer()
