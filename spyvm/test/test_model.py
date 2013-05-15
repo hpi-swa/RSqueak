@@ -330,4 +330,7 @@ def test_weak_pointers():
 
     assert weak_object.fetch(space, 0) is referenced
     del referenced
+    # When executed using pypy, del is not immediately executed.
+    # Thus the reference may linger until the next gc...
+    import gc; gc.collect()
     assert weak_object.fetch(space, 0) is space.w_nil
