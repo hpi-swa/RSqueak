@@ -6,6 +6,7 @@ from spyvm.test.test_miniimage import perform, w
 
 def setup():
     tools.setup_module(tools, filename='bootstrapped.image')
+    test_initialize_string_class()
 
 def find_symbol_in_methoddict_of(string, s_class):
     s_methoddict = s_class.s_methoddict()

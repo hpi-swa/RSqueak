@@ -709,16 +709,17 @@ class ContextPartShadow(AbstractRedirectingShadow):
     # Debugging printout
 
     def print_stack(self, method=True):
-        def print_padded_stack(s_context, method):
-            padding = ret_str = ''
-            if s_context.s_sender() is not None:
-                    padding, ret_str = print_padded_stack(s_context.s_sender(), method)
-            if method:
-                desc = s_context.method_str()
-            else:
-                desc = s_context.short_str(0)
-            return padding + ' ', '%s\n%s%s' % (ret_str, padding, desc)
-        return print_padded_stack(self, method)[1]
+        return self.print_padded_stack(method)[1]
+
+    def print_padded_stack(self, method):
+        padding = ret_str = ''
+        if self.s_sender() is not None:
+                padding, ret_str = self.s_sender().print_padded_stack(method)
+        if method:
+            desc = self.method_str()
+        else:
+            desc = self.short_str(0)
+        return padding + ' ', '%s\n%s%s' % (ret_str, padding, desc)
 
 
 class BlockContextShadow(ContextPartShadow):
