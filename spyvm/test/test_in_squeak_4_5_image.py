@@ -5,6 +5,8 @@ from spyvm.test import test_miniimage as tools
 from spyvm.test.test_miniimage import perform, w
 
 tools.setup_module(tools, filename='Squeak4.5-12568.image')
+space = tools.space
+interp = tools.interp
 
 def find_symbol_in_methoddict_of(string, s_class):
     s_methoddict = s_class.s_methoddict()
@@ -26,11 +28,10 @@ def create_method_shadow(bytes, literals=[], islarge=0, argsize=0, tempsize=0):
     w_method.tempsize = tempsize
 
     w_method.setliterals(literals)
-    s_method = w_method.as_compiledmethod_get_shadow(tools.space)
+    s_method = w_method.as_compiledmethod_get_shadow(space)
     return s_method
 
 def test_ensure():
-    space = tools.space
     #ensure
     #    [^'b1'] ensure: [^'b2']
     import operator
@@ -50,14 +51,13 @@ def test_ensure():
     w_frame = s_method.create_frame(space, w(0), [], sender=s_initial_frame).w_self()
 
     try:
-        tools.interp.loop(w_frame)
+        interp.loop(w_frame)
     except interpreter.ReturnFromTopLevel, e:
         assert e.object.as_string() == 'b2'
     except interpreter.StackOverflow, e:
         assert False
 
 def test_ensure_save_original_nlr():
-    space = tools.space
     #ensure
     #    [^'b1'] ensure: ['b2']
     import operator
@@ -77,7 +77,7 @@ def test_ensure_save_original_nlr():
     w_frame = s_method.create_frame(space, w(0), [], sender=s_initial_frame).w_self()
 
     try:
-        tools.interp.loop(w_frame)
+        interp.loop(w_frame)
     except interpreter.ReturnFromTopLevel, e:
         assert e.object.as_string() == 'b1'
     except interpreter.StackOverflow, e:
