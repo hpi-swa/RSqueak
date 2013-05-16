@@ -127,7 +127,7 @@ def test_context():
     assert s_object2.gettemp(1) == 'b'
     assert s_object2.gettemp(0) == 'a'
     assert s_object.w_method() == w_m
-    idx = s_object.stackstart()
+    idx = s_object.stackstart() + s_object.tempsize()
     w_object.store(space, idx, space.wrap_string('f'))
     w_object.store(space, idx + 1, space.wrap_string('g'))
     w_object.store(space, idx + 2, space.wrap_string('h'))
@@ -139,7 +139,8 @@ def test_context():
     assert s_object.pop() == 'i'
     assert map(lambda x: x.as_string(), s_object.pop_and_return_n(2)) == ['g', 'h']
     assert s_object.pop().as_string() == 'f'
-    assert s_object.external_stackpointer() == s_object.stackstart()
+    assert s_object.external_stackpointer() == s_object.stackstart() + s_object.tempsize()
+    assert s_object.stackdepth() == s_object.tempsize()
 
 def test_methodcontext():
     w_m = method()

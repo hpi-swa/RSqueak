@@ -51,7 +51,8 @@ def prim(code, stack, context = None):
     interp, w_frame, argument_count = mock(stack, context)
     prim_table[code](interp, w_frame.as_context_get_shadow(space), argument_count-1)
     res = w_frame.as_context_get_shadow(space).pop()
-    assert not w_frame.as_context_get_shadow(space).stackdepth() # check args are consumed
+    s_frame = w_frame.as_context_get_shadow(space)
+    assert not s_frame.stackdepth() - s_frame.tempsize() # check args are consumed
     return res
 
 def prim_fails(code, stack):
