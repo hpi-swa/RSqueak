@@ -965,8 +965,8 @@ class MethodContextShadow(ContextPartShadow):
     def __str__(self):
         retval = '\nMethodContext of:'
         retval += self.w_method().as_string(markBytecode=self.pc() + 1)
-        retval += "Stackptr: %d (this is an empty ascending stack)" % (self._stack_ptr - self.tempsize())
-        retval += "\nStack   : " + str(self.stack())
+        retval += "Stackptr: %d (this is an empty ascending stack with args and temps (%d), then stack)" % (self._stack_ptr, self.tempsize())
+        retval += "\nStack   : " + str(self._temps_and_stack[:self._stack_ptr])
         return retval
 
     def short_str(self, argcount):
