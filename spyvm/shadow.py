@@ -417,7 +417,10 @@ class AbstractRedirectingShadow(AbstractShadow):
         w_self = self.w_self()
         assert isinstance(w_self, model.W_PointersObject)
         for i in range(self._w_self_size):
-            self.copy_from_w_self(i)
+            try:
+                self.copy_from_w_self(i)
+            except error.SenderChainManipulation, e:
+                assert e.s_context == self
         w_self._vars = None
 
     # def detach_shadow(self):
@@ -530,13 +533,14 @@ class ContextPartShadow(AbstractRedirectingShadow):
     def store_s_sender(self, s_sender):
         assert s_sender is None or isinstance(s_sender, ContextPartShadow)
         self._s_sender = s_sender
+        raise error.SenderChainManipulation(self)
 
     def store_w_sender(self, w_sender):
         assert isinstance(w_sender, model.W_PointersObject)
         if w_sender.is_same_object(self.space.w_nil):
             self._s_sender = None
         else:
-            self._s_sender = w_sender.as_context_get_shadow(self.space)
+            self.store_s_sender(w_sender.as_context_get_shadow(self.space))
 
     def w_sender(self):
         if self._s_sender is None:
@@ -572,7 +576,10 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
     def mark_returned(self):
         self.store_pc(-1)
-        self.store_s_sender(None)
+        try:
+            self.store_s_sender(None)
+        except error.SenderChainManipulation, e:
+            assert self == e.s_context
 
     def is_returned(self):
         return self.pc() == -1 and self.w_sender is self.space.w_nil
@@ -851,7 +858,10 @@ class MethodContextShadow(ContextPartShadow):
 
         s_new_context.store_w_method(s_method.w_self())
         if s_sender:
-            s_new_context.store_s_sender(s_sender)
+            try:
+                s_new_context.store_s_sender(s_sender)
+            except error.SenderChainManipulation, e:
+                assert s_new_context == e.s_context
         s_new_context.store_w_receiver(w_receiver)
         s_new_context.store_pc(pc)
         s_new_context.init_stack_and_temps()

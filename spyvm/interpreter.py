@@ -503,6 +503,7 @@ class __extend__(ContextPartShadow):
         return self._sendSelfSelector(w_selector, argcount, interp)
 
     def doubleExtendedDoAnythingBytecode(self, interp, current_bytecode):
+        from spyvm import error
         second = self.getbytecode()
         third = self.getbytecode()
         opType = second >> 5
@@ -526,9 +527,15 @@ class __extend__(ContextPartShadow):
             association = wrapper.AssociationWrapper(self.space, w_association)
             self.push(association.value())
         elif opType == 5:
-            self.w_receiver().store(self.space, third, self.top())
+            try:
+                self.w_receiver().store(self.space, third, self.top())
+            except error.SenderChainManipulation, e:
+                raise StackOverflow(self)
         elif opType == 6:
-            self.w_receiver().store(self.space, third, self.pop())
+            try:
+                self.w_receiver().store(self.space, third, self.pop())
+            except error.SenderChainManipulation, e:
+                raise StackOverflow(self)
         elif opType == 7:
             w_association = self.s_method().getliteral(third)
             association = wrapper.AssociationWrapper(self.space, w_association)

@@ -1041,3 +1041,11 @@ def test_actual_stackdepth():
         assert space.unwrap_int(e.object) == 68
     except interpreter.StackOverflow, e:
         assert False
+
+def test_c_stack_reset_on_sender_chain_manipulation():
+    import operator
+    bytes = reduce(operator.add, map(chr, [0x84, 0xc0, 0x00]))
+    w_frame, s_frame = new_frame(bytes)
+    s_frame.store_w_receiver(w_frame)
+    s_frame.push(w_frame)
+    py.test.raises(interpreter.StackOverflow, step_in_interp, s_frame)

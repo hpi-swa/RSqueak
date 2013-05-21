@@ -1144,9 +1144,13 @@ def func(interp, s_frame, w_context, argcnt):
     return s_new_context.w_self()
 
 def finalize_block_ctx(interp, s_block_ctx, s_frame):
+    from spyvm.error import SenderChainManipulation
     # Set some fields
     s_block_ctx.store_pc(s_block_ctx.initialip())
-    s_block_ctx.store_s_sender(s_frame)
+    try:
+        s_block_ctx.store_s_sender(s_frame)
+    except SenderChainManipulation, e:
+        assert e.s_context == s_block_ctx
     return s_block_ctx
 
 @expose_primitive(VALUE, result_is_new_frame=True)
