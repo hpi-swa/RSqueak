@@ -119,6 +119,7 @@ def entry_point(argv):
     if path is None:
         path = "Squeak.image"
 
+    path = os.path.join(os.getcwd(), path)
     try:
         f = open_file_as_stream(path, mode="rb", buffering=0)
     except OSError as e:

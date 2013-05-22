@@ -974,12 +974,16 @@ def func(interp, s_frame, w_arg):
 
 #____________________________________________________________________________
 # Misc Primitives (138 - 149)
+VM_PATH = 142
 CLONE = 148
+
+@expose_primitive(VM_PATH, unwrap_spec=[object])
+def func(interp, s_frame, w_receiver):
+    return interp.space.wrap_string(os.path.join(os.getcwd(), ''))
 
 @expose_primitive(CLONE, unwrap_spec=[object])
 def func(interp, s_frame, w_arg):
     return w_arg.clone(interp.space)
-
 
 # ___________________________________________________________________________
 # File primitives (150-169)
