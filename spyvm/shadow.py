@@ -552,11 +552,12 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
     def store_unwrap_pc(self, w_pc):
         if w_pc.is_same_object(self.space.w_nil):
-            return
-        pc = self.space.unwrap_int(w_pc)
-        pc -= self.s_method().bytecodeoffset
-        pc -= 1
-        self.store_pc(pc)
+            self.store_pc(-1)
+        else:
+            pc = self.space.unwrap_int(w_pc)
+            pc -= self.s_method().bytecodeoffset
+            pc -= 1
+            self.store_pc(pc)
 
     def wrap_pc(self):
         pc = self.pc()
