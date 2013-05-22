@@ -834,6 +834,9 @@ def func(interp, s_frame, argcount, s_method):
     elif signature[0] == "SocketPlugin":
         from spyvm.plugins.socket import SocketPlugin
         return SocketPlugin.call(signature[1], interp, s_frame, argcount, s_method)
+    elif signature[0] == "FilePlugin":
+        from spyvm.plugins.fileplugin import FilePlugin
+        return FilePlugin.call(signature[1], interp, s_frame, argcount, s_method)
     elif signature[0] == "VMDebugging":
         from spyvm.plugins.vmdebugging import DebuggingPlugin
         return DebuggingPlugin.call(signature[1], interp, s_frame, argcount, s_method)
