@@ -275,3 +275,10 @@ def test_updating_class_changes_subclasses():
     assert s_class.lookup(key) is w_method.as_compiledmethod_get_shadow(space)
     assert s_class.version is not version
     assert s_class.version is w_parent.as_class_get_shadow(space).version
+
+def test_returned_contexts_pc():
+    w_context = methodcontext()
+    s_context = w_context.as_methodcontext_get_shadow(space)
+    assert w_context.fetch(space, constants.CTXPART_PC_INDEX) is not space.w_nil
+    s_context.mark_returned()
+    assert w_context.fetch(space, constants.CTXPART_PC_INDEX) is space.w_nil

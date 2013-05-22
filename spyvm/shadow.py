@@ -560,9 +560,12 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
     def wrap_pc(self):
         pc = self.pc()
-        pc += 1
-        pc += self.s_method().bytecodeoffset
-        return self.space.wrap_int(pc)
+        if pc == -1:
+            return self.space.w_nil
+        else:
+            pc += 1
+            pc += self.s_method().bytecodeoffset
+            return self.space.wrap_int(pc)
 
     def pc(self):
         return self._pc
