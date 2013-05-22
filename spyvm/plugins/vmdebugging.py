@@ -32,5 +32,5 @@ def halt(interp, s_frame, w_rcvr):
 def debugPrint(interp, s_frame, w_rcvr, w_string):
     if not isinstance(w_string, model.W_BytesObject):
         raise error.PrimitiveFailedError()
-    print w_string.as_string()
+    print w_string.as_string().replace('\r', '\n')
     return w_rcvr
