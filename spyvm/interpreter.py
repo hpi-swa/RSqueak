@@ -347,32 +347,9 @@ class __extend__(ContextPartShadow):
 
         code = s_method.primitive()
         if code:
-            # the primitive pushes the result (if any) onto the stack itself
-            if interp.should_trace():
-                print "%sActually calling primitive %d" % (interp._last_indent, code,)
-            func = primitives.prim_holder.prim_table[code]
-            # ##################################################################
-            if interp.trace:
-                print "%s-> primitive %d \t(in #%s, named #%s)" % (
-                    ' ' * (interp.max_stack_depth - interp.remaining_stack_depth),
-                        code, self.w_method()._likely_methodname, w_selector.as_string())
             try:
-                # note: argcount does not include rcvr
-                return func(interp, self, argcount, s_method)
+                return self._call_primitive(code, interp, argcount, s_method, w_selector)
             except primitives.PrimitiveFailedError:
-                # ##############################################################
-                # if interp.trace and func.func_name != 'raise_failing_default' and code != 83:
-                #     # import pdb; pdb.set_trace()
-                #     try:
-                #         func(interp, self, argcount, s_method) # will fail again
-                #     except primitives.PrimitiveFailedError:
-                #         pass
-                if interp.trace:
-                    print "%s primitive FAILED" % (
-                    ' ' * (interp.max_stack_depth - interp.remaining_stack_depth),)
-
-                if interp.should_trace(True):
-                    print "PRIMITIVE FAILED: %d %s" % (s_method.primitive, w_selector.as_string(),)
                 pass # ignore this error and fall back to the Smalltalk version
         arguments = self.pop_and_return_n(argcount)
         s_frame = s_method.create_frame(self.space, receiver, arguments, self)
@@ -408,6 +385,29 @@ class __extend__(ContextPartShadow):
                 import pdb; pdb.set_trace()
 
         return interp.stack_frame(s_frame)
+
+    def _call_primitive(self, code, interp, argcount, s_method, w_selector):
+        # the primitive pushes the result (if any) onto the stack itself
+        if interp.should_trace():
+            print "%sActually calling primitive %d" % (interp._last_indent, code,)
+        func = primitives.prim_holder.prim_table[code]
+        # ##################################################################
+        if interp.trace:
+            print "%s-> primitive %d \t(in #%s, named #%s)" % (
+                ' ' * (interp.max_stack_depth - interp.remaining_stack_depth),
+                    code, self.w_method()._likely_methodname, w_selector.as_string())
+        try:
+            # note: argcount does not include rcvr
+            return func(interp, self, argcount, s_method)
+        except primitives.PrimitiveFailedError, e:
+            if interp.trace:
+                print "%s primitive FAILED" % (
+                ' ' * (interp.max_stack_depth - interp.remaining_stack_depth),)
+
+            if interp.should_trace(True):
+                print "PRIMITIVE FAILED: %d %s" % (s_method.primitive, w_selector.as_string(),)
+            raise e
+
 
     def _return(self, return_value, interp, s_return_to):
         # for tests, when returning from the top-level context
