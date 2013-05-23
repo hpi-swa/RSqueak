@@ -62,7 +62,7 @@ def primitiveFileClose(interp, s_frame, w_rcvr, fd):
 def primitiveFileAtEnd(interp, s_frame, w_rcvr, fd):
     py_file = os.fdopen(fd)
     stat = os.fstat(fd)
-    if py_file.tell() < stat.st_size:
+    if py_file.tell() >= stat.st_size:
         return interp.space.w_true
     else:
         return interp.space.w_false
