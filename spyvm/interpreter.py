@@ -873,9 +873,9 @@ def debugging():
         def meth(s_context, w_selector, argcount, interp,
                       receiver, receiverclassshadow):
             options = [False]
-            def skip(): options[0] = True; print  'skipping #%s' % w_selector.as_string()
+            def next(): interp.message_stepping = True; print 'Now continue (c).'
+            def over(): options[0] = True; print  'Skipping #%s. You still need to continue(c).' % w_selector.as_string()
             def pstack(): print s_context.print_stack()
-            def thisContext(): print s_context
             if interp.message_stepping:
                 if argcount == 0:
                     print "-> %s %s" % (receiver.as_repr_string(),
