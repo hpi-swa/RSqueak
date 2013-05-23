@@ -847,3 +847,87 @@ def bytecode_step_translated(self, context):
 
 Interpreter.step = bytecode_step_translated
 
+# Smalltalk debugging facilities, patching Interpreter and ContextPartShadow
+# in order to enable tracing/jumping for message sends etc.
+def debugging():
+    def stepping_debugger_init(original):
+        def meth(self, space, image=None, image_name="", trace=False,
+                max_stack_depth=constants.MAX_LOOP_DEPTH):
+            return_value = original(self, space, image=image,
+                                    image_name=image_name, trace=trace,
+                                    max_stack_depth=max_stack_depth)
+            # ##############################################################
+
+            self.message_stepping = False
+            self.halt_on_failing_primitives = False
+
+            # ##############################################################
+            return return_value
+        return meth
+
+    Interpreter.__init__ = stepping_debugger_init(Interpreter.__init__)
+
+    def stepping_debugger_send(original):
+        """When interp.message_stepping is True, we halt on every call of ContextPartShadow._sendSelector.
+        The method is not called for bytecode message sends (see constants.SPECIAL_SELECTORS)"""
+        def meth(self, w_selector, argcount, interp,
+                      receiver, receiverclassshadow):
+            if interp.message_stepping:
+                if argcount == 0:
+                    print "-> %s %s" % (receiver.as_repr_string(),
+                            w_selector.as_string())
+                elif argcount == 1:
+                    print "-> %s %s %s" % (receiver.as_repr_string(),
+                            w_selector.as_string(),
+                            self.peek(0).as_repr_string())
+                else:
+                    print "-> %s %s %r" % (receiver.as_repr_string(),
+                            w_selector.as_string(),
+                            [self.peek(argcount-1-i) for i in range(argcount)])
+                import pdb; pdb.set_trace()
+            return original(self, w_selector, argcount, interp, receiver, receiverclassshadow)
+        return meth
+
+    ContextPartShadow._sendSelector = stepping_debugger_send(ContextPartShadow._sendSelector)
+
+    def stepping_debugger_failed_primitive_halt(original):
+        def meth(self, code, interp, argcount, s_method, w_selector):
+            try:
+                original(self, code, interp, argcount, s_method, w_selector)
+            except primitives.PrimitiveFailedError, e:
+                if interp.halt_on_failing_primitives:
+                    func = primitives.prim_holder.prim_table[code]
+                    if func.func_name != 'raise_failing_default' and code != 83:
+                        import pdb; pdb.set_trace()
+                        try:
+                            func(interp, self, argcount, s_method) # will fail again
+                        except primitives.PrimitiveFailedError:
+                            pass
+                raise e
+        return meth
+
+    ContextPartShadow._call_primitive = stepping_debugger_failed_primitive_halt(ContextPartShadow._call_primitive)
+
+    def trace_missing_named_primitives(original):
+        def meth(interp, s_frame, argcount, s_method=None):
+            try:
+                return original(interp, s_frame, argcount, s_method=s_method)
+            except primitives.PrimitiveFailedError, e:
+                space = interp.space
+                w_description = s_method.w_self().literalat0(space, 1)
+                if not isinstance(w_description, model.W_PointersObject) or w_description.size() < 2:
+                    raise e
+                w_modulename = w_description.at0(space, 0)
+                w_functionname = w_description.at0(space, 1)
+                if not (isinstance(w_modulename, model.W_BytesObject) and
+                        isinstance(w_functionname, model.W_BytesObject)):
+                    raise e
+                signature = (w_modulename.as_string(), w_functionname.as_string())
+                debugging.missing_named_primitives.add(signature)
+                raise e
+        return meth
+
+    primitives.prim_table[primitives.EXTERNAL_CALL] = trace_missing_named_primitives(primitives.prim_table[primitives.EXTERNAL_CALL])
+    debugging.missing_named_primitives = set()
+
+# debugging()
