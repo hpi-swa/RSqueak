@@ -727,7 +727,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
         if method:
             desc = self.method_str()
         else:
-            desc = self.short_str(0)
+            desc = self.short_str()
         return padding + ' ', '%s\n%s%s' % (ret_str, padding, desc)
 
 
@@ -830,7 +830,7 @@ class BlockContextShadow(ContextPartShadow):
     def is_closure_context(self):
         return True
 
-    def short_str(self, argcount):
+    def short_str(self):
         return 'BlockContext of %s (%s) [%d]' % (
             self.w_method().get_identifier_string(),
             self.w_receiver().as_repr_string(),
@@ -983,7 +983,9 @@ class MethodContextShadow(ContextPartShadow):
         retval += "\nStack   : " + str(self._temps_and_stack[:self._stack_ptr])
         return retval
 
-    def short_str(self, argcount):
+    def short_str(self):
+        method_str = self.method_str()
+        argcount = method_str.count(':')
         if argcount == 0:
             return '%s (rcvr: %s) [pc: %d]' % (
                 self.method_str(),

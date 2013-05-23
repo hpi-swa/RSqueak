@@ -82,7 +82,7 @@ class Interpreter(object):
                 s_new_context.push(nlr.value)
             except ProcessSwitch, p:
                 if self.trace:
-                    print "====== Switch from: %s to: %s ======" % (s_new_context.short_str(0), p.s_new_context.short_str(0))
+                    print "====== Switch from: %s to: %s ======" % (s_new_context.short_str(), p.s_new_context.short_str())
                 s_new_context = p.s_new_context
 
     def c_loop(self, s_context, may_context_switch=True):
@@ -357,7 +357,7 @@ class __extend__(ContextPartShadow):
 
         # ######################################################################
         if interp.trace:
-            print interp.padding() + s_frame.short_str(argcount)
+            print interp.padding() + s_frame.short_str()
 
         return interp.stack_frame(s_frame)
 
@@ -380,7 +380,7 @@ class __extend__(ContextPartShadow):
 
         # ######################################################################
         if interp.trace:
-            print '%s%s missing: #%s' % (interp.padding('#'), s_frame.short_str(0), w_selector.as_string())
+            print '%s%s missing: #%s' % (interp.padding('#'), s_frame.short_str(), w_selector.as_string())
             if not objectmodel.we_are_translated():
                 import pdb; pdb.set_trace()
 
