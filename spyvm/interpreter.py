@@ -870,8 +870,12 @@ def debugging():
     def stepping_debugger_send(original):
         """When interp.message_stepping is True, we halt on every call of ContextPartShadow._sendSelector.
         The method is not called for bytecode message sends (see constants.SPECIAL_SELECTORS)"""
-        def meth(self, w_selector, argcount, interp,
+        def meth(s_context, w_selector, argcount, interp,
                       receiver, receiverclassshadow):
+            options = [False]
+            def skip(): options[0] = True; print  'skipping #%s' % w_selector.as_string()
+            def pstack(): print s_context.print_stack()
+            def thisContext(): print s_context
             if interp.message_stepping:
                 if argcount == 0:
                     print "-> %s %s" % (receiver.as_repr_string(),
@@ -879,13 +883,21 @@ def debugging():
                 elif argcount == 1:
                     print "-> %s %s %s" % (receiver.as_repr_string(),
                             w_selector.as_string(),
-                            self.peek(0).as_repr_string())
+                            s_context.peek(0).as_repr_string())
                 else:
                     print "-> %s %s %r" % (receiver.as_repr_string(),
                             w_selector.as_string(),
-                            [self.peek(argcount-1-i) for i in range(argcount)])
+                            [s_context.peek(argcount-1-i) for i in range(argcount)])
                 import pdb; pdb.set_trace()
-            return original(self, w_selector, argcount, interp, receiver, receiverclassshadow)
+            if options[0]:
+                m_s = interp.message_stepping
+                interp.message_stepping = False
+                try:
+                    return original(s_context, w_selector, argcount, interp, receiver, receiverclassshadow)
+                finally:
+                    interp.message_stepping = m_s
+            else:
+                return original(s_context, w_selector, argcount, interp, receiver, receiverclassshadow)
         return meth
 
     ContextPartShadow._sendSelector = stepping_debugger_send(ContextPartShadow._sendSelector)
