@@ -147,7 +147,7 @@ class W_SmallInteger(W_Object):
     _immutable_fields_ = ["value"]
 
     def __init__(self, value):
-        self.value = value
+        self.value = intmask(value)
 
     def getclass(self, space):
         return space.w_SmallInteger
@@ -244,7 +244,7 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
     _attrs_ = ["value", "_exposed_size"]
 
     def __init__(self, value, size=4):
-        self.value = value
+        self.value = intmask(value)
         self._exposed_size = size
 
     def fillin(self, space, g_self):
@@ -267,7 +267,6 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
         return "W_LargePositiveInteger1Word(%d)" % r_uint(self.value)
 
     def lshift(self, space, shift):
-        from rpython.rlib.rarithmetic import intmask, r_uint
         # shift > 0, therefore the highest bit of upperbound is not set,
         # i.e. upperbound is positive
         upperbound = intmask(r_uint(-1) >> shift)
@@ -729,12 +728,11 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         self.bytes[n0] = character
 
     def short_at0(self, space, index0):
-        from rpython.rlib.rarithmetic import intmask
         byte_index0 = index0 * 2
         byte0 = ord(self.getchar(byte_index0))
         byte1 = ord(self.getchar(byte_index0 + 1)) << 8
         if byte1 & 0x8000 != 0:
-            byte1 = intmask(0xffff0000 | byte1)
+            byte1 = intmask(-65536 | byte1) # -65536 = 0xffff0000
         return space.wrap_int(byte1 | byte0)
 
     def short_atput0(self, space, index0, w_value):
@@ -818,13 +816,13 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         self.words[n] = r_uint(word)
 
     def short_at0(self, space, index0):
-        word = self.getword(index0 / 2)
+        word = intmask(self.getword(index0 / 2))
         if index0 % 2 == 0:
             short = word & 0xffff
         else:
             short = (word >> 16) & 0xffff
         if short & 0x8000 != 0:
-            short = 0xffff0000 | short
+            short = -65536 | short # -65536 = 0xffff0000
         return space.wrap_int(intmask(short))
 
     def short_atput0(self, space, index0, w_value):
@@ -833,12 +831,13 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         if not int_between(-32768, i_value, 0x8000):
             raise error.PrimitiveFailedError
         word_index0 = index0 / 2
-        word = self.getword(word_index0)
+        word = intmask(self.getword(word_index0))
         if index0 % 2 == 0:
-            word = (word & 0xffff0000) | (i_value & 0xffff)
+            word = (word & -65536) | (i_value & 0xffff) # -65536 = 0xffff0000
         else:
             word = (i_value << 16) | (word & 0xffff)
-        self.setword(word_index0, word)
+        value = r_uint(word)
+        self.setword(word_index0, value)
 
     def size(self):
         return len(self.words)

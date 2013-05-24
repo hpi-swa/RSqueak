@@ -985,15 +985,17 @@ def func(interp, s_frame, w_receiver):
 
 @expose_primitive(SHORT_AT, unwrap_spec=[object, index1_0])
 def func(interp, s_frame, w_receiver, n0):
-    if not isinstance(w_receiver, (model.W_BytesObject, model.W_WordsObject)):
+    if not (isinstance(w_receiver, model.W_BytesObject)
+            or isinstance(w_receiver, model.W_WordsObject)):
         raise PrimitiveFailedError
     return w_receiver.short_at0(interp.space, n0)
 
 @expose_primitive(SHORT_AT_PUT, unwrap_spec=[object, index1_0, object])
 def func(interp, s_frame, w_receiver, n0, w_value):
-    if not isinstance(w_receiver, (model.W_BytesObject, model.W_WordsObject)):
+    if not (isinstance(w_receiver, model.W_BytesObject)
+            or isinstance(w_receiver, model.W_WordsObject)):
         raise PrimitiveFailedError
-    return w_receiver.short_atput0(interp.space, n0)
+    return w_receiver.short_atput0(interp.space, n0, w_value)
 
 
 @expose_primitive(CLONE, unwrap_spec=[object])

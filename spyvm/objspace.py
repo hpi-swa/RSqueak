@@ -246,10 +246,10 @@ class ObjSpace(object):
 
     def unwrap_int(self, w_value):
         if isinstance(w_value, model.W_SmallInteger):
-            return w_value.value
+            return intmask(w_value.value)
         elif isinstance(w_value, model.W_LargePositiveInteger1Word):
             if w_value.value >= 0:
-                return w_value.value
+                return intmask(w_value.value)
             else:
                 raise UnwrappingError("The value is negative when interpreted as 32bit value.")
         raise UnwrappingError("expected a W_SmallInteger or W_LargePositiveInteger1Word, got %s" % (w_value,))
