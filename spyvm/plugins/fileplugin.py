@@ -38,11 +38,15 @@ def primitiveDirectoryLookup(interp, s_frame, w_file_directory, full_path, index
 @FilePlugin.expose_primitive(unwrap_spec=[object, str, object])
 def primitiveFileOpen(interp, s_frame, w_rcvr, file_path, w_writeable_flag):
     space = interp.space
+    file_missing = not os.path.exists(file_path)
     if w_writeable_flag is space.w_true:
-        mode = os.O_RDWR | os.O_CREAT | os.O_TRUNC
+        if file_missing:
+            mode = os.O_RDWR | os.O_CREAT
+        else:
+            mode = os.O_RDWR
     else:
         mode = os.O_RDONLY
-        if not os.path.exists(file_path):
+        if file_missing:
             return space.w_nil
     try:
         file_descriptor = os.open(file_path, mode, 0666)
