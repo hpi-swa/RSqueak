@@ -288,6 +288,42 @@ def test_large_positive_integer_1word_at_put():
         assert target.at0(space, i) == source.at0(space, i)
     assert hex(r_uint(target.value)) == hex(r_uint(source.value))
 
+def test_BytesObject_short_at():
+    target = model.W_BytesObject(space, None, 4)
+    target.setchar(0, chr(0x00))
+    target.setchar(1, chr(0x01))
+    target.setchar(2, chr(0x10))
+    target.setchar(3, chr(0x81))
+    assert target.short_at0(space, 0).value == 0x0100
+    assert target.short_at0(space, 1).value == intmask(0xffff8110)
+
+def test_BytesObject_short_atput():
+    target = model.W_BytesObject(space, None, 4)
+    target.short_atput0(space, 0, space.wrap_int(0x0100))
+    target.short_atput0(space, 1, space.wrap_int(intmask(0xffff8110)))
+    assert target.getchar(0) == chr(0x00)
+    assert target.getchar(1) == chr(0x01)
+    assert target.getchar(2) == chr(0x10)
+    assert target.getchar(3) == chr(0x81)
+
+def test_WordsObject_short_at():
+    target = model.W_WordsObject(space, None, 2)
+    target.setword(0, r_uint(0x00018000))
+    target.setword(1, r_uint(0x80010111))
+    assert target.short_at0(space, 0).value == intmask(0xffff8000)
+    assert target.short_at0(space, 1).value == intmask(0x0001)
+    assert target.short_at0(space, 2).value == intmask(0x0111)
+    assert target.short_at0(space, 3).value == intmask(0xffff8001)
+
+def test_WordsObject_short_atput():
+    target = model.W_WordsObject(space, None, 2)
+    target.short_atput0(space, 0, space.wrap_int(0x0100))
+    target.short_atput0(space, 1, space.wrap_int(-1))
+    target.short_atput0(space, 2, space.wrap_int(intmask(0xffff8000)))
+    target.short_atput0(space, 3, space.wrap_int(0x7fff))
+    assert target.getword(0) == 0xffff0100
+    assert target.getword(1) == 0x7fff8000
+
 @py.test.mark.skipif("socket.gethostname() == 'precise32'")
 def test_display_bitmap():
     # XXX: Patch SDLDisplay -> get_pixelbuffer() to circumvent

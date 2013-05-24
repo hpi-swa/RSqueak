@@ -728,6 +728,26 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         assert len(character) == 1
         self.bytes[n0] = character
 
+    def short_at0(self, space, index0):
+        from rpython.rlib.rarithmetic import intmask
+        byte_index0 = index0 * 2
+        byte0 = ord(self.getchar(byte_index0))
+        byte1 = ord(self.getchar(byte_index0 + 1)) << 8
+        if byte1 & 0x8000 != 0:
+            byte1 = intmask(0xffff0000 | byte1)
+        return space.wrap_int(byte1 | byte0)
+
+    def short_atput0(self, space, index0, w_value):
+        from rpython.rlib.rarithmetic import int_between
+        i_value = space.unwrap_int(w_value)
+        if not int_between(-32768, i_value, 0x8000):
+            raise error.PrimitiveFailedError
+        byte_index0 = index0 * 2
+        byte0 = i_value & 0xff
+        byte1 = (i_value & 0xff00) >> 8
+        self.setchar(byte_index0, chr(byte0))
+        self.setchar(byte_index0 + 1, chr(byte1))
+
     def size(self):
         return len(self.bytes)
 
@@ -796,6 +816,29 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
 
     def setword(self, n, word):
         self.words[n] = r_uint(word)
+
+    def short_at0(self, space, index0):
+        word = self.getword(index0 / 2)
+        if index0 % 2 == 0:
+            short = word & 0xffff
+        else:
+            short = (word >> 16) & 0xffff
+        if short & 0x8000 != 0:
+            short = 0xffff0000 | short
+        return space.wrap_int(intmask(short))
+
+    def short_atput0(self, space, index0, w_value):
+        from rpython.rlib.rarithmetic import int_between
+        i_value = space.unwrap_int(w_value)
+        if not int_between(-32768, i_value, 0x8000):
+            raise error.PrimitiveFailedError
+        word_index0 = index0 / 2
+        word = self.getword(word_index0)
+        if index0 % 2 == 0:
+            word = (word & 0xffff0000) | (i_value & 0xffff)
+        else:
+            word = (i_value << 16) | (word & 0xffff)
+        self.setword(word_index0, word)
 
     def size(self):
         return len(self.words)
