@@ -282,3 +282,14 @@ def test_returned_contexts_pc():
     assert w_context.fetch(space, constants.CTXPART_PC_INDEX) is not space.w_nil
     s_context.mark_returned()
     assert w_context.fetch(space, constants.CTXPART_PC_INDEX) is space.w_nil
+
+def test_methodcontext_s_home():
+    from spyvm.wrapper import BlockClosureWrapper
+    w_context = methodcontext()
+    s_context = w_context.as_methodcontext_get_shadow(space)
+    w_middle_context = methodcontext(w_sender=w_context)
+    s_middle_context = w_middle_context.as_methodcontext_get_shadow(space)
+
+    w_closure = space.newClosure(w_context, 3, 0, [])
+    s_closure_context = BlockClosureWrapper(space, w_closure).asContextWithSender(w_middle_context, [])
+    assert s_closure_context.s_home() is s_context

@@ -447,7 +447,6 @@ class __extend__(ContextPartShadow):
         return self._return(interp.space.w_nil, interp, self.s_home().s_sender())
 
     def returnTopFromMethod(self, interp, current_bytecode):
-        # overwritten in MethodContextShadow
         return self._return(self.pop(), interp, self.s_home().s_sender())
 
     def returnTopFromBlock(self, interp, current_bytecode):

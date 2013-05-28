@@ -947,18 +947,6 @@ class MethodContextShadow(ContextPartShadow):
         return self.w_self()
 
     def s_home(self):
-        return self
-
-    def stackpointer_offset(self):
-        return constants.MTHDCTX_TEMP_FRAME_START
-
-    def stackstart(self):
-        return (constants.MTHDCTX_TEMP_FRAME_START)
-
-    def myblocksize(self):
-        return self.size() - self.tempsize()
-
-    def returnTopFromMethod(self, interp, current_bytecode):
         if self.is_closure_context():
             # this is a context for a blockClosure
             w_outerContext = self.w_closure_or_nil.fetch(self.space,
@@ -968,10 +956,18 @@ class MethodContextShadow(ContextPartShadow):
             # XXX check whether we can actually return from that context
             if s_outerContext.pc() == -1:
                 raise error.BlockCannotReturnError()
-            return_to_context = s_outerContext.s_home().s_sender()
+            return s_outerContext.s_home()
         else:
-            return_to_context = self.s_home().s_sender()
-        return self._return(self.pop(), interp, return_to_context)
+            return self
+
+    def stackpointer_offset(self):
+        return constants.MTHDCTX_TEMP_FRAME_START
+
+    def stackstart(self):
+        return (constants.MTHDCTX_TEMP_FRAME_START)
+
+    def myblocksize(self):
+        return self.size() - self.tempsize()
 
     def is_closure_context(self):
         return self.w_closure_or_nil is not self.space.w_nil
