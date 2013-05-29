@@ -1006,6 +1006,12 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         W_AbstractObjectWithIdentityHash._become(self, w_other)
         return True
 
+    def clone(self, space):
+        copy = W_CompiledMethod(0, self.getheader())
+        copy.bytes = list(self.bytes)
+        copy.literals = list(self.literals)
+        return copy
+
     def getclass(self, space):
         return space.w_CompiledMethod
 
