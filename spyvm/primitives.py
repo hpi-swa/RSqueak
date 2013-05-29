@@ -296,14 +296,15 @@ def func(interp, s_frame, f):
 
 @expose_primitive(FLOAT_TIMES_TWO_POWER, unwrap_spec=[float, int])
 def func(interp, s_frame, rcvr, arg):
+    from rpython.rlib.rfloat import INFINITY
     # http://www.python.org/dev/peps/pep-0754/
     try:
         return interp.space.wrap_float(math.ldexp(rcvr, arg))
     except OverflowError:
         if rcvr >= 0.0:
-            return model.W_Float(float('inf'))
+            return model.W_Float(INFINITY)
         else:
-            return model.W_Float(float('-inf'))
+            return model.W_Float(-INFINITY)
 
 @expose_primitive(FLOAT_SQUARE_ROOT, unwrap_spec=[float])
 def func(interp, s_frame, f):
