@@ -28,6 +28,18 @@ def halt(interp, s_frame, w_rcvr):
         raise Exit('Halt is not well defined when translated.')
     return w_rcvr
 
+@DebuggingPlugin.expose_primitive(unwrap_spec=[object])
+def isRSqueak(interp, s_frame, w_rcvr):
+    return interp.space.w_true
+
+@DebuggingPlugin.expose_primitive(unwrap_spec=[object])
+def isVMTranslated(interp, s_frame, w_rcvr):
+    from rpython.rlib.objectmodel import we_are_translated
+    if we_are_translated():
+        return interp.space.w_true
+    else:
+        return interp.space.w_false
+
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object, object])
 def debugPrint(interp, s_frame, w_rcvr, w_string):
     if not isinstance(w_string, model.W_BytesObject):
