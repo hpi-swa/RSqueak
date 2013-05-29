@@ -101,6 +101,14 @@ def primitiveFileRead(interp, s_frame, w_rcvr, fd, target, start, count):
         target.setchar(start + i, contents[i])
     return space.wrap_int(len_read)
 
+@FilePlugin.expose_primitive(unwrap_spec=[object, int, int])
+def primitiveFileSetPosition(interp, s_frame, w_rcvr, fd, position):
+    try:
+        os.lseek(fd, position, os.SEEK_SET)
+    except OSError:
+        raise PrimitiveFailedError
+    return w_rcvr
+
 @FilePlugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveFileSize(interp, s_frame, w_rcvr, fd):
     try:
