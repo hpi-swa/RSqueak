@@ -206,6 +206,11 @@ def test_float_truncate():
     assert prim(primitives.FLOAT_TRUNCATED, [4.5]).value == 4
     assert prim(primitives.FLOAT_TRUNCATED, [4.6]).value == 4
 
+def test_float_times_two_power():
+    assert prim(primitives.FLOAT_TIMES_TWO_POWER, [2.0, 10]).value == 2.0 ** 11
+    assert prim(primitives.FLOAT_TIMES_TWO_POWER, [-213.0, 1020]).value == float('-inf')
+    assert prim(primitives.FLOAT_TIMES_TWO_POWER, [213.0, 1020]).value == float('inf')
+
 def test_at():
     w_obj = mockclass(space, 0, varsized=True).as_class_get_shadow(space).new(1)
     foo = wrap("foo")

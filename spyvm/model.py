@@ -387,6 +387,7 @@ class W_Float(W_AbstractObjectWithIdentityHash):
         if n0 == 0:
             return space.wrap_uint(r_uint(intmask(r >> 32)))
         else:
+            # bounds-check for primitive access is done in the primitive
             assert n0 == 1
             return space.wrap_uint(r_uint(intmask(r)))
 
