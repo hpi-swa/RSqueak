@@ -23,10 +23,10 @@ def halt(interp, s_frame, w_rcvr):
     from rpython.rlib.objectmodel import we_are_translated
     from spyvm.error import Exit
 
+    print s_frame.print_stack()
     if not we_are_translated():
         import pdb; pdb.set_trace()
     else:
-        print s_frame.print_stack()
         print s_frame
         raise Exit('Halt is not well defined when translated.')
     return w_rcvr
