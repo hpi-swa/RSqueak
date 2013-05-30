@@ -52,7 +52,6 @@ def _run_benchmark(interp, number, benchmark):
         return 0
     return -1
 
-
 def _run_image(interp):
     ap = wrapper.ProcessWrapper(space, wrapper.scheduler(space).active_process())
     w_ctx = ap.suspended_context()

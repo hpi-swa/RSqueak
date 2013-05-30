@@ -1249,12 +1249,27 @@ def func(interp, s_frame, argcount):
                   unwrap_spec=[object, object, list],
                   no_result=True, clean_stack=False)
 def func(interp, s_frame, w_rcvr, w_selector, args_w):
+    from spyvm.shadow import MethodNotFound
     argcount = len(args_w)
-    s_frame.pop_n(2) # removing our arguments to be substituted with args_w
-    # pushing the args to be popped by _sendSelector
-    s_frame.push_all(args_w)
-    s_frame._sendSelector(w_selector, argcount, interp,
-                      w_rcvr, w_rcvr.shadow_of_my_class(interp.space))
+    s_frame.pop_n(2) # removing our arguments
+
+    assert isinstance(w_selector, model.W_BytesObject)
+
+    try:
+        s_method = w_rcvr.shadow_of_my_class(interp.space).lookup(w_selector)
+    except MethodNotFound:
+        return s_frame._doesNotUnderstand(w_selector, argcount, interp, w_rcvr)
+
+    code = s_method.primitive()
+    if code:
+        s_frame.push_all(args_w)
+        try:
+            return s_frame._call_primitive(code, interp, argcount, s_method, w_selector)
+        except PrimitiveFailedError:
+            pass # ignore this error and fall back to the Smalltalk version
+    s_new_frame = s_method.create_frame(interp.space, w_rcvr, args_w, s_frame)
+    s_frame.pop()
+    return interp.stack_frame(s_new_frame)
 
 @expose_primitive(SIGNAL, unwrap_spec=[object], clean_stack=False, no_result=True)
 def func(interp, s_frame, w_rcvr):

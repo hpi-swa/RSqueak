@@ -257,7 +257,7 @@ class BlockClosureWrapper(VarsizedWrapper):
     def tempsize(self):
         # We ignore the number of temps a block has, because the first
         # bytecodes of the block will initialize them for us. We will only
-        # use this information for decinding where the stack pointer should be
+        # use this information for deciding where the stack pointer should be
         # initialy.
         # For a finding the correct number, see BlockClosure>#numTemps in an Image.
         return self.size() + self.numArgs()
