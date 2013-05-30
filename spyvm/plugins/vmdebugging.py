@@ -4,6 +4,9 @@ from spyvm.plugins.plugin import Plugin
 
 DebuggingPlugin = Plugin()
 
+DebuggingPlugin.userdata['stop_ui'] = False
+def stop_ui_process():
+    DebuggingPlugin.userdata['stop_ui'] = True
 
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object])
 def trace(interp, s_frame, w_rcvr):
@@ -46,3 +49,10 @@ def debugPrint(interp, s_frame, w_rcvr, w_string):
         raise error.PrimitiveFailedError()
     print w_string.as_string().replace('\r', '\n')
     return w_rcvr
+
+@DebuggingPlugin.expose_primitive(unwrap_spec=[object])
+def stopUIProcess(interp, s_frame, w_rcvr):
+    if DebuggingPlugin.userdata.get('stop_ui', False):
+        return interp.space.w_true
+    else:
+        return interp.space.w_false

@@ -10,8 +10,11 @@ from spyvm.tool.analyseimage import create_image
 
 
 def _run_benchmark(interp, number, benchmark):
+    from spyvm.plugins.vmdebugging import stop_ui_process
+    stop_ui_process()
+
     scheduler = wrapper.scheduler(interp.space)
-    w_hpp = scheduler.highest_priority_process()
+    w_hpp = scheduler.active_process()
     if space.unwrap_int(scheduler.active_process().fetch(space, 2)) > space.unwrap_int(w_hpp.fetch(space, 2)):
         w_hpp = scheduler.active_process()
     assert isinstance(w_hpp, model.W_PointersObject)
@@ -36,7 +39,7 @@ def _run_benchmark(interp, number, benchmark):
     # third variable is priority
     priority = space.unwrap_int(w_hpp.fetch(space, 2)) / 2 + 1
     # Priorities below 10 are not allowed in newer versions of Squeak.
-    priority = max(41, priority)
+    priority = max(11, priority)
     w_benchmark_proc.store(space, 2, space.wrap_int(priority))
 
     # make process eligible for scheduling
