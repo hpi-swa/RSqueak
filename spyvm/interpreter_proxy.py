@@ -14,11 +14,11 @@ from rpython.rlib.entrypoint import entrypoint
 from rpython.rtyper.annlowlevel import llhelper
 from rpython.rlib.exports import export_struct
 from rpython.rtyper.lltypesystem.lltype import FuncType, Ptr
-from rpython.rtyper.lltypesystem import lltype
+from rpython.rtyper.lltypesystem import lltype, rffi
 from rpython.rlib.unroll import unrolling_iterable
 
-sqInt = lltype.Signed
-sqLong = lltype.SignedLongLong
+sqInt = rffi.INT
+sqLong = rffi.LONG
 
 major = minor = 0
 functions = []
@@ -30,7 +30,7 @@ def expose_on_virtual_machine_proxy(signature, minor=0, major=1):
     if major < major:
         major = major
     def decorator(func):
-        functions.append((func.func_name, f_ptr, func))
+        functions.append(("c_" + func.func_name, f_ptr, func))
         return func
     return decorator
 
@@ -43,7 +43,8 @@ def majorVersion():
     return major
 
 VirtualMachine = lltype.Struct("VirtualMachine",
-        *map(lambda x: (x[0], x[1]), functions))
+        *map(lambda x: (x[0], x[1]), functions),
+        hints={'c_name': 'VirtualMachine'})
 VMPtr = Ptr(VirtualMachine)
 
 proxy_functions = unrolling_iterable(functions)
@@ -58,7 +59,7 @@ def sqGetInterpreterProxy():
         InterpreterProxy.vm_initialized = True
     return InterpreterProxy.vm_proxy
 
-# export_struct("VirtualMachine", VirtualMachine)
+# rffi.llexternal is supposed to represent c-functions.
 
 class _InterpreterProxy(object):
     _immutable_fields_ = ['vm_initialized?']
