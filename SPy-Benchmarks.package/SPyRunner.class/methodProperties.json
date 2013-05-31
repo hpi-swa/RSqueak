@@ -2,6 +2,7 @@
 	"class" : {
 		"format:" : "lw 4/29/2013 17:13",
 		"run" : "lw 4/29/2013 17:51",
+		"runKernelTests" : "lw 5/30/2013 18:03",
 		"runShootout" : "lw 5/3/2013 14:43",
 		"runTinyBenchmarks" : "lw 4/29/2013 17:39" },
 	"instance" : {

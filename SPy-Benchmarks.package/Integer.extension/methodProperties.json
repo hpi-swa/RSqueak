@@ -2,4 +2,5 @@
 	"class" : {
 		 },
 	"instance" : {
-		"runSPyBenchmarks" : "lw 4/29/2013 13:20" } }
+		"runSPyBenchmarks" : "lw 4/29/2013 13:20",
+		"runTests" : "lw 5/30/2013 18:02" } }

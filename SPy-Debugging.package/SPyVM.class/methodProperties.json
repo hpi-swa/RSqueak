@@ -1,7 +1,10 @@
 {
 	"class" : {
 		"halt" : "lw 4/30/2013 12:44",
-		"print:" : "lw 5/21/2013 11:00",
+		"isRunning" : "lw 5/29/2013 18:21",
+		"isTranslated" : "lw 5/29/2013 18:21",
+		"print:" : "lw 5/29/2013 20:08",
+		"stopUIProcess" : "lw 5/30/2013 15:27",
 		"trace" : "lw 4/30/2013 12:44",
 		"untrace" : "lw 4/30/2013 12:44" },
 	"instance" : {
