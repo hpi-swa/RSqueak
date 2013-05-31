@@ -7,6 +7,7 @@ from rpython.rlib import jit
 from spyvm import model, interpreter, squeakimage, objspace, wrapper,\
     error, shadow
 from spyvm.tool.analyseimage import create_image
+from spyvm.interpreter_proxy import VirtualMachine
 
 
 def _run_benchmark(interp, number, benchmark):

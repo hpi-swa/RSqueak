@@ -850,6 +850,9 @@ def func(interp, s_frame, argcount, s_method):
     elif signature[0] == "VMDebugging":
         from spyvm.plugins.vmdebugging import DebuggingPlugin
         return DebuggingPlugin.call(signature[1], interp, s_frame, argcount, s_method)
+    else:
+        from spyvm.interpreter_proxy import InterpreterProxy
+        return InterpreterProxy.call(signature, interp, s_frame, argcount, s_method)
     raise PrimitiveFailedError
 
 # ___________________________________________________________________________
