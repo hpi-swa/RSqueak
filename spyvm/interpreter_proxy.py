@@ -20,6 +20,7 @@ from spyvm import error, model
 sqInt = rffi.INT
 sqLong = rffi.LONG
 sqDouble = rffi.DOUBLE
+sqIntArray = rffi.CArray(sqInt)
 
 major = minor = 0
 functions = []
@@ -124,13 +125,13 @@ def argumentCountOf(methodOOP):
     IProxy.successFlag = False
     return 0
 
-@expose_on_virtual_machine_proxy(FuncType([sqInt], Ptr(lltype.Array(sqInt))))
+@expose_on_virtual_machine_proxy(FuncType([sqInt], Ptr(sqIntArray)))
 def arrayValueOf(oop):
     w_array = IProxy.oop_to_object(oop)
     if isinstance(w_array, model.W_WordsObject) or isinstance(w_array, model.W_BytesObject):
         raise NotImplementedError
     IProxy.successFlag = False
-    return []
+    return rffi.cast(Ptr(sqIntArray), 0)
 
 @expose_on_virtual_machine_proxy(FuncType([sqInt], sqInt))
 def byteSizeOf(oop):
@@ -140,8 +141,8 @@ def byteSizeOf(oop):
     if s_class.isvariable():
         size += w_object.primsize(IProxy.space)
     if isinstance(w_object, model.W_BytesObject):
-        size *= size * 4
-    return IProxy.space.wrap_int(size)
+        size *= 4
+    return size
 
 
 # ##############################################################################
