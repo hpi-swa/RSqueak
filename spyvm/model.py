@@ -139,6 +139,9 @@ class W_Object(object):
         from spyvm.fieldtypes import obj
         return obj
 
+    def is_array_object(self):
+        return False
+
 class W_SmallInteger(W_Object):
     """Boxed integer value"""
     # TODO can we tell pypy that its never larger then 31-bit?
@@ -318,6 +321,9 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
     def fieldtype(self):
         from spyvm.fieldtypes import LPI
         return LPI
+
+    def is_array_object(self):
+        return True
 
 class W_Float(W_AbstractObjectWithIdentityHash):
     """Boxed float value."""
@@ -789,6 +795,9 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
             word += r_uint(ord(self.getchar(i))) << 8*i
         return word
 
+    def is_array_object(self):
+        return True
+
 class W_WordsObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['words']
 
@@ -856,6 +865,9 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         return W_AbstractObjectWithClassReference.as_embellished_string(self,
             className='W_WordsObject', additionalInformation=('len=%d' % self.size()))
 
+    def is_array_object(self):
+        return True
+
 NATIVE_DEPTH = 32
 
 class W_DisplayBitmap(W_AbstractObjectWithClassReference):
@@ -911,6 +923,8 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
     def setword(self, n, word):
         raise NotImplementedError("subclass responsibility")
 
+    def is_array_object(self):
+        return True
 
 class W_DisplayBitmap1Bit(W_DisplayBitmap):
     def getword(self, n):
@@ -1161,6 +1175,9 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 
     def has_shadow(self):
         return self._shadow is not None
+
+    def is_array_object(self):
+        return True
 
 class DetachingShadowError(Exception):
     def __init__(self, old_shadow, new_shadow_class):
