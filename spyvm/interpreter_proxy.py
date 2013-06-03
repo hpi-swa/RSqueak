@@ -67,7 +67,7 @@ def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
                 else:
                     return result
             except error.PrimitiveFailedError:
-                IProxy.success_flag = False
+                IProxy.failed()
                 if mapping[result_type] is sqInt:
                     return 0
                 elif mapping[result_type] is sqDouble:
@@ -77,6 +77,7 @@ def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
                 else:
                     raise NotImplementedError(
                         "InterpreterProxy: unknown result_type %s" % (result_type, ))
+        wrapped.func_name = "wrapped_ipf_" + func.func_name
         functions.append(("c_" + func.func_name, f_ptr, wrapped))
         return wrapped
     return decorator
@@ -132,10 +133,7 @@ def pushInteger(n):
 def stackFloatValue(offset):
     s_frame = IProxy.s_frame
     f = s_frame.peek(offset)
-    if isinstance(f, model.W_Float):
-        return f.value
-    else:
-        raise ProxyFunctionFailed
+    return IProxy.space.unwrap_float(f)
 
 @expose_on_virtual_machine_proxy([int], int)
 def stackIntegerValue(offset):
@@ -191,23 +189,96 @@ def fetchArrayofObject(fieldIndex, w_object):
 def fetchClassOf(w_object):
     w_class = w_object.getclass(IProxy.space)
     return w_class
-#     sqInt  (*fetchClassOf)(sqInt oop);
-#     double (*fetchFloatofObject)(sqInt fieldIndex, sqInt objectPointer);
-#     sqInt  (*fetchIntegerofObject)(sqInt fieldIndex, sqInt objectPointer);
-#     sqInt  (*fetchPointerofObject)(sqInt fieldIndex, sqInt oop);
-#     sqInt  (*obsoleteDontUseThisFetchWordofObject)(sqInt fieldFieldIndex, sqInt oop);
-#     void  *(*firstFixedField)(sqInt oop);
-#     void  *(*firstIndexableField)(sqInt oop);
-#     sqInt  (*literalofMethod)(sqInt offset, sqInt methodPointer);
-#     sqInt  (*literalCountOf)(sqInt methodPointer);
-#     sqInt  (*methodArgumentCount)(void);
-#     sqInt  (*methodPrimitiveIndex)(void);
-#     sqInt  (*primitiveIndexOf)(sqInt methodPointer);
-#     sqInt  (*sizeOfSTArrayFromCPrimitive)(void *cPtr);
-#     sqInt  (*slotSizeOf)(sqInt oop);
-#     sqInt  (*stObjectat)(sqInt array, sqInt fieldIndex);
-#     sqInt  (*stObjectatput)(sqInt array, sqInt fieldIndex, sqInt value);
-#     sqInt  (*stSizeOf)(sqInt oop);
+
+@expose_on_virtual_machine_proxy([int, oop], float)
+def fetchFloatofObject(fieldIndex, w_object):
+    space = IProxy.space
+    w_float = w_object.fetch(space, fieldIndex)
+    return space.unwrap_float(w_float)
+
+@expose_on_virtual_machine_proxy([int, oop], int)
+def fetchIntegerofObject(fieldIndex, w_object):
+    space = IProxy.space
+    w_int = w_object.fetch(space, fieldIndex)
+    return space.unwrap_int(w_int)
+
+@expose_on_virtual_machine_proxy([int, oop], oop)
+def fetchPointerofObject(fieldIndex, w_object):
+    return w_object.fetch(IProxy.space, fieldIndex)
+
+@expose_on_virtual_machine_proxy([int, oop], int)
+def obsoleteDontUseThisFetchWordofObject(fieldIndex, w_object):
+    # XXX: correctness?
+    space = IProxy.space
+    w_int = w_object.fetch(space, fieldIndex)
+    return space.unwrap_uint(w_int)
+
+@expose_on_virtual_machine_proxy([oop], list)
+def firstFixedField(w_object):
+    # return a list with oops (?) of w_objects instVars
+    raise NotImplementedError
+
+@expose_on_virtual_machine_proxy([oop], list)
+def firstIndexableField(w_object):
+    # return a list with values (?) of w_objects variable-parts
+    raise NotImplementedError
+
+@expose_on_virtual_machine_proxy([int, oop], oop)
+def literalofMethod(offset, w_method):
+    if isinstance(w_method, model.W_CompiledMethod):
+        return w_method.literalat0(offset)
+    else:
+        raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([oop], int)
+def literalCountOf(w_method):
+    if isinstance(w_method, model.W_CompiledMethod):
+        return w_method.getliteralsize()
+    else:
+        raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([], int)
+def methodArgumentCount():
+    return IProxy.argcount
+
+@expose_on_virtual_machine_proxy([], int)
+def methodPrimitiveIndex():
+    return IProxy.s_method.primitive()
+
+@expose_on_virtual_machine_proxy([oop], int)
+def primitiveIndexOf(w_method):
+    if isinstance(w_method, model.W_CompiledMethod):
+        return w_method.as_compiledmethod_get_shadow().primitive()
+    else:
+        raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([list], int)
+def sizeOfSTArrayFromCPrimitive(c_array):
+    raise NotImplementedError
+
+@expose_on_virtual_machine_proxy([oop], int)
+def slotSizeOf(w_object):
+    return w_object.size()
+
+@expose_on_virtual_machine_proxy([oop, int], oop)
+def stObjectat(w_object, n0):
+    from spyvm.primitives import assert_valid_index
+    space = IProxy.space
+    n0 = assert_valid_index(space, n0, w_object)
+    return w_object.at0(space, n0)
+
+@expose_on_virtual_machine_proxy([oop, int, oop], int)
+def stObjectatput(w_object, n0, w_value):
+    from spyvm.primitives import assert_valid_index
+    space = IProxy.space
+    n0 = assert_valid_index(space, n0, w_object)
+    w_object.atput0(space, n0, w_value)
+    return 0 # XXX: check return value
+
+@expose_on_virtual_machine_proxy([oop], int)
+def stSizeOf(w_object):
+    return w_object.primsize(IProxy.space)
+
 #     sqInt  (*storeIntegerofObjectwithValue)(sqInt fieldIndex, sqInt oop, sqInt integer);
 #     sqInt  (*storePointerofObjectwithValue)(sqInt fieldIndex, sqInt oop, sqInt valuePointer);
 
@@ -259,8 +330,21 @@ def fetchClassOf(w_object):
 
 #     /* InterpreterProxy methodsFor: 'instance creation' */
 
-#     sqInt (*clone)(sqInt oop);
-#     sqInt (*instantiateClassindexableSize)(sqInt classPointer, sqInt size);
+@expose_on_virtual_machine_proxy([oop], oop)
+def clone(w_object):
+    return w_object.clone(IProxy.space)
+
+@expose_on_virtual_machine_proxy([oop, int], oop)
+def instantiateClassindexableSize(w_class, varsize):
+    s_class = w_class.as_class_get_shadow(IProxy.space)
+    return s_class.new(varsize)
+
+# @expose_on_virtual_machine_proxy([int, int], oop)
+# def makePointwithxValueyValue(x, y):
+#     space = IProxy.space
+#     w_x = space.wrap_int(x)
+#     w_y = space.wrap_int(y)
+
 #     sqInt (*makePointwithxValueyValue)(sqInt xValue, sqInt yValue);
 #     sqInt (*popRemappableOop)(void);
 #     sqInt (*pushRemappableOop)(sqInt oop);
@@ -271,13 +355,36 @@ def fetchClassOf(w_object):
 #     sqInt (*byteSwapped)(sqInt w);
 #     sqInt (*failed)(void);
 #     sqInt (*fullDisplayUpdate)(void);
-#     sqInt (*fullGC)(void);
-#     sqInt (*incrementalGC)(void);
-#     sqInt (*primitiveFail)(void);
+@expose_on_virtual_machine_proxy([], int)
+def fullGC():
+    # XXX: how to invoke gc?
+    return 0
+@expose_on_virtual_machine_proxy([], int)
+def incrementalGC():
+    # XXX: how to invoke gc?
+    return 0
+
+@expose_on_virtual_machine_proxy([], int)
+def primitiveFail():
+    raise ProxyFunctionFailed
+
 #     sqInt (*showDisplayBitsLeftTopRightBottom)(sqInt aForm, sqInt l, sqInt t, sqInt r, sqInt b);
 #     sqInt (*signalSemaphoreWithIndex)(sqInt semaIndex);
-#     sqInt (*success)(sqInt aBoolean);
-#     sqInt (*superclassOf)(sqInt classPointer);
+
+@expose_on_virtual_machine_proxy([bool], int)
+def success(aBoolean):
+    if aBoolean:
+        return 0
+    else:
+        raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([oop], oop)
+def superclassOf(w_class):
+    s_superclass = w_class.as_class_get_shadow(IProxy.space).s_superclass()
+    if s_superclass is not None:
+        return s_superclass.w_self()
+    else:
+        return IProxy.space.w_nil
 
 #     /* InterpreterProxy methodsFor: 'compiler' */
 
@@ -471,6 +578,7 @@ class _InterpreterProxy(object):
         self.argcount = 0
         self.s_method = None
         self.success_flag = True
+        self.fail_reason = 0
 
     def call(self, signature, interp, s_frame, argcount, s_method):
         self.interp = interp
@@ -481,6 +589,8 @@ class _InterpreterProxy(object):
         try:
             print "Hello World..."
             raise error.Exit("External Call")
+            if not self.success_flag:
+                raise error.PrimitiveFailedError
         finally:
             self.reset()
 
@@ -489,5 +599,9 @@ class _InterpreterProxy(object):
 
     def object_to_oop(self, oop):
         return 0
+
+    def failed(self, reason=1):
+        self.success_flag = False
+        self.fail_reason = reason
 
 IProxy = _InterpreterProxy()
