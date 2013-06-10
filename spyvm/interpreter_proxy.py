@@ -528,8 +528,16 @@ def incrementalGC():
 def primitiveFail():
     raise ProxyFunctionFailed
 
-#     sqInt (*showDisplayBitsLeftTopRightBottom)(sqInt aForm, sqInt l, sqInt t, sqInt r, sqInt b);
-#     sqInt (*signalSemaphoreWithIndex)(sqInt semaIndex);
+@expose_on_virtual_machine_proxy([oop, int, int, int, int], int)
+def showDisplayBitsLeftTopRightBottom(w_form, l, t, r, b):
+    print 'Called InterpreterProxy >> showDisplayBitsLeftTopRightBottom'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([int], int)
+def signalSemaphoreWithIndex(n):
+    # ((Smalltalk externalObjects) at: n) signal
+    print 'Called InterpreterProxy >> signalSemaphoreWithIndex'
+    raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([bool], int)
 def success(aBoolean):
@@ -550,18 +558,36 @@ def superclassOf(w_class):
 
 #     /* InterpreterProxy methodsFor: 'compiler' */
 
-#     CompilerHook *(*compilerHookVector)(void);
-#     sqInt          (*setCompilerInitialized)(sqInt initFlag);
 
-# #if VM_PROXY_MINOR > 1
+@expose_on_virtual_machine_proxy([], int)
+def compilerHookVector():
+    print 'Called InterpreterProxy >> compilerHookVector'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([int], int)
+def setCompilerInitialized(n):
+    print 'Called InterpreterProxy >> setCompilerInitialized'
+    raise ProxyFunctionFailed
 
 #     /* InterpreterProxy methodsFor: 'BitBlt support' */
 
-#     sqInt (*loadBitBltFrom)(sqInt bbOop);
-#     sqInt (*copyBits)(void);
-#     sqInt (*copyBitsFromtoat)(sqInt leftX, sqInt rightX, sqInt yValue);
+@expose_on_virtual_machine_proxy([int], int, minor=1)
+def loadBitBltFrom(w_bitBlit):
+    # bb := bbOop
+    print 'Called InterpreterProxy >> loadBitBltFrom'
+    raise ProxyFunctionFailed
 
-# #endif
+@expose_on_virtual_machine_proxy([], int, minor=1)
+def copyBits():
+    # bb copyBits
+    print 'Called InterpreterProxy >> copyBits'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([int, int, int], int, minor=1)
+def copyBitsFromtoat(x0, x1, y):
+    # bb copyBitsFrom: x0 to: x1 at: y
+    print 'Called InterpreterProxy >> copyBitsFromtoat'
+    raise ProxyFunctionFailed
 
 # #if VM_PROXY_MINOR > 2
 
