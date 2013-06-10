@@ -340,14 +340,42 @@ def isWordsOrBytes(w_object):
 
 #     /* InterpreterProxy methodsFor: 'converting' */
 
-#     sqInt  (*booleanValueOf)(sqInt obj);
-#     sqInt  (*checkedIntegerValueOf)(sqInt intOop);
-#     sqInt  (*floatObjectOf)(double aFloat);
-#     double (*floatValueOf)(sqInt oop);
-#     sqInt  (*integerObjectOf)(sqInt value);
-#     sqInt  (*integerValueOf)(sqInt oop);
-#     sqInt  (*positive32BitIntegerFor)(sqInt integerValue);
-#     sqInt  (*positive32BitValueOf)(sqInt oop);
+@expose_on_virtual_machine_proxy([oop], bool)
+def booleanValueOf(w_object):
+    space = IProxy.space
+    if w_object is space.w_true:
+        return True
+    if w_object is space.w_false:
+        return False
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([oop], int)
+def checkedIntegerValueOf(w_object):
+    return IProxy.space.unwrap_int(w_object)
+
+@expose_on_virtual_machine_proxy([float], oop)
+def floatObjectOf(f):
+    return IProxy.space.wrap_float(f)
+
+@expose_on_virtual_machine_proxy([oop], float)
+def floatValueOf(w_object):
+    return IProxy.space.unwrap_float(w_object)
+
+@expose_on_virtual_machine_proxy([int], oop)
+def integerObjectOf(n):
+    return IProxy.space.wrap_int(n)
+
+@expose_on_virtual_machine_proxy([oop], int)
+def integerValueOf(w_object):
+    return IProxy.space.unwrap_int(w_object)
+
+@expose_on_virtual_machine_proxy([int], oop)
+def positive32BitIntegerFor(n):
+    return IProxy.space.wrap_positive_32bit_int(n)
+
+@expose_on_virtual_machine_proxy([oop], int)
+def positive32BitValueOf(n):
+    return IProxy.space.unwrap_positive_32bit_int(n)
 
 #     /* InterpreterProxy methodsFor: 'special objects' */
 
