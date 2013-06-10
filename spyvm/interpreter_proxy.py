@@ -23,6 +23,7 @@ sqInt = rffi.INT
 sqLong = rffi.LONG
 sqDouble = rffi.DOUBLE
 sqIntArrayPtr = Ptr(rffi.CArray(sqInt))
+sqStr = rffi.CCHARP
 
 major = minor = 0
 functions = []
@@ -33,7 +34,7 @@ class ProxyFunctionFailed(error.PrimitiveFailedError):
     pass
 
 def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
-    mapping = {oop: sqInt, int: sqInt, list: sqIntArrayPtr, bool: sqInt, float: sqDouble}
+    mapping = {oop: sqInt, int: sqInt, list: sqIntArrayPtr, bool: sqInt, float: sqDouble, str: sqStr}
     f_ptr = Ptr(FuncType([mapping[spec] for spec in unwrap_spec], mapping[result_type]))
     if minor < minor:
         minor = minor
@@ -284,17 +285,58 @@ def stSizeOf(w_object):
 
 #     /* InterpreterProxy methodsFor: 'testing' */
 
+@expose_on_virtual_machine_proxy([oop, str], bool)
+def isKindOf(w_object, name):
+    # XXX: stub, until used
+    print "InterpreterProxy >> isKindOf(object, name)"
+    return False
 #     sqInt (*isKindOf)(sqInt oop, char *aString);
+
+@expose_on_virtual_machine_proxy([oop, str], bool)
+def isMemberOf(w_object, name):
+    # XXX: stub, until used
+    print "InterpreterProxy >> isMemberOf(object, name)"
+    return False
 #     sqInt (*isMemberOf)(sqInt oop, char *aString);
-#     sqInt (*isBytes)(sqInt oop);
-#     sqInt (*isFloatObject)(sqInt oop);
-#     sqInt (*isIndexable)(sqInt oop);
-#     sqInt (*isIntegerObject)(sqInt objectPointer);
-#     sqInt (*isIntegerValue)(sqInt intValue);
-#     sqInt (*isPointers)(sqInt oop);
-#     sqInt (*isWeak)(sqInt oop);
-#     sqInt (*isWords)(sqInt oop);
-#     sqInt (*isWordsOrBytes)(sqInt oop);
+
+@expose_on_virtual_machine_proxy([oop], bool)
+def isBytes(w_object):
+    return isinstance(w_object, model.W_BytesObject)
+
+@expose_on_virtual_machine_proxy([oop], bool)
+def isFloatObject(w_object):
+    return isinstance(w_object, model.W_Float)
+
+@expose_on_virtual_machine_proxy([oop], bool)
+def isIndexable(w_object):
+    space = IProxy.space
+    return w_object.getclass(space).as_class_get_shadow(space).isvariable()
+
+@expose_on_virtual_machine_proxy([oop], bool)
+def isIntegerObject(w_object):
+    return isinstance(w_object, model.W_SmallInteger)
+
+@expose_on_virtual_machine_proxy([int], bool)
+def isIntegerValue(n):
+    """Checking whether the two highest bits are equal,
+    which means that the value is representable as 31/63-bit value."""
+    return n ^ (n << 1) >= 0
+
+@expose_on_virtual_machine_proxy([oop], bool)
+def isPointers(w_object):
+    return isinstance(w_object, model.W_PointersObject)
+
+@expose_on_virtual_machine_proxy([oop], bool)
+def isWeak(w_object):
+    return isinstance(w_object, model.W_WeakPointersObject)
+
+@expose_on_virtual_machine_proxy([oop], bool)
+def isWords(w_object):
+    return w_object.is_array_object() and not isinstance(w_object, model.W_BytesObject)
+
+@expose_on_virtual_machine_proxy([oop], bool)
+def isWordsOrBytes(w_object):
+    return w_object.is_array_object()
 
 #     /* InterpreterProxy methodsFor: 'converting' */
 
