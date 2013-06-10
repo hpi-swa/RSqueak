@@ -226,7 +226,7 @@ def firstIndexableField(w_object):
 @expose_on_virtual_machine_proxy([int, oop], oop)
 def literalofMethod(offset, w_method):
     if isinstance(w_method, model.W_CompiledMethod):
-        return w_method.literalat0(offset)
+        return w_method.literalat0(IProxy.space, offset)
     else:
         raise ProxyFunctionFailed
 
@@ -267,13 +267,13 @@ def stObjectat(w_object, n0):
     n0 = assert_valid_index(space, n0, w_object)
     return w_object.at0(space, n0)
 
-@expose_on_virtual_machine_proxy([oop, int, oop], int)
+@expose_on_virtual_machine_proxy([oop, int, oop], oop)
 def stObjectatput(w_object, n0, w_value):
     from spyvm.primitives import assert_valid_index
     space = IProxy.space
     n0 = assert_valid_index(space, n0, w_object)
     w_object.atput0(space, n0, w_value)
-    return 0 # XXX: check return value
+    return w_value
 
 @expose_on_virtual_machine_proxy([oop], int)
 def stSizeOf(w_object):
@@ -336,6 +336,8 @@ def clone(w_object):
 
 @expose_on_virtual_machine_proxy([oop, int], oop)
 def instantiateClassindexableSize(w_class, varsize):
+    if not isinstance(w_class, model.W_PointersObject):
+        raise error.PrimitiveFailedError
     s_class = w_class.as_class_get_shadow(IProxy.space)
     return s_class.new(varsize)
 
@@ -380,6 +382,8 @@ def success(aBoolean):
 
 @expose_on_virtual_machine_proxy([oop], oop)
 def superclassOf(w_class):
+    if not isinstance(w_class, model.W_PointersObject):
+        raise error.PrimitiveFailedError
     s_superclass = w_class.as_class_get_shadow(IProxy.space).s_superclass()
     if s_superclass is not None:
         return s_superclass.w_self()
@@ -570,6 +574,9 @@ class _InterpreterProxy(object):
     def __init__(self):
         self.vm_proxy = lltype.nullptr(VMPtr.TO)
         self.vm_initialized = False
+        self._next_oop = 0
+        self.oop_map = {}
+        self.object_map = {}
         self.reset()
 
     def reset(self):
@@ -587,18 +594,33 @@ class _InterpreterProxy(object):
         self.s_method = s_method
         self.space = interp.space
         try:
-            print "Hello World..."
-            raise error.Exit("External Call")
+            # Load the correct DLL
+            self.success_flag = False
+            # call the correct function in it...
             if not self.success_flag:
                 raise error.PrimitiveFailedError
         finally:
             self.reset()
 
     def oop_to_object(self, oop):
-        return self.interp.space.w_nil
+        try:
+            return self.oop_map[oop]
+        except KeyError:
+            raise ProxyFunctionFailed
 
-    def object_to_oop(self, oop):
-        return 0
+    def object_to_oop(self, w_object):
+        try:
+            return self.object_map[w_object]
+        except KeyError:
+            new_index = self.next_oop()
+            self.oop_map[new_index] = w_object
+            self.object_map[w_object] = new_index
+            return new_index
+
+    def next_oop(self):
+        next_oop = self._next_oop
+        self._next_oop = next_oop + 1
+        return next_oop
 
     def failed(self, reason=1):
         self.success_flag = False
