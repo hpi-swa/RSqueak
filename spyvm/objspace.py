@@ -94,6 +94,7 @@ class ObjSpace(object):
         define_cls("w_ArrayedCollection", "w_SequenceableCollection")
         define_cls("w_Array", "w_ArrayedCollection", varsized=True)
         define_cls("w_String", "w_ArrayedCollection", format=shadow.BYTES)
+        define_cls("w_Bitmap", "w_ArrayedCollection", varsized=True, format=shadow.WORDS)
         define_cls("w_UndefinedObject", "w_Object")
         define_cls("w_Boolean", "w_Object")
         define_cls("w_True", "w_Boolean")
