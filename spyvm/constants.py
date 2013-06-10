@@ -107,7 +107,7 @@ SO_LARGENEGATIVEINTEGER_CLASS = 42
 
 # XXX more missing?
 classes_in_special_object_table = {
-#    "Bitmap" : SO_BITMAP_CLASS,
+    "Bitmap" : SO_BITMAP_CLASS,
     "SmallInteger" : SO_SMALLINTEGER_CLASS,
     "String" : SO_STRING_CLASS,
     "Array" : SO_ARRAY_CLASS,

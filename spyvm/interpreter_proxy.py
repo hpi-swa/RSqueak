@@ -309,24 +309,71 @@ def stSizeOf(w_object):
 
 #     /* InterpreterProxy methodsFor: 'special objects' */
 
-#     sqInt (*characterTable)(void);
-#     sqInt (*displayObject)(void);
-#     sqInt (*falseObject)(void);
-#     sqInt (*nilObject)(void);
-#     sqInt (*trueObject)(void);
+@expose_on_virtual_machine_proxy([], oop)
+def characterTable():
+    return IProxy.space.w_charactertable
+
+@expose_on_virtual_machine_proxy([], oop)
+def displayObject():
+    return IProxy.space.objtable['w_display']
+
+@expose_on_virtual_machine_proxy([], oop)
+def falseObject():
+    return IProxy.space.w_false
+
+@expose_on_virtual_machine_proxy([], oop)
+def nilObject():
+    return IProxy.space.w_nil
+
+@expose_on_virtual_machine_proxy([], oop)
+def trueObject():
+    return IProxy.space.w_true
 
 #     /* InterpreterProxy methodsFor: 'special classes' */
 
-#     sqInt (*classArray)(void);
-#     sqInt (*classBitmap)(void);
-#     sqInt (*classByteArray)(void);
-#     sqInt (*classCharacter)(void);
-#     sqInt (*classFloat)(void);
-#     sqInt (*classLargePositiveInteger)(void);
-#     sqInt (*classPoint)(void);
-#     sqInt (*classSemaphore)(void);
-#     sqInt (*classSmallInteger)(void);
-#     sqInt (*classString)(void);
+# Can't generate these, because the IProxy-field-access can only be done after
+# first "call"-call
+
+@expose_on_virtual_machine_proxy([], oop)
+def classArray():
+    return IProxy.space.w_Array
+
+@expose_on_virtual_machine_proxy([], oop)
+def classBitmap():
+    return IProxy.space.w_Bitmap
+
+@expose_on_virtual_machine_proxy([], oop)
+def classByteArray():
+    return IProxy.space.w_ByteArray
+
+@expose_on_virtual_machine_proxy([], oop)
+def classCharacter():
+    return IProxy.space.w_Character
+
+@expose_on_virtual_machine_proxy([], oop)
+def classFloat():
+    return IProxy.space.w_Float
+
+@expose_on_virtual_machine_proxy([], oop)
+def classLargePositiveInteger():
+    return IProxy.space.w_LargePositiveInteger
+
+@expose_on_virtual_machine_proxy([], oop)
+def classPoint():
+    return IProxy.space.w_Point
+
+@expose_on_virtual_machine_proxy([], oop)
+def classSemaphore():
+    return IProxy.space.w_Semaphore
+
+@expose_on_virtual_machine_proxy([], oop)
+def classSmallInteger():
+    return IProxy.space.w_SmallInteger
+
+@expose_on_virtual_machine_proxy([], oop)
+def classString():
+    return IProxy.space.w_String
+
 
 #     /* InterpreterProxy methodsFor: 'instance creation' */
 

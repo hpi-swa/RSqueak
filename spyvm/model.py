@@ -38,7 +38,8 @@ class W_Object(object):
 
     def instsize(self, space):
         """Return the size of the object reserved for instance variables.
-        Only returns something non-zero for W_PointersObjects"""
+        Only returns something non-zero for W_PointersObjects, W_Floats, and
+        W_LargePositiveInteger1Words"""
         return 0
 
     def varsize(self, space):
