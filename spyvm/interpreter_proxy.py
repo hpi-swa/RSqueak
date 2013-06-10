@@ -473,15 +473,21 @@ def instantiateClassindexableSize(w_class, varsize):
     s_class = w_class.as_class_get_shadow(IProxy.space)
     return s_class.new(varsize)
 
-# @expose_on_virtual_machine_proxy([int, int], oop)
-# def makePointwithxValueyValue(x, y):
-#     space = IProxy.space
-#     w_x = space.wrap_int(x)
-#     w_y = space.wrap_int(y)
+@expose_on_virtual_machine_proxy([int, int], oop)
+def makePointwithxValueyValue(x, y):
+    space = IProxy.space
+    w_point = space.w_Point.as_class_get_shadow(space).new()
+    w_point.store(space, 0, space.wrap_int(x))
+    w_point.store(space, 1, space.wrap_int(y))
+    return w_point
 
-#     sqInt (*makePointwithxValueyValue)(sqInt xValue, sqInt yValue);
-#     sqInt (*popRemappableOop)(void);
-#     sqInt (*pushRemappableOop)(sqInt oop);
+@expose_on_virtual_machine_proxy([], oop)
+def popRemappableOop():
+    return IProxy.pop_remappable()
+
+@expose_on_virtual_machine_proxy([oop], oop)
+def pushRemappableOop(w_object):
+    return IProxy.push_remappable(w_object)
 
 #     /* InterpreterProxy methodsFor: 'other' */
 
@@ -709,6 +715,7 @@ class _InterpreterProxy(object):
         self._next_oop = 0
         self.oop_map = {}
         self.object_map = {}
+        self.remappable_objects = []
         self.reset()
 
     def reset(self):
@@ -716,7 +723,6 @@ class _InterpreterProxy(object):
         self.s_frame = None
         self.argcount = 0
         self.s_method = None
-        self.success_flag = True
         self.fail_reason = 0
 
     def call(self, signature, interp, s_frame, argcount, s_method):
@@ -725,14 +731,19 @@ class _InterpreterProxy(object):
         self.argcount = argcount
         self.s_method = s_method
         self.space = interp.space
+        # ensure that space.w_nil gets the first possible oop
+        self.object_to_oop(self.space.w_nil)
         try:
             # Load the correct DLL
-            self.success_flag = False
+            self.failed()
             # call the correct function in it...
-            if not self.success_flag:
+            if not self.fail_reason == 0:
                 raise error.PrimitiveFailedError
         finally:
             self.reset()
+
+    def failed(self, reason=1):
+        self.fail_reason = reason
 
     def oop_to_object(self, oop):
         try:
@@ -754,8 +765,15 @@ class _InterpreterProxy(object):
         self._next_oop = next_oop + 1
         return next_oop
 
-    def failed(self, reason=1):
-        self.success_flag = False
-        self.fail_reason = reason
+    def pop_remappable(self):
+        try:
+            return self.remappable_objects.pop()
+        except IndexError:
+            self.failed()
+            return self.space.w_nil
+
+    def push_remappable(self, w_object):
+        self.remappable_objects.append(w_object)
+        return w_object
 
 IProxy = _InterpreterProxy()
