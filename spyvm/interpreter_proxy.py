@@ -280,8 +280,23 @@ def stObjectatput(w_object, n0, w_value):
 def stSizeOf(w_object):
     return w_object.primsize(IProxy.space)
 
-#     sqInt  (*storeIntegerofObjectwithValue)(sqInt fieldIndex, sqInt oop, sqInt integer);
-#     sqInt  (*storePointerofObjectwithValue)(sqInt fieldIndex, sqInt oop, sqInt valuePointer);
+@expose_on_virtual_machine_proxy([int, oop, int], oop)
+def storeIntegerofObjectwithValue(n0, w_object, a):
+    if w_object.size() > n0:
+        space = IProxy.space
+        w_object.store(space, n0, space.wrap_int(a))
+        return space.wrap_int(a)
+    else:
+        raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([int, oop, oop], oop)
+def storePointerofObjectwithValue(n0, w_object, w_value):
+    if w_object.size() > n0:
+        w_object.store(IProxy.space, n0, w_value)
+        return w_value
+    else:
+        IProxy.failed()
+        return w_value
 
 #     /* InterpreterProxy methodsFor: 'testing' */
 
