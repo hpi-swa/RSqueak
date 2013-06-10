@@ -491,10 +491,30 @@ def pushRemappableOop(w_object):
 
 #     /* InterpreterProxy methodsFor: 'other' */
 
-#     sqInt (*becomewith)(sqInt array1, sqInt array2);
-#     sqInt (*byteSwapped)(sqInt w);
-#     sqInt (*failed)(void);
-#     sqInt (*fullDisplayUpdate)(void);
+@expose_on_virtual_machine_proxy([list, list], int)
+def becomewith(w_array1, w_array2):
+    # XXX: stub, until used
+    print "InterpreterProxy >> becomewith(list, list)"
+    return 0
+
+@expose_on_virtual_machine_proxy([int], int)
+def byteSwapped(w):
+    from rpython.rlib.rarithmetic import intmask
+    return (w >> 24) & 0xFF + (w >> 8) & 0xFF00 + (w << 8) & 0xFF0000 + (w << 24) & -16777216
+
+@expose_on_virtual_machine_proxy([], bool)
+def failed():
+    return not IProxy.fail_reason == 0
+
+@expose_on_virtual_machine_proxy([], int)
+def fullDisplayUpdate():
+    w_display = IProxy.space.objtable['w_display']
+    if isinstance(w_display, model.W_DisplayBitmap):
+        w_display.flush_to_screen()
+        return 0
+    else:
+        raise ProxyFunctionFailed
+
 @expose_on_virtual_machine_proxy([], int)
 def fullGC():
     # XXX: how to invoke gc?
