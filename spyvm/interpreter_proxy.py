@@ -660,10 +660,15 @@ def isInMemory(address):
 # #endif
 
 # #if VM_PROXY_MINOR > 3
+@expose_on_virtual_machine_proxy([str, str], bool, minor=3)
+def ioLoadFunctionFrom(fnName, modName):
+    print 'Called InterpreterProxy >> ioLoadFunctionFrom'
+    raise ProxyFunctionFailed
 
-#     void *(*ioLoadFunctionFrom)(char *fnName, char *modName);
-#     sqInt (*ioMicroMSecs)(void);
-
+@expose_on_virtual_machine_proxy([], bool, minor=3)
+def ioMicroMSecs():
+    print 'Called InterpreterProxy >> ioMicroMSecs'
+    raise ProxyFunctionFailed
 # #endif
 
 # #if VM_PROXY_MINOR > 4
