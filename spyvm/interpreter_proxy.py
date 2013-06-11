@@ -754,12 +754,20 @@ def vmEndianness():
 #                    used in callbackLeave
 #      Returns: True if successful, false otherwise */
 #   sqInt (*callbackEnter)(sqInt *callbackID);
+@expose_on_virtual_machine_proxy([int], bool, minor=7)
+def callbackEnter(callbackID):
+    print 'Called InterpreterProxy >> callbackEnter'
+    raise ProxyFunctionFailed
 
 #   /* callbackLeave: Leave the interpreter from a previous callback
 #      Arguments:
 #        callbackID: The ID of the callback received from callbackEnter()
 #      Returns: True if succcessful, false otherwise. */
 #   sqInt (*callbackLeave)(sqInt  callbackID);
+@expose_on_virtual_machine_proxy([int], bool, minor=7)
+def callbackLeave(callbackID):
+    print 'Called InterpreterProxy >> callbackLeave'
+    raise ProxyFunctionFailed
 
 #   /* addGCRoot: Add a variable location to the garbage collector.
 #      The contents of the variable location will be updated accordingly.
@@ -767,6 +775,10 @@ def vmEndianness():
 #        varLoc: Pointer to the variable location
 #      Returns: True if successful, false otherwise. */
 #   sqInt (*addGCRoot)(sqInt *varLoc);
+@expose_on_virtual_machine_proxy([oop], bool, minor=7)
+def addGCRoot(callbackID):
+    print 'Called InterpreterProxy >> addGCRoot'
+    raise ProxyFunctionFailed
 
 #   /* removeGCRoot: Remove a variable location from the garbage collector.
 #      Arguments:
@@ -774,6 +786,10 @@ def vmEndianness():
 #      Returns: True if successful, false otherwise.
 #   */
 #   sqInt (*removeGCRoot)(sqInt *varLoc);
+@expose_on_virtual_machine_proxy([oop], bool, minor=7)
+def removeGCRoot(callbackID):
+    print 'Called InterpreterProxy >> removeGCRoot'
+    raise ProxyFunctionFailed
 # #endif
 
 # #if VM_PROXY_MINOR > 8
