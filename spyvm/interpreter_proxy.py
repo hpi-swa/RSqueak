@@ -705,15 +705,44 @@ def signed64BitValueOf(w_number):
 # #endif
 
 # #if VM_PROXY_MINOR > 5
-#     sqInt (*isArray)(sqInt oop);
-#     sqInt (*forceInterruptCheck)(void);
+@expose_on_virtual_machine_proxy([oop], bool, minor=5)
+def isArray(w_object):
+    if not isinstance(w_object, model.W_PointersObject):
+        return False
+    space = IProxy.space
+    s_class = w_object.shadow_of_my_class(space)
+    if s_class.instsize() == 0 and s_class.isvariable():
+        return True
+    else:
+        return False
+
+@expose_on_virtual_machine_proxy([], int, minor=5)
+def forceInterruptCheck():
+    print 'Called InterpreterProxy >> forceInterruptCheck'
+    raise ProxyFunctionFailed
 # #endif
 
 # #if VM_PROXY_MINOR > 6
-#     sqInt  (*fetchLong32ofObject)(sqInt fieldFieldIndex, sqInt oop);
-#     sqInt  (*getThisSessionID)(void);
-#     sqInt     (*ioFilenamefromStringofLengthresolveAliases)(char* aCharBuffer, char* filenameIndex, sqInt filenameLength, sqInt resolveFlag);
-#     sqInt  (*vmEndianness)(void);
+@expose_on_virtual_machine_proxy([int, oop], oop, minor=6)
+def fetchLong32ofObject(fieldFieldIndex, oop):
+    print 'Called InterpreterProxy >> fetchLong32ofObject'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([int, oop], int, minor=6)
+def getThisSessionID(fieldFieldIndex, oop):
+    # return random int
+    print 'Called InterpreterProxy >> getThisSessionID'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([str, str, int, int], oop, minor=6)
+def ioFilenamefromStringofLengthresolveAliases(aCharBuffer, filenameIndex, filenameLength, resolveFlag):
+    print 'Called InterpreterProxy >> ioFilenamefromStringofLengthresolveAliases'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([], int, minor=6)
+def vmEndianness():
+    print 'Called InterpreterProxy >> vmEndianness'
+    return 0 # return 1 for big endian
 # #endif
 
 # #if VM_PROXY_MINOR > 7
