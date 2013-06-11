@@ -459,7 +459,6 @@ def classSmallInteger():
 def classString():
     return IProxy.space.w_String
 
-
 #     /* InterpreterProxy methodsFor: 'instance creation' */
 
 @expose_on_virtual_machine_proxy([oop], oop)
@@ -558,7 +557,6 @@ def superclassOf(w_class):
 
 #     /* InterpreterProxy methodsFor: 'compiler' */
 
-
 @expose_on_virtual_machine_proxy([], int)
 def compilerHookVector():
     print 'Called InterpreterProxy >> compilerHookVector'
@@ -590,24 +588,71 @@ def copyBitsFromtoat(x0, x1, y):
     raise ProxyFunctionFailed
 
 # #if VM_PROXY_MINOR > 2
+@expose_on_virtual_machine_proxy([], oop, minor=2)
+def classLargeNegativeInteger():
+    print 'Called InterpreterProxy >> classLargeNegativeInteger'
+    raise ProxyFunctionFailed
 
-#     sqInt (*classLargeNegativeInteger)(void);
-#     sqInt (*signed32BitIntegerFor)(sqInt integerValue);
-#     sqInt (*signed32BitValueOf)(sqInt oop);
-#     sqInt (*includesBehaviorThatOf)(sqInt aClass, sqInt aSuperClass);
-#     sqInt (*primitiveMethod)(void);
+@expose_on_virtual_machine_proxy([int], oop, minor=2)
+def signed32BitIntegerFor(n):
+    print 'Called InterpreterProxy >> signed32BitIntegerFor'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([oop], int, minor=2)
+def signed32BitValueOf(w_number):
+    print 'Called InterpreterProxy >> signed32BitValueOf'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([oop, oop], int, minor=2)
+def includesBehaviorThatOf(w_class, w_superclass):
+    print 'Called InterpreterProxy >> includesBehaviorThatOf'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([], oop, minor=2)
+def primitiveMethod():
+    return IProxy.s_method.w_self()
 
 #     /* InterpreterProxy methodsFor: 'FFI support' */
 
-#     sqInt (*classExternalAddress)(void);
-#     sqInt (*classExternalData)(void);
-#     sqInt (*classExternalFunction)(void);
-#     sqInt (*classExternalLibrary)(void);
-#     sqInt (*classExternalStructure)(void);
-#     sqInt (*ioLoadModuleOfLength)(sqInt modIndex, sqInt modLength);
-#     sqInt (*ioLoadSymbolOfLengthFromModule)(sqInt fnIndex, sqInt fnLength, sqInt handle);
-#     sqInt (*isInMemory)(sqInt address);
+@expose_on_virtual_machine_proxy([], oop, minor=2)
+def classExternalAddress():
+    print 'Called InterpreterProxy >> classExternalAddress'
+    raise ProxyFunctionFailed
 
+@expose_on_virtual_machine_proxy([], oop, minor=2)
+def classExternalData():
+    print 'Called InterpreterProxy >> classExternalData'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([], oop, minor=2)
+def classExternalFunction():
+    print 'Called InterpreterProxy >> classExternalFunction'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([], oop, minor=2)
+def classExternalLibrary():
+    print 'Called InterpreterProxy >> classExternalLibrary'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([], oop, minor=2)
+def classExternalStructure():
+    print 'Called InterpreterProxy >> classExternalStructure'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([int, int], oop, minor=2)
+def ioLoadModuleOfLength(modIndex, modLength):
+    print 'Called InterpreterProxy >> ioLoadModuleOfLength'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([int, int, int], int, minor=2)
+def ioLoadSymbolOfLengthFromModule(fnIndex, fnLength, handle):
+    print 'Called InterpreterProxy >> ioLoadSymbolOfLengthFromModule'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([int], bool, minor=2)
+def isInMemory(address):
+    print 'Called InterpreterProxy >> isInMemory'
+    raise ProxyFunctionFailed
 # #endif
 
 # #if VM_PROXY_MINOR > 3
