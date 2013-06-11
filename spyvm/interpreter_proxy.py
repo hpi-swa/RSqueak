@@ -34,7 +34,8 @@ class ProxyFunctionFailed(error.PrimitiveFailedError):
     pass
 
 def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
-    mapping = {oop: sqInt, int: sqInt, list: sqIntArrayPtr, bool: sqInt, float: sqDouble, str: sqStr}
+    mapping = {oop: sqInt, int: sqInt, list: sqIntArrayPtr, bool: sqInt,
+                float: sqDouble, str: sqStr, long: sqLong}
     f_ptr = Ptr(FuncType([mapping[spec] for spec in unwrap_spec], mapping[result_type]))
     if minor < minor:
         minor = minor
@@ -75,6 +76,9 @@ def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
                     return 0.0
                 elif mapping[result_type] is sqIntArrayPtr:
                     return rffi.cast(sqIntArrayPtr, 0)
+                elif mapping[result_type] is sqLong:
+                    # XXX: how to return a long 0?
+                    return 0
                 else:
                     raise NotImplementedError(
                         "InterpreterProxy: unknown result_type %s" % (result_type, ))
@@ -674,11 +678,25 @@ def isInMemory(address):
 # #   endif
 # #  endif
 
-#     sqInt  (*positive64BitIntegerFor)(sqLong integerValue);
-#     sqLong (*positive64BitValueOf)(sqInt oop);
-#     sqInt  (*signed64BitIntegerFor)(sqLong integerValue);
-#     sqLong (*signed64BitValueOf)(sqInt oop);
+@expose_on_virtual_machine_proxy([long], oop, minor=4)
+def positive64BitIntegerFor(integerValue):
+    print 'Called InterpreterProxy >> positive64BitIntegerFor'
+    raise ProxyFunctionFailed
 
+@expose_on_virtual_machine_proxy([oop], long, minor=4)
+def positive64BitValueOf(w_number):
+    print 'Called InterpreterProxy >> positive64BitValueOf'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([long], oop, minor=4)
+def signed64BitIntegerFor(integerValue):
+    print 'Called InterpreterProxy >> signed64BitIntegerFor'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([oop], long, minor=4)
+def signed64BitValueOf(w_number):
+    print 'Called InterpreterProxy >> signed64BitValueOf'
+    raise ProxyFunctionFailed
 # #endif
 
 # #if VM_PROXY_MINOR > 5
