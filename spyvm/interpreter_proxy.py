@@ -24,6 +24,7 @@ sqLong = rffi.LONG
 sqDouble = rffi.DOUBLE
 sqIntArrayPtr = Ptr(rffi.CArray(sqInt))
 sqStr = rffi.CCHARP
+void = lltype.Void
 
 major = minor = 0
 functions = []
@@ -35,7 +36,7 @@ class ProxyFunctionFailed(error.PrimitiveFailedError):
 
 def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
     mapping = {oop: sqInt, int: sqInt, list: sqIntArrayPtr, bool: sqInt,
-                float: sqDouble, str: sqStr, long: sqLong}
+                float: sqDouble, str: sqStr, long: sqLong, void: void}
     f_ptr = Ptr(FuncType([mapping[spec] for spec in unwrap_spec], mapping[result_type]))
     if minor < minor:
         minor = minor
@@ -79,12 +80,14 @@ def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
                 elif mapping[result_type] is sqLong:
                     # XXX: how to return a long 0?
                     return 0
+                elif mapping[result_type] is sqStr:
+                    return rffi.cast(sqStr, "")
                 else:
                     raise NotImplementedError(
                         "InterpreterProxy: unknown result_type %s" % (result_type, ))
         wrapped.func_name = "wrapped_ipf_" + func.func_name
         functions.append(("c_" + func.func_name, f_ptr, wrapped))
-        return wrapped
+        return func
     return decorator
 
 @expose_on_virtual_machine_proxy([], int)
@@ -167,8 +170,8 @@ def argumentCountOf(w_method):
 
 @expose_on_virtual_machine_proxy([oop], list)
 def arrayValueOf(w_array):
-    if w_array.is_array_object():
-        raise NotImplementedError
+    # if w_array.is_array_object():
+    #     return w_array.as_c_array(IProxy)
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([oop], int)
@@ -186,8 +189,8 @@ def fetchArrayofObject(fieldIndex, w_object):
     # arrayOop := self fetchPointer: fieldIndex ofObject: objectPointer.
     # ^ self arrayValueOf: arrayOop
     w_array = w_object.fetch(IProxy.space, fieldIndex)
-    if w_array.is_array_object():
-        raise NotImplementedError
+    # if w_array.is_array_object():
+    #     return w_array.as_c_array(IProxy)
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([oop], oop)
@@ -793,55 +796,200 @@ def removeGCRoot(callbackID):
 # #endif
 
 # #if VM_PROXY_MINOR > 8
-#     /* See interp.h and above for standard error codes. */
-#     sqInt  (*primitiveFailFor)(sqInt code);
-#     void (*(*setInterruptCheckChain)(void (*aFunction)(void)))();
-#     sqInt  (*classAlien)(void);
-#     sqInt  (*classUnsafeAlien)(void);
-#     sqInt  (*sendInvokeCallbackStackRegistersJmpbuf)(sqInt thunkPtrAsInt, sqInt stackPtrAsInt, sqInt regsPtrAsInt, sqInt jmpBufPtrAsInt);
-#     sqInt  (*reestablishContextPriorToCallback)(sqInt callbackContext);
-#     sqInt *(*getStackPointer)(void);
-#     sqInt  (*isOopImmutable)(sqInt oop);
-#     sqInt  (*isOopMutable)(sqInt oop);
+@expose_on_virtual_machine_proxy([int], bool, minor=8)
+def primitiveFailFor(code):
+    if code > 0:
+        IProxy.failed(code)
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([], void, minor=8)
+def setInterruptCheckChain():
+    print 'Called InterpreterProxy >> setInterruptCheckChain'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([], oop, minor=8)
+def classAlien():
+    print 'Called InterpreterProxy >> classAlien'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([], oop, minor=8)
+def classUnsafeAlien():
+    print 'Called InterpreterProxy >> classUnsafeAlien'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([int, int, int, int], int, minor=8)
+def sendInvokeCallbackStackRegistersJmpbuf(thunkPtrAsInt, stackPtrAsInt, regsPtrAsInt, jmpBufPtrAsInt):
+    print 'Called InterpreterProxy >> sendInvokeCallbackStackRegistersJmpbuf'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([oop], int, minor=8)
+def reestablishContextPriorToCallback(callbackContext):
+    print 'Called InterpreterProxy >> reestablishContextPriorToCallback'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([], int, minor=8)
+def getStackPointer():
+    print 'Called InterpreterProxy >> getStackPointer'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([oop], bool, minor=8)
+def isOopImmutable(w_object):
+    print 'Called InterpreterProxy >> isOopImmutable'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([oop], bool, minor=8)
+def isOopMutable(w_object):
+    print 'Called InterpreterProxy >> isOopMutable'
+    raise ProxyFunctionFailed
 # #endif
 
 # #if VM_PROXY_MINOR > 9
-#   sqInt  (*methodArg)  (sqInt index);
-#   sqInt  (*objectArg)  (sqInt index);
-#   sqInt  (*integerArg) (sqInt index);
-#   double (*floatArg)   (sqInt index);
-#   sqInt  (*methodReturnValue) (sqInt oop);
-#   sqInt  (*topRemappableOop)  (void);
+@expose_on_virtual_machine_proxy([int], oop, minor=9)
+def methodArg(n):
+    print 'Called InterpreterProxy >> methodArg'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([int], oop, minor=9)
+def objectArg(n):
+    print 'Called InterpreterProxy >> objectArg'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([int], int, minor=9)
+def integerArg(n):
+    print 'Called InterpreterProxy >> integerArg'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([int], float, minor=9)
+def floatArg(n):
+    print 'Called InterpreterProxy >> floatArg'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([oop], int, minor=9)
+def methodReturnValue(w_object):
+    print 'Called InterpreterProxy >> methodReturnValue'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([], oop, minor=9)
+def topRemappableOop():
+    print 'Called InterpreterProxy >> topRemappableOop'
+    raise ProxyFunctionFailed
 # #endif
 
 # #if VM_PROXY_MINOR > 10
 # # define DisownVMLockOutFullGC 1
-#   sqInt (*disownVM)(sqInt flags);
-#   sqInt (*ownVM)   (sqInt threadIdAndFlags);
+@expose_on_virtual_machine_proxy([int], int, minor=10)
+def disownVM(flags):
+    print 'Called InterpreterProxy >> disownVM'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([int], int, minor=10)
+def ownVM(threadIdAndFlags):
+    print 'Called InterpreterProxy >> ownVM'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([int, int], int, minor=10)
+def addHighPriorityTickee(ticker, periodms):
+    print 'Called InterpreterProxy >> addHighPriorityTickee'
+    raise ProxyFunctionFailed
 #   void  (*addHighPriorityTickee)(void (*ticker)(void), unsigned periodms);
+@expose_on_virtual_machine_proxy([int, int, int], int, minor=10)
+def addSynchronousTickee(ticker, periodms, roundms):
+    print 'Called InterpreterProxy >> addSynchronousTickee'
+    raise ProxyFunctionFailed
 #   void  (*addSynchronousTickee)(void (*ticker)(void), unsigned periodms, unsigned roundms);
-#   usqLong (*utcMicroseconds)(void);
+@expose_on_virtual_machine_proxy([], long, minor=10)
+def utcMicroseconds():
+    print 'Called InterpreterProxy >> utcMicroseconds'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([], int, minor=10)
+def tenuringIncrementalGC():
+    print 'Called InterpreterProxy >> tenuringIncrementalGC'
+    raise ProxyFunctionFailed
 #   sqInt (*tenuringIncrementalGC)(void);
-#   sqInt (*isYoung) (sqInt anOop);
-#   sqInt (*isKindOfClass)(sqInt oop, sqInt aClass);
+@expose_on_virtual_machine_proxy([oop], bool, minor=10)
+def isYoung(w_object):
+    print 'Called InterpreterProxy >> isYoung'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([oop, oop], bool, minor=10)
+def isKindOfClass(w_object, w_class):
+    print 'Called InterpreterProxy >> isKindOfClass'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([], oop, minor=10)
+def primitiveErrorTable():
+    print 'Called InterpreterProxy >> primitiveErrorTable'
+    raise ProxyFunctionFailed
 #   sqInt (*primitiveErrorTable)(void);
-#   sqInt (*primitiveFailureCode)(void);
-#   sqInt (*instanceSizeOf)(sqInt aClass);
+@expose_on_virtual_machine_proxy([], int, minor=10)
+def primitiveFailureCode():
+    return IProxy.fail_reason
+
+@expose_on_virtual_machine_proxy([oop], int, minor=10)
+def instanceSizeOf(w_class):
+    if isinstance(w_class, model.W_PointersObject):
+        s_class = w_class.as_class_get_shadow(IProxy.space)
+        return s_class.instsize()
+    raise ProxyFunctionFailed
 # #endif
 
 # #if VM_PROXY_MINOR > 11
 # /* VMCallbackContext opaque type avoids all including setjmp.h & vmCallback.h */
-#   sqInt (*sendInvokeCallbackContext)(vmccp);
+@expose_on_virtual_machine_proxy([int], int, minor=11)
+def sendInvokeCallbackContext(vmccp):
+    print 'Called InterpreterProxy >> sendInvokeCallbackContext'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([int, int, int], int, minor=11)
+def returnAsThroughCallbackContext(n, vmccp, m):
+    print 'Called InterpreterProxy >> returnAsThroughCallbackContext'
+    raise ProxyFunctionFailed
 #   sqInt (*returnAsThroughCallbackContext)(int, vmccp, sqInt);
-#   long  (*signedMachineIntegerValueOf)(sqInt);
-#   long  (*stackSignedMachineIntegerValue)(sqInt);
-#   unsigned long  (*positiveMachineIntegerValueOf)(sqInt);
-#   unsigned long  (*stackPositiveMachineIntegerValue)(sqInt);
-#   sqInt  (*getInterruptPending)(void);
-#   char  *(*cStringOrNullFor)(sqInt);
+@expose_on_virtual_machine_proxy([int], long, minor=11)
+def signedMachineIntegerValueOf(n):
+    print 'Called InterpreterProxy >> signedMachineIntegerValueOf'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([int], long, minor=11)
+def stackSignedMachineIntegerValue(n):
+    print 'Called InterpreterProxy >> stackSignedMachineIntegerValue'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([int], long, minor=11)
+def positiveMachineIntegerValueOf(n):
+    print 'Called InterpreterProxy >> positiveMachineIntegerValueOf'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([int], long, minor=11)
+def stackPositiveMachineIntegerValue(n):
+    print 'Called InterpreterProxy >> stackPositiveMachineIntegerValue'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([], int, minor=11)
+def getInterruptPending():
+    print 'Called InterpreterProxy >> getInterruptPending'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([int], str, minor=11)
+def cStringOrNullFor(n):
+    print 'Called InterpreterProxy >> cStringOrNullFor'
+    raise ProxyFunctionFailed
+
+@expose_on_virtual_machine_proxy([int], int, minor=11)
+def startOfAlienData(n):
+    print 'Called InterpreterProxy >> startOfAlienData'
+    raise ProxyFunctionFailed
 #   void  *(*startOfAlienData)(sqInt);
+@expose_on_virtual_machine_proxy([int], int, minor=11)
+def sizeOfAlienData(n):
+    print 'Called InterpreterProxy >> sizeOfAlienData'
+    raise ProxyFunctionFailed
 #   usqInt (*sizeOfAlienData)(sqInt);
-#   sqInt  (*signalNoResume)(sqInt);
+@expose_on_virtual_machine_proxy([int], int, minor=11)
+def signalNoResume(n):
+    print 'Called InterpreterProxy >> signalNoResume'
+    raise ProxyFunctionFailed
 # #endif
 
 # ##############################################################################
@@ -902,6 +1050,7 @@ class _InterpreterProxy(object):
             self.reset()
 
     def failed(self, reason=1):
+        assert reason != 0
         self.fail_reason = reason
 
     def oop_to_object(self, oop):
@@ -936,3 +1085,17 @@ class _InterpreterProxy(object):
         return w_object
 
 IProxy = _InterpreterProxy()
+
+# # Class extensions for Array conversion
+# class __extend__(model.W_PointersObject):
+#     def as_c_array(self, proxy):
+#         return map(lambda x: proxy.object_to_oop(x), self.vars[self.instsize(space):])
+
+# class __extend__(model.W_BytesObject):
+#     def as_c_array(self, proxy):
+#         print "InterpreterProxy >> as_c_array on BytesObject"
+#         raise ProxyFunctionFailed
+
+# class __extend__(model.W_WordsObject):
+#     def as_c_array(self, proxy):
+#         return map(lambda x: proxy.object_to_oop(proxy.space.wrap_positive_32bit_int(x), self.words)
