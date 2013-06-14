@@ -26,7 +26,7 @@ sqIntArrayPtr = Ptr(rffi.CArray(sqInt))
 sqStr = rffi.CCHARP
 void = lltype.Void
 
-major = minor = 0
+MAJOR = MINOR = 0
 functions = []
 
 oop = object()
@@ -35,13 +35,14 @@ class ProxyFunctionFailed(error.PrimitiveFailedError):
     pass
 
 def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
+    global MINOR, MAJOR
     mapping = {oop: sqInt, int: sqInt, list: sqIntArrayPtr, bool: sqInt,
                 float: sqDouble, str: sqStr, long: sqLong, void: void}
     f_ptr = Ptr(FuncType([mapping[spec] for spec in unwrap_spec], mapping[result_type]))
-    if minor < minor:
-        minor = minor
-    if major < major:
-        major = major
+    if MINOR < minor:
+        MINOR = minor
+    if MAJOR < major:
+        MAJOR = major
     def decorator(func):
         len_unwrap_spec = len(unwrap_spec)
         assert (len_unwrap_spec == len(inspect.getargspec(func)[0]) + 1,
@@ -92,11 +93,11 @@ def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
 
 @expose_on_virtual_machine_proxy([], int)
 def minorVersion():
-    return minor
+    return MINOR
 
 @expose_on_virtual_machine_proxy([], int)
 def majorVersion():
-    return major
+    return MAJOR
 
 @expose_on_virtual_machine_proxy([int], int)
 def pop(nItems):
@@ -224,12 +225,14 @@ def obsoleteDontUseThisFetchWordofObject(fieldIndex, w_object):
 @expose_on_virtual_machine_proxy([oop], list)
 def firstFixedField(w_object):
     # return a list with oops (?) of w_objects instVars
-    raise NotImplementedError
+    print "InterpreterProxy >> firstFixedField"
+    raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([oop], list)
 def firstIndexableField(w_object):
     # return a list with values (?) of w_objects variable-parts
-    raise NotImplementedError
+    print "InterpreterProxy >> firstIndexableField"
+    raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([int, oop], oop)
 def literalofMethod(offset, w_method):
