@@ -136,6 +136,7 @@ def entry_point(argv):
     image_reader = squeakimage.reader_for_image(space, squeakimage.Stream(data=imagedata))
     image = create_image(space, image_reader)
     interp = interpreter.Interpreter(space, image, image_name=path, trace=trace)
+    space.runtime_setup(argv[0])
     if benchmark is not None:
         return _run_benchmark(interp, number, benchmark)
     else:

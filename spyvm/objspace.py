@@ -1,14 +1,39 @@
+import os
+
 from spyvm import constants, model, shadow, wrapper
 from spyvm.error import UnwrappingError, WrappingError, PrimitiveFailedError
-from rpython.rlib import jit
+from rpython.rlib import jit, rpath
 from rpython.rlib.objectmodel import instantiate, specialize
 from rpython.rlib.rarithmetic import intmask, r_uint, int_between
 
 class ObjSpace(object):
     def __init__(self):
         self.classtable = {}
+        self._executable_path = [""] # XXX: we cannot set the attribute
+                                  # directly on the frozen objectspace
         self.make_bootstrap_classes()
         self.make_bootstrap_objects()
+
+    def find_executable(self, executable):
+        if os.sep in executable or (os.name == "nt" and ":" in executable):
+            return executable
+        path = os.environ.get("PATH")
+        if path:
+            for dir in path.split(os.pathsep):
+                f = os.path.join(dir, executable)
+                if os.path.isfile(f):
+                    executable = f
+                    break
+        return rpath.rabspath(executable)
+
+    def runtime_setup(self, executable):
+        fullpath = rpath.rabspath(self.find_executable(executable))
+        i = fullpath.rfind(os.path.sep) + 1
+        assert i > 0
+        self._executable_path[0] = fullpath[:i]
+
+    def executable_path(self):
+        return self._executable_path[0]
 
     def make_bootstrap_classes(self):
         def define_core_cls(name, w_superclass, w_metaclass):

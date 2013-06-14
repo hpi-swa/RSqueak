@@ -839,9 +839,9 @@ def func(interp, s_frame, argcount, s_method):
         raise PrimitiveFailedError
     signature = (w_modulename.as_string(), w_functionname.as_string())
 
-    if signature == ('BitBltPlugin', 'primitiveCopyBits'):
-        return prim_holder.prim_table[BITBLT_COPY_BITS](interp, s_frame, argcount, s_method)
-    elif signature[0] == "SocketPlugin":
+    # if signature == ('BitBltPlugin', 'primitiveCopyBits'):
+    #     return prim_holder.prim_table[BITBLT_COPY_BITS](interp, s_frame, argcount, s_method)
+    if signature[0] == "SocketPlugin":
         from spyvm.plugins.socket import SocketPlugin
         return SocketPlugin.call(signature[1], interp, s_frame, argcount, s_method)
     elif signature[0] == "FilePlugin":
@@ -994,7 +994,7 @@ CLONE = 148
 
 @expose_primitive(VM_PATH, unwrap_spec=[object])
 def func(interp, s_frame, w_receiver):
-    return interp.space.wrap_string(os.path.join(os.getcwd(), ''))
+    return interp.space.wrap_string("%s%s" % (interp.space.executable_path(), os.path.sep))
 
 @expose_primitive(SHORT_AT, unwrap_spec=[object, index1_0])
 def func(interp, s_frame, w_receiver, n0):

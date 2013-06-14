@@ -94,8 +94,8 @@ def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
                     raise NotImplementedError(
                         "InterpreterProxy: unknown result_type %s" % (result_type, ))
         wrapped.func_name = "wrapped_ipf_" + func.func_name
-        functions.append(("c_" + func.func_name, f_ptr, wrapped))
-        return func
+        functions.append((func.func_name, f_ptr, wrapped))
+        return wrapped
     return decorator
 
 @expose_on_virtual_machine_proxy([], int)
@@ -1005,8 +1005,7 @@ def signalNoResume(n):
 # ##############################################################################
 
 VirtualMachine = lltype.Struct("VirtualMachine",
-        *map(lambda x: (x[0], x[1]), functions),
-        hints={'c_name': 'VirtualMachine'})
+        *map(lambda x: (x[0], x[1]), functions))
 VMPtr = Ptr(VirtualMachine)
 
 proxy_functions = unrolling_iterable(functions)
@@ -1023,6 +1022,10 @@ def sqGetInterpreterProxy():
 
 # rffi.llexternal is supposed to represent c-functions.
 
+func_str_void = Ptr(FuncType([], sqStr))
+func_bool_vm = Ptr(FuncType([VMPtr], sqInt))
+func_bool_void = Ptr(FuncType([], sqInt))
+
 class _InterpreterProxy(object):
     _immutable_fields_ = ['vm_initialized?']
 
@@ -1032,6 +1035,7 @@ class _InterpreterProxy(object):
         self._next_oop = 0
         self.oop_map = {}
         self.object_map = {}
+        self.loaded_modules = {}
         self.remappable_objects = []
         self.reset()
 
@@ -1043,6 +1047,30 @@ class _InterpreterProxy(object):
         self.fail_reason = 0
 
     def call(self, signature, interp, s_frame, argcount, s_method):
+        from rpython.rlib.rdynload import dlsym
+        self.initialize_from_call(signature, interp, s_frame, argcount, s_method)
+        try:
+            if signature[0] not in self.loaded_modules:
+                module = self.load_and_initialize(signature[0])
+                print "Successfully loaded: %s" % signature[0]
+            else:
+                module = self.loaded_modules[signature[0]]
+
+            # call the correct function in it...
+            try:
+                _external_function = dlsym(module, signature[1])
+            except KeyError:
+                self.failed()
+            else:
+                external_function = rffi.cast(func_bool_void, _external_function)
+                external_function()
+
+            if not self.fail_reason == 0:
+                raise error.PrimitiveFailedError
+        finally:
+            self.reset()
+
+    def initialize_from_call(self, signature, interp, s_frame, argcount, s_method):
         self.interp = interp
         self.s_frame = s_frame
         self.argcount = argcount
@@ -1050,14 +1078,6 @@ class _InterpreterProxy(object):
         self.space = interp.space
         # ensure that space.w_nil gets the first possible oop
         self.object_to_oop(self.space.w_nil)
-        try:
-            # Load the correct DLL
-            self.failed()
-            # call the correct function in it...
-            if not self.fail_reason == 0:
-                raise error.PrimitiveFailedError
-        finally:
-            self.reset()
 
     def failed(self, reason=1):
         assert reason != 0
@@ -1093,6 +1113,57 @@ class _InterpreterProxy(object):
     def push_remappable(self, w_object):
         self.remappable_objects.append(w_object)
         return w_object
+
+    def top_remappable(self):
+        if len(self.remappable_objects) == 0:
+            raise ProxyFunctionFailed
+        return self.remappable_objects[-1]
+
+    def load_and_initialize(self, module_name):
+        from rpython.rlib.rdynload import dlopen, dlsym, dlclose, DLOpenError
+        import os
+        c_name = rffi.str2charp(os.path.join(IProxy.space.executable_path(), module_name))
+        try:
+            module = dlopen(c_name)
+        except DLOpenError, e:
+            print "Missing library: %s" % e
+            raise error.PrimitiveFailedError
+        try:
+            try:
+                _getModuleName = dlsym(module, "getModuleName")
+            except KeyError:
+                pass # the method does not need to exist
+            else:
+                getModuleName = rffi.cast(func_str_void, _getModuleName)
+                if not rffi.charp2str(getModuleName()).startswith(module_name):
+                    raise error.PrimitiveFailedError
+
+            try:
+                _setInterpreter = dlsym(module, "setInterpreter")
+            except KeyError:
+                raise error.PrimitiveFailedError
+            else:
+                setInterpreter = rffi.cast(func_bool_vm, _setInterpreter)
+                if not setInterpreter(sqGetInterpreterProxy()):
+                    print "Failed setting interpreter on: %s" % module_name
+                    raise error.PrimitiveFailedError
+
+            try:
+                _initialiseModule = dlsym(module, "initialiseModule")
+            except KeyError:
+                pass # the method does not need to exist
+            else:
+                initialiseModule = rffi.cast(func_bool_void, _initialiseModule)
+                if not initialiseModule():
+                    print "Failed initialization of: %s" % module_name
+                    raise error.PrimitiveFailedError
+
+            self.loaded_modules[module_name] = module
+            return module
+        except error.PrimitiveFailedError:
+            dlclose(module)
+            raise
+
 
 IProxy = _InterpreterProxy()
 
