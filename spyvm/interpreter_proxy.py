@@ -996,7 +996,7 @@ def sizeOfAlienData(n):
     print 'Called InterpreterProxy >> sizeOfAlienData'
     raise ProxyFunctionFailed
 #   usqInt (*sizeOfAlienData)(sqInt);
-@expose_on_virtual_machine_proxy([int], int, minor=11)
+@expose_on_virtual_machine_proxy([int], int, minor=12)
 def signalNoResume(n):
     print 'Called InterpreterProxy >> signalNoResume'
     raise ProxyFunctionFailed
