@@ -51,6 +51,7 @@ def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
         def wrapped(*c_arguments):
             assert len_unwrap_spec == len(c_arguments)
             args = ()
+            print "Called InterpreterProxy >> %s" % func.func_name
             try:
                 for i, spec in unrolling_unwrap_spec:
                     c_arg = c_arguments[i]
@@ -65,9 +66,15 @@ def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
                 elif result_type is list:
                     assert isinstance(result, list)
                     return IProxy.list_to_carray(result)
-                elif result_type in (int, float, bool):
+                elif result_type in (int, float):
                     assert isinstance(result, result_type)
                     return result
+                elif result_type is bool:
+                    assert isinstance(result, bool)
+                    if result:
+                        return 1
+                    else:
+                        return 0
                 else:
                     return result
             except error.PrimitiveFailedError:
