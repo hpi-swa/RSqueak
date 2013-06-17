@@ -51,7 +51,7 @@ def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
         def wrapped(*c_arguments):
             assert len_unwrap_spec == len(c_arguments)
             args = ()
-            print "Called InterpreterProxy >> %s" % func.func_name
+            print 'Called InterpreterProxy >> %s' % func.func_name,
             try:
                 for i, spec in unrolling_unwrap_spec:
                     c_arg = c_arguments[i]
@@ -60,6 +60,7 @@ def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
                     else:
                         args += (c_arg, )
                 result = func(*args)
+                print '\t-> %s' % result
                 if result_type is oop:
                     assert isinstance(result, model.W_Object)
                     return IProxy.object_to_oop(result)
@@ -78,6 +79,7 @@ def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
                 else:
                     return result
             except error.PrimitiveFailedError:
+                print '\t-> failed'
                 IProxy.failed()
                 if mapping[result_type] is sqInt:
                     return 0
@@ -188,7 +190,7 @@ def byteSizeOf(w_object):
     size = s_class.instsize()
     if s_class.isvariable():
         size += w_object.primsize(IProxy.space)
-    if isinstance(w_object, model.W_BytesObject):
+    if not isinstance(w_object, model.W_BytesObject):
         size *= 4
     return size
 
@@ -232,13 +234,11 @@ def obsoleteDontUseThisFetchWordofObject(fieldIndex, w_object):
 @expose_on_virtual_machine_proxy([oop], list)
 def firstFixedField(w_object):
     # return a list with oops (?) of w_objects instVars
-    print "InterpreterProxy >> firstFixedField"
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([oop], list)
 def firstIndexableField(w_object):
     # return a list with values (?) of w_objects variable-parts
-    print "InterpreterProxy >> firstIndexableField"
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([int, oop], oop)
@@ -320,14 +320,12 @@ def storePointerofObjectwithValue(n0, w_object, w_value):
 @expose_on_virtual_machine_proxy([oop, str], bool)
 def isKindOf(w_object, name):
     # XXX: stub, until used
-    print "InterpreterProxy >> isKindOf(object, name)"
     return False
 #     sqInt (*isKindOf)(sqInt oop, char *aString);
 
 @expose_on_virtual_machine_proxy([oop, str], bool)
 def isMemberOf(w_object, name):
     # XXX: stub, until used
-    print "InterpreterProxy >> isMemberOf(object, name)"
     return False
 #     sqInt (*isMemberOf)(sqInt oop, char *aString);
 
@@ -510,7 +508,6 @@ def pushRemappableOop(w_object):
 @expose_on_virtual_machine_proxy([list, list], int)
 def becomewith(w_array1, w_array2):
     # XXX: stub, until used
-    print "InterpreterProxy >> becomewith(list, list)"
     return 0
 
 @expose_on_virtual_machine_proxy([int], int)
@@ -546,13 +543,11 @@ def primitiveFail():
 
 @expose_on_virtual_machine_proxy([oop, int, int, int, int], int)
 def showDisplayBitsLeftTopRightBottom(w_form, l, t, r, b):
-    print 'Called InterpreterProxy >> showDisplayBitsLeftTopRightBottom'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([int], int)
 def signalSemaphoreWithIndex(n):
     # ((Smalltalk externalObjects) at: n) signal
-    print 'Called InterpreterProxy >> signalSemaphoreWithIndex'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([bool], int)
@@ -576,12 +571,10 @@ def superclassOf(w_class):
 
 @expose_on_virtual_machine_proxy([], int)
 def compilerHookVector():
-    print 'Called InterpreterProxy >> compilerHookVector'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([int], int)
 def setCompilerInitialized(n):
-    print 'Called InterpreterProxy >> setCompilerInitialized'
     raise ProxyFunctionFailed
 
 #     /* InterpreterProxy methodsFor: 'BitBlt support' */
@@ -589,40 +582,33 @@ def setCompilerInitialized(n):
 @expose_on_virtual_machine_proxy([int], int, minor=1)
 def loadBitBltFrom(w_bitBlit):
     # bb := bbOop
-    print 'Called InterpreterProxy >> loadBitBltFrom'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([], int, minor=1)
 def copyBits():
     # bb copyBits
-    print 'Called InterpreterProxy >> copyBits'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([int, int, int], int, minor=1)
 def copyBitsFromtoat(x0, x1, y):
     # bb copyBitsFrom: x0 to: x1 at: y
-    print 'Called InterpreterProxy >> copyBitsFromtoat'
     raise ProxyFunctionFailed
 
 # #if VM_PROXY_MINOR > 2
 @expose_on_virtual_machine_proxy([], oop, minor=2)
 def classLargeNegativeInteger():
-    print 'Called InterpreterProxy >> classLargeNegativeInteger'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([int], oop, minor=2)
 def signed32BitIntegerFor(n):
-    print 'Called InterpreterProxy >> signed32BitIntegerFor'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([oop], int, minor=2)
 def signed32BitValueOf(w_number):
-    print 'Called InterpreterProxy >> signed32BitValueOf'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([oop, oop], int, minor=2)
 def includesBehaviorThatOf(w_class, w_superclass):
-    print 'Called InterpreterProxy >> includesBehaviorThatOf'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([], oop, minor=2)
@@ -633,54 +619,44 @@ def primitiveMethod():
 
 @expose_on_virtual_machine_proxy([], oop, minor=2)
 def classExternalAddress():
-    print 'Called InterpreterProxy >> classExternalAddress'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([], oop, minor=2)
 def classExternalData():
-    print 'Called InterpreterProxy >> classExternalData'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([], oop, minor=2)
 def classExternalFunction():
-    print 'Called InterpreterProxy >> classExternalFunction'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([], oop, minor=2)
 def classExternalLibrary():
-    print 'Called InterpreterProxy >> classExternalLibrary'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([], oop, minor=2)
 def classExternalStructure():
-    print 'Called InterpreterProxy >> classExternalStructure'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([int, int], oop, minor=2)
 def ioLoadModuleOfLength(modIndex, modLength):
-    print 'Called InterpreterProxy >> ioLoadModuleOfLength'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([int, int, int], int, minor=2)
 def ioLoadSymbolOfLengthFromModule(fnIndex, fnLength, handle):
-    print 'Called InterpreterProxy >> ioLoadSymbolOfLengthFromModule'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([int], bool, minor=2)
 def isInMemory(address):
-    print 'Called InterpreterProxy >> isInMemory'
     raise ProxyFunctionFailed
 # #endif
 
 # #if VM_PROXY_MINOR > 3
 @expose_on_virtual_machine_proxy([str, str], bool, minor=3)
 def ioLoadFunctionFrom(fnName, modName):
-    print 'Called InterpreterProxy >> ioLoadFunctionFrom'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([], bool, minor=3)
 def ioMicroMSecs():
-    print 'Called InterpreterProxy >> ioMicroMSecs'
     raise ProxyFunctionFailed
 # #endif
 
@@ -698,22 +674,18 @@ def ioMicroMSecs():
 
 @expose_on_virtual_machine_proxy([long], oop, minor=4)
 def positive64BitIntegerFor(integerValue):
-    print 'Called InterpreterProxy >> positive64BitIntegerFor'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([oop], long, minor=4)
 def positive64BitValueOf(w_number):
-    print 'Called InterpreterProxy >> positive64BitValueOf'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([long], oop, minor=4)
 def signed64BitIntegerFor(integerValue):
-    print 'Called InterpreterProxy >> signed64BitIntegerFor'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([oop], long, minor=4)
 def signed64BitValueOf(w_number):
-    print 'Called InterpreterProxy >> signed64BitValueOf'
     raise ProxyFunctionFailed
 # #endif
 
@@ -731,30 +703,25 @@ def isArray(w_object):
 
 @expose_on_virtual_machine_proxy([], int, minor=5)
 def forceInterruptCheck():
-    print 'Called InterpreterProxy >> forceInterruptCheck'
     raise ProxyFunctionFailed
 # #endif
 
 # #if VM_PROXY_MINOR > 6
 @expose_on_virtual_machine_proxy([int, oop], oop, minor=6)
 def fetchLong32ofObject(fieldFieldIndex, oop):
-    print 'Called InterpreterProxy >> fetchLong32ofObject'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([int, oop], int, minor=6)
 def getThisSessionID(fieldFieldIndex, oop):
     # return random int
-    print 'Called InterpreterProxy >> getThisSessionID'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([str, str, int, int], oop, minor=6)
 def ioFilenamefromStringofLengthresolveAliases(aCharBuffer, filenameIndex, filenameLength, resolveFlag):
-    print 'Called InterpreterProxy >> ioFilenamefromStringofLengthresolveAliases'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([], int, minor=6)
 def vmEndianness():
-    print 'Called InterpreterProxy >> vmEndianness'
     return 0 # return 1 for big endian
 # #endif
 
@@ -769,7 +736,6 @@ def vmEndianness():
 #   sqInt (*callbackEnter)(sqInt *callbackID);
 @expose_on_virtual_machine_proxy([int], bool, minor=7)
 def callbackEnter(callbackID):
-    print 'Called InterpreterProxy >> callbackEnter'
     raise ProxyFunctionFailed
 
 #   /* callbackLeave: Leave the interpreter from a previous callback
@@ -779,7 +745,6 @@ def callbackEnter(callbackID):
 #   sqInt (*callbackLeave)(sqInt  callbackID);
 @expose_on_virtual_machine_proxy([int], bool, minor=7)
 def callbackLeave(callbackID):
-    print 'Called InterpreterProxy >> callbackLeave'
     raise ProxyFunctionFailed
 
 #   /* addGCRoot: Add a variable location to the garbage collector.
@@ -790,7 +755,6 @@ def callbackLeave(callbackID):
 #   sqInt (*addGCRoot)(sqInt *varLoc);
 @expose_on_virtual_machine_proxy([oop], bool, minor=7)
 def addGCRoot(callbackID):
-    print 'Called InterpreterProxy >> addGCRoot'
     raise ProxyFunctionFailed
 
 #   /* removeGCRoot: Remove a variable location from the garbage collector.
@@ -801,7 +765,6 @@ def addGCRoot(callbackID):
 #   sqInt (*removeGCRoot)(sqInt *varLoc);
 @expose_on_virtual_machine_proxy([oop], bool, minor=7)
 def removeGCRoot(callbackID):
-    print 'Called InterpreterProxy >> removeGCRoot'
     raise ProxyFunctionFailed
 # #endif
 
@@ -814,74 +777,60 @@ def primitiveFailFor(code):
 
 @expose_on_virtual_machine_proxy([], void, minor=8)
 def setInterruptCheckChain():
-    print 'Called InterpreterProxy >> setInterruptCheckChain'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([], oop, minor=8)
 def classAlien():
-    print 'Called InterpreterProxy >> classAlien'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([], oop, minor=8)
 def classUnsafeAlien():
-    print 'Called InterpreterProxy >> classUnsafeAlien'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([int, int, int, int], int, minor=8)
 def sendInvokeCallbackStackRegistersJmpbuf(thunkPtrAsInt, stackPtrAsInt, regsPtrAsInt, jmpBufPtrAsInt):
-    print 'Called InterpreterProxy >> sendInvokeCallbackStackRegistersJmpbuf'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([oop], int, minor=8)
 def reestablishContextPriorToCallback(callbackContext):
-    print 'Called InterpreterProxy >> reestablishContextPriorToCallback'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([], int, minor=8)
 def getStackPointer():
-    print 'Called InterpreterProxy >> getStackPointer'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([oop], bool, minor=8)
 def isOopImmutable(w_object):
-    print 'Called InterpreterProxy >> isOopImmutable'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([oop], bool, minor=8)
 def isOopMutable(w_object):
-    print 'Called InterpreterProxy >> isOopMutable'
     raise ProxyFunctionFailed
 # #endif
 
 # #if VM_PROXY_MINOR > 9
 @expose_on_virtual_machine_proxy([int], oop, minor=9)
 def methodArg(n):
-    print 'Called InterpreterProxy >> methodArg'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([int], oop, minor=9)
 def objectArg(n):
-    print 'Called InterpreterProxy >> objectArg'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([int], int, minor=9)
 def integerArg(n):
-    print 'Called InterpreterProxy >> integerArg'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([int], float, minor=9)
 def floatArg(n):
-    print 'Called InterpreterProxy >> floatArg'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([oop], int, minor=9)
 def methodReturnValue(w_object):
-    print 'Called InterpreterProxy >> methodReturnValue'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([], oop, minor=9)
 def topRemappableOop():
-    print 'Called InterpreterProxy >> topRemappableOop'
     raise ProxyFunctionFailed
 # #endif
 
@@ -889,47 +838,38 @@ def topRemappableOop():
 # # define DisownVMLockOutFullGC 1
 @expose_on_virtual_machine_proxy([int], int, minor=10)
 def disownVM(flags):
-    print 'Called InterpreterProxy >> disownVM'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([int], int, minor=10)
 def ownVM(threadIdAndFlags):
-    print 'Called InterpreterProxy >> ownVM'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([int, int], int, minor=10)
 def addHighPriorityTickee(ticker, periodms):
-    print 'Called InterpreterProxy >> addHighPriorityTickee'
     raise ProxyFunctionFailed
 #   void  (*addHighPriorityTickee)(void (*ticker)(void), unsigned periodms);
 @expose_on_virtual_machine_proxy([int, int, int], int, minor=10)
 def addSynchronousTickee(ticker, periodms, roundms):
-    print 'Called InterpreterProxy >> addSynchronousTickee'
     raise ProxyFunctionFailed
 #   void  (*addSynchronousTickee)(void (*ticker)(void), unsigned periodms, unsigned roundms);
 @expose_on_virtual_machine_proxy([], long, minor=10)
 def utcMicroseconds():
-    print 'Called InterpreterProxy >> utcMicroseconds'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([], int, minor=10)
 def tenuringIncrementalGC():
-    print 'Called InterpreterProxy >> tenuringIncrementalGC'
     raise ProxyFunctionFailed
 #   sqInt (*tenuringIncrementalGC)(void);
 @expose_on_virtual_machine_proxy([oop], bool, minor=10)
 def isYoung(w_object):
-    print 'Called InterpreterProxy >> isYoung'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([oop, oop], bool, minor=10)
 def isKindOfClass(w_object, w_class):
-    print 'Called InterpreterProxy >> isKindOfClass'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([], oop, minor=10)
 def primitiveErrorTable():
-    print 'Called InterpreterProxy >> primitiveErrorTable'
     raise ProxyFunctionFailed
 #   sqInt (*primitiveErrorTable)(void);
 @expose_on_virtual_machine_proxy([], int, minor=10)
@@ -948,57 +888,46 @@ def instanceSizeOf(w_class):
 # /* VMCallbackContext opaque type avoids all including setjmp.h & vmCallback.h */
 @expose_on_virtual_machine_proxy([int], int, minor=11)
 def sendInvokeCallbackContext(vmccp):
-    print 'Called InterpreterProxy >> sendInvokeCallbackContext'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([int, int, int], int, minor=11)
 def returnAsThroughCallbackContext(n, vmccp, m):
-    print 'Called InterpreterProxy >> returnAsThroughCallbackContext'
     raise ProxyFunctionFailed
 #   sqInt (*returnAsThroughCallbackContext)(int, vmccp, sqInt);
 @expose_on_virtual_machine_proxy([int], long, minor=11)
 def signedMachineIntegerValueOf(n):
-    print 'Called InterpreterProxy >> signedMachineIntegerValueOf'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([int], long, minor=11)
 def stackSignedMachineIntegerValue(n):
-    print 'Called InterpreterProxy >> stackSignedMachineIntegerValue'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([int], long, minor=11)
 def positiveMachineIntegerValueOf(n):
-    print 'Called InterpreterProxy >> positiveMachineIntegerValueOf'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([int], long, minor=11)
 def stackPositiveMachineIntegerValue(n):
-    print 'Called InterpreterProxy >> stackPositiveMachineIntegerValue'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([], int, minor=11)
 def getInterruptPending():
-    print 'Called InterpreterProxy >> getInterruptPending'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([int], str, minor=11)
 def cStringOrNullFor(n):
-    print 'Called InterpreterProxy >> cStringOrNullFor'
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([int], int, minor=11)
 def startOfAlienData(n):
-    print 'Called InterpreterProxy >> startOfAlienData'
     raise ProxyFunctionFailed
 #   void  *(*startOfAlienData)(sqInt);
 @expose_on_virtual_machine_proxy([int], int, minor=11)
 def sizeOfAlienData(n):
-    print 'Called InterpreterProxy >> sizeOfAlienData'
     raise ProxyFunctionFailed
 #   usqInt (*sizeOfAlienData)(sqInt);
 @expose_on_virtual_machine_proxy([int], int, minor=12)
 def signalNoResume(n):
-    print 'Called InterpreterProxy >> signalNoResume'
     raise ProxyFunctionFailed
 # #endif
 
@@ -1052,7 +981,6 @@ class _InterpreterProxy(object):
         try:
             if signature[0] not in self.loaded_modules:
                 module = self.load_and_initialize(signature[0])
-                print "Successfully loaded: %s" % signature[0]
             else:
                 module = self.loaded_modules[signature[0]]
 
@@ -1063,6 +991,7 @@ class _InterpreterProxy(object):
                 self.failed()
             else:
                 external_function = rffi.cast(func_bool_void, _external_function)
+                print "Calling %s >> %s" % signature
                 external_function()
 
             if not self.fail_reason == 0:
@@ -1094,6 +1023,7 @@ class _InterpreterProxy(object):
             return self.object_map[w_object]
         except KeyError:
             new_index = self.next_oop()
+            print "Mapping new Object: %d -> %s" % (new_index, w_object)
             self.oop_map[new_index] = w_object
             self.object_map[w_object] = new_index
             return new_index
@@ -1126,7 +1056,6 @@ class _InterpreterProxy(object):
         try:
             module = dlopen(c_name)
         except DLOpenError, e:
-            print "Missing library: %s" % e
             raise error.PrimitiveFailedError
         try:
             try:
