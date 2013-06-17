@@ -235,7 +235,11 @@ def func(interp, s_frame, receiver, argument):
 def func(interp, s_frame, receiver, argument):
     if argument == 0:
         raise PrimitiveFailedError()
-    return interp.space.wrap_int(receiver // argument)
+    res = receiver // argument
+    # see http://python-history.blogspot.de/2010/08/why-pythons-integer-division-floors.html
+    if res < 0:
+        res = res + 1
+    return interp.space.wrap_int(res)
 
 # #bitShift: -- return the shifted value
 @expose_primitive(BIT_SHIFT, unwrap_spec=[object, int])
