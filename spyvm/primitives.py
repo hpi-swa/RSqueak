@@ -237,7 +237,7 @@ def func(interp, s_frame, receiver, argument):
         raise PrimitiveFailedError()
     res = receiver // argument
     # see http://python-history.blogspot.de/2010/08/why-pythons-integer-division-floors.html
-    if res < 0:
+    if res < 0 and not abs(receiver) == abs(argument):
         res = res + 1
     return interp.space.wrap_int(res)
 
@@ -702,7 +702,8 @@ def func(interp, s_frame, w_rcvr):
         w_rcvr.store(interp.space, 0, w_display_bitmap)
 
     w_display_bitmap.flush_to_screen()
-    interp.image.lastWindowSize = (width << 16)  + height
+    if interp.image:
+        interp.image.lastWindowSize = (width << 16)  + height
     interp.space.objtable['w_display'] = w_rcvr
 
     return w_rcvr

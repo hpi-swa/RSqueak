@@ -989,8 +989,8 @@ class MethodContextShadow(ContextPartShadow):
                 self.pc() + 1
             )
         args = '%d' % argcount
-        for i in range(argcount - 1, -1, -1):
-            args += ': %s' % self.peek(i).as_repr_string()
+        for i in range(argcount):
+            args += ': %s' % self.peek(argcount -1 - i).as_repr_string()
         return '%s (rcvr: %s) [pc: %d] (%s)' % (
             self.method_str(),
             self.w_receiver().as_repr_string(),

@@ -117,6 +117,12 @@ def test_small_int_quo():
     assert prim(primitives.QUO, [12,3]).value == 4
     assert prim(primitives.QUO, [12,7]).value == 1
     assert prim(primitives.QUO, [-9,4]).value == -2
+    assert prim(primitives.QUO, [-12,12]).value == -1
+    assert prim(primitives.QUO, [-12,11]).value == -1
+    assert prim(primitives.QUO, [-12,13]).value == 0
+    assert prim(primitives.QUO, [-12,-12]).value == 1
+    assert prim(primitives.QUO, [12,-11]).value == -1
+    assert prim(primitives.QUO, [12,-13]).value == 0
 
 def test_small_int_quo_fail():
     prim_fails(primitives.QUO, [12, 0])
