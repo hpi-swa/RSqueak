@@ -10,7 +10,7 @@ from spyvm.tool.analyseimage import create_image
 from spyvm.interpreter_proxy import VirtualMachine
 
 
-def _run_benchmark(interp, number, benchmark):
+def _run_benchmark(interp, number, benchmark, arg):
     from spyvm.plugins.vmdebugging import stop_ui_process
     stop_ui_process()
 
@@ -25,15 +25,7 @@ def _run_benchmark(interp, number, benchmark):
         len(w_hpp._vars)
     )
 
-    # XXX: Copied from interpreter >> perform
-    w_receiver = interp.space.wrap_int(number)
-    w_selector = interp.perform(interp.space.wrap_string(benchmark), "asSymbol")
-    w_method = model.W_CompiledMethod(header=512)
-    w_method.literalatput0(interp.space, 1, w_selector)
-    w_method.setbytes([chr(131), chr(0), chr(124)]) #returnTopFromMethod
-    s_method = w_method.as_compiledmethod_get_shadow(interp.space)
-    s_frame = shadow.MethodContextShadow.make_context(interp.space, s_method, w_receiver, [], None)
-    s_frame.push(w_receiver)
+    s_frame = context_for(interp, number, benchmark, arg)
     # second variable is suspended context
     w_benchmark_proc.store(space, 1, s_frame.w_self())
 
@@ -69,13 +61,28 @@ def _run_image(interp):
 
 space = objspace.ObjSpace()
 
+def context_for(interp, number, benchmark, stringarg):
+    # XXX: Copied from interpreter >> perform
+    argcount = 0 if stringarg == "" else 1
+    w_receiver = interp.space.wrap_int(number)
+    w_selector = interp.perform(interp.space.wrap_string(benchmark), "asSymbol")
+    w_method = model.W_CompiledMethod(header=512)
+    w_method.literalatput0(interp.space, 1, w_selector)
+    w_method.setbytes([chr(131), chr(argcount << 5), chr(124)]) #returnTopFromMethod
+    s_method = w_method.as_compiledmethod_get_shadow(interp.space)
+    s_frame = shadow.MethodContextShadow.make_context(interp.space, s_method, w_receiver, [], None)
+    s_frame.push(w_receiver)
+    if not stringarg == "":
+        s_frame.push(interp.space.wrap_string(stringarg))
+    return s_frame
 
 def _usage(argv):
     print """
     Usage: %s
           -j|--jit [jitargs]
-          -n|--number [smallint]
+          -n|--number [smallint, default: 0]
           -m|--method [benchmark on smallint]
+          -a|--arg [string argument to #method]
           [image path, default: Squeak.image]
     """ % argv[0]
 
@@ -91,6 +98,7 @@ def entry_point(argv):
     number = 0
     benchmark = None
     trace = False
+    stringarg = ""
 
     while idx < len(argv):
         arg = argv[idx]
@@ -112,6 +120,10 @@ def entry_point(argv):
             idx += 1
         elif arg in ["-t", "--trace"]:
             trace = True
+        elif arg in ["-a", "--arg"]:
+            _arg_missing(argv, idx, arg)
+            stringarg = argv[idx + 1]
+            idx += 1
         elif path is None:
             path = argv[idx]
         else:
@@ -138,7 +150,7 @@ def entry_point(argv):
     interp = interpreter.Interpreter(space, image, image_name=path, trace=trace)
     space.runtime_setup(argv[0])
     if benchmark is not None:
-        return _run_benchmark(interp, number, benchmark)
+        return _run_benchmark(interp, number, benchmark, stringarg)
     else:
         _run_image(interp)
         return 0
