@@ -218,6 +218,8 @@ class ImageReader(object):
         # cache wrapper integers
         self.intcache = {}
 
+        self.lastWindowSize = 0
+
     def initialize(self):
         # XXX should be called something like read_full_image
         self.read_header()
@@ -247,8 +249,8 @@ class ImageReader(object):
         self.specialobjectspointer = self.stream.next()
         # 1 word last used hash
         lasthash = self.stream.next()
-        savedwindowssize = self.stream.next()
-        # print "savedwindowssize", savedwindowssize
+        self.lastWindowSize = savedwindowssize = self.stream.next()
+        # print "savedwindowssize: ", savedwindowssize >> 16, "@", savedwindowssize & 0xffff
         fullscreenflag = self.stream.next()
         extravmmemory = self.stream.next()
         self.stream.skipbytes(headersize - self.stream.pos)
@@ -371,6 +373,7 @@ class SqueakImage(object):
 
         self.w_asSymbol = self.find_symbol(space, reader, "asSymbol")
         self.w_simulateCopyBits = self.find_symbol(space, reader, "simulateCopyBits")
+        self.lastWindowSize = reader.lastWindowSize
 
     def find_symbol(self, space, reader, symbol):
         w_dnu = self.special(constants.SO_DOES_NOT_UNDERSTAND)
