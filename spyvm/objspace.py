@@ -199,6 +199,7 @@ class ObjSpace(object):
 
     def wrap_int(self, val):
         from spyvm import constants
+        assert isinstance(val, int)
         if int_between(constants.TAGGED_MININT, val,
                         constants.TAGGED_MAXINT + 1):
             return model.W_SmallInteger(val)

@@ -55,5 +55,17 @@ def test_ruint():
     # byteobj.bytes.append('\x01')
     # num = space.unwrap_uint(byteobj)
     # should not raise. see docstring.
-  
 
+
+def test_wrap_int():
+    for num in [-10, 1, 15, 0x3fffffff]:
+        assert space.wrap_int(num).value == num
+
+    for num in [2L, -5L]:
+        with py.test.raises(AssertionError):
+            space.wrap_int(num)
+
+    from rpython.rlib.rarithmetic import intmask
+    for num in [0x7fffffff, intmask(0x80000000)]:
+        with py.test.raises(objspace.WrappingError):
+            space.wrap_int(num)

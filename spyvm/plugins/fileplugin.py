@@ -1,19 +1,21 @@
 import os, stat, sys
 
-from rpython.rlib import jit
+from rpython.rlib import jit, rarithmetic
 from rpython.rlib.listsort import TimSort
 
 from spyvm import model, error
 from spyvm.plugins.plugin import Plugin
 from spyvm.primitives import PrimitiveFailedError, index1_0
 
-
 FilePlugin = Plugin()
 os.stat_float_times(False)
 
-std_fds = [sys.stdin.fileno(),
+try:
+    std_fds = [sys.stdin.fileno(),
            sys.stdout.fileno(),
            sys.stderr.fileno()]
+except ValueError:
+    std_fds = [0, 1, 2]
 
 @FilePlugin.expose_primitive(unwrap_spec=[object])
 def primitiveDirectoryDelimitor(interp, s_frame, w_rcvr):
@@ -44,7 +46,7 @@ def primitiveDirectoryLookup(interp, s_frame, w_file_directory, full_path, index
     w_creationTime = smalltalk_timestamp(space, file_info.st_ctime)
     w_modificationTime = smalltalk_timestamp(space, file_info.st_mtime)
     w_dirFlag = space.w_true if stat.S_IFDIR & file_info.st_mode else space.w_false
-    w_fileSize = space.wrap_int(file_info.st_size)
+    w_fileSize = space.wrap_int(rarithmetic.intmask(file_info.st_size))
 
     return space.wrap_list([w_name, w_creationTime, w_modificationTime,
                             w_dirFlag, w_fileSize])
@@ -70,7 +72,6 @@ def primitiveFileOpen(interp, s_frame, w_rcvr, file_path, w_writeable_flag):
 
 @FilePlugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveFileClose(interp, s_frame, w_rcvr, fd):
-    from rpython.rlib.rarithmetic import intmask
     try:
         os.close(fd)
     except OSError:
@@ -108,7 +109,7 @@ def primitiveFileGetPosition(interp, s_frame, w_rcvr, fd):
     except OSError:
         raise PrimitiveFailedError
     else:
-        return interp.space.wrap_int(pos)
+        return interp.space.wrap_positive_32bit_int(rarithmetic.intmask(pos))
 
 @FilePlugin.expose_primitive(unwrap_spec=[object, int, int])
 def primitiveFileSetPosition(interp, s_frame, w_rcvr, fd, position):
@@ -124,7 +125,7 @@ def primitiveFileSize(interp, s_frame, w_rcvr, fd):
         file_info = os.fstat(fd)
     except OSError:
         raise PrimitiveFailedError
-    return interp.space.wrap_int(file_info.st_size)
+    return interp.space.wrap_positive_32bit_int(rarithmetic.intmask(file_info.st_size))
 
 @FilePlugin.expose_primitive(unwrap_spec=[object])
 def primitiveFileStdioHandles(interp, s_frame, w_rcvr):
