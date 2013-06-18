@@ -134,6 +134,19 @@ def primitiveFileStdioHandles(interp, s_frame, w_rcvr):
     space = interp.space
     return space.wrap_list([space.wrap_int(fd) for fd in std_fds])
 
+@FilePlugin.expose_primitive(unwrap_spec=[object, int, str, index1_0, int])
+def primitiveFileWrite(interp, s_frame, w_rcvr, fd, a_string, start, count):
+    space = interp.space
+    end = min(start + 1 + count, len(a_string))
+    if not (start >= 0 and end > start):
+        return space.wrap_int(0)
+    try:
+        written = os.write(fd, a_string[start:end])
+    except OSError:
+        raise PrimitiveFailedError
+    else:
+        return space.wrap_positive_32bit_int(rarithmetic.intmask(written))
+
 @jit.elidable
 def smalltalk_timestamp(space, sec_since_epoch):
     import time
