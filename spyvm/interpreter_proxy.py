@@ -941,6 +941,11 @@ proxy_functions = unrolling_iterable(functions)
 
 @entrypoint('main', [], c_name='sqGetInterpreterProxy')
 def sqGetInterpreterProxy():
+    return getInterpreterProxy()
+
+# Redirect of sqGetInterpreterProxy, because the JIT doesn't allow calling of
+# functions annotated with @entrypoint.
+def getInterpreterProxy():
     if not IProxy.vm_initialized:
         vm_proxy = lltype.malloc(VirtualMachine, flavor='raw')
         for func_name, signature, func in proxy_functions:
@@ -1073,7 +1078,7 @@ class _InterpreterProxy(object):
                 raise error.PrimitiveFailedError
             else:
                 setInterpreter = rffi.cast(func_bool_vm, _setInterpreter)
-                if not setInterpreter(sqGetInterpreterProxy()):
+                if not setInterpreter(getInterpreterProxy()):
                     print "Failed setting interpreter on: %s" % module_name
                     raise error.PrimitiveFailedError
 
