@@ -240,6 +240,8 @@ def firstIndexableField(w_object):
     # return a list with values (?) of w_objects variable-parts
     if isinstance(w_object, model.W_WordsObject):
         return w_object.convert_to_c_layout()
+    elif isinstance(w_object, model.W_BytesObject):
+        return rffi.cast(sqIntArrayPtr, w_object.convert_to_c_layout())
     else:
         raise ProxyFunctionFailed
 

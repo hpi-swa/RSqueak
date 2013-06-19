@@ -709,16 +709,19 @@ class W_WeakPointersObject(W_AbstractPointersObject):
         return w_result
 
 class W_BytesObject(W_AbstractObjectWithClassReference):
-    _attrs_ = ['bytes']
+    _attrs_ = ['bytes', 'c_bytes', '_size']
+    _immutable_fields_ = ['_size']
 
     def __init__(self, space, w_class, size):
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
         assert isinstance(size, int)
         self.bytes = ['\x00'] * size
+        self._size = size
 
     def fillin(self, space, g_self):
         self.s_class = g_self.get_class().as_class_get_penumbra(space)
         self.bytes = g_self.get_bytes()
+        self._size = len(self.bytes)
         self.hash = g_self.get_hash()
         self.space = space
 
@@ -729,11 +732,19 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         self.setchar(index0, chr(space.unwrap_int(w_value)))
 
     def getchar(self, n0):
-        return self.bytes[n0]
+        if self.bytes is not None:
+            return self.bytes[n0]
+        else:
+            if n0 >= self._size:
+                raise IndexError
+            return self.c_bytes[n0]
 
     def setchar(self, n0, character):
         assert len(character) == 1
-        self.bytes[n0] = character
+        if self.bytes is not None:
+            self.bytes[n0] = character
+        else:
+            self.c_bytes[n0] = character
 
     def short_at0(self, space, index0):
         byte_index0 = index0 * 2
@@ -755,7 +766,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         self.setchar(byte_index0 + 1, chr(byte1))
 
     def size(self):
-        return len(self.bytes)
+        return self._size
 
     def __str__(self):
         return self.as_string()
@@ -765,7 +776,10 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
             className='W_BytesObject', additionalInformation=self.as_string())
 
     def as_string(self):
-        return "".join(self.bytes)
+        if self.bytes is not None:
+            return "".join(self.bytes)
+        else:
+            return "".join([self.c_bytes[i] for i in range(self.size())])
 
     def invariant(self):
         if not W_AbstractObjectWithClassReference.invariant(self):
@@ -779,11 +793,24 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         # XXX this sounds very wrong to me
         if not isinstance(other, W_BytesObject):
             return False
-        return self.bytes == other.bytes
+        if self.bytes is not None and other.bytes is not None:
+            return self.bytes == other.bytes
+        else:
+            size = self.size()
+            if size != other.size():
+                return False
+            for i in range(size):
+                if self.getchar(i) != other.getchar(i):
+                    return False
+            return True
 
     def clone(self, space):
-        w_result = W_BytesObject(self.space, self.getclass(space), len(self.bytes))
-        w_result.bytes = list(self.bytes)
+        size = self.size()
+        w_result = W_BytesObject(self.space, self.getclass(space), size)
+        if self.bytes is not None:
+            w_result.bytes = list(self.bytes)
+        else:
+            w_result.bytes = [self.c_bytes[i] for i in range(size)]
         return w_result
 
     def unwrap_uint(self, space):
@@ -798,6 +825,19 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
 
     def is_array_object(self):
         return True
+
+    def convert_to_c_layout(self):
+        if self.bytes is None:
+            return self.c_bytes
+        else:
+            size = self.size()
+            c_bytes = self.c_bytes = rffi.str2charp(self.bytes)
+            self.bytes = None
+            return c_bytes
+
+    def __del__(self):
+        if self.bytes is None:
+            rffi.free_charp(self.c_bytes)
 
 class W_WordsObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['words', 'c_words', '_size']
