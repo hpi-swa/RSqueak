@@ -65,8 +65,10 @@ def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
                     assert isinstance(result, model.W_Object)
                     return IProxy.object_to_oop(result)
                 elif result_type is list:
-                    assert isinstance(result, list)
-                    return IProxy.list_to_carray(result)
+                    if isinstance(result, list):
+                        return IProxy.list_to_carray(result)
+                    else:
+                        return result
                 elif result_type in (int, float):
                     assert isinstance(result, result_type)
                     return result
@@ -239,7 +241,10 @@ def firstFixedField(w_object):
 @expose_on_virtual_machine_proxy([oop], list)
 def firstIndexableField(w_object):
     # return a list with values (?) of w_objects variable-parts
-    raise ProxyFunctionFailed
+    if isinstance(w_object, model.W_WordsObject):
+        return w_object.convert_to_c_layout()
+    else:
+        raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([int, oop], oop)
 def literalofMethod(offset, w_method):
@@ -542,8 +547,20 @@ def primitiveFail():
     raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([oop, int, int, int, int], int)
-def showDisplayBitsLeftTopRightBottom(w_form, l, t, r, b):
-    raise ProxyFunctionFailed
+def showDisplayBitsLeftTopRightBottom(w_dest_form, l, t, r, b):
+    # "Repaint the portion of the Smalltalk screen bounded by the affected
+    # rectangle. Used to synchronize the screen after a Bitblt to the Smalltalk
+    # Display object."
+    # We don't need to copy, because we let the stuf directly write into the
+    # display memory
+    space = IProxy.space
+    if w_dest_form.is_same_object(space.objtable['w_display']):
+        w_bitmap = w_dest_form.fetch(space, 0)
+        assert isinstance(w_bitmap, model.W_DisplayBitmap)
+        w_bitmap.flush_to_screen()
+    else:
+        print 'Drawn, but not flashed',
+    return 0
 
 @expose_on_virtual_machine_proxy([int], int)
 def signalSemaphoreWithIndex(n):

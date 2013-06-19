@@ -61,6 +61,19 @@ def test_word_object():
     assert w_bytes.getword(0) == 0
     py.test.raises(IndexError, lambda: w_bytes.getword(20))
 
+def test_c_word_object():
+    w_class = mockclass(space, 0, format=shadow.WORDS)
+    w_bytes = w_class.as_class_get_shadow(space).new(20)
+    w_bytes.convert_to_c_layout()
+    assert w_bytes.getclass(space).is_same_object(w_class)
+    assert w_bytes.size() == 20
+    assert w_class.as_class_get_shadow(space).instsize() == 0
+    assert w_bytes.getword(3) == 0
+    w_bytes.setword(3, 42)
+    assert w_bytes.getword(3) == 42
+    assert w_bytes.getword(0) == 0
+    py.test.raises(IndexError, lambda: w_bytes.getword(20))
+
 def test_method_lookup():
     class mockmethod(object):
         def __init__(self, val):

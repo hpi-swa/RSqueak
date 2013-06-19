@@ -800,14 +800,16 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         return True
 
 class W_WordsObject(W_AbstractObjectWithClassReference):
-    _attrs_ = ['words']
+    _attrs_ = ['words', 'c_words', '_size']
 
     def __init__(self, space, w_class, size):
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
         self.words = [r_uint(0)] * size
+        self._size = size
 
     def fillin(self, space, g_self):
         self.words = g_self.get_ruints()
+        self._size = len(self.words)
         self.s_class = g_self.get_class().as_class_get_penumbra(space)
         self.hash = g_self.get_hash()
         self.space = space
@@ -821,10 +823,16 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         self.setword(index0, word)
 
     def getword(self, n):
-        return self.words[n]
+        if self.words is not None:
+            return self.words[n]
+        else:
+            return self.c_words[n]
 
     def setword(self, n, word):
-        self.words[n] = r_uint(word)
+        if self.words is not None:
+            self.words[n] = r_uint(word)
+        else:
+            self.c_words[n] = intmask(word)
 
     def short_at0(self, space, index0):
         word = intmask(self.getword(index0 / 2))
@@ -851,15 +859,19 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         self.setword(word_index0, value)
 
     def size(self):
-        return len(self.words)
+        return self._size
 
     def invariant(self):
         return (W_AbstractObjectWithClassReference.invariant(self) and
                 isinstance(self.words, list))
 
     def clone(self, space):
-        w_result = W_WordsObject(self.space, self.getclass(space), len(self.words))
-        w_result.words = list(self.words)
+        size = self.size()
+        w_result = W_WordsObject(self.space, self.getclass(space), size)
+        if self.words is not None:
+            w_result.words = list(self.words)
+        else:
+            w_result.words = [self.c_words[i] for i in range(size)]
         return w_result
 
     def as_repr_string(self):
@@ -868,6 +880,24 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
 
     def is_array_object(self):
         return True
+
+    def convert_to_c_layout(self):
+        if self.words is None:
+            return self.c_words
+        else:
+            from spyvm.interpreter_proxy import sqIntArrayPtr
+            size = self.size()
+            old_words = self.words
+            c_words = self.c_words = lltype.malloc(sqIntArrayPtr.TO, size, flavor='raw')
+            for i in range(size):
+                c_words[i] = intmask(old_words[i])
+            self.words = None
+            return c_words
+
+    def __del__(self):
+        if self.words is None:
+            lltype.free(self.c_words, 'raw')
+
 
 NATIVE_DEPTH = 32
 
