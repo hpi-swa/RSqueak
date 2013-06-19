@@ -801,6 +801,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
 
 class W_WordsObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['words', 'c_words', '_size']
+    _immutable_fields_ = ['_size']
 
     def __init__(self, space, w_class, size):
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)

@@ -57,6 +57,8 @@ def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
                     c_arg = c_arguments[i]
                     if spec is oop:
                         args += (IProxy.oop_to_object(c_arg), )
+                    elif spec is str:
+                        args += (rffi.charp2str(c_arg), )
                     else:
                         args += (c_arg, )
                 result = func(*args)
@@ -64,11 +66,6 @@ def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
                 if result_type is oop:
                     assert isinstance(result, model.W_Object)
                     return IProxy.object_to_oop(result)
-                elif result_type is list:
-                    if isinstance(result, list):
-                        return IProxy.list_to_carray(result)
-                    else:
-                        return result
                 elif result_type in (int, float):
                     assert isinstance(result, result_type)
                     return result
@@ -544,7 +541,8 @@ def incrementalGC():
 
 @expose_on_virtual_machine_proxy([], int)
 def primitiveFail():
-    raise ProxyFunctionFailed
+    IProxy.failed()
+    return 0
 
 @expose_on_virtual_machine_proxy([oop, int, int, int, int], int)
 def showDisplayBitsLeftTopRightBottom(w_dest_form, l, t, r, b):
@@ -558,8 +556,6 @@ def showDisplayBitsLeftTopRightBottom(w_dest_form, l, t, r, b):
         w_bitmap = w_dest_form.fetch(space, 0)
         assert isinstance(w_bitmap, model.W_DisplayBitmap)
         w_bitmap.flush_to_screen()
-    else:
-        print 'Drawn, but not flashed',
     return 0
 
 @expose_on_virtual_machine_proxy([int], int)
@@ -668,9 +664,9 @@ def isInMemory(address):
 # #endif
 
 # #if VM_PROXY_MINOR > 3
-@expose_on_virtual_machine_proxy([str, str], bool, minor=3)
+@expose_on_virtual_machine_proxy([str, str], int, minor=3)
 def ioLoadFunctionFrom(fnName, modName):
-    raise ProxyFunctionFailed
+    return rffi.cast(sqInt, IProxy.loadFunctionFrom(modName, fnName))
 
 @expose_on_virtual_machine_proxy([], bool, minor=3)
 def ioMicroMSecs():
@@ -998,28 +994,33 @@ class _InterpreterProxy(object):
         self.fail_reason = 0
 
     def call(self, signature, interp, s_frame, argcount, s_method):
-        from rpython.rlib.rdynload import dlsym
         self.initialize_from_call(signature, interp, s_frame, argcount, s_method)
         try:
-            if signature[0] not in self.loaded_modules:
-                module = self.load_and_initialize(signature[0])
-            else:
-                module = self.loaded_modules[signature[0]]
-
-            # call the correct function in it...
-            try:
-                _external_function = dlsym(module, signature[1])
-            except KeyError:
-                self.failed()
-            else:
-                external_function = rffi.cast(func_bool_void, _external_function)
-                print "Calling %s >> %s" % signature
-                external_function()
+            # eventual errors are caught by the calling function (EXTERNAL_CALL)
+            external_function = rffi.cast(func_bool_void,
+                            self.loadFunctionFrom(signature[0], signature[1]))
+            print "Calling %s >> %s" % signature
+            external_function()
 
             if not self.fail_reason == 0:
                 raise error.PrimitiveFailedError
         finally:
             self.reset()
+
+    def loadFunctionFrom(self, module_name, function_name):
+        from rpython.rlib.rdynload import dlsym
+        if module_name not in self.loaded_modules:
+            module = self.load_and_initialize(module_name)
+        else:
+            module = self.loaded_modules[module_name]
+
+        try:
+            _external_function = dlsym(module, function_name)
+        except KeyError:
+            raise ProxyFunctionFailed
+        else:
+            return _external_function
+
 
     def initialize_from_call(self, signature, interp, s_frame, argcount, s_method):
         self.interp = interp
