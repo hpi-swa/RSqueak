@@ -998,6 +998,9 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
     def is_array_object(self):
         return True
 
+    def convert_to_c_layout(self):
+        return self.pixelbuffer
+
 class W_DisplayBitmap1Bit(W_DisplayBitmap):
     def getword(self, n):
         return self._real_depth_buffer[n]

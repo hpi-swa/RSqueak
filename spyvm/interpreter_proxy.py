@@ -247,6 +247,8 @@ def firstIndexableField(w_object):
         return w_object.convert_to_c_layout()
     elif isinstance(w_object, model.W_BytesObject):
         return rffi.cast(sqIntArrayPtr, w_object.convert_to_c_layout())
+    elif isinstance(w_object, model.W_DisplayBitmap):
+        return rffi.cast(sqIntArrayPtr, w_object.convert_to_c_layout())
     else:
         raise ProxyFunctionFailed
 
