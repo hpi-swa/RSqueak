@@ -27,7 +27,7 @@ class AbstractShadow(object):
     def store(self, n0, w_value):
         return self.w_self()._store(n0, w_value)
     def size(self):
-        return self.w_self()._size()
+        return self.w_self().basic_size()
     def w_self(self):
         return self._w_self
     def getname(self):

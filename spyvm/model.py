@@ -523,7 +523,7 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     def size(self):
         if self.has_shadow():
             return self._shadow.size()
-        return self._size()
+        return self.basic_size()
 
     def store_shadow(self, shadow):
         assert self._shadow is None or self._shadow is shadow
@@ -643,7 +643,7 @@ class W_PointersObject(W_AbstractPointersObject):
         fieldtypes = jit.promote(self.fieldtypes)
         return fieldtypes.store(self, n0, w_value)
 
-    def _size(self):
+    def basic_size(self):
         return len(self._vars)
 
     def invariant(self):
@@ -685,7 +685,7 @@ class W_WeakPointersObject(W_AbstractPointersObject):
         assert w_value is not None
         self._weakvars[n0] = weakref.ref(w_value)
 
-    def _size(self):
+    def basic_size(self):
         return len(self._weakvars)
 
     def invariant(self):
@@ -831,7 +831,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
             return self.c_bytes
         else:
             size = self.size()
-            c_bytes = self.c_bytes = rffi.str2charp(self.bytes)
+            c_bytes = self.c_bytes = rffi.str2charp(self.as_string())
             self.bytes = None
             return c_bytes
 
@@ -867,7 +867,7 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         if self.words is not None:
             return self.words[n]
         else:
-            return self.c_words[n]
+            return r_uint(self.c_words[n])
 
     def setword(self, n, word):
         if self.words is not None:
@@ -912,7 +912,7 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         if self.words is not None:
             w_result.words = list(self.words)
         else:
-            w_result.words = [self.c_words[i] for i in range(size)]
+            w_result.words = [r_uint(self.c_words[i]) for i in range(size)]
         return w_result
 
     def as_repr_string(self):
