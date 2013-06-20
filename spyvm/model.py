@@ -959,7 +959,7 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
 
     def __init__(self, space, w_class, size, depth, display):
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
-        self._real_depth_buffer = [0] * size
+        self._real_depth_buffer = lltype.malloc(rffi.CArray(rffi.UINT), size, flavor='raw')
         self.pixelbuffer = display.get_pixelbuffer()
         self._realsize = size
         self.display = display
@@ -990,7 +990,7 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
         return w_result
 
     def getword(self, n):
-        raise NotImplementedError("subclass responsibility")
+        return self._real_depth_buffer[n]
 
     def setword(self, n, word):
         raise NotImplementedError("subclass responsibility")
@@ -998,13 +998,17 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
     def is_array_object(self):
         return True
 
+    def update_from_buffer(self):
+        for i in range(self._realsize):
+            self.setword(i, self.getword(i))
+
     def convert_to_c_layout(self):
-        return self.pixelbuffer
+        return self._real_depth_buffer
+
+    def __del__(self):
+        lltype.free(self._real_depth_buffer, flavor='raw')
 
 class W_DisplayBitmap1Bit(W_DisplayBitmap):
-    def getword(self, n):
-        return self._real_depth_buffer[n]
-
     @jit.unroll_safe
     def setword(self, n, word):
         self._real_depth_buffer[n] = word
@@ -1019,9 +1023,6 @@ class W_DisplayBitmap1Bit(W_DisplayBitmap):
             pos += 1
 
 class W_DisplayBitmap16Bit(W_DisplayBitmap):
-    def getword(self, n):
-        return self._real_depth_buffer[n]
-
     @jit.unroll_safe
     def setword(self, n, word):
         self._real_depth_buffer[n] = word
@@ -1035,9 +1036,6 @@ class W_DisplayBitmap16Bit(W_DisplayBitmap):
             self.pixelbuffer[pos + i] = pixel
 
 class W_DisplayBitmap32Bit(W_DisplayBitmap):
-    def getword(self, n):
-        return self._real_depth_buffer[n]
-
     @jit.unroll_safe
     def setword(self, n, word):
         self._real_depth_buffer[n] = word

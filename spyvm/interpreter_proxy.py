@@ -534,6 +534,7 @@ def failed():
 def fullDisplayUpdate():
     w_display = IProxy.space.objtable['w_display']
     if isinstance(w_display, model.W_DisplayBitmap):
+        w_display.update_from_buffer()
         w_display.flush_to_screen()
         return 0
     else:
@@ -564,6 +565,7 @@ def showDisplayBitsLeftTopRightBottom(w_dest_form, l, t, r, b):
     if w_dest_form.is_same_object(space.objtable['w_display']):
         w_bitmap = w_dest_form.fetch(space, 0)
         assert isinstance(w_bitmap, model.W_DisplayBitmap)
+        w_bitmap.update_from_buffer()
         w_bitmap.flush_to_screen()
     return 0
 
@@ -1009,7 +1011,7 @@ class _InterpreterProxy(object):
             external_function = rffi.cast(func_bool_void,
                             self.loadFunctionFrom(signature[0], signature[1]))
             if interp.trace:
-                print "Calling %s >> %s" % signature
+                print "%sCalling %s >> %s" % (interp.padding(), signature[0], signature[1])
             external_function()
 
             if not self.fail_reason == 0:
