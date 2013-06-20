@@ -937,7 +937,7 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
 
     def __del__(self):
         if self.words is None:
-            lltype.free(self.c_words, 'raw')
+            lltype.free(self.c_words, flavor='raw')
 
 
 NATIVE_DEPTH = 32
