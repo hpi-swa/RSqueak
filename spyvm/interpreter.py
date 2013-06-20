@@ -45,6 +45,7 @@ class Interpreter(object):
         self.interrupt_check_counter = constants.INTERRUPT_COUNTER_SIZE
         # ######################################################################
         self.trace = trace
+        self.trace_proxy = False
 
     def interpret_with_w_frame(self, w_frame):
         try:

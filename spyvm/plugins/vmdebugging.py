@@ -19,6 +19,16 @@ def untrace(interp, s_frame, w_rcvr):
     return w_rcvr
 
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object])
+def trace_proxy(interp, s_frame, w_rcvr):
+    interp.trace_proxy = True
+    return w_rcvr
+
+@DebuggingPlugin.expose_primitive(unwrap_spec=[object])
+def untrace_proxy(interp, s_frame, w_rcvr):
+    interp.trace_proxy = False
+    return w_rcvr
+
+@DebuggingPlugin.expose_primitive(unwrap_spec=[object])
 def halt(interp, s_frame, w_rcvr):
     from rpython.rlib.objectmodel import we_are_translated
     from spyvm.error import Exit

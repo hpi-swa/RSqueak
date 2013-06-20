@@ -51,7 +51,7 @@ def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
         def wrapped(*c_arguments):
             assert len_unwrap_spec == len(c_arguments)
             args = ()
-            if IProxy.interp.trace:
+            if IProxy.interp.trace_proxy:
                 print 'Called InterpreterProxy >> %s' % func.func_name,
             try:
                 for i, spec in unrolling_unwrap_spec:
@@ -63,7 +63,7 @@ def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
                     else:
                         args += (c_arg, )
                 result = func(*args)
-                if IProxy.interp.trace:
+                if IProxy.interp.trace_proxy:
                     print '\t-> %s' % result
                 if result_type is oop:
                     assert isinstance(result, model.W_Object)
