@@ -51,7 +51,8 @@ def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
         def wrapped(*c_arguments):
             assert len_unwrap_spec == len(c_arguments)
             args = ()
-            print 'Called InterpreterProxy >> %s' % func.func_name,
+            if IProxy.interp.trace:
+                print 'Called InterpreterProxy >> %s' % func.func_name,
             try:
                 for i, spec in unrolling_unwrap_spec:
                     c_arg = c_arguments[i]
@@ -62,7 +63,8 @@ def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
                     else:
                         args += (c_arg, )
                 result = func(*args)
-                print '\t-> %s' % result
+                if IProxy.interp.trace:
+                    print '\t-> %s' % result
                 if result_type is oop:
                     assert isinstance(result, model.W_Object)
                     return IProxy.object_to_oop(result)
@@ -80,6 +82,9 @@ def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
             except error.PrimitiveFailedError:
                 print '\t-> failed'
                 IProxy.failed()
+                from rpython.rlib.objectmodel import we_are_translated
+                if not we_are_translated():
+                    import pdb; pdb.set_trace()
                 if mapping[result_type] is sqInt:
                     return 0
                 elif mapping[result_type] is sqDouble:
@@ -1001,7 +1006,8 @@ class _InterpreterProxy(object):
             # eventual errors are caught by the calling function (EXTERNAL_CALL)
             external_function = rffi.cast(func_bool_void,
                             self.loadFunctionFrom(signature[0], signature[1]))
-            print "Calling %s >> %s" % signature
+            if interp.trace:
+                print "Calling %s >> %s" % signature
             external_function()
 
             if not self.fail_reason == 0:
@@ -1048,7 +1054,7 @@ class _InterpreterProxy(object):
             return self.object_map[w_object]
         except KeyError:
             new_index = self.next_oop()
-            print "Mapping new Object: %d -> %s" % (new_index, w_object)
+            # print "Mapping new Object: %d -> %s" % (new_index, w_object)
             self.oop_map[new_index] = w_object
             self.object_map[w_object] = new_index
             return new_index
