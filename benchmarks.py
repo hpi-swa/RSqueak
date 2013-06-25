@@ -221,7 +221,7 @@ RSqueakVM = Project(
     "lang-smalltalk",
     executables=[
         Executable("rsqueakvm", "./targetimageloadingsmalltalk-c"),
-        Executable("rsqueakvm-nojit", "./targetimageloadingsmalltalk-nojit-c")
+        # Executable("rsqueakvm-nojit", "./targetimageloadingsmalltalk-nojit-c")
     ],
     arguments=["images/%s.image" % SqueakImage, '-m', 'runSPyBenchmarks']
 )
