@@ -166,7 +166,7 @@ class Executable(object):
             callback(self)
 
     def run(self, args):
-        print 'Calling %s (./%s) ...' % (self.name, " ".join([self.path] + args))
+        print 'Calling %s (%s) ...' % (self.name, " ".join([self.path] + args))
         pipe = subprocess.Popen(
             ["%s" % self.path] + args,
             stdout=subprocess.PIPE
@@ -220,13 +220,16 @@ Cog = Project(
 RSqueakVM = Project(
     "lang-smalltalk",
     executables=[
-        Executable("rsqueakvm", "./targetimageloadingsmalltalk-c"),
+        Executable("rsqueakvm", "bash"),
         # Executable("rsqueakvm-nojit", "./targetimageloadingsmalltalk-nojit-c")
     ],
-    arguments=["images/%s.image" % SqueakImage, '-m', 'runSPyBenchmarks']
+    arguments=["-c", "./targetimageloadingsmalltalk-c images/%s.image -m runSPyBenchmarks > >(tee stdout.log) 2> >(tee stderr.log >&2)" % SqueakImage]
 )
 
 
 if __name__ == "__main__":
-    for project in [Cog, RSqueakVM]:
-        project.post_results()
+    try:
+        for project in [RSqueakVM]:
+            project.post_results()
+    finally:
+        subprocess.Popen(["rm", '-r', "stackvm"])
