@@ -319,8 +319,10 @@ def func(interp, s_frame, f):
 
 @expose_primitive(FLOAT_SIN, unwrap_spec=[float])
 def func(interp, s_frame, f):
-    w_res = interp.space.wrap_float(math.sin(f))
-    return w_res
+    try:
+        return interp.space.wrap_float(math.sin(f))
+    except ValueError:
+        return interp.space.wrap_float(rfloat.NAN)
 
 @expose_primitive(FLOAT_ARCTAN, unwrap_spec=[float])
 def func(interp, s_frame, f):
@@ -339,8 +341,10 @@ def func(interp, s_frame, f):
 
 @expose_primitive(FLOAT_EXP, unwrap_spec=[float])
 def func(interp, s_frame, f):
-    w_res = interp.space.wrap_float(math.exp(f))
-    return w_res
+    try:
+        return interp.space.wrap_float(math.exp(f))
+    except OverflowError:
+        return interp.space.wrap_float(rfloat.INFINITY)
 
 MAKE_POINT = 18
 
