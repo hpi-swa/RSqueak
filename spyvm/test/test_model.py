@@ -362,11 +362,11 @@ def test_display_bitmap():
     d.set_video_mode(10, 10, 1)
 
     target = model.W_DisplayBitmap.create(space, space.w_Array, 100, 1, d)
-    target.setword(0, 0xFF00)
+    target.setword(0, r_uint(0xFF00))
     assert bin(target.getword(0)) == bin(0xFF00)
-    target.setword(0, 0x00FF00FF)
+    target.setword(0, r_uint(0x00FF00FF))
     assert bin(target.getword(0)) == bin(0x00FF00FF)
-    target.setword(0, 0xFF00FF00)
+    target.setword(0, r_uint(0xFF00FF00))
     assert bin(target.getword(0)) == bin(0xFF00FF00)
     for i in xrange(8):
         assert target.pixelbuffer[i] == 0xff000000
