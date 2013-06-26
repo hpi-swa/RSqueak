@@ -187,10 +187,12 @@ class ClassShadow(AbstractCachingShadow):
             # metaclasses hold a pointer to the real class in the last
             # slot. This is pos 6 in mini.image and higher in squeak3.9
             w_realclass = w_self._fetch(w_self.size() - 1)
-            assert isinstance(w_realclass, model.W_PointersObject)
-            if w_realclass.size() > constants.CLASS_NAME_INDEX:
+            if (isinstance(w_realclass, model.W_PointersObject)
+                and w_realclass.size() > constants.CLASS_NAME_INDEX):
                 # TODO ADD TEST WHICH GOES OVER THIS PART
                 w_name = w_realclass._fetch(constants.CLASS_NAME_INDEX)
+            else:
+                return
 
         if isinstance(w_name, model.W_BytesObject):
             self.name = w_name.as_string()
