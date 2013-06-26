@@ -108,9 +108,10 @@ class ProcessWrapper(LinkWrapper):
             self.store_suspended_context(w_current_frame)
             return ProcessWrapper(self.space, w_process).activate()
         else:
-            process_list = ProcessListWrapper(self.space, self.my_list())
-            process_list.remove(self._w_self)
-            self.store_my_list(self.space.w_nil)
+            if self.my_list() is not self.space.w_nil:
+                process_list = ProcessListWrapper(self.space, self.my_list())
+                process_list.remove(self._w_self)
+                self.store_my_list(self.space.w_nil)
             return w_current_frame
 
 class LinkedListWrapper(Wrapper):
