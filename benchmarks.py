@@ -229,7 +229,7 @@ RSqueakVM = Project(
 
 if __name__ == "__main__":
     try:
-        for project in [RSqueakVM]:
+        for project in [Cog, RSqueakVM]:
             project.post_results()
     finally:
         subprocess.Popen(["rm", '-r', "stackvm"])
