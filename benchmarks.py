@@ -166,7 +166,7 @@ class Executable(object):
             callback(self)
 
     def run(self, args):
-        print 'Calling %s ...' % self.name
+        print 'Calling %s (./%s) ...' % (self.name, " ".join([self.path] + args))
         pipe = subprocess.Popen(
             ["%s" % self.path] + args,
             stdout=subprocess.PIPE
