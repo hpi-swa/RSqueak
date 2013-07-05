@@ -350,7 +350,6 @@ def test_WordsObject_short_atput():
     assert target.getword(0) == 0xffff0100
     assert target.getword(1) == 0x7fff8000
 
-@py.test.mark.skipif("socket.gethostname() == 'precise32'")
 def test_display_bitmap():
     # XXX: Patch SDLDisplay -> get_pixelbuffer() to circumvent
     # double-free bug
@@ -359,7 +358,7 @@ def test_display_bitmap():
         return lltype.malloc(rffi.ULONGP.TO, self.width * self.height * 32, flavor='raw')
     display.SDLDisplay.get_pixelbuffer = get_pixelbuffer
     d = display.SDLDisplay("test")
-    d.set_video_mode(10, 10, 1)
+    d.set_video_mode(32, 10, 1)
 
     target = model.W_DisplayBitmap.create(space, space.w_Array, 100, 1, d)
     target.setword(0, r_uint(0xFF00))
@@ -377,6 +376,20 @@ def test_display_bitmap():
     for i in xrange(24, 32):
         assert target.pixelbuffer[i] == 0xffffffff
 
+def test_display_offset_computation():
+
+    def get_pixelbuffer(self):
+        from rpython.rtyper.lltypesystem import lltype, rffi
+        return lltype.malloc(rffi.ULONGP.TO, self.width * self.height * 32, flavor='raw')
+    display.SDLDisplay.get_pixelbuffer = get_pixelbuffer
+    d = display.SDLDisplay("test")
+    d.set_video_mode(18, 5, 1)
+
+    dbitmap = model.W_DisplayBitmap.create(space, space.w_Array, 5, 1, d)
+
+    assert dbitmap.compute_pos_and_line_end(0, 1) == (0, 18)
+    assert dbitmap.compute_pos_and_line_end(1, 1) == (18, 36)
+    assert dbitmap.size() == 5
 
 @py.test.mark.skipif("socket.gethostname() == 'precise32'")
 def test_weak_pointers():
