@@ -1091,7 +1091,9 @@ class _InterpreterProxy(object):
         try:
             module = dlopen(c_name)
         except DLOpenError, e:
+            rffi.free_charp(c_name)
             raise error.PrimitiveFailedError
+
         try:
             try:
                 _getModuleName = dlsym(module, "getModuleName")
@@ -1127,7 +1129,8 @@ class _InterpreterProxy(object):
         except error.PrimitiveFailedError:
             dlclose(module)
             raise
-
+        finally:
+            rffi.free_charp(c_name)
 
 IProxy = _InterpreterProxy()
 
