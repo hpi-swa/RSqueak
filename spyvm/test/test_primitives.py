@@ -702,7 +702,7 @@ def test_primitive_be_display():
 
     assert space.objtable["w_display"] is None
     mock_display = model.W_PointersObject(space, space.w_Point, 4)
-    w_wordbmp = model.W_WordsObject(space, space.w_Array, 100)
+    w_wordbmp = model.W_WordsObject(space, space.w_Array, 10)
     mock_display.store(space, 0, w_wordbmp) # bitmap
     mock_display.store(space, 1, space.wrap_int(32)) # width
     mock_display.store(space, 2, space.wrap_int(10)) # height
@@ -716,7 +716,7 @@ def test_primitive_be_display():
     assert isinstance(sdldisplay, display.SDLDisplay)
 
     mock_display2 = model.W_PointersObject(space, space.w_Point, 4)
-    mock_display2.store(space, 0, model.W_WordsObject(space, space.w_Array, 100)) # bitmap
+    mock_display2.store(space, 0, model.W_WordsObject(space, space.w_Array, 10)) # bitmap
     mock_display2.store(space, 1, space.wrap_int(32)) # width
     mock_display2.store(space, 2, space.wrap_int(10)) # height
     mock_display2.store(space, 3, space.wrap_int(1))  # depth
@@ -741,7 +741,7 @@ def test_primitive_force_display_update(monkeypatch):
     display.SDLDisplay.get_pixelbuffer = get_pixelbuffer
 
     mock_display = model.W_PointersObject(space, space.w_Point, 4)
-    w_wordbmp = model.W_WordsObject(space, space.w_Array, 100)
+    w_wordbmp = model.W_WordsObject(space, space.w_Array, 10)
     mock_display.store(space, 0, w_wordbmp) # bitmap
     mock_display.store(space, 1, space.wrap_int(32)) # width
     mock_display.store(space, 2, space.wrap_int(10)) # height
