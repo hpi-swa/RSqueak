@@ -55,7 +55,7 @@ class TestLLtype(LLJitMixin):
 
         from spyvm import objspace
         space = objspace.ObjSpace()
-        
+
         image = create_testimage(space)
         interp = interpreter.Interpreter(space, image)
         w_selector = interp.perform(space.wrap_string('loopTest2'), "asSymbol")

@@ -950,8 +950,8 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
     def create(space, w_class, size, depth, display):
         if depth == 1:
             return W_DisplayBitmap1Bit(space, w_class, size, depth, display)
-        elif depth == 16:
-            return W_DisplayBitmap32Bit(space, w_class, size, depth, display)
+        # elif depth == 16:
+        #     return W_DisplayBitmap32Bit(space, w_class, size, depth, display)
         elif depth == 32:
             return W_DisplayBitmap32Bit(space, w_class, size, depth, display)
         else:
@@ -1022,6 +1022,8 @@ class W_DisplayBitmap1Bit(W_DisplayBitmap):
             mask >>= 1
             pos += 1
 
+# XXX: We stop supporting 16 bit displays, because the 16bit are with 5bit per
+# color channel
 class W_DisplayBitmap16Bit(W_DisplayBitmap):
     @jit.unroll_safe
     def setword(self, n, word):
