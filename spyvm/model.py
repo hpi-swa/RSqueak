@@ -1008,14 +1008,30 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
     def __del__(self):
         lltype.free(self._real_depth_buffer, flavor='raw')
 
+    @jit.elidable
+    def compute_pos_and_line_end(self, n, depth):
+        width = self.display.width
+        words_per_line = width / (NATIVE_DEPTH / depth)
+        if width % (NATIVE_DEPTH / depth) != 0:
+            words_per_line += 1
+        line = n / words_per_line
+        assert line < self.display.height # line is 0 based
+        line_start = width * line
+        line_end = line_start + width # actually the start of the next line
+        pos = ((n % words_per_line) * (NATIVE_DEPTH / depth)) + line_start
+        return pos, line_end
+
+
 class W_DisplayBitmap1Bit(W_DisplayBitmap):
     @jit.unroll_safe
     def setword(self, n, word):
         self._real_depth_buffer[n] = word
-        pos = n * NATIVE_DEPTH
+        pos, line_end = self.compute_pos_and_line_end(n, 1)
         mask = r_uint(1)
         mask <<= 31
         for i in xrange(32):
+            if pos == line_end:
+                return
             bit = mask & word
             pixel = r_uint((0x00ffffff * (bit == 0)) | r_uint(0xff000000))
             self.pixelbuffer[pos] = pixel
@@ -1028,7 +1044,7 @@ class W_DisplayBitmap16Bit(W_DisplayBitmap):
     @jit.unroll_safe
     def setword(self, n, word):
         self._real_depth_buffer[n] = word
-        pos = n * NATIVE_DEPTH / 16
+        pos, line_end = self.compute_pos_and_line_end(n, 16)
         mask = 0xf
         for i in range(2):
             pixel = 0
@@ -1036,6 +1052,8 @@ class W_DisplayBitmap16Bit(W_DisplayBitmap):
                 pixel |= r_uint(word & mask << (8 * j + 4))
                 mask <<= 4
             self.pixelbuffer[pos + i] = pixel
+            if pos + 1 == line_end:
+                return
 
 class W_DisplayBitmap32Bit(W_DisplayBitmap):
     @jit.unroll_safe
