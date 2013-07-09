@@ -32,7 +32,8 @@ def _run_benchmark(interp, number, benchmark, arg):
     # third variable is priority
     priority = space.unwrap_int(w_hpp.fetch(space, 2)) / 2 + 1
     # Priorities below 10 are not allowed in newer versions of Squeak.
-    priority = max(11, priority)
+    if interp.image.version.has_closures:
+        priority = max(11, priority)
     w_benchmark_proc.store(space, 2, space.wrap_int(priority))
 
     # make process eligible for scheduling

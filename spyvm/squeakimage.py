@@ -374,6 +374,7 @@ class SqueakImage(object):
         self.w_asSymbol = self.find_symbol(space, reader, "asSymbol")
         self.w_simulateCopyBits = self.find_symbol(space, reader, "simulateCopyBits")
         self.lastWindowSize = reader.lastWindowSize
+        self.version = reader.version
 
     def find_symbol(self, space, reader, symbol):
         w_dnu = self.special(constants.SO_DOES_NOT_UNDERSTAND)
