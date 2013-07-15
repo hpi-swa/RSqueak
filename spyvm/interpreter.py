@@ -195,19 +195,23 @@ class Interpreter(object):
         return symbol * (self.max_stack_depth - self.remaining_stack_depth)
 
 class ReturnFromTopLevel(Exception):
+    _attrs_ = ["object"]
     def __init__(self, object):
         self.object = object
 
 class StackOverflow(Exception):
+    _attrs_ = ["s_context"]
     def __init__(self, s_top_context):
         self.s_context = s_top_context
 
 class Return(Exception):
+    _attrs_ = ["value", "s_target_context"]
     def __init__(self, object, s_context):
         self.value = object
         self.s_target_context = s_context
 
 class ProcessSwitch(Exception):
+    _attrs_ = ["s_new_context"]
     def __init__(self, s_context):
         self.s_new_context = s_context
 

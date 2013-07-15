@@ -51,8 +51,9 @@ def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
         def wrapped(*c_arguments):
             assert len_unwrap_spec == len(c_arguments)
             args = ()
-            if IProxy.interp.trace_proxy:
+            if IProxy.trace_proxy:
                 print 'Called InterpreterProxy >> %s' % func.func_name,
+            assert IProxy.s_frame is not None and IProxy.space is not None and IProxy.interp is not None
             try:
                 for i, spec in unrolling_unwrap_spec:
                     c_arg = c_arguments[i]
@@ -63,7 +64,7 @@ def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
                     else:
                         args += (c_arg, )
                 result = func(*args)
-                if IProxy.interp.trace_proxy:
+                if IProxy.trace_proxy:
                     print '\t-> %s' % result
                 if result_type is oop:
                     assert isinstance(result, model.W_Object)
@@ -990,6 +991,7 @@ class _InterpreterProxy(object):
     def __init__(self):
         self.vm_proxy = lltype.nullptr(VMPtr.TO)
         self.vm_initialized = False
+        self.space = None
         self._next_oop = 0
         self.oop_map = {}
         self.object_map = {}
@@ -1003,6 +1005,7 @@ class _InterpreterProxy(object):
         self.argcount = 0
         self.s_method = None
         self.fail_reason = 0
+        self.trace_proxy = False
 
     def call(self, signature, interp, s_frame, argcount, s_method):
         self.initialize_from_call(signature, interp, s_frame, argcount, s_method)
@@ -1040,6 +1043,7 @@ class _InterpreterProxy(object):
         self.argcount = argcount
         self.s_method = s_method
         self.space = interp.space
+        self.trace_proxy = interp.trace_proxy
         # ensure that space.w_nil gets the first possible oop
         self.object_to_oop(self.space.w_nil)
 

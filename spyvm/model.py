@@ -1074,6 +1074,8 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     """
 
     _immutable_fields_ = ["_shadow?"]
+    _attrs_ = ["bytes", "_likely_methodname", "header", "argsize", "primitive", 
+                "literals", "tempsize", "literalsize", "islarge", "_shadow"]
 ### Extension from Squeak 3.9 doc, which we do not implement:
 ###        trailer (variable)
 ###    The trailer has two variant formats.  In the first variant, the last

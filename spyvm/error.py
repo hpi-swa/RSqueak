@@ -27,6 +27,7 @@ class BlockCannotReturnError(SmalltalkException):
 	pass
 
 class Exit(Exception):
+    _attrs_ = ["msg"]
     def __init__(self, msg):
         self.msg = msg
 

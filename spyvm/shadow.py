@@ -17,7 +17,7 @@ class AbstractShadow(object):
     """A shadow is an optional extra bit of information that
     can be attached at run-time to any Smalltalk object.
     """
-    _attr_ = ['_w_self']
+    _attrs_ = ['_w_self', 'space']
 
     def __init__(self, space, w_self):
         self.space = space
@@ -37,7 +37,7 @@ class AbstractShadow(object):
 
 class AbstractCachingShadow(AbstractShadow):
     _immutable_fields_ = ['version?']
-    _attr_ = []
+    _attrs_ = ['version']
 
     def __init__(self, space, w_self):
         AbstractShadow.__init__(self, space, w_self)
@@ -85,7 +85,7 @@ class ClassShadow(AbstractCachingShadow):
     (i.e. used as the class of another Smalltalk object).
     """
 
-    _attr_ = ["name", "_instance_size", "instance_varsized", "instance_kind",
+    _attrs_ = ["name", "_instance_size", "instance_varsized", "instance_kind",
                 "_s_methoddict", "_s_superclass", "subclass_s"]
 
     def __init__(self, space, w_self):
@@ -345,7 +345,7 @@ class ClassShadow(AbstractCachingShadow):
 class MethodDictionaryShadow(AbstractShadow):
 
     _immutable_fields_ = ['invalid?', 's_class']
-    _attr_ = ['methoddict']
+    _attrs_ = ['methoddict', 'invalid', 's_class']
 
     def __init__(self, space, w_self):
         self.invalid = True
@@ -398,7 +398,7 @@ class MethodDictionaryShadow(AbstractShadow):
 
 
 class AbstractRedirectingShadow(AbstractShadow):
-    _attr_ = ['_w_self_size']
+    _attrs_ = ['_w_self_size']
 
     def __init__(self, space, w_self):
         AbstractShadow.__init__(self, space, w_self)
@@ -440,7 +440,7 @@ class AbstractRedirectingShadow(AbstractShadow):
 class ContextPartShadow(AbstractRedirectingShadow):
 
     __metaclass__ = extendabletype
-    _attr_ = ['_s_sender', '_pc', '_temps_and_stack',
+    _attrs_ = ['_s_sender', '_pc', '_temps_and_stack',
             '_stack_ptr', 'instances_w']
 
     _virtualizable2_ = [
@@ -734,7 +734,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
 
 class BlockContextShadow(ContextPartShadow):
-    _attr_ = ['_w_home', '_initialip', '_eargc']
+    _attrs_ = ['_w_home', '_initialip', '_eargc']
 
     @staticmethod
     def make_context(space, w_home, s_sender, argcnt, initialip):
@@ -840,7 +840,7 @@ class BlockContextShadow(ContextPartShadow):
         )
 
 class MethodContextShadow(ContextPartShadow):
-    _attr_ = ['w_closure_or_nil', '_w_receiver', '_w_method']
+    _attrs_ = ['w_closure_or_nil', '_w_receiver', '_w_method']
 
     def __init__(self, space, w_self):
         self.w_closure_or_nil = space.w_nil
@@ -1005,11 +1005,11 @@ class MethodContextShadow(ContextPartShadow):
         return '%s%s' % (block, self.w_method().get_identifier_string())
 
 class CompiledMethodShadow(object):
-    _attr_ = ["_w_self", "bytecode",
-              "literals[*]", "bytecodeoffset",
-              "literalsize", "tempsize", "primitive",
+    _attrs_ = ["_w_self", "bytecode",
+              "literals", "bytecodeoffset",
+              "literalsize", "_tempsize", "_primitive",
               "argsize", "islarge",
-              "w_compiledin"]
+              "w_compiledin", "version"]
     _immutable_fields_ = ["version?", "_w_self"]
 
     def __init__(self, w_compiledmethod):
@@ -1038,13 +1038,13 @@ class CompiledMethodShadow(object):
         w_compiledmethod = self._w_self
         self.version = Version()
         self.bytecode = "".join(w_compiledmethod.bytes)
-        self.literals = w_compiledmethod.literals
         self.bytecodeoffset = w_compiledmethod.bytecodeoffset()
         self.literalsize = w_compiledmethod.getliteralsize()
         self._tempsize = w_compiledmethod.gettempsize()
         self._primitive = w_compiledmethod.primitive
         self.argsize = w_compiledmethod.argsize
         self.islarge = w_compiledmethod.islarge
+        self.literals = w_compiledmethod.literals
 
         self.w_compiledin = None
         if self.literals:
@@ -1098,7 +1098,7 @@ class CachedObjectShadow(AbstractCachingShadow):
 
 
 class ObserveeShadow(AbstractShadow):
-    _attr_ = ['dependent']
+    _attrs_ = ['dependent']
     def __init__(self, space, w_self):
         AbstractShadow.__init__(self, space, w_self)
         self.dependent = None
