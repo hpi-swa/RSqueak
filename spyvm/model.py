@@ -284,7 +284,7 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
         if shift == 0:
             return self
         # a problem might arrise, because we may shift in ones from left
-        mask = (1 << (32 - shift))- 1
+        mask = intmask((1 << (32 - shift))- 1)
         # the mask is only valid if the highest bit of self.value is set
         # and only in this case we do need such a mask
         return space.wrap_int((self.value >> shift) & mask)
