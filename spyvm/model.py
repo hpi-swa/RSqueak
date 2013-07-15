@@ -92,6 +92,12 @@ class W_Object(object):
     def fillin(self, space, g_self):
         raise NotImplementedError()
 
+    def getword(self, n0):
+        raise NotImplementedError()
+
+    def setword(self, n0, r_uint_value):
+        raise NotImplementedError()
+
     def invariant(self):
         return True
 
@@ -593,6 +599,14 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     def as_observed_get_shadow(self, space):
         from spyvm.shadow import ObserveeShadow
         return self.as_special_get_shadow(space, ObserveeShadow)
+
+    def as_bitblt_get_shadow(self, space):
+        from spyvm.shadow import BitBltShadow
+        return self.as_special_get_shadow(space, BitBltShadow)
+
+    def as_form_get_shadow(self, space):
+        from spyvm.shadow import FormShadow
+        return self.as_special_get_shadow(space, FormShadow)
 
     def has_shadow(self):
         return self._shadow is not None

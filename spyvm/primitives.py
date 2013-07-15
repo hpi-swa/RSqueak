@@ -609,19 +609,47 @@ def func(interp, s_frame, w_rcvr):
     combinationRule = interp.space.unwrap_positive_32bit_int(w_rcvr.fetch(interp.space, 3))
     if combinationRule > 41:
         raise PrimitiveFailedError
-
+    
     space = interp.space
-    try:
-        s_frame._sendSelfSelector(interp.image.w_simulateCopyBits, 0, interp)
-    except Return:
-        w_dest_form = w_rcvr.fetch(space, 0)
-        if w_dest_form.is_same_object(space.objtable['w_display']):
-            w_bitmap = w_dest_form.fetch(space, 0)
-            assert isinstance(w_bitmap, model.W_DisplayBitmap)
-            w_bitmap.flush_to_screen()
+    import time
 
-    # in case we return normally, we have to restore the removed w_rcvr
+    start = time.time()
+    print "blitting"
+
+    # See BlueBook p.356ff
+    s_bitblt = w_rcvr.as_bitblt_get_shadow(space)
+    s_bitblt.sync_cache()
+    s_bitblt.clip_range()
+    if s_bitblt.w <= 0 or s_bitblt.h <= 0:
+        return w_rcvr # null range
+    s_bitblt.compute_masks()
+    s_bitblt.check_overlap()
+    s_bitblt.calculate_offsets()
+    try:
+        s_bitblt.copy_loop()
+    except IndexError:
+        raise PrimitiveFailedError()
+
+    w_dest_form = w_rcvr.fetch(space, 0)
+    if w_dest_form.is_same_object(space.objtable['w_display']):
+        w_bitmap = w_dest_form.fetch(space, 0)
+        assert isinstance(w_bitmap, model.W_DisplayBitmap)
+        w_bitmap.flush_to_screen()
+
+    print "blitting finshed after %d ms" % int((time.time() - start) * 1000)
     return w_rcvr
+
+    # try:
+    #     s_frame._sendSelfSelector(interp.image.w_simulateCopyBits, 0, interp)
+    # except Return:
+    #     w_dest_form = w_rcvr.fetch(space, 0)
+    #     if w_dest_form.is_same_object(space.objtable['w_display']):
+    #         w_bitmap = w_dest_form.fetch(space, 0)
+    #         assert isinstance(w_bitmap, model.W_DisplayBitmap)
+    #         w_bitmap.flush_to_screen()
+
+    # # in case we return normally, we have to restore the removed w_rcvr
+    # return w_rcvr
 
 @expose_primitive(BE_CURSOR)
 def func(interp, s_frame, argcount):
