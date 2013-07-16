@@ -879,7 +879,7 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
     def getword(self, n):
         # if n < 0:
         #     import pdb; pdb.set_trace()
-        assert n >= 0
+        assert self.size() > n >= 0
         if self.words is not None:
             return self.words[n]
         else:
@@ -1006,7 +1006,7 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
         return w_result
 
     def getword(self, n):
-        assert n >= 0
+        assert self.size() > n >= 0
         # if self._realsize > n:
         return self._real_depth_buffer[n]
         # else:

@@ -776,12 +776,16 @@ def test_bitblt_copy_bits(monkeypatch):
             assert argcount == 0
             raise CallCopyBitsSimulation
 
+    def sync_cache_mock(self):
+        raise CallCopyBitsSimulation
+
     interp, w_frame, argument_count = mock([mock_bitblt], None)
     if interp.image is None:
         interp.image = Image()
 
     try:
         monkeypatch.setattr(w_frame._shadow, "_sendSelfSelector", perform_mock)
+        monkeypatch.setattr(shadow.BitBltShadow, "sync_cache", sync_cache_mock)
         with py.test.raises(CallCopyBitsSimulation):
             prim_table[primitives.BITBLT_COPY_BITS](interp, w_frame.as_context_get_shadow(space), argument_count-1)
     finally:

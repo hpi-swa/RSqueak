@@ -1282,7 +1282,7 @@ class BitBltShadow(AbstractCachingShadow):
     def copy_loop(self):
         space = self.space
         no_skew_mask = ~self.skew_mask
-        for i in xrange(1, self.h+1):
+        for i in xrange(1, self.h + 1):
             if self.halftone_bits:
                 halftone_word = self.halftone_bits[self.dy % len(self.halftone_bits)]
                 self.dy = self.dy + self.v_dir
@@ -1298,7 +1298,7 @@ class BitBltShadow(AbstractCachingShadow):
             for word in xrange(1, self.n_words + 1):
                 if self.source_form is not None:
                     prev_word = prev_word & self.skew_mask
-                    if (self.source_index < 0 
+                    if (self.source_index < 0
                         or self.source_index >= self.source_bits.size()):
                         this_word = self.source_bits.getword(0)
                     else:
@@ -1392,6 +1392,11 @@ class FormShadow(AbstractCachingShadow):
     _attrs_ = ["w_bits", "width", "height", "depth", "offset_x", "offset_y"]
 
     def sync_cache(self):
+        if self.size() < 5:
+            w_self = self.w_self()
+            assert isinstance(w_self, model.W_PointersObject)
+            w_self._shadow = None
+            raise error.PrimitiveFailedError
         self.w_bits = self.fetch(0)
         if not (isinstance(self.w_bits, model.W_WordsObject) or isinstance(self.w_bits, model.W_DisplayBitmap)):
             w_self = self.w_self()
