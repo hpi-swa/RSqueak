@@ -611,32 +611,23 @@ def func(interp, s_frame, w_rcvr):
         raise PrimitiveFailedError
     
     space = interp.space
-    import time
 
-    start = time.time()
-    print "blitting"
-
-    # See BlueBook p.356ff
     s_bitblt = w_rcvr.as_bitblt_get_shadow(space)
-    s_bitblt.sync_cache()
+    # See BlueBook p.356ff
     s_bitblt.clip_range()
     if s_bitblt.w <= 0 or s_bitblt.h <= 0:
         return w_rcvr # null range
     s_bitblt.compute_masks()
     s_bitblt.check_overlap()
     s_bitblt.calculate_offsets()
-    try:
-        s_bitblt.copy_loop()
-    except IndexError:
-        raise PrimitiveFailedError()
+    # print s_bitblt.as_string()
+    s_bitblt.copy_loop()
 
     w_dest_form = w_rcvr.fetch(space, 0)
     if w_dest_form.is_same_object(space.objtable['w_display']):
         w_bitmap = w_dest_form.fetch(space, 0)
         assert isinstance(w_bitmap, model.W_DisplayBitmap)
         w_bitmap.flush_to_screen()
-
-    print "blitting finshed after %d ms" % int((time.time() - start) * 1000)
     return w_rcvr
 
     # try:

@@ -129,7 +129,6 @@ class W_Object(object):
     def __repr__(self):
         return self.as_repr_string()
 
-    @jit.elidable
     def as_repr_string(self):
         return "%r" % self
 
@@ -878,6 +877,9 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         self.setword(index0, word)
 
     def getword(self, n):
+        # if n < 0:
+        #     import pdb; pdb.set_trace()
+        assert n >= 0
         if self.words is not None:
             return self.words[n]
         else:
@@ -1004,7 +1006,12 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
         return w_result
 
     def getword(self, n):
+        assert n >= 0
+        # if self._realsize > n:
         return self._real_depth_buffer[n]
+        # else:
+        #     print "Out-of-bounds access on display: %d/%d" % (n, self._realsize)
+        #     import pdb; pdb.set_trace()
 
     def setword(self, n, word):
         raise NotImplementedError("subclass responsibility")

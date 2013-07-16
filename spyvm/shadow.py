@@ -1129,9 +1129,9 @@ class BitBltShadow(AbstractCachingShadow):
                "dest_index", "source_delta", "dest_delta"]
 
     WordSize = 32
-    RightMasks = [rarithmetic.r_uint(1)]
+    RightMasks = [rarithmetic.r_uint(0)]
     for i in xrange(WordSize):
-        RightMasks.append(rarithmetic.r_uint((2 ** (i + 2)) - 1))
+        RightMasks.append(rarithmetic.r_uint((2 ** (i + 1)) - 1))
     AllOnes = rarithmetic.r_uint((2 ** WordSize) - 1)
 
     def sync_cache(self):
@@ -1174,14 +1174,14 @@ class BitBltShadow(AbstractCachingShadow):
         else:
             self.halftone_bits = None
         self.combination_rule = self.space.unwrap_int(self.fetch(3))
-        self.dest_x = self.space.unwrap_int(self.fetch(4)) - 1
-        self.dest_y = self.space.unwrap_int(self.fetch(5)) - 1
+        self.dest_x = self.space.unwrap_int(self.fetch(4))
+        self.dest_y = self.space.unwrap_int(self.fetch(5))
         self.width = self.space.unwrap_int(self.fetch(6))
         self.height = self.space.unwrap_int(self.fetch(7))
-        self.source_x = self.space.unwrap_int(self.fetch(8)) - 1
-        self.source_y = self.space.unwrap_int(self.fetch(9)) - 1
-        self.clip_x = self.space.unwrap_int(self.fetch(10)) - 1
-        self.clip_y = self.space.unwrap_int(self.fetch(11)) - 1
+        self.source_x = self.space.unwrap_int(self.fetch(8))
+        self.source_y = self.space.unwrap_int(self.fetch(9))
+        self.clip_x = self.space.unwrap_int(self.fetch(10))
+        self.clip_y = self.space.unwrap_int(self.fetch(11))
         self.clip_width = self.space.unwrap_int(self.fetch(12))
         self.clip_height = self.space.unwrap_int(self.fetch(13))
         self.color_map = self.fetch(14)
@@ -1263,27 +1263,26 @@ class BitBltShadow(AbstractCachingShadow):
                 self.sx = self.sx + self.w - 1
                 self.dx = self.dx + self.w - 1
                 self.skew_mask = ~self.skew_mask
-                assert isinstance(self.mask2, rarithmetic.r_uint)
                 self.mask1, self.mask2 = self.mask2, self.mask1
 
     def calculate_offsets(self):
         self.preload = (self.source_form is not None and (
-                        self.skew_mask != 0 and
+                        self.skew != 0 and
                         self.skew <= (self.sx & (BitBltShadow.WordSize - 1))))
         if self.h_dir < 0:
             self.preload = not self.preload
-        self.source_index = self.sy * self.source_raster + self.sx // BitBltShadow.WordSize
-        self.dest_index = self.dy * self.dest_raster + self.dx // BitBltShadow.WordSize
-        self.source_delta = ((self.source_raster *
+        self.source_index = self.sy * self.source_raster + (self.sx // BitBltShadow.WordSize)
+        self.dest_index = self.dy * self.dest_raster + (self.dx // BitBltShadow.WordSize)
+        self.source_delta = (self.source_raster *
                              self.v_dir -
-                             (self.n_words + (1 if self.preload else 0))) *
-                             self.h_dir)
+                             ((self.n_words + (1 if self.preload else 0)) *
+                             self.h_dir))
         self.dest_delta = self.dest_raster * self.v_dir - self.n_words * self.h_dir
 
     def copy_loop(self):
         space = self.space
         no_skew_mask = ~self.skew_mask
-        for i in xrange(self.h):
+        for i in xrange(1, self.h+1):
             if self.halftone_bits:
                 halftone_word = self.halftone_bits[self.dy % len(self.halftone_bits)]
                 self.dy = self.dy + self.v_dir
@@ -1296,17 +1295,18 @@ class BitBltShadow(AbstractCachingShadow):
             else:
                 prev_word = 0
             merge_mask = self.mask1
-            for word in xrange(self.n_words):
+            for word in xrange(1, self.n_words + 1):
                 if self.source_form is not None:
                     prev_word = prev_word & self.skew_mask
-                    try:
-                        this_word = self.source_bits.getword(self.source_index)
-                    except IndexError:
+                    if (self.source_index < 0 
+                        or self.source_index >= self.source_bits.size()):
                         this_word = self.source_bits.getword(0)
+                    else:
+                        this_word = self.source_bits.getword(self.source_index)
                     skew_word = prev_word | (this_word & no_skew_mask)
                     prev_word = this_word
                     skew_word = (self.bit_shift(skew_word, self.skew) |
-                                 self.bit_shift(skew_word, self.skew - 16))
+                                 self.bit_shift(skew_word, self.skew - BitBltShadow.WordSize))
                 merge_word = rarithmetic.r_uint(self.merge(
                     skew_word & halftone_word,
                     self.dest_bits.getword(self.dest_index)
@@ -1326,12 +1326,17 @@ class BitBltShadow(AbstractCachingShadow):
             self.dest_index = self.dest_index + self.dest_delta
 
     def bit_shift(self, target, amount):
-        if amount > 0:
+        if amount > 31 or amount < -31:
+            return 0
+        elif amount > 0:
             return (rarithmetic.r_uint(target) << amount) & BitBltShadow.AllOnes
+        elif amount == 0:
+            return target
         else:
-            return (rarithmetic.r_uint(target) >> -amount) & BitBltShadow.AllOnes
+            return (rarithmetic.r_uint(target) >> -amount)
 
     def merge(self, source_word, dest_word):
+        assert isinstance(source_word, rarithmetic.r_uint) and isinstance(dest_word, rarithmetic.r_uint)
         if self.combination_rule == 0:
             return 0
         elif self.combination_rule == 1:
@@ -1364,9 +1369,24 @@ class BitBltShadow(AbstractCachingShadow):
             return ~source_word | ~dest_word
         elif self.combination_rule == 15:
             return dest_word & BitBltShadow.AllOnes
+        elif self.combination_rule >= 16 and self.combination_rule <= 24:
+            return dest_word
+        elif self.combination_rule == 25:
+            if source_word == 0:
+                return dest_word
+            else:
+                return source_word | (dest_word & ~source_word)
+        elif 26 <= self.combination_rule <= 41:
+            return dest_word
         else:
             raise error.PrimitiveFailedError()
 
+    def as_string(bb):
+        return 'aBitBlt (destX: %d, destY: %d, sx: %d, sy: %d, dx: %d, dy: %d, w: %d, h: %d, hDir: %d, vDir: %d, sDelta: %d, dDelta: %d, skew: %d, sI: %d, dI: %d)' % (
+            bb.dest_x, bb.dest_y, bb.sx, bb.sy, bb.dx, bb.dy, bb.w, bb.h, bb.h_dir, bb.v_dir, bb.source_delta, bb.dest_delta, bb.skew, bb.source_index, bb.dest_index)
+            # "dest_raster", "source_raster",
+            # "halftone_bits", "mask1", "mask2", "skew_mask",
+            # "n_words", "preload"
 
 class FormShadow(AbstractCachingShadow):
     _attrs_ = ["w_bits", "width", "height", "depth", "offset_x", "offset_y"]
@@ -1384,8 +1404,8 @@ class FormShadow(AbstractCachingShadow):
         w_offset = self.fetch(4)
         assert isinstance(w_offset, model.W_PointersObject)
         if not w_offset is self.space.w_nil:
-            self.offset_x = self.space.unwrap_int(w_offset._fetch(0)) - 1
-            self.offset_y = self.space.unwrap_int(w_offset._fetch(1)) - 1
+            self.offset_x = self.space.unwrap_int(w_offset._fetch(0))
+            self.offset_y = self.space.unwrap_int(w_offset._fetch(1))
 
     # def replace_bits(self):
     #     w_bits = self.w_bits
