@@ -72,7 +72,7 @@ def test_word_object():
     w_bytes.setword(3, 42)
     assert w_bytes.getword(3) == 42
     assert w_bytes.getword(0) == 0
-    py.test.raises(IndexError, lambda: w_bytes.getword(20))
+    py.test.raises(AssertionError, lambda: w_bytes.getword(20))
 
 def test_c_word_object():
     w_class = mockclass(space, 0, format=shadow.WORDS)
@@ -85,7 +85,7 @@ def test_c_word_object():
     w_bytes.setword(3, 42)
     assert w_bytes.getword(3) == 42
     assert w_bytes.getword(0) == 0
-    py.test.raises(IndexError, lambda: w_bytes.getword(20))
+    py.test.raises(AssertionError, lambda: w_bytes.getword(20))
 
 def test_method_lookup():
     class mockmethod(object):
