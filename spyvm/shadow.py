@@ -839,6 +839,9 @@ class BlockContextShadow(ContextPartShadow):
             self.pc() + 1
         )
 
+    def method_str(self):
+        return '[] of %s' % self.w_method().get_identifier_string()
+
 class MethodContextShadow(ContextPartShadow):
     _attrs_ = ['w_closure_or_nil', '_w_receiver', '_w_method']
 
