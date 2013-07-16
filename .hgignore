@@ -3,8 +3,8 @@ syntax: glob
 *~
 pypy-c-jit-62116-b027d4428675-linux
 images/Squeak*
-targetimageloadingsmalltalk-c
+targetimageloadingsmalltalk-*c
 images/package-cache
 versions
 coglinux
-
+*.orig
