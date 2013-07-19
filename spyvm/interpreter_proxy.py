@@ -81,7 +81,8 @@ def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
                 else:
                     return result
             except error.PrimitiveFailedError:
-                print '\t-> failed'
+                if IProxy.trace_proxy:
+                    print '\t-> failed'
                 IProxy.failed()
                 from rpython.rlib.objectmodel import we_are_translated
                 if not we_are_translated():
@@ -417,7 +418,8 @@ def positive32BitIntegerFor(n):
 
 @expose_on_virtual_machine_proxy([oop], int)
 def positive32BitValueOf(n):
-    return IProxy.space.unwrap_positive_32bit_int(n)
+    from rpython.rlib.rarithmetic import intmask
+    return intmask(IProxy.space.unwrap_positive_32bit_int(n))
 
 #     /* InterpreterProxy methodsFor: 'special objects' */
 

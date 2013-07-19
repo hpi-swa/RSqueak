@@ -287,9 +287,9 @@ class ObjSpace(object):
     def unwrap_positive_32bit_int(self, w_value):
         if isinstance(w_value, model.W_SmallInteger):
             if w_value.value >= 0:
-                return w_value.value
+                return r_uint(w_value.value)
         elif isinstance(w_value, model.W_LargePositiveInteger1Word):
-            return w_value.value
+            return r_uint(w_value.value)
         raise UnwrappingError("Wrong types or negative SmallInteger.")
 
     def unwrap_char(self, w_char):

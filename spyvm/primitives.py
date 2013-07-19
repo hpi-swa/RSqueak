@@ -204,7 +204,7 @@ for (code,op) in bitwise_binary_ops.items():
         @expose_primitive(code, unwrap_spec=[pos_32bit_int, pos_32bit_int])
         def func(interp, s_frame, receiver, argument):
             res = op(receiver, argument)
-            return interp.space.wrap_positive_32bit_int(res)
+            return interp.space.wrap_positive_32bit_int(rarithmetic.intmask(res))
     make_func(op)
 
 # #/ -- return the result of a division, only succeed if the division is exact
