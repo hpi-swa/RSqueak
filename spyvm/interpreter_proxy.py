@@ -1031,12 +1031,16 @@ class _InterpreterProxy(object):
         else:
             module = self.loaded_modules[module_name]
 
-        try:
-            _external_function = dlsym(module, function_name)
-        except KeyError:
-            raise ProxyFunctionFailed
+        if function_name in module[1]:
+            return module[1][function_name]
         else:
-            return _external_function
+            try:
+                _external_function = dlsym(module[0], function_name)
+            except KeyError:
+                raise ProxyFunctionFailed
+            else:
+                module[1][function_name] = _external_function
+                return _external_function
 
 
     def initialize_from_call(self, signature, interp, s_frame, argcount, s_method):
@@ -1130,8 +1134,9 @@ class _InterpreterProxy(object):
                     print "Failed initialization of: %s" % module_name
                     raise error.PrimitiveFailedError
 
-            self.loaded_modules[module_name] = module
-            return module
+            module_tuple = (module, {})
+            self.loaded_modules[module_name] = module_tuple
+            return module_tuple
         except error.PrimitiveFailedError:
             dlclose(module)
             raise
