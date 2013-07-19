@@ -1028,6 +1028,7 @@ def func(interp, s_frame, w_arg):
 VM_PATH = 142
 SHORT_AT = 143
 SHORT_AT_PUT = 144
+FILL = 145
 CLONE = 148
 
 @expose_primitive(VM_PATH, unwrap_spec=[object])
@@ -1048,6 +1049,20 @@ def func(interp, s_frame, w_receiver, n0, w_value):
         raise PrimitiveFailedError
     return w_receiver.short_atput0(interp.space, n0, w_value)
 
+@expose_primitive(FILL, unwrap_spec=[object, pos_32bit_int])
+def func(interp, s_frame, w_arg, new_value):
+    space = interp.space
+    if isinstance(w_arg, model.W_BytesObject):
+        if new_value > 255:
+            raise PrimitiveFailedError
+        for i in xrange(w_arg.size()):
+            w_arg.setchar(i, chr(new_value))
+    elif isinstance(w_arg, model.W_PointersObject) or isinstance(w_arg, model.W_DisplayBitmap):
+        for i in xrange(w_arg.size()):
+            w_arg.setword(i, new_value)
+    else:
+        raise PrimitiveFailedError
+    return w_arg
 
 @expose_primitive(CLONE, unwrap_spec=[object])
 def func(interp, s_frame, w_arg):
