@@ -369,10 +369,11 @@ def func(interp, s_frame, argcount):
         print ''
         print s_frame.print_stack()
         w_message = s_frame.peek(0)
-        print w_message.as_repr_string()
+        print ("%s" % w_message).replace('\r', '\n')
+        print ("%s" % s_frame.peek(1)).replace('\r', '\n')
         if isinstance(w_message, model.W_PointersObject):
-            print w_message._vars
-        raise Exit('Probably Debugger called...')
+            print ('%s' % w_message._vars).replace('\r', '\n')
+        # raise Exit('Probably Debugger called...')
     raise PrimitiveFailedError()
 
 # ___________________________________________________________________________
@@ -634,7 +635,6 @@ def func(interp, s_frame, w_rcvr):
         w_bitmap = w_dest_form.fetch(space, 0)
         assert isinstance(w_bitmap, model.W_DisplayBitmap)
         w_bitmap.flush_to_screen()
-    return w_rcvr
 
     # try:
     #     s_frame._sendSelfSelector(interp.image.w_simulateCopyBits, 0, interp)
@@ -645,8 +645,8 @@ def func(interp, s_frame, w_rcvr):
     #         assert isinstance(w_bitmap, model.W_DisplayBitmap)
     #         w_bitmap.flush_to_screen()
 
-    # # in case we return normally, we have to restore the removed w_rcvr
-    # return w_rcvr
+    # in case we return normally, we have to restore the removed w_rcvr
+    return w_rcvr
 
 @expose_primitive(BE_CURSOR)
 def func(interp, s_frame, argcount):
