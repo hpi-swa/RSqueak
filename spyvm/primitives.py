@@ -1057,7 +1057,7 @@ def func(interp, s_frame, w_arg, new_value):
             raise PrimitiveFailedError
         for i in xrange(w_arg.size()):
             w_arg.setchar(i, chr(new_value))
-    elif isinstance(w_arg, model.W_PointersObject) or isinstance(w_arg, model.W_DisplayBitmap):
+    elif isinstance(w_arg, model.W_WordsObject) or isinstance(w_arg, model.W_DisplayBitmap):
         for i in xrange(w_arg.size()):
             w_arg.setword(i, new_value)
     else:
