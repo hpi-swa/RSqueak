@@ -754,7 +754,7 @@ def func(interp, s_frame, w_rcvr, start, stop, w_replacement, repStart):
     # This test deliberately test for equal W_Object class. The Smalltalk classes
     # might be different (e.g. Symbol and ByteString)
     if w_rcvr.__class__ is not w_replacement.__class__:
-        raise PrimitiveFailedError()
+        raise PrimitiveFailedError
     if (w_rcvr.size() - w_rcvr.instsize(interp.space) <= stop
             or w_replacement.size() - w_replacement.instsize(interp.space) <= repStart + (stop - start)):
         raise PrimitiveFailedError()
@@ -783,10 +783,6 @@ def func(interp, s_frame, w_rcvr):
 @expose_primitive(KBD_NEXT, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
     code = interp.space.get_display().next_keycode()
-    if code == ord('t'):
-        interp.trace = True
-    elif code == ord('s'):
-        interp.trace = False
     if code == 0:
         return interp.space.w_nil
     else:
