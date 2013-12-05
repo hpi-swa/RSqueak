@@ -652,6 +652,23 @@ def test_primitive_next_instance():
     assert w_2.getclass(space) is space.w_Array
     assert w_1 is not w_2
 
+def test_primitive_next_instance_wo_some_instance_in_same_frame():
+    someInstances = map(space.wrap_list, [[2], [3]])
+    from test_interpreter import new_frame
+    w_frame, s_context = new_frame("<never called, but needed for method generation>",
+        space=space)
+
+    s_context.push(space.w_Array)
+    interp = interpreter.Interpreter(space)
+    w_1 = someInstances[0]
+    assert w_1.getclass(space) is space.w_Array
+
+    s_context.push(w_1)
+    prim_table[primitives.NEXT_INSTANCE](interp, s_context, 0)
+    w_2 = s_context.pop()
+    assert w_2.getclass(space) is space.w_Array
+    assert w_1 is not w_2
+
 def test_primitive_value_no_context_switch(monkeypatch):
     class Context_switched(Exception):
         pass

@@ -515,54 +515,70 @@ def func(interp, s_frame, w_frame, stackp):
     w_frame.store(interp.space, constants.CTXPART_STACKP_INDEX, interp.space.wrap_int(stackp))
     return w_frame
 
-@expose_primitive(SOME_INSTANCE, unwrap_spec=[object])
-def func(interp, s_frame, w_class):
+def get_instances_array(space, s_frame, w_class):
     # This primitive returns some instance of the class on the stack.
     # Not sure quite how to do this; maintain a weak list of all
     # existing instances or something?
-    from rpython.rlib import rgc
 
-    match_w = []
-    roots = [gcref for gcref in rgc.get_rpy_roots() if gcref]
-    pending = roots[:]
-    while pending:
-        gcref = pending.pop()
-        if not rgc.get_gcflag_extra(gcref):
-            rgc.toggle_gcflag_extra(gcref)
-            w_obj = rgc.try_cast_gcref_to_instance(model.W_Object, gcref)
-            if (w_obj is not None and w_obj.has_class()
-                and w_obj.getclass(interp.space) is w_class):
-                match_w.append(w_obj)
-            pending.extend(rgc.get_rpy_referents(gcref))
+    match_w = s_frame.instances_array(w_class)
+    if match_w is None:
+        from rpython.rlib import rgc
 
-    while roots:
-        gcref = roots.pop()
-        if rgc.get_gcflag_extra(gcref):
-            rgc.toggle_gcflag_extra(gcref)
-            roots.extend(rgc.get_rpy_referents(gcref))
+        match_w = []
+        roots = [gcref for gcref in rgc.get_rpy_roots() if gcref]
+        pending = roots[:]
+        while pending:
+            gcref = pending.pop()
+            if not rgc.get_gcflag_extra(gcref):
+                rgc.toggle_gcflag_extra(gcref)
+                w_obj = rgc.try_cast_gcref_to_instance(model.W_Object, gcref)
+                if (w_obj is not None and w_obj.has_class()
+                    and w_obj.getclass(space) is w_class):
+                    match_w.append(w_obj)
+                pending.extend(rgc.get_rpy_referents(gcref))
 
-    s_frame.store_instances_array(match_w)
+        while roots:
+            gcref = roots.pop()
+            if rgc.get_gcflag_extra(gcref):
+                rgc.toggle_gcflag_extra(gcref)
+                roots.extend(rgc.get_rpy_referents(gcref))
+        s_frame.store_instances_array(w_class, match_w)
+    return match_w
+
+@expose_primitive(SOME_INSTANCE, unwrap_spec=[object])
+def func(interp, s_frame, w_class):
+    match_w = get_instances_array(interp.space, s_frame, w_class)
     try:
-        return match_w.pop()
+        return match_w[0]
     except IndexError:
         raise PrimitiveFailedError()
 
 def next_instance(space, list_of_objects, w_obj):
+    retval = None
     try:
-        retval = list_of_objects.pop()
-        # just in case, that one of the objects in the list changes its class
-        if retval.getclass(space).is_same_object(w_obj.getclass(space)):
-            return retval
-        else:
-            return next_instance(space, list_of_objects, w_obj)
+        idx = list_of_objects.index(w_obj)
+    except ValueError:
+        idx = -1
+    try:
+        retval = list_of_objects[idx + 1]
     except IndexError:
         raise PrimitiveFailedError()
+    # just in case, that one of the objects in the list changes its class
+    if retval.getclass(space).is_same_object(w_obj.getclass(space)):
+        return retval
+    else:
+        list_of_objects.pop(idx + 1)
+        return next_instance(space, list_of_objects, w_obj)
 
 @expose_primitive(NEXT_INSTANCE, unwrap_spec=[object])
 def func(interp, s_frame, w_obj):
     # This primitive is used to iterate through all instances of a class:
     # it returns the "next" instance after w_obj.
-    return next_instance(interp.space, s_frame.instances_array(), w_obj)
+    return next_instance(
+        interp.space,
+        get_instances_array(interp.space, s_frame, w_obj.getclass(interp.space)),
+        w_obj
+    )
 
 @expose_primitive(NEW_METHOD, unwrap_spec=[object, int, int])
 def func(interp, s_frame, w_class, bytecount, header):

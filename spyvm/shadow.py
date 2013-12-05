@@ -452,7 +452,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
     def __init__(self, space, w_self):
         self._s_sender = None
         AbstractRedirectingShadow.__init__(self, space, w_self)
-        self.instances_w = None
+        self.instances_w = {}
 
     @staticmethod
     def is_block_context(w_pointers, space):
@@ -709,12 +709,13 @@ class ContextPartShadow(AbstractRedirectingShadow):
             self._w_self_size = w_self.size()
             return w_self
 
-    def store_instances_array(self, list_w):
+    def store_instances_array(self, w_class, match_w):
         # used for primitives 77 & 78
-        self.instances_w = list_w
+        self.instances_w[w_class] = match_w
 
-    def instances_array(self):
-        return self.instances_w
+    @jit.elidable
+    def instances_array(self, w_class):
+        return self.instances_w.get(w_class, None)
 
     # ______________________________________________________________________
     # Debugging printout
