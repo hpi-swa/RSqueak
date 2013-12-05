@@ -443,7 +443,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
     _attrs_ = ['_s_sender', '_pc', '_temps_and_stack',
             '_stack_ptr', 'instances_w']
 
-    _virtualizable2_ = [
+    _virtualizable_ = [
         "_s_sender", "_pc",
         "_temps_and_stack[*]", "_stack_ptr",
         "_w_self", "_w_self_size"
@@ -1254,7 +1254,7 @@ class BitBltShadow(AbstractCachingShadow):
     def check_overlap(self):
         self.h_dir = 1
         self.v_dir = 1
-        if (self.source_form is not None and 
+        if (self.source_form is not None and
             self.source_form.w_self().is_same_object(self.dest_form.w_self()) and
             self.dy >= self.sy):
             if self.dy > self.sy:
