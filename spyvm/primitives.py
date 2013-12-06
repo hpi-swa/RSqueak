@@ -679,7 +679,7 @@ def func(interp, s_frame, argcount):
             # mask is a form object
             w_contents = w_mask.fetch(interp.space, 0)
             if isinstance(w_contents, model.W_WordsObject):
-                w_mask = w_contents.words
+                mask_words = w_contents.words
             else:
                 raise PrimitiveFailedError
         else:
@@ -691,14 +691,18 @@ def func(interp, s_frame, argcount):
     height = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 2))
     depth = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 3))
     hotpt = wrapper.PointWrapper(interp.space, w_rcvr.fetch(interp.space, 4))
-    display.SDLCursor.set(
-        w_bitmap.words,
-        width,
-        height,
-        hotpt.x(),
-        hotpt.y(),
-        mask_words=mask_words
-    )
+    if not interp.image.is_modern:
+        display.SDLCursor.set(
+            w_bitmap.words,
+            width,
+            height,
+            hotpt.x(),
+            hotpt.y(),
+            mask_words=mask_words
+        )
+    else:
+        # TODO: Implement
+        pass
 
     interp.space.objtable['w_cursor'] = w_rcvr
     return w_rcvr

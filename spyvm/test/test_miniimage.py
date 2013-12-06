@@ -306,6 +306,14 @@ def test_create_new_symbol():
     assert w_result is not None
     assert w_result.as_string() == "someString"
 
+def test_create_new_symbol_new_with_arg0():
+    w_dnu = get_image().special(constants.SO_DOES_NOT_UNDERSTAND)
+    w_Symbol = w_dnu.getclass(space)
+    w_res = perform(w_Symbol, "new:", w(0))
+    assert w_res.getclass(space).is_same_object(w_Symbol)
+    assert isinstance(w_res, model.W_BytesObject)
+    assert w_res.size() == 0
+
 def test_pi_as_w_float():
     import math
     w_result = perform(interp.space.w_Float, "pi")

@@ -355,8 +355,7 @@ class MethodDictionaryShadow(AbstractShadow):
 
     def find_selector(self, w_selector):
         if self.invalid:
-            self.sync_cache()
-        assert not self.invalid
+            return None
         return self.methoddict.get(w_selector, None)
 
     def update(self): return self.sync_cache()
