@@ -470,7 +470,7 @@ def func(interp, s_frame, w_cls):
 def func(interp, s_frame, w_cls, size):
     assert isinstance(w_cls, model.W_PointersObject)
     s_class = w_cls.as_class_get_shadow(interp.space)
-    if not s_class.isvariable():
+    if not s_class.isvariable() and size != 0:
         raise PrimitiveFailedError()
     try:
         return s_class.new(size)
@@ -632,7 +632,7 @@ def func(interp, s_frame, w_rcvr):
     combinationRule = interp.space.unwrap_positive_32bit_int(w_rcvr.fetch(interp.space, 3))
     if combinationRule > 41:
         raise PrimitiveFailedError
-    
+
     space = interp.space
 
     s_bitblt = w_rcvr.as_bitblt_get_shadow(space)

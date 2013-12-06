@@ -300,6 +300,14 @@ def test_new_with_arg():
     assert w_res.getclass(space).is_same_object(space.w_String)
     assert w_res.size() == 20
 
+def test_new_with_arg_for_non_variable_sized():
+    prim_fails(primitives.NEW_WITH_ARG, [space.classtable['w_ArrayedCollection'], 10])
+
+def test_new_with_arg_for_non_variable_sized0():
+    w_res = prim(primitives.NEW_WITH_ARG, [space.classtable['w_ArrayedCollection'], 0])
+    assert w_res.getclass(space).is_same_object(space.classtable['w_ArrayedCollection'])
+    assert w_res.size() == 0
+
 def test_invalid_new_with_arg():
     w_Object = space.classtable['w_Object']
     prim_fails(primitives.NEW_WITH_ARG, [w_Object, 20])
