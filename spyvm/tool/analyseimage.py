@@ -9,12 +9,16 @@ image_dir = py.path.local(__file__).dirpath().dirpath().dirpath('images')
 
 mini_image = image_dir.join('mini.image')
 minitest_image = image_dir.join('minitest.image')
+s45_image = image_dir.join('Squeak4.5-12568.image')
 
 def get_miniimage(space):
     return squeakimage.reader_for_image(space, squeakimage.Stream(mini_image.open(mode="rb")))
 
 def get_minitestimage(space):
     return squeakimage.reader_for_image(space, squeakimage.Stream(minitest_image.open(mode="rb")))
+
+def get_45image(space):
+    return squeakimage.reader_for_image(space, squeakimage.Stream(s45_image.open(mode="rb")))
 
 def create_image(space, image_reader):
     image_reader.initialize()
@@ -23,13 +27,14 @@ def create_image(space, image_reader):
     image.from_reader(space, image_reader)
     return image
 
-
 def create_squeakimage(space):
     return create_image(space, get_miniimage(space))
 
 def create_testimage(space):
     return create_image(space, get_minitestimage(space))
 
+def create_45image(space):
+    return create_image(space, get_45image(space))
 
 def printStringsInImage():
     image = create_squeakimage()

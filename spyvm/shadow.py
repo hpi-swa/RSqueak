@@ -354,6 +354,8 @@ class MethodDictionaryShadow(AbstractShadow):
         AbstractShadow.__init__(self, space, w_self)
 
     def find_selector(self, w_selector):
+        if self.invalid:
+            self.sync_cache()
         assert not self.invalid
         return self.methoddict.get(w_selector, None)
 
@@ -382,7 +384,11 @@ class MethodDictionaryShadow(AbstractShadow):
             w_selector = self.w_self()._fetch(constants.METHODDICT_NAMES_INDEX+i)
             if not w_selector.is_same_object(self.space.w_nil):
                 if not isinstance(w_selector, model.W_BytesObject):
-                    raise ClassShadowError("bogus selector in method dict")
+                    pass
+                    # TODO: Check if there's more assumptions about this.
+                    #       Putting any key in the methodDict and running with
+                    #       perform is actually supported in Squeak
+                    # raise ClassShadowError("bogus selector in method dict")
                 w_compiledmethod = w_values._fetch(i)
                 if not isinstance(w_compiledmethod, model.W_CompiledMethod):
                     raise ClassShadowError("The methoddict must contain "
@@ -390,7 +396,10 @@ class MethodDictionaryShadow(AbstractShadow):
                                        "If the value observed is nil, our "
                                        "invalidating mechanism may be broken.")
                 self.methoddict[w_selector] = w_compiledmethod.as_compiledmethod_get_shadow(self.space)
-                selector = w_selector.as_string()
+                if isinstance(w_selector, model.W_BytesObject):
+                    selector = w_selector.as_string()
+                else:
+                    selector = w_selector.as_repr_string()
                 w_compiledmethod._likely_methodname = selector
         if self.s_class:
             self.s_class.changed()

@@ -823,6 +823,7 @@ QUIT = 113
 EXIT_TO_DEBUGGER = 114
 CHANGE_CLASS = 115      # Blue Book: primitiveOopsLeft
 EXTERNAL_CALL = 117
+SYMBOL_FLUSH_CACHE = 119
 
 @expose_primitive(EQUIVALENT, unwrap_spec=[object, object])
 def func(interp, s_frame, w_arg, w_rcvr):
@@ -904,6 +905,10 @@ def func(interp, s_frame, argcount, s_method):
         from spyvm.interpreter_proxy import IProxy
         return IProxy.call(signature, interp, s_frame, argcount, s_method)
     raise PrimitiveFailedError
+
+@expose_primitive(SYMBOL_FLUSH_CACHE, unwrap_spec=[object])
+def func(interp, s_frame, w_rcvr):
+    raise PrimitiveFailedError()
 
 # ___________________________________________________________________________
 # Miscellaneous Primitives (120-127)
@@ -1320,8 +1325,6 @@ def func(interp, s_frame, w_rcvr, w_selector, args_w):
     from spyvm.shadow import MethodNotFound
     argcount = len(args_w)
     s_frame.pop_n(2) # removing our arguments
-
-    assert isinstance(w_selector, model.W_BytesObject)
 
     try:
         s_method = w_rcvr.shadow_of_my_class(interp.space).lookup(w_selector)
