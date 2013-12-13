@@ -11,7 +11,7 @@ MOUSE_BTN_MIDDLE = 2
 MOUSE_BTN_LEFT = 4
 MOD_SHIFT  = 1
 MOD_CONTROL = 2
-MOD_ALT = 16
+MOD_ALT_CMD = 16 | 8
 
 class SDLDisplay(object):
     _attrs_ = ["screen", "width", "height", "depth", "surface", "has_surface",
@@ -71,19 +71,30 @@ class SDLDisplay(object):
                         y = rffi.getintfield(m, "c_y")
                         self.mouse_position = [x, y]
                     elif c_type == RSDL.KEYUP or c_type == RSDL.KEYDOWN:
-                        p = rffi.cast(RSDL.KeyboardEventPtr, event)
-                        char = rffi.getintfield(p.c_keysym, 'c_unicode')
-                        if char != 0:
-                            chars = unicode_encode_utf_8(unichr(char), 1, "ignore")
-                            if len(chars) == 1:
-                                if c_type == RSDL.KEYDOWN:
-                                    self.key = ord(chars[0])
-                                    interrupt = self.interrupt_key
-                                    if (interrupt & 0xFF == self.key and
-                                        interrupt >> 8 == self.get_modifier_mask(0)):
-                                            raise KeyboardInterrupt
-                                else:
-                                    pass # XXX: Todo?
+                        if c_type == RSDL.KEYDOWN: # TODO: create KeyUp events and KeyRepeat events
+                            self.key = 0
+                            p = rffi.cast(RSDL.KeyboardEventPtr, event)
+                            sym = rffi.getintfield(p.c_keysym, 'c_sym')
+                            char = rffi.getintfield(p.c_keysym, 'c_unicode')
+                            if sym == RSDL.K_DOWN:
+                                self.key = 31
+                            elif sym == RSDL.K_LEFT:
+                                self.key = 28
+                            elif sym == RSDL.K_RIGHT:
+                                self.key = 29
+                            elif sym == RSDL.K_UP:
+                                self.key = 30
+                            elif char != 0:
+                                chars = unicode_encode_utf_8(unichr(char), 1, "ignore")
+                                if len(chars) == 1:
+                                    asciivalue = ord(chars[0])
+                                    if asciivalue >= 32:
+                                        self.key = asciivalue
+                            if self.key == 0 and sym <= 255:
+                                self.key = sym
+                            interrupt = self.interrupt_key
+                            if (interrupt & 0xFF == self.key and interrupt >> 8 == self.get_modifier_mask(0)):
+                                raise KeyboardInterrupt
                     elif c_type == RSDL.QUIT:
                         from spyvm.error import Exit
                         raise Exit("Window closed..")
@@ -99,7 +110,7 @@ class SDLDisplay(object):
         if mod & RSDL.KMOD_SHIFT != 0:
             modifier |= MOD_SHIFT
         if mod & RSDL.KMOD_ALT != 0:
-            modifier |= MOD_ALT
+            modifier |= MOD_ALT_CMD
         return modifier << shift
 
     def mouse_point(self):
@@ -108,16 +119,18 @@ class SDLDisplay(object):
 
     def mouse_button(self):
         self.get_next_event()
-        return self.button | self.get_modifier_mask(3)
+        mod = self.get_modifier_mask(3)
+        return self.button | mod
 
     def next_keycode(self):
         key = self.key
         self.key = 0
-        return key | self.get_modifier_mask(8)
+        return key
 
     def peek_keycode(self):
         self.get_next_event()
-        return self.key | self.get_modifier_mask(8)
+        self.key |= self.get_modifier_mask(8)
+        return self.key
 
     def set_interrupt_key(self, space, encoded_key):
         self.interrupt_key = encoded_key

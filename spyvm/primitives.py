@@ -803,7 +803,7 @@ def func(interp, s_frame, w_rcvr):
 @expose_primitive(KBD_NEXT, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
     code = interp.space.get_display().next_keycode()
-    if code == 0:
+    if code & 0xFF == 0:
         return interp.space.w_nil
     else:
         return interp.space.wrap_int(code)
@@ -811,7 +811,7 @@ def func(interp, s_frame, w_rcvr):
 @expose_primitive(KBD_PEEK, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
     code = interp.space.get_display().peek_keycode()
-    if code == 0:
+    if code & 0xFF == 0:
         return interp.space.w_nil
     else:
         return interp.space.wrap_int(code)
