@@ -132,7 +132,7 @@ class SDLDisplay(object):
     def next_keycode(self):
         key = self.key
         self.key = 0
-        return key
+        return key | self.get_modifier_mask(8)
 
     def peek_keycode(self):
         self.get_next_event()
