@@ -43,61 +43,68 @@ class SDLDisplay(object):
     def flip(self):
         RSDL.Flip(self.screen)
 
+    def handle_mouse_button(self, c_type, event):
+        b = rffi.cast(RSDL.MouseButtonEventPtr, event)
+        btn = rffi.getintfield(b, 'c_button')
+        if btn == RSDL.BUTTON_RIGHT:
+            btn = MOUSE_BTN_RIGHT
+        elif btn == RSDL.BUTTON_MIDDLE:
+            btn = MOUSE_BTN_MIDDLE
+        elif btn == RSDL.BUTTON_LEFT:
+            btn = MOUSE_BTN_LEFT
+
+        if c_type == RSDL.MOUSEBUTTONDOWN:
+            self.button |= btn
+        else:
+            self.button &= ~btn
+
+    def handle_mouse_move(self, c_type, event):
+        m = rffi.cast(RSDL.MouseMotionEventPtr, event)
+        x = rffi.getintfield(m, "c_x")
+        y = rffi.getintfield(m, "c_y")
+        self.mouse_position = [x, y]
+
+    def handle_keypress(self, c_type, event):
+        self.key = 0
+        p = rffi.cast(RSDL.KeyboardEventPtr, event)
+        sym = rffi.getintfield(p.c_keysym, 'c_sym')
+        char = rffi.getintfield(p.c_keysym, 'c_unicode')
+        if sym == RSDL.K_DOWN:
+            self.key = 31
+        elif sym == RSDL.K_LEFT:
+            self.key = 28
+        elif sym == RSDL.K_RIGHT:
+            self.key = 29
+        elif sym == RSDL.K_UP:
+            self.key = 30
+        elif char != 0:
+            chars = unicode_encode_utf_8(unichr(char), 1, "ignore")
+            if len(chars) == 1:
+                asciivalue = ord(chars[0])
+                if asciivalue >= 32:
+                    self.key = asciivalue
+        if self.key == 0 and sym <= 255:
+            self.key = sym
+        interrupt = self.interrupt_key
+        if (interrupt & 0xFF == self.key and interrupt >> 8 == self.get_modifier_mask(0)):
+            raise KeyboardInterrupt
+
     def get_next_event(self):
         event = lltype.malloc(RSDL.Event, flavor="raw")
-        ok = 1
+        ok = rffi.cast(lltype.Signed, RSDL.PollEvent(event))
         try:
             while ok == 1:
+                c_type = rffi.getintfield(event, 'c_type')
+                if c_type == RSDL.MOUSEBUTTONDOWN or c_type == RSDL.MOUSEBUTTONUP:
+                    self.handle_mouse_button(c_type, event)
+                elif c_type == RSDL.MOUSEMOTION:
+                    self.handle_mouse_move(c_type, event)
+                elif c_type == RSDL.KEYDOWN:
+                    self.handle_keypress(c_type, event)
+                elif c_type == RSDL.QUIT:
+                    from spyvm.error import Exit
+                    raise Exit("Window closed..")
                 ok = rffi.cast(lltype.Signed, RSDL.PollEvent(event))
-                if ok == 1:
-                    c_type = rffi.getintfield(event, 'c_type')
-                    if c_type == RSDL.MOUSEBUTTONDOWN or c_type == RSDL.MOUSEBUTTONUP:
-                        b = rffi.cast(RSDL.MouseButtonEventPtr, event)
-                        btn = rffi.getintfield(b, 'c_button')
-                        if btn == RSDL.BUTTON_RIGHT:
-                            btn = MOUSE_BTN_RIGHT
-                        elif btn == RSDL.BUTTON_MIDDLE:
-                            btn = MOUSE_BTN_MIDDLE
-                        elif btn == RSDL.BUTTON_LEFT:
-                            btn = MOUSE_BTN_LEFT
-
-                        if c_type == RSDL.MOUSEBUTTONDOWN:
-                            self.button |= btn
-                        else:
-                            self.button &= ~btn
-                    elif c_type == RSDL.MOUSEMOTION:
-                        m = rffi.cast(RSDL.MouseMotionEventPtr, event)
-                        x = rffi.getintfield(m, "c_x")
-                        y = rffi.getintfield(m, "c_y")
-                        self.mouse_position = [x, y]
-                    elif c_type == RSDL.KEYUP or c_type == RSDL.KEYDOWN:
-                        if c_type == RSDL.KEYDOWN: # TODO: create KeyUp events and KeyRepeat events
-                            self.key = 0
-                            p = rffi.cast(RSDL.KeyboardEventPtr, event)
-                            sym = rffi.getintfield(p.c_keysym, 'c_sym')
-                            char = rffi.getintfield(p.c_keysym, 'c_unicode')
-                            if sym == RSDL.K_DOWN:
-                                self.key = 31
-                            elif sym == RSDL.K_LEFT:
-                                self.key = 28
-                            elif sym == RSDL.K_RIGHT:
-                                self.key = 29
-                            elif sym == RSDL.K_UP:
-                                self.key = 30
-                            elif char != 0:
-                                chars = unicode_encode_utf_8(unichr(char), 1, "ignore")
-                                if len(chars) == 1:
-                                    asciivalue = ord(chars[0])
-                                    if asciivalue >= 32:
-                                        self.key = asciivalue
-                            if self.key == 0 and sym <= 255:
-                                self.key = sym
-                            interrupt = self.interrupt_key
-                            if (interrupt & 0xFF == self.key and interrupt >> 8 == self.get_modifier_mask(0)):
-                                raise KeyboardInterrupt
-                    elif c_type == RSDL.QUIT:
-                        from spyvm.error import Exit
-                        raise Exit("Window closed..")
         finally:
             lltype.free(event, flavor='raw')
 
