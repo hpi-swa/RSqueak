@@ -1,4 +1,5 @@
 import py
+import os
 from spyvm.shadow import ContextPartShadow, MethodContextShadow, BlockContextShadow, MethodNotFound
 from spyvm import model, constants, primitives, conftest, wrapper
 from spyvm.tool.bitmanipulation import splitter
@@ -42,7 +43,11 @@ class Interpreter(object):
         self.remaining_stack_depth = max_stack_depth
         self._loop = False
         self.next_wakeup_tick = 0
-        self.interrupt_check_counter = constants.INTERRUPT_COUNTER_SIZE
+        try:
+            self.interrupt_counter_size = int(os.environ.get("SPY_ICS"))
+        except KeyError:
+            self.interrupt_counter_size = constants.INTERRUPT_COUNTER_SIZE
+        self.interrupt_check_counter = self.interrupt_counter_size
         # ######################################################################
         self.trace = trace
         self.trace_proxy = False
@@ -157,7 +162,7 @@ class Interpreter(object):
         s_frame.push(w_receiver)
         s_frame.push_all(list(arguments_w))
 
-        self.interrupt_check_counter = constants.INTERRUPT_COUNTER_SIZE
+        self.interrupt_check_counter = self.interrupt_counter_size
         try:
             self.loop(s_frame.w_self())
         except ReturnFromTopLevel, e:
@@ -166,7 +171,7 @@ class Interpreter(object):
     def quick_check_for_interrupt(self, s_frame, dec=1):
         self.interrupt_check_counter -= dec
         if self.interrupt_check_counter <= 0:
-            self.interrupt_check_counter = constants.INTERRUPT_COUNTER_SIZE
+            self.interrupt_check_counter = self.interrupt_counter_size
             self.check_for_interrupts(s_frame)
 
     def check_for_interrupts(self, s_frame):
