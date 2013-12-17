@@ -951,6 +951,26 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
             self.words = None
             return c_words
 
+    def as_display_bitmap(self, w_form, interp, sdldisplay=None):
+        width = space.unwrap_int(w_form.fetch(space, 1))
+        height = space.unwrap_int(w_form.fetch(space, 2))
+        depth = space.unwrap_int(w_form.fetch(space, 3))
+        if not sdldisplay:
+            from spyvm import display
+            sdldisplay = display.SDLDisplay(interp.image_name)
+            sdldisplay.set_video_mode(width, height, depth)
+        w_display_bitmap = W_DisplayBitmap.create(
+            interp.space,
+            self.getclass(interp.space),
+            self.size(),
+            depth,
+            sdldisplay
+        )
+        for idx in range(self.size()):
+            w_display_bitmap.setword(idx, self.getword(idx))
+        w_form.store(space, 0, w_display_bitmap)
+        return w_display_bitmap
+
     def __del__(self):
         if self.words is None:
             lltype.free(self.c_words, flavor='raw')
@@ -970,6 +990,8 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
         #     return W_DisplayBitmap32Bit(space, w_class, size, depth, display)
         elif depth == 32:
             return W_DisplayBitmap32Bit(space, w_class, size, depth, display)
+        elif depth == 16:
+            return W_DisplayBitmap16Bit(space, w_class, size, depth, display)
         else:
             raise NotImplementedError("non B/W squeak")
 

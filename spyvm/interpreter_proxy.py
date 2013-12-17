@@ -567,9 +567,17 @@ def showDisplayBitsLeftTopRightBottom(w_dest_form, l, t, r, b):
     space = IProxy.space
     if w_dest_form.is_same_object(space.objtable['w_display']):
         w_bitmap = w_dest_form.fetch(space, 0)
-        assert isinstance(w_bitmap, model.W_DisplayBitmap)
-        w_bitmap.update_from_buffer()
-        w_bitmap.flush_to_screen()
+        if not isinstance(w_bitmap, model.W_DisplayBitmap):
+            assert isinstance(w_bitmap, model.W_WordsObject)
+            w_display_bitmap = w_bitmap.as_display_bitmap(
+                w_dest_form,
+                IProxy.interp,
+                sdldisplay=None
+            )
+        else:
+            w_display_bitmap = w_bitmap
+        w_display_bitmap.update_from_buffer()
+        w_display_bitmap.flush_to_screen()
     return 0
 
 @expose_on_virtual_machine_proxy([int], int)

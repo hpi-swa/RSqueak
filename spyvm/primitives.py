@@ -743,19 +743,11 @@ def func(interp, s_frame, w_rcvr):
         w_display_bitmap = w_bitmap
     else:
         assert isinstance(w_bitmap, model.W_WordsObject)
-        if not sdldisplay:
-            sdldisplay = display.SDLDisplay(interp.image_name)
-            sdldisplay.set_video_mode(width, height, depth)
-        w_display_bitmap = model.W_DisplayBitmap.create(
-            interp.space,
-            w_bitmap.getclass(interp.space),
-            w_bitmap.size(),
-            depth,
-            sdldisplay
+        w_display_bitmap = w_bitmap.as_display_bitmap(
+            w_rcvr,
+            interp,
+            sdldisplay=sdldisplay
         )
-        for idx, word in enumerate(w_bitmap.words):
-            w_display_bitmap.setword(idx, word)
-        w_rcvr.store(interp.space, 0, w_display_bitmap)
 
     w_display_bitmap.flush_to_screen()
     if interp.image:
