@@ -515,6 +515,13 @@ def func(interp, s_frame, w_frame, stackp):
     w_frame.store(interp.space, constants.CTXPART_STACKP_INDEX, interp.space.wrap_int(stackp))
     return w_frame
 
+
+def stm_enabled():
+    """NOT RPYTHON"""
+    from rpython.rlib import rgc
+    return hasattr(rgc, "stm_is_enabled") and rgc.stm_is_enabled()
+USES_STM = stm_enabled()
+
 def get_instances_array(space, s_frame, w_class):
     # This primitive returns some instance of the class on the stack.
     # Not sure quite how to do this; maintain a weak list of all
@@ -524,7 +531,7 @@ def get_instances_array(space, s_frame, w_class):
         match_w = []
         from rpython.rlib import rgc
 
-        if rgc.stm_is_enabled is None or not rgc.stm_is_enabled():
+        if USES_STM:
             roots = [gcref for gcref in rgc.get_rpy_roots() if gcref]
             pending = roots[:]
             while pending:
