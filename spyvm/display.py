@@ -91,20 +91,20 @@ class SDLDisplay(object):
 
     def get_next_event(self):
         event = lltype.malloc(RSDL.Event, flavor="raw")
-        ok = rffi.cast(lltype.Signed, RSDL.PollEvent(event))
         try:
-            while ok == 1:
+            if rffi.cast(lltype.Signed, RSDL.PollEvent(event)) == 1:
                 c_type = rffi.getintfield(event, 'c_type')
                 if c_type == RSDL.MOUSEBUTTONDOWN or c_type == RSDL.MOUSEBUTTONUP:
                     self.handle_mouse_button(c_type, event)
+                    return
                 elif c_type == RSDL.MOUSEMOTION:
                     self.handle_mouse_move(c_type, event)
                 elif c_type == RSDL.KEYDOWN:
                     self.handle_keypress(c_type, event)
+                    return
                 elif c_type == RSDL.QUIT:
                     from spyvm.error import Exit
                     raise Exit("Window closed..")
-                ok = rffi.cast(lltype.Signed, RSDL.PollEvent(event))
         finally:
             lltype.free(event, flavor='raw')
 
