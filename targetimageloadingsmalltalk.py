@@ -161,7 +161,13 @@ def entry_point(argv):
 # _____ Define and setup target ___
 
 
-def target(*args):
+def target(driver, *args):
+    # driver.config.translation.gc = "stmgc"
+    # driver.config.translation.gcrootfinder = "stm"
+    from rpython.rlib import rgc
+    if hasattr(rgc, "stm_is_enabled"):
+        driver.config.translation.stm = True
+        driver.config.translation.thread = True
     return entry_point, None
 
 
