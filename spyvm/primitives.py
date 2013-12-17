@@ -519,30 +519,30 @@ def get_instances_array(space, s_frame, w_class):
     # This primitive returns some instance of the class on the stack.
     # Not sure quite how to do this; maintain a weak list of all
     # existing instances or something?
-
     match_w = s_frame.instances_array(w_class)
     if match_w is None:
+        match_w = []
         from rpython.rlib import rgc
 
-        match_w = []
-        roots = [gcref for gcref in rgc.get_rpy_roots() if gcref]
-        pending = roots[:]
-        while pending:
-            gcref = pending.pop()
-            if not rgc.get_gcflag_extra(gcref):
-                rgc.toggle_gcflag_extra(gcref)
-                w_obj = rgc.try_cast_gcref_to_instance(model.W_Object, gcref)
-                if (w_obj is not None and w_obj.has_class()
-                    and w_obj.getclass(space) is w_class):
-                    match_w.append(w_obj)
-                pending.extend(rgc.get_rpy_referents(gcref))
+        if rgc.stm_is_enabled is None or not rgc.stm_is_enabled():
+            roots = [gcref for gcref in rgc.get_rpy_roots() if gcref]
+            pending = roots[:]
+            while pending:
+                gcref = pending.pop()
+                if not rgc.get_gcflag_extra(gcref):
+                    rgc.toggle_gcflag_extra(gcref)
+                    w_obj = rgc.try_cast_gcref_to_instance(model.W_Object, gcref)
+                    if (w_obj is not None and w_obj.has_class()
+                        and w_obj.getclass(space) is w_class):
+                        match_w.append(w_obj)
+                    pending.extend(rgc.get_rpy_referents(gcref))
 
-        while roots:
-            gcref = roots.pop()
-            if rgc.get_gcflag_extra(gcref):
-                rgc.toggle_gcflag_extra(gcref)
-                roots.extend(rgc.get_rpy_referents(gcref))
-        s_frame.store_instances_array(w_class, match_w)
+            while roots:
+                gcref = roots.pop()
+                if rgc.get_gcflag_extra(gcref):
+                    rgc.toggle_gcflag_extra(gcref)
+                    roots.extend(rgc.get_rpy_referents(gcref))
+            s_frame.store_instances_array(w_class, match_w)
     return match_w
 
 @expose_primitive(SOME_INSTANCE, unwrap_spec=[object])
