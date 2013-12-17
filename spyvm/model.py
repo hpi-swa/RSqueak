@@ -952,9 +952,9 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
             return c_words
 
     def as_display_bitmap(self, w_form, interp, sdldisplay=None):
-        width = space.unwrap_int(w_form.fetch(space, 1))
-        height = space.unwrap_int(w_form.fetch(space, 2))
-        depth = space.unwrap_int(w_form.fetch(space, 3))
+        width = interp.space.unwrap_int(w_form.fetch(interp.space, 1))
+        height = interp.space.unwrap_int(w_form.fetch(interp.space, 2))
+        depth = interp.space.unwrap_int(w_form.fetch(interp.space, 3))
         if not sdldisplay:
             from spyvm import display
             sdldisplay = display.SDLDisplay(interp.image_name)
@@ -968,7 +968,7 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         )
         for idx in range(self.size()):
             w_display_bitmap.setword(idx, self.getword(idx))
-        w_form.store(space, 0, w_display_bitmap)
+        w_form.store(interp.space, 0, w_display_bitmap)
         return w_display_bitmap
 
     def __del__(self):
@@ -990,8 +990,6 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
         #     return W_DisplayBitmap32Bit(space, w_class, size, depth, display)
         elif depth == 32:
             return W_DisplayBitmap32Bit(space, w_class, size, depth, display)
-        elif depth == 16:
-            return W_DisplayBitmap16Bit(space, w_class, size, depth, display)
         else:
             raise NotImplementedError("non B/W squeak")
 
@@ -1088,7 +1086,7 @@ class W_DisplayBitmap16Bit(W_DisplayBitmap):
     def setword(self, n, word):
         self._real_depth_buffer[n] = word
         pos, line_end = self.compute_pos_and_line_end(n, 16)
-        mask = 0xf
+        mask = r_uint(0xf)
         for i in range(2):
             pixel = 0
             for j in range(4):
@@ -1117,7 +1115,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     """
 
     _immutable_fields_ = ["_shadow?"]
-    _attrs_ = ["bytes", "_likely_methodname", "header", "argsize", "primitive", 
+    _attrs_ = ["bytes", "_likely_methodname", "header", "argsize", "primitive",
                 "literals", "tempsize", "literalsize", "islarge", "_shadow"]
 ### Extension from Squeak 3.9 doc, which we do not implement:
 ###        trailer (variable)
