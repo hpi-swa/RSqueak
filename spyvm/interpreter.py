@@ -44,7 +44,7 @@ class Interpreter(object):
         self._loop = False
         self.next_wakeup_tick = 0
         try:
-            self.interrupt_counter_size = int(os.environ.get("SPY_ICS"))
+            self.interrupt_counter_size = int(os.environ["SPY_ICS"])
         except KeyError:
             self.interrupt_counter_size = constants.INTERRUPT_COUNTER_SIZE
         self.interrupt_check_counter = self.interrupt_counter_size
