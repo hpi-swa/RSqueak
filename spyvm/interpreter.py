@@ -5,7 +5,7 @@ from spyvm import model, constants, primitives, conftest, wrapper
 from spyvm.tool.bitmanipulation import splitter
 
 from rpython.rlib import jit
-from rpython.rlib import objectmodel, unroll
+from rpython.rlib import objectmodel, unroll, rarithmetic
 
 class MissingBytecode(Exception):
     """Bytecode not implemented yet."""
@@ -182,7 +182,10 @@ class Interpreter(object):
         # We don't adjust the check counter size
 
         # use the same time value as the primitive MILLISECOND_CLOCK
-        now = int(math.fmod(time.time()*1000, constants.TAGGED_MAXINT/2))
+        now = rarithmetic.intmask(
+            int(time.time()*1000) & (constants.TAGGED_MAXINT/2 - 1)
+        )
+        # now = int(math.fmod(time.time()*1000, constants.TAGGED_MAXINT/2))
 
         # XXX the low space semaphore may be signaled here
         # Process inputs

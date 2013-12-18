@@ -1017,7 +1017,9 @@ SECONDS_CLOCK = 137
 @expose_primitive(MILLISECOND_CLOCK, unwrap_spec=[object])
 def func(interp, s_frame, w_arg):
     import time, math
-    return interp.space.wrap_int(int(math.fmod(time.time()*1000, constants.TAGGED_MAXINT/2)))
+    return interp.space.wrap_int(rarithmetic.intmask(
+        int(time.time()*1000) & (constants.TAGGED_MAXINT/2 - 1)
+    ))
 
 @expose_primitive(SIGNAL_AT_MILLISECONDS, unwrap_spec=[object, object, int])
 def func(interp, s_frame, w_delay, w_semaphore, timestamp):
