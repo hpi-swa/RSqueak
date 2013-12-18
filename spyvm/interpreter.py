@@ -5,7 +5,7 @@ from spyvm import model, constants, primitives, conftest, wrapper
 from spyvm.tool.bitmanipulation import splitter
 
 from rpython.rlib import jit
-from rpython.rlib import objectmodel, unroll, rarithmetic
+from rpython.rlib import objectmodel, unroll
 
 class MissingBytecode(Exception):
     """Bytecode not implemented yet."""
@@ -23,7 +23,9 @@ def get_printable_location(pc, self, method):
 
 
 class Interpreter(object):
-
+    _immutable_fields_ = ["space", "image", "image_name",
+                          "max_stack_depth", "interrupt_counter_size",
+                          "startup_time"]
     _w_last_active_context = None
     cnt = 0
     _last_indent = ""
@@ -36,9 +38,11 @@ class Interpreter(object):
 
     def __init__(self, space, image=None, image_name="", trace=False,
                 max_stack_depth=constants.MAX_LOOP_DEPTH):
+        import time
         self.space = space
         self.image = image
         self.image_name = image_name
+        self.startup_time = time.time()
         self.max_stack_depth = max_stack_depth
         self.remaining_stack_depth = max_stack_depth
         self._loop = False
@@ -176,16 +180,12 @@ class Interpreter(object):
 
     def check_for_interrupts(self, s_frame):
         # parallel to Interpreter>>#checkForInterrupts
-        import time, math
 
         # Profiling is skipped
         # We don't adjust the check counter size
 
         # use the same time value as the primitive MILLISECOND_CLOCK
-        now = rarithmetic.intmask(
-            int(time.time()*1000) & (constants.TAGGED_MAXINT/2 - 1)
-        )
-        # now = int(math.fmod(time.time()*1000, constants.TAGGED_MAXINT/2))
+        now = self.time_now()
 
         # XXX the low space semaphore may be signaled here
         # Process inputs
@@ -198,6 +198,11 @@ class Interpreter(object):
         # We have no finalization process, so far.
         # We do not support external semaphores.
             # In cog, the method to add such a semaphore is only called in GC.
+
+    def time_now(self):
+        import time
+        from rpython.rlib.rarithmetic import intmask
+        return intmask(int((time.time() - self.startup_time) * 1000) & constants.TAGGED_MASK)
 
     def padding(self, symbol=' '):
         return symbol * (self.max_stack_depth - self.remaining_stack_depth)
