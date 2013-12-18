@@ -23,39 +23,29 @@ class TestBasic(BaseJITTest):
         jump(p0, p3, i61, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, i64, descr=TargetToken(169145008))
         """)
         self.assert_matches(traces[0].bridges[0], """
-        i18 = getfield_gc(ConstPtr(ptr17), descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_counter_size 20>),
-        f20 = call(ConstClass(ll_time.ll_time_time), descr=<Callf 8 EF=4>),
-        setfield_gc(ConstPtr(ptr17), i18, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 16>),
-        guard_no_exception(descr=<Guard0x9d3ee5c>),
-        f22 = float_mul(f20, 1000.000000),
-        call(ConstClass(set_errno), 0, descr=<Callv 0 i EF=2>),
-        f27 = call(ConstClass(fmod), f22, 536870911.000000, descr=<Callf 8 ff EF=2>),
-        i29 = call(ConstClass(get_errno), descr=<Calli 4 EF=2>),
-        i30 = float_ne(f27, f27),
-        guard_false(i30, descr=<Guard0x9d6ce20>),
-        i31 = int_is_true(i29),
-        guard_false(i31, descr=<Guard0x9d6cde4>),
-        i32 = cast_float_to_int(f27),
-        i33 = getfield_gc(ConstPtr(ptr17), descr=<FieldS spyvm.interpreter.Interpreter.inst_next_wakeup_tick 28>),
-        i34 = int_is_zero(i33),
-        guard_true(i34, descr=<Guard0x9d6cda8>),
-        i35 = same_as(i18),
-        label(p0, p1, i16, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, i35, descr=TargetToken(164815776)),
-        guard_class(p0, ConstClass(MethodContextShadow), descr=<Guard0x9d6cd6c>),
-        p37 = getfield_gc(p0, descr=<FieldP spyvm.shadow.MethodContextShadow.inst__w_method 44>),
-        guard_value(p37, ConstPtr(ptr38), descr=<Guard0x9d6cd30>),
-        guard_not_invalidated(descr=<Guard0x9d6ccf4>),
-        i40 = int_le(i16, 1000000000),
-        guard_true(i40, descr=<Guard0x9d6ccb8>),
-        i42 = int_add(i16, 1),
-        i44 = int_sub(i42, -1073741824),
-        i46 = uint_lt(i44, -2147483648),
-        guard_true(i46, descr=<Guard0x9d6cc7c>),
-        i48 = int_sub(i35, 1),
-        setfield_gc(ConstPtr(ptr17), i48, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 16>),
-        i50 = int_le(i48, 0),
-        guard_false(i50, descr=<Guard0x9d6cc40>),
-        jump(p0, p1, i42, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, i48, descr=TargetToken(164815536))
+        f18 = call(ConstClass(ll_time.ll_time_time), descr=<Callf 8 EF=4>)
+        setfield_gc(ConstPtr(ptr19), 10000, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
+        guard_no_exception(descr=<Guard0x9732d30>)
+        f22 = float_sub(f18, 1387380038.806162)
+        f24 = float_mul(f22, 1000.000000)
+        i25 = cast_float_to_int(f24)
+        i27 = int_and(i25, 2147483647)
+        i28 = getfield_gc(ConstPtr(ptr19), descr=<FieldS spyvm.interpreter.Interpreter.inst_next_wakeup_tick 36>)
+        i29 = int_is_zero(i28)
+        guard_true(i29, descr=<Guard0x9761ad8>)
+        label(p0, p1, i16, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, descr=TargetToken(158475216))
+        guard_class(p0, ConstClass(MethodContextShadow), descr=<Guard0x9761a9c>)
+        p31 = getfield_gc(p0, descr=<FieldP spyvm.shadow.MethodContextShadow.inst__w_method 44>)
+        guard_value(p31, ConstPtr(ptr32), descr=<Guard0x9761a60>)
+        guard_not_invalidated(descr=<Guard0x9761a24>)
+        i34 = int_le(i16, 1000000000)
+        guard_true(i34, descr=<Guard0x97619e8>)
+        i36 = int_add(i16, 1)
+        i38 = int_sub(i36, -1073741824)
+        i40 = uint_lt(i38, -2147483648)
+        guard_true(i40, descr=<Guard0x97619ac>)
+        setfield_gc(ConstPtr(ptr19), 9999, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
+        jump(p0, p1, i36, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, 9999, descr=TargetToken(158474976))
         """)
 
     def test_constant_string(self, spy, tmpdir):
