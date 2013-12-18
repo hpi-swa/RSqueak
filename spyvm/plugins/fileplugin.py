@@ -40,7 +40,10 @@ def primitiveDirectoryLookup(interp, s_frame, w_file_directory, full_path, index
         file_path = os.path.join(full_path, py_name)
     except OSError:
         raise PrimitiveFailedError
-    file_info = os.stat(file_path)
+    try:
+        file_info = os.stat(file_path)
+    except OSError:
+        raise PrimitiveFailedError
 
     w_name = space.wrap_string(py_name)
     w_creationTime = smalltalk_timestamp(space, file_info.st_ctime)
