@@ -61,6 +61,25 @@ def _run_image(interp):
     except error.Exit, e:
         print e.msg
 
+def _run_code(interp, code):
+    import time
+    selector = "codeTest%d" % int(time.time())
+    try:
+        w_result = interp.perform(
+            interp.space.w_SmallInteger,
+            "compile:classified:notifying:",
+            space.wrap_string("%s\r\n%s" % (selector, code)),
+            space.wrap_string("spy-run-code"),
+            space.w_nil
+        )
+    except interpreter.ReturnFromTopLevel, e:
+        print e.object
+        return 1
+    except error.Exit, e:
+        print e.msg
+        return 1
+    return _run_benchmark(interp, 0, selector, "")
+
 
 space = objspace.ObjSpace()
 
@@ -86,6 +105,7 @@ def _usage(argv):
           -n|--number [smallint, default: 0]
           -m|--method [benchmark on smallint]
           -a|--arg [string argument to #method]
+          -r|--run [shell escaped code string]
           [image path, default: Squeak.image]
     """ % argv[0]
 
@@ -102,6 +122,7 @@ def entry_point(argv):
     benchmark = None
     trace = False
     stringarg = ""
+    code = None
 
     while idx < len(argv):
         arg = argv[idx]
@@ -126,6 +147,10 @@ def entry_point(argv):
         elif arg in ["-a", "--arg"]:
             _arg_missing(argv, idx, arg)
             stringarg = argv[idx + 1]
+            idx += 1
+        elif arg in ["-r", "--run"]:
+            _arg_missing(argv, idx, arg)
+            code = argv[idx + 1]
             idx += 1
         elif path is None:
             path = argv[idx]
@@ -154,6 +179,8 @@ def entry_point(argv):
     space.runtime_setup(argv[0])
     if benchmark is not None:
         return _run_benchmark(interp, number, benchmark, stringarg)
+    elif code is not None:
+        return _run_code(interp, code)
     else:
         _run_image(interp)
         return 0
