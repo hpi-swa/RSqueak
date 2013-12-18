@@ -1,8 +1,12 @@
 syntax: glob
 *.py[co]
 *~
-pypy-c-jit-62116-b027d4428675-linux
+pypy-c-jit-*
 images/Squeak*
+images/resources*
+*package-cache/
+Squeak*
+*TAGS
 targetimageloadingsmalltalk-*c
 images/package-cache
 versions
