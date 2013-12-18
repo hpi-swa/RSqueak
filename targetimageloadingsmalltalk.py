@@ -7,10 +7,8 @@ from rpython.rlib import jit
 from spyvm import model, interpreter, squeakimage, objspace, wrapper,\
     error, shadow
 from spyvm.tool.analyseimage import create_image
-from spyvm.interpreter_proxy import VirtualMachine
 
-
-def _run_benchmark(interp, number, benchmark, arg):
+def _run_benchmark(interp, number, benchmark, arg, use_stm):
     from spyvm.plugins.vmdebugging import stop_ui_process
     stop_ui_process()
 
@@ -86,6 +84,7 @@ def _usage(argv):
           -n|--number [smallint, default: 0]
           -m|--method [benchmark on smallint]
           -a|--arg [string argument to #method]
+          --stm
           [image path, default: Squeak.image]
     """ % argv[0]
 
@@ -101,6 +100,7 @@ def entry_point(argv):
     number = 0
     benchmark = None
     trace = False
+    use_stm = False
     stringarg = ""
 
     while idx < len(argv):
@@ -127,6 +127,8 @@ def entry_point(argv):
             _arg_missing(argv, idx, arg)
             stringarg = argv[idx + 1]
             idx += 1
+        elif arg in ["--stm"]:
+            use_stm = True
         elif path is None:
             path = argv[idx]
         else:
@@ -153,21 +155,22 @@ def entry_point(argv):
     interp = interpreter.Interpreter(space, image, image_name=path, trace=trace)
     space.runtime_setup(argv[0])
     if benchmark is not None:
-        return _run_benchmark(interp, number, benchmark, stringarg)
+        print "Running Benchmark"
+        return _run_benchmark(interp, number, benchmark, stringarg, use_stm)
     else:
+        print "Running Image"
         _run_image(interp)
         return 0
 
 # _____ Define and setup target ___
 
-
 def target(driver, *args):
-    # driver.config.translation.gc = "stmgc"
-    # driver.config.translation.gcrootfinder = "stm"
     from rpython.rlib import rgc
+    driver.exe_name = 'rsqueak'
     if hasattr(rgc, "stm_is_enabled"):
         driver.config.translation.stm = True
         driver.config.translation.thread = True
+
     return entry_point, None
 
 

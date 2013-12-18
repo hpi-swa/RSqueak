@@ -6,6 +6,11 @@ from spyvm.tool.bitmanipulation import splitter
 
 from rpython.rlib import jit
 from rpython.rlib import objectmodel, unroll
+try:
+    from rpython.rlib import rstm
+except:
+    pass
+from rpython.rlib import rthread
 
 class MissingBytecode(Exception):
     """Bytecode not implemented yet."""
@@ -20,6 +25,61 @@ def get_printable_location(pc, self, method):
     bc = ord(method.bytecode[pc])
     name = method._w_self._likely_methodname
     return '%d: [%s]%s (%s)' % (pc, hex(bc), BYTECODE_NAMES[bc], name)
+
+
+
+class Bootstrapper(object):
+    """
+    Bootstrapper bootstrapping interpreters in some native thread.
+    It uses lock-guarded global state, as rpython does not pass arguments
+    to OS threads.
+    """
+
+    def __init__(self):
+        #self.lock = rthread.allocate_lock()
+
+        # critical values, only modify under lock:
+        self.interp = None
+        self.w_frame = None
+        self.num_threads = 0
+
+    # wait for previous thread to start, then set global state
+    def acquire(interp, w_frame):
+        #bootstrapper.lock.acquire(True)
+        bootstrapper.interp = interp
+        bootstrapper.w_frame = w_frame
+
+    acquire = staticmethod(acquire)
+
+    # lock is released once the new thread started
+    def release():
+        bootstrapper.interp = None
+        bootstrapper.w_frame = None
+        #bootstrapper.lock.release()
+
+    release = staticmethod(release)
+
+    # HUGE RACE CONDITON!!!
+    def bootstrap():
+        print "New thread reporting"
+        #rthread.gc_thread_start()
+        interp = bootstrapper.interp
+        w_frame = bootstrapper.w_frame
+        assert isinstance(interp, Interpreter)
+        assert isinstance(w_frame, model.W_PointersObject)
+        bootstrapper.num_threads += 1
+        bootstrapper.release()
+
+        # ...aaaaand go!
+        interp.interpret_with_w_frame(w_frame)
+
+        # cleanup
+        bootstrapper.num_threads -= 1
+        #rthread.gc_thread_die()
+
+    bootstrap = staticmethod(bootstrap)
+
+bootstrapper = Bootstrapper()
 
 
 class Interpreter(object):
@@ -43,16 +103,39 @@ class Interpreter(object):
         self.remaining_stack_depth = max_stack_depth
         self._loop = False
         self.next_wakeup_tick = 0
-        try:
-            self.interrupt_counter_size = int(os.environ["SPY_ICS"])
-        except KeyError:
-            self.interrupt_counter_size = constants.INTERRUPT_COUNTER_SIZE
+        self.interrupt_counter_size = constants.INTERRUPT_COUNTER_SIZE
         self.interrupt_check_counter = self.interrupt_counter_size
         # ######################################################################
         self.trace = trace
         self.trace_proxy = False
 
+    def fork(self, w_frame):
+
+        # clone interpreter (maybe implement a lightweight abstraction
+        # for an executor)
+        new_interp = Interpreter(
+            self.space,
+            self.image,
+            self.image_name,
+            self.trace,
+            self.max_stack_depth)
+        new_interp.remaining_stack_depth = self.remaining_stack_depth
+        new_interp._loop = self._loop
+        new_interp.next_wakeup_tick = self.next_wakeup_tick
+        new_interp.interrupt_check_counter = self.interrupt_check_counter
+        new_interp.trace_proxy = self.trace_proxy
+
+        print 'Interpreter state copied'
+
+        # bootstrapping from (lock-guarded) global state:
+        bootstrapper.acquire(new_interp, w_frame)
+        print "Thread initialized"
+        # TODO: Deadlocks if the thread before died without calling bootstrapper.release()
+        rthread.start_new_thread(bootstrapper.bootstrap, ())
+        print "Parent interpreter resuming"
+
     def interpret_with_w_frame(self, w_frame):
+        print "Interpreter starting"
         try:
             self.loop(w_frame)
         except ReturnFromTopLevel, e:
@@ -70,7 +153,7 @@ class Interpreter(object):
         self._loop = True
         s_new_context = w_active_context.as_context_get_shadow(self.space)
         while True:
-            assert self.remaining_stack_depth == self.max_stack_depth
+            #assert self.remaining_stack_depth == self.max_stack_depth
             # Need to save s_sender, c_loop will nil this on return
             s_sender = s_new_context.s_sender()
             try:
@@ -91,8 +174,12 @@ class Interpreter(object):
                     print "====== Switch from: %s to: %s ======" % (s_new_context.short_str(), p.s_new_context.short_str())
                 s_new_context = p.s_new_context
 
+
     def c_loop(self, s_context, may_context_switch=True):
+        #rstm.should_break_transaction()
         old_pc = 0
+        last_breakpoint = 0
+
         if not jit.we_are_jitted() and may_context_switch:
             self.quick_check_for_interrupt(s_context)
         method = s_context.s_method()
@@ -110,6 +197,7 @@ class Interpreter(object):
                 pc=pc, self=self, method=method,
                 s_context=s_context)
             try:
+                last_breakpoint += 1
                 self.step(s_context)
             except Return, nlr:
                 if nlr.s_target_context is not s_context:
@@ -119,6 +207,16 @@ class Interpreter(object):
                     raise nlr
                 else:
                     s_context.push(nlr.value)
+
+            # gonna go parallel! (triggered by primitive)
+            except StmProcessFork, f:
+                print "Interpreter loop about to fork"
+                self.fork(f.w_frame)
+
+            if last_breakpoint >= 1000:
+                rstm.jit_stm_transaction_break_point(True)
+                last_breakpoint = 0
+
 
     def _get_adapted_tick_counter(self):
         # Normally, the tick counter is decremented by 1 for every message send.
@@ -219,6 +317,12 @@ class ProcessSwitch(Exception):
     _attrs_ = ["s_new_context"]
     def __init__(self, s_context):
         self.s_new_context = s_context
+
+
+class StmProcessFork(Exception):
+    _attrs_ = ["w_frame"]
+    def __init__(self, w_frame):
+        self.w_frame = w_frame
 
 
 def make_call_primitive_bytecode(primitive, selector, argcount):
