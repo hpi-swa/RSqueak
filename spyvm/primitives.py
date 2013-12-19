@@ -649,7 +649,7 @@ def func(interp, s_frame, w_rcvr):
     if (combinationRule == 22 or combinationRule == 32):
         s_frame.pop() # pops the next value under BitBlt
         s_frame.push(s_bitblt.bitCount())
-    else if w_dest_form.is_same_object(space.objtable['w_display']):
+    elif w_dest_form.is_same_object(space.objtable['w_display']):
         w_bitmap = w_dest_form.fetch(space, 0)
         assert isinstance(w_bitmap, model.W_DisplayBitmap)
         w_bitmap.flush_to_screen()
