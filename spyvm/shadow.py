@@ -1128,111 +1128,117 @@ class ObserveeShadow(AbstractShadow):
 
 
 class BitBltShadow(AbstractCachingShadow):
-    _attrs_ = [# From BitBlt
-               "dest_form", "source_form", "halftone_form",
-               "combination_rule", "dest_x", "dest_y", "width",
-               "height", "source_x", "source_y", "clip_x", "clip_y",
-               "clip_width", "clip_height", "color_map",
-               # From BitBltSimulation
-               "w", "h", "sx", "sy", "dx", "dy",
-               "dest_bits", "dest_raster", "source_bits", "source_raster",
-               "halftone_bits", "skew", "mask1", "mask2", "skew_mask",
-               "n_words", "h_dir", "v_dir", "preload", "source_index",
-               "dest_index", "source_delta", "dest_delta"]
-
     WordSize = 32
-    RightMasks = [rarithmetic.r_uint(0)]
+    MaskTable = [rarithmetic.r_uint(0)]
     for i in xrange(WordSize):
-        RightMasks.append(rarithmetic.r_uint((2 ** (i + 1)) - 1))
+        MaskTable.append(rarithmetic.r_uint((2 ** (i + 1)) - 1))
     AllOnes = rarithmetic.r_uint((2 ** WordSize) - 1)
 
     def sync_cache(self):
+        self.loadBitBlt()
+
+    def intOrIfNil(self, w_int, i):
+        if w_int is self.space.w_nil:
+            return i
+        else:
+            return self.space.unwrap_int(w_int)
+
+    def loadForm(self, w_form):
         try:
-            w_form = self.fetch(0)
-            assert isinstance(w_form, model.W_PointersObject)
+            if not isinstance(w_form, model.W_PointersObject):
+                raise PrimitiveFailedError()
             s_form = w_form.as_form_get_shadow(self.space)
-            assert isinstance(s_form, FormShadow)
-            self.dest_form = s_form
+            if not isinstance(s_form, FormShadow):
+                raise PrimitiveFailedError()
+            return s_form
         except error.PrimitiveFailedError, e:
             w_self = self.w_self()
             assert isinstance(w_self, model.W_PointersObject)
             w_self._shadow = None
             raise e
-        w_source_form = self.fetch(1)
-        if w_source_form is self.space.w_nil:
-            self.source_form = None
-        else:
-            try:
-                w_form = w_source_form
-                assert isinstance(w_form, model.W_PointersObject)
-                s_form = w_form.as_form_get_shadow(self.space)
-                assert isinstance(s_form, FormShadow)
-                self.source_form = s_form
-            except error.PrimitiveFailedError, e:
-                w_self = self.w_self()
-                assert isinstance(w_self, model.W_PointersObject)
-                w_self._shadow = None
-                raise e
-        w_halftone_form = self.fetch(2)
-        if w_halftone_form is not self.space.w_nil:
-            if isinstance(w_halftone_form, model.W_WordsObject):
-                # Already a bitmap
-                self.halftone_bits = w_halftone_form.words
-            else:
-                assert isinstance(w_halftone_form, model.W_PointersObject)
-                w_bits = w_halftone_form.as_form_get_shadow(self.space).w_bits
-                assert isinstance(w_bits, model.W_WordsObject)
-                self.halftone_bits = w_bits.words
-        else:
-            self.halftone_bits = None
-        self.combination_rule = self.space.unwrap_int(self.fetch(3))
-        self.dest_x = self.space.unwrap_int(self.fetch(4))
-        self.dest_y = self.space.unwrap_int(self.fetch(5))
-        self.width = self.space.unwrap_int(self.fetch(6))
-        self.height = self.space.unwrap_int(self.fetch(7))
-        self.source_x = self.space.unwrap_int(self.fetch(8))
-        self.source_y = self.space.unwrap_int(self.fetch(9))
-        self.clip_x = self.space.unwrap_int(self.fetch(10))
-        self.clip_y = self.space.unwrap_int(self.fetch(11))
-        self.clip_width = self.space.unwrap_int(self.fetch(12))
-        self.clip_height = self.space.unwrap_int(self.fetch(13))
-        self.color_map = self.fetch(14)
 
-    def clip_range(self):
-        if self.dest_x >= self.clip_x:
-            self.sx = self.source_x
-            self.dx = self.dest_x
-            self.w = self.width
+    def loadHalftone(self, w_halftone_form):
+        if w_halftone_form is self.space.w_nil:
+            return None
+        elif isinstance(w_halftone_form, model.W_WordsObject):
+            # Already a bitmap
+            return w_halftone_form.words
         else:
-            self.sx = self.source_x + (self.clip_x - self.dest_x)
-            self.w = self.width - (self.clip_x - self.dest_x)
-            self.dx = self.clip_x
-        if self.dx + self.w > self.clip_x + self.clip_width:
-            self.w = self.w - (self.dx + self.w - (self.clip_x + self.clip_width))
-        if self.dest_y >= self.clip_y:
-            self.sy = self.source_y
-            self.dy = self.dest_y
-            self.h = self.height
+            assert isinstance(w_halftone_form, model.W_PointersObject)
+            w_bits = w_halftone_form.as_form_get_shadow(self.space).w_bits
+            assert isinstance(w_bits, model.W_WordsObject)
+            return w_bits.words
+
+    def loadColorMap(self, w_color_map):
+        if isinstance(w_color_map, model.W_WordsObject):
+            self.cmLookupTable = w_color_map.words
+            self.cmMask = len(self.cmLookupTable) - 1
         else:
-            self.sy = self.source_y + self.clip_y - self.dest_y
-            self.h = self.height - self.clip_y - self.dest_y
-            self.dy = self.clip_y
-        if self.dy + self.h > self.clip_y + self.clip_height:
-            self.h = self.h - (self.dy + self.h - (self.clip_y + self.clip_height))
-        if self.source_form is None:
+            self.cmLookupTable = None
+
+    def loadBitBlt(self):
+        self.success = True
+        self.destForm = self.fetch(0)
+        self.dest = self.loadForm(self.destForm)
+        self.sourceForm = self.fetch(1)
+        if self.sourceForm is not self.space.w_nil:
+            self.source = self.loadForm(self.sourceForm)
+        else:
+            self.source = None
+        self.halftone = self.loadHalftone(self.fetch(2))
+        self.combinationRule = self.space.unwrap_int(self.fetch(3))
+        self.destX = self.intOrIfNil(self.fetch(4), 0)
+        self.destY = self.intOrIfNil(self.fetch(5), 0)
+        self.width = self.intOrIfNil(self.fetch(6), self.dest_form.width)
+        self.height = self.intOrIfNil(self.fetch(7), self.dest_form.height)
+        self.clipX = self.intOrIfNil(self.fetch(10), 0)
+        self.clipY = self.intOrIfNil(self.fetch(11), 0)
+        self.clipW = self.intOrIfNil(self.fetch(12), self.width)
+        self.clipH = self.intOrIfNil(self.fetch(13), self.height)
+        if not self.source:
+            self.sourceX = 0
+            self.sourceY = 0
+        else:
+            self.loadColorMap(self.fetch(14))
+            self.sourceX = self.intOrIfNil(self.fetch(8), 0)
+            self.sourceY = self.intOrIfNil(self.fetch(9), 0)
+
+    def copyBits(self):
+        self.bitCount = 0
+        self.clipRange()
+        if (self.bbW <= 0 ir self.bbH <= 0):
             return
-        if self.sx < 0:
-            self.dx = self.dx - self.sx
-            self.w = self.w + self.sx
-            self.sx = 0
-        if self.sx + self.w > self.source_form.width:
-            self.w = self.w - (self.sx + self.w - self.source_form.width)
-        if self.sy < 0:
-            self.dy = self.dy - self.sy
-            self.h = self.h + self.sy
-            self.sy = 0
-        if self.sy + self.h > self.source_form.height:
-            self.h = self.h - (self.sy + self.h - self.source_form.height)
+        self.destMaskAndPointerInit()
+        if not self.source:
+            self.copyLoopNoSource()
+        else:
+            self.checkSourceOverlap()
+            if self.source.depth !== self.dest.depth:
+                self.copyLoopPixMap()
+            else:
+                self.sourceSkewAndPointerInit()
+                self.copyLoop()
+
+    def clipRange(self):
+        # intersect with destForm bounds
+        if self.clipX < 0:
+            self.clipW += self.clipX
+            self.clipX = 0
+        if self.clipY < 0:
+            self.clipH += self.clipY
+            self.clipY = 0
+        if self.clipX + self.clipW > self.dest.width:
+            self.clipW = self.dest.width - self.clipX
+        if self.clipY + self.clipH > self.dest.height:
+            self.clipH = self.dest.height - self.clipY
+
+        # intersect with clipRect
+        leftOffset = max(self.clipY - self.destY, 0)
+        self.sx = self.sourceX + leftOffset
+        self.dx = self.destX + leftOffset
+        self.bbW = self.width - leftOffset
+        rightOffset =
+
 
     def compute_masks(self):
         self.dest_bits = self.dest_form.w_bits
