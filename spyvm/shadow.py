@@ -1132,7 +1132,7 @@ class BitBltShadow(AbstractCachingShadow):
     MaskTable = [rarithmetic.r_uint(0)]
     for i in xrange(WordSize):
         MaskTable.append(rarithmetic.r_uint((2 ** (i + 1)) - 1))
-    AllOnes = rarithmetic.r_uint((2 ** WordSize) - 1)
+    AllOnes = rarithmetic.r_uint(0xFFFFFFFF)
 
     def sync_cache(self):
         self.loadBitBlt()
@@ -1146,10 +1146,10 @@ class BitBltShadow(AbstractCachingShadow):
     def loadForm(self, w_form):
         try:
             if not isinstance(w_form, model.W_PointersObject):
-                raise PrimitiveFailedError()
+                raise error.PrimitiveFailedError()
             s_form = w_form.as_form_get_shadow(self.space)
             if not isinstance(s_form, FormShadow):
-                raise PrimitiveFailedError()
+                raise error.PrimitiveFailedError()
             return s_form
         except error.PrimitiveFailedError, e:
             w_self = self.w_self()
@@ -1171,10 +1171,10 @@ class BitBltShadow(AbstractCachingShadow):
 
     def loadColorMap(self, w_color_map):
         if isinstance(w_color_map, model.W_WordsObject):
-            self.cmLookupTable = w_color_map.words
-            self.cmMask = len(self.cmLookupTable) - 1
+            self.w_cmLookupTable = w_color_map
+            self.cmMask = self.w_cmLookupTable.size() - 1
         else:
-            self.cmLookupTable = None
+            self.w_cmLookupTable = None
 
     def loadBitBlt(self):
         self.success = True
@@ -1316,18 +1316,19 @@ class BitBltShadow(AbstractCachingShadow):
             self.bbH -= (self.sy + self.bbH) - self.source.height
 
     def rshift(self, val, n):
-        return rarithmetic.intmask(val >> n if val >= 0 else (val + 0x100000000) >> n)
+        # return rarithmetic.r_uint(val >> n if val >= 0 else (val + 0x100000000) >> n)
+        return rarithmetic.r_uint(rarithmetic.r_uint(val) >> n & BitBltShadow.AllOnes)
 
     def destMaskAndPointerInit(self):
         pixPerM1 = self.dest.pixPerWord - 1 # pixPerWord is power-of-two, so this makes a mask
         startBits = self.dest.pixPerWord - (self.dx & pixPerM1) # how many px in 1st word
         endBits = (((self.dx + self.bbW) - 1) & pixPerM1) + 1
         if self.dest.msb:
-            self.mask1 = self.rshift(0xFFFFFFFF, (32 - (startBits * self.dest.depth)))
-            self.mask2 = 0xFFFFFFFF << (32 - (endBits * self.dest.depth))
+            self.mask1 = self.rshift(BitBltShadow.AllOnes, (32 - (startBits * self.dest.depth)))
+            self.mask2 = BitBltShadow.AllOnes << (32 - (endBits * self.dest.depth))
         else:
-            self.mask1 = 0xFFFFFFFF << (32 - (startBits * self.dest.depth))
-            self.mask2 = self.rshift(0xFFFFFFFF, (32 - (endBits * self.dest.depth)))
+            self.mask1 = BitBltShadow.AllOnes << (32 - (startBits * self.dest.depth))
+            self.mask2 = self.rshift(BitBltShadow.AllOnes, (32 - (endBits * self.dest.depth)))
         if self.bbW < startBits:
             self.mask1 = self.mask1 & self.mask2
             self.mask2 = 0
@@ -1340,10 +1341,10 @@ class BitBltShadow(AbstractCachingShadow):
         self.destDelta = (self.dest.pitch * self.vDir) - (self.nWords * self.hDir)
 
     def copyLoopNoSource(self):
-        halftoneWord = 0xFFFFFFFF
+        halftoneWord = BitBltShadow.AllOnes
         for i in range(self.bbH):
             if self.halftone:
-                halftoneWord = self.halftone[(self.dy + i) % len(self.halftone)]
+                halftoneWord = rarithmetic.r_uint(self.halftone[(self.dy + i) % len(self.halftone)])
             # first word in row is masked
             destMask = self.mask1
             destWord = self.dest.w_bits.getword(self.destIndex)
@@ -1351,7 +1352,7 @@ class BitBltShadow(AbstractCachingShadow):
             destWord = (destMask & mergeWord) | (destWord & (~destMask))
             self.dest.w_bits.setword(self.destIndex, destWord)
             self.destIndex += 1
-            destMask = 0xFFFFFFFF
+            destMask = BitBltShadow.AllOnes
             # the central horizontal loop requires no store masking
             if self.combinationRule == 3: # store rule requires no dest merging
                 for word in range(2, self.nWords):
@@ -1385,8 +1386,8 @@ class BitBltShadow(AbstractCachingShadow):
         # The loop has been rewritten to use only one pickSourcePixels call.
         # The idea is that the call itself could be inlined. If we decide not
         # to inline pickSourcePixels we could optimize the loop instead.
-        sourcePixMask = BitBltShadow.MaskTable[this.source.depth]
-        destPixMask = BitBltShadow.MaskTable[this.dest.depth]
+        sourcePixMask = BitBltShadow.MaskTable[self.source.depth]
+        destPixMask = BitBltShadow.MaskTable[self.dest.depth]
         self.sourceIndex = (self.sy * self.source.pitch) + (self.sx / self.source.pixPerWord | 0)
         scrStartBits = self.source.pixPerWord - (self.sx & (self.source.pixPerWord - 1))
         if self.bbW < scrStartBits:
@@ -1415,9 +1416,9 @@ class BitBltShadow(AbstractCachingShadow):
 
         for i in range(self.bbH):
             if self.halftone:
-                halftoneWord = self.halftone[(self.dy + i) % self.halftone.length]
+                halftoneWord = rarithmetic.r_uint(self.halftone[(self.dy + i) % len(self.halftone)])
             else:
-                halftoneWord = 0xFFFFFFFF
+                halftoneWord = BitBltShadow.AllOnes
             self.srcBitShift = srcShift
             self.dstBitShift = dstShift
             self.destMask = self.mask1
@@ -1428,7 +1429,7 @@ class BitBltShadow(AbstractCachingShadow):
                 skewWord = self.pickSourcePixels(nPix, sourcePixMask, destPixMask, srcShiftInc, dstShiftInc)
                 # align next word to leftmost pixel
                 self.dstBitShift = dstShiftLeft
-                if self.destMask == 0xFFFFFFFF: # avoid read-modify-write
+                if self.destMask == BitBltShadow.AllOnes: # avoid read-modify-write
                     self.dest.w_bits.setword(
                         self.destIndex,
                         self.mergeFn(skewWord & halftoneWord, self.dest.w_bits.getword(self.destIndex))
@@ -1444,7 +1445,7 @@ class BitBltShadow(AbstractCachingShadow):
                     self.destMask = self.mask2
                     nPix = endBits
                 else: # use fullword mask for inner loop
-                    self.destMask = 0xFFFFFFFF
+                    self.destMask = BitBltShadow.AllOnes
                     nPix = self.dest.pixPerWord
             self.sourceIndex += self.sourceDelta
             self.destIndex += self.destDelta
@@ -1452,22 +1453,22 @@ class BitBltShadow(AbstractCachingShadow):
     def pickSourcePixels(self, nPixels, srcMask, dstMask, srcShiftInc, dstShiftInc):
         # Pick nPix pixels starting at srcBitIndex from the source, map by the
         # color map, and justify them according to dstBitIndex in the resulting destWord.
-        sourceWord = self.source.w_bits.getword(self.sourceIndex)
+        sourceWord = rarithmetic.r_uint(self.source.w_bits.getword(self.sourceIndex))
         destWord = 0
         srcShift = self.srcBitShift # put into temp for speed
         dstShift = self.dstBitShift
         nPix = nPixels
         # always > 0 so we can use do { } while(--nPix);
-        if (self.cmLookupTable): # a little optimization for (pretty crucial) blits using indexed lookups only
+        if (self.w_cmLookupTable): # a little optimization for (pretty crucial) blits using indexed lookups only
             for px in range(nPix + 1):
-                sourcePix = self.rshift(sourceWord, srcShift) & srcMask
-                destPix = self.cmLookupTable[sourcePix & self.cmMask]
+                sourcePix = self.rshift(rarithmetic.r_uint(sourceWord), srcShift) & srcMask
+                destPix = self.w_cmLookupTable.getword(rarithmetic.intmask(sourcePix & self.cmMask))
                 # adjust dest pix index
                 destWord = destWord | ((destPix & dstMask) << dstShift)
                 # adjust source pix index
                 dstShift += dstShiftInc
                 srcShift += srcShiftInc
-                if srcShift & 0xFFFFFFE0:
+                if srcShift & rarithmetic.r_uint(0xFFFFFFE0):
                     if (self.source.msb):
                         srcShift += 32
                     else:
@@ -1475,17 +1476,17 @@ class BitBltShadow(AbstractCachingShadow):
                     self.sourceIndex += 1
                     sourceWord = self.source.w_bits.getword(self.sourceIndex)
         else:
-            raise PrimitiveFailedError()
+            raise error.PrimitiveFailedError()
         self.srcBitShift = srcShift # Store back
         return destWord
 
     def rotate32bit(self, thisWord, prevWord, skewMask, notSkewMask, unskew):
         if unskew < 0:
-            rotated = self.rshift(prevWord & notSkewMask, -unskew)
+            rotated = self.rshift(rarithmetic.r_uint(prevWord & notSkewMask), -unskew)
         else:
             rotated = (prevWord & notSkewMask) << unskew
         if self.skew < 0:
-            rotated = rotated | self.rshift(thisWord & skewMask, -self.skew)
+            rotated = rotated | self.rshift(rarithmetic.r_uint(thisWord & skewMask), -self.skew)
         else:
             rotated = rotated | (thisWord & skewMask) << self.skew
         return rotated
@@ -1495,49 +1496,46 @@ class BitBltShadow(AbstractCachingShadow):
         sourceLimit = self.source.w_bits.size()
         hInc = self.hDir
         # init skew (the difference in word alignment of source and dest)
-        unskew = 0
-        skewMask = 0
         if (self.skew == -32):
-            self.skew = unskew = skewMask = 0
+            self.skew = unskew = 0
+            skewMask = rarithmetic.r_uint(0)
         else:
             if (self.skew < 0):
                 unskew = self.skew + 32
-                skewMask = 0xFFFFFFFF << -self.skew
+                skewMask = rarithmetic.r_uint(BitBltShadow.AllOnes << -self.skew)
             else:
                 if (self.skew == 0):
                     unskew = 0
-                    skewMask = 0xFFFFFFFF
+                    skewMask = BitBltShadow.AllOnes
                 else:
                     unskew = self.skew - 32
-                    skewMask = self.rshift(0xFFFFFFFF, self.skew)
-        notSkewMask = ~skewMask
+                    skewMask = self.rshift(BitBltShadow.AllOnes, self.skew)
+        notSkewMask = rarithmetic.r_uint(~skewMask)
 
         # init halftones
-        halftoneWord = 0
-        halftoneHeight = 0
         if (self.halftone):
-            halftoneWord = self.halftone[0]
+            halftoneWord = rarithmetic.r_uint(self.halftone[0])
             halftoneHeight = len(self.halftone)
         else:
-            halftoneWord = 0xFFFFFFFF
+            halftoneWord = BitBltShadow.AllOnes
             halftoneHeight = 0
 
         # now loop over all lines
         y = self.dy
         for i in range(1, self.bbH + 1):
             if (halftoneHeight > 1):
-                halftoneWord = self.halftone[y % halftoneHeight]
+                halftoneWord = rarithmetic.r_uint(self.halftone[y % halftoneHeight])
                 y += self.vDir
 
             if (self.preload):
-                prevWord = self.source.w_bits.getword(self.sourceIndex)
+                prevWord = rarithmetic.r_uint(self.source.w_bits.getword(self.sourceIndex))
                 self.sourceIndex += hInc
             else:
-                prevWord = 0
+                prevWord = rarithmetic.r_uint(0)
 
             destMask = self.mask1
             # pick up next word
-            thisWord = self.source.w_bits.getword(self.sourceIndex)
+            thisWord = rarithmetic.r_uint(self.source.w_bits.getword(self.sourceIndex))
             self.sourceIndex += hInc
             skewWord = self.rotate32bit(thisWord, prevWord, skewMask, notSkewMask, unskew)
             prevWord = thisWord
@@ -1547,9 +1545,9 @@ class BitBltShadow(AbstractCachingShadow):
             self.dest.w_bits.setword(self.destIndex, destWord)
             # The central horizontal loop requires no store masking
             self.destIndex += hInc
-            destMask = 0xFFFFFFFF
+            destMask = BitBltShadow.AllOnes
             if (self.combinationRule == 3): # Store mode avoids dest merge function
-                if ((self.skew == 0) and (halftoneWord == 0xFFFFFFFF)):
+                if ((self.skew == 0) and (halftoneWord == BitBltShadow.AllOnes)):
                     # Non-skewed with no halftone
                     if (self.hDir == -1):
                         for word in range(2, self.nWords):
@@ -1685,7 +1683,8 @@ class BitBltShadow(AbstractCachingShadow):
             # "n_words", "preload"
 
 class FormShadow(AbstractCachingShadow):
-    _attrs_ = ["w_bits", "width", "height", "depth", "offset_x", "offset_y"]
+    _attrs_ = ["w_bits", "width", "height", "depth", "offsetX",
+               "offsetY", "msb", "pixPerWord", "pitch"]
 
     def sync_cache(self):
         if self.size() < 5:
@@ -1703,12 +1702,12 @@ class FormShadow(AbstractCachingShadow):
         self.height = self.space.unwrap_int(self.fetch(2))
         self.depth = self.space.unwrap_int(self.fetch(3))
         if self.width < 0 or self.height < 0:
-            raise PrimitiveFailedError()
+            raise error.PrimitiveFailedError()
         self.msb = self.depth > 0
         if self.depth < 0:
             self.depth = -self.depth
         if self.depth == 0:
-            raise PrimitiveFailedError()
+            raise error.PrimitiveFailedError()
         w_offset = self.fetch(4)
         assert isinstance(w_offset, model.W_PointersObject)
         if not w_offset is self.space.w_nil:
@@ -1717,7 +1716,7 @@ class FormShadow(AbstractCachingShadow):
         self.pixPerWord = 32 / self.depth
         self.pitch = (self.width + (self.pixPerWord - 1)) / self.pixPerWord | 0
         if self.w_bits.size() != (self.pitch * self.height):
-            raise PrimitiveFailedError()
+            raise error.PrimitiveFailedError()
 
     # def replace_bits(self):
     #     w_bits = self.w_bits
