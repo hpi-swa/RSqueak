@@ -629,31 +629,10 @@ def func(interp, s_frame, w_rcvr):
 def func(interp, s_frame, w_rcvr, w_into):
     raise PrimitiveNotYetWrittenError()
 
-@expose_primitive(BITBLT_COPY_BITS, unwrap_spec=[object], clean_stack=False)
-def func(interp, s_frame, w_rcvr):
-    from spyvm.interpreter import Return
-    if not isinstance(w_rcvr, model.W_PointersObject) or w_rcvr.size() < 15:
-        raise PrimitiveFailedError
-
-    # only allow combinationRules 0-41
-    combinationRule = interp.space.unwrap_positive_32bit_int(w_rcvr.fetch(interp.space, 3))
-    if combinationRule > 41:
-        raise PrimitiveFailedError
-
-    space = interp.space
-
-    s_bitblt = w_rcvr.as_bitblt_get_shadow(space)
-    s_bitblt.copyBits()
-
-    w_dest_form = w_rcvr.fetch(space, 0)
-    if (combinationRule == 22 or combinationRule == 32):
-        s_frame.pop() # pops the next value under BitBlt
-        s_frame.push(interp.space.wrap_int(s_bitblt.bitCount))
-    elif w_dest_form.is_same_object(space.objtable['w_display']):
-        w_bitmap = w_dest_form.fetch(space, 0)
-        assert isinstance(w_bitmap, model.W_DisplayBitmap)
-        w_bitmap.flush_to_screen()
-    return w_rcvr
+@expose_primitive(BITBLT_COPY_BITS, clean_stack=False, no_result=True, compiled_method=True)
+def func(interp, s_frame, argcount, s_method):
+    from spyvm.plugins.bitblt import BitBltPlugin
+    return BitBltPlugin.call("primitiveCopyBits", interp, s_frame, argcount, s_method)
 
 @expose_primitive(BE_CURSOR)
 def func(interp, s_frame, argcount):
@@ -877,9 +856,10 @@ def func(interp, s_frame, argcount, s_method):
         raise PrimitiveFailedError
     signature = (w_modulename.as_string(), w_functionname.as_string())
 
-    if signature == ('BitBltPlugin', 'primitiveCopyBits'):
-        return prim_holder.prim_table[BITBLT_COPY_BITS](interp, s_frame, argcount, s_method)
-    if signature[0] == "SocketPlugin":
+    if signature == 'BitBltPlugin':
+        from spyvm.plugins.bitblt import BitBltPlugin
+        return BitBltPlugin.call(signature[1], interp, s_frame, argcount, s_method)
+    elif signature[0] == "SocketPlugin":
         from spyvm.plugins.socket import SocketPlugin
         return SocketPlugin.call(signature[1], interp, s_frame, argcount, s_method)
     elif signature[0] == "FilePlugin":
@@ -889,6 +869,7 @@ def func(interp, s_frame, argcount, s_method):
         from spyvm.plugins.vmdebugging import DebuggingPlugin
         return DebuggingPlugin.call(signature[1], interp, s_frame, argcount, s_method)
     else:
+        print signature
         from spyvm.interpreter_proxy import IProxy
         return IProxy.call(signature, interp, s_frame, argcount, s_method)
     raise PrimitiveFailedError
