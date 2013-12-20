@@ -1,4 +1,5 @@
-from spyvm import model, error
+from spyvm import model
+from spyvm.error import PrimitiveFailedError
 from spyvm.shadow import AbstractCachingShadow
 from spyvm.plugins.plugin import Plugin
 
@@ -55,12 +56,12 @@ class BitBltShadow(AbstractCachingShadow):
     def loadForm(self, w_form):
         try:
             if not isinstance(w_form, model.W_PointersObject):
-                raise error.PrimitiveFailedError()
+                raise PrimitiveFailedError()
             s_form = w_form.as_special_get_shadow(self.space, FormShadow)
             if not isinstance(s_form, FormShadow):
-                raise error.PrimitiveFailedError()
+                raise PrimitiveFailedError()
             return s_form
-        except error.PrimitiveFailedError, e:
+        except PrimitiveFailedError, e:
             w_self = self.w_self()
             assert isinstance(w_self, model.W_PointersObject)
             w_self._shadow = None
@@ -385,7 +386,7 @@ class BitBltShadow(AbstractCachingShadow):
                     self.sourceIndex += 1
                     sourceWord = self.source.w_bits.getword(self.sourceIndex)
         else:
-            raise error.PrimitiveFailedError()
+            raise PrimitiveFailedError()
         self.srcBitShift = srcShift # Store back
         return destWord
 
@@ -571,7 +572,7 @@ class BitBltShadow(AbstractCachingShadow):
         elif 26 < self.combinationRule <= 41:
             return dest_word
         else:
-            raise error.PrimitiveFailedError()
+            raise PrimitiveFailedError()
 
     def partitionedANDtonBitsnPartitions(self, word1, word2, nBits, nParts):
         # partition mask starts at the right
@@ -601,23 +602,23 @@ class FormShadow(AbstractCachingShadow):
             w_self = self.w_self()
             assert isinstance(w_self, model.W_PointersObject)
             w_self._shadow = None
-            raise error.PrimitiveFailedError
+            raise PrimitiveFailedError
         self.w_bits = self.fetch(0)
         if not (isinstance(self.w_bits, model.W_WordsObject) or isinstance(self.w_bits, model.W_DisplayBitmap)):
             w_self = self.w_self()
             assert isinstance(w_self, model.W_PointersObject)
             w_self._shadow = None
-            raise error.PrimitiveFailedError
+            raise PrimitiveFailedError
         self.width = self.space.unwrap_int(self.fetch(1))
         self.height = self.space.unwrap_int(self.fetch(2))
         self.depth = self.space.unwrap_int(self.fetch(3))
         if self.width < 0 or self.height < 0:
-            raise error.PrimitiveFailedError()
+            raise PrimitiveFailedError()
         self.msb = self.depth > 0
         if self.depth < 0:
             self.depth = -self.depth
         if self.depth == 0:
-            raise error.PrimitiveFailedError()
+            raise PrimitiveFailedError()
         w_offset = self.fetch(4)
         assert isinstance(w_offset, model.W_PointersObject)
         if not w_offset is self.space.w_nil:
@@ -626,4 +627,4 @@ class FormShadow(AbstractCachingShadow):
         self.pixPerWord = 32 / self.depth
         self.pitch = (self.width + (self.pixPerWord - 1)) / self.pixPerWord | 0
         if self.w_bits.size() != (self.pitch * self.height):
-            raise error.PrimitiveFailedError()
+            raise PrimitiveFailedError()
