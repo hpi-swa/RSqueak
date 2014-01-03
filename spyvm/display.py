@@ -34,14 +34,39 @@ class SDLDisplay(object):
         self.width = w
         self.height = h
         self.depth = d
-        self.screen = RSDL.SetVideoMode(w, h, 32, 0)
-        assert self.screen
+        flags = RSDL.HWPALETTE | RSDL.RESIZABLE | RSDL.ASYNCBLIT | RSDL.DOUBLEBUF
+        if d < 8:
+            d = 8
+        self.screen = RSDL.SetVideoMode(w, h, d, flags)
+        if not self.screen:
+            print "Could not open display at depth %d" % d
+            raise RuntimeError
+        elif d == 8:
+            self.set_squeak_colormap(self.screen)
 
     def get_pixelbuffer(self):
         return rffi.cast(rffi.ULONGP, self.screen.c_pixels)
 
     def flip(self):
         RSDL.Flip(self.screen)
+
+    def set_squeak_colormap(self, screen):
+        # TODO: fix this up from the image
+        colors = lltype.malloc(rffi.CArray(RSDL.ColorPtr.TO), 4, flavor='raw')
+        colors[0].c_r = rffi.r_uchar(255)
+        colors[0].c_g = rffi.r_uchar(255)
+        colors[0].c_b = rffi.r_uchar(255)
+        colors[1].c_r = rffi.r_uchar(0)
+        colors[1].c_g = rffi.r_uchar(0)
+        colors[1].c_b = rffi.r_uchar(0)
+        colors[2].c_r = rffi.r_uchar(128)
+        colors[2].c_g = rffi.r_uchar(128)
+        colors[2].c_b = rffi.r_uchar(128)
+        colors[3].c_r = rffi.r_uchar(255)
+        colors[3].c_g = rffi.r_uchar(255)
+        colors[3].c_b = rffi.r_uchar(255)
+        RSDL.SetColors(self.screen, rffi.cast(RSDL.ColorPtr, colors), 0, 4)
+        lltype.free(colors, flavor='raw')
 
     def handle_mouse_button(self, c_type, event):
         b = rffi.cast(RSDL.MouseButtonEventPtr, event)
@@ -102,6 +127,8 @@ class SDLDisplay(object):
                 elif c_type == RSDL.KEYDOWN:
                     self.handle_keypress(c_type, event)
                     return
+                elif c_type == RSDL.VIDEORESIZE:
+                    pass # TODO
                 elif c_type == RSDL.QUIT:
                     from spyvm.error import Exit
                     raise Exit("Window closed..")
