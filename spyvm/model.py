@@ -599,14 +599,6 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         from spyvm.shadow import ObserveeShadow
         return self.as_special_get_shadow(space, ObserveeShadow)
 
-    def as_bitblt_get_shadow(self, space):
-        from spyvm.shadow import BitBltShadow
-        return self.as_special_get_shadow(space, BitBltShadow)
-
-    def as_form_get_shadow(self, space):
-        from spyvm.shadow import FormShadow
-        return self.as_special_get_shadow(space, FormShadow)
-
     def has_shadow(self):
         return self._shadow is not None
 
