@@ -856,7 +856,7 @@ def func(interp, s_frame, argcount, s_method):
         raise PrimitiveFailedError
     signature = (w_modulename.as_string(), w_functionname.as_string())
 
-    if signature == 'BitBltPlugin':
+    if signature[0] == 'BitBltPlugin':
         from spyvm.plugins.bitblt import BitBltPlugin
         return BitBltPlugin.call(signature[1], interp, s_frame, argcount, s_method)
     elif signature[0] == "SocketPlugin":

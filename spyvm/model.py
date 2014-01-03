@@ -1042,7 +1042,8 @@ class W_MappingDisplayBitmap(W_DisplayBitmap):
         word = r_uint(word)
         pos = self.compute_pos(n)
         # pos, line_end = self.compute_pos_and_line_end(n, self._depth)
-        maskR = r_uint(2 ** self._depth - 1)
+        assert self._depth <= 4
+        maskR = r_uint(0b1111)
         mask = maskR << (32 - self._depth)
         rshift = 32 - self._depth
         for i in xrange(8 / self._depth):

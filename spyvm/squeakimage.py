@@ -376,7 +376,7 @@ class SqueakImage(object):
         self.lastWindowSize = reader.lastWindowSize
         self.version = reader.version
         self.is_modern = reader.version.magic > 6502
-        # self.run_spy_hacks(space)
+        self.run_spy_hacks(space)
 
     def run_spy_hacks(self, space):
         w_display = space.objtable["w_display"]
