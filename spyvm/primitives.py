@@ -965,7 +965,7 @@ def func(interp, s_frame, w_rcvr, w_new):
     return w_rcvr
 
 def fake_bytes_left(interp):
-    return interp.space.wrap_int(2**20) # XXX we don't know how to do this :-(
+    return interp.space.wrap_int(2**29) # XXX we don't know how to do this :-(
 
 @expose_primitive(SPECIAL_OBJECTS_ARRAY, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
@@ -974,7 +974,8 @@ def func(interp, s_frame, w_rcvr):
 @expose_primitive(INC_GC, unwrap_spec=[object])
 @expose_primitive(FULL_GC, unwrap_spec=[object])
 @jit.dont_look_inside
-def func(interp, s_frame, w_arg): # Squeak pops the arg and ignores it ... go figure
+# def func(interp, s_frame, w_arg): # Squeak pops the arg and ignores it ... go figure
+def func(interp, s_frame, w_rcvr):
     from rpython.rlib import rgc
     rgc.collect()
     return fake_bytes_left(interp)

@@ -1425,7 +1425,7 @@ class BitBltShadow(AbstractCachingShadow):
             nPix = startBits
             words = self.nWords
             # Here is the horizontal loop...
-            for word in range(words + 1):
+            for word in range(words):
                 skewWord = self.pickSourcePixels(nPix, sourcePixMask, destPixMask, srcShiftInc, dstShiftInc)
                 # align next word to leftmost pixel
                 self.dstBitShift = dstShiftLeft
@@ -1460,7 +1460,7 @@ class BitBltShadow(AbstractCachingShadow):
         nPix = nPixels
         # always > 0 so we can use do { } while(--nPix);
         if (self.w_cmLookupTable): # a little optimization for (pretty crucial) blits using indexed lookups only
-            for px in range(nPix + 1):
+            for px in range(nPix):
                 sourcePix = self.rshift(rarithmetic.r_uint(sourceWord), srcShift) & srcMask
                 destPix = self.w_cmLookupTable.getword(rarithmetic.intmask(sourcePix & self.cmMask))
                 # adjust dest pix index
@@ -1693,6 +1693,8 @@ class FormShadow(AbstractCachingShadow):
             w_self._shadow = None
             raise error.PrimitiveFailedError
         self.w_bits = self.fetch(0)
+        if self.w_bits is self.space.w_nil:
+            return
         if not (isinstance(self.w_bits, model.W_WordsObject) or isinstance(self.w_bits, model.W_DisplayBitmap)):
             w_self = self.w_self()
             assert isinstance(w_self, model.W_PointersObject)
@@ -1716,7 +1718,8 @@ class FormShadow(AbstractCachingShadow):
         self.pixPerWord = 32 / self.depth
         self.pitch = (self.width + (self.pixPerWord - 1)) / self.pixPerWord | 0
         if self.w_bits.size() != (self.pitch * self.height):
-            raise error.PrimitiveFailedError()
+            # raise error.PrimitiveFailedError()
+            pass # - we'll be updated again
 
     # def replace_bits(self):
     #     w_bits = self.w_bits
