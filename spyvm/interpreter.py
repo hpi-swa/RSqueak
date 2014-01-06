@@ -37,6 +37,7 @@ class Bootstrapper(object):
 
     def __init__(self):
         #self.lock = rthread.allocate_lock()
+        self.lock = 0
 
         # critical values, only modify under lock:
         self.interp = None
@@ -46,6 +47,11 @@ class Bootstrapper(object):
     # wait for previous thread to start, then set global state
     def acquire(interp, w_frame):
         #bootstrapper.lock.acquire(True)
+        while bootstrapper.lock:
+            rstm.should_break_transaction()
+            rstm.jit_stm_transaction_break_point(True)
+        bootstrapper.lock = 1
+
         bootstrapper.interp = interp
         bootstrapper.w_frame = w_frame
 
@@ -56,6 +62,7 @@ class Bootstrapper(object):
         bootstrapper.interp = None
         bootstrapper.w_frame = None
         #bootstrapper.lock.release()
+        bootstrapper.lock = 0
 
     release = staticmethod(release)
 
@@ -65,8 +72,8 @@ class Bootstrapper(object):
         #rthread.gc_thread_start()
         interp = bootstrapper.interp
         w_frame = bootstrapper.w_frame
-        assert isinstance(interp, Interpreter)
-        assert isinstance(w_frame, model.W_PointersObject)
+        assert isinstance(interp, Interpreter), "Race-condition exploded!"
+        assert isinstance(w_frame, model.W_PointersObject), "Race-condition exploded!"
         bootstrapper.num_threads += 1
         bootstrapper.release()
 
