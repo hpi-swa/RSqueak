@@ -389,6 +389,7 @@ class BitBltShadow(AbstractCachingShadow):
                     self.sourceIndex += 1
                     sourceWord = self.source.w_bits.getword(self.sourceIndex)
         else:
+            print "Failed to pick source pixels"
             raise PrimitiveFailedError()
         self.srcBitShift = srcShift # Store back
         return destWord
@@ -560,6 +561,8 @@ class BitBltShadow(AbstractCachingShadow):
         elif 22 <= self.combinationRule <= 23:
             print "Tried old rule %d" % self.combinationRule
             raise PrimitiveFailedError
+        elif self.combinationRule == 24:
+            return self.alphaBlendWith(source_word, dest_word)
         elif self.combinationRule == 25:
             if source_word == 0:
                 return dest_word
@@ -585,6 +588,28 @@ class BitBltShadow(AbstractCachingShadow):
         else:
             print "Failed combinationRule %d" % self.combinationRule
             raise PrimitiveFailedError()
+
+    def alphaBlendComponent(sourceWord, destinationWord, shift, alpha):
+        unAlpha = 255 - alpha
+        colorMask = r_uint(0xff)
+
+        blend = (((((sourceWord >> shift) & colorMask) * alpha) +
+                  (((destinationWord >> shift) & colorMask) * unAlpha) +
+                  254) / 255) & colorMask
+        return r_uint(blend << shift)
+
+    def alphaBlendWith(self, sourceWord, destinationWord):
+        alpha = sourceWord >> 24 # High 8 bits of source pixel
+        if alpha == 0: return destinationWord
+        if alpha == 255: return sourceWord
+
+        result = r_uint(0)
+        result |= alphaBlendComponent(sourceWord, destinationWord, 0, alpha)
+        result |= alphaBlendComponent(sourceWord, destinationWord, 8, alpha)
+        result |= alphaBlendComponent(sourceWord, destinationWord, 16, alpha)
+        # alpha (pre-multiplied)
+        result |= alphaBlendComponent(sourceWord, destinationWord, 24, 255)
+        return result
 
     def alphaBlendScaled(self, source_word, dest_word):
         unAlpha = r_uint(255 - (source_word >> 24)) # High 8 bits of source pixel
@@ -651,10 +676,10 @@ class BitBltShadow(AbstractCachingShadow):
     def partitionedAddTonBitsnPartitions(self, word1, word2, nBits, nParts):
         # partition mask starts at the right
         mask = BitBltShadow.MaskTable[nBits]
-        result = 0
+        result = r_uint(0)
         for i in range(1, nParts + 1):
             maskedWord1 = word1 & mask
-            sum = maskedWord1 + (word2 & mask)
+            sum = r_uint(maskedWord1 + (word2 & mask))
             # result must not carry out of partition
             if (sum <= mask and sum >= maskedWord1):
                 result = result | sum
@@ -666,14 +691,14 @@ class BitBltShadow(AbstractCachingShadow):
     def partitionedSubTonBitsnPartitions(self, word1, word2, nBits, nParts):
         # partition mask starts at the right
         mask = BitBltShadow.MaskTable[nBits]
-        result = 0
+        result = r_uint(0)
         for i in range(1, nParts + 1):
             p1 = word1 & mask
             p2 = word2 & mask
             if p1 < p2: # result is really abs value of thedifference
-                result = result | (p2 - p1)
+                result = result | p2 - p1
             else:
-                result = result | (p1 - p2)
+                result = result | p1 - p2
             mask = mask << nBits # slide left to next partition"
         return result
 
