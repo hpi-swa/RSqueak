@@ -3,7 +3,8 @@ from spyvm.error import PrimitiveFailedError
 from spyvm.shadow import AbstractCachingShadow
 from spyvm.plugins.plugin import Plugin
 
-from rpython.rlib import rarithmetic, jit
+from rpython.rlib import jit
+from rpython.rlib.rarithmetic import r_uint, intmask
 
 
 BitBltPlugin = Plugin()
@@ -17,6 +18,7 @@ def primitiveCopyBits(interp, s_frame, w_rcvr):
     # only allow combinationRules 0-41
     combinationRule = interp.space.unwrap_positive_32bit_int(w_rcvr.fetch(interp.space, 3))
     if combinationRule > 41:
+        print "Missing combinationRule %d" % combinationRule
         raise PrimitiveFailedError
 
     space = interp.space
@@ -25,6 +27,7 @@ def primitiveCopyBits(interp, s_frame, w_rcvr):
 
     w_dest_form = w_rcvr.fetch(space, 0)
     if (combinationRule == 22 or combinationRule == 32):
+        print "Strange combinationRule %d" % combinationRule
         s_frame.pop() # pops the next value under BitBlt
         s_frame.push(interp.space.wrap_int(s_bitblt.bitCount))
     elif w_dest_form.is_same_object(space.objtable['w_display']):
@@ -39,10 +42,10 @@ def primitiveCopyBits(interp, s_frame, w_rcvr):
 
 class BitBltShadow(AbstractCachingShadow):
     WordSize = 32
-    MaskTable = [rarithmetic.r_uint(0)]
+    MaskTable = [r_uint(0)]
     for i in xrange(WordSize):
-        MaskTable.append(rarithmetic.r_uint((2 ** (i + 1)) - 1))
-    AllOnes = rarithmetic.r_uint(0xFFFFFFFF)
+        MaskTable.append(r_uint((2 ** (i + 1)) - 1))
+    AllOnes = r_uint(0xFFFFFFFF)
 
     def sync_cache(self):
         self.loadBitBlt()
@@ -216,18 +219,18 @@ class BitBltShadow(AbstractCachingShadow):
             self.dx -= self.sx
             self.bbW += self.sx
             self.sx = 0
-        if (self.sx + self.bbW) > self.source.width:
-            self.bbW -= (self.sx + self.bbW) - self.source.width
+        if (self.sx + self.bbW) >= self.source.width:
+            self.bbW -= (self.sx + self.bbW) - self.source.width + 1
         if self.sy < 0:
             self.dy -= self.sy
             self.bbH += self.sy
             self.sy = 0
-        if (self.sy + self.bbH) > self.source.height:
-            self.bbH -= (self.sy + self.bbH) - self.source.height
+        if (self.sy + self.bbH) >= self.source.height:
+            self.bbH -= (self.sy + self.bbH) - self.source.height + 1
 
     def rshift(self, val, n):
-        # return rarithmetic.r_uint(val >> n if val >= 0 else (val + 0x100000000) >> n)
-        return rarithmetic.r_uint(rarithmetic.r_uint(val) >> n & BitBltShadow.AllOnes)
+        # return r_uint(val >> n if val >= 0 else (val + 0x100000000) >> n)
+        return r_uint(r_uint(val) >> n & BitBltShadow.AllOnes)
 
     def destMaskAndPointerInit(self):
         pixPerM1 = self.dest.pixPerWord - 1 # pixPerWord is power-of-two, so this makes a mask
@@ -254,7 +257,7 @@ class BitBltShadow(AbstractCachingShadow):
         halftoneWord = BitBltShadow.AllOnes
         for i in range(self.bbH):
             if self.halftone:
-                halftoneWord = rarithmetic.r_uint(self.halftone[(self.dy + i) % len(self.halftone)])
+                halftoneWord = r_uint(self.halftone[(self.dy + i) % len(self.halftone)])
             # first word in row is masked
             destMask = self.mask1
             destWord = self.dest.w_bits.getword(self.destIndex)
@@ -326,7 +329,7 @@ class BitBltShadow(AbstractCachingShadow):
 
         for i in range(self.bbH):
             if self.halftone:
-                halftoneWord = rarithmetic.r_uint(self.halftone[(self.dy + i) % len(self.halftone)])
+                halftoneWord = r_uint(self.halftone[(self.dy + i) % len(self.halftone)])
             else:
                 halftoneWord = BitBltShadow.AllOnes
             self.srcBitShift = srcShift
@@ -363,7 +366,7 @@ class BitBltShadow(AbstractCachingShadow):
     def pickSourcePixels(self, nPixels, srcMask, dstMask, srcShiftInc, dstShiftInc):
         # Pick nPix pixels starting at srcBitIndex from the source, map by the
         # color map, and justify them according to dstBitIndex in the resulting destWord.
-        sourceWord = rarithmetic.r_uint(self.source.w_bits.getword(self.sourceIndex))
+        sourceWord = r_uint(self.source.w_bits.getword(self.sourceIndex))
         destWord = 0
         srcShift = self.srcBitShift # put into temp for speed
         dstShift = self.dstBitShift
@@ -371,14 +374,14 @@ class BitBltShadow(AbstractCachingShadow):
         # always > 0 so we can use do { } while(--nPix);
         if (self.w_cmLookupTable): # a little optimization for (pretty crucial) blits using indexed lookups only
             for px in range(nPix):
-                sourcePix = self.rshift(rarithmetic.r_uint(sourceWord), srcShift) & srcMask
-                destPix = self.w_cmLookupTable.getword(rarithmetic.intmask(sourcePix & self.cmMask))
+                sourcePix = self.rshift(r_uint(sourceWord), srcShift) & srcMask
+                destPix = self.w_cmLookupTable.getword(intmask(sourcePix & self.cmMask))
                 # adjust dest pix index
                 destWord = destWord | ((destPix & dstMask) << dstShift)
                 # adjust source pix index
                 dstShift += dstShiftInc
                 srcShift += srcShiftInc
-                if srcShift & rarithmetic.r_uint(0xFFFFFFE0):
+                if srcShift & r_uint(0xFFFFFFE0):
                     if (self.source.msb):
                         srcShift += 32
                     else:
@@ -392,11 +395,11 @@ class BitBltShadow(AbstractCachingShadow):
 
     def rotate32bit(self, thisWord, prevWord, skewMask, notSkewMask, unskew):
         if unskew < 0:
-            rotated = self.rshift(rarithmetic.r_uint(prevWord & notSkewMask), -unskew)
+            rotated = self.rshift(r_uint(prevWord & notSkewMask), -unskew)
         else:
             rotated = (prevWord & notSkewMask) << unskew
         if self.skew < 0:
-            rotated = rotated | self.rshift(rarithmetic.r_uint(thisWord & skewMask), -self.skew)
+            rotated = rotated | self.rshift(r_uint(thisWord & skewMask), -self.skew)
         else:
             rotated = rotated | (thisWord & skewMask) << self.skew
         return rotated
@@ -408,11 +411,11 @@ class BitBltShadow(AbstractCachingShadow):
         # init skew (the difference in word alignment of source and dest)
         if (self.skew == -32):
             self.skew = unskew = 0
-            skewMask = rarithmetic.r_uint(0)
+            skewMask = r_uint(0)
         else:
             if (self.skew < 0):
                 unskew = self.skew + 32
-                skewMask = rarithmetic.r_uint(BitBltShadow.AllOnes << -self.skew)
+                skewMask = r_uint(BitBltShadow.AllOnes << -self.skew)
             else:
                 if (self.skew == 0):
                     unskew = 0
@@ -420,11 +423,11 @@ class BitBltShadow(AbstractCachingShadow):
                 else:
                     unskew = self.skew - 32
                     skewMask = self.rshift(BitBltShadow.AllOnes, self.skew)
-        notSkewMask = rarithmetic.r_uint(~skewMask)
+        notSkewMask = r_uint(~skewMask)
 
         # init halftones
         if (self.halftone):
-            halftoneWord = rarithmetic.r_uint(self.halftone[0])
+            halftoneWord = r_uint(self.halftone[0])
             halftoneHeight = len(self.halftone)
         else:
             halftoneWord = BitBltShadow.AllOnes
@@ -434,18 +437,18 @@ class BitBltShadow(AbstractCachingShadow):
         y = self.dy
         for i in range(1, self.bbH + 1):
             if (halftoneHeight > 1):
-                halftoneWord = rarithmetic.r_uint(self.halftone[y % halftoneHeight])
+                halftoneWord = r_uint(self.halftone[y % halftoneHeight])
                 y += self.vDir
 
             if (self.preload):
-                prevWord = rarithmetic.r_uint(self.source.w_bits.getword(self.sourceIndex))
+                prevWord = r_uint(self.source.w_bits.getword(self.sourceIndex))
                 self.sourceIndex += hInc
             else:
-                prevWord = rarithmetic.r_uint(0)
+                prevWord = r_uint(0)
 
             destMask = self.mask1
             # pick up next word
-            thisWord = rarithmetic.r_uint(self.source.w_bits.getword(self.sourceIndex))
+            thisWord = r_uint(self.source.w_bits.getword(self.sourceIndex))
             self.sourceIndex += hInc
             skewWord = self.rotate32bit(thisWord, prevWord, skewMask, notSkewMask, unskew)
             prevWord = thisWord
@@ -507,13 +510,13 @@ class BitBltShadow(AbstractCachingShadow):
             self.destIndex += self.destDelta
 
     def mergeFn(self, src, dest):
-        return rarithmetic.r_uint(self.merge(
-            rarithmetic.r_uint(src),
-            rarithmetic.r_uint(dest)
+        return r_uint(self.merge(
+            r_uint(src),
+            r_uint(dest)
         ))
 
     def merge(self, source_word, dest_word):
-        assert isinstance(source_word, rarithmetic.r_uint) and isinstance(dest_word, rarithmetic.r_uint)
+        assert isinstance(source_word, r_uint) and isinstance(dest_word, r_uint)
         if self.combinationRule == 0:
             return 0
         elif self.combinationRule == 1:
@@ -550,18 +553,23 @@ class BitBltShadow(AbstractCachingShadow):
             return source_word + dest_word
         elif self.combinationRule == 19:
             return source_word - dest_word
-        elif self.combinationRule >= 20 and self.combinationRule <= 24:
-            return source_word
+        elif self.combinationRule == 20:
+            return self.rgbAdd(source_word, dest_word)
+        elif self.combinationRule == 21:
+            return self.rgbSub(source_word, dest_word)
+        elif 22 <= self.combinationRule <= 23:
+            print "Tried old rule %d" % self.combinationRule
+            raise PrimitiveFailedError
         elif self.combinationRule == 25:
             if source_word == 0:
                 return dest_word
             else:
-                return self.partitionedANDtonBitsnPartitions(
+                return (source_word | self.partitionedANDtonBitsnPartitions(
                     ~source_word,
                     dest_word,
                     self.dest.depth,
                     self.dest.pixPerWord
-                )
+                ))
         elif self.combinationRule == 26:
             return self.partitionedANDtonBitsnPartitions(
                 ~source_word,
@@ -569,10 +577,105 @@ class BitBltShadow(AbstractCachingShadow):
                 self.dest.depth,
                 self.dest.pixPerWord
             )
+        elif self.combinationRule == 37:
+            return self.alphaBlendScaled(source_word, dest_word)
         elif 26 < self.combinationRule <= 41:
+            print "Incomplete combinationRule %d" % self.combinationRule
             return dest_word
         else:
+            print "Failed combinationRule %d" % self.combinationRule
             raise PrimitiveFailedError()
+
+    def alphaBlendScaled(self, source_word, dest_word):
+        unAlpha = r_uint(255 - (source_word >> 24)) # High 8 bits of source pixel
+        dstMask = dest_word
+        srcMask = source_word
+        b = r_uint((((dstMask & 255) * unAlpha) >> 8) + (srcMask & 255))
+        if b > 255:
+            b = 255
+        dstMask = dstMask >> 8
+        srcMask = srcMask >> 8
+        g = r_uint((((dstMask & 255) * unAlpha) >> 8) + (srcMask & 255))
+        if g > 255:
+            g = 255
+        dstMask = dstMask >> 8
+        srcMask = srcMask >> 8
+        r = r_uint((((dstMask & 255) * unAlpha) >> 8) + (srcMask & 255))
+        if r > 255:
+            r = 255
+        dstMask = dstMask >> 8
+        srcMask = srcMask >> 8
+        a = r_uint((((dstMask & 255) * unAlpha) >> 8) + (srcMask & 255))
+        if a > 255:
+            a = 255
+        return r_uint((((((a << 8) + r) << 8) + g) << 8) + b)
+
+    def rgbAdd(self, source_word, dest_word):
+        if self.dest.depth < 16:
+            # Add each pixel separately
+            return self.partitionedAddTonBitsnPartitions(
+                source_word, dest_word, self.dest.depth, self.dest.pixPerWord
+            )
+        elif self.dest.depth == 16:
+            # Add RGB components of each pixel separately
+            return self.partitionedAddTonBitsnPartitions(
+                source_word, dest_word, 5, 3
+            ) + (self.partitionedAddTonBitsnPartitions(
+                source_word >> 16, dest_word >> 16, 5, 3
+            ) << 16)
+        else:
+            # Add RGBA components of the pixel separately
+            return self.partitionedAddTonBitsnPartitions(
+                source_word, dest_word, 8, 4
+            )
+
+    def rgbSub(self, source_word, dest_word):
+        if self.dest.depth < 16:
+            # Sub each pixel separately
+            return self.partitionedSubTonBitsnPartitions(
+                source_word, dest_word, self.dest.depth, self.dest.pixPerWord
+            )
+        elif self.dest.depth == 16:
+            # Sub RGB components of each pixel separately
+            return self.partitionedSubTonBitsnPartitions(
+                source_word, dest_word, 5, 3
+            ) + (self.partitionedSubTonBitsnPartitions(
+                source_word >> 16, dest_word >> 16, 5, 3
+            ) << 16)
+        else:
+            # Sub RGBA components of the pixel separately
+            return self.partitionedSubTonBitsnPartitions(
+                source_word, dest_word, 8, 4
+            )
+
+    def partitionedAddTonBitsnPartitions(self, word1, word2, nBits, nParts):
+        # partition mask starts at the right
+        mask = BitBltShadow.MaskTable[nBits]
+        result = 0
+        for i in range(1, nParts + 1):
+            maskedWord1 = word1 & mask
+            sum = maskedWord1 + (word2 & mask)
+            # result must not carry out of partition
+            if (sum <= mask and sum >= maskedWord1):
+                result = result | sum
+            else:
+                result = result | mask
+            mask = mask << nBits # slide left to next partition
+        return result
+
+    def partitionedSubTonBitsnPartitions(self, word1, word2, nBits, nParts):
+        # partition mask starts at the right
+        mask = BitBltShadow.MaskTable[nBits]
+        result = 0
+        for i in range(1, nParts + 1):
+            p1 = word1 & mask
+            p2 = word2 & mask
+            if p1 < p2: # result is really abs value of thedifference
+                result = result | (p2 - p1)
+            else:
+                result = result | (p1 - p2)
+            mask = mask << nBits # slide left to next partition"
+        return result
 
     def partitionedANDtonBitsnPartitions(self, word1, word2, nBits, nParts):
         # partition mask starts at the right
