@@ -1,5 +1,6 @@
 import py
 import os
+import time
 from spyvm.shadow import ContextPartShadow, MethodContextShadow, BlockContextShadow, MethodNotFound
 from spyvm import model, constants, primitives, conftest, wrapper
 from spyvm.tool.bitmanipulation import splitter
@@ -36,8 +37,8 @@ class Bootstrapper(object):
     """
 
     def __init__(self):
-        #self.lock = rthread.allocate_lock()
-        self.lock = 0
+        self.lock = rthread.allocate_lock()
+        #self.lock = 0
 
         # critical values, only modify under lock:
         self.interp = None
@@ -46,11 +47,16 @@ class Bootstrapper(object):
 
     # wait for previous thread to start, then set global state
     def acquire(interp, w_frame):
-        #bootstrapper.lock.acquire(True)
-        while bootstrapper.lock:
-            rstm.should_break_transaction()
-            rstm.jit_stm_transaction_break_point(True)
-        bootstrapper.lock = 1
+        bootstrapper.lock.acquire(True)
+        #while bootstrapper.lock:
+        #    rstm.should_break_transaction()
+        #    rstm.jit_stm_transaction_break_point(True)
+        # if bootstrapper.lock:
+        #     print "Waiting for lock"
+        #     time.sleep(100)
+        #     if bootstrapper.lock:
+        #         print "Overriding lock!"
+        #bootstrapper.lock = 1
 
         bootstrapper.interp = interp
         bootstrapper.w_frame = w_frame
@@ -61,8 +67,8 @@ class Bootstrapper(object):
     def release():
         bootstrapper.interp = None
         bootstrapper.w_frame = None
-        #bootstrapper.lock.release()
-        bootstrapper.lock = 0
+        bootstrapper.lock.release()
+        #bootstrapper.lock = 0
 
     release = staticmethod(release)
 
@@ -73,7 +79,7 @@ class Bootstrapper(object):
         interp = bootstrapper.interp
         w_frame = bootstrapper.w_frame
         assert isinstance(interp, Interpreter), "Race-condition exploded!"
-        assert isinstance(w_frame, model.W_PointersObject), "Race-condition exploded!"
+        assert isinstance(w_frame, model.W_PointersObject), "Race-condition exploded!l"
         bootstrapper.num_threads += 1
         bootstrapper.release()
 
@@ -97,7 +103,7 @@ class Interpreter(object):
     jit_driver = jit.JitDriver(
         greens=['pc', 'self', 'method'],
         reds=['s_context'],
-        virtualizables=['s_context'],
+        # virtualizables=['s_context'],
         get_printable_location=get_printable_location
     )
 
@@ -185,7 +191,6 @@ class Interpreter(object):
     def c_loop(self, s_context, may_context_switch=True):
         #rstm.should_break_transaction()
         old_pc = 0
-        last_breakpoint = 0
 
         if not jit.we_are_jitted() and may_context_switch:
             self.quick_check_for_interrupt(s_context)
@@ -204,7 +209,6 @@ class Interpreter(object):
                 pc=pc, self=self, method=method,
                 s_context=s_context)
             try:
-                last_breakpoint += 1
                 self.step(s_context)
             except Return, nlr:
                 if nlr.s_target_context is not s_context:
@@ -219,10 +223,6 @@ class Interpreter(object):
             except StmProcessFork, f:
                 print "Interpreter loop about to fork"
                 self.fork(f.w_frame)
-
-            if last_breakpoint >= 1000:
-                rstm.jit_stm_transaction_break_point(True)
-                last_breakpoint = 0
 
 
     def _get_adapted_tick_counter(self):
