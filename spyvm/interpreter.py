@@ -28,6 +28,30 @@ def get_printable_location(pc, self, method):
     return '%d: [%s]%s (%s)' % (pc, hex(bc), BYTECODE_NAMES[bc], name)
 
 
+class SpinLock(object):
+    """Replacement when rthread.Lock is not working"""
+
+    def __init__(self, initial=0):
+        assert initial == 0 or initial == 1
+        self._value = initial
+
+    def _test_and_set(self):
+        rstm.increment_atomic()
+        old_value = self._value
+        self._value = 1
+        rstm.decrement_atomic()
+        return old_value
+
+    def wait(self):
+        while self._test_and_set():
+            time.sleep(0.001)
+            rstm.should_break_transaction()
+
+    def signal(self):
+        self._value = 0
+        rstm.should_break_transaction()
+
+
 
 class Bootstrapper(object):
     """
@@ -37,8 +61,8 @@ class Bootstrapper(object):
     """
 
     def __init__(self):
-        self.lock = rthread.allocate_lock()
-        #self.lock = 0
+        #self.lock = rthread.allocate_lock()
+        self.lock = SpinLock()
 
         # critical values, only modify under lock:
         self.interp = None
@@ -47,16 +71,8 @@ class Bootstrapper(object):
 
     # wait for previous thread to start, then set global state
     def acquire(interp, w_frame):
-        bootstrapper.lock.acquire(True)
-        #while bootstrapper.lock:
-        #    rstm.should_break_transaction()
-        #    rstm.jit_stm_transaction_break_point(True)
-        # if bootstrapper.lock:
-        #     print "Waiting for lock"
-        #     time.sleep(100)
-        #     if bootstrapper.lock:
-        #         print "Overriding lock!"
-        #bootstrapper.lock = 1
+        #bootstrapper.lock.acquire(True)
+        bootstrapper.lock.wait()
 
         bootstrapper.interp = interp
         bootstrapper.w_frame = w_frame
@@ -67,15 +83,14 @@ class Bootstrapper(object):
     def release():
         bootstrapper.interp = None
         bootstrapper.w_frame = None
-        bootstrapper.lock.release()
-        #bootstrapper.lock = 0
+        bootstrapper.lock.signal()
+        #bootstrapper.lock.release()
 
     release = staticmethod(release)
 
     # HUGE RACE CONDITON!!!
     def bootstrap():
         print "New thread reporting"
-        #rthread.gc_thread_start()
         interp = bootstrapper.interp
         w_frame = bootstrapper.w_frame
         assert isinstance(interp, Interpreter), "Race-condition exploded!"
@@ -88,7 +103,6 @@ class Bootstrapper(object):
 
         # cleanup
         bootstrapper.num_threads -= 1
-        #rthread.gc_thread_die()
 
     bootstrap = staticmethod(bootstrap)
 
