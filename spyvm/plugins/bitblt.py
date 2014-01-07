@@ -13,13 +13,12 @@ BitBltPlugin = Plugin()
 def primitiveCopyBits(interp, s_frame, w_rcvr):
     from spyvm.interpreter import Return
     if not isinstance(w_rcvr, model.W_PointersObject) or w_rcvr.size() < 15:
-        raise PrimitiveFailedError
+        raise PrimitiveFailedError("BitBlt primitive not called in BitBlt object!")
 
     # only allow combinationRules 0-41
     combinationRule = interp.space.unwrap_positive_32bit_int(w_rcvr.fetch(interp.space, 3))
     if combinationRule > 41:
-        print "Missing combinationRule %d" % combinationRule
-        raise PrimitiveFailedError
+        raise PrimitiveFailedError("Missing combinationRule %d" % combinationRule)
 
     space = interp.space
     s_bitblt = w_rcvr.as_special_get_shadow(space, BitBltShadow)
@@ -27,7 +26,6 @@ def primitiveCopyBits(interp, s_frame, w_rcvr):
 
     w_dest_form = w_rcvr.fetch(space, 0)
     if (combinationRule == 22 or combinationRule == 32):
-        print "Strange combinationRule %d" % combinationRule
         s_frame.pop() # pops the next value under BitBlt
         s_frame.push(interp.space.wrap_int(s_bitblt.bitCount))
     elif w_dest_form.is_same_object(space.objtable['w_display']):
@@ -59,10 +57,10 @@ class BitBltShadow(AbstractCachingShadow):
     def loadForm(self, w_form):
         try:
             if not isinstance(w_form, model.W_PointersObject):
-                raise PrimitiveFailedError()
+                raise PrimitiveFailedError("cannot load form from %s" % w_form.as_repr_string())
             s_form = w_form.as_special_get_shadow(self.space, FormShadow)
             if not isinstance(s_form, FormShadow):
-                raise PrimitiveFailedError()
+                raise PrimitiveFailedError("Could not create form shadow for %s" % w_form.as_repr_string())
             return s_form
         except PrimitiveFailedError, e:
             w_self = self.w_self()
@@ -389,8 +387,7 @@ class BitBltShadow(AbstractCachingShadow):
                     self.sourceIndex += 1
                     sourceWord = self.source.w_bits.getword(self.sourceIndex)
         else:
-            print "Failed to pick source pixels"
-            raise PrimitiveFailedError()
+            raise PrimitiveFailedError("Failed to pick source pixels")
         self.srcBitShift = srcShift # Store back
         return destWord
 
@@ -559,8 +556,7 @@ class BitBltShadow(AbstractCachingShadow):
         elif self.combinationRule == 21:
             return self.rgbSub(source_word, dest_word)
         elif 22 <= self.combinationRule <= 23:
-            print "Tried old rule %d" % self.combinationRule
-            raise PrimitiveFailedError
+            raise PrimitiveFailedError("Tried old rule %d" % self.combinationRule)
         elif self.combinationRule == 24:
             return self.alphaBlendWith(source_word, dest_word)
         elif self.combinationRule == 25:
@@ -582,14 +578,10 @@ class BitBltShadow(AbstractCachingShadow):
             )
         elif self.combinationRule == 37:
             return self.alphaBlendScaled(source_word, dest_word)
-        elif 26 < self.combinationRule <= 41:
-            print "Incomplete combinationRule %d" % self.combinationRule
-            return dest_word
         else:
-            print "Failed combinationRule %d" % self.combinationRule
-            raise PrimitiveFailedError()
+            raise PrimitiveFailedError("Not implemented combinationRule %d" % self.combinationRule)
 
-    def alphaBlendComponent(sourceWord, destinationWord, shift, alpha):
+    def alphaBlendComponent(self, sourceWord, destinationWord, shift, alpha):
         unAlpha = 255 - alpha
         colorMask = r_uint(0xff)
 
@@ -604,11 +596,11 @@ class BitBltShadow(AbstractCachingShadow):
         if alpha == 255: return sourceWord
 
         result = r_uint(0)
-        result |= alphaBlendComponent(sourceWord, destinationWord, 0, alpha)
-        result |= alphaBlendComponent(sourceWord, destinationWord, 8, alpha)
-        result |= alphaBlendComponent(sourceWord, destinationWord, 16, alpha)
+        result |= self.alphaBlendComponent(sourceWord, destinationWord, 0, alpha)
+        result |= self.alphaBlendComponent(sourceWord, destinationWord, 8, alpha)
+        result |= self.alphaBlendComponent(sourceWord, destinationWord, 16, alpha)
         # alpha (pre-multiplied)
-        result |= alphaBlendComponent(sourceWord, destinationWord, 24, 255)
+        result |= self.alphaBlendComponent(sourceWord, destinationWord, 24, 255)
         return result
 
     def alphaBlendScaled(self, source_word, dest_word):
@@ -730,7 +722,7 @@ class FormShadow(AbstractCachingShadow):
             w_self = self.w_self()
             assert isinstance(w_self, model.W_PointersObject)
             w_self._shadow = None
-            raise PrimitiveFailedError
+            raise PrimitiveFailedError("Form object too small")
         self.w_bits = self.fetch(0)
         if self.w_bits is self.space.w_nil:
             return
@@ -738,17 +730,20 @@ class FormShadow(AbstractCachingShadow):
             w_self = self.w_self()
             assert isinstance(w_self, model.W_PointersObject)
             w_self._shadow = None
-            raise PrimitiveFailedError
+            raise PrimitiveFailedError("Bits (%s) in %s are not words or displaybitmap" % (
+                self.w_bits.as_repr_string(),
+                w_self.as_repr_string()
+            ))
         self.width = self.space.unwrap_int(self.fetch(1))
         self.height = self.space.unwrap_int(self.fetch(2))
         self.depth = self.space.unwrap_int(self.fetch(3))
         if self.width < 0 or self.height < 0:
-            raise PrimitiveFailedError()
+            raise PrimitiveFailedError("Form has negative width or height!")
         self.msb = self.depth > 0
         if self.depth < 0:
             self.depth = -self.depth
         if self.depth == 0:
-            raise PrimitiveFailedError()
+            raise PrimitiveFailedError("Form depth is 0!")
         w_offset = self.fetch(4)
         assert isinstance(w_offset, model.W_PointersObject)
         if not w_offset is self.space.w_nil:

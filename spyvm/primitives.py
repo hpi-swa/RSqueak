@@ -869,7 +869,6 @@ def func(interp, s_frame, argcount, s_method):
         from spyvm.plugins.vmdebugging import DebuggingPlugin
         return DebuggingPlugin.call(signature[1], interp, s_frame, argcount, s_method)
     else:
-        print signature
         from spyvm.interpreter_proxy import IProxy
         return IProxy.call(signature, interp, s_frame, argcount, s_method)
     raise PrimitiveFailedError
