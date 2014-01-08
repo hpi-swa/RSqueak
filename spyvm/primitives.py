@@ -1009,11 +1009,16 @@ def func(interp, s_frame, w_arg):
 
 #____________________________________________________________________________
 # Misc Primitives (138 - 149)
+BEEP = 140
 VM_PATH = 142
 SHORT_AT = 143
 SHORT_AT_PUT = 144
 FILL = 145
 CLONE = 148
+
+@expose_primitive(BEEP, unwrap_spec=[object])
+def func(interp, s_frame, w_receiver):
+    return w_receiver
 
 @expose_primitive(VM_PATH, unwrap_spec=[object])
 def func(interp, s_frame, w_receiver):
