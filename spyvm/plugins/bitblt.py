@@ -9,7 +9,7 @@ from rpython.rlib.rarithmetic import r_uint, intmask
 
 BitBltPlugin = Plugin()
 
-@BitBltPlugin.expose_primitive(unwrap_spec=[object], clean_stack=False)
+@BitBltPlugin.expose_primitive(unwrap_spec=[object], clean_stack=True)
 def primitiveCopyBits(interp, s_frame, w_rcvr):
     from spyvm.interpreter import Return
     if not isinstance(w_rcvr, model.W_PointersObject) or w_rcvr.size() < 15:
@@ -730,10 +730,7 @@ class FormShadow(AbstractCachingShadow):
             w_self = self.w_self()
             assert isinstance(w_self, model.W_PointersObject)
             w_self._shadow = None
-            raise PrimitiveFailedError("Bits (%s) in %s are not words or displaybitmap" % (
-                self.w_bits.as_repr_string(),
-                w_self.as_repr_string()
-            ))
+            raise PrimitiveFailedError("Bits in are not words or displaybitmap")
         self.width = self.space.unwrap_int(self.fetch(1))
         self.height = self.space.unwrap_int(self.fetch(2))
         self.depth = self.space.unwrap_int(self.fetch(3))
