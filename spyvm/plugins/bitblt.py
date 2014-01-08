@@ -752,5 +752,6 @@ class FormShadow(AbstractCachingShadow):
         self.pixPerWord = 32 / self.depth
         self.pitch = (self.width + (self.pixPerWord - 1)) / self.pixPerWord | 0
         if self.w_bits.size() != (self.pitch * self.height):
-            # raise error.PrimitiveFailedError()
-            pass # - we'll be updated again
+            w_self = self.w_self()
+            assert isinstance(w_self, model.W_PointersObject)
+            w_self._shadow = None
