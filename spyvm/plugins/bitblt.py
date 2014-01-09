@@ -9,6 +9,7 @@ from rpython.rlib.rarithmetic import r_uint, intmask
 
 BitBltPlugin = Plugin()
 
+
 @BitBltPlugin.expose_primitive(unwrap_spec=[object], clean_stack=True)
 def primitiveCopyBits(interp, s_frame, w_rcvr):
     from spyvm.interpreter import Return
@@ -22,6 +23,7 @@ def primitiveCopyBits(interp, s_frame, w_rcvr):
 
     space = interp.space
     s_bitblt = w_rcvr.as_special_get_shadow(space, BitBltShadow)
+    s_bitblt.loadBitBlt()
     s_bitblt.copyBits()
 
     w_dest_form = w_rcvr.fetch(space, 0)
@@ -34,9 +36,6 @@ def primitiveCopyBits(interp, s_frame, w_rcvr):
         w_bitmap.flush_to_screen()
     return w_rcvr
 
-    def as_bitblt_get_shadow(self, space):
-        return
-
 
 class BitBltShadow(AbstractCachingShadow):
     WordSize = 32
@@ -46,7 +45,7 @@ class BitBltShadow(AbstractCachingShadow):
     AllOnes = r_uint(0xFFFFFFFF)
 
     def sync_cache(self):
-        self.loadBitBlt()
+        pass
 
     def intOrIfNil(self, w_int, i):
         if w_int is self.space.w_nil:
@@ -55,18 +54,12 @@ class BitBltShadow(AbstractCachingShadow):
             return self.space.unwrap_int(w_int)
 
     def loadForm(self, w_form):
-        try:
-            if not isinstance(w_form, model.W_PointersObject):
-                raise PrimitiveFailedError("cannot load form from %s" % w_form.as_repr_string())
-            s_form = w_form.as_special_get_shadow(self.space, FormShadow)
-            if not isinstance(s_form, FormShadow):
-                raise PrimitiveFailedError("Could not create form shadow for %s" % w_form.as_repr_string())
-            return s_form
-        except PrimitiveFailedError, e:
-            w_self = self.w_self()
-            assert isinstance(w_self, model.W_PointersObject)
-            w_self._shadow = None
-            raise e
+        if not isinstance(w_form, model.W_PointersObject):
+            raise PrimitiveFailedError("cannot load form from %s" % w_form.as_repr_string())
+        s_form = w_form.as_special_get_shadow(self.space, FormShadow)
+        if s_form.invalid:
+            raise PrimitiveFailedError("Could not create form shadow for %s" % w_form.as_repr_string())
+        return s_form
 
     def loadHalftone(self, w_halftone_form):
         if w_halftone_form is self.space.w_nil:
@@ -76,7 +69,10 @@ class BitBltShadow(AbstractCachingShadow):
             return w_halftone_form.words
         else:
             assert isinstance(w_halftone_form, model.W_PointersObject)
-            w_bits = w_halftone_form.as_special_get_shadow(self.space, FormShadow).w_bits
+            s_form = w_halftone_form.as_special_get_shadow(self.space, FormShadow)
+            if s_form.invalid:
+                raise PrimitiveFailedError("Halftone form is invalid")
+            w_bits = s_form.w_bits
             assert isinstance(w_bits, model.W_WordsObject)
             return w_bits.words
 
@@ -334,9 +330,8 @@ class BitBltShadow(AbstractCachingShadow):
             self.dstBitShift = dstShift
             self.destMask = self.mask1
             nPix = startBits
-            words = self.nWords
             # Here is the horizontal loop...
-            for word in range(words):
+            for word in range(self.nWords):
                 skewWord = self.pickSourcePixels(nPix, sourcePixMask, destPixMask, srcShiftInc, dstShiftInc)
                 # align next word to leftmost pixel
                 self.dstBitShift = dstShiftLeft
@@ -352,7 +347,7 @@ class BitBltShadow(AbstractCachingShadow):
                     self.dest.w_bits.setword(self.destIndex, destWord)
 
                 self.destIndex += 1
-                if (words == 2): # is the next word the last word?
+                if (self.nWords == 2): # is the next word the last word?
                     self.destMask = self.mask2
                     nPix = endBits
                 else: # use fullword mask for inner loop
@@ -715,32 +710,31 @@ class BitBltShadow(AbstractCachingShadow):
 
 class FormShadow(AbstractCachingShadow):
     _attrs_ = ["w_bits", "width", "height", "depth", "offsetX",
-               "offsetY", "msb", "pixPerWord", "pitch"]
+               "offsetY", "msb", "pixPerWord", "pitch", "invalid"]
+
+    def __init__(self, space, w_self):
+        AbstractCachingShadow.__init__(self, space, w_self)
+        self.invalid = False
 
     def sync_cache(self):
+        self.invalid = True
         if self.size() < 5:
-            w_self = self.w_self()
-            assert isinstance(w_self, model.W_PointersObject)
-            w_self._shadow = None
-            raise PrimitiveFailedError("Form object too small")
+            return
         self.w_bits = self.fetch(0)
         if self.w_bits is self.space.w_nil:
             return
         if not (isinstance(self.w_bits, model.W_WordsObject) or isinstance(self.w_bits, model.W_DisplayBitmap)):
-            w_self = self.w_self()
-            assert isinstance(w_self, model.W_PointersObject)
-            w_self._shadow = None
-            raise PrimitiveFailedError("Bits in are not words or displaybitmap")
+            return
         self.width = self.space.unwrap_int(self.fetch(1))
         self.height = self.space.unwrap_int(self.fetch(2))
         self.depth = self.space.unwrap_int(self.fetch(3))
         if self.width < 0 or self.height < 0:
-            raise PrimitiveFailedError("Form has negative width or height!")
+            return
         self.msb = self.depth > 0
         if self.depth < 0:
             self.depth = -self.depth
         if self.depth == 0:
-            raise PrimitiveFailedError("Form depth is 0!")
+            return
         w_offset = self.fetch(4)
         assert isinstance(w_offset, model.W_PointersObject)
         if not w_offset is self.space.w_nil:
@@ -749,6 +743,5 @@ class FormShadow(AbstractCachingShadow):
         self.pixPerWord = 32 / self.depth
         self.pitch = (self.width + (self.pixPerWord - 1)) / self.pixPerWord | 0
         if self.w_bits.size() != (self.pitch * self.height):
-            w_self = self.w_self()
-            assert isinstance(w_self, model.W_PointersObject)
-            w_self._shadow = None
+            return
+        self.invalid = False
