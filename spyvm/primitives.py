@@ -1230,6 +1230,7 @@ WAIT = 86
 RESUME = 87
 SUSPEND = 88
 FLUSH_CACHE = 89
+WITH_ARGS_EXECUTE_METHOD = 188
 
 @expose_primitive(BLOCK_COPY, unwrap_spec=[object, int])
 def func(interp, s_frame, w_context, argcnt):
@@ -1339,6 +1340,20 @@ def func(interp, s_frame, w_rcvr, w_selector, args_w):
             pass # ignore this error and fall back to the Smalltalk version
     s_new_frame = s_method.create_frame(interp.space, w_rcvr, args_w, s_frame)
     s_frame.pop()
+    return interp.stack_frame(s_new_frame)
+
+@expose_primitive(WITH_ARGS_EXECUTE_METHOD, unwrap_spec=[object, list, object], no_result=True)
+def func(interp, s_frame, w_rcvr, args_w, w_cm):
+    if not isinstance(w_cm, model.W_CompiledMethod):
+        raise PrimitiveFailedError()
+
+    s_method = w_cm.as_compiledmethod_get_shadow(interp.space)
+    code = s_method.primitive()
+    if code:
+        raise PrimitiveFailedError("withArgs:executeMethod: not support with primitive method")
+    s_new_frame = s_method.create_frame(interp.space, w_rcvr, args_w, s_frame)
+    if interp.trace:
+        print interp.padding() + s_new_frame.short_str()
     return interp.stack_frame(s_new_frame)
 
 @expose_primitive(SIGNAL, unwrap_spec=[object], clean_stack=False, no_result=True)
