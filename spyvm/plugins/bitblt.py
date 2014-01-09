@@ -751,6 +751,6 @@ class FormShadow(AbstractCachingShadow):
             self.offsetY = self.intOrIfNil(w_offset._fetch(1), 0)
         self.pixPerWord = 32 / self.depth
         self.pitch = (self.width + (self.pixPerWord - 1)) / self.pixPerWord | 0
-        if self.w_bits.size() != (self.pitch * self.height):
+        if self.w_bits.size() < (self.pitch * self.height):
             return
         self.invalid = False
