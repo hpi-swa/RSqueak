@@ -37,6 +37,15 @@ def primitiveCopyBits(interp, s_frame, w_rcvr):
     return w_rcvr
 
 
+def intOrIfNil(space, w_int, i):
+    if w_int is space.w_nil:
+        return i
+    elif isinstance(w_int, model.W_Float):
+        return intmask(int(space.unwrap_float(w_int)))
+    else:
+        return space.unwrap_int(w_int)
+
+
 class BitBltShadow(AbstractCachingShadow):
     WordSize = 32
     MaskTable = [r_uint(0)]
@@ -48,10 +57,7 @@ class BitBltShadow(AbstractCachingShadow):
         pass
 
     def intOrIfNil(self, w_int, i):
-        if w_int is self.space.w_nil:
-            return i
-        else:
-            return self.space.unwrap_int(w_int)
+        return intOrIfNil(self.space, w_int, i)
 
     def loadForm(self, w_form):
         if not isinstance(w_form, model.W_PointersObject):
@@ -716,6 +722,9 @@ class FormShadow(AbstractCachingShadow):
         AbstractCachingShadow.__init__(self, space, w_self)
         self.invalid = False
 
+    def intOrIfNil(self, w_int, i):
+        return intOrIfNil(self.space, w_int, i)
+
     def sync_cache(self):
         self.invalid = True
         if self.size() < 5:
@@ -725,9 +734,9 @@ class FormShadow(AbstractCachingShadow):
             return
         if not (isinstance(self.w_bits, model.W_WordsObject) or isinstance(self.w_bits, model.W_DisplayBitmap)):
             return
-        self.width = self.space.unwrap_int(self.fetch(1))
-        self.height = self.space.unwrap_int(self.fetch(2))
-        self.depth = self.space.unwrap_int(self.fetch(3))
+        self.width = self.intOrIfNil(self.fetch(1), 0)
+        self.height = self.intOrIfNil(self.fetch(2), 0)
+        self.depth = self.intOrIfNil(self.fetch(3), 0)
         if self.width < 0 or self.height < 0:
             return
         self.msb = self.depth > 0
@@ -738,8 +747,8 @@ class FormShadow(AbstractCachingShadow):
         w_offset = self.fetch(4)
         assert isinstance(w_offset, model.W_PointersObject)
         if not w_offset is self.space.w_nil:
-            self.offsetX = self.space.unwrap_int(w_offset._fetch(0))
-            self.offsetY = self.space.unwrap_int(w_offset._fetch(1))
+            self.offsetX = self.intOrIfNil(w_offset._fetch(0), 0)
+            self.offsetY = self.intOrIfNil(w_offset._fetch(1), 0)
         self.pixPerWord = 32 / self.depth
         self.pitch = (self.width + (self.pixPerWord - 1)) / self.pixPerWord | 0
         if self.w_bits.size() != (self.pitch * self.height):
