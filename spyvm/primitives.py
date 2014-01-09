@@ -631,6 +631,8 @@ def func(interp, s_frame, w_rcvr):
 @jit.look_inside
 @expose_primitive(GET_NEXT_EVENT, unwrap_spec=[object, object])
 def func(interp, s_frame, w_rcvr, w_into):
+    if not interp.evented:
+        raise PrimitiveFailedError()
     ary = interp.space.get_display().get_next_event(time=interp.time_now())
     for i in range(8):
         w_into.store(interp.space, i, interp.space.wrap_int(ary[i]))

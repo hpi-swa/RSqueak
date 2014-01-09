@@ -124,6 +124,7 @@ def _usage(argv):
           -a|--arg [string argument to #method]
           -r|--run [code string]
           -b|--benchmark [code string]
+          -p|--poll_events
           [image path, default: Squeak.image]
     """ % argv[0]
 
@@ -139,6 +140,7 @@ def entry_point(argv):
     number = 0
     benchmark = None
     trace = False
+    evented = True
     stringarg = ""
     code = None
     as_benchmark = False
@@ -163,6 +165,8 @@ def entry_point(argv):
             idx += 1
         elif arg in ["-t", "--trace"]:
             trace = True
+        elif arg in ["-p", "--poll_events"]:
+            evented = False
         elif arg in ["-a", "--arg"]:
             _arg_missing(argv, idx, arg)
             stringarg = argv[idx + 1]
@@ -200,7 +204,7 @@ def entry_point(argv):
 
     image_reader = squeakimage.reader_for_image(space, squeakimage.Stream(data=imagedata))
     image = create_image(space, image_reader)
-    interp = interpreter.Interpreter(space, image, image_name=path, trace=trace)
+    interp = interpreter.Interpreter(space, image, image_name=path, trace=trace, evented=evented)
     space.runtime_setup(argv[0])
     if benchmark is not None:
         return _run_benchmark(interp, number, benchmark, stringarg)
