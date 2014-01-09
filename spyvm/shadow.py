@@ -169,6 +169,13 @@ class ClassShadow(AbstractCachingShadow):
             self.store_w_superclass(w_superclass)
         self.changed()
 
+    @jit.unroll_safe
+    def flush_caches(self):
+        look_in_shadow = self
+        while look_in_shadow is not None:
+            s_method = look_in_shadow.s_methoddict().sync_cache()
+            look_in_shadow = look_in_shadow._s_superclass
+
     def guess_class_name(self):
         if self.name != '':
             return self.name
@@ -355,8 +362,8 @@ class MethodDictionaryShadow(AbstractShadow):
 
     def find_selector(self, w_selector):
         if self.invalid:
-            return None
-        return self.methoddict.get(w_selector, None)
+            return None # we may be invalid if Smalltalk code did not call flushCache
+        return self.methoddict.get(self._as_md_entry(w_selector), None)
 
     def update(self): return self.sync_cache()
 
@@ -369,6 +376,12 @@ class MethodDictionaryShadow(AbstractShadow):
     def store(self, n0, w_value):
         AbstractShadow.store(self, n0, w_value)
         self.invalid = True
+
+    def _as_md_entry(self, w_selector):
+        if isinstance(w_selector, model.W_BytesObject):
+            return w_selector.as_string()
+        else:
+            return "%r" % w_selector # use the pointer for this
 
     def sync_cache(self):
         if self.w_self().size() == 0:
@@ -394,11 +407,8 @@ class MethodDictionaryShadow(AbstractShadow):
                                        "CompiledMethods only, for now. "
                                        "If the value observed is nil, our "
                                        "invalidating mechanism may be broken.")
-                self.methoddict[w_selector] = w_compiledmethod.as_compiledmethod_get_shadow(self.space)
-                if isinstance(w_selector, model.W_BytesObject):
-                    selector = w_selector.as_string()
-                else:
-                    selector = w_selector.as_repr_string()
+                selector = self._as_md_entry(w_selector)
+                self.methoddict[selector] = w_compiledmethod.as_compiledmethod_get_shadow(self.space)
                 w_compiledmethod._likely_methodname = selector
         if self.s_class:
             self.s_class.changed()

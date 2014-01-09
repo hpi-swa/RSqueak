@@ -801,6 +801,7 @@ BYTES_LEFT = 112
 QUIT = 113
 EXIT_TO_DEBUGGER = 114
 CHANGE_CLASS = 115      # Blue Book: primitiveOopsLeft
+COMPILED_METHOD_FLUSH_CACHE = 116
 EXTERNAL_CALL = 117
 SYMBOL_FLUSH_CACHE = 119
 
@@ -885,6 +886,17 @@ def func(interp, s_frame, argcount, s_method):
         from spyvm.interpreter_proxy import IProxy
         return IProxy.call(signature, interp, s_frame, argcount, s_method)
     raise PrimitiveFailedError
+
+@expose_primitive(COMPILED_METHOD_FLUSH_CACHE, unwrap_spec=[object])
+def func(interp, s_frame, w_rcvr):
+    if not isinstance(w_rcvr, model.W_CompiledMethod):
+        raise PrimitiveFailedError()
+    s_cm = w_rcvr.as_compiledmethod_get_shadow(interp.space)
+    w_class = s_cm.w_compiledin
+    if w_class:
+        assert isinstance(w_class, model.W_PointersObject)
+        w_class.as_class_get_shadow(interp.space).flush_caches()
+    return w_rcvr
 
 @expose_primitive(SYMBOL_FLUSH_CACHE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
@@ -1367,8 +1379,10 @@ def func(interp, s_frame, w_rcvr):
 
 @expose_primitive(FLUSH_CACHE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    # XXX we currently don't care about bad flushes :) XXX
-    # raise PrimitiveNotYetWrittenError()
+    if not isinstance(w_rcvr, model.W_PointersObject):
+        raise PrimitiveFailedError()
+    s_class = w_rcvr.as_class_get_shadow(interp.space)
+    s_class.flush_caches()
     return w_rcvr
 
 # ___________________________________________________________________________
