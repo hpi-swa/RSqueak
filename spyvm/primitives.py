@@ -137,6 +137,8 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                         args += (interp.space.unwrap_array(w_arg), )
                     elif spec is char:
                         args += (unwrap_char(w_arg), )
+                    elif spec is bool:
+                        args += (interp.space.w_true is w_arg, )
                     else:
                         raise NotImplementedError(
                             "unknown unwrap_spec %s" % (spec, ))
@@ -625,9 +627,18 @@ def func(interp, s_frame, w_rcvr):
     w_point.store(interp.space, 1, interp.space.wrap_int(y))
     return w_point
 
+@jit.unroll_safe
+@jit.look_inside
 @expose_primitive(GET_NEXT_EVENT, unwrap_spec=[object, object])
 def func(interp, s_frame, w_rcvr, w_into):
-    raise PrimitiveNotYetWrittenError()
+    ary = interp.space.get_display().get_next_event(time=interp.time_now())
+    for i in range(8):
+        w_into.store(interp.space, i, interp.space.wrap_int(ary[i]))
+    # XXX - hack
+    if ary[0] == display.WindowEventMetricChange and ary[4] > 0 and ary[5] > 0:
+        if interp.image:
+            interp.image.lastWindowSize = ((ary[4] & 0xffff) << 16) | (ary[5] & 0xffff)
+    return w_rcvr
 
 @expose_primitive(BITBLT_COPY_BITS, clean_stack=False, no_result=True, compiled_method=True)
 def func(interp, s_frame, argcount, s_method):
@@ -908,9 +919,11 @@ def func(interp, s_frame, w_reciver, i):
     # dont know when the space runs out
     return w_reciver
 
-@expose_primitive(DEFER_UPDATES, unwrap_spec=[object, object])
-def func(interp, s_frame, w_receiver, w_bool):
-    raise PrimitiveNotYetWrittenError()
+@expose_primitive(DEFER_UPDATES, unwrap_spec=[object, bool])
+def func(interp, s_frame, w_receiver, flag):
+    sdldisplay = interp.space.get_display()
+    sdldisplay.defer_updates(flag)
+    return w_receiver
 
 @expose_primitive(DRAW_RECTANGLE, unwrap_spec=[object, int, int, int, int])
 def func(interp, s_frame, w_rcvr, left, right, top, bottom):
@@ -1461,7 +1474,7 @@ def func(interp, s_frame, w_rcvr, time_mu_s):
 
 @expose_primitive(FORCE_DISPLAY_UPDATE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    interp.space.get_display().flip()
+    interp.space.get_display().flip(force=True)
     return w_rcvr
 
 # ___________________________________________________________________________

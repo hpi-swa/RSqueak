@@ -6,16 +6,40 @@ from rpython.rlib import jit
 from rsdl import RSDL, RSDL_helper
 
 
-MOUSE_BTN_RIGHT = 1
-MOUSE_BTN_MIDDLE = 2
-MOUSE_BTN_LEFT = 4
-MOD_SHIFT  = 1
-MOD_CONTROL = 2
-MOD_ALT_CMD = 16 | 8
+# EventSensorConstants
+RedButtonBit = 4
+BlueButtonBit = 2
+YellowButtonBit = 1
+
+ShiftKeyBit = 1
+CtrlKeyBit = 2
+OptionKeyBit = 4
+CommandKeyBit = 8
+
+EventTypeNone = 0
+EventTypeMouse = 1
+EventTypeKeyboard = 2
+EventTypeDragDropFiles = 3
+EventTypeMenu = 4
+EventTypeWindow = 5
+EventTypeComplex = 6
+
+EventKeyChar = 0
+EventKeyDown = 1
+EventKeyUp = 2
+
+WindowEventMetricChange = 1
+WindowEventClose = 2
+WindowEventIconise = 3
+WindowEventActivated = 4
+WindowEventPaint = 5
+WindowEventStinks = 6
+
 
 class SDLDisplay(object):
     _attrs_ = ["screen", "width", "height", "depth", "surface", "has_surface",
-               "mouse_position", "button", "key", "interrupt_key"]
+               "mouse_position", "button", "key", "interrupt_key", "_defer_updates",
+               "_deferred_event"]
 
     def __init__(self, title):
         assert RSDL.Init(RSDL.INIT_VIDEO) >= 0
@@ -27,6 +51,8 @@ class SDLDisplay(object):
         self.interrupt_key = 15 << 8 # pushing all four meta keys, of which we support three...
         self.button = 0
         self.key = 0
+        self._deferred_event = None
+        self._defer_updates = False
 
     def set_video_mode(self, w, h, d):
         assert w > 0 and h > 0
@@ -47,8 +73,12 @@ class SDLDisplay(object):
     def get_pixelbuffer(self):
         return rffi.cast(rffi.ULONGP, self.screen.c_pixels)
 
-    def flip(self):
-        RSDL.Flip(self.screen)
+    def defer_updates(self, flag):
+        self._defer_updates = flag
+
+    def flip(self, force=False):
+        if (not self._defer_updates) or force:
+            RSDL.Flip(self.screen)
 
     def set_squeak_colormap(self, screen):
         # TODO: fix this up from the image
@@ -72,11 +102,11 @@ class SDLDisplay(object):
         b = rffi.cast(RSDL.MouseButtonEventPtr, event)
         btn = rffi.getintfield(b, 'c_button')
         if btn == RSDL.BUTTON_RIGHT:
-            btn = MOUSE_BTN_RIGHT
+            btn = YellowButtonBit
         elif btn == RSDL.BUTTON_MIDDLE:
-            btn = MOUSE_BTN_MIDDLE
+            btn = BlueButtonBit
         elif btn == RSDL.BUTTON_LEFT:
-            btn = MOUSE_BTN_LEFT
+            btn = RedButtonBit
 
         if c_type == RSDL.MOUSEBUTTONDOWN:
             self.button |= btn
@@ -114,7 +144,75 @@ class SDLDisplay(object):
         if (interrupt & 0xFF == self.key and interrupt >> 8 == self.get_modifier_mask(0)):
             raise KeyboardInterrupt
 
-    def get_next_event(self):
+    def get_next_mouse_event(self, time):
+        mods = self.get_modifier_mask(3)
+        btn = self.button
+        if btn == RedButtonBit:
+            if mods & CtrlKeyBit:
+                btn = BlueButtonBit
+            elif mods & CommandKeyBit:
+                btn = YellowButtonBit
+        return [EventTypeMouse,
+                time,
+                int(self.mouse_position[0]),
+                int(self.mouse_position[1]),
+                btn,
+                mods,
+                0,
+                0]
+
+    def get_next_key_event(self, t, time):
+        mods = self.get_modifier_mask(3)
+        btn = self.button
+        return [EventTypeKeyboard,
+                time,
+                self.key,
+                t,
+                mods,
+                self.key,
+                0,
+                0]
+
+    def get_next_event(self, time=0):
+        if self._deferred_event:
+            deferred = self._deferred_event
+            self._deferred_event = None
+            return deferred
+
+        event = lltype.malloc(RSDL.Event, flavor="raw")
+        try:
+            if rffi.cast(lltype.Signed, RSDL.PollEvent(event)) == 1:
+                c_type = rffi.getintfield(event, 'c_type')
+                if c_type in [RSDL.MOUSEBUTTONDOWN, RSDL.MOUSEBUTTONUP]:
+                    self.handle_mouse_button(c_type, event)
+                    return self.get_next_mouse_event(time)
+                elif c_type == RSDL.MOUSEMOTION:
+                    self.handle_mouse_move(c_type, event)
+                    return self.get_next_mouse_event(time)
+                elif c_type == RSDL.KEYDOWN:
+                    self.handle_keypress(c_type, event)
+                    return self.get_next_key_event(EventKeyDown, time)
+                elif c_type == RSDL.KEYUP:
+                    self._deferred_event = self.get_next_key_event(EventKeyUp, time)
+                    return self.get_next_key_event(EventKeyChar, time)
+                elif c_type == RSDL.VIDEORESIZE:
+                    self.screen = RSDL.GetVideoSurface()
+                    self._deferred_event = [EventTypeWindow, time, WindowEventPaint,
+                                            0, 0, int(self.screen.c_w), int(self.screen.c_h), 0]
+                    return [EventTypeWindow, time, WindowEventMetricChange,
+                            0, 0, int(self.screen.c_w), int(self.screen.c_h), 0]
+                elif c_type == RSDL.VIDEOEXPOSE:
+                    self._deferred_event = [EventTypeWindow, time, WindowEventPaint,
+                                            0, 0, int(self.screen.c_w), int(self.screen.c_h), 0]
+                    return [EventTypeWindow, time, WindowEventActivated, 0, 0, 0, 0, 0]
+                elif c_type == RSDL.QUIT:
+                    return [EventTypeWindow, time, WindowEventClose, 0, 0, 0, 0, 0]
+        finally:
+            lltype.free(event, flavor='raw')
+        return [EventTypeNone, 0, 0, 0, 0, 0, 0, 0]
+
+    # Old style event handling
+    def pump_events(self):
         event = lltype.malloc(RSDL.Event, flavor="raw")
         try:
             if rffi.cast(lltype.Signed, RSDL.PollEvent(event)) == 1:
@@ -127,8 +225,6 @@ class SDLDisplay(object):
                 elif c_type == RSDL.KEYDOWN:
                     self.handle_keypress(c_type, event)
                     return
-                elif c_type == RSDL.VIDEORESIZE:
-                    pass # TODO
                 elif c_type == RSDL.QUIT:
                     from spyvm.error import Exit
                     raise Exit("Window closed..")
@@ -140,19 +236,19 @@ class SDLDisplay(object):
         mod = RSDL.GetModState()
         modifier = 0
         if mod & RSDL.KMOD_CTRL != 0:
-            modifier |= MOD_CONTROL
+            modifier |= CtrlKeyBit
         if mod & RSDL.KMOD_SHIFT != 0:
-            modifier |= MOD_SHIFT
+            modifier |= ShiftKeyBit
         if mod & RSDL.KMOD_ALT != 0:
-            modifier |= MOD_ALT_CMD
+            modifier |= (OptionKeyBit | CommandKeyBit)
         return modifier << shift
 
     def mouse_point(self):
-        self.get_next_event()
+        self.pump_events()
         return self.mouse_position
 
     def mouse_button(self):
-        self.get_next_event()
+        self.pump_events()
         mod = self.get_modifier_mask(3)
         return self.button | mod
 
@@ -162,7 +258,7 @@ class SDLDisplay(object):
         return key | self.get_modifier_mask(8)
 
     def peek_keycode(self):
-        self.get_next_event()
+        self.pump_events()
         self.key |= self.get_modifier_mask(8)
         return self.key
 
