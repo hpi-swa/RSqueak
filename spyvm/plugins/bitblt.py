@@ -3,7 +3,7 @@ from spyvm.error import PrimitiveFailedError
 from spyvm.shadow import AbstractCachingShadow
 from spyvm.plugins.plugin import Plugin
 
-from rpython.rlib import jit
+from rpython.rlib import jit, objectmodel
 from rpython.rlib.rarithmetic import r_uint, intmask
 
 
@@ -61,10 +61,10 @@ class BitBltShadow(AbstractCachingShadow):
 
     def loadForm(self, w_form):
         if not isinstance(w_form, model.W_PointersObject):
-            raise PrimitiveFailedError("cannot load form from %s" % w_form.as_repr_string())
+            raise PrimitiveFailedError("cannot load form")
         s_form = w_form.as_special_get_shadow(self.space, FormShadow)
         if s_form.invalid:
-            raise PrimitiveFailedError("Could not create form shadow for %s" % w_form.as_repr_string())
+            raise PrimitiveFailedError("Could not create form shadow")
         return s_form
 
     def loadHalftone(self, w_halftone_form):
@@ -253,6 +253,7 @@ class BitBltShadow(AbstractCachingShadow):
         self.destIndex = (self.dy * self.dest.pitch) + (self.dx / self.dest.pixPerWord | 0)
         self.destDelta = (self.dest.pitch * self.vDir) - (self.nWords * self.hDir)
 
+    @jit.unroll_safe
     def copyLoopNoSource(self):
         halftoneWord = BitBltShadow.AllOnes
         for i in range(self.bbH):
@@ -287,6 +288,7 @@ class BitBltShadow(AbstractCachingShadow):
                 self.destIndex += 1
             self.destIndex += self.destDelta
 
+    @jit.unroll_safe
     def copyLoopPixMap(self):
         # This version of the inner loop maps source pixels
         # to a destination form with different depth.  Because it is already
@@ -362,6 +364,7 @@ class BitBltShadow(AbstractCachingShadow):
             self.sourceIndex += self.sourceDelta
             self.destIndex += self.destDelta
 
+    @jit.unroll_safe
     def pickSourcePixels(self, nPixels, srcMask, dstMask, srcShiftInc, dstShiftInc):
         # Pick nPix pixels starting at srcBitIndex from the source, map by the
         # color map, and justify them according to dstBitIndex in the resulting destWord.
@@ -403,6 +406,7 @@ class BitBltShadow(AbstractCachingShadow):
             rotated = rotated | (thisWord & skewMask) << self.skew
         return rotated
 
+    @jit.unroll_safe
     def copyLoop(self):
         # self version of the inner loop assumes we do have a source
         sourceLimit = self.source.w_bits.size()
@@ -511,56 +515,58 @@ class BitBltShadow(AbstractCachingShadow):
     def mergeFn(self, src, dest):
         return r_uint(self.merge(
             r_uint(src),
-            r_uint(dest)
+            r_uint(dest),
+            self.combinationRule
         ))
 
-    def merge(self, source_word, dest_word):
+    @objectmodel.specialize.arg_or_var(3)
+    def merge(self, source_word, dest_word, combinationRule):
         assert isinstance(source_word, r_uint) and isinstance(dest_word, r_uint)
-        if self.combinationRule == 0:
+        if combinationRule == 0:
             return 0
-        elif self.combinationRule == 1:
+        elif combinationRule == 1:
             return source_word & dest_word
-        elif self.combinationRule == 2:
+        elif combinationRule == 2:
             return source_word & ~dest_word
-        elif self.combinationRule == 3:
+        elif combinationRule == 3:
             return source_word
-        elif self.combinationRule == 4:
+        elif combinationRule == 4:
             return ~source_word & dest_word
-        elif self.combinationRule == 5:
+        elif combinationRule == 5:
             return dest_word
-        elif self.combinationRule == 6:
+        elif combinationRule == 6:
             return source_word ^ dest_word
-        elif self.combinationRule == 7:
+        elif combinationRule == 7:
             return source_word | dest_word
-        elif self.combinationRule == 8:
+        elif combinationRule == 8:
             return ~source_word & ~dest_word
-        elif self.combinationRule == 9:
+        elif combinationRule == 9:
             return ~source_word ^ dest_word
-        elif self.combinationRule == 10:
+        elif combinationRule == 10:
             return ~dest_word
-        elif self.combinationRule == 11:
+        elif combinationRule == 11:
             return source_word | ~dest_word
-        elif self.combinationRule == 12:
+        elif combinationRule == 12:
             return ~source_word
-        elif self.combinationRule == 13:
+        elif combinationRule == 13:
             return ~source_word | dest_word
-        elif self.combinationRule == 14:
+        elif combinationRule == 14:
             return ~source_word | ~dest_word
-        elif self.combinationRule >= 15 and self.combinationRule <= 17:
+        elif combinationRule >= 15 and combinationRule <= 17:
             return dest_word
-        elif self.combinationRule == 18:
+        elif combinationRule == 18:
             return source_word + dest_word
-        elif self.combinationRule == 19:
+        elif combinationRule == 19:
             return source_word - dest_word
-        elif self.combinationRule == 20:
+        elif combinationRule == 20:
             return self.rgbAdd(source_word, dest_word)
-        elif self.combinationRule == 21:
+        elif combinationRule == 21:
             return self.rgbSub(source_word, dest_word)
-        elif 22 <= self.combinationRule <= 23:
-            raise PrimitiveFailedError("Tried old rule %d" % self.combinationRule)
-        elif self.combinationRule == 24:
+        elif 22 <= combinationRule <= 23:
+            raise PrimitiveFailedError("Tried old rule %d" % combinationRule)
+        elif combinationRule == 24:
             return self.alphaBlendWith(source_word, dest_word)
-        elif self.combinationRule == 25:
+        elif combinationRule == 25:
             if source_word == 0:
                 return dest_word
             else:
@@ -570,17 +576,17 @@ class BitBltShadow(AbstractCachingShadow):
                     self.dest.depth,
                     self.dest.pixPerWord
                 ))
-        elif self.combinationRule == 26:
+        elif combinationRule == 26:
             return self.partitionedANDtonBitsnPartitions(
                 ~source_word,
                 dest_word,
                 self.dest.depth,
                 self.dest.pixPerWord
             )
-        elif self.combinationRule == 37:
+        elif combinationRule == 37:
             return self.alphaBlendScaled(source_word, dest_word)
         else:
-            raise PrimitiveFailedError("Not implemented combinationRule %d" % self.combinationRule)
+            raise PrimitiveFailedError("Not implemented combinationRule %d" % combinationRule)
 
     def alphaBlendComponent(self, sourceWord, destinationWord, shift, alpha):
         unAlpha = 255 - alpha
@@ -666,6 +672,7 @@ class BitBltShadow(AbstractCachingShadow):
                 source_word, dest_word, 8, 4
             )
 
+    @jit.unroll_safe
     def partitionedAddTonBitsnPartitions(self, word1, word2, nBits, nParts):
         # partition mask starts at the right
         mask = BitBltShadow.MaskTable[nBits]
@@ -681,6 +688,7 @@ class BitBltShadow(AbstractCachingShadow):
             mask = mask << nBits # slide left to next partition
         return result
 
+    @jit.unroll_safe
     def partitionedSubTonBitsnPartitions(self, word1, word2, nBits, nParts):
         # partition mask starts at the right
         mask = BitBltShadow.MaskTable[nBits]
@@ -695,6 +703,7 @@ class BitBltShadow(AbstractCachingShadow):
             mask = mask << nBits # slide left to next partition"
         return result
 
+    @jit.unroll_safe
     def partitionedANDtonBitsnPartitions(self, word1, word2, nBits, nParts):
         # partition mask starts at the right
         mask = BitBltShadow.MaskTable[nBits]

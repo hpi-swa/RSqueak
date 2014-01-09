@@ -1352,8 +1352,6 @@ def func(interp, s_frame, w_rcvr, args_w, w_cm):
     if code:
         raise PrimitiveFailedError("withArgs:executeMethod: not support with primitive method")
     s_new_frame = s_method.create_frame(interp.space, w_rcvr, args_w, s_frame)
-    if interp.trace:
-        print interp.padding() + s_new_frame.short_str()
     return interp.stack_frame(s_new_frame)
 
 @expose_primitive(SIGNAL, unwrap_spec=[object], clean_stack=False, no_result=True)
