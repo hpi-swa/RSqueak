@@ -2,7 +2,7 @@ import sys, time
 import os
 
 from rpython.rlib.streamio import open_file_as_stream
-from rpython.rlib import jit
+from rpython.rlib import jit, rpath
 
 from spyvm import model, interpreter, squeakimage, objspace, wrapper,\
     error, shadow
@@ -191,9 +191,7 @@ def entry_point(argv):
     if path is None:
         path = "Squeak.image"
 
-    path = os.path.join(os.getcwd(), path)
-    if os.name == "nt":
-        path = path.replace("/", "\\")
+    path = rpath.rabspath(path)
     try:
         f = open_file_as_stream(path, mode="rb", buffering=0)
     except OSError as e:
