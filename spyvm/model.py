@@ -661,6 +661,7 @@ class W_PointersObject(W_AbstractPointersObject):
         self._vars, w_other._vars = w_other._vars, self._vars
         return W_AbstractPointersObject.become(self, w_other)
 
+    @jit.unroll_safe
     def clone(self, space):
         w_result = W_PointersObject(self.space, self.getclass(space),
                                     len(self._vars))
@@ -703,6 +704,7 @@ class W_WeakPointersObject(W_AbstractPointersObject):
         self._weakvars, w_other._weakvars = w_other._weakvars, self._weakvars
         return W_AbstractPointersObject.become(self, w_other)
 
+    @jit.unroll_safe
     def clone(self, space):
         w_result = W_WeakPointersObject(self.space, self.getclass(space),
                                         len(self._weakvars))
@@ -715,7 +717,7 @@ class W_WeakPointersObject(W_AbstractPointersObject):
 
 class W_BytesObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['bytes', 'c_bytes', '_size']
-    _immutable_fields_ = ['_size']
+    _immutable_fields_ = ['_size', 'bytes[*]?']
 
     def __init__(self, space, w_class, size):
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
@@ -798,16 +800,20 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         # XXX this sounds very wrong to me
         if not isinstance(other, W_BytesObject):
             return False
-        if self.bytes is not None and other.bytes is not None:
+        size = self.size()
+        if size != other.size():
+            return False
+        if size > 256 and self.bytes is not None and other.bytes is not None:
             return self.bytes == other.bytes
         else:
-            size = self.size()
-            if size != other.size():
+            return self.has_same_chars(other, size)
+
+    @jit.look_inside_iff(lambda self, other, size: size < 256)
+    def has_same_chars(self, other, size):
+        for i in range(size):
+            if self.getchar(i) != other.getchar(i):
                 return False
-            for i in range(size):
-                if self.getchar(i) != other.getchar(i):
-                    return False
-            return True
+        return True
 
     def clone(self, space):
         size = self.size()
