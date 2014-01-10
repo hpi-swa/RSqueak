@@ -599,14 +599,6 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         from spyvm.shadow import ObserveeShadow
         return self.as_special_get_shadow(space, ObserveeShadow)
 
-    def as_bitblt_get_shadow(self, space):
-        from spyvm.shadow import BitBltShadow
-        return self.as_special_get_shadow(space, BitBltShadow)
-
-    def as_form_get_shadow(self, space):
-        from spyvm.shadow import FormShadow
-        return self.as_special_get_shadow(space, FormShadow)
-
     def has_shadow(self):
         return self._shadow is not None
 
@@ -669,6 +661,7 @@ class W_PointersObject(W_AbstractPointersObject):
         self._vars, w_other._vars = w_other._vars, self._vars
         return W_AbstractPointersObject.become(self, w_other)
 
+    @jit.unroll_safe
     def clone(self, space):
         w_result = W_PointersObject(self.space, self.getclass(space),
                                     len(self._vars))
@@ -711,6 +704,7 @@ class W_WeakPointersObject(W_AbstractPointersObject):
         self._weakvars, w_other._weakvars = w_other._weakvars, self._weakvars
         return W_AbstractPointersObject.become(self, w_other)
 
+    @jit.unroll_safe
     def clone(self, space):
         w_result = W_WeakPointersObject(self.space, self.getclass(space),
                                         len(self._weakvars))
@@ -723,7 +717,7 @@ class W_WeakPointersObject(W_AbstractPointersObject):
 
 class W_BytesObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['bytes', 'c_bytes', '_size']
-    _immutable_fields_ = ['_size']
+    _immutable_fields_ = ['_size', 'bytes[*]?']
 
     def __init__(self, space, w_class, size):
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
@@ -806,16 +800,20 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         # XXX this sounds very wrong to me
         if not isinstance(other, W_BytesObject):
             return False
-        if self.bytes is not None and other.bytes is not None:
+        size = self.size()
+        if size != other.size():
+            return False
+        if size > 256 and self.bytes is not None and other.bytes is not None:
             return self.bytes == other.bytes
         else:
-            size = self.size()
-            if size != other.size():
+            return self.has_same_chars(other, size)
+
+    @jit.look_inside_iff(lambda self, other, size: size < 256)
+    def has_same_chars(self, other, size):
+        for i in range(size):
+            if self.getchar(i) != other.getchar(i):
                 return False
-            for i in range(size):
-                if self.getchar(i) != other.getchar(i):
-                    return False
-            return True
+        return True
 
     def clone(self, space):
         size = self.size()
@@ -976,22 +974,20 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
             lltype.free(self.c_words, flavor='raw')
 
 
-NATIVE_DEPTH = 32
-
 class W_DisplayBitmap(W_AbstractObjectWithClassReference):
-    _attrs_ = ['pixelbuffer', '_realsize', '_real_depth_buffer', 'display']
-    _immutable_fields_ = ['_realsize', 'display']
+    _attrs_ = ['pixelbuffer', '_realsize', '_real_depth_buffer', 'display', '_depth']
+    _immutable_fields_ = ['_realsize', 'display', '_depth']
 
     @staticmethod
     def create(space, w_class, size, depth, display):
-        if depth == 1:
-            return W_DisplayBitmap1Bit(space, w_class, size, depth, display)
+        if depth < 8:
+            return W_MappingDisplayBitmap(space, w_class, size * (8 / depth), depth, display)
+        elif depth == 8:
+            return W_8BitDisplayBitmap(space, w_class, size, depth, display)
         elif depth == 16:
-            return W_DisplayBitmap16Bit(space, w_class, size, depth, display)
-        elif depth == 32:
-            return W_DisplayBitmap32Bit(space, w_class, size, depth, display)
+            return W_16BitDisplayBitmap(space, w_class, size, depth, display)
         else:
-            raise NotImplementedError("non B/W squeak")
+            return W_DisplayBitmap(space, w_class, size, depth, display)
 
     def __init__(self, space, w_class, size, depth, display):
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
@@ -999,6 +995,7 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
         self.pixelbuffer = display.get_pixelbuffer()
         self._realsize = size
         self.display = display
+        self._depth = depth
 
     def at0(self, space, index0):
         val = self.getword(index0)
@@ -1027,14 +1024,11 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
 
     def getword(self, n):
         assert self.size() > n >= 0
-        # if self._realsize > n:
         return self._real_depth_buffer[n]
-        # else:
-        #     print "Out-of-bounds access on display: %d/%d" % (n, self._realsize)
-        #     import pdb; pdb.set_trace()
 
     def setword(self, n, word):
-        raise NotImplementedError("subclass responsibility")
+        self._real_depth_buffer[n] = word
+        self.pixelbuffer[n] = word
 
     def is_array_object(self):
         return True
@@ -1049,58 +1043,61 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
     def __del__(self):
         lltype.free(self._real_depth_buffer, flavor='raw')
 
-    @jit.elidable
-    def compute_pos_and_line_end(self, n, depth):
-        width = self.display.width
-        words_per_line = width / (NATIVE_DEPTH / depth)
-        if width % (NATIVE_DEPTH / depth) != 0:
-            words_per_line += 1
-        line = n / words_per_line
-        assert line < self.display.height # line is 0 based
-        line_start = width * line
-        line_end = line_start + width # actually the start of the next line
-        pos = ((n % words_per_line) * (NATIVE_DEPTH / depth)) + line_start
-        return pos, line_end
+
+class W_16BitDisplayBitmap(W_DisplayBitmap):
+    def setword(self, n, word):
+        self._real_depth_buffer[n] = word
+        mask = 0b11111
+        lsb = (r_uint(word) & r_uint(0xffff0000)) >> 16
+        msb = (r_uint(word) & r_uint(0x0000ffff))
+
+        lsb = (
+            ((lsb >> 10) & mask) |
+            (((lsb >> 5) & mask) << 6) |
+            ((lsb & mask) << 11)
+        )
+        msb = (
+            ((msb >> 10) & mask) |
+            (((msb >> 5) & mask) << 6) |
+            ((msb & mask) << 11)
+        )
+
+        self.pixelbuffer[n] = r_uint(lsb | (msb << 16))
 
 
-class W_DisplayBitmap1Bit(W_DisplayBitmap):
+class W_8BitDisplayBitmap(W_DisplayBitmap):
+    def setword(self, n, word):
+        self._real_depth_buffer[n] = word
+        self.pixelbuffer[n] = r_uint(
+            (word >> 24) |
+            ((word >> 8) & 0x0000ff00) |
+            ((word << 8) & 0x00ff0000) |
+            (word << 24)
+        )
+
+
+NATIVE_DEPTH = 8
+class W_MappingDisplayBitmap(W_DisplayBitmap):
     @jit.unroll_safe
     def setword(self, n, word):
         self._real_depth_buffer[n] = word
-        pos, line_end = self.compute_pos_and_line_end(n, 1)
-        mask = r_uint(1)
-        mask <<= 31
-        for i in xrange(32):
-            if pos == line_end:
+        word = r_uint(word)
+        pos = self.compute_pos(n)
+        assert self._depth <= 4
+        rshift = 32 - self._depth
+        for i in xrange(8 / self._depth):
+            if pos >= self.size():
                 return
-            bit = mask & word
-            pixel = r_uint((0x00ffffff * (bit == 0)) | r_uint(0xff000000))
-            self.pixelbuffer[pos] = pixel
-            mask >>= 1
+            mapword = r_uint(0)
+            for i in xrange(4):
+                pixel = r_uint(word) >> rshift
+                mapword |= (r_uint(pixel) << (i * 8))
+                word <<= self._depth
+            self.pixelbuffer[pos] = mapword
             pos += 1
 
-class W_DisplayBitmap16Bit(W_DisplayBitmap):
-    @jit.unroll_safe
-    def setword(self, n, word):
-        self._real_depth_buffer[n] = word
-        pos, line_end = self.compute_pos_and_line_end(n, 16)
-        for i in xrange(2):
-            if pos >= line_end:
-                return
-            pixel = r_uint(0x0 |
-                           ((word & 0b111110000000000) << 9) |
-                           ((word & 0b000001111100000) << 6) |
-                           ((word & 0b000000000011111) << 3)
-            )
-            self.pixelbuffer[pos] = pixel
-            word = (word >> 16) & 0xffff
-            pos += 1
-
-class W_DisplayBitmap32Bit(W_DisplayBitmap):
-    @jit.unroll_safe
-    def setword(self, n, word):
-        self._real_depth_buffer[n] = word
-        self.pixelbuffer[n] = word
+    def compute_pos(self, n):
+        return n * (NATIVE_DEPTH / self._depth)
 
 # XXX Shouldn't compiledmethod have class reference for subclassed compiled
 # methods?

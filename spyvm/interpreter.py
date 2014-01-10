@@ -25,7 +25,7 @@ def get_printable_location(pc, self, method):
 class Interpreter(object):
     _immutable_fields_ = ["space", "image", "image_name",
                           "max_stack_depth", "interrupt_counter_size",
-                          "startup_time"]
+                          "startup_time", "evented"]
     _w_last_active_context = None
     cnt = 0
     _last_indent = ""
@@ -37,7 +37,8 @@ class Interpreter(object):
     )
 
     def __init__(self, space, image=None, image_name="", trace=False,
-                max_stack_depth=constants.MAX_LOOP_DEPTH):
+                 evented=True,
+                 max_stack_depth=constants.MAX_LOOP_DEPTH):
         import time
         self.space = space
         self.image = image
@@ -47,6 +48,7 @@ class Interpreter(object):
         self.remaining_stack_depth = max_stack_depth
         self._loop = False
         self.next_wakeup_tick = 0
+        self.evented = evented
         try:
             self.interrupt_counter_size = int(os.environ["SPY_ICS"])
         except KeyError:

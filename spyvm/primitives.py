@@ -137,6 +137,8 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                         args += (interp.space.unwrap_array(w_arg), )
                     elif spec is char:
                         args += (unwrap_char(w_arg), )
+                    elif spec is bool:
+                        args += (interp.space.w_true is w_arg, )
                     else:
                         raise NotImplementedError(
                             "unknown unwrap_spec %s" % (spec, ))
@@ -625,51 +627,25 @@ def func(interp, s_frame, w_rcvr):
     w_point.store(interp.space, 1, interp.space.wrap_int(y))
     return w_point
 
+@jit.unroll_safe
+@jit.look_inside
 @expose_primitive(GET_NEXT_EVENT, unwrap_spec=[object, object])
 def func(interp, s_frame, w_rcvr, w_into):
-    raise PrimitiveNotYetWrittenError()
-
-@expose_primitive(BITBLT_COPY_BITS, unwrap_spec=[object], clean_stack=False)
-def func(interp, s_frame, w_rcvr):
-    from spyvm.interpreter import Return
-    if not isinstance(w_rcvr, model.W_PointersObject) or w_rcvr.size() < 15:
-        raise PrimitiveFailedError
-
-    # only allow combinationRules 0-41
-    combinationRule = interp.space.unwrap_positive_32bit_int(w_rcvr.fetch(interp.space, 3))
-    if combinationRule > 41:
-        raise PrimitiveFailedError
-
-    space = interp.space
-
-    s_bitblt = w_rcvr.as_bitblt_get_shadow(space)
-    # See BlueBook p.356ff
-    s_bitblt.clip_range()
-    if s_bitblt.w <= 0 or s_bitblt.h <= 0:
-        return w_rcvr # null range
-    s_bitblt.compute_masks()
-    s_bitblt.check_overlap()
-    s_bitblt.calculate_offsets()
-    # print s_bitblt.as_string()
-    s_bitblt.copy_loop()
-
-    w_dest_form = w_rcvr.fetch(space, 0)
-    if w_dest_form.is_same_object(space.objtable['w_display']):
-        w_bitmap = w_dest_form.fetch(space, 0)
-        assert isinstance(w_bitmap, model.W_DisplayBitmap)
-        w_bitmap.flush_to_screen()
-
-    # try:
-    #     s_frame._sendSelfSelector(interp.image.w_simulateCopyBits, 0, interp)
-    # except Return:
-    #     w_dest_form = w_rcvr.fetch(space, 0)
-    #     if w_dest_form.is_same_object(space.objtable['w_display']):
-    #         w_bitmap = w_dest_form.fetch(space, 0)
-    #         assert isinstance(w_bitmap, model.W_DisplayBitmap)
-    #         w_bitmap.flush_to_screen()
-
-    # in case we return normally, we have to restore the removed w_rcvr
+    if not interp.evented:
+        raise PrimitiveFailedError()
+    ary = interp.space.get_display().get_next_event(time=interp.time_now())
+    for i in range(8):
+        w_into.store(interp.space, i, interp.space.wrap_int(ary[i]))
+    # XXX - hack
+    if ary[0] == display.WindowEventMetricChange and ary[4] > 0 and ary[5] > 0:
+        if interp.image:
+            interp.image.lastWindowSize = ((ary[4] & 0xffff) << 16) | (ary[5] & 0xffff)
     return w_rcvr
+
+@expose_primitive(BITBLT_COPY_BITS, clean_stack=False, no_result=True, compiled_method=True)
+def func(interp, s_frame, argcount, s_method):
+    from spyvm.plugins.bitblt import BitBltPlugin
+    return BitBltPlugin.call("primitiveCopyBits", interp, s_frame, argcount, s_method)
 
 @expose_primitive(BE_CURSOR)
 def func(interp, s_frame, argcount):
@@ -825,6 +801,7 @@ BYTES_LEFT = 112
 QUIT = 113
 EXIT_TO_DEBUGGER = 114
 CHANGE_CLASS = 115      # Blue Book: primitiveOopsLeft
+COMPILED_METHOD_FLUSH_CACHE = 116
 EXTERNAL_CALL = 117
 SYMBOL_FLUSH_CACHE = 119
 
@@ -893,9 +870,10 @@ def func(interp, s_frame, argcount, s_method):
         raise PrimitiveFailedError
     signature = (w_modulename.as_string(), w_functionname.as_string())
 
-    # if signature == ('BitBltPlugin', 'primitiveCopyBits'):
-    #     return prim_holder.prim_table[BITBLT_COPY_BITS](interp, s_frame, argcount, s_method)
-    if signature[0] == "SocketPlugin":
+    if signature[0] == 'BitBltPlugin':
+        from spyvm.plugins.bitblt import BitBltPlugin
+        return BitBltPlugin.call(signature[1], interp, s_frame, argcount, s_method)
+    elif signature[0] == "SocketPlugin":
         from spyvm.plugins.socket import SocketPlugin
         return SocketPlugin.call(signature[1], interp, s_frame, argcount, s_method)
     elif signature[0] == "FilePlugin":
@@ -908,6 +886,17 @@ def func(interp, s_frame, argcount, s_method):
         from spyvm.interpreter_proxy import IProxy
         return IProxy.call(signature, interp, s_frame, argcount, s_method)
     raise PrimitiveFailedError
+
+@expose_primitive(COMPILED_METHOD_FLUSH_CACHE, unwrap_spec=[object])
+def func(interp, s_frame, w_rcvr):
+    if not isinstance(w_rcvr, model.W_CompiledMethod):
+        raise PrimitiveFailedError()
+    s_cm = w_rcvr.as_compiledmethod_get_shadow(interp.space)
+    w_class = s_cm.w_compiledin
+    if w_class:
+        assert isinstance(w_class, model.W_PointersObject)
+        w_class.as_class_get_shadow(interp.space).flush_caches()
+    return w_rcvr
 
 @expose_primitive(SYMBOL_FLUSH_CACHE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
@@ -944,9 +933,11 @@ def func(interp, s_frame, w_reciver, i):
     # dont know when the space runs out
     return w_reciver
 
-@expose_primitive(DEFER_UPDATES, unwrap_spec=[object, object])
-def func(interp, s_frame, w_receiver, w_bool):
-    raise PrimitiveNotYetWrittenError()
+@expose_primitive(DEFER_UPDATES, unwrap_spec=[object, bool])
+def func(interp, s_frame, w_receiver, flag):
+    sdldisplay = interp.space.get_display()
+    sdldisplay.defer_updates(flag)
+    return w_receiver
 
 @expose_primitive(DRAW_RECTANGLE, unwrap_spec=[object, int, int, int, int])
 def func(interp, s_frame, w_rcvr, left, right, top, bottom):
@@ -981,7 +972,7 @@ def func(interp, s_frame, w_rcvr, w_new):
     return w_rcvr
 
 def fake_bytes_left(interp):
-    return interp.space.wrap_int(2**20) # XXX we don't know how to do this :-(
+    return interp.space.wrap_int(2**29) # XXX we don't know how to do this :-(
 
 @expose_primitive(SPECIAL_OBJECTS_ARRAY, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
@@ -990,7 +981,8 @@ def func(interp, s_frame, w_rcvr):
 @expose_primitive(INC_GC, unwrap_spec=[object])
 @expose_primitive(FULL_GC, unwrap_spec=[object])
 @jit.dont_look_inside
-def func(interp, s_frame, w_arg): # Squeak pops the arg and ignores it ... go figure
+# def func(interp, s_frame, w_arg): # Squeak pops the arg and ignores it ... go figure
+def func(interp, s_frame, w_rcvr):
     from rpython.rlib import rgc
     rgc.collect()
     return fake_bytes_left(interp)
@@ -1044,11 +1036,16 @@ def func(interp, s_frame, w_arg):
 
 #____________________________________________________________________________
 # Misc Primitives (138 - 149)
+BEEP = 140
 VM_PATH = 142
 SHORT_AT = 143
 SHORT_AT_PUT = 144
 FILL = 145
 CLONE = 148
+
+@expose_primitive(BEEP, unwrap_spec=[object])
+def func(interp, s_frame, w_receiver):
+    return w_receiver
 
 @expose_primitive(VM_PATH, unwrap_spec=[object])
 def func(interp, s_frame, w_receiver):
@@ -1233,6 +1230,7 @@ WAIT = 86
 RESUME = 87
 SUSPEND = 88
 FLUSH_CACHE = 89
+WITH_ARGS_EXECUTE_METHOD = 188
 
 @expose_primitive(BLOCK_COPY, unwrap_spec=[object, int])
 def func(interp, s_frame, w_context, argcnt):
@@ -1344,6 +1342,18 @@ def func(interp, s_frame, w_rcvr, w_selector, args_w):
     s_frame.pop()
     return interp.stack_frame(s_new_frame)
 
+@expose_primitive(WITH_ARGS_EXECUTE_METHOD, unwrap_spec=[object, list, object], no_result=True)
+def func(interp, s_frame, w_rcvr, args_w, w_cm):
+    if not isinstance(w_cm, model.W_CompiledMethod):
+        raise PrimitiveFailedError()
+
+    s_method = w_cm.as_compiledmethod_get_shadow(interp.space)
+    code = s_method.primitive()
+    if code:
+        raise PrimitiveFailedError("withArgs:executeMethod: not support with primitive method")
+    s_new_frame = s_method.create_frame(interp.space, w_rcvr, args_w, s_frame)
+    return interp.stack_frame(s_new_frame)
+
 @expose_primitive(SIGNAL, unwrap_spec=[object], clean_stack=False, no_result=True)
 def func(interp, s_frame, w_rcvr):
     # XXX we might want to disable this check
@@ -1382,8 +1392,10 @@ def func(interp, s_frame, w_rcvr):
 
 @expose_primitive(FLUSH_CACHE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    # XXX we currently don't care about bad flushes :) XXX
-    # raise PrimitiveNotYetWrittenError()
+    if not isinstance(w_rcvr, model.W_PointersObject):
+        raise PrimitiveFailedError()
+    s_class = w_rcvr.as_class_get_shadow(interp.space)
+    s_class.flush_caches()
     return w_rcvr
 
 # ___________________________________________________________________________
@@ -1491,7 +1503,7 @@ def func(interp, s_frame, w_rcvr, time_mu_s):
 
 @expose_primitive(FORCE_DISPLAY_UPDATE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    interp.space.get_display().flip()
+    interp.space.get_display().flip(force=True)
     return w_rcvr
 
 # ___________________________________________________________________________

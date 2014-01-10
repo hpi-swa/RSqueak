@@ -169,6 +169,13 @@ class ClassShadow(AbstractCachingShadow):
             self.store_w_superclass(w_superclass)
         self.changed()
 
+    @jit.unroll_safe
+    def flush_caches(self):
+        look_in_shadow = self
+        while look_in_shadow is not None:
+            s_method = look_in_shadow.s_methoddict().sync_cache()
+            look_in_shadow = look_in_shadow._s_superclass
+
     def guess_class_name(self):
         if self.name != '':
             return self.name
@@ -355,8 +362,8 @@ class MethodDictionaryShadow(AbstractShadow):
 
     def find_selector(self, w_selector):
         if self.invalid:
-            return None
-        return self.methoddict.get(w_selector, None)
+            return None # we may be invalid if Smalltalk code did not call flushCache
+        return self.methoddict.get(self._as_md_entry(w_selector), None)
 
     def update(self): return self.sync_cache()
 
@@ -369,6 +376,12 @@ class MethodDictionaryShadow(AbstractShadow):
     def store(self, n0, w_value):
         AbstractShadow.store(self, n0, w_value)
         self.invalid = True
+
+    def _as_md_entry(self, w_selector):
+        if isinstance(w_selector, model.W_BytesObject):
+            return w_selector.as_string()
+        else:
+            return "%r" % w_selector # use the pointer for this
 
     def sync_cache(self):
         if self.w_self().size() == 0:
@@ -394,11 +407,8 @@ class MethodDictionaryShadow(AbstractShadow):
                                        "CompiledMethods only, for now. "
                                        "If the value observed is nil, our "
                                        "invalidating mechanism may be broken.")
-                self.methoddict[w_selector] = w_compiledmethod.as_compiledmethod_get_shadow(self.space)
-                if isinstance(w_selector, model.W_BytesObject):
-                    selector = w_selector.as_string()
-                else:
-                    selector = w_selector.as_repr_string()
+                selector = self._as_md_entry(w_selector)
+                self.methoddict[selector] = w_compiledmethod.as_compiledmethod_get_shadow(self.space)
                 w_compiledmethod._likely_methodname = selector
         if self.s_class:
             self.s_class.changed()
@@ -1125,313 +1135,3 @@ class ObserveeShadow(AbstractShadow):
         self.dependent = dependent
 
     def update(self): pass
-
-
-class BitBltShadow(AbstractCachingShadow):
-    _attrs_ = [# From BitBlt
-               "dest_form", "source_form", "halftone_form",
-               "combination_rule", "dest_x", "dest_y", "width",
-               "height", "source_x", "source_y", "clip_x", "clip_y",
-               "clip_width", "clip_height", "color_map",
-               # From BitBltSimulation
-               "w", "h", "sx", "sy", "dx", "dy",
-               "dest_bits", "dest_raster", "source_bits", "source_raster",
-               "halftone_bits", "skew", "mask1", "mask2", "skew_mask",
-               "n_words", "h_dir", "v_dir", "preload", "source_index",
-               "dest_index", "source_delta", "dest_delta"]
-
-    WordSize = 32
-    RightMasks = [rarithmetic.r_uint(0)]
-    for i in xrange(WordSize):
-        RightMasks.append(rarithmetic.r_uint((2 ** (i + 1)) - 1))
-    AllOnes = rarithmetic.r_uint((2 ** WordSize) - 1)
-
-    def sync_cache(self):
-        try:
-            w_form = self.fetch(0)
-            assert isinstance(w_form, model.W_PointersObject)
-            s_form = w_form.as_form_get_shadow(self.space)
-            assert isinstance(s_form, FormShadow)
-            self.dest_form = s_form
-        except error.PrimitiveFailedError, e:
-            w_self = self.w_self()
-            assert isinstance(w_self, model.W_PointersObject)
-            w_self._shadow = None
-            raise e
-        w_source_form = self.fetch(1)
-        if w_source_form is self.space.w_nil:
-            self.source_form = None
-        else:
-            try:
-                w_form = w_source_form
-                assert isinstance(w_form, model.W_PointersObject)
-                s_form = w_form.as_form_get_shadow(self.space)
-                assert isinstance(s_form, FormShadow)
-                self.source_form = s_form
-            except error.PrimitiveFailedError, e:
-                w_self = self.w_self()
-                assert isinstance(w_self, model.W_PointersObject)
-                w_self._shadow = None
-                raise e
-        w_halftone_form = self.fetch(2)
-        if w_halftone_form is not self.space.w_nil:
-            if isinstance(w_halftone_form, model.W_WordsObject):
-                # Already a bitmap
-                self.halftone_bits = w_halftone_form.words
-            else:
-                assert isinstance(w_halftone_form, model.W_PointersObject)
-                w_bits = w_halftone_form.as_form_get_shadow(self.space).w_bits
-                assert isinstance(w_bits, model.W_WordsObject)
-                self.halftone_bits = w_bits.words
-        else:
-            self.halftone_bits = None
-        self.combination_rule = self.space.unwrap_int(self.fetch(3))
-        self.dest_x = self.space.unwrap_int(self.fetch(4))
-        self.dest_y = self.space.unwrap_int(self.fetch(5))
-        self.width = self.space.unwrap_int(self.fetch(6))
-        self.height = self.space.unwrap_int(self.fetch(7))
-        self.source_x = self.space.unwrap_int(self.fetch(8))
-        self.source_y = self.space.unwrap_int(self.fetch(9))
-        self.clip_x = self.space.unwrap_int(self.fetch(10))
-        self.clip_y = self.space.unwrap_int(self.fetch(11))
-        self.clip_width = self.space.unwrap_int(self.fetch(12))
-        self.clip_height = self.space.unwrap_int(self.fetch(13))
-        self.color_map = self.fetch(14)
-
-    def clip_range(self):
-        if self.dest_x >= self.clip_x:
-            self.sx = self.source_x
-            self.dx = self.dest_x
-            self.w = self.width
-        else:
-            self.sx = self.source_x + (self.clip_x - self.dest_x)
-            self.w = self.width - (self.clip_x - self.dest_x)
-            self.dx = self.clip_x
-        if self.dx + self.w > self.clip_x + self.clip_width:
-            self.w = self.w - (self.dx + self.w - (self.clip_x + self.clip_width))
-        if self.dest_y >= self.clip_y:
-            self.sy = self.source_y
-            self.dy = self.dest_y
-            self.h = self.height
-        else:
-            self.sy = self.source_y + self.clip_y - self.dest_y
-            self.h = self.height - self.clip_y - self.dest_y
-            self.dy = self.clip_y
-        if self.dy + self.h > self.clip_y + self.clip_height:
-            self.h = self.h - (self.dy + self.h - (self.clip_y + self.clip_height))
-        if self.source_form is None:
-            return
-        if self.sx < 0:
-            self.dx = self.dx - self.sx
-            self.w = self.w + self.sx
-            self.sx = 0
-        if self.sx + self.w > self.source_form.width:
-            self.w = self.w - (self.sx + self.w - self.source_form.width)
-        if self.sy < 0:
-            self.dy = self.dy - self.sy
-            self.h = self.h + self.sy
-            self.sy = 0
-        if self.sy + self.h > self.source_form.height:
-            self.h = self.h - (self.sy + self.h - self.source_form.height)
-
-    def compute_masks(self):
-        self.dest_bits = self.dest_form.w_bits
-        self.dest_raster = (self.dest_form.width - 1) // BitBltShadow.WordSize + 1
-        if self.source_form is not None:
-            self.source_bits = self.source_form.w_bits
-            self.source_raster = (self.source_form.width - 1) // BitBltShadow.WordSize + 1
-        else:
-            self.source_bits = None
-            self.source_raster = 0
-        # Halftone form is set during synchronization
-        self.skew = (self.sx - self.dx) & (BitBltShadow.WordSize - 1)
-        start_bits = BitBltShadow.WordSize - (self.dx & (BitBltShadow.WordSize - 1))
-        self.mask1 = BitBltShadow.RightMasks[start_bits]
-        end_bits = (BitBltShadow.WordSize - 1) - ((self.dx + self.w - 1) & (BitBltShadow.WordSize - 1))
-        self.mask2 = ~BitBltShadow.RightMasks[end_bits]
-        if self.skew == 0:
-            self.skew_mask = rarithmetic.r_uint(0)
-        else:
-            self.skew_mask = BitBltShadow.RightMasks[BitBltShadow.WordSize - self.skew]
-        if self.w < start_bits:
-            self.mask1 = self.mask1 & self.mask2
-            self.mask2 = rarithmetic.r_uint(0)
-            self.n_words = 1
-        else:
-            self.n_words = (self.w - start_bits - 1) // BitBltShadow.WordSize + 2
-
-    def check_overlap(self):
-        self.h_dir = 1
-        self.v_dir = 1
-        if (self.source_form is not None and
-            self.source_form.w_self().is_same_object(self.dest_form.w_self()) and
-            self.dy >= self.sy):
-            if self.dy > self.sy:
-                self.v_dir = -1
-                self.sy = self.sy + self.h - 1
-                self.dy = self.dy + self.h - 1
-            elif self.dx > self.sx:
-                self.h_dir = -1
-                self.sx = self.sx + self.w - 1
-                self.dx = self.dx + self.w - 1
-                self.skew_mask = ~self.skew_mask
-                self.mask1, self.mask2 = self.mask2, self.mask1
-
-    def calculate_offsets(self):
-        self.preload = (self.source_form is not None and (
-                        self.skew != 0 and
-                        self.skew <= (self.sx & (BitBltShadow.WordSize - 1))))
-        if self.h_dir < 0:
-            self.preload = not self.preload
-        self.source_index = self.sy * self.source_raster + (self.sx // BitBltShadow.WordSize)
-        self.dest_index = self.dy * self.dest_raster + (self.dx // BitBltShadow.WordSize)
-        self.source_delta = (self.source_raster *
-                             self.v_dir -
-                             ((self.n_words + (1 if self.preload else 0)) *
-                             self.h_dir))
-        self.dest_delta = self.dest_raster * self.v_dir - self.n_words * self.h_dir
-
-    def copy_loop(self):
-        space = self.space
-        no_skew_mask = ~self.skew_mask
-        for i in xrange(1, self.h + 1):
-            if self.halftone_bits:
-                halftone_word = self.halftone_bits[self.dy % len(self.halftone_bits)]
-                self.dy = self.dy + self.v_dir
-            else:
-                halftone_word = BitBltShadow.AllOnes
-            skew_word = halftone_word
-            if self.preload:
-                prev_word = self.source_bits.getword(self.source_index)
-                self.source_index = self.source_index + self.h_dir
-            else:
-                prev_word = 0
-            merge_mask = self.mask1
-            for word in xrange(1, self.n_words + 1):
-                if self.source_form is not None:
-                    prev_word = prev_word & self.skew_mask
-                    if (self.source_index < 0
-                        or self.source_index >= self.source_bits.size()):
-                        this_word = self.source_bits.getword(0)
-                    else:
-                        this_word = self.source_bits.getword(self.source_index)
-                    skew_word = prev_word | (this_word & no_skew_mask)
-                    prev_word = this_word
-                    skew_word = (self.bit_shift(skew_word, self.skew) |
-                                 self.bit_shift(skew_word, self.skew - BitBltShadow.WordSize))
-                merge_word = rarithmetic.r_uint(self.merge(
-                    skew_word & halftone_word,
-                    self.dest_bits.getword(self.dest_index)
-                ))
-                __new = (
-                    (merge_mask & merge_word) |
-                    (~merge_mask & self.dest_bits.getword(self.dest_index))
-                )
-                self.dest_bits.setword(self.dest_index, __new)
-                self.source_index = self.source_index + self.h_dir
-                self.dest_index = self.dest_index + self.h_dir
-                if word == (self.n_words - 1):
-                    merge_mask = self.mask2
-                else:
-                    merge_mask = BitBltShadow.AllOnes
-            self.source_index = self.source_index + self.source_delta
-            self.dest_index = self.dest_index + self.dest_delta
-
-    def bit_shift(self, target, amount):
-        if amount > 31 or amount < -31:
-            return 0
-        elif amount > 0:
-            return (rarithmetic.r_uint(target) << amount) & BitBltShadow.AllOnes
-        elif amount == 0:
-            return target
-        else:
-            return (rarithmetic.r_uint(target) >> -amount)
-
-    def merge(self, source_word, dest_word):
-        assert isinstance(source_word, rarithmetic.r_uint) and isinstance(dest_word, rarithmetic.r_uint)
-        if self.combination_rule == 0:
-            return 0
-        elif self.combination_rule == 1:
-            return source_word & dest_word
-        elif self.combination_rule == 2:
-            return source_word & ~dest_word
-        elif self.combination_rule == 3:
-            return source_word
-        elif self.combination_rule == 4:
-            return ~source_word & dest_word
-        elif self.combination_rule == 5:
-            return dest_word
-        elif self.combination_rule == 6:
-            return source_word ^ dest_word
-        elif self.combination_rule == 7:
-            return source_word | dest_word
-        elif self.combination_rule == 8:
-            return ~source_word & ~dest_word
-        elif self.combination_rule == 9:
-            return ~source_word ^ dest_word
-        elif self.combination_rule == 10:
-            return ~dest_word
-        elif self.combination_rule == 11:
-            return source_word | ~dest_word
-        elif self.combination_rule == 12:
-            return ~source_word
-        elif self.combination_rule == 13:
-            return ~source_word | dest_word
-        elif self.combination_rule == 14:
-            return ~source_word | ~dest_word
-        elif self.combination_rule == 15:
-            return dest_word & BitBltShadow.AllOnes
-        elif self.combination_rule >= 16 and self.combination_rule <= 24:
-            return dest_word
-        elif self.combination_rule == 25:
-            if source_word == 0:
-                return dest_word
-            else:
-                return source_word | (dest_word & ~source_word)
-        elif 26 <= self.combination_rule <= 41:
-            return dest_word
-        else:
-            raise error.PrimitiveFailedError()
-
-    def as_string(bb):
-        return 'aBitBlt (destX: %d, destY: %d, sx: %d, sy: %d, dx: %d, dy: %d, w: %d, h: %d, hDir: %d, vDir: %d, sDelta: %d, dDelta: %d, skew: %d, sI: %d, dI: %d)' % (
-            bb.dest_x, bb.dest_y, bb.sx, bb.sy, bb.dx, bb.dy, bb.w, bb.h, bb.h_dir, bb.v_dir, bb.source_delta, bb.dest_delta, bb.skew, bb.source_index, bb.dest_index)
-            # "dest_raster", "source_raster",
-            # "halftone_bits", "mask1", "mask2", "skew_mask",
-            # "n_words", "preload"
-
-class FormShadow(AbstractCachingShadow):
-    _attrs_ = ["w_bits", "width", "height", "depth", "offset_x", "offset_y"]
-
-    def sync_cache(self):
-        if self.size() < 5:
-            w_self = self.w_self()
-            assert isinstance(w_self, model.W_PointersObject)
-            w_self._shadow = None
-            raise error.PrimitiveFailedError
-        self.w_bits = self.fetch(0)
-        if not (isinstance(self.w_bits, model.W_WordsObject) or isinstance(self.w_bits, model.W_DisplayBitmap)):
-            w_self = self.w_self()
-            assert isinstance(w_self, model.W_PointersObject)
-            w_self._shadow = None
-            raise error.PrimitiveFailedError
-        self.width = self.space.unwrap_int(self.fetch(1))
-        self.height = self.space.unwrap_int(self.fetch(2))
-        self.depth = self.space.unwrap_int(self.fetch(3))
-        w_offset = self.fetch(4)
-        assert isinstance(w_offset, model.W_PointersObject)
-        if not w_offset is self.space.w_nil:
-            self.offset_x = self.space.unwrap_int(w_offset._fetch(0))
-            self.offset_y = self.space.unwrap_int(w_offset._fetch(1))
-
-    # def replace_bits(self):
-    #     w_bits = self.w_bits
-    #     if isinstance(w_bits, model.W_WordsObject):
-    #         pass
-    #     elif isinstance(w_bits, model.W_DisplayBitmap):
-    #         w_bits.update_from_buffer()
-    #     else:
-    #         w_self = self.w_self()
-    #         assert isinstance(w_self, model.W_PointersObject)
-    #         w_self._shadow = None
-    #         raise error.PrimitiveFailedError

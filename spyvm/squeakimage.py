@@ -376,6 +376,15 @@ class SqueakImage(object):
         self.lastWindowSize = reader.lastWindowSize
         self.version = reader.version
         self.is_modern = reader.version.magic > 6502
+        self.run_spy_hacks(space)
+
+    def run_spy_hacks(self, space):
+        pass
+        # w_display = space.objtable["w_display"]
+        # if w_display is not None and w_display is not space.w_nil:
+        #     if space.unwrap_int(w_display.fetch(space, 3)) < 8:
+        #         # non-native indexed color depth not well supported
+        #         w_display.store(space, 3, space.wrap_int(8))
 
     def find_symbol(self, space, reader, symbol):
         w_dnu = self.special(constants.SO_DOES_NOT_UNDERSTAND)

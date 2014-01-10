@@ -56,28 +56,77 @@ class TestBasic(BaseJITTest):
         ^ i
         """)
         self.assert_matches(traces[0].loop, """
-        label(p0, p3, i58, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, i65, descr=TargetToken(153187472))
-        debug_merge_point(0, 0, '2: [0x10]pushTemporaryVariableBytecode (codeTest1387373494)')
         guard_not_invalidated(descr=<Guard0x92520c4>)
-        debug_merge_point(0, 0, '3: [0x21]pushLiteralConstantBytecode (codeTest1387373494)')
-        debug_merge_point(0, 0, '4: [0xb4]bytecodePrimLessOrEqual (codeTest1387373494)')
         i68 = int_le(i58, 10000)
         guard_true(i68, descr=<Guard0x9252088>)
-        debug_merge_point(0, 0, '5: [0x9e]shortConditionalJump (codeTest1387373494)')
-        debug_merge_point(0, 0, '6: [0x10]pushTemporaryVariableBytecode (codeTest1387373494)')
-        debug_merge_point(0, 0, '7: [0x20]pushLiteralConstantBytecode (codeTest1387373494)')
-        debug_merge_point(0, 0, '8: [0xc2]bytecodePrimSize (codeTest1387373494)')
-        debug_merge_point(0, 0, '9: [0xb0]bytecodePrimAdd (codeTest1387373494)')
         i69 = int_add(i58, 1)
         i70 = int_sub(i69, -1073741824)
         i71 = uint_lt(i70, -2147483648)
         guard_true(i71, descr=<Guard0x925204c>)
-        debug_merge_point(0, 0, '10: [0x68]storeAndPopTemporaryVariableBytecode (codeTest1387373494)')
-        debug_merge_point(0, 0, '11: [0xa3]longUnconditionalJump (codeTest1387373494)')
         i72 = int_sub(i65, 1)
         setfield_gc(ConstPtr(ptr55), i72, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 16>)
         i73 = int_le(i72, 0)
         guard_false(i73, descr=<Guard0x9252010>)
-        debug_merge_point(0, 0, '2: [0x10]pushTemporaryVariableBytecode (codeTest1387373494)')
         jump(p0, p3, i69, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, i72, descr=TargetToken(153187472))
+        """)
+
+    def test_constant_string_equal2(self, spy, tmpdir):
+        # This used to have a call to array comparison in it
+        traces = self.run(spy, tmpdir, """
+        | i |
+        i := 0.
+        [i <= 100000] whileTrue: [
+          'a' == 'ab'.
+          'cde' == 'efg'.
+          'hij' == 'hij'.
+          i := i + 1].
+        ^ i
+        """)
+        self.assert_matches(traces[0].loop, """
+        guard_not_invalidated(descr=<Guard0x9c66a60>),
+        i76 = int_le(i65, 100000),
+        guard_true(i76, descr=<Guard0x9c66628>),
+        i77 = int_add(i65, 1),
+        i78 = int_sub(i77, -1073741824),
+        i79 = uint_lt(i78, -2147483648),
+        guard_true(i79, descr=<Guard0x9c622a4>),
+        i80 = int_sub(i73, 2),
+        setfield_gc(ConstPtr(ptr70), i80, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 24>),
+        i81 = int_le(i80, 0),
+        guard_false(i81, descr=<Guard0x9bbbe5c>),
+        i83 = arraylen_gc(p49, descr=<ArrayU 1>),
+        i84 = arraylen_gc(p53, descr=<ArrayU 1>),
+        i85 = arraylen_gc(p57, descr=<ArrayU 1>),
+        jump(p0, p3, i77, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, i80, p49, p53, p57, descr=TargetToken(163738864))
+        """)
+
+    def test_constant_string_var_equal(self, spy, tmpdir):
+        # This used to have a call to array comparison in it
+        traces = self.run(spy, tmpdir, """
+        | i a b c d |
+        i := 0.
+        a = 'a'.
+        b = 'bc'.
+        c = 'cd'.
+        d = 'bc'.
+        [i <= 100000] whileTrue: [
+          a == b.
+          b == c.
+          b == d.
+          i := i + 1].
+        ^ i
+        """)
+        self.assert_matches(traces[0].loop, """
+        guard_not_invalidated(descr=<Guard0x967e7cc>),
+        i73 = int_le(i62, 100000),
+        guard_true(i73, descr=<Guard0x967e790>),
+        i74 = int_add(i62, 1),
+        i75 = int_sub(i74, -1073741824),
+        i76 = uint_lt(i75, -2147483648),
+        guard_true(i76, descr=<Guard0x967e754>),
+        i77 = int_sub(i70, 1),
+        setfield_gc(ConstPtr(ptr67), i77, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 24>),
+        i78 = int_le(i77, 0),
+        guard_false(i78, descr=<Guard0x967e718>),
+        jump(p0, p3, i74, p8, p10, p12, p14, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, i77, descr=TargetToken(157713840))
         """)
