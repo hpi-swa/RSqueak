@@ -28,28 +28,35 @@ def get_printable_location(pc, self, method):
     return '%d: [%s]%s (%s)' % (pc, hex(bc), BYTECODE_NAMES[bc], name)
 
 
-class SpinLock(object):
+class SpinLock(wrapper.PartialBarrier):
     """Replacement when rthread.Lock is not working"""
 
     def __init__(self, initial=0):
         assert initial == 0 or initial == 1
         self._value = initial
 
-    def _test_and_set(self):
-        rstm.increment_atomic()
-        old_value = self._value
-        self._value = 1
-        rstm.decrement_atomic()
-        return old_value
+    def lock(self):
+        return self._value
 
-    def wait(self):
-        while self._test_and_set():
-            time.sleep(0.001)
-            rstm.should_break_transaction()
+    def store_lock(self, i):
+        self._value = i
 
-    def signal(self):
-        self._value = 0
-        rstm.should_break_transaction()
+    #
+    # def _test_and_set(self):
+    #     rstm.increment_atomic()
+    #     old_value = self._value
+    #     self._value = 1
+    #     rstm.decrement_atomic()
+    #     return old_value
+    #
+    # def wait(self):
+    #     while self._test_and_set():
+    #         time.sleep(0.001)
+    #         rstm.should_break_transaction()
+    #
+    # def signal(self):
+    #     self._value = 0
+    #     rstm.should_break_transaction()
 
 
 
@@ -67,15 +74,16 @@ class Bootstrapper(object):
         # critical values, only modify under lock:
         self.interp = None
         self.w_frame = None
+        self.w_stm_process = None
         self.num_threads = 0
 
     # wait for previous thread to start, then set global state
-    def acquire(interp, w_frame):
+    def acquire(interp, w_frame, w_stm_process):
         #bootstrapper.lock.acquire(True)
-        bootstrapper.lock.wait()
-
+        bootstrapper.lock.wait(1)
         bootstrapper.interp = interp
         bootstrapper.w_frame = w_frame
+        bootstrapper.w_stm_process = w_stm_process
 
     acquire = staticmethod(acquire)
 
@@ -83,6 +91,7 @@ class Bootstrapper(object):
     def release():
         bootstrapper.interp = None
         bootstrapper.w_frame = None
+        bootstrapper.w_stm_process = None
         bootstrapper.lock.signal()
         #bootstrapper.lock.release()
 
@@ -93,13 +102,19 @@ class Bootstrapper(object):
         print "New thread reporting"
         interp = bootstrapper.interp
         w_frame = bootstrapper.w_frame
-        assert isinstance(interp, Interpreter), "Race-condition exploded!"
-        assert isinstance(w_frame, model.W_PointersObject), "Race-condition exploded!l"
+        w_stm_process = bootstrapper.w_stm_process
+        assert isinstance(interp, Interpreter)
+        assert isinstance(w_frame, model.W_PointersObject)
+        assert isinstance(w_stm_process, wrapper.StmProcessWrapper)
         bootstrapper.num_threads += 1
         bootstrapper.release()
 
         # ...aaaaand go!
         interp.interpret_with_w_frame(w_frame)
+
+        # Signal waiting processes
+        print "Signal"
+        w_stm_process.signal()
 
         # cleanup
         bootstrapper.num_threads -= 1
@@ -136,7 +151,7 @@ class Interpreter(object):
         self.trace = trace
         self.trace_proxy = False
 
-    def fork(self, w_frame):
+    def fork(self, w_frame, w_stm_process):
 
         # clone interpreter (maybe implement a lightweight abstraction
         # for an executor)
@@ -155,7 +170,7 @@ class Interpreter(object):
         print 'Interpreter state copied'
 
         # bootstrapping from (lock-guarded) global state:
-        bootstrapper.acquire(new_interp, w_frame)
+        bootstrapper.acquire(new_interp, w_frame, w_stm_process)
         print "Thread initialized"
         # TODO: Deadlocks if the thread before died without calling bootstrapper.release()
         rthread.start_new_thread(bootstrapper.bootstrap, ())
@@ -236,7 +251,7 @@ class Interpreter(object):
             # gonna go parallel! (triggered by primitive)
             except StmProcessFork, f:
                 print "Interpreter loop about to fork"
-                self.fork(f.w_frame)
+                self.fork(f.w_frame, f.w_stm_process)
 
 
     def _get_adapted_tick_counter(self):
@@ -341,9 +356,10 @@ class ProcessSwitch(Exception):
 
 
 class StmProcessFork(Exception):
-    _attrs_ = ["w_frame"]
-    def __init__(self, w_frame):
+    _attrs_ = ["w_frame", "w_stm_process"]
+    def __init__(self, w_frame, w_stm_process):
         self.w_frame = w_frame
+        self.w_stm_process = w_stm_process
 
 
 def make_call_primitive_bytecode(primitive, selector, argcount):

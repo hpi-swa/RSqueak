@@ -33,7 +33,7 @@ def make_failing(code):
 
 # Squeak has primitives all the way up to 575
 # So all optional primitives will default to the bytecode implementation
-prim_table = [make_failing(i) for i in range(1300)] # add space for some more (i.e. STM stuff)
+prim_table = [make_failing(i) for i in range(1350)] # add space for some more (i.e. STM stuff)
 
 class PrimitiveHolder(object):
     _immutable_fields_ = ["prim_table[*]"]
@@ -1232,7 +1232,11 @@ PERFORM_WITH_ARGS = 84
 SIGNAL = 85
 WAIT = 86
 RESUME = 87
+
 STM_FORK = 1299  # 787 (+ 512) # resume in native thread
+STM_SIGNAL = 1300  # 788
+STM_WAIT = 1301  # 789
+
 SUSPEND = 88
 FLUSH_CACHE = 89
 
@@ -1372,12 +1376,34 @@ def func(interp, s_frame, w_rcvr):
     w_frame = interp.space.unwrap_pointersobject(w_frame)
     return w_frame.as_context_get_shadow(interp.space)
 
+
 @expose_primitive(STM_FORK, unwrap_spec=[object], no_result=True)
 def func(interp, s_frame, w_rcvr):
     from rpython.rlib import rstm
 
     print "STM_FORK primitive called"
     wrapper.StmProcessWrapper(interp.space, w_rcvr).fork(s_frame.w_self())
+    rstm.should_break_transaction()
+
+
+@expose_primitive(STM_SIGNAL, unwrap_spec=[object], no_result=True)
+def func(interp, s_frame, w_rcvr):
+    from rpython.rlib import rstm
+
+    print "STM_SIGNAL primitive called"
+    wrapper.StmProcessWrapper(interp.space, w_rcvr).signal()
+    rstm.should_break_transaction()
+
+
+@expose_primitive(STM_WAIT, unwrap_spec=[object], no_result=True)
+def func(interp, s_frame, w_rcvr):
+    from rpython.rlib import rstm
+
+    print "STM_WAIT primitive called"
+
+    # wait(0) behaves like a barrier, it waits for but does not acquire the lock
+    wrapper.StmProcessWrapper(interp.space, w_rcvr).wait(0)
+    print "STM Rendezvous"
     rstm.should_break_transaction()
 
 

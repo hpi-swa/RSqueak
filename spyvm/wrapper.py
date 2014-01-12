@@ -1,5 +1,6 @@
 from spyvm import model, constants
 from spyvm.error import FatalError, WrapperException, PrimitiveFailedError
+from rpython.rlib import rstm
 
 class Wrapper(object):
     def __init__(self, space, w_self):
@@ -115,7 +116,32 @@ class ProcessWrapper(LinkWrapper):
             return w_current_frame
 
 
-class StmProcessWrapper(ProcessWrapper):
+class PartialBarrier(object):
+    _mixin_ = True
+
+    def signal(self):
+        self.store_lock(0)
+        rstm.should_break_transaction()
+
+    def _test_and_set(self, i):
+        rstm.increment_atomic()
+        old_value = self.lock()
+        self.store_lock(i)
+        rstm.decrement_atomic()
+        return old_value
+
+    # i = 0 just waits but does not acquire (Barrier)
+    # i = 1 waits and acquires (Mutex)
+    def wait(self, i):
+        import time
+        while self._test_and_set(i):
+            time.sleep(0.005)
+            rstm.should_break_transaction()
+
+
+class StmProcessWrapper(ProcessWrapper, PartialBarrier):
+
+    lock, store_lock = make_int_getter_setter(8)
 
     def put_to_sleep(self):
         # Must not queue
@@ -140,10 +166,12 @@ class StmProcessWrapper(ProcessWrapper):
     def fork(self, w_current_frame):
         from spyvm.interpreter import StmProcessFork
         w_frame = self.suspended_context()
+
         assert isinstance(w_frame, model.W_PointersObject)
         print "Breaking interpreter loop for forking"
         # we need to pass control to the interpreter loop here
-        raise StmProcessFork(w_frame)
+        self.store_lock(1)
+        raise StmProcessFork(w_frame, self)
 
 
 class LinkedListWrapper(Wrapper):
