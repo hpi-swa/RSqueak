@@ -128,20 +128,21 @@ bootstrapper = Bootstrapper()
 class Interpreter(object):
     _immutable_fields_ = ["space", "image", "image_name",
                           "max_stack_depth", "interrupt_counter_size",
-                          "startup_time"]
+                          "startup_time", "evented"]
     _w_last_active_context = None
     cnt = 0
     _last_indent = ""
     jit_driver = jit.JitDriver(
         greens=[],
-        reds=['self', 'w_active_context', 's_new_context', 's_sender'],
+        reds=['self', 's_context'],
         # virtualizables=['s_context'],
         stm_do_transaction_breaks=True
         # get_printable_location=get_printable_location
     )
 
     def __init__(self, space, image=None, image_name="", trace=False,
-                max_stack_depth=constants.MAX_LOOP_DEPTH):
+                 evented=True,
+                 max_stack_depth=constants.MAX_LOOP_DEPTH):
         import time
         self.space = space
         self.image = image
@@ -151,9 +152,12 @@ class Interpreter(object):
         self.remaining_stack_depth = max_stack_depth
         self._loop = False
         self.next_wakeup_tick = 0
-        self.interrupt_counter_size = constants.INTERRUPT_COUNTER_SIZE
+        self.evented = evented
+        try:
+            self.interrupt_counter_size = int(os.environ["SPY_ICS"])
+        except KeyError:
+            self.interrupt_counter_size = constants.INTERRUPT_COUNTER_SIZE
         self.interrupt_check_counter = self.interrupt_counter_size
-        # ######################################################################
         self.trace = trace
         self.trace_proxy = False
 
@@ -187,6 +191,9 @@ class Interpreter(object):
         print "Interpreter starting"
         try:
             self.loop(w_frame)
+        except ProcessSwitch, e:
+            # W00t: Can I haz explainaiatain?
+            self.interpret_with_w_frame(e.s_new_context.w_self())
         except ReturnFromTopLevel, e:
             return e.object
 
@@ -207,14 +214,7 @@ class Interpreter(object):
             s_sender = s_new_context.s_sender()
 
             try:
-                # STM-ONLY JITDRIVER!
-                self.jit_driver.jit_merge_point(
-                    self=self, w_active_context=w_active_context, s_new_context=s_new_context, s_sender=s_sender)
-                if rstm.jit_stm_should_break_transaction(False):
-                    rstm.jit_stm_transaction_break_point()
-                self = self._hints_for_stm()
-
-                s_new_context = self.c_loop(s_new_context)
+                self.stmloop(s_new_context)
             except StackOverflow, e:
                 s_new_context = e.s_context
             except Return, nlr:
@@ -231,10 +231,17 @@ class Interpreter(object):
                     print "====== Switch from: %s to: %s ======" % (s_new_context.short_str(), p.s_new_context.short_str())
                 s_new_context = p.s_new_context
 
+    def stmloop(self, s_context, may_context_switch=True):
+        while True:
+            # STM-ONLY JITDRIVER!
+            self.jit_driver.jit_merge_point(
+                self=self, s_context=s_context)
+            if rstm.jit_stm_should_break_transaction(False):
+                rstm.jit_stm_transaction_break_point()
+            self = self._hints_for_stm()
+            self.c_loop(s_context, may_context_switch)
 
     def c_loop(self, s_context, may_context_switch=True):
-
-
         old_pc = 0
 
         if not jit.we_are_jitted() and may_context_switch:
@@ -253,10 +260,8 @@ class Interpreter(object):
 
             try:
                 self.step(s_context)
-                if pc % 2 == 0:
-                    return s_context
                 if rstm.should_break_transaction():
-                    return s_context
+                    return
             except Return, nlr:
 
                 if nlr.s_target_context is not s_context:
@@ -295,7 +300,7 @@ class Interpreter(object):
 
         self.remaining_stack_depth -= 1
         try:
-            retval = self.c_loop(s_new_frame, may_context_switch)
+            retval = self.stmloop(s_new_frame, may_context_switch)
         finally:
             self.remaining_stack_depth += 1
         return retval

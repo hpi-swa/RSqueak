@@ -331,7 +331,7 @@ class ObjSpace(object):
             w_bitmap = w_display.fetch(self, 0)
             if isinstance(w_bitmap, model.W_DisplayBitmap):
                 return w_bitmap.display
-        raise PrimitiveFailedError()
+        raise PrimitiveFailedError("No display")
 
     def _freeze_(self):
         return True

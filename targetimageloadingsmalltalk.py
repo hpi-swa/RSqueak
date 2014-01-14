@@ -2,7 +2,7 @@ import sys, time
 import os
 
 from rpython.rlib.streamio import open_file_as_stream
-from rpython.rlib import jit
+from rpython.rlib import jit, rpath
 
 from spyvm import model, interpreter, squeakimage, objspace, wrapper,\
     error, shadow
@@ -123,6 +123,7 @@ def _usage(argv):
           --stm
           -r|--run [code string]
           -b|--benchmark [code string]
+          -p|--poll_events
           [image path, default: Squeak.image]
     """ % argv[0]
 
@@ -139,6 +140,7 @@ def entry_point(argv):
     benchmark = None
     trace = False
     use_stm = False
+    evented = True
     stringarg = ""
     code = None
     as_benchmark = False
@@ -163,6 +165,8 @@ def entry_point(argv):
             idx += 1
         elif arg in ["-t", "--trace"]:
             trace = True
+        elif arg in ["-p", "--poll_events"]:
+            evented = False
         elif arg in ["-a", "--arg"]:
             _arg_missing(argv, idx, arg)
             stringarg = argv[idx + 1]
@@ -189,7 +193,7 @@ def entry_point(argv):
     if path is None:
         path = "Squeak.image"
 
-    path = os.path.join(os.getcwd(), path)
+    path = rpath.rabspath(path)
     try:
         f = open_file_as_stream(path, mode="rb", buffering=0)
     except OSError as e:
@@ -202,7 +206,7 @@ def entry_point(argv):
 
     image_reader = squeakimage.reader_for_image(space, squeakimage.Stream(data=imagedata))
     image = create_image(space, image_reader)
-    interp = interpreter.Interpreter(space, image, image_name=path, trace=trace)
+    interp = interpreter.Interpreter(space, image, image_name=path, trace=trace, evented=evented)
     space.runtime_setup(argv[0])
     if benchmark is not None:
         print "Running Benchmark"
