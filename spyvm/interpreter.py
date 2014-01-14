@@ -135,7 +135,7 @@ class Interpreter(object):
     jit_driver = jit.JitDriver(
         greens=[],
         reds=['pc', 's_context', 'self', 'method'],
-        virtualizables=['s_context'],
+        # virtualizables=['s_context'],
         stm_do_transaction_breaks=True
         # get_printable_location=get_printable_location
     )
@@ -238,9 +238,9 @@ class Interpreter(object):
                 if jit.we_are_jitted():
                     self.quick_check_for_interrupt(s_context,
                                     dec=self._get_adapted_tick_counter())
-                self.jit_driver.can_enter_jit(
-                    pc=pc, self=self, method=method,
-                    s_context=s_context)
+                #self.jit_driver.can_enter_jit(
+                #    pc=pc, self=self, method=method,
+                #    s_context=s_context)
             old_pc = pc
 
             # STM-ONLY JITDRIVER!

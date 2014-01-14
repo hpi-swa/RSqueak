@@ -59,7 +59,7 @@ def _run_image(interp):
     except error.Exit, e:
         print e.msg
 
-def _run_code(interp, code, as_benchmark=False):
+def _run_code(interp, code, as_benchmark=False, use_stm=False):
     import time
     selector = "codeTest%d" % int(time.time())
     try:
@@ -93,7 +93,7 @@ def _run_code(interp, code, as_benchmark=False):
                 print w_result.as_repr_string().replace('\r', '\n')
         return 0
     else:
-        return _run_benchmark(interp, 0, selector, "")
+        return _run_benchmark(interp, 0, selector, "", use_stm)
 
 
 space = objspace.ObjSpace()
@@ -208,7 +208,7 @@ def entry_point(argv):
         print "Running Benchmark"
         return _run_benchmark(interp, number, benchmark, stringarg, use_stm)
     elif code is not None:
-        return _run_code(interp, code, as_benchmark=as_benchmark)
+        return _run_code(interp, code, as_benchmark=as_benchmark, use_stm=use_stm)
     else:
         print "Running Image"
         _run_image(interp)
