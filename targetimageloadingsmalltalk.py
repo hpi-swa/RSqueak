@@ -59,6 +59,42 @@ def _run_image(interp):
     except error.Exit, e:
         print e.msg
 
+def _run_code(interp, code, as_benchmark=False):
+    import time
+    selector = "codeTest%d" % int(time.time())
+    try:
+        w_result = interp.perform(
+            interp.space.w_SmallInteger,
+            "compile:classified:notifying:",
+            space.wrap_string("%s\r\n%s" % (selector, code)),
+            space.wrap_string("spy-run-code"),
+            space.w_nil
+        )
+    except interpreter.ReturnFromTopLevel, e:
+        print e.object
+        return 1
+    except error.Exit, e:
+        print e.msg
+        return 1
+
+    if not as_benchmark:
+        try:
+            w_result = interp.perform(space.wrap_int(0), selector)
+        except interpreter.ReturnFromTopLevel, e:
+            print e.object
+            return 1
+        except error.Exit, e:
+            print e.msg
+            return 1
+        if w_result:
+            if isinstance(w_result, model.W_BytesObject):
+                print w_result.as_string().replace('\r', '\n')
+            else:
+                print w_result.as_repr_string().replace('\r', '\n')
+        return 0
+    else:
+        return _run_benchmark(interp, 0, selector, "")
+
 
 space = objspace.ObjSpace()
 
@@ -85,6 +121,8 @@ def _usage(argv):
           -m|--method [benchmark on smallint]
           -a|--arg [string argument to #method]
           --stm
+          -r|--run [code string]
+          -b|--benchmark [code string]
           [image path, default: Squeak.image]
     """ % argv[0]
 
@@ -102,6 +140,8 @@ def entry_point(argv):
     trace = False
     use_stm = False
     stringarg = ""
+    code = None
+    as_benchmark = False
 
     while idx < len(argv):
         arg = argv[idx]
@@ -129,6 +169,16 @@ def entry_point(argv):
             idx += 1
         elif arg in ["--stm"]:
             use_stm = True
+        elif arg in ["-r", "--run"]:
+            _arg_missing(argv, idx, arg)
+            code = argv[idx + 1]
+            as_benchmark = False
+            idx += 1
+        elif arg in ["-b", "--benchmark"]:
+            _arg_missing(argv, idx, arg)
+            code = argv[idx + 1]
+            as_benchmark = True
+            idx += 1
         elif path is None:
             path = argv[idx]
         else:
@@ -157,6 +207,8 @@ def entry_point(argv):
     if benchmark is not None:
         print "Running Benchmark"
         return _run_benchmark(interp, number, benchmark, stringarg, use_stm)
+    elif code is not None:
+        return _run_code(interp, code, as_benchmark=as_benchmark)
     else:
         print "Running Image"
         _run_image(interp)
