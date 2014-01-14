@@ -6,6 +6,7 @@ from spyvm import model, constants, primitives, conftest, wrapper
 from spyvm.tool.bitmanipulation import splitter
 
 from rpython.rlib import jit
+from rpython.rlib.jit import hint
 from rpython.rlib import objectmodel, unroll
 try:
     from rpython.rlib import rstm
@@ -242,8 +243,9 @@ class Interpreter(object):
             self.jit_driver.jit_merge_point(
                 pc=pc, self=self, method=method,
                 s_context=s_context)
-            if rstm.should_break_transaction(False):
+            if rstm.jit_stm_should_break_transaction(False):
                 rstm.jit_stm_transaction_break_point()
+            self = self._hints_for_stm()
             try:
                 self.step(s_context)
             except Return, nlr:
@@ -262,6 +264,10 @@ class Interpreter(object):
 
                 self.fork(f.w_frame, f.w_stm_process)
 
+    def _hints_for_stm(self):
+        self = hint(self, stm_write=True)
+        self = hint(self, access_directly=True)
+        return self
 
     def _get_adapted_tick_counter(self):
         # Normally, the tick counter is decremented by 1 for every message send.
