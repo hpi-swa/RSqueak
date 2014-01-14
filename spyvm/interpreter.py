@@ -133,6 +133,7 @@ class Interpreter(object):
         greens=[],
         reds=['pc', 's_context', 'self', 'method'],
         virtualizables=['s_context'],
+        stm_do_transaction_breaks=True
         # get_printable_location=get_printable_location
     )
 
@@ -226,7 +227,7 @@ class Interpreter(object):
         if not jit.we_are_jitted() and may_context_switch:
             self.quick_check_for_interrupt(s_context)
         method = s_context.s_method()
-        while not rstm.should_break_transaction():
+        while True:
             pc = s_context.pc()
             if pc < old_pc:
                 if jit.we_are_jitted():
@@ -236,11 +237,14 @@ class Interpreter(object):
                     pc=pc, self=self, method=method,
                     s_context=s_context)
             old_pc = pc
+
+            # STM-ONLY JITDRIVER!
             self.jit_driver.jit_merge_point(
                 pc=pc, self=self, method=method,
                 s_context=s_context)
+            if rstm.should_break_transaction(False):
+                rstm.jit_stm_transaction_break_point()
             try:
-                rstm.jit_stm_transaction_break_point(False)
                 self.step(s_context)
             except Return, nlr:
 
