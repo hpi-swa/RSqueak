@@ -130,10 +130,10 @@ class Interpreter(object):
     cnt = 0
     _last_indent = ""
     jit_driver = jit.JitDriver(
-        greens=['pc', 'self', 'method'],
-        reds=['s_context'],
-        # virtualizables=['s_context'],
-        get_printable_location=get_printable_location
+        greens=[],
+        reds=['pc', 's_context', 'self', 'method'],
+        virtualizables=['s_context'],
+        # get_printable_location=get_printable_location
     )
 
     def __init__(self, space, image=None, image_name="", trace=False,
@@ -155,6 +155,7 @@ class Interpreter(object):
 
         # clone interpreter (maybe implement a lightweight abstraction
         # for an executor)
+
         new_interp = Interpreter(
             self.space,
             self.image,
@@ -218,13 +219,14 @@ class Interpreter(object):
 
 
     def c_loop(self, s_context, may_context_switch=True):
-        #rstm.should_break_transaction()
+
+
         old_pc = 0
 
         if not jit.we_are_jitted() and may_context_switch:
             self.quick_check_for_interrupt(s_context)
         method = s_context.s_method()
-        while True:
+        while not rstm.should_break_transaction():
             pc = s_context.pc()
             if pc < old_pc:
                 if jit.we_are_jitted():
@@ -238,8 +240,10 @@ class Interpreter(object):
                 pc=pc, self=self, method=method,
                 s_context=s_context)
             try:
+                rstm.jit_stm_transaction_break_point(False)
                 self.step(s_context)
             except Return, nlr:
+
                 if nlr.s_target_context is not s_context:
                     if not s_context.is_closure_context() and s_context.s_method().primitive() == 198:
                         s_context.activate_unwind_context(self)
@@ -251,6 +255,7 @@ class Interpreter(object):
             # gonna go parallel! (triggered by primitive)
             except StmProcessFork, f:
                 print "Interpreter loop about to fork"
+
                 self.fork(f.w_frame, f.w_stm_process)
 
 

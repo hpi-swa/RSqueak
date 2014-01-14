@@ -170,7 +170,7 @@ def target(driver, *args):
     if hasattr(rgc, "stm_is_enabled"):
         driver.config.translation.stm = True
         driver.config.translation.thread = True
-        #driver.config.translation.jit = True
+        # driver.config.translation.jit = True
 
     return entry_point, None
 

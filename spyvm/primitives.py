@@ -522,16 +522,19 @@ def stm_enabled():
     return hasattr(rgc, "stm_is_enabled") and rgc.stm_is_enabled()
 USES_STM = stm_enabled()
 
-def get_instances_array(space, s_frame, w_class):
-    # This primitive returns some instance of the class on the stack.
-    # Not sure quite how to do this; maintain a weak list of all
-    # existing instances or something?
-    match_w = s_frame.instances_array(w_class)
-    if match_w is None:
-        match_w = []
-        from rpython.rlib import rgc
+if USES_STM:
+    def get_instances_array(space, s_frame, w_class):
+        return []
+else:
+    def get_instances_array(space, s_frame, w_class):
+        # This primitive returns some instance of the class on the stack.
+        # Not sure quite how to do this; maintain a weak list of all
+        # existing instances or something?
+        match_w = s_frame.instances_array(w_class)
+        if match_w is None:
+            match_w = []
+            from rpython.rlib import rgc
 
-        if USES_STM:
             roots = [gcref for gcref in rgc.get_rpy_roots() if gcref]
             pending = roots[:]
             while pending:
@@ -550,7 +553,7 @@ def get_instances_array(space, s_frame, w_class):
                     rgc.toggle_gcflag_extra(gcref)
                     roots.extend(rgc.get_rpy_referents(gcref))
             s_frame.store_instances_array(w_class, match_w)
-    return match_w
+        return match_w
 
 @expose_primitive(SOME_INSTANCE, unwrap_spec=[object])
 def func(interp, s_frame, w_class):

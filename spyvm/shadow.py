@@ -450,11 +450,11 @@ class ContextPartShadow(AbstractRedirectingShadow):
     _attrs_ = ['_s_sender', '_pc', '_temps_and_stack',
             '_stack_ptr', 'instances_w']
 
-    # _virtualizable_ = [
-    #     "_s_sender", "_pc",
-    #     "_temps_and_stack[*]", "_stack_ptr",
-    #     "_w_self", "_w_self_size"
-    # ]
+    _virtualizable_ = [
+        "_s_sender", "_pc",
+        "_temps_and_stack[*]", "_stack_ptr",
+        "_w_self", "_w_self_size"
+    ]
 
     def __init__(self, space, w_self):
         self._s_sender = None
@@ -753,7 +753,7 @@ class BlockContextShadow(ContextPartShadow):
         w_result = model.W_PointersObject(space, space.w_BlockContext, contextsize)
         s_result = BlockContextShadow(space, w_result)
         s_result_non_fresh = s_result # XXX: find a better solution to translation err
-        #s_result = jit.hint(s_result, access_directly=True, fresh_virtualizable=True)
+        s_result = jit.hint(s_result, access_directly=True, fresh_virtualizable=True)
         w_result.store_shadow(s_result)
         s_result.store_expected_argument_count(argcnt)
         s_result.store_initialip(initialip)
@@ -868,7 +868,7 @@ class MethodContextShadow(ContextPartShadow):
         s_new_context = MethodContextShadow(space, None)
         s_new_context._w_self_size = size
         s_new_context_non_fresh = s_new_context # XXX: find a better solution to translation err
-        #s_new_context = jit.hint(s_new_context, access_directly=True, fresh_virtualizable=True)
+        s_new_context = jit.hint(s_new_context, access_directly=True, fresh_virtualizable=True)
 
         if closure is not None:
             s_new_context.w_closure_or_nil = closure._w_self
