@@ -134,7 +134,7 @@ class Interpreter(object):
     _last_indent = ""
     jit_driver = jit.JitDriver(
         greens=[],
-        reds=['pc', 's_context', 'self', 'method'],
+        reds=['self', 'w_active_context', 's_new_context', 's_sender'],
         # virtualizables=['s_context'],
         stm_do_transaction_breaks=True
         # get_printable_location=get_printable_location
@@ -205,7 +205,15 @@ class Interpreter(object):
             #assert self.remaining_stack_depth == self.max_stack_depth
             # Need to save s_sender, c_loop will nil this on return
             s_sender = s_new_context.s_sender()
+
             try:
+                # STM-ONLY JITDRIVER!
+                self.jit_driver.jit_merge_point(
+                    self=self, w_active_context=w_active_context, s_new_context=s_new_context, s_sender=s_sender)
+                if rstm.jit_stm_should_break_transaction(False):
+                    rstm.jit_stm_transaction_break_point()
+                self = self._hints_for_stm()
+
                 s_new_context = self.c_loop(s_new_context)
             except StackOverflow, e:
                 s_new_context = e.s_context
@@ -243,15 +251,12 @@ class Interpreter(object):
                 #    s_context=s_context)
             old_pc = pc
 
-            # STM-ONLY JITDRIVER!
-            self.jit_driver.jit_merge_point(
-                pc=pc, self=self, method=method,
-                s_context=s_context)
-            if rstm.jit_stm_should_break_transaction(False):
-                rstm.jit_stm_transaction_break_point()
-            self = self._hints_for_stm()
             try:
                 self.step(s_context)
+                if pc % 2 == 0:
+                    return s_context
+                if rstm.should_break_transaction():
+                    return s_context
             except Return, nlr:
 
                 if nlr.s_target_context is not s_context:
