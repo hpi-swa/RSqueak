@@ -226,8 +226,10 @@ def target(driver, *args):
     if hasattr(rgc, "stm_is_enabled"):
         driver.config.translation.stm = True
         driver.config.translation.thread = True
+        driver.config.translation.rweakref = True
+        driver.config.translation.shared = False
         # driver.config.translation.jit = True
-
+    print driver.config.translation
     return entry_point, None
 
 
