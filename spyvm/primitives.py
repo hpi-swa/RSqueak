@@ -1395,7 +1395,7 @@ def func(interp, s_frame, w_rcvr):
 
     print "STM_FORK primitive called"
     wrapper.StmProcessWrapper(interp.space, w_rcvr).fork(s_frame.w_self())
-    rstm.should_break_transaction()
+    #rstm.should_break_transaction()
 
 
 @expose_primitive(STM_SIGNAL, unwrap_spec=[object], no_result=True)
@@ -1404,7 +1404,7 @@ def func(interp, s_frame, w_rcvr):
 
     print "STM_SIGNAL primitive called"
     wrapper.StmProcessWrapper(interp.space, w_rcvr).signal()
-    rstm.should_break_transaction()
+    #rstm.should_break_transaction()
 
 
 @expose_primitive(STM_WAIT, unwrap_spec=[object], no_result=True)
@@ -1416,7 +1416,7 @@ def func(interp, s_frame, w_rcvr):
     # wait(0) behaves like a barrier, it waits for but does not acquire the lock
     wrapper.StmProcessWrapper(interp.space, w_rcvr).wait(0)
     print "STM Rendezvous"
-    rstm.should_break_transaction()
+    print "Should break: %s" % rstm.should_break_transaction()
 
 
 @expose_primitive(SUSPEND, unwrap_spec=[object], result_is_new_frame=True, clean_stack=False)

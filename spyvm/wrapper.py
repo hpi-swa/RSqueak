@@ -80,6 +80,7 @@ class ProcessWrapper(LinkWrapper):
         w_frame = self.suspended_context()
         self.store_suspended_context(self.space.w_nil)
         self.store_my_list(self.space.w_nil)
+        #print sched.get_highest_priority_process()
         assert isinstance(w_frame, model.W_PointersObject)
         raise ProcessSwitch(w_frame.as_context_get_shadow(self.space))
 
@@ -121,7 +122,7 @@ class PartialBarrier(object):
 
     def signal(self):
         self.store_lock(0)
-        rstm.should_break_transaction()
+        #rstm.should_break_transaction()
 
     def _test_and_set(self, i):
         rstm.increment_atomic()
@@ -136,7 +137,7 @@ class PartialBarrier(object):
         import time
         while self._test_and_set(i):
             time.sleep(0.005)
-            rstm.should_break_transaction()
+            #rstm.should_break_transaction()
 
 
 class StmProcessWrapper(ProcessWrapper, PartialBarrier):
@@ -236,6 +237,18 @@ class SchedulerWrapper(Wrapper):
         lists = Wrapper(self.space, self.priority_list())
 
         return ProcessListWrapper(self.space, lists.read(priority))
+
+    def get_highest_priority_process(self):
+        w_lists = self.priority_list()
+        # Asserts as W_PointersObjectonion in the varnish.
+        lists = Wrapper(self.space, w_lists)
+
+        for i in range(w_lists.size() - 1, -1, -1):
+            process_list = ProcessListWrapper(self.space, lists.read(i))
+            if not process_list.is_empty_list():
+                return process_list.first_link()
+
+        raise FatalError("Scheduler could not find a runnable process")
 
     def pop_highest_priority_process(self):
         w_lists = self.priority_list()

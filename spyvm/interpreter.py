@@ -69,7 +69,7 @@ class Bootstrapper(object):
     """
 
     def __init__(self):
-        #self.lock = rthread.allocate_lock()
+        self.lock = rthread.allocate_lock()
         self.lock = SpinLock()
 
         # critical values, only modify under lock:
@@ -233,6 +233,9 @@ class Interpreter(object):
 
     def stmloop(self, s_context, may_context_switch=True):
         while True:
+            if rstm.should_break_transaction(False):
+                print "will break transaction"
+
             # STM-ONLY JITDRIVER!
             self.jit_driver.jit_merge_point(
                 self=self, s_context=s_context)
