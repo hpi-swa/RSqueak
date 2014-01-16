@@ -1,3 +1,4 @@
+import time
 from rpython.rlib.jit import elidable
 
 from spyvm.tool.bitmanipulation import splitter
@@ -186,3 +187,4 @@ def decode_compiled_method_header(header):
 
 MAX_LOOP_DEPTH = 100
 INTERRUPT_COUNTER_SIZE = 10000
+CompileTime = int(time.time() * 1000)

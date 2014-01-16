@@ -1,6 +1,7 @@
 import py
 import os
 import sys
+import time
 from spyvm import constants
 from spyvm import model
 from spyvm.tool.bitmanipulation import splitter
@@ -377,6 +378,7 @@ class SqueakImage(object):
         self.version = reader.version
         self.is_modern = reader.version.magic > 6502
         self.run_spy_hacks(space)
+        self.startup_time = int(time.time() * 1000)
 
     def run_spy_hacks(self, space):
         pass

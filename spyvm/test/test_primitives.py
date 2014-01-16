@@ -4,6 +4,7 @@ import math
 from spyvm.primitives import prim_table, PrimitiveFailedError
 from spyvm import model, shadow, interpreter
 from spyvm import constants, primitives, objspace, wrapper, display
+from spyvm.plugins import bitblt
 
 from rpython.rlib.rfloat import INFINITY, NAN, isinf, isnan
 
@@ -776,7 +777,7 @@ def test_primitive_force_display_update(monkeypatch):
     class DisplayFlush(Exception):
         pass
 
-    def flush_to_screen_mock(self):
+    def flush_to_screen_mock(self, force=False):
         raise DisplayFlush
 
     try:
@@ -810,7 +811,7 @@ def test_bitblt_copy_bits(monkeypatch):
 
     try:
         monkeypatch.setattr(w_frame._shadow, "_sendSelfSelector", perform_mock)
-        monkeypatch.setattr(shadow.BitBltShadow, "sync_cache", sync_cache_mock)
+        monkeypatch.setattr(bitblt.BitBltShadow, "sync_cache", sync_cache_mock)
         with py.test.raises(CallCopyBitsSimulation):
             prim_table[primitives.BITBLT_COPY_BITS](interp, w_frame.as_context_get_shadow(space), argument_count-1)
     finally:

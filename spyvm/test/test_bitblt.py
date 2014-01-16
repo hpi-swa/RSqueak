@@ -1,4 +1,5 @@
 from spyvm import model, shadow, constants, interpreter, objspace
+from spyvm.plugins import bitblt
 
 space = objspace.ObjSpace()
 
@@ -37,7 +38,7 @@ def make_form(bits, width, height, depth, o_x=0, o_y=0):
 def test_bitBlt_values():
 
     w_bb = model.W_PointersObject(space, space.w_Array, 15)
-    w_bb.store(space, 0, make_form([], 1230, 20, 1))
+    w_bb.store(space, 0, make_form([0] * 1230 * 20, 1230, 20, 1))
     w_bb.store(space, 1, w_bb.fetch(space, 0))
 
     w_bb.store(space, 2, space.w_nil)
@@ -54,25 +55,26 @@ def test_bitBlt_values():
     w_bb.store(space, 13, w(15))   # clip height
     w_bb.store(space, 14, model.W_PointersObject(space, space.w_Array, 5)) # color map
 
-    s_bb = w_bb.as_bitblt_get_shadow(space)
-    s_bb.clip_range()
-    assert not (s_bb.w <= 0 or s_bb.h <= 0)
-    s_bb.compute_masks()
-    s_bb.check_overlap()
-    s_bb.calculate_offsets()
+    s_bb = w_bb.as_special_get_shadow(space, bitblt.BitBltShadow)
+    s_bb.loadBitBlt()
+    s_bb.clipRange()
+    assert not (s_bb.width <= 0 or s_bb.height <= 0)
+    s_bb.destMaskAndPointerInit()
+    s_bb.checkSourceOverlap()
+    s_bb.sourceSkewAndPointerInit()
 
-    assert s_bb.dest_x == 1
-    assert s_bb.dest_y == 0
-    assert s_bb.sx == 1218
-    assert s_bb.sy == 0
-    assert s_bb.dx == 1219
-    assert s_bb.dy == 0
-    assert s_bb.w == 1219
-    assert s_bb.h == 15
-    assert s_bb.h_dir == -1
-    assert s_bb.v_dir == 1
-    assert s_bb.source_delta == 79
-    assert s_bb.dest_delta == 78
+    assert s_bb.destX == 1
+    assert s_bb.destY == 0
+    assert s_bb.sourceX == 0
+    assert s_bb.sourceY == 0
+    assert s_bb.destX == 1
+    assert s_bb.destY == 0
+    assert s_bb.width == 1220
+    assert s_bb.height == 15
+    assert s_bb.hDir == -1
+    assert s_bb.vDir == 1
+    assert s_bb.sourceDelta == 79
+    assert s_bb.destDelta == 78
     assert s_bb.skew == 31
-    assert s_bb.source_index == 38
-    assert s_bb.dest_index == 38
+    assert s_bb.sourceIndex == 38
+    assert s_bb.destIndex == 38
