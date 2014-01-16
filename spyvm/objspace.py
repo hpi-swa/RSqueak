@@ -200,44 +200,21 @@ class ObjSpace(object):
     def wrap_int(self, val):
         from spyvm import constants
         assert isinstance(val, int)
-        if int_between(constants.TAGGED_MININT, val,
-                        constants.TAGGED_MAXINT + 1):
-            return model.W_SmallInteger(val)
-        # We can't build large integers here, because we don't know what to do
-        # with negativ vals: raise an error or interpret them as 4-byte positive?
-        raise WrappingError("integer too large to fit into a tagged pointer")
+        # we don't do tagging
+        return model.W_SmallInteger(val)
 
     def wrap_uint(self, val):
         from rpython.rlib.objectmodel import we_are_translated
-        if not we_are_translated():
-            assert val <= 0xFFFFFFFF
         if val < 0:
             raise WrappingError("negative integer")
-        if val >= 0:
-            try:
-                return self.wrap_positive_32bit_int(intmask(val))
-            except WrappingError:
-                pass
-        # XXX this code sucks
-        import math
-        bytes_len = int(math.log(val) / math.log(0xff)) + 1
-        if bytes_len <= 4:
-            return self.wrap_positive_32bit_int(intmask(val))
         else:
-            return self._wrap_uint_loop(val, bytes_len)
-
-    def _wrap_uint_loop(self, val, bytes_len):
-        w_result = model.W_BytesObject(self,
-                    self.classtable['w_LargePositiveInteger'], bytes_len)
-        for i in range(bytes_len):
-            w_result.setchar(i, chr(intmask((val >> i*8) & 255)))
-        return w_result
+            return self.wrap_positive_32bit_int(intmask(val))
 
     def wrap_positive_32bit_int(self, val):
         # This will always return a positive value.
         # XXX: For now, we assume that val is at most 32bit, i.e. overflows are
-        # checked for before wrapping.
-        if int_between(0, val, constants.TAGGED_MAXINT + 1):
+        # checked for before wrapping. Also, we ignore tagging.
+        if int_between(0, val, constants.MAXINT):
             return model.W_SmallInteger(val)
         else:
             return model.W_LargePositiveInteger1Word(val)

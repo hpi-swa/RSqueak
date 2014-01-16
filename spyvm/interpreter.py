@@ -207,7 +207,7 @@ class Interpreter(object):
     def time_now(self):
         import time
         from rpython.rlib.rarithmetic import intmask
-        return intmask((int(time.time() * 1000) - self.startup_time) & constants.TAGGED_MASK)
+        return intmask((int(time.time() * 1000) - self.startup_time))
 
     def padding(self, symbol=' '):
         return symbol * (self.max_stack_depth - self.remaining_stack_depth)

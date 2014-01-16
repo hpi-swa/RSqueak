@@ -189,8 +189,7 @@ class W_SmallInteger(W_Object):
     def unwrap_uint(self, space):
         from rpython.rlib.rarithmetic import r_uint
         val = self.value
-        if val < 0:
-            raise error.UnwrappingError("got negative integer")
+        # Assume the caller knows what he does, even if int is negative
         return r_uint(val)
 
 
@@ -758,7 +757,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         byte0 = ord(self.getchar(byte_index0))
         byte1 = ord(self.getchar(byte_index0 + 1)) << 8
         if byte1 & 0x8000 != 0:
-            byte1 = intmask(-65536 | byte1) # -65536 = 0xffff0000
+            byte1 = intmask(intmask(0xffff0000) | byte1)
         return space.wrap_int(byte1 | byte0)
 
     def short_atput0(self, space, index0, w_value):
@@ -896,7 +895,7 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         else:
             short = (word >> 16) & 0xffff
         if short & 0x8000 != 0:
-            short = -65536 | short # -65536 = 0xffff0000
+            short = intmask(0xffff0000) | short
         return space.wrap_int(intmask(short))
 
     def short_atput0(self, space, index0, w_value):
@@ -907,7 +906,7 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         word_index0 = index0 / 2
         word = intmask(self.getword(word_index0))
         if index0 % 2 == 0:
-            word = (word & -65536) | (i_value & 0xffff) # -65536 = 0xffff0000
+            word = (word & intmask(0xffff0000)) | (i_value & 0xffff)
         else:
             word = (i_value << 16) | (word & 0xffff)
         value = r_uint(word)

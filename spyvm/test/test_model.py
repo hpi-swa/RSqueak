@@ -271,12 +271,15 @@ def test_word_at():
 def test_float_at():
     b = model.W_Float(64.0)
     r = b.fetch(space, 0)
-    assert isinstance(r, model.W_LargePositiveInteger1Word)
-    assert r.size() == 4
-    assert space.unwrap_int(r.at0(space, 0)) == 0
-    assert space.unwrap_int(r.at0(space, 1)) == 0
-    assert space.unwrap_int(r.at0(space, 2)) == 80
-    assert space.unwrap_int(r.at0(space, 3)) == 64
+    if isinstance(r, model.W_LargePositiveInteger1Word):
+        assert r.size() == 4
+        assert space.unwrap_int(r.at0(space, 0)) == 0
+        assert space.unwrap_int(r.at0(space, 1)) == 0
+        assert space.unwrap_int(r.at0(space, 2)) == 80
+        assert space.unwrap_int(r.at0(space, 3)) == 64
+    else:
+        assert isinstance(r, model.W_SmallInteger)
+        assert space.unwrap_int(r) == (80 << 16) + (64 << 24)
     r = b.fetch(space, 1)
     assert isinstance(r, model.W_SmallInteger)
     assert r.value == 0

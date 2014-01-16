@@ -47,9 +47,6 @@ def test_ruint():
     for num in [-1, -100, -sys.maxint]:
         with py.test.raises(objspace.WrappingError):
             space.wrap_uint(num)
-    for obj in [space.wrap_char('a'), space.wrap_int(-1)]:
-        with py.test.raises(objspace.UnwrappingError):
-            space.unwrap_uint(obj)
     # byteobj = space.wrap_uint(0x100000000)
     # assert isinstance(byteobj, model.W_BytesObject)
     # byteobj.bytes.append('\x01')
@@ -63,9 +60,4 @@ def test_wrap_int():
 
     for num in [2L, -5L]:
         with py.test.raises(AssertionError):
-            space.wrap_int(num)
-
-    from rpython.rlib.rarithmetic import intmask
-    for num in [0x7fffffff, intmask(0x80000000)]:
-        with py.test.raises(objspace.WrappingError):
             space.wrap_int(num)
