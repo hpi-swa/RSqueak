@@ -81,7 +81,7 @@ class Bootstrapper(object):
     # wait for previous thread to start, then set global state
     def acquire(interp, w_frame, w_stm_process):
         #bootstrapper.lock.acquire(True)
-        bootstrapper.lock.wait(1)
+        bootstrapper.lock.wait(1, 'bootstrap')
         bootstrapper.interp = interp
         bootstrapper.w_frame = w_frame
         bootstrapper.w_stm_process = w_stm_process
@@ -93,7 +93,7 @@ class Bootstrapper(object):
         bootstrapper.interp = None
         bootstrapper.w_frame = None
         bootstrapper.w_stm_process = None
-        bootstrapper.lock.signal()
+        bootstrapper.lock.signal('bootstrap')
         #bootstrapper.lock.release()
 
     release = staticmethod(release)
@@ -106,16 +106,17 @@ class Bootstrapper(object):
         w_stm_process = bootstrapper.w_stm_process
         assert isinstance(interp, Interpreter)
         assert isinstance(w_frame, model.W_PointersObject)
-        assert isinstance(w_stm_process, wrapper.StmProcessWrapper)
+        assert isinstance(w_stm_process, model.W_PointersObject)
         bootstrapper.num_threads += 1
         bootstrapper.release()
 
         # ...aaaaand go!
-        interp.interpret_with_w_frame(w_frame)
+        wrapper.StmProcessWrapper(interp.space, w_stm_process).store_lock(1)
+
+        interp.interpret_with_w_frame(w_frame, may_context_switch=False)
 
         # Signal waiting processes
-        print "Signal"
-        w_stm_process.signal()
+        wrapper.StmProcessWrapper(interp.space, w_stm_process).signal('thread')
 
         # cleanup
         bootstrapper.num_threads -= 1
@@ -187,13 +188,13 @@ class Interpreter(object):
         rthread.start_new_thread(bootstrapper.bootstrap, ())
         print "Parent interpreter resuming"
 
-    def interpret_with_w_frame(self, w_frame):
+    def interpret_with_w_frame(self, w_frame, may_context_switch=True):
         print "Interpreter starting"
         try:
-            self.loop(w_frame)
+            self.loop(w_frame, may_context_switch)
         except ProcessSwitch, e:
             # W00t: Can I haz explainaiatain?
-            self.interpret_with_w_frame(e.s_new_context.w_self())
+            self.interpret_with_w_frame(e.s_new_context.w_self(),may_context_switch)
         except ReturnFromTopLevel, e:
             return e.object
 
@@ -204,7 +205,7 @@ class Interpreter(object):
             return conftest.option.bc_trace
         return conftest.option.prim_trace
 
-    def loop(self, w_active_context):
+    def loop(self, w_active_context, may_context_switch=True):
         # just a trampoline for the actual loop implemented in c_loop
         self._loop = True
         s_new_context = w_active_context.as_context_get_shadow(self.space)
@@ -214,7 +215,7 @@ class Interpreter(object):
             s_sender = s_new_context.s_sender()
 
             try:
-                self.stmloop(s_new_context)
+                self.stmloop(s_new_context, may_context_switch)
             except StackOverflow, e:
                 s_new_context = e.s_context
             except Return, nlr:
@@ -233,8 +234,8 @@ class Interpreter(object):
 
     def stmloop(self, s_context, may_context_switch=True):
         while True:
-            if rstm.should_break_transaction(False):
-                print "will break transaction"
+            # if rstm.should_break_transaction():
+            #     print "will break transaction"
 
             # STM-ONLY JITDRIVER!
             self.jit_driver.jit_merge_point(
@@ -249,7 +250,7 @@ class Interpreter(object):
 
         if not jit.we_are_jitted() and may_context_switch:
             self.quick_check_for_interrupt(s_context)
-        method = s_context.s_method()
+
         while True:
             pc = s_context.pc()
             if pc < old_pc:

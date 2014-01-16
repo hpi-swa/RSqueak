@@ -120,29 +120,40 @@ class ProcessWrapper(LinkWrapper):
 class PartialBarrier(object):
     _mixin_ = True
 
-    def signal(self):
+    def signal(self, what='unknown'):
+        print "[lock] signal %s" % what
         self.store_lock(0)
         #rstm.should_break_transaction()
 
-    def _test_and_set(self, i):
+    def _test_and_set(self, i, what=''):
         rstm.increment_atomic()
         old_value = self.lock()
         self.store_lock(i)
         rstm.decrement_atomic()
+        print "[lock] read %s, set %s, %s" % (old_value, i, what)
         return old_value
 
     # i = 0 just waits but does not acquire (Barrier)
     # i = 1 waits and acquires (Mutex)
-    def wait(self, i):
+    def wait(self, i, what=''):
         import time
-        while self._test_and_set(i):
+        print '[lock] %s waits' % what
+
+        # first, we have to wait for the lock
+        while self._test_and_set(1, what):
             time.sleep(0.005)
             #rstm.should_break_transaction()
+
+        # then we can modify the lock (i.e. setting it back to 0)
+        self.store_lock(i)
+
+        print '[lock] %s continues' % what
 
 
 class StmProcessWrapper(ProcessWrapper, PartialBarrier):
 
-    lock, store_lock = make_int_getter_setter(8)
+    # Mis-using priority as lock, we don't need prios :P
+    lock, store_lock = make_int_getter_setter(2)
 
     def put_to_sleep(self):
         # Must not queue
@@ -172,7 +183,7 @@ class StmProcessWrapper(ProcessWrapper, PartialBarrier):
         print "Breaking interpreter loop for forking"
         # we need to pass control to the interpreter loop here
         self.store_lock(1)
-        raise StmProcessFork(w_frame, self)
+        raise StmProcessFork(w_frame, self._w_self)
 
 
 class LinkedListWrapper(Wrapper):

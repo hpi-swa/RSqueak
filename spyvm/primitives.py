@@ -1403,7 +1403,7 @@ def func(interp, s_frame, w_rcvr):
     from rpython.rlib import rstm
 
     print "STM_SIGNAL primitive called"
-    wrapper.StmProcessWrapper(interp.space, w_rcvr).signal()
+    wrapper.StmProcessWrapper(interp.space, w_rcvr).signal('primitive')
     #rstm.should_break_transaction()
 
 
@@ -1414,7 +1414,7 @@ def func(interp, s_frame, w_rcvr):
     print "STM_WAIT primitive called"
 
     # wait(0) behaves like a barrier, it waits for but does not acquire the lock
-    wrapper.StmProcessWrapper(interp.space, w_rcvr).wait(0)
+    wrapper.StmProcessWrapper(interp.space, w_rcvr).wait(0, 'primitive')
     print "STM Rendezvous"
     print "Should break: %s" % rstm.should_break_transaction()
 
