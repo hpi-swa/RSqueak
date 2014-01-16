@@ -363,7 +363,7 @@ class MethodDictionaryShadow(AbstractShadow):
     def find_selector(self, w_selector):
         if self.invalid:
             return None # we may be invalid if Smalltalk code did not call flushCache
-        return self.methoddict.get(self._as_md_entry(w_selector), None)
+        return self.methoddict.get(w_selector, None)
 
     def update(self): return self.sync_cache()
 
@@ -408,7 +408,7 @@ class MethodDictionaryShadow(AbstractShadow):
                                        "If the value observed is nil, our "
                                        "invalidating mechanism may be broken.")
                 selector = self._as_md_entry(w_selector)
-                self.methoddict[selector] = w_compiledmethod.as_compiledmethod_get_shadow(self.space)
+                self.methoddict[w_selector] = w_compiledmethod.as_compiledmethod_get_shadow(self.space)
                 w_compiledmethod._likely_methodname = selector
         if self.s_class:
             self.s_class.changed()
