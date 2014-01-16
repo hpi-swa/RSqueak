@@ -1235,6 +1235,8 @@ RESUME = 87
 STM_FORK = 1299  # 787 (+ 512) # resume in native thread
 STM_SIGNAL = 1300  # 788
 STM_WAIT = 1301  # 789
+STM_ATOMIC_ENTER = 1302  # 790
+STM_ATOMIC_LEAVE = 1303  # 791
 
 SUSPEND = 88
 FLUSH_CACHE = 89
@@ -1417,6 +1419,20 @@ def func(interp, s_frame, w_rcvr):
     wrapper.StmProcessWrapper(interp.space, w_rcvr).wait(0, 'primitive')
     print "STM Rendezvous"
     print "Should break: %s" % rstm.should_break_transaction()
+
+@expose_primitive(STM_ATOMIC_ENTER, unwrap_spec=[object], no_result=True)
+def func(interp, s_frame, w_rcvr):
+    from rpython.rlib import rstm
+
+    print "STM_ATOMIC_ENTER primitive called"
+    rstm.increment_atomic()
+
+@expose_primitive(STM_ATOMIC_LEAVE, unwrap_spec=[object], no_result=True)
+def func(interp, s_frame, w_rcvr):
+    from rpython.rlib import rstm
+
+    print "STM_ATOMIC_LEAVE primitive called"
+    rstm.decrement_atomic()
 
 
 @expose_primitive(SUSPEND, unwrap_spec=[object], result_is_new_frame=True, clean_stack=False)
