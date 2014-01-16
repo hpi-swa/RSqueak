@@ -191,10 +191,7 @@ class Interpreter(object):
     def interpret_with_w_frame(self, w_frame, may_context_switch=True):
         print "Interpreter starting"
         try:
-            self.loop(w_frame, may_context_switch)
-        except ProcessSwitch, e:
-            # W00t: Can I haz explainaiatain?
-            self.interpret_with_w_frame(e.s_new_context.w_self(),may_context_switch)
+            self.loop(w_frame)
         except ReturnFromTopLevel, e:
             return e.object
 

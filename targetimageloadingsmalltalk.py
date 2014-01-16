@@ -228,8 +228,11 @@ def target(driver, *args):
         driver.config.translation.thread = True
         driver.config.translation.gc = "stmgc"
         driver.config.translation.gcrootfinder = 'stm'
-        # driver.config.translation.jit = True
+        driver.config.translation.rweakref = True
+        driver.config.translation.shared = False
 
+        # driver.config.translation.jit = True
+    print driver.config.translation
     return entry_point, None
 
 
