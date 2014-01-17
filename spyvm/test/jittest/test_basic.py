@@ -116,12 +116,16 @@ class TestBasic(BaseJITTest):
         jump(p0, p3, i74, p8, p10, p12, p14, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, i77, descr=TargetToken(157713840))
         """)
 
-    def test_bitblt(self, spy, tmpdir):
+    def test_bitblt_fillWhite(self, spy, tmpdir):
         # This used to have a call to array comparison in it
-        traces = self.run(spy, tmpdir, """
-        Display beDisplay.
-        1 to: 10000 do: [:i | Display fillWhite].
-        """)
+        traces = []
+        retries = 10
+        while len(traces) == 0 and retries > 0:
+            retries -= 1
+            traces = self.run(spy, tmpdir, """
+            Display beDisplay.
+            1 to: 10000 do: [:i | Display fillWhite].
+            """)
         self.assert_matches(traces[0].loop, """
         guard_not_invalidated(descr=<Guard0xa3523d0>),
         i540 = int_le(2, i151),
@@ -362,4 +366,14 @@ class TestBasic(BaseJITTest):
         i720 = arraylen_gc(p146, descr=<ArrayP 4>),
         i721 = arraylen_gc(p521, descr=<ArrayP 4>),
         jump(p0, p3, p8, i557, p538, i562, p18, i545, p38, p40, p42, p44, p46, p48, p50, p52, p54, p56, p58, p60, p62, p64, p66, p68, p70, p72, p74, p76, p78, p80, p82, p84, p86, p88, p90, p92, p94, p96, p98, p100, p102, p104, p106, p108, p110, p112, p114, p116, p118, p120, p122, p124, p126, p128, p130, p132, p134, 1, p148, p717, i158, p156, p718, i165, p163, p146, i715, i179, p178, p719, i197, p188, p213, i221, p220, p228, p140, p242, i250, i252, i282, i293, i328, i315, i349, i510, p509, p538, p521, descr=TargetToken(169555520))]
+        """)
+
+    @py.test.mark.skipif("'just dozens of long traces'")
+    def test_bitblt_draw_windows(self, spy, tmpdir):
+        # This used to have a call to array comparison in it
+        traces = self.run(spy, tmpdir, """
+        Display beDisplay.
+        1 to: 100 do: [:i | ControlManager startUp].
+        """)
+        self.assert_matches(traces[0].loop, """
         """)
