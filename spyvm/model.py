@@ -18,7 +18,7 @@ import sys, weakref
 from spyvm import constants, error
 
 from rpython.rlib import rrandom, objectmodel, jit, signature
-from rpython.rlib.rarithmetic import intmask, r_uint
+from rpython.rlib.rarithmetic import intmask, r_uint, r_int
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib.objectmodel import instantiate, compute_hash
 from rpython.rtyper.lltypesystem import lltype, rffi
@@ -757,13 +757,13 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         byte0 = ord(self.getchar(byte_index0))
         byte1 = ord(self.getchar(byte_index0 + 1)) << 8
         if byte1 & 0x8000 != 0:
-            byte1 = intmask(intmask(0xffff0000) | byte1)
+            byte1 = intmask(r_uint(0xffff0000) | r_uint(byte1))
         return space.wrap_int(byte1 | byte0)
 
     def short_atput0(self, space, index0, w_value):
         from rpython.rlib.rarithmetic import int_between
         i_value = space.unwrap_int(w_value)
-        if not int_between(-32768, i_value, 0x8000):
+        if not int_between(-0x8000, i_value, 0x8000):
             raise error.PrimitiveFailedError
         byte_index0 = index0 * 2
         byte0 = i_value & 0xff
@@ -895,18 +895,18 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         else:
             short = (word >> 16) & 0xffff
         if short & 0x8000 != 0:
-            short = intmask(0xffff0000) | short
+            short = r_uint(0xffff0000) | r_uint(short)
         return space.wrap_int(intmask(short))
 
     def short_atput0(self, space, index0, w_value):
         from rpython.rlib.rarithmetic import int_between
         i_value = space.unwrap_int(w_value)
-        if not int_between(-32768, i_value, 0x8000):
+        if not int_between(-0x8000, i_value, 0x8000):
             raise error.PrimitiveFailedError
         word_index0 = index0 / 2
         word = intmask(self.getword(word_index0))
         if index0 % 2 == 0:
-            word = (word & intmask(0xffff0000)) | (i_value & 0xffff)
+            word = intmask(r_uint(word) & r_uint(0xffff0000)) | (i_value & 0xffff)
         else:
             word = (i_value << 16) | (word & 0xffff)
         value = r_uint(word)

@@ -649,9 +649,10 @@ def func(interp, s_frame, argcount, s_method):
     try:
         s_frame._sendSelfSelector(interp.image.w_simulateCopyBits, 0, interp)
     except Return:
-        w_dest_form = w_rcvr.fetch(space, 0)
-        if w_dest_form.is_same_object(space.objtable['w_display']):
-            w_bitmap = w_dest_form.fetch(space, 0)
+        w_rcvr = s_frame.peek(0)
+        w_dest_form = w_rcvr.fetch(interp.space, 0)
+        if w_dest_form.is_same_object(interp.space.objtable['w_display']):
+            w_bitmap = w_dest_form.fetch(interp.space, 0)
             assert isinstance(w_bitmap, model.W_DisplayBitmap)
             w_bitmap.flush_to_screen()
     except shadow.MethodNotFound:
