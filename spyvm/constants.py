@@ -190,4 +190,4 @@ def decode_compiled_method_header(header):
 
 MAX_LOOP_DEPTH = 100
 INTERRUPT_COUNTER_SIZE = 10000
-CompileTime = int(time.time() * 1000)
+CompileTime = time.time()

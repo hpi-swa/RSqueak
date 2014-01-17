@@ -362,6 +362,8 @@ class ImageReader(object):
 # ____________________________________________________________
 
 class SqueakImage(object):
+    _immutable_fields_ = ["w_asSymbol", "w_simulateCopyBits", "version",
+                          "is_modern", "startup_time"]
 
     def from_reader(self, space, reader):
         from spyvm import constants
@@ -378,7 +380,7 @@ class SqueakImage(object):
         self.version = reader.version
         self.is_modern = reader.version.magic > 6502
         self.run_spy_hacks(space)
-        self.startup_time = int(time.time() * 1000)
+        self.startup_time = time.time()
 
     def run_spy_hacks(self, space):
         pass
