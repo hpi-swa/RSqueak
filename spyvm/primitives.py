@@ -912,9 +912,37 @@ def func(interp, s_frame, w_rcvr):
         w_class.as_class_get_shadow(interp.space).flush_caches()
     return w_rcvr
 
-@expose_primitive(SYMBOL_FLUSH_CACHE, unwrap_spec=[object])
-def func(interp, s_frame, w_rcvr):
-    raise PrimitiveFailedError()
+
+if not stm_enabled():
+    # XXX: We don't have a global symbol cache. Instead, we get all
+    # method dictionary shadows (those exists for all methodDicts that
+    # have been modified) and flush them
+    @expose_primitive(SYMBOL_FLUSH_CACHE, unwrap_spec=[object])
+    def func(interp, s_frame, w_rcvr):
+        dicts_s = []
+        from rpython.rlib import rgc
+
+        roots = [gcref for gcref in rgc.get_rpy_roots() if gcref]
+        pending = roots[:]
+        while pending:
+            gcref = pending.pop()
+            if not rgc.get_gcflag_extra(gcref):
+                rgc.toggle_gcflag_extra(gcref)
+                w_obj = rgc.try_cast_gcref_to_instance(shadow.MethodDictionaryShadow, gcref)
+                if w_obj is not None:
+                    dicts_s.append(w_obj)
+                pending.extend(rgc.get_rpy_referents(gcref))
+
+        while roots:
+            gcref = roots.pop()
+            if rgc.get_gcflag_extra(gcref):
+                rgc.toggle_gcflag_extra(gcref)
+                roots.extend(rgc.get_rpy_referents(gcref))
+
+        for s_dict in dicts_s:
+            if s_dict.invalid:
+                s_dict.sync_cache()
+        return w_rcvr
 
 # ___________________________________________________________________________
 # Miscellaneous Primitives (120-127)
