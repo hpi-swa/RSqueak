@@ -356,7 +356,6 @@ class __extend__(ContextPartShadow):
 
     def _sendSelector(self, w_selector, argcount, interp,
                       receiver, receiverclassshadow):
-        assert isinstance(w_selector, model.W_BytesObject)
         if interp.should_trace():
             print "%sSending selector %r to %r with: %r" % (
                 interp._last_indent, w_selector.as_repr_string(), receiver,
