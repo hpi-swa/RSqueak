@@ -1395,7 +1395,7 @@ def func(interp, s_frame, w_rcvr):
 def func(interp, s_frame, w_rcvr):
     from rpython.rlib import rstm
 
-    print "STM_FORK primitive called"
+    #print "STM_FORK primitive called"
     wrapper.StmProcessWrapper(interp.space, w_rcvr).fork(s_frame.w_self())
     #rstm.should_break_transaction()
 
@@ -1404,7 +1404,7 @@ def func(interp, s_frame, w_rcvr):
 def func(interp, s_frame, w_rcvr):
     from rpython.rlib import rstm
 
-    print "STM_SIGNAL primitive called"
+    #print "STM_SIGNAL primitive called"
     wrapper.StmProcessWrapper(interp.space, w_rcvr).signal('primitive')
     #rstm.should_break_transaction()
 
@@ -1413,7 +1413,7 @@ def func(interp, s_frame, w_rcvr):
 def func(interp, s_frame, w_rcvr):
     from rpython.rlib import rstm
 
-    print "STM_WAIT primitive called"
+    #print "STM_WAIT primitive called"
 
     # wait(0) behaves like a barrier, it waits for but does not acquire the lock
     wrapper.StmProcessWrapper(interp.space, w_rcvr).wait(0, 'primitive')
@@ -1424,14 +1424,14 @@ def func(interp, s_frame, w_rcvr):
 def func(interp, s_frame, w_rcvr):
     from rpython.rlib import rstm
 
-    print "STM_ATOMIC_ENTER primitive called"
+    #print "STM_ATOMIC_ENTER primitive called"
     rstm.increment_atomic()
 
 @expose_primitive(STM_ATOMIC_LEAVE, unwrap_spec=[object], no_result=True)
 def func(interp, s_frame, w_rcvr):
     from rpython.rlib import rstm
 
-    print "STM_ATOMIC_LEAVE primitive called"
+    #print "STM_ATOMIC_LEAVE primitive called"
     rstm.decrement_atomic()
 
 

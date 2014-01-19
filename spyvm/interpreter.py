@@ -190,6 +190,7 @@ class Interpreter(object):
 
     def interpret_with_w_frame(self, w_frame, may_context_switch=True):
         print "Interpreter starting"
+        rstm.set_transaction_length(10000)  # from pypy
         try:
             self.loop(w_frame)
         except ReturnFromTopLevel, e:

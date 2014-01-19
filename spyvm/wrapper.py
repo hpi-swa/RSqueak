@@ -2,6 +2,8 @@ from spyvm import model, constants
 from spyvm.error import FatalError, WrapperException, PrimitiveFailedError
 from rpython.rlib import rstm
 
+LOCK_DEBUG = False
+
 class Wrapper(object):
     def __init__(self, space, w_self):
         if not isinstance(w_self, model.W_PointersObject):
@@ -121,7 +123,7 @@ class PartialBarrier(object):
     _mixin_ = True
 
     def signal(self, what='unknown'):
-        print "[lock] signal %s" % what
+        if LOCK_DEBUG: print "[lock] signal %s" % what
         self.store_lock(0)
         #rstm.should_break_transaction()
 
@@ -130,14 +132,14 @@ class PartialBarrier(object):
         old_value = self.lock()
         self.store_lock(i)
         rstm.decrement_atomic()
-        print "[lock] read %s, set %s, %s" % (old_value, i, what)
+        if LOCK_DEBUG: print "[lock] read %s, set %s, %s" % (old_value, i, what)
         return old_value
 
     # i = 0 just waits but does not acquire (Barrier)
     # i = 1 waits and acquires (Mutex)
     def wait(self, i, what=''):
         import time
-        print '[lock] %s waits' % what
+        if LOCK_DEBUG: print '[lock] %s waits' % what
 
         # first, we have to wait for the lock
         while self._test_and_set(1, what):
@@ -147,7 +149,7 @@ class PartialBarrier(object):
         # then we can modify the lock (i.e. setting it back to 0)
         self.store_lock(i)
 
-        print '[lock] %s continues' % what
+        if LOCK_DEBUG: print '[lock] %s continues' % what
 
 
 class StmProcessWrapper(ProcessWrapper, PartialBarrier):
