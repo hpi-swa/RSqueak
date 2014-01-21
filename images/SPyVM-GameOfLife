@@ -1,0 +1,530 @@
+Object subclass: #GameOfLifeField
+	instanceVariableNames: 'data height width'
+	classVariableNames: ''
+	poolDictionaries: ''
+	category: 'VM-GameOfLife'!
+
+!GameOfLifeField methodsFor: 'as yet unclassified' stamp: 'pre 1/19/2014 21:23'!
+cellAliveAt: x at: y
+
+	^ (self at: x at: y) = 1! !
+
+!GameOfLifeField methodsFor: 'as yet unclassified' stamp: 'pre 1/19/2014 21:14'!
+rows: numberOfRows columns: numberOfColumns
+
+	self height: numberOfRows.
+	self width: numberOfColumns.
+	self data: (Matrix rows: numberOfRows columns: numberOfColumns element: 0).
+	! !
+
+
+!GameOfLifeField methodsFor: 'accessing' stamp: 'pre 1/19/2014 21:25'!
+at: x at:y
+	
+	((x < 1) or: [x > self width]) ifTrue: [ ^ 0 ].
+      ((y < 1) or: [y > self height]) ifTrue: [ ^ 0 ].
+
+	^ self data at: y at: x! !
+
+!GameOfLifeField methodsFor: 'accessing' stamp: 'pre 1/19/2014 21:25'!
+at: x at:y put: aValue
+
+	self data at: y at: x put: aValue.! !
+
+!GameOfLifeField methodsFor: 'accessing' stamp: 'pre 1/19/2014 22:02'!
+atRow: rowNumber put: aRow
+
+	self data atRow: rowNumber put: aRow! !
+
+!GameOfLifeField methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:45'!
+data
+
+	^ data! !
+
+!GameOfLifeField methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:45'!
+data: anObject
+
+	data := anObject! !
+
+!GameOfLifeField methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:45'!
+height
+
+	^ height! !
+
+!GameOfLifeField methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:45'!
+height: anObject
+
+	height := anObject! !
+
+!GameOfLifeField methodsFor: 'accessing' stamp: 'pre 1/19/2014 21:52'!
+print
+
+	| resultString |
+	resultString := ''.
+	(1 to: self height) do: [:y |
+		(1 to: self width) do: [ :x |
+			resultString := resultString , (self data at: y at: x).].
+		resultString := resultString , Character cr ].
+	^ resultString			! !
+
+!GameOfLifeField methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:45'!
+rowSlice: sliceSize collect: aBlock
+
+	! !
+
+!GameOfLifeField methodsFor: 'accessing' stamp: 'pre 1/19/2014 21:28'!
+rowwiseFrom: startRow to: endRow collect: aBlock
+
+	| newField |
+	newField := GameOfLifeFieldSlice from: startRow to: endRow width: self width.
+	(startRow to: endRow) do: [ :y | 
+		(1 to: self width) do: [ :x | newField at: x at: y put: (aBlock value: self value: x value: y) ] ].
+	^ newField! !
+
+!GameOfLifeField methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:45'!
+width
+
+	^ width! !
+
+!GameOfLifeField methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:45'!
+width: anObject
+
+	width := anObject! !
+
+"-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- "!
+
+GameOfLifeField class
+	instanceVariableNames: ''!
+
+!GameOfLifeField class methodsFor: 'as yet unclassified' stamp: 'pre 1/19/2014 21:44'!
+gliderFieldRows: numberOfRows columns: numberOfColumns
+
+	| newField |
+	newField := self new rows: numberOfRows columns: numberOfColumns.
+	
+	newField 
+		at: 8 at: 5 put: 1;
+		at: 9 at: 5 put: 1;	 
+		at: 10 at: 5 put: 1;
+		at: 10 at: 4 put: 1;
+		at: 9 at: 3 put: 1.
+		
+	^ newField! !
+
+!GameOfLifeField class methodsFor: 'as yet unclassified' stamp: 'pre 1/19/2014 20:43'!
+rows: numberOfRows columns: numberOfColumns
+
+	^ self new rows: numberOfRows columns: numberOfColumns! !
+
+
+GameOfLifeField subclass: #GameOfLifeFieldSlice
+	instanceVariableNames: 'startRow endRow'
+	classVariableNames: ''
+	poolDictionaries: ''
+	category: 'VM-GameOfLife'!
+
+!GameOfLifeFieldSlice methodsFor: 'as yet unclassified' stamp: 'pre 1/20/2014 10:22'!
+from: startRow to: endRow width: width
+
+	self startRow: startRow;
+		endRow: endRow;
+		width: width;
+		height: (endRow - startRow + 1);
+		data: (Matrix rows: (endRow - startRow + 1) columns: width).
+		
+	^ self! !
+
+!GameOfLifeFieldSlice methodsFor: 'as yet unclassified' stamp: 'pre 1/19/2014 21:31'!
+rowwiseDo: aBlock
+
+	self startRow to: self endRow do: [ :rowNumber |
+		aBlock value: rowNumber value: (self data atRow: (rowNumber - self startRow) + 1).
+	].! !
+
+
+!GameOfLifeFieldSlice methodsFor: 'accessing' stamp: 'pre 1/19/2014 21:30'!
+at: x at:y put: aValue
+
+	self data at: y +  1 - self startRow at: x put: aValue.! !
+
+!GameOfLifeFieldSlice methodsFor: 'accessing' stamp: 'pre 1/19/2014 21:11'!
+endRow
+
+	^ endRow! !
+
+!GameOfLifeFieldSlice methodsFor: 'accessing' stamp: 'pre 1/19/2014 21:11'!
+endRow: anObject
+
+	endRow := anObject! !
+
+!GameOfLifeFieldSlice methodsFor: 'accessing' stamp: 'pre 1/19/2014 21:11'!
+startRow
+
+	^ startRow! !
+
+!GameOfLifeFieldSlice methodsFor: 'accessing' stamp: 'pre 1/19/2014 21:11'!
+startRow: anObject
+
+	startRow := anObject! !
+
+"-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- "!
+
+GameOfLifeFieldSlice class
+	instanceVariableNames: ''!
+
+!GameOfLifeFieldSlice class methodsFor: 'as yet unclassified' stamp: 'pre 1/19/2014 20:53'!
+from: startRow to: endRow width: width
+
+	^ self new from: startRow to: endRow width: width! !
+
+
+Object subclass: #STMSimulation
+	instanceVariableNames: 'processes field numberOfProcesses fieldSlices fieldNew'
+	classVariableNames: ''
+	poolDictionaries: ''
+	category: 'VM-GameOfLife'!
+
+!STMSimulation methodsFor: 'as yet unclassified' stamp: 'pre 1/21/2014 09:44'!
+initialField: aGameOfLifeField
+
+	self field: aGameOfLifeField.
+	self fieldNew: (GameOfLifeField rows: (aGameOfLifeField height) columns: (aGameOfLifeField width)).! !
+
+!STMSimulation methodsFor: 'as yet unclassified' stamp: 'pre 1/21/2014 09:50'!
+simulateRound: roundNumber 
+
+	self processes: ((1 to: self numberOfProcesses) collect: [ :processNumber |
+		[| rows |
+		rows := self startProcess: processNumber.
+		rows rowwiseDo: [ :rowNumber :aRow | self fieldNew atRow: rowNumber put: aRow ]] parallelFork. ]).
+! !
+
+!STMSimulation methodsFor: 'as yet unclassified' stamp: 'pre 1/21/2014 09:44'!
+simulateRounds: numberOfRounds
+	
+	| swapField |
+
+	1 to: numberOfRounds do: [ :roundNumber |
+		self simulateRound: roundNumber.
+		self processes do: [ :semaphore | semaphore wait. ].
+		
+		"Transcript show: self fieldNew print.
+		Transcript show: Character cr."
+		
+		swapField := self field.
+		self field: self fieldNew.
+		self fieldNew: swapField.
+	].
+
+	^ self field! !
+
+!STMSimulation methodsFor: 'as yet unclassified' stamp: 'pre 1/21/2014 09:44'!
+startProcess: processNumber
+
+	| endOfSlice slice startOfSlice |
+	slice := (self field height / self numberOfProcesses).
+	startOfSlice := ((processNumber - 1) * slice) + 1.
+	endOfSlice := processNumber * slice.
+
+	^ self field rowwiseFrom: startOfSlice
+					to: endOfSlice
+					collect: [ :tempField :x :y | self thumbUpOrDownAt: x at: y on: tempField ]
+
+	
+	! !
+
+!STMSimulation methodsFor: 'as yet unclassified' stamp: 'pre 1/21/2014 09:44'!
+thumbUpOrDownAt: x at: y on: tempField 
+	| liveCellCount |
+	
+	liveCellCount := (tempField at: x - 1 at: y - 1)
+				+ (tempField at: x + 0 at: y - 1)
+				+ (tempField at: x + 1 at: y - 1)
+				+ (tempField at: x - 1 at: y + 0)
+				+ (tempField at: x + 1 at: y + 0)
+				+ (tempField at: x - 1 at: y + 1)
+				+ (tempField at: x + 0 at: y + 1)
+				+ (tempField at: x + 1 at: y + 1).
+	
+	(tempField cellAliveAt: x at: y)
+		ifTrue: [((2 = liveCellCount)
+					or: [liveCellCount = 3])
+				ifTrue: [^ 1]
+				ifFalse: [^ 0]]
+		ifFalse: [(liveCellCount = 3)
+				ifTrue: [^ 1]
+				ifFalse: [^ 0]]! !
+
+
+!STMSimulation methodsFor: 'accessing' stamp: 'pre 1/21/2014 09:44'!
+field
+
+	^ field! !
+
+!STMSimulation methodsFor: 'accessing' stamp: 'pre 1/21/2014 09:44'!
+field: anObject
+
+	field := anObject! !
+
+!STMSimulation methodsFor: 'accessing' stamp: 'pre 1/21/2014 09:44'!
+fieldNew
+
+	^ fieldNew! !
+
+!STMSimulation methodsFor: 'accessing' stamp: 'pre 1/21/2014 09:44'!
+fieldNew: anObject
+
+	fieldNew := anObject! !
+
+!STMSimulation methodsFor: 'accessing' stamp: 'pre 1/21/2014 09:44'!
+fieldSlices
+
+	^ fieldSlices! !
+
+!STMSimulation methodsFor: 'accessing' stamp: 'pre 1/21/2014 09:44'!
+fieldSlices: anObject
+
+	fieldSlices := anObject! !
+
+!STMSimulation methodsFor: 'accessing' stamp: 'pre 1/21/2014 09:44'!
+numberOfProcesses
+
+	^ numberOfProcesses! !
+
+!STMSimulation methodsFor: 'accessing' stamp: 'pre 1/21/2014 09:44'!
+numberOfProcesses: aNumber
+
+	numberOfProcesses := aNumber
+	! !
+
+!STMSimulation methodsFor: 'accessing' stamp: 'pre 1/21/2014 09:44'!
+processes
+
+	^ processes! !
+
+!STMSimulation methodsFor: 'accessing' stamp: 'pre 1/21/2014 09:44'!
+processes: anObject
+
+	processes := anObject! !
+
+
+!STMSimulation methodsFor: 'initialize-release' stamp: 'pre 1/21/2014 09:44'!
+initialize
+
+	self processes: OrderedCollection new.
+	! !
+
+"-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- "!
+
+STMSimulation class
+	instanceVariableNames: ''!
+
+!STMSimulation class methodsFor: 'as yet unclassified' stamp: 'pre 1/21/2014 09:44'!
+benchmark
+
+	^ (1 to: 4) collect: [ :i |
+			[ self standardSimulation: (2 raisedTo: i) ] timeToRun ]! !
+
+!STMSimulation class methodsFor: 'as yet unclassified' stamp: 'pre 1/21/2014 09:44'!
+benchmark2
+
+	^ (1 to: 5) collect: [ :i |
+			[ self standardSimulation2: (2 raisedTo: i) ] timeToRun ]! !
+
+!STMSimulation class methodsFor: 'as yet unclassified' stamp: 'pre 1/21/2014 09:44'!
+standardSimulation2: numberOfProcesses
+
+	^ self new
+			numberOfProcesses: numberOfProcesses;
+			initialField: (GameOfLifeField gliderFieldRows: 32 columns: 32);
+			simulateRounds: 5.
+			
+			! !
+
+!STMSimulation class methodsFor: 'as yet unclassified' stamp: 'pre 1/21/2014 09:44'!
+standardSimulation: numberOfProcesses
+
+	^ self new
+			numberOfProcesses: numberOfProcesses;
+			initialField: (GameOfLifeField gliderFieldRows: 32 columns: 32);
+			simulateRounds: 5.
+			
+			! !
+
+
+Object subclass: #Simulation
+	instanceVariableNames: 'processes field numberOfProcesses fieldSlices fieldNew'
+	classVariableNames: ''
+	poolDictionaries: ''
+	category: 'VM-GameOfLife'!
+
+!Simulation methodsFor: 'as yet unclassified' stamp: 'pre 1/20/2014 13:37'!
+initialField: aGameOfLifeField
+
+	self field: aGameOfLifeField.
+	self fieldNew: (GameOfLifeField rows: (aGameOfLifeField height) columns: (aGameOfLifeField width)).! !
+
+!Simulation methodsFor: 'as yet unclassified' stamp: 'pre 1/20/2014 13:44'!
+simulateRound: roundNumber 
+
+	self processes: ((1 to: self numberOfProcesses) collect: [ :processNumber |
+		| semaphore |
+		semaphore := Semaphore new.
+		[| rows |
+		rows := self startProcess: processNumber.
+		rows rowwiseDo: [ :rowNumber :aRow | self fieldNew atRow: rowNumber put: aRow ].
+		semaphore signal] fork.
+		semaphore ]).
+! !
+
+!Simulation methodsFor: 'as yet unclassified' stamp: 'pre 1/20/2014 14:00'!
+simulateRounds: numberOfRounds
+	
+	| swapField |
+
+	1 to: numberOfRounds do: [ :roundNumber |
+		self simulateRound: roundNumber.
+		self processes do: [ :semaphore | semaphore wait. ].
+		
+		"Transcript show: self fieldNew print.
+		Transcript show: Character cr."
+		
+		swapField := self field.
+		self field: self fieldNew.
+		self fieldNew: swapField.
+	].
+
+	^ self field! !
+
+!Simulation methodsFor: 'as yet unclassified' stamp: 'pre 1/20/2014 13:34'!
+startProcess: processNumber
+
+	| endOfSlice slice startOfSlice |
+	slice := (self field height / self numberOfProcesses).
+	startOfSlice := ((processNumber - 1) * slice) + 1.
+	endOfSlice := processNumber * slice.
+
+	^ self field rowwiseFrom: startOfSlice
+					to: endOfSlice
+					collect: [ :tempField :x :y | self thumbUpOrDownAt: x at: y on: tempField ]
+
+	
+	! !
+
+!Simulation methodsFor: 'as yet unclassified' stamp: 'pre 1/20/2014 10:48'!
+thumbUpOrDownAt: x at: y on: tempField 
+	| liveCellCount |
+	
+	liveCellCount := (tempField at: x - 1 at: y - 1)
+				+ (tempField at: x + 0 at: y - 1)
+				+ (tempField at: x + 1 at: y - 1)
+				+ (tempField at: x - 1 at: y + 0)
+				+ (tempField at: x + 1 at: y + 0)
+				+ (tempField at: x - 1 at: y + 1)
+				+ (tempField at: x + 0 at: y + 1)
+				+ (tempField at: x + 1 at: y + 1).
+	
+	(tempField cellAliveAt: x at: y)
+		ifTrue: [((2 = liveCellCount)
+					or: [liveCellCount = 3])
+				ifTrue: [^ 1]
+				ifFalse: [^ 0]]
+		ifFalse: [(liveCellCount = 3)
+				ifTrue: [^ 1]
+				ifFalse: [^ 0]]! !
+
+
+!Simulation methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:04'!
+field
+
+	^ field! !
+
+!Simulation methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:04'!
+field: anObject
+
+	field := anObject! !
+
+!Simulation methodsFor: 'accessing' stamp: 'pre 1/19/2014 22:06'!
+fieldNew
+
+	^ fieldNew! !
+
+!Simulation methodsFor: 'accessing' stamp: 'pre 1/19/2014 22:06'!
+fieldNew: anObject
+
+	fieldNew := anObject! !
+
+!Simulation methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:30'!
+fieldSlices
+
+	^ fieldSlices! !
+
+!Simulation methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:30'!
+fieldSlices: anObject
+
+	fieldSlices := anObject! !
+
+!Simulation methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:09'!
+numberOfProcesses
+
+	^ numberOfProcesses! !
+
+!Simulation methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:09'!
+numberOfProcesses: aNumber
+
+	numberOfProcesses := aNumber
+	! !
+
+!Simulation methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:04'!
+processes
+
+	^ processes! !
+
+!Simulation methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:04'!
+processes: anObject
+
+	processes := anObject! !
+
+
+!Simulation methodsFor: 'initialize-release' stamp: 'pre 1/19/2014 20:04'!
+initialize
+
+	self processes: OrderedCollection new.
+	! !
+
+"-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- "!
+
+Simulation class
+	instanceVariableNames: ''!
+
+!Simulation class methodsFor: 'as yet unclassified' stamp: 'pre 1/20/2014 14:08'!
+benchmark
+
+	^ (1 to: 4) collect: [ :i |
+			[ self standardSimulation: (2 raisedTo: i) ] timeToRun ]! !
+
+!Simulation class methodsFor: 'as yet unclassified' stamp: 'pre 1/20/2014 14:09'!
+benchmark2
+
+	^ (1 to: 5) collect: [ :i |
+			[ self standardSimulation2: (2 raisedTo: i) ] timeToRun ]! !
+
+!Simulation class methodsFor: 'as yet unclassified' stamp: 'pre 1/20/2014 13:59'!
+standardSimulation2: numberOfProcesses
+
+	^ self new
+			numberOfProcesses: numberOfProcesses;
+			initialField: (GameOfLifeField gliderFieldRows: 32 columns: 32);
+			simulateRounds: 5.
+			
+			! !
+
+!Simulation class methodsFor: 'as yet unclassified' stamp: 'pre 1/20/2014 13:59'!
+standardSimulation: numberOfProcesses
+
+	^ self new
+			numberOfProcesses: numberOfProcesses;
+			initialField: (GameOfLifeField gliderFieldRows: 32 columns: 32);
+			simulateRounds: 5.
+			
+			! !
