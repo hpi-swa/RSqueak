@@ -14,6 +14,8 @@ except:
     pass
 from rpython.rlib import rthread
 
+THREAD_DEBUG = False
+
 class MissingBytecode(Exception):
     """Bytecode not implemented yet."""
     def __init__(self, bytecodename):
@@ -100,7 +102,7 @@ class Bootstrapper(object):
 
     # HUGE RACE CONDITON!!!
     def bootstrap():
-        print "New thread reporting"
+        #print "New thread reporting"
         interp = bootstrapper.interp
         w_frame = bootstrapper.w_frame
         w_stm_process = bootstrapper.w_stm_process
@@ -179,17 +181,17 @@ class Interpreter(object):
         new_interp.interrupt_check_counter = self.interrupt_check_counter
         new_interp.trace_proxy = self.trace_proxy
 
-        print 'Interpreter state copied'
+        #print 'Interpreter state copied'
 
         # bootstrapping from (lock-guarded) global state:
         bootstrapper.acquire(new_interp, w_frame, w_stm_process)
-        print "Thread initialized"
+        #print "Thread initialized"
         # TODO: Deadlocks if the thread before died without calling bootstrapper.release()
         rthread.start_new_thread(bootstrapper.bootstrap, ())
-        print "Parent interpreter resuming"
+        #print "Parent interpreter resuming"
 
     def interpret_with_w_frame(self, w_frame, may_context_switch=True):
-        print "Interpreter starting"
+        if THREAD_DEBUG: print "[Thread] Interpreter starting"
         rstm.set_transaction_length(10000)  # from pypy
         try:
             self.loop(w_frame)
@@ -276,7 +278,7 @@ class Interpreter(object):
 
             # gonna go parallel! (triggered by primitive)
             except StmProcessFork, f:
-                print "Interpreter loop about to fork"
+                #print "Interpreter loop about to fork"
 
                 self.fork(f.w_frame, f.w_stm_process)
 

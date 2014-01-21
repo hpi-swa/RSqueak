@@ -1416,9 +1416,10 @@ def func(interp, s_frame, w_rcvr):
     #print "STM_WAIT primitive called"
 
     # wait(0) behaves like a barrier, it waits for but does not acquire the lock
+    #print "[Thread] wait"
     wrapper.StmProcessWrapper(interp.space, w_rcvr).wait(0, 'primitive')
-    print "STM Rendezvous"
-    print "Should break: %s" % rstm.should_break_transaction()
+    #print "[Thread] join"
+    #print "Should break: %s" % rstm.should_break_transaction()
 
 @expose_primitive(STM_ATOMIC_ENTER, unwrap_spec=[object], no_result=True)
 def func(interp, s_frame, w_rcvr):

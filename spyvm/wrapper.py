@@ -182,7 +182,7 @@ class StmProcessWrapper(ProcessWrapper, PartialBarrier):
         w_frame = self.suspended_context()
 
         assert isinstance(w_frame, model.W_PointersObject)
-        print "Breaking interpreter loop for forking"
+        #print "Breaking interpreter loop for forking"
         # we need to pass control to the interpreter loop here
         self.store_lock(1)
         raise StmProcessFork(w_frame, self._w_self)

@@ -305,4 +305,139 @@
 			initialField: (GameOfLifeField gliderFieldRows: 32 columns: 32);
 			simulateRounds: 5.
 			
-			! !----End fileIn of a stream----!!Integer methodsFor: 'benchmarks' stamp: 'toma 1/21/2014 10:55'!gol		STMSimulation benchmark! !!Integer methodsFor: 'benchmarks' stamp: 'toma 1/21/2014 10:56' prior: 33632815!gol		STMSimulation benchmark printString! !----SNAPSHOT----{21 January 2014 . 10:56:17 am} Squeak4.5-12568.image priorSource: 63448!	^STMSimulation benchmark printString!!Integer methodsFor: 'benchmarks' stamp: 'toma 1/21/2014 10:59' prior: 33632930!gol		^STMSimulation benchmark printString! !----QUIT/NOSAVE----{21 January 2014 . 11:00:27 am} Squeak4.5-12568.image priorSource: 78543!----STARTUP----{21 January 2014 . 11:00:33 am} as /home/bot/lang-smalltalk/images/Squeak4.5-12568.image!!Integer methodsFor: 'benchmarks' stamp: 'toma 1/21/2014 11:00' prior: 33632930!gol		^ STMSimulation benchmark printString! !----SNAPSHOT----{21 January 2014 . 11:00:44 am} Squeak4.5-12568.image priorSource: 78543!!Integer methodsFor: 'benchmarks' stamp: 'toma 1/21/2014 11:04'!gol2		^ STMSimulation benchmark2 printString! !Simulation benchmark!----SNAPSHOT----{21 January 2014 . 11:06:45 am} Squeak4.5-12568.image priorSource: 79132!
+			! !----End fileIn of a stream----!!Integer methodsFor: 'benchmarks' stamp: 'toma 1/21/2014 10:55'!gol		STMSimulation benchmark! !!Integer methodsFor: 'benchmarks' stamp: 'toma 1/21/2014 10:56' prior: 33632815!gol		STMSimulation benchmark printString! !----SNAPSHOT----{21 January 2014 . 10:56:17 am} Squeak4.5-12568.image priorSource: 63448!	^STMSimulation benchmark printString!!Integer methodsFor: 'benchmarks' stamp: 'toma 1/21/2014 10:59' prior: 33632930!gol		^STMSimulation benchmark printString! !----QUIT/NOSAVE----{21 January 2014 . 11:00:27 am} Squeak4.5-12568.image priorSource: 78543!----STARTUP----{21 January 2014 . 11:00:33 am} as /home/bot/lang-smalltalk/images/Squeak4.5-12568.image!!Integer methodsFor: 'benchmarks' stamp: 'toma 1/21/2014 11:00' prior: 33632930!gol		^ STMSimulation benchmark printString! !----SNAPSHOT----{21 January 2014 . 11:00:44 am} Squeak4.5-12568.image priorSource: 78543!!Integer methodsFor: 'benchmarks' stamp: 'toma 1/21/2014 11:04'!gol2		^ STMSimulation benchmark2 printString! !Simulation benchmark!----SNAPSHOT----{21 January 2014 . 11:06:45 am} Squeak4.5-12568.image priorSource: 79132!!STMSimulation methodsFor: 'as yet unclassified' stamp: 'toma 1/21/2014 13:05'!print		! !!GameOfLifeField methodsFor: 'accessing' stamp: 'toma 1/21/2014 13:09' prior: 33619796!print
+
+	| resultString |
+	resultString := ''.
+	(1 to: self height) do: [:y |
+		(1 to: self width) do: [ :x |
+			resultString := resultString , ((self data at: y at: x) = 1) ifTrue: ['[]'] ifFalse: ['. '].].
+		resultString := resultString , Character cr ].
+	^ resultString			! !!GameOfLifeField methodsFor: 'accessing' stamp: 'toma 1/21/2014 13:09' prior: 33634066!print
+
+	| resultString |
+	resultString := ''.
+	(1 to: self height) do: [:y |
+		(1 to: self width) do: [ :x |
+			resultString := resultString , ((self data at: y at: x) > 0) ifTrue: ['[]'] ifFalse: ['. '].].
+		resultString := resultString , Character cr ].
+	^ resultString			! !!STMSimulation methodsFor: 'as yet unclassified' stamp: 'toma 1/21/2014 13:11' prior: 33624205!simulateRounds: numberOfRounds
+	
+	| swapField |
+
+	1 to: numberOfRounds do: [ :roundNumber |
+		self simulateRound: roundNumber.
+		self processes do: [ :semaphore | semaphore wait. ].
+		
+		SPyVM print: (self fieldNew print).
+		SPyVM print: Character cr.
+		
+		swapField := self field.
+		self field: self fieldNew.
+		self fieldNew: swapField.
+	].
+
+	^ self field! !----SNAPSHOT----{21 January 2014 . 1:11:46 pm} Squeak4.5-12568.image priorSource: 79361!!GameOfLifeField methodsFor: 'accessing' stamp: 'toma 1/21/2014 13:12' prior: 33634432!print
+
+	| resultString |
+	resultString := ''.
+	(1 to: self height) do: [:y |
+		(1 to: self width) do: [ :x |
+			resultString := resultString , (((self data at: y at: x) > 0) ifTrue: ['[]'] ifFalse: ['. ']).].
+		resultString := resultString , Character cr ].
+	^ resultString			! !----SNAPSHOT----{21 January 2014 . 1:13:04 pm} Squeak4.5-12568.image priorSource: 80734!!STMProcess methodsFor: 'as yet unclassified' stamp: 'toma 1/21/2014 13:32' prior: 33556598!wait		self primWait! !----SNAPSHOT----{21 January 2014 . 1:44:03 pm} Squeak4.5-12568.image priorSource: 81192!!GameOfLifeField class methodsFor: 'as yet unclassified' stamp: 'toma 1/21/2014 13:48' prior: 33620913!gliderFieldRows: numberOfRows columns: numberOfColumns
+
+	| newField |
+	newField := self new rows: numberOfRows columns: numberOfColumns.
+	
+	newField 
+		at: 8 at: 5 put: 1;
+		at: 9 at: 5 put: 1;	 
+		at: 10 at: 5 put: 1;
+		at: 10 at: 4 put: 1;
+		at: 9 at: 3 put: 1;		at: 13 at: 13 put: 1;
+		at: 13 at: 14 put: 1;	 
+		at: 13 at: 15 put: 1;
+		at: 14 at: 13 put: 1;
+		at: 12 at: 14 put: 1.
+		
+	^ newField! !----SNAPSHOT----{21 January 2014 . 1:48:18 pm} Squeak4.5-12568.image priorSource: 81400!!STMSimulation class methodsFor: 'as yet unclassified' stamp: 'toma 1/21/2014 13:52' prior: 33627087!benchmark
+
+	^ (1 to: 3) collect: [ :i |
+			[ self standardSimulation: (2 raisedTo: i) ] timeToRun ]! !!Simulation class methodsFor: 'as yet unclassified' stamp: 'toma 1/21/2014 13:52' prior: 33631876!benchmark
+
+	^ (1 to: 3) collect: [ :i |
+			[ self standardSimulation: (2 raisedTo: i) ] timeToRun ]! !!Simulation class methodsFor: 'as yet unclassified' stamp: 'toma 1/21/2014 13:52' prior: 33636825!benchmark
+
+	^ (1 to: 4) collect: [ :i |
+			[ self standardSimulation: (2 raisedTo: i) ] timeToRun ]! !!STMSimulation class methodsFor: 'as yet unclassified' stamp: 'toma 1/21/2014 13:52' prior: 33636623!benchmark
+
+	^ (1 to: 4) collect: [ :i |
+			[ self standardSimulation: (2 raisedTo: i) ] timeToRun ]! !!STMSimulation class methodsFor: 'as yet unclassified' stamp: 'toma 1/21/2014 13:58' prior: 33627744!standardSimulation: numberOfProcesses
+	SPyVM print:'================================================================'.
+	^ self new
+			numberOfProcesses: numberOfProcesses;
+			initialField: (GameOfLifeField gliderFieldRows: 32 columns: 32);
+			simulateRounds: 5.
+			
+			! !----SNAPSHOT----{21 January 2014 . 1:58:07 pm} Squeak4.5-12568.image priorSource: 81998!!STMSimulation class methodsFor: 'as yet unclassified' stamp: 'toma 1/21/2014 13:58'!benchmark3
+
+	^ (1 to: 4) collect: [ :i |
+			[ self standardSimulation: (2 raisedTo: i) ] timeToRun ]! !!STMSimulation class methodsFor: 'as yet unclassified' stamp: 'toma 1/21/2014 13:59' prior: 33637887!benchmark3
+	| |
+	^ (1 to: 4) collect: [ :i | 
+			[ self standardSimulation: (2 raisedTo: i) ] timeToRun ]! !!STMSimulation class methodsFor: 'as yet unclassified' stamp: 'toma 1/21/2014 14:00' prior: 33638093!benchmark3
+	| field |	field := GameOfLifeField gliderFieldRows: 32 columns: 32.
+	^ (1 to: 4) collect: [ :i | 
+			[ self standardSimulation: (2 raisedTo: i) ] timeToRun ]! !!STMSimulation class methodsFor: 'as yet unclassified' stamp: 'toma 1/21/2014 14:00' prior: 33638307!benchmark3
+	| field |	field := GameOfLifeField gliderFieldRows: 32 columns: 32.
+	^ (1 to: 4) collect: [ :i | 
+			[ field := self standardSimulation: (2 raisedTo: i) withField: field] timeToRun ]! !STMSimulation class removeSelector: #benchmark3!----SNAPSHOT----{21 January 2014 . 2:00:54 pm} Squeak4.5-12568.image priorSource: 83278!!GameOfLifeField class methodsFor: 'as yet unclassified' stamp: 'toma 1/21/2014 14:04' prior: 33636027!gliderFieldRows: numberOfRows columns: numberOfColumns
+
+	| newField |
+	newField := self new rows: numberOfRows columns: numberOfColumns.
+	
+	newField 
+		at: 8 at: 5 put: 1;
+		at: 9 at: 5 put: 1;	 
+		at: 10 at: 5 put: 1;
+		at: 10 at: 4 put: 1;
+		at: 9 at: 3 put: 1;		at: 13 at: 13 put: 1;
+		at: 13 at: 14 put: 1;	 
+		at: 13 at: 15 put: 1;
+		at: 14 at: 13 put: 1;
+		at: 12 at: 14 put: 1.			numberOfRows > 16 ifTrue: [		newField			at: 20 at: 3 put: 1;			at: 20 at: 4 put: 1;			at: 21 at: 2 put: 1;			at: 21 at: 5 put: 1;			at: 22 at: 3 put: 1;			at: 22 at: 4 put: 1.	].
+		
+	^ newField! !!GameOfLifeField class methodsFor: 'as yet unclassified' stamp: 'toma 1/21/2014 14:04' prior: 33639032!gliderFieldRows: numberOfRows columns: numberOfColumns
+
+	| newField |
+	newField := self new rows: numberOfRows columns: numberOfColumns.
+	
+	newField 
+		at: 8 at: 5 put: 1;
+		at: 9 at: 5 put: 1;	 
+		at: 10 at: 5 put: 1;
+		at: 10 at: 4 put: 1;
+		at: 9 at: 3 put: 1;		at: 13 at: 13 put: 1;
+		at: 13 at: 14 put: 1;	 
+		at: 13 at: 15 put: 1;
+		at: 14 at: 13 put: 1;
+		at: 12 at: 14 put: 1.			((numberOfRows > 16) and: (numberOfColumns > 16)) ifTrue: [		newField			at: 20 at: 3 put: 1;			at: 20 at: 4 put: 1;			at: 21 at: 2 put: 1;			at: 21 at: 5 put: 1;			at: 22 at: 3 put: 1;			at: 22 at: 4 put: 1.	].
+		
+	^ newField! !!GameOfLifeField class methodsFor: 'as yet unclassified' stamp: 'toma 1/21/2014 14:05' prior: 33639731!gliderFieldRows: numberOfRows columns: numberOfColumns
+
+	| newField |
+	newField := self new rows: numberOfRows columns: numberOfColumns.
+	
+	newField 
+		at: 8 at: 5 put: 1;
+		at: 9 at: 5 put: 1;	 
+		at: 10 at: 5 put: 1;
+		at: 10 at: 4 put: 1;
+		at: 9 at: 3 put: 1;		at: 13 at: 13 put: 1;
+		at: 13 at: 14 put: 1;	 
+		at: 13 at: 15 put: 1;
+		at: 14 at: 13 put: 1;
+		at: 12 at: 14 put: 1.			((numberOfRows > 16) and: (numberOfColumns > 16)) ifTrue: [		newField			at: 20 at: 3 put: 1;			at: 20 at: 4 put: 1;			at: 21 at: 2 put: 1;			at: 21 at: 5 put: 1;			at: 22 at: 3 put: 1;			at: 22 at: 4 put: 1;						at: 20 at: 20 put: 1;			at: 20 at: 21 put: 1;			at: 20 at: 22 put: 1.			].
+		
+	^ newField! !----SNAPSHOT----{21 January 2014 . 2:05:40 pm} Squeak4.5-12568.image priorSource: 84405!
