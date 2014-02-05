@@ -659,7 +659,8 @@ def func(interp, s_frame, argcount, s_method):
         return w_rcvr
     except shadow.MethodNotFound:
         from spyvm.plugins.bitblt import BitBltPlugin
-        return BitBltPlugin.call("primitiveCopyBits", interp, s_frame, argcount, s_method)
+        BitBltPlugin.call("primitiveCopyBits", interp, s_frame, argcount, s_method)
+        return w_rcvr
 
 @expose_primitive(BE_CURSOR)
 def func(interp, s_frame, argcount):
