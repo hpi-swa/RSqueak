@@ -39,7 +39,8 @@ WindowEventStinks = 6
 class SDLDisplay(object):
     _attrs_ = ["screen", "width", "height", "depth", "surface", "has_surface",
                "mouse_position", "button", "key", "interrupt_key", "_defer_updates",
-               "_deferred_event"]
+               "_deferred_event", "pixelbuffer"]
+    _immutable_fields_ = ["pixelbuffer?"]
 
     def __init__(self, title):
         assert RSDL.Init(RSDL.INIT_VIDEO) >= 0
@@ -69,9 +70,10 @@ class SDLDisplay(object):
             raise RuntimeError
         elif d == 8:
             self.set_squeak_colormap(self.screen)
+        self.pixelbuffer = rffi.cast(rffi.UINTP, self.screen.c_pixels)
 
     def get_pixelbuffer(self):
-        return rffi.cast(rffi.ULONGP, self.screen.c_pixels)
+        return jit.promote(self.pixelbuffer)
 
     def defer_updates(self, flag):
         self._defer_updates = flag

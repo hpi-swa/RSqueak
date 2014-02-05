@@ -991,7 +991,6 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
     def __init__(self, space, w_class, size, depth, display):
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
         self._real_depth_buffer = lltype.malloc(rffi.CArray(rffi.UINT), size, flavor='raw')
-        self.pixelbuffer = display.get_pixelbuffer()
         self._realsize = size
         self.display = display
         self._depth = depth
@@ -1027,7 +1026,7 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
 
     def setword(self, n, word):
         self._real_depth_buffer[n] = word
-        self.pixelbuffer[n] = word
+        self.display.get_pixelbuffer()[n] = word
 
     def is_array_object(self):
         return True
@@ -1061,13 +1060,13 @@ class W_16BitDisplayBitmap(W_DisplayBitmap):
             ((msb & mask) << 11)
         )
 
-        self.pixelbuffer[n] = r_uint(lsb | (msb << 16))
+        self.display.get_pixelbuffer()[n] = r_uint(lsb | (msb << 16))
 
 
 class W_8BitDisplayBitmap(W_DisplayBitmap):
     def setword(self, n, word):
         self._real_depth_buffer[n] = word
-        self.pixelbuffer[n] = r_uint(
+        self.display.get_pixelbuffer()[n] = r_uint(
             (word >> 24) |
             ((word >> 8) & 0x0000ff00) |
             ((word << 8) & 0x00ff0000) |
@@ -1092,7 +1091,7 @@ class W_MappingDisplayBitmap(W_DisplayBitmap):
                 pixel = r_uint(word) >> rshift
                 mapword |= (r_uint(pixel) << (i * 8))
                 word <<= self._depth
-            self.pixelbuffer[pos] = mapword
+            self.display.get_pixelbuffer()[pos] = mapword
             pos += 1
 
     def compute_pos(self, n):
