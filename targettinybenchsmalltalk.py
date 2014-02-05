@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 import os, sys
 from spyvm import model, interpreter, primitives, shadow, constants
 from spyvm.tool.analyseimage import create_squeakimage, create_testimage
