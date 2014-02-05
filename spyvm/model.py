@@ -796,13 +796,15 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         return True
 
     def is_same_object(self, other):
+        if self is other:
+            return True
         # XXX this sounds very wrong to me
-        if not isinstance(other, W_BytesObject):
+        elif not isinstance(other, W_BytesObject):
             return False
         size = self.size()
         if size != other.size():
             return False
-        if size > 256 and self.bytes is not None and other.bytes is not None:
+        elif size > 256 and self.bytes is not None and other.bytes is not None:
             return self.bytes == other.bytes
         else:
             return self.has_same_chars(other, size)
