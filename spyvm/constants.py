@@ -144,7 +144,7 @@ objects_in_special_object_table = {
     "timerSemaphore" : SO_TIMER_SEMAPHORE,
 }
 
-LONG_BIT = 32
+from rpython.rlib.rarithmetic import LONG_BIT
 TAGGED_MAXINT = 2 ** (LONG_BIT - 2) - 1
 TAGGED_MININT = -2 ** (LONG_BIT - 2)
 

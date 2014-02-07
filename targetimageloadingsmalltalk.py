@@ -6,9 +6,8 @@ from rpython.rlib.streamio import open_file_as_stream
 from rpython.rlib import jit, rpath
 
 from spyvm import model, interpreter, squeakimage, objspace, wrapper,\
-    error, shadow
+    error, shadow, system
 from spyvm.tool.analyseimage import create_image
-from spyvm.interpreter_proxy import VirtualMachine
 
 
 def _run_benchmark(interp, number, benchmark, arg):
@@ -222,6 +221,9 @@ def target(driver, *args):
     # driver.config.translation.gc = "stmgc"
     # driver.config.translation.gcrootfinder = "stm"
     from rpython.rlib import rgc
+    driver.exe_name = "rsqueakvm"
+    if system.IS_64BIT:
+        driver.exe_name += "-64"
     if hasattr(rgc, "stm_is_enabled"):
         driver.config.translation.stm = True
         driver.config.translation.thread = True

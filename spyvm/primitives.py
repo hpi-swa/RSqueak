@@ -5,7 +5,7 @@ import operator
 from spyvm import model, shadow
 from spyvm import constants, display
 from spyvm.error import PrimitiveFailedError, \
-    PrimitiveNotYetWrittenError
+    PrimitiveNotYetWrittenError, WrappingError
 from spyvm import wrapper
 
 from rpython.rlib import rarithmetic, rfloat, unroll, jit
@@ -296,8 +296,12 @@ for (code,op) in math_ops.items():
 @expose_primitive(FLOAT_TRUNCATED, unwrap_spec=[float])
 def func(interp, s_frame, f):
     try:
-        return interp.space.wrap_int(rarithmetic.ovfcheck_float_to_int(f))
+        integer = rarithmetic.ovfcheck_float_to_int(f)
     except OverflowError:
+        raise PrimitiveFailedError
+    try:
+        return interp.space.wrap_int(integer) # in 64bit VMs, this may fail
+    except WrappingError:
         raise PrimitiveFailedError
 
 @expose_primitive(FLOAT_TIMES_TWO_POWER, unwrap_spec=[float, int])
@@ -647,17 +651,22 @@ def func(interp, s_frame, w_rcvr, w_into):
 def func(interp, s_frame, argcount, s_method):
     from spyvm.interpreter import Return
     w_rcvr = s_frame.peek(0)
-    try:
-        s_frame._sendSelfSelector(interp.image.w_simulateCopyBits, 0, interp)
-    except Return:
-        w_dest_form = w_rcvr.fetch(interp.space, 0)
-        w_display = interp.space.objtable['w_display']
-        if w_dest_form.is_same_object(w_display):
-            w_bitmap = w_display.fetch(interp.space, 0)
-            assert isinstance(w_bitmap, model.W_DisplayBitmap)
-            w_bitmap.flush_to_screen()
-        return w_rcvr
-    except shadow.MethodNotFound:
+    w_display = interp.space.objtable['w_display']
+    if interp.space.unwrap_int(w_display.fetch(interp.space, 3)) == 1:
+        try:
+            s_frame._sendSelfSelector(interp.image.w_simulateCopyBits, 0, interp)
+        except Return:
+            w_dest_form = w_rcvr.fetch(interp.space, 0)
+            if w_dest_form.is_same_object(w_display):
+                w_bitmap = w_display.fetch(interp.space, 0)
+                assert isinstance(w_bitmap, model.W_DisplayBitmap)
+                w_bitmap.flush_to_screen()
+            return w_rcvr
+        except shadow.MethodNotFound:
+            from spyvm.plugins.bitblt import BitBltPlugin
+            BitBltPlugin.call("primitiveCopyBits", interp, s_frame, argcount, s_method)
+            return w_rcvr
+    else:
         from spyvm.plugins.bitblt import BitBltPlugin
         BitBltPlugin.call("primitiveCopyBits", interp, s_frame, argcount, s_method)
         return w_rcvr
@@ -872,6 +881,15 @@ def func(interp, s_frame, w_arg, w_rcvr):
 
     w_rcvr.s_class = w_arg.s_class
 
+
+if constants.LONG_BIT == 32:
+    def callIProxy(signature, interp, s_frame, argcount, s_method):
+        from spyvm.interpreter_proxy import IProxy
+        return IProxy.call(signature, interp, s_frame, argcount, s_method)
+else:
+    def callIProxy(signature, interp, s_frame, argcount, s_method):
+        raise PrimitiveFailedError
+
 @expose_primitive(EXTERNAL_CALL, clean_stack=False, no_result=True, compiled_method=True)
 def func(interp, s_frame, argcount, s_method):
     space = interp.space
@@ -898,8 +916,7 @@ def func(interp, s_frame, argcount, s_method):
         from spyvm.plugins.vmdebugging import DebuggingPlugin
         return DebuggingPlugin.call(signature[1], interp, s_frame, argcount, s_method)
     else:
-        from spyvm.interpreter_proxy import IProxy
-        return IProxy.call(signature, interp, s_frame, argcount, s_method)
+        return callIProxy(signature, interp, s_frame, argcount, s_method)
     raise PrimitiveFailedError
 
 @expose_primitive(COMPILED_METHOD_FLUSH_CACHE, unwrap_spec=[object])
@@ -1074,7 +1091,7 @@ def func(interp, s_frame, w_arg):
     sec_since_epoch = rarithmetic.r_uint(time.time())
     # XXX: overflow check necessary?
     sec_since_1901 = sec_since_epoch + secs_between_1901_and_1970
-    return interp.space.wrap_uint(sec_since_1901)
+    return interp.space.wrap_uint(rarithmetic.r_uint(sec_since_1901))
 
 
 #____________________________________________________________________________
@@ -1118,7 +1135,7 @@ def func(interp, s_frame, w_arg, new_value):
             w_arg.setchar(i, chr(new_value))
     elif isinstance(w_arg, model.W_WordsObject) or isinstance(w_arg, model.W_DisplayBitmap):
         for i in xrange(w_arg.size()):
-            w_arg.setword(i, new_value)
+            w_arg.setword(i, rarithmetic.r_uint(new_value))
     else:
         raise PrimitiveFailedError
     return w_arg
