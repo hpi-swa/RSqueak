@@ -20,25 +20,37 @@ class FieldSort(TimSort):
 
 maps = {}
 
-class VarSizedFieldTypes():
+class AbstractFieldTypes():
     _immutable_fields_ = []
     _attrs_ = []
     _settled_ = True
 
-    @staticmethod
-    def of_length(s_class, n):
-        return nilTyper
-
     def __init__(self):
         pass
+    def fetch(self, w_obj, n0):
+        raise NotImplementedError("Abstract base class")
+    def store(self, w_obj, n0, w_val):
+        raise NotImplementedError("Abstract base class")
+    def initial_storage(self, size):
+        raise NotImplementedError("Abstract base class")
+    def storage_for(self, collection):
+        raise NotImplementedError("Abstract base class")
 
+# This is the regular storage strategy that does not result in any
+# optimizations but can handle every case. Applicable for both
+# fixed-sized and var-sized objects.
+class ListStorageStrategy(AbstractFieldTypes):
     def fetch(self, w_obj, n0):
         return w_obj._vars[n0]
-
     def store(self, w_obj, n0, w_val):
         w_obj._vars[n0] = w_val
+    def initial_storage(self, size):
+        return [nil_obj] * size
+    def storage_for(self, collection):
+        return [x for x in collection]
+ListStorageStrategy.singleton = ListStorageStrategy()
 
-class FieldTypes(VarSizedFieldTypes):
+class FixedSizeFieldTypes(AbstractFieldTypes):
     _immutable_fields_ = ['types[*]']
     _attrs_ = ['types', 'parent', 'siblings', 'diff']
     _settled_ = True
@@ -49,13 +61,19 @@ class FieldTypes(VarSizedFieldTypes):
         if parent is not None:
             assert change != (-1, obj)
         self.diff = change
-
         self.siblings = {}
-
+    
+    def initial_storage(self, size):
+        return [w_nil] * size
+    
+    def storage_for(self, collection):
+        return [x for x in collection]
+    
     def fetch(self, w_object, n0):
         w_result = w_object._vars[n0]
         assert w_result is not None
         types = self.types
+        # TODO - try 'assert isinstance' instead.
         if types[n0] is SInt:
             jit.record_known_class(w_result, model.W_SmallInteger)
         elif types[n0] is LPI:
@@ -121,38 +139,28 @@ class FieldTypes(VarSizedFieldTypes):
             new_types = list(self.types)
             assert new_types[change[0]] == obj
             new_types[change[0]] = change[1]
-            new_fieldtype = FieldTypes(new_types, self, change)
+            new_fieldtype = FixedSizeFieldTypes(new_types, self, change)
             siblings[change] = new_fieldtype
             return new_fieldtype.descent(changes[1:])
-
 
     @staticmethod
     @jit.elidable
     def of_length(n):
         if n not in maps:
-            maps[n] = FieldTypes([obj] * n)
+            maps[n] = FixedSizeFieldTypes([obj] * n)
         return maps[n]
 
-
-nilTyper = VarSizedFieldTypes()
-def fieldtypes_of_length(s_class, size):
-    if s_class is None or s_class.isvariable():
-        return nilTyper
-    else:
-        return FieldTypes.of_length(size)
-
-def fieldtypes_of(w_obj):
+def strategy_for(w_obj, size):
     try:
         if w_obj.s_class.isvariable():
-            return nilTyper
+            return ListStorageStrategy.singleton
         else:
             vars = w_obj._vars
-            size = len(vars)
-            typer = FieldTypes.of_length(size)
+            typer = FixedSizeFieldTypes.of_length(size)
             for i, w_val in enumerate(vars):
                 changed_type = w_val.fieldtype()
                 if changed_type is not obj:
                     typer = typer.sibling(i, changed_type)
             return typer
     except AttributeError:
-        return nilTyper
+        return ListStorageStrategy.singleton

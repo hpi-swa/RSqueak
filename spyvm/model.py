@@ -619,52 +619,47 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
                                 additionalInformation='len=%d' % self.size())
 
 class W_PointersObject(W_AbstractPointersObject):
-    _attrs_ = ['_vars', 'fieldtypes']
+    _attrs_ = ['storage', 'strategy']
 
     @jit.unroll_safe
     def __init__(self, space, w_class, size):
-        from spyvm.fieldtypes import fieldtypes_of_length
+        from spyvm.fieldtypes import strategy_for
         """Create new object with size = fixed + variable size."""
-        W_AbstractPointersObject.__init__(self, space, w_class, size)
-        vars = self._vars = [None] * size
-        self.fieldtypes = fieldtypes_of_length(self.s_class, size)
-        for i in range(size): # do it by hand for the JIT's sake
-            vars[i] = w_nil
+		W_AbstractPointersObject.__init__(self, space, w_class, size)
+        self.strategy = strategy_for(self, size)
+		self.storage = self.strategy.initial_storage(size)
 
     def fillin(self, space, g_self):
         W_AbstractPointersObject.fillin(self, space, g_self)
-        from spyvm.fieldtypes import fieldtypes_of
-        self._vars = g_self.get_pointers()
-        self.fieldtypes = fieldtypes_of(self)
+        from spyvm.fieldtypes import strategy_for
+        pointers = g_self.get_pointers()
+        self.strategy = strategy_for(self, len(pointers))
+        self.storage = self.strategy.storage_for(pointers)
 
     def _fetch(self, n0):
-        # return self._vars[n0]
-        fieldtypes = jit.promote(self.fieldtypes)
-        return fieldtypes.fetch(self, n0)
+        strategy = jit.promote(self.strategy)
+        return strategy.fetch(self, n0)
 
     def _store(self, n0, w_value):
-        # self._vars[n0] = w_value
-        fieldtypes = jit.promote(self.fieldtypes)
-        return fieldtypes.store(self, n0, w_value)
+        strategy = jit.promote(self.strategy)
+        return strategy.store(self, n0, w_value)
 
     def basic_size(self):
-        return len(self._vars)
-
-    def invariant(self):
-        return (W_AbstractObjectWithClassReference.invariant(self) and
-                isinstance(self._vars, list))
+        strategy = jit.promote(self.strategy)
+        return strategy.size_of(self)
 
     def become(self, w_other):
         if not isinstance(w_other, W_PointersObject):
             return False
-        self._vars, w_other._vars = w_other._vars, self._vars
+        self.storage, w_other.storage = w_other.storage, self.storage
+        self.strategy, w_other.strategy = w_other.strategy, self.strategy
         return W_AbstractPointersObject.become(self, w_other)
 
     @jit.unroll_safe
     def clone(self, space):
         w_result = W_PointersObject(self.space, self.getclass(space),
-                                    len(self._vars))
-        w_result._vars = [self.fetch(space, i) for i in range(len(self._vars))]
+                                    self.strategy.size_of(self))
+        w_result.storage = [self.fetch(space, i) for i in range(len(self.storage))]
         return w_result
 
     def fieldtype(self):
