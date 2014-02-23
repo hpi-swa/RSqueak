@@ -620,20 +620,20 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
 
 class W_PointersObject(W_AbstractPointersObject):
     _attrs_ = ['storage', 'strategy']
-
+    
     @jit.unroll_safe
     def __init__(self, space, w_class, size):
-        from spyvm.fieldtypes import strategy_for
         """Create new object with size = fixed + variable size."""
-		W_AbstractPointersObject.__init__(self, space, w_class, size)
-        self.strategy = strategy_for(self, size)
-		self.storage = self.strategy.initial_storage(size)
+        W_AbstractPointersObject.__init__(self, space, w_class, size)
+        from spyvm.fieldtypes import strategy_of_size
+        self.strategy = strategy_of_size(w_class, size)
+        self.storage = self.strategy.initial_storage(size)
 
     def fillin(self, space, g_self):
+        from spyvm.fieldtypes import strategy_for_list
         W_AbstractPointersObject.fillin(self, space, g_self)
-        from spyvm.fieldtypes import strategy_for
         pointers = g_self.get_pointers()
-        self.strategy = strategy_for(self, len(pointers))
+        self.strategy = strategy_for_list(self, pointers)
         self.storage = self.strategy.storage_for(pointers)
 
     def _fetch(self, n0):

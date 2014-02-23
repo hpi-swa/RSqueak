@@ -1,5 +1,6 @@
 from spyvm import model, shadow
 
+from rpython.rlib import rerased
 from rpython.rlib import objectmodel, jit, signature
 from rpython.rlib.listsort import TimSort
 
@@ -18,9 +19,7 @@ class FieldSort(TimSort):
     def lt(self, a, b):
         return a[0] < b[0]
 
-maps = {}
-
-class AbstractFieldTypes():
+class AbstractStorageStrategy():
     _immutable_fields_ = []
     _attrs_ = []
     _settled_ = True
@@ -33,28 +32,41 @@ class AbstractFieldTypes():
         raise NotImplementedError("Abstract base class")
     def initial_storage(self, size):
         raise NotImplementedError("Abstract base class")
-    def storage_for(self, collection):
+    def storage_for_list(self, collection):
         raise NotImplementedError("Abstract base class")
 
 # This is the regular storage strategy that does not result in any
 # optimizations but can handle every case. Applicable for both
 # fixed-sized and var-sized objects.
-class ListStorageStrategy(AbstractFieldTypes):
+class ListStorageStrategy(AbstractStorageStrategy):
+    erase, unerase = rerased.new_erasing_pair("list-storage-strategy")
+    erase = staticmethod(erase)
+    unerase = staticmethod(unerase)
+    
     def fetch(self, w_obj, n0):
-        return w_obj._vars[n0]
+        return self.unerase(w_obj.storage)[n0]
     def store(self, w_obj, n0, w_val):
-        w_obj._vars[n0] = w_val
+        self.unerase(w_obj.storage)[n0] = w_val
     def initial_storage(self, size):
-        return [nil_obj] * size
-    def storage_for(self, collection):
-        return [x for x in collection]
+        return self.erase([nil_obj] * size)
+    def storage_for_list(self, collection):
+        return self.erase([x for x in collection])
 ListStorageStrategy.singleton = ListStorageStrategy()
 
-class FixedSizeFieldTypes(AbstractFieldTypes):
+class SmallIntegerStorageStrategy(AbstractStorageStrategy):
+    erase, unerase = rerased.new_erasing_pair("object-vector-strategry")
+    erase = staticmethod(erase)
+    unerase = staticmethod(unerase)
+
+class FixedSizeFieldTypes(AbstractStorageStrategy):
     _immutable_fields_ = ['types[*]']
     _attrs_ = ['types', 'parent', 'siblings', 'diff']
     _settled_ = True
-
+    
+    erase, unerase = rerased.new_erasing_pair("fixed-size-field-types")
+    erase = staticmethod(erase)
+    unerase = staticmethod(unerase)
+    
     def __init__(self, types, parent=None, change=(-1, obj)):
         self.types = types
         self.parent = parent
@@ -64,13 +76,13 @@ class FixedSizeFieldTypes(AbstractFieldTypes):
         self.siblings = {}
     
     def initial_storage(self, size):
-        return [w_nil] * size
+        return self.erase([w_nil] * size)
     
-    def storage_for(self, collection):
-        return [x for x in collection]
+    def storage_for_list(self, collection):
+        return self.erase([x for x in collection])
     
     def fetch(self, w_object, n0):
-        w_result = w_object._vars[n0]
+        w_result = self.unerase(w_object.storage)[n0]
         assert w_result is not None
         types = self.types
         # TODO - try 'assert isinstance' instead.
@@ -87,7 +99,7 @@ class FixedSizeFieldTypes(AbstractFieldTypes):
         changed_type = w_value.fieldtype()
         if types[n0] is not changed_type:
             w_object.fieldtypes = self.sibling(n0, changed_type)
-        w_object._vars[n0] = w_value
+        self.unerase(w_object.storage)[n0] = w_value
 
     @jit.elidable
     def sibling(self, n0, changed_type):
@@ -145,18 +157,26 @@ class FixedSizeFieldTypes(AbstractFieldTypes):
 
     @staticmethod
     @jit.elidable
-    def of_length(n):
+    def of_size(n):
         if n not in maps:
             maps[n] = FixedSizeFieldTypes([obj] * n)
         return maps[n]
 
-def strategy_for(w_obj, size):
+maps = {}
+
+def strategy_of_size(w_class, size):
+    if w_class.isvariable():
+        return ListStorageStrategy.singleton
+    else:
+        return FixedSizeFieldTypes.of_size(size)
+
+def strategy_for_list(w_obj, vars):
     try:
         if w_obj.s_class.isvariable():
             return ListStorageStrategy.singleton
         else:
-            vars = w_obj._vars
-            typer = FixedSizeFieldTypes.of_length(size)
+            size = len(vars)
+            typer = FixedSizeFieldTypes.of_size(size)
             for i, w_val in enumerate(vars):
                 changed_type = w_val.fieldtype()
                 if changed_type is not obj:
