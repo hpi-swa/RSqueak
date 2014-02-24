@@ -23,7 +23,7 @@ def _run_benchmark(interp, number, benchmark, arg):
     w_benchmark_proc = model.W_PointersObject(
         interp.space,
         w_hpp.getclass(interp.space),
-        len(w_hpp._vars)
+        w_hpp.basic_size()
     )
 
     s_frame = context_for(interp, number, benchmark, arg)

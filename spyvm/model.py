@@ -492,7 +492,6 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         self._shadow = None # Default value
 
     def fillin(self, space, g_self):
-        from spyvm.fieldtypes import fieldtypes_of
         self.s_class = g_self.get_class().as_class_get_penumbra(space)
         self.hash = g_self.get_hash()
         self.space = space
@@ -623,19 +622,26 @@ class W_PointersObject(W_AbstractPointersObject):
     
     @jit.unroll_safe
     def __init__(self, space, w_class, size):
+        from spyvm.fieldtypes import strategy_of_size
         """Create new object with size = fixed + variable size."""
         W_AbstractPointersObject.__init__(self, space, w_class, size)
-        from spyvm.fieldtypes import strategy_of_size
-        self.strategy = strategy_of_size(w_class, size)
-        self.storage = self.strategy.initial_storage(size)
+        self.strategy = strategy_of_size(self.s_class, size)
+        self.storage = self.strategy.initial_storage(size, w_nil)
 
     def fillin(self, space, g_self):
-        from spyvm.fieldtypes import strategy_for_list
         W_AbstractPointersObject.fillin(self, space, g_self)
+        from spyvm.fieldtypes import strategy_for_list
         pointers = g_self.get_pointers()
         self.strategy = strategy_for_list(self, pointers)
-        self.storage = self.strategy.storage_for(pointers)
+        self.storage = self.strategy.storage_for_list(pointers)
 
+    def all_vars(self):
+        return self.strategy.all_vars(self)
+    
+    def set_all_vars(self, collection):
+        # TODO reuse storage if possible
+        self.storage = self.strategy.storage_for_list(collection)
+    
     def _fetch(self, n0):
         strategy = jit.promote(self.strategy)
         return strategy.fetch(self, n0)
@@ -657,9 +663,10 @@ class W_PointersObject(W_AbstractPointersObject):
 
     @jit.unroll_safe
     def clone(self, space):
-        w_result = W_PointersObject(self.space, self.getclass(space),
-                                    self.strategy.size_of(self))
-        w_result.storage = [self.fetch(space, i) for i in range(len(self.storage))]
+        length = self.strategy.size_of(self)
+        w_result = W_PointersObject(self.space, self.getclass(space), length)
+        cloned_vars = [self.fetch(space, i) for i in range(length)]
+        w_result.storage = w_result.strategy.storage_for_list(cloned_vars)
         return w_result
 
     def fieldtype(self):
@@ -871,8 +878,6 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         self.setword(index0, word)
 
     def getword(self, n):
-        # if n < 0:
-        #     import pdb; pdb.set_trace()
         assert self.size() > n >= 0
         if self.words is not None:
             return self.words[n]
@@ -1317,4 +1322,3 @@ class DetachingShadowError(Exception):
 # class.  Note that we patch its class in the space
 # YYY there should be no global w_nil
 w_nil = instantiate(W_PointersObject)
-w_nil._vars = []

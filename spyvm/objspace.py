@@ -162,9 +162,10 @@ class ObjSpace(object):
         # initialize their fields to nil, we have to create it in the model
         # package, and then patch up its fields here:
         def patch_nil(w_nil):
-            from spyvm.fieldtypes import nilTyper
+            from spyvm.fieldtypes import ListStorageStrategy
             w_nil.space = self
-            w_nil.fieldtypes = nilTyper
+            w_nil.strategy = ListStorageStrategy.singleton
+            w_nil.storage = w_nil.strategy.initial_storage(0, None)
             w_nil.s_class = self.classtable['w_UndefinedObject'].as_class_get_penumbra(self)
             return w_nil
         w_nil = self.w_nil = patch_nil(model.w_nil)

@@ -441,7 +441,7 @@ class AbstractRedirectingShadow(AbstractShadow):
                 self.copy_from_w_self(i)
             except error.SenderChainManipulation, e:
                 assert e.s_context == self
-        w_self._vars = None
+        w_self.storage = w_self.strategy.initial_storage(0, None)
 
     # def detach_shadow(self):
     #     w_self = self.w_self()

@@ -30,10 +30,14 @@ class AbstractStorageStrategy():
         raise NotImplementedError("Abstract base class")
     def store(self, w_obj, n0, w_val):
         raise NotImplementedError("Abstract base class")
-    def initial_storage(self, size):
+    def size_of(self, w_obj):
+        raise NotImplementedError("Abstract base class")
+    def initial_storage(self, size, default_element):
         raise NotImplementedError("Abstract base class")
     def storage_for_list(self, collection):
         raise NotImplementedError("Abstract base class")
+    def all_vars(self, w_obj):
+        return [self.fetch(w_obj, i) for i in range(0, self.size_of(w_obj))]
 
 # This is the regular storage strategy that does not result in any
 # optimizations but can handle every case. Applicable for both
@@ -47,8 +51,10 @@ class ListStorageStrategy(AbstractStorageStrategy):
         return self.unerase(w_obj.storage)[n0]
     def store(self, w_obj, n0, w_val):
         self.unerase(w_obj.storage)[n0] = w_val
-    def initial_storage(self, size):
-        return self.erase([nil_obj] * size)
+    def size_of(self, w_obj):
+        return len(self.unerase(w_obj.storage))
+    def initial_storage(self, size, default_element):
+        return self.erase([default_element] * size)
     def storage_for_list(self, collection):
         return self.erase([x for x in collection])
 ListStorageStrategy.singleton = ListStorageStrategy()
@@ -75,11 +81,14 @@ class FixedSizeFieldTypes(AbstractStorageStrategy):
         self.diff = change
         self.siblings = {}
     
-    def initial_storage(self, size):
-        return self.erase([w_nil] * size)
+    def initial_storage(self, size, default_element):
+        return self.erase([default_element] * size)
     
     def storage_for_list(self, collection):
         return self.erase([x for x in collection])
+    
+    def size_of(self, w_obj):
+        return len(self.unerase(w_obj.storage))
     
     def fetch(self, w_object, n0):
         w_result = self.unerase(w_object.storage)[n0]
@@ -98,7 +107,7 @@ class FixedSizeFieldTypes(AbstractStorageStrategy):
         types = self.types
         changed_type = w_value.fieldtype()
         if types[n0] is not changed_type:
-            w_object.fieldtypes = self.sibling(n0, changed_type)
+            w_object.strategy = self.sibling(n0, changed_type)
         self.unerase(w_object.storage)[n0] = w_value
 
     @jit.elidable
@@ -164,15 +173,16 @@ class FixedSizeFieldTypes(AbstractStorageStrategy):
 
 maps = {}
 
-def strategy_of_size(w_class, size):
-    if w_class.isvariable():
+def strategy_of_size(s_class, size):
+    if s_class is None or s_class.isvariable():
         return ListStorageStrategy.singleton
     else:
         return FixedSizeFieldTypes.of_size(size)
 
 def strategy_for_list(w_obj, vars):
     try:
-        if w_obj.s_class.isvariable():
+        s_class = w_obj.s_class
+        if s_class is None or w_obj.s_class.isvariable():
             return ListStorageStrategy.singleton
         else:
             size = len(vars)
