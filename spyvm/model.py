@@ -507,12 +507,12 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     def fetch(self, space, n0):
         if self.has_shadow():
             return self._shadow.fetch(n0)
-        return self._fetch(n0)
+        return self._fetch(space, n0)
 
     def store(self, space, n0, w_value):
         if self.has_shadow():
             return self._shadow.store(n0, w_value)
-        return self._store(n0, w_value)
+        return self._store(space, n0, w_value)
 
     def varsize(self, space):
         return self.size() - self.instsize(space)
@@ -626,29 +626,39 @@ class W_PointersObject(W_AbstractPointersObject):
         """Create new object with size = fixed + variable size."""
         W_AbstractPointersObject.__init__(self, space, w_class, size)
         self.strategy = strategy_of_size(self.s_class, size)
-        self.storage = self.strategy.initial_storage(size, w_nil)
+        self.storage = self.strategy.initial_storage(space, size)
 
     def fillin(self, space, g_self):
         W_AbstractPointersObject.fillin(self, space, g_self)
         from spyvm.fieldtypes import strategy_for_list
         pointers = g_self.get_pointers()
-        self.strategy = strategy_for_list(self, pointers)
-        self.storage = self.strategy.storage_for_list(pointers)
+        self.strategy = strategy_for_list(self.s_class, pointers)
+        self.storage = self.strategy.storage_for_list(space, pointers)
 
-    def all_vars(self):
-        return self.strategy.all_vars(self)
-    
-    def set_all_vars(self, collection):
-        # TODO reuse storage if possible
-        self.storage = self.strategy.storage_for_list(collection)
-    
-    def _fetch(self, n0):
-        strategy = jit.promote(self.strategy)
-        return strategy.fetch(self, n0)
+    def switch_strategy(self, space, new_strategy):
+        old_strategy = self.strategy
+        self.strategy = new_strategy
+        self.storage = new_strategy.copy_storage_from(space, self, old_strategy, reuse_storage=True)
 
-    def _store(self, n0, w_value):
+    def store_with_new_strategy(self, space, new_strategy, n0, w_val):
+        self.switch_strategy(space, new_strategy)
+        return self.store(space, n0, w_val)
+    
+    def fetch_all(self, space):
         strategy = jit.promote(self.strategy)
-        return strategy.store(self, n0, w_value)
+        return strategy.fetch_all(space, self)
+    
+    def store_all(self, space, collection):
+        strategy = jit.promote(self.strategy)
+        strategy.store_all(space, self, collection)
+    
+    def _fetch(self, space, n0):
+        strategy = jit.promote(self.strategy)
+        return strategy.fetch(space, self, n0)
+
+    def _store(self, space, n0, w_value):
+        strategy = jit.promote(self.strategy)
+        return strategy.store(space, self, n0, w_value)
 
     def basic_size(self):
         strategy = jit.promote(self.strategy)
@@ -665,8 +675,7 @@ class W_PointersObject(W_AbstractPointersObject):
     def clone(self, space):
         length = self.strategy.size_of(self)
         w_result = W_PointersObject(self.space, self.getclass(space), length)
-        cloned_vars = [self.fetch(space, i) for i in range(length)]
-        w_result.storage = w_result.strategy.storage_for_list(cloned_vars)
+        w_result.storage = w_result.strategy.copy_storage_from(space, self, self.strategy, reuse_storage=True)
         return w_result
 
     def fieldtype(self):
@@ -684,11 +693,11 @@ class W_WeakPointersObject(W_AbstractPointersObject):
     def fillin(self, space, g_self):
         raise NotImplementedError("we don't expect weak objects in a fresh image")
 
-    def _fetch(self, n0):
+    def _fetch(self, space, n0):
         weakobj = self._weakvars[n0]
         return weakobj() or w_nil
 
-    def _store(self, n0, w_value):
+    def _store(self, space, n0, w_value):
         assert w_value is not None
         self._weakvars[n0] = weakref.ref(w_value)
 
@@ -1187,18 +1196,18 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
             if isinstance(w_candidate, W_PointersObject):
                 c_shadow = w_candidate._shadow
                 if c_shadow is None and w_candidate.size() >= 2:
-                    w_class = w_candidate._fetch(1)
-                    if isinstance(w_class, W_PointersObject):
-                        d_shadow = w_class._shadow
-                        if isinstance(d_shadow, shadow.ClassShadow):
-                            classname = d_shadow.getname()
-                elif isinstance(shadow, shadow.ClassShadow):
+                    if self._shadow is not None:
+                        w_class = w_candidate._fetch(self._shadow.space, 1)
+                        if isinstance(w_class, W_PointersObject):
+                            d_shadow = w_class._shadow
+                            if isinstance(d_shadow, shadow.ClassShadow):
+                                classname = d_shadow.getname()
+                elif isinstance(c_shadow, shadow.ClassShadow):
                     classname = c_shadow.getname()
         class_cutoff = len(classname) - 6
         if class_cutoff > 0:
             classname = classname[0:class_cutoff]
         return "%s>>#%s" % (classname, self._likely_methodname)
-
 
     def invariant(self):
         return (W_Object.invariant(self) and

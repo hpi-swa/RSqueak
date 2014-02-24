@@ -374,7 +374,7 @@ def func(interp, s_frame, argcount):
         print ("%s" % w_message).replace('\r', '\n')
         print ("%s" % s_frame.peek(1)).replace('\r', '\n')
         if isinstance(w_message, model.W_PointersObject):
-            print ('%s' % w_message.all_vars()).replace('\r', '\n')
+            print ('%s' % w_message.fetch_all()).replace('\r', '\n')
         # raise Exit('Probably Debugger called...')
     raise PrimitiveFailedError()
 

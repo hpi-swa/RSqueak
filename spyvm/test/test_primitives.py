@@ -14,7 +14,7 @@ space = objspace.ObjSpace()
 
 class MockFrame(model.W_PointersObject):
     def __init__(self, stack):
-        self.set_all_vars([None] * 6 + stack + [space.w_nil] * 6)
+        self.store_all([None] * 6 + stack + [space.w_nil] * 6)
         s_self = self.as_blockcontext_get_shadow()
         s_self.init_stack_and_temps()
         s_self.reset_stack()
