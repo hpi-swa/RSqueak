@@ -4,6 +4,9 @@ from rpython.rlib import rerased
 from rpython.rlib import objectmodel, jit, signature
 from rpython.rlib.listsort import TimSort
 
+# Disables all optimized strategies, for debugging.
+only_list_storage = True
+
 class TypeTag():
     pass
 
@@ -59,7 +62,7 @@ class AbstractStorageStrategy(object):
         raise NotImplementedError("Abstract base class")
     def storage_for_list(self, space, collection):
         raise NotImplementedError("Abstract base class")
-    def copy_storage_from(self, space, w_obj, old_strategy, reuse_storage):
+    def copy_storage_from(self, space, w_obj, old_strategy, reuse_storage=False):
         assert old_strategy != self
         if isinstance(old_strategy, AllNilStorageStrategy):
             return self.initial_storage(space, old_strategy.size_of(w_obj))
@@ -98,8 +101,9 @@ class AllNilStorageStrategy(AbstractStorageStrategy):
         # This is an important moment, where we decide where to go on the first non-nil store.
         if w_obj == model.w_nil:
             return
-        if isinstance(w_obj, model.W_SmallInteger):
-            return w_obj.store_with_new_strategy(space, DenseSmallIntegerStorageStrategy.singleton, n0, w_val)
+        if not only_list_storage:
+            if isinstance(w_obj, model.W_SmallInteger):
+                return w_obj.store_with_new_strategy(space, DenseSmallIntegerStorageStrategy.singleton, n0, w_val)
         return w_obj.store_with_new_strategy(space, ListStorageStrategy.singleton, n0, w_val)
         
     def fetch_all(self, space, w_obj):
@@ -110,7 +114,7 @@ class AllNilStorageStrategy(AbstractStorageStrategy):
         return self.erase(SizeStorage(size))
     def storage_for_list(self, space, collection):
         return self.erase(SizeStorage(len(collection)))
-    def copy_storage_from(self, space, w_obj, old_strategy, reuse_storage):
+    def copy_storage_from(self, space, w_obj, old_strategy, reuse_storage=False):
         return self.erase(SizeStorage(old_strategy.size_of(w_obj)))
 
 # This is the regular storage strategy that does not result in any
@@ -125,6 +129,7 @@ class ListStorageStrategy(AbstractStorageStrategy):
     def fetch(self, space, w_obj, n0):
         return self.unerase(w_obj.storage)[n0]
     def store(self, space, w_obj, n0, w_val):
+        # TODO enable generalization by maintaining a counter of elements that are nil.
         self.unerase(w_obj.storage)[n0] = w_val
     def fetch_all(self, space, w_obj):
         return self.unerase(w_obj.storage)
@@ -134,7 +139,7 @@ class ListStorageStrategy(AbstractStorageStrategy):
         return self.erase([model.w_nil] * size)
     def storage_for_list(self, space, collection):
         return self.erase([x for x in collection])
-    def copy_storage_from(self, space, w_obj, old_strategy, reuse_storage):
+    def copy_storage_from(self, space, w_obj, old_strategy, reuse_storage=False):
         length = old_strategy.size_of(w_obj)
         return self.erase([old_strategy.fetch(space, w_obj, i) for i in range(length)])
 
@@ -194,7 +199,7 @@ class DenseSmallIntegerStorageStrategy(AbstractStorageStrategy):
                 store._to = n0+1
             else:
                 # Store to a non-dense position. Deoptimize to SparseSmallIntegerStorage.
-                return w_obj.store_with_new_strategy(space, n0, SparseSmallIntegerStorageStrategy.singleton, w_val)
+                return w_obj.store_with_new_strategy(space, SparseSmallIntegerStorageStrategy.singleton, n0, w_val)
         # It is a dense store, so finally store the unwrapped int.
         store.arr[n0] = space.unwrap_int(w_val)
     def size_of(self, w_obj):
@@ -222,9 +227,9 @@ class SparseSmallIntegerStorage(object):
         self.arr = arr
         self.nil_flags = nil_flags
     
-    @classmethod
-    def for_size(cls, size):
-        return cls([0] * size, [True] * size)
+    @staticmethod
+    def for_size(size):
+        return SparseSmallIntegerStorage([0] * size, [True] * size)
 
 class SparseSmallIntegerStorageStrategy(AbstractStorageStrategy):
     __metaclass__ = SingletonMeta
@@ -254,28 +259,29 @@ class SparseSmallIntegerStorageStrategy(AbstractStorageStrategy):
     def size_of(self, w_obj):
         return len(self.unerase(w_obj.storage).arr)
     def initial_storage(self, space, size):
-        return self.erase(SparseSmallIntegerStorage(size))
+        return self.erase(SparseSmallIntegerStorage.for_size(size))
     def storage_for_list(self, space, collection):
         length = len(collection)
-        store = SparseSmallIntegerStorage(length)
+        store = SparseSmallIntegerStorage.for_size(length)
         for i in range(length):
-            if collection[i] == model.w_nil:
-                store.nil_flags[i] = True
-            else:
+            if collection[i] != model.w_nil:
                 store.nil_flags[i] = False
                 store.arr[i] = space.unwrap_int(collection[i])
         return self.erase(store)
-    def copy_storage_from(self, space, w_obj, old_strategy, reuse):
+    def copy_storage_from(self, space, w_obj, old_strategy, reuse_storage=False):
         if isinstance(old_strategy, DenseSmallIntegerStorageStrategy):
             # Optimize transition from Dense to Sparse small-integer-storage
             store = old_strategy.unerase(w_obj.storage)
-            nil_flags = [ (i < store._from and i >= store._to) for i in range(store.arr) ]
+            nil_flags = [False] * len(store.arr)
+            for i in range(len(store.arr)):
+                if i < store._from and i >= store._to:
+                    nil_flags[i] = True
             arr = store.arr
-            if not reuse:
+            if not reuse_storage:
                 arr = [x for x in arr]
             return self.erase(SparseSmallIntegerStorage(arr, nil_flags))
         else:
-            return AbstractStorageStrategy.copy_storage_from(self, space, w_obj, old_strategy, reuse)
+            return AbstractStorageStrategy.copy_storage_from(self, space, w_obj, old_strategy, reuse_storage)
 
 class FixedSizeFieldTypes(AbstractStorageStrategy):
     _immutable_fields_ = ['types[*]']
@@ -404,18 +410,21 @@ def strategy_for_list(s_containing_class, vars):
         # This is a weird and rare special case for w_nil
         return ListStorageStrategy.singleton
     if s_containing_class.isvariable():
+        if only_list_storage:
+            return ListStorageStrategy.singleton
+        
         is_all_nils = True
         is_dense = True
         for w_obj in vars:
             if w_obj == model.w_nil:
                 if not is_all_nils:
                     is_dense = False
-                continue
-            is_all_nils = False
-            elif not instanceof(w_obj, model.W_SmallInteger):
-                # TODO -- here we can still optimize if there is only
-                # one single type in the collection.
-                return ListStorageStrategy.singleton
+            else:
+                is_all_nils = False
+                if not isinstance(w_obj, model.W_SmallInteger):
+                    # TODO -- here we can still optimize if there is only
+                    # one single type in the collection.
+                    return ListStorageStrategy.singleton
         if is_all_nils:
             return AllNilStorageStrategy.singleton
         if is_dense:
