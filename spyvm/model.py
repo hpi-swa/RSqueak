@@ -647,9 +647,9 @@ class W_PointersObject(W_AbstractPointersObject):
         self.set_storage(self.strategy.storage_for_list(space, pointers), self.strategy)
 
     def switch_strategy(self, space, new_strategy):
-        old_strategy = self.strategy
+        new_storage = new_strategy.copy_storage_from(space, self, self.strategy, reuse_storage=True)
         self.strategy = new_strategy
-        self.set_storage(new_strategy.copy_storage_from(space, self, old_strategy, reuse_storage=True), new_strategy)
+        self.set_storage(new_storage, new_strategy)
 
     def store_with_new_strategy(self, space, new_strategy, n0, w_val):
         self.switch_strategy(space, new_strategy)
@@ -680,10 +680,10 @@ class W_PointersObject(W_AbstractPointersObject):
     def become(self, w_other):
         if not isinstance(w_other, W_PointersObject):
             return False
-        self.strategy, w_other.strategy = w_other.strategy, self.strategy
         self_storage = self._storage
         self.set_storage(w_other._storage, w_other.strategy)
         w_other.set_storage(self_storage, w_other.strategy)
+        self.strategy, w_other.strategy = w_other.strategy, self.strategy
         return W_AbstractPointersObject.become(self, w_other)
 
     @jit.unroll_safe

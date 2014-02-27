@@ -129,15 +129,17 @@ class ListStorageStrategy(AbstractStorageStrategy):
     unerase = staticmethod(unerase)
     strategy_tag = 'list'
     
+    def get_list(self, w_obj):
+        return self.unerase(w_obj.get_storage(self))
     def fetch(self, space, w_obj, n0):
-        return self.unerase(w_obj.get_storage(self))[n0]
+        return self.get_list(w_obj)[n0]
     def store(self, space, w_obj, n0, w_val):
         # TODO enable generalization by maintaining a counter of elements that are nil.
-        self.unerase(w_obj.get_storage(self))[n0] = w_val
+        self.get_list(w_obj)[n0] = w_val
     def fetch_all(self, space, w_obj):
-        return self.unerase(w_obj.get_storage(self))
+        return self.get_list(w_obj)
     def size_of(self, w_obj):
-        return len(self.unerase(w_obj.get_storage(self)))
+        return len(self.get_list(w_obj))
     def initial_storage(self, space, size):
         return self.erase([model.w_nil] * size)
     def storage_for_list(self, space, collection):
