@@ -1097,6 +1097,7 @@ class CompiledMethodShadow(object):
 
     @make_elidable_after_versioning
     def getbytecode(self, pc):
+        assert pc >= 0 and pc < len(self.bytecode)
         return self.bytecode[pc]
 
 class CachedObjectShadow(AbstractCachingShadow):

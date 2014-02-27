@@ -654,10 +654,12 @@ class W_PointersObject(W_AbstractPointersObject):
     
     def _fetch(self, space, n0):
         strategy = jit.promote(self.strategy)
+        assert not strategy.fetch_needs_objspace() or space is not None
         return strategy.fetch(space, self, n0)
 
     def _store(self, space, n0, w_value):
         strategy = jit.promote(self.strategy)
+        assert not strategy.fetch_needs_objspace() or space is not None
         return strategy.store(space, self, n0, w_value)
 
     def basic_size(self):
