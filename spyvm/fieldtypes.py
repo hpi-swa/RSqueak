@@ -26,7 +26,8 @@ class AbstractStorageStrategy(object):
     _immutable_fields_ = []
     _attrs_ = []
     _settled_ = True
-
+    strategy_tag = 'abstract'
+    
     def __init__(self):
         pass
     def fetch_needs_objspace(self):
@@ -93,6 +94,7 @@ class AllNilStorageStrategy(AbstractStorageStrategy):
     erase, unerase = rerased.new_erasing_pair("all-nil-strategy")
     erase = staticmethod(erase)
     unerase = staticmethod(unerase)
+    strategy_tag = 'allnil'
     
     def fetch(self, space, w_obj, n0):
         return model.w_nil
@@ -109,7 +111,7 @@ class AllNilStorageStrategy(AbstractStorageStrategy):
     def fetch_all(self, space, w_obj):
         return [model.w_nil] * self.size_of(w_obj)
     def size_of(self, w_obj):
-        return self.unerase(w_obj.storage).size
+        return self.unerase(w_obj.get_storage(self)).size
     def initial_storage(self, space, size):
         return self.erase(SizeStorage(size))
     def storage_for_list(self, space, collection):
@@ -125,16 +127,17 @@ class ListStorageStrategy(AbstractStorageStrategy):
     erase, unerase = rerased.new_erasing_pair("list-storage-strategy")
     erase = staticmethod(erase)
     unerase = staticmethod(unerase)
+    strategy_tag = 'list'
     
     def fetch(self, space, w_obj, n0):
-        return self.unerase(w_obj.storage)[n0]
+        return self.unerase(w_obj.get_storage(self))[n0]
     def store(self, space, w_obj, n0, w_val):
         # TODO enable generalization by maintaining a counter of elements that are nil.
-        self.unerase(w_obj.storage)[n0] = w_val
+        self.unerase(w_obj.get_storage(self))[n0] = w_val
     def fetch_all(self, space, w_obj):
-        return self.unerase(w_obj.storage)
+        return self.unerase(w_obj.get_storage(self))
     def size_of(self, w_obj):
-        return len(self.unerase(w_obj.storage))
+        return len(self.unerase(w_obj.get_storage(self)))
     def initial_storage(self, space, size):
         return self.erase([model.w_nil] * size)
     def storage_for_list(self, space, collection):
@@ -158,16 +161,17 @@ class DenseSmallIntegerStorageStrategy(AbstractStorageStrategy):
     erase, unerase = rerased.new_erasing_pair("dense-small-integer-strategry")
     erase = staticmethod(erase)
     unerase = staticmethod(unerase)
+    strategy_tag = 'dense-small-int'
     
     def fetch_needs_objspace(self):
         return True
     def fetch(self, space, w_obj, n0):
-        store = self.unerase(w_obj.storage)
+        store = self.unerase(w_obj.get_storage(self))
         if n0 < store._from or n0 >= store._to:
             return model.w_nil
         return space.wrap_int(store.arr[n0])
     def store(self, space, w_obj, n0, w_val):
-        store = self.unerase(w_obj.storage)
+        store = self.unerase(w_obj.get_storage(self))
         if not isinstance(w_val, model.W_SmallInteger):
             if w_val == model.w_nil:
                 if store._to - 1 == n0:
@@ -203,7 +207,7 @@ class DenseSmallIntegerStorageStrategy(AbstractStorageStrategy):
         # It is a dense store, so finally store the unwrapped int.
         store.arr[n0] = space.unwrap_int(w_val)
     def size_of(self, w_obj):
-        return len(self.unerase(w_obj.storage).arr)
+        return len(self.unerase(w_obj.get_storage(self)).arr)
     def initial_storage(self, space, size):
         return self.erase(DenseSmallIntegerStorage(0, 0, size))
     def storage_for_list(self, space, collection):
@@ -236,16 +240,17 @@ class SparseSmallIntegerStorageStrategy(AbstractStorageStrategy):
     erase, unerase = rerased.new_erasing_pair("sparse-small-integer-strategry")
     erase = staticmethod(erase)
     unerase = staticmethod(unerase)
+    strategy_tag = 'sparse-small-int'
     
     def fetch_needs_objspace(self):
         return True
     def fetch(self, space, w_obj, n0):
-        store = self.unerase(w_obj.storage)
+        store = self.unerase(w_obj.get_storage(self))
         if store.nil_flags[n0]:
             return model.w_nil
         return space.wrap_int(store.arr[n0])
     def store(self, space, w_obj, n0, w_val):
-        store = self.unerase(w_obj.storage)
+        store = self.unerase(w_obj.get_storage(self))
         if not isinstance(w_val, model.W_SmallInteger):
             if w_val == model.w_nil:
                 # TODO - generelize to AllNilStorage by maintaining a counter of nil-elements
@@ -257,7 +262,7 @@ class SparseSmallIntegerStorageStrategy(AbstractStorageStrategy):
         store.nil_flags[n0] = False
         store.arr[n0] = space.unwrap_int(w_val)
     def size_of(self, w_obj):
-        return len(self.unerase(w_obj.storage).arr)
+        return len(self.unerase(w_obj.get_storage(self)).arr)
     def initial_storage(self, space, size):
         return self.erase(SparseSmallIntegerStorage.for_size(size))
     def storage_for_list(self, space, collection):
@@ -271,7 +276,7 @@ class SparseSmallIntegerStorageStrategy(AbstractStorageStrategy):
     def copy_storage_from(self, space, w_obj, old_strategy, reuse_storage=False):
         if isinstance(old_strategy, DenseSmallIntegerStorageStrategy):
             # Optimize transition from Dense to Sparse small-integer-storage
-            store = old_strategy.unerase(w_obj.storage)
+            store = old_strategy.unerase(w_obj.get_storage(self))
             nil_flags = [False] * len(store.arr)
             for i in range(len(store.arr)):
                 if i < store._from and i >= store._to:
@@ -291,6 +296,7 @@ class FixedSizeFieldTypes(AbstractStorageStrategy):
     erase, unerase = rerased.new_erasing_pair("fixed-size-field-types")
     erase = staticmethod(erase)
     unerase = staticmethod(unerase)
+    strategy_tag = 'fixed'
     
     def __init__(self, types, parent=None, change=(-1, obj)):
         self.types = types
@@ -307,10 +313,10 @@ class FixedSizeFieldTypes(AbstractStorageStrategy):
         return self.erase([x for x in collection])
     
     def size_of(self, w_obj):
-        return len(self.unerase(w_obj.storage))
+        return len(self.unerase(w_obj.get_storage(self)))
     
     def fetch(self, space, w_object, n0):
-        w_result = self.unerase(w_object.storage)[n0]
+        w_result = self.unerase(w_object.get_storage(self))[n0]
         assert w_result is not None
         types = self.types
         # TODO - try 'assert isinstance' instead.
@@ -327,7 +333,7 @@ class FixedSizeFieldTypes(AbstractStorageStrategy):
         changed_type = w_value.fieldtype()
         if types[n0] is not changed_type:
             w_object.strategy = self.sibling(n0, changed_type)
-        self.unerase(w_object.storage)[n0] = w_value
+        self.unerase(w_object.get_storage(self))[n0] = w_value
 
     @jit.elidable
     def sibling(self, n0, changed_type):

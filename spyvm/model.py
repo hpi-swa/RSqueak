@@ -618,7 +618,7 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
                                 additionalInformation='len=%d' % self.size())
 
 class W_PointersObject(W_AbstractPointersObject):
-    _attrs_ = ['storage', 'strategy']
+    _attrs_ = ['_storage', 'strategy', 'strategy_tag']
     
     @jit.unroll_safe
     def __init__(self, space, w_class, size):
@@ -626,19 +626,30 @@ class W_PointersObject(W_AbstractPointersObject):
         """Create new object with size = fixed + variable size."""
         W_AbstractPointersObject.__init__(self, space, w_class, size)
         self.strategy = strategy_of_size(self.s_class, size)
-        self.storage = self.strategy.initial_storage(space, size)
+        self.set_storage(self.strategy.initial_storage(space, size), self.strategy)
 
+    def set_storage(self, storage, strategy):
+        self._storage = storage
+        self.strategy_tag = strategy.strategy_tag
+    
+    def get_storage(self, strategy):
+        if strategy.strategy_tag != self.strategy_tag:
+            message = "Accessing storage with illegal tag! Current: %s, Accessing from: %s"
+            print message % (self.strategy_tag, strategy.strategy_tag)
+            assert False
+        return self._storage
+    
     def fillin(self, space, g_self):
         W_AbstractPointersObject.fillin(self, space, g_self)
         from spyvm.fieldtypes import strategy_for_list
         pointers = g_self.get_pointers()
         self.strategy = strategy_for_list(self.s_class, pointers)
-        self.storage = self.strategy.storage_for_list(space, pointers)
+        self.set_storage(self.strategy.storage_for_list(space, pointers), self.strategy)
 
     def switch_strategy(self, space, new_strategy):
         old_strategy = self.strategy
         self.strategy = new_strategy
-        self.storage = new_strategy.copy_storage_from(space, self, old_strategy, reuse_storage=True)
+        self.set_storage(new_strategy.copy_storage_from(space, self, old_strategy, reuse_storage=True), new_strategy)
 
     def store_with_new_strategy(self, space, new_strategy, n0, w_val):
         self.switch_strategy(space, new_strategy)
@@ -669,15 +680,17 @@ class W_PointersObject(W_AbstractPointersObject):
     def become(self, w_other):
         if not isinstance(w_other, W_PointersObject):
             return False
-        self.storage, w_other.storage = w_other.storage, self.storage
         self.strategy, w_other.strategy = w_other.strategy, self.strategy
+        self_storage = self._storage
+        self.set_storage(w_other._storage, w_other.strategy)
+        w_other.set_storage(self_storage, w_other.strategy)
         return W_AbstractPointersObject.become(self, w_other)
 
     @jit.unroll_safe
     def clone(self, space):
         length = self.strategy.size_of(self)
         w_result = W_PointersObject(self.space, self.getclass(space), length)
-        w_result.storage = w_result.strategy.copy_storage_from(space, self, self.strategy, reuse_storage=True)
+        w_result.set_storage(w_result.strategy.copy_storage_from(space, self, self.strategy, reuse_storage=True), w_result.strategy)
         return w_result
 
     def fieldtype(self):
