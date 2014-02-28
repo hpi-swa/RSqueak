@@ -34,7 +34,12 @@ class AbstractStorageStrategy(object):
         # Return True, if fetching operations use the space parameter.
         # If not, the space-parameter can be passed in as None (probably).
         return False
-        
+    
+    def print_storage(self, w_obj):
+        print "=== Storage (size %d, type %s) of: %s" % (self.sizeof(w_obj), self.strategy_tag, repr(w_obj))
+        for x in self.fetch_all():
+            print repr(x)
+    
     def fetch(self, space, w_obj, n0):
         raise NotImplementedError("Abstract base class")
     def store(self, space, w_obj, n0, w_val):
