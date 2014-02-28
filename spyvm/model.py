@@ -625,6 +625,7 @@ class W_PointersObject(W_AbstractPointersObject):
         from spyvm.fieldtypes import strategy_of_size
         """Create new object with size = fixed + variable size."""
         W_AbstractPointersObject.__init__(self, space, w_class, size)
+        # TODO - setting strategy/storage is useless if fillin() will be called afterwards.
         self.strategy = strategy_of_size(self.s_class, size)
         self.set_storage(self.strategy.initial_storage(space, size), self.strategy)
 

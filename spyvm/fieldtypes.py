@@ -405,6 +405,9 @@ def strategy_of_size(s_containing_class, size):
         # This is a weird and rare special case for w_nil
         return ListStorageStrategy.singleton
     if s_containing_class.isvariable():
+        if only_list_storage:
+            return ListStorageStrategy.singleton
+        
         # A newly allocated var-sized object contains only nils.
         return AllNilStorageStrategy.singleton
     else:
