@@ -616,8 +616,10 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
                                 className='W_PointersObject',
                                 additionalInformation='len=%d' % self.size())
 
+log_strategy_operations = True
+
 class W_PointersObject(W_AbstractPointersObject):
-    _attrs_ = ['_storage', 'strategy', 'strategy_tag']
+    _attrs_ = ['_storage', 'strategy']
     
     @jit.unroll_safe
     def __init__(self, space, w_class, size):
@@ -627,16 +629,19 @@ class W_PointersObject(W_AbstractPointersObject):
         # TODO - setting strategy/storage is useless if fillin() will be called afterwards.
         self.strategy = strategy_of_size(self.s_class, size)
         self.set_storage(self.strategy.initial_storage(space, size))
-
+        self.log_strategy_operation("Initialized")
+    
+    def log_strategy_operation(self, op):
+        if log_strategy_operations:
+            classname = "<unknown>"
+            if self.has_class():
+                classname = self.s_class.name
+            print "%s (%s) of %s size %d" % (op, self.strategy.strategy_tag, classname, self.basic_size())
+    
     def set_storage(self, storage):
         self._storage = storage
-        self.strategy_tag = self.strategy.strategy_tag
     
     def get_storage(self, strategy):
-        if strategy.strategy_tag != self.strategy_tag:
-            message = "Accessing storage with wrong strategy! Current: %s, Accessing from: %s"
-            print message % (self.strategy_tag, strategy.strategy_tag)
-            assert False
         return self._storage
     
     def fillin_pointers(self, space, collection):
@@ -647,11 +652,14 @@ class W_PointersObject(W_AbstractPointersObject):
     def fillin(self, space, g_self):
         W_AbstractPointersObject.fillin(self, space, g_self)
         self.fillin_pointers(space, g_self.get_pointers())
+        self.log_strategy_operation("Filled in")
 
     def switch_strategy(self, space, new_strategy):
         assert self.strategy != new_strategy
-        self.strategy = new_strategy.copy_storage_from(space, self, reuse_storage=True)
+        new_storage = new_strategy.copy_storage_from(space, self, reuse_storage=True)
+        self.strategy = new_strategy
         self.set_storage(new_storage)
+        self.log_strategy_operation("Switched")
 
     def store_with_new_strategy(self, space, new_strategy, n0, w_val):
         self.switch_strategy(space, new_strategy)
@@ -676,12 +684,10 @@ class W_PointersObject(W_AbstractPointersObject):
     
     def _fetch(self, space, n0):
         strategy = jit.promote(self.strategy)
-        assert not strategy.needs_objspace() or space is not None
         return strategy.fetch(space, self, n0)
 
     def _store(self, space, n0, w_value):
         strategy = jit.promote(self.strategy)
-        assert not strategy.needs_objspace() or space is not None
         return strategy.store(space, self, n0, w_value)
 
     def basic_size(self):
@@ -702,6 +708,7 @@ class W_PointersObject(W_AbstractPointersObject):
         my_pointers = self.fetch_all(space)
         w_result = W_PointersObject(self.space, self.getclass(space), len(my_pointers))
         w_result.fillin_pointers(space, my_pointers)
+        self.log_strategy_operation("Cloned")
         return w_result
 
     def fieldtype(self):

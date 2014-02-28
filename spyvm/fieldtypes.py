@@ -5,7 +5,7 @@ from rpython.rlib import objectmodel, jit, signature
 from rpython.rlib.listsort import TimSort
 
 # Disables all optimized strategies, for debugging.
-only_list_storage = True
+only_list_storage = False
 
 class AbstractStorageStrategy(object):
     _immutable_fields_ = []
@@ -69,10 +69,10 @@ class AllNilStorageStrategy(AbstractStorageStrategy):
     
     def store(self, space, w_obj, n0, w_val):
         # This is an important moment, where we decide where to go on the first non-nil store.
-        if w_obj == model.w_nil:
+        if w_val == model.w_nil:
             return
         if not only_list_storage:
-            if isinstance(w_obj, model.W_SmallInteger):
+            if isinstance(w_val, model.W_SmallInteger):
                 return w_obj.store_with_new_strategy(space, DenseSmallIntegerStorageStrategy.singleton, n0, w_val)
         return w_obj.store_with_new_strategy(space, ListStorageStrategy.singleton, n0, w_val)
         
@@ -253,7 +253,7 @@ class SparseSmallIntegerStorageStrategy(AbstractStorageStrategy):
                 arr = [x for x in arr]
             return self.erase(SparseSmallIntegerStorage(arr, nil_flags))
         else:
-            return AbstractStorageStrategy.copy_storage_from(self, space, w_obj, old_strategy, reuse_storage)
+            return AbstractStorageStrategy.copy_storage_from(self, space, w_obj, reuse_storage)
 
 
 class TypeTag():
