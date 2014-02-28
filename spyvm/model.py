@@ -616,7 +616,7 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
                                 className='W_PointersObject',
                                 additionalInformation='len=%d' % self.size())
 
-log_strategy_operations = True
+log_strategy_operations = False
 
 class W_PointersObject(W_AbstractPointersObject):
     _attrs_ = ['_storage', 'strategy']
