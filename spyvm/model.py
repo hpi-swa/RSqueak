@@ -629,6 +629,9 @@ class W_PointersObject(W_AbstractPointersObject):
         self.strategy = strategy_of_size(self.s_class, size)
         self.set_storage(self.strategy.initial_storage(space, size), self.strategy)
 
+    def print_storage(self):
+        self.strategy.print_storage(self)
+        
     def set_storage(self, storage, strategy):
         self._storage = storage
         self.strategy_tag = strategy.strategy_tag
