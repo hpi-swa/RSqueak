@@ -192,7 +192,6 @@ class W_SmallInteger(W_Object):
         # Assume the caller knows what he does, even if int is negative
         return r_uint(val)
 
-
     @jit.elidable
     def as_repr_string(self):
         return "W_SmallInteger(%d)" % self.value
@@ -627,54 +626,62 @@ class W_PointersObject(W_AbstractPointersObject):
         W_AbstractPointersObject.__init__(self, space, w_class, size)
         # TODO - setting strategy/storage is useless if fillin() will be called afterwards.
         self.strategy = strategy_of_size(self.s_class, size)
-        self.set_storage(self.strategy.initial_storage(space, size), self.strategy)
+        self.set_storage(self.strategy.initial_storage(space, size))
 
-    def print_storage(self):
-        self.strategy.print_storage(self)
-        
-    def set_storage(self, storage, strategy):
+    def set_storage(self, storage):
         self._storage = storage
-        self.strategy_tag = strategy.strategy_tag
+        self.strategy_tag = self.strategy.strategy_tag
     
     def get_storage(self, strategy):
         if strategy.strategy_tag != self.strategy_tag:
-            message = "Accessing storage with illegal tag! Current: %s, Accessing from: %s"
+            message = "Accessing storage with wrong strategy! Current: %s, Accessing from: %s"
             print message % (self.strategy_tag, strategy.strategy_tag)
             assert False
         return self._storage
     
+    def fillin_pointers(self, space, collection):
+        from spyvm.fieldtypes import strategy_for_list
+        self.strategy = strategy_for_list(self.s_class, collection)
+        self.set_storage(self.strategy.storage_for_list(space, collection))
+    
     def fillin(self, space, g_self):
         W_AbstractPointersObject.fillin(self, space, g_self)
-        from spyvm.fieldtypes import strategy_for_list
-        pointers = g_self.get_pointers()
-        self.strategy = strategy_for_list(self.s_class, pointers)
-        self.set_storage(self.strategy.storage_for_list(space, pointers), self.strategy)
+        self.fillin_pointers(space, g_self.get_pointers())
 
     def switch_strategy(self, space, new_strategy):
-        new_storage = new_strategy.copy_storage_from(space, self, self.strategy, reuse_storage=True)
-        self.strategy = new_strategy
-        self.set_storage(new_storage, new_strategy)
+        assert self.strategy != new_strategy
+        self.strategy = new_strategy.copy_storage_from(space, self, reuse_storage=True)
+        self.set_storage(new_storage)
 
     def store_with_new_strategy(self, space, new_strategy, n0, w_val):
         self.switch_strategy(space, new_strategy)
         return self.store(space, n0, w_val)
     
     def fetch_all(self, space):
-        strategy = jit.promote(self.strategy)
-        return strategy.fetch_all(space, self)
+        return [self.fetch(space, i) for i in range(self.size())]
     
     def store_all(self, space, collection):
-        strategy = jit.promote(self.strategy)
-        strategy.store_all(space, self, collection)
+        # Be tolerant: copy over as many elements as possible, set rest to nil.
+        # The size of the object cannot be changed in any case.
+        # This should only by used in tests/debugging.
+        my_length = self.size()
+        incoming_length = min(my_length, len(collection))
+        i = 0
+        while i < incoming_length:
+            self.store(space, i, collection[i])
+            i = i+1
+        while i < my_length:
+            self.store(space, i, w_nil)
+            i = i+1
     
     def _fetch(self, space, n0):
         strategy = jit.promote(self.strategy)
-        assert not strategy.fetch_needs_objspace() or space is not None
+        assert not strategy.needs_objspace() or space is not None
         return strategy.fetch(space, self, n0)
 
     def _store(self, space, n0, w_value):
         strategy = jit.promote(self.strategy)
-        assert not strategy.fetch_needs_objspace() or space is not None
+        assert not strategy.needs_objspace() or space is not None
         return strategy.store(space, self, n0, w_value)
 
     def basic_size(self):
@@ -684,17 +691,17 @@ class W_PointersObject(W_AbstractPointersObject):
     def become(self, w_other):
         if not isinstance(w_other, W_PointersObject):
             return False
-        self_storage = self._storage
-        self.set_storage(w_other._storage, w_other.strategy)
-        w_other.set_storage(self_storage, w_other.strategy)
         self.strategy, w_other.strategy = w_other.strategy, self.strategy
+        self_storage = self._storage
+        self.set_storage(w_other._storage)
+        w_other.set_storage(self_storage)
         return W_AbstractPointersObject.become(self, w_other)
 
     @jit.unroll_safe
     def clone(self, space):
-        length = self.strategy.size_of(self)
-        w_result = W_PointersObject(self.space, self.getclass(space), length)
-        w_result.set_storage(w_result.strategy.copy_storage_from(space, self, self.strategy, reuse_storage=True), w_result.strategy)
+        my_pointers = self.fetch_all(space)
+        w_result = W_PointersObject(self.space, self.getclass(space), len(my_pointers))
+        w_result.fillin_pointers(space, my_pointers)
         return w_result
 
     def fieldtype(self):
@@ -1215,7 +1222,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
             if isinstance(w_candidate, W_PointersObject):
                 c_shadow = w_candidate._shadow
                 if c_shadow is None and w_candidate.size() >= 2:
-                    if not w_candidate.strategy.fetch_needs_objspace():
+                    if not w_candidate.strategy.needs_objspace():
                         # We can fetch without having an object space at hand.
                         # XXX How to get an object space from a CompiledMethodShadow, anyways?
                         w_class = w_candidate._fetch(None, 1)

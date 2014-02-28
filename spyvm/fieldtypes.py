@@ -7,21 +7,6 @@ from rpython.rlib.listsort import TimSort
 # Disables all optimized strategies, for debugging.
 only_list_storage = True
 
-class TypeTag():
-    pass
-
-LPI = TypeTag()
-SInt = TypeTag()
-flt = TypeTag()
-obj = TypeTag()
-
-# may be used during debugging
-# LPI, SInt, flt, obj = 'LPI', 'SInt', 'float', 'object'
-
-class FieldSort(TimSort):
-    def lt(self, a, b):
-        return a[0] < b[0]
-
 class AbstractStorageStrategy(object):
     _immutable_fields_ = []
     _attrs_ = []
@@ -30,37 +15,15 @@ class AbstractStorageStrategy(object):
     
     def __init__(self):
         pass
-    def fetch_needs_objspace(self):
-        # Return True, if fetching operations use the space parameter.
+    def needs_objspace(self):
+        # Return True, if fetch/store operations use the space parameter.
         # If not, the space-parameter can be passed in as None (probably).
         return False
-    
-    def print_storage(self, w_obj):
-        print "=== Storage (size %d, type %s) of: %s" % (self.sizeof(w_obj), self.strategy_tag, repr(w_obj))
-        for x in self.fetch_all():
-            print repr(x)
     
     def fetch(self, space, w_obj, n0):
         raise NotImplementedError("Abstract base class")
     def store(self, space, w_obj, n0, w_val):
         raise NotImplementedError("Abstract base class")
-    
-    def fetch_all(self, space, w_obj):
-        return [self.fetch(space, w_obj, i) for i in range(self.size_of(w_obj))]
-    def store_all(self, space, w_obj, collection):
-        # Be tolerant: copy over as many elements as possible, set rest to nil.
-        # The size of the object cannot be changed in any case.
-        # This should only by used in tests/debugging.
-        my_length = self.size_of(w_obj)
-        incoming_length = min(my_length, len(collection))
-        i = 0
-        while i < incoming_length:
-            self.store(space, i, w_obj, collection[i])
-            i = i+1
-        while i < my_length:
-            self.store(space, i, w_obj, model.w_nil)
-            i = i+1
-    
     def size_of(self, w_obj):
         raise NotImplementedError("Abstract base class")
     
@@ -68,15 +31,15 @@ class AbstractStorageStrategy(object):
         raise NotImplementedError("Abstract base class")
     def storage_for_list(self, space, collection):
         raise NotImplementedError("Abstract base class")
-    def copy_storage_from(self, space, w_obj, old_strategy, reuse_storage=False):
-        assert old_strategy != self
+    def copy_storage_from(self, space, w_obj, reuse_storage=False):
+        old_strategy = w_obj.strategy
+        if old_strategy == self and reuse_storage:
+            return w_obj.get_storage(self)
         if isinstance(old_strategy, AllNilStorageStrategy):
             return self.initial_storage(space, old_strategy.size_of(w_obj))
         else:
-            # Default: reuse storage_for_list() but create intermediate list.
-            # Ignore reuse_storage flag - never reuse old storage.
-            # Should be overridden & optimized.
-            return self.storage_for_list(space, old_strategy.fetch_all(space, w_obj))
+            # This can be overridden and optimized (reuse_storage flag, less temporary storage)
+            return self.storage_for_list(space, w_obj.fetch_all(space))
 
 class SingletonMeta(type):
     def __new__(cls, name, bases, dct):
@@ -113,16 +76,14 @@ class AllNilStorageStrategy(AbstractStorageStrategy):
                 return w_obj.store_with_new_strategy(space, DenseSmallIntegerStorageStrategy.singleton, n0, w_val)
         return w_obj.store_with_new_strategy(space, ListStorageStrategy.singleton, n0, w_val)
         
-    def fetch_all(self, space, w_obj):
-        return [model.w_nil] * self.size_of(w_obj)
     def size_of(self, w_obj):
         return self.unerase(w_obj.get_storage(self)).size
     def initial_storage(self, space, size):
         return self.erase(SizeStorage(size))
     def storage_for_list(self, space, collection):
         return self.erase(SizeStorage(len(collection)))
-    def copy_storage_from(self, space, w_obj, old_strategy, reuse_storage=False):
-        return self.erase(SizeStorage(old_strategy.size_of(w_obj)))
+    def copy_storage_from(self, space, w_obj, reuse_storage=False):
+        return self.erase(SizeStorage(w_obj.basic_size()))
 
 # This is the regular storage strategy that does not result in any
 # optimizations but can handle every case. Applicable for both
@@ -141,17 +102,15 @@ class ListStorageStrategy(AbstractStorageStrategy):
     def store(self, space, w_obj, n0, w_val):
         # TODO enable generalization by maintaining a counter of elements that are nil.
         self.get_list(w_obj)[n0] = w_val
-    def fetch_all(self, space, w_obj):
-        return self.get_list(w_obj)
     def size_of(self, w_obj):
         return len(self.get_list(w_obj))
     def initial_storage(self, space, size):
         return self.erase([model.w_nil] * size)
     def storage_for_list(self, space, collection):
         return self.erase([x for x in collection])
-    def copy_storage_from(self, space, w_obj, old_strategy, reuse_storage=False):
-        length = old_strategy.size_of(w_obj)
-        return self.erase([old_strategy.fetch(space, w_obj, i) for i in range(length)])
+    def copy_storage_from(self, space, w_obj, reuse_storage=False):
+        length = w_obj.basic_size()
+        return self.erase([w_obj.strategy.fetch(space, w_obj, i) for i in range(length)])
 
 class DenseSmallIntegerStorage(object):
     _immutable_fields_ = ['arr']
@@ -170,7 +129,7 @@ class DenseSmallIntegerStorageStrategy(AbstractStorageStrategy):
     unerase = staticmethod(unerase)
     strategy_tag = 'dense-small-int'
     
-    def fetch_needs_objspace(self):
+    def needs_objspace(self):
         return True
     def fetch(self, space, w_obj, n0):
         store = self.unerase(w_obj.get_storage(self))
@@ -249,7 +208,7 @@ class SparseSmallIntegerStorageStrategy(AbstractStorageStrategy):
     unerase = staticmethod(unerase)
     strategy_tag = 'sparse-small-int'
     
-    def fetch_needs_objspace(self):
+    def needs_objspace(self):
         return True
     def fetch(self, space, w_obj, n0):
         store = self.unerase(w_obj.get_storage(self))
@@ -280,9 +239,10 @@ class SparseSmallIntegerStorageStrategy(AbstractStorageStrategy):
                 store.nil_flags[i] = False
                 store.arr[i] = space.unwrap_int(collection[i])
         return self.erase(store)
-    def copy_storage_from(self, space, w_obj, old_strategy, reuse_storage=False):
+    def copy_storage_from(self, space, w_obj, reuse_storage=False):
+        old_strategy = w_obj.strategy
         if isinstance(old_strategy, DenseSmallIntegerStorageStrategy):
-            # Optimize transition from Dense to Sparse small-integer-storage
+            # Optimized transition from Dense to Sparse small-integer-storage
             store = old_strategy.unerase(w_obj.get_storage(self))
             nil_flags = [False] * len(store.arr)
             for i in range(len(store.arr)):
@@ -294,6 +254,22 @@ class SparseSmallIntegerStorageStrategy(AbstractStorageStrategy):
             return self.erase(SparseSmallIntegerStorage(arr, nil_flags))
         else:
             return AbstractStorageStrategy.copy_storage_from(self, space, w_obj, old_strategy, reuse_storage)
+
+
+class TypeTag():
+    pass
+
+LPI = TypeTag()
+SInt = TypeTag()
+flt = TypeTag()
+obj = TypeTag()
+
+# may be used during debugging
+# LPI, SInt, flt, obj = 'LPI', 'SInt', 'float', 'object'
+
+class FieldSort(TimSort):
+    def lt(self, a, b):
+        return a[0] < b[0]
 
 class FixedSizeFieldTypes(AbstractStorageStrategy):
     _immutable_fields_ = ['types[*]']
@@ -423,9 +399,15 @@ def strategy_of_size(s_containing_class, size):
 
 def strategy_for_list(s_containing_class, vars):
     if s_containing_class is None:
-        # This is a weird and rare special case for w_nil
+            # This is a weird and rare special case for w_nil
+            return ListStorageStrategy.singleton
+    try:
+        is_variable = s_containing_class.isvariable()
+    except AttributeError:
+        # TODO - This happens during bootstrapping phase, when filling in generic objects.
+        # Ths class object shadows are not yet synchronized.
         return ListStorageStrategy.singleton
-    if s_containing_class.isvariable():
+    if is_variable:
         if only_list_storage:
             return ListStorageStrategy.singleton
         
@@ -455,3 +437,4 @@ def strategy_for_list(s_containing_class, vars):
             if changed_type is not obj:
                 typer = typer.sibling(i, changed_type)
         return typer
+    
