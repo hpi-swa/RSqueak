@@ -279,7 +279,7 @@ def methodPrimitiveIndex():
 @expose_on_virtual_machine_proxy([oop], int)
 def primitiveIndexOf(w_method):
     if isinstance(w_method, model.W_CompiledMethod):
-        return w_method.as_compiledmethod_get_shadow().primitive()
+        return w_method.as_compiledmethod_get_shadow(None).primitive()
     else:
         raise ProxyFunctionFailed
 

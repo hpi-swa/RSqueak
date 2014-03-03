@@ -1027,15 +1027,16 @@ class MethodContextShadow(ContextPartShadow):
         return '%s%s' % (block, self.w_method().get_identifier_string())
 
 class CompiledMethodShadow(object):
-    _attrs_ = ["_w_self", "bytecode",
+    _attrs_ = ["_w_self", "space", "bytecode",
               "literals", "bytecodeoffset",
               "literalsize", "_tempsize", "_primitive",
               "argsize", "islarge",
               "w_compiledin", "version"]
     _immutable_fields_ = ["version?", "_w_self"]
 
-    def __init__(self, w_compiledmethod):
+    def __init__(self, w_compiledmethod, space):
         self._w_self = w_compiledmethod
+        self.space = space
         self.update()
 
     def w_self(self):
@@ -1078,7 +1079,7 @@ class CompiledMethodShadow(object):
             w_association = self.literals[-1]
             if isinstance(w_association, model.W_PointersObject) and w_association.size() >= 2:
                 # XXX XXX XXX where to get a space from here
-                association = wrapper.AssociationWrapper(None, w_association)
+                association = wrapper.AssociationWrapper(self.space, w_association)
                 self.w_compiledin = association.value()
 
     @make_elidable_after_versioning

@@ -3,6 +3,7 @@ from spyvm import model, shadow
 from rpython.rlib import rerased
 from rpython.rlib import objectmodel, jit, signature
 from rpython.rlib.listsort import TimSort
+from rpython.rlib.objectmodel import import_from_mixin
 
 # Disables all optimized strategies, for debugging.
 only_list_storage = False
@@ -112,7 +113,25 @@ class ListStorageStrategy(AbstractStorageStrategy):
         length = w_obj.basic_size()
         return self.erase([w_obj.strategy.fetch(space, w_obj, i) for i in range(length)])
 
-class DenseSmallIntegerStorage(object):
+class StorageStrategyMixin(object):
+    # Concrete class must provide: unwrap, unerase
+    # Concrete class can override: do_store, do_fetch, slots_per_object
+    def _storage(self, w_obj):
+        return self.unerase(w_obj.get_storage(self))
+    def do_fetch(self, space, arr, n0):
+        # Default: access single unwrapped object at this location
+        return self.wrap(space, arr[n0])
+    def do_store(self, space, arr, n0, val):
+        # Default implementation: store the single unwrapped object at this position.
+        arr[n0] = self.unwrap(space, val)
+    def size_of(self, w_obj):
+        return len(self._storage(w_obj).arr) / self.slots_per_object(w_obj)
+    def slots_per_object(self, w_obj):
+        # Default: Each object is stored in a single slot.
+        return 1
+    
+class DenseStorageMixin(object):
+    # Concrete class must provide attribute: default_element
     _immutable_fields_ = ['arr']
     _attrs_ = ['arr', '_from', '_to']
     _settled_ = True
@@ -120,25 +139,21 @@ class DenseSmallIntegerStorage(object):
     def __init__(self, _from, _to, size):
         self._from = _from # first used index ("inclusive")
         self._to = _to # first unused index ("exclusive")
-        self.arr = [0] * size
+        self.arr = [self.default_element] * size
 
-class DenseSmallIntegerStorageStrategy(AbstractStorageStrategy):
-    __metaclass__ = SingletonMeta
-    erase, unerase = rerased.new_erasing_pair("dense-small-integer-strategry")
-    erase = staticmethod(erase)
-    unerase = staticmethod(unerase)
-    strategy_tag = 'dense-small-int'
+class DenseStorageStrategyMixin(StorageStrategyMixin):
+    # Concrete class must implement: erase, unerase, wrap, unwrap
+    # Concrete class must provide attributes: contained_type, sparse_strategy, storage_type
+    # Concrete class can override: do_store, do_fetch, slots_per_object
     
-    def needs_objspace(self):
-        return True
     def fetch(self, space, w_obj, n0):
-        store = self.unerase(w_obj.get_storage(self))
+        store = self._storage(w_obj)
         if n0 < store._from or n0 >= store._to:
             return model.w_nil
-        return space.wrap_int(store.arr[n0])
+        return self.do_fetch(space, store.arr, n0)
     def store(self, space, w_obj, n0, w_val):
-        store = self.unerase(w_obj.get_storage(self))
-        if not isinstance(w_val, model.W_SmallInteger):
+        store = self._storage(w_obj)
+        if not isinstance(w_val, self.contained_type):
             if w_val == model.w_nil:
                 if store._to - 1 == n0:
                     store._to = store._to - 1
@@ -147,8 +162,8 @@ class DenseSmallIntegerStorageStrategy(AbstractStorageStrategy):
                 elif store._from == n0:
                     store._from = store._from + 1
                 else:
-                    # Deletion from a non-dense position. Deoptimize to SparseSmallIntegerStorage.
-                    return w_obj.store_with_new_strategy(space, SparseSmallIntegerStorageStrategy.singleton, n0, w_val)
+                    # Deletion from a non-dense position. Deoptimize to sparse storage.
+                    return w_obj.store_with_new_strategy(space, self.sparse_strategy.singleton, n0, w_val)
                 if store._from == store._to:
                     # Deleted last element. Generelize to AllNilStorage.
                     w_obj.switch_strategy(space, AllNilStorageStrategy.singleton)
@@ -168,14 +183,12 @@ class DenseSmallIntegerStorageStrategy(AbstractStorageStrategy):
                 store._from = n0
                 store._to = n0+1
             else:
-                # Store to a non-dense position. Deoptimize to SparseSmallIntegerStorage.
-                return w_obj.store_with_new_strategy(space, SparseSmallIntegerStorageStrategy.singleton, n0, w_val)
-        # It is a dense store, so finally store the unwrapped int.
-        store.arr[n0] = space.unwrap_int(w_val)
-    def size_of(self, w_obj):
-        return len(self.unerase(w_obj.get_storage(self)).arr)
+                # Store to a non-dense position. Deoptimize to sparse storage.
+                return w_obj.store_with_new_strategy(space, self.sparse_strategy.singleton, n0, w_val)
+        # It is a dense store, so finally store the unwrapped value.
+        self.do_store(space, store.arr, n0, w_val)
     def initial_storage(self, space, size):
-        return self.erase(DenseSmallIntegerStorage(0, 0, size))
+        return self.erase(self.storage_type(0, 0, size))
     def storage_for_list(self, space, collection):
         _from = 0
         while _from < len(collection) and collection[_from] == model.w_nil:
@@ -183,12 +196,12 @@ class DenseSmallIntegerStorageStrategy(AbstractStorageStrategy):
         _to = _from
         while _to < len(collection) and collection[_to] != model.w_nil:
             _to = _to+1
-        store = DenseSmallIntegerStorage(_from, _to, len(collection))
+        store = self.storage_type(_from, _to, len(collection))
         for i in range(_from, _to):
-            store.arr[i] = space.unwrap_int(collection[i])
+            self.do_store(space, store.arr, i, collection[i])
         return self.erase(store)
 
-class SparseSmallIntegerStorage(object):
+class SparseStorageMixin(object):
     _immutable_fields_ = ['arr', 'nil_flags']
     _attrs_ = ['arr', 'nil_flags']
     _settled_ = True
@@ -197,53 +210,45 @@ class SparseSmallIntegerStorage(object):
         self.arr = arr
         self.nil_flags = nil_flags
     
-    @staticmethod
-    def for_size(size):
-        return SparseSmallIntegerStorage([0] * size, [True] * size)
-
-class SparseSmallIntegerStorageStrategy(AbstractStorageStrategy):
-    __metaclass__ = SingletonMeta
-    erase, unerase = rerased.new_erasing_pair("sparse-small-integer-strategry")
-    erase = staticmethod(erase)
-    unerase = staticmethod(unerase)
-    strategy_tag = 'sparse-small-int'
+class SparseStorageStrategyMixin(StorageStrategyMixin):
+    # Concrete class must implement: erase, unerase, wrap, unwrap, dense_strategy
+    # Concrete class must provide attributes: contained_type, storage_type
+    # Concrete class can override: do_store, do_fetch, slots_per_object
     
-    def needs_objspace(self):
-        return True
     def fetch(self, space, w_obj, n0):
-        store = self.unerase(w_obj.get_storage(self))
+        store = self._storage(w_obj)
         if store.nil_flags[n0]:
             return model.w_nil
-        return space.wrap_int(store.arr[n0])
+        return self.do_fetch(space, store.arr, n0)
     def store(self, space, w_obj, n0, w_val):
-        store = self.unerase(w_obj.get_storage(self))
-        if not isinstance(w_val, model.W_SmallInteger):
+        store = self._storage(w_obj)
+        if not isinstance(w_val, self.contained_type):
             if w_val == model.w_nil:
                 # TODO - generelize to AllNilStorage by maintaining a counter of nil-elements
                 store.nil_flags[n0] = True
                 return
             else:
-                # Storing a non-int - dehomogenize to ListStorage
+                # Storing a wrong type - dehomogenize to ListStorage
                 return w_obj.store_with_new_strategy(space, ListStorageStrategy.singleton, n0, w_val)
         store.nil_flags[n0] = False
-        store.arr[n0] = space.unwrap_int(w_val)
-    def size_of(self, w_obj):
-        return len(self.unerase(w_obj.get_storage(self)).arr)
+        self.do_store(space, store.arr, n0, w_val)
+    def storage_for_size(self, size):
+        return self.storage_type([self.storage_type.default_element] * size, [True] * size)
     def initial_storage(self, space, size):
-        return self.erase(SparseSmallIntegerStorage.for_size(size))
+        return self.erase(self.storage_for_size(size))
     def storage_for_list(self, space, collection):
         length = len(collection)
-        store = SparseSmallIntegerStorage.for_size(length)
+        store = self.storage_for_size(length)
         for i in range(length):
             if collection[i] != model.w_nil:
                 store.nil_flags[i] = False
-                store.arr[i] = space.unwrap_int(collection[i])
+                self.do_store(space, store.arr, i, collection[i])
         return self.erase(store)
     def copy_storage_from(self, space, w_obj, reuse_storage=False):
         old_strategy = w_obj.strategy
-        if isinstance(old_strategy, DenseSmallIntegerStorageStrategy):
-            # Optimized transition from Dense to Sparse small-integer-storage
-            store = old_strategy.unerase(w_obj.get_storage(self))
+        if isinstance(old_strategy, self.dense_strategy()):
+            # Optimized transition from dense to sparse strategy
+            store = old_strategy._storage(w_obj)
             nil_flags = [False] * len(store.arr)
             for i in range(len(store.arr)):
                 if i < store._from and i >= store._to:
@@ -251,10 +256,96 @@ class SparseSmallIntegerStorageStrategy(AbstractStorageStrategy):
             arr = store.arr
             if not reuse_storage:
                 arr = [x for x in arr]
-            return self.erase(SparseSmallIntegerStorage(arr, nil_flags))
+            return self.erase(self.storage_type(arr, nil_flags))
         else:
             return AbstractStorageStrategy.copy_storage_from(self, space, w_obj, reuse_storage)
 
+class SmallIntegerStorageStrategyMixin(object):
+    contained_type = model.W_SmallInteger
+    def needs_objspace(self):
+        return True
+    def wrap(self, space, obj):
+        return space.wrap_int(obj)
+    def unwrap(self, space, w_obj):
+        return space.unwrap_int(w_obj)
+    
+class SparseSmallIntegerStorage(object):
+    import_from_mixin(SparseStorageMixin)
+    default_element = 0
+
+class SparseSmallIntegerStorageStrategy(AbstractStorageStrategy):
+    __metaclass__ = SingletonMeta
+    import_from_mixin(SparseStorageStrategyMixin)
+    import_from_mixin(SmallIntegerStorageStrategyMixin)
+    erase, unerase = rerased.new_erasing_pair("sparse-small-integer-strategry")
+    erase = staticmethod(erase)
+    unerase = staticmethod(unerase)
+    strategy_tag = 'sparse-small-int'
+    storage_type = SparseSmallIntegerStorage
+    def dense_strategy(self):
+        # This must be a method for initialization order reasons
+        return DenseSmallIntegerStorageStrategy
+    
+class DenseSmallIntegerStorage(object):
+    import_from_mixin(DenseStorageMixin)
+    default_element = 0
+
+class DenseSmallIntegerStorageStrategy(AbstractStorageStrategy):
+    __metaclass__ = SingletonMeta
+    import_from_mixin(DenseStorageStrategyMixin)
+    import_from_mixin(SmallIntegerStorageStrategyMixin)
+    erase, unerase = rerased.new_erasing_pair("dense-small-integer-strategry")
+    erase = staticmethod(erase)
+    unerase = staticmethod(unerase)
+    strategy_tag = 'dense-small-int'
+    sparse_strategy = SparseSmallIntegerStorageStrategy
+    storage_type = DenseSmallIntegerStorage
+
+class InliningListStrategy(AbstractStorageStrategy):
+    __metaclass__ = SingletonMeta
+    erase, unerase = rerased.new_erasing_pair("inlining-list-storage-strategy")
+    erase = staticmethod(erase)
+    unerase = staticmethod(unerase)
+    strategy_tag = 'inlining-list'
+    
+    def get_list(self, w_obj):
+        return self.unerase(w_obj.get_storage(self))
+    def fetch(self, space, w_obj, n0):
+        return self.get_list(w_obj)[n0]
+    def store(self, space, w_obj, n0, w_val):
+        # TODO enable generalization by maintaining a counter of elements that are nil.
+        self.get_list(w_obj)[n0] = w_val
+    def size_of(self, w_obj):
+        return len(self.get_list(w_obj))
+    def initial_storage(self, space, size):
+        return self.erase([model.w_nil] * size)
+    def storage_for_list(self, space, collection):
+        return self.erase([x for x in collection])
+    def copy_storage_from(self, space, w_obj, reuse_storage=False):
+        length = w_obj.basic_size()
+        return self.erase([w_obj.strategy.fetch(space, w_obj, i) for i in range(length)])
+
+class InlinedObjectStrategy(AbstractStorageStrategy):
+    __metaclass__ = SingletonMeta
+    erase, unerase = rerased.new_erasing_pair("inlined-object-storage-strategy")
+    erase = staticmethod(erase)
+    unerase = staticmethod(unerase)
+    strategy_tag = 'inlined object'
+    
+    def fetch(self, space, w_obj, n0):
+        return self.get_list(w_obj)[n0]
+    def store(self, space, w_obj, n0, w_val):
+        # TODO enable generalization by maintaining a counter of elements that are nil.
+        self.get_list(w_obj)[n0] = w_val
+    def size_of(self, w_obj):
+        return len(self.get_list(w_obj))
+    def initial_storage(self, space, size):
+        return self.erase([model.w_nil] * size)
+    def storage_for_list(self, space, collection):
+        return self.erase([x for x in collection])
+    def copy_storage_from(self, space, w_obj, reuse_storage=False):
+        length = w_obj.basic_size()
+        return self.erase([w_obj.strategy.fetch(space, w_obj, i) for i in range(length)])
 
 class TypeTag():
     pass

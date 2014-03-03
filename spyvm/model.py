@@ -1295,10 +1295,10 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def setbytes(self, bytes):
         self.bytes = bytes
 
-    def as_compiledmethod_get_shadow(self, space=None):
+    def as_compiledmethod_get_shadow(self, space):
         from shadow import CompiledMethodShadow
         if self._shadow is None:
-            self._shadow = CompiledMethodShadow(self)
+            self._shadow = CompiledMethodShadow(self, space)
         return self._shadow
 
     def literalat0(self, space, index0):
