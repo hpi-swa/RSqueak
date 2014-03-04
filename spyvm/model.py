@@ -616,7 +616,28 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
                                 className='W_PointersObject',
                                 additionalInformation='len=%d' % self.size())
 
-log_strategy_operations = False
+class StrategyStatistics(object):
+    # Key: (operation_name, old_strategy, new_strategy)
+    # Value: [sizes]
+    stats = {}
+    do_log = False
+    do_stats = False
+    def stat_operation(self, operation_name, old_strategy, new_strategy, size):
+        key = (operation_name, old_strategy, new_strategy)
+        if not key in self.stats:
+            self.stats[key] = []
+        self.stats[key].append(size)
+    def log_operation(self, op, new_strategy_tag, old_strategy_tag, classname, size):
+        print "%s (%s, was %s) of %s size %d" % (op, new_strategy_tag, old_strategy_tag, classname, size)
+    def print_stats(self):
+        for key in self.stats:
+            sizes = self.stats[key]
+            sum = 0
+            for s in sizes:
+                sum += s
+            print "%s: %d times, avg size: %d" % (key, len(sizes), sum/len(sizes))
+            print "       All sizes: %s" % sizes
+strategy_stats = StrategyStatistics()
 
 class W_PointersObject(W_AbstractPointersObject):
     _attrs_ = ['_storage', 'strategy']
@@ -631,12 +652,20 @@ class W_PointersObject(W_AbstractPointersObject):
         self.set_storage(self.strategy.initial_storage(space, size))
         self.log_strategy_operation("Initialized")
     
-    def log_strategy_operation(self, op):
-        if log_strategy_operations:
+    def log_strategy_operation(self, op, old_strategy=None):
+        if strategy_stats.do_log or strategy_stats.do_stats:
             classname = "<unknown>"
             if self.has_class():
                 classname = self.s_class.name
-            print "%s (%s) of %s size %d" % (op, self.strategy.strategy_tag, classname, self.basic_size())
+            size = self.basic_size()
+            new_strategy_tag = self.strategy.strategy_tag
+            old_strategy_tag = "None"
+            if old_strategy is not None:
+                old_strategy_tag = old_strategy.strategy_tag
+            if strategy_stats.do_stats:
+                strategy_stats.stat_operation(op, old_strategy_tag, new_strategy_tag, size)
+            if strategy_stats.do_log:
+                strategy_stats.log_operation(op, new_strategy_tag, old_strategy_tag, classname, size)
     
     def set_storage(self, storage):
         self._storage = storage
@@ -657,9 +686,10 @@ class W_PointersObject(W_AbstractPointersObject):
     def switch_strategy(self, space, new_strategy):
         assert self.strategy != new_strategy
         new_storage = new_strategy.copy_storage_from(space, self, reuse_storage=True)
+        old_strategy = self.strategy
         self.strategy = new_strategy
         self.set_storage(new_storage)
-        self.log_strategy_operation("Switched")
+        self.log_strategy_operation("Switched", old_strategy)
 
     def store_with_new_strategy(self, space, new_strategy, n0, w_val):
         self.switch_strategy(space, new_strategy)
