@@ -126,6 +126,8 @@ def _usage(argv):
           -r|--run [code string]
           -b|--benchmark [code string]
           -p|--poll_events
+          --strategy-log
+          --strategy-stats
           [image path, default: Squeak.image]
     """ % argv[0]
 
@@ -145,7 +147,7 @@ def entry_point(argv):
     stringarg = ""
     code = None
     as_benchmark = False
-
+    
     while idx < len(argv):
         arg = argv[idx]
         if arg in ["-h", "--help"]:
@@ -182,6 +184,10 @@ def entry_point(argv):
             code = argv[idx + 1]
             as_benchmark = True
             idx += 1
+        elif arg == "--strategy-log":
+            model.strategy_stats.do_log = True
+        elif arg == "--strategy-stats":
+            model.strategy_stats.do_stats = True
         elif path is None:
             path = argv[idx]
         else:
@@ -207,13 +213,18 @@ def entry_point(argv):
     image = create_image(space, image_reader)
     interp = interpreter.Interpreter(space, image, image_name=path, trace=trace, evented=evented)
     space.runtime_setup(argv[0])
+    result = 0
     if benchmark is not None:
-        return _run_benchmark(interp, number, benchmark, stringarg)
+        result = _run_benchmark(interp, number, benchmark, stringarg)
     elif code is not None:
-        return _run_code(interp, code, as_benchmark=as_benchmark)
+        result = _run_code(interp, code, as_benchmark=as_benchmark)
     else:
         _run_image(interp)
-        return 0
+        result = 0
+    if model.strategy_stats.do_stats:
+        model.strategy_stats.print_stats()
+    return result
+
 
 # _____ Define and setup target ___
 
