@@ -155,16 +155,16 @@ class DenseStorageStrategyMixin(object):
         return self.do_fetch(space, store.arr, n0)
     def store(self, space, w_obj, n0, w_val):
         store = self._storage(w_obj)
-        if not self.can_contain_object(w_obj):
+        if not self.can_contain_object(w_val):
             if w_val == model.w_nil:
                 if store._to - 1 == n0:
                     store._to = store._to - 1
-                elif store._from <= n0 and n0 < store._to:
-                    pass
+                elif n0 < store._from or store._to <= n0:
+                    pass # Storing nil to an already-nil position
                 elif store._from == n0:
                     store._from = store._from + 1
                 else:
-                    # Deletion from a non-dense position. Deoptimize to sparse storage.
+                    # Deletion from the middle of the storage. Deoptimize to sparse storage.
                     return w_obj.store_with_new_strategy(space, self.sparse_strategy().singleton, n0, w_val)
                 if store._from == store._to:
                     # Deleted last element. Generelize to AllNilStorage.
@@ -223,7 +223,7 @@ class SparseStorageStrategyMixin(object):
         return self.do_fetch(space, store.arr, n0)
     def store(self, space, w_obj, n0, w_val):
         store = self._storage(w_obj)
-        if not isinstance(w_val, self.contained_type):
+        if not self.can_contain_object(w_val):
             if w_val == model.w_nil:
                 # TODO - generelize to AllNilStorage by maintaining a counter of nil-elements
                 store.nil_flags[n0] = True
@@ -256,9 +256,10 @@ class SparseStorageStrategyMixin(object):
         else:
             return AbstractStorageStrategy.copy_storage_from(self, space, w_obj, reuse_storage)
     def copy_from_dense_storage(self, store, reuse_storage):
-        nil_flags = [False] * len(store.arr)
+        # TODO possible optimization: compare len(arr) with _to-_from, use smaller iteration size
+        nil_flags = [True] * len(store.arr)
         for i in range(store._from, store._to):
-            nil_flags[i] = True
+            nil_flags[i] = False
         arr = store.arr
         if not reuse_storage:
             arr = [x for x in arr]
