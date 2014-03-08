@@ -307,6 +307,7 @@ class DenseSmallIntegerStorageStrategy(AbstractStorageStrategy):
         return SparseSmallIntegerStorageStrategy
 
 class InliningListStorageStrategyMixin(object):
+    #.
     
     def _storage(self, w_obj):
         return self.unerase(w_obj.get_storage(self))
