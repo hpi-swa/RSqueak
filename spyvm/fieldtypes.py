@@ -157,7 +157,7 @@ class DenseStorageStrategyMixin(object):
         store = self._storage(w_obj)
         if not self.can_contain_object(w_val):
             if w_val == model.w_nil:
-                if store._to - 1 == n0:
+                if store._to - 1 == n0: # Optimize Collection >> remove:
                     store._to = store._to - 1
                 elif n0 < store._from or store._to <= n0:
                     pass # Storing nil to an already-nil position
@@ -173,12 +173,12 @@ class DenseStorageStrategyMixin(object):
             else:
                 # Storing a non-int - dehomogenize to ListStorage
                 return w_obj.store_with_new_strategy(space, ListStorageStrategy.singleton, n0, w_val)
-        if n0 == store._from - 1: # It's ok if this wraps around.
-            store._from = store._from-1
-        elif n0 >= store._from and n0 < store._to:
-            pass
-        elif n0 == store._to:
+        if n0 == store._to: # Optimize Collection >> add:
             store._to = store._to+1
+        elif store._from <= n0 and n0 < store._to:
+            pass
+        elif n0 == store._from - 1: # It's ok if this wraps around.
+            store._from = store._from-1
         else:
             if store._from == store._to:
                 # Initial store to non-zero position.
