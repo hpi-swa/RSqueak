@@ -188,72 +188,19 @@ class DenseStorageStrategyMixin(object):
             self.do_store(space, store.arr, i, collection[i])
         return self.erase(store)
 
-class SparseStorage(object):
-    _immutable_fields_ = ['arr', 'nil_flags']
-    _attrs_ = ['arr', 'nil_flags']
-    _settled_ = True
-    
-    def __init__(self, arr, nil_flags):
-        self.arr = arr
-        self.nil_flags = nil_flags
-    
-class SparseStorageStrategyMixin(object):
-    # Concrete class must implement: storage, erase, do_fetch, do_store, dense_strategy
-    # Concrete class must provide attributes: storage_type (Subclass of SparseStorage)
-    
-    def fetch(self, space, w_obj, n0):
-        store = self.storage(w_obj)
-        if store.nil_flags[n0]:
-            return model.w_nil
-        return self.do_fetch(space, store.arr, n0)
-    def store(self, space, w_obj, n0, w_val):
-        store = self.storage(w_obj)
-        if not self.can_contain_object(w_val):
-            if w_val == model.w_nil:
-                # TODO - generelize to AllNilStorage by maintaining a counter of nil-elements
-                store.nil_flags[n0] = True
-                return
-            else:
-                # Storing a wrong type - dehomogenize to ListStorage
-                return w_obj.store_with_new_strategy(space, ListStorageStrategy.singleton, n0, w_val)
-        store.nil_flags[n0] = False
-        self.do_store(space, store.arr, n0, w_val)
-    def storage_for_size(self, size):
-        # TODO -- for inlining strategy, the size must be extended!!
-        # size = size * self.slots_per_object()
-        return self.storage_type([self.storage_type.default_element] * size, [True] * size)
-    def initial_storage(self, space, size):
-        return self.erase(self.storage_for_size(size))
-    def storage_for_list(self, space, collection):
-        length = len(collection)
-        store = self.storage_for_size(length)
-        for i in range(length):
-            if collection[i] != model.w_nil:
-                store.nil_flags[i] = False
-                self.do_store(space, store.arr, i, collection[i])
-        return self.erase(store)
-    def copy_storage_from(self, space, w_obj, reuse_storage=False):
-        old_strategy = w_obj.strategy
-        if isinstance(old_strategy, self.dense_strategy()):
-            # Optimized transition from dense to sparse strategy
-            store = old_strategy.storage(w_obj)
-            return self.erase(self.copy_from_dense_storage(store, reuse_storage))
-        else:
-            return AbstractStorageStrategy.copy_storage_from(self, space, w_obj, reuse_storage)
-    def copy_from_dense_storage(self, store, reuse_storage):
-        # TODO possible optimization: compare len(arr) with _to-_from, use smaller iteration size
-        nil_flags = [True] * len(store.arr)
-        for i in range(store._from, store._to):
-            nil_flags[i] = False
-        arr = store.arr
-        if not reuse_storage:
-            arr = [x for x in arr]
-        return self.storage_type(arr, nil_flags)
-
+# This strategy is only applicable for integer values.
+# The storage for an array of W_SmallInteger values is a single plain int-array.
+# The first int is the number of stored integer n. Then follow the n integer values.
+# At the end of the array, there are n/32 additional words representing bitmaps.
+# Each bit describes if one actual stored integer value is really not nil.
 BITS_PER_WORD = 32
-class BitmaskStorageStrategyMixin(object):
-    def _storage(self, w_obj):
-        return self.unerase(w_obj.get_storage(self))
+class SparseSmallIntegerStorageStrategy(AbstractStorageStrategy):
+    __metaclass__ = SingletonMeta
+    erase, unerase = rerased.new_erasing_pair("bitmap-integer-strategry")
+    erase = staticmethod(erase)
+    unerase = staticmethod(unerase)
+    strategy_tag = 'bitmap-small-int'
+    import_from_mixin(BasicStorageStrategyMixin)
     
     def clear_nonnil_bit(self, arr, n0):
         l = arr[0]
@@ -267,18 +214,18 @@ class BitmaskStorageStrategyMixin(object):
         return mask & (1 << (n0 % BITS_PER_WORD))
     
     def size_of(self, w_obj):
-        arr = self._storage(w_obj)
+        arr = self.storage(w_obj)
         return arr[0]
     
     def fetch(self, space, w_obj, n0):
-        arr = self._storage(w_obj)
+        arr = self.storage(w_obj)
         if self.get_nonnil_bit(arr, n0):
             return space.wrap_int(arr[n0 + 1])
         else:
             return model.w_nil
         
     def store(self, space, w_obj, n0, w_val):
-        arr = self._storage(w_obj)
+        arr = self.storage(w_obj)
         if not isinstance(w_val, model.W_SmallInteger):
             if w_val == model.w_nil:
                 self.clear_nonnil_bit(arr, n0)
@@ -304,7 +251,7 @@ class BitmaskStorageStrategyMixin(object):
                 arr[1 + i] = space.unwrap_int(w_val)
         return self.erase(arr)
         
-class SmallIntegerStorageStrategyMixin(object):
+class SmallIntegerStorageStrategyMixin(BasicStorageStrategyMixin):
     contained_type = model.W_SmallInteger
     def needs_objspace(self):
         return True
@@ -316,24 +263,7 @@ class SmallIntegerStorageStrategyMixin(object):
         return len(self.storage(w_obj).arr)
     def can_contain_object(self, w_val):
         return isinstance(w_val, model.W_SmallInteger)
-    
-class SparseSmallIntegerStorage(SparseStorage):
-    default_element = 0
 
-class SparseSmallIntegerStorageStrategy(AbstractStorageStrategy):
-    __metaclass__ = SingletonMeta
-    import_from_mixin(BitmaskStorageStrategyMixin)
-    # import_from_mixin(BasicStorageStrategyMixin)
-    # import_from_mixin(SparseStorageStrategyMixin)
-    # import_from_mixin(SmallIntegerStorageStrategyMixin)
-    erase, unerase = rerased.new_erasing_pair("sparse-small-integer-strategry")
-    erase = staticmethod(erase)
-    unerase = staticmethod(unerase)
-    strategy_tag = 'sparse-small-int'
-    # storage_type = SparseSmallIntegerStorage
-    # def dense_strategy(self):
-    #    return DenseSmallIntegerStorageStrategy
-    
 class DenseSmallIntegerStorage(DenseStorage):
     default_element = 0
 
