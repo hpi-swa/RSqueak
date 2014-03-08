@@ -114,27 +114,12 @@ class ListStorageStrategy(AbstractStorageStrategy):
         return self.erase([w_obj.strategy.fetch(space, w_obj, i) for i in range(length)])
 
 class BasicStorageStrategyMixin(object):
-    # Concrete class must implement: unwrap, unerase
-    # Concrete class must provide attribute: contained_type (or override can_contin_object)
-    
-    def _storage(self, w_obj):
+    # Concrete class must implement: unerase
+    def storage(self, w_obj):
         return self.unerase(w_obj.get_storage(self))
-    def do_fetch(self, space, arr, n0):
-        # Default: access single unwrapped object at this location
-        return self.wrap(space, arr[n0])
-    def do_store(self, space, arr, n0, val):
-        # Default implementation: store the single unwrapped object at this position.
-        arr[n0] = self.unwrap(space, val)
-    def size_of(self, w_obj):
-        return len(self._storage(w_obj).arr) / self.slots_per_object(w_obj)
-    def slots_per_object(self, w_obj):
-        # Default: Each object is stored in a single slot.
-        return 1
-    def can_contain_object(self, w_val):
-        return isinstance(w_val, self.contained_type)
 
 class DenseStorage(object):
-    # Concrete class must provide attribute: default_element
+    # Subclass must provide attribute: default_element
     _immutable_fields_ = ['arr']
     _attrs_ = ['arr', '_from', '_to']
     _settled_ = True
@@ -145,17 +130,16 @@ class DenseStorage(object):
         self.arr = [self.default_element] * size
 
 class DenseStorageStrategyMixin(object):
-    # Concrete class must implement: erase, unerase, wrap, unwrap, sparse_strategy
-    # Concrete class must provide attributes: contained_type, storage_type
+    # Concrete class must implement: storage, erase, do_fetch, do_store, sparse_strategy
+    # Concrete class must provide attributes: storage_type (subclass of DenseStorage)
     
     def fetch(self, space, w_obj, n0):
-        store = self._storage(w_obj)
+        store = self.storage(w_obj)
         if n0 < store._from or n0 >= store._to:
             return model.w_nil
         return self.do_fetch(space, store.arr, n0)
     def store(self, space, w_obj, n0, w_val):
-        store = self._storage(w_obj)
-        
+        store = self.storage(w_obj)
         if not self.can_contain_object(w_val):
             if w_val == model.w_nil:
                 if store._to - 1 == n0: # Optimize Collection >> remove:
@@ -214,16 +198,16 @@ class SparseStorage(object):
         self.nil_flags = nil_flags
     
 class SparseStorageStrategyMixin(object):
-    # Concrete class must implement: erase, unerase, wrap, unwrap, dense_strategy
-    # Concrete class must provide attributes: contained_type, storage_type
+    # Concrete class must implement: storage, erase, do_fetch, do_store, dense_strategy
+    # Concrete class must provide attributes: storage_type (Subclass of SparseStorage)
     
     def fetch(self, space, w_obj, n0):
-        store = self._storage(w_obj)
+        store = self.storage(w_obj)
         if store.nil_flags[n0]:
             return model.w_nil
         return self.do_fetch(space, store.arr, n0)
     def store(self, space, w_obj, n0, w_val):
-        store = self._storage(w_obj)
+        store = self.storage(w_obj)
         if not self.can_contain_object(w_val):
             if w_val == model.w_nil:
                 # TODO - generelize to AllNilStorage by maintaining a counter of nil-elements
@@ -252,7 +236,7 @@ class SparseStorageStrategyMixin(object):
         old_strategy = w_obj.strategy
         if isinstance(old_strategy, self.dense_strategy()):
             # Optimized transition from dense to sparse strategy
-            store = old_strategy._storage(w_obj)
+            store = old_strategy.storage(w_obj)
             return self.erase(self.copy_from_dense_storage(store, reuse_storage))
         else:
             return AbstractStorageStrategy.copy_storage_from(self, space, w_obj, reuse_storage)
@@ -324,10 +308,14 @@ class SmallIntegerStorageStrategyMixin(object):
     contained_type = model.W_SmallInteger
     def needs_objspace(self):
         return True
-    def wrap(self, space, obj):
-        return space.wrap_int(obj)
-    def unwrap(self, space, w_obj):
-        return space.unwrap_int(w_obj)
+    def do_fetch(self, space, arr, n0):
+        return space.wrap_int(arr[n0])
+    def do_store(self, space, arr, n0, val):
+        arr[n0] = space.unwrap_int(val)
+    def size_of(self, w_obj):
+        return len(self.storage(w_obj).arr)
+    def can_contain_object(self, w_val):
+        return isinstance(w_val, model.W_SmallInteger)
     
 class SparseSmallIntegerStorage(SparseStorage):
     default_element = 0
@@ -351,7 +339,6 @@ class DenseSmallIntegerStorage(DenseStorage):
 
 class DenseSmallIntegerStorageStrategy(AbstractStorageStrategy):
     __metaclass__ = SingletonMeta
-    import_from_mixin(BasicStorageStrategyMixin)
     import_from_mixin(DenseStorageStrategyMixin)
     import_from_mixin(SmallIntegerStorageStrategyMixin)
     erase, unerase = rerased.new_erasing_pair("dense-small-integer-strategry")
@@ -361,177 +348,6 @@ class DenseSmallIntegerStorageStrategy(AbstractStorageStrategy):
     storage_type = DenseSmallIntegerStorage
     def sparse_strategy(self):
         return SparseSmallIntegerStorageStrategy
-
-class InliningListStorageStrategyMixin(object):
-    
-    def _storage(self, w_obj):
-        return self.unerase(w_obj.get_storage(self))
-        
-    def needs_objspace(self):
-        return True
-    
-    @staticmethod
-    def is_inlineable_object(space, w_obj):
-        return (isinstance(w_obj, W_PointersObject) and
-            not w_obj.s_class.isvariable() and
-            InliningListStrategyMixin.has_only_smallint_fields(space, w_obj))
-            
-    @staticmethod
-    def has_only_smallint_fields(space, w_obj):
-        for i in range(0, self._storage(w_obj).s_inlined_class._instance_size):
-            if not isinstance(w_obj.fetch(space, i), W_SmallInteger):
-                return False
-        return True
-    
-    def can_contain_object(self, w_obj):
-        return (isinstance(w_obj, W_PointersObject) and
-            w_obj.s_class == self._storage(w_obj).s_inlined_class and
-            InliningListStrategyMixin.has_only_smallint_fields(space, w_obj))
-    
-    def do_fetch(self, space, w_container_obj, n0):
-        store = self._storage(w_obj)
-        w_referencing_obj = W_PointersObject(space, store.s_inlined_class, 0)
-        w_referencing_obj.hash = store.hashes[n0]
-        # The referencing object should never get a shadow!
-        # TODO - probably create special subclass of AbstractObjectWithIdentityHash
-        self.make_referencing_object(w_referencing_obj, w_container_obj, n0)
-        return w_referencing_obj
-    
-    def make_referencing_object(self, w_referencing_obj, w_container_obj, n0):
-        # TODO -- make a complete copy of the object, if we assume read-only objects.
-        w_referencing_obj.switch_strategy(InlinedObjectStrategy.singleton)
-        InlinedObjectStrategy.singleton.set_object_storage(w_referencing_obj, w_container_obj, n0)
-    
-    def do_store(self, space, w_obj, n0, w_val):
-        if self.fetch(space, w_obj, n0) != model.w_nil:
-            # An object was already stored here -> deoptimize.
-            self.deoptimize(space, w_obj)
-            return w_obj.store(space, n0, w_val)
-        store = self._storage(w_obj)
-        store.hashes[n0] = w_val.gethash()
-        for i in range(0, store.s_contained_class._instance_size):
-            store.arr[n0 + i] = space.unwrap_int(w_val.fetch(space, i))
-        # The input object itself must be converted to be a reference inside this list.
-        # TODO -- don't do this if we assume read-only objects.
-        self.make_referencing_object(w_val, w_obj, n0)
-        
-    def size_of(self, w_obj):
-        return (len(self._storage(w_obj).arr) / 
-                self._storage(w_obj).s_inlined_class._instance_size)
-    
-    def get_inlined_field(self, space, w_obj, object_index, field_index):
-        store = self._storage(w_obj)
-        return space.wrap_int(store.arr[object_index + field_index])
-    
-    def put_inlined_field(self, space, w_obj, object_index, field_index, w_val):
-        store = self._storage(w_obj)
-        store.arr[object_index + field_index] = space.unwrap_int(w_val)
-    
-class AbstractInliningListStorageStrategy(AbstractStorageStrategy):
-    # The two inlining storage types need a joined super class.
-    def get_inlined_field(self, space, w_obj, object_index, field_index):
-        raise NotImplementedError("Abstract base class")
-    def put_inlined_field(self, space, w_obj, object_index, field_index, w_val):
-        raise NotImplementedError("Abstract base class")
-    def deoptimize(self, space, w_obj):
-        # TODO -- Create special strategy that holds the old 
-        # list (to maintain objects with an InlinedObjectStrategy) and
-        # a new list that contains regular, deoptimized copies of the formerly inlined objects.
-        # The old list will be used by get_inlined_field/put_inlined_field,
-        # the new list will be used by fetch/store
-        raise NotImplementedError("TODO")
-
-class DenseInliningStorage(DenseStorage):
-    default_element = 0
-    def __init__(self, _from, _to, size):
-        DenseStorage.__init__(self, _from, _to, size)
-        self.hashes = [0] * size
-        self.s_inlined_class = None
-
-class DenseInliningListStorageStrategy(AbstractInliningListStorageStrategy):
-    __metaclass__ = SingletonMeta
-    import_from_mixin(DenseStorageStrategyMixin)
-    import_from_mixin(InliningListStorageStrategyMixin)
-    erase, unerase = rerased.new_erasing_pair("dense-inlining-list-storage-strategy")
-    erase = staticmethod(erase)
-    unerase = staticmethod(unerase)
-    strategy_tag = 'dense-inlining-list'
-    storage_type = DenseInliningStorage
-    def sparse_strategy():
-        return SparseInliningListStorageStrategy
-
-class SparseInliningStorage(SparseStorage):
-    default_element = 0
-    def __init__(self, arr, nil_flags):
-        SparseStorage.__init__(self, arr, nil_flags)
-        self.hashes = [0] * size
-        self.s_inlined_class = None
-
-class SparseInliningListStorageStrategy(AbstractInliningListStorageStrategy):
-    __metaclass__ = SingletonMeta
-    import_from_mixin(SparseStorageStrategyMixin)
-    import_from_mixin(InliningListStorageStrategyMixin)
-    erase, unerase = rerased.new_erasing_pair("dense-inlining-list-storage-strategy")
-    erase = staticmethod(erase)
-    unerase = staticmethod(unerase)
-    strategy_tag = 'dense-inlining-list'
-    storage_type = SparseInliningStorage
-    def sparse_strategy():
-        return SparseInliningListStorageStrategy
-    def copy_from_dense_storage(self, store, reuse_storage):
-        new_store = SparseStorageStrategyMixin.copy_from_dense_storage(self, store, reuse_storage)
-        hashes = store.hashes
-        if not reuse_storage:
-            hashes = [x for x in hashes]
-        new_store.hashes = hashes
-        new_store.s_inlined_class = store.s_inlined_class
-        return new_store
-
-class InlinedObjectStorage(object):
-    attrs = ['w_referenced', 'n0']
-    def __init__(self, w_referenced, n0):
-        self.w_referenced = w_referenced
-        self.n0 = n0
-
-class InlinedObjectStrategy(AbstractStorageStrategy):
-    __metaclass__ = SingletonMeta
-    erase, unerase = rerased.new_erasing_pair("inlined-object-storage-strategy")
-    erase = staticmethod(erase)
-    unerase = staticmethod(unerase)
-    strategy_tag = 'inlined object'
-    
-    def fetch(self, space, w_obj, n0):
-        my_store = self._storage(w_obj)
-        w_referenced = my_store.w_referenced
-        return w_referenced.storage.get_inlined_field(space, w_referenced, my_store.n0, n0)
-        
-    def store(self, space, w_obj, n0, w_val):
-        my_store = self._storage(w_obj)
-        w_referenced = my_store.w_referenced
-        if not isinstance(w_val, model.W_SmallInteger):
-            # The deoptimization happens in-place. put_inlined_field() can still be called
-            # after the deoptimization.
-            w_referenced.storage.deoptimize(space, w_referenced)
-        w_referenced.storage.put_inlined_field(space, w_referenced, my_store.n0, n0, w_val)
-        
-    def set_object_storage(self, w_referencing_obj, w_container_obj, n0):
-        store = self._storage(w_referencing_obj)
-        store.w_referenced = w_container_obj
-        store.n0 = n0
-    
-    def size_of(self, w_obj):
-        store = self._storage(w_obj)
-        referenced_store = store.w_referenced.strategy._storage(store.w_referenced)
-        return referenced_store.s_inlined_class._instance_size
-    def initial_storage(self, space, size):
-        return self.erase(InlinedObjectStorage(None, 0))
-    def storage_for_list(self, space, collection):
-        # TODO -- make sure this is true.
-        raise NotImplementedException("An inlined object cannot exist at image startup")
-    def copy_storage_from(self, space, w_obj, reuse_storage=False):
-        # The storage of an inlined object reference will be initialized explicitely
-        # by calling set_object_storage()
-        pass
 
 class TypeTag():
     pass
