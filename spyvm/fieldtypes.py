@@ -155,6 +155,7 @@ class DenseStorageStrategyMixin(object):
         return self.do_fetch(space, store.arr, n0)
     def store(self, space, w_obj, n0, w_val):
         store = self._storage(w_obj)
+        
         if not self.can_contain_object(w_val):
             if w_val == model.w_nil:
                 if store._to - 1 == n0: # Optimize Collection >> remove:
@@ -264,7 +265,61 @@ class SparseStorageStrategyMixin(object):
         if not reuse_storage:
             arr = [x for x in arr]
         return self.storage_type(arr, nil_flags)
+
+BITS_PER_WORD = 32
+class BitmaskStorageStrategyMixin(object):
+    def _storage(self, w_obj):
+        return self.unerase(w_obj.get_storage(self))
     
+    def clear_nonnil_bit(self, arr, n0):
+        l = arr[0]
+        arr[1 + l + (n0 / BITS_PER_WORD)] &= ~(1 << (n0 % BITS_PER_WORD))
+    def set_nonnil_bit(self, arr, n0):
+        l = arr[0]
+        arr[1 + l + (n0 / BITS_PER_WORD)] |= (1 << (n0 % BITS_PER_WORD))
+    def get_nonnil_bit(self, arr, n0):
+        l = arr[0]
+        mask = arr[1 + l + (n0 / BITS_PER_WORD)]
+        return mask & (1 << (n0 % BITS_PER_WORD))
+    
+    def size_of(self, w_obj):
+        arr = self._storage(w_obj)
+        return arr[0]
+    
+    def fetch(self, space, w_obj, n0):
+        arr = self._storage(w_obj)
+        if self.get_nonnil_bit(arr, n0):
+            return space.wrap_int(arr[n0 + 1])
+        else:
+            return model.w_nil
+        
+    def store(self, space, w_obj, n0, w_val):
+        arr = self._storage(w_obj)
+        if not isinstance(w_val, model.W_SmallInteger):
+            if w_val == model.w_nil:
+                self.clear_nonnil_bit(arr, n0)
+                return
+            else:
+                return w_obj.store_with_new_strategy(space, ListStorageStrategy.singleton, n0, w_val)
+        arr[1 + n0] = space.unwrap_int(w_val)
+        self.set_nonnil_bit(arr, n0)
+        
+    def initial_storage(self, space, size):
+        arr = [0] * (1 + size + (size / BITS_PER_WORD) + 1)
+        arr[0] = size
+        return self.erase(arr)
+        
+    def storage_for_list(self, space, collection):
+        length = len(collection)
+        arr = [0] * (1 + length + (length / BITS_PER_WORD) + 1)
+        arr[0] = length
+        for i in range(length):
+            w_val = collection[i]
+            if w_val != model.w_nil:
+                self.set_nonnil_bit(arr, i)
+                arr[1 + i] = space.unwrap_int(w_val)
+        return self.erase(arr)
+        
 class SmallIntegerStorageStrategyMixin(object):
     contained_type = model.W_SmallInteger
     def needs_objspace(self):
@@ -279,16 +334,17 @@ class SparseSmallIntegerStorage(SparseStorage):
 
 class SparseSmallIntegerStorageStrategy(AbstractStorageStrategy):
     __metaclass__ = SingletonMeta
-    import_from_mixin(BasicStorageStrategyMixin)
-    import_from_mixin(SparseStorageStrategyMixin)
-    import_from_mixin(SmallIntegerStorageStrategyMixin)
+    import_from_mixin(BitmaskStorageStrategyMixin)
+    # import_from_mixin(BasicStorageStrategyMixin)
+    # import_from_mixin(SparseStorageStrategyMixin)
+    # import_from_mixin(SmallIntegerStorageStrategyMixin)
     erase, unerase = rerased.new_erasing_pair("sparse-small-integer-strategry")
     erase = staticmethod(erase)
     unerase = staticmethod(unerase)
     strategy_tag = 'sparse-small-int'
-    storage_type = SparseSmallIntegerStorage
-    def dense_strategy(self):
-        return DenseSmallIntegerStorageStrategy
+    # storage_type = SparseSmallIntegerStorage
+    # def dense_strategy(self):
+    #    return DenseSmallIntegerStorageStrategy
     
 class DenseSmallIntegerStorage(DenseStorage):
     default_element = 0
