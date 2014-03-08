@@ -114,27 +114,12 @@ class ListStorageStrategy(AbstractStorageStrategy):
         return self.erase([w_obj.strategy.fetch(space, w_obj, i) for i in range(length)])
 
 class BasicStorageStrategyMixin(object):
-    # Concrete class must implement: unwrap, unerase
-    # Concrete class must provide attribute: contained_type (or override can_contin_object)
-    
-    def _storage(self, w_obj):
+    # Concrete class must implement: unerase
+    def storage(self, w_obj):
         return self.unerase(w_obj.get_storage(self))
-    def do_fetch(self, space, arr, n0):
-        # Default: access single unwrapped object at this location
-        return self.wrap(space, arr[n0])
-    def do_store(self, space, arr, n0, val):
-        # Default implementation: store the single unwrapped object at this position.
-        arr[n0] = self.unwrap(space, val)
-    def size_of(self, w_obj):
-        return len(self._storage(w_obj).arr) / self.slots_per_object(w_obj)
-    def slots_per_object(self, w_obj):
-        # Default: Each object is stored in a single slot.
-        return 1
-    def can_contain_object(self, w_val):
-        return isinstance(w_val, self.contained_type)
 
 class DenseStorage(object):
-    # Concrete class must provide attribute: default_element
+    # Subclass must provide attribute: default_element
     _immutable_fields_ = ['arr']
     _attrs_ = ['arr', '_from', '_to']
     _settled_ = True
@@ -145,16 +130,16 @@ class DenseStorage(object):
         self.arr = [self.default_element] * size
 
 class DenseStorageStrategyMixin(object):
-    # Concrete class must implement: erase, unerase, wrap, unwrap, sparse_strategy
-    # Concrete class must provide attributes: contained_type, storage_type
+    # Concrete class must implement: storage, erase, do_fetch, do_store, sparse_strategy
+    # Concrete class must provide attributes: storage_type (subclass of DenseStorage)
     
     def fetch(self, space, w_obj, n0):
-        store = self._storage(w_obj)
+        store = self.storage(w_obj)
         if n0 < store._from or n0 >= store._to:
             return model.w_nil
         return self.do_fetch(space, store.arr, n0)
     def store(self, space, w_obj, n0, w_val):
-        store = self._storage(w_obj)
+        store = self.storage(w_obj)
         if not self.can_contain_object(w_val):
             if w_val == model.w_nil:
                 if store._to - 1 == n0: # Optimize Collection >> remove:
@@ -213,16 +198,16 @@ class SparseStorage(object):
         self.nil_flags = nil_flags
     
 class SparseStorageStrategyMixin(object):
-    # Concrete class must implement: erase, unerase, wrap, unwrap, dense_strategy
-    # Concrete class must provide attributes: contained_type, storage_type
+    # Concrete class must implement: storage, erase, do_fetch, do_store, dense_strategy
+    # Concrete class must provide attributes: storage_type (Subclass of SparseStorage)
     
     def fetch(self, space, w_obj, n0):
-        store = self._storage(w_obj)
+        store = self.storage(w_obj)
         if store.nil_flags[n0]:
             return model.w_nil
         return self.do_fetch(space, store.arr, n0)
     def store(self, space, w_obj, n0, w_val):
-        store = self._storage(w_obj)
+        store = self.storage(w_obj)
         if not self.can_contain_object(w_val):
             if w_val == model.w_nil:
                 # TODO - generelize to AllNilStorage by maintaining a counter of nil-elements
@@ -251,7 +236,7 @@ class SparseStorageStrategyMixin(object):
         old_strategy = w_obj.strategy
         if isinstance(old_strategy, self.dense_strategy()):
             # Optimized transition from dense to sparse strategy
-            store = old_strategy._storage(w_obj)
+            store = old_strategy.storage(w_obj)
             return self.erase(self.copy_from_dense_storage(store, reuse_storage))
         else:
             return AbstractStorageStrategy.copy_storage_from(self, space, w_obj, reuse_storage)
@@ -264,22 +249,24 @@ class SparseStorageStrategyMixin(object):
         if not reuse_storage:
             arr = [x for x in arr]
         return self.storage_type(arr, nil_flags)
-    
-class SmallIntegerStorageStrategyMixin(object):
-    contained_type = model.W_SmallInteger
+
+class SmallIntegerStorageStrategyMixin(BasicStorageStrategyMixin):
     def needs_objspace(self):
         return True
-    def wrap(self, space, obj):
-        return space.wrap_int(obj)
-    def unwrap(self, space, w_obj):
-        return space.unwrap_int(w_obj)
+    def do_fetch(self, space, arr, n0):
+        return space.wrap_int(arr[n0])
+    def do_store(self, space, arr, n0, val):
+        arr[n0] = space.unwrap_int(val)
+    def size_of(self, w_obj):
+        return len(self.storage(w_obj).arr)
+    def can_contain_object(self, w_val):
+        return isinstance(w_val, model.W_SmallInteger)
     
 class SparseSmallIntegerStorage(SparseStorage):
     default_element = 0
 
 class SparseSmallIntegerStorageStrategy(AbstractStorageStrategy):
     __metaclass__ = SingletonMeta
-    import_from_mixin(BasicStorageStrategyMixin)
     import_from_mixin(SparseStorageStrategyMixin)
     import_from_mixin(SmallIntegerStorageStrategyMixin)
     erase, unerase = rerased.new_erasing_pair("sparse-small-integer-strategry")
@@ -295,7 +282,6 @@ class DenseSmallIntegerStorage(DenseStorage):
 
 class DenseSmallIntegerStorageStrategy(AbstractStorageStrategy):
     __metaclass__ = SingletonMeta
-    import_from_mixin(BasicStorageStrategyMixin)
     import_from_mixin(DenseStorageStrategyMixin)
     import_from_mixin(SmallIntegerStorageStrategyMixin)
     erase, unerase = rerased.new_erasing_pair("dense-small-integer-strategry")
