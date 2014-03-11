@@ -679,9 +679,15 @@ class W_PointersObject(W_AbstractPointersObject):
     
     def set_storage(self, storage):
         self._storage = storage
+        self.changed()
     
-    def get_storage(self, strategy):
+    @elidable_after_versioning
+    def get_storage(self):
         return self._storage
+    
+    @elidable_after_versioning
+    def get_strategy(self):
+        return self.strategy
     
     def fillin_pointers(self, space, collection):
         from spyvm.fieldtypes import strategy_for_list
@@ -723,16 +729,13 @@ class W_PointersObject(W_AbstractPointersObject):
             i = i+1
     
     def _fetch(self, space, n0):
-        strategy = jit.promote(self.strategy)
-        return strategy.fetch(space, self, n0)
+        return self.get_strategy().fetch(space, self, n0)
 
     def _store(self, space, n0, w_value):
-        strategy = jit.promote(self.strategy)
-        return strategy.store(space, self, n0, w_value)
+        return self.get_strategy().store(space, self, n0, w_value)
 
     def basic_size(self):
-        strategy = jit.promote(self.strategy)
-        return strategy.size_of(self)
+        return self.get_strategy().size_of(self)
 
     def become(self, w_other):
         if not isinstance(w_other, W_PointersObject):

@@ -35,7 +35,7 @@ class AbstractStorageStrategy(object):
     def copy_storage_from(self, space, w_obj, reuse_storage=False):
         old_strategy = w_obj.strategy
         if old_strategy == self and reuse_storage:
-            return w_obj.get_storage(self)
+            return w_obj.get_storage()
         if isinstance(old_strategy, AllNilStorageStrategy):
             return self.initial_storage(space, old_strategy.size_of(w_obj))
         else:
@@ -78,7 +78,7 @@ class AllNilStorageStrategy(AbstractStorageStrategy):
         return w_obj.store_with_new_strategy(space, ListStorageStrategy.singleton, n0, w_val)
         
     def size_of(self, w_obj):
-        return self.unerase(w_obj.get_storage(self)).size
+        return self.unerase(w_obj.get_storage()).size
     def initial_storage(self, space, size):
         return self.erase(SizeStorage(size))
     def storage_for_list(self, space, collection):
@@ -97,7 +97,7 @@ class ListStorageStrategy(AbstractStorageStrategy):
     strategy_tag = 'list'
     
     def get_list(self, w_obj):
-        return self.unerase(w_obj.get_storage(self))
+        return self.unerase(w_obj.get_storage())
     def fetch(self, space, w_obj, n0):
         return self.get_list(w_obj)[n0]
     def store(self, space, w_obj, n0, w_val):
@@ -116,7 +116,7 @@ class ListStorageStrategy(AbstractStorageStrategy):
 class BasicStorageStrategyMixin(object):
     # Concrete class must implement: unerase
     def storage(self, w_obj):
-        return self.unerase(w_obj.get_storage(self))
+        return self.unerase(w_obj.get_storage())
 
 class DenseStorage(object):
     # Subclass must provide attribute: default_element
@@ -332,10 +332,10 @@ class FixedSizeFieldTypes(AbstractStorageStrategy):
         return self.erase([x for x in collection])
     
     def size_of(self, w_obj):
-        return len(self.unerase(w_obj.get_storage(self)))
+        return len(self.unerase(w_obj.get_storage()))
     
     def fetch(self, space, w_object, n0):
-        w_result = self.unerase(w_object.get_storage(self))[n0]
+        w_result = self.unerase(w_object.get_storage())[n0]
         assert w_result is not None
         types = self.types
         # TODO - try 'assert isinstance' instead.
@@ -352,7 +352,7 @@ class FixedSizeFieldTypes(AbstractStorageStrategy):
         changed_type = w_value.fieldtype()
         if types[n0] is not changed_type:
             w_object.strategy = self.sibling(n0, changed_type)
-        self.unerase(w_object.get_storage(self))[n0] = w_value
+        self.unerase(w_object.get_storage())[n0] = w_value
 
     @jit.elidable
     def sibling(self, n0, changed_type):
