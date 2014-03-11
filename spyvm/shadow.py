@@ -1,17 +1,9 @@
 import weakref
-from spyvm import model, constants, error, wrapper
+from spyvm import model, constants, error, wrapper, version
+from spyvm.version import elidable_after_versioning
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib import rarithmetic, jit
-
-def make_elidable_after_versioning(func):
-    @jit.elidable
-    def elidable_func(self, version, *args):
-        return func(self, *args)
-    def meth(self, *args):
-        jit.promote(self)
-        version = jit.promote(self.version)
-        return elidable_func(self, version, *args)
-    return meth
+from rpython.rlib.objectmodel import import_from_mixin
 
 class AbstractShadow(object):
     """A shadow is an optional extra bit of information that
@@ -38,10 +30,13 @@ class AbstractShadow(object):
 class AbstractCachingShadow(AbstractShadow):
     _immutable_fields_ = ['version?']
     _attrs_ = ['version']
+    import_from_mixin(version.VersionMixin)
 
+    version = None
+    
     def __init__(self, space, w_self):
         AbstractShadow.__init__(self, space, w_self)
-        self.version = Version()
+        self.changed()
 
     def attach_shadow(self):
         self.w_self().store_shadow(self)
@@ -59,11 +54,6 @@ class AbstractCachingShadow(AbstractShadow):
         AbstractShadow.store(self, n0, w_value)
         self.update()
 
-    def change(self):
-        self.version = Version()
-
-class Version:
-    pass
 # ____________________________________________________________
 
 POINTERS = 0
@@ -87,7 +77,7 @@ class ClassShadow(AbstractCachingShadow):
 
     _attrs_ = ["name", "_instance_size", "instance_varsized", "instance_kind",
                 "_s_methoddict", "_s_superclass", "subclass_s"]
-
+    
     def __init__(self, space, w_self):
         # fields added here should also be in objspace.py:56ff, 300ff
         self.name = ''
@@ -263,12 +253,12 @@ class ClassShadow(AbstractCachingShadow):
         " True if instances of this class have data stored as numerical bytes "
         return self.format == BYTES
 
-    @make_elidable_after_versioning
+    @elidable_after_versioning
     def isvariable(self):
         " True if instances of this class have indexed inst variables "
         return self.instance_varsized
 
-    @make_elidable_after_versioning
+    @elidable_after_versioning
     def instsize(self):
         " Number of named instance variables for each instance of this class "
         return self._instance_size
@@ -293,7 +283,7 @@ class ClassShadow(AbstractCachingShadow):
         del self.subclass_s[s_other]
 
     def changed(self):
-        self.superclass_changed(Version())
+        self.superclass_changed(version.Version())
 
     # this is done, because the class-hierarchy contains cycles
     def superclass_changed(self, version):
@@ -308,7 +298,7 @@ class ClassShadow(AbstractCachingShadow):
     def __repr__(self):
         return "<ClassShadow %s>" % (self.name or '?',)
 
-    @make_elidable_after_versioning
+    @elidable_after_versioning
     def lookup(self, w_selector):
         look_in_shadow = self
         while look_in_shadow is not None:
@@ -1033,6 +1023,7 @@ class CompiledMethodShadow(object):
               "argsize", "islarge",
               "w_compiledin", "version"]
     _immutable_fields_ = ["version?", "_w_self"]
+    import_from_mixin(version.VersionMixin)
 
     def __init__(self, w_compiledmethod):
         self._w_self = w_compiledmethod
@@ -1041,11 +1032,11 @@ class CompiledMethodShadow(object):
     def w_self(self):
         return self._w_self
 
-    @make_elidable_after_versioning
+    @elidable_after_versioning
     def getliteral(self, index):
         return self.literals[index]
 
-    @make_elidable_after_versioning
+    @elidable_after_versioning
     def compute_frame_size(self):
         # From blue book: normal mc have place for 12 temps+maxstack
         # mc for methods with islarge flag turned on 32
@@ -1058,7 +1049,7 @@ class CompiledMethodShadow(object):
 
     def update(self):
         w_compiledmethod = self._w_self
-        self.version = Version()
+        self.changed()
         self.bytecode = "".join(w_compiledmethod.bytes)
         self.bytecodeoffset = w_compiledmethod.bytecodeoffset()
         self.literalsize = w_compiledmethod.getliteralsize()
@@ -1081,11 +1072,11 @@ class CompiledMethodShadow(object):
                 association = wrapper.AssociationWrapper(None, w_association)
                 self.w_compiledin = association.value()
 
-    @make_elidable_after_versioning
+    @elidable_after_versioning
     def tempsize(self):
         return self._tempsize
 
-    @make_elidable_after_versioning
+    @elidable_after_versioning
     def primitive(self):
         return self._primitive
 
@@ -1095,26 +1086,20 @@ class CompiledMethodShadow(object):
                 space, self, receiver, arguments, sender)
         return s_new
 
-    @make_elidable_after_versioning
+    @elidable_after_versioning
     def getbytecode(self, pc):
         return self.bytecode[pc]
 
 class CachedObjectShadow(AbstractCachingShadow):
 
+    @elidable_after_versioning
     def fetch(self, n0):
-        jit.promote(self)
-        version = self.version
-        jit.promote(version)
-        return self.safe_fetch(n0, version)
-
-    @jit.elidable
-    def safe_fetch(self, n0, version):
-        assert version is self.version
         return self._w_self._fetch(n0)
 
     def store(self, n0, w_value):
-        self.version = Version()
-        return self._w_self._store(n0, w_value)
+        res = self._w_self._store(n0, w_value)
+        self.changed()
+        return res
 
     def update(self): pass
 

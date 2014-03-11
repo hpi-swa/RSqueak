@@ -171,11 +171,11 @@ def test_replace_to_bc():
     w_object = blockcontext(pc=13)
     old_vars = w_object._vars
     s_object = w_object.as_blockcontext_get_shadow(space)
-    s_object._shadow = None
+    s_object.shadow = None
     s_newobject = w_object.as_blockcontext_get_shadow(space)
     assert ([s_newobject.fetch(i) for i in range(s_newobject.size())] ==
             [s_object.fetch(i) for i in range(s_newobject.size())])
-    assert w_object._shadow is s_newobject
+    assert w_object.shadow is s_newobject
 
 def test_compiledmethodshadow():
     from test_model import joinbits
@@ -222,7 +222,7 @@ def test_observee_shadow():
     assert o.notified
     assert w_o.fetch(space, 0) == 1
     try:
-        w_o._shadow.notify(Observer())
+        w_o.shadow.notify(Observer())
     except RuntimeError:
         pass
     else:
