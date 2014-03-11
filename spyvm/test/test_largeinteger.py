@@ -30,8 +30,7 @@ def test_initialize_string_class():
     initialize_class(w("string").getclass(tools.space))
 
 def perform_primitive(rcvr, w_selector, *args):
-
-    code = rcvr.getclass(space)._shadow.lookup(w_selector).primitive()
+    code = rcvr.getclass(space).shadow.lookup(w_selector).primitive()
     assert code
     func = primitives.prim_holder.prim_table[code]
     s_frame = MockFrame([rcvr] + list(args)).as_context_get_shadow(space)
@@ -52,7 +51,7 @@ def do_primitive(selector, operation, i=None, j=None, trace=False):
     try:
         w_selector = space.get_special_selector(selector)
     except Exception:
-        w_selector = find_symbol_in_methoddict_of(selector, w(intmask(candidates[0])).getclass(space)._shadow)
+        w_selector = find_symbol_in_methoddict_of(selector, w(intmask(candidates[0])).getclass(space).shadow)
 
     interp.trace=trace
     for i, v in enumerate(candidates):

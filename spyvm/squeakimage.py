@@ -308,7 +308,7 @@ class ImageReader(object):
         for chunk in self.chunks.itervalues():
             casted = chunk.g_object.w_object
             if isinstance(casted, model.W_PointersObject) and casted.has_shadow():
-                casted._shadow.update()
+                casted.shadow.update()
 
     def init_compactclassesarray(self):
         """ from the blue book (CompiledMethod Symbol Array PseudoContext LargePositiveInteger nil MethodDictionary Association Point Rectangle nil TranslatedMethod BlockContext MethodContext nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil ) """

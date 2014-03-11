@@ -57,12 +57,12 @@ def run_with_faked_primitive_methods(methods, func, active_context=None):
             assert space.get_special_selector(methname) is symbol
         s_class.installmethod(symbol, prim_meth)
 
-        assert space.w_nil._shadow is None
+        assert space.w_nil.shadow is None
     try:
         func(active_context) if active_context else func()
     finally:
         # Uninstall those methods:
-        assert space.w_nil._shadow is None
+        assert space.w_nil.shadow is None
         for (w_class, _, _, methname) in methods:
             s_class = w_class.as_class_get_shadow(space)
             s_class.update()
