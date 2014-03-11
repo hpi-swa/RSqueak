@@ -12,7 +12,7 @@ def new_frame():
 def test_simpleread():
     w_o = model.W_PointersObject(space, None, 2)
     w = wrapper.Wrapper(space, w_o)
-    w_o.store(0, "hello")
+    w_o.store(space, 0, "hello")
     assert w.read(0) == "hello"
     w.write(1, "b")
     assert w.read(1) == "b"
@@ -22,7 +22,7 @@ def test_simpleread():
 def test_accessor_generators():
     w_o = model.W_PointersObject(space, None, 1)
     w = wrapper.LinkWrapper(space, w_o)
-    w_o.store(0, "hello")
+    w_o.store(space, 0, "hello")
     assert w.next_link() == "hello"
     w.store_next_link("boe")
     assert w.next_link() == "boe"

@@ -1,6 +1,6 @@
 import random
 from spyvm import model, shadow, constants, interpreter
-from spyvm import objspace
+from spyvm import objspace, fieldtypes
 
 space = objspace.ObjSpace()
 
@@ -154,28 +154,30 @@ def test_methodcontext():
     assert s_object.getbytecode() == 101
     assert s_object.s_home() == s_object
 
+def assert_contains_nils(w_obj):
+    for i in range(w_obj.strategy.size_of(w_obj)):
+        assert model.w_nil == w_obj.strategy.fetch(i, space, w_obj)
+
 def test_attach_mc():
     w_m = method()
     w_object = methodcontext(pc=13, method=w_m)
-    old_vars = w_object._vars
     s_object = w_object.as_methodcontext_get_shadow(space)
-    assert w_object._vars is None
+    assert_contains_nils(w_object)
 
 def test_attach_bc():
     w_object = blockcontext(pc=13)
-    old_vars = w_object._vars
     s_object = w_object.as_blockcontext_get_shadow(space)
-    assert w_object._vars is None
+    assert_contains_nils(w_object)
 
 def test_replace_to_bc():
     w_object = blockcontext(pc=13)
-    old_vars = w_object._vars
     s_object = w_object.as_blockcontext_get_shadow(space)
     s_object.shadow = None
     s_newobject = w_object.as_blockcontext_get_shadow(space)
     assert ([s_newobject.fetch(i) for i in range(s_newobject.size())] ==
             [s_object.fetch(i) for i in range(s_newobject.size())])
     assert w_object.shadow is s_newobject
+    assert_contains_nils(w_object)
 
 def test_compiledmethodshadow():
     from test_model import joinbits

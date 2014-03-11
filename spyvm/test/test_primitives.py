@@ -2,7 +2,7 @@ import py
 import os
 import math
 from spyvm.primitives import prim_table, PrimitiveFailedError
-from spyvm import model, shadow, interpreter
+from spyvm import model, shadow, interpreter, fieldtypes
 from spyvm import constants, primitives, objspace, wrapper, display
 from spyvm.plugins import bitblt
 
@@ -14,7 +14,10 @@ space = objspace.ObjSpace()
 
 class MockFrame(model.W_PointersObject):
     def __init__(self, stack):
-        self.store_all([None] * 6 + stack + [space.w_nil] * 6)
+        size = 6 + len(stack) + 6
+        self.strategy = fieldtypes.ListStorageStrategy.singleton
+        self.set_storage(self.strategy.initial_storage(space, size))
+        self.store_all(space, [None] * 6 + stack + [space.w_nil] * 6)
         s_self = self.as_blockcontext_get_shadow()
         s_self.init_stack_and_temps()
         s_self.reset_stack()
