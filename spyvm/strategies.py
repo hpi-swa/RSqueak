@@ -90,6 +90,11 @@ class AllNilStorageStrategy(AbstractStorageStrategy):
 class ListStorageStrategyMixin(object):
     def get_list(self, w_obj):
         return self.unerase(w_obj.get_storage())
+    def fetch(self, space, w_obj, n0):
+        return self.get_list(w_obj)[n0]
+    def store(self, space, w_obj, n0, w_val):
+        # TODO enable generalization by maintaining a counter of elements that are nil.
+        self.get_list(w_obj)[n0] = w_val
     def size_of(self, w_obj):
         return len(self.get_list(w_obj))
     def initial_storage(self, space, size):
@@ -111,12 +116,6 @@ class ListStorageStrategy(AbstractStorageStrategy):
     strategy_tag = 'list'
     import_from_mixin(ListStorageStrategyMixin)
     
-    def fetch(self, space, w_obj, n0):
-        return self.get_list(w_obj)[n0]
-    def store(self, space, w_obj, n0, w_val):
-        # TODO enable generalization by maintaining a counter of elements that are nil.
-        self.get_list(w_obj)[n0] = w_val
-
 class BasicStorageStrategyMixin(object):
     # Concrete class must implement: unerase
     def storage(self, w_obj):
@@ -304,23 +303,6 @@ class FixedSizeStorageStrategy(AbstractStorageStrategy):
     unerase = staticmethod(unerase)
     strategy_tag = 'fixed-size'
     import_from_mixin(ListStorageStrategyMixin)
-    
-    def fetch(self, space, w_obj, n0):
-        w_res = self.get_list(w_obj)[n0]
-        if isinstance(w_res, model.W_SmallInteger):
-            w_res = w_res.make_copy(space)
-        return w_res
-    def store(self, space, w_obj, n0, w_val):
-        assert n0 >= 0
-        arr = self.get_list(w_obj)
-        if isinstance(w_val, model.W_SmallInteger):
-            w_other = arr[n0]
-            if isinstance(w_other, model.W_SmallInteger):
-                w_other.value = w_val.value
-            else:
-                arr[n0] = w_val.make_copy(space)
-        else:
-            arr[n0] = w_val
 
 def strategy_of_size(s_containing_class, size):
     if s_containing_class is None:
