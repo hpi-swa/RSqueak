@@ -16,7 +16,7 @@ that create W_PointersObjects of correct size with attached shadows.
 """
 import sys, weakref
 from spyvm import constants, error, version
-from spyvm.version import elidable_after_versioning
+from spyvm.version import elidable_for_version
 
 from rpython.rlib import rrandom, objectmodel, jit, signature
 from rpython.rlib.rarithmetic import intmask, r_uint, r_int
@@ -535,7 +535,7 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         self.shadow = shadow
         self.changed()
 
-    @elidable_after_versioning
+    @elidable_for_version
     def _get_shadow(self):
         return self.shadow
     
@@ -681,11 +681,11 @@ class W_PointersObject(W_AbstractPointersObject):
         self._storage = storage
         self.changed()
     
-    @elidable_after_versioning
+    @elidable_for_version
     def get_storage(self):
         return self._storage
     
-    @elidable_after_versioning
+    @elidable_for_version
     def get_strategy(self):
         return self.strategy
     
