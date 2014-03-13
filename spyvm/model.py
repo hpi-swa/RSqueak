@@ -154,7 +154,7 @@ class W_SmallInteger(W_Object):
     # TODO can we tell pypy that its never larger then 31-bit?
     _attrs_ = ['value']
     __slots__ = ('value',)     # the only allowed slot here
-    _immutable_fields_ = ["value"]
+    _immutable_fields_ = ["value?"]
 
     def __init__(self, value):
         self.value = intmask(value)
@@ -168,6 +168,9 @@ class W_SmallInteger(W_Object):
     def invariant(self):
         return isinstance(self.value, int) and self.value < 0x8000
 
+    def make_copy(self, space):
+        return space.wrap_int(space.unwrap_int(self))
+    
     def lshift(self, space, shift):
         from rpython.rlib.rarithmetic import ovfcheck, intmask, r_uint
         # shift > 0, therefore the highest bit of upperbound is not set,
@@ -481,9 +484,11 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
 
 class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     """Common object."""
-    _attrs_ = ['shadow', 'version']
-    _immutable_fields_ = ['version?']
-    import_from_mixin(version.VersionMixin)
+    _attrs_ = ['shadow']
+    _immutable_fields_ = ['shadow?']
+    #import_from_mixin(version.VersionMixin)
+    def changed(self):
+        pass
 
     shadow = None # Default value
 
@@ -535,7 +540,6 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         self.shadow = shadow
         self.changed()
 
-    @elidable_for_version
     def _get_shadow(self):
         return self.shadow
     
@@ -651,6 +655,7 @@ strategy_stats = StrategyStatistics()
 
 class W_PointersObject(W_AbstractPointersObject):
     _attrs_ = ['_storage', 'strategy']
+    _immutable_fields = ['_storage?', 'strategy?']
     
     @jit.unroll_safe
     def __init__(self, space, w_class, size):
@@ -681,11 +686,9 @@ class W_PointersObject(W_AbstractPointersObject):
         self._storage = storage
         self.changed()
     
-    @elidable_for_version
     def get_storage(self):
         return self._storage
     
-    @elidable_for_version
     def get_strategy(self):
         return self.strategy
     

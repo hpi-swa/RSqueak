@@ -643,6 +643,25 @@ class ContextPartShadow(AbstractRedirectingShadow):
     # ______________________________________________________________________
     # Stack Manipulation
 
+    def stack_get(self, index0):
+        w_res = self._temps_and_stack[index0]
+        if isinstance(w_res, model.W_SmallInteger):
+            # Return a copy of the integer so it's safe to change it's value in-place.
+            # The JIT will remove this allocation.
+            return w_res.make_copy(self.space)
+        return w_res
+    
+    def stack_put(self, index0, w_val):
+        if isinstance(w_val, model.W_SmallInteger):
+            w_onstack = self._temps_and_stack[index0]
+            if isinstance(w_onstack, model.W_SmallInteger):
+                w_onstack.value = w_val.value
+            else:
+                # Make a copy of the integer object to be sure that it's not reference anywhere else.
+                self._temps_and_stack[index0] = w_res.make_copy(self.space)
+        else:
+            self._temps_and_stack[index0] = w_val
+    
     def stack(self):
         """NOT_RPYTHON""" # purely for testing
         return self._temps_and_stack[self.tempsize():self._stack_ptr]
@@ -659,7 +678,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
         #assert self._stack_ptr >= self.tempsize()
         #assert self._stack_ptr < self.stackend() - self.stackstart() + self.tempsize()
         ptr = jit.promote(self._stack_ptr)
-        self._temps_and_stack[ptr] = w_v
+        self.stack_put(ptr, w_v)
         self._stack_ptr = ptr + 1
 
     @jit.unroll_safe
@@ -672,11 +691,13 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
     def set_top(self, value, position=0):
         rpos = rarithmetic.r_uint(position)
-        self._temps_and_stack[self._stack_ptr + ~rpos] = value
+        ptr = self._stack_ptr + ~rpos
+        self.stack_put(ptr, value)
 
     def peek(self, idx):
         rpos = rarithmetic.r_uint(idx)
-        return self._temps_and_stack[jit.promote(self._stack_ptr) + ~rpos]
+        ptr = jit.promote(self._stack_ptr) + ~rpos
+        return self.stack_get(ptr)
 
     @jit.unroll_safe
     def pop_n(self, n):
@@ -952,10 +973,10 @@ class MethodContextShadow(ContextPartShadow):
         self._w_receiver = w_receiver
 
     def gettemp(self, index0):
-        return self._temps_and_stack[index0]
+        return self.stack_get(index0)
 
     def settemp(self, index0, w_value):
-        self._temps_and_stack[index0] = w_value
+        self.stack_put(index0, w_value)
 
     def w_home(self):
         return self.w_self()
