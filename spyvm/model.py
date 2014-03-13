@@ -154,7 +154,6 @@ class W_SmallInteger(W_Object):
     # TODO can we tell pypy that its never larger then 31-bit?
     _attrs_ = ['value']
     __slots__ = ('value',)     # the only allowed slot here
-    _immutable_fields_ = ["value"]
 
     def __init__(self, value):
         self.value = intmask(value)
@@ -510,8 +509,12 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
 
     def fetch(self, space, n0):
         if self.has_shadow():
-            return self._get_shadow().fetch(n0)
-        return self._fetch(space, n0)
+            w_res = self._get_shadow().fetch(n0)
+        else:
+            w_res = self._fetch(space, n0)
+        if isinstance(w_res, W_SmallInteger):
+            w_res = w_res.make_copy(space)
+        return w_res
 
     def store(self, space, n0, w_value):
         if self.has_shadow():

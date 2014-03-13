@@ -319,16 +319,16 @@ class __extend__(ContextPartShadow):
         self.push(interp.space.w_nil)
 
     def pushConstantMinusOneBytecode(self, interp, current_bytecode):
-        self.push(interp.space.w_minus_one)
+        self.push(interp.space.w_minus_one.make_copy(interp.space))
 
     def pushConstantZeroBytecode(self, interp, current_bytecode):
-        self.push(interp.space.w_zero)
+        self.push(interp.space.w_zero.make_copy(interp.space))
 
     def pushConstantOneBytecode(self, interp, current_bytecode):
-        self.push(interp.space.w_one)
+        self.push(interp.space.w_one.make_copy(interp.space))
 
     def pushConstantTwoBytecode(self, interp, current_bytecode):
-        self.push(interp.space.w_two)
+        self.push(interp.space.w_two.make_copy(interp.space))
 
     def pushActiveContextBytecode(self, interp, current_bytecode):
         self.push(self.w_self())
