@@ -1,0 +1,1349 @@
+[36cce31b3] {jit-log-opt-loop
+# Loop 0 (25: [0x1]pushReceiverVariableBytecode (do:)) : loop with 302 ops
+[p0]
++61: i1 = getfield_gc(p0, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++70: i2 = getfield_gc(p0, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++73: p3 = getfield_gc(p0, descr=<FieldP spyvm.shadow.ContextPartShadow.inst__s_sender 28>)
++76: p4 = getfield_gc(p0, descr=<FieldP spyvm.shadow.ContextPartShadow.inst__temps_and_stack 36>)
++79: p6 = getarrayitem_gc(p4, 0, descr=<ArrayP 4>)
++82: p8 = getarrayitem_gc(p4, 1, descr=<ArrayP 4>)
++85: p10 = getarrayitem_gc(p4, 2, descr=<ArrayP 4>)
++94: p12 = getarrayitem_gc(p4, 3, descr=<ArrayP 4>)
++103: p14 = getarrayitem_gc(p4, 4, descr=<ArrayP 4>)
++112: p16 = getarrayitem_gc(p4, 5, descr=<ArrayP 4>)
++121: p18 = getarrayitem_gc(p4, 6, descr=<ArrayP 4>)
++130: p20 = getarrayitem_gc(p4, 7, descr=<ArrayP 4>)
++139: p22 = getarrayitem_gc(p4, 8, descr=<ArrayP 4>)
++148: p24 = getarrayitem_gc(p4, 9, descr=<ArrayP 4>)
++157: p26 = getarrayitem_gc(p4, 10, descr=<ArrayP 4>)
++166: p28 = getarrayitem_gc(p4, 11, descr=<ArrayP 4>)
++175: p30 = getarrayitem_gc(p4, 12, descr=<ArrayP 4>)
++184: p32 = getarrayitem_gc(p4, 13, descr=<ArrayP 4>)
++193: p34 = getarrayitem_gc(p4, 14, descr=<ArrayP 4>)
++202: p36 = getarrayitem_gc(p4, 15, descr=<ArrayP 4>)
++211: p38 = getarrayitem_gc(p4, 16, descr=<ArrayP 4>)
++220: p40 = getarrayitem_gc(p4, 17, descr=<ArrayP 4>)
++229: p42 = getarrayitem_gc(p4, 18, descr=<ArrayP 4>)
++238: label(p0, i1, i2, p3, p6, p8, p10, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, descr=TargetToken(50701936))
+debug_merge_point(0, 0, '25: [0x1]pushReceiverVariableBytecode (do:)')
++256: guard_value(i1, 25, descr=<Guard0x307d950>) [p0, i1, i2, p3, p6, p8, p10, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++265: guard_class(p0, ConstClass(MethodContextShadow), descr=<Guard0x307d8d0>) [p0, i2, p3, p6, p8, p10, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++284: p45 = getfield_gc(p0, descr=<FieldP spyvm.shadow.MethodContextShadow.inst__w_method 44>)
++287: guard_value(p45, ConstPtr(ptr46), descr=<Guard0x307d850>) [p0, p45, i2, p3, p6, p8, p10, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++299: guard_not_invalidated(descr=<Guard0x307d7d0>) [p0, i2, p3, p6, p8, p10, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++299: p47 = getfield_gc(p0, descr=<FieldP spyvm.shadow.MethodContextShadow.inst__w_receiver 48>)
++302: i48 = getfield_gc(p0, descr=<FieldU spyvm.shadow.AbstractShadow.inst_space 12>)
++305: guard_class(p47, 6040288, descr=<Guard0x307d750>) [p0, i48, p47, i2, p3, p6, p8, p10, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++318: p50 = getfield_gc(p47, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++321: guard_isnull(p50, descr=<Guard0x307d6d0>) [p0, p50, p47, i2, p3, p6, p8, p10, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++329: p51 = getfield_gc(p47, descr=<FieldP spyvm.model.W_PointersObject.inst_fieldtypes 28>)
++332: guard_value(p51, ConstPtr(ptr52), descr=<Guard0x307d650>) [p0, p51, p47, i2, p3, p6, p8, p10, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++344: p53 = getfield_gc(p47, descr=<FieldP spyvm.model.W_PointersObject.inst__vars 24>)
++347: p55 = getarrayitem_gc(p53, 1, descr=<ArrayP 4>)
++350: guard_value(i2, 2, descr=<Guard0x307d5d0>) [p0, i2, p55, p3, p6, p8, p10, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
+debug_merge_point(0, 0, '26: [0x11]pushTemporaryVariableBytecode (do:)')
+debug_merge_point(0, 0, '27: [0xb5]bytecodePrimGreaterOrEqual (do:)')
++359: i57 = getfield_gc_pure(p55, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++362: guard_nonnull_class(p8, ConstClass(W_SmallInteger), descr=<Guard0x307d550>) [p0, i57, p8, p3, p6, p55, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++386: i59 = getfield_gc_pure(p8, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++395: i60 = int_ge(i57, i59)
+guard_true(i60, descr=<Guard0x307d4d0>) [p0, p3, p6, p8, p55, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
+debug_merge_point(0, 0, '28: [0xac]longJumpIfFalse (do:)')
+debug_merge_point(0, 0, '30: [0x10]pushTemporaryVariableBytecode (do:)')
+debug_merge_point(0, 0, '31: [0x11]pushTemporaryVariableBytecode (do:)')
+debug_merge_point(0, 0, '32: [0xca]bytecodePrimValueWithArg (do:)')
++403: guard_class(p6, 6040288, descr=<Guard0x307d450>) [p0, i48, p6, p3, p8, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++422: p62 = getfield_gc(p6, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_s_class 12>)
++425: p63 = getfield_gc(p62, descr=<FieldP spyvm.shadow.AbstractShadow.inst__w_self 8>)
++428: i65 = instance_ptr_eq(p63, ConstPtr(ptr64))
+guard_true(i65, descr=<Guard0x307d3d0>) [p0, p63, p3, p6, p8, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++440: guard_class(p63, 6040288, descr=<Guard0x307d350>) [p0, p6, p63, p3, p8, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++453: p67 = getfield_gc(p6, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++456: guard_nonnull_class(p67, ConstClass(BlockContextShadow), descr=<Guard0x307d2d0>) [p0, p67, p6, p3, p8, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++474: i69 = getfield_gc(p67, descr=<FieldS spyvm.shadow.BlockContextShadow.inst__eargc 44>)
++477: i71 = int_ne(1, i69)
+guard_false(i71, descr=<Guard0x307d250>) [p0, i69, p67, p3, p6, p8, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++486: i72 = ptr_eq(p67, p0)
+guard_false(i72, descr=<Guard0x307d1d0>) [p0, p67, p3, p6, p8, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++494: p73 = getfield_gc(p67, descr=<FieldP spyvm.shadow.ContextPartShadow.vable_token 20>)
++497: i75 = ptr_ne(p73, ConstPtr(null))
++512: cond_call(i75, 4712800, p67, descr=<Callv 0 r EF=2 OS=121>)
++551: i77 = getfield_gc(p67, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++566: guard_value(i77, 0, descr=<Guard0x307d150>) [p0, p67, i77, p3, p6, p8, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++575: p79 = getfield_gc(p67, descr=<FieldP spyvm.shadow.ContextPartShadow.inst__temps_and_stack 36>)
++578: i80 = getfield_gc(p67, descr=<FieldS spyvm.shadow.BlockContextShadow.inst__initialip 48>)
++581: i82 = getfield_gc(ConstPtr(ptr81), descr=<FieldU spyvm.interpreter.Interpreter.inst__loop 44>)
++608: setarrayitem_gc(p79, 0, p8, descr=<ArrayP 4>)
++611: setfield_gc(p67, 1, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++630: setfield_gc(p67, i80, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++645: setfield_gc(p67, p0, descr=<FieldP spyvm.shadow.ContextPartShadow.inst__s_sender 28>)
++654: guard_true(i82, descr=<Guard0x307d0d0>) [p0, p67, p3, p6, p8, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++662: i84 = getfield_gc(ConstPtr(ptr81), descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>)
++668: i86 = int_le(i84, 1)
+guard_false(i86, descr=<Guard0x307d050>) [p0, p67, p3, p6, p8, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++677: i88 = int_sub(i84, 1)
++686: p89 = getfield_gc(p67, descr=<FieldP spyvm.shadow.BlockContextShadow.inst__w_home 52>)
++689: i90 = getfield_gc(p67, descr=<FieldU spyvm.shadow.AbstractShadow.inst_space 12>)
++692: p91 = getfield_gc(p89, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++701: setfield_gc(ConstPtr(ptr81), i88, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>)
++719: guard_nonnull_class(p91, ConstClass(MethodContextShadow), descr=<Guard0x307cf90>) [p0, p67, i90, p89, p91, p3, p6, p8, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++743: p93 = getfield_gc(p91, descr=<FieldP spyvm.shadow.MethodContextShadow.inst__w_method 44>)
++746: guard_value(p93, ConstPtr(ptr94), descr=<Guard0x307cf10>) [p0, p67, p93, p3, p6, p8, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++758: i96 = int_lt(i80, 0)
+guard_false(i96, descr=<Guard0x307ce90>) [p0, i80, p67, p3, p6, p8, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++767: guard_value(i80, 11, descr=<Guard0x307ce10>) [p0, i80, p67, p3, p6, p8, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
+debug_merge_point(1, 1, '11: [0x69]storeAndPopTemporaryVariableBytecode (asOrderedCollection)')
++776: setarrayitem_gc(p79, 0, ConstPtr(null), descr=<ArrayP 4>)
++789: setfield_gc(p67, 0, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++802: setfield_gc(p67, 12, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++809: i101 = ptr_eq(p91, p0)
+guard_false(i101, descr=<Guard0x307cd90>) [p0, p67, p91, p8, p3, p6, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++821: p102 = getfield_gc(p91, descr=<FieldP spyvm.shadow.ContextPartShadow.vable_token 20>)
++824: i103 = ptr_ne(p102, ConstPtr(null))
++833: cond_call(i103, 4712800, p91, descr=<Callv 0 r EF=2 OS=121>)
++872: p105 = getfield_gc(p91, descr=<FieldP spyvm.shadow.ContextPartShadow.inst__temps_and_stack 36>)
+debug_merge_point(1, 1, '12: [0x10]pushTemporaryVariableBytecode (asOrderedCollection)')
++887: cond_call(i103, 4712800, p91, descr=<Callv 0 r EF=2 OS=121>)
++937: p108 = getarrayitem_gc(p105, 0, descr=<ArrayP 4>)
+debug_merge_point(1, 1, '13: [0x11]pushTemporaryVariableBytecode (asOrderedCollection)')
++946: cond_call(i103, 4712800, p91, descr=<Callv 0 r EF=2 OS=121>)
++1020: setarrayitem_gc(p105, 1, p8, descr=<ArrayP 4>)
+debug_merge_point(1, 1, '14: [0xe1]sendLiteralSelectorBytecode (asOrderedCollection)')
++1043: setarrayitem_gc(p79, 0, p108, descr=<ArrayP 4>)
++1046: setfield_gc(p67, 2, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++1059: setfield_gc(p67, 15, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++1086: setarrayitem_gc(p79, 1, p8, descr=<ArrayP 4>)
++1089: guard_class(p108, 6040288, descr=<Guard0x307cd10>) [p0, p67, i90, p108, p3, p6, p8, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++1102: p116 = getfield_gc(p108, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_s_class 12>)
++1105: guard_value(p116, ConstPtr(ptr117), descr=<Guard0x307cc90>) [p0, p67, p108, p116, p3, p6, p8, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++1117: p119 = getfield_gc(ConstPtr(ptr118), descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++1123: setfield_gc(p67, 1, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++1142: setarrayitem_gc(p79, 1, ConstPtr(null), descr=<ArrayP 4>)
++1149: guard_value(p119, ConstPtr(ptr122), descr=<Guard0x307cc10>) [p0, p67, i90, p108, p119, p3, p6, p8, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++1161: i123 = getfield_gc(ConstPtr(ptr81), descr=<FieldU spyvm.interpreter.Interpreter.inst_trace 46>)
++1168: setarrayitem_gc(p79, 0, ConstPtr(null), descr=<ArrayP 4>)
++1175: setfield_gc(p67, 0, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++1182: guard_false(i123, descr=<Guard0x307cb90>) [p0, p67, p3, p6, p8, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p108, i90]
++1190: i127 = int_le(i88, 1)
+guard_false(i127, descr=<Guard0x307cb10>) [p0, p67, p3, p6, p8, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p108, i90]
++1203: i129 = int_sub(i88, 1)
+debug_merge_point(2, 2, '0: [0x2]pushReceiverVariableBytecode (addLast:)')
++1212: p130 = getfield_gc(p108, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++1221: setfield_gc(ConstPtr(ptr81), i129, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>)
++1233: guard_isnull(p130, descr=<Guard0x307ca90>) [p0, p67, p130, p108, p3, p6, p8, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None, i90]
++1241: p132 = getfield_gc(p108, descr=<FieldP spyvm.model.W_PointersObject.inst_fieldtypes 28>)
++1244: guard_value(p132, ConstPtr(ptr133), descr=<Guard0x307ca10>) [p0, p67, p132, p108, p3, p6, p8, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None, i90]
++1256: p134 = getfield_gc(p108, descr=<FieldP spyvm.model.W_PointersObject.inst__vars 24>)
++1259: p136 = getarrayitem_gc(p134, 2, descr=<ArrayP 4>)
+debug_merge_point(2, 2, '1: [0x0]pushReceiverVariableBytecode (addLast:)')
++1262: p138 = getarrayitem_gc(p134, 0, descr=<ArrayP 4>)
+debug_merge_point(2, 2, '2: [0xc2]bytecodePrimSize (addLast:)')
++1265: p140 = getfield_gc(ConstPtr(ptr139), descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++1271: guard_value(p140, ConstPtr(ptr141), descr=<Guard0x307c990>) [p0, p67, p140, p3, p6, p8, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p138, p136, p108, i90]
++1283: guard_class(p138, 6040288, descr=<Guard0x307c910>) [p0, p67, i90, p138, p3, p6, p8, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None, p136, p108, None]
++1296: p143 = getfield_gc(p138, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_s_class 12>)
++1299: guard_value(p143, ConstPtr(ptr144), descr=<Guard0x307c890>) [p0, p67, p138, p143, p3, p6, p8, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None, p136, p108, i90]
++1311: p145 = getfield_gc(p138, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++1314: guard_isnull(p145, descr=<Guard0x307c810>) [p0, p67, p138, p145, p3, p6, p8, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None, p136, p108, i90]
++1322: p146 = getfield_gc(p138, descr=<FieldP spyvm.model.W_PointersObject.inst__vars 24>)
++1325: i147 = arraylen_gc(p146, descr=<ArrayP 4>)
+debug_merge_point(2, 2, '3: [0xb6]bytecodePrimEqual (addLast:)')
++1334: i148 = getfield_gc_pure(p136, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++1343: i149 = int_eq(i148, i147)
+guard_false(i149, descr=<Guard0x307c790>) [p0, p67, p3, p6, p8, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i147, None, p136, p108, i90]
+debug_merge_point(2, 2, '4: [0x9a]shortConditionalJump (addLast:)')
+debug_merge_point(2, 2, '8: [0x2]pushReceiverVariableBytecode (addLast:)')
+debug_merge_point(2, 2, '9: [0x76]pushConstantOneBytecode (addLast:)')
+debug_merge_point(2, 2, '10: [0xb0]bytecodePrimAdd (addLast:)')
++1351: i151 = int_add_ovf(i148, 1)
+guard_no_overflow(descr=<Guard0x307c710>) [p0, p67, i151, p3, p6, p8, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None, None, p136, p108, i90]
+debug_merge_point(2, 2, '11: [0x62]storeAndPopReceiverVariableBytecode (addLast:)')
+debug_merge_point(2, 2, '12: [0x0]pushReceiverVariableBytecode (addLast:)')
+debug_merge_point(2, 2, '13: [0x2]pushReceiverVariableBytecode (addLast:)')
+debug_merge_point(2, 2, '14: [0x10]pushTemporaryVariableBytecode (addLast:)')
+debug_merge_point(2, 2, '15: [0xc1]bytecodePrimAtPut (addLast:)')
++1366: i153 = int_ge(i148, 0)
+guard_true(i153, descr=<Guard0x307c690>) [p0, p67, p138, p8, i148, p3, p6, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p134, i151, None, None, None, p108, i90]
++1379: i154 = int_lt(i148, i147)
+guard_true(i154, descr=<Guard0x307c610>) [p0, p67, p138, p8, i148, p3, p6, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p134, i151, None, None, None, p108, i90]
++1391: p155 = getfield_gc(p138, descr=<FieldP spyvm.model.W_PointersObject.inst_fieldtypes 28>)
++1394: guard_value(p155, ConstPtr(ptr156), descr=<Guard0x307c590>) [p0, p67, p138, p8, i148, p155, p3, p6, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p134, i151, None, None, None, p108, i90]
+p158 = new_with_vtable(ConstClass(W_SmallInteger))
++1454: setfield_gc(p158, i151, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++1477: setarrayitem_gc(p134, 2, p158, descr=<ArrayP 4>)
++1519: setarrayitem_gc(p146, i148, p8, descr=<ArrayP 4>)
+debug_merge_point(2, 2, '16: [0x87]popStackBytecode (addLast:)')
+debug_merge_point(2, 2, '17: [0x10]pushTemporaryVariableBytecode (addLast:)')
+debug_merge_point(2, 2, '18: [0x7c]returnTopFromMethod (addLast:)')
+debug_merge_point(1, 1, '15: [0x7d]returnTopFromBlock (asOrderedCollection)')
+debug_merge_point(0, 0, '33: [0x87]popStackBytecode (do:)')
+debug_merge_point(0, 0, '34: [0x11]pushTemporaryVariableBytecode (do:)')
+debug_merge_point(0, 0, '35: [0x2]pushReceiverVariableBytecode (do:)')
++1529: p161 = getarrayitem_gc(p53, 2, descr=<ArrayP 4>)
+debug_merge_point(0, 0, '36: [0xb0]bytecodePrimAdd (do:)')
++1538: i162 = getfield_gc_pure(p161, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++1541: setarrayitem_gc(p79, 0, ConstPtr(null), descr=<ArrayP 4>)
++1554: setfield_gc(p67, -1, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++1567: setfield_gc(p67, ConstPtr(null), descr=<FieldP spyvm.shadow.ContextPartShadow.inst__s_sender 28>)
++1574: setfield_gc(ConstPtr(ptr81), i84, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>)
++1586: i167 = int_add_ovf(i59, i162)
+guard_no_overflow(descr=<Guard0x307c510>) [p0, i167, p3, p6, p8, p161, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
+debug_merge_point(0, 0, '37: [0x69]storeAndPopTemporaryVariableBytecode (do:)')
+debug_merge_point(0, 0, '38: [0xa3]longUnconditionalJump (do:)')
++1600: i168 = getfield_gc(ConstPtr(ptr81), descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
++1606: i170 = int_sub(i168, 8)
++1609: setfield_gc(ConstPtr(ptr81), i170, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
++1615: i172 = int_le(i170, 0)
+guard_false(i172, descr=<Guard0x307c490>) [p0, p3, p6, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i167]
+debug_merge_point(0, 0, '25: [0x1]pushReceiverVariableBytecode (do:)')
++1624: label(p0, p3, p6, i167, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p53, i75, p67, i103, p91, p105, p79, i88, i90, i129, i84, i170, descr=TargetToken(50701984))
+debug_merge_point(0, 0, '25: [0x1]pushReceiverVariableBytecode (do:)')
++1624: guard_not_invalidated(descr=<Guard0x307c410>) [p0, p3, p6, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i167]
++1624: p173 = getarrayitem_gc(p53, 1, descr=<ArrayP 4>)
+debug_merge_point(0, 0, '26: [0x11]pushTemporaryVariableBytecode (do:)')
+debug_merge_point(0, 0, '27: [0xb5]bytecodePrimGreaterOrEqual (do:)')
++1633: i174 = getfield_gc_pure(p173, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++1636: i175 = int_ge(i174, i167)
+guard_true(i175, descr=<Guard0x307c390>) [p0, p3, p6, p173, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i167]
+debug_merge_point(0, 0, '28: [0xac]longJumpIfFalse (do:)')
+debug_merge_point(0, 0, '30: [0x10]pushTemporaryVariableBytecode (do:)')
+debug_merge_point(0, 0, '31: [0x11]pushTemporaryVariableBytecode (do:)')
+debug_merge_point(0, 0, '32: [0xca]bytecodePrimValueWithArg (do:)')
++1644: cond_call(i75, 4712800, p67, descr=<Callv 0 r EF=2 OS=121>)
+debug_merge_point(1, 1, '11: [0x69]storeAndPopTemporaryVariableBytecode (asOrderedCollection)')
++1685: cond_call(i103, 4712800, p91, descr=<Callv 0 r EF=2 OS=121>)
+debug_merge_point(1, 1, '12: [0x10]pushTemporaryVariableBytecode (asOrderedCollection)')
++1733: cond_call(i103, 4712800, p91, descr=<Callv 0 r EF=2 OS=121>)
++1775: p176 = getarrayitem_gc(p105, 0, descr=<ArrayP 4>)
+debug_merge_point(1, 1, '13: [0x11]pushTemporaryVariableBytecode (asOrderedCollection)')
++1784: cond_call(i103, 4712800, p91, descr=<Callv 0 r EF=2 OS=121>)
+p178 = new_with_vtable(ConstClass(W_SmallInteger))
++1886: setfield_gc(p178, i167, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++1915: setarrayitem_gc(p105, 1, p178, descr=<ArrayP 4>)
+debug_merge_point(1, 1, '14: [0xe1]sendLiteralSelectorBytecode (asOrderedCollection)')
++1938: setarrayitem_gc(p79, 0, p176, descr=<ArrayP 4>)
++1941: setfield_gc(p67, 2, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++1948: setfield_gc(p67, 15, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++1967: setfield_gc(p67, p0, descr=<FieldP spyvm.shadow.ContextPartShadow.inst__s_sender 28>)
++1976: setfield_gc(ConstPtr(ptr81), i88, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>)
++2008: setarrayitem_gc(p79, 1, p178, descr=<ArrayP 4>)
++2011: guard_class(p176, 6040288, descr=<Guard0x307c310>) [p0, p67, i90, p176, p3, p6, p178, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++2024: p179 = getfield_gc(p176, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_s_class 12>)
++2033: guard_value(p179, ConstPtr(ptr117), descr=<Guard0x307c290>) [p0, p67, p176, p179, p3, p6, p178, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
+debug_merge_point(2, 2, '0: [0x2]pushReceiverVariableBytecode (addLast:)')
++2045: p180 = getfield_gc(p176, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++2048: setarrayitem_gc(p79, 0, ConstPtr(null), descr=<ArrayP 4>)
++2055: setfield_gc(p67, 0, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++2068: setfield_gc(ConstPtr(ptr81), i129, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>)
++2080: setarrayitem_gc(p79, 1, ConstPtr(null), descr=<ArrayP 4>)
++2087: guard_isnull(p180, descr=<Guard0x307c210>) [p0, p67, p180, p176, p3, p6, p178, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i90]
++2095: p183 = getfield_gc(p176, descr=<FieldP spyvm.model.W_PointersObject.inst_fieldtypes 28>)
++2098: guard_value(p183, ConstPtr(ptr133), descr=<Guard0x307c190>) [p0, p67, p183, p176, p3, p6, p178, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i90]
++2110: p184 = getfield_gc(p176, descr=<FieldP spyvm.model.W_PointersObject.inst__vars 24>)
++2113: p185 = getarrayitem_gc(p184, 2, descr=<ArrayP 4>)
+debug_merge_point(2, 2, '1: [0x0]pushReceiverVariableBytecode (addLast:)')
++2116: p186 = getarrayitem_gc(p184, 0, descr=<ArrayP 4>)
+debug_merge_point(2, 2, '2: [0xc2]bytecodePrimSize (addLast:)')
++2125: guard_class(p186, 6040288, descr=<Guard0x307c110>) [p0, p67, i90, p186, p3, p6, p178, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p185, p176, None]
++2138: p187 = getfield_gc(p186, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_s_class 12>)
++2147: guard_value(p187, ConstPtr(ptr144), descr=<Guard0x307c090>) [p0, p67, p186, p187, p3, p6, p178, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p185, p176, i90]
++2159: p188 = getfield_gc(p186, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++2162: guard_isnull(p188, descr=<Guard0x307c010>) [p0, p67, p186, p188, p3, p6, p178, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p185, p176, i90]
++2170: p189 = getfield_gc(p186, descr=<FieldP spyvm.model.W_PointersObject.inst__vars 24>)
++2173: i190 = arraylen_gc(p189, descr=<ArrayP 4>)
+debug_merge_point(2, 2, '3: [0xb6]bytecodePrimEqual (addLast:)')
++2182: i191 = getfield_gc_pure(p185, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++2191: i192 = int_eq(i191, i190)
+guard_false(i192, descr=<Guard0x3074f50>) [p0, p67, p3, p6, p178, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i190, p185, p176, i90]
+debug_merge_point(2, 2, '4: [0x9a]shortConditionalJump (addLast:)')
+debug_merge_point(2, 2, '8: [0x2]pushReceiverVariableBytecode (addLast:)')
+debug_merge_point(2, 2, '9: [0x76]pushConstantOneBytecode (addLast:)')
+debug_merge_point(2, 2, '10: [0xb0]bytecodePrimAdd (addLast:)')
++2199: i193 = int_add_ovf(i191, 1)
+guard_no_overflow(descr=<Guard0x3074ed0>) [p0, p67, i193, p3, p6, p178, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None, p185, p176, i90]
+debug_merge_point(2, 2, '11: [0x62]storeAndPopReceiverVariableBytecode (addLast:)')
+debug_merge_point(2, 2, '12: [0x0]pushReceiverVariableBytecode (addLast:)')
+debug_merge_point(2, 2, '13: [0x2]pushReceiverVariableBytecode (addLast:)')
+debug_merge_point(2, 2, '14: [0x10]pushTemporaryVariableBytecode (addLast:)')
+debug_merge_point(2, 2, '15: [0xc1]bytecodePrimAtPut (addLast:)')
++2214: i194 = int_ge(i191, 0)
+guard_true(i194, descr=<Guard0x3074e50>) [p0, p67, p186, p178, i191, p3, p6, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i193, p184, None, None, p176, i90]
++2227: i195 = int_lt(i191, i190)
+guard_true(i195, descr=<Guard0x3074dd0>) [p0, p67, p186, p178, i191, p3, p6, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i193, p184, None, None, p176, i90]
++2239: p196 = getfield_gc(p186, descr=<FieldP spyvm.model.W_PointersObject.inst_fieldtypes 28>)
++2242: guard_value(p196, ConstPtr(ptr156), descr=<Guard0x3074d50>) [p0, p67, p186, p178, i191, p196, p3, p6, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i193, p184, None, None, p176, i90]
+p197 = new_with_vtable(ConstClass(W_SmallInteger))
++2276: setfield_gc(p197, i193, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++2299: setarrayitem_gc(p184, 2, p197, descr=<ArrayP 4>)
++2341: setarrayitem_gc(p189, i191, p178, descr=<ArrayP 4>)
+debug_merge_point(2, 2, '16: [0x87]popStackBytecode (addLast:)')
+debug_merge_point(2, 2, '17: [0x10]pushTemporaryVariableBytecode (addLast:)')
+debug_merge_point(2, 2, '18: [0x7c]returnTopFromMethod (addLast:)')
+debug_merge_point(1, 1, '15: [0x7d]returnTopFromBlock (asOrderedCollection)')
+debug_merge_point(0, 0, '33: [0x87]popStackBytecode (do:)')
+debug_merge_point(0, 0, '34: [0x11]pushTemporaryVariableBytecode (do:)')
+debug_merge_point(0, 0, '35: [0x2]pushReceiverVariableBytecode (do:)')
++2351: p198 = getarrayitem_gc(p53, 2, descr=<ArrayP 4>)
+debug_merge_point(0, 0, '36: [0xb0]bytecodePrimAdd (do:)')
++2360: i199 = getfield_gc_pure(p198, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++2363: setarrayitem_gc(p79, 0, ConstPtr(null), descr=<ArrayP 4>)
++2376: setfield_gc(p67, -1, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++2389: setfield_gc(p67, ConstPtr(null), descr=<FieldP spyvm.shadow.ContextPartShadow.inst__s_sender 28>)
++2396: setfield_gc(ConstPtr(ptr81), i84, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>)
++2408: i200 = int_add_ovf(i167, i199)
+guard_no_overflow(descr=<Guard0x3074cd0>) [p0, i200, p3, p6, p178, p198, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
+debug_merge_point(0, 0, '37: [0x69]storeAndPopTemporaryVariableBytecode (do:)')
+debug_merge_point(0, 0, '38: [0xa3]longUnconditionalJump (do:)')
++2422: i201 = int_sub(i170, 8)
++2431: setfield_gc(ConstPtr(ptr81), i201, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
++2437: i202 = int_le(i201, 0)
+guard_false(i202, descr=<Guard0x3074c50>) [p0, p3, p6, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i200]
+debug_merge_point(0, 0, '25: [0x1]pushReceiverVariableBytecode (do:)')
++2446: i203 = arraylen_gc(p53, descr=<ArrayP 4>)
++2446: i204 = arraylen_gc(p79, descr=<ArrayP 4>)
++2446: i205 = arraylen_gc(p105, descr=<ArrayP 4>)
++2446: jump(p0, p3, p6, i200, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p53, i75, p67, i103, p91, p105, p79, i88, i90, i129, i84, i201, descr=TargetToken(50701984))
++2457: --end of the loop--
+[36cce3b65] jit-log-opt-loop}
+[36cd44a2c] {jit-log-opt-bridge
+# bridge out of Guard 0x3074c50 with 83 ops
+[p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++29: f20 = call(ConstClass(ll_time.ll_time_time), descr=<Callf 8 EF=4>)
++82: setfield_gc(ConstPtr(ptr21), 10000, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
++92: guard_no_exception(descr=<Guard0x307d9d0>) [p0, f20, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++105: f24 = float_sub(f20, 1394728414.718000)
++113: f26 = float_mul(f24, 1000.000000)
++121: i27 = cast_float_to_int(f26)
++125: i29 = int_and(i27, 2147483647)
++131: i30 = getfield_gc(ConstPtr(ptr21), descr=<FieldS spyvm.interpreter.Interpreter.inst_next_wakeup_tick 36>)
++137: i31 = int_is_zero(i30)
+guard_true(i31, descr=<Guard0x3046a90>) [p0, i29, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
+debug_merge_point(0, 0, '25: [0x1]pushReceiverVariableBytecode (do:)')
++146: guard_nonnull_class(p0, ConstClass(MethodContextShadow), descr=<Guard0x3046a50>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++170: guard_nonnull_class(p2, 6040288, descr=<Guard0x3046a10>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++194: p34 = getfield_gc(p0, descr=<FieldP spyvm.shadow.MethodContextShadow.inst__w_method 44>)
++197: guard_value(p34, ConstPtr(ptr35), descr=<Guard0x30469d0>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++209: p36 = getfield_gc(p0, descr=<FieldP spyvm.shadow.MethodContextShadow.inst__w_receiver 48>)
++212: guard_nonnull_class(p36, 6040288, descr=<Guard0x3046990>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++230: p38 = getfield_gc(p36, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++233: guard_value(p38, ConstPtr(null), descr=<Guard0x3046950>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++242: p40 = getfield_gc(p36, descr=<FieldP spyvm.model.W_PointersObject.inst_fieldtypes 28>)
++245: guard_value(p40, ConstPtr(ptr41), descr=<Guard0x3046910>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++257: p42 = getfield_gc(p36, descr=<FieldP spyvm.model.W_PointersObject.inst__vars 24>)
++260: guard_nonnull(p42, descr=<Guard0x30468d0>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++268: i43 = arraylen_gc(p42, descr=<ArrayP 4>)
++271: i45 = int_ge(i43, 3)
+guard_true(i45, descr=<Guard0x3046890>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++280: p46 = getfield_gc(p2, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_s_class 12>)
++283: guard_nonnull(p46, descr=<Guard0x3046850>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++291: p47 = getfield_gc(p46, descr=<FieldP spyvm.shadow.AbstractShadow.inst__w_self 8>)
++294: guard_nonnull_class(p47, 6040288, descr=<Guard0x30467d0>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++312: i50 = instance_ptr_eq(p47, ConstPtr(ptr49))
+guard_true(i50, descr=<Guard0x3046790>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++324: p51 = getfield_gc(p2, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++327: guard_nonnull_class(p51, ConstClass(BlockContextShadow), descr=<Guard0x3046750>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++345: i53 = getfield_gc(p51, descr=<FieldS spyvm.shadow.BlockContextShadow.inst__eargc 44>)
++348: guard_value(i53, 1, descr=<Guard0x3046710>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++357: i55 = ptr_eq(p51, p0)
+guard_false(i55, descr=<Guard0x30466d0>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++365: p56 = getfield_gc(p51, descr=<FieldP spyvm.shadow.ContextPartShadow.vable_token 20>)
++368: i58 = ptr_ne(p56, ConstPtr(null))
++377: i59 = getfield_gc(p51, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++380: guard_value(i59, 0, descr=<Guard0x307df90>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++389: p61 = getfield_gc(p51, descr=<FieldP spyvm.shadow.ContextPartShadow.inst__temps_and_stack 36>)
++392: guard_nonnull(p61, descr=<Guard0x307df50>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++400: i62 = arraylen_gc(p61, descr=<ArrayP 4>)
++409: i64 = int_ge(i62, 2)
+guard_true(i64, descr=<Guard0x307df10>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++418: i65 = getfield_gc(p51, descr=<FieldS spyvm.shadow.BlockContextShadow.inst__initialip 48>)
++421: guard_value(i65, 11, descr=<Guard0x307ded0>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++430: i67 = getfield_gc(p51, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++433: guard_value(i67, -1, descr=<Guard0x307de90>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++442: i69 = getfield_gc(ConstPtr(ptr21), descr=<FieldU spyvm.interpreter.Interpreter.inst__loop 44>)
++449: guard_value(i69, 1, descr=<Guard0x307de50>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++458: i71 = getfield_gc(ConstPtr(ptr21), descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>)
++464: i73 = int_ge(i71, 3)
+guard_true(i73, descr=<Guard0x307de10>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++473: i75 = int_sub(i71, 1)
++482: p76 = getfield_gc(p51, descr=<FieldP spyvm.shadow.BlockContextShadow.inst__w_home 52>)
++491: guard_nonnull(p76, descr=<Guard0x307ddd0>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++499: p77 = getfield_gc(p76, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++502: guard_nonnull_class(p77, ConstClass(MethodContextShadow), descr=<Guard0x307dd90>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++520: p79 = getfield_gc(p77, descr=<FieldP spyvm.shadow.MethodContextShadow.inst__w_method 44>)
++523: guard_value(p79, ConstPtr(ptr80), descr=<Guard0x307dd50>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++535: p82 = getarrayitem_gc(p61, 0, descr=<ArrayP 4>)
++538: guard_value(p82, ConstPtr(null), descr=<Guard0x307dd10>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++547: i84 = ptr_eq(p77, p0)
+guard_false(i84, descr=<Guard0x307dcd0>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++559: p85 = getfield_gc(p77, descr=<FieldP spyvm.shadow.ContextPartShadow.vable_token 20>)
++562: i86 = ptr_ne(p85, ConstPtr(null))
++577: p87 = getfield_gc(p77, descr=<FieldP spyvm.shadow.ContextPartShadow.inst__temps_and_stack 36>)
++580: guard_nonnull(p87, descr=<Guard0x307dc90>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++588: i88 = arraylen_gc(p87, descr=<ArrayP 4>)
++597: i90 = int_ge(i88, 2)
+guard_true(i90, descr=<Guard0x307dc50>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++606: i91 = getfield_gc(p51, descr=<FieldU spyvm.shadow.AbstractShadow.inst_space 12>)
++621: p93 = getfield_gc(ConstPtr(ptr92), descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++627: guard_value(p93, ConstPtr(ptr94), descr=<Guard0x307dc10>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++639: i95 = getfield_gc(ConstPtr(ptr21), descr=<FieldU spyvm.interpreter.Interpreter.inst_trace 46>)
++646: guard_value(i95, 0, descr=<Guard0x307dbd0>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++655: i98 = int_sub(i75, 1)
++664: p100 = getfield_gc(ConstPtr(ptr99), descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++676: guard_value(p100, ConstPtr(ptr101), descr=<Guard0x307db50>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, i18]
++688: jump(p0, p1, p2, i18, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, p42, i58, p51, i86, p77, p87, p61, i75, i91, i98, i71, 10000, descr=TargetToken(50701984))
++796: --end of the loop--
+[36cd44dbb] jit-log-opt-bridge}
+[36cf21205] {jit-log-opt-loop
+# Loop 1 (25: [0x12]pushTemporaryVariableBytecode (makeRoomAtLast)) : loop with 181 ops
+[p0]
++61: i1 = getfield_gc(p0, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++70: i2 = getfield_gc(p0, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++73: p3 = getfield_gc(p0, descr=<FieldP spyvm.shadow.ContextPartShadow.inst__s_sender 28>)
++76: p4 = getfield_gc(p0, descr=<FieldP spyvm.shadow.ContextPartShadow.inst__temps_and_stack 36>)
++79: p6 = getarrayitem_gc(p4, 0, descr=<ArrayP 4>)
++82: p8 = getarrayitem_gc(p4, 1, descr=<ArrayP 4>)
++91: p10 = getarrayitem_gc(p4, 2, descr=<ArrayP 4>)
++100: p12 = getarrayitem_gc(p4, 3, descr=<ArrayP 4>)
++109: p14 = getarrayitem_gc(p4, 4, descr=<ArrayP 4>)
++112: p16 = getarrayitem_gc(p4, 5, descr=<ArrayP 4>)
++121: p18 = getarrayitem_gc(p4, 6, descr=<ArrayP 4>)
++130: p20 = getarrayitem_gc(p4, 7, descr=<ArrayP 4>)
++139: p22 = getarrayitem_gc(p4, 8, descr=<ArrayP 4>)
++148: p24 = getarrayitem_gc(p4, 9, descr=<ArrayP 4>)
++157: p26 = getarrayitem_gc(p4, 10, descr=<ArrayP 4>)
++166: p28 = getarrayitem_gc(p4, 11, descr=<ArrayP 4>)
++175: p30 = getarrayitem_gc(p4, 12, descr=<ArrayP 4>)
++184: p32 = getarrayitem_gc(p4, 13, descr=<ArrayP 4>)
++193: p34 = getarrayitem_gc(p4, 14, descr=<ArrayP 4>)
++202: p36 = getarrayitem_gc(p4, 15, descr=<ArrayP 4>)
++211: p38 = getarrayitem_gc(p4, 16, descr=<ArrayP 4>)
++220: p40 = getarrayitem_gc(p4, 17, descr=<ArrayP 4>)
++229: p42 = getarrayitem_gc(p4, 18, descr=<ArrayP 4>)
++238: label(p0, i1, i2, p3, p6, p8, p10, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, descr=TargetToken(50701840))
+debug_merge_point(0, 0, '25: [0x12]pushTemporaryVariableBytecode (makeRoomAtLast)')
++256: guard_value(i1, 25, descr=<Guard0x3074010>) [p0, i1, i2, p3, p6, p8, p10, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++265: guard_class(p0, ConstClass(MethodContextShadow), descr=<Guard0xe6a3490>) [p0, i2, p3, p6, p8, p10, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++284: p45 = getfield_gc(p0, descr=<FieldP spyvm.shadow.MethodContextShadow.inst__w_method 44>)
++287: guard_value(p45, ConstPtr(ptr46), descr=<Guard0xe6a3410>) [p0, p45, i2, p3, p6, p8, p10, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++299: guard_not_invalidated(descr=<Guard0xe6a3390>) [p0, i2, p3, p6, p8, p10, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++299: guard_value(i2, 3, descr=<Guard0xe6a3310>) [p0, i2, p10, p3, p6, p8, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
+debug_merge_point(0, 0, '26: [0x10]pushTemporaryVariableBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '27: [0xb4]bytecodePrimLessOrEqual (makeRoomAtLast)')
++308: guard_nonnull_class(p10, ConstClass(W_SmallInteger), descr=<Guard0xe6a3290>) [p0, p10, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++332: i49 = getfield_gc_pure(p10, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++335: guard_nonnull_class(p6, ConstClass(W_SmallInteger), descr=<Guard0xe6a3210>) [p0, i49, p6, p3, p8, p10, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++359: i51 = getfield_gc_pure(p6, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++362: i52 = int_le(i49, i51)
+guard_true(i52, descr=<Guard0xe6a3190>) [p0, p3, p6, p8, p10, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
+debug_merge_point(0, 0, '28: [0xac]longJumpIfFalse (makeRoomAtLast)')
+debug_merge_point(0, 0, '30: [0x0]pushReceiverVariableBytecode (makeRoomAtLast)')
++370: p53 = getfield_gc(p0, descr=<FieldP spyvm.shadow.MethodContextShadow.inst__w_receiver 48>)
++373: i54 = getfield_gc(p0, descr=<FieldU spyvm.shadow.AbstractShadow.inst_space 12>)
++382: guard_class(p53, 6040288, descr=<Guard0xe6a3110>) [p0, i54, p53, p3, p6, p8, p10, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++395: p56 = getfield_gc(p53, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++404: guard_isnull(p56, descr=<Guard0xe6a3090>) [p0, p56, p53, p3, p6, p8, p10, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++412: p57 = getfield_gc(p53, descr=<FieldP spyvm.model.W_PointersObject.inst_fieldtypes 28>)
++415: guard_value(p57, ConstPtr(ptr58), descr=<Guard0xe6a3010>) [p0, p57, p53, p3, p6, p8, p10, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++427: p59 = getfield_gc(p53, descr=<FieldP spyvm.model.W_PointersObject.inst__vars 24>)
++430: p61 = getarrayitem_gc(p59, 0, descr=<ArrayP 4>)
+debug_merge_point(0, 0, '31: [0x12]pushTemporaryVariableBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '32: [0x0]pushReceiverVariableBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '33: [0x12]pushTemporaryVariableBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '34: [0x11]pushTemporaryVariableBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '35: [0xb0]bytecodePrimAdd (makeRoomAtLast)')
++433: guard_nonnull_class(p8, ConstClass(W_SmallInteger), descr=<Guard0xe6a2f50>) [p0, i49, p8, p3, p6, p10, p61, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++457: i63 = getfield_gc_pure(p8, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++466: i64 = int_add_ovf(i49, i63)
+guard_no_overflow(descr=<Guard0xe6a2ed0>) [p0, i64, p3, p6, p8, p10, p61, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
+debug_merge_point(0, 0, '36: [0xc0]bytecodePrimAt (makeRoomAtLast)')
++480: p66 = getfield_gc(ConstPtr(ptr65), descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++492: guard_value(p66, ConstPtr(ptr67), descr=<Guard0xe6a2e50>) [p0, p66, p3, p6, p8, p10, p61, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i64]
++504: guard_class(p61, 6040288, descr=<Guard0xe6a2dd0>) [p0, i54, p61, p3, p6, p8, p10, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i64]
++517: p69 = getfield_gc(p61, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_s_class 12>)
++520: guard_value(p69, ConstPtr(ptr70), descr=<Guard0xe6a2d50>) [p0, p61, p69, p3, p6, p8, p10, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i64]
++532: i72 = getfield_gc(ConstPtr(ptr71), descr=<FieldU spyvm.interpreter.Interpreter.inst_trace 46>)
++539: guard_false(i72, descr=<Guard0xe6a2cd0>) [p0, p61, p3, p6, p8, p10, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i64]
++547: i74 = int_sub(i64, 1)
++550: i76 = int_ge(i74, 0)
+guard_true(i76, descr=<Guard0xe6a2c50>) [p0, p61, i74, p3, p6, p8, p10, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i64]
++559: p77 = getfield_gc(p61, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++562: guard_isnull(p77, descr=<Guard0xe6a2bd0>) [p0, p61, i74, p77, p3, p6, p8, p10, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i64]
++570: p78 = getfield_gc(p61, descr=<FieldP spyvm.model.W_PointersObject.inst__vars 24>)
++573: i79 = arraylen_gc(p78, descr=<ArrayP 4>)
++576: i80 = int_lt(i74, i79)
+guard_true(i80, descr=<Guard0xe6a2b50>) [p0, p61, i74, p3, p6, p8, p10, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i64]
++584: p81 = getfield_gc(p61, descr=<FieldP spyvm.model.W_PointersObject.inst_fieldtypes 28>)
++587: guard_value(p81, ConstPtr(ptr82), descr=<Guard0xe6a2ad0>) [p0, p61, i74, p81, p3, p6, p8, p10, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i64]
++599: p83 = getarrayitem_gc(p78, i74, descr=<ArrayP 4>)
+debug_merge_point(0, 0, '37: [0xc1]bytecodePrimAtPut (makeRoomAtLast)')
++603: i85 = int_sub(i49, 1)
++618: i87 = int_ge(i85, 0)
+guard_true(i87, descr=<Guard0xe6a2a50>) [p0, p61, p83, i85, p3, p6, p8, p10, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None]
++627: i89 = int_lt(i85, i79)
+guard_true(i89, descr=<Guard0xe6a29d0>) [p0, p61, p83, i85, p3, p6, p8, p10, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None]
++662: setarrayitem_gc(p78, i85, p83, descr=<ArrayP 4>)
+debug_merge_point(0, 0, '38: [0x87]popStackBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '39: [0x0]pushReceiverVariableBytecode (makeRoomAtLast)')
++666: p91 = getarrayitem_gc(p59, 0, descr=<ArrayP 4>)
+debug_merge_point(0, 0, '40: [0x12]pushTemporaryVariableBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '41: [0x11]pushTemporaryVariableBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '42: [0xb0]bytecodePrimAdd (makeRoomAtLast)')
+debug_merge_point(0, 0, '43: [0x73]pushConstantNilBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '44: [0xc1]bytecodePrimAtPut (makeRoomAtLast)')
++675: guard_class(p91, 6040288, descr=<Guard0xe6a2950>) [p0, i54, p91, p3, p6, p8, p10, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i64]
++688: p93 = getfield_gc(p91, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_s_class 12>)
++691: guard_value(p93, ConstPtr(ptr94), descr=<Guard0xe6a28d0>) [p0, p91, p93, p3, p6, p8, p10, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i64]
++703: p95 = getfield_gc(p91, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++706: guard_isnull(p95, descr=<Guard0xe6a2850>) [p0, p91, i74, p95, p3, p6, p8, p10, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i64]
++714: p96 = getfield_gc(p91, descr=<FieldP spyvm.model.W_PointersObject.inst__vars 24>)
++717: i97 = arraylen_gc(p96, descr=<ArrayP 4>)
++720: i98 = int_lt(i74, i97)
+guard_true(i98, descr=<Guard0xe6a27d0>) [p0, p91, i74, p3, p6, p8, p10, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i64]
++732: p99 = getfield_gc(p91, descr=<FieldP spyvm.model.W_PointersObject.inst_fieldtypes 28>)
++735: guard_value(p99, ConstPtr(ptr100), descr=<Guard0xe6a2750>) [p0, p91, i74, p99, p3, p6, p8, p10, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i64]
++780: setarrayitem_gc(p96, i74, ConstPtr(ptr101), descr=<ArrayP 4>)
+debug_merge_point(0, 0, '45: [0x87]popStackBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '46: [0x12]pushTemporaryVariableBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '47: [0x76]pushConstantOneBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '48: [0xb0]bytecodePrimAdd (makeRoomAtLast)')
++788: i103 = int_add_ovf(i49, 1)
+guard_no_overflow(descr=<Guard0xe6a26d0>) [p0, i103, p3, p6, p8, p10, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None]
+debug_merge_point(0, 0, '49: [0x6a]storeAndPopTemporaryVariableBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '50: [0xa3]longUnconditionalJump (makeRoomAtLast)')
++803: i104 = getfield_gc(ConstPtr(ptr71), descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
++809: i106 = int_sub(i104, 3)
++812: setfield_gc(ConstPtr(ptr71), i106, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
++818: i108 = int_le(i106, 0)
+guard_false(i108, descr=<Guard0xe6a2650>) [p0, p3, p6, p8, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i103, None]
+debug_merge_point(0, 0, '25: [0x12]pushTemporaryVariableBytecode (makeRoomAtLast)')
++827: label(p0, p3, p6, p8, i103, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i51, p59, i63, i54, i106, descr=TargetToken(50701888))
+debug_merge_point(0, 0, '25: [0x12]pushTemporaryVariableBytecode (makeRoomAtLast)')
++827: guard_not_invalidated(descr=<Guard0xe6a25d0>) [p0, p3, p6, p8, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i103]
+debug_merge_point(0, 0, '26: [0x10]pushTemporaryVariableBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '27: [0xb4]bytecodePrimLessOrEqual (makeRoomAtLast)')
++827: i109 = int_le(i103, i51)
+guard_true(i109, descr=<Guard0xe6a2550>) [p0, p3, p6, p8, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i103]
+debug_merge_point(0, 0, '28: [0xac]longJumpIfFalse (makeRoomAtLast)')
+debug_merge_point(0, 0, '30: [0x0]pushReceiverVariableBytecode (makeRoomAtLast)')
++839: p110 = getarrayitem_gc(p59, 0, descr=<ArrayP 4>)
+debug_merge_point(0, 0, '31: [0x12]pushTemporaryVariableBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '32: [0x0]pushReceiverVariableBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '33: [0x12]pushTemporaryVariableBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '34: [0x11]pushTemporaryVariableBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '35: [0xb0]bytecodePrimAdd (makeRoomAtLast)')
++842: i111 = int_add_ovf(i103, i63)
+guard_no_overflow(descr=<Guard0xe6a24d0>) [p0, i111, p3, p6, p8, p110, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i103]
+debug_merge_point(0, 0, '36: [0xc0]bytecodePrimAt (makeRoomAtLast)')
++856: guard_class(p110, 6040288, descr=<Guard0xe6a2450>) [p0, i54, p110, p3, p6, p8, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i111, i103]
++869: p112 = getfield_gc(p110, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_s_class 12>)
++872: guard_value(p112, ConstPtr(ptr70), descr=<Guard0xe6a23d0>) [p0, p110, p112, p3, p6, p8, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i111, i103]
++884: i113 = int_sub(i111, 1)
++887: i114 = int_ge(i113, 0)
+guard_true(i114, descr=<Guard0xe6a2350>) [p0, p110, i113, p3, p6, p8, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i111, i103]
++896: p115 = getfield_gc(p110, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++905: guard_isnull(p115, descr=<Guard0xe6a22d0>) [p0, p110, i113, p115, p3, p6, p8, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i111, i103]
++913: p116 = getfield_gc(p110, descr=<FieldP spyvm.model.W_PointersObject.inst__vars 24>)
++916: i117 = arraylen_gc(p116, descr=<ArrayP 4>)
++925: i118 = int_lt(i113, i117)
+guard_true(i118, descr=<Guard0xe6a2250>) [p0, p110, i113, p3, p6, p8, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i111, i103]
++933: p119 = getfield_gc(p110, descr=<FieldP spyvm.model.W_PointersObject.inst_fieldtypes 28>)
++942: guard_value(p119, ConstPtr(ptr82), descr=<Guard0xe6a21d0>) [p0, p110, i113, p119, p3, p6, p8, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i111, i103]
++954: p120 = getarrayitem_gc(p116, i113, descr=<ArrayP 4>)
+debug_merge_point(0, 0, '37: [0xc1]bytecodePrimAtPut (makeRoomAtLast)')
++958: i121 = int_sub(i103, 1)
++967: i122 = int_lt(i121, i117)
+guard_true(i122, descr=<Guard0xe6a2150>) [p0, p110, p120, i121, p3, p6, p8, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None, i103]
++1002: setarrayitem_gc(p116, i121, p120, descr=<ArrayP 4>)
+debug_merge_point(0, 0, '38: [0x87]popStackBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '39: [0x0]pushReceiverVariableBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '40: [0x12]pushTemporaryVariableBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '41: [0x11]pushTemporaryVariableBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '42: [0xb0]bytecodePrimAdd (makeRoomAtLast)')
+debug_merge_point(0, 0, '43: [0x73]pushConstantNilBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '44: [0xc1]bytecodePrimAtPut (makeRoomAtLast)')
++1033: setarrayitem_gc(p116, i113, ConstPtr(ptr101), descr=<ArrayP 4>)
+debug_merge_point(0, 0, '45: [0x87]popStackBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '46: [0x12]pushTemporaryVariableBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '47: [0x76]pushConstantOneBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '48: [0xb0]bytecodePrimAdd (makeRoomAtLast)')
++1041: i123 = int_add_ovf(i103, 1)
+guard_no_overflow(descr=<Guard0xe6a20d0>) [p0, i123, p3, p6, p8, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None, i103]
+debug_merge_point(0, 0, '49: [0x6a]storeAndPopTemporaryVariableBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '50: [0xa3]longUnconditionalJump (makeRoomAtLast)')
++1056: i124 = int_sub(i106, 3)
++1065: setfield_gc(ConstPtr(ptr71), i124, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
++1071: i125 = int_le(i124, 0)
+guard_false(i125, descr=<Guard0xe6a2050>) [p0, p3, p6, p8, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i123, None, None]
+debug_merge_point(0, 0, '25: [0x12]pushTemporaryVariableBytecode (makeRoomAtLast)')
++1080: i126 = arraylen_gc(p59, descr=<ArrayP 4>)
++1080: jump(p0, p3, p6, p8, i123, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i51, p59, i63, i54, i124, descr=TargetToken(50701888))
++1095: --end of the loop--
+[36cf21786] jit-log-opt-loop}
+[36cf349ae] {jit-log-opt-bridge
+# bridge out of Guard 0xe6a2050 with 101 ops
+[p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, i15]
++29: f17 = call(ConstClass(ll_time.ll_time_time), descr=<Callf 8 EF=4>)
++76: setfield_gc(ConstPtr(ptr18), 10000, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
++86: guard_no_exception(descr=<Guard0xe6a3550>) [p0, f17, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, i15]
++99: f21 = float_sub(f17, 1394728414.718000)
++107: f23 = float_mul(f21, 1000.000000)
++115: i24 = cast_float_to_int(f23)
++119: i26 = int_and(i24, 2147483647)
++125: i27 = getfield_gc(ConstPtr(ptr18), descr=<FieldS spyvm.interpreter.Interpreter.inst_next_wakeup_tick 36>)
++131: i28 = int_is_zero(i27)
+guard_true(i28, descr=<Guard0xe6b1f10>) [p0, i26, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, i15]
+debug_merge_point(0, 0, '25: [0x12]pushTemporaryVariableBytecode (makeRoomAtLast)')
++140: label(p0, p1, p2, p3, i15, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, descr=TargetToken(48253680))
++140: guard_class(p0, ConstClass(MethodContextShadow), descr=<Guard0xe6b1e90>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, i15]
++159: p30 = getfield_gc(p0, descr=<FieldP spyvm.shadow.MethodContextShadow.inst__w_method 44>)
++162: guard_value(p30, ConstPtr(ptr31), descr=<Guard0xe6b1e10>) [p0, p30, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, i15]
++174: guard_not_invalidated(descr=<Guard0xe6b1d90>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, i15]
+debug_merge_point(0, 0, '26: [0x10]pushTemporaryVariableBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '27: [0xb4]bytecodePrimLessOrEqual (makeRoomAtLast)')
++174: guard_nonnull_class(p2, ConstClass(W_SmallInteger), descr=<Guard0xe6b1d10>) [p0, i15, p2, p1, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, None]
++198: i34 = getfield_gc_pure(p2, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++201: i35 = int_le(i15, i34)
+guard_true(i35, descr=<Guard0xe6b1c90>) [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, i15]
+debug_merge_point(0, 0, '28: [0xac]longJumpIfFalse (makeRoomAtLast)')
+debug_merge_point(0, 0, '30: [0x0]pushReceiverVariableBytecode (makeRoomAtLast)')
++209: p36 = getfield_gc(p0, descr=<FieldP spyvm.shadow.MethodContextShadow.inst__w_receiver 48>)
++212: i37 = getfield_gc(p0, descr=<FieldU spyvm.shadow.AbstractShadow.inst_space 12>)
++215: guard_class(p36, 6040288, descr=<Guard0xe6b1c10>) [p0, i37, p36, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, i15]
++228: p39 = getfield_gc(p36, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++237: guard_isnull(p39, descr=<Guard0xe6b1b90>) [p0, p39, p36, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, i15]
++245: p40 = getfield_gc(p36, descr=<FieldP spyvm.model.W_PointersObject.inst_fieldtypes 28>)
++248: guard_value(p40, ConstPtr(ptr41), descr=<Guard0xe6b1b10>) [p0, p40, p36, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, i15]
++260: p42 = getfield_gc(p36, descr=<FieldP spyvm.model.W_PointersObject.inst__vars 24>)
++263: p44 = getarrayitem_gc(p42, 0, descr=<ArrayP 4>)
+debug_merge_point(0, 0, '31: [0x12]pushTemporaryVariableBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '32: [0x0]pushReceiverVariableBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '33: [0x12]pushTemporaryVariableBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '34: [0x11]pushTemporaryVariableBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '35: [0xb0]bytecodePrimAdd (makeRoomAtLast)')
++266: guard_nonnull_class(p3, ConstClass(W_SmallInteger), descr=<Guard0xe6b1a90>) [p0, i15, p3, p1, p2, p44, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, None]
++296: i46 = getfield_gc_pure(p3, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++299: i47 = int_add_ovf(i15, i46)
+guard_no_overflow(descr=<Guard0xe6b1a10>) [p0, i47, p1, p2, p3, p44, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, i15]
+debug_merge_point(0, 0, '36: [0xc0]bytecodePrimAt (makeRoomAtLast)')
++313: p49 = getfield_gc(ConstPtr(ptr48), descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++325: guard_value(p49, ConstPtr(ptr50), descr=<Guard0xe6b1990>) [p0, p49, p1, p2, p3, p44, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, i47, i15]
++337: guard_class(p44, 6040288, descr=<Guard0xe6b1910>) [p0, i37, p44, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, i47, i15]
++350: p52 = getfield_gc(p44, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_s_class 12>)
++353: guard_value(p52, ConstPtr(ptr53), descr=<Guard0xe6b1890>) [p0, p44, p52, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, i47, i15]
++365: i54 = getfield_gc(ConstPtr(ptr18), descr=<FieldU spyvm.interpreter.Interpreter.inst_trace 46>)
++372: guard_false(i54, descr=<Guard0xe6b1810>) [p0, p44, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, i47, i15]
++380: i56 = int_sub(i47, 1)
++383: i58 = int_ge(i56, 0)
+guard_true(i58, descr=<Guard0xe6b1790>) [p0, p44, i56, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, i47, i15]
++392: p59 = getfield_gc(p44, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++401: guard_isnull(p59, descr=<Guard0xe6b1710>) [p0, p44, i56, p59, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, i47, i15]
++409: p60 = getfield_gc(p44, descr=<FieldP spyvm.model.W_PointersObject.inst__vars 24>)
++412: i61 = arraylen_gc(p60, descr=<ArrayP 4>)
++415: i62 = int_lt(i56, i61)
+guard_true(i62, descr=<Guard0xe6b1690>) [p0, p44, i56, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, i47, i15]
++423: p63 = getfield_gc(p44, descr=<FieldP spyvm.model.W_PointersObject.inst_fieldtypes 28>)
++426: guard_value(p63, ConstPtr(ptr64), descr=<Guard0xe6b1610>) [p0, p44, i56, p63, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, i47, i15]
++438: p65 = getarrayitem_gc(p60, i56, descr=<ArrayP 4>)
+debug_merge_point(0, 0, '37: [0xc1]bytecodePrimAtPut (makeRoomAtLast)')
++442: i67 = int_sub(i15, 1)
++457: i69 = int_ge(i67, 0)
+guard_true(i69, descr=<Guard0xe6b1590>) [p0, p44, p65, i67, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, None, i15]
++466: i70 = int_lt(i67, i61)
+guard_true(i70, descr=<Guard0xe6b1510>) [p0, p44, p65, i67, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, None, i15]
++501: setarrayitem_gc(p60, i67, p65, descr=<ArrayP 4>)
+debug_merge_point(0, 0, '38: [0x87]popStackBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '39: [0x0]pushReceiverVariableBytecode (makeRoomAtLast)')
++505: p72 = getarrayitem_gc(p42, 0, descr=<ArrayP 4>)
+debug_merge_point(0, 0, '40: [0x12]pushTemporaryVariableBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '41: [0x11]pushTemporaryVariableBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '42: [0xb0]bytecodePrimAdd (makeRoomAtLast)')
+debug_merge_point(0, 0, '43: [0x73]pushConstantNilBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '44: [0xc1]bytecodePrimAtPut (makeRoomAtLast)')
++514: guard_class(p72, 6040288, descr=<Guard0xe6b1490>) [p0, i37, p72, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, i47, i15]
++527: p74 = getfield_gc(p72, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_s_class 12>)
++530: guard_value(p74, ConstPtr(ptr75), descr=<Guard0xe6b1410>) [p0, p72, p74, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, i47, i15]
++542: p76 = getfield_gc(p72, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++545: guard_isnull(p76, descr=<Guard0xe6b1390>) [p0, p72, i56, p76, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, i47, i15]
++553: p77 = getfield_gc(p72, descr=<FieldP spyvm.model.W_PointersObject.inst__vars 24>)
++556: i78 = arraylen_gc(p77, descr=<ArrayP 4>)
++559: i79 = int_lt(i56, i78)
+guard_true(i79, descr=<Guard0xe6b1310>) [p0, p72, i56, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, i47, i15]
++571: p80 = getfield_gc(p72, descr=<FieldP spyvm.model.W_PointersObject.inst_fieldtypes 28>)
++574: guard_value(p80, ConstPtr(ptr81), descr=<Guard0xe6b1290>) [p0, p72, i56, p80, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, i47, i15]
++619: setarrayitem_gc(p77, i56, ConstPtr(ptr82), descr=<ArrayP 4>)
+debug_merge_point(0, 0, '45: [0x87]popStackBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '46: [0x12]pushTemporaryVariableBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '47: [0x76]pushConstantOneBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '48: [0xb0]bytecodePrimAdd (makeRoomAtLast)')
++627: i84 = int_add_ovf(i15, 1)
+guard_no_overflow(descr=<Guard0xe6b1210>) [p0, i84, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, None, i15]
+debug_merge_point(0, 0, '49: [0x6a]storeAndPopTemporaryVariableBytecode (makeRoomAtLast)')
+debug_merge_point(0, 0, '50: [0xa3]longUnconditionalJump (makeRoomAtLast)')
+debug_merge_point(0, 0, '25: [0x12]pushTemporaryVariableBytecode (makeRoomAtLast)')
++642: setfield_gc(ConstPtr(ptr18), 9997, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
++652: i86 = arraylen_gc(p42, descr=<ArrayP 4>)
++652: jump(p0, p1, p2, p3, i84, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, i34, p42, i46, i37, 9997, descr=TargetToken(50701888))
++666: --end of the loop--
+[36cf34d2b] jit-log-opt-bridge}
+[36d03a7ed] {jit-log-opt-loop
+# Loop 2 (0: [0x2]pushReceiverVariableBytecode (addLast:)) : entry bridge with 93 ops
+[p0]
++61: i1 = getfield_gc(p0, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++70: i2 = getfield_gc(p0, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++73: p3 = getfield_gc(p0, descr=<FieldP spyvm.shadow.ContextPartShadow.inst__s_sender 28>)
++76: p4 = getfield_gc(p0, descr=<FieldP spyvm.shadow.ContextPartShadow.inst__temps_and_stack 36>)
++79: p6 = getarrayitem_gc(p4, 0, descr=<ArrayP 4>)
++82: p8 = getarrayitem_gc(p4, 1, descr=<ArrayP 4>)
++91: p10 = getarrayitem_gc(p4, 2, descr=<ArrayP 4>)
++94: p12 = getarrayitem_gc(p4, 3, descr=<ArrayP 4>)
++103: p14 = getarrayitem_gc(p4, 4, descr=<ArrayP 4>)
++112: p16 = getarrayitem_gc(p4, 5, descr=<ArrayP 4>)
++121: p18 = getarrayitem_gc(p4, 6, descr=<ArrayP 4>)
++130: p20 = getarrayitem_gc(p4, 7, descr=<ArrayP 4>)
++139: p22 = getarrayitem_gc(p4, 8, descr=<ArrayP 4>)
++148: p24 = getarrayitem_gc(p4, 9, descr=<ArrayP 4>)
++157: p26 = getarrayitem_gc(p4, 10, descr=<ArrayP 4>)
++166: p28 = getarrayitem_gc(p4, 11, descr=<ArrayP 4>)
++175: p30 = getarrayitem_gc(p4, 12, descr=<ArrayP 4>)
++184: p32 = getarrayitem_gc(p4, 13, descr=<ArrayP 4>)
++193: p34 = getarrayitem_gc(p4, 14, descr=<ArrayP 4>)
++202: p36 = getarrayitem_gc(p4, 15, descr=<ArrayP 4>)
++211: p38 = getarrayitem_gc(p4, 16, descr=<ArrayP 4>)
++220: p40 = getarrayitem_gc(p4, 17, descr=<ArrayP 4>)
+debug_merge_point(0, 0, '0: [0x2]pushReceiverVariableBytecode (addLast:)')
++229: guard_value(i1, 0, descr=<Guard0x3074110>) [p0, i1, i2, p3, p6, p8, p10, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40]
++238: guard_class(p0, ConstClass(MethodContextShadow), descr=<Guard0xe69f990>) [p0, i2, p3, p6, p8, p10, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40]
++257: p43 = getfield_gc(p0, descr=<FieldP spyvm.shadow.MethodContextShadow.inst__w_method 44>)
++260: guard_value(p43, ConstPtr(ptr44), descr=<Guard0xe69f950>) [p0, p43, i2, p3, p6, p8, p10, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40]
++272: guard_not_invalidated(descr=<Guard0xe69f910>) [p0, i2, p3, p6, p8, p10, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40]
++272: p45 = getfield_gc(p0, descr=<FieldP spyvm.shadow.MethodContextShadow.inst__w_receiver 48>)
++275: i46 = getfield_gc(p0, descr=<FieldU spyvm.shadow.AbstractShadow.inst_space 12>)
++284: guard_class(p45, 6040288, descr=<Guard0xe69f8d0>) [p0, i46, p45, i2, p3, p6, p8, p10, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40]
++297: p48 = getfield_gc(p45, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++300: guard_isnull(p48, descr=<Guard0xe69f890>) [p0, p48, p45, i2, p3, p6, p8, p10, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40]
++308: p49 = getfield_gc(p45, descr=<FieldP spyvm.model.W_PointersObject.inst_fieldtypes 28>)
++311: guard_value(p49, ConstPtr(ptr50), descr=<Guard0xe69f850>) [p0, p49, p45, i2, p3, p6, p8, p10, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40]
++323: p51 = getfield_gc(p45, descr=<FieldP spyvm.model.W_PointersObject.inst__vars 24>)
++326: p53 = getarrayitem_gc(p51, 2, descr=<ArrayP 4>)
++329: guard_value(i2, 1, descr=<Guard0xe69f810>) [p0, i2, p53, p3, p6, p8, p10, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40]
+debug_merge_point(0, 0, '1: [0x0]pushReceiverVariableBytecode (addLast:)')
++338: p56 = getarrayitem_gc(p51, 0, descr=<ArrayP 4>)
+debug_merge_point(0, 0, '2: [0xc2]bytecodePrimSize (addLast:)')
++341: p58 = getfield_gc(ConstPtr(ptr57), descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++347: guard_value(p58, ConstPtr(ptr59), descr=<Guard0xe69f7d0>) [p0, p58, p3, p6, p53, p56, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40]
++359: guard_class(p56, 6040288, descr=<Guard0xe69f790>) [p0, i46, p56, p3, p6, p53, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40]
++372: p61 = getfield_gc(p56, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_s_class 12>)
++375: guard_value(p61, ConstPtr(ptr62), descr=<Guard0xe69f750>) [p0, p56, p61, p3, p6, p53, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40]
++387: i64 = getfield_gc(ConstPtr(ptr63), descr=<FieldU spyvm.interpreter.Interpreter.inst_trace 46>)
++394: guard_false(i64, descr=<Guard0xe69f710>) [p0, p56, p3, p6, p53, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40]
++402: p65 = getfield_gc(p56, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++405: guard_isnull(p65, descr=<Guard0xe69f6d0>) [p0, p56, p65, p3, p6, p53, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40]
++413: p66 = getfield_gc(p56, descr=<FieldP spyvm.model.W_PointersObject.inst__vars 24>)
++416: i67 = arraylen_gc(p66, descr=<ArrayP 4>)
+debug_merge_point(0, 0, '3: [0xb6]bytecodePrimEqual (addLast:)')
++419: i68 = getfield_gc_pure(p53, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++422: i69 = int_eq(i68, i67)
+guard_false(i69, descr=<Guard0xe69f690>) [p0, p3, p6, p53, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, i67]
+debug_merge_point(0, 0, '4: [0x9a]shortConditionalJump (addLast:)')
+debug_merge_point(0, 0, '8: [0x2]pushReceiverVariableBytecode (addLast:)')
+debug_merge_point(0, 0, '9: [0x76]pushConstantOneBytecode (addLast:)')
+debug_merge_point(0, 0, '10: [0xb0]bytecodePrimAdd (addLast:)')
++430: i71 = int_add_ovf(i68, 1)
+guard_no_overflow(descr=<Guard0xe69f650>) [p0, i71, p3, p6, p53, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, None]
+debug_merge_point(0, 0, '11: [0x62]storeAndPopReceiverVariableBytecode (addLast:)')
+debug_merge_point(0, 0, '12: [0x0]pushReceiverVariableBytecode (addLast:)')
+debug_merge_point(0, 0, '13: [0x2]pushReceiverVariableBytecode (addLast:)')
+debug_merge_point(0, 0, '14: [0x10]pushTemporaryVariableBytecode (addLast:)')
+debug_merge_point(0, 0, '15: [0xc1]bytecodePrimAtPut (addLast:)')
++445: i74 = int_ge(i68, 0)
+guard_true(i74, descr=<Guard0xe69f610>) [p0, p56, p6, i68, p3, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p51, i71, None]
++458: i75 = int_lt(i68, i67)
+guard_true(i75, descr=<Guard0xe69f5d0>) [p0, p56, p6, i68, p3, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p51, i71, None]
++470: p76 = getfield_gc(p56, descr=<FieldP spyvm.model.W_PointersObject.inst_fieldtypes 28>)
++473: guard_value(p76, ConstPtr(ptr77), descr=<Guard0xe69f590>) [p0, p56, p6, i68, p76, p3, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p51, i71, None]
+p79 = new_with_vtable(ConstClass(W_SmallInteger))
++539: setfield_gc(p79, i71, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++568: setarrayitem_gc(p51, 2, p79, descr=<ArrayP 4>)
++604: setarrayitem_gc(p66, i68, p6, descr=<ArrayP 4>)
+debug_merge_point(0, 0, '16: [0x87]popStackBytecode (addLast:)')
+debug_merge_point(0, 0, '17: [0x10]pushTemporaryVariableBytecode (addLast:)')
+debug_merge_point(0, 0, '18: [0x7c]returnTopFromMethod (addLast:)')
++614: p81 = getfield_gc(p0, descr=<FieldP spyvm.shadow.MethodContextShadow.inst_w_closure_or_nil 52>)
++623: i83 = instance_ptr_eq(p81, ConstPtr(ptr82))
+guard_true(i83, descr=<Guard0xe69f550>) [p0, p6, p3, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40]
++635: guard_nonnull(p3, descr=<Guard0xe69f510>) [p0, p3, p6, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40]
++649: i84 = instance_ptr_eq(p3, p0)
+guard_false(i84, descr=<Guard0xe69f4d0>) [p0, p3, p6, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40]
++657: p85 = force_token()
+p87 = new_with_vtable(ConstClass(Return))
++687: setfield_gc(p0, p85, descr=<FieldP spyvm.shadow.ContextPartShadow.vable_token 20>)
++690: setfield_gc(p87, p6, descr=<FieldP spyvm.interpreter.Return.inst_value 12>)
++693: setfield_gc(p87, p3, descr=<FieldP spyvm.interpreter.Return.inst_s_target_context 8>)
++696: guard_not_forced_2(descr=<Guard0xe69f490>) [p6, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p0]
++709: finish(p87, descr=<ExitFrameWithExceptionDescrRef object at 0x63017c>)
++761: --end of the loop--
+[36d03ac55] jit-log-opt-loop}
+[36d04205e] {jit-log-opt-loop
+# Loop 3 (2: [0x11]pushTemporaryVariableBytecode (do:)) : loop with 540 ops
+[p0]
++61: i1 = getfield_gc(p0, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++70: i2 = getfield_gc(p0, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++73: p3 = getfield_gc(p0, descr=<FieldP spyvm.shadow.ContextPartShadow.inst__s_sender 28>)
++76: p4 = getfield_gc(p0, descr=<FieldP spyvm.shadow.ContextPartShadow.inst__temps_and_stack 36>)
++79: p6 = getarrayitem_gc(p4, 0, descr=<ArrayP 4>)
++82: p8 = getarrayitem_gc(p4, 1, descr=<ArrayP 4>)
++91: p10 = getarrayitem_gc(p4, 2, descr=<ArrayP 4>)
++94: p12 = getarrayitem_gc(p4, 3, descr=<ArrayP 4>)
++103: p14 = getarrayitem_gc(p4, 4, descr=<ArrayP 4>)
++112: p16 = getarrayitem_gc(p4, 5, descr=<ArrayP 4>)
++121: p18 = getarrayitem_gc(p4, 6, descr=<ArrayP 4>)
++130: p20 = getarrayitem_gc(p4, 7, descr=<ArrayP 4>)
++139: p22 = getarrayitem_gc(p4, 8, descr=<ArrayP 4>)
++148: p24 = getarrayitem_gc(p4, 9, descr=<ArrayP 4>)
++157: p26 = getarrayitem_gc(p4, 10, descr=<ArrayP 4>)
++166: p28 = getarrayitem_gc(p4, 11, descr=<ArrayP 4>)
++175: p30 = getarrayitem_gc(p4, 12, descr=<ArrayP 4>)
++184: p32 = getarrayitem_gc(p4, 13, descr=<ArrayP 4>)
++193: p34 = getarrayitem_gc(p4, 14, descr=<ArrayP 4>)
++202: p36 = getarrayitem_gc(p4, 15, descr=<ArrayP 4>)
++211: p38 = getarrayitem_gc(p4, 16, descr=<ArrayP 4>)
++220: p40 = getarrayitem_gc(p4, 17, descr=<ArrayP 4>)
++229: p42 = getarrayitem_gc(p4, 18, descr=<ArrayP 4>)
++238: label(p0, i1, i2, p3, p6, p8, p10, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, descr=TargetToken(48253248))
+debug_merge_point(0, 0, '2: [0x11]pushTemporaryVariableBytecode (do:)')
++256: guard_value(i1, 2, descr=<Guard0x11bb6810>) [p0, i1, i2, p3, p6, p8, p10, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++265: guard_class(p0, ConstClass(MethodContextShadow), descr=<Guard0x11bb6790>) [p0, i2, p3, p6, p8, p10, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++284: p45 = getfield_gc(p0, descr=<FieldP spyvm.shadow.MethodContextShadow.inst__w_method 44>)
++287: guard_value(p45, ConstPtr(ptr46), descr=<Guard0x11bb6710>) [p0, p45, i2, p3, p6, p8, p10, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++299: guard_not_invalidated(descr=<Guard0x11bb6690>) [p0, i2, p3, p6, p8, p10, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++299: guard_value(i2, 2, descr=<Guard0x11bb6610>) [p0, i2, p8, p3, p6, p10, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
+debug_merge_point(0, 0, '3: [0x2]pushReceiverVariableBytecode (do:)')
++308: p48 = getfield_gc(p0, descr=<FieldP spyvm.shadow.MethodContextShadow.inst__w_receiver 48>)
++311: i49 = getfield_gc(p0, descr=<FieldU spyvm.shadow.AbstractShadow.inst_space 12>)
++314: guard_class(p48, 6040288, descr=<Guard0x11bb6590>) [p0, i49, p48, p3, p6, p8, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++327: p51 = getfield_gc(p48, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++330: guard_isnull(p51, descr=<Guard0x11bb6510>) [p0, p51, p48, p3, p6, p8, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++338: p52 = getfield_gc(p48, descr=<FieldP spyvm.model.W_PointersObject.inst_fieldtypes 28>)
++341: guard_value(p52, ConstPtr(ptr53), descr=<Guard0x11bb6490>) [p0, p52, p48, p3, p6, p8, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++353: p54 = getfield_gc(p48, descr=<FieldP spyvm.model.W_PointersObject.inst__vars 24>)
++356: p56 = getarrayitem_gc(p54, 2, descr=<ArrayP 4>)
+debug_merge_point(0, 0, '4: [0xb4]bytecodePrimLessOrEqual (do:)')
++359: guard_nonnull_class(p8, ConstClass(W_SmallInteger), descr=<Guard0x11bb6410>) [p0, p8, p3, p6, p56, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++383: i58 = getfield_gc_pure(p8, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++386: i59 = getfield_gc_pure(p56, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++395: i60 = int_le(i58, i59)
+guard_true(i60, descr=<Guard0x11bb6390>) [p0, p3, p6, p8, p56, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
+debug_merge_point(0, 0, '5: [0xac]longJumpIfFalse (do:)')
+debug_merge_point(0, 0, '7: [0x10]pushTemporaryVariableBytecode (do:)')
+debug_merge_point(0, 0, '8: [0x0]pushReceiverVariableBytecode (do:)')
++403: p62 = getarrayitem_gc(p54, 0, descr=<ArrayP 4>)
+debug_merge_point(0, 0, '9: [0x11]pushTemporaryVariableBytecode (do:)')
+debug_merge_point(0, 0, '10: [0xc0]bytecodePrimAt (do:)')
++412: p64 = getfield_gc(ConstPtr(ptr63), descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++418: guard_value(p64, ConstPtr(ptr65), descr=<Guard0x11bb6310>) [p0, p64, p3, p6, p8, p62, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++430: guard_class(p62, 6040288, descr=<Guard0x11bb6290>) [p0, i49, p62, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++443: p67 = getfield_gc(p62, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_s_class 12>)
++446: guard_value(p67, ConstPtr(ptr68), descr=<Guard0x11bb6210>) [p0, p62, p67, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++458: i70 = getfield_gc(ConstPtr(ptr69), descr=<FieldU spyvm.interpreter.Interpreter.inst_trace 46>)
++465: guard_false(i70, descr=<Guard0x11bb6190>) [p0, p62, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++473: i72 = int_sub(i58, 1)
++476: i74 = int_ge(i72, 0)
+guard_true(i74, descr=<Guard0x11bb6110>) [p0, p62, i72, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++485: p75 = getfield_gc(p62, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++494: guard_isnull(p75, descr=<Guard0x11bb6090>) [p0, p62, i72, p75, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++502: p76 = getfield_gc(p62, descr=<FieldP spyvm.model.W_PointersObject.inst__vars 24>)
++505: i77 = arraylen_gc(p76, descr=<ArrayP 4>)
++508: i78 = int_lt(i72, i77)
+guard_true(i78, descr=<Guard0x11bb6010>) [p0, p62, i72, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++516: p79 = getfield_gc(p62, descr=<FieldP spyvm.model.W_PointersObject.inst_fieldtypes 28>)
++519: guard_value(p79, ConstPtr(ptr80), descr=<Guard0x11bb5f50>) [p0, p62, i72, p79, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++531: p81 = getarrayitem_gc(p76, i72, descr=<ArrayP 4>)
+debug_merge_point(0, 0, '11: [0xca]bytecodePrimValueWithArg (do:)')
++535: guard_class(p6, 6040288, descr=<Guard0x11bb5ed0>) [p0, i49, p6, p3, p8, p81, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++554: p83 = getfield_gc(p6, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_s_class 12>)
++557: p84 = getfield_gc(p83, descr=<FieldP spyvm.shadow.AbstractShadow.inst__w_self 8>)
++560: i86 = instance_ptr_eq(p84, ConstPtr(ptr85))
+guard_true(i86, descr=<Guard0x11bb5e50>) [p0, p84, p3, p6, p8, p81, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++572: guard_class(p84, 6040288, descr=<Guard0x11bb5dd0>) [p0, p6, p84, p3, p8, p81, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++585: p88 = getfield_gc(p6, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++588: guard_nonnull_class(p88, ConstClass(BlockContextShadow), descr=<Guard0x11bb5d50>) [p0, p88, p6, p3, p8, p81, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++606: i90 = getfield_gc(p88, descr=<FieldS spyvm.shadow.BlockContextShadow.inst__eargc 44>)
++609: i92 = int_ne(1, i90)
+guard_false(i92, descr=<Guard0x11bb5cd0>) [p0, i90, p88, p3, p6, p8, p81, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++618: i93 = ptr_eq(p88, p0)
+guard_false(i93, descr=<Guard0x11bb5c50>) [p0, p88, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p81]
++630: p94 = getfield_gc(p88, descr=<FieldP spyvm.shadow.ContextPartShadow.vable_token 20>)
++633: i96 = ptr_ne(p94, ConstPtr(null))
++648: cond_call(i96, 4712800, p88, descr=<Callv 0 r EF=2 OS=121>)
++690: i98 = getfield_gc(p88, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++705: guard_value(i98, 0, descr=<Guard0x11bb5bd0>) [p0, p88, i98, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p81]
++714: p100 = getfield_gc(p88, descr=<FieldP spyvm.shadow.ContextPartShadow.inst__temps_and_stack 36>)
++717: i101 = getfield_gc(p88, descr=<FieldS spyvm.shadow.BlockContextShadow.inst__initialip 48>)
++726: i102 = getfield_gc(ConstPtr(ptr69), descr=<FieldU spyvm.interpreter.Interpreter.inst__loop 44>)
++759: setarrayitem_gc(p100, 0, p81, descr=<ArrayP 4>)
++762: setfield_gc(p88, 1, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++775: setfield_gc(p88, i101, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++790: setfield_gc(p88, p0, descr=<FieldP spyvm.shadow.ContextPartShadow.inst__s_sender 28>)
++799: guard_true(i102, descr=<Guard0x11bb5b50>) [p0, p88, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None]
++807: i105 = getfield_gc(ConstPtr(ptr69), descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>)
++813: i107 = int_le(i105, 1)
+guard_false(i107, descr=<Guard0x11bb5ad0>) [p0, p88, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None]
++822: i109 = int_sub(i105, 1)
++825: p110 = getfield_gc(p88, descr=<FieldP spyvm.shadow.BlockContextShadow.inst__w_home 52>)
++834: i111 = getfield_gc(p88, descr=<FieldU spyvm.shadow.AbstractShadow.inst_space 12>)
++837: p112 = getfield_gc(p110, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++846: setfield_gc(ConstPtr(ptr69), i109, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>)
++864: guard_nonnull_class(p112, ConstClass(MethodContextShadow), descr=<Guard0x11bb5a50>) [p0, p88, i111, p110, p112, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None]
++882: p114 = getfield_gc(p112, descr=<FieldP spyvm.shadow.MethodContextShadow.inst__w_method 44>)
++885: guard_value(p114, ConstPtr(ptr115), descr=<Guard0x11bb59d0>) [p0, p88, p114, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None]
++897: i117 = int_lt(i101, 0)
+guard_false(i117, descr=<Guard0x11bb5950>) [p0, i101, p88, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None]
++906: guard_value(i101, 10, descr=<Guard0x11bb58d0>) [p0, i101, p88, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None]
+debug_merge_point(1, 1, '10: [0x6a]storeAndPopTemporaryVariableBytecode (collect:)')
++915: setarrayitem_gc(p100, 0, ConstPtr(null), descr=<ArrayP 4>)
++928: setfield_gc(p88, 0, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++941: setfield_gc(p88, 11, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++948: i122 = ptr_eq(p112, p0)
+guard_false(i122, descr=<Guard0x11bb5850>) [p0, p88, p112, p81, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None]
++960: p123 = getfield_gc(p112, descr=<FieldP spyvm.shadow.ContextPartShadow.vable_token 20>)
++963: i124 = ptr_ne(p123, ConstPtr(null))
++972: cond_call(i124, 4712800, p112, descr=<Callv 0 r EF=2 OS=121>)
++1008: p126 = getfield_gc(p112, descr=<FieldP spyvm.shadow.ContextPartShadow.inst__temps_and_stack 36>)
+debug_merge_point(1, 1, '11: [0x11]pushTemporaryVariableBytecode (collect:)')
++1011: cond_call(i124, 4712800, p112, descr=<Callv 0 r EF=2 OS=121>)
++1047: p129 = getarrayitem_gc(p126, 1, descr=<ArrayP 4>)
+debug_merge_point(1, 1, '12: [0x10]pushTemporaryVariableBytecode (collect:)')
++1056: cond_call(i124, 4712800, p112, descr=<Callv 0 r EF=2 OS=121>)
++1124: setarrayitem_gc(p100, 0, p129, descr=<ArrayP 4>)
++1127: p133 = getarrayitem_gc(p126, 0, descr=<ArrayP 4>)
+debug_merge_point(1, 1, '13: [0x12]pushTemporaryVariableBytecode (collect:)')
++1136: cond_call(i124, 4712800, p112, descr=<Callv 0 r EF=2 OS=121>)
++1204: setarrayitem_gc(p126, 2, p81, descr=<ArrayP 4>)
+debug_merge_point(1, 1, '14: [0xca]bytecodePrimValueWithArg (collect:)')
++1207: setfield_gc(p88, 3, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++1226: setfield_gc(p88, 15, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++1253: setarrayitem_gc(p100, 2, p81, descr=<ArrayP 4>)
++1276: setarrayitem_gc(p100, 1, p133, descr=<ArrayP 4>)
++1279: guard_class(p133, 6040288, descr=<Guard0x11bb57d0>) [p0, p88, i111, p133, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None]
++1292: p141 = getfield_gc(p133, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_s_class 12>)
++1295: p142 = getfield_gc(p141, descr=<FieldP spyvm.shadow.AbstractShadow.inst__w_self 8>)
++1298: i144 = instance_ptr_eq(p142, ConstPtr(ptr143))
+guard_true(i144, descr=<Guard0x11bb5750>) [p0, p88, p142, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None]
++1310: guard_class(p142, 6040288, descr=<Guard0x11bb56d0>) [p0, p88, p133, p142, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None]
++1323: p146 = getfield_gc(p133, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++1326: guard_nonnull_class(p146, ConstClass(BlockContextShadow), descr=<Guard0x11bb5650>) [p0, p88, p146, p133, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None]
++1344: i148 = getfield_gc(p146, descr=<FieldS spyvm.shadow.BlockContextShadow.inst__eargc 44>)
++1347: i150 = int_ne(1, i148)
+guard_false(i150, descr=<Guard0x11bb55d0>) [p0, p88, i148, p146, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None]
++1356: setfield_gc(p88, 2, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++1369: setarrayitem_gc(p100, 2, ConstPtr(null), descr=<ArrayP 4>)
++1376: i153 = ptr_eq(p146, p0)
+guard_false(i153, descr=<Guard0x11bb5550>) [p0, p88, p146, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p81]
++1388: p154 = getfield_gc(p146, descr=<FieldP spyvm.shadow.ContextPartShadow.vable_token 20>)
++1391: i155 = ptr_ne(p154, ConstPtr(null))
++1400: cond_call(i155, 4712800, p146, descr=<Callv 0 r EF=2 OS=121>)
++1435: i157 = getfield_gc(p146, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++1438: guard_value(i157, 0, descr=<Guard0x11bb54d0>) [p0, p88, p146, i157, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p81]
++1447: p159 = getfield_gc(p146, descr=<FieldP spyvm.shadow.ContextPartShadow.inst__temps_and_stack 36>)
++1450: setfield_gc(p146, 1, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++1457: i161 = getfield_gc(p88, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++1486: setarrayitem_gc(p159, 0, p81, descr=<ArrayP 4>)
++1489: guard_value(i161, 2, descr=<Guard0x11bb5450>) [p0, p88, p146, i161, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None]
++1498: i163 = getfield_gc(p146, descr=<FieldS spyvm.shadow.BlockContextShadow.inst__initialip 48>)
++1501: setfield_gc(p88, 1, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++1514: setfield_gc(p146, i163, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++1529: setfield_gc(p146, p88, descr=<FieldP spyvm.shadow.ContextPartShadow.inst__s_sender 28>)
++1532: setarrayitem_gc(p100, 1, ConstPtr(null), descr=<ArrayP 4>)
++1545: i167 = int_le(i109, 1)
+guard_false(i167, descr=<Guard0x11bb53d0>) [p0, p88, p146, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None]
++1558: i169 = int_sub(i109, 1)
++1567: p170 = getfield_gc(p146, descr=<FieldP spyvm.shadow.BlockContextShadow.inst__w_home 52>)
++1576: i171 = getfield_gc(p146, descr=<FieldU spyvm.shadow.AbstractShadow.inst_space 12>)
++1585: p172 = getfield_gc(p170, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++1594: setfield_gc(ConstPtr(ptr69), i169, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>)
++1612: guard_nonnull_class(p172, ConstClass(MethodContextShadow), descr=<Guard0x11bb5350>) [p0, p88, p146, i171, p170, p172, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None]
++1630: p174 = getfield_gc(p172, descr=<FieldP spyvm.shadow.MethodContextShadow.inst__w_method 44>)
++1633: guard_value(p174, ConstPtr(ptr175), descr=<Guard0x11bb52d0>) [p0, p88, p146, p174, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None]
++1645: i177 = int_lt(i163, 0)
+guard_false(i177, descr=<Guard0x11bb5250>) [p0, p88, i163, p146, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None]
++1654: guard_value(i163, 18, descr=<Guard0x11bb51d0>) [p0, p88, i163, p146, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None]
+debug_merge_point(2, 2, '18: [0x69]storeAndPopTemporaryVariableBytecode (codeTest1394728414)')
++1663: i179 = getfield_gc(p146, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++1672: setfield_gc(p146, 19, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++1679: guard_value(i179, 1, descr=<Guard0x11bb5150>) [p0, p88, p146, i179, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None]
++1688: setarrayitem_gc(p159, 0, ConstPtr(null), descr=<ArrayP 4>)
++1701: setfield_gc(p146, 0, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++1708: i184 = ptr_eq(p172, p0)
+guard_false(i184, descr=<Guard0x11bb50d0>) [p0, p88, p146, p172, p81, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None]
++1720: p185 = getfield_gc(p172, descr=<FieldP spyvm.shadow.ContextPartShadow.vable_token 20>)
++1723: i186 = ptr_ne(p185, ConstPtr(null))
++1732: cond_call(i186, 4712800, p172, descr=<Callv 0 r EF=2 OS=121>)
++1767: p188 = getfield_gc(p172, descr=<FieldP spyvm.shadow.ContextPartShadow.inst__temps_and_stack 36>)
+debug_merge_point(2, 2, '19: [0x11]pushTemporaryVariableBytecode (codeTest1394728414)')
++1770: cond_call(i186, 4712800, p172, descr=<Callv 0 r EF=2 OS=121>)
+debug_merge_point(2, 2, '20: [0x25]pushLiteralConstantBytecode (codeTest1394728414)')
++1828: setarrayitem_gc(p188, 1, p81, descr=<ArrayP 4>)
+debug_merge_point(2, 2, '21: [0xb1]bytecodePrimSubtract (codeTest1394728414)')
++1851: setarrayitem_gc(p159, 0, p81, descr=<ArrayP 4>)
++1854: setfield_gc(p146, 2, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++1861: setfield_gc(p146, 22, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++1888: setarrayitem_gc(p159, 1, ConstPtr(ptr195), descr=<ArrayP 4>)
++1895: guard_nonnull_class(p81, ConstClass(W_SmallInteger), descr=<Guard0x11bb5050>) [p0, p88, p146, p81, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None]
++1913: i197 = getfield_gc_pure(p81, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++1916: i199 = int_sub_ovf(i197, 1000)
+guard_no_overflow(descr=<Guard0x11b9cf90>) [p0, p88, p146, i199, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None]
+debug_merge_point(2, 2, '22: [0x7d]returnTopFromBlock (codeTest1394728414)')
++1928: setarrayitem_gc(p159, 0, ConstPtr(null), descr=<ArrayP 4>)
++1935: setfield_gc(p146, 0, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++1942: setfield_gc(p146, 23, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++1949: setarrayitem_gc(p159, 1, ConstPtr(null), descr=<ArrayP 4>)
++1956: i205 = instance_ptr_eq(p88, p146)
+guard_false(i205, descr=<Guard0x11b9cf10>) [p0, p88, p146, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i199, None]
++1968: i206 = getfield_gc(p88, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++1977: setfield_gc(p146, -1, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++1984: setfield_gc(p146, ConstPtr(null), descr=<FieldP spyvm.shadow.ContextPartShadow.inst__s_sender 28>)
++1991: setfield_gc(ConstPtr(ptr69), i109, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>)
++2003: guard_value(i206, 1, descr=<Guard0x11b9ce90>) [p0, i206, p88, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i199, None]
++2012: i210 = getfield_gc(p88, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++2015: setfield_gc(p88, 2, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++2022: i213 = int_lt(i210, 14)
+guard_false(i213, descr=<Guard0x11b9ce10>) [p0, i210, p88, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p100, i199, None]
++2031: guard_value(i210, 15, descr=<Guard0x11b9cd90>) [p0, i210, p88, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p100, i199, None]
+debug_merge_point(1, 1, '15: [0xe1]sendLiteralSelectorBytecode (collect:)')
++2040: p216 = getarrayitem_gc(p100, 0, descr=<ArrayP 4>)
++2049: setfield_gc(p88, 16, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++2056: guard_class(p216, 6040288, descr=<Guard0x11b9cd10>) [p0, p88, i111, p216, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p100, i199, None]
++2069: p219 = getfield_gc(p216, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_s_class 12>)
++2072: guard_value(p219, ConstPtr(ptr220), descr=<Guard0x11b9cc90>) [p0, p88, p216, p219, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p100, i199, None]
++2084: p222 = getfield_gc(ConstPtr(ptr221), descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++2090: setfield_gc(p88, 1, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++2097: setarrayitem_gc(p100, 1, ConstPtr(null), descr=<ArrayP 4>)
++2104: guard_value(p222, ConstPtr(ptr225), descr=<Guard0x11b9cc10>) [p0, p88, i111, p216, p222, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None, i199, None]
+debug_merge_point(2, 3, '0: [0x70]pushReceiverBytecode (add:)')
+debug_merge_point(2, 3, '1: [0x10]pushTemporaryVariableBytecode (add:)')
+debug_merge_point(2, 3, '2: [0xe0]sendLiteralSelectorBytecode (add:)')
++2116: setarrayitem_gc(p100, 0, ConstPtr(null), descr=<ArrayP 4>)
++2123: setfield_gc(p88, 0, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++2130: setfield_gc(ConstPtr(ptr69), i169, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>)
++2142: i229 = int_le(i169, 1)
+guard_false(i229, descr=<Guard0x11b9cb90>) [p0, p88, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p216, i111, None, i199, None]
++2151: i231 = int_sub(i169, 1)
+debug_merge_point(3, 4, '0: [0x2]pushReceiverVariableBytecode (addLast:)')
++2154: p232 = getfield_gc(p216, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++2163: setfield_gc(ConstPtr(ptr69), i231, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>)
++2175: guard_isnull(p232, descr=<Guard0x11b9cb10>) [p0, p88, p232, p216, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None, i111, None, i199, None]
++2183: p233 = getfield_gc(p216, descr=<FieldP spyvm.model.W_PointersObject.inst_fieldtypes 28>)
++2186: guard_value(p233, ConstPtr(ptr234), descr=<Guard0x11b9ca90>) [p0, p88, p233, p216, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None, i111, None, i199, None]
++2198: p235 = getfield_gc(p216, descr=<FieldP spyvm.model.W_PointersObject.inst__vars 24>)
++2201: p237 = getarrayitem_gc(p235, 2, descr=<ArrayP 4>)
+debug_merge_point(3, 4, '1: [0x0]pushReceiverVariableBytecode (addLast:)')
++2204: p239 = getarrayitem_gc(p235, 0, descr=<ArrayP 4>)
+debug_merge_point(3, 4, '2: [0xc2]bytecodePrimSize (addLast:)')
++2207: guard_class(p239, 6040288, descr=<Guard0x11b9ca10>) [p0, p88, i111, p239, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p237, p216, None, None, i199, None]
++2220: p241 = getfield_gc(p239, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_s_class 12>)
++2223: guard_value(p241, ConstPtr(ptr242), descr=<Guard0x11b9c990>) [p0, p88, p239, p241, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p237, p216, i111, None, i199, None]
++2235: p243 = getfield_gc(p239, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++2238: guard_isnull(p243, descr=<Guard0x11b9c910>) [p0, p88, p239, p243, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p237, p216, i111, None, i199, None]
++2246: p244 = getfield_gc(p239, descr=<FieldP spyvm.model.W_PointersObject.inst__vars 24>)
++2249: i245 = arraylen_gc(p244, descr=<ArrayP 4>)
+debug_merge_point(3, 4, '3: [0xb6]bytecodePrimEqual (addLast:)')
++2258: i246 = getfield_gc_pure(p237, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++2267: i247 = int_eq(i246, i245)
+guard_false(i247, descr=<Guard0x11b9c890>) [p0, p88, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i245, p237, p216, i111, None, i199, None]
+debug_merge_point(3, 4, '4: [0x9a]shortConditionalJump (addLast:)')
+debug_merge_point(3, 4, '8: [0x2]pushReceiverVariableBytecode (addLast:)')
+debug_merge_point(3, 4, '9: [0x76]pushConstantOneBytecode (addLast:)')
+debug_merge_point(3, 4, '10: [0xb0]bytecodePrimAdd (addLast:)')
++2275: i249 = int_add_ovf(i246, 1)
+guard_no_overflow(descr=<Guard0x11b9c810>) [p0, p88, i249, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None, p237, p216, i111, None, i199, None]
+debug_merge_point(3, 4, '11: [0x62]storeAndPopReceiverVariableBytecode (addLast:)')
+debug_merge_point(3, 4, '12: [0x0]pushReceiverVariableBytecode (addLast:)')
+debug_merge_point(3, 4, '13: [0x2]pushReceiverVariableBytecode (addLast:)')
+debug_merge_point(3, 4, '14: [0x10]pushTemporaryVariableBytecode (addLast:)')
+debug_merge_point(3, 4, '15: [0xc1]bytecodePrimAtPut (addLast:)')
++2290: i251 = int_ge(i246, 0)
+guard_true(i251, descr=<Guard0x11b9c790>) [p0, p88, p239, i246, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i249, p235, None, None, p216, i111, None, i199, None]
++2303: i252 = int_lt(i246, i245)
+guard_true(i252, descr=<Guard0x11b9c710>) [p0, p88, p239, i246, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i249, p235, None, None, p216, i111, None, i199, None]
++2315: p253 = getfield_gc(p239, descr=<FieldP spyvm.model.W_PointersObject.inst_fieldtypes 28>)
++2318: guard_value(p253, ConstPtr(ptr254), descr=<Guard0x11b9c690>) [p0, p88, p239, i246, p253, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i249, p235, None, None, p216, i111, None, i199, None]
+p256 = new_with_vtable(ConstClass(W_SmallInteger))
++2384: setfield_gc(p256, i249, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++2413: setarrayitem_gc(p235, 2, p256, descr=<ArrayP 4>)
+p259 = new_with_vtable(ConstClass(W_SmallInteger))
++2432: setfield_gc(p259, i199, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++2480: setarrayitem_gc(p244, i246, p259, descr=<ArrayP 4>)
+debug_merge_point(3, 4, '16: [0x87]popStackBytecode (addLast:)')
+debug_merge_point(3, 4, '17: [0x10]pushTemporaryVariableBytecode (addLast:)')
+debug_merge_point(3, 4, '18: [0x7c]returnTopFromMethod (addLast:)')
+debug_merge_point(2, 3, '3: [0x7c]returnTopFromMethod (add:)')
+debug_merge_point(1, 1, '16: [0x7d]returnTopFromBlock (collect:)')
++2484: p260 = getfield_gc(p88, descr=<FieldP spyvm.shadow.ContextPartShadow.inst__s_sender 28>)
++2493: setarrayitem_gc(p100, 0, ConstPtr(null), descr=<ArrayP 4>)
++2506: setfield_gc(p88, 17, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++2513: setfield_gc(ConstPtr(ptr69), i109, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>)
++2525: guard_nonnull(p260, descr=<Guard0x11b9c610>) [p0, p88, p260, p259, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42]
++2533: i264 = instance_ptr_eq(p260, p88)
+guard_false(i264, descr=<Guard0x11b9c590>) [p0, p88, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p259, p260]
++2541: setfield_gc(p88, -1, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++2548: setfield_gc(p88, ConstPtr(null), descr=<FieldP spyvm.shadow.ContextPartShadow.inst__s_sender 28>)
++2555: setfield_gc(ConstPtr(ptr69), i105, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>)
++2567: i267 = instance_ptr_eq(p260, p0)
+guard_true(i267, descr=<Guard0x11b9c510>) [p0, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p259, p260]
+debug_merge_point(0, 0, '12: [0x87]popStackBytecode (do:)')
+debug_merge_point(0, 0, '13: [0x11]pushTemporaryVariableBytecode (do:)')
+debug_merge_point(0, 0, '14: [0x76]pushConstantOneBytecode (do:)')
+debug_merge_point(0, 0, '15: [0xb0]bytecodePrimAdd (do:)')
++2579: i269 = int_add_ovf(i58, 1)
+guard_no_overflow(descr=<Guard0x11b9c490>) [p0, i269, p3, p6, p8, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None, None]
+debug_merge_point(0, 0, '16: [0x69]storeAndPopTemporaryVariableBytecode (do:)')
+debug_merge_point(0, 0, '17: [0xa3]longUnconditionalJump (do:)')
++2594: i270 = getfield_gc(ConstPtr(ptr69), descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
++2600: i272 = int_sub(i270, 13)
++2603: setfield_gc(ConstPtr(ptr69), i272, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
++2609: i274 = int_le(i272, 0)
+guard_false(i274, descr=<Guard0x11b9c410>) [p0, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i269, None, None]
+debug_merge_point(0, 0, '2: [0x11]pushTemporaryVariableBytecode (do:)')
++2618: label(p0, p3, p6, i269, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p54, i49, i96, p88, i124, p112, p126, p100, i109, i111, i169, i231, i105, i272, descr=TargetToken(50308432))
+debug_merge_point(0, 0, '2: [0x11]pushTemporaryVariableBytecode (do:)')
++2618: guard_not_invalidated(descr=<Guard0x11bbee90>) [p0, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i269]
+debug_merge_point(0, 0, '3: [0x2]pushReceiverVariableBytecode (do:)')
++2618: p275 = getarrayitem_gc(p54, 2, descr=<ArrayP 4>)
+debug_merge_point(0, 0, '4: [0xb4]bytecodePrimLessOrEqual (do:)')
++2627: i276 = getfield_gc_pure(p275, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++2636: i277 = int_le(i269, i276)
+guard_true(i277, descr=<Guard0x11bbe910>) [p0, p3, p6, p275, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i269]
+debug_merge_point(0, 0, '5: [0xac]longJumpIfFalse (do:)')
+debug_merge_point(0, 0, '7: [0x10]pushTemporaryVariableBytecode (do:)')
+debug_merge_point(0, 0, '8: [0x0]pushReceiverVariableBytecode (do:)')
++2644: p278 = getarrayitem_gc(p54, 0, descr=<ArrayP 4>)
+debug_merge_point(0, 0, '9: [0x11]pushTemporaryVariableBytecode (do:)')
+debug_merge_point(0, 0, '10: [0xc0]bytecodePrimAt (do:)')
++2653: guard_class(p278, 6040288, descr=<Guard0x11bbe1d0>) [p0, i49, p278, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i269]
++2666: p279 = getfield_gc(p278, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_s_class 12>)
++2669: guard_value(p279, ConstPtr(ptr68), descr=<Guard0x11bbe190>) [p0, p278, p279, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i269]
++2681: i280 = int_sub(i269, 1)
++2684: p281 = getfield_gc(p278, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++2693: guard_isnull(p281, descr=<Guard0x11bbaf90>) [p0, p278, i280, p281, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i269]
++2701: p282 = getfield_gc(p278, descr=<FieldP spyvm.model.W_PointersObject.inst__vars 24>)
++2704: i283 = arraylen_gc(p282, descr=<ArrayP 4>)
++2713: i284 = int_lt(i280, i283)
+guard_true(i284, descr=<Guard0x11bbaf10>) [p0, p278, i280, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i269]
++2721: p285 = getfield_gc(p278, descr=<FieldP spyvm.model.W_PointersObject.inst_fieldtypes 28>)
++2724: guard_value(p285, ConstPtr(ptr80), descr=<Guard0x11bbae90>) [p0, p278, i280, p285, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i269]
++2736: p286 = getarrayitem_gc(p282, i280, descr=<ArrayP 4>)
+debug_merge_point(0, 0, '11: [0xca]bytecodePrimValueWithArg (do:)')
++2740: cond_call(i96, 4712800, p88, descr=<Callv 0 r EF=2 OS=121>)
+debug_merge_point(1, 1, '10: [0x6a]storeAndPopTemporaryVariableBytecode (collect:)')
++2782: cond_call(i124, 4712800, p112, descr=<Callv 0 r EF=2 OS=121>)
+debug_merge_point(1, 1, '11: [0x11]pushTemporaryVariableBytecode (collect:)')
++2827: cond_call(i124, 4712800, p112, descr=<Callv 0 r EF=2 OS=121>)
++2866: p287 = getarrayitem_gc(p126, 1, descr=<ArrayP 4>)
+debug_merge_point(1, 1, '12: [0x10]pushTemporaryVariableBytecode (collect:)')
++2875: cond_call(i124, 4712800, p112, descr=<Callv 0 r EF=2 OS=121>)
++2943: setarrayitem_gc(p100, 0, p287, descr=<ArrayP 4>)
++2946: p288 = getarrayitem_gc(p126, 0, descr=<ArrayP 4>)
+debug_merge_point(1, 1, '13: [0x12]pushTemporaryVariableBytecode (collect:)')
++2949: cond_call(i124, 4712800, p112, descr=<Callv 0 r EF=2 OS=121>)
++3017: setarrayitem_gc(p126, 2, p286, descr=<ArrayP 4>)
+debug_merge_point(1, 1, '14: [0xca]bytecodePrimValueWithArg (collect:)')
++3020: setfield_gc(p88, 3, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++3033: setfield_gc(p88, 15, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++3052: setfield_gc(p88, p0, descr=<FieldP spyvm.shadow.ContextPartShadow.inst__s_sender 28>)
++3061: setfield_gc(ConstPtr(ptr69), i109, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>)
++3099: setarrayitem_gc(p100, 2, p286, descr=<ArrayP 4>)
++3122: setarrayitem_gc(p100, 1, p288, descr=<ArrayP 4>)
++3125: guard_class(p288, 6040288, descr=<Guard0x11bbef90>) [p0, p88, i111, p288, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i269]
++3138: p289 = getfield_gc(p288, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_s_class 12>)
++3141: p290 = getfield_gc(p289, descr=<FieldP spyvm.shadow.AbstractShadow.inst__w_self 8>)
++3144: i291 = instance_ptr_eq(p290, ConstPtr(ptr143))
+guard_true(i291, descr=<Guard0x11bcdd90>) [p0, p88, p290, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i269]
++3156: guard_class(p290, 6040288, descr=<Guard0x11bdf010>) [p0, p88, p288, p290, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i269]
++3169: p292 = getfield_gc(p288, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++3172: guard_nonnull_class(p292, ConstClass(BlockContextShadow), descr=<Guard0x11bdbf50>) [p0, p88, p292, p288, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i269]
++3190: i293 = getfield_gc(p292, descr=<FieldS spyvm.shadow.BlockContextShadow.inst__eargc 44>)
++3193: i294 = int_ne(1, i293)
+guard_false(i294, descr=<Guard0x11bdbed0>) [p0, p88, i293, p292, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i269]
++3202: setfield_gc(p88, 2, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++3215: setarrayitem_gc(p100, 2, ConstPtr(null), descr=<ArrayP 4>)
++3228: i295 = ptr_eq(p292, p0)
+guard_false(i295, descr=<Guard0x11bdbe50>) [p0, p88, p292, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p286, i269]
++3240: p296 = getfield_gc(p292, descr=<FieldP spyvm.shadow.ContextPartShadow.vable_token 20>)
++3243: i297 = ptr_ne(p296, ConstPtr(null))
++3252: cond_call(i297, 4712800, p292, descr=<Callv 0 r EF=2 OS=121>)
++3284: i298 = getfield_gc(p292, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++3287: guard_value(i298, 0, descr=<Guard0x11bdbdd0>) [p0, p88, p292, i298, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p286, i269]
++3296: p299 = getfield_gc(p292, descr=<FieldP spyvm.shadow.ContextPartShadow.inst__temps_and_stack 36>)
++3299: setfield_gc(p292, 1, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++3306: i300 = getfield_gc(p88, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++3335: setarrayitem_gc(p299, 0, p286, descr=<ArrayP 4>)
++3338: guard_value(i300, 2, descr=<Guard0x11bdbd50>) [p0, p88, p292, i300, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None, i269]
++3347: i301 = getfield_gc(p292, descr=<FieldS spyvm.shadow.BlockContextShadow.inst__initialip 48>)
++3350: p302 = getfield_gc(p292, descr=<FieldP spyvm.shadow.BlockContextShadow.inst__w_home 52>)
++3359: i303 = getfield_gc(p292, descr=<FieldU spyvm.shadow.AbstractShadow.inst_space 12>)
++3368: p304 = getfield_gc(p302, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++3377: setfield_gc(p88, 1, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++3396: setfield_gc(p292, i301, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++3417: setfield_gc(p292, p88, descr=<FieldP spyvm.shadow.ContextPartShadow.inst__s_sender 28>)
++3432: setfield_gc(ConstPtr(ptr69), i169, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>)
++3444: setarrayitem_gc(p100, 1, ConstPtr(null), descr=<ArrayP 4>)
++3457: guard_nonnull_class(p304, ConstClass(MethodContextShadow), descr=<Guard0x11bdbcd0>) [p0, p88, p292, i303, p302, p304, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None, i269]
++3475: p305 = getfield_gc(p304, descr=<FieldP spyvm.shadow.MethodContextShadow.inst__w_method 44>)
++3478: guard_value(p305, ConstPtr(ptr175), descr=<Guard0x11bdbc50>) [p0, p88, p292, p305, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None, i269]
++3490: i306 = int_lt(i301, 0)
+guard_false(i306, descr=<Guard0x11bdbbd0>) [p0, p88, i301, p292, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None, i269]
++3499: guard_value(i301, 18, descr=<Guard0x11bdbb50>) [p0, p88, i301, p292, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None, i269]
+debug_merge_point(2, 2, '18: [0x69]storeAndPopTemporaryVariableBytecode (codeTest1394728414)')
++3508: i307 = getfield_gc(p292, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++3511: setfield_gc(p292, 19, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++3518: guard_value(i307, 1, descr=<Guard0x11bdbad0>) [p0, p88, p292, i307, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None, i269]
++3527: setarrayitem_gc(p299, 0, ConstPtr(null), descr=<ArrayP 4>)
++3540: setfield_gc(p292, 0, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++3547: i308 = ptr_eq(p304, p0)
+guard_false(i308, descr=<Guard0x11bdba50>) [p0, p88, p292, p304, p286, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None, i269]
++3559: p309 = getfield_gc(p304, descr=<FieldP spyvm.shadow.ContextPartShadow.vable_token 20>)
++3562: i310 = ptr_ne(p309, ConstPtr(null))
++3571: cond_call(i310, 4712800, p304, descr=<Callv 0 r EF=2 OS=121>)
++3609: p311 = getfield_gc(p304, descr=<FieldP spyvm.shadow.ContextPartShadow.inst__temps_and_stack 36>)
+debug_merge_point(2, 2, '19: [0x11]pushTemporaryVariableBytecode (codeTest1394728414)')
++3612: cond_call(i310, 4712800, p304, descr=<Callv 0 r EF=2 OS=121>)
+debug_merge_point(2, 2, '20: [0x25]pushLiteralConstantBytecode (codeTest1394728414)')
++3667: setarrayitem_gc(p311, 1, p286, descr=<ArrayP 4>)
+debug_merge_point(2, 2, '21: [0xb1]bytecodePrimSubtract (codeTest1394728414)')
++3696: setarrayitem_gc(p299, 0, p286, descr=<ArrayP 4>)
++3699: setfield_gc(p292, 2, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++3706: setfield_gc(p292, 22, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++3733: setarrayitem_gc(p299, 1, ConstPtr(ptr195), descr=<ArrayP 4>)
++3740: guard_nonnull_class(p286, ConstClass(W_SmallInteger), descr=<Guard0x11bdb9d0>) [p0, p88, p292, p286, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None, i269]
++3758: i312 = getfield_gc_pure(p286, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++3761: i313 = int_sub_ovf(i312, 1000)
+guard_no_overflow(descr=<Guard0x11bdb950>) [p0, p88, p292, i313, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None, i269]
+debug_merge_point(2, 2, '22: [0x7d]returnTopFromBlock (codeTest1394728414)')
++3773: setarrayitem_gc(p299, 0, ConstPtr(null), descr=<ArrayP 4>)
++3780: setfield_gc(p292, 0, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++3787: setfield_gc(p292, 23, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++3794: setarrayitem_gc(p299, 1, ConstPtr(null), descr=<ArrayP 4>)
++3801: i314 = instance_ptr_eq(p88, p292)
+guard_false(i314, descr=<Guard0x11bdb8d0>) [p0, p88, p292, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i313, None, i269]
++3813: i315 = getfield_gc(p88, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++3822: setfield_gc(p292, -1, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++3829: setfield_gc(p292, ConstPtr(null), descr=<FieldP spyvm.shadow.ContextPartShadow.inst__s_sender 28>)
++3836: setfield_gc(ConstPtr(ptr69), i109, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>)
++3848: guard_value(i315, 1, descr=<Guard0x11bdb850>) [p0, i315, p88, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i313, None, i269]
++3857: i316 = getfield_gc(p88, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++3860: setfield_gc(p88, 2, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++3867: i317 = int_lt(i316, 14)
+guard_false(i317, descr=<Guard0x11bdb7d0>) [p0, i316, p88, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p100, i313, None, i269]
++3876: guard_value(i316, 15, descr=<Guard0x11bdb750>) [p0, i316, p88, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p100, i313, None, i269]
+debug_merge_point(1, 1, '15: [0xe1]sendLiteralSelectorBytecode (collect:)')
++3885: p318 = getarrayitem_gc(p100, 0, descr=<ArrayP 4>)
++3888: setfield_gc(p88, 16, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++3895: guard_class(p318, 6040288, descr=<Guard0x11bdb6d0>) [p0, p88, i111, p318, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p100, i313, None, i269]
++3908: p319 = getfield_gc(p318, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_s_class 12>)
++3911: guard_value(p319, ConstPtr(ptr220), descr=<Guard0x11bdb650>) [p0, p88, p318, p319, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p100, i313, None, i269]
+debug_merge_point(2, 3, '0: [0x70]pushReceiverBytecode (add:)')
+debug_merge_point(2, 3, '1: [0x10]pushTemporaryVariableBytecode (add:)')
+debug_merge_point(2, 3, '2: [0xe0]sendLiteralSelectorBytecode (add:)')
+debug_merge_point(3, 4, '0: [0x2]pushReceiverVariableBytecode (addLast:)')
++3923: p320 = getfield_gc(p318, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++3926: setarrayitem_gc(p100, 0, ConstPtr(null), descr=<ArrayP 4>)
++3933: setfield_gc(p88, 0, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>)
++3940: setfield_gc(ConstPtr(ptr69), i231, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>)
++3952: setarrayitem_gc(p100, 1, ConstPtr(null), descr=<ArrayP 4>)
++3959: guard_isnull(p320, descr=<Guard0x11bdb5d0>) [p0, p88, p320, p318, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i111, None, i313, None, i269]
++3967: p323 = getfield_gc(p318, descr=<FieldP spyvm.model.W_PointersObject.inst_fieldtypes 28>)
++3970: guard_value(p323, ConstPtr(ptr234), descr=<Guard0x11bdb550>) [p0, p88, p323, p318, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i111, None, i313, None, i269]
++3982: p324 = getfield_gc(p318, descr=<FieldP spyvm.model.W_PointersObject.inst__vars 24>)
++3985: p325 = getarrayitem_gc(p324, 2, descr=<ArrayP 4>)
+debug_merge_point(3, 4, '1: [0x0]pushReceiverVariableBytecode (addLast:)')
++3988: p326 = getarrayitem_gc(p324, 0, descr=<ArrayP 4>)
+debug_merge_point(3, 4, '2: [0xc2]bytecodePrimSize (addLast:)')
++3991: guard_class(p326, 6040288, descr=<Guard0x11bdb4d0>) [p0, p88, i111, p326, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p318, p325, None, None, i313, None, i269]
++4004: p327 = getfield_gc(p326, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_s_class 12>)
++4007: guard_value(p327, ConstPtr(ptr242), descr=<Guard0x11bdb450>) [p0, p88, p326, p327, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p318, p325, i111, None, i313, None, i269]
++4019: p328 = getfield_gc(p326, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>)
++4022: guard_isnull(p328, descr=<Guard0x11bdb3d0>) [p0, p88, p326, p328, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p318, p325, i111, None, i313, None, i269]
++4030: p329 = getfield_gc(p326, descr=<FieldP spyvm.model.W_PointersObject.inst__vars 24>)
++4033: i330 = arraylen_gc(p329, descr=<ArrayP 4>)
+debug_merge_point(3, 4, '3: [0xb6]bytecodePrimEqual (addLast:)')
++4042: i331 = getfield_gc_pure(p325, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++4051: i332 = int_eq(i331, i330)
+guard_false(i332, descr=<Guard0x11bdb350>) [p0, p88, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i330, p318, p325, i111, None, i313, None, i269]
+debug_merge_point(3, 4, '4: [0x9a]shortConditionalJump (addLast:)')
+debug_merge_point(3, 4, '8: [0x2]pushReceiverVariableBytecode (addLast:)')
+debug_merge_point(3, 4, '9: [0x76]pushConstantOneBytecode (addLast:)')
+debug_merge_point(3, 4, '10: [0xb0]bytecodePrimAdd (addLast:)')
++4059: i333 = int_add_ovf(i331, 1)
+guard_no_overflow(descr=<Guard0x11bdb2d0>) [p0, p88, i333, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None, p318, p325, i111, None, i313, None, i269]
+debug_merge_point(3, 4, '11: [0x62]storeAndPopReceiverVariableBytecode (addLast:)')
+debug_merge_point(3, 4, '12: [0x0]pushReceiverVariableBytecode (addLast:)')
+debug_merge_point(3, 4, '13: [0x2]pushReceiverVariableBytecode (addLast:)')
+debug_merge_point(3, 4, '14: [0x10]pushTemporaryVariableBytecode (addLast:)')
+debug_merge_point(3, 4, '15: [0xc1]bytecodePrimAtPut (addLast:)')
++4074: i334 = int_ge(i331, 0)
+guard_true(i334, descr=<Guard0x11bdb210>) [p0, p88, p326, i331, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i333, p324, None, p318, None, i111, None, i313, None, i269]
++4087: i335 = int_lt(i331, i330)
+guard_true(i335, descr=<Guard0x11bdb150>) [p0, p88, p326, i331, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i333, p324, None, p318, None, i111, None, i313, None, i269]
++4099: p336 = getfield_gc(p326, descr=<FieldP spyvm.model.W_PointersObject.inst_fieldtypes 28>)
++4102: guard_value(p336, ConstPtr(ptr254), descr=<Guard0x11bdb090>) [p0, p88, p326, i331, p336, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i333, p324, None, p318, None, i111, None, i313, None, i269]
+p337 = new_with_vtable(ConstClass(W_SmallInteger))
++4168: setfield_gc(p337, i333, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++4197: setarrayitem_gc(p324, 2, p337, descr=<ArrayP 4>)
+p338 = new_with_vtable(ConstClass(W_SmallInteger))
++4216: setfield_gc(p338, i313, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++4264: setarrayitem_gc(p329, i331, p338, descr=<ArrayP 4>)
+debug_merge_point(3, 4, '16: [0x87]popStackBytecode (addLast:)')
+debug_merge_point(3, 4, '17: [0x10]pushTemporaryVariableBytecode (addLast:)')
+debug_merge_point(3, 4, '18: [0x7c]returnTopFromMethod (addLast:)')
+debug_merge_point(2, 3, '3: [0x7c]returnTopFromMethod (add:)')
+debug_merge_point(1, 1, '16: [0x7d]returnTopFromBlock (collect:)')
++4268: p339 = getfield_gc(p88, descr=<FieldP spyvm.shadow.ContextPartShadow.inst__s_sender 28>)
++4277: setarrayitem_gc(p100, 0, ConstPtr(null), descr=<ArrayP 4>)
++4290: setfield_gc(p88, 17, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++4297: setfield_gc(ConstPtr(ptr69), i109, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>)
++4309: guard_nonnull(p339, descr=<Guard0x11bdb010>) [p0, p88, p339, p338, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i269]
++4317: i340 = instance_ptr_eq(p339, p88)
+guard_false(i340, descr=<Guard0x11bcdf50>) [p0, p88, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p338, p339, i269]
++4325: setfield_gc(p88, -1, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>)
++4332: setfield_gc(p88, ConstPtr(null), descr=<FieldP spyvm.shadow.ContextPartShadow.inst__s_sender 28>)
++4339: setfield_gc(ConstPtr(ptr69), i105, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>)
++4351: i341 = instance_ptr_eq(p339, p0)
+guard_true(i341, descr=<Guard0x11bcded0>) [p0, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p338, p339, i269]
+debug_merge_point(0, 0, '12: [0x87]popStackBytecode (do:)')
+debug_merge_point(0, 0, '13: [0x11]pushTemporaryVariableBytecode (do:)')
+debug_merge_point(0, 0, '14: [0x76]pushConstantOneBytecode (do:)')
+debug_merge_point(0, 0, '15: [0xb0]bytecodePrimAdd (do:)')
++4363: i342 = int_add_ovf(i269, 1)
+guard_no_overflow(descr=<Guard0x11bcde50>) [p0, i342, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, None, None, i269]
+debug_merge_point(0, 0, '16: [0x69]storeAndPopTemporaryVariableBytecode (do:)')
+debug_merge_point(0, 0, '17: [0xa3]longUnconditionalJump (do:)')
++4378: i343 = int_sub(i272, 13)
++4387: setfield_gc(ConstPtr(ptr69), i343, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
++4393: i344 = int_le(i343, 0)
+guard_false(i344, descr=<Guard0x11bcddd0>) [p0, p3, p6, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, i342, None, None, None]
+debug_merge_point(0, 0, '2: [0x11]pushTemporaryVariableBytecode (do:)')
++4402: i345 = arraylen_gc(p54, descr=<ArrayP 4>)
++4402: i346 = arraylen_gc(p100, descr=<ArrayP 4>)
++4402: i347 = arraylen_gc(p126, descr=<ArrayP 4>)
++4402: jump(p0, p3, p6, i342, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p54, i49, i96, p88, i124, p112, p126, p100, i109, i111, i169, i231, i105, i343, descr=TargetToken(50308432))
++4415: --end of the loop--
+[36d042ebc] jit-log-opt-loop}
+[36d04fe68] {jit-log-opt-bridge
+# bridge out of Guard 0x11bcddd0 with 14 ops
+[p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, i17]
++29: f19 = call(ConstClass(ll_time.ll_time_time), descr=<Callf 8 EF=4>)
++82: setfield_gc(ConstPtr(ptr20), 10000, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
++92: guard_no_exception(descr=<Guard0x11bf8690>) [p0, f19, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, i17]
++105: f23 = float_sub(f19, 1394728414.718000)
++113: f25 = float_mul(f23, 1000.000000)
++121: i26 = cast_float_to_int(f25)
++125: i28 = int_and(i26, 2147483647)
++131: i29 = getfield_gc(ConstPtr(ptr20), descr=<FieldS spyvm.interpreter.Interpreter.inst_next_wakeup_tick 36>)
++137: i30 = int_is_zero(i29)
+guard_true(i30, descr=<Guard0x11bf8810>) [p0, i28, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, i17]
+debug_merge_point(0, 0, '2: [0x11]pushTemporaryVariableBytecode (do:)')
+p32 = new_with_vtable(ConstClass(W_SmallInteger))
++194: setfield_gc(p32, i17, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
++203: jump(p0, 2, 2, p1, p2, p32, ConstPtr(null), ConstPtr(null), ConstPtr(null), p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, descr=TargetToken(48253248))
++254: --end of the loop--
+[36d04ff65] jit-log-opt-bridge}

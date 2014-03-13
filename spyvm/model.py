@@ -143,7 +143,7 @@ class W_Object(object):
         raise error.UnwrappingError("Got unexpected class in unwrap_uint")
 
     def fieldtype(self):
-        from spyvm.fieldtypes import obj
+        from spyvm.strategies import obj
         return obj
 
     def is_array_object(self):
@@ -221,7 +221,7 @@ class W_SmallInteger(W_Object):
         return self
 
     def fieldtype(self):
-        from spyvm.fieldtypes import SInt
+        from spyvm.strategies import SInt
         return SInt
 
 class W_AbstractObjectWithIdentityHash(W_Object):
@@ -327,7 +327,7 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
         return isinstance(self.value, int)
 
     def fieldtype(self):
-        from spyvm.fieldtypes import LPI
+        from spyvm.strategies import LPI
         return LPI
 
     def is_array_object(self):
@@ -422,7 +422,7 @@ class W_Float(W_AbstractObjectWithIdentityHash):
         return 2
 
     def fieldtype(self):
-        from spyvm.fieldtypes import flt
+        from spyvm.strategies import flt
         return flt
 
 @signature.finishsigs
@@ -653,7 +653,7 @@ class W_PointersObject(W_AbstractPointersObject):
     
     @jit.unroll_safe
     def __init__(self, space, w_class, size):
-        from spyvm.fieldtypes import strategy_of_size
+        from spyvm.strategies import strategy_of_size
         """Create new object with size = fixed + variable size."""
         W_AbstractPointersObject.__init__(self, space, w_class, size)
         # TODO - setting strategy/storage is useless if fillin() will be called afterwards.
@@ -686,7 +686,7 @@ class W_PointersObject(W_AbstractPointersObject):
         return self.strategy
     
     def fillin_pointers(self, space, collection):
-        from spyvm.fieldtypes import strategy_for_list
+        from spyvm.strategies import strategy_for_list
         self.strategy = strategy_for_list(self.s_class, collection)
         self.set_storage(self.strategy.storage_for_list(space, collection))
     
@@ -751,7 +751,7 @@ class W_PointersObject(W_AbstractPointersObject):
         return w_result
 
     def fieldtype(self):
-        from spyvm.fieldtypes import obj
+        from spyvm.strategies import obj
         return obj
 
 class W_WeakPointersObject(W_AbstractPointersObject):

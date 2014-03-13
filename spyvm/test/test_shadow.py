@@ -1,6 +1,6 @@
 import random
 from spyvm import model, shadow, constants, interpreter
-from spyvm import objspace, fieldtypes
+from spyvm import objspace, strategies
 
 space = objspace.ObjSpace()
 

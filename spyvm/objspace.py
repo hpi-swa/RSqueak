@@ -162,7 +162,7 @@ class ObjSpace(object):
         # initialize their fields to nil, we have to create it in the model
         # package, and then patch up its fields here:
         def patch_nil(w_nil):
-            from spyvm.fieldtypes import ListStorageStrategy
+            from spyvm.strategies import ListStorageStrategy
             w_nil.space = self
             w_nil.strategy = ListStorageStrategy.singleton
             w_nil.set_storage(w_nil.strategy.initial_storage(self, 0))
