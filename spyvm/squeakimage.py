@@ -216,9 +216,6 @@ class ImageReader(object):
         # dictionary mapping old address to chunk object
         self.chunks = {}
         self.chunklist = []
-        # cache wrapper integers
-        self.intcache = {}
-
         self.lastWindowSize = 0
 
     def initialize(self):
@@ -436,12 +433,7 @@ class GenericObject(object):
         self.reader = reader
         self.value = value
         self.size = -1
-        if value in reader.intcache:
-            w_int = reader.intcache[value]
-        else:
-            w_int = self.space.wrap_int(value)
-            reader.intcache[value] = w_int
-        self.w_object = w_int
+        self.w_object = self.space.wrap_int(value)
 
     def initialize(self, chunk, reader):
         self.reader = reader
