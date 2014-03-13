@@ -1,5 +1,5 @@
 import py
-from spyvm import wrapper, model, interpreter, objspace, fieldtypes
+from spyvm import wrapper, model, interpreter, objspace, strategies
 from spyvm.model import w_nil
 from spyvm.test import test_miniimage as tools
 from spyvm.error import WrapperException, FatalError
@@ -47,13 +47,13 @@ def check_arr(arr, expected):
 
 def test_EmptyArray():
     a = arr(5)
-    assert isinstance(a.strategy, fieldtypes.AllNilStorageStrategy)
+    assert isinstance(a.strategy, strategies.AllNilStorageStrategy)
 
 def test_StoreNil():
     a = arr(5)
     a.store(space, 0, w_nil)
     a.store(space, 4, w_nil)
-    assert isinstance(a.strategy, fieldtypes.AllNilStorageStrategy)
+    assert isinstance(a.strategy, strategies.AllNilStorageStrategy)
 
 def test_FetchNil():
     a = arr(5)
@@ -67,13 +67,13 @@ def test_AllNilSize():
 
 def test_AllNil_to_List():
     a = list_arr(5)
-    assert isinstance(a.strategy, fieldtypes.ListStorageStrategy)
+    assert isinstance(a.strategy, strategies.ListStorageStrategy)
 
 def test_List_store():
     a = list_arr(5)
     a.store(space, 1, arr(1))
     a.store(space, 4, arr(1))
-    assert isinstance(a.strategy, fieldtypes.ListStorageStrategy)
+    assert isinstance(a.strategy, strategies.ListStorageStrategy)
 
 def test_List_fetch():
     a = list_arr(5)
@@ -89,14 +89,14 @@ def test_List_size():
 
 def test_AllNil_to_Dense():
     a = dense_arr(5)
-    assert isinstance(a.strategy, fieldtypes.DenseSmallIntegerStorageStrategy)
+    assert isinstance(a.strategy, strategies.DenseSmallIntegerStorageStrategy)
     check_arr(a, [12, w_nil, w_nil, w_nil, w_nil])
 
 def test_Dense_store():
     a = dense_arr(5)
     a.store(space, 1, space.wrap_int(20))
     a.store(space, 2, space.wrap_int(20))
-    assert isinstance(a.strategy, fieldtypes.DenseSmallIntegerStorageStrategy)
+    assert isinstance(a.strategy, strategies.DenseSmallIntegerStorageStrategy)
     check_arr(a, [12, 20, 20, w_nil, w_nil])
 
 def test_Dense_overwrite_middle():
@@ -122,7 +122,7 @@ def test_Dense_overwrite_last():
 
 def test_Dense_odd():
     a = dense_arr_odd(5)
-    assert isinstance(a.strategy, fieldtypes.DenseSmallIntegerStorageStrategy)
+    assert isinstance(a.strategy, strategies.DenseSmallIntegerStorageStrategy)
     check_arr(a, [w_nil, w_nil, 12, w_nil, w_nil])
 
 def test_Dense_odd_store():
@@ -170,25 +170,25 @@ def test_Dense_delete_last():
 def test_Dense_to_AllNil():
     a = dense_arr_odd(5)
     a.store(space, 2, w_nil)
-    assert isinstance(a.strategy, fieldtypes.AllNilStorageStrategy)
+    assert isinstance(a.strategy, strategies.AllNilStorageStrategy)
 
 def test_Dense_to_List():
     a = dense_arr_odd(5)
     a.store(space, 1, arr(1))
-    assert isinstance(a.strategy, fieldtypes.ListStorageStrategy)
+    assert isinstance(a.strategy, strategies.ListStorageStrategy)
 
 def test_Dense_to_Sparse_by_deleting():
     a = dense_arr_odd(5)
     a.store(space, 1, space.wrap_int(10))
     a.store(space, 3, space.wrap_int(20))
     a.store(space, 2, w_nil)
-    assert isinstance(a.strategy, fieldtypes.SparseSmallIntegerStorageStrategy)
+    assert isinstance(a.strategy, strategies.SparseSmallIntegerStorageStrategy)
     check_arr(a, [w_nil, 10, w_nil, 20, w_nil])
 
 def test_Dense_to_Sparse_by_storing():
     a = dense_arr_odd(5)
     a.store(space, 4, space.wrap_int(10))
-    assert isinstance(a.strategy, fieldtypes.SparseSmallIntegerStorageStrategy)
+    assert isinstance(a.strategy, strategies.SparseSmallIntegerStorageStrategy)
     check_arr(a, [w_nil, w_nil, 12, w_nil, 10])
 
 def test_Sparse_store_nil():
@@ -204,4 +204,4 @@ def test_Sparse_store():
 def test_Sparse_to_List():
     a = sparse_arr(5)
     a.store(space, 4, arr(5))
-    assert isinstance(a.strategy, fieldtypes.ListStorageStrategy)
+    assert isinstance(a.strategy, strategies.ListStorageStrategy)
