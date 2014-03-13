@@ -154,7 +154,7 @@ class W_SmallInteger(W_Object):
     # TODO can we tell pypy that its never larger then 31-bit?
     _attrs_ = ['value']
     __slots__ = ('value',)     # the only allowed slot here
-    _immutable_fields_ = ["value?"]
+    _immutable_fields_ = ["value"]
 
     def __init__(self, value):
         self.value = intmask(value)
@@ -486,9 +486,6 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     """Common object."""
     _attrs_ = ['shadow']
     _immutable_fields_ = ['shadow?']
-    #import_from_mixin(version.VersionMixin)
-    def changed(self):
-        pass
 
     shadow = None # Default value
 
@@ -538,7 +535,6 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     def store_shadow(self, shadow):
         assert self.shadow is None or self.shadow is shadow
         self.shadow = shadow
-        self.changed()
 
     def _get_shadow(self):
         return self.shadow
@@ -620,8 +616,6 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         if    self.shadow is not None:    self.shadow._w_self = self
         if w_other.shadow is not None: w_other.shadow._w_self = w_other
         W_AbstractObjectWithClassReference._become(self, w_other)
-        self.changed()
-        w_other.changed()
         return True
 
     @jit.elidable
@@ -684,7 +678,6 @@ class W_PointersObject(W_AbstractPointersObject):
     
     def set_storage(self, storage):
         self._storage = storage
-        self.changed()
     
     def get_storage(self):
         return self._storage

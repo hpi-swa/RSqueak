@@ -644,23 +644,10 @@ class ContextPartShadow(AbstractRedirectingShadow):
     # Stack Manipulation
 
     def stack_get(self, index0):
-        w_res = self._temps_and_stack[index0]
-        if isinstance(w_res, model.W_SmallInteger):
-            # Return a copy of the integer so it's safe to change it's value in-place.
-            # The JIT will remove this allocation.
-            return w_res.make_copy(self.space)
-        return w_res
+        return self._temps_and_stack[index0]
     
     def stack_put(self, index0, w_val):
-        if isinstance(w_val, model.W_SmallInteger):
-            w_onstack = self._temps_and_stack[index0]
-            if isinstance(w_onstack, model.W_SmallInteger):
-                w_onstack.value = w_val.value
-            else:
-                # Make a copy of the integer object to be sure that it's not reference anywhere else.
-                self._temps_and_stack[index0] = w_res.make_copy(self.space)
-        else:
-            self._temps_and_stack[index0] = w_val
+        self._temps_and_stack[index0] = w_val
     
     def stack(self):
         """NOT_RPYTHON""" # purely for testing
