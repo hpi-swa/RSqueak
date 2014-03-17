@@ -166,8 +166,7 @@ class Interpreter(object):
         assert len(arguments_w) <= 7
         w_method.setbytes([chr(131), chr(len(arguments_w) << 5 + 0), chr(124)]) #returnTopFromMethod
         s_method = w_method.as_compiledmethod_get_shadow(self.space)
-        s_frame = MethodContextShadow.make_context(
-                self.space, s_method, w_receiver, [], None)
+        s_frame = MethodContextShadow(self.space, None, s_method, w_receiver, [])
         s_frame.push(w_receiver)
         s_frame.push_all(list(arguments_w))
 
