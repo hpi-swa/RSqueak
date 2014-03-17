@@ -4,6 +4,7 @@ from spyvm.version import elidable_for_version, constant_for_version
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib import rarithmetic, jit
 from rpython.rlib.objectmodel import import_from_mixin
+from rpython.rlib.debug import make_sure_not_resized
 
 class AbstractShadow(object):
     """A shadow is an optional extra bit of information that
@@ -636,6 +637,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
         stacksize = self.stackend() - self.stackstart()
         tempsize = self.tempsize()
         self._temps_and_stack = [None] * (stacksize + tempsize)
+        make_sure_not_resized(self._temps_and_stack)
         for i in range(tempsize):
             self._temps_and_stack[i] = self.space.w_nil
         self._stack_ptr = rarithmetic.r_uint(tempsize) # we point after the last element

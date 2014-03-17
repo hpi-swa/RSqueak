@@ -20,6 +20,7 @@ from spyvm.version import elidable_for_version
 
 from rpython.rlib import rrandom, objectmodel, jit, signature
 from rpython.rlib.rarithmetic import intmask, r_uint, r_int
+from rpython.rlib.debug import make_sure_not_resized
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib.objectmodel import instantiate, compute_hash, import_from_mixin
 from rpython.rtyper.lltypesystem import lltype, rffi
@@ -635,24 +636,27 @@ class W_PointersObject(W_AbstractPointersObject):
         from spyvm.fieldtypes import fieldtypes_of_length
         """Create new object with size = fixed + variable size."""
         W_AbstractPointersObject.__init__(self, space, w_class, size)
-        vars = self._vars = [None] * size
+        vars = [None] * size
+        self.set_vars(vars)
         self.fieldtypes = fieldtypes_of_length(self.s_class, size)
         for i in range(size): # do it by hand for the JIT's sake
             vars[i] = w_nil
-
+    
+    def set_vars(self, new_vars):
+        self._vars = new_vars
+        make_sure_not_resized(self._vars)
+    
     def fillin(self, space, g_self):
         W_AbstractPointersObject.fillin(self, space, g_self)
         from spyvm.fieldtypes import fieldtypes_of
-        self._vars = g_self.get_pointers()
+        self.set_vars(g_self.get_pointers())
         self.fieldtypes = fieldtypes_of(self)
 
     def _fetch(self, n0):
-        # return self._vars[n0]
         fieldtypes = jit.promote(self.fieldtypes)
         return fieldtypes.fetch(self, n0)
 
     def _store(self, n0, w_value):
-        # self._vars[n0] = w_value
         fieldtypes = jit.promote(self.fieldtypes)
         return fieldtypes.store(self, n0, w_value)
 
@@ -673,7 +677,7 @@ class W_PointersObject(W_AbstractPointersObject):
     def clone(self, space):
         w_result = W_PointersObject(self.space, self.getclass(space),
                                     len(self._vars))
-        w_result._vars = [self.fetch(space, i) for i in range(len(self._vars))]
+        w_result.set_vars([self.fetch(space, i) for i in range(len(self._vars))])
         return w_result
 
     def fieldtype(self):
