@@ -1,0 +1,6 @@
+    |col i|
+    col := (1 to: 10000000) asOrderedCollection.
+    ^ 0 minRuntime: [ 
+        i := 1.
+        [ (col at: i) ~~ 9999999 ] whileTrue: [ i := i + 1 ]
+    ] times: 10

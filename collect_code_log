@@ -1,0 +1,12 @@
+
+function collectlog() { # $1: executable $2: actual code
+    echo -n "$1: "
+    export PYPYLOG=jit-log-opt:./spy-$1-code.log
+    ./$1 -r "$2" images/minibluebookdebug.image
+    export PYPYLOG=
+}
+
+rm spy-*.log
+for s in `ls st-*`; do
+    collectlog $1 $s "`cat code`"
+done

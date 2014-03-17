@@ -1,0 +1,46 @@
+
+code_fill='
+    |col|
+    col := OrderedCollection new.
+    ^ 0 minRuntime: [ 1 to: 1000000 do: [ :i | col add: i ] ] times: 10
+'
+
+code_collect='
+    |col|
+    col := (1 to: 10000000) asOrderedCollection.
+    ^ 0 minRuntime: [ col collect: [ :i | i - 1000 ] ] times: 3
+'
+
+code_find='
+    |col i|
+    col := (1 to: 10000000) asOrderedCollection.
+    ^ 0 minRuntime: [ 
+        i := 1.
+        [ (col at: i) ~~ 9999999 ] whileTrue: [ i := i + 1 ]
+    ] times: 10
+'
+
+code_indexOf='
+    |col|
+    col := (1 to: 10000000) asOrderedCollection.
+    ^ 0 minRuntime: [ col indexOf: 9999999 ] times: 10
+'
+
+function collectlog() { # $1: code string suffix $2: executable $3: actual code
+    echo -n "$1 $2: "
+    export PYPYLOG=jit-log-opt:./spy-$1-$2.log
+    ./$2 -r "$3" images/minibluebookdebug.image
+    export PYPYLOG=
+}
+
+function collectlogs() {
+    for s in `ls st-*`; do
+        collectlog $1 $s "$2"
+    done
+}
+
+rm spy-*.log
+collectlogs fill "$code_fill"
+collectlogs collect "$code_collect"
+collectlogs find "$code_find"
+collectlogs indexOf "$code_indexOf"
