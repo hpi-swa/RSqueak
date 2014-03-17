@@ -28,7 +28,6 @@ class AbstractShadow(object):
     def update(self): pass
 
 class AbstractCachingShadow(AbstractShadow):
-    _immutable_fields_ = ['version?']
     _attrs_ = ['version']
     import_from_mixin(version.VersionMixin)
 
@@ -646,8 +645,23 @@ class ContextPartShadow(AbstractRedirectingShadow):
     def stack_get(self, index0):
         return self._temps_and_stack[index0]
     
-    def stack_put(self, index0, w_val):
-        self._temps_and_stack[index0] = w_val
+    def stack_put_at_offset(self, stack_top_offset, w_val):
+        space = self.space
+        pos = jit.promote(self._stack_ptr) + stack_top_offset
+        self.stack_put(pos, w_val)
+        return pos
+    
+    def stack_put(self, pos, w_val):
+        space = self.space
+        # assert pos >= 0
+        if isinstance(w_val, model.W_SmallInteger):
+            w_old = self._temps_and_stack[pos]
+            if isinstance(w_old, model.W_SmallInteger):
+                w_old.value = w_val.value
+            else:
+                self._temps_and_stack[pos] = w_val.make_copy(space)
+        else:
+            self._temps_and_stack[pos] = w_val
     
     def stack(self):
         """NOT_RPYTHON""" # purely for testing
@@ -664,9 +678,8 @@ class ContextPartShadow(AbstractRedirectingShadow):
     def push(self, w_v):
         #assert self._stack_ptr >= self.tempsize()
         #assert self._stack_ptr < self.stackend() - self.stackstart() + self.tempsize()
-        ptr = jit.promote(self._stack_ptr)
-        self.stack_put(ptr, w_v)
-        self._stack_ptr = ptr + 1
+        used_stack_ptr = self.stack_put_at_offset(0, w_v)
+        self._stack_ptr = used_stack_ptr + 1
 
     @jit.unroll_safe
     def push_all(self, lst):
@@ -678,8 +691,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
     def set_top(self, value, position=0):
         rpos = rarithmetic.r_uint(position)
-        ptr = self._stack_ptr + ~rpos
-        self.stack_put(ptr, value)
+        self.stack_put_at_offset(~rpos, value)
 
     def peek(self, idx):
         rpos = rarithmetic.r_uint(idx)
@@ -717,6 +729,8 @@ class ContextPartShadow(AbstractRedirectingShadow):
         if self._w_self is not None:
             return self._w_self
         else:
+            # XXX Sinc this MethodContext object is NEVER stored into, why allocate it with
+            # storage at all? The AllNilStorageStragegy should optimize this away, but still.
             size = self.size() - self.space.w_MethodContext.as_class_get_shadow(self.space).instsize()
             space = self.space
             w_self = space.w_MethodContext.as_class_get_shadow(space).new(size)
@@ -753,6 +767,10 @@ class ContextPartShadow(AbstractRedirectingShadow):
 class BlockContextShadow(ContextPartShadow):
     _attrs_ = ['_w_home', '_initialip', '_eargc']
 
+    def __init__(self, space, w_self):
+        self = jit.hint(self, access_directly=True, fresh_virtualizable=True)
+        ContextPartShadow.__init__(self, space, w_self)
+    
     @staticmethod
     def make_context(space, w_home, s_sender, argcnt, initialip):
         # create and attach a shadow manually, to not have to carefully put things
@@ -761,7 +779,6 @@ class BlockContextShadow(ContextPartShadow):
         contextsize = w_home.as_methodcontext_get_shadow(space).myblocksize()
         w_result = model.W_PointersObject(space, space.w_BlockContext, contextsize)
         s_result = BlockContextShadow(space, w_result)
-        s_result_non_fresh = s_result # XXX: find a better solution to translation err
         s_result = jit.hint(s_result, access_directly=True, fresh_virtualizable=True)
         w_result.store_shadow(s_result)
         s_result.store_expected_argument_count(argcnt)
@@ -769,7 +786,8 @@ class BlockContextShadow(ContextPartShadow):
         s_result.store_w_home(w_home)
         s_result.store_pc(initialip)
         s_result.init_stack_and_temps()
-        return s_result_non_fresh
+        jit.hint(s_result, force_virtualizable=True)
+        return s_result
 
     def fetch(self, n0):
         if n0 == constants.BLKCTX_HOME_INDEX:
@@ -861,8 +879,9 @@ class BlockContextShadow(ContextPartShadow):
 
 class MethodContextShadow(ContextPartShadow):
     _attrs_ = ['w_closure_or_nil', '_w_receiver', '_w_method']
-
+    
     def __init__(self, space, w_self):
+        self = jit.hint(self, access_directly=True, fresh_virtualizable=True)
         self.w_closure_or_nil = space.w_nil
         self._w_receiver = space.w_nil
         self._w_method = None
@@ -875,9 +894,9 @@ class MethodContextShadow(ContextPartShadow):
         # The summand is needed, because we calculate i.a. our stackdepth relative of the size of w_self.
         size = s_method.compute_frame_size() + space.w_MethodContext.as_class_get_shadow(space).instsize()
         s_new_context = MethodContextShadow(space, None)
-        s_new_context._w_self_size = size
-        s_new_context_non_fresh = s_new_context # XXX: find a better solution to translation err
         s_new_context = jit.hint(s_new_context, access_directly=True, fresh_virtualizable=True)
+        s_non_fresh = s_new_context
+        s_new_context._w_self_size = size
 
         if closure is not None:
             s_new_context.w_closure_or_nil = closure._w_self
@@ -898,7 +917,7 @@ class MethodContextShadow(ContextPartShadow):
         if closure is not None:
             for i0 in range(closure.size()):
                 s_new_context.settemp(i0+argc, closure.at0(i0))
-        return s_new_context_non_fresh
+        return s_non_fresh
 
     def fetch(self, n0):
         if n0 == constants.MTHDCTX_METHOD:
@@ -1058,7 +1077,6 @@ class CompiledMethodShadow(object):
 
     def update(self):
         w_compiledmethod = self._w_self
-        self.changed()
         self.bytecode = "".join(w_compiledmethod.bytes)
         self.bytecodeoffset = w_compiledmethod.bytecodeoffset()
         self.literalsize = w_compiledmethod.getliteralsize()
@@ -1067,6 +1085,7 @@ class CompiledMethodShadow(object):
         self.argsize = w_compiledmethod.argsize
         self.islarge = w_compiledmethod.islarge
         self.literals = w_compiledmethod.literals
+        self.changed()
 
         self.w_compiledin = None
         if self.literals:

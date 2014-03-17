@@ -483,9 +483,9 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
 
 class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     """Common object."""
-    _attrs_ = ['shadow']
-    _immutable_fields_ = ['shadow?']
-
+    _attrs_ = ['shadow', 'version']
+    import_from_mixin(version.VersionMixin)
+    
     shadow = None # Default value
 
     @jit.unroll_safe
@@ -509,12 +509,9 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
 
     def fetch(self, space, n0):
         if self.has_shadow():
-            w_res = self._get_shadow().fetch(n0)
+            return self._get_shadow().fetch(n0)
         else:
-            w_res = self._fetch(space, n0)
-        if isinstance(w_res, W_SmallInteger):
-            w_res = w_res.make_copy(space)
-        return w_res
+            return self._fetch(space, n0)
 
     def store(self, space, n0, w_value):
         if self.has_shadow():
@@ -538,7 +535,9 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     def store_shadow(self, shadow):
         assert self.shadow is None or self.shadow is shadow
         self.shadow = shadow
+        self.changed()
 
+    @elidable_for_version
     def _get_shadow(self):
         return self.shadow
     
@@ -619,6 +618,8 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         if    self.shadow is not None:    self.shadow._w_self = self
         if w_other.shadow is not None: w_other.shadow._w_self = w_other
         W_AbstractObjectWithClassReference._become(self, w_other)
+        self.changed()
+        w_other.changed()
         return True
 
     @jit.elidable
@@ -652,7 +653,6 @@ strategy_stats = StrategyStatistics()
 
 class W_PointersObject(W_AbstractPointersObject):
     _attrs_ = ['_storage', 'strategy']
-    _immutable_fields = ['_storage?', 'strategy?']
     
     @jit.unroll_safe
     def __init__(self, space, w_class, size):
@@ -681,10 +681,13 @@ class W_PointersObject(W_AbstractPointersObject):
     
     def set_storage(self, storage):
         self._storage = storage
+        self.changed()
     
+    @elidable_for_version
     def get_storage(self):
-        return self._storage
+        return self.storage
     
+    @elidable_for_version
     def get_strategy(self):
         return self.strategy
     
@@ -733,6 +736,7 @@ class W_PointersObject(W_AbstractPointersObject):
     def _store(self, space, n0, w_value):
         return self.get_strategy().store(space, self, n0, w_value)
 
+    @jit.elidable
     def basic_size(self):
         return self.get_strategy().size_of(self)
 

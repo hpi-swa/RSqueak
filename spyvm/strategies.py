@@ -51,6 +51,7 @@ class SingletonMeta(type):
 # This is a container for an int-value to be used with a rerased-pair
 class SizeStorage(object):
     _attrs_ = ['size']
+    _immutable_fields_ = ['size']
     _settled_ = True
     def __init__(self, size):
         self.size = size
@@ -86,10 +87,33 @@ class AllNilStorageStrategy(AbstractStorageStrategy):
     def copy_storage_from(self, space, w_obj, reuse_storage=False):
         return self.erase(SizeStorage(w_obj.basic_size()))
 
-# This is put into a mixin-class because it is hard to inherit from it due to the erase/unerase pairs.
-class ListStorageStrategyMixin(object):
+# This is the regular storage strategy that does not result in any
+# optimizations but can handle every case. Applicable for both
+# fixed-sized and var-sized objects.
+class ListStorageStrategy(AbstractStorageStrategy):
+    __metaclass__ = SingletonMeta
+    erase, unerase = rerased.new_erasing_pair("list-storage-strategy")
+    erase = staticmethod(erase)
+    unerase = staticmethod(unerase)
+    strategy_tag = 'list'
+    
     def get_list(self, w_obj):
         return self.unerase(w_obj.get_storage())
+    
+    def fetch(self, space, w_obj, n0):
+        return self.get_list(w_obj)[n0]
+    def store(self, space, w_obj, index0, w_val):
+        # TODO enable generalization by maintaining a counter of elements that are nil.
+        arr = self.get_list(w_obj)
+        if isinstance(w_val, model.W_SmallInteger):
+            w_old = arr[index0]
+            if isinstance(w_old, model.W_SmallInteger):
+                w_old.value = w_val.value
+            else:
+                arr[index0] = w_val.make_copy(space)
+        else:
+            arr[index0] = w_val
+    
     def size_of(self, w_obj):
         return len(self.get_list(w_obj))
     def initial_storage(self, space, size):
@@ -100,23 +124,7 @@ class ListStorageStrategyMixin(object):
         length = w_obj.basic_size()
         return self.erase([w_obj.strategy.fetch(space, w_obj, i) for i in range(length)])
 
-# This is the regular storage strategy that does not result in any
-# optimizations but can handle every case. Applicable for both
-# fixed-sized and var-sized objects.
-class ListStorageStrategy(AbstractStorageStrategy):
-    __metaclass__ = SingletonMeta
-    erase, unerase = rerased.new_erasing_pair("list-storage-strategy")
-    erase = staticmethod(erase)
-    unerase = staticmethod(unerase)
-    strategy_tag = 'list'
-    import_from_mixin(ListStorageStrategyMixin)
-    
-    def fetch(self, space, w_obj, n0):
-        return self.get_list(w_obj)[n0]
-    def store(self, space, w_obj, n0, w_val):
-        # TODO enable generalization by maintaining a counter of elements that are nil.
-        self.get_list(w_obj)[n0] = w_val
-    
+
 class BasicStorageStrategyMixin(object):
     # Concrete class must implement: unerase
     def storage(self, w_obj):
@@ -126,7 +134,6 @@ class DenseStorage(object):
     # Subclass must provide attribute: default_element
     _immutable_fields_ = ['arr']
     _attrs_ = ['arr', '_from', '_to']
-    _settled_ = True
     
     def __init__(self, _from, _to, size):
         self._from = _from # first used index ("inclusive")
@@ -195,7 +202,6 @@ class DenseStorageStrategyMixin(object):
 class SparseStorage(object):
     _immutable_fields_ = ['arr', 'nil_flags']
     _attrs_ = ['arr', 'nil_flags']
-    _settled_ = True
     
     def __init__(self, arr, nil_flags):
         self.arr = arr
@@ -296,20 +302,6 @@ class DenseSmallIntegerStorageStrategy(AbstractStorageStrategy):
     def sparse_strategy(self):
         return SparseSmallIntegerStorageStrategy
 
-
-class FixedSizeStorageStrategy(AbstractStorageStrategy):
-    __metaclass__ = SingletonMeta
-    erase, unerase = rerased.new_erasing_pair("fixed-size-strategry")
-    erase = staticmethod(erase)
-    unerase = staticmethod(unerase)
-    strategy_tag = 'fixed-size'
-    import_from_mixin(ListStorageStrategyMixin)
-    
-    def fetch(self, space, w_obj, n0):
-        return self.get_list(w_obj)[n0]
-    def store(self, space, w_obj, n0, w_val):
-        # TODO enable generalization by maintaining a counter of elements that are nil.
-        self.get_list(w_obj)[n0] = w_val
     
 def strategy_of_size(s_containing_class, size):
     if s_containing_class is None:
@@ -324,7 +316,7 @@ def strategy_of_size(s_containing_class, size):
     else:
         # TODO -- monitor classes and create heuristic-based default strategies 
         # that should be more suited. Example: 2 small-integers for Point.
-        return FixedSizeStorageStrategy.singleton
+        return ListStorageStrategy.singleton
 
 def strategy_for_list(s_containing_class, vars):
     if s_containing_class is None:
@@ -359,5 +351,4 @@ def strategy_for_list(s_containing_class, vars):
         else:
             return SparseSmallIntegerStorageStrategy.singleton
     else:
-        return FixedSizeStorageStrategy.singleton
-    
+        return ListStorageStrategy.singleton
