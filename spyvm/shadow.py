@@ -872,7 +872,7 @@ class BlockContextShadow(ContextPartShadow):
 
 class MethodContextShadow(ContextPartShadow):
     _attrs_ = ['w_closure_or_nil', '_w_receiver', '_w_method']
-    
+
     @jit.unroll_safe
     def __init__(self, space, w_self=None, s_method=None, w_receiver=None,
                               arguments=None, s_sender=None, closure=None, pc=0):
@@ -905,7 +905,7 @@ class MethodContextShadow(ContextPartShadow):
             if closure is not None:
                 for i0 in range(closure.size()):
                     self.settemp(i0+argc, closure.at0(i0))
-        
+
     def fetch(self, n0):
         if n0 == constants.MTHDCTX_METHOD:
             return self.w_method()
@@ -1098,8 +1098,8 @@ class CompiledMethodShadow(object):
     def create_frame(self, space, receiver, arguments, sender = None):
         assert len(arguments) == self.argsize
         return MethodContextShadow(space, None, self, receiver, arguments, sender)
-        
-    @constant_for_version
+
+    @elidable_after_versioning
     def getbytecode(self, pc):
         assert pc >= 0 and pc < len(self.bytecode)
         return self.bytecode[pc]
