@@ -484,8 +484,8 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
 
 class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     """Common object."""
-    _attrs_ = ['shadow']
-    _immutable_fields_ = ['shadow?']
+    _attrs_ = ['shadow', 'version']
+    import_from_mixin(version.VersionMixin)
 
     shadow = None # Default value
 
@@ -536,6 +536,7 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         assert self.shadow is None or self.shadow is shadow
         self.shadow = shadow
 
+    @elidable_for_version
     def _get_shadow(self):
         return self.shadow
     

@@ -1,6 +1,6 @@
 import weakref
 from spyvm import model, constants, error, wrapper, version
-from spyvm.version import constant_for_version, elidable_for_version
+from spyvm.version import elidable_for_version, constant_for_version
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib import rarithmetic, jit
 from rpython.rlib.objectmodel import import_from_mixin
