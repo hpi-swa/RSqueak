@@ -4,6 +4,7 @@ from rpython.rlib import rerased
 from rpython.rlib import objectmodel, jit, signature
 from rpython.rlib.listsort import TimSort
 from rpython.rlib.objectmodel import import_from_mixin
+from rpython.rlib.debug import make_sure_not_resized
 
 # Disables all optimized strategies, for debugging.
 only_list_storage = False
@@ -97,13 +98,16 @@ class ListStorageStrategyMixin(object):
         self.get_list(w_obj)[n0] = w_val
     def size_of(self, w_obj):
         return len(self.get_list(w_obj))
+    def erased_list(self, list):
+        make_sure_not_resized(list)
+        return self.erase(list)
     def initial_storage(self, space, size):
-        return self.erase([model.w_nil] * size)
+        return self.erased_list([model.w_nil] * size)
     def storage_for_list(self, space, collection):
-        return self.erase([x for x in collection])
+        return self.erased_list([x for x in collection])
     def copy_storage_from(self, space, w_obj, reuse_storage=False):
         length = w_obj.basic_size()
-        return self.erase([w_obj.strategy.fetch(space, w_obj, i) for i in range(length)])
+        return self.erased_list([w_obj.strategy.fetch(space, w_obj, i) for i in range(length)])
 
 # This is the regular storage strategy that does not result in any
 # optimizations but can handle every case. Applicable for both
@@ -131,6 +135,7 @@ class DenseStorage(object):
         self._from = _from # first used index ("inclusive")
         self._to = _to # first unused index ("exclusive")
         self.arr = [self.default_element] * size
+        make_sure_not_resized(self.arr)
 
 class DenseStorageStrategyMixin(object):
     # Concrete class must implement: storage, erase, do_fetch, do_store, sparse_strategy
@@ -199,6 +204,8 @@ class SparseStorage(object):
     def __init__(self, arr, nil_flags):
         self.arr = arr
         self.nil_flags = nil_flags
+        make_sure_not_resized(self.arr)
+        make_sure_not_resized(self.nil_flags)
     
 class SparseStorageStrategyMixin(object):
     # Concrete class must implement: storage, erase, do_fetch, do_store, dense_strategy
