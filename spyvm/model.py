@@ -20,6 +20,7 @@ from spyvm.version import elidable_for_version
 
 from rpython.rlib import rrandom, objectmodel, jit, signature
 from rpython.rlib.rarithmetic import intmask, r_uint, r_int
+from rpython.rlib.debug import make_sure_not_resized
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib.objectmodel import instantiate, compute_hash, import_from_mixin
 from rpython.rtyper.lltypesystem import lltype, rffi
@@ -649,9 +650,8 @@ class StrategyStatistics(object):
 strategy_stats = StrategyStatistics()
 
 class W_PointersObject(W_AbstractPointersObject):
-    _attrs_ = ['_storage', 'strategy']
-    _immutable_fields = ['_storage?', 'strategy?']
-    
+    _attrs_ = ['_vars', 'fieldtypes']
+
     @jit.unroll_safe
     def __init__(self, space, w_class, size):
         from spyvm.strategies import strategy_of_size

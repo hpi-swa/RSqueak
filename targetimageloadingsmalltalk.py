@@ -110,7 +110,7 @@ def context_for(interp, number, benchmark, stringarg):
     w_method.literalatput0(interp.space, 1, w_selector)
     w_method.setbytes([chr(131), chr(argcount << 5), chr(124)]) #returnTopFromMethod
     s_method = w_method.as_compiledmethod_get_shadow(interp.space)
-    s_frame = shadow.MethodContextShadow.make_context(interp.space, s_method, w_receiver, [], None)
+    s_frame = shadow.MethodContextShadow(interp.space, None, s_method, w_receiver, [])
     s_frame.push(w_receiver)
     if not stringarg == "":
         s_frame.push(interp.space.wrap_string(stringarg))
