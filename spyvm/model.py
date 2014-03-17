@@ -650,7 +650,7 @@ class StrategyStatistics(object):
 strategy_stats = StrategyStatistics()
 
 class W_PointersObject(W_AbstractPointersObject):
-    _attrs_ = ['_vars', 'fieldtypes']
+    _attrs_ = ['_storage', 'strategy']
 
     @jit.unroll_safe
     def __init__(self, space, w_class, size):
@@ -680,9 +680,11 @@ class W_PointersObject(W_AbstractPointersObject):
     def set_storage(self, storage):
         self._storage = storage
     
+    @elidable_for_version
     def get_storage(self):
         return self._storage
     
+    @elidable_for_version
     def get_strategy(self):
         return self.strategy
     
