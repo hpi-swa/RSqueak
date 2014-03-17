@@ -1,6 +1,6 @@
 import weakref
 from spyvm import model, constants, error, wrapper, version
-from spyvm.version import elidable_after_versioning
+from spyvm.version import elidable_for_version, constant_for_version
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib import rarithmetic, jit
 from rpython.rlib.objectmodel import import_from_mixin
@@ -253,12 +253,12 @@ class ClassShadow(AbstractCachingShadow):
         " True if instances of this class have data stored as numerical bytes "
         return self.format == BYTES
 
-    @elidable_after_versioning
+    @constant_for_version
     def isvariable(self):
         " True if instances of this class have indexed inst variables "
         return self.instance_varsized
 
-    @elidable_after_versioning
+    @constant_for_version
     def instsize(self):
         " Number of named instance variables for each instance of this class "
         return self._instance_size
@@ -298,7 +298,7 @@ class ClassShadow(AbstractCachingShadow):
     def __repr__(self):
         return "<ClassShadow %s>" % (self.name or '?',)
 
-    @elidable_after_versioning
+    @constant_for_version
     def lookup(self, w_selector):
         look_in_shadow = self
         while look_in_shadow is not None:
@@ -1027,11 +1027,11 @@ class CompiledMethodShadow(object):
     def w_self(self):
         return self._w_self
 
-    @elidable_after_versioning
+    @constant_for_version
     def getliteral(self, index):
         return self.literals[index]
 
-    @elidable_after_versioning
+    @constant_for_version
     def compute_frame_size(self):
         # From blue book: normal mc have place for 12 temps+maxstack
         # mc for methods with islarge flag turned on 32
@@ -1067,11 +1067,11 @@ class CompiledMethodShadow(object):
                 association = wrapper.AssociationWrapper(None, w_association)
                 self.w_compiledin = association.value()
 
-    @elidable_after_versioning
+    @constant_for_version
     def tempsize(self):
         return self._tempsize
 
-    @elidable_after_versioning
+    @constant_for_version
     def primitive(self):
         return self._primitive
 
@@ -1079,13 +1079,13 @@ class CompiledMethodShadow(object):
         assert len(arguments) == self.argsize
         return MethodContextShadow(space, None, self, receiver, arguments, sender)
 
-    @elidable_after_versioning
+    @constant_for_version
     def getbytecode(self, pc):
         return self.bytecode[pc]
 
 class CachedObjectShadow(AbstractCachingShadow):
 
-    @elidable_after_versioning
+    @elidable_for_version
     def fetch(self, n0):
         return self._w_self._fetch(n0)
 

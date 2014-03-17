@@ -16,7 +16,7 @@ that create W_PointersObjects of correct size with attached shadows.
 """
 import sys, weakref
 from spyvm import constants, error, version
-from spyvm.version import elidable_after_versioning
+from spyvm.version import elidable_for_version
 
 from rpython.rlib import rrandom, objectmodel, jit, signature
 from rpython.rlib.rarithmetic import intmask, r_uint, r_int
@@ -483,7 +483,6 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
 class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     """Common object."""
     _attrs_ = ['shadow', 'version']
-    _immutable_fields_ = ['version?']
     import_from_mixin(version.VersionMixin)
 
     shadow = None # Default value
@@ -537,7 +536,7 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         self.shadow = shadow
         self.changed()
 
-    @elidable_after_versioning
+    @elidable_for_version
     def _get_shadow(self):
         return self.shadow
     
