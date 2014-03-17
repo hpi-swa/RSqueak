@@ -369,16 +369,13 @@ class TestBasic(BaseJITTest):
         """)
 
      # TODO: there shouldnt be allocations in this
-    def test_find_in_collection(self, spy, tmpdir):
+    def test_range_asOrderedCollection(self, spy, tmpdir):
         traces = self.run(spy, tmpdir,
         """
-        | col i|
-        col := (1 to: 10000) asOrderedCollection.
-        i := 1.
-        [ (col at: i) ~~ 9999 ] whileTrue: [ i := i + 1 ]
+        (1 to: 10000) asOrderedCollection.
         """)
         self.assert_matches(traces[0].loop, """
-         guard_not_invalidated(descr=<Guard0x2b713d0>),
+ guard_not_invalidated(descr=<Guard0x2b713d0>),
  p173 = getarrayitem_gc(p53, 1, descr=<ArrayP 4>),
  i174 = getfield_gc_pure(p173, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>),
  i175 = int_ge(i174, i167),
