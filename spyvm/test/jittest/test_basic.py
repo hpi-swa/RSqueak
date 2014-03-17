@@ -448,6 +448,43 @@ class TestBasic(BaseJITTest):
  jump(p0, p3, p6, i200, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p53, i75, p67, i103, p91, p105, p79, i88, i90, i129, i84, i201, descr=TargetToken(45055856))]
         """)
         
+    def test_indexOf(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir,
+        """
+        (1 to: 10000000) asOrderedCollection indexOf: 9999999.
+        """)
+        # First loop: asOrderedCollection, second loop: makeRoomAtLast
+        self.assert_matches(traces[2].loop, """
+ guard_not_invalidated(descr=<Guard0x2bac7d0>),
+ i127 = int_le(i121, i61),
+ guard_true(i127, descr=<Guard0x2bac790>),
+ setfield_gc(ConstPtr(ptr74), i81, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>),
+ i128 = int_add_ovf(i121, i91),
+ guard_no_overflow(descr=<Guard0x2bac750>),
+ i129 = int_sub(i128, 1),
+ i130 = int_gt(i129, i97),
+ guard_false(i130, descr=<Guard0x2bac710>),
+ i131 = int_sub(i129, 1),
+ i132 = int_ge(i131, 0),
+ guard_true(i132, descr=<Guard0x2bac6d0>),
+ i133 = int_lt(i131, i110),
+ guard_true(i133, descr=<Guard0x2bac690>),
+ p134 = getarrayitem_gc(p109, i131, descr=<ArrayP 4>),
+ setfield_gc(ConstPtr(ptr74), i77, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>),
+ guard_nonnull_class(p134, ConstClass(W_SmallInteger), descr=<Guard0x2bac650>),
+ i135 = getfield_gc_pure(p134, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>),
+ i136 = int_eq(i135, i118),
+ guard_false(i136, descr=<Guard0x2bac610>),
+ i137 = int_add_ovf(i121, 1),
+ guard_no_overflow(descr=<Guard0x2bac5d0>),
+ i138 = int_sub(i124, 6),
+ setfield_gc(ConstPtr(ptr74), i138, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 24>),
+ i139 = int_le(i138, 0),
+ guard_false(i139, descr=<Guard0x2bac590>),
+ i140 = arraylen_gc(p88, descr=<ArrayP 4>),
+ jump(p0, p3, p6, p8, p10, i137, p14, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, p48, p50, p52, i61, i81, i91, p63, p90, i67, i97, p96, p100, i110, p109, i77, i118, i138, p88, descr=TargetToken(45201344))]
+        """)
+        
     @py.test.mark.skipif("'just dozens of long traces'")
     def test_bitblt_draw_windows(self, spy, tmpdir):
         # This used to have a call to array comparison in it
