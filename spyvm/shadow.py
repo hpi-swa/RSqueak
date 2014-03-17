@@ -856,27 +856,30 @@ class MethodContextShadow(ContextPartShadow):
                               arguments=None, s_sender=None, closure=None, pc=0):
         self = jit.hint(self, access_directly=True, fresh_virtualizable=True)
         ContextPartShadow.__init__(self, space, w_self)
+        self.store_w_receiver(w_receiver)
+        self.store_pc(pc)
         
-        # The summand is needed, because we calculate i.a. our stackdepth relative of the size of w_self.
-        if s_method is not None:
-            size = s_method.compute_frame_size() + space.w_MethodContext.as_class_get_shadow(space).instsize()
-            self._w_self_size = size
-            self.store_w_method(s_method.w_self())
-        if closure is not None:
+        if closure:
             self.w_closure_or_nil = closure._w_self
         else:
             self.w_closure_or_nil = space.w_nil
+        
+        if s_method:
+            # The summand is needed, because we calculate i.a. our stackdepth relative of the size of w_self.
+            size = s_method.compute_frame_size() + space.w_MethodContext.as_class_get_shadow(space).instsize()
+            self._w_self_size = size
+            self.store_w_method(s_method.w_self())
+            self.init_stack_and_temps()
+        else:
+            self._w_method = None
         
         if s_sender:
             try:
                 self.store_s_sender(s_sender)
             except error.SenderChainManipulation, e:
                 assert self == e.s_context
-        self.store_w_receiver(w_receiver)
-        self.store_pc(pc)
-        self.init_stack_and_temps()
         
-        if arguments is not None:
+        if arguments:
             argc = len(arguments)
             for i0 in range(argc):
                 self.settemp(i0, arguments[i0])
