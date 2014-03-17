@@ -680,12 +680,13 @@ class W_PointersObject(W_AbstractPointersObject):
                 strategy_stats.log_operation(op, new_strategy_tag, old_strategy_tag, classname, size)
     
     def set_storage(self, storage):
+        # This must ALWAYS be called right after setting the strategy field!
         self._storage = storage
         self.changed()
     
     @elidable_for_version
     def get_storage(self):
-        return self.storage
+        return self._storage
     
     @elidable_for_version
     def get_strategy(self):
