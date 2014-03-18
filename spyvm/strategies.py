@@ -49,6 +49,11 @@ class SingletonMeta(type):
         result.singleton = result()
         return result
 
+class BasicStorageStrategyMixin(object):
+    # Concrete class must implement: unerase
+    def storage(self, w_obj):
+        return self.unerase(w_obj.get_storage())
+
 # This is a container for an int-value to be used with a rerased-pair
 class SizeStorage(object):
     _attrs_ = ['size']
@@ -61,9 +66,8 @@ class SizeStorage(object):
 # holding the size of the object.
 class AllNilStorageStrategy(AbstractStorageStrategy):
     __metaclass__ = SingletonMeta
-    erase, unerase = rerased.new_erasing_pair("all-nil-strategy")
-    erase = staticmethod(erase)
-    unerase = staticmethod(unerase)
+    erase, unerase = rerased.new_static_erasing_pair("all-nil-strategy")
+    import_from_mixin(BasicStorageStrategyMixin)
     strategy_tag = 'allnil'
     
     def fetch(self, space, w_obj, n0):
@@ -79,7 +83,7 @@ class AllNilStorageStrategy(AbstractStorageStrategy):
         return w_obj.store_with_new_strategy(space, ListStorageStrategy.singleton, n0, w_val)
         
     def size_of(self, w_obj):
-        return self.unerase(w_obj.get_storage()).size
+        return self.storage(w_obj).size
     def initial_storage(self, space, size):
         return self.erase(SizeStorage(size))
     def storage_for_list(self, space, collection):
@@ -92,20 +96,17 @@ class AllNilStorageStrategy(AbstractStorageStrategy):
 # fixed-sized and var-sized objects.
 class ListStorageStrategy(AbstractStorageStrategy):
     __metaclass__ = SingletonMeta
-    erase, unerase = rerased.new_erasing_pair("list-storage-strategy")
-    erase = staticmethod(erase)
-    unerase = staticmethod(unerase)
+    erase, unerase = rerased.new_static_erasing_pair("list-storage-strategy")
+    import_from_mixin(BasicStorageStrategyMixin)
     strategy_tag = 'list'
     
-    def get_list(self, w_obj):
-        return self.unerase(w_obj.get_storage())
     def fetch(self, space, w_obj, n0):
-        return self.get_list(w_obj)[n0]
+        return self.storage(w_obj)[n0]
     def store(self, space, w_obj, n0, w_val):
         # TODO enable generalization by maintaining a counter of elements that are nil.
-        self.get_list(w_obj)[n0] = w_val
+        self.storage(w_obj)[n0] = w_val
     def size_of(self, w_obj):
-        return len(self.get_list(w_obj))
+        return len(self.storage(w_obj))
     def erased_list(self, list):
         make_sure_not_resized(list)
         return self.erase(list)
@@ -117,11 +118,6 @@ class ListStorageStrategy(AbstractStorageStrategy):
         length = w_obj.basic_size()
         return self.erased_list([w_obj.strategy.fetch(space, w_obj, i) for i in range(length)])
     
-class BasicStorageStrategyMixin(object):
-    # Concrete class must implement: unerase
-    def storage(self, w_obj):
-        return self.unerase(w_obj.get_storage())
-
 class DenseStorage(object):
     # Subclass must provide attribute: default_element
     _immutable_fields_ = ['arr']
@@ -276,9 +272,7 @@ class SparseSmallIntegerStorageStrategy(AbstractStorageStrategy):
     __metaclass__ = SingletonMeta
     import_from_mixin(SparseStorageStrategyMixin)
     import_from_mixin(SmallIntegerStorageStrategyMixin)
-    erase, unerase = rerased.new_erasing_pair("sparse-small-integer-strategry")
-    erase = staticmethod(erase)
-    unerase = staticmethod(unerase)
+    erase, unerase = rerased.new_static_erasing_pair("sparse-small-integer-strategry")
     strategy_tag = 'sparse-small-int'
     storage_type = SparseSmallIntegerStorage
     def dense_strategy(self):
@@ -291,9 +285,7 @@ class DenseSmallIntegerStorageStrategy(AbstractStorageStrategy):
     __metaclass__ = SingletonMeta
     import_from_mixin(DenseStorageStrategyMixin)
     import_from_mixin(SmallIntegerStorageStrategyMixin)
-    erase, unerase = rerased.new_erasing_pair("dense-small-integer-strategry")
-    erase = staticmethod(erase)
-    unerase = staticmethod(unerase)
+    erase, unerase = rerased.new_static_erasing_pair("dense-small-integer-strategry")
     strategy_tag = 'dense-small-int'
     storage_type = DenseSmallIntegerStorage
     def sparse_strategy(self):
