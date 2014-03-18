@@ -87,8 +87,16 @@ class AllNilStorageStrategy(AbstractStorageStrategy):
     def copy_storage_from(self, space, w_obj, reuse_storage=False):
         return self.erase(SizeStorage(w_obj.basic_size()))
 
-# This is put into a mixin-class because it is hard to inherit from it due to the erase/unerase pairs.
-class ListStorageStrategyMixin(object):
+# This is the regular storage strategy that does not result in any
+# optimizations but can handle every case. Applicable for both
+# fixed-sized and var-sized objects.
+class ListStorageStrategy(AbstractStorageStrategy):
+    __metaclass__ = SingletonMeta
+    erase, unerase = rerased.new_erasing_pair("list-storage-strategy")
+    erase = staticmethod(erase)
+    unerase = staticmethod(unerase)
+    strategy_tag = 'list'
+    
     def get_list(self, w_obj):
         return self.unerase(w_obj.get_storage())
     def fetch(self, space, w_obj, n0):
@@ -108,17 +116,6 @@ class ListStorageStrategyMixin(object):
     def copy_storage_from(self, space, w_obj, reuse_storage=False):
         length = w_obj.basic_size()
         return self.erased_list([w_obj.strategy.fetch(space, w_obj, i) for i in range(length)])
-
-# This is the regular storage strategy that does not result in any
-# optimizations but can handle every case. Applicable for both
-# fixed-sized and var-sized objects.
-class ListStorageStrategy(AbstractStorageStrategy):
-    __metaclass__ = SingletonMeta
-    erase, unerase = rerased.new_erasing_pair("list-storage-strategy")
-    erase = staticmethod(erase)
-    unerase = staticmethod(unerase)
-    strategy_tag = 'list'
-    import_from_mixin(ListStorageStrategyMixin)
     
 class BasicStorageStrategyMixin(object):
     # Concrete class must implement: unerase
@@ -302,29 +299,15 @@ class DenseSmallIntegerStorageStrategy(AbstractStorageStrategy):
     def sparse_strategy(self):
         return SparseSmallIntegerStorageStrategy
 
-
-class FixedSizeStorageStrategy(AbstractStorageStrategy):
-    __metaclass__ = SingletonMeta
-    erase, unerase = rerased.new_erasing_pair("fixed-size-strategry")
-    erase = staticmethod(erase)
-    unerase = staticmethod(unerase)
-    strategy_tag = 'fixed-size'
-    import_from_mixin(ListStorageStrategyMixin)
-
 def strategy_of_size(s_containing_class, size):
     if s_containing_class is None:
         # This is a weird and rare special case for w_nil
         return ListStorageStrategy.singleton
-    if s_containing_class.isvariable():
-        if only_list_storage:
-            return ListStorageStrategy.singleton
-        
-        # A newly allocated var-sized object contains only nils.
-        return AllNilStorageStrategy.singleton
-    else:
-        # TODO -- monitor classes and create heuristic-based default strategies 
-        # that should be more suited. Example: 2 small-integers for Point.
-        return FixedSizeStorageStrategy.singleton
+    if not s_containing_class.isvariable() or only_list_storage:
+        return ListStorageStrategy.singleton
+    
+    # A newly allocated object contains only nils.
+    return AllNilStorageStrategy.singleton
 
 def strategy_for_list(s_containing_class, vars):
     if s_containing_class is None:
@@ -336,28 +319,26 @@ def strategy_for_list(s_containing_class, vars):
         # TODO - This happens during bootstrapping phase, when filling in generic objects.
         # Ths class object shadows are not yet synchronized.
         return ListStorageStrategy.singleton
-    if is_variable:
-        if only_list_storage:
-            return ListStorageStrategy.singleton
-        
-        is_all_nils = True
-        is_dense = True
-        for w_obj in vars:
-            if w_obj == model.w_nil:
-                if not is_all_nils:
-                    is_dense = False
-            else:
-                is_all_nils = False
-                if not isinstance(w_obj, model.W_SmallInteger):
-                    # TODO -- here we can still optimize if there is only
-                    # one single type in the collection.
-                    return ListStorageStrategy.singleton
-        if is_all_nils:
-            return AllNilStorageStrategy.singleton
-        if is_dense:
-            return DenseSmallIntegerStorageStrategy.singleton
+    
+    if not is_variable or only_list_storage:
+        return ListStorageStrategy.singleton
+    
+    is_all_nils = True
+    is_dense = True
+    for w_obj in vars:
+        if w_obj == model.w_nil:
+            if not is_all_nils:
+                is_dense = False
         else:
-            return SparseSmallIntegerStorageStrategy.singleton
+            is_all_nils = False
+            if not isinstance(w_obj, model.W_SmallInteger):
+                # TODO -- here we can still optimize if there is only
+                # one single type in the collection.
+                return ListStorageStrategy.singleton
+    if is_all_nils:
+        return AllNilStorageStrategy.singleton
+    if is_dense:
+        return DenseSmallIntegerStorageStrategy.singleton
     else:
-        return FixedSizeStorageStrategy.singleton
+        return SparseSmallIntegerStorageStrategy.singleton
     
