@@ -78,8 +78,8 @@ class AllNilStorageStrategy(AbstractStorageStrategy):
         if w_val == model.w_nil:
             return
         if not only_list_storage:
-            if isinstance(w_val, model.W_SmallInteger):
-                return w_obj.store_with_new_strategy(space, DenseSmallIntegerStorageStrategy.singleton, n0, w_val)
+            if TaggingSmallIntegerStorageStrategy.can_contain(w_val):
+                return w_obj.store_with_new_strategy(space, TaggingSmallIntegerStorageStrategy.singleton, n0, w_val)
         return w_obj.store_with_new_strategy(space, ListStorageStrategy.singleton, n0, w_val)
         
     def size_of(self, w_obj):
@@ -253,43 +253,64 @@ class SparseStorageStrategyMixin(object):
             arr = [x for x in arr]
         return self.storage_type(arr, nil_flags)
 
-class SmallIntegerStorageStrategyMixin(BasicStorageStrategyMixin):
+class TaggingSmallIntegerStorageStrategy(AbstractStorageStrategy):
+    __metaclass__ = SingletonMeta
+    strategy_tag = 'tagging-small-int'
+    erase, unerase = rerased.new_static_erasing_pair("tagging-small-integer-strategry")
+    import_from_mixin(BasicStorageStrategyMixin)
+    
+    @staticmethod
+    def wrap(self, val):
+        return val << 1
+    @staticmethod
+    def unwrap(self, val):
+        return val >> 1
+    @staticmethod
+    def is_nil(self, val):
+        return (val & 1) == 1
+    @staticmethod
+    def can_contain(self, w_val):
+        return isinstance(w_val, model.W_SmallInteger)
+    # TODO - use just a single value to represent nil (max_int-1)
+    # Then, turn wrap/unwrap into noops
+    # also store W_LargePositiveInteger1Word?
+    nil_value = 1
+    
     def needs_objspace(self):
         return True
-    def do_fetch(self, space, arr, n0):
-        return space.wrap_int(arr[n0])
-    def do_store(self, space, arr, n0, val):
-        arr[n0] = space.unwrap_int(val)
+        
+    def fetch(self, space, w_obj, n0):
+        val = self.storage(w_obj)[n0]
+        if (self.is_tagged(val)):
+            return space.w_nil
+        else:
+            return self.unwrap(val)
+        
+    def store(self, space, w_obj, n0, w_val):
+        store = self.storage(w_obj)
+        if self.can_contain(w_val):
+            store[n0] = self.wrap(space.unwrap_int(w_val))
+        else:
+            if w_val == model.w_nil:
+                # TODO - generelize to AllNilStorage by maintaining a counter of nil-elements
+                store[n0] = self.nil_value
+            else:
+                # Storing a wrong type - dehomogenize to ListStorage
+                return w_obj.store_with_new_strategy(space, ListStorageStrategy.singleton, n0, w_val)
+        
     def size_of(self, w_obj):
-        return len(self.storage(w_obj).arr)
-    def can_contain_object(self, w_val):
-        return isinstance(w_val, model.W_SmallInteger)
+        return len(self.storage(w_obj))
     
-class SparseSmallIntegerStorage(SparseStorage):
-    default_element = 0
-
-class SparseSmallIntegerStorageStrategy(AbstractStorageStrategy):
-    __metaclass__ = SingletonMeta
-    import_from_mixin(SparseStorageStrategyMixin)
-    import_from_mixin(SmallIntegerStorageStrategyMixin)
-    erase, unerase = rerased.new_static_erasing_pair("sparse-small-integer-strategry")
-    strategy_tag = 'sparse-small-int'
-    storage_type = SparseSmallIntegerStorage
-    def dense_strategy(self):
-        return DenseSmallIntegerStorageStrategy
+    def initial_storage(self, space, size):
+        return self.erase([self.nil_value] * size)
     
-class DenseSmallIntegerStorage(DenseStorage):
-    default_element = 0
-
-class DenseSmallIntegerStorageStrategy(AbstractStorageStrategy):
-    __metaclass__ = SingletonMeta
-    import_from_mixin(DenseStorageStrategyMixin)
-    import_from_mixin(SmallIntegerStorageStrategyMixin)
-    erase, unerase = rerased.new_static_erasing_pair("dense-small-integer-strategry")
-    strategy_tag = 'dense-small-int'
-    storage_type = DenseSmallIntegerStorage
-    def sparse_strategy(self):
-        return SparseSmallIntegerStorageStrategy
+    def storage_for_list(self, space, collection):
+        length = len(collection)
+        store = self.storage_for_size(length)
+        for i in range(length):
+            if collection[i] != model.w_nil:
+                store[i] = self.wrap(space.unwrap_int(collection[i]))
+        return self.erase(store)
 
 def strategy_of_size(s_containing_class, size):
     if s_containing_class is None:
@@ -316,21 +337,15 @@ def strategy_for_list(s_containing_class, vars):
         return ListStorageStrategy.singleton
     
     is_all_nils = True
-    is_dense = True
     for w_obj in vars:
-        if w_obj == model.w_nil:
-            if not is_all_nils:
-                is_dense = False
-        else:
+        if w_obj != model.w_nil
             is_all_nils = False
-            if not isinstance(w_obj, model.W_SmallInteger):
+            if not TaggingSmallIntegerStorageStrategy.can_contain(w_obj):
                 # TODO -- here we can still optimize if there is only
                 # one single type in the collection.
                 return ListStorageStrategy.singleton
     if is_all_nils:
         return AllNilStorageStrategy.singleton
-    if is_dense:
-        return DenseSmallIntegerStorageStrategy.singleton
     else:
-        return SparseSmallIntegerStorageStrategy.singleton
+        return TaggingSmallIntegerStorageStrategy.singleton
     
