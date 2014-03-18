@@ -5,8 +5,6 @@ from rpython.tool.pairtype import extendabletype
 from rpython.rlib import rarithmetic, jit
 from rpython.rlib.objectmodel import import_from_mixin
 from rpython.rlib.debug import make_sure_not_resized
-    elidable_func.func_name = "elidable_" + func.func_name
-    meth.func_name = "elidable_meth_" + func.func_name
 
 class AbstractShadow(object):
     """A shadow is an optional extra bit of information that
