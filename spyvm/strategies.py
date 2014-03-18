@@ -260,16 +260,16 @@ class TaggingSmallIntegerStorageStrategy(AbstractStorageStrategy):
     import_from_mixin(BasicStorageStrategyMixin)
     
     @staticmethod
-    def wrap(self, val):
+    def wrap(val):
         return val << 1
     @staticmethod
-    def unwrap(self, val):
+    def unwrap(val):
         return val >> 1
     @staticmethod
-    def is_nil(self, val):
+    def is_nil(val):
         return (val & 1) == 1
     @staticmethod
-    def can_contain(self, w_val):
+    def can_contain(w_val):
         return isinstance(w_val, model.W_SmallInteger)
     # TODO - use just a single value to represent nil (max_int-1)
     # Then, turn wrap/unwrap into noops
@@ -281,10 +281,10 @@ class TaggingSmallIntegerStorageStrategy(AbstractStorageStrategy):
         
     def fetch(self, space, w_obj, n0):
         val = self.storage(w_obj)[n0]
-        if (self.is_tagged(val)):
+        if (self.is_nil(val)):
             return space.w_nil
         else:
-            return self.unwrap(val)
+            return space.wrap_int(self.unwrap(val))
         
     def store(self, space, w_obj, n0, w_val):
         store = self.storage(w_obj)
@@ -306,7 +306,7 @@ class TaggingSmallIntegerStorageStrategy(AbstractStorageStrategy):
     
     def storage_for_list(self, space, collection):
         length = len(collection)
-        store = self.storage_for_size(length)
+        store = [self.nil_value] * length
         for i in range(length):
             if collection[i] != model.w_nil:
                 store[i] = self.wrap(space.unwrap_int(collection[i]))
@@ -338,7 +338,7 @@ def strategy_for_list(s_containing_class, vars):
     
     is_all_nils = True
     for w_obj in vars:
-        if w_obj != model.w_nil
+        if w_obj != model.w_nil:
             is_all_nils = False
             if not TaggingSmallIntegerStorageStrategy.can_contain(w_obj):
                 # TODO -- here we can still optimize if there is only
