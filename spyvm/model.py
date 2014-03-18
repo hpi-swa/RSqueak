@@ -485,11 +485,15 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
 
 class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     """Common object."""
-    _attrs_ = ['shadow', 'version']
-    import_from_mixin(version.VersionMixin)
+    _attrs_ = ['shadow']
 
     shadow = None # Default value
 
+    def changed(self):
+        # This is called whenever an instance variable is changed on the receiver.
+        # Was used with a version variable before. Left here in case it might be usefull in the future.
+        pass
+    
     @jit.unroll_safe
     def __init__(self, space, w_class, size):
         """Create new object with size = fixed + variable size."""
@@ -537,7 +541,6 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         assert self.shadow is None or self.shadow is shadow
         self.shadow = shadow
 
-    @elidable_for_version
     def _get_shadow(self):
         return self.shadow
     
@@ -680,11 +683,9 @@ class W_PointersObject(W_AbstractPointersObject):
     def set_storage(self, storage):
         self._storage = storage
     
-    @elidable_for_version
     def get_storage(self):
         return self._storage
     
-    @elidable_for_version
     def get_strategy(self):
         return self.strategy
     
