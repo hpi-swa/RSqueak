@@ -483,8 +483,12 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
 
 class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     """Common object."""
-    _attrs_ = ['shadow', 'version']
-    import_from_mixin(version.VersionMixin)
+    _attrs_ = ['shadow']
+    
+    def changed(self):
+        # This is invoked when an instance-variable is changed.
+        # Kept here in case it might be usefull in the future.
+        pass
 
     shadow = None # Default value
 
@@ -537,7 +541,6 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         self.shadow = shadow
         self.changed()
 
-    @elidable_for_version
     def _get_shadow(self):
         return self.shadow
     
