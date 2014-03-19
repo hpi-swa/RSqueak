@@ -632,9 +632,15 @@ class W_PointersObject(W_AbstractPointersObject):
         W_AbstractPointersObject.fillin(self, space, g_self)
         from spyvm.fieldtypes import strategy_for_list
         pointers = g_self.get_pointers()
-        self.strategy = strategy_for_list(self, pointers)
+        self.strategy = strategy_for_list(self.s_class, pointers)
         self.storage = self.strategy.storage_for_list(pointers)
 
+    def get_strategy(self):
+        return self.strategy
+        
+    def get_storage(self):
+        return self.storage
+        
     def all_vars(self):
         return self.strategy.all_vars(self)
     
