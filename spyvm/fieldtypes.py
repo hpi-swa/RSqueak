@@ -9,20 +9,26 @@ class AbstractStorageStrategy(object):
     _attrs_ = []
     _settled_ = True
 
-    def __init__(self):
-        pass
-    def fetch(self, w_obj, n0):
+    def fetch(self, space, w_obj, n0):
         raise NotImplementedError("Abstract base class")
-    def store(self, w_obj, n0, w_val):
+    def store(self, space, w_obj, n0, w_val):
         raise NotImplementedError("Abstract base class")
     def size_of(self, w_obj):
         raise NotImplementedError("Abstract base class")
-    def initial_storage(self, size, default_element):
+    
+    def initial_storage(self, space, size):
         raise NotImplementedError("Abstract base class")
-    def storage_for_list(self, collection):
+    def storage_for_list(self, space, collection):
         raise NotImplementedError("Abstract base class")
-    def all_vars(self, w_obj):
-        return [self.fetch(w_obj, i) for i in range(0, self.size_of(w_obj))]
+    def copy_storage_from(self, space, w_obj, reuse_storage=False):
+        old_strategy = w_obj.strategy
+        if old_strategy == self and reuse_storage:
+            return w_obj.get_storage()
+        if isinstance(old_strategy, AllNilStorageStrategy):
+            return self.initial_storage(space, old_strategy.size_of(w_obj))
+        else:
+            # This can be overridden and optimized (reuse_storage flag, less temporary storage)
+            return self.storage_for_list(space, w_obj.fetch_all(space))
 
 class SingletonMeta(type):
     def __new__(cls, name, bases, dct):
@@ -43,14 +49,14 @@ class ListStorageStrategy(AbstractStorageStrategy):
     erase, unerase = rerased.new_static_erasing_pair("list-storage-strategy")
     import_from_mixin(BasicStorageStrategyMixin)
     
-    def fetch(self, w_obj, n0):
+    def fetch(self, space, w_obj, n0):
         return self.storage(w_obj)[n0]
-    def store(self, w_obj, n0, w_val):
+    def store(self, space, w_obj, n0, w_val):
         self.storage(w_obj)[n0] = w_val
     def size_of(self, w_obj):
         return len(self.storage(w_obj))
-    def initial_storage(self, size, default_element):
-        return self.erase([default_element] * size)
+    def initial_storage(self, space, size):
+        return self.erase([model.w_nil] * size)
     def storage_for_list(self, space, collection):
         return self.erase([x for x in collection])
 

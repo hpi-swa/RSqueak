@@ -756,8 +756,8 @@ class FormShadow(AbstractCachingShadow):
         w_offset = self.fetch(4)
         assert isinstance(w_offset, model.W_PointersObject)
         if not w_offset is self.space.w_nil:
-            self.offsetX = self.intOrIfNil(w_offset._fetch(0), 0)
-            self.offsetY = self.intOrIfNil(w_offset._fetch(1), 0)
+            self.offsetX = self.intOrIfNil(w_offset._fetch(self.space, 0), 0)
+            self.offsetY = self.intOrIfNil(w_offset._fetch(self.space, 1), 0)
         self.pixPerWord = 32 / self.depth
         self.pitch = (self.width + (self.pixPerWord - 1)) / self.pixPerWord | 0
         if self.w_bits.size() < (self.pitch * self.height):

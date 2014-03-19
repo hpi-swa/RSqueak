@@ -240,15 +240,15 @@ def test_cached_methoddict():
     s_methoddict = s_class.s_methoddict()
     s_methoddict.sync_cache()
     i = 0
-    key = s_methoddict.w_self()._fetch(constants.METHODDICT_NAMES_INDEX+i)
+    key = s_methoddict.w_self()._fetch(space, constants.METHODDICT_NAMES_INDEX+i)
     while key is space.w_nil:
         i = i + 1
-        key = s_methoddict.w_self()._fetch(constants.METHODDICT_NAMES_INDEX+i)
+        key = s_methoddict.w_self()._fetch(space, constants.METHODDICT_NAMES_INDEX+i)
 
     assert (s_class.lookup(key) is foo.as_compiledmethod_get_shadow(space)
             or s_class.lookup(key) is bar.as_compiledmethod_get_shadow(space))
     # change that entry
-    w_array = s_class.w_methoddict()._fetch(constants.METHODDICT_VALUES_INDEX)
+    w_array = s_class.w_methoddict()._fetch(space, constants.METHODDICT_VALUES_INDEX)
     version = s_class.version
     w_array.atput0(space, i, baz)
 
@@ -268,7 +268,7 @@ def test_updating_class_changes_subclasses():
 
     s_md = w_parent.as_class_get_shadow(space).s_methoddict()
     s_md.sync_cache()
-    w_ary = s_md._w_self._fetch(constants.METHODDICT_VALUES_INDEX)
+    w_ary = s_md._w_self._fetch(space, constants.METHODDICT_VALUES_INDEX)
     s_md._w_self.atput0(space, 0, key)
     w_ary.atput0(space, 0, w_method)
 

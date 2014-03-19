@@ -218,7 +218,7 @@ def test_storeAndPopTemporaryVariableBytecode(bytecode=storeAndPopTemporaryVaria
         step_in_interp(s_frame)
         assert s_frame.stack() == []
         for test_index in range(8):
-            print w_frame.all_vars()
+            print w_frame.all_vars(space)
             if test_index == index:
                 assert s_frame.gettemp(test_index) == space.w_true
             else:

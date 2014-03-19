@@ -507,12 +507,12 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     def fetch(self, space, n0):
         if self.has_shadow():
             return self._shadow.fetch(n0)
-        return self._fetch(n0)
+        return self._fetch(space, n0)
 
     def store(self, space, n0, w_value):
         if self.has_shadow():
             return self._shadow.store(n0, w_value)
-        return self._store(n0, w_value)
+        return self._store(space, n0, w_value)
 
     def varsize(self, space):
         return self.size() - self.instsize(space)
@@ -626,39 +626,36 @@ class W_PointersObject(W_AbstractPointersObject):
         """Create new object with size = fixed + variable size."""
         W_AbstractPointersObject.__init__(self, space, w_class, size)
         self.strategy = strategy_of_size(self.s_class, size)
-        self.storage = self.strategy.initial_storage(size, w_nil)
+        self.storage = self.strategy.initial_storage(space, size)
 
     def fillin(self, space, g_self):
         W_AbstractPointersObject.fillin(self, space, g_self)
         from spyvm.fieldtypes import strategy_for_list
         pointers = g_self.get_pointers()
         self.strategy = strategy_for_list(self.s_class, pointers)
-        self.storage = self.strategy.storage_for_list(pointers)
+        self.storage = self.strategy.storage_for_list(space, pointers)
 
     def get_strategy(self):
+        # return jit.promote(self.strategy)
         return self.strategy
         
     def get_storage(self):
         return self.storage
         
-    def all_vars(self):
-        return self.strategy.all_vars(self)
+    def all_vars(self, space):
+        return [self.strategy.fetch(space, self, i) for i in range(self.basic_size())]
     
     def set_all_vars(self, collection):
-        # TODO reuse storage if possible
-        self.storage = self.strategy.storage_for_list(collection)
+        self.storage = self.strategy.storage_for_list(space, collection)
     
-    def _fetch(self, n0):
-        strategy = jit.promote(self.strategy)
-        return strategy.fetch(self, n0)
+    def _fetch(self, space, n0):
+        return self.get_strategy().fetch(space, self, n0)
 
-    def _store(self, n0, w_value):
-        strategy = jit.promote(self.strategy)
-        return strategy.store(self, n0, w_value)
+    def _store(self, space, n0, w_value):
+        return self.get_strategy().store(space, self, n0, w_value)
 
     def basic_size(self):
-        strategy = jit.promote(self.strategy)
-        return strategy.size_of(self)
+        return self.get_strategy().size_of(self)
 
     def become(self, w_other):
         if not isinstance(w_other, W_PointersObject):
@@ -672,7 +669,7 @@ class W_PointersObject(W_AbstractPointersObject):
         length = self.strategy.size_of(self)
         w_result = W_PointersObject(self.space, self.getclass(space), length)
         cloned_vars = [self.fetch(space, i) for i in range(length)]
-        w_result.storage = w_result.strategy.storage_for_list(cloned_vars)
+        w_result.storage = w_result.strategy.storage_for_list(space, cloned_vars)
         return w_result
 
     def fieldtype(self):
@@ -690,11 +687,11 @@ class W_WeakPointersObject(W_AbstractPointersObject):
     def fillin(self, space, g_self):
         raise NotImplementedError("we don't expect weak objects in a fresh image")
 
-    def _fetch(self, n0):
+    def _fetch(self, space, n0):
         weakobj = self._weakvars[n0]
         return weakobj() or w_nil
 
-    def _store(self, n0, w_value):
+    def _store(self, space, n0, w_value):
         assert w_value is not None
         self._weakvars[n0] = weakref.ref(w_value)
 
@@ -1193,7 +1190,10 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
             if isinstance(w_candidate, W_PointersObject):
                 c_shadow = w_candidate._shadow
                 if c_shadow is None and w_candidate.size() >= 2:
-                    w_class = w_candidate._fetch(1)
+                    space = None
+                    if self._shadow:
+                        space = self._shadow.space
+                    w_class = w_candidate._fetch(space, 1)
                     if isinstance(w_class, W_PointersObject):
                         d_shadow = w_class._shadow
                         if isinstance(d_shadow, shadow.ClassShadow):
@@ -1260,7 +1260,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def as_compiledmethod_get_shadow(self, space=None):
         from shadow import CompiledMethodShadow
         if self._shadow is None:
-            self._shadow = CompiledMethodShadow(self)
+            self._shadow = CompiledMethodShadow(space, self)
         return self._shadow
 
     def literalat0(self, space, index0):
