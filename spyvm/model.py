@@ -1268,7 +1268,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
             if isinstance(w_candidate, W_PointersObject):
                 c_shadow = w_candidate._get_shadow()
                 if c_shadow is None and w_candidate.size() >= 2:
-                    if not w_candidate.strategy.needs_objspace():
+                    if not w_candidate.strategy.needs_objspace:
                         # We can fetch without having an object space at hand.
                         # XXX How to get an object space from a CompiledMethodShadow, anyways?
                         w_class = w_candidate._fetch(None, 1)
