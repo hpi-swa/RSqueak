@@ -757,16 +757,17 @@ class BlockContextShadow(ContextPartShadow):
 
     def __init__(self, space, w_self=None, w_home=None, argcnt=0, initialip=0):
         self = jit.hint(self, access_directly=True, fresh_virtualizable=True)
-        contextsize = w_home.as_methodcontext_get_shadow(space).myblocksize()
         creating_w_self = w_self is None
         if creating_w_self:
+            contextsize = w_home.as_methodcontext_get_shadow(space).myblocksize()
             w_self = model.W_PointersObject(space, space.w_BlockContext, contextsize)
         ContextPartShadow.__init__(self, space, w_self)
         if creating_w_self:
             w_self.store_shadow(self)
         self.store_expected_argument_count(argcnt)
         self.store_initialip(initialip)
-        self.store_w_home(w_home)
+        if w_home:
+            self.store_w_home(w_home)
         self.store_pc(initialip)
         self.init_stack_and_temps()
 

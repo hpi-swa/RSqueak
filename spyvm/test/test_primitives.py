@@ -14,11 +14,11 @@ space = objspace.ObjSpace()
 
 class MockFrame(model.W_PointersObject):
     def __init__(self, stack):
+        self.space = space
         size = 6 + len(stack) + 6
         self.strategy = strategies.ListStorageStrategy.singleton
         self.initialize_storage(space, size)
         self.store_all(space, [None] * 6 + stack + [space.w_nil] * 6)
-        import pdb; pdb.set_trace()
         s_self = self.as_blockcontext_get_shadow(space)
         s_self.init_stack_and_temps()
         s_self.reset_stack()
