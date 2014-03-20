@@ -1,5 +1,6 @@
-from spyvm import model, shadow
 
+import sys
+from spyvm import model, shadow
 from rpython.rlib import rerased
 from rpython.rlib.objectmodel import import_from_mixin
 
@@ -53,13 +54,13 @@ class AbstractIntStorageStrategy(AbstractStorageStrategy):
     strategy_tag = 'abstract-int'
     
     def storage(self, w_obj):
-        return w_obj.int_storage
+        return self.unerase(w_obj.int_storage)
     def set_initial_storage(self, space, w_obj, size):
-        w_obj.int_storage = self.initial_storage(space, size)
+        w_obj.int_storage = self.erase(self.initial_storage(space, size))
     def set_storage_for_list(self, space, w_obj, collection):
-        w_obj.int_storage = self.storage_for_list(space, collection)
+        w_obj.int_storage = self.erase(self.storage_for_list(space, collection))
     def set_storage_copied_from(self, space, w_obj, w_source_obj, reuse_storage=False):
-        w_obj.int_storage = self.copy_storage_from(space, w_source_obj, reuse_storage)
+        w_obj.int_storage = self.erase(self.copy_storage_from(space, w_source_obj, reuse_storage))
     
     def initial_storage(self, space, size):
         raise NotImplementedError("Abstract base class")
@@ -79,18 +80,20 @@ class SingletonMeta(type):
         result.singleton = result()
         return result
 
-class BasicStorageStrategyMixin(object):
-    def erase(self, a): return a
-    def unerase(self, a): return a
-    # erase, unerase = rerased.new_static_erasing_pair(self.strategy_tag)
+use_rerased = False
+def setup_rerased_pair():
+    locals = sys._getframe(1).f_locals
+    if use_rerased:
+        locals["erase"], locals["unerase"] = rerased.new_static_erasing_pair("strategy-%s" % locals["strategy_tag"])
+    else:
+        locals["erase"], locals["unerase"] = lambda self, x: x, lambda self, x: x
 
 # this is the typical "initial" storage strategy, for when every slot
 # in an object is still nil. No storage is allocated.
 class AllNilStorageStrategy(AbstractStorageStrategy):
     __metaclass__ = SingletonMeta
-    # erase, unerase = rerased.new_static_erasing_pair("allnil-strategy")
-    import_from_mixin(BasicStorageStrategyMixin)
     strategy_tag = 'allnil'
+    setup_rerased_pair()
     
     def fetch(self, space, w_obj, n0):
         return model.w_nil
@@ -116,9 +119,8 @@ class AllNilStorageStrategy(AbstractStorageStrategy):
 # fixed-sized and var-sized objects.
 class ListStorageStrategy(AbstractListStorageStrategy):
     __metaclass__ = SingletonMeta
-    # erase, unerase = rerased.new_static_erasing_pair("list-strategy")
-    import_from_mixin(BasicStorageStrategyMixin)
     strategy_tag = 'list'
+    setup_rerased_pair()
     
     def fetch(self, space, w_obj, n0):
         return self.storage(w_obj)[n0]
@@ -135,9 +137,8 @@ class ListStorageStrategy(AbstractListStorageStrategy):
 
 class TaggingSmallIntegerStorageStrategy(AbstractIntStorageStrategy):
     __metaclass__ = SingletonMeta
-    # erase, unerase = rerased.new_static_erasing_pair("tagging-smallint-strategry")
-    import_from_mixin(BasicStorageStrategyMixin)
     strategy_tag = 'tagging-smallint'
+    setup_rerased_pair()
     needs_objspace = True
     
     @staticmethod
