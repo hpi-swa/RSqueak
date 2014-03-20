@@ -654,7 +654,9 @@ strategy_stats = StrategyStatistics()
 
 class W_PointersObject(W_AbstractPointersObject):
     _attrs_ = ['_size', 'list_storage', 'int_storage', 'strategy']
-
+    list_storage = None
+    int_storage = None
+    
     @jit.unroll_safe
     def __init__(self, space, w_class, size):
         from spyvm.strategies import strategy_of_size

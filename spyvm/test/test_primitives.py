@@ -18,15 +18,17 @@ class MockFrame(model.W_PointersObject):
         self.strategy = strategies.ListStorageStrategy.singleton
         self.initialize_storage(space, size)
         self.store_all(space, [None] * 6 + stack + [space.w_nil] * 6)
-        s_self = self.as_blockcontext_get_shadow()
+        import pdb; pdb.set_trace()
+        s_self = self.as_blockcontext_get_shadow(space)
         s_self.init_stack_and_temps()
         s_self.reset_stack()
         s_self.push_all(stack)
         s_self.store_expected_argument_count(0)
         self.s_class = space.w_MethodContext.as_class_get_shadow(space)
 
-    def as_blockcontext_get_shadow(self):
-        self.shadow = shadow.BlockContextShadow(space, self)
+    def as_blockcontext_get_shadow(self, space):
+        if not self.shadow:
+            self.shadow = shadow.BlockContextShadow(space, self)
         return self.shadow
 
 def wrap(x):

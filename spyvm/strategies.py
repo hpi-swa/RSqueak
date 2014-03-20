@@ -44,7 +44,7 @@ class AbstractListStorageStrategy(AbstractStorageStrategy):
     def copy_storage_from(self, space, w_obj, reuse_storage):
         old_strategy = w_obj.strategy
         if old_strategy == self and reuse_storage:
-            return w_obj.list_storage
+            return self.storage(w_obj)
         else:
             # This can be overridden and optimized (reuse_storage flag, less temporary storage)
             return self.storage_for_list(space, w_obj.fetch_all(space))
@@ -68,10 +68,10 @@ class AbstractIntStorageStrategy(AbstractStorageStrategy):
     def copy_storage_from(self, space, w_obj, reuse_storage):
         old_strategy = w_obj.strategy
         if old_strategy == self and reuse_storage:
-            return w_obj.int_storage
+            return self.storage(w_obj)
         else:
             # This can be overridden and optimized (reuse_storage flag, less temporary storage)
-            return self.int_storage_for_list(space, w_obj.fetch_all(space))
+            return self.storage_for_list(space, w_obj.fetch_all(space))
 
 class SingletonMeta(type):
     def __new__(cls, name, bases, dct):
@@ -173,10 +173,10 @@ class TaggingSmallIntegerStorageStrategy(AbstractIntStorageStrategy):
                 # Storing a wrong type - dehomogenize to ListStorage
                 return w_obj.store_with_new_strategy(space, ListStorageStrategy.singleton, n0, w_val)
         
-    def initial_int_storage(self, space, size):
+    def initial_storage(self, space, size):
         return [self.nil_value] * size
     
-    def int_storage_for_list(self, space, collection):
+    def storage_for_list(self, space, collection):
         length = len(collection)
         store = [self.nil_value] * length
         for i in range(length):
