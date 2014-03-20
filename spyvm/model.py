@@ -653,7 +653,7 @@ class StrategyStatistics(object):
 strategy_stats = StrategyStatistics()
 
 class W_PointersObject(W_AbstractPointersObject):
-    _attrs_ = ['_size', '_storage', 'int_storage', 'strategy']
+    _attrs_ = ['_size', 'list_storage', 'int_storage', 'strategy']
 
     @jit.unroll_safe
     def __init__(self, space, w_class, size):
@@ -661,7 +661,7 @@ class W_PointersObject(W_AbstractPointersObject):
         """Create new object with size = fixed + variable size."""
         W_AbstractPointersObject.__init__(self, space, w_class, size)
         self.strategy = strategy_of_size(self.s_class, size)
-        self.set_storage(space, size)
+        self.initialize_storage(space, size)
         self.log_strategy_operation("Initialized")
     
     def log_strategy_operation(self, op, old_strategy=None):
@@ -679,24 +679,15 @@ class W_PointersObject(W_AbstractPointersObject):
             if strategy_stats.do_log:
                 strategy_stats.log_operation(op, new_strategy_tag, old_strategy_tag, classname, size)
     
-    def set_storage(self, space, size):
+    def initialize_storage(self, space, size):
         self._size = size
-        if self.strategy.uses_int_storage:
-            self.int_storage = self.strategy.initial_int_storage(space, size)
-        else:
-            self._storage = self.strategy.initial_storage(space, size)
-    
-    def get_strategy(self):
-        return self.strategy
+        self.strategy.set_initial_storage(space, self, size)
     
     def fillin_pointers(self, space, collection):
         from spyvm.strategies import strategy_for_list
         self.strategy = strategy_for_list(self.s_class, collection)
         self._size = len(collection)
-        if self.strategy.uses_int_storage:
-            self.int_storage = self.strategy.int_storage_for_list(space, collection)
-        else:
-            self._storage = self.strategy.storage_for_list(space, collection)
+        self.strategy.set_storage_for_list(space, self, collection)
     
     def fillin(self, space, g_self):
         W_AbstractPointersObject.fillin(self, space, g_self)
@@ -705,10 +696,7 @@ class W_PointersObject(W_AbstractPointersObject):
 
     def switch_strategy(self, space, new_strategy):
         assert self.strategy != new_strategy
-        if new_strategy.uses_int_storage:
-            self.int_storage = new_strategy.copy_int_storage_from(space, self, reuse_storage=True)
-        else:
-            self._storage = new_strategy.copy_storage_from(space, self, reuse_storage=True)
+        new_strategy.set_storage_copied_from(space, self, self, reuse_storage=True)
         old_strategy = self.strategy
         self.strategy = new_strategy
         self.log_strategy_operation("Switched", old_strategy)
@@ -735,10 +723,10 @@ class W_PointersObject(W_AbstractPointersObject):
             i = i+1
     
     def _fetch(self, space, n0):
-        return self.get_strategy().fetch(space, self, n0)
+        return self.strategy.fetch(space, self, n0)
 
     def _store(self, space, n0, w_value):
-        return self.get_strategy().store(space, self, n0, w_value)
+        return self.strategy.store(space, self, n0, w_value)
 
     def basic_size(self):
         return self._size
@@ -748,7 +736,7 @@ class W_PointersObject(W_AbstractPointersObject):
             return False
         self.strategy, w_other.strategy = w_other.strategy, self.strategy
         self._size, w_other._size = w_other._size, self._size
-        self._storage, w_other._storage = w_other._storage, self._storage
+        self.list_storage, w_other.list_storage = w_other.list_storage, self.list_storage
         self.int_storage, w_other.int_storage = w_other.int_storage, self.int_storage
         return W_AbstractPointersObject.become(self, w_other)
 

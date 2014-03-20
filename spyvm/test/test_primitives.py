@@ -16,7 +16,7 @@ class MockFrame(model.W_PointersObject):
     def __init__(self, stack):
         size = 6 + len(stack) + 6
         self.strategy = strategies.ListStorageStrategy.singleton
-        self.set_storage(space, size)
+        self.initialize_storage(space, size)
         self.store_all(space, [None] * 6 + stack + [space.w_nil] * 6)
         s_self = self.as_blockcontext_get_shadow()
         s_self.init_stack_and_temps()

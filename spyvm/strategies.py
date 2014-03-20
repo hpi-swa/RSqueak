@@ -1,8 +1,6 @@
 from spyvm import model, shadow
 
-from rpython.rlib import rerased
-from rpython.rlib import objectmodel, jit, signature
-from rpython.rlib.listsort import TimSort
+from rpython.rlib import rerased, objectmodel, jit, signature
 from rpython.rlib.objectmodel import import_from_mixin
 from rpython.rlib.debug import make_sure_not_resized
 
@@ -22,6 +20,24 @@ class AbstractStorageStrategy(object):
         # Return True, if fetch/store operations use the space parameter.
         # If not, the space-parameter can be passed in as None (probably).
         return False
+    
+    def set_initial_storage(self, space, w_obj, size):
+        if self.uses_int_storage:
+            w_obj.int_storage = self.initial_int_storage(space, size)
+        else:
+            w_obj.list_storage = self.initial_storage(space, size)
+    
+    def set_storage_for_list(self, space, w_obj, collection):
+        if self.uses_int_storage:
+            w_obj.int_storage = self.int_storage_for_list(space, collection)
+        else:
+            w_obj.list_storage = self.storage_for_list(space, collection)
+    
+    def set_storage_copied_from(self, space, w_obj, w_source_obj, reuse_storage=False):
+        if self.uses_int_storage:
+            w_obj.int_storage = self.int_storage_for_list(space, collection)
+        else:
+            w_obj.list_storage = self.storage_for_list(space, collection)
     
     def fetch(self, space, w_obj, n0):
         raise NotImplementedError("Abstract base class")
@@ -48,7 +64,7 @@ class AbstractStorageStrategy(object):
     def copy_storage_from(self, space, w_obj, reuse_storage=False):
         old_strategy = w_obj.strategy
         if old_strategy == self and reuse_storage:
-            return w_obj._storage
+            return w_obj.list_storage
         else:
             # This can be overridden and optimized (reuse_storage flag, less temporary storage)
             return self.storage_for_list(space, w_obj.fetch_all(space))
@@ -69,7 +85,7 @@ class BasicStorageStrategyMixin(object):
     def int_storage(self, w_obj):
         return w_obj.int_storage
     def storage(self, w_obj):
-        return w_obj._storage
+        return w_obj.list_storage
     def erase(self, a): return a
     def unerase(self, a): return a
 
@@ -128,7 +144,7 @@ class ListStorageStrategy(AbstractStorageStrategy):
 
 class TaggingSmallIntegerStorageStrategy(AbstractStorageStrategy):
     __metaclass__ = SingletonMeta
-    strategy_tag = 'tagging-small-int'
+    strategy_tag = 'tagging'
     # erase, unerase = rerased.new_static_erasing_pair("tagging-small-integer-strategry")
     import_from_mixin(BasicStorageStrategyMixin)
     uses_int_storage = True
