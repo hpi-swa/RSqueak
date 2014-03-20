@@ -30,13 +30,13 @@ class AbstractListStorageStrategy(AbstractStorageStrategy):
     strategy_tag = 'abstract-list'
     
     def storage(self, w_obj):
-        return w_obj.list_storage
+        return self.unerase(w_obj.list_storage)
     def set_initial_storage(self, space, w_obj, size):
-        w_obj.list_storage = self.initial_storage(space, size)
+        w_obj.list_storage = self.erase(self.initial_storage(space, size))
     def set_storage_for_list(self, space, w_obj, collection):
-        w_obj.list_storage = self.storage_for_list(space, collection)
+        w_obj.list_storage = self.erase(self.storage_for_list(space, collection))
     def set_storage_copied_from(self, space, w_obj, w_source_obj, reuse_storage=False):
-        w_obj.list_storage = self.copy_storage_from(space, w_source_obj, reuse_storage)
+        w_obj.list_storage = self.erase(self.copy_storage_from(space, w_source_obj, reuse_storage))
     
     def initial_storage(self, space, size):
         raise NotImplementedError("Abstract base class")

@@ -654,8 +654,6 @@ strategy_stats = StrategyStatistics()
 
 class W_PointersObject(W_AbstractPointersObject):
     _attrs_ = ['_size', 'list_storage', 'int_storage', 'strategy']
-    list_storage = None
-    int_storage = None
     
     @jit.unroll_safe
     def __init__(self, space, w_class, size):
@@ -738,8 +736,26 @@ class W_PointersObject(W_AbstractPointersObject):
             return False
         self.strategy, w_other.strategy = w_other.strategy, self.strategy
         self._size, w_other._size = w_other._size, self._size
-        self.list_storage, w_other.list_storage = w_other.list_storage, self.list_storage
-        self.int_storage, w_other.int_storage = w_other.int_storage, self.int_storage
+        
+        # Unfortunately, the following is necessary to work both with RPYTHON and in interpreted mode.
+        # Rpython cannot handle list_storage = None in combination with a rerased pair.
+        
+        if hasattr(self, 'list_storage'):
+            if hasattr(w_other, 'list_storage'):
+                self.list_storage, w_other.list_storage = w_other.list_storage, self.list_storage
+            else:
+                w_other.list_storage = self.list_storage
+        elif hasattr(w_other, 'list_storage'):
+            self.list_storage = w_other.list_storage
+        
+        if hasattr(self, 'int_storage'):
+            if hasattr(w_other, 'int_storage'):
+                self.int_storage, w_other.int_storage = w_other.int_storage, self.int_storage
+            else:
+                w_other.int_storage = self.int_storage
+        elif hasattr(w_other, 'int_storage'):
+            self.int_storage = w_other.int_storage        
+        
         return W_AbstractPointersObject.become(self, w_other)
 
     @jit.unroll_safe
