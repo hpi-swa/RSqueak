@@ -1,6 +1,8 @@
 
-import sys
+import sys, math
 from spyvm import model, shadow, constants
+from rpython.rlib import longlong2float, rarithmetic
+from rpython.rtyper.lltypesystem import rffi, lltype
 from rpython.rlib.objectmodel import import_from_mixin
 from rpython.rlib.rfloat import string_to_float
 
@@ -133,13 +135,21 @@ class ListStorageStrategy(AbstractListStorageStrategy):
 class AbstractValueOrNilStorageStrategy(AbstractIntStorageStrategy):
     needs_objspace = True
     strategy_tag = 'abstract-valueOrNil'
+    # TODO -- use another value... something like max_float?
+    nil_value = string_to_float("nan")
+    
+    def is_nil_value(self, val):
+        # return val == self.nil_value
+        return math.isnan(val)
     
     def can_contain(self, space, w_val):
-        return w_val == model.w_nil or (isinstance(w_val, self.wrapper_class) and self.unwrap(space, w_val) != self.nil_value)
+        return w_val == model.w_nil or \
+                (isinstance(w_val, self.wrapper_class) \
+                and not self.is_nil_value(self.unwrap(space, w_val)))
     
     def fetch(self, space, w_obj, n0):
         val = self.storage(w_obj)[n0]
-        if val == self.nil_value:
+        if self.is_nil_value(val):
             return space.w_nil
         else:
             return self.wrap(space, val)
@@ -147,7 +157,7 @@ class AbstractValueOrNilStorageStrategy(AbstractIntStorageStrategy):
     def do_store(self, space, w_obj, n0, w_val):
         store = self.storage(w_obj)
         if w_val == model.w_nil:
-                store[n0] = self.nil_value
+            store[n0] = self.nil_value
         else:
             store[n0] = self.unwrap(space, w_val)
     
@@ -162,21 +172,32 @@ class AbstractValueOrNilStorageStrategy(AbstractIntStorageStrategy):
                 store[i] = self.unwrap(space, collection[i])
         return store
 
+def _int_to_float(int_val):
+    return longlong2float.longlong2float(rffi.cast(lltype.SignedLongLong, int_val))
+
 class SmallIntegerOrNilStorageStrategy(AbstractValueOrNilStorageStrategy):
     __metaclass__ = SingletonMeta
-    strategy_tag = 'float-orNil'
-    nil_value = constants.MAXINT
+    strategy_tag = 'smallint-orNil'
     wrapper_class = model.W_SmallInteger
-    def wrap(self, space, val): return space.wrap_int(val)
-    def unwrap(self, space, w_val): return space.unwrap_int(w_val)
+    
+    def wrap(self, space, val):
+        int_val = rarithmetic.intmask(longlong2float.float2longlong(val))
+        return space.wrap_int(int_val)
+    def unwrap(self, space, w_val):
+        assert isinstance(w_val, model.W_SmallInteger)
+        int_val = space.unwrap_int(w_val)
+        return _int_to_float(int_val)
 
 class FloatOrNilStorageStrategy(AbstractValueOrNilStorageStrategy):
     __metaclass__ = SingletonMeta
-    strategy_tag = 'smallint-orNil'
-    nil_value = string_to_float("-nan")
+    strategy_tag = 'float-orNil'
     wrapper_class = model.W_Float
-    def wrap(self, space, val): return space.wrap_float(val)
-    def unwrap(self, space, w_val): return space.unwrap_float(w_val)
+    
+    def wrap(self, space, val):
+        return space.wrap_float(val)
+    def unwrap(self, space, w_val):
+        assert isinstance(w_val, model.W_Float)
+        return space.unwrap_float(w_val)
 
 def find_strategy_for_object(space, var):
     return find_strategy_for_objects(space, [var])
@@ -211,7 +232,7 @@ def find_strategy_for_objects(space, vars):
         return FloatOrNilStorageStrategy.singleton
     
     # If this happens, please look for a bug in the code above.
-    assert False, "No strategy could be found for list %r" % vars
+    assert False, "No strategy could be found for list..."
 
 def empty_strategy(s_containing_class):
     if s_containing_class is None:
