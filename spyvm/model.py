@@ -644,10 +644,10 @@ class W_PointersObject(W_AbstractPointersObject):
     
     @jit.unroll_safe
     def __init__(self, space, w_class, size):
-        from spyvm.strategies import strategy_of_size
+        from spyvm.strategies import empty_strategy
         """Create new object with size = fixed + variable size."""
         W_AbstractPointersObject.__init__(self, space, w_class, size)
-        self.strategy = strategy_of_size(self.s_class, size)
+        self.strategy = empty_strategy(self.s_class)
         self.initialize_storage(space, size)
         self.log_strategy_operation("Initialized")
     
