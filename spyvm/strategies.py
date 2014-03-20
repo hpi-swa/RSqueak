@@ -23,8 +23,8 @@ class AbstractStorageStrategy(object):
     
     def store(self, space, w_obj, n0, w_val):
         if self.can_contain(space, w_val):
-            self.do_store(space, w_obj, n0, w_val)
-        new_strategy = find_strategy_for_object(w_val)
+            return self.do_store(space, w_obj, n0, w_val)
+        new_strategy = find_strategy_for_object(space, w_val)
         return w_obj.store_with_new_strategy(space, new_strategy, n0, w_val)
     
     def can_contain(self, space, w_val):
@@ -146,7 +146,7 @@ class AbstractValueOrNilStorageStrategy(AbstractIntStorageStrategy):
         
     def do_store(self, space, w_obj, n0, w_val):
         store = self.storage(w_obj)
-        if w_val == space.w_nil:
+        if w_val == model.w_nil:
                 store[n0] = self.nil_value
         else:
             store[n0] = self.unwrap(space, w_val)
@@ -156,9 +156,9 @@ class AbstractValueOrNilStorageStrategy(AbstractIntStorageStrategy):
         
     def storage_for_list(self, space, collection):
         length = len(collection)
-        store = self.initial_storage(length)
+        store = self.initial_storage(space, length)
         for i in range(length):
-            if collection[i] != space.w_nil:
+            if collection[i] != model.w_nil:
                 store[i] = self.unwrap(space, collection[i])
         return store
 
