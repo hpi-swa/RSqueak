@@ -35,9 +35,9 @@ class AbstractStorageStrategy(object):
     
     def set_storage_copied_from(self, space, w_obj, w_source_obj, reuse_storage=False):
         if self.uses_int_storage:
-            w_obj.int_storage = self.int_storage_for_list(space, collection)
+            w_obj.int_storage = self.copy_int_storage_from(space, w_source_obj, reuse_storage)
         else:
-            w_obj.list_storage = self.storage_for_list(space, collection)
+            w_obj.list_storage = self.copy_storage_from(space, w_source_obj, reuse_storage)
     
     def fetch(self, space, w_obj, n0):
         raise NotImplementedError("Abstract base class")
@@ -54,14 +54,14 @@ class AbstractStorageStrategy(object):
         raise NotImplementedError("Abstract base class")
     def int_storage_for_list(self, space, collection):
         raise NotImplementedError("Abstract base class")
-    def copy_int_storage_from(self, space, w_obj, reuse_storage=False):
+    def copy_int_storage_from(self, space, w_obj, reuse_storage):
         old_strategy = w_obj.strategy
         if old_strategy == self and reuse_storage:
             return w_obj.int_storage
         else:
             # This can be overridden and optimized (reuse_storage flag, less temporary storage)
             return self.int_storage_for_list(space, w_obj.fetch_all(space))
-    def copy_storage_from(self, space, w_obj, reuse_storage=False):
+    def copy_storage_from(self, space, w_obj, reuse_storage):
         old_strategy = w_obj.strategy
         if old_strategy == self and reuse_storage:
             return w_obj.list_storage
