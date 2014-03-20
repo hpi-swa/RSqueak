@@ -15,24 +15,29 @@ def list_arr(size):
     a.store(space, 0, arr(1))
     return a
 
-def tagging_arr(size):
+def int_arr(size):
     a = arr(size)
     a.store(space, 0, space.wrap_int(12))
     return a
 
-def tagging_arr_odd(size):
+def float_arr(size):
     a = arr(size)
-    a.store(space, 2, space.wrap_int(12))
+    a.store(space, 0, space.wrap_float(1.2))
     return a
 
 def check_arr(arr, expected):
     for i in range(arr.basic_size()):
+        w_val = arr.fetch(space, i)
         if expected[i] == w_nil:
-            assert arr.fetch(space, i) == w_nil
-        else:
-            w_val = arr.fetch(space, i)
+            assert w_val == w_nil
+        elif isinstance(expected[i], int):
             assert isinstance(w_val, model.W_SmallInteger)
             assert space.unwrap_int(w_val) == expected[i]
+        elif isinstance(expected[i], float):
+            assert isinstance(w_val, model.W_Float)
+            assert space.unwrap_float(w_val) == expected[i]
+        else:
+            assert False, "Unexpected array of expected values."
 
 # ====== AllNil StorageStrategy
 
@@ -76,41 +81,82 @@ def test_List_size():
     a.store(space, 1, arr(1))
     assert a.basic_size() == 5
 
-# ====== Tagging SmallInteger StorageStrategy
+# ====== SmallIntegerOrNil StorageStrategy
 
 def test_AllNil_to_Int():
-    a = tagging_arr(5)
-    assert isinstance(a.strategy, strategies.TaggingSmallIntegerStorageStrategy)
+    a = int_arr(5)
+    assert isinstance(a.strategy, strategies.SmallIntegerOrNilStorageStrategy)
     check_arr(a, [12, w_nil, w_nil, w_nil, w_nil])
 
-def test_Tagging_store():
-    a = tagging_arr(5)
+def test_SmallInt_store():
+    a = int_arr(5)
     a.store(space, 1, space.wrap_int(20))
     a.store(space, 2, space.wrap_int(20))
-    assert isinstance(a.strategy, strategies.TaggingSmallIntegerStorageStrategy)
+    assert isinstance(a.strategy, strategies.SmallIntegerOrNilStorageStrategy)
     check_arr(a, [12, 20, 20, w_nil, w_nil])
 
-def test_Tagging_store_nil_to_nil():
-    a = tagging_arr_odd(5)
+def test_SmallInt_store_nil_to_nil():
+    a = int_arr(5)
     a.store(space, 1, w_nil)
-    check_arr(a, [w_nil, w_nil, 12, w_nil, w_nil])
+    check_arr(a, [12, w_nil, w_nil, w_nil, w_nil])
     
-def test_Tagging_delete():
-    a = tagging_arr_odd(5)
+def test_SmallInt_overwrite():
+    a = int_arr(5)
     a.store(space, 1, space.wrap_int(1))
     a.store(space, 3, space.wrap_int(2))
-    a.store(space, 2, space.wrap_int(100))
+    a.store(space, 0, space.wrap_int(100))
     a.store(space, 1, space.wrap_int(200))
     a.store(space, 3, space.wrap_int(300))
-    check_arr(a, [w_nil, 200, 100, 300, w_nil])
+    check_arr(a, [100, 200, w_nil, 300, w_nil])
 
-def test_Tagging_delete_first():
-    a = tagging_arr_odd(5)
+def test_SmallInt_delete():
+    a = int_arr(5)
     a.store(space, 1, space.wrap_int(1))
     a.store(space, 1, w_nil)
-    check_arr(a, [w_nil, w_nil, 12, w_nil, w_nil])
+    check_arr(a, [12, w_nil, w_nil, w_nil, w_nil])
 
-def test_Tagging_to_List():
-    a = tagging_arr_odd(5)
+def test_SmallInt_to_List():
+    a = int_arr(5)
     a.store(space, 1, arr(1))
     assert isinstance(a.strategy, strategies.ListStorageStrategy)
+
+# ====== FloatOrNil StorageStrategy
+
+def test_AllNil_to_Float():
+    a = float_arr(5)
+    assert isinstance(a.strategy, strategies.FloatOrNilStorageStrategy)
+    check_arr(a, [1.2, w_nil, w_nil, w_nil, w_nil])
+
+def test_Float_store():
+    a = float_arr(5)
+    a.store(space, 1, space.wrap_float(20.0))
+    a.store(space, 2, space.wrap_float(20.0))
+    assert isinstance(a.strategy, strategies.FloatOrNilStorageStrategy)
+    check_arr(a, [1.2, 20.0, 20.0, w_nil, w_nil])
+
+def test_Float_store_nil_to_nil():
+    a = float_arr(5)
+    a.store(space, 1, w_nil)
+    check_arr(a, [1.2, w_nil, w_nil, w_nil, w_nil])
+    
+def test_Float_overwrite():
+    a = float_arr(5)
+    a.store(space, 1, space.wrap_float(1.0))
+    a.store(space, 3, space.wrap_float(2.0))
+    a.store(space, 0, space.wrap_float(100.0))
+    a.store(space, 1, space.wrap_float(200.0))
+    a.store(space, 3, space.wrap_float(300.0))
+    check_arr(a, [100.0, 200.0, w_nil, 300.0, w_nil])
+
+def test_Float_delete():
+    a = float_arr(5)
+    a.store(space, 1, space.wrap_float(1))
+    a.store(space, 1, w_nil)
+    check_arr(a, [1.2, w_nil, w_nil, w_nil, w_nil])
+
+def test_Float_to_List():
+    a = float_arr(5)
+    a.store(space, 1, arr(1))
+    assert isinstance(a.strategy, strategies.ListStorageStrategy)
+
+    

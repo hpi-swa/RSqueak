@@ -26,7 +26,7 @@ class AbstractStorageStrategy(object):
     def store(self, space, w_obj, n0, w_val):
         if self.can_contain(space, w_val):
             return self.do_store(space, w_obj, n0, w_val)
-        new_strategy = find_strategy_for_object(space, w_val)
+        new_strategy = find_strategy_for_objects(space, [w_val])
         return w_obj.store_with_new_strategy(space, new_strategy, n0, w_val)
     
     def can_contain(self, space, w_val):
@@ -198,9 +198,6 @@ class FloatOrNilStorageStrategy(AbstractValueOrNilStorageStrategy):
     def unwrap(self, space, w_val):
         assert isinstance(w_val, model.W_Float)
         return space.unwrap_float(w_val)
-
-def find_strategy_for_object(space, var):
-    return find_strategy_for_objects(space, [var])
 
 def find_strategy_for_objects(space, vars):
     if only_list_storage:
