@@ -165,7 +165,7 @@ class ObjSpace(object):
             from spyvm.strategies import ListStorageStrategy
             w_nil.space = self
             w_nil.strategy = ListStorageStrategy.singleton
-            w_nil.set_storage(w_nil.strategy.initial_storage(self, 0))
+            w_nil.set_storage(self, 0)
             w_nil.s_class = self.classtable['w_UndefinedObject'].as_class_get_penumbra(self)
             return w_nil
         w_nil = self.w_nil = patch_nil(model.w_nil)
