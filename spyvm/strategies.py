@@ -82,11 +82,12 @@ class SingletonMeta(type):
 
 use_rerased = False
 def setup_rerased_pair():
-    locals = sys._getframe(1).f_locals
+    # Small piece of metaprogramming stolen from rpython.rlib.objectmodel.import_from_mixin
+    cls = sys._getframe(1).f_locals
     if use_rerased:
-        locals["erase"], locals["unerase"] = rerased.new_static_erasing_pair("strategy-%s" % locals["strategy_tag"])
+        cls["erase"], cls["unerase"] = rerased.new_static_erasing_pair("strategy-%s" % cls["strategy_tag"])
     else:
-        locals["erase"], locals["unerase"] = lambda self, x: x, lambda self, x: x
+        cls["erase"], cls["unerase"] = lambda self, x: x, lambda self, x: x
 
 # this is the typical "initial" storage strategy, for when every slot
 # in an object is still nil. No storage is allocated.
