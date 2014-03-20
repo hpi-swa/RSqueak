@@ -1,7 +1,6 @@
 
 import sys
 from spyvm import model, shadow
-from rpython.rlib import rerased
 from rpython.rlib.objectmodel import import_from_mixin
 
 # Disables all optimized strategies, for debugging.
@@ -30,13 +29,13 @@ class AbstractListStorageStrategy(AbstractStorageStrategy):
     strategy_tag = 'abstract-list'
     
     def storage(self, w_obj):
-        return self.unerase(w_obj.list_storage)
+        return w_obj.list_storage
     def set_initial_storage(self, space, w_obj, size):
-        w_obj.list_storage = self.erase(self.initial_storage(space, size))
+        w_obj.list_storage = self.initial_storage(space, size)
     def set_storage_for_list(self, space, w_obj, collection):
-        w_obj.list_storage = self.erase(self.storage_for_list(space, collection))
+        w_obj.list_storage = self.storage_for_list(space, collection)
     def set_storage_copied_from(self, space, w_obj, w_source_obj, reuse_storage=False):
-        w_obj.list_storage = self.erase(self.copy_storage_from(space, w_source_obj, reuse_storage))
+        w_obj.list_storage = self.copy_storage_from(space, w_source_obj, reuse_storage)
     
     def initial_storage(self, space, size):
         raise NotImplementedError("Abstract base class")
@@ -54,13 +53,13 @@ class AbstractIntStorageStrategy(AbstractStorageStrategy):
     strategy_tag = 'abstract-int'
     
     def storage(self, w_obj):
-        return self.unerase(w_obj.int_storage)
+        return w_obj.int_storage
     def set_initial_storage(self, space, w_obj, size):
-        w_obj.int_storage = self.erase(self.initial_storage(space, size))
+        w_obj.int_storage = self.initial_storage(space, size)
     def set_storage_for_list(self, space, w_obj, collection):
-        w_obj.int_storage = self.erase(self.storage_for_list(space, collection))
+        w_obj.int_storage = self.storage_for_list(space, collection)
     def set_storage_copied_from(self, space, w_obj, w_source_obj, reuse_storage=False):
-        w_obj.int_storage = self.erase(self.copy_storage_from(space, w_source_obj, reuse_storage))
+        w_obj.int_storage = self.copy_storage_from(space, w_source_obj, reuse_storage)
     
     def initial_storage(self, space, size):
         raise NotImplementedError("Abstract base class")
@@ -80,21 +79,11 @@ class SingletonMeta(type):
         result.singleton = result()
         return result
 
-use_rerased = False
-def setup_rerased_pair():
-    # Small piece of metaprogramming stolen from rpython.rlib.objectmodel.import_from_mixin
-    cls = sys._getframe(1).f_locals
-    if use_rerased:
-        cls["erase"], cls["unerase"] = rerased.new_static_erasing_pair("strategy-%s" % cls["strategy_tag"])
-    else:
-        cls["erase"], cls["unerase"] = lambda self, x: x, lambda self, x: x
-
 # this is the typical "initial" storage strategy, for when every slot
 # in an object is still nil. No storage is allocated.
 class AllNilStorageStrategy(AbstractStorageStrategy):
     __metaclass__ = SingletonMeta
     strategy_tag = 'allnil'
-    setup_rerased_pair()
     
     def fetch(self, space, w_obj, n0):
         return model.w_nil
@@ -121,7 +110,6 @@ class AllNilStorageStrategy(AbstractStorageStrategy):
 class ListStorageStrategy(AbstractListStorageStrategy):
     __metaclass__ = SingletonMeta
     strategy_tag = 'list'
-    setup_rerased_pair()
     
     def fetch(self, space, w_obj, n0):
         return self.storage(w_obj)[n0]
@@ -139,7 +127,6 @@ class ListStorageStrategy(AbstractListStorageStrategy):
 class TaggingSmallIntegerStorageStrategy(AbstractIntStorageStrategy):
     __metaclass__ = SingletonMeta
     strategy_tag = 'tagging-smallint'
-    setup_rerased_pair()
     needs_objspace = True
     
     @staticmethod
