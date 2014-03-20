@@ -4,8 +4,6 @@ from spyvm.model import w_nil
 from spyvm.test import test_miniimage as tools
 from spyvm.error import WrapperException, FatalError
 
-# Fieldtypes have a separate test file
-
 space, interp = tools.setup_module(tools, filename='bootstrapped.image')
 class_Array = space.classtable["w_Array"]
 

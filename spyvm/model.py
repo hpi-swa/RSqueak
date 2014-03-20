@@ -22,7 +22,7 @@ from rpython.rlib import rrandom, objectmodel, jit, signature
 from rpython.rlib.rarithmetic import intmask, r_uint, r_int
 from rpython.rlib.debug import make_sure_not_resized
 from rpython.tool.pairtype import extendabletype
-from rpython.rlib.objectmodel import instantiate, compute_hash, import_from_mixin
+from rpython.rlib.objectmodel import instantiate, compute_hash, import_from_mixin, we_are_translated
 from rpython.rtyper.lltypesystem import lltype, rffi
 from rsdl import RSDL, RSDL_helper
 
@@ -143,10 +143,6 @@ class W_Object(object):
     def unwrap_uint(self, space):
         raise error.UnwrappingError("Got unexpected class in unwrap_uint")
 
-    def fieldtype(self):
-        from spyvm.strategies import obj
-        return obj
-
     def is_array_object(self):
         return False
 
@@ -220,10 +216,6 @@ class W_SmallInteger(W_Object):
 
     def clone(self, space):
         return self
-
-    def fieldtype(self):
-        from spyvm.strategies import SInt
-        return SInt
 
 class W_AbstractObjectWithIdentityHash(W_Object):
     """Object with explicit hash (ie all except small
@@ -327,10 +319,6 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
     def invariant(self):
         return isinstance(self.value, int)
 
-    def fieldtype(self):
-        from spyvm.strategies import LPI
-        return LPI
-
     def is_array_object(self):
         return True
 
@@ -421,10 +409,6 @@ class W_Float(W_AbstractObjectWithIdentityHash):
 
     def size(self):
         return 2
-
-    def fieldtype(self):
-        from spyvm.strategies import flt
-        return flt
 
 @signature.finishsigs
 class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
@@ -654,6 +638,9 @@ strategy_stats = StrategyStatistics()
 
 class W_PointersObject(W_AbstractPointersObject):
     _attrs_ = ['_size', 'list_storage', 'int_storage', 'strategy']
+    if not we_are_translated():
+        list_storage = None
+        int_storage = None
     
     @jit.unroll_safe
     def __init__(self, space, w_class, size):
@@ -736,26 +723,8 @@ class W_PointersObject(W_AbstractPointersObject):
             return False
         self.strategy, w_other.strategy = w_other.strategy, self.strategy
         self._size, w_other._size = w_other._size, self._size
-        
-        # Unfortunately, the following is necessary to work both with RPYTHON and in interpreted mode.
-        # Rpython cannot handle list_storage = None in combination with a rerased pair.
-        
-        if hasattr(self, 'list_storage'):
-            if hasattr(w_other, 'list_storage'):
-                self.list_storage, w_other.list_storage = w_other.list_storage, self.list_storage
-            else:
-                w_other.list_storage = self.list_storage
-        elif hasattr(w_other, 'list_storage'):
-            self.list_storage = w_other.list_storage
-        
-        if hasattr(self, 'int_storage'):
-            if hasattr(w_other, 'int_storage'):
-                self.int_storage, w_other.int_storage = w_other.int_storage, self.int_storage
-            else:
-                w_other.int_storage = self.int_storage
-        elif hasattr(w_other, 'int_storage'):
-            self.int_storage = w_other.int_storage        
-        
+        self.list_storage, w_other.list_storage = w_other.list_storage, self.list_storage
+        self.int_storage, w_other.int_storage = w_other.int_storage, self.int_storage
         return W_AbstractPointersObject.become(self, w_other)
 
     @jit.unroll_safe
@@ -766,13 +735,9 @@ class W_PointersObject(W_AbstractPointersObject):
         self.log_strategy_operation("Cloned")
         return w_result
 
-    def fieldtype(self):
-        from spyvm.strategies import obj
-        return obj
-
 class W_WeakPointersObject(W_AbstractPointersObject):
     _attrs_ = ['_weakvars']
-
+    
     @jit.unroll_safe
     def __init__(self, space, w_class, size):
         W_AbstractPointersObject.__init__(self, space, w_class, size)
