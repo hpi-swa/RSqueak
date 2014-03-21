@@ -150,7 +150,7 @@ def test_Float_overwrite():
 
 def test_Float_delete():
     a = float_arr(5)
-    a.store(space, 1, space.wrap_float(1))
+    a.store(space, 1, space.wrap_float(1.0))
     a.store(space, 1, w_nil)
     check_arr(a, [1.2, w_nil, w_nil, w_nil, w_nil])
 
