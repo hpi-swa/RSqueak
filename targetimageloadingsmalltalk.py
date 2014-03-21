@@ -128,6 +128,7 @@ def _usage(argv):
           -p|--poll_events
           --strategy-log
           --strategy-stats
+          --strategy-stats-with-sizes
           [image path, default: Squeak.image]
     """ % argv[0]
 
@@ -188,6 +189,9 @@ def entry_point(argv):
             model.strategy_stats.do_log = True
         elif arg == "--strategy-stats":
             model.strategy_stats.do_stats = True
+        elif arg == "--strategy-stats-with-sizes":
+            model.strategy_stats.do_stats = True
+            model.strategy_stats.do_stats_sizes = True
         elif path is None:
             path = argv[idx]
         else:

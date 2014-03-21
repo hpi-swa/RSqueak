@@ -170,4 +170,21 @@ def test_Float_store_SmallInt_to_List():
     a.store(space, 1, space.wrap_int(2))
     assert isinstance(a.strategy, strategies.ListStorageStrategy)
     check_arr(a, [1.2, 2, w_nil, w_nil, w_nil])
+
+def test_statistics():
+    stats = model.StrategyStatistics()
+    stats.stat_operation("B", "old", "new", 3)
+    stats.stat_operation("B", "old", "new", 4)
+    stats.stat_operation("B", "old2", "new2", 20)
+    stats.stat_operation("B", "old", "new", 5)
+    stats.stat_operation("A", "old", "new", 1)
+    stats.stat_operation("A", "old", "new", 2)
+    stats.stat_operation("C", "old", "new", 10)
+    stats.stat_operation("C", "old", "new", 11)
+    keys = stats.sorted_keys()
+    assert keys == [ ("A", "old", "new"), ("B", "old", "new"), ("B", "old2", "new2"), ("C", "old", "new") ]
+    assert stats.stats[keys[0]] == [1, 2]
+    assert stats.stats[keys[1]] == [3, 4, 5]
+    assert stats.stats[keys[2]] == [20]
+    assert stats.stats[keys[3]] == [10, 11]
     
