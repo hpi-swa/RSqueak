@@ -137,7 +137,7 @@ class AbstractValueOrNilStorageStrategy(AbstractIntStorageStrategy):
     needs_objspace = True
     strategy_tag = 'abstract-valueOrNil'
     # TODO -- use another value... something like max_float?
-    nil_value = runpack("\x10\x00\x00\x00\x00\x00\xf8\x7f")
+    nil_value = runpack("d", "\x10\x00\x00\x00\x00\x00\xf8\x7f")
     nil_value_longlong = long2floatfloat.float2longlong(nil_value)
     
     def is_nil_value(self, val):
