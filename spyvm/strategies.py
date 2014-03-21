@@ -27,9 +27,11 @@ class AbstractStorageStrategy(object):
     def store(self, space, w_obj, n0, w_val):
         if self.can_contain(space, w_val):
             return self.do_store(space, w_obj, n0, w_val)
-        new_strategy = find_strategy_for_objects(space, [w_val])
+        new_strategy = self.generelized_strategy_for(space, w_val)
         return w_obj.store_with_new_strategy(space, new_strategy, n0, w_val)
     
+    def generelized_strategy_for(self, space, w_val):
+        raise NotImplementedError("Abstract base class")
     def can_contain(self, space, w_val):
         raise NotImplementedError("Abstract base class")
     def fetch(self, space, w_obj, n0):
@@ -73,6 +75,8 @@ class AbstractIntStorageStrategy(AbstractStorageStrategy):
     def set_storage_copied_from(self, space, w_obj, w_source_obj, reuse_storage=False):
         w_obj.int_storage = self.copy_storage_from(space, w_source_obj, reuse_storage)
     
+    def generelized_strategy_for(self, space, w_val):
+        return ListStorageStrategy.singleton
     def initial_storage(self, space, size):
         raise NotImplementedError("Abstract base class")
     def storage_for_list(self, space, collection):
@@ -104,6 +108,8 @@ class AllNilStorageStrategy(AbstractStorageStrategy):
     def do_store(self, space, w_obj, n0, w_val):
         pass
         
+    def generelized_strategy_for(self, space, w_val):
+        return find_strategy_for_objects(space, [w_val])
     def set_initial_storage(self, space, w_obj, size):
         pass
     def set_storage_for_list(self, space, w_obj, collection):

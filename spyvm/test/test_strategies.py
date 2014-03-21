@@ -120,6 +120,12 @@ def test_SmallInt_to_List():
     a.store(space, 1, arr(1))
     assert isinstance(a.strategy, strategies.ListStorageStrategy)
 
+def test_SmallInt_store_Float_to_List():
+    a = int_arr(5)
+    a.store(space, 1, space.wrap_float(2.2))
+    assert isinstance(a.strategy, strategies.ListStorageStrategy)
+    check_arr(a, [12, 2.2, w_nil, w_nil, w_nil])
+    
 # ====== FloatOrNil StorageStrategy
 
 def test_AllNil_to_Float():
@@ -159,4 +165,9 @@ def test_Float_to_List():
     a.store(space, 1, arr(1))
     assert isinstance(a.strategy, strategies.ListStorageStrategy)
 
+def test_Float_store_SmallInt_to_List():
+    a = float_arr(5)
+    a.store(space, 1, space.wrap_int(2))
+    assert isinstance(a.strategy, strategies.ListStorageStrategy)
+    check_arr(a, [1.2, 2, w_nil, w_nil, w_nil])
     
