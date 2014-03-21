@@ -138,10 +138,10 @@ class AbstractValueOrNilStorageStrategy(AbstractIntStorageStrategy):
     strategy_tag = 'abstract-valueOrNil'
     # TODO -- use another value... something like max_float?
     nil_value = runpack("d", "\x10\x00\x00\x00\x00\x00\xf8\x7f")
-    nil_value_longlong = long2floatfloat.float2longlong(nil_value)
+    nil_value_longlong = longlong2float.float2longlong(nil_value)
     
     def is_nil_value(self, val):
-        return long2floatfloat.float2longlong(val) == self.nil_value_longlong
+        return longlong2float.float2longlong(val) == self.nil_value_longlong
     
     def can_contain(self, space, w_val):
         return w_val == model.w_nil or \
