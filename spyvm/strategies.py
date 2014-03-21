@@ -2,6 +2,7 @@
 import sys, math
 from spyvm import model, shadow, constants
 from rpython.rlib import longlong2float, rarithmetic
+from rpython.rlib.rstruct.runpack import runpack
 from rpython.rtyper.lltypesystem import rffi, lltype
 from rpython.rlib.objectmodel import import_from_mixin
 from rpython.rlib.rfloat import string_to_float
@@ -136,11 +137,11 @@ class AbstractValueOrNilStorageStrategy(AbstractIntStorageStrategy):
     needs_objspace = True
     strategy_tag = 'abstract-valueOrNil'
     # TODO -- use another value... something like max_float?
-    nil_value = string_to_float("nan")
+    nil_value = runpack("\x10\x00\x00\x00\x00\x00\xf8\x7f")
+    nil_value_longlong = long2floatfloat.float2longlong(nil_value)
     
     def is_nil_value(self, val):
-        # return val == self.nil_value
-        return math.isnan(val)
+        return long2floatfloat.float2longlong(val) == self.nil_value_longlong
     
     def can_contain(self, space, w_val):
         return w_val == model.w_nil or \
