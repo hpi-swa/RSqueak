@@ -497,14 +497,23 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         if not self.shadow:
             self.store_shadow(self.default_storage(space, size))
         else:
+            from spyvm.shadow import ClassShadow
+            if isinstance(self.shadow, ClassShadow) and self.shadow.name == "BlockClosure":
+                import pdb; pdb.set_trace()
+            
             self.shadow.initialize_storage(space, size)
         
     def fillin(self, space, g_self):
+        g_self.g_class.fillin(space)
         self.s_class = g_self.get_class().as_class_get_penumbra(space)
+        
+        if self.s_class.name == "BlockClosure":
+            import pdb; pdb.set_trace()
+        
         self.hash = g_self.get_hash()
         self.space = space
         for g_obj in g_self.get_g_pointers():
-            g_obj.fillin(space)
+            g_obj.fillin_nonpointers(space)
         pointers = g_self.get_pointers()
         self.initialize_storage(space, len(pointers))
         self.store_all(space, pointers)
@@ -550,6 +559,8 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         return self.varsize(space)
 
     def size(self):
+        if not self.shadow:
+            return 0
         return self._get_shadow().size()
 
     def store_shadow(self, shadow):

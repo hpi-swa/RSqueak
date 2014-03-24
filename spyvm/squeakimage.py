@@ -278,26 +278,29 @@ class ImageReader(object):
             chunk.g_object.init_w_object()
 
     def assign_prebuilt_constants(self):
-        # assign w_objects for objects that are already in objtable
-        for name, so_index in constants.objects_in_special_object_table.items():
-            w_object = self.space.objtable["w_" + name]
-            if self.special_object(so_index).w_object is None:
-                self.special_object(so_index).w_object = w_object
-            else:
-                if self.special_object(0).w_object is not self.space.w_nil:
-                   raise Warning('Object found in multiple places in the special objects array')
-        # assign w_objects for objects that are already in classtable
-        import pdb; pdb.set_trace()
-        for name, so_index in constants.classes_in_special_object_table.items():
-            w_object = self.space.classtable["w_" + name]
-            if not w_object:
-                import pdb; pdb.set_trace()
-            if self.special_object(so_index).w_object is None:
-                self.special_object(so_index).w_object = w_object
-            else:
-                if self.special_object(0).w_object is not self.space.w_nil:
-                   raise Warning('Object found in multiple places in the special objects array')
+        # Assign classes and objects that in special objects array that are already created.
+        self._assign_prebuilt_constants(constants.objects_in_special_object_table, self.space.objtable, False)
+        self._assign_prebuilt_constants(constants.classes_in_special_object_table, self.space.classtable, False)
+        
+        # Make sure that all prebuilt classes are actually used in the special classes array
+        for prebuilt_classname in self.space.classtable.keys():
+            prebuilt_classname = prebuilt_classname[2:]
+            assert prebuilt_classname in constants.classes_in_special_object_table.keys(), \
+                       "Prebuilt class is not used in the special objects array: %s" % (prebuilt_classname,)
 
+    def _assign_prebuilt_constants(self, names_and_indices, prebuilt_objects, force_existance=False):
+        for name, so_index in names_and_indices.items():
+            name = "w_" + name
+            if name not in prebuilt_objects and not force_existance:
+                continue
+            w_object = prebuilt_objects[name]
+            assert not force_existance or w_object
+            if self.special_object(so_index).w_object is None:
+                self.special_object(so_index).w_object = w_object
+            else:
+                if self.special_object(0).w_object is not self.space.w_nil:
+                   raise Warning('Object found in multiple places in the special objects array')
+    
     def special_object(self, index):
         special = self.chunks[self.specialobjectspointer].g_object.pointers
         return special[index]
@@ -439,6 +442,7 @@ class GenericObject(object):
             w_int = self.space.wrap_int(value)
             reader.intcache[value] = w_int
         self.w_object = w_int
+        self.filled_in = True
 
     def initialize(self, chunk, reader):
         self.reader = reader
@@ -565,10 +569,11 @@ class GenericObject(object):
             raise CorruptImageError("Expected %d words, got %d" % (required_len, len(words)))
         return words
 
-    def fillin(self, space):
-        if self == self.reader.special_object(6):
-            import pdb; pdb.set_trace()
+    def fillin_nonpointers(self, space):
+        if not self.filled_in and (self.isbytes() or self.iswords()):
+            self.fillin(space)
         
+    def fillin(self, space):
         if not self.filled_in:
             self.filled_in = True
             self.w_object.fillin(space, self)

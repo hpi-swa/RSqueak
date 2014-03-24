@@ -16,13 +16,10 @@ class AbstractShadow(object):
         self.space = space
         self._w_self = w_self
     def fetch(self, n0):
-        import pdb; pdb.set_trace()
         raise NotImplementedError("Abstract class")
     def store(self, n0, w_value):
-        import pdb; pdb.set_trace()
         raise NotImplementedError("Abstract class")
     def size(self):
-        import pdb; pdb.set_trace()
         raise NotImplementedError("Abstract class")
     def w_self(self):
         return self._w_self
@@ -118,13 +115,8 @@ class ClassShadow(AbstractCachingShadow):
 
     def copy_from(self, other_storage):
         AbstractCachingShadow.copy_from(self, other_storage)
-        if not self._s_methoddict:
-            import pdb; pdb.set_trace()
         
     def store(self, n0, w_val):
-        if self.name == "String":
-            import pdb; pdb.set_trace()
-        
         AbstractCachingShadow.store(self, n0, w_val)
         if n0 == constants.CLASS_SUPERCLASS_INDEX:
             self.store_w_superclass(w_val)
@@ -176,20 +168,6 @@ class ClassShadow(AbstractCachingShadow):
                 raise ClassShadowError("unknown format %d" % (format,))
         elif n0 == constants.CLASS_NAME_INDEX:
             self.store_w_name(w_val)
-        elif n0 == (self.size() - 1):
-            # Some heuristic to find the classname
-            # Only used for debugging
-            # XXX This is highly experimental XXX
-            # if the name-pos of class is not bytesobject,
-            # we are probably holding a metaclass instead of a class.
-            # metaclasses hold a pointer to the real class in the last
-            # slot. This is pos 6 in mini.image and higher in squeak3.9
-            if (isinstance(w_val, model.W_PointersObject)
-                and w_val.size() > constants.CLASS_NAME_INDEX):
-                # TODO ADD TEST WHICH GOES OVER THIS PART
-                self.store_w_name(w_realclass.fetch(constants.CLASS_NAME_INDEX))
-            else:
-                return
         else:
             return
         # Some of the special info has changed -> Switch version.
@@ -219,6 +197,8 @@ class ClassShadow(AbstractCachingShadow):
             self.name = w_name.as_string()
         else:
             self.name = None
+        if self.name == "BlockClosure":
+            import pdb; pdb.set_trace()
     
     @jit.unroll_safe
     def flush_method_caches(self):
@@ -256,8 +236,6 @@ class ClassShadow(AbstractCachingShadow):
         return self._s_methoddict.w_self()
 
     def s_methoddict(self):
-        if not hasattr(self, "_s_methoddict"):
-            import pdb; pdb.set_trace()
         return self._s_methoddict
 
     def s_superclass(self):

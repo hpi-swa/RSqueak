@@ -36,6 +36,58 @@ class ObjSpace(object):
         return self._executable_path[0]
 
     def make_bootstrap_classes(self):
+        def define_cls(cls_nm, supercls_nm, instvarsize=0, format=shadow.POINTERS,
+                       varsized=False):
+            assert cls_nm.startswith("w_")
+            self.classtable[cls_nm] = bootstrap_class(self, instvarsize, \
+                                         None,
+                                         None,
+                                         format=format,
+                                         varsized=varsized,
+                                         name=cls_nm[2:])
+
+#define_cls("w_Magnitude", "w_Object")
+        define_cls("w_Character", "w_Magnitude", instvarsize=1)
+#define_cls("w_Number", "w_Magnitude")
+#define_cls("w_Integer", "w_Number")
+        define_cls("w_SmallInteger", "w_Integer")
+        define_cls("w_LargePositiveInteger", "w_Integer", format=shadow.BYTES)
+        define_cls("w_Float", "w_Number", format=shadow.BYTES)
+        define_cls("w_Message", "w_Object")
+#define_cls("w_Collection", "w_Object")
+#define_cls("w_SequenceableCollection", "w_Collection")
+#define_cls("w_ArrayedCollection", "w_SequenceableCollection")
+        define_cls("w_Array", "w_ArrayedCollection", varsized=True)
+        define_cls("w_String", "w_ArrayedCollection", format=shadow.BYTES)
+        define_cls("w_Bitmap", "w_ArrayedCollection", varsized=True, format=shadow.WORDS)
+#define_cls("w_UndefinedObject", "w_Object")
+#define_cls("w_Boolean", "w_Object")
+#define_cls("w_True", "w_Boolean")
+#define_cls("w_False", "w_Boolean")
+        define_cls("w_ByteArray", "w_ArrayedCollection", format=shadow.BYTES)
+        define_cls("w_CompiledMethod", "w_ByteArray", format=shadow.COMPILED_METHOD)
+#define_cls("w_ContextPart", "w_Object")
+        define_cls("w_MethodContext", "w_ContextPart")
+#define_cls("w_Link", "w_Object")
+    #define_cls("w_Process", "w_Link")
+    #define_cls("w_Point", "w_Object")
+#define_cls("w_LinkedList", "w_SequenceableCollection")
+        define_cls("w_Semaphore", "w_LinkedList")
+    #define_cls("w_BlockContext", "w_ContextPart", instvarsize=constants.BLKCTX_STACK_START)
+        define_cls("w_BlockClosure", "w_Object", instvarsize=constants.BLKCLSR_SIZE, varsized=True)
+            
+        # make better accessors for classes that can be found in special object
+        # table
+        for name in constants.classes_in_special_object_table.keys():
+            name = 'w_' + name
+            if name in self.classtable:
+                cls = self.classtable.get(name)
+                setattr(self, name, self.classtable.get(name))
+            else:
+                # assert False, "Missing bootstrapped class from special objects array: %s" % (name,)
+                pass
+        
+    def _make_bootstrap_classes(self):
         def define_core_cls(name, w_superclass, w_metaclass):
             assert name.startswith('w_')
             w_class = bootstrap_class(self, instsize=0,    # XXX
@@ -106,42 +158,45 @@ class ObjSpace(object):
                                          varsized=varsized,
                                          name=cls_nm[2:])
 
-        define_cls("w_Magnitude", "w_Object")
+        #define_cls("w_Magnitude", "w_Object")
             define_cls("w_Character", "w_Magnitude", instvarsize=1)
-        define_cls("w_Number", "w_Magnitude")
-        define_cls("w_Integer", "w_Number")
+        #define_cls("w_Number", "w_Magnitude")
+        #define_cls("w_Integer", "w_Number")
             define_cls("w_SmallInteger", "w_Integer")
             define_cls("w_LargePositiveInteger", "w_Integer", format=shadow.BYTES)
             define_cls("w_Float", "w_Number", format=shadow.BYTES)
             define_cls("w_Message", "w_Object")
-        define_cls("w_Collection", "w_Object")
-        define_cls("w_SequenceableCollection", "w_Collection")
-        define_cls("w_ArrayedCollection", "w_SequenceableCollection")
+        #define_cls("w_Collection", "w_Object")
+        #define_cls("w_SequenceableCollection", "w_Collection")
+        #define_cls("w_ArrayedCollection", "w_SequenceableCollection")
             define_cls("w_Array", "w_ArrayedCollection", varsized=True)
             define_cls("w_String", "w_ArrayedCollection", format=shadow.BYTES)
             define_cls("w_Bitmap", "w_ArrayedCollection", varsized=True, format=shadow.WORDS)
-        define_cls("w_UndefinedObject", "w_Object")
-        define_cls("w_Boolean", "w_Object")
-        define_cls("w_True", "w_Boolean")
-        define_cls("w_False", "w_Boolean")
+        #define_cls("w_UndefinedObject", "w_Object")
+        #define_cls("w_Boolean", "w_Object")
+        #define_cls("w_True", "w_Boolean")
+        #define_cls("w_False", "w_Boolean")
             define_cls("w_ByteArray", "w_ArrayedCollection", format=shadow.BYTES)
-        define_cls("w_MethodDict", "w_Object", instvarsize=2, varsized=True)
             define_cls("w_CompiledMethod", "w_ByteArray", format=shadow.COMPILED_METHOD)
-        define_cls("w_ContextPart", "w_Object")
+        #define_cls("w_ContextPart", "w_Object")
             define_cls("w_MethodContext", "w_ContextPart")
-        define_cls("w_Link", "w_Object")
+        #define_cls("w_Link", "w_Object")
             define_cls("w_Process", "w_Link")
             define_cls("w_Point", "w_Object")
-        define_cls("w_LinkedList", "w_SequenceableCollection")
+        #define_cls("w_LinkedList", "w_SequenceableCollection")
             define_cls("w_Semaphore", "w_LinkedList")
             define_cls("w_BlockContext", "w_ContextPart", instvarsize=constants.BLKCTX_STACK_START)
             define_cls("w_BlockClosure", "w_Object", instvarsize=constants.BLKCLSR_SIZE, varsized=True)
+            
+        # TODO - this class is not needed for the special objects array, so maybe not create it synthetically.
+        #define_cls("w_MethodDict", "w_Object", instvarsize=2, varsized=True)
+        
         # make better accessors for classes that can be found in special object
         # table
         for name in constants.classes_in_special_object_table.keys():
             name = 'w_' + name
             setattr(self, name, self.classtable.get(name))
-
+        
     def make_bootstrap_objects(self):
         def bld_char(i):
             w_cinst = self.w_Character.as_class_get_shadow(self).new()
@@ -163,18 +218,22 @@ class ObjSpace(object):
             w_nil.initialize_storage(self, 0)
             w_nil.s_class = self.classtable['w_UndefinedObject'].as_class_get_penumbra(self)
             return w_nil
-        w_nil = self.w_nil = patch_nil(model.w_nil)
+        w_nil = self.w_nil = model.w_nil
+        # patch_nil(model.w_nil)
 
-        w_true = self.classtable['w_True'].as_class_get_shadow(self).new()
+        w_true = instantiate(model.W_PointersObject)
+        #self.classtable['w_True'].as_class_get_shadow(self).new()
         self.w_true = w_true
-        w_false = self.classtable['w_False'].as_class_get_shadow(self).new()
+        w_false = instantiate(model.W_PointersObject)
+        #self.classtable['w_False'].as_class_get_shadow(self).new()
         self.w_false = w_false
         self.w_minus_one = model.W_SmallInteger(-1)
         self.w_zero = model.W_SmallInteger(0)
         self.w_one = model.W_SmallInteger(1)
         self.w_two = model.W_SmallInteger(2)
-        w_special_selectors = model.W_PointersObject(self,
-            self.classtable['w_Array'], len(constants.SPECIAL_SELECTORS) * 2)
+        w_special_selectors = instantiate(model.W_PointersObject)
+            #model.W_PointersObject(self,
+            #self.classtable['w_Array'], len(constants.SPECIAL_SELECTORS) * 2)
         self.w_special_selectors = w_special_selectors
 
         self.objtable = {}
@@ -252,6 +311,7 @@ class ObjSpace(object):
                 return intmask(w_value.value)
             else:
                 raise UnwrappingError("The value is negative when interpreted as 32bit value.")
+        import pdb; pdb.set_trace()
         raise UnwrappingError("expected a W_SmallInteger or W_LargePositiveInteger1Word, got %s" % (w_value,))
 
     def unwrap_uint(self, w_value):
