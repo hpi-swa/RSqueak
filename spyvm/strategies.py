@@ -7,9 +7,6 @@ from rpython.rtyper.lltypesystem import rffi, lltype
 from rpython.rlib.objectmodel import import_from_mixin
 from rpython.rlib.rfloat import string_to_float
 
-# Disables all optimized strategies, for debugging.
-only_list_storage = False
-
 class AbstractStorageStrategy(object):
     _immutable_fields_ = []
     _attrs_ = []
@@ -207,9 +204,6 @@ class FloatOrNilStorageStrategy(AbstractValueOrNilStorageStrategy):
         return space.unwrap_float(w_val)
 
 def find_strategy_for_objects(space, vars):
-    if only_list_storage:
-        ListStorageStrategy.singleton
-    
     specialized_strategies = 3
     all_nil_can_handle = True
     small_int_can_handle = True
@@ -242,7 +236,7 @@ def empty_strategy(s_containing_class):
     if s_containing_class is None:
         # This is a weird and rare special case for w_nil
         return ListStorageStrategy.singleton
-    if not s_containing_class.isvariable() or only_list_storage:
+    if not s_containing_class.isvariable():
         return ListStorageStrategy.singleton
     
     # A newly allocated object contains only nils.
