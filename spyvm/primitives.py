@@ -910,7 +910,7 @@ def func(interp, s_frame, w_rcvr):
     w_class = s_cm.w_compiledin
     if w_class:
         assert isinstance(w_class, model.W_PointersObject)
-        w_class.as_class_get_shadow(interp.space).flush_caches()
+        w_class.as_class_get_shadow(interp.space).flush_method_caches()
     return w_rcvr
 
 
@@ -1437,7 +1437,7 @@ def func(interp, s_frame, w_rcvr):
     if not isinstance(w_rcvr, model.W_PointersObject):
         raise PrimitiveFailedError()
     s_class = w_rcvr.as_class_get_shadow(interp.space)
-    s_class.flush_caches()
+    s_class.flush_method_caches()
     return w_rcvr
 
 # ___________________________________________________________________________

@@ -7,7 +7,7 @@ from rpython.rtyper.lltypesystem import rffi, lltype
 from rpython.rlib.objectmodel import import_from_mixin
 from rpython.rlib.rfloat import string_to_float
 
-class AbstractStorageStrategy(object):
+class AbstractStorageStrategy(shadow.AbstractShadow):
     _immutable_fields_ = []
     _attrs_ = []
     _settled_ = True

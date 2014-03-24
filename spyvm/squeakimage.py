@@ -230,7 +230,6 @@ class ImageReader(object):
         self.init_g_objects()
         self.init_w_objects()
         self.fillin_w_objects()
-        self.synchronize_shadows()
 
     def read_version(self):
         # 1 word version
@@ -288,8 +287,11 @@ class ImageReader(object):
                 if self.special_object(0).w_object is not self.space.w_nil:
                    raise Warning('Object found in multiple places in the special objects array')
         # assign w_objects for objects that are already in classtable
+        import pdb; pdb.set_trace()
         for name, so_index in constants.classes_in_special_object_table.items():
             w_object = self.space.classtable["w_" + name]
+            if not w_object:
+                import pdb; pdb.set_trace()
             if self.special_object(so_index).w_object is None:
                 self.special_object(so_index).w_object = w_object
             else:
@@ -302,13 +304,7 @@ class ImageReader(object):
 
     def fillin_w_objects(self):
         for chunk in self.chunks.itervalues():
-            chunk.g_object.w_object.fillin(self.space, chunk.g_object)
-
-    def synchronize_shadows(self):
-        for chunk in self.chunks.itervalues():
-            casted = chunk.g_object.w_object
-            if isinstance(casted, model.W_PointersObject) and casted.has_shadow():
-                casted.shadow.update()
+            chunk.g_object.fillin(self.space)
 
     def init_compactclassesarray(self):
         """ from the blue book (CompiledMethod Symbol Array PseudoContext LargePositiveInteger nil MethodDictionary Association Point Rectangle nil TranslatedMethod BlockContext MethodContext nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil ) """
@@ -428,6 +424,7 @@ class GenericObject(object):
     def __init__(self, space):
         self.space = space
         self.reader = None
+        self.filled_in = False
 
     def isinitialized(self):
         return self.reader is not None
@@ -568,9 +565,20 @@ class GenericObject(object):
             raise CorruptImageError("Expected %d words, got %d" % (required_len, len(words)))
         return words
 
-    def get_pointers(self):
+    def fillin(self, space):
+        if self == self.reader.special_object(6):
+            import pdb; pdb.set_trace()
+        
+        if not self.filled_in:
+            self.filled_in = True
+            self.w_object.fillin(space, self)
+        
+    def get_g_pointers(self):
         assert self.pointers is not None
-        return [g_object.w_object for g_object in self.pointers]
+        return self.pointers
+    
+    def get_pointers(self):
+        return [g_object.w_object for g_object in self.get_g_pointers()]
 
     def get_class(self):
         w_class = self.g_class.w_object

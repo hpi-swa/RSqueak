@@ -107,38 +107,35 @@ class ObjSpace(object):
                                          name=cls_nm[2:])
 
         define_cls("w_Magnitude", "w_Object")
-        define_cls("w_Character", "w_Magnitude", instvarsize=1)
+            define_cls("w_Character", "w_Magnitude", instvarsize=1)
         define_cls("w_Number", "w_Magnitude")
         define_cls("w_Integer", "w_Number")
-        define_cls("w_SmallInteger", "w_Integer")
-        define_cls("w_LargePositiveInteger", "w_Integer", format=shadow.BYTES)
-        define_cls("w_Float", "w_Number", format=shadow.BYTES)
-        define_cls("w_Message", "w_Object")
+            define_cls("w_SmallInteger", "w_Integer")
+            define_cls("w_LargePositiveInteger", "w_Integer", format=shadow.BYTES)
+            define_cls("w_Float", "w_Number", format=shadow.BYTES)
+            define_cls("w_Message", "w_Object")
         define_cls("w_Collection", "w_Object")
         define_cls("w_SequenceableCollection", "w_Collection")
         define_cls("w_ArrayedCollection", "w_SequenceableCollection")
-        define_cls("w_Array", "w_ArrayedCollection", varsized=True)
-        define_cls("w_String", "w_ArrayedCollection", format=shadow.BYTES)
-        define_cls("w_Bitmap", "w_ArrayedCollection", varsized=True, format=shadow.WORDS)
+            define_cls("w_Array", "w_ArrayedCollection", varsized=True)
+            define_cls("w_String", "w_ArrayedCollection", format=shadow.BYTES)
+            define_cls("w_Bitmap", "w_ArrayedCollection", varsized=True, format=shadow.WORDS)
         define_cls("w_UndefinedObject", "w_Object")
         define_cls("w_Boolean", "w_Object")
         define_cls("w_True", "w_Boolean")
         define_cls("w_False", "w_Boolean")
-        define_cls("w_ByteArray", "w_ArrayedCollection", format=shadow.BYTES)
+            define_cls("w_ByteArray", "w_ArrayedCollection", format=shadow.BYTES)
         define_cls("w_MethodDict", "w_Object", instvarsize=2, varsized=True)
-        define_cls("w_CompiledMethod", "w_ByteArray", format=shadow.COMPILED_METHOD)
+            define_cls("w_CompiledMethod", "w_ByteArray", format=shadow.COMPILED_METHOD)
         define_cls("w_ContextPart", "w_Object")
-        define_cls("w_MethodContext", "w_ContextPart")
+            define_cls("w_MethodContext", "w_ContextPart")
         define_cls("w_Link", "w_Object")
-        define_cls("w_Process", "w_Link")
-        define_cls("w_Point", "w_Object")
+            define_cls("w_Process", "w_Link")
+            define_cls("w_Point", "w_Object")
         define_cls("w_LinkedList", "w_SequenceableCollection")
-        define_cls("w_Semaphore", "w_LinkedList")
-        define_cls("w_BlockContext", "w_ContextPart",
-                   instvarsize=constants.BLKCTX_STACK_START)
-        define_cls("w_BlockClosure", "w_Object",
-                   instvarsize=constants.BLKCLSR_SIZE,
-                   varsized=True)
+            define_cls("w_Semaphore", "w_LinkedList")
+            define_cls("w_BlockContext", "w_ContextPart", instvarsize=constants.BLKCTX_STACK_START)
+            define_cls("w_BlockClosure", "w_Object", instvarsize=constants.BLKCLSR_SIZE, varsized=True)
         # make better accessors for classes that can be found in special object
         # table
         for name in constants.classes_in_special_object_table.keys():
@@ -162,9 +159,7 @@ class ObjSpace(object):
         # initialize their fields to nil, we have to create it in the model
         # package, and then patch up its fields here:
         def patch_nil(w_nil):
-            from spyvm.strategies import ListStorageStrategy
             w_nil.space = self
-            w_nil.strategy = ListStorageStrategy.singleton
             w_nil.initialize_storage(self, 0)
             w_nil.s_class = self.classtable['w_UndefinedObject'].as_class_get_penumbra(self)
             return w_nil
@@ -336,6 +331,7 @@ def bootstrap_class(space, instsize, w_superclass=None, w_metaclass=None,
                                              # a dummy placeholder for testing
     # XXX
     s = instantiate(shadow.ClassShadow)
+    s.storage = []
     s.space = space
     s.version = version.Version()
     s._w_self = w_class
