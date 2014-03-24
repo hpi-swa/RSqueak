@@ -1,8 +1,11 @@
 
-import sys
-from spyvm import model, shadow
-from rpython.rlib import rerased
+import sys, math
+from spyvm import model, shadow, constants
+from rpython.rlib import longlong2float, rarithmetic
+from rpython.rlib.rstruct.runpack import runpack
+from rpython.rtyper.lltypesystem import rffi, lltype
 from rpython.rlib.objectmodel import import_from_mixin
+from rpython.rlib.rfloat import string_to_float
 
 # Disables all optimized strategies, for debugging.
 only_list_storage = False
@@ -21,22 +24,32 @@ class AbstractStorageStrategy(object):
     def set_storage_copied_from(self, space, w_obj, w_source_obj, reuse_storage=False):
         raise NotImplementedError("Abstract base class")
     
+    def store(self, space, w_obj, n0, w_val):
+        if self.can_contain(space, w_val):
+            return self.do_store(space, w_obj, n0, w_val)
+        new_strategy = self.generelized_strategy_for(space, w_val)
+        return w_obj.store_with_new_strategy(space, new_strategy, n0, w_val)
+    
+    def generelized_strategy_for(self, space, w_val):
+        raise NotImplementedError("Abstract base class")
+    def can_contain(self, space, w_val):
+        raise NotImplementedError("Abstract base class")
     def fetch(self, space, w_obj, n0):
         raise NotImplementedError("Abstract base class")
-    def store(self, space, w_obj, n0, w_val):
+    def do_store(self, space, w_obj, n0, w_val):
         raise NotImplementedError("Abstract base class")
 
 class AbstractListStorageStrategy(AbstractStorageStrategy):
     strategy_tag = 'abstract-list'
     
     def storage(self, w_obj):
-        return self.unerase(w_obj.list_storage)
+        return w_obj.list_storage
     def set_initial_storage(self, space, w_obj, size):
-        w_obj.list_storage = self.erase(self.initial_storage(space, size))
+        w_obj.list_storage = self.initial_storage(space, size)
     def set_storage_for_list(self, space, w_obj, collection):
-        w_obj.list_storage = self.erase(self.storage_for_list(space, collection))
+        w_obj.list_storage = self.storage_for_list(space, collection)
     def set_storage_copied_from(self, space, w_obj, w_source_obj, reuse_storage=False):
-        w_obj.list_storage = self.erase(self.copy_storage_from(space, w_source_obj, reuse_storage))
+        w_obj.list_storage = self.copy_storage_from(space, w_source_obj, reuse_storage)
     
     def initial_storage(self, space, size):
         raise NotImplementedError("Abstract base class")
@@ -54,14 +67,16 @@ class AbstractIntStorageStrategy(AbstractStorageStrategy):
     strategy_tag = 'abstract-int'
     
     def storage(self, w_obj):
-        return self.unerase(w_obj.int_storage)
+        return w_obj.int_storage
     def set_initial_storage(self, space, w_obj, size):
-        w_obj.int_storage = self.erase(self.initial_storage(space, size))
+        w_obj.int_storage = self.initial_storage(space, size)
     def set_storage_for_list(self, space, w_obj, collection):
-        w_obj.int_storage = self.erase(self.storage_for_list(space, collection))
+        w_obj.int_storage = self.storage_for_list(space, collection)
     def set_storage_copied_from(self, space, w_obj, w_source_obj, reuse_storage=False):
-        w_obj.int_storage = self.erase(self.copy_storage_from(space, w_source_obj, reuse_storage))
+        w_obj.int_storage = self.copy_storage_from(space, w_source_obj, reuse_storage)
     
+    def generelized_strategy_for(self, space, w_val):
+        return ListStorageStrategy.singleton
     def initial_storage(self, space, size):
         raise NotImplementedError("Abstract base class")
     def storage_for_list(self, space, collection):
@@ -80,34 +95,21 @@ class SingletonMeta(type):
         result.singleton = result()
         return result
 
-use_rerased = False
-def setup_rerased_pair():
-    # Small piece of metaprogramming stolen from rpython.rlib.objectmodel.import_from_mixin
-    cls = sys._getframe(1).f_locals
-    if use_rerased:
-        cls["erase"], cls["unerase"] = rerased.new_static_erasing_pair("strategy-%s" % cls["strategy_tag"])
-    else:
-        cls["erase"], cls["unerase"] = lambda self, x: x, lambda self, x: x
-
 # this is the typical "initial" storage strategy, for when every slot
 # in an object is still nil. No storage is allocated.
 class AllNilStorageStrategy(AbstractStorageStrategy):
     __metaclass__ = SingletonMeta
     strategy_tag = 'allnil'
-    setup_rerased_pair()
     
+    def can_contain(self, space, w_obj):
+        return w_obj == model.w_nil
     def fetch(self, space, w_obj, n0):
         return model.w_nil
-    
-    def store(self, space, w_obj, n0, w_val):
-        # This is an important moment, where we decide where to go on the first non-nil store.
-        if w_val == model.w_nil:
-            return
-        if not only_list_storage:
-            if TaggingSmallIntegerStorageStrategy.can_contain(w_val):
-                return w_obj.store_with_new_strategy(space, TaggingSmallIntegerStorageStrategy.singleton, n0, w_val)
-        return w_obj.store_with_new_strategy(space, ListStorageStrategy.singleton, n0, w_val)
+    def do_store(self, space, w_obj, n0, w_val):
+        pass
         
+    def generelized_strategy_for(self, space, w_val):
+        return find_strategy_for_objects(space, [w_val])
     def set_initial_storage(self, space, w_obj, size):
         pass
     def set_storage_for_list(self, space, w_obj, collection):
@@ -121,11 +123,12 @@ class AllNilStorageStrategy(AbstractStorageStrategy):
 class ListStorageStrategy(AbstractListStorageStrategy):
     __metaclass__ = SingletonMeta
     strategy_tag = 'list'
-    setup_rerased_pair()
     
+    def can_contain(self, space, w_val):
+        return True
     def fetch(self, space, w_obj, n0):
         return self.storage(w_obj)[n0]
-    def store(self, space, w_obj, n0, w_val):
+    def do_store(self, space, w_obj, n0, w_val):
         # TODO enable generalization by maintaining a counter of elements that are nil.
         self.storage(w_obj)[n0] = w_val
     def initial_storage(self, space, size):
@@ -136,57 +139,106 @@ class ListStorageStrategy(AbstractListStorageStrategy):
         length = w_obj.basic_size()
         return [w_obj.strategy.fetch(space, w_obj, i) for i in range(length)]
 
-class TaggingSmallIntegerStorageStrategy(AbstractIntStorageStrategy):
-    __metaclass__ = SingletonMeta
-    strategy_tag = 'tagging-smallint'
-    setup_rerased_pair()
+class AbstractValueOrNilStorageStrategy(AbstractIntStorageStrategy):
     needs_objspace = True
+    strategy_tag = 'abstract-valueOrNil'
+    # TODO -- use another value... something like max_float?
+    nil_value = runpack("d", "\x10\x00\x00\x00\x00\x00\xf8\x7f")
+    nil_value_longlong = longlong2float.float2longlong(nil_value)
     
-    @staticmethod
-    def wrap(val):
-        return val << 1
-    @staticmethod
-    def unwrap(val):
-        return val >> 1
-    @staticmethod
-    def can_contain(w_val):
-        return isinstance(w_val, model.W_SmallInteger)
-    # TODO - use just a single value to represent nil (max_int-1)
-    # Then, turn wrap/unwrap into noops
-    # also store W_LargePositiveInteger1Word?
-    nil_value = 1
+    def is_nil_value(self, val):
+        return longlong2float.float2longlong(val) == self.nil_value_longlong
+    
+    def can_contain(self, space, w_val):
+        return w_val == model.w_nil or \
+                (isinstance(w_val, self.wrapper_class) \
+                and not self.is_nil_value(self.unwrap(space, w_val)))
     
     def fetch(self, space, w_obj, n0):
         val = self.storage(w_obj)[n0]
-        if val == self.nil_value:
+        if self.is_nil_value(val):
             return space.w_nil
         else:
-            return space.wrap_int(self.unwrap(val))
+            return self.wrap(space, val)
         
-    def store(self, space, w_obj, n0, w_val):
+    def do_store(self, space, w_obj, n0, w_val):
         store = self.storage(w_obj)
-        if self.can_contain(w_val):
-            store[n0] = self.wrap(space.unwrap_int(w_val))
+        if w_val == model.w_nil:
+            store[n0] = self.nil_value
         else:
-            if w_val == space.w_nil:
-                # TODO - generelize to AllNilStorage by maintaining a counter of nil-elements
-                store[n0] = self.nil_value
-            else:
-                # Storing a wrong type - dehomogenize to ListStorage
-                return w_obj.store_with_new_strategy(space, ListStorageStrategy.singleton, n0, w_val)
-        
+            store[n0] = self.unwrap(space, w_val)
+    
     def initial_storage(self, space, size):
         return [self.nil_value] * size
-    
+        
     def storage_for_list(self, space, collection):
         length = len(collection)
-        store = [self.nil_value] * length
+        store = self.initial_storage(space, length)
         for i in range(length):
-            if collection[i] != space.w_nil:
-                store[i] = self.wrap(space.unwrap_int(collection[i]))
+            if collection[i] != model.w_nil:
+                store[i] = self.unwrap(space, collection[i])
         return store
 
-def strategy_of_size(s_containing_class, size):
+def _int_to_float(int_val):
+    return longlong2float.longlong2float(rffi.cast(lltype.SignedLongLong, int_val))
+
+class SmallIntegerOrNilStorageStrategy(AbstractValueOrNilStorageStrategy):
+    __metaclass__ = SingletonMeta
+    strategy_tag = 'smallint-orNil'
+    wrapper_class = model.W_SmallInteger
+    
+    def wrap(self, space, val):
+        int_val = rarithmetic.intmask(longlong2float.float2longlong(val))
+        return space.wrap_int(int_val)
+    def unwrap(self, space, w_val):
+        assert isinstance(w_val, model.W_SmallInteger)
+        int_val = space.unwrap_int(w_val)
+        return _int_to_float(int_val)
+
+class FloatOrNilStorageStrategy(AbstractValueOrNilStorageStrategy):
+    __metaclass__ = SingletonMeta
+    strategy_tag = 'float-orNil'
+    wrapper_class = model.W_Float
+    
+    def wrap(self, space, val):
+        return space.wrap_float(val)
+    def unwrap(self, space, w_val):
+        assert isinstance(w_val, model.W_Float)
+        return space.unwrap_float(w_val)
+
+def find_strategy_for_objects(space, vars):
+    if only_list_storage:
+        ListStorageStrategy.singleton
+    
+    specialized_strategies = 3
+    all_nil_can_handle = True
+    small_int_can_handle = True
+    float_can_handle = True
+    for w_obj in vars:
+        if all_nil_can_handle and not AllNilStorageStrategy.singleton.can_contain(space, w_obj):
+            all_nil_can_handle = False
+            specialized_strategies = specialized_strategies - 1
+        if small_int_can_handle and not SmallIntegerOrNilStorageStrategy.singleton.can_contain(space, w_obj):
+            small_int_can_handle = False
+            specialized_strategies = specialized_strategies - 1
+        if float_can_handle and not FloatOrNilStorageStrategy.singleton.can_contain(space, w_obj):
+            float_can_handle = False
+            specialized_strategies = specialized_strategies - 1
+        
+        if specialized_strategies <= 0:
+            return ListStorageStrategy.singleton
+    
+    if all_nil_can_handle:
+        return AllNilStorageStrategy.singleton
+    if small_int_can_handle:
+        return SmallIntegerOrNilStorageStrategy.singleton
+    if float_can_handle:
+        return FloatOrNilStorageStrategy.singleton
+    
+    # If this happens, please look for a bug in the code above.
+    assert False, "No strategy could be found for list..."
+
+def empty_strategy(s_containing_class):
     if s_containing_class is None:
         # This is a weird and rare special case for w_nil
         return ListStorageStrategy.singleton
@@ -207,19 +259,7 @@ def strategy_for_list(s_containing_class, vars):
         # Ths class object shadows are not yet synchronized.
         return ListStorageStrategy.singleton
     
-    if not is_variable or only_list_storage:
-        return ListStorageStrategy.singleton
-    
-    is_all_nils = True
-    for w_obj in vars:
-        if w_obj != model.w_nil:
-            is_all_nils = False
-            if not TaggingSmallIntegerStorageStrategy.can_contain(w_obj):
-                # TODO -- here we can still optimize if there is only
-                # one single type in the collection.
-                return ListStorageStrategy.singleton
-    if is_all_nils:
-        return AllNilStorageStrategy.singleton
+    if is_variable:
+        return find_strategy_for_objects(s_containing_class.space, vars)
     else:
-        return TaggingSmallIntegerStorageStrategy.singleton
-    
+        return ListStorageStrategy.singleton

@@ -24,6 +24,7 @@ from rpython.rlib.debug import make_sure_not_resized
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib.objectmodel import instantiate, compute_hash, import_from_mixin, we_are_translated
 from rpython.rtyper.lltypesystem import lltype, rffi
+from rpython.rlib.listsort import TimSort
 from rsdl import RSDL, RSDL_helper
 
 class W_Object(object):
@@ -613,12 +614,24 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
                                 className='W_PointersObject',
                                 additionalInformation='len=%d' % self.size())
 
+class StatsSorter(TimSort):
+    def lt(self, a, b):
+        if a[0] == b[0]:
+            if a[1] == b[1]:
+                return a[2] < b[2]
+            else:
+                return a[1] < b[1]
+        else:
+            return a[0] < b[0]
+
 class StrategyStatistics(object):
     # Key: (operation_name, old_strategy, new_strategy)
     # Value: [sizes]
     stats = {}
     do_log = False
     do_stats = False
+    do_stats_sizes = False
+    
     def stat_operation(self, operation_name, old_strategy, new_strategy, size):
         key = (operation_name, old_strategy, new_strategy)
         if not key in self.stats:
@@ -626,14 +639,19 @@ class StrategyStatistics(object):
         self.stats[key].append(size)
     def log_operation(self, op, new_strategy_tag, old_strategy_tag, classname, size):
         print "%s (%s, was %s) of %s size %d" % (op, new_strategy_tag, old_strategy_tag, classname, size)
+    def sorted_keys(self):
+        keys = [ x for x in self.stats ]
+        StatsSorter(keys).sort()
+        return keys
     def print_stats(self):
-        for key in self.stats:
+        for key in self.sorted_keys():
             sizes = self.stats[key]
             sum = 0
             for s in sizes:
                 sum += s
             print "%s: %d times, avg size: %d" % (key, len(sizes), sum/len(sizes))
-            print "       All sizes: %s" % sizes
+            if self.do_stats_sizes:
+                print "       All sizes: %s" % sizes
 strategy_stats = StrategyStatistics()
 
 class W_PointersObject(W_AbstractPointersObject):
@@ -644,10 +662,10 @@ class W_PointersObject(W_AbstractPointersObject):
     
     @jit.unroll_safe
     def __init__(self, space, w_class, size):
-        from spyvm.strategies import strategy_of_size
+        from spyvm.strategies import empty_strategy
         """Create new object with size = fixed + variable size."""
         W_AbstractPointersObject.__init__(self, space, w_class, size)
-        self.strategy = strategy_of_size(self.s_class, size)
+        self.strategy = empty_strategy(self.s_class)
         self.initialize_storage(space, size)
         self.log_strategy_operation("Initialized")
     
