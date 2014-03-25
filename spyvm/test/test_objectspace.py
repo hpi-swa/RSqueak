@@ -8,7 +8,7 @@ def ismetaclass(w_cls):
     # Heuristic to detect if this is a metaclass. Don't use apart
     # from in this test file, because classtable['w_Metaclass'] is
     # bogus after loading an image.
-    return w_cls.s_class is space.classtable['w_Metaclass'].shadow
+    return w_cls.w_class is space.classtable['w_Metaclass']
 
 def test_every_class_is_an_instance_of_a_metaclass():
     for (nm, w_cls) in space.classtable.items():

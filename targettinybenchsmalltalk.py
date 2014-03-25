@@ -23,7 +23,7 @@ def setup():
     interp = interpreter.Interpreter(space, image)
     w_selector = interp.perform(space.wrap_string("loopTest"), "asSymbol")
     w_object = model.W_SmallInteger(0)
-    s_class = w_object.shadow_of_my_class(space)
+    s_class = w_object.class_shadow(space)
     s_method = s_class.lookup(w_selector)
     s_frame = s_method.create_frame(space, w_object, [])
     return interp, s_frame

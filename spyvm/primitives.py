@@ -400,7 +400,7 @@ def func(interp, s_frame, w_obj, n0, w_val):
 
 @expose_primitive(SIZE, unwrap_spec=[object])
 def func(interp, s_frame, w_obj):
-    if not w_obj.shadow_of_my_class(interp.space).isvariable():
+    if not w_obj.class_shadow(interp.space).isvariable():
         raise PrimitiveFailedError()
     return interp.space.wrap_int(w_obj.primsize(interp.space))
 
@@ -486,7 +486,7 @@ def func(interp, s_frame, w_obj1, w_obj2):
 @expose_primitive(INST_VAR_AT, unwrap_spec=[object, index1_0])
 def func(interp, s_frame, w_rcvr, n0):
     "Fetches a fixed field from the object, and fails otherwise"
-    s_class = w_rcvr.shadow_of_my_class(interp.space)
+    s_class = w_rcvr.class_shadow(interp.space)
     assert_bounds(n0, 0, s_class.instsize())
     # only pointers have non-0 size
     # XXX Now MethodContext is still own format, leave
@@ -496,7 +496,7 @@ def func(interp, s_frame, w_rcvr, n0):
 @expose_primitive(INST_VAR_AT_PUT, unwrap_spec=[object, index1_0, object])
 def func(interp, s_frame, w_rcvr, n0, w_value):
     "Stores a value into a fixed field from the object, and fails otherwise"
-    s_class = w_rcvr.shadow_of_my_class(interp.space)
+    s_class = w_rcvr.class_shadow(interp.space)
     assert_bounds(n0, 0, s_class.instsize())
     # XXX Now MethodContext is still own format, leave
     #assert isinstance(w_rcvr, model.W_PointersObject)
@@ -870,7 +870,7 @@ def func(interp, s_frame, w_arg, w_rcvr):
     if w_arg_class.instsize() != w_rcvr_class.instsize():
         raise PrimitiveFailedError()
 
-    w_rcvr.s_class = w_arg.s_class
+    w_rcvr.w_class = w_arg_class
 
 @expose_primitive(EXTERNAL_CALL, clean_stack=False, no_result=True, compiled_method=True)
 def func(interp, s_frame, argcount, s_method):
@@ -942,7 +942,7 @@ if not stm_enabled():
 
         for s_dict in dicts_s:
             if s_dict.invalid:
-                s_dict.sync_cache()
+                s_dict.sync_method_cache()
         return w_rcvr
 
 # ___________________________________________________________________________
@@ -1369,7 +1369,7 @@ def func(interp, s_frame, w_rcvr, w_selector, args_w):
     s_frame.pop_n(2) # removing our arguments
 
     try:
-        s_method = w_rcvr.shadow_of_my_class(interp.space).lookup(w_selector)
+        s_method = w_rcvr.class_shadow(interp.space).lookup(w_selector)
     except MethodNotFound:
         return s_frame._doesNotUnderstand(w_selector, argcount, interp, w_rcvr)
 

@@ -93,7 +93,6 @@ class W_Object(object):
         raise NotImplementedError()
 
     def fillin(self, space, g_self):
-        import pdb; pdb.set_trace()
         raise NotImplementedError()
 
     def getword(self, n0):
@@ -105,7 +104,7 @@ class W_Object(object):
     def invariant(self):
         return True
 
-    def shadow_of_my_class(self, space):
+    def class_shadow(self, space):
         """Return internal representation of Squeak class."""
         return self.getclass(space).as_class_get_shadow(space)
 
@@ -158,10 +157,6 @@ class W_SmallInteger(W_Object):
     def __init__(self, value):
         self.value = intmask(value)
 
-    def fillin(self, space, g_obj):
-        # Is created directly with the correct value.
-        pass
-        
     def getclass(self, space):
         return space.w_SmallInteger
 
@@ -234,6 +229,9 @@ class W_AbstractObjectWithIdentityHash(W_Object):
 
     hash = UNASSIGNED_HASH # default value
 
+    def fillin(self, space, g_self):
+        self.hash = g_self.get_hash()
+        
     def setchar(self, n0, character):
         raise NotImplementedError()
 
@@ -258,7 +256,7 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
         self._exposed_size = size
 
     def fillin(self, space, g_self):
-        self.hash = g_self.get_hash()
+        W_AbstractObjectWithIdentityHash.fillin(self, space, g_self)
         word = 0
         bytes = g_self.get_bytes()
         for idx, byte in enumerate(bytes):
@@ -342,6 +340,7 @@ class W_Float(W_AbstractObjectWithIdentityHash):
         self.value = value
 
     def fillin(self, space, g_self):
+        W_AbstractObjectWithIdentityHash.fillin(self, space, g_self)
         high, low = g_self.get_ruints(required_len=2)
         if g_self.reader.version.has_floats_reversed:
             low, high = high, low
@@ -358,6 +357,7 @@ class W_Float(W_AbstractObjectWithIdentityHash):
         return isinstance(self.value, float)
 
     def _become(self, w_other):
+        # TODO -- shouldn't this be named 'become'?
         self.value, w_other.value = w_other.value, self.value
         W_AbstractObjectWithIdentityHash._become(self, w_other)
 
@@ -420,18 +420,23 @@ class W_Float(W_AbstractObjectWithIdentityHash):
 class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     """Objects with arbitrary class (ie not CompiledMethod, SmallInteger or
     Float)."""
-    _attrs_ = ['s_class', 'space']
+    _attrs_ = ['w_class', 'space']
 
     def __init__(self, space, w_class):
         if w_class is not None:     # it's None only for testing and space generation
             assert isinstance(w_class, W_PointersObject)
-            self.s_class = w_class.as_class_get_penumbra(space)
+            self.w_class = w_class
         else:
-            self.s_class = None
+            self.w_class = None
         self.space = space
 
+    def fillin(self, space, g_self):
+        W_AbstractObjectWithIdentityHash.fillin(self, space, g_self)
+        self.space = space
+        self.w_class = g_self.get_class()
+        
     def getclass(self, space):
-        return self.shadow_of_my_class(space).w_self()
+        return self.w_class
 
     def __str__(self):
         if isinstance(self, W_PointersObject) and self.has_shadow():
@@ -439,7 +444,7 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
         else:
             name = None
             if self.has_class():
-                name = self.s_class.name
+                name = self.class_shadow(self.space).name
             return "a %s" % (name or '?',)
 
     @jit.elidable
@@ -448,8 +453,8 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
 
     def as_embellished_string(self, className, additionalInformation):
         from rpython.rlib.objectmodel import current_object_addr_as_int
-        if self.s_class and self.s_class.name:
-            name = self.s_class.name
+        if self.has_class():
+            name = self.class_shadow(self.space).name
         else:
             name = "?"
         return "<%s (a %s) %s>" % (className, name,
@@ -459,27 +464,65 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     def invariant(self):
         from spyvm import shadow
         return (W_AbstractObjectWithIdentityHash.invariant(self) and
-                isinstance(self.s_class, shadow.ClassShadow))
+                isinstance(self.w_class.shadow, shadow.ClassShadow))
 
     def _become(self, w_other):
-        self.s_class, w_other.s_class = w_other.s_class, self.s_class
+        self.w_class, w_other.w_class = w_other.w_class, self.w_class
         W_AbstractObjectWithIdentityHash._become(self, w_other)
 
     def has_class(self):
-        return self.s_class is not None
+        return self.w_class is not None
 
     # we would like the following, but that leads to a recursive import
     #@signature(signature.types.self(), signature.type.any(),
     #           returns=signature.types.instance(ClassShadow))
-    def shadow_of_my_class(self, space):
-        s_class = self.s_class
-        assert s_class is not None
-        return s_class
+    def class_shadow(self, space):
+        w_class = self.w_class
+        assert w_class is not None
+        return w_class.as_class_get_shadow(space)
+
+class StatsSorter(TimSort):
+    def lt(self, a, b):
+        if a[0] == b[0]:
+            if a[1] == b[1]:
+                return a[2] < b[2]
+            else:
+                return a[1] < b[1]
+        else:
+            return a[0] < b[0]
+class StrategyStatistics(object):
+    # Key: (operation_name, old_strategy, new_strategy)
+    # Value: [sizes]
+    stats = {}
+    do_log = False
+    do_stats = False
+    do_stats_sizes = False
+    
+    def stat_operation(self, operation_name, old_strategy, new_strategy, size):
+        key = (operation_name, old_strategy, new_strategy)
+        if not key in self.stats:
+            self.stats[key] = []
+        self.stats[key].append(size)
+    def log_operation(self, op, new_strategy_tag, old_strategy_tag, classname, size):
+        print "%s (%s, was %s) of %s size %d" % (op, new_strategy_tag, old_strategy_tag, classname, size)
+    def sorted_keys(self):
+        keys = [ x for x in self.stats ]
+        StatsSorter(keys).sort()
+        return keys
+    def print_stats(self):
+        for key in self.sorted_keys():
+            sizes = self.stats[key]
+            sum = 0
+            for s in sizes:
+                sum += s
+            print "%s: %d times, avg size: %d" % (key, len(sizes), sum/len(sizes))
+            if self.do_stats_sizes:
+                print "       All sizes: %s" % sizes
+strategy_stats = StrategyStatistics()
 
 class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     """Common object."""
     _attrs_ = ['shadow']
-
     shadow = None # Default value
 
     def changed(self):
@@ -494,26 +537,10 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         self.initialize_storage(space, size)
 
     def initialize_storage(self, space, size):
-        if not self.shadow:
-            self.store_shadow(self.default_storage(space, size))
-        else:
-            from spyvm.shadow import ClassShadow
-            if isinstance(self.shadow, ClassShadow) and self.shadow.name == "BlockClosure":
-                import pdb; pdb.set_trace()
-            
-            self.shadow.initialize_storage(space, size)
+        self.store_shadow(self.default_storage(space, size))
         
     def fillin(self, space, g_self):
-        g_self.g_class.fillin(space)
-        self.s_class = g_self.get_class().as_class_get_penumbra(space)
-        
-        if self.s_class.name == "BlockClosure":
-            import pdb; pdb.set_trace()
-        
-        self.hash = g_self.get_hash()
-        self.space = space
-        for g_obj in g_self.get_g_pointers():
-            g_obj.fillin_nonpointers(space)
+        W_AbstractObjectWithClassReference.fillin(self, space, g_self)
         pointers = g_self.get_pointers()
         self.initialize_storage(space, len(pointers))
         self.store_all(space, pointers)
@@ -524,7 +551,6 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     def store_all(self, space, collection):
         # Be tolerant: copy over as many elements as possible, set rest to nil.
         # The size of the object cannot be changed in any case.
-        # This should only by used in tests/debugging.
         my_length = self.size()
         incoming_length = min(my_length, len(collection))
         i = 0
@@ -553,7 +579,7 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         return self.size() - self.instsize(space)
 
     def instsize(self, space):
-        return self.shadow_of_my_class(space).instsize()
+        return self.class_shadow(space).instsize()
 
     def primsize(self, space):
         return self.varsize(space)
@@ -590,17 +616,6 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         from spyvm.shadow import ClassShadow
         return jit.promote(self.as_special_get_shadow(space, ClassShadow))
 
-    # Should only be used during squeak-image loading.
-    def as_class_get_penumbra(self, space):
-        from spyvm.shadow import ClassShadow
-        s_class = self._get_shadow()
-        if s_class is None or not isinstance(s_class, ClassShadow):
-            s_class = ClassShadow(space, self)
-            if self.shadow is not None:
-                s_class.copy_from(self.shadow)
-            self.store_shadow(s_class)
-        return s_class
-
     def as_blockcontext_get_shadow(self, space):
         from spyvm.shadow import BlockContextShadow
         return self.as_special_get_shadow(space, BlockContextShadow)
@@ -636,23 +651,18 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     def become(self, w_other):
         if not isinstance(w_other, W_AbstractPointersObject):
             return False
-        self.strategy, w_other.strategy = w_other.strategy, self.strategy
-        self._size, w_other._size = w_other._size, self._size
-        self.list_storage, w_other.list_storage = w_other.list_storage, self.list_storage
-        self.int_storage, w_other.int_storage = w_other.int_storage, self.int_storage
-        
-        # switching means also switching shadows
         self.shadow, w_other.shadow = w_other.shadow, self.shadow
         # shadow links are in both directions -> also update shadows
         if    self.shadow is not None:    self.shadow._w_self = self
         if w_other.shadow is not None: w_other.shadow._w_self = w_other
         W_AbstractObjectWithClassReference._become(self, w_other)
+        return True
 
     @jit.unroll_safe
     def clone(self, space):
         my_pointers = self.fetch_all(space)
         w_result = W_PointersObject(self.space, self.getclass(space), len(my_pointers))
-        w_result.fillin_pointers(space, my_pointers)
+        w_result.store_all(space, my_pointers)
         return w_result
         
     @jit.elidable
@@ -682,11 +692,9 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         self._size = size
 
     def fillin(self, space, g_self):
-        self.s_class = g_self.get_class().as_class_get_penumbra(space)
+        W_AbstractObjectWithClassReference.fillin(self, space, g_self)
         self.bytes = g_self.get_bytes()
         self._size = len(self.bytes)
-        self.hash = g_self.get_hash()
-        self.space = space
 
     def at0(self, space, index0):
         return space.wrap_int(ord(self.getchar(index0)))
@@ -818,11 +826,9 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         self._size = size
 
     def fillin(self, space, g_self):
+        W_AbstractObjectWithClassReference.fillin(self, space, g_self)
         self.words = g_self.get_ruints()
         self._size = len(self.words)
-        self.s_class = g_self.get_class().as_class_get_penumbra(space)
-        self.hash = g_self.get_hash()
-        self.space = space
 
     def at0(self, space, index0):
         val = self.getword(index0)
@@ -1138,26 +1144,28 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 
     def get_identifier_string(self):
         from spyvm import shadow
-        classname = '<unknown>  class'
+        guessed_classname = None
         if len(self.literals) > 0:
             w_candidate = self.literals[-1]
             if isinstance(w_candidate, W_PointersObject):
                 c_shadow = w_candidate._get_shadow()
-                if c_shadow is None and w_candidate.size() >= 2:
-                    if not w_candidate.strategy.needs_objspace:
-                        # We can fetch without having an object space at hand.
-                        # XXX How to get an object space from a CompiledMethodShadow, anyways?
-                        w_class = w_candidate.fetch(None, 1)
-                        if isinstance(w_class, W_PointersObject):
-                            d_shadow = w_class._get_shadow()
-                            if isinstance(d_shadow, shadow.ClassShadow):
-                                classname = d_shadow.getname()
-                elif isinstance(c_shadow, shadow.ClassShadow):
-                    classname = c_shadow.getname()
-        class_cutoff = len(classname) - 6
-        if class_cutoff > 0:
-            classname = classname[0:class_cutoff]
-        return "%s>>#%s" % (classname, self._likely_methodname)
+                if isinstance(c_shadow, shadow.ClassShadow):
+                    guessed_classname = c_shadow.getname()
+                elif w_candidate.size() >= 2:
+                    w_class = w_candidate.fetch(None, 1)
+                    if isinstance(w_class, W_PointersObject):
+                        d_shadow = w_class._get_shadow()
+                        if isinstance(d_shadow, shadow.ClassShadow):
+                            guessed_classname = d_shadow.getname()
+        if guessed_classname:
+            class_cutoff = len(guessed_classname) - 6
+            if class_cutoff > 0:
+                classname = guessed_classname[0:class_cutoff]
+            else:
+                classname = guessed_classname
+        else:
+            classname = "<unknown>"
+        return "%s >> #%s" % (classname, self._likely_methodname)
 
     def invariant(self):
         return (W_Object.invariant(self) and
@@ -1281,3 +1289,4 @@ class DetachingShadowError(Exception):
 # class.  Note that we patch its class in the space
 # YYY there should be no global w_nil
 w_nil = instantiate(W_PointersObject)
+w_nil.w_class = None

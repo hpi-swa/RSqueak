@@ -279,27 +279,19 @@ class ImageReader(object):
 
     def assign_prebuilt_constants(self):
         # Assign classes and objects that in special objects array that are already created.
-        self._assign_prebuilt_constants(constants.objects_in_special_object_table, self.space.objtable, False)
-        self._assign_prebuilt_constants(constants.classes_in_special_object_table, self.space.classtable, False)
-        
-        # Make sure that all prebuilt classes are actually used in the special classes array
-        for prebuilt_classname in self.space.classtable.keys():
-            prebuilt_classname = prebuilt_classname[2:]
-            assert prebuilt_classname in constants.classes_in_special_object_table.keys(), \
-                       "Prebuilt class is not used in the special objects array: %s" % (prebuilt_classname,)
+        self._assign_prebuilt_constants(constants.objects_in_special_object_table, self.space.objtable)
+        self._assign_prebuilt_constants(constants.classes_in_special_object_table, self.space.classtable)
 
-    def _assign_prebuilt_constants(self, names_and_indices, prebuilt_objects, force_existance=False):
+    def _assign_prebuilt_constants(self, names_and_indices, prebuilt_objects):
         for name, so_index in names_and_indices.items():
             name = "w_" + name
-            if name not in prebuilt_objects and not force_existance:
-                continue
-            w_object = prebuilt_objects[name]
-            assert not force_existance or w_object
-            if self.special_object(so_index).w_object is None:
-                self.special_object(so_index).w_object = w_object
-            else:
-                if self.special_object(0).w_object is not self.space.w_nil:
-                   raise Warning('Object found in multiple places in the special objects array')
+            if name in prebuilt_objects:
+                w_object = prebuilt_objects[name]
+                if self.special_object(so_index).w_object is None:
+                    self.special_object(so_index).w_object = w_object
+                else:
+                    if self.special_object(0).w_object is not self.space.w_nil:
+                       raise Warning('Object found in multiple places in the special objects array')
     
     def special_object(self, index):
         special = self.chunks[self.specialobjectspointer].g_object.pointers
@@ -369,10 +361,10 @@ class SqueakImage(object):
         self.special_objects = [g_object.w_object for g_object in
                                 reader.chunks[reader.specialobjectspointer]
                                 .g_object.pointers]
-
+        
         for name, idx in constants.objects_in_special_object_table.items():
             space.objtable["w_" + name] = self.special_objects[idx]
-
+        
         self.w_asSymbol = self.find_symbol(space, reader, "asSymbol")
         self.w_simulateCopyBits = self.find_symbol(space, reader, "simulateCopyBits")
         self.lastWindowSize = reader.lastWindowSize
@@ -569,10 +561,6 @@ class GenericObject(object):
             raise CorruptImageError("Expected %d words, got %d" % (required_len, len(words)))
         return words
 
-    def fillin_nonpointers(self, space):
-        if not self.filled_in and (self.isbytes() or self.iswords()):
-            self.fillin(space)
-        
     def fillin(self, space):
         if not self.filled_in:
             self.filled_in = True

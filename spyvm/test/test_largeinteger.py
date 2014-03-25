@@ -21,7 +21,7 @@ def find_symbol_in_methoddict_of(string, s_class):
 
 def initialize_class(w_class):
     initialize_symbol = find_symbol_in_methoddict_of("initialize", 
-                        w_class.shadow_of_my_class(tools.space))
+                        w_class.class_shadow(tools.space))
     perform(w_class, initialize_symbol)
 
 def test_initialize_string_class():

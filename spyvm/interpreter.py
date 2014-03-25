@@ -344,7 +344,7 @@ class __extend__(ContextPartShadow):
     def _sendSelfSelector(self, w_selector, argcount, interp):
         receiver = self.peek(argcount)
         return self._sendSelector(w_selector, argcount, interp,
-                                  receiver, receiver.shadow_of_my_class(self.space))
+                                  receiver, receiver.class_shadow(self.space))
 
     def _sendSuperSelector(self, w_selector, argcount, interp):
         w_compiledin = self.s_method().w_compiledin
@@ -384,11 +384,13 @@ class __extend__(ContextPartShadow):
 
     def _doesNotUnderstand(self, w_selector, argcount, interp, receiver):
         arguments = self.pop_and_return_n(argcount)
-        s_message_class = self.space.classtable["w_Message"].as_class_get_shadow(self.space)
+        w_message_class = self.space.classtable["w_Message"]
+        assert isinstance(w_message_class, model.W_PointersObject)
+        s_message_class = w_message_class.as_class_get_shadow(self.space)
         w_message = s_message_class.new()
         w_message.store(self.space, 0, w_selector)
         w_message.store(self.space, 1, self.space.wrap_list(arguments))
-        s_class = receiver.shadow_of_my_class(self.space)
+        s_class = receiver.class_shadow(self.space)
         try:
             s_method = s_class.lookup(self.space.objtable["w_doesNotUnderstand"])
         except MethodNotFound:

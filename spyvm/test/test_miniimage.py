@@ -86,21 +86,21 @@ def test_str_w_object():
     w_float_class = get_float_class()
     w_float_class.as_class_get_shadow(space)
     assert str(w_float_class) == "Float class"
-    w_float_class.shadow_of_my_class(space)
+    w_float_class.class_shadow(space)
     #assert str(w_float_class.getclass(space)) == "a Metaclass" #yes, with article
-    w_float_class.getclass(space).shadow_of_my_class(space)
+    w_float_class.getclass(space).class_shadow(space)
     #assert str(w_float_class.getclass(space).getclass(space)) == "Metaclass class"
 
 def test_nil_true_false():
     image = get_image()
     w = image.special(constants.SO_NIL)
-    w.shadow_of_my_class(space)
+    w.class_shadow(space)
     assert str(w) == "a UndefinedObject" #yes, with article
     w = image.special(constants.SO_FALSE)
-    w.shadow_of_my_class(space)
+    w.class_shadow(space)
     assert str(w) == "a False" #yes, with article
     w = image.special(constants.SO_TRUE)
-    w.shadow_of_my_class(space)
+    w.class_shadow(space)
     assert str(w) == "a True" #yes, with article
 
 def test_scheduler():
@@ -109,7 +109,7 @@ def test_scheduler():
     w0 = w.fetch(space, 0)
     assert str(w0) == "Processor"
     w0 = w.fetch(space, 1)
-    w0.shadow_of_my_class(space)
+    w0.class_shadow(space)
     assert str(w0) == "a ProcessorScheduler"
 
 def test_special_classes0():
@@ -148,14 +148,14 @@ def test_special_classes0():
 def test_name_of_shadow_of_specials():
     image = get_image()
     w_doesnot = image.special(constants.SO_DOES_NOT_UNDERSTAND)
-    assert repr(w_doesnot.shadow_of_my_class(space)) == "<ClassShadow Symbol>"
-    assert repr(space.w_nil.shadow_of_my_class(space)) == "<ClassShadow UndefinedObject>"
-    assert repr(space.w_minus_one.shadow_of_my_class(space)) == "<ClassShadow SmallInteger>"
-    assert repr(space.w_zero.shadow_of_my_class(space)) == "<ClassShadow SmallInteger>"
-    assert repr(space.w_one.shadow_of_my_class(space)) == "<ClassShadow SmallInteger>"
-    assert repr(space.w_two.shadow_of_my_class(space)) == "<ClassShadow SmallInteger>"
-    assert repr(space.w_true.shadow_of_my_class(space)) == "<ClassShadow True>"
-    assert repr(space.w_false.shadow_of_my_class(space)) == "<ClassShadow False>"
+    assert repr(w_doesnot.class_shadow(space)) == "<ClassShadow Symbol>"
+    assert repr(space.w_nil.class_shadow(space)) == "<ClassShadow UndefinedObject>"
+    assert repr(space.w_minus_one.class_shadow(space)) == "<ClassShadow SmallInteger>"
+    assert repr(space.w_zero.class_shadow(space)) == "<ClassShadow SmallInteger>"
+    assert repr(space.w_one.class_shadow(space)) == "<ClassShadow SmallInteger>"
+    assert repr(space.w_two.class_shadow(space)) == "<ClassShadow SmallInteger>"
+    assert repr(space.w_true.class_shadow(space)) == "<ClassShadow True>"
+    assert repr(space.w_false.class_shadow(space)) == "<ClassShadow False>"
 
 def test_special_objects0():
     image = get_image()
@@ -405,7 +405,7 @@ def test_primitive_perform_with_args():
     from spyvm.test.test_primitives import prim
     from spyvm import primitives
     w_o = space.wrap_list([1, 2, 3])
-    w_methoddict = w_o.shadow_of_my_class(space)._s_superclass._s_superclass.w_methoddict()
+    w_methoddict = w_o.class_shadow(space)._s_superclass._s_superclass.w_methoddict()
     w_methoddict.as_methoddict_get_shadow(space).sync_cache()
     selectors_w = w_methoddict.shadow.methoddict.keys()
     w_sel = None

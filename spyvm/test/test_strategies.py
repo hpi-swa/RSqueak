@@ -26,7 +26,7 @@ def float_arr(size):
     return a
 
 def check_arr(arr, expected):
-    for i in range(arr.basic_size()):
+    for i in range(arr.size()):
         w_val = arr.fetch(space, i)
         if expected[i] == w_nil:
             assert w_val == w_nil
@@ -57,7 +57,7 @@ def test_FetchNil():
 
 def test_AllNilSize():
     a = arr(5)
-    assert a.basic_size() == 5
+    assert a.size() == 5
 
 # ====== List StorageStrategy
 
@@ -79,7 +79,7 @@ def test_List_fetch():
 def test_List_size():
     a = list_arr(5)
     a.store(space, 1, arr(1))
-    assert a.basic_size() == 5
+    assert a.size() == 5
 
 # ====== SmallIntegerOrNil StorageStrategy
 

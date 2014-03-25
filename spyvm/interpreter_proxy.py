@@ -192,7 +192,7 @@ def arrayValueOf(w_array):
 
 @expose_on_virtual_machine_proxy([oop], int)
 def byteSizeOf(w_object):
-    s_class = w_object.shadow_of_my_class(IProxy.space)
+    s_class = w_object.class_shadow(IProxy.space)
     size = s_class.instsize()
     if s_class.isvariable():
         size += w_object.primsize(IProxy.space)
@@ -730,7 +730,7 @@ def isArray(w_object):
     if not isinstance(w_object, model.W_PointersObject):
         return False
     space = IProxy.space
-    s_class = w_object.shadow_of_my_class(space)
+    s_class = w_object.class_shadow(space)
     if s_class.instsize() == 0 and s_class.isvariable():
         return True
     else:

@@ -155,7 +155,7 @@ def test_methodcontext():
     assert s_object.s_home() == s_object
 
 def assert_contains_nils(w_obj):
-    for i in range(w_obj.basic_size()):
+    for i in range(w_obj.size()):
         assert model.w_nil == w_obj.strategy.fetch(i, space, w_obj)
 
 def test_attach_mc():

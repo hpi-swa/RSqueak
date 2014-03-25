@@ -40,7 +40,7 @@ def printStringsInImage():
     image = create_squeakimage()
     for each in image.objects:
         if isinstance(each,model.W_BytesObject):
-          print each.shadow_of_my_class()
+          print each.class_shadow()
           print each.as_string()
 
 def tinyBenchmarks():
@@ -51,7 +51,7 @@ def tinyBenchmarks():
 
     # Should get this from w_object
     w_smallint_class = image.special(constants.SO_SMALLINTEGER_CLASS)
-    s_class = w_object.shadow_of_my_class()
+    s_class = w_object.class_shadow()
     #w_method = s_class.lookup("benchFib")
     w_method = s_class.lookup("tinyBenchmarks")
 

@@ -24,7 +24,7 @@ class MockFrame(model.W_PointersObject):
         s_self.reset_stack()
         s_self.push_all(stack)
         s_self.store_expected_argument_count(0)
-        self.s_class = space.w_MethodContext.as_class_get_shadow(space)
+        self.w_class = space.w_MethodContext
 
     def as_blockcontext_get_shadow(self, space):
         if not self.shadow:

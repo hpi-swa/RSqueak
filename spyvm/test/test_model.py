@@ -25,7 +25,7 @@ def test_new():
     w_myinstance = w_mycls.as_class_get_shadow(space).new()
     assert isinstance(w_myinstance, model.W_PointersObject)
     assert w_myinstance.getclass(space).is_same_object(w_mycls)
-    assert w_myinstance.shadow_of_my_class(space) is w_mycls.as_class_get_shadow(space)
+    assert w_myinstance.class_shadow(space) is w_mycls.as_class_get_shadow(space)
 
 def test_new_namedvars():
     w_mycls = mockclass(space, 3)

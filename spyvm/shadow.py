@@ -15,25 +15,28 @@ class AbstractShadow(object):
     def __init__(self, space, w_self):
         self.space = space
         self._w_self = w_self
+    def w_self(self):
+        return self._w_self
+    def getname(self):
+        return repr(self)
+    
     def fetch(self, n0):
         raise NotImplementedError("Abstract class")
     def store(self, n0, w_value):
         raise NotImplementedError("Abstract class")
     def size(self):
         raise NotImplementedError("Abstract class")
-    def w_self(self):
-        return self._w_self
-    def getname(self):
-        return repr(self)
+    
     def attach_shadow(self): pass
     
-    def initialize_storage(self, space, size):
-        pass
+    def copy_field_from(self, n0, other_shadow):
+        self.store(n0, other_shadow.fetch(n0))
     
+    # This can be overwritten to change the order of initialization.
     def copy_from(self, other_shadow):
         assert self.size() == other_shadow.size()
         for i in range(self.size()):
-            self.store(i, other_shadow.fetch(i))
+            self.copy_field_from(i, other_shadow)
 
 class ListStorageShadow(AbstractShadow):
     _attrs_ = ['storage']
@@ -60,11 +63,11 @@ class WeakListStorageShadow(AbstractShadow):
     
     def __init__(self, space, w_self, size):
         AbstractShadow.__init__(self, space, w_self)
-        self.storage = [weakref.ref(w_nil)] * size
+        self.storage = [weakref.ref(model.w_nil)] * size
     
     def fetch(self, n0):
         weakobj = self.storage[n0]
-        return weakobj() or w_nil
+        return weakobj() or model.w_nil
     def store(self, n0, w_value):
         assert w_value is not None
         self.storage[n0] = weakref.ref(w_value)
@@ -108,14 +111,11 @@ class ClassShadow(AbstractCachingShadow):
     
     def __init__(self, space, w_self):
         # fields added here should also be in objspace.py:56ff, 300ff
-        self.name = ''
+        self.name = '?'
         self._s_superclass = None
         self.subclass_s = {}
         AbstractCachingShadow.__init__(self, space, w_self)
 
-    def copy_from(self, other_storage):
-        AbstractCachingShadow.copy_from(self, other_storage)
-        
     def store(self, n0, w_val):
         AbstractCachingShadow.store(self, n0, w_val)
         if n0 == constants.CLASS_SUPERCLASS_INDEX:
@@ -126,6 +126,15 @@ class ClassShadow(AbstractCachingShadow):
                 self._s_methoddict = w_val.as_methoddict_get_shadow(self.space)
                 self._s_methoddict.s_class = self
         elif n0 == constants.CLASS_FORMAT_INDEX:
+            if not isinstance(w_val, model.W_SmallInteger):
+                # TODO -- anton -- this happens with mini.image and other images (but not Squeak*.image)
+                # You can try something like the following after all g_objects have been initialized in the ImageReader:
+                # special_objects[11] == special_objects[36].g_class
+                # TODO -- fix images or think of a more appropriate hack.
+                self._instance_size = constants.BLKCLSR_SIZE
+                self.instance_varsized = True
+                return
+            
             # read and painfully decode the format
             classformat = self.space.unwrap_int(w_val)
             # The classformat in Squeak, as an integer value, is:
@@ -168,6 +177,19 @@ class ClassShadow(AbstractCachingShadow):
                 raise ClassShadowError("unknown format %d" % (format,))
         elif n0 == constants.CLASS_NAME_INDEX:
             self.store_w_name(w_val)
+        elif n0 == self.size() - 1:
+            # In case of Metaclasses, the "instance" class is stored in the last field.
+            # TODO - only do this if we are sure this is a Metaclass. Check out space.w_Metaclass.
+            if isinstance(w_val, model.W_PointersObject):
+                cl_shadow = w_val.shadow
+                if isinstance(cl_shadow, ClassShadow):
+                    # If we're lucky, it's already a class shadow and we can reuse the stored information
+                    if cl_shadow.name:
+                        self.name = "%s class" % cl_shadow.name
+                elif w_val.size() >= constants.CLASS_NAME_INDEX:
+                    # If not, we have to extract the class name
+                    w_classname = w_val.fetch(self.space, constants.CLASS_NAME_INDEX)
+                    self.store_w_name(w_classname)
         else:
             return
         # Some of the special info has changed -> Switch version.
@@ -197,8 +219,6 @@ class ClassShadow(AbstractCachingShadow):
             self.name = w_name.as_string()
         else:
             self.name = None
-        if self.name == "BlockClosure":
-            import pdb; pdb.set_trace()
     
     @jit.unroll_safe
     def flush_method_caches(self):
@@ -282,8 +302,6 @@ class ClassShadow(AbstractCachingShadow):
 
     @constant_for_version
     def lookup(self, w_selector):
-        import pdb; pdb.set_trace()
-        
         look_in_shadow = self
         while look_in_shadow is not None:
             s_method = look_in_shadow.s_methoddict().find_selector(w_selector)
@@ -344,6 +362,12 @@ class MethodDictionaryShadow(ListStorageShadow):
         self.methoddict = {}
         ListStorageShadow.__init__(self, space, w_self, 0)
 
+    def attach_shadow(self):
+        self.sync_method_cache()
+        
+    def update(self):
+        self.sync_method_cache()
+        
     def find_selector(self, w_selector):
         if self.invalid:
             return None # we may be invalid if Smalltalk code did not call flushCache
@@ -368,7 +392,7 @@ class MethodDictionaryShadow(ListStorageShadow):
     def sync_method_cache(self):
         if self.size() == 0:
             return
-        w_values = self.fetch(self.space, constants.METHODDICT_VALUES_INDEX)
+        w_values = self.fetch(constants.METHODDICT_VALUES_INDEX)
         assert isinstance(w_values, model.W_PointersObject)
         s_values = w_values.as_observed_get_shadow(self.space)
         s_values.notify(self)
@@ -396,7 +420,6 @@ class MethodDictionaryShadow(ListStorageShadow):
             self.s_class.changed()
         self.invalid = False
 
-
 class AbstractRedirectingShadow(AbstractShadow):
     _attrs_ = ['_w_self_size']
 
@@ -407,24 +430,8 @@ class AbstractRedirectingShadow(AbstractShadow):
         else:
             self._w_self_size = 0
 
-    def fetch(self, n0):
-        raise NotImplementedError()
-    def store(self, n0, w_value):
-        raise NotImplementedError()
     def size(self):
         return self._w_self_size
-
-    def attach_shadow(self):
-        AbstractShadow.attach_shadow(self)
-        w_self = self.w_self()
-        assert isinstance(w_self, model.W_PointersObject)
-        for i in range(self._w_self_size):
-            try:
-                self.copy_from_w_self(i)
-            except error.SenderChainManipulation, e:
-                assert e.s_context == self
-        w_self.initialize_storage(self.space, 0)
-
 
 class ContextPartShadow(AbstractRedirectingShadow):
 
@@ -443,6 +450,19 @@ class ContextPartShadow(AbstractRedirectingShadow):
         AbstractRedirectingShadow.__init__(self, space, w_self)
         self.instances_w = {}
 
+    def copy_from(self, other_shadow):
+        # Some fields have to be initialized before the rest, to ensure correct initialization.
+        privileged_fields = self.fields_to_copy_first()
+        for n0 in privileged_fields:
+            self.copy_field_from(n0, other_shadow)
+        
+        # Now the temp size will be known.
+        self.init_stack_and_temps()
+        
+        for n0 in range(self.size()):
+            if n0 not in privileged_fields:
+                self.copy_field_from(n0, other_shadow)
+        
     @staticmethod
     def is_block_context(w_pointers, space):
         method_or_argc = w_pointers.fetch(space, constants.MTHDCTX_METHOD)
@@ -589,9 +609,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
     def s_method(self):
         w_method = jit.promote(self.w_method())
-        return jit.promote(
-            w_method.as_compiledmethod_get_shadow(self.space)
-        )
+        return jit.promote(w_method.as_compiledmethod_get_shadow(self.space))
 
     def getbytecode(self):
         jit.promote(self._pc)
@@ -621,7 +639,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
         for i in range(tempsize):
             self._temps_and_stack[i] = self.space.w_nil
         self._stack_ptr = rarithmetic.r_uint(tempsize) # we point after the last element
-
+        
     # ______________________________________________________________________
     # Stack Manipulation
 
@@ -751,6 +769,9 @@ class BlockContextShadow(ContextPartShadow):
         self.store_pc(initialip)
         self.init_stack_and_temps()
 
+    def fields_to_copy_first(self):
+        return [ constants.BLKCTX_HOME_INDEX ]
+        
     def fetch(self, n0):
         if n0 == constants.BLKCTX_HOME_INDEX:
             return self.w_home()
@@ -770,13 +791,6 @@ class BlockContextShadow(ContextPartShadow):
             return self.unwrap_store_eargc(w_value)
         else:
             return ContextPartShadow.store(self, n0, w_value)
-
-    @jit.dont_look_inside
-    def attach_shadow(self):
-        # Make sure the home context is updated first
-        self.copy_from_w_self(constants.BLKCTX_HOME_INDEX)
-        self.init_stack_and_temps()
-        ContextPartShadow.attach_shadow(self)
 
     def unwrap_store_initialip(self, w_value):
         initialip = self.space.unwrap_int(w_value)
@@ -856,10 +870,10 @@ class MethodContextShadow(ContextPartShadow):
             self.w_closure_or_nil = space.w_nil
         
         if s_method:
-            # The summand is needed, because we calculate i.a. our stackdepth relative of the size of w_self.
-            size = s_method.compute_frame_size() + space.w_MethodContext.as_class_get_shadow(space).instsize()
-            self._w_self_size = size
             self.store_w_method(s_method.w_self())
+            # The summand is needed, because we calculate i.a. our stackdepth relative of the size of w_self.
+            size = s_method.compute_frame_size() + self.space.w_MethodContext.as_class_get_shadow(self.space).instsize()
+            self._w_self_size = size
             self.init_stack_and_temps()
         else:
             self._w_method = None
@@ -878,6 +892,9 @@ class MethodContextShadow(ContextPartShadow):
                 for i0 in range(closure.size()):
                     self.settemp(i0+argc, closure.at0(i0))
 
+    def fields_to_copy_first(self):
+        return [ constants.MTHDCTX_METHOD, constants.MTHDCTX_CLOSURE_OR_NIL ]
+    
     def fetch(self, n0):
         if n0 == constants.MTHDCTX_METHOD:
             return self.w_method()
@@ -905,15 +922,6 @@ class MethodContextShadow(ContextPartShadow):
             return self.settemp(temp_i, w_value)
         else:
             return ContextPartShadow.store(self, n0, w_value)
-
-    @jit.dont_look_inside
-    def attach_shadow(self):
-        # Make sure the method and closure_or_nil are updated first,
-        # otherwise tempsize may be wrong
-        self.copy_from_w_self(constants.MTHDCTX_METHOD)
-        self.copy_from_w_self(constants.MTHDCTX_CLOSURE_OR_NIL)
-        self.init_stack_and_temps()
-        ContextPartShadow.attach_shadow(self)
 
     def tempsize(self):
         if not self.is_closure_context():
@@ -964,7 +972,7 @@ class MethodContextShadow(ContextPartShadow):
         return constants.MTHDCTX_TEMP_FRAME_START
 
     def stackstart(self):
-        return (constants.MTHDCTX_TEMP_FRAME_START)
+        return constants.MTHDCTX_TEMP_FRAME_START
 
     def myblocksize(self):
         return self.size() - self.tempsize()
@@ -984,7 +992,7 @@ class MethodContextShadow(ContextPartShadow):
         argcount = method_str.count(':')
         if argcount == 0:
             return '%s (rcvr: %s) [pc: %d]' % (
-                self.method_str(),
+                method_str,
                 self.w_receiver().as_repr_string(),
                 self.pc() + 1
             )
@@ -1083,10 +1091,8 @@ class CachedObjectShadow(AbstractCachingShadow):
         return AbstractCachingShadow.fetch(self, n0)
 
     def store(self, n0, w_value):
-        res = self._w_self._store(self.space, n0, w_value)
+        AbstractCachingShadow.store(self, n0, w_value)
         self.changed()
-        return res
-
 
 class ObserveeShadow(ListStorageShadow):
     _attrs_ = ['dependent']
@@ -1096,7 +1102,8 @@ class ObserveeShadow(ListStorageShadow):
 
     def store(self, n0, w_value):
         ListStorageShadow.store(self, n0, w_value)
-        self.dependent.update()
+        if self.dependent:
+            self.dependent.update()
 
     def notify(self, dependent):
         if self.dependent is not None and dependent is not self.dependent:
