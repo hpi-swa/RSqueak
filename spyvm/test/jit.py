@@ -13,14 +13,11 @@ conftest.option = o
 
 from rpython.jit.metainterp.test.test_ajit import LLJitMixin
 
-
+from .util import bootstrap_class
 from spyvm import model, interpreter, primitives, shadow
 from spyvm import objspace, squeakimage
 from spyvm.tool.analyseimage import create_squeakimage, create_testimage
 from rpython.rlib.streamio import open_file_as_stream
-
-
-mockclass = objspace.bootstrap_class
 
 space = objspace.ObjSpace()
 

@@ -439,7 +439,7 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
         return self.w_class
 
     def __str__(self):
-        if isinstance(self, W_PointersObject) and self.has_shadow():
+        if isinstance(self, W_PointersObject) and self.has_shadow() and self.shadow.has_getname:
             return self._get_shadow().getname()
         else:
             name = None
@@ -627,7 +627,7 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     def as_context_get_shadow(self, space):
         from spyvm.shadow import ContextPartShadow
         # XXX TODO should figure out itself if its method or block context
-        if self._get_shadow() is None:
+        if not isinstance(self.shadow, ContextPartShadow):
             if ContextPartShadow.is_block_context(self, space):
                 return self.as_blockcontext_get_shadow(space)
             return self.as_methodcontext_get_shadow(space)

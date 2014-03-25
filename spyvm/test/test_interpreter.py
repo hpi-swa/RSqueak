@@ -1,13 +1,15 @@
 import py
+from .util import bootstrap_class as _bootstrap_class
 from spyvm import model, interpreter, primitives, shadow
 from spyvm import objspace, wrapper, constants
+from .util import BootstrappedObjSpace
 
-def mockclass(space, instsize, w_superclass=None, w_metaclass=None,
+def bootstrap_class(space, instsize, w_superclass=None, w_metaclass=None,
                     name='?', format=shadow.POINTERS, varsized=True):
-    return objspace.bootstrap_class(space, instsize, w_superclass, w_metaclass,
+    return _bootstrap_class(space, instsize, w_superclass, w_metaclass,
                     name, format, varsized)
 
-space = objspace.ObjSpace()
+space = BootstrappedObjSpace()
 interp = interpreter.Interpreter(space)
 def step_in_interp(ctxt): # due to missing resets in between tests
     interp._loop = False
@@ -56,16 +58,12 @@ def run_with_faked_primitive_methods(methods, func, active_context=None):
             space.w_special_selectors.atput0(space, index, symbol)
             assert space.get_special_selector(methname) is symbol
         s_class.installmethod(symbol, prim_meth)
-
-        assert space.w_nil.shadow is None
     try:
         func(active_context) if active_context else func()
     finally:
         # Uninstall those methods:
-        assert space.w_nil.shadow is None
         for (w_class, _, _, methname) in methods:
             s_class = w_class.as_class_get_shadow(space)
-            s_class.update()
             s_class.s_methoddict().update()
 
 def fakesymbol(s, _cache={}):
@@ -147,7 +145,7 @@ def test_pushReceiverBytecode():
 def test_pushReceiverVariableBytecode(bytecode = (pushReceiverVariableBytecode(0) +
                                                   pushReceiverVariableBytecode(1) +
                                                   pushReceiverVariableBytecode(2))):
-    w_demo = mockclass(space, 3).as_class_get_shadow(space).new()
+    w_demo = bootstrap_class(space, 3).as_class_get_shadow(space).new()
     w_demo.store(space, 0, "egg")
     w_demo.store(space, 1, "bar")
     w_demo.store(space, 2, "baz")
@@ -182,7 +180,7 @@ def test_pushLiteralConstantBytecode(bytecode=pushLiteralConstantBytecode(0) +
                                              fakesymbol("c")]
 
 def test_pushLiteralVariableBytecode(bytecode=pushLiteralVariableBytecode(0)):
-    w_association = mockclass(space, 2).as_class_get_shadow(space).new()
+    w_association = bootstrap_class(space, 2).as_class_get_shadow(space).new()
     w_association.store(space, 0, "mykey")
     w_association.store(space, 1, "myvalue")
     w_frame, s_frame = new_frame(bytecode)
@@ -192,7 +190,7 @@ def test_pushLiteralVariableBytecode(bytecode=pushLiteralVariableBytecode(0)):
 
 def test_storeAndPopReceiverVariableBytecode(bytecode=storeAndPopReceiverVariableBytecode,
                                              popped=True):
-    shadow = mockclass(space, 8).as_class_get_shadow(space)
+    shadow = bootstrap_class(space, 8).as_class_get_shadow(space)
     for index in range(8):
         w_object = shadow.new()
         w_frame, s_frame = new_frame(pushConstantTrueBytecode + bytecode(index))
@@ -365,8 +363,8 @@ def test_bytecodePrimEquivalent():
     assert s_frame.stack() == []
 
 def test_bytecodePrimNew():
-    w_fakeclassclass = mockclass(space, 10, name='fakeclassclass')
-    w_fakeclass = mockclass(space, 1, name='fakeclass', varsized=False,
+    w_fakeclassclass = bootstrap_class(space, 10, name='fakeclassclass')
+    w_fakeclass = bootstrap_class(space, 1, name='fakeclass', varsized=False,
                             w_metaclass=w_fakeclassclass)
     w_frame, s_frame = new_frame(bytecodePrimNew)
     s_frame.push(w_fakeclass)
@@ -380,8 +378,8 @@ def test_bytecodePrimNew():
     assert w_fakeinst.size() == 1
 
 def test_bytecodePrimNewWithArg():
-    w_fakeclassclass = mockclass(space, 10, name='fakeclassclass')
-    w_fakeclass = mockclass(space, 1, name='fakeclass', varsized=True,
+    w_fakeclassclass = bootstrap_class(space, 10, name='fakeclassclass')
+    w_fakeclass = bootstrap_class(space, 1, name='fakeclass', varsized=True,
                             w_metaclass=w_fakeclassclass)
     w_frame, s_frame = new_frame(bytecodePrimNewWithArg)
     s_frame.push(w_fakeclass)
@@ -396,7 +394,7 @@ def test_bytecodePrimNewWithArg():
     assert w_fakeinst.size() == 3
 
 def test_bytecodePrimSize():
-    w_fakeclass = mockclass(space, 2, name='fakeclass', varsized=True)
+    w_fakeclass = bootstrap_class(space, 2, name='fakeclass', varsized=True)
     w_fakeinst = w_fakeclass.as_class_get_shadow(space).new(5)
     w_frame, s_frame = new_frame(bytecodePrimSize)
     s_frame.push(w_fakeinst)
@@ -440,13 +438,13 @@ def sendBytecodesTest(w_class, w_object, bytecodes):
         assert s_active_context.stack() == [result]
 
 def test_sendLiteralSelectorBytecode():
-    w_class = mockclass(space, 0)
+    w_class = bootstrap_class(space, 0)
     w_object = w_class.as_class_get_shadow(space).new()
     sendBytecodesTest(w_class, w_object, sendLiteralSelectorBytecode(0))
 
 def test_fibWithArgument():
     bytecode = ''.join(map(chr, [ 16, 119, 178, 154, 118, 164, 11, 112, 16, 118, 177, 224, 112, 16, 119, 177, 224, 176, 124 ]))
-    shadow = mockclass(space, 0).as_class_get_shadow(space)
+    shadow = bootstrap_class(space, 0).as_class_get_shadow(space)
     method = model.W_CompiledMethod(len(bytecode))
     method.literalsize = 1
     method.bytes = bytecode
@@ -565,7 +563,7 @@ def test_extendedPushBytecode():
     test_pushLiteralVariableBytecode(extendedPushBytecode + chr((3<<6) + 0))
 
 def storeAssociation(bytecode):
-    w_association = mockclass(space, 2).as_class_get_shadow(space).new()
+    w_association = bootstrap_class(space, 2).as_class_get_shadow(space).new()
     w_association.store(space, 0, "mykey")
     w_association.store(space, 1, "myvalue")
     w_frame, s_frame = new_frame(pushConstantOneBytecode + bytecode)
@@ -587,7 +585,7 @@ def test_extendedStoreAndPopBytecode():
 
 def test_callPrimitiveAndPush_fallback():
     w_frame, s_frame = new_frame(bytecodePrimAdd)
-    shadow = mockclass(space, 0).as_class_get_shadow(space)
+    shadow = bootstrap_class(space, 0).as_class_get_shadow(space)
     w_method = model.W_CompiledMethod(0)
     w_method.argsize = 1
     w_method.tempsize = 1
@@ -623,14 +621,14 @@ def test_bytecodePrimBool():
                                           space.w_false, space.w_true]
 
 def test_singleExtendedSendBytecode():
-    w_class = mockclass(space, 0)
+    w_class = bootstrap_class(space, 0)
     w_object = w_class.as_class_get_shadow(space).new()
     sendBytecodesTest(w_class, w_object, singleExtendedSendBytecode + chr((0<<5)+0))
 
 def test_singleExtendedSuperBytecode(bytecode=singleExtendedSuperBytecode + chr((0<<5) + 0)):
-    w_supersuper = mockclass(space, 0)
-    w_super = mockclass(space, 0, w_superclass=w_supersuper)
-    w_class = mockclass(space, 0, w_superclass=w_super)
+    w_supersuper = bootstrap_class(space, 0)
+    w_super = bootstrap_class(space, 0, w_superclass=w_supersuper)
+    w_class = bootstrap_class(space, 0, w_superclass=w_super)
     w_object = w_class.as_class_get_shadow(space).new()
     # first call method installed in w_class
     bytecodes = singleExtendedSendBytecode + chr(0)
@@ -667,12 +665,12 @@ def test_singleExtendedSuperBytecode(bytecode=singleExtendedSuperBytecode + chr(
         assert s_caller_context.stack() == []
 
 def test_secondExtendedSendBytecode():
-    w_class = mockclass(space, 0)
+    w_class = bootstrap_class(space, 0)
     w_object = w_class.as_class_get_shadow(space).new()
     sendBytecodesTest(w_class, w_object, secondExtendedSendBytecode + chr(0))
 
 def test_doubleExtendedDoAnythinBytecode():
-    w_class = mockclass(space, 0)
+    w_class = bootstrap_class(space, 0)
     w_object = w_class.as_class_get_shadow(space).new()
 
     sendBytecodesTest(w_class, w_object, doubleExtendedDoAnythingBytecode + chr((0<<5) + 0) + chr(0))
@@ -802,7 +800,7 @@ def test_bc_primBytecodeAtPut_string():
 
 def test_bc_primBytecodeAt_with_instvars():
     #   ^ self at: 1
-    w_fakeclass = mockclass(space, 1, name='fakeclass', varsized=True)
+    w_fakeclass = bootstrap_class(space, 1, name='fakeclass', varsized=True)
     w_fakeinst = w_fakeclass.as_class_get_shadow(space).new(1)
     w_fakeinst.store(space, 0, space.wrap_char("a")) # static slot 0: instance variable
     w_fakeinst.store(space, 1, space.wrap_char("b")) # varying slot 1
@@ -817,7 +815,7 @@ def test_bc_primBytecodeAt_with_instvars():
 
 def test_bc_primBytecodeAtPut_with_instvars():
     #   ^ self at: 1 put: #b
-    w_fakeclass = mockclass(space, 1, name='fakeclass', varsized=True)
+    w_fakeclass = bootstrap_class(space, 1, name='fakeclass', varsized=True)
     w_fakeinst = w_fakeclass.as_class_get_shadow(space).new(1)
     w_fakeinst.store(space, 0, space.wrap_char("a")) # static slot 0: instance variable
     w_fakeinst.store(space, 1, space.wrap_char("a")) # varying slot 1

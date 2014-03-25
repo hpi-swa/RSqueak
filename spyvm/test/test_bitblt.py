@@ -1,7 +1,8 @@
 from spyvm import model, shadow, constants, interpreter, objspace
 from spyvm.plugins import bitblt
+from .util import BootstrappedObjSpace
 
-space = objspace.ObjSpace()
+space = BootstrappedObjSpace()
 
 # copy from test_miniimage
 def w(any):

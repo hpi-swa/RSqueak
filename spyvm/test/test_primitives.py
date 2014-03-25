@@ -1,22 +1,21 @@
 import py
 import os
 import math
+from .util import bootstrap_class
 from spyvm.primitives import prim_table, PrimitiveFailedError
-from spyvm import model, shadow, interpreter, strategies
+from spyvm import model, shadow, interpreter
 from spyvm import constants, primitives, objspace, wrapper, display
 from spyvm.plugins import bitblt
+from .util import BootstrappedObjSpace
 
 from rpython.rlib.rfloat import INFINITY, NAN, isinf, isnan
 
-mockclass = objspace.bootstrap_class
-
-space = objspace.ObjSpace()
+space = BootstrappedObjSpace()
 
 class MockFrame(model.W_PointersObject):
     def __init__(self, stack):
         self.space = space
         size = 6 + len(stack) + 6
-        self.strategy = strategies.ListStorageStrategy.singleton
         self.initialize_storage(space, size)
         self.store_all(space, [None] * 6 + stack + [space.w_nil] * 6)
         s_self = self.as_blockcontext_get_shadow(space)
@@ -27,7 +26,7 @@ class MockFrame(model.W_PointersObject):
         self.w_class = space.w_MethodContext
 
     def as_blockcontext_get_shadow(self, space):
-        if not self.shadow:
+        if not isinstance(self.shadow, shadow.BlockContextShadow):
             self.shadow = shadow.BlockContextShadow(space, self)
         return self.shadow
 
@@ -221,7 +220,7 @@ def test_float_times_two_power():
     assert prim(primitives.FLOAT_TIMES_TWO_POWER, [213.0, 1020]).value == float('inf')
 
 def test_at():
-    w_obj = mockclass(space, 0, varsized=True).as_class_get_shadow(space).new(1)
+    w_obj = bootstrap_class(space, 0, varsized=True).as_class_get_shadow(space).new(1)
     foo = wrap("foo")
     w_obj.store(space, 0, foo)
     assert prim(primitives.AT, [w_obj, 1]) is foo
@@ -232,11 +231,11 @@ def test_at():
     assert prim(primitives.AT, [w_obj, 1]) == foo
 
 def test_invalid_at():
-    w_obj = mockclass(space, 0).as_class_get_shadow(space).new()
+    w_obj = bootstrap_class(space, 0).as_class_get_shadow(space).new()
     prim_fails(primitives.AT, [w_obj, 1])
 
 def test_at_put():
-    w_obj = mockclass(space, 0, varsized=1).as_class_get_shadow(space).new(1)
+    w_obj = bootstrap_class(space, 0, varsized=1).as_class_get_shadow(space).new(1)
     assert prim(primitives.AT_PUT, [w_obj, 1, 22]).value == 22
     assert prim(primitives.AT, [w_obj, 1]).value == 22
 
@@ -249,13 +248,13 @@ def test_at_and_at_put_bytes():
     assert prim(primitives.AT, [w_str, 3]).value == ord('c')
 
 def test_invalid_at_put():
-    w_obj = mockclass(space, 0).as_class_get_shadow(space).new()
+    w_obj = bootstrap_class(space, 0).as_class_get_shadow(space).new()
     prim_fails(primitives.AT_PUT, [w_obj, 1, 22])
 
 def test_size():
-    w_obj = mockclass(space, 0, varsized=True).as_class_get_shadow(space).new(0)
+    w_obj = bootstrap_class(space, 0, varsized=True).as_class_get_shadow(space).new(0)
     assert prim(primitives.SIZE, [w_obj]).value == 0
-    w_obj = mockclass(space, 3, varsized=True).as_class_get_shadow(space).new(5)
+    w_obj = bootstrap_class(space, 3, varsized=True).as_class_get_shadow(space).new(5)
     assert prim(primitives.SIZE, [w_obj]).value == 5
 
 def test_size_of_compiled_method():
@@ -279,7 +278,7 @@ def test_invalid_object_at():
     prim_fails(primitives.OBJECT_AT, ["q", constants.CHARACTER_VALUE_INDEX+2])
 
 def test_invalid_object_at_put():
-    w_obj = mockclass(space, 1).as_class_get_shadow(space).new()
+    w_obj = bootstrap_class(space, 1).as_class_get_shadow(space).new()
     prim_fails(primitives.OBJECT_AT_PUT, [w_obj, 2, 42])
 
 def test_string_at_put():
@@ -344,7 +343,7 @@ def test_class():
 
 def test_as_oop():
     # I checked potato, and that returns the hash for as_oop
-    w_obj = mockclass(space, 0).as_class_get_shadow(space).new()
+    w_obj = bootstrap_class(space, 0).as_class_get_shadow(space).new()
     w_obj.hash = 22
     assert prim(primitives.AS_OOP, [w_obj]).value == 22
 
@@ -485,7 +484,7 @@ def test_load_inst_var():
 def test_new_method():
     bytecode = ''.join(map(chr, [ 16, 119, 178, 154, 118, 164, 11, 112, 16, 118, 177, 224, 112, 16, 119, 177, 224, 176, 124 ]))
 
-    shadow = mockclass(space, 0).as_class_get_shadow(space)
+    shadow = bootstrap_class(space, 0).as_class_get_shadow(space)
     w_method = prim(primitives.NEW_METHOD, [space.w_CompiledMethod, len(bytecode), 1025])
     assert w_method.literalat0(space, 0).value == 1025
     assert w_method.literalsize == 2
@@ -497,7 +496,7 @@ def test_image_name():
     assert w_v.bytes == list(IMAGENAME)
 
 def test_clone():
-    w_obj = mockclass(space, 1, varsized=True).as_class_get_shadow(space).new(1)
+    w_obj = bootstrap_class(space, 1, varsized=True).as_class_get_shadow(space).new(1)
     w_obj.atput0(space, 0, space.wrap_int(1))
     w_v = prim(primitives.CLONE, [w_obj])
     assert space.unwrap_int(w_v.at0(space, 0)) == 1
@@ -812,7 +811,7 @@ def test_bitblt_copy_bits(monkeypatch):
 
     try:
         monkeypatch.setattr(w_frame.shadow, "_sendSelfSelector", perform_mock)
-        monkeypatch.setattr(bitblt.BitBltShadow, "sync_cache", sync_cache_mock)
+        monkeypatch.setattr(bitblt.BitBltShadow, "attach_shadow", sync_cache_mock)
         with py.test.raises(CallCopyBitsSimulation):
             prim_table[primitives.BITBLT_COPY_BITS](interp, w_frame.as_context_get_shadow(space), argument_count-1)
     finally:

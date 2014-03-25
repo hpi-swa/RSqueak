@@ -1,6 +1,6 @@
 import py
 from spyvm import squeakimage, model, constants
-from spyvm import interpreter, shadow, objspace
+from spyvm import interpreter, shadow
 from spyvm.test import test_miniimage as tools
 from spyvm.test.test_miniimage import perform, w
 
@@ -10,7 +10,7 @@ def setup():
 
 def find_symbol_in_methoddict_of(string, s_class):
     s_methoddict = s_class.s_methoddict()
-    s_methoddict.sync_cache()
+    s_methoddict.sync_method_cache()
     methoddict_w = s_methoddict.methoddict
     for each in methoddict_w.keys():
         if each.as_string() == string:

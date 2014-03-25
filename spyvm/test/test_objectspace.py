@@ -1,8 +1,9 @@
 import py
 import sys
 from spyvm import objspace
+from .util import BootstrappedObjSpace
 
-space = objspace.ObjSpace()
+space = BootstrappedObjSpace()
 
 def ismetaclass(w_cls):
     # Heuristic to detect if this is a metaclass. Don't use apart
@@ -12,7 +13,7 @@ def ismetaclass(w_cls):
 
 def test_every_class_is_an_instance_of_a_metaclass():
     for (nm, w_cls) in space.classtable.items():
-        assert ismetaclass(w_cls) or ismetaclass(w_cls.s_class._w_self)
+        assert ismetaclass(w_cls) or ismetaclass(w_cls.w_class)
 
 def test_every_metaclass_inherits_from_class_and_behavior():
     s_Class = space.classtable['w_Class'].as_class_get_shadow(space)

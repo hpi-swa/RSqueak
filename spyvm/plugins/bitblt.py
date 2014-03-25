@@ -53,7 +53,7 @@ class BitBltShadow(AbstractCachingShadow):
         MaskTable.append(r_uint((2 ** (i + 1)) - 1))
     AllOnes = r_uint(0xFFFFFFFF)
 
-    def sync_cache(self):
+    def attach_shadow(self):
         pass
 
     def intOrIfNil(self, w_int, i):
@@ -734,7 +734,7 @@ class FormShadow(AbstractCachingShadow):
     def intOrIfNil(self, w_int, i):
         return intOrIfNil(self.space, w_int, i)
 
-    def sync_cache(self):
+    def attach_shadow(self):
         self.invalid = True
         if self.size() < 5:
             return
@@ -756,8 +756,8 @@ class FormShadow(AbstractCachingShadow):
         w_offset = self.fetch(4)
         assert isinstance(w_offset, model.W_PointersObject)
         if not w_offset is self.space.w_nil:
-            self.offsetX = self.intOrIfNil(w_offset._fetch(self.space, 0), 0)
-            self.offsetY = self.intOrIfNil(w_offset._fetch(self.space, 1), 0)
+            self.offsetX = self.intOrIfNil(w_offset.fetch(self.space, 0), 0)
+            self.offsetY = self.intOrIfNil(w_offset.fetch(self.space, 1), 0)
         self.pixPerWord = 32 / self.depth
         self.pitch = (self.width + (self.pixPerWord - 1)) / self.pixPerWord | 0
         if self.w_bits.size() < (self.pitch * self.height):

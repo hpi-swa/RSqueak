@@ -2,10 +2,10 @@ import py
 from spyvm import squeakimage
 from spyvm.squeakimage import chrs2int, chrs2long, swapped_chrs2long
 from spyvm import objspace
-
+from .util import BootstrappedObjSpace
 from struct import pack
 
-space = objspace.ObjSpace()
+space = BootstrappedObjSpace()
 
 # ----- helpers ----------------------------------------------
 

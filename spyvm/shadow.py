@@ -11,7 +11,8 @@ class AbstractShadow(object):
     can be attached at run-time to any Smalltalk object.
     """
     _attrs_ = ['_w_self', 'space']
-
+    has_getname = True
+    
     def __init__(self, space, w_self):
         self.space = space
         self._w_self = w_self
@@ -40,6 +41,7 @@ class AbstractShadow(object):
 
 class ListStorageShadow(AbstractShadow):
     _attrs_ = ['storage']
+    has_getname = False
     
     def __init__(self, space, w_self, size):
         AbstractShadow.__init__(self, space, w_self)
@@ -60,6 +62,7 @@ class ListStorageShadow(AbstractShadow):
 
 class WeakListStorageShadow(AbstractShadow):
     _attrs_ = ['storage']
+    has_getname = False
     
     def __init__(self, space, w_self, size):
         AbstractShadow.__init__(self, space, w_self)
@@ -79,6 +82,7 @@ class AbstractCachingShadow(ListStorageShadow):
     _attrs_ = ['version']
     import_from_mixin(version.VersionMixin)
     version = None
+    has_getname = True
     
     def __init__(self, space, w_self):
         ListStorageShadow.__init__(self, space, w_self, 0)
@@ -337,7 +341,7 @@ class ClassShadow(AbstractCachingShadow):
         "NOT_RPYTHON"     # this is only for testing.
         if self._s_methoddict is None:
             w_methoddict = model.W_PointersObject(self.space, None, 2)
-            w_methoddict._store(self.space, 1, model.W_PointersObject(self.space, None, 0))
+            w_methoddict.store(self.space, 1, model.W_PointersObject(self.space, None, 0))
             self._s_methoddict = w_methoddict.as_methoddict_get_shadow(self.space)
             self.s_methoddict().sync_method_cache()
         self.s_methoddict().invalid = False
@@ -450,6 +454,12 @@ class ContextPartShadow(AbstractRedirectingShadow):
         AbstractRedirectingShadow.__init__(self, space, w_self)
         self.instances_w = {}
 
+    def copy_field_from(self, n0, other_shadow):
+        try:
+            AbstractRedirectingShadow.copy_field_from(self, n0, other_shadow)
+        except error.SenderChainManipulation, e:
+            assert e.s_context == self
+        
     def copy_from(self, other_shadow):
         # Some fields have to be initialized before the rest, to ensure correct initialization.
         privileged_fields = self.fields_to_copy_first()
@@ -462,6 +472,9 @@ class ContextPartShadow(AbstractRedirectingShadow):
         for n0 in range(self.size()):
             if n0 not in privileged_fields:
                 self.copy_field_from(n0, other_shadow)
+        
+    def fields_to_copy_first(self):
+        return []
         
     @staticmethod
     def is_block_context(w_pointers, space):

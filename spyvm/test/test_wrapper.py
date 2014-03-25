@@ -1,10 +1,10 @@
 import py
 from spyvm import wrapper, model, interpreter, objspace
 from spyvm.error import WrapperException, FatalError
-
+from .util import BootstrappedObjSpace
 from spyvm.test.test_interpreter import new_frame as new_frame_tuple
 
-space = objspace.ObjSpace()
+space = BootstrappedObjSpace()
 
 def new_frame():
     return new_frame_tuple("")[0]

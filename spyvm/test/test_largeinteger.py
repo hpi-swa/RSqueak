@@ -1,7 +1,7 @@
 import py
 import operator
 from spyvm import squeakimage, model, constants, error
-from spyvm import interpreter, shadow, objspace, primitives
+from spyvm import interpreter, shadow, primitives
 from spyvm.test import test_miniimage as tools
 from spyvm.test.test_miniimage import perform, w
 from spyvm.test.test_primitives import MockFrame
@@ -10,10 +10,9 @@ from rpython.rlib.rarithmetic import intmask, r_uint
 
 space, interp = tools.setup_module(tools, filename='bootstrapped.image')
 
-
 def find_symbol_in_methoddict_of(string, s_class):
     s_methoddict = s_class.s_methoddict()
-    s_methoddict.sync_cache()
+    s_methoddict.sync_method_cache()
     methoddict_w = s_methoddict.methoddict
     for each in methoddict_w.keys():
         if each.as_string() == string:
@@ -30,7 +29,7 @@ def test_initialize_string_class():
     initialize_class(w("string").getclass(tools.space))
 
 def perform_primitive(rcvr, w_selector, *args):
-    code = rcvr.getclass(space).shadow.lookup(w_selector).primitive()
+    code = rcvr.class_shadow(space).lookup(w_selector).primitive()
     assert code
     func = primitives.prim_holder.prim_table[code]
     s_frame = MockFrame([rcvr] + list(args)).as_context_get_shadow(space)

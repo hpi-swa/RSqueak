@@ -1,8 +1,8 @@
 import random
-from spyvm import model, shadow, constants, interpreter
-from spyvm import objspace, strategies
+from spyvm import model, shadow, constants, interpreter, objspace
+from .util import BootstrappedObjSpace
 
-space = objspace.ObjSpace()
+space = BootstrappedObjSpace()
 
 w_Object = space.classtable['w_Object']
 w_Metaclass  = space.classtable['w_Metaclass']
@@ -42,7 +42,7 @@ def build_smalltalk_class(name, format, w_superclass=w_Object,
     w_class.store(space, constants.CLASS_FORMAT_INDEX, space.wrap_int(format))
     if name is not None:
         w_class.store(space, constants.CLASS_NAME_INDEX, space.wrap_string(name))
-    w_class.as_class_get_shadow(space).s_methoddict().sync_cache()
+    w_class.as_class_get_shadow(space).s_methoddict().sync_method_cache()
     return w_class
 
 def basicshape(name, format, kind, varsized, instsize):
@@ -156,18 +156,18 @@ def test_methodcontext():
 
 def assert_contains_nils(w_obj):
     for i in range(w_obj.size()):
-        assert model.w_nil == w_obj.strategy.fetch(i, space, w_obj)
+        assert model.w_nil == w_obj.fetch(space, i)
 
 def test_attach_mc():
     w_m = method()
     w_object = methodcontext(pc=13, method=w_m)
     s_object = w_object.as_methodcontext_get_shadow(space)
-    assert_contains_nils(w_object)
+    assert s_object.fetch(1).value == 13
 
 def test_attach_bc():
     w_object = blockcontext(pc=13)
     s_object = w_object.as_blockcontext_get_shadow(space)
-    assert_contains_nils(w_object)
+    assert s_object.fetch(1).value == 13
 
 def test_replace_to_bc():
     w_object = blockcontext(pc=13)
@@ -177,7 +177,7 @@ def test_replace_to_bc():
     assert ([s_newobject.fetch(i) for i in range(s_newobject.size())] ==
             [s_object.fetch(i) for i in range(s_newobject.size())])
     assert w_object.shadow is s_newobject
-    assert_contains_nils(w_object)
+    assert s_object.fetch(1).value == 13
 
 def test_compiledmethodshadow():
     from test_model import joinbits
@@ -240,17 +240,17 @@ def test_cached_methoddict():
     w_class = build_smalltalk_class("Demo", 0x90, methods=methods)
     s_class = w_class.as_class_get_shadow(space)
     s_methoddict = s_class.s_methoddict()
-    s_methoddict.sync_cache()
+    s_methoddict.sync_method_cache()
     i = 0
-    key = s_methoddict.w_self()._fetch(s_methoddict.space, constants.METHODDICT_NAMES_INDEX+i)
+    key = s_methoddict.w_self().fetch(s_methoddict.space, constants.METHODDICT_NAMES_INDEX+i)
     while key is space.w_nil:
         i = i + 1
-        key = s_methoddict.w_self()._fetch(s_methoddict.space, constants.METHODDICT_NAMES_INDEX+i)
+        key = s_methoddict.w_self().fetch(s_methoddict.space, constants.METHODDICT_NAMES_INDEX+i)
 
     assert (s_class.lookup(key) is foo.as_compiledmethod_get_shadow(space)
             or s_class.lookup(key) is bar.as_compiledmethod_get_shadow(space))
     # change that entry
-    w_array = s_class.w_methoddict()._fetch(s_class.space, constants.METHODDICT_VALUES_INDEX)
+    w_array = s_class.w_methoddict().fetch(s_class.space, constants.METHODDICT_VALUES_INDEX)
     version = s_class.version
     w_array.atput0(space, i, baz)
 
@@ -269,8 +269,8 @@ def test_updating_class_changes_subclasses():
     key = space.wrap_string('foo')
 
     s_md = w_parent.as_class_get_shadow(space).s_methoddict()
-    s_md.sync_cache()
-    w_ary = s_md._w_self._fetch(s_md.space, constants.METHODDICT_VALUES_INDEX)
+    s_md.sync_method_cache()
+    w_ary = s_md._w_self.fetch(s_md.space, constants.METHODDICT_VALUES_INDEX)
     s_md._w_self.atput0(space, 0, key)
     w_ary.atput0(space, 0, w_method)
 

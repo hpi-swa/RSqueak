@@ -1,5 +1,5 @@
 import py
-from spyvm import wrapper, model, interpreter, objspace, strategies
+from spyvm import wrapper, model, interpreter, strategies
 from spyvm.model import w_nil
 from spyvm.test import test_miniimage as tools
 from spyvm.error import WrapperException, FatalError

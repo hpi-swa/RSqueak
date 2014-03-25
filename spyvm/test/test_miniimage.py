@@ -2,16 +2,12 @@
 #       NOT relying on order of methods
 #       using setup_module(module) now
 import py
-from spyvm import squeakimage
-from spyvm import model
-from spyvm import constants
-from spyvm import interpreter
-from spyvm import shadow
-from spyvm import objspace
+from spyvm import squeakimage, model, constants, interpreter, shadow, objspace
+from .util import BootstrappedObjSpace
 # lazy initialization of test data, ie ImageReader and Float class
 
 def setup_module(module, filename='mini.image'):
-    space = objspace.ObjSpace()
+    space = BootstrappedObjSpace()
     from spyvm.tool.analyseimage import image_dir
     module.mini_image = image_dir.join(filename)
     module.reader = open_miniimage(space)
@@ -113,27 +109,21 @@ def test_scheduler():
     assert str(w0) == "a ProcessorScheduler"
 
 def test_special_classes0():
+    def test_classname(so_index, expected_name):
+        obj = image.special(so_index)
+        obj.as_class_get_shadow(space)
+        assert str(obj) == expected_name
     image = get_image()
     # w = image.special(constants.SO_BITMAP_CLASS)
     # assert str(w) == "Bitmap class"
-    w = image.special(constants.SO_SMALLINTEGER_CLASS)
-    assert str(w) == "SmallInteger class"
-    w = image.special(constants.SO_STRING_CLASS)
-    assert str(w) == "String class"
-    w = image.special(constants.SO_ARRAY_CLASS)
-    assert str(w) == "Array class"
-    w = image.special(constants.SO_FLOAT_CLASS)
-    assert str(w) == "Float class"
-    w = image.special(constants.SO_METHODCONTEXT_CLASS)
-    assert str(w) == "MethodContext class"
-    w = image.special(constants.SO_BLOCKCONTEXT_CLASS)
-    assert str(w) == "BlockContext class"
-    w = image.special(constants.SO_POINT_CLASS)
-    assert str(w) == "Point class"
-    w = image.special(constants.SO_LARGEPOSITIVEINTEGER_CLASS)
-    assert str(w) == "LargePositiveInteger class"
-    w = image.special(constants.SO_MESSAGE_CLASS)
-    assert str(w) == "Message class"
+    test_classname(constants.SO_SMALLINTEGER_CLASS, "SmallInteger class")
+    test_classname(constants.SO_ARRAY_CLASS, "Array class")
+    test_classname(constants.SO_FLOAT_CLASS, "Float class")
+    test_classname(constants.SO_METHODCONTEXT_CLASS, "MethodContext class")
+    test_classname(constants.SO_BLOCKCONTEXT_CLASS, "BlockContext class")
+    test_classname(constants.SO_POINT_CLASS, "Point class")
+    test_classname(constants.SO_LARGEPOSITIVEINTEGER_CLASS, "LargePositiveInteger class")
+    test_classname(constants.SO_MESSAGE_CLASS, "Message class")
 
     # to be continued
 
@@ -406,7 +396,7 @@ def test_primitive_perform_with_args():
     from spyvm import primitives
     w_o = space.wrap_list([1, 2, 3])
     w_methoddict = w_o.class_shadow(space)._s_superclass._s_superclass.w_methoddict()
-    w_methoddict.as_methoddict_get_shadow(space).sync_cache()
+    w_methoddict.as_methoddict_get_shadow(space).sync_method_cache()
     selectors_w = w_methoddict.shadow.methoddict.keys()
     w_sel = None
     for sel in selectors_w:
