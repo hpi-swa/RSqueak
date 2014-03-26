@@ -166,9 +166,6 @@ class W_SmallInteger(W_Object):
     def invariant(self):
         return isinstance(self.value, int) and self.value < 0x8000
 
-    def make_copy(self, space):
-        return space.wrap_int(space.unwrap_int(self))
-    
     def lshift(self, space, shift):
         from rpython.rlib.rarithmetic import ovfcheck, intmask, r_uint
         # shift > 0, therefore the highest bit of upperbound is not set,
