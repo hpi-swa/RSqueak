@@ -130,15 +130,6 @@ class ClassShadow(AbstractCachingShadow):
                 self._s_methoddict = w_val.as_methoddict_get_shadow(self.space)
                 self._s_methoddict.s_class = self
         elif n0 == constants.CLASS_FORMAT_INDEX:
-            if not isinstance(w_val, model.W_SmallInteger):
-                # TODO -- anton -- this happens with mini.image and other images (but not Squeak*.image)
-                # You can try something like the following after all g_objects have been initialized in the ImageReader:
-                # special_objects[11] == special_objects[36].g_class
-                # TODO -- fix images or think of a more appropriate hack.
-                self._instance_size = constants.BLKCLSR_SIZE
-                self.instance_varsized = True
-                return
-            
             # read and painfully decode the format
             classformat = self.space.unwrap_int(w_val)
             # The classformat in Squeak, as an integer value, is:

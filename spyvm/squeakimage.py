@@ -213,6 +213,7 @@ class ImageReader(object):
         self.space = space
         self.stream = stream
         self.version = version
+        self.is_modern = self.version.magic > 6502
         # dictionary mapping old address to chunk object
         self.chunks = {}
         self.chunklist = []
@@ -280,7 +281,15 @@ class ImageReader(object):
     def assign_prebuilt_constants(self):
         # Assign classes and objects that in special objects array that are already created.
         self._assign_prebuilt_constants(constants.objects_in_special_object_table, self.space.objtable)
-        self._assign_prebuilt_constants(constants.classes_in_special_object_table, self.space.classtable)
+        if not self.is_modern:
+            classtable = {}
+            for name, so_index in self.space.classtable.items():
+                # In non-modern images (pre 4.0), there was no BlockClosure class.
+                if not name == "BlockClosure":
+                    classtable[name] = so_index
+        else:
+            classtable = self.space.classtable
+        self._assign_prebuilt_constants(constants.classes_in_special_object_table, classtable)
 
     def _assign_prebuilt_constants(self, names_and_indices, prebuilt_objects):
         for name, so_index in names_and_indices.items():
@@ -369,7 +378,7 @@ class SqueakImage(object):
         self.w_simulateCopyBits = self.find_symbol(space, reader, "simulateCopyBits")
         self.lastWindowSize = reader.lastWindowSize
         self.version = reader.version
-        self.is_modern = reader.version.magic > 6502
+        self.is_modern = reader.is_modern
         self.run_spy_hacks(space)
         self.startup_time = time.time()
 
