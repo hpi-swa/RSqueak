@@ -1,14 +1,19 @@
 import py, operator
 from spyvm import squeakimage, model, constants, error, interpreter, shadow, primitives
 from spyvm.test.test_primitives import MockFrame
-from .util import read_image, find_symbol_in_methoddict_of
+from .util import read_image, find_symbol_in_methoddict_of, copy_to_module, cleanup_module
 from rpython.rlib.rarithmetic import intmask, r_uint
 
-space, interp, _, _ = read_image('bootstrapped.image')
-w = space.w
-perform = interp.perform
-interp.trace = False
-space.initialize_class(space.w_String, interp)
+def setup_module():
+    space, interp, _, _ = read_image('bootstrapped.image')
+    w = space.w
+    perform = interp.perform
+    copy_to_module(locals(), __name__)
+    interp.trace = False
+    space.initialize_class(space.w_String, interp)
+
+def teardown_module():
+    cleanup_module(__name__)
 
 def perform_primitive(rcvr, w_selector, *args):
     code = rcvr.class_shadow(space).lookup(w_selector).primitive()

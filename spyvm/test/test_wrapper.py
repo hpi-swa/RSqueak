@@ -1,10 +1,15 @@
 import py
 from spyvm import wrapper, model, interpreter, objspace
 from spyvm.error import WrapperException, FatalError
-from .util import create_space
+from .util import create_space, copy_to_module, cleanup_module
 from spyvm.test.test_interpreter import _new_frame
 
-space = create_space()
+def setup_module():
+    space = create_space()
+    copy_to_module(locals(), __name__)
+
+def teardown_module():
+    cleanup_module(__name__)
 
 def new_frame():
     return _new_frame(space, "")[0]
@@ -67,10 +72,16 @@ def test_linked_list():
     linkedlist.remove(w_last)
     assert linkedlist.last_link() is w_first
 
-def new_process(w_next=space.w_nil,
-                w_my_list=space.w_nil,
-                w_suspended_context=space.w_nil,
+def new_process(w_next=None,
+                w_my_list=None,
+                w_suspended_context=None,
                 priority=0):
+    if w_next is None:
+        w_next = space.w_nil
+    if w_my_list is None:
+        w_my_list = space.w_nil
+    if w_suspended_context is None:
+        w_suspended_context = space.w_nil
     w_priority = space.wrap_int(priority)
     w_process = model.W_PointersObject(space, None, 4)
     process = wrapper.ProcessWrapper(space, w_process)
@@ -106,7 +117,9 @@ def new_prioritylist(prioritydict=None):
 
     return prioritylist
 
-def new_scheduler(w_process=space.w_nil, prioritydict=None):
+def new_scheduler(w_process=None, prioritydict=None):
+    if w_process is None:
+        w_process = space.w_nil
     priority_list = new_prioritylist(prioritydict)
     w_scheduler = model.W_PointersObject(space, None, 2)
     scheduler = wrapper.SchedulerWrapper(space, w_scheduler)

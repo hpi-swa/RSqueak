@@ -1,14 +1,18 @@
 import random
 from spyvm import model, shadow, constants, interpreter, objspace, wrapper
-from .util import create_space
+from .util import create_space, copy_to_module, cleanup_module
 from test_model import joinbits
 
-space = create_space()
+def setup_module():
+    space = create_space()
+    w_Object     = space.classtable['w_Object']
+    w_Metaclass  = space.classtable['w_Metaclass']
+    w_MethodDict = space.classtable['w_MethodDict']
+    w_Array      = space.classtable['w_Array']
+    copy_to_module(locals(), __name__)
 
-w_Object     = space.classtable['w_Object']
-w_Metaclass  = space.classtable['w_Metaclass']
-w_MethodDict = space.classtable['w_MethodDict']
-w_Array      = space.classtable['w_Array']
+def teardown_module():
+    cleanup_module(__name__)
 
 def build_methoddict(methods):
     size = int(len(methods) * 1.5)
@@ -29,8 +33,10 @@ def build_methoddict(methods):
         w_array.store(space, pos, w_compiledmethod)
     return w_methoddict
 
-def build_smalltalk_class(name, format, w_superclass=w_Object,
+def build_smalltalk_class(name, format, w_superclass=None,
                           w_classofclass=None, methods={}):
+    if w_superclass is None:
+        w_superclass = w_Object
     if w_classofclass is None:
         w_classofclass = build_smalltalk_class(None, 0x94,
                                                w_superclass.getclass(space),
@@ -76,7 +82,7 @@ def test_methoddict():
     for w_key, value in methoddict.items():
         assert methods[w_key.as_string()].as_compiledmethod_get_shadow(space) is value
 
-def method(tempsize=3,argsize=2, bytes="abcde"):
+def create_method(tempsize=3,argsize=2, bytes="abcde"):
     w_m = model.W_CompiledMethod(space, )
     w_m.bytes = bytes
     w_m.tempsize = tempsize
@@ -84,8 +90,12 @@ def method(tempsize=3,argsize=2, bytes="abcde"):
     w_m.literalsize = 2
     return w_m
 
-def methodcontext(w_sender=space.w_nil, pc=13, stackpointer=0, stacksize=5,
-                  method=method()):
+def methodcontext(w_sender=None, pc=13, stackpointer=0, stacksize=5,
+                  method=None):
+    if w_sender is None:
+        w_sender = space.w_nil
+    if method is None:
+        method = create_method()
     w_object = model.W_PointersObject(space, space.w_MethodContext, constants.MTHDCTX_TEMP_FRAME_START+method.tempsize+stacksize)
     w_object.store(space, constants.CTXPART_SENDER_INDEX, w_sender)
     w_object.store(space, constants.CTXPART_PC_INDEX, space.wrap_int(pc))
@@ -98,8 +108,12 @@ def methodcontext(w_sender=space.w_nil, pc=13, stackpointer=0, stacksize=5,
     w_object.store(space, constants.MTHDCTX_TEMP_FRAME_START, space.wrap_string('el'))
     return w_object
 
-def blockcontext(w_sender=space.w_nil, pc=13, stackpointer=1, stacksize=5,
-                  home=methodcontext()):
+def blockcontext(w_sender=None, pc=13, stackpointer=1, stacksize=5,
+                  home=None):
+    if w_sender is None:
+        w_sender = space.w_nil
+    if home is None:
+        home = methodcontext()
     w_object = model.W_PointersObject(space, space.w_MethodContext, constants.MTHDCTX_TEMP_FRAME_START+stacksize)
     w_object.store(space, constants.CTXPART_SENDER_INDEX, w_sender)
     w_object.store(space, constants.CTXPART_PC_INDEX, space.wrap_int(pc))
@@ -111,7 +125,7 @@ def blockcontext(w_sender=space.w_nil, pc=13, stackpointer=1, stacksize=5,
     return w_object
 
 def test_context():
-    w_m = method()
+    w_m = create_method()
     w_object = methodcontext(stackpointer=3, method=w_m)
     w_object2 = methodcontext(w_sender=w_object)
     s_object = w_object.as_methodcontext_get_shadow(space)
@@ -144,7 +158,7 @@ def test_context():
     assert s_object.stackdepth() == s_object.tempsize()
 
 def test_methodcontext():
-    w_m = method()
+    w_m = create_method()
                               # Point over 2 literals of size 4
     w_object = methodcontext(pc=13,method=w_m)
     s_object = w_object.as_methodcontext_get_shadow(space)
@@ -160,7 +174,7 @@ def assert_contains_nils(w_obj):
         assert space.w_nil == w_obj.fetch(space, i)
 
 def test_attach_mc():
-    w_m = method()
+    w_m = create_method()
     w_object = methodcontext(pc=13, method=w_m)
     s_object = w_object.as_methodcontext_get_shadow(space)
     assert s_object.fetch(1).value == 13

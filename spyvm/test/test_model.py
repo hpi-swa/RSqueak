@@ -3,12 +3,17 @@ from spyvm import model, shadow, objspace, error, display
 from spyvm.shadow import MethodNotFound, WEAK_POINTERS
 from rpython.rlib.rarithmetic import intmask, r_uint
 from rpython.rtyper.lltypesystem import lltype, rffi
-from .util import create_space
+from .util import create_space, copy_to_module, cleanup_module
 
-space = create_space()
-bootstrap_class = space.bootstrap_class
-w_foo = space.wrap_string("foo")
-w_bar = space.wrap_string("bar")
+def setup_module():
+    space = create_space()
+    bootstrap_class = space.bootstrap_class
+    w_foo = space.wrap_string("foo")
+    w_bar = space.wrap_string("bar")
+    copy_to_module(locals(), __name__)
+
+def teardown_module():
+    cleanup_module(__name__)
 
 def joinbits(values, lengths):
     result = 0
@@ -171,13 +176,19 @@ def test_compiledmethod_atput0_not_aligned():
     with py.test.raises(error.PrimitiveFailedError):
         w_method.atput0(space, 9, space.wrap_int(5))
 
-def test_is_same_object(w_o1=model.W_PointersObject(space, None,0), w_o2=None):
+def test_is_same_object(w_o1=None, w_o2=None):
+    if w_o1 is None:
+        w_o1 = model.W_PointersObject(space, None, 0)
     if w_o2 is None:
         w_o2 = w_o1
     assert w_o1.is_same_object(w_o2)
     assert w_o2.is_same_object(w_o1)
 
-def test_not_is_same_object(w_o1=model.W_PointersObject(space, None,0),w_o2=model.W_PointersObject(space, None,0)):
+def test_not_is_same_object(w_o1=None,w_o2=None):
+    if w_o1 is None:
+        w_o1 = model.W_PointersObject(space, None, 0)
+    if w_o2 is None:
+        w_o2 = model.W_PointersObject(space, None,0)
     assert not w_o1.is_same_object(w_o2)
     assert not w_o2.is_same_object(w_o1)
     w_o2 = model.W_SmallInteger(2)

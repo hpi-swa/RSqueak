@@ -1,18 +1,13 @@
 from spyvm import squeakimage, model, constants, interpreter, shadow, objspace
-from .util import read_image
+from .util import read_image, find_symbol_in_methoddict_of, copy_to_module, cleanup_module
 
-def setup():
-    import spyvm.test.test_zin_squeak_4_5_image as mod
-    mod.space, mod.interp, mod.image, mod.reader = read_image('Squeak4.5-12568.image')
-    mod.w = space.w
+def setup_module():
+    space, interp, image, reader = read_image('Squeak4.5-12568.image')
+    w = space.w
+    copy_to_module(locals(), __name__)
 
-def find_symbol_in_methoddict_of(string, s_class):
-    s_methoddict = s_class.s_methoddict()
-    s_methoddict.sync_method_cache()
-    methoddict_w = s_methoddict.methoddict
-    for each in methoddict_w.keys():
-        if each.as_string() == string:
-            return each
+def teardown_module():
+    cleanup_module(__name__)
 
 def test_all_pointers_are_valid():
     from test_miniimage import _test_all_pointers_are_valid

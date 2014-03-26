@@ -1,9 +1,14 @@
 from spyvm import model, shadow, constants, interpreter, objspace
 from spyvm.plugins import bitblt
-from .util import create_space
+from .util import create_space, copy_to_module, cleanup_module
 
-space = create_space()
-w = space.w
+def setup_module():
+    space = create_space()
+    w = space.w
+    copy_to_module(locals(), __name__)
+
+def teardown_module():
+    cleanup_module(__name__)
 
 def make_form(bits, width, height, depth, o_x=0, o_y=0):
     w_f = model.W_PointersObject(space, space.w_Array, 5)

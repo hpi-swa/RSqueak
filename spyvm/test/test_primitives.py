@@ -5,12 +5,17 @@ from spyvm.plugins import bitblt
 from rpython.rlib.rfloat import INFINITY, NAN, isinf, isnan
 from rpython.rlib.rarithmetic import intmask
 from rpython.rtyper.lltypesystem import lltype, rffi
-from .util import create_space
+from .util import create_space, copy_to_module, cleanup_module
 from .test_interpreter import _new_frame
 
-space = create_space()
-wrap = space.w
-bootstrap_class = space.bootstrap_class
+def setup_module():
+    space = create_space()
+    wrap = space.w
+    bootstrap_class = space.bootstrap_class
+    copy_to_module(locals(), __name__)
+
+def teardown_module():
+    cleanup_module(__name__)
 
 def new_frame(bytes):
     return _new_frame(space, bytes, space.w_nil)

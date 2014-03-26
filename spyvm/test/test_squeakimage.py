@@ -3,9 +3,14 @@ from struct import pack
 from spyvm import squeakimage
 from spyvm.squeakimage import chrs2int, chrs2long, swapped_chrs2long
 from spyvm import objspace
-from .util import create_space
+from .util import create_space, copy_to_module, cleanup_module
 
-space = create_space()
+def setup_module():
+    space = create_space()
+    copy_to_module(locals(), __name__)
+
+def teardown_module():
+    cleanup_module(__name__)
 
 # ----- helpers ----------------------------------------------
 
@@ -26,7 +31,6 @@ def imagestream_mock(string):
 def imagereader_mock(string):
     stream = imagestream_mock(string)
     return squeakimage.reader_for_image(space, stream)
-
 
 SIMPLE_VERSION_HEADER = pack(">i", 6502)
 SIMPLE_VERSION_HEADER_LE = pack("<i", 6502)

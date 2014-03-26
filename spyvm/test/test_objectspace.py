@@ -1,9 +1,14 @@
 import py, sys
 from spyvm import objspace, model
 from rpython.rlib.rarithmetic import r_uint
-from .util import create_space
+from .util import create_space, copy_to_module, cleanup_module
 
-space = create_space()
+def setup_module():
+    space = create_space()
+    copy_to_module(locals(), __name__)
+
+def teardown_module():
+    cleanup_module(__name__)
 
 def ismetaclass(w_cls):
     # Heuristic to detect if this is a metaclass. Don't use apart

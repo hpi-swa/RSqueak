@@ -1,10 +1,15 @@
 import py, math
 from spyvm import squeakimage, model, constants, interpreter, shadow, objspace, wrapper, primitives
-from .util import read_image, open_reader
+from .util import read_image, open_reader, copy_to_module, cleanup_module
 
-space, interp, image, reader = read_image("mini.image")
-w = space.w
-perform = interp.perform
+def setup_module():
+    space, interp, image, reader = read_image("mini.image")
+    w = space.w
+    perform = interp.perform
+    copy_to_module(locals(), __name__)
+
+def teardown_module():
+    cleanup_module(__name__)
 
 def open_miniimage():
     return open_reader(space, "mini.image")

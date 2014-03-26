@@ -1,3 +1,4 @@
+import sys
 from spyvm import model, shadow, objspace, version, constants, squeakimage, interpreter
 from rpython.rlib.objectmodel import instantiate
 
@@ -30,7 +31,22 @@ def find_symbol_in_methoddict_of(string, s_class):
     for each in methoddict_w.keys():
         if each.as_string() == string:
             return each
-    
+
+def copy_to_module(locals, module_name):
+    mod = sys.modules[module_name]
+    mod._copied_objects_ = []
+    for name, obj in locals.items():
+        setattr(mod, name, obj)
+        mod._copied_objects_.append(name)
+
+def cleanup_module(module_name):
+    mod = sys.modules[module_name]
+    if hasattr(mod, "_copied_objects_"):
+        for name in mod._copied_objects_:
+            delattr(mod, name)
+        del mod._copied_objects_
+        import gc; gc.collect()
+
 class BootstrappedObjSpace(objspace.ObjSpace):
     
     def w(self, any):

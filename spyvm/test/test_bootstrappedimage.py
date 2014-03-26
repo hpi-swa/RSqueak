@@ -1,14 +1,17 @@
 import py
 from spyvm import squeakimage, model, constants
 from spyvm import interpreter, shadow
-from .util import read_image
+from .util import read_image, copy_to_module, cleanup_module
 
-def setup():
-    import spyvm.test.test_bootstrappedimage as mod
-    mod.space, mod.interp, mod.image, mod.reader = read_image("bootstrapped.image")
-    mod.w = space.w
-    mod.perform = interp.perform
-    mod.space.initialize_class(mod.space.w_String, mod.interp)
+def setup_module():
+    space, interp, image, reader = read_image("bootstrapped.image")
+    w = space.w
+    perform = interp.perform
+    copy_to_module(locals(), __name__)
+    space.initialize_class(space.w_String, interp)
+
+def teardown_module():
+    cleanup_module(__name__)
 
 def test_symbol_asSymbol():
     w_result = perform(image.w_asSymbol, "asSymbol")

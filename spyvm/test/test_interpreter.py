@@ -1,10 +1,15 @@
 import py, operator, sys
 from spyvm import model, interpreter, primitives, shadow, objspace, wrapper, constants
-from .util import create_space_interp
+from .util import create_space_interp, copy_to_module, cleanup_module
 from spyvm.wrapper import PointWrapper
 from spyvm.conftest import option
 
-space, interp = create_space_interp()
+def setup_module():
+    space, interp = create_space_interp()
+    copy_to_module(locals(), __name__)
+
+def teardown_module():
+    cleanup_module(__name__)
 
 def bootstrap_class(instsize, w_superclass=None, w_metaclass=None,
                     name='?', format=shadow.POINTERS, varsized=True):
@@ -101,7 +106,9 @@ def _new_frame(space, bytes, receiver=None):
     s_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(space, receiver, ["foo", "bar"])
     return s_frame.w_self(), s_frame
 
-def new_frame(bytes, receiver=space.w_nil, space=space):
+def new_frame(bytes, receiver=None):
+    if not receiver:
+        receiver = space.w_nil
     return _new_frame(space, bytes, receiver)
     
 def test_create_frame():
@@ -697,7 +704,9 @@ def test_doubleExtendedDoAnythinBytecode():
 
     storeAssociation(doubleExtendedDoAnythingBytecode + chr(7<<5) + chr(0))
 
-def interpret_bc(bcodes, literals, receiver=space.w_nil):
+def interpret_bc(bcodes, literals, receiver=None):
+    if not receiver:
+        receiver = space.w_nil
     bcode = "".join([chr(x) for x in bcodes])
     w_frame, s_frame = new_frame(bcode, receiver=receiver)
     s_frame.w_method().setliterals(literals)
