@@ -9,7 +9,7 @@ from .util import create_space, copy_to_module, cleanup_module
 from .test_interpreter import _new_frame
 
 def setup_module():
-    space = create_space()
+    space = create_space(bootstrap = True)
     wrap = space.w
     bootstrap_class = space.bootstrap_class
     copy_to_module(locals(), __name__)

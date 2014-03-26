@@ -4,7 +4,7 @@ from rpython.rlib.rarithmetic import r_uint
 from .util import create_space, copy_to_module, cleanup_module
 
 def setup_module():
-    space = create_space()
+    space = create_space(bootstrap = True)
     copy_to_module(locals(), __name__)
 
 def teardown_module():

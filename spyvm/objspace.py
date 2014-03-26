@@ -41,17 +41,25 @@ class ObjSpace(object):
         assert i > 0
         self._executable_path[0] = fullpath[:i]
 
+    def populate_special_objects(self, specials):
+        for name, idx in constants.objects_in_special_object_table.items():
+            name = "w_" + name
+            if not name in self.objtable or not self.objtable[name]:
+                self.add_bootstrap_object(name, specials[idx])
+        
     def executable_path(self):
         return self._executable_path[0]
-        
+    
+    def add_bootstrap_class(self, name, cls):
+        self.classtable[name] = cls
+        setattr(self, name, cls)
+    
     def make_bootstrap_classes(self):
         names = [ "w_" + name for name in constants.classes_in_special_object_table.keys() ]
         for name in names:
             cls = model.W_PointersObject(self, None, 0)
-            self.classtable[name] = cls
-            setattr(self, name, cls)
-                # Make sure that all prebuilt classes are actually used in the special classes array
-    
+            self.add_bootstrap_class(name, cls)
+        
     def add_bootstrap_object(self, name, obj):
         self.objtable[name] = obj
         setattr(self, name, obj)
@@ -60,15 +68,7 @@ class ObjSpace(object):
         obj = model.W_PointersObject(self, None, 0)
         self.add_bootstrap_object(name, obj)
     
-    def make_bootstrap_objects(self):
-        self.make_bootstrap_object("w_true")
-        self.make_bootstrap_object("w_false")
-        self.make_bootstrap_object("w_special_selectors")
-        self.add_bootstrap_object("w_minus_one", model.W_SmallInteger(-1))
-        self.add_bootstrap_object("w_zero", model.W_SmallInteger(0))
-        self.add_bootstrap_object("w_one", model.W_SmallInteger(1))
-        self.add_bootstrap_object("w_two", model.W_SmallInteger(2))
-        
+    def make_character_table(self):
         def build_char(i):
             # TODO - This is pretty hacky, maybe not required? At least eliminate the constant 1.
             w_cinst = model.W_PointersObject(self, self.w_Character, 1)
@@ -79,12 +79,24 @@ class ObjSpace(object):
         for i in range(256):
             char_table.store(self, i, build_char(i))
         self.add_bootstrap_object("w_charactertable", char_table)
+    
+    def make_bootstrap_objects(self):
+        self.make_character_table()
+        self.make_bootstrap_object("w_true")
+        self.make_bootstrap_object("w_false")
+        self.make_bootstrap_object("w_special_selectors")
+        self.add_bootstrap_object("w_minus_one", model.W_SmallInteger(-1))
+        self.add_bootstrap_object("w_zero", model.W_SmallInteger(0))
+        self.add_bootstrap_object("w_one", model.W_SmallInteger(1))
+        self.add_bootstrap_object("w_two", model.W_SmallInteger(2))
         
+        # Certain special objects are already created. The rest will be
+        # populated when the image is loaded, but prepare empty slots for them.
         for name in constants.objects_in_special_object_table:
             name = "w_" + name
             if not name in self.objtable:
                 self.add_bootstrap_object(name, None)
-
+    
     @specialize.arg(1)
     def get_special_selector(self, selector):
         i0 = constants.find_selectorindex(selector)

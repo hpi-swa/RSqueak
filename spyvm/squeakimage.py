@@ -370,10 +370,7 @@ class SqueakImage(object):
         self.special_objects = [g_object.w_object for g_object in
                                 reader.chunks[reader.specialobjectspointer]
                                 .g_object.pointers]
-        
-        for name, idx in constants.objects_in_special_object_table.items():
-            space.objtable["w_" + name] = self.special_objects[idx]
-        
+        space.populate_special_objects(self.special_objects)
         self.w_asSymbol = self.find_symbol(space, reader, "asSymbol")
         self.w_simulateCopyBits = self.find_symbol(space, reader, "simulateCopyBits")
         self.lastWindowSize = reader.lastWindowSize

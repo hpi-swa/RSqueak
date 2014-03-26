@@ -6,7 +6,7 @@ from rpython.rtyper.lltypesystem import lltype, rffi
 from .util import create_space, copy_to_module, cleanup_module
 
 def setup_module():
-    space = create_space()
+    space = create_space(bootstrap = True)
     bootstrap_class = space.bootstrap_class
     w_foo = space.wrap_string("foo")
     w_bar = space.wrap_string("bar")

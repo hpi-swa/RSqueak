@@ -4,7 +4,7 @@ from .util import create_space, copy_to_module, cleanup_module
 from test_model import joinbits
 
 def setup_module():
-    space = create_space()
+    space = create_space(bootstrap = True)
     w_Object     = space.classtable['w_Object']
     w_Metaclass  = space.classtable['w_Metaclass']
     w_MethodDict = space.classtable['w_MethodDict']

@@ -5,7 +5,7 @@ from spyvm.wrapper import PointWrapper
 from spyvm.conftest import option
 
 def setup_module():
-    space, interp = create_space_interp()
+    space, interp = create_space_interp(bootstrap = True)
     copy_to_module(locals(), __name__)
 
 def teardown_module():
