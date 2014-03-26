@@ -404,7 +404,6 @@ class MethodDictionaryShadow(ListStorageShadow):
                     # raise ClassShadowError("bogus selector in method dict")
                 w_compiledmethod = w_values.fetch(self.space, i)
                 if not isinstance(w_compiledmethod, model.W_CompiledMethod):
-                    import pdb; pdb.set_trace()
                     raise ClassShadowError("The methoddict must contain "
                                        "CompiledMethods only, for now. "
                                        "If the value observed is nil, our "

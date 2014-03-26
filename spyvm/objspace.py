@@ -45,7 +45,7 @@ class ObjSpace(object):
         for name, idx in constants.objects_in_special_object_table.items():
             name = "w_" + name
             if not name in self.objtable or not self.objtable[name]:
-                self.add_bootstrap_object(name, specials[idx])
+                self.objtable[name] = specials[idx]
         
     def executable_path(self):
         return self._executable_path[0]

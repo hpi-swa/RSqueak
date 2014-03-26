@@ -5,7 +5,7 @@ from .util import create_space, copy_to_module, cleanup_module
 from spyvm.test.test_interpreter import _new_frame
 
 def setup_module():
-    space = create_space()
+    space = create_space(bootstrap = True)
     copy_to_module(locals(), __name__)
 
 def teardown_module():
