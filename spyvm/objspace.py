@@ -9,8 +9,17 @@ from rpython.rlib.rarithmetic import intmask, r_uint, int_between
 class ObjSpace(object):
     def __init__(self):
         self.classtable = {}
+        self.objtable = {}
         self._executable_path = [""] # XXX: we cannot set the attribute
                                   # directly on the frozen objectspace
+        
+        # Create the nil object.
+        # Circumvent the constructor because nil is already referenced there.
+        w_nil = instantiate(model.W_PointersObject)
+        w_nil.w_class = None
+        w_nil.space = self
+        self.add_bootstrap_object("w_nil", w_nil)
+        
         self.make_bootstrap_classes()
         self.make_bootstrap_objects()
 
@@ -43,38 +52,38 @@ class ObjSpace(object):
             setattr(self, name, cls)
                 # Make sure that all prebuilt classes are actually used in the special classes array
     
+    def add_bootstrap_object(self, name, obj):
+        self.objtable[name] = obj
+        setattr(self, name, obj)
+    
+    def make_bootstrap_object(self, name):
+        obj = model.W_PointersObject(self, None, 0)
+        self.add_bootstrap_object(name, obj)
+    
     def make_bootstrap_objects(self):
-        def bld_char(i):
+        self.make_bootstrap_object("w_true")
+        self.make_bootstrap_object("w_false")
+        self.make_bootstrap_object("w_special_selectors")
+        self.add_bootstrap_object("w_minus_one", model.W_SmallInteger(-1))
+        self.add_bootstrap_object("w_zero", model.W_SmallInteger(0))
+        self.add_bootstrap_object("w_one", model.W_SmallInteger(1))
+        self.add_bootstrap_object("w_two", model.W_SmallInteger(2))
+        
+        def build_char(i):
             # TODO - This is pretty hacky, maybe not required? At least eliminate the constant 1.
             w_cinst = model.W_PointersObject(self, self.w_Character, 1)
             w_cinst.store(self, constants.CHARACTER_VALUE_INDEX,
                           model.W_SmallInteger(i))
             return w_cinst
-        w_charactertable = model.W_PointersObject(self, self.classtable['w_Array'], 256)
-        self.w_charactertable = w_charactertable
+        char_table = model.W_PointersObject(self, self.classtable['w_Array'], 256)
         for i in range(256):
-            self.w_charactertable.store(self, i, bld_char(i))
-
-        w_nil = self.w_nil = model.w_nil
-        w_nil.space = self
-        w_true = model.W_PointersObject(self, None, 0)
-        self.w_true = w_true
-        w_false = model.W_PointersObject(self, None, 0)
-        self.w_false = w_false
-        self.w_minus_one = model.W_SmallInteger(-1)
-        self.w_zero = model.W_SmallInteger(0)
-        self.w_one = model.W_SmallInteger(1)
-        self.w_two = model.W_SmallInteger(2)
-        w_special_selectors = model.W_PointersObject(self, None, 0)
-        self.w_special_selectors = w_special_selectors
-
-        self.objtable = {}
+            char_table.store(self, i, build_char(i))
+        self.add_bootstrap_object("w_charactertable", char_table)
+        
         for name in constants.objects_in_special_object_table:
             name = "w_" + name
-            try:
-                self.objtable[name] = locals()[name]
-            except KeyError, e:
-                self.objtable[name] = None
+            if not name in self.objtable:
+                self.add_bootstrap_object(name, None)
 
     @specialize.arg(1)
     def get_special_selector(self, selector):

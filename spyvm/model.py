@@ -558,7 +558,7 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
             self.store(space, i, collection[i])
             i = i+1
         while i < my_length:
-            self.store(space, i, w_nil)
+            self.store(space, i, space.w_nil)
             i = i+1
         
     def at0(self, space, index0):
@@ -1090,9 +1090,9 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     _shadow = None # Default value
     _likely_methodname = "<unknown>"
 
-    def __init__(self, bytecount=0, header=0):
+    def __init__(self, space, bytecount=0, header=0):
         self._shadow = None
-        self.setheader(header)
+        self.setheader(space, header)
         self.bytes = ["\x00"] * bytecount
 
     def fillin(self, space, g_self):
@@ -1117,7 +1117,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         return True
 
     def clone(self, space):
-        copy = W_CompiledMethod(0, self.getheader())
+        copy = W_CompiledMethod(space, 0, self.getheader())
         copy.bytes = list(self.bytes)
         copy.literals = list(self.literals)
         return copy
@@ -1198,10 +1198,10 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def getheader(self):
         return self.header
 
-    def setheader(self, header):
+    def setheader(self, space, header):
         primitive, literalsize, islarge, tempsize, argsize = constants.decode_compiled_method_header(header)
         self.literalsize = literalsize
-        self.literals = [w_nil] * self.literalsize
+        self.literals = [space.w_nil] * self.literalsize
         self.header = header
         self.argsize = argsize
         self.tempsize = tempsize
@@ -1233,7 +1233,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def literalatput0(self, space, index0, w_value):
         if index0 == 0:
             header = space.unwrap_int(w_value)
-            self.setheader(header)
+            self.setheader(space, header)
         else:
             self.literals[index0-1] = w_value
         if self.has_shadow():
@@ -1283,10 +1283,3 @@ class DetachingShadowError(Exception):
     def __init__(self, old_shadow, new_shadow_class):
         self.old_shadow = old_shadow
         self.new_shadow_class = new_shadow_class
-
-# Use black magic to create w_nil without running the constructor,
-# thus allowing it to be used even in the constructor of its own
-# class.  Note that we patch its class in the space
-# YYY there should be no global w_nil
-w_nil = instantiate(W_PointersObject)
-w_nil.w_class = None

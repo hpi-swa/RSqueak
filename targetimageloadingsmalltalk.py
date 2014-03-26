@@ -106,7 +106,7 @@ def context_for(interp, number, benchmark, stringarg):
     argcount = 0 if stringarg == "" else 1
     w_receiver = interp.space.wrap_int(number)
     w_selector = interp.perform(interp.space.wrap_string(benchmark), "asSymbol")
-    w_method = model.W_CompiledMethod(header=512)
+    w_method = model.W_CompiledMethod(space, header=512)
     w_method.literalatput0(interp.space, 1, w_selector)
     w_method.setbytes([chr(131), chr(argcount << 5), chr(124)]) #returnTopFromMethod
     s_method = w_method.as_compiledmethod_get_shadow(interp.space)

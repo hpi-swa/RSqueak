@@ -1,13 +1,13 @@
 import py
 from spyvm import wrapper, model, interpreter, objspace
 from spyvm.error import WrapperException, FatalError
-from .util import BootstrappedObjSpace
-from spyvm.test.test_interpreter import new_frame as new_frame_tuple
+from .util import create_space
+from spyvm.test.test_interpreter import _new_frame
 
-space = BootstrappedObjSpace()
+space = create_space()
 
 def new_frame():
-    return new_frame_tuple("")[0]
+    return _new_frame(space, "")[0]
 
 def test_simpleread():
     w_o = model.W_PointersObject(space, None, 2)

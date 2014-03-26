@@ -1,13 +1,12 @@
-import py
-import math
-import socket
-from .util import bootstrap_class, BootstrappedObjSpace
-from spyvm import model, shadow
-from spyvm.shadow import MethodNotFound
-from spyvm import objspace, error, display
+import py, math, socket
+from spyvm import model, shadow, objspace, error, display
+from spyvm.shadow import MethodNotFound, WEAK_POINTERS
 from rpython.rlib.rarithmetic import intmask, r_uint
+from rpython.rtyper.lltypesystem import lltype, rffi
+from .util import create_space
 
-space = BootstrappedObjSpace()
+space = create_space()
+bootstrap_class = space.bootstrap_class
 w_foo = space.wrap_string("foo")
 w_bar = space.wrap_string("bar")
 
@@ -18,16 +17,15 @@ def joinbits(values, lengths):
         result += each
     return result
 
-
 def test_new():
-    w_mycls = bootstrap_class(space, 0)
+    w_mycls = bootstrap_class(0)
     w_myinstance = w_mycls.as_class_get_shadow(space).new()
     assert isinstance(w_myinstance, model.W_PointersObject)
     assert w_myinstance.getclass(space).is_same_object(w_mycls)
     assert w_myinstance.class_shadow(space) is w_mycls.as_class_get_shadow(space)
 
 def test_new_namedvars():
-    w_mycls = bootstrap_class(space, 3)
+    w_mycls = bootstrap_class(3)
     w_myinstance = w_mycls.as_class_get_shadow(space).new()
     assert isinstance(w_myinstance, model.W_PointersObject)
     assert w_myinstance.getclass(space).is_same_object(w_mycls)
@@ -37,7 +35,7 @@ def test_new_namedvars():
     assert w_myinstance.fetch(space, 1) is w_myinstance
 
 def test_bytes_object():
-    w_class = bootstrap_class(space, 0, format=shadow.BYTES)
+    w_class = bootstrap_class(0, format=shadow.BYTES)
     w_bytes = w_class.as_class_get_shadow(space).new(20)
     assert w_bytes.getclass(space).is_same_object(w_class)
     assert w_bytes.size() == 20
@@ -49,7 +47,7 @@ def test_bytes_object():
     py.test.raises(IndexError, lambda: w_bytes.getchar(20))
 
 def test_c_bytes_object():
-    w_class = bootstrap_class(space, 0, format=shadow.BYTES)
+    w_class = bootstrap_class(0, format=shadow.BYTES)
     w_bytes = w_class.as_class_get_shadow(space).new(20)
     w_bytes.convert_to_c_layout()
     assert w_bytes.getclass(space).is_same_object(w_class)
@@ -62,7 +60,7 @@ def test_c_bytes_object():
     py.test.raises(IndexError, lambda: w_bytes.getchar(20))
 
 def test_word_object():
-    w_class = bootstrap_class(space, 0, format=shadow.WORDS)
+    w_class = bootstrap_class(0, format=shadow.WORDS)
     w_bytes = w_class.as_class_get_shadow(space).new(20)
     assert w_bytes.getclass(space).is_same_object(w_class)
     assert w_bytes.size() == 20
@@ -74,7 +72,7 @@ def test_word_object():
     py.test.raises(AssertionError, lambda: w_bytes.getword(20))
 
 def test_c_word_object():
-    w_class = bootstrap_class(space, 0, format=shadow.WORDS)
+    w_class = bootstrap_class(0, format=shadow.WORDS)
     w_bytes = w_class.as_class_get_shadow(space).new(20)
     w_bytes.convert_to_c_layout()
     assert w_bytes.getclass(space).is_same_object(w_class)
@@ -92,11 +90,11 @@ def test_method_lookup():
             self.val = val
         def as_compiledmethod_get_shadow(self, space):
             return self.val
-    w_class = bootstrap_class(space, mockmethod(0))
+    w_class = bootstrap_class(mockmethod(0))
     shadow = w_class.as_class_get_shadow(space)
     shadow.installmethod(w_foo, mockmethod(1))
     shadow.installmethod(w_bar, mockmethod(2))
-    w_subclass = bootstrap_class(space, 0, w_superclass=w_class)
+    w_subclass = bootstrap_class(0, w_superclass=w_class)
     subshadow = w_subclass.as_class_get_shadow(space)
     assert subshadow.s_superclass() is shadow
     subshadow.installmethod(w_foo, mockmethod(3))
@@ -110,23 +108,23 @@ def test_method_lookup():
     py.test.raises(MethodNotFound, subshadow.lookup, "zork")
 
 def test_w_compiledin():
-    w_super = bootstrap_class(space, 0)
-    w_class = bootstrap_class(space, 0, w_superclass=w_super)
+    w_super = bootstrap_class(0)
+    w_class = bootstrap_class(0, w_superclass=w_super)
     supershadow = w_super.as_class_get_shadow(space)
-    supershadow.installmethod(w_foo, model.W_CompiledMethod(0))
+    supershadow.installmethod(w_foo, model.W_CompiledMethod(space, 0))
     classshadow = w_class.as_class_get_shadow(space)
     classshadow.initialize_methoddict()
     assert classshadow.lookup(w_foo).w_compiledin is w_super
 
 def test_compiledmethod_setchar():
-    w_method = model.W_CompiledMethod(3)
+    w_method = model.W_CompiledMethod(space, 3)
     w_method.setchar(0, "c")
     assert w_method.bytes == list("c\x00\x00")
 
 def test_hashes():
     w_five = model.W_SmallInteger(5)
     assert w_five.gethash() == 5
-    w_class = bootstrap_class(space, 0)
+    w_class = bootstrap_class(0)
     w_inst = w_class.as_class_get_shadow(space).new()
     assert w_inst.hash == w_inst.UNASSIGNED_HASH
     h1 = w_inst.gethash()
@@ -135,7 +133,7 @@ def test_hashes():
     assert h1 == w_inst.hash
 
 def test_compiledmethod_at0():
-    w_method = model.W_CompiledMethod()
+    w_method = model.W_CompiledMethod(space, )
     w_method.bytes = list("abc")
     w_method.header = 100
     w_method.setliterals(['lit1', 'lit2'])
@@ -148,7 +146,7 @@ def test_compiledmethod_at0():
     assert space.unwrap_int(w_method.at0(space, 14)) == ord('c')
 
 def test_compiledmethod_atput0():
-    w_method = model.W_CompiledMethod(3)
+    w_method = model.W_CompiledMethod(space, 3)
     newheader = joinbits([0,2,0,0,0,0],[9,8,1,6,4,1])
     assert w_method.getliteralsize() == 0
     w_method.atput0(space, 0, space.wrap_int(newheader))
@@ -167,7 +165,7 @@ def test_compiledmethod_atput0():
 
 def test_compiledmethod_atput0_not_aligned():
     header = joinbits([0,2,0,0,0,0],[9,8,1,6,4,1])
-    w_method = model.W_CompiledMethod(3, header)
+    w_method = model.W_CompiledMethod(space, 3, header)
     with py.test.raises(error.PrimitiveFailedError):
         w_method.atput0(space, 7, 'lit1')
     with py.test.raises(error.PrimitiveFailedError):
@@ -210,10 +208,10 @@ def test_not_charis_same_object():
     test_not_is_same_object(space.wrap_char('d'), space.wrap_float(3.0))
 
 def test_become_pointers():
-    w_clsa = bootstrap_class(space, 3)
+    w_clsa = bootstrap_class(3)
     w_a = w_clsa.as_class_get_shadow(space).new()
 
-    w_clsb = bootstrap_class(space, 4)
+    w_clsb = bootstrap_class(4)
     w_b = w_clsb.as_class_get_shadow(space).new()
 
     hasha = w_a.gethash()
@@ -234,9 +232,9 @@ def test_become_pointers():
     assert w_a.fetch(space, 1) is w_a
 
 def test_become_with_shadow():
-    w_clsa = bootstrap_class(space, 3)
+    w_clsa = bootstrap_class(3)
     s_clsa = w_clsa.as_class_get_shadow(space)
-    w_clsb = bootstrap_class(space, 4)
+    w_clsb = bootstrap_class(4)
     s_clsb = w_clsb.as_class_get_shadow(space)
     res = w_clsa.become(w_clsb)
     assert res
@@ -357,7 +355,6 @@ def test_display_bitmap():
     # XXX: Patch SDLDisplay -> get_pixelbuffer() to circumvent
     # double-free bug
     def get_pixelbuffer(self):
-        from rpython.rtyper.lltypesystem import lltype, rffi
         return lltype.malloc(rffi.ULONGP.TO, self.width * self.height * 32, flavor='raw')
     display.SDLDisplay.get_pixelbuffer = get_pixelbuffer
     d = display.SDLDisplay("test")
@@ -382,7 +379,6 @@ def test_display_bitmap():
 def test_display_offset_computation():
 
     def get_pixelbuffer(self):
-        from rpython.rtyper.lltypesystem import lltype, rffi
         return lltype.malloc(rffi.ULONGP.TO, self.width * self.height * 32, flavor='raw')
     display.SDLDisplay.get_pixelbuffer = get_pixelbuffer
     d = display.SDLDisplay("test")
@@ -396,9 +392,7 @@ def test_display_offset_computation():
 
 @py.test.mark.skipif("socket.gethostname() == 'precise32'")
 def test_weak_pointers():
-    from spyvm.shadow import WEAK_POINTERS
-
-    w_cls = bootstrap_class(space, 1)
+    w_cls = bootstrap_class(1)
     s_cls = w_cls.as_class_get_shadow(space)
     s_cls.instance_kind = WEAK_POINTERS
 

@@ -1,10 +1,11 @@
 import random
-from spyvm import model, shadow, constants, interpreter, objspace
-from .util import BootstrappedObjSpace
+from spyvm import model, shadow, constants, interpreter, objspace, wrapper
+from .util import create_space
+from test_model import joinbits
 
-space = BootstrappedObjSpace()
+space = create_space()
 
-w_Object = space.classtable['w_Object']
+w_Object     = space.classtable['w_Object']
 w_Metaclass  = space.classtable['w_Metaclass']
 w_MethodDict = space.classtable['w_MethodDict']
 w_Array      = space.classtable['w_Array']
@@ -66,8 +67,8 @@ def test_basic_shape():
     yield basicshape, "CompiledMeth", 0xE02,   shadow.COMPILED_METHOD, True, 0
 
 def test_methoddict():
-    methods = {'foo': model.W_CompiledMethod(0),
-               'bar': model.W_CompiledMethod(0)}
+    methods = {'foo': model.W_CompiledMethod(space, 0),
+               'bar': model.W_CompiledMethod(space, 0)}
     w_class = build_smalltalk_class("Demo", 0x90, methods=methods)
     classshadow = w_class.as_class_get_shadow(space)
     methoddict = classshadow.s_methoddict().methoddict
@@ -76,7 +77,7 @@ def test_methoddict():
         assert methods[w_key.as_string()].as_compiledmethod_get_shadow(space) is value
 
 def method(tempsize=3,argsize=2, bytes="abcde"):
-    w_m = model.W_CompiledMethod()
+    w_m = model.W_CompiledMethod(space, )
     w_m.bytes = bytes
     w_m.tempsize = tempsize
     w_m.argsize = argsize
@@ -156,7 +157,7 @@ def test_methodcontext():
 
 def assert_contains_nils(w_obj):
     for i in range(w_obj.size()):
-        assert model.w_nil == w_obj.fetch(space, i)
+        assert space.w_nil == w_obj.fetch(space, i)
 
 def test_attach_mc():
     w_m = method()
@@ -180,10 +181,9 @@ def test_replace_to_bc():
     assert s_object.fetch(1).value == 13
 
 def test_compiledmethodshadow():
-    from test_model import joinbits
     header = joinbits([0,2,0,1,0,0],[9,8,1,6,4,1])
 
-    w_compiledmethod = model.W_CompiledMethod(3, header)
+    w_compiledmethod = model.W_CompiledMethod(space, 3, header)
     w_compiledmethod.setbytes(list("abc"))
     shadow = w_compiledmethod.as_compiledmethod_get_shadow(space)
     assert shadow.bytecode == "abc"
@@ -232,9 +232,9 @@ def test_observee_shadow():
 
 def test_cached_methoddict():
     # create a methoddict
-    foo = model.W_CompiledMethod(0)
-    bar = model.W_CompiledMethod(0)
-    baz = model.W_CompiledMethod(0)
+    foo = model.W_CompiledMethod(space, 0)
+    bar = model.W_CompiledMethod(space, 0)
+    baz = model.W_CompiledMethod(space, 0)
     methods = {'foo': foo,
                'bar': bar}
     w_class = build_smalltalk_class("Demo", 0x90, methods=methods)
@@ -259,13 +259,13 @@ def test_cached_methoddict():
 
 def test_updating_class_changes_subclasses():
     w_parent = build_smalltalk_class("Demo", 0x90,
-            methods={'bar': model.W_CompiledMethod(0)})
+            methods={'bar': model.W_CompiledMethod(space, 0)})
     w_class = build_smalltalk_class("Demo", 0x90,
-            methods={'foo': model.W_CompiledMethod(0)}, w_superclass=w_parent)
+            methods={'foo': model.W_CompiledMethod(space, 0)}, w_superclass=w_parent)
     s_class = w_class.as_class_get_shadow(space)
     version = s_class.version
 
-    w_method = model.W_CompiledMethod(0)
+    w_method = model.W_CompiledMethod(space, 0)
     key = space.wrap_string('foo')
 
     s_md = w_parent.as_class_get_shadow(space).s_methoddict()
@@ -286,12 +286,11 @@ def test_returned_contexts_pc():
     assert w_context.fetch(space, constants.CTXPART_PC_INDEX) is space.w_nil
 
 def test_methodcontext_s_home():
-    from spyvm.wrapper import BlockClosureWrapper
     w_context = methodcontext()
     s_context = w_context.as_methodcontext_get_shadow(space)
     w_middle_context = methodcontext(w_sender=w_context)
     s_middle_context = w_middle_context.as_methodcontext_get_shadow(space)
 
     w_closure = space.newClosure(w_context, 3, 0, [])
-    s_closure_context = BlockClosureWrapper(space, w_closure).asContextWithSender(w_middle_context, [])
+    s_closure_context = wrapper.BlockClosureWrapper(space, w_closure).asContextWithSender(w_middle_context, [])
     assert s_closure_context.s_home() is s_context

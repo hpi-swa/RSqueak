@@ -161,7 +161,7 @@ class Interpreter(object):
         else:
             w_selector = selector
 
-        w_method = model.W_CompiledMethod(header=512)
+        w_method = model.W_CompiledMethod(self.space, header=512)
         w_method.literalatput0(self.space, 1, w_selector)
         assert len(arguments_w) <= 7
         w_method.setbytes([chr(131), chr(len(arguments_w) << 5 + 0), chr(124)]) #returnTopFromMethod

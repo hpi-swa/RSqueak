@@ -1,38 +1,20 @@
-import py
-import operator
-from spyvm import squeakimage, model, constants, error
-from spyvm import interpreter, shadow, primitives
-from spyvm.test import test_miniimage as tools
-from spyvm.test.test_miniimage import perform, w
+import py, operator
+from spyvm import squeakimage, model, constants, error, interpreter, shadow, primitives
 from spyvm.test.test_primitives import MockFrame
-
+from .util import read_image, find_symbol_in_methoddict_of
 from rpython.rlib.rarithmetic import intmask, r_uint
 
-space, interp = tools.setup_module(tools, filename='bootstrapped.image')
-
-def find_symbol_in_methoddict_of(string, s_class):
-    s_methoddict = s_class.s_methoddict()
-    s_methoddict.sync_method_cache()
-    methoddict_w = s_methoddict.methoddict
-    for each in methoddict_w.keys():
-        if each.as_string() == string:
-            return each
-
-def initialize_class(w_class):
-    initialize_symbol = find_symbol_in_methoddict_of("initialize", 
-                        w_class.class_shadow(tools.space))
-    perform(w_class, initialize_symbol)
-
-def test_initialize_string_class():
-    interp.trace = False
-    #initialize String class, because equality testing requires a class var set.
-    initialize_class(w("string").getclass(tools.space))
+space, interp, _, _ = read_image('bootstrapped.image')
+w = space.w
+perform = interp.perform
+interp.trace = False
+space.initialize_class(space.w_String, interp)
 
 def perform_primitive(rcvr, w_selector, *args):
     code = rcvr.class_shadow(space).lookup(w_selector).primitive()
     assert code
     func = primitives.prim_holder.prim_table[code]
-    s_frame = MockFrame([rcvr] + list(args)).as_context_get_shadow(space)
+    s_frame = MockFrame(space, [rcvr] + list(args)).as_context_get_shadow(space)
     func(interp, s_frame, len(args))
     return s_frame.pop()
 

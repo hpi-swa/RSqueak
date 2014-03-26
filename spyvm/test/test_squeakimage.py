@@ -1,11 +1,11 @@
-import py
+import py, StringIO, sys
+from struct import pack
 from spyvm import squeakimage
 from spyvm.squeakimage import chrs2int, chrs2long, swapped_chrs2long
 from spyvm import objspace
-from .util import BootstrappedObjSpace
-from struct import pack
+from .util import create_space
 
-space = BootstrappedObjSpace()
+space = create_space()
 
 # ----- helpers ----------------------------------------------
 
@@ -20,7 +20,6 @@ def joinbits(values, lengths):
     return result   
 
 def imagestream_mock(string):
-    import StringIO
     f = StringIO.StringIO(string)
     return squeakimage.Stream(f)
 
@@ -184,7 +183,6 @@ def test_simple_image():
     assert r.stream.pos == len(image_2)
 
 def test_simple_image64():
-    import sys
     if not sys.maxint == 2 ** 63 - 1:
       py.test.skip("on 32 bit platforms, we can't need to check for 64 bit images")
     word_size = 8

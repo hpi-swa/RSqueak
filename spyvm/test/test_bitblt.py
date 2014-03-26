@@ -1,28 +1,9 @@
 from spyvm import model, shadow, constants, interpreter, objspace
 from spyvm.plugins import bitblt
-from .util import BootstrappedObjSpace
+from .util import create_space
 
-space = BootstrappedObjSpace()
-
-# copy from test_miniimage
-def w(any):
-    # XXX could put this on the space?
-    if any is None:
-        return space.w_nil
-    if isinstance(any, str):
-        # assume never have strings of length 1
-        if len(any) == 1:
-            return space.wrap_chr(any)
-        else:
-            return space.wrap_string(any)
-    if isinstance(any, bool):
-        return space.wrap_bool(any)
-    if isinstance(any, int):
-        return space.wrap_int(any)
-    if isinstance(any, float):
-        return space.wrap_float(any)
-    else:
-        raise Exception
+space = create_space()
+w = space.w
 
 def make_form(bits, width, height, depth, o_x=0, o_y=0):
     w_f = model.W_PointersObject(space, space.w_Array, 5)
@@ -37,7 +18,6 @@ def make_form(bits, width, height, depth, o_x=0, o_y=0):
     return w_f
 
 def test_bitBlt_values():
-
     w_bb = model.W_PointersObject(space, space.w_Array, 15)
     w_bb.store(space, 0, make_form([0] * 1230 * 20, 1230, 20, 1))
     w_bb.store(space, 1, w_bb.fetch(space, 0))

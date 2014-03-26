@@ -1,16 +1,16 @@
-import py
-from .util import bootstrap_class as _bootstrap_class
-from spyvm import model, interpreter, primitives, shadow
-from spyvm import objspace, wrapper, constants
-from .util import BootstrappedObjSpace
+import py, operator, sys
+from spyvm import model, interpreter, primitives, shadow, objspace, wrapper, constants
+from .util import create_space_interp
+from spyvm.wrapper import PointWrapper
+from spyvm.conftest import option
 
-def bootstrap_class(space, instsize, w_superclass=None, w_metaclass=None,
+space, interp = create_space_interp()
+
+def bootstrap_class(instsize, w_superclass=None, w_metaclass=None,
                     name='?', format=shadow.POINTERS, varsized=True):
-    return _bootstrap_class(space, instsize, w_superclass, w_metaclass,
+    return space.bootstrap_class(instsize, w_superclass, w_metaclass,
                     name, format, varsized)
 
-space = BootstrappedObjSpace()
-interp = interpreter.Interpreter(space)
 def step_in_interp(ctxt): # due to missing resets in between tests
     interp._loop = False
     try:
@@ -45,7 +45,7 @@ def run_with_faked_primitive_methods(methods, func, active_context=None):
     # Install faked compiled methods that just invoke the primitive:
     for (w_class, primnum, argsize, methname) in methods:
         s_class = w_class.as_class_get_shadow(space)
-        prim_meth = model.W_CompiledMethod(0)
+        prim_meth = model.W_CompiledMethod(space, 0)
         prim_meth.primitive = primnum
         prim_meth.argsize = argsize
         symbol = fakesymbol(methname)
@@ -88,19 +88,24 @@ def fakeliterals(space, *literals):
         return lit
     return [fakeliteral(lit) for lit in literals]
 
-def new_frame(bytes, receiver=space.w_nil, space=space):
+def _new_frame(space, bytes, receiver=None):
     assert isinstance(bytes, str)
-    w_method = model.W_CompiledMethod(len(bytes))
+    w_method = model.W_CompiledMethod(space, len(bytes))
     w_method.islarge = 1
     w_method.bytes = bytes
     w_method.argsize=2
     w_method.tempsize=8
     w_method.setliterals([model.W_PointersObject(space, None, 2)])
+    if receiver is None:
+        receiver = space.w_nil
     s_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(space, receiver, ["foo", "bar"])
     return s_frame.w_self(), s_frame
 
+def new_frame(bytes, receiver=space.w_nil, space=space):
+    return _new_frame(space, bytes, receiver)
+    
 def test_create_frame():
-    w_method = model.W_CompiledMethod(len("hello"))
+    w_method = model.W_CompiledMethod(space, len("hello"))
     w_method.bytes="hello"
     w_method.islarge = 1
     w_method.argsize=2
@@ -145,7 +150,7 @@ def test_pushReceiverBytecode():
 def test_pushReceiverVariableBytecode(bytecode = (pushReceiverVariableBytecode(0) +
                                                   pushReceiverVariableBytecode(1) +
                                                   pushReceiverVariableBytecode(2))):
-    w_demo = bootstrap_class(space, 3).as_class_get_shadow(space).new()
+    w_demo = bootstrap_class(3).as_class_get_shadow(space).new()
     w_demo.store(space, 0, "egg")
     w_demo.store(space, 1, "bar")
     w_demo.store(space, 2, "baz")
@@ -180,7 +185,7 @@ def test_pushLiteralConstantBytecode(bytecode=pushLiteralConstantBytecode(0) +
                                              fakesymbol("c")]
 
 def test_pushLiteralVariableBytecode(bytecode=pushLiteralVariableBytecode(0)):
-    w_association = bootstrap_class(space, 2).as_class_get_shadow(space).new()
+    w_association = bootstrap_class(2).as_class_get_shadow(space).new()
     w_association.store(space, 0, "mykey")
     w_association.store(space, 1, "myvalue")
     w_frame, s_frame = new_frame(bytecode)
@@ -190,7 +195,7 @@ def test_pushLiteralVariableBytecode(bytecode=pushLiteralVariableBytecode(0)):
 
 def test_storeAndPopReceiverVariableBytecode(bytecode=storeAndPopReceiverVariableBytecode,
                                              popped=True):
-    shadow = bootstrap_class(space, 8).as_class_get_shadow(space)
+    shadow = bootstrap_class(8).as_class_get_shadow(space)
     for index in range(8):
         w_object = shadow.new()
         w_frame, s_frame = new_frame(pushConstantTrueBytecode + bytecode(index))
@@ -363,8 +368,8 @@ def test_bytecodePrimEquivalent():
     assert s_frame.stack() == []
 
 def test_bytecodePrimNew():
-    w_fakeclassclass = bootstrap_class(space, 10, name='fakeclassclass')
-    w_fakeclass = bootstrap_class(space, 1, name='fakeclass', varsized=False,
+    w_fakeclassclass = bootstrap_class(10, name='fakeclassclass')
+    w_fakeclass = bootstrap_class(1, name='fakeclass', varsized=False,
                             w_metaclass=w_fakeclassclass)
     w_frame, s_frame = new_frame(bytecodePrimNew)
     s_frame.push(w_fakeclass)
@@ -378,8 +383,8 @@ def test_bytecodePrimNew():
     assert w_fakeinst.size() == 1
 
 def test_bytecodePrimNewWithArg():
-    w_fakeclassclass = bootstrap_class(space, 10, name='fakeclassclass')
-    w_fakeclass = bootstrap_class(space, 1, name='fakeclass', varsized=True,
+    w_fakeclassclass = bootstrap_class(10, name='fakeclassclass')
+    w_fakeclass = bootstrap_class(1, name='fakeclass', varsized=True,
                             w_metaclass=w_fakeclassclass)
     w_frame, s_frame = new_frame(bytecodePrimNewWithArg)
     s_frame.push(w_fakeclass)
@@ -394,7 +399,7 @@ def test_bytecodePrimNewWithArg():
     assert w_fakeinst.size() == 3
 
 def test_bytecodePrimSize():
-    w_fakeclass = bootstrap_class(space, 2, name='fakeclass', varsized=True)
+    w_fakeclass = bootstrap_class(2, name='fakeclass', varsized=True)
     w_fakeinst = w_fakeclass.as_class_get_shadow(space).new(5)
     w_frame, s_frame = new_frame(bytecodePrimSize)
     s_frame.push(w_fakeinst)
@@ -416,7 +421,7 @@ def sendBytecodesTest(w_class, w_object, bytecodes):
           (returnNil, space.w_nil),
           (returnTopFromMethod, space.w_one) ]:
         shadow = w_class.as_class_get_shadow(space)
-        w_method = model.W_CompiledMethod(2)
+        w_method = model.W_CompiledMethod(space, 2)
         w_method.bytes = pushConstantOneBytecode + bytecode
         literals = fakeliterals(space, "foo")
         w_foo = literals[0]
@@ -438,14 +443,14 @@ def sendBytecodesTest(w_class, w_object, bytecodes):
         assert s_active_context.stack() == [result]
 
 def test_sendLiteralSelectorBytecode():
-    w_class = bootstrap_class(space, 0)
+    w_class = bootstrap_class(0)
     w_object = w_class.as_class_get_shadow(space).new()
     sendBytecodesTest(w_class, w_object, sendLiteralSelectorBytecode(0))
 
 def test_fibWithArgument():
     bytecode = ''.join(map(chr, [ 16, 119, 178, 154, 118, 164, 11, 112, 16, 118, 177, 224, 112, 16, 119, 177, 224, 176, 124 ]))
-    shadow = bootstrap_class(space, 0).as_class_get_shadow(space)
-    method = model.W_CompiledMethod(len(bytecode))
+    shadow = bootstrap_class(0).as_class_get_shadow(space)
+    method = model.W_CompiledMethod(space, len(bytecode))
     method.literalsize = 1
     method.bytes = bytecode
     method.argsize = 1
@@ -487,7 +492,6 @@ def test_makePoint():
     step_in_interp(s_frame)
     step_in_interp(s_frame)
     w_point = s_frame.top()
-    from spyvm.wrapper import PointWrapper
     point = PointWrapper(interp.space, w_point)
     assert point.x() == 0
     assert point.y() == 1
@@ -563,7 +567,7 @@ def test_extendedPushBytecode():
     test_pushLiteralVariableBytecode(extendedPushBytecode + chr((3<<6) + 0))
 
 def storeAssociation(bytecode):
-    w_association = bootstrap_class(space, 2).as_class_get_shadow(space).new()
+    w_association = bootstrap_class(2).as_class_get_shadow(space).new()
     w_association.store(space, 0, "mykey")
     w_association.store(space, 1, "myvalue")
     w_frame, s_frame = new_frame(pushConstantOneBytecode + bytecode)
@@ -585,8 +589,8 @@ def test_extendedStoreAndPopBytecode():
 
 def test_callPrimitiveAndPush_fallback():
     w_frame, s_frame = new_frame(bytecodePrimAdd)
-    shadow = bootstrap_class(space, 0).as_class_get_shadow(space)
-    w_method = model.W_CompiledMethod(0)
+    shadow = bootstrap_class(0).as_class_get_shadow(space)
+    w_method = model.W_CompiledMethod(space, 0)
     w_method.argsize = 1
     w_method.tempsize = 1
     w_method.literalsize = 1
@@ -621,30 +625,30 @@ def test_bytecodePrimBool():
                                           space.w_false, space.w_true]
 
 def test_singleExtendedSendBytecode():
-    w_class = bootstrap_class(space, 0)
+    w_class = bootstrap_class(0)
     w_object = w_class.as_class_get_shadow(space).new()
     sendBytecodesTest(w_class, w_object, singleExtendedSendBytecode + chr((0<<5)+0))
 
 def test_singleExtendedSuperBytecode(bytecode=singleExtendedSuperBytecode + chr((0<<5) + 0)):
-    w_supersuper = bootstrap_class(space, 0)
-    w_super = bootstrap_class(space, 0, w_superclass=w_supersuper)
-    w_class = bootstrap_class(space, 0, w_superclass=w_super)
+    w_supersuper = bootstrap_class(0)
+    w_super = bootstrap_class(0, w_superclass=w_supersuper)
+    w_class = bootstrap_class(0, w_superclass=w_super)
     w_object = w_class.as_class_get_shadow(space).new()
     # first call method installed in w_class
     bytecodes = singleExtendedSendBytecode + chr(0)
     # which does a call to its super
-    meth1 = model.W_CompiledMethod(2)
+    meth1 = model.W_CompiledMethod(space, 2)
     meth1.bytes = pushReceiverBytecode + bytecode
     literals = fakeliterals(space, "foo")
     foo = literals[0]
     meth1.setliterals(literals)
     w_class.as_class_get_shadow(space).installmethod(foo, meth1)
     # and that one again to its super
-    meth2 = model.W_CompiledMethod(2)
+    meth2 = model.W_CompiledMethod(space, 2)
     meth2.bytes = pushReceiverBytecode + bytecode
     meth2.setliterals(fakeliterals(space, foo))
     w_super.as_class_get_shadow(space).installmethod(foo, meth2)
-    meth3 = model.W_CompiledMethod(0)
+    meth3 = model.W_CompiledMethod(space, 0)
     w_supersuper.as_class_get_shadow(space).installmethod(foo, meth3)
     w_frame, s_frame = new_frame(bytecodes)
     s_frame.w_method().setliterals(literals)
@@ -665,12 +669,12 @@ def test_singleExtendedSuperBytecode(bytecode=singleExtendedSuperBytecode + chr(
         assert s_caller_context.stack() == []
 
 def test_secondExtendedSendBytecode():
-    w_class = bootstrap_class(space, 0)
+    w_class = bootstrap_class(0)
     w_object = w_class.as_class_get_shadow(space).new()
     sendBytecodesTest(w_class, w_object, secondExtendedSendBytecode + chr(0))
 
 def test_doubleExtendedDoAnythinBytecode():
-    w_class = bootstrap_class(space, 0)
+    w_class = bootstrap_class(0)
     w_object = w_class.as_class_get_shadow(space).new()
 
     sendBytecodesTest(w_class, w_object, doubleExtendedDoAnythingBytecode + chr((0<<5) + 0) + chr(0))
@@ -800,7 +804,7 @@ def test_bc_primBytecodeAtPut_string():
 
 def test_bc_primBytecodeAt_with_instvars():
     #   ^ self at: 1
-    w_fakeclass = bootstrap_class(space, 1, name='fakeclass', varsized=True)
+    w_fakeclass = bootstrap_class(1, name='fakeclass', varsized=True)
     w_fakeinst = w_fakeclass.as_class_get_shadow(space).new(1)
     w_fakeinst.store(space, 0, space.wrap_char("a")) # static slot 0: instance variable
     w_fakeinst.store(space, 1, space.wrap_char("b")) # varying slot 1
@@ -815,7 +819,7 @@ def test_bc_primBytecodeAt_with_instvars():
 
 def test_bc_primBytecodeAtPut_with_instvars():
     #   ^ self at: 1 put: #b
-    w_fakeclass = bootstrap_class(space, 1, name='fakeclass', varsized=True)
+    w_fakeclass = bootstrap_class(1, name='fakeclass', varsized=True)
     w_fakeinst = w_fakeclass.as_class_get_shadow(space).new(1)
     w_fakeinst.store(space, 0, space.wrap_char("a")) # static slot 0: instance variable
     w_fakeinst.store(space, 1, space.wrap_char("a")) # varying slot 1
@@ -835,7 +839,7 @@ def test_bc_objectAtAndAtPut():
     #   ^ self objectAt: 2.          yields the first literal (22)
     #   ^ self objectAt: 2 put: 3.   changes the first literal to 3
     #   ^ self objectAt: 2.          yields the new first literal (3)
-    prim_meth = model.W_CompiledMethod(header=1024)
+    prim_meth = model.W_CompiledMethod(space, header=1024)
     prim_meth.setliterals(fakeliterals(space, 22))
     oal = fakeliterals(space, "objectAt:")
     oalp = fakeliterals(space, "objectAt:put:", 3)
@@ -855,7 +859,6 @@ def test_bc_objectAtAndAtPut():
 
 def test_runwithtrace():
     # We run random tests with the bc_trace option turned on explicitely
-    from spyvm.conftest import option
     bc_trace = option.bc_trace
     option.bc_trace = True
     test_storeAndPopReceiverVariableBytecode()
@@ -969,14 +972,13 @@ def test_stacking_interpreter():
     #         ifTrue: [ 0 ]
     #         ifFalse: [ (testBlock value: aNumber - 1) + aNumber ]].
     # ^ testBlock value: 11
-    import operator
     interp = interpreter.Interpreter(space, max_stack_depth=3)
     #create a method with the correct bytecodes and a literal
     bytes = reduce(operator.add, map(chr, [0x8a, 0x01, 0x68, 0x10, 0x8f, 0x11,
         0x00, 0x11, 0x10, 0x75, 0xb6, 0x9a, 0x75, 0xa4, 0x09, 0x8c, 0x00, 0x01,
         0x10, 0x76, 0xb1, 0xca, 0x10, 0xb0, 0x7d, 0x8e, 0x00, 0x00, 0x8c, 0x00,
         0x00, 0x20, 0xca, 0x7c]))
-    w_method = model.W_CompiledMethod(len(bytes))
+    w_method = model.W_CompiledMethod(space, len(bytes))
     w_method.islarge = 1
     w_method.bytes = bytes
     w_method.argsize=0
@@ -1002,7 +1004,6 @@ def test_stacking_interpreter():
 
 class StackTestInterpreter(interpreter.Interpreter):
     def stack_frame(self, w_frame, may_interrupt=True):
-        import sys
         stack_depth = self.max_stack_depth - self.remaining_stack_depth
         for i in range(stack_depth + 1):
             assert sys._getframe(4 + i * 6).f_code.co_name == 'c_loop'
@@ -1016,7 +1017,6 @@ def test_actual_stackdepth():
     #         ifTrue: [ 2 ]
     #         ifFalse: [ (testBlock value: aNumber - 1) + aNumber ]].
     # ^ testBlock value: 11
-    import operator
     interp = StackTestInterpreter(space, max_stack_depth=10)
     #create a method with the correct bytecodes and a literal
     bytes = reduce(operator.add, map(chr, [0x8a, 0x01, 0x68, 0x10, 0x8f, 0x11,
@@ -1024,7 +1024,7 @@ def test_actual_stackdepth():
         0x10, 0x76, 0xb1, 0xca, 0x10, 0xb0, 0x7d, 0x8e, 0x00, 0x00, 0x8c, 0x00,
         0x00, 0x20, 0xca, 0x7c]))
 
-    w_method = model.W_CompiledMethod(len(bytes))
+    w_method = model.W_CompiledMethod(space, len(bytes))
     w_method.islarge = 1
     w_method.bytes = bytes
     w_method.argsize=0
@@ -1041,7 +1041,6 @@ def test_actual_stackdepth():
         assert False
 
 def test_c_stack_reset_on_sender_chain_manipulation():
-    import operator
     bytes = reduce(operator.add, map(chr, [0x84, 0xc0, 0x00]))
     w_frame, s_frame = new_frame(bytes)
     s_frame.store_w_receiver(w_frame)

@@ -1,9 +1,9 @@
-import py
-import sys
-from spyvm import objspace
-from .util import BootstrappedObjSpace
+import py, sys
+from spyvm import objspace, model
+from rpython.rlib.rarithmetic import r_uint
+from .util import create_space
 
-space = BootstrappedObjSpace()
+space = create_space()
 
 def ismetaclass(w_cls):
     # Heuristic to detect if this is a metaclass. Don't use apart
@@ -29,7 +29,6 @@ def test_metaclass_of_metaclass_is_an_instance_of_metaclass():
     assert w_Metaclass.getclass(space).getclass(space) is w_Metaclass
 
 def test_ruint():
-    from spyvm import model
     """
     | a b |
     a := (9223372036854775808).
@@ -41,7 +40,6 @@ def test_ruint():
     => 27670116110564327424
     """
 
-    from rpython.rlib.rarithmetic import r_uint
     for num in [0, 1, 41, 100, 2**31, sys.maxint + 1, -1]:
         num = r_uint(num)
         assert space.unwrap_uint(space.wrap_uint(num)) == num

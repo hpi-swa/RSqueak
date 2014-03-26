@@ -99,9 +99,9 @@ class AllNilStorageStrategy(AbstractStorageStrategy):
     strategy_tag = 'allnil'
     
     def can_contain(self, space, w_obj):
-        return w_obj == model.w_nil
+        return w_obj == space.w_nil
     def fetch(self, space, w_obj, n0):
-        return model.w_nil
+        return space.w_nil
     def do_store(self, space, w_obj, n0, w_val):
         pass
         
@@ -129,7 +129,7 @@ class ListStorageStrategy(AbstractListStorageStrategy):
         # TODO enable generalization by maintaining a counter of elements that are nil.
         self.storage(w_obj)[n0] = w_val
     def initial_storage(self, space, size):
-        return [model.w_nil] * size
+        return [space.w_nil] * size
     def storage_for_list(self, space, collection):
         return [x for x in collection]
     def copy_storage_from(self, space, w_obj, reuse_storage=False):
@@ -147,7 +147,7 @@ class AbstractValueOrNilStorageStrategy(AbstractIntStorageStrategy):
         return longlong2float.float2longlong(val) == self.nil_value_longlong
     
     def can_contain(self, space, w_val):
-        return w_val == model.w_nil or \
+        return w_val == space.w_nil or \
                 (isinstance(w_val, self.wrapper_class) \
                 and not self.is_nil_value(self.unwrap(space, w_val)))
     
@@ -160,7 +160,7 @@ class AbstractValueOrNilStorageStrategy(AbstractIntStorageStrategy):
         
     def do_store(self, space, w_obj, n0, w_val):
         store = self.storage(w_obj)
-        if w_val == model.w_nil:
+        if w_val == space.w_nil:
             store[n0] = self.nil_value
         else:
             store[n0] = self.unwrap(space, w_val)
@@ -172,7 +172,7 @@ class AbstractValueOrNilStorageStrategy(AbstractIntStorageStrategy):
         length = len(collection)
         store = self.initial_storage(space, length)
         for i in range(length):
-            if collection[i] != model.w_nil:
+            if collection[i] != space.w_nil:
                 store[i] = self.unwrap(space, collection[i])
         return store
 

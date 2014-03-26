@@ -1,19 +1,22 @@
-import py
-import os
-import math
-from .util import bootstrap_class
+import py, os, math, time
+from spyvm import model, shadow, interpreter, constants, primitives, objspace, wrapper, display
 from spyvm.primitives import prim_table, PrimitiveFailedError
-from spyvm import model, shadow, interpreter
-from spyvm import constants, primitives, objspace, wrapper, display
 from spyvm.plugins import bitblt
-from .util import BootstrappedObjSpace
-
 from rpython.rlib.rfloat import INFINITY, NAN, isinf, isnan
+from rpython.rlib.rarithmetic import intmask
+from rpython.rtyper.lltypesystem import lltype, rffi
+from .util import create_space
+from .test_interpreter import _new_frame
 
-space = BootstrappedObjSpace()
+space = create_space()
+wrap = space.w
+bootstrap_class = space.bootstrap_class
+
+def new_frame(bytes):
+    return _new_frame(space, bytes, space.w_nil)
 
 class MockFrame(model.W_PointersObject):
-    def __init__(self, stack):
+    def __init__(self, space, stack):
         self.space = space
         size = 6 + len(stack) + 6
         self.initialize_storage(space, size)
@@ -30,38 +33,32 @@ class MockFrame(model.W_PointersObject):
             self.shadow = shadow.BlockContextShadow(space, self)
         return self.shadow
 
-def wrap(x):
-    if isinstance(x, int): return space.wrap_int(x)
-    if isinstance(x, float): return space.wrap_float(x)
-    if isinstance(x, model.W_Object): return x
-    if isinstance(x, str) and len(x) == 1: return space.wrap_char(x)
-    if isinstance(x, str): return space.wrap_string(x)
-    if isinstance(x, list): return space.wrap_list(x)
-    raise NotImplementedError
-
 IMAGENAME = "anImage.image"
 
-def mock(stack, context = None):
-    mapped_stack = [wrap(x) for x in stack]
+def mock(space, stack, context = None):
+    mapped_stack = [space.w(x) for x in stack]
     if context is None:
-        frame = MockFrame(mapped_stack)
+        frame = MockFrame(space, mapped_stack)
     else:
         frame = context
         for i in range(len(stack)):
             frame.as_context_get_shadow(space).push(stack[i])
     interp = interpreter.Interpreter(space, image_name=IMAGENAME)
-    return (interp, frame, len(stack))
+    return interp, frame, len(stack)
 
-def prim(code, stack, context = None):
-    interp, w_frame, argument_count = mock(stack, context)
+def _prim(space, code, stack, context = None):
+    interp, w_frame, argument_count = mock(space, stack, context)
     prim_table[code](interp, w_frame.as_context_get_shadow(space), argument_count-1)
     res = w_frame.as_context_get_shadow(space).pop()
     s_frame = w_frame.as_context_get_shadow(space)
     assert not s_frame.stackdepth() - s_frame.tempsize() # check args are consumed
     return res
 
+def prim(code, stack, context = None):
+    return _prim(space, code, stack, context)
+    
 def prim_fails(code, stack):
-    interp, w_frame, argument_count = mock(stack)
+    interp, w_frame, argument_count = mock(space, stack)
     orig_stack = list(w_frame.as_context_get_shadow(space).stack())
     with py.test.raises(PrimitiveFailedError):
         prim_table[code](interp, w_frame.as_context_get_shadow(space), argument_count - 1)
@@ -180,7 +177,6 @@ def test_small_int_bit_shift_negative():
     assert prim(primitives.BIT_SHIFT, [-4, 27]).value == -536870912
 
 def test_small_int_bit_shift_fail():
-    from rpython.rlib.rarithmetic import intmask
     prim_fails(primitives.BIT_SHIFT, [4, 32])
     prim_fails(primitives.BIT_SHIFT, [4, 31])
     w_result = prim(primitives.BIT_SHIFT, [4, 29])
@@ -220,7 +216,7 @@ def test_float_times_two_power():
     assert prim(primitives.FLOAT_TIMES_TWO_POWER, [213.0, 1020]).value == float('inf')
 
 def test_at():
-    w_obj = bootstrap_class(space, 0, varsized=True).as_class_get_shadow(space).new(1)
+    w_obj = bootstrap_class(0, varsized=True).as_class_get_shadow(space).new(1)
     foo = wrap("foo")
     w_obj.store(space, 0, foo)
     assert prim(primitives.AT, [w_obj, 1]) is foo
@@ -231,11 +227,11 @@ def test_at():
     assert prim(primitives.AT, [w_obj, 1]) == foo
 
 def test_invalid_at():
-    w_obj = bootstrap_class(space, 0).as_class_get_shadow(space).new()
+    w_obj = bootstrap_class(0).as_class_get_shadow(space).new()
     prim_fails(primitives.AT, [w_obj, 1])
 
 def test_at_put():
-    w_obj = bootstrap_class(space, 0, varsized=1).as_class_get_shadow(space).new(1)
+    w_obj = bootstrap_class(0, varsized=1).as_class_get_shadow(space).new(1)
     assert prim(primitives.AT_PUT, [w_obj, 1, 22]).value == 22
     assert prim(primitives.AT, [w_obj, 1]).value == 22
 
@@ -248,19 +244,19 @@ def test_at_and_at_put_bytes():
     assert prim(primitives.AT, [w_str, 3]).value == ord('c')
 
 def test_invalid_at_put():
-    w_obj = bootstrap_class(space, 0).as_class_get_shadow(space).new()
+    w_obj = bootstrap_class(0).as_class_get_shadow(space).new()
     prim_fails(primitives.AT_PUT, [w_obj, 1, 22])
 
 def test_size():
-    w_obj = bootstrap_class(space, 0, varsized=True).as_class_get_shadow(space).new(0)
+    w_obj = bootstrap_class(0, varsized=True).as_class_get_shadow(space).new(0)
     assert prim(primitives.SIZE, [w_obj]).value == 0
-    w_obj = bootstrap_class(space, 3, varsized=True).as_class_get_shadow(space).new(5)
+    w_obj = bootstrap_class(3, varsized=True).as_class_get_shadow(space).new(5)
     assert prim(primitives.SIZE, [w_obj]).value == 5
 
 def test_size_of_compiled_method():
     literalsize = 3
     bytecount = 3
-    w_cm = model.W_CompiledMethod(bytecount)
+    w_cm = model.W_CompiledMethod(space, bytecount)
     w_cm.literalsize = literalsize
     assert prim(primitives.SIZE, [w_cm]).value == (literalsize+1)*constants.BYTES_PER_WORD + bytecount
 
@@ -278,7 +274,7 @@ def test_invalid_object_at():
     prim_fails(primitives.OBJECT_AT, ["q", constants.CHARACTER_VALUE_INDEX+2])
 
 def test_invalid_object_at_put():
-    w_obj = bootstrap_class(space, 1).as_class_get_shadow(space).new()
+    w_obj = bootstrap_class(1).as_class_get_shadow(space).new()
     prim_fails(primitives.OBJECT_AT_PUT, [w_obj, 2, 42])
 
 def test_string_at_put():
@@ -343,7 +339,7 @@ def test_class():
 
 def test_as_oop():
     # I checked potato, and that returns the hash for as_oop
-    w_obj = bootstrap_class(space, 0).as_class_get_shadow(space).new()
+    w_obj = bootstrap_class(0).as_class_get_shadow(space).new()
     w_obj.hash = 22
     assert prim(primitives.AS_OOP, [w_obj]).value == 22
 
@@ -430,14 +426,12 @@ def test_times_two_power():
     assert equals_ttp(1.5,-1,0.75)
 
 def test_primitive_milliseconds_clock():
-    import time
     start = prim(primitives.MILLISECOND_CLOCK, [0]).value
     time.sleep(0.3)
     stop = prim(primitives.MILLISECOND_CLOCK, [0]).value
     assert start + 250 <= stop
 
 def test_signal_at_milliseconds():
-    import time
     future = prim(primitives.MILLISECOND_CLOCK, [0]).value + 400
     sema = space.w_Semaphore.as_class_get_shadow(space).new()
     prim(primitives.SIGNAL_AT_MILLISECONDS, [space.w_nil, sema, future])
@@ -463,7 +457,6 @@ def test_interrupt_semaphore():
     assert space.objtable["w_interrupt_semaphore"] is w_semaphore
 
 def test_seconds_clock():
-    import time
     now = int(time.time())
     w_smalltalk_now1 = prim(primitives.SECONDS_CLOCK, [42])
     w_smalltalk_now2 = prim(primitives.SECONDS_CLOCK, [42])
@@ -484,7 +477,7 @@ def test_load_inst_var():
 def test_new_method():
     bytecode = ''.join(map(chr, [ 16, 119, 178, 154, 118, 164, 11, 112, 16, 118, 177, 224, 112, 16, 119, 177, 224, 176, 124 ]))
 
-    shadow = bootstrap_class(space, 0).as_class_get_shadow(space)
+    shadow = bootstrap_class(0).as_class_get_shadow(space)
     w_method = prim(primitives.NEW_METHOD, [space.w_CompiledMethod, len(bytecode), 1025])
     assert w_method.literalat0(space, 0).value == 1025
     assert w_method.literalsize == 2
@@ -496,7 +489,7 @@ def test_image_name():
     assert w_v.bytes == list(IMAGENAME)
 
 def test_clone():
-    w_obj = bootstrap_class(space, 1, varsized=True).as_class_get_shadow(space).new(1)
+    w_obj = bootstrap_class(1, varsized=True).as_class_get_shadow(space).new(1)
     w_obj.atput0(space, 0, space.wrap_int(1))
     w_v = prim(primitives.CLONE, [w_obj])
     assert space.unwrap_int(w_v.at0(space, 0)) == 1
@@ -562,16 +555,12 @@ def test_file_write_errors(monkeypatch):
         )
 
 def test_directory_delimitor():
-    import os.path
     w_c = prim(primitives.DIRECTORY_DELIMITOR, [1])
     assert space.unwrap_char(w_c) == os.path.sep
 
 def test_primitive_closure_copyClosure():
-    from test_interpreter import new_frame
-    w_frame, s_frame = new_frame("<never called, but used for method generation>",
-            space=space)
-    w_outer_frame, s_initial_context = new_frame("<never called, but used for method generation>",
-        space=space)
+    w_frame, s_frame = new_frame("<never called, but used for method generation>")
+    w_outer_frame, s_initial_context = new_frame("<never called, but used for method generation>")
     w_block = prim(primitives.CLOSURE_COPY_WITH_COPIED_VALUES, map(wrap,
                     [w_outer_frame, 2, [wrap(1), wrap(2)]]), w_frame)
     assert w_block is not space.w_nil
@@ -596,9 +585,7 @@ def test_primitive_string_copy():
     prim_fails(primitives.STRING_REPLACE, [['a', 'b'], 1, 4, "ccccc", 1])
 
 def build_up_closure_environment(args, copiedValues=[]):
-    from test_interpreter import new_frame
-    w_frame, s_initial_context = new_frame("<never called, but used for method generation>",
-        space=space)
+    w_frame, s_initial_context = new_frame("<never called, but used for method generation>")
 
     size_arguments = len(args)
     closure = space.newClosure(w_frame, 4, #pc
@@ -645,9 +632,7 @@ def test_primitive_some_instance():
 
 def test_primitive_next_instance():
     someInstances = map(space.wrap_list, [[2], [3]])
-    from test_interpreter import new_frame
-    w_frame, s_context = new_frame("<never called, but needed for method generation>",
-        space=space)
+    w_frame, s_context = new_frame("<never called, but needed for method generation>")
 
     s_context.push(space.w_Array)
     interp = interpreter.Interpreter(space)
@@ -663,9 +648,7 @@ def test_primitive_next_instance():
 
 def test_primitive_next_instance_wo_some_instance_in_same_frame():
     someInstances = map(space.wrap_list, [[2], [3]])
-    from test_interpreter import new_frame
-    w_frame, s_context = new_frame("<never called, but needed for method generation>",
-        space=space)
+    w_frame, s_context = new_frame("<never called, but needed for method generation>")
 
     s_context.push(space.w_Array)
     interp = interpreter.Interpreter(space)
@@ -689,9 +672,7 @@ def test_primitive_value_no_context_switch(monkeypatch):
     def step(s_frame):
         raise Stepping
 
-    from test_interpreter import new_frame
-    w_frame, s_initial_context = new_frame("<never called, but used for method generation>",
-        space=space)
+    w_frame, s_initial_context = new_frame("<never called, but used for method generation>")
 
     closure = space.newClosure(w_frame, 4, 0, [])
     s_frame = w_frame.as_methodcontext_get_shadow(space)
@@ -722,7 +703,6 @@ def test_primitive_be_display():
     # XXX: Patch SDLDisplay -> get_pixelbuffer() to circumvent
     # double-free bug
     def get_pixelbuffer(self):
-        from rpython.rtyper.lltypesystem import lltype, rffi
         return lltype.malloc(rffi.ULONGP.TO, self.width * self.height * 32, flavor='raw')
     display.SDLDisplay.get_pixelbuffer = get_pixelbuffer
 
@@ -762,7 +742,6 @@ def test_primitive_force_display_update(monkeypatch):
     # XXX: Patch SDLDisplay -> get_pixelbuffer() to circumvent
     # double-free bug
     def get_pixelbuffer(self):
-        from rpython.rtyper.lltypesystem import lltype, rffi
         return lltype.malloc(rffi.ULONGP.TO, self.width * self.height * 32, flavor='raw')
     display.SDLDisplay.get_pixelbuffer = get_pixelbuffer
 
@@ -805,7 +784,7 @@ def test_bitblt_copy_bits(monkeypatch):
     def sync_cache_mock(self):
         raise CallCopyBitsSimulation
 
-    interp, w_frame, argument_count = mock([mock_bitblt], None)
+    interp, w_frame, argument_count = mock(space, [mock_bitblt], None)
     if interp.image is None:
         interp.image = Image()
 

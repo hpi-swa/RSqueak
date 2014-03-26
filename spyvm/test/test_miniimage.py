@@ -1,30 +1,18 @@
-# ----- mini.image productline -------------------------------
-#       NOT relying on order of methods
-#       using setup_module(module) now
-import py
-from spyvm import squeakimage, model, constants, interpreter, shadow, objspace
-from .util import BootstrappedObjSpace
-# lazy initialization of test data, ie ImageReader and Float class
+import py, math
+from spyvm import squeakimage, model, constants, interpreter, shadow, objspace, wrapper, primitives
+from .util import read_image, open_reader
 
-def setup_module(module, filename='mini.image'):
-    space = BootstrappedObjSpace()
-    from spyvm.tool.analyseimage import image_dir
-    module.mini_image = image_dir.join(filename)
-    module.reader = open_miniimage(space)
-    reader.initialize()
-    module.image = squeakimage.SqueakImage()
-    module.image.from_reader(space, reader)
-    module.space = space
-    module.interp = interpreter.Interpreter(space, image)
-    return space, module.interp
+space, interp, image, reader = read_image("mini.image")
+w = space.w
+perform = interp.perform
+
+def open_miniimage():
+    return open_reader(space, "mini.image")
 
 def find_symbol(name):
     if name == "asSymbol":
         return image.w_asSymbol
     return perform(space.wrap_string(name), "asSymbol")
-
-def open_miniimage(space):
-    return squeakimage.reader_for_image(space, squeakimage.Stream(mini_image.open(mode="rb")))
 
 def get_reader():
     return reader
@@ -38,32 +26,30 @@ def get_float_class():
 
 # ------ tests ------------------------------------------
 
-def test_miniimageexists():
-    assert mini_image.check(dir=False)
-
 def test_read_header():
-    reader = open_miniimage(space)
+    reader = open_miniimage()
     reader.read_header()
     assert reader.endofmemory == 726592
     assert reader.oldbaseaddress == -1221464064
     assert reader.specialobjectspointer == -1221336216
 
 def test_read_all_header():
-    reader = open_miniimage(space)
+    reader = open_miniimage()
     reader.read_header()
     next = reader.stream.peek()
     assert next != 0 #expects object header, which must not be 0x00000000
 
-
-def test_all_pointers_are_valid():
-    reader = get_reader()
+def _test_all_pointers_are_valid(reader):
     for each in reader.chunks.itervalues():
         if each.format < 5:
             for pointer in each.data:
                 if (pointer & 1) != 1:
                     assert pointer in reader.chunks
 
-
+def test_all_pointers_are_valid():
+    reader = get_reader()
+    _test_all_pointers_are_valid(reader)
+    
 def test_there_are_31_compact_classes():
     reader = get_reader()
     assert len(reader.compactclasses) == 31
@@ -180,15 +166,15 @@ def test_special_objects0():
     SO_LARGENEGATIVEINTEGER_CLASS = 42
     """
 
-
-
-def test_lookup_abs_in_integer():
-    w_abs = interp.perform(w("abs"), "asSymbol")
+def _test_lookup_abs_in_integer(interp):
+    w_abs = interp.perform(interp.space.w("abs"), "asSymbol")
     for value in [10, -3, 0]:
         w_object = model.W_SmallInteger(value)
         w_res = interp.perform(w_object, w_abs)
         assert w_res.value == abs(value)
 
+def test_lookup_abs_in_integer():
+    _test_lookup_abs_in_integer(interp)
 
 def test_map_mirrors_to_classtable():
     w_compiledmethod_class = image.special(constants.SO_COMPILEDMETHOD_CLASS)
@@ -202,7 +188,6 @@ def test_map_mirrors_to_classtable():
 
 def test_runimage():
     py.test.skip("This method actually runs an image. Fails since no graphical primitives yet")
-    from spyvm import wrapper
     ap = wrapper.ProcessWrapper(space, wrapper.scheduler(space).active_process())
     w_ctx = ap.suspended_context()
     ap.store_suspended_context(space.w_nil)
@@ -217,26 +202,6 @@ def test_compile_method():
                             ifFalse: [ (self - 1) fib + (self - 2) fib ]"""
     perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
     assert perform(w(10), "fib").is_same_object(w(89))
-
-
-def w(any):
-    # XXX could put this on the space?
-    if any is None:
-        return space.w_nil
-    if isinstance(any, str):
-        # assume never have strings of length 1
-        if len(any) == 1:
-            return space.wrap_chr(any)
-        else:
-            return space.wrap_string(any)
-    if isinstance(any, bool):
-        return space.wrap_bool(any)
-    if isinstance(any, int):
-        return space.wrap_int(any)
-    if isinstance(any, float):
-        return space.wrap_float(any)
-    else:
-        raise Exception
 
 def test_become():
     sourcecode = """
@@ -264,12 +229,7 @@ def test_become():
     w_result = perform(w(10), "testBecome")
     assert space.unwrap_int(w_result) == 42
 
-def perform(w_receiver, selector, *arguments_w):
-    return interp.perform(w_receiver, selector, *arguments_w)
-
-
 def test_step_forged_image():
-    from spyvm import wrapper
     ap = wrapper.ProcessWrapper(space, wrapper.scheduler(space).active_process())
     s_ctx = ap.suspended_context().as_context_get_shadow(space)
     assert isinstance(s_ctx, shadow.MethodContextShadow)
@@ -305,7 +265,6 @@ def test_create_new_symbol_new_with_arg0():
     assert w_res.size() == 0
 
 def test_pi_as_w_float():
-    import math
     w_result = perform(interp.space.w_Float, "pi")
     assert w_result is not None
     assert isinstance(w_result, model.W_Float)
@@ -325,7 +284,6 @@ def test_compiling_float():
     assert w_result.value == 1.1
 
 def test_existing_large_positive_integer_as_W_LargePositiveInteger1Word():
-    import math
     w_result = perform(interp.space.w_Float, "pi")
     assert w_result is not None
     assert isinstance(w_result, model.W_Float)
@@ -355,9 +313,8 @@ def test_doesNotUnderstand():
     assert w_dnu.as_string() == "doesNotUnderstand:"
 
 def test_run_doesNotUnderstand():
-    from spyvm.test import test_miniimage
-    setup_module(test_miniimage, filename='running-something-mini.image')
-    w_result = test_miniimage.interp.perform(test_miniimage.interp.space.wrap_int(0), "runningADNU")
+    space, interp, _, _ = read_image('running-something-mini.image')
+    w_result = interp.perform(interp.space.wrap_int(0), "runningADNU")
     assert isinstance(w_result, model.W_BytesObject)
     assert w_result.as_string() == "foobarThis:doesNotExist:('pypy' 'heya' )"
 
@@ -371,9 +328,7 @@ def test_Message():
     assert isinstance(w_message, model.W_PointersObject)
 
 def test_step_run_something():
-    from spyvm.test import test_miniimage
-    setup_module(test_miniimage, filename='running-something-mini.image')
-    from spyvm import wrapper
+    space, interp, _, _ = read_image('running-something-mini.image')
     ap = wrapper.ProcessWrapper(space, wrapper.scheduler(space).active_process())
     w_ctx = ap.suspended_context()
     s_ctx = w_ctx.as_context_get_shadow(space)
@@ -391,9 +346,7 @@ def test_step_run_something():
     assert s_ctx.top().value == 3
 
 def test_primitive_perform_with_args():
-    # this test should be last, because importing test_primitives has some (unknown) side-effects
-    from spyvm.test.test_primitives import prim
-    from spyvm import primitives
+    from spyvm.test.test_primitives import _prim
     w_o = space.wrap_list([1, 2, 3])
     w_methoddict = w_o.class_shadow(space)._s_superclass._s_superclass.w_methoddict()
     w_methoddict.as_methoddict_get_shadow(space).sync_method_cache()
@@ -402,5 +355,5 @@ def test_primitive_perform_with_args():
     for sel in selectors_w:
         if sel.as_string() == 'size':
             w_sel = sel
-    size = prim(primitives.PERFORM_WITH_ARGS, [w_o, w_sel, []])
+    size = _prim(space, primitives.PERFORM_WITH_ARGS, [w_o, w_sel, []])
     assert size.value == 3

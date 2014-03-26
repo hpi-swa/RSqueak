@@ -1,15 +1,10 @@
-import py
-from spyvm import squeakimage, model, constants
-from spyvm import interpreter, shadow, objspace
-from spyvm.test import test_miniimage as tools
-from spyvm.test.test_miniimage import w
+from spyvm import squeakimage, model, constants, interpreter, shadow, objspace
+from .util import read_image
 
 def setup():
-    tools.setup_module(tools, filename='Squeak4.5-12568.image')
-    global space
-    global interp
-    space = tools.space
-    interp = tools.interp
+    import spyvm.test.test_zin_squeak_4_5_image as mod
+    mod.space, mod.interp, mod.image, mod.reader = read_image('Squeak4.5-12568.image')
+    mod.w = space.w
 
 def find_symbol_in_methoddict_of(string, s_class):
     s_methoddict = s_class.s_methoddict()
@@ -20,11 +15,13 @@ def find_symbol_in_methoddict_of(string, s_class):
             return each
 
 def test_all_pointers_are_valid():
-    tools.test_all_pointers_are_valid()
-    tools.test_lookup_abs_in_integer()
+    from test_miniimage import _test_all_pointers_are_valid
+    from test_miniimage import _test_lookup_abs_in_integer
+    _test_all_pointers_are_valid(reader)
+    _test_lookup_abs_in_integer(interp)
 
 def create_method_shadow(bytes, literals=[], islarge=0, argsize=0, tempsize=0):
-    w_method = model.W_CompiledMethod(len(bytes))
+    w_method = model.W_CompiledMethod(space, len(bytes))
     w_method.bytes = bytes
     w_method.islarge = islarge
     w_method.argsize = argsize

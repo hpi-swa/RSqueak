@@ -48,7 +48,7 @@ class ListStorageShadow(AbstractShadow):
         self.initialize_storage(space, size)
     
     def initialize_storage(self, space, size):
-        self.storage = [model.w_nil] * size
+        self.storage = [space.w_nil] * size
     def fetch(self, n0):
         return self.storage[n0]
     def store(self, n0, w_value):
@@ -66,11 +66,11 @@ class WeakListStorageShadow(AbstractShadow):
     
     def __init__(self, space, w_self, size):
         AbstractShadow.__init__(self, space, w_self)
-        self.storage = [weakref.ref(model.w_nil)] * size
+        self.storage = [weakref.ref(space.w_nil)] * size
     
     def fetch(self, n0):
         weakobj = self.storage[n0]
-        return weakobj() or model.w_nil
+        return weakobj() or self.space.w_nil
     def store(self, n0, w_value):
         assert w_value is not None
         self.storage[n0] = weakref.ref(w_value)
@@ -200,7 +200,7 @@ class ClassShadow(AbstractCachingShadow):
         self.changed()
     
     def store_w_superclass(self, w_class):
-        if w_class is None or w_class.is_same_object(model.w_nil):
+        if w_class is None or w_class.is_same_object(self.space.w_nil):
             self._s_superclass = None
         else:
             assert isinstance(w_class, model.W_PointersObject)
@@ -241,7 +241,7 @@ class ClassShadow(AbstractCachingShadow):
         elif self.instance_kind == BYTES:
             w_new = model.W_BytesObject(self.space, w_cls, extrasize)
         elif self.instance_kind == COMPILED_METHOD:
-            w_new = model.W_CompiledMethod(extrasize)
+            w_new = model.W_CompiledMethod(self.space, extrasize)
         elif self.instance_kind == FLOAT:
             w_new = model.W_Float(0) # Squeak gives a random piece of memory
         elif self.instance_kind == LARGE_POSITIVE_INTEGER:
@@ -413,6 +413,7 @@ class MethodDictionaryShadow(ListStorageShadow):
                     # raise ClassShadowError("bogus selector in method dict")
                 w_compiledmethod = w_values.fetch(self.space, i)
                 if not isinstance(w_compiledmethod, model.W_CompiledMethod):
+                    import pdb; pdb.set_trace()
                     raise ClassShadowError("The methoddict must contain "
                                        "CompiledMethods only, for now. "
                                        "If the value observed is nil, our "
