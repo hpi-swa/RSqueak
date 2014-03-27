@@ -10,6 +10,9 @@ from spyvm import model, interpreter, squeakimage, objspace, wrapper,\
 from spyvm.tool.analyseimage import create_image
 from spyvm.interpreter_proxy import VirtualMachine
 
+def print_result(w_result):
+    # This will also print contents of strings/symbols/numbers
+    print w_result.as_repr_string().replace('\r', '\n')
 
 def _run_benchmark(interp, number, benchmark, arg):
     from spyvm.plugins.vmdebugging import stop_ui_process
@@ -46,8 +49,7 @@ def _run_benchmark(interp, number, benchmark, arg):
     w_result = _run_image(interp)
     t2 = time.time()
     if w_result:
-        if isinstance(w_result, model.W_BytesObject):
-            print w_result.as_string().replace('\r', '\n')
+        print_result(w_result)
         print "took %s seconds" % (t2 - t1)
         return 0
     return -1
@@ -90,10 +92,7 @@ def _run_code(interp, code, as_benchmark=False):
             print e.msg
             return 1
         if w_result:
-            if isinstance(w_result, model.W_BytesObject):
-                print w_result.as_string().replace('\r', '\n')
-            else:
-                print w_result.as_repr_string().replace('\r', '\n')
+            print_result(w_result)
         return 0
     else:
         return _run_benchmark(interp, 0, selector, "")

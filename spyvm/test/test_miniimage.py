@@ -69,32 +69,48 @@ def test_float_class_name():
     assert isinstance(w_float_class_name, model.W_BytesObject)
     assert w_float_class_name.bytes == list("Float")
 
-def test_str_w_object():
+# TODO - many of these test would belong in test_model.py
+    
+def test_str_float():
+    assert str(space.wrap_float(3.0)) == "a Float(3.000000)"
+
+def test_str_string():
+    assert str(space.wrap_string('hello')) == "a String('hello')"
+
+def test_str_float():
+    assert str(space.wrap_float(3.0)) == "a Float(3.000000)"
+
+def test_str_class_object():
     w_float_class = get_float_class()
     w_float_class.as_class_get_shadow(space)
-    assert str(w_float_class) == "Float class"
+    assert str(w_float_class) == "Float"
+    
     w_float_class.class_shadow(space)
-    #assert str(w_float_class.getclass(space)) == "a Metaclass" #yes, with article
+    assert str(w_float_class.getclass(space)) == "Float class"
+    
     w_float_class.getclass(space).class_shadow(space)
-    #assert str(w_float_class.getclass(space).getclass(space)) == "Metaclass class"
+    assert str(w_float_class.getclass(space).getclass(space)) == "Metaclass"
+    
+    w_float_class.getclass(space).getclass(space).class_shadow(space)
+    assert str(w_float_class.getclass(space).getclass(space).getclass(space)) == "Metaclass class"
 
 def test_nil_true_false():
     image = get_image()
     w = image.special(constants.SO_NIL)
     w.class_shadow(space)
-    assert str(w) == "a UndefinedObject" #yes, with article
+    assert str(w) == "a UndefinedObject"
     w = image.special(constants.SO_FALSE)
     w.class_shadow(space)
-    assert str(w) == "a False" #yes, with article
+    assert str(w) == "a False"
     w = image.special(constants.SO_TRUE)
     w.class_shadow(space)
-    assert str(w) == "a True" #yes, with article
+    assert str(w) == "a True"
 
 def test_scheduler():
     image = get_image()
     w = image.special(constants.SO_SCHEDULERASSOCIATIONPOINTER)
     w0 = w.fetch(space, 0)
-    assert str(w0) == "Processor"
+    assert str(w0) == "a Symbol('Processor')"
     w0 = w.fetch(space, 1)
     w0.class_shadow(space)
     assert str(w0) == "a ProcessorScheduler"
@@ -106,15 +122,15 @@ def test_special_classes0():
         assert str(obj) == expected_name
     image = get_image()
     # w = image.special(constants.SO_BITMAP_CLASS)
-    # assert str(w) == "Bitmap class"
-    test_classname(constants.SO_SMALLINTEGER_CLASS, "SmallInteger class")
-    test_classname(constants.SO_ARRAY_CLASS, "Array class")
-    test_classname(constants.SO_FLOAT_CLASS, "Float class")
-    test_classname(constants.SO_METHODCONTEXT_CLASS, "MethodContext class")
-    test_classname(constants.SO_BLOCKCONTEXT_CLASS, "BlockContext class")
-    test_classname(constants.SO_POINT_CLASS, "Point class")
-    test_classname(constants.SO_LARGEPOSITIVEINTEGER_CLASS, "LargePositiveInteger class")
-    test_classname(constants.SO_MESSAGE_CLASS, "Message class")
+    # assert str(w) == "Bitmap"
+    test_classname(constants.SO_SMALLINTEGER_CLASS, "SmallInteger")
+    test_classname(constants.SO_ARRAY_CLASS, "Array")
+    test_classname(constants.SO_FLOAT_CLASS, "Float")
+    test_classname(constants.SO_METHODCONTEXT_CLASS, "MethodContext")
+    test_classname(constants.SO_BLOCKCONTEXT_CLASS, "BlockContext")
+    test_classname(constants.SO_POINT_CLASS, "Point")
+    test_classname(constants.SO_LARGEPOSITIVEINTEGER_CLASS, "LargePositiveInteger")
+    test_classname(constants.SO_MESSAGE_CLASS, "Message")
 
     # to be continued
 
@@ -141,8 +157,8 @@ def test_name_of_shadow_of_specials():
 def test_special_objects0():
     image = get_image()
     w = image.special(constants.SO_DOES_NOT_UNDERSTAND)
-    assert str(w) == "doesNotUnderstand:"
-    assert str(w.getclass(space)) == "Symbol class" # for some strange reason not a symbol
+    assert str(w) == "a Symbol('doesNotUnderstand:')"
+    assert str(w.getclass(space)) == "Symbol" # for some strange reason not a symbol
 
 
     """
@@ -328,7 +344,7 @@ def test_Message():
     assert w_message_cls is interp.space.classtable["w_Message"]
     assert isinstance(w_message_cls, model.W_PointersObject)
     s_message_cls = w_message_cls.as_class_get_shadow(interp.space)
-    assert s_message_cls.getname() == "Message class"
+    assert s_message_cls.getname() == "Message"
     w_message = s_message_cls.new()
     assert isinstance(w_message, model.W_PointersObject)
 

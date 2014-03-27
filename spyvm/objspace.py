@@ -46,6 +46,8 @@ class ObjSpace(object):
             name = "w_" + name
             if not name in self.objtable or not self.objtable[name]:
                 self.objtable[name] = specials[idx]
+        # XXX this is kind of hacky, but I don't know where else to get Metaclass
+        self.classtable["w_Metaclass"] = self.w_SmallInteger.w_class.w_class
         
     def executable_path(self):
         return self._executable_path[0]

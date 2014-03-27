@@ -11,7 +11,9 @@ class AbstractShadow(object):
     can be attached at run-time to any Smalltalk object.
     """
     _attrs_ = ['_w_self', 'space']
+    _immutable_fields_ = ['_w_self', 'space']
     provides_getname = False
+    repr_classname = "AbstractShadow"
     
     def __init__(self, space, w_self):
         self.space = space
@@ -19,7 +21,12 @@ class AbstractShadow(object):
     def w_self(self):
         return self._w_self
     def getname(self):
-        return repr(self)
+        raise NotImplementedError("Abstract class")
+    def __repr__(self):
+        if self.provides_getname:
+            return "<%s %s>" % (self.repr_classname, self.getname())
+        else:
+            return "<%s>" % self.repr_classname
     
     def fetch(self, n0):
         raise NotImplementedError("Abstract class")
@@ -41,6 +48,7 @@ class AbstractShadow(object):
 
 class ListStorageShadow(AbstractShadow):
     _attrs_ = ['storage']
+    repr_classname = "ListStorageShadow"
     
     def __init__(self, space, w_self, size):
         AbstractShadow.__init__(self, space, w_self)
@@ -61,6 +69,7 @@ class ListStorageShadow(AbstractShadow):
 
 class WeakListStorageShadow(AbstractShadow):
     _attrs_ = ['storage']
+    repr_classname = "WeakListStorageShadow"
     
     def __init__(self, space, w_self, size):
         AbstractShadow.__init__(self, space, w_self)
@@ -78,6 +87,7 @@ class WeakListStorageShadow(AbstractShadow):
 class AbstractCachingShadow(ListStorageShadow):
     _immutable_fields_ = ['version?']
     _attrs_ = ['version']
+    repr_classname = "AbstractCachingShadow"
     import_from_mixin(version.VersionMixin)
     version = None
     
@@ -108,13 +118,12 @@ class ClassShadow(AbstractCachingShadow):
 
     _attrs_ = ["name", "_instance_size", "instance_varsized", "instance_kind",
                 "_s_methoddict", "_s_superclass", "subclass_s"]
-    name = None
+    name = '??'
+    _s_superclass = None
     provides_getname = True
+    repr_classname = "ClassShadow"
     
     def __init__(self, space, w_self):
-        # fields added here should also be in objspace.py:56ff, 300ff
-        self.name = '?'
-        self._s_superclass = None
         self.subclass_s = {}
         AbstractCachingShadow.__init__(self, space, w_self)
 
@@ -168,23 +177,19 @@ class ClassShadow(AbstractCachingShadow):
                 self.instance_kind = COMPILED_METHOD
             else:
                 raise ClassShadowError("unknown format %d" % (format,))
-        elif n0 == constants.CLASS_NAME_INDEX:
-            self.store_w_name(w_val)
-        elif n0 == self.size() - 1:
-            # In case of Metaclasses, the "instance" class is stored in the last field.
-            # TODO - only do this if we are sure this is a Metaclass. Check out space.w_Metaclass.
-            if isinstance(w_val, model.W_PointersObject):
-                cl_shadow = w_val.shadow
-                if isinstance(cl_shadow, ClassShadow):
-                    # If we're lucky, it's already a class shadow and we can reuse the stored information
-                    if cl_shadow.name:
-                        self.name = "%s class" % cl_shadow.name
-                elif w_val.size() >= constants.CLASS_NAME_INDEX:
-                    # If not, we have to extract the class name
-                    w_classname = w_val.fetch(self.space, constants.CLASS_NAME_INDEX)
-                    self.store_w_name(w_classname)
         else:
-            return
+            if self._w_self.w_class == self.space.classtable["w_Metaclass"]:
+                # In case of Metaclasses, the "instance" class is stored in the last field.
+                if n0 == self.size() - 1 and isinstance(w_val, model.W_PointersObject):
+                    cl_shadow = w_val.as_class_get_shadow(self.space)
+                    self.name = "%s class" % cl_shadow.getname()
+                else:
+                    return
+            elif n0 == constants.CLASS_NAME_INDEX:
+                # In case of regular classes, the name is stored here.
+                self.store_w_name(w_val)
+            else:
+                return
         # Some of the special info has changed -> Switch version.
         self.changed()
     
@@ -255,7 +260,7 @@ class ClassShadow(AbstractCachingShadow):
         return self._s_superclass
 
     def getname(self):
-        return "%s class" % (self.name or '?',)
+        return self.name or '?'
 
     # _______________________________________________________________
     # Methods for querying the format word, taken from the blue book:
@@ -289,9 +294,6 @@ class ClassShadow(AbstractCachingShadow):
 
     # _______________________________________________________________
     # Other Methods
-
-    def __repr__(self):
-        return "<ClassShadow %s>" % (self.name or '?',)
 
     @constant_for_version
     def lookup(self, w_selector):
@@ -348,7 +350,8 @@ class MethodDictionaryShadow(ListStorageShadow):
 
     _immutable_fields_ = ['invalid?', 's_class']
     _attrs_ = ['methoddict', 'invalid', 's_class']
-
+    repr_classname = "MethodDictionaryShadow"
+    
     def __init__(self, space, w_self):
         self.invalid = True
         self.s_class = None
@@ -415,7 +418,8 @@ class MethodDictionaryShadow(ListStorageShadow):
 
 class AbstractRedirectingShadow(AbstractShadow):
     _attrs_ = ['_w_self_size']
-
+    repr_classname = "AbstractRedirectingShadow"
+    
     def __init__(self, space, w_self):
         AbstractShadow.__init__(self, space, w_self)
         if w_self is not None:
@@ -431,7 +435,8 @@ class ContextPartShadow(AbstractRedirectingShadow):
     __metaclass__ = extendabletype
     _attrs_ = ['_s_sender', '_pc', '_temps_and_stack',
             '_stack_ptr', 'instances_w']
-
+    repr_classname = "ContextPartShadow"
+    
     _virtualizable_ = [
         "_s_sender", "_pc",
         "_temps_and_stack[*]", "_stack_ptr",
@@ -754,7 +759,8 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
 class BlockContextShadow(ContextPartShadow):
     _attrs_ = ['_w_home', '_initialip', '_eargc']
-
+    repr_classname = "BlockContextShadow"
+    
     def __init__(self, space, w_self=None, w_home=None, argcnt=0, initialip=0):
         self = jit.hint(self, access_directly=True, fresh_virtualizable=True)
         creating_w_self = w_self is None
@@ -857,7 +863,8 @@ class BlockContextShadow(ContextPartShadow):
 
 class MethodContextShadow(ContextPartShadow):
     _attrs_ = ['w_closure_or_nil', '_w_receiver', '_w_method']
-
+    repr_classname = "MethodContextShadow"
+    
     @jit.unroll_safe
     def __init__(self, space, w_self=None, s_method=None, w_receiver=None,
                               arguments=None, s_sender=None, closure=None, pc=0):
@@ -1020,7 +1027,8 @@ class CompiledMethodShadow(object):
               "w_compiledin", "version"]
     _immutable_fields_ = ["version?", "_w_self"]
     import_from_mixin(version.VersionMixin)
-
+    repr_classname = "CompiledMethodShadow"
+    
     def __init__(self, w_compiledmethod, space):
         self._w_self = w_compiledmethod
         self.space = space
@@ -1087,6 +1095,7 @@ class CompiledMethodShadow(object):
         return self.bytecode[pc]
 
 class CachedObjectShadow(AbstractCachingShadow):
+    repr_classname = "CachedObjectShadow"
 
     @elidable_for_version
     def fetch(self, n0):
@@ -1098,6 +1107,7 @@ class CachedObjectShadow(AbstractCachingShadow):
 
 class ObserveeShadow(ListStorageShadow):
     _attrs_ = ['dependent']
+    repr_classname = "ObserveeShadow"
     def __init__(self, space, w_self):
         ListStorageShadow.__init__(self, space, w_self, 0)
         self.dependent = None

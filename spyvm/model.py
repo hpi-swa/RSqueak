@@ -469,10 +469,6 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     def repr_content(self):
         return 'len=%d %s' % (self.size(), self.str_content())
     
-    def space(self):
-        assert self.shadow, "Cannot access space without a shadow!"
-        return self.shadow.space
-    
     def fillin(self, space, g_self):
         W_AbstractObjectWithIdentityHash.fillin(self, space, g_self)
         self.w_class = g_self.get_class()
@@ -482,15 +478,12 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
 
     def guess_classname(self):
         if self.has_class():
-            from shadow import ClassShadow
-            if isinstance(self.w_class.shadow, ClassShadow):
-                return self.w_class.shadow.name or "???"
-            else:
-                # If the shadow of w_class is not yet converted to a ClassShadow,
-                # we cannot get the classname, unfortunately. No space available.
-                return "?"
+            class_shadow = self.class_shadow(self.w_class.space())
+            # Three question marks, because it would be highly irregular to have
+            # an initialized ClassShadow without an initialized name field.
+            return class_shadow.name or "???"
         else:
-            return "??"
+            return "? (no class)"
     
     def invariant(self):
         from spyvm import shadow
@@ -571,6 +564,10 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         pointers = g_self.get_pointers()
         self.initialize_storage(space, len(pointers))
         self.store_all(space, pointers)
+        
+    def space(self):
+        assert self.shadow, "Cannot access space without a shadow!"
+        return self.shadow.space
         
     def __str__(self):
         if self.has_shadow() and self.shadow.provides_getname:
@@ -774,8 +771,8 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
     def size(self):
         return self._size
 
-    def __str__(self):
-        return self.as_string()
+    def str_content(self):
+        return "'%s'" % self.as_string()
 
     def as_string(self):
         if self.bytes is not None:
