@@ -21,6 +21,10 @@ def assert_valid_index(space, n0, w_obj):
     # n0 cannot be negative
     return n0
 
+def assert_pointers(w_obj):
+    if not isinstance(w_obj, model.W_PointersObject):
+        raise PrimitiveFailedError
+
 # ___________________________________________________________________________
 # Primitive table: it is filled in at initialization time with the
 # primitive functions.  Each primitive function takes two
@@ -462,7 +466,7 @@ def func(interp, s_frame, w_rcvr, n0, w_value):
 
 @expose_primitive(NEW, unwrap_spec=[object])
 def func(interp, s_frame, w_cls):
-    assert isinstance(w_cls, model.W_PointersObject)
+    assert_pointers(w_cls)
     s_class = w_cls.as_class_get_shadow(interp.space)
     if s_class.isvariable():
         raise PrimitiveFailedError()
@@ -470,7 +474,7 @@ def func(interp, s_frame, w_cls):
 
 @expose_primitive(NEW_WITH_ARG, unwrap_spec=[object, int])
 def func(interp, s_frame, w_cls, size):
-    assert isinstance(w_cls, model.W_PointersObject)
+    assert_pointers(w_cls)
     s_class = w_cls.as_class_get_shadow(interp.space)
     if not s_class.isvariable() and size != 0:
         raise PrimitiveFailedError()
@@ -488,9 +492,7 @@ def func(interp, s_frame, w_rcvr, n0):
     "Fetches a fixed field from the object, and fails otherwise"
     s_class = w_rcvr.class_shadow(interp.space)
     assert_bounds(n0, 0, s_class.instsize())
-    # only pointers have non-0 size
-    # XXX Now MethodContext is still own format, leave
-    #assert isinstance(w_rcvr, model.W_PointersObject)
+    assert_pointers(w_rcvr)
     return w_rcvr.fetch(interp.space, n0)
 
 @expose_primitive(INST_VAR_AT_PUT, unwrap_spec=[object, index1_0, object])
@@ -498,8 +500,7 @@ def func(interp, s_frame, w_rcvr, n0, w_value):
     "Stores a value into a fixed field from the object, and fails otherwise"
     s_class = w_rcvr.class_shadow(interp.space)
     assert_bounds(n0, 0, s_class.instsize())
-    # XXX Now MethodContext is still own format, leave
-    #assert isinstance(w_rcvr, model.W_PointersObject)
+    assert_pointers(w_rcvr)
     w_rcvr.store(interp.space, n0, w_value)
     return w_value
 
@@ -512,8 +513,7 @@ def func(interp, s_frame, w_rcvr):
 @expose_primitive(STORE_STACKP, unwrap_spec=[object, int])
 def func(interp, s_frame, w_frame, stackp):
     assert stackp >= 0
-    if not isinstance(w_frame, model.W_PointersObject):
-        raise PrimitiveFailedError
+    assert_pointers(w_frame)
     w_frame.store(interp.space, constants.CTXPART_STACKP_INDEX, interp.space.wrap_int(stackp))
     return w_frame
 
@@ -909,7 +909,7 @@ def func(interp, s_frame, w_rcvr):
     s_cm = w_rcvr.as_compiledmethod_get_shadow(interp.space)
     w_class = s_cm.w_compiledin
     if w_class:
-        assert isinstance(w_class, model.W_PointersObject)
+        assert_pointers(w_class)
         w_class.as_class_get_shadow(interp.space).flush_method_caches()
     return w_rcvr
 
@@ -1282,7 +1282,7 @@ def func(interp, s_frame, w_context, argcnt):
     # the new BlockContext's home context.  Otherwise, the home
     # context of the receiver is used for the new BlockContext.
     # Note that in our impl, MethodContext.w_home == self
-    assert isinstance(w_context, model.W_PointersObject)
+    assert_pointers(w_context)
     w_method_context = w_context.as_context_get_shadow(interp.space).w_home()
 
     # The block bytecodes are stored inline: so we skip past the
@@ -1318,7 +1318,7 @@ def func(interp, s_frame, argument_count):
         interp.space.w_BlockContext):
         raise PrimitiveFailedError()
 
-    assert isinstance(w_block_ctx, model.W_PointersObject)
+    assert_pointers(w_block_ctx)
 
     s_block_ctx = w_block_ctx.as_blockcontext_get_shadow(interp.space)
 
@@ -1341,7 +1341,7 @@ def func(interp, s_frame, argument_count):
                   result_is_new_frame=True)
 def func(interp, s_frame, w_block_ctx, args_w):
 
-    assert isinstance(w_block_ctx, model.W_PointersObject)
+    assert_pointers(w_block_ctx)
     s_block_ctx = w_block_ctx.as_blockcontext_get_shadow(interp.space)
     exp_arg_cnt = s_block_ctx.expected_argument_count()
 
@@ -1434,8 +1434,7 @@ def func(interp, s_frame, w_rcvr):
 
 @expose_primitive(FLUSH_CACHE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    if not isinstance(w_rcvr, model.W_PointersObject):
-        raise PrimitiveFailedError()
+    assert_pointers(w_rcvr)
     s_class = w_rcvr.as_class_get_shadow(interp.space)
     s_class.flush_method_caches()
     return w_rcvr
