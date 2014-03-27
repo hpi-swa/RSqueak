@@ -46,6 +46,20 @@ class AbstractShadow(object):
         for i in range(self.size()):
             self.copy_field_from(i, other_shadow)
 
+class AllNilStorageShadow(AbstractShadow):
+    def fetch(self, n0):
+        raise NotImplementedError("Abstract class")
+    def store(self, n0, w_value):
+        raise NotImplementedError("Abstract class")
+    def size(self):
+        raise NotImplementedError("Abstract class")
+
+class SmallIntegerOrNilStorageShadow:
+    pass
+
+class FloatOrNilStorageShadow:
+    pass
+
 class ListStorageShadow(AbstractShadow):
     _attrs_ = ['storage']
     repr_classname = "ListStorageShadow"
