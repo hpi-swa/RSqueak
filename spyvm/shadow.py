@@ -13,13 +13,13 @@ class AbstractShadow(object):
     can be attached at run-time to any Smalltalk object.
     """
     _attrs_ = ['_w_self', 'space']
-    _immutable_fields_ = ['_w_self', 'space']
+    _immutable_fields_ = ['space']
     provides_getname = False
     repr_classname = "AbstractShadow"
     
     def __init__(self, space, w_self):
         self.space = space
-        assert isinstance(w_self, model.W_AbstractPointersObject)
+        assert w_self is None or isinstance(w_self, model.W_AbstractPointersObject)
         self._w_self = w_self
     def w_self(self):
         return self._w_self
@@ -870,9 +870,11 @@ class ContextPartShadow(AbstractRedirectingShadow):
         if self._w_self is not None:
             return self._w_self
         else:
-            size = self.size() - self.space.w_MethodContext.as_class_get_shadow(self.space).instsize()
+            s_MethodContext = self.space.w_MethodContext.as_class_get_shadow(self.space)
+            size = self.size() - s_MethodContext.instsize()
             space = self.space
-            w_self = space.w_MethodContext.as_class_get_shadow(space).new(size)
+            w_self = s_MethodContext.new(size)
+            assert isinstance(w_self, model.W_PointersObject)
             w_self.store_shadow(self)
             self._w_self = w_self
             self._w_self_size = w_self.size()
