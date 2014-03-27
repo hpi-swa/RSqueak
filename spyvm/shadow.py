@@ -55,13 +55,13 @@ class AbstractStorageShadow(AbstractShadow):
     def store(self, n0, w_val):
         if self.can_contain(w_val):
             return self.do_store(n0, w_val)
-        new_storage = self.generelized_strategy_for(w_val)
+        new_storage = self.generalized_strategy_for(w_val)
         return self._w_self.store_with_new_storage(new_storage, n0, w_val)
     def can_contain(self, w_val):
         return self.static_can_contain(self.space, w_val)
     def do_store(self, n0, w_val):
         raise NotImplementedError()
-    def generelized_strategy_for(self, w_val):
+    def generalized_strategy_for(self, w_val):
         raise NotImplementedError()
 
 class AllNilStorageShadow(AbstractStorageShadow):
@@ -79,7 +79,7 @@ class AllNilStorageShadow(AbstractStorageShadow):
         pass
     def size(self):
         return self._size
-    def generelized_strategy_for(self, w_val):
+    def generalized_strategy_for(self, w_val):
         return find_storage_for_objects(self.space, [w_val])
     @staticmethod
     def static_can_contain(space, w_val):
@@ -97,7 +97,7 @@ class AbstractValueOrNilStorageMixin(object):
     def size(self):
         return len(self.storage)
     
-    def generelized_strategy_for(self, w_val):
+    def generalized_strategy_for(self, w_val):
         return ListStorageShadow
     
     def fetch(self, n0):
