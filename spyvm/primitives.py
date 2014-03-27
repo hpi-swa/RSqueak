@@ -15,7 +15,7 @@ def assert_bounds(n0, minimum, maximum):
         raise PrimitiveFailedError()
 
 def assert_valid_index(space, n0, w_obj):
-    if not 0 <= n0 < w_obj.primsize(space):
+    if not 0 <= n0 < w_obj.varsize(space):
         raise PrimitiveFailedError()
     # return the index, since from here on the annotator knows that
     # n0 cannot be negative
@@ -402,7 +402,7 @@ def func(interp, s_frame, w_obj, n0, w_val):
 def func(interp, s_frame, w_obj):
     if not w_obj.class_shadow(interp.space).isvariable():
         raise PrimitiveFailedError()
-    return interp.space.wrap_int(w_obj.primsize(interp.space))
+    return interp.space.wrap_int(w_obj.varsize(interp.space))
 
 @expose_primitive(STRING_AT, unwrap_spec=[object, index1_0])
 def func(interp, s_frame, w_obj, n0):

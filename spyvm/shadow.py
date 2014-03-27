@@ -11,7 +11,7 @@ class AbstractShadow(object):
     can be attached at run-time to any Smalltalk object.
     """
     _attrs_ = ['_w_self', 'space']
-    has_getname = True
+    provides_getname = True
     
     def __init__(self, space, w_self):
         self.space = space
@@ -41,7 +41,7 @@ class AbstractShadow(object):
 
 class ListStorageShadow(AbstractShadow):
     _attrs_ = ['storage']
-    has_getname = False
+    provides_getname = False
     
     def __init__(self, space, w_self, size):
         AbstractShadow.__init__(self, space, w_self)
@@ -62,7 +62,7 @@ class ListStorageShadow(AbstractShadow):
 
 class WeakListStorageShadow(AbstractShadow):
     _attrs_ = ['storage']
-    has_getname = False
+    provides_getname = False
     
     def __init__(self, space, w_self, size):
         AbstractShadow.__init__(self, space, w_self)
@@ -82,7 +82,7 @@ class AbstractCachingShadow(ListStorageShadow):
     _attrs_ = ['version']
     import_from_mixin(version.VersionMixin)
     version = None
-    has_getname = True
+    provides_getname = True
     
     def __init__(self, space, w_self):
         ListStorageShadow.__init__(self, space, w_self, 0)

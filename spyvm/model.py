@@ -31,7 +31,8 @@ class W_Object(object):
     """Root of Squeak model, abstract."""
     _attrs_ = []    # no RPython-level instance variables allowed in W_Object
     _settled_ = True
-
+    repr_classname = "W_Object"
+    
     def size(self):
         """Return bytesize that conforms to Blue Book.
 
@@ -49,10 +50,6 @@ class W_Object(object):
         """Return bytesize of variable-sized part.
 
         Variable sized objects are those created with #new:."""
-        return self.size(space)
-
-    def primsize(self, space):
-        # TODO remove this method
         return self.size()
 
     def getclass(self, space):
@@ -104,6 +101,9 @@ class W_Object(object):
     def invariant(self):
         return True
 
+    def getclass(self, space):
+        raise NotImplementedError()
+        
     def class_shadow(self, space):
         """Return internal representation of Squeak class."""
         return self.getclass(space).as_class_get_shadow(space)
@@ -129,12 +129,15 @@ class W_Object(object):
         true for some W_PointersObjects"""
         return True
 
-    def __repr__(self):
-        return self.as_repr_string()
-
-    def as_repr_string(self):
-        return "%r" % self
-
+    def classname(self, space):
+        """Get the name of the class of the receiver"""
+        name = None
+        if self.has_class():
+            name = self.class_shadow(space).name
+        if not name:
+            name = "?"
+        return name
+    
     def lshift(self, space, shift):
         raise error.PrimitiveFailedError()
 
@@ -146,6 +149,33 @@ class W_Object(object):
 
     def is_array_object(self):
         return False
+        
+    # Methods for printing this object
+    
+    def guess_classname(self):
+        """Get the name of the class of the receiver without using a space.
+        If the shadow of the class of the receiver is not yet initialized,
+        this might not return a correct name."""
+        return "?"
+    
+    def __repr__(self):
+        return self.as_repr_string()
+
+    def __str__(self):
+        content = self.str_content()
+        if content:
+            return "a %s(%s)" % (self.guess_classname(), content)
+        else:
+            return "a %s" % (self.guess_classname())
+        
+    def str_content(self):
+        return ""
+    
+    def as_repr_string(self):
+        return "<%s (a %s) %s>" % (self.repr_classname, self.guess_classname(), self.repr_content())
+
+    def repr_content(self):
+        return self.str_content()
 
 class W_SmallInteger(W_Object):
     """Boxed integer value"""
@@ -153,7 +183,8 @@ class W_SmallInteger(W_Object):
     _attrs_ = ['value']
     __slots__ = ('value',)     # the only allowed slot here
     _immutable_fields_ = ["value"]
-
+    repr_classname = "W_SmallInteger"
+    
     def __init__(self, value):
         self.value = intmask(value)
 
@@ -191,12 +222,13 @@ class W_SmallInteger(W_Object):
         # Assume the caller knows what he does, even if int is negative
         return r_uint(val)
 
-    @jit.elidable
-    def as_repr_string(self):
-        return "W_SmallInteger(%d)" % self.value
+    def guess_classname(self):
+        return "SmallInteger"
+    
+    def str_content(self):
+        return "%d" % self.value
 
     def is_same_object(self, other):
-        # TODO what is correct terminology to say that identity is by value?
         if not isinstance(other, W_SmallInteger):
             return False
         return self.value == other.value
@@ -219,11 +251,10 @@ class W_AbstractObjectWithIdentityHash(W_Object):
     """Object with explicit hash (ie all except small
     ints and floats)."""
     _attrs_ = ['hash']
-
-    #XXX maybe this is too extreme, but it's very random
+    repr_classname = "W_AbstractObjectWithIdentityHash"
+    
     hash_generator = rrandom.Random()
     UNASSIGNED_HASH = sys.maxint
-
     hash = UNASSIGNED_HASH # default value
 
     def fillin(self, space, g_self):
@@ -247,7 +278,8 @@ class W_AbstractObjectWithIdentityHash(W_Object):
 class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
     """Large positive integer for exactly 1 word"""
     _attrs_ = ["value", "_exposed_size"]
-
+    repr_classname = "W_LargePositiveInteger1Word"
+    
     def __init__(self, value, size=4):
         self.value = intmask(value)
         self._exposed_size = size
@@ -264,12 +296,15 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
 
     def getclass(self, space):
         return space.w_LargePositiveInteger
-
+    
+    def guess_classname(self):
+        return "LargePositiveInteger"
+    
     def invariant(self):
         return isinstance(self.value, int)
 
-    def __repr__(self):
-        return "W_LargePositiveInteger1Word(%d)" % r_uint(self.value)
+    def str_content(self):
+        return "%d" % r_uint(self.value)
 
     def lshift(self, space, shift):
         # shift > 0, therefore the highest bit of upperbound is not set,
@@ -326,7 +361,8 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
 class W_Float(W_AbstractObjectWithIdentityHash):
     """Boxed float value."""
     _attrs_ = ['value']
-
+    repr_classname = "W_Float"
+    
     def fillin_fromwords(self, space, high, low):
         from rpython.rlib.rstruct.ieee import float_unpack
         from rpython.rlib.rarithmetic import r_ulonglong
@@ -347,6 +383,12 @@ class W_Float(W_AbstractObjectWithIdentityHash):
         """Return Float from special objects array."""
         return space.w_Float
 
+    def guess_classname(self):
+        return "Float"
+        
+    def str_content(self):
+        return "%f" % self.value
+        
     def gethash(self):
         return intmask(compute_hash(self.value)) // 2
 
@@ -357,9 +399,6 @@ class W_Float(W_AbstractObjectWithIdentityHash):
         # TODO -- shouldn't this be named 'become'?
         self.value, w_other.value = w_other.value, self.value
         W_AbstractObjectWithIdentityHash._become(self, w_other)
-
-    def __repr__(self):
-        return "W_Float(%f)" % self.value
 
     def is_same_object(self, other):
         if not isinstance(other, W_Float):
@@ -417,47 +456,42 @@ class W_Float(W_AbstractObjectWithIdentityHash):
 class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     """Objects with arbitrary class (ie not CompiledMethod, SmallInteger or
     Float)."""
-    _attrs_ = ['w_class', 'space']
-
+    _attrs_ = ['w_class']
+    repr_classname = "W_AbstractObjectWithClassReference"
+    
     def __init__(self, space, w_class):
         if w_class is not None:     # it's None only for testing and space generation
             assert isinstance(w_class, W_PointersObject)
             self.w_class = w_class
         else:
             self.w_class = None
-        self.space = space
 
+    def repr_content(self):
+        return 'len=%d %s' % (self.size(), self.str_content())
+    
+    def space(self):
+        assert self.shadow, "Cannot access space without a shadow!"
+        return self.shadow.space
+    
     def fillin(self, space, g_self):
         W_AbstractObjectWithIdentityHash.fillin(self, space, g_self)
-        self.space = space
         self.w_class = g_self.get_class()
         
     def getclass(self, space):
         return self.w_class
 
-    def __str__(self):
-        if isinstance(self, W_PointersObject) and self.has_shadow() and self.shadow.has_getname:
-            return self._get_shadow().getname()
-        else:
-            name = None
-            if self.has_class():
-                name = self.class_shadow(self.space).name
-            return "a %s" % (name or '?',)
-
-    @jit.elidable
-    def as_repr_string(self):
-        return self.as_embellished_string("W_O /w Class", "")
-
-    def as_embellished_string(self, className, additionalInformation):
-        from rpython.rlib.objectmodel import current_object_addr_as_int
+    def guess_classname(self):
         if self.has_class():
-            name = self.class_shadow(self.space).name
+            from shadow import ClassShadow
+            if isinstance(self.w_class.shadow, ClassShadow):
+                return self.w_class.shadow.name or "???"
+            else:
+                # If the shadow of w_class is not yet converted to a ClassShadow,
+                # we cannot get the classname, unfortunately. No space available.
+                return "?"
         else:
-            name = "?"
-        return "<%s (a %s) %s>" % (className, name,
-                #hex(current_object_addr_as_int(self)),
-                additionalInformation)
-
+            return "??"
+    
     def invariant(self):
         from spyvm import shadow
         return (W_AbstractObjectWithIdentityHash.invariant(self) and
@@ -521,11 +555,7 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     """Common object."""
     _attrs_ = ['shadow']
     shadow = None # Default value
-
-    def changed(self):
-        # This is called whenever an instance variable is changed on the receiver.
-        # Was used with a version variable before. Left here in case it might be usefull in the future.
-        pass
+    repr_classname = "W_AbstractPointersObject"
     
     @jit.unroll_safe
     def __init__(self, space, w_class, size):
@@ -541,6 +571,21 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         pointers = g_self.get_pointers()
         self.initialize_storage(space, len(pointers))
         self.store_all(space, pointers)
+        
+    def __str__(self):
+        if self.has_shadow() and self.shadow.provides_getname:
+            return self._get_shadow().getname()
+        else:
+            return W_AbstractObjectWithClassReference.__str__(self)
+    
+    def repr_content(self):
+        shadow_info = "no shadow"
+        name = ""
+        if self.has_shadow():
+            shadow_info = self.shadow.__repr__()
+            if self.shadow.provides_getname:
+                name = self._get_shadow().getname()
+        return '(%s) len=%d %s' % (shadow_info, self.size(), name)
         
     def fetch_all(self, space):
         return [self.fetch(space, i) for i in range(self.size())]
@@ -578,16 +623,12 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     def instsize(self, space):
         return self.class_shadow(space).instsize()
 
-    def primsize(self, space):
-        return self.varsize(space)
-
     def size(self):
         if not self.shadow:
             return 0
         return self._get_shadow().size()
 
     def store_shadow(self, shadow):
-        #assert self.shadow is None or self.shadow is shadow
         self.shadow = shadow
 
     def _get_shadow(self):
@@ -658,22 +699,18 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     @jit.unroll_safe
     def clone(self, space):
         my_pointers = self.fetch_all(space)
-        w_result = W_PointersObject(self.space, self.getclass(space), len(my_pointers))
+        w_result = W_PointersObject(space, self.getclass(space), len(my_pointers))
         w_result.store_all(space, my_pointers)
         return w_result
         
-    @jit.elidable
-    def as_repr_string(self):
-        return W_AbstractObjectWithClassReference.as_embellished_string(self,
-                                className='W_PointersObject',
-                                additionalInformation='len=%d' % self.size())
-
 class W_PointersObject(W_AbstractPointersObject):
+    repr_classname = 'W_PointersObject'
     def default_storage(self, space, size):
         from spyvm.shadow import ListStorageShadow
         return ListStorageShadow(space, self, size)
 
 class W_WeakPointersObject(W_AbstractPointersObject):
+    repr_classname = 'W_WeakPointersObject'
     def default_storage(self, space, size):
         from spyvm.shadow import WeakListStorageShadow
         return WeakListStorageShadow(space, self, size)
@@ -681,7 +718,8 @@ class W_WeakPointersObject(W_AbstractPointersObject):
 class W_BytesObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['bytes', 'c_bytes', '_size']
     _immutable_fields_ = ['_size', 'bytes[*]?']
-
+    repr_classname = 'W_BytesObject'
+    
     def __init__(self, space, w_class, size):
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
         assert isinstance(size, int)
@@ -739,10 +777,6 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
     def __str__(self):
         return self.as_string()
 
-    def as_repr_string(self):
-        return W_AbstractObjectWithClassReference.as_embellished_string(self,
-            className='W_BytesObject', additionalInformation=self.as_string())
-
     def as_string(self):
         if self.bytes is not None:
             return "".join(self.bytes)
@@ -780,7 +814,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
 
     def clone(self, space):
         size = self.size()
-        w_result = W_BytesObject(self.space, self.getclass(space), size)
+        w_result = W_BytesObject(space, self.getclass(space), size)
         if self.bytes is not None:
             w_result.bytes = list(self.bytes)
         else:
@@ -816,7 +850,8 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
 class W_WordsObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['words', 'c_words', '_size']
     _immutable_fields_ = ['_size']
-
+    repr_classname = "W_WordsObject"
+    
     def __init__(self, space, w_class, size):
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
         self.words = [r_uint(0)] * size
@@ -881,16 +916,12 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
 
     def clone(self, space):
         size = self.size()
-        w_result = W_WordsObject(self.space, self.getclass(space), size)
+        w_result = W_WordsObject(space, self.getclass(space), size)
         if self.words is not None:
             w_result.words = list(self.words)
         else:
             w_result.words = [r_uint(self.c_words[i]) for i in range(size)]
         return w_result
-
-    def as_repr_string(self):
-        return W_AbstractObjectWithClassReference.as_embellished_string(self,
-            className='W_WordsObject', additionalInformation=('len=%d' % self.size()))
 
     def is_array_object(self):
         return True
@@ -936,7 +967,8 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
 class W_DisplayBitmap(W_AbstractObjectWithClassReference):
     _attrs_ = ['pixelbuffer', '_realsize', '_real_depth_buffer', 'display', '_depth']
     _immutable_fields_ = ['_realsize', 'display', '_depth']
-
+    repr_classname = "W_DisplayBitmap"
+    
     pixelbuffer = None
     
     @staticmethod
@@ -950,6 +982,9 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
         else:
             return W_DisplayBitmap(space, w_class, size, depth, display)
 
+    def repr_content(self):
+        return "len=%d depth=%d %s" % (self.size(), self._depth, self.str_content())
+    
     def __init__(self, space, w_class, size, depth, display):
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
         self._real_depth_buffer = lltype.malloc(rffi.CArray(rffi.UINT), size, flavor='raw')
@@ -975,7 +1010,7 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
         return False
 
     def clone(self, space):
-        w_result = W_WordsObject(self.space, self.getclass(space), self._realsize)
+        w_result = W_WordsObject(space, self.getclass(space), self._realsize)
         n = 0
         while n < self._realsize:
             w_result.words[n] = self.getword(n)
@@ -1005,6 +1040,7 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
 
 
 class W_16BitDisplayBitmap(W_DisplayBitmap):
+    repr_classname = "W_16BitDisplayBitmap"
     def setword(self, n, word):
         self._real_depth_buffer[n] = word
         mask = 0b11111
@@ -1026,6 +1062,7 @@ class W_16BitDisplayBitmap(W_DisplayBitmap):
 
 
 class W_8BitDisplayBitmap(W_DisplayBitmap):
+    repr_classname = "W_8BitDisplayBitmap"
     def setword(self, n, word):
         self._real_depth_buffer[n] = word
         self.display.get_pixelbuffer()[n] = r_uint(
@@ -1035,9 +1072,9 @@ class W_8BitDisplayBitmap(W_DisplayBitmap):
             (word << 24)
         )
 
-
 NATIVE_DEPTH = 8
 class W_MappingDisplayBitmap(W_DisplayBitmap):
+    repr_classname = "W_MappingDisplayBitmap"
     @jit.unroll_safe
     def setword(self, n, word):
         self._real_depth_buffer[n] = word
@@ -1071,6 +1108,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         bytecodes  (variable)
     """
 
+    repr_classname = "W_CompiledMethod"
     _immutable_fields_ = ["_shadow?"]
     _attrs_ = ["bytes", "_likely_methodname", "header", "argsize", "primitive",
                 "literals", "tempsize", "literalsize", "islarge", "_shadow"]
@@ -1122,11 +1160,11 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def getclass(self, space):
         return space.w_CompiledMethod
 
-    def __str__(self):
-        return self.as_string()
-
-    def as_repr_string(self):
-        return "<CompiledMethod %s>" % self.get_identifier_string()
+    def guess_classname (self):
+        return "CompiledMethod"
+        
+    def str_content(self):
+        return self.get_identifier_string()
 
     def as_string(self, markBytecode=0):
         from spyvm.interpreter import BYTECODE_TABLE
@@ -1139,20 +1177,20 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
             j += 1
         return retval + "---------------------\n"
 
-    def get_identifier_string(self):
-        from spyvm import shadow
+    def guess_containing_classname(self):
+        from spyvm.shadow import ClassShadow
         guessed_classname = None
         if len(self.literals) > 0:
             w_candidate = self.literals[-1]
             if isinstance(w_candidate, W_PointersObject):
                 c_shadow = w_candidate._get_shadow()
-                if isinstance(c_shadow, shadow.ClassShadow):
+                if isinstance(c_shadow, ClassShadow):
                     guessed_classname = c_shadow.getname()
                 elif w_candidate.size() >= 2:
                     w_class = w_candidate.fetch(None, 1)
                     if isinstance(w_class, W_PointersObject):
                         d_shadow = w_class._get_shadow()
-                        if isinstance(d_shadow, shadow.ClassShadow):
+                        if isinstance(d_shadow, ClassShadow):
                             guessed_classname = d_shadow.getname()
         if guessed_classname:
             class_cutoff = len(guessed_classname) - 6
@@ -1162,7 +1200,10 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
                 classname = guessed_classname
         else:
             classname = "<unknown>"
-        return "%s >> #%s" % (classname, self._likely_methodname)
+        return classname
+    
+    def get_identifier_string(self):
+        return "%s >> #%s" % (self.guess_containing_classname(), self._likely_methodname)
 
     def invariant(self):
         return (W_Object.invariant(self) and

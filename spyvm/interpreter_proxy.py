@@ -195,7 +195,7 @@ def byteSizeOf(w_object):
     s_class = w_object.class_shadow(IProxy.space)
     size = s_class.instsize()
     if s_class.isvariable():
-        size += w_object.primsize(IProxy.space)
+        size += w_object.varsize(IProxy.space)
     if not isinstance(w_object, model.W_BytesObject):
         size *= 4
     return size
@@ -308,7 +308,7 @@ def stObjectatput(w_object, n0, w_value):
 
 @expose_on_virtual_machine_proxy([oop], int)
 def stSizeOf(w_object):
-    return w_object.primsize(IProxy.space)
+    return w_object.varsize(IProxy.space)
 
 @expose_on_virtual_machine_proxy([int, oop, int], oop)
 def storeIntegerofObjectwithValue(n0, w_object, a):
