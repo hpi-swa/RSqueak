@@ -32,26 +32,35 @@ class W_Object(object):
     _attrs_ = []    # no RPython-level instance variables allowed in W_Object
     _settled_ = True
     repr_classname = "W_Object"
+    bytes_per_slot = constants.BYTES_PER_WORD
     
     def size(self):
+        """Return the number of "slots" or "items" in the receiver object.
+        This means different things for different objects.
+        For ByteObject, this means the number of bytes, for WordObject the number of words,
+        for PointerObject the number of pointers (regardless if it's varsized or not).
+        """
+        return 0
+    
+    def instsize(self):
+        """Return the number of slots of the object reserved for instance variables (not number of bytes).
+        Only returns something non-zero for W_PointersObjects,
+        because all other classes in this model hierarchy represent varsized classes (except for SmallInteger)."""
+        return 0
+
+    def varsize(self):
+        """Return number of slots in the of variable-sized part (not number of bytes).
+        Not necessarily number of bytes.
+        Variable sized objects are those created with #new:."""
+        return self.size() - self.instsize()
+
+    def bytesize(self):
         """Return bytesize that conforms to Blue Book.
 
         The reported size may differ from the actual size in Spy's object
         space, as memory representation varies depending on PyPy translation."""
-        return 0
-
-    def instsize(self, space):
-        """Return the size of the object reserved for instance variables.
-        Only returns something non-zero for W_PointersObjects, W_Floats, and
-        W_LargePositiveInteger1Words"""
-        return 0
-
-    def varsize(self, space):
-        """Return bytesize of variable-sized part.
-
-        Variable sized objects are those created with #new:."""
-        return self.size()
-
+        return self.size() * self.bytes_per_slot
+        
     def getclass(self, space):
         """Return Squeak class."""
         raise NotImplementedError()
@@ -279,6 +288,7 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
     """Large positive integer for exactly 1 word"""
     _attrs_ = ["value", "_exposed_size"]
     repr_classname = "W_LargePositiveInteger1Word"
+    bytes_per_slot = 1
     
     def __init__(self, value, size=4):
         self.value = intmask(value)
@@ -348,10 +358,10 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
         new_value = self.value & r_uint(~(0xff << skew))
         new_value |= r_uint(byte << skew)
         self.value = intmask(new_value)
-
+    
     def size(self):
         return self._exposed_size
-
+        
     def invariant(self):
         return isinstance(self.value, int)
 
@@ -450,7 +460,7 @@ class W_Float(W_AbstractObjectWithIdentityHash):
         self.value = float_unpack(r, 8)
 
     def size(self):
-        return 2
+        return constants.WORDS_IN_FLOAT
 
 @signature.finishsigs
 class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
@@ -603,7 +613,7 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
             shadow_info = self.shadow.__repr__()
             if self.shadow.provides_getname:
                 name = self._get_shadow().getname()
-        return '(%s) len=%d %s' % (shadow_info, self.size(), name)
+        return '(%s) len=%d [%s]' % (shadow_info, self.size(), name)
         
     def fetch_all(self, space):
         return [self.fetch(space, i) for i in range(self.size())]
@@ -623,11 +633,11 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         
     def at0(self, space, index0):
         # To test, at0 = in varsize part
-        return self.fetch(space, index0+self.instsize(space))
+        return self.fetch(space, index0 + self.instsize())
 
     def atput0(self, space, index0, w_value):
         # To test, at0 = in varsize part
-        self.store(space, index0 + self.instsize(space), w_value)
+        self.store(space, index0 + self.instsize(), w_value)
 
     def fetch(self, space, n0):
         return self._get_shadow().fetch(n0)
@@ -635,16 +645,11 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     def store(self, space, n0, w_value):
         return self._get_shadow().store(n0, w_value)
 
-    def varsize(self, space):
-        return self.size() - self.instsize(space)
-
-    def instsize(self, space):
-        return self.class_shadow(space).instsize()
-
     def size(self):
-        if not self.shadow:
-            return 0
         return self._get_shadow().size()
+        
+    def instsize(self):
+        return self.class_shadow(self.space()).instsize()
 
     def store_shadow(self, shadow):
         self.shadow = shadow
@@ -746,6 +751,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['bytes', 'c_bytes', '_size']
     _immutable_fields_ = ['_size', 'bytes[*]?']
     repr_classname = 'W_BytesObject'
+    bytes_per_slot = 1
     
     def __init__(self, space, w_class, size):
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
@@ -1032,7 +1038,7 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
 
     def size(self):
         return self._realsize
-
+        
     def invariant(self):
         return False
 
@@ -1245,9 +1251,14 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
                 hasattr(self, 'primitive') and
                 self.primitive is not None)
 
-    def size(self):
+    def bytesize(self, space):
+        # This is very special: words and bytes are mixed here.
         return self.headersize() + self.getliteralsize() + len(self.bytes)
 
+    def size(self):
+        # One word for the header.
+        return 1 + self.literalsize + len(self.bytes)
+    
     def gettempsize(self):
         return self.tempsize
 

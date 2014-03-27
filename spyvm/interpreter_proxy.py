@@ -192,13 +192,7 @@ def arrayValueOf(w_array):
 
 @expose_on_virtual_machine_proxy([oop], int)
 def byteSizeOf(w_object):
-    s_class = w_object.class_shadow(IProxy.space)
-    size = s_class.instsize()
-    if s_class.isvariable():
-        size += w_object.varsize(IProxy.space)
-    if not isinstance(w_object, model.W_BytesObject):
-        size *= 4
-    return size
+    return w_object.bytesize(IProxy.space)
 
 @expose_on_virtual_machine_proxy([int, oop], list)
 def fetchArrayofObject(fieldIndex, w_object):
@@ -308,7 +302,7 @@ def stObjectatput(w_object, n0, w_value):
 
 @expose_on_virtual_machine_proxy([oop], int)
 def stSizeOf(w_object):
-    return w_object.varsize(IProxy.space)
+    return w_object.varsize()
 
 @expose_on_virtual_machine_proxy([int, oop, int], oop)
 def storeIntegerofObjectwithValue(n0, w_object, a):
@@ -727,14 +721,13 @@ def signed64BitValueOf(w_number):
 # #if VM_PROXY_MINOR > 5
 @expose_on_virtual_machine_proxy([oop], bool, minor=5)
 def isArray(w_object):
+    # TODO - are ByteObjects and WordObjects not considered Arrays?
+    # What are the exact semantics of this? Should only the class Array return true?
     if not isinstance(w_object, model.W_PointersObject):
         return False
     space = IProxy.space
     s_class = w_object.class_shadow(space)
-    if s_class.instsize() == 0 and s_class.isvariable():
-        return True
-    else:
-        return False
+    return s_class.instsize() == 0 and s_class.isvariable()
 
 @expose_on_virtual_machine_proxy([], int, minor=5)
 def forceInterruptCheck():
@@ -1156,7 +1149,7 @@ IProxy = _InterpreterProxy()
 # # Class extensions for Array conversion
 # class __extend__(model.W_PointersObject):
 #     def as_c_array(self, proxy):
-#         return map(lambda x: proxy.object_to_oop(x), self.vars[self.instsize(space):])
+#         return map(lambda x: proxy.object_to_oop(x), self.vars[self.instsize():])
 
 # class __extend__(model.W_BytesObject):
 #     def as_c_array(self, proxy):

@@ -59,6 +59,7 @@ BLKCLSR_SIZE = 3
 
 LITERAL_START = 1 # index of the first literal after the method header
 BYTES_PER_WORD = 4
+WORDS_IN_FLOAT = 2 # Fixed number of word-slots in a Squeak Float object
 
 # ___________________________________________________________________________
 # Special objects indices

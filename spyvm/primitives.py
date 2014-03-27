@@ -15,7 +15,7 @@ def assert_bounds(n0, minimum, maximum):
         raise PrimitiveFailedError()
 
 def assert_valid_index(space, n0, w_obj):
-    if not 0 <= n0 < w_obj.varsize(space):
+    if not 0 <= n0 < w_obj.varsize():
         raise PrimitiveFailedError()
     # return the index, since from here on the annotator knows that
     # n0 cannot be negative
@@ -406,7 +406,7 @@ def func(interp, s_frame, w_obj, n0, w_val):
 def func(interp, s_frame, w_obj):
     if not w_obj.class_shadow(interp.space).isvariable():
         raise PrimitiveFailedError()
-    return interp.space.wrap_int(w_obj.varsize(interp.space))
+    return interp.space.wrap_int(w_obj.varsize())
 
 @expose_primitive(STRING_AT, unwrap_spec=[object, index1_0])
 def func(interp, s_frame, w_obj, n0):
@@ -765,8 +765,8 @@ def func(interp, s_frame, w_rcvr, start, stop, w_replacement, repStart):
     # might be different (e.g. Symbol and ByteString)
     if w_rcvr.__class__ is not w_replacement.__class__:
         raise PrimitiveFailedError
-    if (w_rcvr.size() - w_rcvr.instsize(interp.space) <= stop
-            or w_replacement.size() - w_replacement.instsize(interp.space) <= repStart + (stop - start)):
+    if (w_rcvr.size() - w_rcvr.instsize() <= stop
+            or w_replacement.size() - w_replacement.instsize() <= repStart + (stop - start)):
         raise PrimitiveFailedError()
     repOff = repStart - start
     for i0 in range(start, stop + 1):
