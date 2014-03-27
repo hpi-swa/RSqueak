@@ -471,6 +471,8 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     
     def fillin(self, space, g_self):
         W_AbstractObjectWithIdentityHash.fillin(self, space, g_self)
+        # The class data will be initialized lazily, after the initial fillin-sequence is over.
+        # Don't construct the ClassShadow here, yet!
         self.w_class = g_self.get_class()
         
     def getclass(self, space):
@@ -547,7 +549,7 @@ strategy_stats = StrategyStatistics()
 class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     """Common object."""
     _attrs_ = ['shadow']
-    shadow = None # Default value
+    shadow = None
     repr_classname = "W_AbstractPointersObject"
     
     @jit.unroll_safe
@@ -555,16 +557,34 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         """Create new object with size = fixed + variable size."""
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
         self.initialize_storage(space, size)
-
+        
     def initialize_storage(self, space, size):
-        self.store_shadow(self.default_storage(space, size))
+        self.store_shadow(self.empty_storage(space, size))
         
     def fillin(self, space, g_self):
         W_AbstractObjectWithClassReference.fillin(self, space, g_self)
+        # Recursive fillin required to enable specialized storage strategies.
+        for g_obj in g_self.pointers:
+            g_obj.fillin(space)
         pointers = g_self.get_pointers()
-        self.initialize_storage(space, len(pointers))
+        self.store_shadow(self.storage_for_list(space, pointers))
         self.store_all(space, pointers)
         
+    def empty_storage(self, space, size):
+        raise NotImplementedError()
+    def storage_for_list(self, space, vars):
+        raise NotImplementedError()
+    
+    def switch_shadow(self, new_shadow):
+        if self.shadow is not None:
+            new_shadow.copy_from(self.shadow)
+        self.store_shadow(new_shadow)
+        new_shadow.attach_shadow()
+    
+    def store_with_new_storage(self, new_storage, n0, w_val):
+        self.switch_shadow(new_storage(self.space(), self, self.size()))
+        self.store(self.space(), n0, w_val)
+    
     def space(self):
         assert self.shadow, "Cannot access space without a shadow!"
         return self.shadow.space
@@ -637,10 +657,7 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         shadow = old_shadow
         if not isinstance(old_shadow, TheClass):
             shadow = TheClass(space, self)
-            if old_shadow is not None:
-                shadow.copy_from(old_shadow)
-            self.store_shadow(shadow)
-            shadow.attach_shadow()
+            self.switch_shadow(shadow)
         return shadow
 
     def get_shadow(self, space):
@@ -702,15 +719,27 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         
 class W_PointersObject(W_AbstractPointersObject):
     repr_classname = 'W_PointersObject'
-    def default_storage(self, space, size):
-        from spyvm.shadow import ListStorageShadow
-        return ListStorageShadow(space, self, size)
+    
+    def empty_storage(self, space, size):
+        # A newly allocated object contains only nils.
+        from spyvm.shadow import AllNilStorageShadow
+        return AllNilStorageShadow(space, self, size)
+    
+    def storage_for_list(self, space, vars):
+        #if not self.class_shadow(space).isvariable():
+        #   return ListStorageShadow(space, self, len(vars))
+        from spyvm.shadow import find_storage_for_objects
+        return find_storage_for_objects(space, vars)(space, self, len(vars))
 
 class W_WeakPointersObject(W_AbstractPointersObject):
     repr_classname = 'W_WeakPointersObject'
-    def default_storage(self, space, size):
+    
+    def empty_storage(self, space, size):
         from spyvm.shadow import WeakListStorageShadow
         return WeakListStorageShadow(space, self, size)
+    def storage_for_list(self, space, vars):
+        from spyvm.shadow import WeakListStorageShadow
+        return WeakListStorageShadow(space, self, len(vars))
 
 class W_BytesObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['bytes', 'c_bytes', '_size']

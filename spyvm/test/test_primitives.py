@@ -22,7 +22,6 @@ def new_frame(bytes):
 
 class MockFrame(model.W_PointersObject):
     def __init__(self, space, stack):
-        self.space = space
         size = 6 + len(stack) + 6
         self.initialize_storage(space, size)
         self.store_all(space, [None] * 6 + stack + [space.w_nil] * 6)

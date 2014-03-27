@@ -2,9 +2,11 @@ import weakref
 from spyvm import model, constants, error, wrapper, version
 from spyvm.version import elidable_for_version, constant_for_version
 from rpython.tool.pairtype import extendabletype
-from rpython.rlib import rarithmetic, jit
+from rpython.rlib import rarithmetic, jit, longlong2float
 from rpython.rlib.objectmodel import import_from_mixin
 from rpython.rlib.debug import make_sure_not_resized
+from rpython.rlib.rstruct.runpack import runpack
+from rpython.rtyper.lltypesystem import rffi, lltype
 
 class AbstractShadow(object):
     """A shadow is an optional extra bit of information that
@@ -46,20 +48,145 @@ class AbstractShadow(object):
         for i in range(self.size()):
             self.copy_field_from(i, other_shadow)
 
-class AllNilStorageShadow(AbstractShadow):
+class AbstractStorageShadow(AbstractShadow):
+    repr_classname = "AbstractStorageShadow"
+    def store(self, n0, w_val):
+        if self.can_contain(w_val):
+            return self.do_store(n0, w_val)
+        new_storage = self.generelized_strategy_for(w_val)
+        return self._w_self.store_with_new_storage(new_storage, n0, w_val)
+    def can_contain(self, w_val):
+        return self.static_can_contain(self.space, w_val)
+    def do_store(self, n0, w_val):
+        raise NotImplemtedError()
+    def generelized_strategy_for(self, w_val):
+        raise NotImplemtedError()
+
+class AllNilStorageShadow(AbstractStorageShadow):
+    repr_classname = "AllNilStorageShadow"
+    _attrs_ = ['_size']
+    _immutable_fields_ = ['_size']
+    def __init__(self, space, w_self, size):
+        AbstractShadow.__init__(self, space, w_self)
+        self._size = size
     def fetch(self, n0):
-        raise NotImplementedError("Abstract class")
-    def store(self, n0, w_value):
-        raise NotImplementedError("Abstract class")
+        if n0 >= self._size:
+            raise IndexError
+        return self.space.w_nil
+    def do_store(self, n0, w_value):
+        pass
     def size(self):
-        raise NotImplementedError("Abstract class")
+        return self._size
+    def generelized_strategy_for(self, w_val):
+        return find_storage_for_objects(self.space, [w_val])
+    @staticmethod
+    def static_can_contain(space, w_val):
+        return w_val == space.w_nil
 
-class SmallIntegerOrNilStorageShadow:
-    pass
+class AbstractValueOrNilStorageMixin(object):
+    # Class must provide: wrap, unwrap, nil_value, is_nil_value, wrapper_class
+    storage = []
+    _attrs_ = ['storage']
+    
+    def __init__(self, space, w_self, size):
+        AbstractStorageShadow.__init__(self, space, w_self)
+        self.storage = [self.nil_value] * size
+    
+    def size(self):
+        return len(self.storage)
+    
+    def generelized_strategy_for(self, w_val):
+        return ListStorageShadow
+    
+    def fetch(self, n0):
+        val = self.storage[n0]
+        if self.is_nil_value(val):
+            return self.space.w_nil
+        else:
+            return self.wrap(self.space, val)
+        
+    def do_store(self, n0, w_val):
+        store = self.storage
+        if w_val == self.space.w_nil:
+            store[n0] = self.nil_value
+        else:
+            store[n0] = self.unwrap(self.space, w_val)
 
-class FloatOrNilStorageShadow:
-    pass
+# This is to avoid code duplication
+def _value_or_nil_can_handle(cls, space, w_val):
+    return w_val == space.w_nil or \
+            (isinstance(w_val, cls.wrapper_class) \
+            and not cls.is_nil_value(cls.unwrap(space, w_val)))
 
+class SmallIntegerOrNilStorageShadow(AbstractStorageShadow):
+    repr_classname = "SmallIntegerOrNilStorageShadow"
+    nil_value = constants.MAXINT
+    wrapper_class = model.W_SmallInteger
+    import_from_mixin(AbstractValueOrNilStorageMixin)
+    
+    @staticmethod
+    def static_can_contain(space, w_val):
+        return _value_or_nil_can_handle(SmallIntegerOrNilStorageShadow, space, w_val)
+    @staticmethod
+    def is_nil_value(val):
+        return val == SmallIntegerOrNilStorageShadow.nil_value
+    @staticmethod
+    def wrap(space, val):
+        return space.wrap_int(val)
+    @staticmethod
+    def unwrap(space, w_val):
+        return space.unwrap_int(w_val)
+
+class FloatOrNilStorageShadow(AbstractStorageShadow):
+    repr_classname = "FloatOrNilStorageShadow"
+    # TODO -- use another value... something like max_float?
+    nil_value = runpack("d", "\x10\x00\x00\x00\x00\x00\xf8\x7f")
+    nil_value_longlong = longlong2float.float2longlong(nil_value)
+    wrapper_class = model.W_Float
+    import_from_mixin(AbstractValueOrNilStorageMixin)
+    
+    @staticmethod
+    def static_can_contain(space, w_val):
+        return _value_or_nil_can_handle(FloatOrNilStorageShadow, space, w_val)
+    @staticmethod
+    def is_nil_value(val):
+        return longlong2float.float2longlong(val) == FloatOrNilStorageShadow.nil_value_longlong
+    @staticmethod
+    def wrap(space, val):
+        return space.wrap_float(val)
+    @staticmethod
+    def unwrap(space, w_val):
+        return space.unwrap_float(w_val)
+
+def find_storage_for_objects(space, vars):
+    specialized_strategies = 3
+    all_nil_can_handle = True
+    small_int_can_handle = True
+    float_can_handle = True
+    for w_obj in vars:
+        if all_nil_can_handle and not AllNilStorageShadow.static_can_contain(space, w_obj):
+            all_nil_can_handle = False
+            specialized_strategies = specialized_strategies - 1
+        if small_int_can_handle and not SmallIntegerOrNilStorageShadow.static_can_contain(space, w_obj):
+            small_int_can_handle = False
+            specialized_strategies = specialized_strategies - 1
+        if float_can_handle and not FloatOrNilStorageShadow.static_can_contain(space, w_obj):
+            float_can_handle = False
+            specialized_strategies = specialized_strategies - 1
+        
+        if specialized_strategies <= 0:
+            return ListStorageShadow
+    
+    if all_nil_can_handle:
+        return AllNilStorageShadow
+    if small_int_can_handle:
+        return SmallIntegerOrNilStorageShadow
+    if float_can_handle:
+        return FloatOrNilStorageShadow
+    
+    # If this happens, please look for a bug in the code above.
+    assert False, "No strategy could be found for list..."
+    
 class ListStorageShadow(AbstractShadow):
     _attrs_ = ['storage']
     repr_classname = "ListStorageShadow"
