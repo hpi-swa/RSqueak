@@ -17,7 +17,6 @@ class ObjSpace(object):
         # Circumvent the constructor because nil is already referenced there.
         w_nil = instantiate(model.W_PointersObject)
         w_nil.w_class = None
-        w_nil.space = self
         self.add_bootstrap_object("w_nil", w_nil)
         
         self.make_bootstrap_classes()

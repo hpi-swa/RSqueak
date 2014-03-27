@@ -582,8 +582,9 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         new_shadow.attach_shadow()
     
     def store_with_new_storage(self, new_storage, n0, w_val):
-        self.switch_shadow(new_storage(self.space(), self, self.size()))
-        self.store(self.space(), n0, w_val)
+        space = self.space()
+        self.switch_shadow(new_storage(space, self, self.size()))
+        self.store(space, n0, w_val)
     
     def space(self):
         assert self.shadow, "Cannot access space without a shadow!"

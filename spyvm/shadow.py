@@ -2,7 +2,7 @@ import weakref
 from spyvm import model, constants, error, wrapper, version
 from spyvm.version import elidable_for_version, constant_for_version
 from rpython.tool.pairtype import extendabletype
-from rpython.rlib import rarithmetic, jit, longlong2float
+from rpython.rlib import rarithmetic, objectmodel, jit, longlong2float
 from rpython.rlib.objectmodel import import_from_mixin
 from rpython.rlib.debug import make_sure_not_resized
 from rpython.rlib.rstruct.runpack import runpack
@@ -19,6 +19,7 @@ class AbstractShadow(object):
     
     def __init__(self, space, w_self):
         self.space = space
+        assert isinstance(w_self, model.W_AbstractPointersObject)
         self._w_self = w_self
     def w_self(self):
         return self._w_self
@@ -49,6 +50,7 @@ class AbstractShadow(object):
             self.copy_field_from(i, other_shadow)
 
 class AbstractStorageShadow(AbstractShadow):
+    _attrs_ = []
     repr_classname = "AbstractStorageShadow"
     def store(self, n0, w_val):
         if self.can_contain(w_val):
@@ -58,9 +60,9 @@ class AbstractStorageShadow(AbstractShadow):
     def can_contain(self, w_val):
         return self.static_can_contain(self.space, w_val)
     def do_store(self, n0, w_val):
-        raise NotImplemtedError()
+        raise NotImplementedError()
     def generelized_strategy_for(self, w_val):
-        raise NotImplemtedError()
+        raise NotImplementedError()
 
 class AllNilStorageShadow(AbstractStorageShadow):
     repr_classname = "AllNilStorageShadow"
@@ -85,8 +87,8 @@ class AllNilStorageShadow(AbstractStorageShadow):
 
 class AbstractValueOrNilStorageMixin(object):
     # Class must provide: wrap, unwrap, nil_value, is_nil_value, wrapper_class
-    storage = []
     _attrs_ = ['storage']
+    _immutable_fields_ = ['storage']
     
     def __init__(self, space, w_self, size):
         AbstractStorageShadow.__init__(self, space, w_self)
@@ -106,13 +108,13 @@ class AbstractValueOrNilStorageMixin(object):
             return self.wrap(self.space, val)
         
     def do_store(self, n0, w_val):
-        store = self.storage
         if w_val == self.space.w_nil:
-            store[n0] = self.nil_value
+            self.storage[n0] = self.nil_value
         else:
-            store[n0] = self.unwrap(self.space, w_val)
+            self.storage[n0] = self.unwrap(self.space, w_val)
 
 # This is to avoid code duplication
+@objectmodel.specialize.arg(0)
 def _value_or_nil_can_handle(cls, space, w_val):
     return w_val == space.w_nil or \
             (isinstance(w_val, cls.wrapper_class) \
@@ -189,6 +191,7 @@ def find_storage_for_objects(space, vars):
     
 class ListStorageShadow(AbstractShadow):
     _attrs_ = ['storage']
+    _immutable_fields_ = ['storage']
     repr_classname = "ListStorageShadow"
     
     def __init__(self, space, w_self, size):
@@ -210,6 +213,7 @@ class ListStorageShadow(AbstractShadow):
 
 class WeakListStorageShadow(AbstractShadow):
     _attrs_ = ['storage']
+    _immutable_fields_ = ['storage']
     repr_classname = "WeakListStorageShadow"
     
     def __init__(self, space, w_self, size):
@@ -279,6 +283,7 @@ class ClassShadow(AbstractCachingShadow):
                 self._s_methoddict.s_class = self
         elif n0 == constants.CLASS_FORMAT_INDEX:
             # read and painfully decode the format
+            assert isinstance(w_val, model.W_SmallInteger)
             classformat = self.space.unwrap_int(w_val)
             # The classformat in Squeak, as an integer value, is:
             #    <2 bits=instSize//64><5 bits=cClass><4 bits=instSpec>
@@ -1171,6 +1176,7 @@ class CompiledMethodShadow(object):
     repr_classname = "CompiledMethodShadow"
     
     def __init__(self, w_compiledmethod, space):
+        assert isinstance(w_compiledmethod, model.W_CompiledMethod)
         self._w_self = w_compiledmethod
         self.space = space
         self.update()
