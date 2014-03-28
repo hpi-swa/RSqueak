@@ -197,7 +197,7 @@ class Interpreter(object):
         if not self.next_wakeup_tick == 0 and now >= self.next_wakeup_tick:
             self.next_wakeup_tick = 0
             semaphore = self.space.objtable["w_timerSemaphore"]
-            if not semaphore.is_same_object(self.space.w_nil):
+            if not semaphore.is_nil(self.space):
                 wrapper.SemaphoreWrapper(self.space, semaphore).signal(s_frame.w_self())
         # We have no finalization process, so far.
         # We do not support external semaphores.
@@ -445,7 +445,7 @@ class __extend__(ContextPartShadow):
 
     def activate_unwind_context(self, interp):
         # the first temp is executed flag for both #ensure: and #ifCurtailed:
-        if self.gettemp(1) is self.space.w_nil:
+        if self.gettemp(1).is_nil(self.space):
             self.settemp(1, self.space.w_true) # mark unwound
             self.push(self.gettemp(0)) # push the first argument
             try:

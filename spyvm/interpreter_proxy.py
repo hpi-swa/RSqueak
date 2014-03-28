@@ -380,9 +380,9 @@ def isWordsOrBytes(w_object):
 @expose_on_virtual_machine_proxy([oop], bool)
 def booleanValueOf(w_object):
     space = IProxy.space
-    if w_object is space.w_true:
+    if space.w_true.is_same_object(w_object):
         return True
-    if w_object is space.w_false:
+    if space.w_false.is_same_object(w_object):
         return False
     raise ProxyFunctionFailed
 

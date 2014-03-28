@@ -123,6 +123,10 @@ class W_Object(object):
         SmallIntegers and Floats need a different implementation."""
         return self is other
 
+    def is_nil(self, space):
+        """Return True, if the receiver represents the nil object in the given Object Space."""
+        return self.is_same_object(space.w_nil)
+        
     def become(self, other):
         """Become swaps two objects.
            False means swapping failed"""

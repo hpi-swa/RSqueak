@@ -6,6 +6,7 @@ from spyvm.conftest import option
 
 def setup_module():
     space, interp = create_space_interp(bootstrap = True)
+    w = space.w
     copy_to_module(locals(), __name__)
 
 def teardown_module():
@@ -25,6 +26,15 @@ def step_in_interp(ctxt): # due to missing resets in between tests
     except interpreter.Return, nlr:
         nlr.s_target_context.push(nlr.value)
         return nlr.s_target_context.w_self()
+
+def assert_list(list, expected):
+    for i in range(len(list)):
+        exp = expected[i]
+        if isinstance(exp, str):
+            assert exp == list[i].as_string()
+        if not isinstance(exp, model.W_Object):
+            exp = w(exp)
+        assert list[i].is_same_object(exp)
 
 # expose the bytecode's values as global constants.
 # Bytecodes that have a whole range are exposed as global functions:
@@ -103,7 +113,7 @@ def _new_frame(space, bytes, receiver=None):
     w_method.setliterals([model.W_PointersObject(space, None, 2)])
     if receiver is None:
         receiver = space.w_nil
-    s_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(space, receiver, ["foo", "bar"])
+    s_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(space, receiver, [space.w("foo"), space.w("bar")])
     return s_frame.w_self(), s_frame
 
 def new_frame(bytes, receiver=None):
@@ -117,31 +127,31 @@ def test_create_frame():
     w_method.islarge = 1
     w_method.argsize=2
     w_method.tempsize=8
-    s_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(space, "receiver", ["foo", "bar"])
+    s_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(space, w("receiver"), [w("foo"), w("bar")])
     w_frame = s_frame.w_self()
-    assert s_frame.w_receiver() == "receiver"
-    assert s_frame.gettemp(0) == "foo"
-    assert s_frame.gettemp(1) == "bar"
-    assert s_frame.gettemp(2) is space.w_nil
-    s_frame.settemp(2, "spam")
-    assert s_frame.gettemp(2) == "spam"
+    assert s_frame.w_receiver().as_string() == "receiver"
+    assert s_frame.gettemp(0).as_string() == "foo"
+    assert s_frame.gettemp(1).as_string() == "bar"
+    assert s_frame.gettemp(2).is_nil(space)
+    s_frame.settemp(2, w("spam"))
+    assert s_frame.gettemp(2).as_string() == "spam"
     assert s_frame.getbytecode() == ord("h")
     assert s_frame.getbytecode() == ord("e")
     assert s_frame.getbytecode() == ord("l")
 
 def test_push_pop():
     _, frame = new_frame("")
-    frame.push(12)
-    frame.push(34)
-    frame.push(56)
-    assert frame.peek(2) == 12
-    assert frame.pop() == 56
-    assert frame.top() == 34
+    frame.push(w(12))
+    frame.push(w(34))
+    frame.push(w(56))
+    assert frame.peek(2).value == 12
+    assert frame.pop().value == 56
+    assert frame.top().value == 34
     frame.pop_n(0)
-    assert frame.top() == 34
-    frame.push(56)
+    assert frame.top().value == 34
+    frame.push(w(56))
     frame.pop_n(2)
-    assert frame.top() == 12
+    assert frame.top().value == 12
 
 def test_unknownBytecode():
     w_frame, s_frame = new_frame(unknownBytecode)
@@ -158,26 +168,26 @@ def test_pushReceiverVariableBytecode(bytecode = (pushReceiverVariableBytecode(0
                                                   pushReceiverVariableBytecode(1) +
                                                   pushReceiverVariableBytecode(2))):
     w_demo = bootstrap_class(3).as_class_get_shadow(space).new()
-    w_demo.store(space, 0, "egg")
-    w_demo.store(space, 1, "bar")
-    w_demo.store(space, 2, "baz")
+    w_demo.store(space, 0, w("egg"))
+    w_demo.store(space, 1, w("bar"))
+    w_demo.store(space, 2, w("baz"))
     w_frame, s_frame = new_frame(bytecode, receiver = w_demo)
     s_frame = w_frame.as_context_get_shadow(space)
     step_in_interp(s_frame)
     step_in_interp(s_frame)
     step_in_interp(s_frame)
-    assert s_frame.stack() == ["egg", "bar", "baz"]
+    assert_list(s_frame.stack(), ["egg", "bar", "baz"])
 
 def test_pushTemporaryVariableBytecode(bytecode=(pushTemporaryVariableBytecode(0) +
                                                  pushTemporaryVariableBytecode(1) +
                                                  pushTemporaryVariableBytecode(2))):
     w_frame, s_frame = new_frame(bytecode)
     s_frame = w_frame.as_context_get_shadow(space)
-    s_frame.settemp(2, "temp")
+    s_frame.settemp(2, w("temp"))
     step_in_interp(s_frame)
     step_in_interp(s_frame)
     step_in_interp(s_frame)
-    assert s_frame.stack() == ["foo", "bar", "temp"]
+    assert_list(s_frame.stack(), ["foo", "bar", "temp"])
 
 def test_pushLiteralConstantBytecode(bytecode=pushLiteralConstantBytecode(0) +
                                               pushLiteralConstantBytecode(1) +
@@ -187,18 +197,16 @@ def test_pushLiteralConstantBytecode(bytecode=pushLiteralConstantBytecode(0) +
     step_in_interp(s_frame)
     step_in_interp(s_frame)
     step_in_interp(s_frame)
-    assert s_frame.stack() == [fakesymbol("a"),
-                                             fakesymbol("b"),
-                                             fakesymbol("c")]
+    assert_list(s_frame.stack(), [fakesymbol("a"), fakesymbol("b"), fakesymbol("c")])
 
 def test_pushLiteralVariableBytecode(bytecode=pushLiteralVariableBytecode(0)):
     w_association = bootstrap_class(2).as_class_get_shadow(space).new()
-    w_association.store(space, 0, "mykey")
-    w_association.store(space, 1, "myvalue")
+    w_association.store(space, 0, w("mykey"))
+    w_association.store(space, 1, w("myvalue"))
     w_frame, s_frame = new_frame(bytecode)
     s_frame.w_method().setliterals( fakeliterals(space, w_association))
     step_in_interp(s_frame)
-    assert s_frame.stack() == ["myvalue"]
+    assert_list(s_frame.stack(), ["myvalue"])
 
 def test_storeAndPopReceiverVariableBytecode(bytecode=storeAndPopReceiverVariableBytecode,
                                              popped=True):
@@ -212,13 +220,13 @@ def test_storeAndPopReceiverVariableBytecode(bytecode=storeAndPopReceiverVariabl
         if popped:
             assert s_frame.stack() == []
         else:
-            assert s_frame.stack() == [space.w_true]
+            assert_list(s_frame.stack(), [space.w_true])
 
         for test_index in range(8):
             if test_index == index:
                 assert w_object.fetch(space, test_index).is_same_object(space.w_true)
             else:
-                assert w_object.fetch(space, test_index) is space.w_nil
+                assert w_object.fetch(space, test_index).is_nil(space)
 
 def test_storeAndPopTemporaryVariableBytecode(bytecode=storeAndPopTemporaryVariableBytecode):
     for index in range(8):
@@ -230,9 +238,9 @@ def test_storeAndPopTemporaryVariableBytecode(bytecode=storeAndPopTemporaryVaria
         for test_index in range(8):
             print w_frame.fetch_all(s_frame.space)
             if test_index == index:
-                assert s_frame.gettemp(test_index) == space.w_true
+                assert s_frame.gettemp(test_index).is_same_object(space.w_true)
             else:
-                assert s_frame.gettemp(test_index) != space.w_true
+                assert not s_frame.gettemp(test_index).is_same_object(space.w_true)
 
 def test_pushConstantTrueBytecode():
     w_frame, s_frame = new_frame(pushConstantTrueBytecode)
@@ -249,7 +257,7 @@ def test_pushConstantFalseBytecode():
 def test_pushConstantNilBytecode():
     w_frame, s_frame = new_frame(pushConstantNilBytecode)
     step_in_interp(s_frame)
-    assert s_frame.pop().is_same_object(space.w_nil)
+    assert s_frame.pop().is_nil(space)
     assert s_frame.stack() == []
 
 def test_pushConstantMinusOneBytecode():
@@ -279,14 +287,14 @@ def test_pushConstantTwoBytecode():
 def test_pushActiveContextBytecode():
     w_frame, s_frame = new_frame(pushActiveContextBytecode)
     step_in_interp(s_frame)
-    assert s_frame.pop() == w_frame
+    assert s_frame.pop().is_same_object(w_frame)
     assert s_frame.stack() == []
 
 def test_duplicateTopBytecode():
     w_frame, s_frame = new_frame(pushConstantZeroBytecode + duplicateTopBytecode)
     step_in_interp(s_frame)
     step_in_interp(s_frame)
-    assert s_frame.stack() == [space.w_zero, space.w_zero]
+    assert_list(s_frame.stack(), [space.w_zero, space.w_zero])
 
 def test_bytecodePrimBitAnd():
     w_frame, s_frame = new_frame(pushConstantOneBytecode + pushConstantTwoBytecode + bytecodePrimBitAnd)
@@ -364,14 +372,14 @@ def test_bytecodePrimEquivalent():
     step_in_interp(s_frame)
     step_in_interp(s_frame)
     step_in_interp(s_frame)
-    assert s_frame.pop() == space.w_false
+    assert s_frame.pop().is_same_object(space.w_false)
     assert s_frame.stack() == []
 
     w_frame, s_frame = new_frame(pushConstantOneBytecode + pushConstantOneBytecode + bytecodePrimEquivalent)
     step_in_interp(s_frame)
     step_in_interp(s_frame)
     step_in_interp(s_frame)
-    assert s_frame.pop() == space.w_true
+    assert s_frame.pop().is_same_object(space.w_true)
     assert s_frame.stack() == []
 
 def test_bytecodePrimNew():
@@ -447,7 +455,7 @@ def sendBytecodesTest(w_class, w_object, bytecodes):
         w_active_context = step_in_interp(s_active_context)
         s_active_context = w_active_context.as_context_get_shadow(space)
         assert w_active_context == w_frame
-        assert s_active_context.stack() == [result]
+        assert_list(s_active_context.stack(), [result])
 
 def test_sendLiteralSelectorBytecode():
     w_class = bootstrap_class(0)
@@ -554,7 +562,7 @@ def test_popStackBytecode():
     w_frame, s_frame = new_frame(pushConstantTrueBytecode +
                              popStackBytecode)
     step_in_interp(s_frame)
-    assert s_frame.stack() == [space.w_true]
+    assert_list(s_frame.stack(), [space.w_true])
     step_in_interp(s_frame)
     assert s_frame.stack() == []
 
@@ -575,8 +583,8 @@ def test_extendedPushBytecode():
 
 def storeAssociation(bytecode):
     w_association = bootstrap_class(2).as_class_get_shadow(space).new()
-    w_association.store(space, 0, "mykey")
-    w_association.store(space, 1, "myvalue")
+    w_association.store(space, 0, w("mykey"))
+    w_association.store(space, 1, w("myvalue"))
     w_frame, s_frame = new_frame(pushConstantOneBytecode + bytecode)
     s_frame.w_method().setliterals(fakeliterals(space, w_association))
     step_in_interp(s_frame)
@@ -627,9 +635,9 @@ def test_bytecodePrimBool():
         s_frame.push(space.w_one)
         s_frame.push(space.w_two)
         step_in_interp(s_frame)
-    assert s_frame.stack() == [space.w_true, space.w_false,
+    assert_list(s_frame.stack(), [space.w_true, space.w_false,
                                           space.w_true, space.w_false,
-                                          space.w_false, space.w_true]
+                                          space.w_false, space.w_true])
 
 def test_singleExtendedSendBytecode():
     w_class = bootstrap_class(0)
@@ -760,7 +768,7 @@ def test_bc_push_rcvr_in_block():
     #   ^ [ self ] value
     assert interpret_bc(
         [ 137, 117, 200, 164, 2, 112, 125, 201, 124 ],
-        fakeliterals(space, space.wrap_int(3))) is space.w_nil
+        fakeliterals(space, space.wrap_int(3))).is_nil(space)
 
 def test_bc_value_return():
     # valueReturn
@@ -877,52 +885,52 @@ def test_runwithtrace():
 # Closure Bytecodes
 def test_bc_pushNewArrayBytecode(bytecode=pushNewArrayBytecode):
     w_frame, s_frame = new_frame(bytecode + chr(0x83))
-    s_frame.push(fakeliterals(space, "egg"))
-    s_frame.push(fakeliterals(space, "bar"))
-    s_frame.push(fakeliterals(space, "baz"))
+    s_frame.push(w(fakeliterals(space, "egg")))
+    s_frame.push(w(fakeliterals(space, "bar")))
+    s_frame.push(w(fakeliterals(space, "baz")))
     step_in_interp(s_frame)
     array = s_frame.pop()
-    assert array.at0(space, 0) == fakeliterals(space, "egg")
-    assert array.at0(space, 1) == fakeliterals(space, "bar")
-    assert array.at0(space, 2) == fakeliterals(space, "baz")
+    assert space.unwrap_array(array.at0(space, 0)) == fakeliterals(space, "egg")
+    assert space.unwrap_array(array.at0(space, 1)) == fakeliterals(space, "bar")
+    assert space.unwrap_array(array.at0(space, 2)) == fakeliterals(space, "baz")
 
 def test_bc_pushNewArray(bytecode=pushNewArrayBytecode):
     w_frame, s_frame = new_frame(bytecode + chr(0x07))
     step_in_interp(s_frame)
     array = s_frame.pop()
     assert array.size() == 7
-    assert array.at0(space, 0) == space.w_nil
+    assert array.at0(space, 0).is_nil(space)
 
 def test_bc_pushRemoteTempLongBytecode(bytecode = pushRemoteTempLongBytecode):
     w_frame, s_frame = new_frame(bytecode + chr(0) + chr(0))
     s_frame.settemp(0, space.w_Array.as_class_get_shadow(interp.space).new(2))
     step_in_interp(s_frame)
-    assert s_frame.top() == space.w_nil
+    assert s_frame.top().is_nil(space)
 
 def setupTempArrayAndContext(bytecode):
     # both indizes are 0-relative
     w_frame, s_frame = new_frame(bytecode + chr(2) + chr(1))
-    s_frame.push(fakeliterals(space, "english"))
-    s_frame.push(fakeliterals(space, "bar"))
+    s_frame.push(w(fakeliterals(space, "english")))
+    s_frame.push(w(fakeliterals(space, "bar")))
     temp_array = space.w_Array.as_class_get_shadow(interp.space).new(3)
-    temp_array.atput0(space, 2, fakeliterals(space, "pub"))
+    temp_array.atput0(space, 2, w(fakeliterals(space, "pub")))
     s_frame.settemp(1, temp_array)
     step_in_interp(s_frame)
     return s_frame, temp_array
 
 def test_bc_pushRemoteTempLongBytecode2(bytecode = pushRemoteTempLongBytecode):
     context, _ = setupTempArrayAndContext(bytecode)
-    assert context.top() == fakeliterals(space, "pub")
+    assert space.unwrap_array(context.top()) == fakeliterals(space, "pub")
 
 def test_bc_storeRemoteTempLongBytecode(bytecode = storeRemoteTempLongBytecode):
     context, temp_array = setupTempArrayAndContext(bytecode)
-    assert context.top() == fakeliterals(space, "bar")
-    assert temp_array.at0(space, 2) == fakeliterals(space, "bar")
+    assert space.unwrap_array(context.top()) == fakeliterals(space, "bar")
+    assert space.unwrap_array(temp_array.at0(space, 2)) == fakeliterals(space, "bar")
 
 def test_bc_storeAndPopRemoteTempLongBytecode(bytecode = storeAndPopRemoteTempLongBytecode):
     context, temp_array = setupTempArrayAndContext(bytecode)
-    assert temp_array.at0(space, 2) == fakeliterals(space, "bar")
-    assert context.top() == fakeliterals(space, "english")
+    assert space.unwrap_array(temp_array.at0(space, 2)) == fakeliterals(space, "bar")
+    assert space.unwrap_array(context.top()) == fakeliterals(space, "english")
 
 def test_bc_pushClosureCopyCopied0ValuesBytecode(bytecode = pushClosureCopyCopiedValuesBytecode):
     for i in (0, 0xF0, 0x0FF0, 0xFFF0):
@@ -937,16 +945,16 @@ def test_bc_pushClosureCopyCopied0ValuesBytecode(bytecode = pushClosureCopyCopie
 
 def test_bc_pushClosureCopyCopied2ValuesBytecode(bytecode = pushClosureCopyCopiedValuesBytecode):
     w_frame, s_frame = new_frame(bytecode + chr(0x23) + chr(0) + chr(0))
-    s_frame.push("english")
-    s_frame.push("bar")
+    s_frame.push(w("english"))
+    s_frame.push(w("bar"))
     pc = s_frame.pc()
     step_in_interp(s_frame)
     assert s_frame.pc() == pc + 4
     closure = wrapper.BlockClosureWrapper(space, s_frame.top())
     assert closure.startpc() == pc + 4 + 5
     assert closure.outerContext() is s_frame._w_self
-    assert closure.at0(0) == "english"
-    assert closure.at0(1) == "bar"
+    assert closure.at0(0).as_string() == "english"
+    assert closure.at0(1).as_string() == "bar"
 
 def test_blockclosure_valuevalue():
     #someTest

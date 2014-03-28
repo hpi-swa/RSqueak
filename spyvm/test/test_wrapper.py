@@ -97,7 +97,7 @@ def new_processlist(processes_w=[]):
     w_last = space.w_nil
     for w_process in processes_w[::-1]:
         w_first = newprocess(w_first, w_processlist)._w_self
-        if w_last is space.w_nil:
+        if w_last.is_nil(space):
             w_last = w_first
     pl = wrapper.ProcessListWrapper(space, w_processlist)
     pl.store_first_link(w_first)
@@ -155,8 +155,8 @@ class TestScheduler(object):
         w_frame = process.suspend(space.w_true)
         process_list = wrapper.scheduler(space).get_process_list(process.priority())
         assert process_list.first_link() is process_list.last_link()
-        assert process_list.first_link() is space.w_nil
-        assert process.my_list() is space.w_nil
+        assert process_list.first_link().is_nil(space)
+        assert process.my_list().is_nil(space)
 
     def test_suspend_active(self):
         suspended_context = new_frame()
@@ -166,8 +166,8 @@ class TestScheduler(object):
             old_process.suspend(current_context)
         process_list = wrapper.scheduler(space).get_process_list(old_process.priority())
         assert process_list.first_link() is process_list.last_link()
-        assert process_list.first_link() is space.w_nil
-        assert old_process.my_list() is space.w_nil
+        assert process_list.first_link().is_nil(space)
+        assert old_process.my_list().is_nil(space)
         assert old_process.suspended_context() is current_context
         assert wrapper.scheduler(space).active_process() is process._w_self
 

@@ -103,12 +103,12 @@ class ProcessWrapper(LinkWrapper):
 
     def suspend(self, w_current_frame):
         if self.is_active_process():
-            assert self.my_list().is_same_object(self.space.w_nil)
+            assert self.my_list().is_nil(self.space)
             w_process = scheduler(self.space).pop_highest_priority_process()
             self.store_suspended_context(w_current_frame)
             return ProcessWrapper(self.space, w_process).activate()
         else:
-            if self.my_list() is not self.space.w_nil:
+            if not self.my_list().is_nil(self.space):
                 process_list = ProcessListWrapper(self.space, self.my_list())
                 process_list.remove(self._w_self)
                 self.store_my_list(self.space.w_nil)
@@ -119,7 +119,7 @@ class LinkedListWrapper(Wrapper):
     last_link, store_last_link = make_getter_setter(1)
 
     def is_empty_list(self):
-        return self.first_link().is_same_object(self.space.w_nil)
+        return self.first_link().is_nil(self.space)
 
     def add_last_link(self, w_object):
         if self.is_empty_list():
@@ -147,12 +147,12 @@ class LinkedListWrapper(Wrapper):
         else:
             current = LinkWrapper(self.space, self.first_link())
             w_next = current.next_link()
-            while not w_next.is_same_object(self.space.w_nil):
+            while not w_next.is_nil(self.space):
                 if w_next.is_same_object(w_link):
                     LinkWrapper(self.space, w_link).store_next_link(self.space.w_nil)
                     w_tail = LinkWrapper(self.space, w_next).next_link()
                     current.store_next_link(w_tail)
-                    if w_tail.is_same_object(self.space.w_nil):
+                    if w_tail.is_nil(self.space):
                         self.store_last_link(current._w_self)
                     return
                 current = LinkWrapper(self.space, w_next)

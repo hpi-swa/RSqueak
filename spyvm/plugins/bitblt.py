@@ -38,7 +38,7 @@ def primitiveCopyBits(interp, s_frame, w_rcvr):
 
 
 def intOrIfNil(space, w_int, i):
-    if w_int is space.w_nil:
+    if w_int.is_nil(space):
         return i
     elif isinstance(w_int, model.W_Float):
         return intmask(int(space.unwrap_float(w_int)))
@@ -68,7 +68,7 @@ class BitBltShadow(AbstractCachingShadow):
         return s_form
 
     def loadHalftone(self, w_halftone_form):
-        if w_halftone_form is self.space.w_nil:
+        if w_halftone_form.is_nil(self.space):
             return None
         elif isinstance(w_halftone_form, model.W_WordsObject):
             # Already a bitmap
@@ -94,7 +94,7 @@ class BitBltShadow(AbstractCachingShadow):
         self.w_destForm = self.fetch(0)
         self.dest = self.loadForm(self.w_destForm)
         self.w_sourceForm = self.fetch(1)
-        if self.w_sourceForm is not self.space.w_nil:
+        if not self.w_sourceForm.is_nil(self.space):
             self.source = self.loadForm(self.w_sourceForm)
         else:
             self.source = None
@@ -739,7 +739,7 @@ class FormShadow(AbstractCachingShadow):
         if self.size() < 5:
             return
         self.w_bits = self.fetch(0)
-        if self.w_bits is self.space.w_nil:
+        if self.w_bits.is_nil(self.space):
             return
         if not (isinstance(self.w_bits, model.W_WordsObject) or isinstance(self.w_bits, model.W_DisplayBitmap)):
             return
@@ -755,7 +755,7 @@ class FormShadow(AbstractCachingShadow):
             return
         w_offset = self.fetch(4)
         assert isinstance(w_offset, model.W_PointersObject)
-        if not w_offset is self.space.w_nil:
+        if not w_offset.is_nil(self.space):
             self.offsetX = self.intOrIfNil(w_offset.fetch(self.space, 0), 0)
             self.offsetY = self.intOrIfNil(w_offset.fetch(self.space, 1), 0)
         self.pixPerWord = 32 / self.depth

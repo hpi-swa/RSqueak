@@ -34,7 +34,7 @@ def test_new_namedvars():
     w_myinstance = w_mycls.as_class_get_shadow(space).new()
     assert isinstance(w_myinstance, model.W_PointersObject)
     assert w_myinstance.getclass(space).is_same_object(w_mycls)
-    assert w_myinstance.fetch(space, 0) is space.w_nil
+    assert w_myinstance.fetch(space, 0).is_nil(space)
     py.test.raises(IndexError, lambda: w_myinstance.fetch(space, 3))
     w_myinstance.store(space, 1, w_myinstance)
     assert w_myinstance.fetch(space, 1) is w_myinstance
@@ -416,4 +416,4 @@ def test_weak_pointers():
     # When executed using pypy, del is not immediately executed.
     # Thus the reference may linger until the next gc...
     import gc; gc.collect()
-    assert weak_object.fetch(space, 0) is space.w_nil
+    assert weak_object.fetch(space, 0).is_nil(space)

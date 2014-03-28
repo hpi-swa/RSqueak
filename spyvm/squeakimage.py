@@ -299,7 +299,7 @@ class ImageReader(object):
                 if self.special_object(so_index).w_object is None:
                     self.special_object(so_index).w_object = w_object
                 else:
-                    if self.special_object(0).w_object is not self.space.w_nil:
+                    if not self.special_object(0).w_object.is_nil(self.space):
                        raise Warning('Object found in multiple places in the special objects array')
     
     def special_object(self, index):
@@ -382,7 +382,7 @@ class SqueakImage(object):
     def run_spy_hacks(self, space):
         pass
         # w_display = space.objtable["w_display"]
-        # if w_display is not None and w_display is not space.w_nil:
+        # if w_display is not None and not w_display.is_nil(space):
         #     if space.unwrap_int(w_display.fetch(space, 3)) < 8:
         #         # non-native indexed color depth not well supported
         #         w_display.store(space, 3, space.wrap_int(8))

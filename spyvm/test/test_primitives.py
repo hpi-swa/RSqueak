@@ -328,7 +328,7 @@ def test_inst_var_at_put():
     w_q = space.w_Character.as_class_get_shadow(space).new()
     vidx = constants.CHARACTER_VALUE_INDEX+1
     ordq = ord("q")
-    assert prim(primitives.INST_VAR_AT, [w_q, vidx]) == space.w_nil
+    assert prim(primitives.INST_VAR_AT, [w_q, vidx]).is_nil(space)
     assert prim(primitives.INST_VAR_AT_PUT, [w_q, vidx, ordq]).value == ordq
     assert prim(primitives.INST_VAR_AT, [w_q, vidx]).value == ordq
 
@@ -361,7 +361,7 @@ def test_const_primitives():
         (primitives.PUSH_TWO, space.w_two),
         ]:
         assert prim(code, [space.w_nil]).is_same_object(const)
-    assert prim(primitives.PUSH_SELF, [space.w_nil]).is_same_object(space.w_nil)
+    assert prim(primitives.PUSH_SELF, [space.w_nil]).is_nil(space)
     assert prim(primitives.PUSH_SELF, ["a"]) is wrap("a")
 
 def test_boolean():
@@ -451,7 +451,7 @@ def test_full_gc():
 
 def test_interrupt_semaphore():
     prim(primitives.INTERRUPT_SEMAPHORE, [1, space.w_true])
-    assert space.objtable["w_interrupt_semaphore"] is space.w_nil
+    assert space.objtable["w_interrupt_semaphore"].is_nil(space)
 
     class SemaphoreInst(model.W_Object):
         def getclass(self, space):
@@ -485,7 +485,7 @@ def test_new_method():
     w_method = prim(primitives.NEW_METHOD, [space.w_CompiledMethod, len(bytecode), 1025])
     assert w_method.literalat0(space, 0).value == 1025
     assert w_method.literalsize == 2
-    assert w_method.literalat0(space, 1).is_same_object(space.w_nil)
+    assert w_method.literalat0(space, 1).is_nil(space)
     assert w_method.bytes == ["\x00"] * len(bytecode)
 
 def test_image_name():
@@ -567,7 +567,7 @@ def test_primitive_closure_copyClosure():
     w_outer_frame, s_initial_context = new_frame("<never called, but used for method generation>")
     w_block = prim(primitives.CLOSURE_COPY_WITH_COPIED_VALUES, map(wrap,
                     [w_outer_frame, 2, [wrap(1), wrap(2)]]), w_frame)
-    assert w_block is not space.w_nil
+    assert not w_block.is_nil(space)
     w_w_block = wrapper.BlockClosureWrapper(space, w_block)
     assert w_w_block.startpc() is 5
     assert w_w_block.at0(0) == wrap(1)
@@ -604,7 +604,7 @@ def test_primitive_closure_value():
 
     assert s_new_context.w_closure_or_nil is closure
     assert s_new_context.s_sender() is s_initial_context
-    assert s_new_context.w_receiver() is space.w_nil
+    assert s_new_context.w_receiver().is_nil(space)
 
 def test_primitive_closure_value_value():
     s_initial_context, closure, s_new_context = build_up_closure_environment([
@@ -612,7 +612,7 @@ def test_primitive_closure_value_value():
 
     assert s_new_context.w_closure_or_nil is closure
     assert s_new_context.s_sender() is s_initial_context
-    assert s_new_context.w_receiver() is space.w_nil
+    assert s_new_context.w_receiver().is_nil(space)
     assert s_new_context.gettemp(0).as_string() == "first arg"
     assert s_new_context.gettemp(1).as_string() == "second arg"
 
@@ -623,7 +623,7 @@ def test_primitive_closure_value_value_with_temps():
 
     assert s_new_context.w_closure_or_nil is closure
     assert s_new_context.s_sender() is s_initial_context
-    assert s_new_context.w_receiver() is space.w_nil
+    assert s_new_context.w_receiver().is_nil(space)
     assert s_new_context.gettemp(0).as_string() == "first arg"
     assert s_new_context.gettemp(1).as_string() == "second arg"
     assert s_new_context.gettemp(2).as_string() == "some value"

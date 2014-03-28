@@ -171,7 +171,7 @@ def test_methodcontext():
 
 def assert_contains_nils(w_obj):
     for i in range(w_obj.size()):
-        assert space.w_nil == w_obj.fetch(space, i)
+        assert w_obj.fetch(space, i).is_nil(space)
 
 def test_attach_mc():
     w_m = create_method()
@@ -257,7 +257,7 @@ def test_cached_methoddict():
     s_methoddict.sync_method_cache()
     i = 0
     key = s_methoddict.w_self().fetch(s_methoddict.space, constants.METHODDICT_NAMES_INDEX+i)
-    while key is space.w_nil:
+    while key.is_nil(space):
         i = i + 1
         key = s_methoddict.w_self().fetch(s_methoddict.space, constants.METHODDICT_NAMES_INDEX+i)
 
@@ -295,9 +295,9 @@ def test_updating_class_changes_subclasses():
 def test_returned_contexts_pc():
     w_context = methodcontext()
     s_context = w_context.as_methodcontext_get_shadow(space)
-    assert w_context.fetch(space, constants.CTXPART_PC_INDEX) is not space.w_nil
+    assert not w_context.fetch(space, constants.CTXPART_PC_INDEX).is_nil(space)
     s_context.mark_returned()
-    assert w_context.fetch(space, constants.CTXPART_PC_INDEX) is space.w_nil
+    assert w_context.fetch(space, constants.CTXPART_PC_INDEX).is_nil(space)
 
 def test_methodcontext_s_home():
     w_context = methodcontext()

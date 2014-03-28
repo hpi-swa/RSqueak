@@ -83,7 +83,7 @@ class AllNilStorageShadow(AbstractStorageShadow):
         return find_storage_for_objects(self.space, [w_val])
     @staticmethod
     def static_can_contain(space, w_val):
-        return w_val == space.w_nil
+        return isinstance(w_val, model.W_Object) and w_val.is_nil(space)
 
 class AbstractValueOrNilStorageMixin(object):
     # Class must provide: wrap, unwrap, nil_value, is_nil_value, wrapper_class
@@ -108,7 +108,7 @@ class AbstractValueOrNilStorageMixin(object):
             return self.wrap(self.space, val)
         
     def do_store(self, n0, w_val):
-        if w_val == self.space.w_nil:
+        if w_val.is_nil(self.space):
             self.storage[n0] = self.nil_value
         else:
             self.storage[n0] = self.unwrap(self.space, w_val)
@@ -116,7 +116,7 @@ class AbstractValueOrNilStorageMixin(object):
 # This is to avoid code duplication
 @objectmodel.specialize.arg(0)
 def _value_or_nil_can_handle(cls, space, w_val):
-    return w_val == space.w_nil or \
+    return isinstance(w_val, model.W_Object) and w_val.is_nil(space) or \
             (isinstance(w_val, cls.wrapper_class) \
             and not cls.is_nil_value(cls.unwrap(space, w_val)))
 
@@ -338,7 +338,7 @@ class ClassShadow(AbstractCachingShadow):
     
     def store_w_superclass(self, w_class):
         superclass = self._s_superclass
-        if w_class is None or w_class.is_same_object(self.space.w_nil):
+        if w_class is None or w_class.is_nil(self.space):
             if superclass: superclass.detach_s_class(self)
             self._s_superclass = None
         else:
@@ -352,7 +352,7 @@ class ClassShadow(AbstractCachingShadow):
 
     def store_w_methoddict(self, w_methoddict):
         methoddict = self._s_methoddict
-        if w_methoddict is None or w_methoddict.is_same_object(self.space.w_nil):
+        if w_methoddict is None or w_methoddict.is_nil(self.space):
             if methoddict: methoddict.s_class = None
             self._s_methoddict = None
         else:
@@ -554,7 +554,7 @@ class MethodDictionaryShadow(ListStorageShadow):
         self.methoddict = {}
         for i in range(size):
             w_selector = self.w_self().fetch(self.space, constants.METHODDICT_NAMES_INDEX+i)
-            if not w_selector.is_same_object(self.space.w_nil):
+            if not w_selector.is_nil(self.space):
                 if not isinstance(w_selector, model.W_BytesObject):
                     pass
                     # TODO: Check if there's more assumptions about this.
@@ -713,7 +713,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
     def store_w_sender(self, w_sender):
         assert isinstance(w_sender, model.W_PointersObject)
-        if w_sender.is_same_object(self.space.w_nil):
+        if w_sender.is_nil(self.space):
             self._s_sender = None
         else:
             self.store_s_sender(w_sender.as_context_get_shadow(self.space))
@@ -727,7 +727,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
         return self._s_sender
 
     def store_unwrap_pc(self, w_pc):
-        if w_pc.is_same_object(self.space.w_nil):
+        if w_pc.is_nil(self.space):
             self.store_pc(-1)
         else:
             pc = self.space.unwrap_int(w_pc)
@@ -762,7 +762,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
             assert self == e.s_context
 
     def is_returned(self):
-        return self.pc() == -1 and self.w_sender is self.space.w_nil
+        return self.pc() == -1 and self.w_sender.is_nil(self.space)
 
     # ______________________________________________________________________
     # Method that contains the bytecode for this method/block context
@@ -1147,7 +1147,7 @@ class MethodContextShadow(ContextPartShadow):
         return self.size() - self.tempsize()
 
     def is_closure_context(self):
-        return self.w_closure_or_nil is not self.space.w_nil
+        return not self.w_closure_or_nil.is_nil(self.space)
 
     def __str__(self):
         retval = '\nMethodContext of:'

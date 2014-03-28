@@ -1157,7 +1157,7 @@ def func(interp, s_frame, w_rcvr, fd):
 
 @expose_primitive(FILE_OPEN, unwrap_spec=[object, str, object])
 def func(interp, s_frame, w_rcvr, filename, w_writeable_flag):
-    if w_writeable_flag is interp.space.w_true:
+    if w_writeable_flag.is_same_object(interp.space.w_true):
         mode = os.O_RDWR | os.O_CREAT | os.O_TRUNC
     else:
         mode = os.O_RDONLY

@@ -34,7 +34,7 @@ def check_arr(arr, expected):
     for i in range(arr.size()):
         w_val = arr.fetch(space, i)
         if expected[i] == w_nil:
-            assert w_val == w_nil
+            assert w_val.is_nil(space)
         elif isinstance(expected[i], int):
             assert isinstance(w_val, model.W_SmallInteger)
             assert space.unwrap_int(w_val) == expected[i]
@@ -79,7 +79,7 @@ def test_List_store():
 def test_List_fetch():
     a = list_arr(5)
     assert a.fetch(space, 0).getclass(space) == class_Array
-    assert a.fetch(space, 4) == w_nil
+    assert a.fetch(space, 4).is_nil(space)
 
 def test_List_size():
     a = list_arr(5)
