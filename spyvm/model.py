@@ -15,7 +15,7 @@ W_BlockContext and W_MethodContext classes have been replaced by functions
 that create W_PointersObjects of correct size with attached shadows.
 """
 import sys, weakref
-from spyvm import constants, error, version
+from spyvm import constants, error, version, storage_statistics
 from spyvm.version import elidable_for_version
 
 from rpython.rlib import rrandom, objectmodel, jit, signature
@@ -24,7 +24,6 @@ from rpython.rlib.debug import make_sure_not_resized
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib.objectmodel import instantiate, compute_hash, import_from_mixin, we_are_translated
 from rpython.rtyper.lltypesystem import lltype, rffi
-from rpython.rlib.listsort import TimSort
 from rsdl import RSDL, RSDL_helper
 
 class W_Object(object):
@@ -468,6 +467,7 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     Float)."""
     _attrs_ = ['w_class']
     repr_classname = "W_AbstractObjectWithClassReference"
+    w_class = None
     
     def __init__(self, space, w_class):
         if w_class is not None:     # it's None only for testing and space generation
@@ -490,10 +490,12 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
 
     def guess_classname(self):
         if self.has_class():
-            class_shadow = self.class_shadow(self.w_class.space())
-            # Three question marks, because it would be highly irregular to have
-            # an initialized ClassShadow without an initialized name field.
-            return class_shadow.name or "???"
+            if self.w_class.has_shadow():
+                class_shadow = self.class_shadow(self.w_class.space())
+                return class_shadow.name
+            else:
+                # We cannot access the class during the initialization sequence.
+                return "?? (class not initialized)"
         else:
             return "? (no class)"
     
@@ -517,50 +519,12 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
         assert w_class is not None
         return w_class.as_class_get_shadow(space)
 
-class StatsSorter(TimSort):
-    def lt(self, a, b):
-        if a[0] == b[0]:
-            if a[1] == b[1]:
-                return a[2] < b[2]
-            else:
-                return a[1] < b[1]
-        else:
-            return a[0] < b[0]
-class StrategyStatistics(object):
-    # Key: (operation_name, old_strategy, new_strategy)
-    # Value: [sizes]
-    stats = {}
-    do_log = False
-    do_stats = False
-    do_stats_sizes = False
-    
-    def stat_operation(self, operation_name, old_strategy, new_strategy, size):
-        key = (operation_name, old_strategy, new_strategy)
-        if not key in self.stats:
-            self.stats[key] = []
-        self.stats[key].append(size)
-    def log_operation(self, op, new_strategy_tag, old_strategy_tag, classname, size):
-        print "%s (%s, was %s) of %s size %d" % (op, new_strategy_tag, old_strategy_tag, classname, size)
-    def sorted_keys(self):
-        keys = [ x for x in self.stats ]
-        StatsSorter(keys).sort()
-        return keys
-    def print_stats(self):
-        for key in self.sorted_keys():
-            sizes = self.stats[key]
-            sum = 0
-            for s in sizes:
-                sum += s
-            print "%s: %d times, avg size: %d" % (key, len(sizes), sum/len(sizes))
-            if self.do_stats_sizes:
-                print "       All sizes: %s" % sizes
-strategy_stats = StrategyStatistics()
-
 class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     """Common object."""
     _attrs_ = ['shadow']
     shadow = None
     repr_classname = "W_AbstractPointersObject"
+    log_storage = storage_statistics.log
     
     @jit.unroll_safe
     def __init__(self, space, w_class, size):
@@ -570,6 +534,7 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         
     def initialize_storage(self, space, size):
         self.store_shadow(self.empty_storage(space, size))
+        self.log_storage("Initialized")
         
     def fillin(self, space, g_self):
         W_AbstractObjectWithClassReference.fillin(self, space, g_self)
@@ -579,17 +544,28 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         pointers = g_self.get_pointers()
         self.store_shadow(self.storage_for_list(space, pointers))
         self.store_all(space, pointers)
+        self.log_storage("Filledin", log_classname=False)
         
     def empty_storage(self, space, size):
         raise NotImplementedError()
     def storage_for_list(self, space, vars):
         raise NotImplementedError()
     
+    def assert_shadow(self):
+        # Failing the following assert most likely indicates a bug. The shadow can only be absent during
+        # the bootstrapping sequence. It will be initialized in the fillin() method. Before that, it should
+        # not be switched to a specialized shadow, and the space is also not yet available here! Otherwise,
+        # the specialized shadow will attempt to read information from an uninitialized object.
+        shadow = self.shadow
+        assert shadow, "The shadow has not been initialized yet!"
+        return shadow
+    
     def switch_shadow(self, new_shadow):
-        if self.shadow is not None:
-            new_shadow.copy_from(self.shadow)
+        old_shadow = self.assert_shadow()
+        new_shadow.copy_from(old_shadow)
         self.store_shadow(new_shadow)
         new_shadow.attach_shadow()
+        self.log_storage("Switched", old_shadow)
     
     def store_with_new_storage(self, new_storage, n0, w_val):
         space = self.space()
@@ -597,8 +573,7 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         self.store(space, n0, w_val)
     
     def space(self):
-        assert self.shadow, "Cannot access space without a shadow!"
-        return self.shadow.space
+        return self.assert_shadow().space
         
     def __str__(self):
         if self.has_shadow() and self.shadow.provides_getname:

@@ -369,7 +369,7 @@ def test_step_run_something():
 def test_primitive_perform_with_args():
     from spyvm.test.test_primitives import _prim
     w_o = space.wrap_list([1, 2, 3])
-    w_methoddict = w_o.class_shadow(space)._s_superclass._s_superclass.w_methoddict()
+    w_methoddict = w_o.class_shadow(space).s_superclass().s_superclass().w_methoddict()
     w_methoddict.as_methoddict_get_shadow(space).sync_method_cache()
     selectors_w = w_methoddict.shadow.methoddict.keys()
     w_sel = None

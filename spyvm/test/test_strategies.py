@@ -1,5 +1,5 @@
 import py
-from spyvm import wrapper, model, interpreter, shadow
+from spyvm import wrapper, model, interpreter, shadow, storage_statistics
 from spyvm.error import WrapperException, FatalError
 from .util import read_image, copy_to_module, cleanup_module
 
@@ -176,20 +176,27 @@ def test_Float_store_SmallInt_to_List():
     assert isinstance(a.shadow, shadow.ListStorageShadow)
     check_arr(a, [1.2, 2, w_nil, w_nil, w_nil])
 
-def test_statistics():
-    stats = model.StrategyStatistics()
-    stats.stat_operation("B", "old", "new", 3)
-    stats.stat_operation("B", "old", "new", 4)
-    stats.stat_operation("B", "old2", "new2", 20)
-    stats.stat_operation("B", "old", "new", 5)
-    stats.stat_operation("A", "old", "new", 1)
-    stats.stat_operation("A", "old", "new", 2)
-    stats.stat_operation("C", "old", "new", 10)
-    stats.stat_operation("C", "old", "new", 11)
+def test_statistics_stats():
+    stats = storage_statistics.StorageStatistics()
+    stats.stat_operation(stats.make_key("B", "old", "new"), 3)
+    stats.stat_operation(stats.make_key("B", "old", "new"), 4)
+    stats.stat_operation(stats.make_key("B", "old2", "new2"), 20)
+    stats.stat_operation(stats.make_key("B", "old", "new"), 5)
+    stats.stat_operation(stats.make_key("A", "old", "new"), 1)
+    stats.stat_operation(stats.make_key("A", "old", "new"), 2)
+    stats.stat_operation(stats.make_key("C", "old", "new"), 10)
+    stats.stat_operation(stats.make_key("C", "old", "new"), 11)
     keys = stats.sorted_keys()
     assert keys == [ ("A", "old", "new"), ("B", "old", "new"), ("B", "old2", "new2"), ("C", "old", "new") ]
     assert stats.stats[keys[0]] == [1, 2]
     assert stats.stats[keys[1]] == [3, 4, 5]
     assert stats.stats[keys[2]] == [20]
     assert stats.stats[keys[3]] == [10, 11]
+    
+def test_statistics_log():
+    stats = storage_statistics.StorageStatistics()
+    s = stats.log_operation_string(stats.make_key("Operation", "old_storage", "new_storage"), 22, "classname")
+    assert s == "Operation (old_storage -> new_storage) of classname size 22"
+    s = stats.log_operation_string(stats.make_key("InitialOperation", None, "some_new_storage"), 40, "a_classname")
+    assert s == "InitialOperation (some_new_storage) of a_classname size 40"
     

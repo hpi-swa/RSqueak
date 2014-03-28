@@ -263,8 +263,8 @@ class ClassShadow(AbstractCachingShadow):
 
     _attrs_ = ["name", "_instance_size", "instance_varsized", "instance_kind",
                 "_s_methoddict", "_s_superclass", "subclass_s"]
-    name = '??'
-    _s_superclass = None
+    name = '??? (incomplete class info)'
+    _s_superclass = _s_methoddict = None
     provides_getname = True
     repr_classname = "ClassShadow"
     
@@ -277,10 +277,7 @@ class ClassShadow(AbstractCachingShadow):
         if n0 == constants.CLASS_SUPERCLASS_INDEX:
             self.store_w_superclass(w_val)
         elif n0 == constants.CLASS_METHODDICT_INDEX:
-            assert isinstance(w_val, model.W_PointersObject)
-            if not w_val.is_same_object(self.space.w_nil):
-                self._s_methoddict = w_val.as_methoddict_get_shadow(self.space)
-                self._s_methoddict.s_class = self
+            self.store_w_methoddict(w_val)
         elif n0 == constants.CLASS_FORMAT_INDEX:
             # read and painfully decode the format
             assert isinstance(w_val, model.W_SmallInteger)
@@ -340,18 +337,33 @@ class ClassShadow(AbstractCachingShadow):
         self.changed()
     
     def store_w_superclass(self, w_class):
+        superclass = self._s_superclass
         if w_class is None or w_class.is_same_object(self.space.w_nil):
+            if superclass: superclass.detach_s_class(self)
             self._s_superclass = None
         else:
             assert isinstance(w_class, model.W_PointersObject)
-            s_scls = w_class.as_class_get_shadow(self.space)
-            if self._s_superclass is s_scls:
+            s_new_superclass = w_class.as_class_get_shadow(self.space)
+            if superclass is s_new_superclass:
                 return
-            if self._s_superclass is not None:
-                self._s_superclass.detach_s_class(self)
-            self._s_superclass = s_scls
-            self._s_superclass.attach_s_class(self)
+            if superclass: superclass.detach_s_class(self)
+            self._s_superclass = s_new_superclass
+            s_new_superclass.attach_s_class(self)
 
+    def store_w_methoddict(self, w_methoddict):
+        methoddict = self._s_methoddict
+        if w_methoddict is None or w_methoddict.is_same_object(self.space.w_nil):
+            if methoddict: methoddict.s_class = None
+            self._s_methoddict = None
+        else:
+            assert isinstance(w_methoddict, model.W_PointersObject)
+            s_new_methoddict = w_methoddict.as_methoddict_get_shadow(self.space)
+            if methoddict is s_new_methoddict:
+                return
+            if methoddict: methoddict.s_class = None
+            self._s_methoddict = s_new_methoddict
+            self._s_methoddict.s_class = self
+            
     def attach_s_class(self, s_other):
         self.subclass_s[s_other] = None
 
@@ -406,7 +418,7 @@ class ClassShadow(AbstractCachingShadow):
         return self._s_superclass
 
     def getname(self):
-        return self.name or '?'
+        return self.name
 
     # _______________________________________________________________
     # Methods for querying the format word, taken from the blue book:

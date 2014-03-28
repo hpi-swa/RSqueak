@@ -6,7 +6,7 @@ from rpython.rlib.streamio import open_file_as_stream
 from rpython.rlib import jit, rpath
 
 from spyvm import model, interpreter, squeakimage, objspace, wrapper,\
-    error, shadow
+    error, shadow, storage_statistics
 from spyvm.tool.analyseimage import create_image
 from spyvm.interpreter_proxy import VirtualMachine
 
@@ -185,12 +185,11 @@ def entry_point(argv):
             as_benchmark = True
             idx += 1
         elif arg == "--strategy-log":
-            model.strategy_stats.do_log = True
+            storage_statistics.activate_statistics(log=True)
         elif arg == "--strategy-stats":
-            model.strategy_stats.do_stats = True
+            storage_statistics.activate_statistics(statistics=True)
         elif arg == "--strategy-stats-with-sizes":
-            model.strategy_stats.do_stats = True
-            model.strategy_stats.do_stats_sizes = True
+            storage_statistics.activate_statistics(statistics=True, statstics_sizes=True)
         elif path is None:
             path = argv[idx]
         else:
@@ -224,8 +223,7 @@ def entry_point(argv):
     else:
         _run_image(interp)
         result = 0
-    if model.strategy_stats.do_stats:
-        model.strategy_stats.print_stats()
+    storage_statistics.print_statistics()
     return result
 
 
