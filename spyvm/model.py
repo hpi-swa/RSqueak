@@ -646,6 +646,10 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         return self._get_shadow().store(n0, w_value)
 
     def size(self):
+        if not self.has_shadow():
+            # TODO - this happens only for objects bootstrapped in ObjSpace.
+            # Think of a way to avoid this check. Usually, self.shadow is never None.
+            return 0
         return self._get_shadow().size()
         
     def instsize(self):
@@ -1142,6 +1146,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     """
 
     repr_classname = "W_CompiledMethod"
+    bytes_per_slot = 1
     _immutable_fields_ = ["_shadow?"]
     _attrs_ = ["bytes", "_likely_methodname", "header", "argsize", "primitive",
                 "literals", "tempsize", "literalsize", "islarge", "_shadow"]
@@ -1251,13 +1256,8 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
                 hasattr(self, 'primitive') and
                 self.primitive is not None)
 
-    def bytesize(self, space):
-        # This is very special: words and bytes are mixed here.
-        return self.headersize() + self.getliteralsize() + len(self.bytes)
-
     def size(self):
-        # One word for the header.
-        return 1 + self.literalsize + len(self.bytes)
+        return self.headersize() + self.getliteralsize() + len(self.bytes)
     
     def gettempsize(self):
         return self.tempsize

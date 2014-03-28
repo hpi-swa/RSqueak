@@ -192,7 +192,7 @@ def arrayValueOf(w_array):
 
 @expose_on_virtual_machine_proxy([oop], int)
 def byteSizeOf(w_object):
-    return w_object.bytesize(IProxy.space)
+    return w_object.bytesize()
 
 @expose_on_virtual_machine_proxy([int, oop], list)
 def fetchArrayofObject(fieldIndex, w_object):
