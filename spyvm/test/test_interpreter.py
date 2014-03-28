@@ -113,7 +113,7 @@ def _new_frame(space, bytes, receiver=None):
     w_method.setliterals([model.W_PointersObject(space, None, 2)])
     if receiver is None:
         receiver = space.w_nil
-    s_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(space, receiver, [space.w("foo"), space.w("bar")])
+    s_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(receiver, [space.w("foo"), space.w("bar")])
     return s_frame.w_self(), s_frame
 
 def new_frame(bytes, receiver=None):
@@ -127,7 +127,7 @@ def test_create_frame():
     w_method.islarge = 1
     w_method.argsize=2
     w_method.tempsize=8
-    s_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(space, w("receiver"), [w("foo"), w("bar")])
+    s_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(w("receiver"), [w("foo"), w("bar")])
     w_frame = s_frame.w_self()
     assert s_frame.w_receiver().as_string() == "receiver"
     assert s_frame.gettemp(0).as_string() == "foo"
@@ -1003,7 +1003,7 @@ def test_stacking_interpreter():
     w_method.setliterals([space.wrap_int(11)])
 
     #create a frame for that method
-    w_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(space, space.wrap_int(0), []).w_self()
+    w_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(space.wrap_int(0), []).w_self()
     try:
         interp.loop(w_frame)
     except interpreter.ReturnFromTopLevel, e:
@@ -1013,7 +1013,7 @@ def test_stacking_interpreter():
     try:
         interp = interpreter.Interpreter(space, None, "", max_stack_depth=10)
         interp._loop = True
-        interp.c_loop(w_method.as_compiledmethod_get_shadow(space).create_frame(space, space.wrap_int(0), []))
+        interp.c_loop(w_method.as_compiledmethod_get_shadow(space).create_frame(space.wrap_int(0), []))
     except interpreter.StackOverflow, e:
         assert isinstance(e.s_context, shadow.MethodContextShadow)
     except interpreter.ReturnFromTopLevel, e:
@@ -1049,7 +1049,7 @@ def test_actual_stackdepth():
     w_method.setliterals([space.wrap_int(11)])
 
     #create a frame for that method
-    w_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(space, space.wrap_int(0), []).w_self()
+    w_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(space.wrap_int(0), []).w_self()
     try:
         interp.loop(w_frame)
     except interpreter.ReturnFromTopLevel, e:

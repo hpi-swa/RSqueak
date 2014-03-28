@@ -196,10 +196,10 @@ class ListStorageShadow(AbstractShadow):
     
     def __init__(self, space, w_self, size):
         AbstractShadow.__init__(self, space, w_self)
-        self.initialize_storage(space, size)
+        self.initialize_storage(size)
     
-    def initialize_storage(self, space, size):
-        self.storage = [space.w_nil] * size
+    def initialize_storage(self, size):
+        self.storage = [self.space.w_nil] * size
     def fetch(self, n0):
         return self.storage[n0]
     def store(self, n0, w_value):
@@ -208,7 +208,7 @@ class ListStorageShadow(AbstractShadow):
         return len(self.storage)
     def copy_from(self, other_shadow):
         if self.size() != other_shadow.size():
-            self.initialize_storage(other_shadow.space, other_shadow.size())
+            self.initialize_storage(other_shadow.size())
         AbstractShadow.copy_from(self, other_shadow)
 
 class WeakListStorageShadow(AbstractShadow):
@@ -1246,9 +1246,9 @@ class CompiledMethodShadow(object):
     def primitive(self):
         return self._primitive
 
-    def create_frame(self, space, receiver, arguments, sender = None):
+    def create_frame(self, receiver, arguments, sender = None):
         assert len(arguments) == self.argsize
-        return MethodContextShadow(space, None, self, receiver, arguments, sender)
+        return MethodContextShadow(self.space, None, self, receiver, arguments, sender)
 
     @constant_for_version
     def getbytecode(self, pc):

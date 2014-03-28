@@ -373,7 +373,7 @@ class __extend__(ContextPartShadow):
             except primitives.PrimitiveFailedError:
                 pass # ignore this error and fall back to the Smalltalk version
         arguments = self.pop_and_return_n(argcount)
-        s_frame = s_method.create_frame(self.space, receiver, arguments, self)
+        s_frame = s_method.create_frame(receiver, arguments, self)
         self.pop() # receiver
 
         # ######################################################################
@@ -398,7 +398,7 @@ class __extend__(ContextPartShadow):
             assert isinstance(s_class, ClassShadow)
             print "Missing doesDoesNotUnderstand in hierarchy of %s" % s_class.getname()
             raise
-        s_frame = s_method.create_frame(self.space, receiver, [w_message], self)
+        s_frame = s_method.create_frame(receiver, [w_message], self)
         self.pop()
 
         # ######################################################################

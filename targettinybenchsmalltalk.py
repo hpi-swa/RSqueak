@@ -25,7 +25,7 @@ def setup():
     w_object = model.W_SmallInteger(0)
     s_class = w_object.class_shadow(space)
     s_method = s_class.lookup(w_selector)
-    s_frame = s_method.create_frame(space, w_object, [])
+    s_frame = s_method.create_frame(w_object, [])
     return interp, s_frame
 
 interp, s_frame = setup()
