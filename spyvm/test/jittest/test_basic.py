@@ -33,7 +33,7 @@ class TestBasic(BaseJITTest):
          guard_class(p0, ConstClass(MethodContextShadow), descr=<Guard0x3826a90>),
          p31 = getfield_gc(p0, descr=<FieldP spyvm.shadow.MethodContextShadow.inst__w_method 44>),
          guard_value(p31, ConstPtr(ptr32), descr=<Guard0x3826a50>),
-         i33 = getfield_gc(p0, descr=<FieldU spyvm.shadow.AbstractShadow.inst_space 12>),
+         i33 = getfield_gc_pure(p0, descr=<FieldU spyvm.shadow.AbstractShadow.inst_space 12>),
          guard_not_invalidated(descr=<Guard0x3826a10>),
          i35 = int_le(i16, 1000000000),
          guard_true(i35, descr=<Guard0x38269d0>),
@@ -126,350 +126,241 @@ class TestBasic(BaseJITTest):
             1 to: 10000 do: [:i | Display fillWhite].
             """)
         self.assert_matches(traces[0].loop, """
-            guard_not_invalidated(descr=<Guard0x3bc1e10>)
-            p540 = getarrayitem_gc(p152, 30, descr=<ArrayP 4>)
-            guard_nonnull_class(p540, 19336136, descr=<Guard0x3bc18d0>)
-            i541 = getfield_gc_pure(p540, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
-            i543 = int_le(2, i541)
-            guard_false(i543, descr=<Guard0x3bc1850>)
-            p544 = getarrayitem_gc(p152, 34, descr=<ArrayP 4>)
-            p545 = getarrayitem_gc(p152, 36, descr=<ArrayP 4>)
-            guard_nonnull_class(p544, 19336136, descr=<Guard0x3bc11d0>)
-            i546 = getfield_gc_pure(p544, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
-            guard_nonnull_class(p545, 19336136, descr=<Guard0x3bc1150>)
-            i547 = getfield_gc_pure(p545, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
-            i548 = int_add_ovf(i546, i547)
-            guard_no_overflow(descr=<Guard0x3bc10d0>)
-            p549 = getarrayitem_gc(p152, 35, descr=<ArrayP 4>)
-            p550 = getarrayitem_gc(p152, 37, descr=<ArrayP 4>)
-            guard_nonnull_class(p549, 19336136, descr=<Guard0x3bbe990>)
-            i551 = getfield_gc_pure(p549, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
-            guard_nonnull_class(p550, 19336136, descr=<Guard0x3bbe910>)
-            i552 = getfield_gc_pure(p550, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
-            i553 = int_add_ovf(i551, i552)
-            guard_no_overflow(descr=<Guard0x3bbe890>)
-            i554 = int_add_ovf(i181, 1)
-            guard_no_overflow(descr=<Guard0x3bbe390>)
-            i555 = int_sub(i527, 2)
-            setfield_gc(ConstPtr(ptr182), i555, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
-            i556 = int_le(i555, 0)
-            guard_false(i556, descr=<Guard0x3bbe110>)
-            p557 = getarrayitem_gc(p152, 16, descr=<ArrayP 4>)
-            guard_nonnull_class(p557, 19336136, descr=<Guard0x3bbba90>)
-            i558 = getfield_gc_pure(p557, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
-            i559 = int_le(i554, i558)
-            guard_true(i559, descr=<Guard0x3bbba10>)
-            p560 = getarrayitem_gc(p152, 2, descr=<ArrayP 4>)
-            guard_class(p560, 19336008, descr=<Guard0x3bbb590>)
-            p561 = getfield_gc(p560, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_s_class 12>)
-            guard_value(p561, ConstPtr(ptr198), descr=<Guard0x3bbb550>)
-            p562 = getarrayitem_gc(p152, 25, descr=<ArrayP 4>)
-            p563 = getarrayitem_gc(p152, 20, descr=<ArrayP 4>)
-            guard_class(p562, 19352312, descr=<Guard0x3bb8a10>)
-            p564 = getfield_gc(p562, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_s_class 12>)
-            guard_value(p564, ConstPtr(ptr206), descr=<Guard0x3bb89d0>)
-            i565 = getfield_gc_pure(p562, descr=<FieldS spyvm.model.W_WordsObject.inst__size 20>)
-            guard_nonnull_class(p563, 19336136, descr=<Guard0x3bb86d0>)
-            i566 = getfield_gc_pure(p563, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
-            i567 = int_is_zero(i565)
-            guard_false(i567, descr=<Guard0x3bb8650>)
-            i568 = int_mod(i566, i565)
-            i569 = int_lt(i565, 0)
-            guard_false(i569, descr=<Guard0x3bb8610>)
-            i570 = int_rshift(i568, 31)
-            i571 = int_and(i565, i570)
-            i572 = int_add(i568, i571)
-            i573 = int_add_ovf(1, i572)
-            guard_no_overflow(descr=<Guard0x3bb8510>)
-            i574 = int_ge(i572, 0)
-            guard_true(i574, descr=<Guard0x3bb8150>)
-            i575 = int_lt(i572, i565)
-            guard_true(i575, descr=<Guard0x3bb8110>)
-            p576 = getfield_gc(p562, descr=<FieldP spyvm.model.W_WordsObject.inst_words 28>)
-            guard_nonnull(p576, descr=<Guard0x3bb80d0>)
-            i577 = getarrayitem_gc(p576, i572, descr=<ArrayU 4>)
-            i578 = uint_lt(i577, 0)
-            guard_false(i578, descr=<Guard0x3bb8090>)
-            i579 = uint_lt(i577, 2147483647)
-            guard_true(i579, descr=<Guard0x3bb8050>)
-            p580 = getarrayitem_gc(p152, 32, descr=<ArrayP 4>)
-            guard_nonnull_class(p580, 19336136, descr=<Guard0x3bb69d0>)
-            i581 = getfield_gc_pure(p580, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
-            i582 = int_add_ovf(i566, i581)
-            guard_no_overflow(descr=<Guard0x3bb6950>)
-            p583 = getarrayitem_gc(p152, 33, descr=<ArrayP 4>)
-            i584 = instance_ptr_eq(p583, ConstPtr(ptr236))
-            guard_true(i584, descr=<Guard0x3bb6090>)
-            p585 = getarrayitem_gc(p152, 27, descr=<ArrayP 4>)
-            i586 = int_le(1, i541)
-            guard_true(i586, descr=<Guard0x3bb3410>)
-            p587 = getarrayitem_gc(p152, 1, descr=<ArrayP 4>)
-            guard_class(p587, 19336008, descr=<Guard0x3bb1f50>)
-            p588 = getfield_gc(p587, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_s_class 12>)
-            guard_value(p588, ConstPtr(ptr246), descr=<Guard0x3bb1f10>)
-            i589 = int_ge(i577, 0)
-            guard_true(i589, descr=<Guard0x3bb1910>)
-            i590 = int_and(i577, i577)
-            i591 = uint_lt(i590, 2147483647)
-            guard_true(i591, descr=<Guard0x3bb1890>)
-            p592 = getarrayitem_gc(p152, 21, descr=<ArrayP 4>)
-            i593 = int_add_ovf(i553, 1)
-            guard_no_overflow(descr=<Guard0x3bb1250>)
-            guard_class(p592, 19375152, descr=<Guard0x3bb10d0>)
-            p594 = getfield_gc(p592, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_s_class 12>)
-            guard_value(p594, ConstPtr(ptr258), descr=<Guard0x3bb1090>)
-            i595 = int_ge(i553, 0)
-            guard_true(i595, descr=<Guard0x3bafe50>)
-            i596 = getfield_gc_pure(p592, descr=<FieldS spyvm.model.W_DisplayBitmap.inst__realsize 28>)
-            i597 = int_lt(i553, i596)
-            guard_true(i597, descr=<Guard0x3bafe10>)
-            i598 = getfield_gc(p592, descr=<FieldU spyvm.model.W_DisplayBitmap.inst__real_depth_buffer 24>)
-            i599 = getarrayitem_raw(i598, i553, descr=<ArrayU 4>)
-            i600 = uint_lt(i599, 0)
-            guard_false(i600, descr=<Guard0x3bafdd0>)
-            i601 = uint_lt(i599, 2147483647)
-            guard_true(i601, descr=<Guard0x3bafd90>)
-            p602 = getarrayitem_gc(p152, 3, descr=<ArrayP 4>)
-            setfield_gc(ConstPtr(ptr182), i276, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>)
-            guard_nonnull_class(p602, 19336136, descr=<Guard0x3baf310>)
-            i603 = getfield_gc_pure(p602, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
-            i604 = int_lt(i603, 16)
-            guard_true(i604, descr=<Guard0x3baf290>)
-            i605 = int_eq(i603, 0)
-            guard_false(i605, descr=<Guard0x3bacd50>)
-            i606 = int_eq(i603, 1)
-            guard_false(i606, descr=<Guard0x3bac910>)
-            i607 = int_eq(i603, 2)
-            guard_false(i607, descr=<Guard0x3bac4d0>)
-            i608 = int_eq(i603, 3)
-            guard_true(i608, descr=<Guard0x3ba8f90>)
-            setfield_gc(ConstPtr(ptr182), i272, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>)
-            guard_nonnull_class(p585, 19351904, descr=<Guard0x3ba8110>)
-            i609 = getfield_gc(p585, descr=<FieldS spyvm.model.W_LargePositiveInteger1Word.inst_value 16>)
-            i610 = int_and(i609, i590)
-            i611 = uint_lt(i610, 2147483647)
-            guard_true(i611, descr=<Guard0x3ba8050>)
-            i612 = int_xor(i609, i297)
-            setfield_gc(ConstPtr(ptr182), i276, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>)
-            i613 = uint_lt(i612, 2147483647)
-            guard_true(i613, descr=<Guard0x3ba6390>)
-            i614 = getarrayitem_raw(i598, i553, descr=<ArrayU 4>)
-            setfield_gc(ConstPtr(ptr182), i272, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>)
-            i615 = uint_lt(i614, 0)
-            guard_false(i615, descr=<Guard0x3ba4550>)
-            i616 = uint_lt(i614, 2147483647)
-            guard_true(i616, descr=<Guard0x3ba4510>)
-            i617 = int_ge(i612, 0)
-            guard_true(i617, descr=<Guard0x3ba4410>)
-            i618 = int_ge(i614, 0)
-            guard_true(i618, descr=<Guard0x3ba43d0>)
-            i619 = int_and(i612, i614)
-            i620 = uint_lt(i619, 2147483647)
-            guard_true(i620, descr=<Guard0x3ba4390>)
-            i621 = int_ge(i610, 0)
-            guard_true(i621, descr=<Guard0x3ba4290>)
-            i622 = int_or(i610, i619)
-            i623 = uint_lt(i622, 2147483647)
-            guard_true(i623, descr=<Guard0x3ba4210>)
-            setarrayitem_raw(i598, i553, i622, descr=<ArrayU 4>)
-            i624 = getfield_gc_pure(p592, descr=<FieldS spyvm.model.W_DisplayBitmap.inst__depth 20>)
-            i625 = int_floordiv(8, i624)
-            i626 = int_mul(i625, i624)
-            i627 = int_lt(i624, 0)
-            guard_false(i627, descr=<Guard0x3b2fd90>)
-            i628 = int_sub(8, i626)
-            i629 = int_rshift(i628, 31)
-            i630 = int_add(i625, i629)
-            i631 = int_mul(i553, i630)
-            i632 = int_sub(32, i624)
-            i633 = int_ge(0, i630)
-            guard_false(i633, descr=<Guard0x3b20110>)
-            i634 = int_ge(i631, i596)
-            guard_false(i634, descr=<Guard0x3b200d0>)
-            i635 = uint_rshift(i622, i632)
-            i636 = int_lshift(i622, i624)
-            i637 = uint_rshift(i636, i632)
-            i638 = int_lshift(i637, 8)
-            i639 = int_or(i635, i638)
-            i640 = int_lshift(i636, i624)
-            i641 = uint_rshift(i640, i632)
-            i642 = int_lshift(i641, 16)
-            i643 = int_or(i639, i642)
-            i644 = int_lshift(i640, i624)
-            i645 = uint_rshift(i644, i632)
-            i646 = int_lshift(i645, 24)
-            i647 = int_or(i643, i646)
-            i648 = int_lshift(i644, i624)
-            p649 = getfield_gc_pure(p592, descr=<FieldP spyvm.model.W_DisplayBitmap.inst_display 32>)
-            i650 = getfield_gc(p649, descr=<FieldU spyvm.display.SDLDisplay.inst_pixelbuffer 36>)
-            guard_value(i650, 59506760, descr=<Guard0x3b20050>)
-            setarrayitem_raw(59506760, i631, i647, descr=<ArrayU 4>)
-            i651 = int_add(i631, 1)
-            i652 = int_ge(1, i630)
-            guard_false(i652, descr=<Guard0x3b1ff90>)
-            i653 = int_ge(i651, i596)
-            guard_false(i653, descr=<Guard0x3b1ff10>)
-            i654 = uint_rshift(i648, i632)
-            i655 = int_lshift(i648, i624)
-            i656 = uint_rshift(i655, i632)
-            i657 = int_lshift(i656, 8)
-            i658 = int_or(i654, i657)
-            i659 = int_lshift(i655, i624)
-            i660 = uint_rshift(i659, i632)
-            i661 = int_lshift(i660, 16)
-            i662 = int_or(i658, i661)
-            i663 = int_lshift(i659, i624)
-            i664 = uint_rshift(i663, i632)
-            i665 = int_lshift(i664, 24)
-            i666 = int_or(i662, i665)
-            i667 = int_lshift(i663, i624)
-            setarrayitem_raw(59506760, i651, i666, descr=<ArrayU 4>)
-            i668 = int_add(i651, 1)
-            i669 = int_ge(2, i630)
-            guard_false(i669, descr=<Guard0x3b1fe90>)
-            i670 = int_ge(i668, i596)
-            guard_false(i670, descr=<Guard0x3b1fe50>)
-            i671 = uint_rshift(i667, i632)
-            i672 = int_lshift(i667, i624)
-            i673 = uint_rshift(i672, i632)
-            i674 = int_lshift(i673, 8)
-            i675 = int_or(i671, i674)
-            i676 = int_lshift(i672, i624)
-            i677 = uint_rshift(i676, i632)
-            i678 = int_lshift(i677, 16)
-            i679 = int_or(i675, i678)
-            i680 = int_lshift(i676, i624)
-            i681 = uint_rshift(i680, i632)
-            i682 = int_lshift(i681, 24)
-            i683 = int_or(i679, i682)
-            i684 = int_lshift(i680, i624)
-            setarrayitem_raw(59506760, i668, i683, descr=<ArrayU 4>)
-            i685 = int_add(i668, 1)
-            i686 = int_ge(3, i630)
-            guard_false(i686, descr=<Guard0x3b1fdd0>)
-            i687 = int_ge(i685, i596)
-            guard_false(i687, descr=<Guard0x3b1fd90>)
-            i688 = uint_rshift(i684, i632)
-            i689 = int_lshift(i684, i624)
-            i690 = uint_rshift(i689, i632)
-            i691 = int_lshift(i690, 8)
-            i692 = int_or(i688, i691)
-            i693 = int_lshift(i689, i624)
-            i694 = uint_rshift(i693, i632)
-            i695 = int_lshift(i694, 16)
-            i696 = int_or(i692, i695)
-            i697 = int_lshift(i693, i624)
-            i698 = uint_rshift(i697, i632)
-            i699 = int_lshift(i698, 24)
-            i700 = int_or(i696, i699)
-            i701 = int_lshift(i697, i624)
-            setarrayitem_raw(59506760, i685, i700, descr=<ArrayU 4>)
-            i702 = int_add(i685, 1)
-            i703 = int_ge(4, i630)
-            guard_false(i703, descr=<Guard0x3b1fd10>)
-            i704 = int_ge(i702, i596)
-            guard_false(i704, descr=<Guard0x3b1fcd0>)
-            i705 = uint_rshift(i701, i632)
-            i706 = int_lshift(i701, i624)
-            i707 = uint_rshift(i706, i632)
-            i708 = int_lshift(i707, 8)
-            i709 = int_or(i705, i708)
-            i710 = int_lshift(i706, i624)
-            i711 = uint_rshift(i710, i632)
-            i712 = int_lshift(i711, 16)
-            i713 = int_or(i709, i712)
-            i714 = int_lshift(i710, i624)
-            i715 = uint_rshift(i714, i632)
-            i716 = int_lshift(i715, 24)
-            i717 = int_or(i713, i716)
-            i718 = int_lshift(i714, i624)
-            setarrayitem_raw(59506760, i702, i717, descr=<ArrayU 4>)
-            i719 = int_add(i702, 1)
-            i720 = int_ge(5, i630)
-            guard_false(i720, descr=<Guard0x3b1fc50>)
-            i721 = int_ge(i719, i596)
-            guard_false(i721, descr=<Guard0x3b1fc10>)
-            i722 = uint_rshift(i718, i632)
-            i723 = int_lshift(i718, i624)
-            i724 = uint_rshift(i723, i632)
-            i725 = int_lshift(i724, 8)
-            i726 = int_or(i722, i725)
-            i727 = int_lshift(i723, i624)
-            i728 = uint_rshift(i727, i632)
-            i729 = int_lshift(i728, 16)
-            i730 = int_or(i726, i729)
-            i731 = int_lshift(i727, i624)
-            i732 = uint_rshift(i731, i632)
-            i733 = int_lshift(i732, 24)
-            i734 = int_or(i730, i733)
-            i735 = int_lshift(i731, i624)
-            setarrayitem_raw(59506760, i719, i734, descr=<ArrayU 4>)
-            i736 = int_add(i719, 1)
-            i737 = int_ge(6, i630)
-            guard_false(i737, descr=<Guard0x3b1fb90>)
-            i738 = int_ge(i736, i596)
-            guard_false(i738, descr=<Guard0x3bc1f10>)
-            i739 = uint_rshift(i735, i632)
-            i740 = int_lshift(i735, i624)
-            i741 = uint_rshift(i740, i632)
-            i742 = int_lshift(i741, 8)
-            i743 = int_or(i739, i742)
-            i744 = int_lshift(i740, i624)
-            i745 = uint_rshift(i744, i632)
-            i746 = int_lshift(i745, 16)
-            i747 = int_or(i743, i746)
-            i748 = int_lshift(i744, i624)
-            i749 = uint_rshift(i748, i632)
-            i750 = int_lshift(i749, 24)
-            i751 = int_or(i747, i750)
-            i752 = int_lshift(i748, i624)
-            setarrayitem_raw(59506760, i736, i751, descr=<ArrayU 4>)
-            i753 = int_add(i736, 1)
-            i754 = int_ge(7, i630)
-            guard_false(i754, descr=<Guard0x3b1fb10>)
-            i755 = int_ge(i753, i596)
-            guard_false(i755, descr=<Guard0x3b1fad0>)
-            i756 = uint_rshift(i752, i632)
-            i757 = int_lshift(i752, i624)
-            i758 = uint_rshift(i757, i632)
-            i759 = int_lshift(i758, 8)
-            i760 = int_or(i756, i759)
-            i761 = int_lshift(i757, i624)
-            i762 = uint_rshift(i761, i632)
-            i763 = int_lshift(i762, 16)
-            i764 = int_or(i760, i763)
-            i765 = int_lshift(i761, i624)
-            i766 = uint_rshift(i765, i632)
-            i767 = int_lshift(i766, 24)
-            i768 = int_or(i764, i767)
-            i769 = int_lshift(i765, i624)
-            setarrayitem_raw(59506760, i753, i768, descr=<ArrayU 4>)
-            i770 = int_add(i753, 1)
-            i771 = int_ge(8, i630)
-            guard_true(i771, descr=<Guard0x3b1fa50>)
-            p772 = getarrayitem_gc(p152, 31, descr=<ArrayP 4>)
-            guard_nonnull_class(p772, 19336136, descr=<Guard0x3b1f3d0>)
-            i773 = getfield_gc_pure(p772, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
-            i774 = int_add_ovf(i548, i773)
-            guard_no_overflow(descr=<Guard0x3b1f350>)
-            i775 = int_add_ovf(i553, i773)
-            guard_no_overflow(descr=<Guard0x3b04ad0>)
-            p776 = getarrayitem_gc(ConstPtr(ptr523), 1, descr=<ArrayP 4>)
-            i777 = int_sub(i555, 24)
-            setfield_gc(ConstPtr(ptr182), i777, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
-            i778 = int_le(i777, 0)
-            guard_false(i778, descr=<Guard0x33b0310>)
-            p779 = new_with_vtable(19336136)
-            setfield_gc(p779, i774, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
-            setarrayitem_gc(p152, 34, p779, descr=<ArrayP 4>)
-            p780 = new_with_vtable(19336136)
-            setfield_gc(p780, i775, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
-            setarrayitem_gc(p152, 35, p780, descr=<ArrayP 4>)
-            p781 = new_with_vtable(19336136)
-            setfield_gc(p781, i582, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>)
-            setarrayitem_gc(p152, 20, p781, descr=<ArrayP 4>)
-            i782 = arraylen_gc(p152, descr=<ArrayP 4>)
-            jump(p0, p3, p8, i577, p776, i590, p18, i554, p38, p40, p42, p44, p46, p48, p50, p52, p54, p56, p58, p60, p62, p64, p66, p68, p70, p72, p74, p76, p78, p80, p82, p84, p86, p88, p90, p92, p94, p96, p98, p100, p102, p104, p106, p108, p110, p112, p114, p116, p118, p120, p122, p124, p126, p128, p130, p132, p134, i139, p152, i777, p141, i276, i272, i297, descr=TargetToken(61930080))
+            guard_not_invalidated(descr=<Guard0x3354f50>),
+            i584 = int_le(2, i151),
+            guard_false(i584, descr=<Guard0x33549d0>),
+            i585 = getfield_gc_pure(p576, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>),
+            i586 = int_add_ovf(i585, i160),
+            guard_no_overflow(descr=<Guard0x3354350>),
+            i587 = getfield_gc_pure(p579, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>),
+            i588 = int_add_ovf(i587, i169),
+            guard_no_overflow(descr=<Guard0x3351c90>),
+            i589 = int_add_ovf(i174, 1),
+            guard_no_overflow(descr=<Guard0x3351810>),
+            i590 = int_sub(i572, 2),
+            setfield_gc(ConstPtr(ptr175), i590, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 24>),
+            i591 = int_le(i590, 0),
+            guard_false(i591, descr=<Guard0x3351590>),
+            i592 = int_le(i589, i185),
+            guard_true(i592, descr=<Guard0x334eed0>),
+            i593 = getfield_gc_pure(p350, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>),
+            i594 = int_mod(i593, i219),
+            i595 = int_rshift(i594, 31),
+            i596 = int_and(i219, i595),
+            i597 = int_add(i594, i596),
+            i598 = int_add_ovf(1, i597),
+            guard_no_overflow(descr=<Guard0x334ca10>),
+            i599 = int_ge(i597, 0),
+            guard_true(i599, descr=<Guard0x334c650>),
+            i600 = int_lt(i597, i219),
+            guard_true(i600, descr=<Guard0x334c610>),
+            i601 = getarrayitem_gc(p241, i597, descr=<ArrayU 4>),
+            i602 = uint_lt(i601, 0),
+            guard_false(i602, descr=<Guard0x334c590>),
+            i603 = uint_lt(i601, 2147483647),
+            guard_true(i603, descr=<Guard0x334c550>),
+            i604 = int_add_ovf(i593, i250),
+            guard_no_overflow(descr=<Guard0x334c010>),
+            i605 = int_ge(i601, 0),
+            guard_true(i605, descr=<Guard0x33481d0>),
+            i606 = int_and(i601, i601),
+            i607 = uint_lt(i606, 2147483647),
+            guard_true(i607, descr=<Guard0x3348150>),
+            i608 = int_add_ovf(i588, 1),
+            guard_no_overflow(descr=<Guard0x3344bd0>),
+            i609 = int_ge(i588, 0),
+            guard_true(i609, descr=<Guard0x33446d0>),
+            i610 = int_lt(i588, i281),
+            guard_true(i610, descr=<Guard0x3344690>),
+            i611 = getarrayitem_raw(i283, i588, descr=<ArrayU 4>),
+            i612 = uint_lt(i611, 0),
+            guard_false(i612, descr=<Guard0x3344650>),
+            i613 = uint_lt(i611, 2147483647),
+            guard_true(i613, descr=<Guard0x3344610>),
+            i614 = int_and(i318, i606),
+            i615 = uint_lt(i614, 2147483647),
+            guard_true(i615, descr=<Guard0x333da90>),
+            i616 = getarrayitem_raw(i283, i588, descr=<ArrayU 4>),
+            i617 = uint_lt(i616, 0),
+            guard_false(i617, descr=<Guard0x33574d0>),
+            i618 = uint_lt(i616, 2147483647),
+            guard_true(i618, descr=<Guard0x3357490>),
+            i619 = int_ge(i616, 0),
+            guard_true(i619, descr=<Guard0x3357450>),
+            i620 = int_and(i329, i616),
+            i621 = uint_lt(i620, 2147483647),
+            guard_true(i621, descr=<Guard0x3357410>),
+            i622 = int_ge(i614, 0),
+            guard_true(i622, descr=<Guard0x33573d0>),
+            i623 = int_or(i614, i620),
+            i624 = uint_lt(i623, 2147483647),
+            guard_true(i624, descr=<Guard0x3357390>),
+            setarrayitem_raw(i283, i588, i623, descr=<ArrayU 4>),
+            i626 = int_lshift(i588, 3),
+            i627 = int_ge(i626, i281),
+            guard_false(i627, descr=<Guard0x3357350>),
+            i628 = uint_rshift(i623, i373),
+            i629 = int_lshift(i623, i360),
+            i630 = uint_rshift(i629, i373),
+            i631 = int_lshift(i630, 8),
+            i632 = int_or(i628, i631),
+            i633 = int_lshift(i629, i360),
+            i634 = uint_rshift(i633, i373),
+            i635 = int_lshift(i634, 16),
+            i636 = int_or(i632, i635),
+            i637 = int_lshift(i633, i360),
+            i638 = uint_rshift(i637, i373),
+            i639 = int_lshift(i638, 24),
+            i640 = int_or(i636, i639),
+            i641 = int_lshift(i637, i360),
+            setarrayitem_raw(51118152, i626, i640, descr=<ArrayU 4>),
+            i642 = int_add(i626, 1),
+            i643 = int_ge(i642, i281),
+            guard_false(i643, descr=<Guard0x3357310>),
+            i644 = uint_rshift(i641, i373),
+            i645 = int_lshift(i641, i360),
+            i646 = uint_rshift(i645, i373),
+            i647 = int_lshift(i646, 8),
+            i648 = int_or(i644, i647),
+            i649 = int_lshift(i645, i360),
+            i650 = uint_rshift(i649, i373),
+            i651 = int_lshift(i650, 16),
+            i652 = int_or(i648, i651),
+            i653 = int_lshift(i649, i360),
+            i654 = uint_rshift(i653, i373),
+            i655 = int_lshift(i654, 24),
+            i656 = int_or(i652, i655),
+            i657 = int_lshift(i653, i360),
+            setarrayitem_raw(51118152, i642, i656, descr=<ArrayU 4>),
+            i658 = int_add(i642, 1),
+            i659 = int_ge(i658, i281),
+            guard_false(i659, descr=<Guard0x33572d0>),
+            i660 = uint_rshift(i657, i373),
+            i661 = int_lshift(i657, i360),
+            i662 = uint_rshift(i661, i373),
+            i663 = int_lshift(i662, 8),
+            i664 = int_or(i660, i663),
+            i665 = int_lshift(i661, i360),
+            i666 = uint_rshift(i665, i373),
+            i667 = int_lshift(i666, 16),
+            i668 = int_or(i664, i667),
+            i669 = int_lshift(i665, i360),
+            i670 = uint_rshift(i669, i373),
+            i671 = int_lshift(i670, 24),
+            i672 = int_or(i668, i671),
+            i673 = int_lshift(i669, i360),
+            setarrayitem_raw(51118152, i658, i672, descr=<ArrayU 4>),
+            i674 = int_add(i658, 1),
+            i675 = int_ge(i674, i281),
+            guard_false(i675, descr=<Guard0x3357290>),
+            i676 = uint_rshift(i673, i373),
+            i677 = int_lshift(i673, i360),
+            i678 = uint_rshift(i677, i373),
+            i679 = int_lshift(i678, 8),
+            i680 = int_or(i676, i679),
+            i681 = int_lshift(i677, i360),
+            i682 = uint_rshift(i681, i373),
+            i683 = int_lshift(i682, 16),
+            i684 = int_or(i680, i683),
+            i685 = int_lshift(i681, i360),
+            i686 = uint_rshift(i685, i373),
+            i687 = int_lshift(i686, 24),
+            i688 = int_or(i684, i687),
+            i689 = int_lshift(i685, i360),
+            setarrayitem_raw(51118152, i674, i688, descr=<ArrayU 4>),
+            i690 = int_add(i674, 1),
+            i691 = int_ge(i690, i281),
+            guard_false(i691, descr=<Guard0x3357250>),
+            i692 = uint_rshift(i689, i373),
+            i693 = int_lshift(i689, i360),
+            i694 = uint_rshift(i693, i373),
+            i695 = int_lshift(i694, 8),
+            i696 = int_or(i692, i695),
+            i697 = int_lshift(i693, i360),
+            i698 = uint_rshift(i697, i373),
+            i699 = int_lshift(i698, 16),
+            i700 = int_or(i696, i699),
+            i701 = int_lshift(i697, i360),
+            i702 = uint_rshift(i701, i373),
+            i703 = int_lshift(i702, 24),
+            i704 = int_or(i700, i703),
+            i705 = int_lshift(i701, i360),
+            setarrayitem_raw(51118152, i690, i704, descr=<ArrayU 4>),
+            i706 = int_add(i690, 1),
+            i707 = int_ge(i706, i281),
+            guard_false(i707, descr=<Guard0x3357210>),
+            i708 = uint_rshift(i705, i373),
+            i709 = int_lshift(i705, i360),
+            i710 = uint_rshift(i709, i373),
+            i711 = int_lshift(i710, 8),
+            i712 = int_or(i708, i711),
+            i713 = int_lshift(i709, i360),
+            i714 = uint_rshift(i713, i373),
+            i715 = int_lshift(i714, 16),
+            i716 = int_or(i712, i715),
+            i717 = int_lshift(i713, i360),
+            i718 = uint_rshift(i717, i373),
+            i719 = int_lshift(i718, 24),
+            i720 = int_or(i716, i719),
+            i721 = int_lshift(i717, i360),
+            setarrayitem_raw(51118152, i706, i720, descr=<ArrayU 4>),
+            i722 = int_add(i706, 1),
+            i723 = int_ge(i722, i281),
+            guard_false(i723, descr=<Guard0x33571d0>),
+            i724 = uint_rshift(i721, i373),
+            i725 = int_lshift(i721, i360),
+            i726 = uint_rshift(i725, i373),
+            i727 = int_lshift(i726, 8),
+            i728 = int_or(i724, i727),
+            i729 = int_lshift(i725, i360),
+            i730 = uint_rshift(i729, i373),
+            i731 = int_lshift(i730, 16),
+            i732 = int_or(i728, i731),
+            i733 = int_lshift(i729, i360),
+            i734 = uint_rshift(i733, i373),
+            i735 = int_lshift(i734, 24),
+            i736 = int_or(i732, i735),
+            i737 = int_lshift(i733, i360),
+            setarrayitem_raw(51118152, i722, i736, descr=<ArrayU 4>),
+            i738 = int_add(i722, 1),
+            i739 = int_ge(i738, i281),
+            guard_false(i739, descr=<Guard0x3357190>),
+            i740 = uint_rshift(i737, i373),
+            i741 = int_lshift(i737, i360),
+            i742 = uint_rshift(i741, i373),
+            i743 = int_lshift(i742, 8),
+            i744 = int_or(i740, i743),
+            i745 = int_lshift(i741, i360),
+            i746 = uint_rshift(i745, i373),
+            i747 = int_lshift(i746, 16),
+            i748 = int_or(i744, i747),
+            i749 = int_lshift(i745, i360),
+            i750 = uint_rshift(i749, i373),
+            i751 = int_lshift(i750, 24),
+            i752 = int_or(i748, i751),
+            i753 = int_lshift(i749, i360),
+            setarrayitem_raw(51118152, i738, i752, descr=<ArrayU 4>),
+            i754 = int_add(i738, 1),
+            i755 = int_add_ovf(i586, i558),
+            guard_no_overflow(descr=<Guard0x3357150>),
+            i756 = int_add_ovf(i588, i558),
+            guard_no_overflow(descr=<Guard0x3357110>),
+            i757 = int_sub(i590, 23),
+            setfield_gc(ConstPtr(ptr175), i757, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 24>),
+            i758 = int_le(i757, 0),
+            guard_false(i758, descr=<Guard0x33570d0>),
+            p759 = new_with_vtable(18295080),
+            setfield_gc(p759, i755, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>),
+            setarrayitem_gc(p145, 34, p759, descr=<ArrayP 4>),
+            p760 = new_with_vtable(18295080),
+            setfield_gc(p760, i756, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>),
+            setarrayitem_gc(p145, 35, p760, descr=<ArrayP 4>),
+            p761 = new_with_vtable(18295080),
+            setfield_gc(p761, i604, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>),
+            setarrayitem_gc(p145, 20, p761, descr=<ArrayP 4>),
+            i762 = arraylen_gc(p145, descr=<ArrayP 4>),
+            i763 = arraylen_gc(p568, descr=<ArrayP 4>),
+            jump(p0, p3, p8, i601, p582, i606, p18, i589, p38, p40, p42, p44, p46, p48, p50, p52, p54, p56, p58, p60, p62, p64, p66, p68, p70, p72, p74, p76, p78, p80, p82, p84, p86, p88, p90, p92, p94, p96, p98, p100, p102, p104, p106, p108, p110, p112, p114, p116, p118, p120, p122, p124, p126, p128, p130, p132, p134, i139, 1, p147, p759, i160, p156, p760, i169, p165, p145, i757, i185, p182, p761, i219, p195, p241, i250, p248, p257, p141, p272, i281, i283, i318, i329, i373, i360, i558, p556, p582, p568, descr=TargetToken(53262992))
         """)
         
     @py.test.mark.skipif("'just dozens of long traces'")
