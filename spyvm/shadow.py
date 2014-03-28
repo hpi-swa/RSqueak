@@ -1,4 +1,4 @@
-import weakref
+import sys, weakref
 from spyvm import model, constants, error, wrapper, version
 from spyvm.version import elidable_for_version, constant_for_version
 from rpython.tool.pairtype import extendabletype
@@ -141,9 +141,7 @@ class SmallIntegerOrNilStorageShadow(AbstractStorageShadow):
 
 class FloatOrNilStorageShadow(AbstractStorageShadow):
     repr_classname = "FloatOrNilStorageShadow"
-    # TODO -- use another value... something like max_float?
-    nil_value = runpack("d", "\x10\x00\x00\x00\x00\x00\xf8\x7f")
-    nil_value_longlong = longlong2float.float2longlong(nil_value)
+    nil_value = sys.float_info.max
     wrapper_class = model.W_Float
     import_from_mixin(AbstractValueOrNilStorageMixin)
     
@@ -152,7 +150,7 @@ class FloatOrNilStorageShadow(AbstractStorageShadow):
         return _value_or_nil_can_handle(FloatOrNilStorageShadow, space, w_val)
     @staticmethod
     def is_nil_value(val):
-        return longlong2float.float2longlong(val) == FloatOrNilStorageShadow.nil_value_longlong
+        return val == FloatOrNilStorageShadow.nil_value
     @staticmethod
     def wrap(space, val):
         return space.wrap_float(val)
