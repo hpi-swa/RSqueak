@@ -68,8 +68,8 @@ def test_ensure_save_original_nlr():
                                             w('ensure'), space.w_BlockClosure])
 
     # create a frame for our newly crafted method with a valid sender (to avoid raising returnFromTop to early)
-    s_initial_frame = create_method_shadow(chr(0x7c)).create_frame(space, w(0), [])
-    w_frame = s_method.create_frame(space, w(0), [], sender=s_initial_frame).w_self()
+    s_initial_frame = create_method_shadow(chr(0x7c)).create_frame(w(0), [])
+    w_frame = s_method.create_frame(w(0), [], sender=s_initial_frame).w_self()
 
     try:
         interp.loop(w_frame)
