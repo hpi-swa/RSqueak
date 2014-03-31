@@ -250,10 +250,10 @@ class BlockClosureWrapper(VarsizedWrapper):
         w_method = s_outerContext.w_method()
         w_receiver = s_outerContext.w_receiver()
         pc = self.startpc() - w_method.bytecodeoffset() - 1
-        w_new_frame = shadow.MethodContextShadow(self.space, None, w_method, w_receiver,
+        s_new_frame = shadow.MethodContextShadow(self.space, None, w_method, w_receiver,
                      arguments, s_sender=w_context.get_shadow(self.space),
                      closure=self, pc=pc)
-        return w_new_frame
+        return s_new_frame
 
     def tempsize(self):
         # We ignore the number of temps a block has, because the first
