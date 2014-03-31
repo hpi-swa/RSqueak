@@ -559,7 +559,8 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     
     def initialize_storage(self, space, size, weak=False):
         from spyvm.shadow import empty_storage
-        self.store_shadow(empty_storage(space, size, weak)(space, self, size))
+        storage = empty_storage(space, self, size, weak)
+        self.store_shadow(storage)
         self.log_storage("Initialized")
     
     def fillin(self, space, g_self):

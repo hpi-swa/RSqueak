@@ -56,6 +56,8 @@ class AbstractShadow(object):
 class AbstractStorageShadow(AbstractShadow):
     _attrs_ = []
     repr_classname = "AbstractStorageShadow"
+    def __init__(self, space, w_self, size):
+        AbstractShadow.__init__(self, space, w_self)
     def store(self, n0, w_val):
         if self.can_contain(w_val):
             return self.do_store(n0, w_val)
@@ -73,7 +75,7 @@ class AllNilStorageShadow(AbstractStorageShadow):
     _attrs_ = ['_size']
     _immutable_fields_ = ['_size']
     def __init__(self, space, w_self, size):
-        AbstractShadow.__init__(self, space, w_self)
+        AbstractStorageShadow.__init__(self, space, w_self, size)
         self._size = size
     def fetch(self, n0):
         if n0 >= self._size:
@@ -95,7 +97,7 @@ class AbstractValueOrNilStorageMixin(object):
     _immutable_fields_ = ['storage']
     
     def __init__(self, space, w_self, size):
-        AbstractStorageShadow.__init__(self, space, w_self)
+        AbstractStorageShadow.__init__(self, space, w_self, size)
         self.storage = [self.nil_value] * size
     
     def size(self):
@@ -162,14 +164,14 @@ class FloatOrNilStorageShadow(AbstractStorageShadow):
     def unwrap(space, w_val):
         return space.unwrap_float(w_val)
 
-def empty_storage(space, size, weak=False):
+def empty_storage(space, w_self, size, weak=False):
     if weak:
-        return WeakListStorageShadow
+        return WeakListStorageShadow(space, w_self, size)
     else:
         if no_specialized_storage:
-            return ListStorageShadow
+            return ListStorageShadow(space, w_self, size)
         else:
-            return AllNilStorageShadow
+            return AllNilStorageShadow(space, w_self, size)
 
 def find_storage_for_objects(space, vars):
     if no_specialized_storage:
@@ -201,22 +203,11 @@ def find_storage_for_objects(space, vars):
     
     # If this happens, please look for a bug in the code above.
     assert False, "No strategy could be found for list..."
-    
-class ListStorageShadow(AbstractShadow):
-    _attrs_ = ['storage']
-    _immutable_fields_ = ['storage']
-    repr_classname = "ListStorageShadow"
-    
+
+class ListStorageMixin(object):
     def __init__(self, space, w_self, size):
-        AbstractShadow.__init__(self, space, w_self)
+        AbstractStorageShadow.__init__(self, space, w_self, size)
         self.initialize_storage(size)
-    
-    def initialize_storage(self, size):
-        self.storage = [self.space.w_nil] * size
-    def fetch(self, n0):
-        return self.storage[n0]
-    def store(self, n0, w_value):
-        self.storage[n0] = w_value
     def size(self):
         return len(self.storage)
     def copy_from(self, other_shadow):
@@ -224,23 +215,33 @@ class ListStorageShadow(AbstractShadow):
             self.initialize_storage(other_shadow.size())
         AbstractShadow.copy_from(self, other_shadow)
 
-class WeakListStorageShadow(AbstractShadow):
+class ListStorageShadow(AbstractStorageShadow):
+    _attrs_ = ['storage']
+    _immutable_fields_ = ['storage']
+    repr_classname = "ListStorageShadow"
+    import_from_mixin(ListStorageMixin)
+    
+    def initialize_storage(self, size):
+        self.storage = [self.space.w_nil] * size
+    def fetch(self, n0):
+        return self.storage[n0]
+    def store(self, n0, w_value):
+        self.storage[n0] = w_value
+
+class WeakListStorageShadow(AbstractStorageShadow):
     _attrs_ = ['storage']
     _immutable_fields_ = ['storage']
     repr_classname = "WeakListStorageShadow"
+    import_from_mixin(ListStorageMixin)
     
-    def __init__(self, space, w_self, size):
-        AbstractShadow.__init__(self, space, w_self)
-        self.storage = [weakref.ref(space.w_nil)] * size
-    
+    def initialize_storage(self, size):
+        self.storage = [weakref.ref(self.space.w_nil)] * size
     def fetch(self, n0):
         weakobj = self.storage[n0]
         return weakobj() or self.space.w_nil
     def store(self, n0, w_value):
         assert w_value is not None
         self.storage[n0] = weakref.ref(w_value)
-    def size(self):
-        return len(self.storage)
     
 class AbstractCachingShadow(ListStorageShadow):
     _immutable_fields_ = ['version?']
