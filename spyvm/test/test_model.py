@@ -419,13 +419,15 @@ def test_display_offset_computation():
 
 @py.test.mark.skipif("socket.gethostname() == 'precise32'")
 def test_weak_pointers():
-    w_cls = bootstrap_class(1)
+    w_cls = bootstrap_class(2)
     s_cls = w_cls.as_class_get_shadow(space)
     s_cls.instance_kind = WEAK_POINTERS
 
     weak_object = s_cls.new()
     referenced = model.W_SmallInteger(10)
+    referenced2 = model.W_SmallInteger(20)
     weak_object.store(space, 0, referenced)
+    weak_object.store(space, 1, referenced2)
 
     assert weak_object.fetch(space, 0) is referenced
     del referenced
@@ -433,3 +435,4 @@ def test_weak_pointers():
     # Thus the reference may linger until the next gc...
     import gc; gc.collect()
     assert weak_object.fetch(space, 0).is_nil(space)
+    assert weak_object.fetch(space, 1).value == 20

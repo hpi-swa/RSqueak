@@ -571,7 +571,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         pointers = g_self.get_pointers()
         # TODO -- Also handle weak objects loaded from images.
         from spyvm.shadow import find_storage_for_objects
-        storage = find_storage_for_objects(space, pointers)(space, self, len(pointers))
+        storage = find_storage_for_objects(space, pointers, g_self.isweak())(space, self, len(pointers))
         self.store_shadow(storage)
         self.store_all(space, pointers)
         self.log_storage("Filledin", log_classname=False)

@@ -503,8 +503,11 @@ class GenericObject(object):
         return self.iswords() and self.space.w_Float.is_same_object(self.g_class.w_object)
 
     def ispointers(self):
-        return self.format < 5 #TODO, what about compiled methods?
+        return self.format < 5
 
+    def isweak(self):
+        return self.format == 4
+        
     def iscompiledmethod(self):
         return 12 <= self.format <= 15
 
@@ -528,7 +531,6 @@ class GenericObject(object):
             # the instantiate call circumvents the constructors
             # and makes empty objects
             if self.ispointers():
-                # XXX self.format == 4 is weak
                 self.w_object = objectmodel.instantiate(model.W_PointersObject)
             elif self.format == 5:
                 raise CorruptImageError("Unknown format 5")
