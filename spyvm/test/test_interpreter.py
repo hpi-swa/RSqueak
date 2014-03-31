@@ -890,9 +890,22 @@ def test_bc_pushNewArrayBytecode(bytecode=pushNewArrayBytecode):
     s_frame.push(w(fakeliterals(space, "baz")))
     step_in_interp(s_frame)
     array = s_frame.pop()
+    assert array.size() == 3
     assert space.unwrap_array(array.at0(space, 0)) == fakeliterals(space, "egg")
     assert space.unwrap_array(array.at0(space, 1)) == fakeliterals(space, "bar")
     assert space.unwrap_array(array.at0(space, 2)) == fakeliterals(space, "baz")
+
+def test_bc_pushNewArrayBytecode_noPopIntoArray(bytecode=pushNewArrayBytecode):
+    w_frame, s_frame = new_frame(bytecode + chr(0x02))
+    s_frame.push(w("egg"))
+    s_frame.push(w("bar"))
+    step_in_interp(s_frame)
+    array = s_frame.pop()
+    assert array.size() == 2
+    assert array.at0(space, 0).is_nil(space)
+    assert array.at0(space, 1).is_nil(space)
+    assert s_frame.pop().as_string() == "bar"
+    assert s_frame.pop().as_string() == "egg"
 
 def test_bc_pushNewArray(bytecode=pushNewArrayBytecode):
     w_frame, s_frame = new_frame(bytecode + chr(0x07))
