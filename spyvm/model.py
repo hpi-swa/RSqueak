@@ -558,13 +558,8 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         self.initialize_storage(space, size, weak)
     
     def initialize_storage(self, space, size, weak=False):
-        if weak:
-            from spyvm.shadow import WeakListStorageShadow
-            storage = WeakListStorageShadow(space, self, size)
-        else:
-            from spyvm.shadow import AllNilStorageShadow
-            storage = AllNilStorageShadow(space, self, size)
-        self.store_shadow(storage)
+        from spyvm.shadow import empty_storage
+        self.store_shadow(empty_storage(space, size, weak)(space, self, size))
         self.log_storage("Initialized")
     
     def fillin(self, space, g_self):

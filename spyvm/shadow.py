@@ -8,6 +8,10 @@ from rpython.rlib.debug import make_sure_not_resized
 from rpython.rlib.rstruct.runpack import runpack
 from rpython.rtyper.lltypesystem import rffi, lltype
 
+# If this is True, then no optimizing storage strategies will be used.
+# Intended for performance comparisons. Breaks tests.
+no_specialized_storage = False
+
 class AbstractShadow(object):
     """A shadow is an optional extra bit of information that
     can be attached at run-time to any Smalltalk object.
@@ -158,7 +162,18 @@ class FloatOrNilStorageShadow(AbstractStorageShadow):
     def unwrap(space, w_val):
         return space.unwrap_float(w_val)
 
+def empty_storage(space, size, weak=False):
+    if weak:
+        return WeakListStorageShadow
+    else:
+        if no_specialized_storage:
+            return ListStorageShadow
+        else:
+            return AllNilStorageShadow
+
 def find_storage_for_objects(space, vars):
+    if no_specialized_storage:
+        return ListStorageShadow
     specialized_strategies = 3
     all_nil_can_handle = True
     small_int_can_handle = True
