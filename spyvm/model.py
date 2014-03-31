@@ -284,7 +284,21 @@ class W_AbstractObjectWithIdentityHash(W_Object):
     def invariant(self):
         return isinstance(self.hash, int)
 
+    def become(self, w_other):
+        if not self.can_become(w_other):
+            return False
+        if self.is_same_object(w_other):
+            return False
+        self._become(w_other)
+        return True
+    
+    def can_become(self, w_other):
+        # TODO -- what about become: with a Float and a CompiledMethod etc.?
+        # We might be in trouble regarding W_LargePositiveInteger1Word, too.
+        return self.__class__ is w_other.__class__
+    
     def _become(self, w_other):
+        assert isinstance(w_other, W_AbstractObjectWithIdentityHash)
         self.hash, w_other.hash = w_other.hash, self.hash
 
 class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
@@ -370,6 +384,12 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
 
     def is_array_object(self):
         return True
+        
+    def _become(self, w_other):
+        assert isinstance(w_other, W_LargePositiveInteger1Word)
+        self.value, w_other.value = w_other.value, self.value
+        self._exposed_size, w_other._exposed_size = w_other._exposed_size, self._exposed_size
+        W_AbstractObjectWithIdentityHash._become(self, w_other)
 
 class W_Float(W_AbstractObjectWithIdentityHash):
     """Boxed float value."""
@@ -409,7 +429,7 @@ class W_Float(W_AbstractObjectWithIdentityHash):
         return isinstance(self.value, float)
 
     def _become(self, w_other):
-        # TODO -- shouldn't this be named 'become'?
+        assert isinstance(w_other, W_Float)
         self.value, w_other.value = w_other.value, self.value
         W_AbstractObjectWithIdentityHash._become(self, w_other)
 
@@ -509,6 +529,7 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
                 isinstance(self.w_class.shadow, shadow.ClassShadow))
 
     def _become(self, w_other):
+        assert isinstance(w_other, W_AbstractObjectWithClassReference)
         self.w_class, w_other.w_class = w_other.w_class, self.w_class
         W_AbstractObjectWithIdentityHash._become(self, w_other)
 
@@ -523,37 +544,45 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
         assert w_class is not None
         return w_class.as_class_get_shadow(space)
 
-class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
+class W_PointersObject(W_AbstractObjectWithClassReference):
     """Common object."""
     _attrs_ = ['shadow']
     shadow = None
-    repr_classname = "W_AbstractPointersObject"
+    repr_classname = "W_PointersObject"
     log_storage = storage_statistics.log
     
     @jit.unroll_safe
-    def __init__(self, space, w_class, size):
+    def __init__(self, space, w_class, size, weak=False):
         """Create new object with size = fixed + variable size."""
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
-        self.initialize_storage(space, size)
-        
-    def initialize_storage(self, space, size):
-        self.store_shadow(self.empty_storage(space, size))
+        self.initialize_storage(space, size, weak)
+    
+    def initialize_storage(self, space, size, weak=False):
+        if weak:
+            from spyvm.shadow import WeakListStorageShadow
+            storage = WeakListStorageShadow(space, self, size)
+        else:
+            from spyvm.shadow import AllNilStorageShadow
+            storage = AllNilStorageShadow(space, self, size)
+        self.store_shadow(storage)
         self.log_storage("Initialized")
-        
+    
     def fillin(self, space, g_self):
         W_AbstractObjectWithClassReference.fillin(self, space, g_self)
         # Recursive fillin required to enable specialized storage strategies.
         for g_obj in g_self.pointers:
             g_obj.fillin(space)
         pointers = g_self.get_pointers()
-        self.store_shadow(self.storage_for_list(space, pointers))
+        # TODO -- Also handle weak objects loaded from images.
+        from spyvm.shadow import find_storage_for_objects
+        storage = find_storage_for_objects(space, pointers)(space, self, len(pointers))
+        self.store_shadow(storage)
         self.store_all(space, pointers)
         self.log_storage("Filledin", log_classname=False)
-        
-    def empty_storage(self, space, size):
-        raise NotImplementedError()
-    def storage_for_list(self, space, vars):
-        raise NotImplementedError()
+    
+    def is_weak(self):
+        from shadow import WeakListStorageShadow
+        return isinstance(self.shadow, WeakListStorageShadow)
     
     def assert_shadow(self):
         # Failing the following assert most likely indicates a bug. The shadow can only be absent during
@@ -591,9 +620,9 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         if self.has_shadow():
             shadow_info = self.shadow.__repr__()
             if self.shadow.provides_getname:
-                name = self._get_shadow().getname()
-        return '(%s) len=%d [%s]' % (shadow_info, self.size(), name)
-        
+                name = " [%s]" % self._get_shadow().getname()
+        return '(%s) len=%d%s' % (shadow_info, self.size(), name)
+    
     def fetch_all(self, space):
         return [self.fetch(space, i) for i in range(self.size())]
     
@@ -689,15 +718,13 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     def has_shadow(self):
         return self._get_shadow() is not None
 
-    def become(self, w_other):
-        if not isinstance(w_other, W_AbstractPointersObject):
-            return False
+    def _become(self, w_other):
+        assert isinstance(w_other, W_PointersObject)
         self.shadow, w_other.shadow = w_other.shadow, self.shadow
         # shadow links are in both directions -> also update shadows
         if    self.shadow is not None:    self.shadow._w_self = self
         if w_other.shadow is not None: w_other.shadow._w_self = w_other
         W_AbstractObjectWithClassReference._become(self, w_other)
-        return True
 
     @jit.unroll_safe
     def clone(self, space):
@@ -706,33 +733,8 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         w_result.store_all(space, my_pointers)
         return w_result
         
-class W_PointersObject(W_AbstractPointersObject):
-    repr_classname = 'W_PointersObject'
-    
-    def empty_storage(self, space, size):
-        # A newly allocated object contains only nils.
-        from spyvm.shadow import AllNilStorageShadow
-        return AllNilStorageShadow(space, self, size)
-    
-    def storage_for_list(self, space, vars):
-        #if not self.class_shadow(space).isvariable():
-        #   return ListStorageShadow(space, self, len(vars))
-        from spyvm.shadow import find_storage_for_objects
-        return find_storage_for_objects(space, vars)(space, self, len(vars))
-
-class W_WeakPointersObject(W_AbstractPointersObject):
-    repr_classname = 'W_WeakPointersObject'
-    
-    def empty_storage(self, space, size):
-        from spyvm.shadow import WeakListStorageShadow
-        return WeakListStorageShadow(space, self, size)
-    def storage_for_list(self, space, vars):
-        from spyvm.shadow import WeakListStorageShadow
-        return WeakListStorageShadow(space, self, len(vars))
-
 class W_BytesObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['bytes', 'c_bytes', '_size']
-    _immutable_fields_ = ['_size', 'bytes[*]?']
     repr_classname = 'W_BytesObject'
     bytes_per_slot = 1
     
@@ -859,13 +861,19 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
             self.bytes = None
             return c_bytes
 
+    def _become(self, w_other):
+        assert isinstance(w_other, W_BytesObject)
+        self.bytes, w_other.bytes = w_other.bytes, self.bytes
+        self.c_bytes, w_other.c_bytes = w_other.c_bytes, self.c_bytes
+        self._size, w_other._size = w_other._size, self._size
+        W_AbstractObjectWithClassReference._become(self, w_other)
+    
     def __del__(self):
         if self.bytes is None:
             rffi.free_charp(self.c_bytes)
 
 class W_WordsObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['words', 'c_words', '_size']
-    _immutable_fields_ = ['_size']
     repr_classname = "W_WordsObject"
     
     def __init__(self, space, w_class, size):
@@ -974,11 +982,17 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
             w_display_bitmap.setword(idx, self.getword(idx))
         w_form.store(interp.space, 0, w_display_bitmap)
         return w_display_bitmap
-
+    
+    def _become(self, w_other):
+        assert isinstance(w_other, W_WordsObject)
+        self.words, w_other.words = w_other.words, self.words
+        self.c_words, w_other.c_words = w_other.c_words, self.c_words
+        self._size, w_other._size = w_other._size, self._size
+        W_AbstractObjectWithClassReference._become(self, w_other)
+    
     def __del__(self):
         if self.words is None:
             lltype.free(self.c_words, flavor='raw')
-
 
 class W_DisplayBitmap(W_AbstractObjectWithClassReference):
     _attrs_ = ['pixelbuffer', '_realsize', '_real_depth_buffer', 'display', '_depth']
@@ -1051,6 +1065,10 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
     def convert_to_c_layout(self):
         return self._real_depth_buffer
 
+    def can_become(self, w_other):
+        # TODO - implement _become() for this class. Impossible due to _immutable_fields_?
+        return False
+    
     def __del__(self):
         lltype.free(self._real_depth_buffer, flavor='raw')
 
@@ -1133,7 +1151,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
                 "bytes", "literals", 
                 # Additional info about the method
                 "_likely_methodname", "w_compiledin" ]
-                
+
 ### Extension from Squeak 3.9 doc, which we do not implement:
 ###        trailer (variable)
 ###    The trailer has two variant formats.  In the first variant, the last
@@ -1297,12 +1315,11 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
             index0 = index0 - self.bytecodeoffset()
             assert index0 < len(self.bytes)
             self.setchar(index0, chr(space.unwrap_int(w_value)))
-        
+    
     # === Misc ===
     
-    def become(self, w_other):
-        if not isinstance(w_other, W_CompiledMethod):
-            return False
+    def _become(self, w_other):
+        assert isinstance(w_other, W_CompiledMethod)
         self.argsize, w_other.argsize = w_other.argsize, self.argsize
         self._primitive, w_other._primitive = w_other._primitive, self._primitive
         self.literals, w_other.literals = w_other.literals, self.literals
@@ -1311,10 +1328,11 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         self.header, w_other.header = w_other.header, self.header
         self.literalsize, w_other.literalsize = w_other.literalsize, self.literalsize
         self.islarge, w_other.islarge = w_other.islarge, self.islarge
+        self._likely_methodname, w_other._likely_methodname = w_other._likely_methodname, self._likely_methodname
+        self.w_compiledin, w_other.w_compiledin = w_other.w_compiledin, self.w_compiledin
         W_AbstractObjectWithIdentityHash._become(self, w_other)
         self.changed()
         w_other.changed()
-        return True
 
     def clone(self, space):
         copy = W_CompiledMethod(space, 0, self.getheader())

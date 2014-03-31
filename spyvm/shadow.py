@@ -19,7 +19,7 @@ class AbstractShadow(object):
     
     def __init__(self, space, w_self):
         self.space = space
-        assert w_self is None or isinstance(w_self, model.W_AbstractPointersObject)
+        assert w_self is None or isinstance(w_self, model.W_PointersObject)
         self._w_self = w_self
     def w_self(self):
         return self._w_self
@@ -401,7 +401,7 @@ class ClassShadow(AbstractCachingShadow):
                 w_new = model.W_BytesObject(self.space, w_cls, extrasize)
         elif self.instance_kind == WEAK_POINTERS:
             size = self.instsize() + extrasize
-            w_new = model.W_WeakPointersObject(self.space, w_cls, size)
+            w_new = model.W_PointersObject(self.space, w_cls, size, weak=True)
         else:
             raise NotImplementedError(self.instance_kind)
         return w_new

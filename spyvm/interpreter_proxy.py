@@ -365,7 +365,7 @@ def isPointers(w_object):
 
 @expose_on_virtual_machine_proxy([oop], bool)
 def isWeak(w_object):
-    return isinstance(w_object, model.W_WeakPointersObject)
+    return isinstance(w_object, model.W_PointersObject) and w_object.is_weak()
 
 @expose_on_virtual_machine_proxy([oop], bool)
 def isWords(w_object):
