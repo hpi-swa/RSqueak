@@ -65,6 +65,9 @@ class AbstractStorageShadow(AbstractShadow):
         return self._w_self.store_with_new_storage(new_storage, n0, w_val)
     def can_contain(self, w_val):
         return self.static_can_contain(self.space, w_val)
+    @staticmethod
+    def static_can_contain(space, w_val):
+        raise NotImplementedError()
     def do_store(self, n0, w_val):
         raise NotImplementedError()
     def generalized_strategy_for(self, w_val):
