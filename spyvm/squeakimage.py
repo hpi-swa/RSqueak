@@ -307,9 +307,15 @@ class ImageReader(object):
         return special[index]
 
     def fillin_w_objects(self):
+        self.filledin_objects = 0
         for chunk in self.chunks.itervalues():
             chunk.g_object.fillin(self.space)
 
+    def print_object_filledin(self):
+        self.filledin_objects = self.filledin_objects + 1
+        if self.filledin_objects % 1000 == 0:
+            os.write(2,'%')
+    
     def init_compactclassesarray(self):
         """ from the blue book (CompiledMethod Symbol Array PseudoContext LargePositiveInteger nil MethodDictionary Association Point Rectangle nil TranslatedMethod BlockContext MethodContext nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil ) """
         special = self.chunks[self.specialobjectspointer]
@@ -571,6 +577,7 @@ class GenericObject(object):
         if not self.filled_in:
             self.filled_in = True
             self.w_object.fillin(space, self)
+            self.reader.print_object_filledin()
         
     def get_g_pointers(self):
         assert self.pointers is not None
