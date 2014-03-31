@@ -1283,7 +1283,7 @@ def func(interp, s_frame, w_context, argcnt):
     # context of the receiver is used for the new BlockContext.
     # Note that in our impl, MethodContext.w_home == self
     w_context = assert_pointers(w_context)
-    w_method_context = w_context.as_context_get_shadow(interp.space).w_home()
+    w_method_context = w_context.as_context_get_shadow(interp.space).s_home().w_self()
 
     # The block bytecodes are stored inline: so we skip past the
     # byteodes to invoke this primitive to find them (hence +2)

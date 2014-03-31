@@ -692,11 +692,12 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
 
     def as_context_get_shadow(self, space):
         from spyvm.shadow import ContextPartShadow
-        # XXX TODO should figure out itself if its method or block context
         if not isinstance(self.shadow, ContextPartShadow):
-            if ContextPartShadow.is_block_context(self, space):
+            if self.getclass(space).is_same_object(space.w_BlockContext):
                 return self.as_blockcontext_get_shadow(space)
-            return self.as_methodcontext_get_shadow(space)
+            if self.getclass(space).is_same_object(space.w_MethodContext):
+                return self.as_methodcontext_get_shadow(space)
+            raise ValueError("This object cannot be treated like a Context object!")
         return self.as_special_get_shadow(space, ContextPartShadow)
 
     def as_methoddict_get_shadow(self, space):
