@@ -455,9 +455,9 @@ class ClassShadow(AbstractCachingShadow):
     def lookup(self, w_selector):
         look_in_shadow = self
         while look_in_shadow is not None:
-            s_method = look_in_shadow.s_methoddict().find_selector(w_selector)
-            if s_method is not None:
-                return s_method
+            w_method = look_in_shadow.s_methoddict().find_selector(w_selector)
+            if w_method is not None:
+                return w_method
             look_in_shadow = look_in_shadow._s_superclass
         raise MethodNotFound(self, w_selector)
 
@@ -497,10 +497,9 @@ class ClassShadow(AbstractCachingShadow):
         "NOT_RPYTHON"     # this is only for testing.
         assert not isinstance(w_selector, str)
         self.initialize_methoddict()
-        s_method = w_method.as_compiledmethod_get_shadow(self.space)
-        self.s_methoddict().methoddict[w_selector] = s_method
+        self.s_methoddict().methoddict[w_selector] = w_method
         if isinstance(w_method, model.W_CompiledMethod):
-            s_method.w_compiledin = self.w_self()
+            w_method.w_compiledin = self.w_self()
 
 class MethodDictionaryShadow(ListStorageShadow):
 
@@ -566,7 +565,7 @@ class MethodDictionaryShadow(ListStorageShadow):
                                        "If the value observed is nil, our "
                                        "invalidating mechanism may be broken.")
                 selector = self._as_md_entry(w_selector)
-                self.methoddict[w_selector] = w_compiledmethod.as_compiledmethod_get_shadow(self.space)
+                self.methoddict[w_selector] = w_compiledmethod
                 w_compiledmethod._likely_methodname = selector
         if self.s_class:
             self.s_class.changed()
@@ -729,7 +728,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
             self.store_pc(-1)
         else:
             pc = self.space.unwrap_int(w_pc)
-            pc -= self.s_method().bytecodeoffset
+            pc -= self.w_method().bytecodeoffset()
             pc -= 1
             self.store_pc(pc)
 
@@ -739,7 +738,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
             return self.space.w_nil
         else:
             pc += 1
-            pc += self.s_method().bytecodeoffset
+            pc += self.w_method().bytecodeoffset()
             return self.space.wrap_int(pc)
 
     def pc(self):
@@ -770,14 +769,10 @@ class ContextPartShadow(AbstractRedirectingShadow):
         assert isinstance(retval, model.W_CompiledMethod)
         return retval
 
-    def s_method(self):
-        w_method = jit.promote(self.w_method())
-        return jit.promote(w_method.as_compiledmethod_get_shadow(self.space))
-
     def getbytecode(self):
         jit.promote(self._pc)
         assert self._pc >= 0
-        bytecode = self.s_method().getbytecode(self._pc)
+        bytecode = self.w_method().getbytecode(self._pc)
         currentBytecode = ord(bytecode)
         self._pc += 1
         return currentBytecode
@@ -960,12 +955,12 @@ class BlockContextShadow(ContextPartShadow):
 
     def unwrap_store_initialip(self, w_value):
         initialip = self.space.unwrap_int(w_value)
-        initialip -= 1 + self.s_method().literalsize
+        initialip -= 1 + self.w_method().literalsize
         self.store_initialip(initialip)
 
     def wrap_initialip(self):
         initialip = self.initialip()
-        initialip += 1 + self.s_method().literalsize
+        initialip += 1 + self.w_method().literalsize
         return self.space.wrap_int(initialip)
 
     def unwrap_store_eargc(self, w_value):
@@ -1024,7 +1019,7 @@ class MethodContextShadow(ContextPartShadow):
     repr_classname = "MethodContextShadow"
     
     @jit.unroll_safe
-    def __init__(self, space, w_self=None, s_method=None, w_receiver=None,
+    def __init__(self, space, w_self=None, w_method=None, w_receiver=None,
                               arguments=None, s_sender=None, closure=None, pc=0):
         self = jit.hint(self, access_directly=True, fresh_virtualizable=True)
         ContextPartShadow.__init__(self, space, w_self)
@@ -1036,10 +1031,10 @@ class MethodContextShadow(ContextPartShadow):
         else:
             self.w_closure_or_nil = space.w_nil
         
-        if s_method:
-            self.store_w_method(s_method.w_self())
+        if w_method:
+            self.store_w_method(w_method)
             # The summand is needed, because we calculate i.a. our stackdepth relative of the size of w_self.
-            size = s_method.compute_frame_size() + self.space.w_MethodContext.as_class_get_shadow(self.space).instsize()
+            size = w_method.compute_frame_size() + self.space.w_MethodContext.as_class_get_shadow(self.space).instsize()
             self._w_self_size = size
             self.init_stack_and_temps()
         else:
@@ -1092,7 +1087,7 @@ class MethodContextShadow(ContextPartShadow):
 
     def tempsize(self):
         if not self.is_closure_context():
-            return self.s_method().tempsize()
+            return self.w_method().tempsize()
         else:
             return wrapper.BlockClosureWrapper(self.space,
                                 self.w_closure_or_nil).tempsize()
@@ -1176,82 +1171,6 @@ class MethodContextShadow(ContextPartShadow):
     def method_str(self):
         block = '[] of ' if self.is_closure_context() else ''
         return '%s%s' % (block, self.w_method().get_identifier_string())
-
-class CompiledMethodShadow(object):
-    _attrs_ = ["_w_self", "space", "bytecode",
-              "literals", "bytecodeoffset",
-              "literalsize", "_tempsize", "_primitive",
-              "argsize", "islarge",
-              "w_compiledin", "version"]
-    _immutable_fields_ = ["version?", "_w_self"]
-    import_from_mixin(version.VersionMixin)
-    repr_classname = "CompiledMethodShadow"
-    
-    def __init__(self, w_compiledmethod, space):
-        assert isinstance(w_compiledmethod, model.W_CompiledMethod)
-        self._w_self = w_compiledmethod
-        self.space = space
-        self.update()
-
-    def w_self(self):
-        return self._w_self
-
-    @constant_for_version
-    def getliteral(self, index):
-        return self.literals[index]
-
-    @constant_for_version
-    def compute_frame_size(self):
-        # From blue book: normal mc have place for 12 temps+maxstack
-        # mc for methods with islarge flag turned on 32
-        return 16 + self.islarge * 40 + self.argsize
-
-    def getliteralsymbol(self, index):
-        w_literal = self.getliteral(index)
-        assert isinstance(w_literal, model.W_BytesObject)
-        return w_literal.as_string()    # XXX performance issue here
-
-    def update(self):
-        w_compiledmethod = self._w_self
-        self.changed()
-        self.bytecode = "".join(w_compiledmethod.bytes)
-        self.bytecodeoffset = w_compiledmethod.bytecodeoffset()
-        self.literalsize = w_compiledmethod.getliteralsize()
-        self._tempsize = w_compiledmethod.gettempsize()
-        self._primitive = w_compiledmethod.primitive
-        self.argsize = w_compiledmethod.argsize
-        self.islarge = w_compiledmethod.islarge
-        self.literals = w_compiledmethod.literals
-
-        self.w_compiledin = None
-        if self.literals:
-            # (Blue book, p 607) All CompiledMethods that contain
-            # extended-super bytecodes have the clain which they are found as
-            # their last literal variable.
-            # Last of the literals is an association with compiledin
-            # as a class
-            w_association = self.literals[-1]
-            if isinstance(w_association, model.W_PointersObject) and w_association.size() >= 2:
-                # XXX XXX XXX where to get a space from here
-                association = wrapper.AssociationWrapper(self.space, w_association)
-                self.w_compiledin = association.value()
-
-    @constant_for_version
-    def tempsize(self):
-        return self._tempsize
-
-    @constant_for_version
-    def primitive(self):
-        return self._primitive
-
-    def create_frame(self, receiver, arguments, sender = None):
-        assert len(arguments) == self.argsize
-        return MethodContextShadow(self.space, None, self, receiver, arguments, sender)
-
-    @constant_for_version
-    def getbytecode(self, pc):
-        assert pc >= 0 and pc < len(self.bytecode)
-        return self.bytecode[pc]
 
 class CachedObjectShadow(AbstractCachingShadow):
     repr_classname = "CachedObjectShadow"

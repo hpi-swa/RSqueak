@@ -80,12 +80,12 @@ def test_methoddict():
     methoddict = classshadow.s_methoddict().methoddict
     assert len(methods) == len(methoddict)
     for w_key, value in methoddict.items():
-        assert methods[w_key.as_string()].as_compiledmethod_get_shadow(space) is value
+        assert methods[w_key.as_string()] is value
 
 def create_method(tempsize=3,argsize=2, bytes="abcde"):
     w_m = model.W_CompiledMethod(space, )
     w_m.bytes = bytes
-    w_m.tempsize = tempsize
+    w_m._tempsize = tempsize
     w_m.argsize = argsize
     w_m.literalsize = 2
     return w_m
@@ -96,10 +96,10 @@ def methodcontext(w_sender=None, pc=13, stackpointer=0, stacksize=5,
         w_sender = space.w_nil
     if method is None:
         method = create_method()
-    w_object = model.W_PointersObject(space, space.w_MethodContext, constants.MTHDCTX_TEMP_FRAME_START+method.tempsize+stacksize)
+    w_object = model.W_PointersObject(space, space.w_MethodContext, constants.MTHDCTX_TEMP_FRAME_START+method.tempsize()+stacksize)
     w_object.store(space, constants.CTXPART_SENDER_INDEX, w_sender)
     w_object.store(space, constants.CTXPART_PC_INDEX, space.wrap_int(pc))
-    w_object.store(space, constants.CTXPART_STACKP_INDEX, space.wrap_int(method.tempsize+stackpointer))
+    w_object.store(space, constants.CTXPART_STACKP_INDEX, space.wrap_int(method.tempsize()+stackpointer))
     w_object.store(space, constants.MTHDCTX_METHOD, method)
     # XXX
     w_object.store(space, constants.MTHDCTX_CLOSURE_OR_NIL, space.w_nil)
@@ -194,27 +194,6 @@ def test_replace_to_bc():
     assert w_object.shadow is s_newobject
     assert s_object.fetch(1).value == 13
 
-def test_compiledmethodshadow():
-    header = joinbits([0,2,0,1,0,0],[9,8,1,6,4,1])
-
-    w_compiledmethod = model.W_CompiledMethod(space, 3, header)
-    w_compiledmethod.setbytes(list("abc"))
-    shadow = w_compiledmethod.as_compiledmethod_get_shadow(space)
-    assert shadow.bytecode == "abc"
-    assert shadow.bytecodeoffset == 12
-    assert shadow.literalsize == 8 # 12 - 4byte header
-    assert shadow.tempsize() == 1
-
-    w_compiledmethod.literalatput0(space, 1, 17)
-    w_compiledmethod.literalatput0(space, 2, 41)
-    assert w_compiledmethod._shadow is not None
-    assert shadow.literals == [17, 41]
-
-    w_compiledmethod.atput0(space, 14, space.wrap_int(ord("x")))
-
-    assert shadow.bytecode == "abx"
-    assert shadow is w_compiledmethod.as_compiledmethod_get_shadow(space)
-
 def test_cached_object_shadow():
     w_o = space.wrap_list([0, 1, 2, 3, 4, 5, 6, 7])
     s_o = w_o.as_cached_object_get_shadow(space)
@@ -261,14 +240,14 @@ def test_cached_methoddict():
         i = i + 1
         key = s_methoddict.w_self().fetch(s_methoddict.space, constants.METHODDICT_NAMES_INDEX+i)
 
-    assert (s_class.lookup(key) is foo.as_compiledmethod_get_shadow(space)
-            or s_class.lookup(key) is bar.as_compiledmethod_get_shadow(space))
+    assert (s_class.lookup(key) is foo
+            or s_class.lookup(key) is bar)
     # change that entry
     w_array = s_class.w_methoddict().fetch(s_class.space, constants.METHODDICT_VALUES_INDEX)
     version = s_class.version
     w_array.atput0(space, i, baz)
 
-    assert s_class.lookup(key) is baz.as_compiledmethod_get_shadow(space)
+    assert s_class.lookup(key) is baz
     assert version is not s_class.version
 
 def test_updating_class_changes_subclasses():
@@ -288,7 +267,7 @@ def test_updating_class_changes_subclasses():
     s_md._w_self.atput0(space, 0, key)
     w_ary.atput0(space, 0, w_method)
 
-    assert s_class.lookup(key) is w_method.as_compiledmethod_get_shadow(space)
+    assert s_class.lookup(key) is w_method
     assert s_class.version is not version
     assert s_class.version is w_parent.as_class_get_shadow(space).version
 

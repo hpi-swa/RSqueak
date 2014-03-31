@@ -247,10 +247,10 @@ class BlockClosureWrapper(VarsizedWrapper):
         if not isinstance(w_outerContext, model.W_PointersObject):
             raise PrimitiveFailedError
         s_outerContext = w_outerContext.as_context_get_shadow(self.space)
-        s_method = s_outerContext.w_method().as_compiledmethod_get_shadow(self.space)
+        w_method = s_outerContext.w_method()
         w_receiver = s_outerContext.w_receiver()
-        pc = self.startpc() - s_method.bytecodeoffset - 1
-        w_new_frame = shadow.MethodContextShadow(self.space, None, s_method, w_receiver,
+        pc = self.startpc() - w_method.bytecodeoffset() - 1
+        w_new_frame = shadow.MethodContextShadow(self.space, None, w_method, w_receiver,
                      arguments, s_sender=w_context.get_shadow(self.space),
                      closure=self, pc=pc)
         return w_new_frame

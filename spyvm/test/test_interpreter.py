@@ -61,7 +61,7 @@ def run_with_faked_primitive_methods(methods, func, active_context=None):
     for (w_class, primnum, argsize, methname) in methods:
         s_class = w_class.as_class_get_shadow(space)
         prim_meth = model.W_CompiledMethod(space, 0)
-        prim_meth.primitive = primnum
+        prim_meth._primitive = primnum
         prim_meth.argsize = argsize
         symbol = fakesymbol(methname)
         # somewhat evil:
@@ -109,11 +109,11 @@ def _new_frame(space, bytes, receiver=None):
     w_method.islarge = 1
     w_method.bytes = bytes
     w_method.argsize=2
-    w_method.tempsize=8
+    w_method._tempsize=8
     w_method.setliterals([model.W_PointersObject(space, None, 2)])
     if receiver is None:
         receiver = space.w_nil
-    s_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(receiver, [space.w("foo"), space.w("bar")])
+    s_frame = w_method.create_frame(space, receiver, [space.w("foo"), space.w("bar")])
     return s_frame.w_self(), s_frame
 
 def new_frame(bytes, receiver=None):
@@ -126,8 +126,8 @@ def test_create_frame():
     w_method.bytes="hello"
     w_method.islarge = 1
     w_method.argsize=2
-    w_method.tempsize=8
-    s_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(w("receiver"), [w("foo"), w("bar")])
+    w_method._tempsize=8
+    s_frame = w_method.create_frame(space, w("receiver"), [w("foo"), w("bar")])
     w_frame = s_frame.w_self()
     assert s_frame.w_receiver().as_string() == "receiver"
     assert s_frame.gettemp(0).as_string() == "foo"
@@ -449,7 +449,7 @@ def sendBytecodesTest(w_class, w_object, bytecodes):
         assert s_active_context.w_sender() == w_frame
         assert s_active_context.stack() == []
         assert w_active_context.as_methodcontext_get_shadow(space).w_receiver().is_same_object(w_object)
-        assert w_active_context.as_methodcontext_get_shadow(space).w_method().is_same_object(shadow.s_methoddict().methoddict[w_foo].w_self())
+        assert w_active_context.as_methodcontext_get_shadow(space).w_method().is_same_object(shadow.s_methoddict().methoddict[w_foo])
         assert s_frame.stack() == []
         step_in_interp(s_active_context)
         w_active_context = step_in_interp(s_active_context)
@@ -469,7 +469,7 @@ def test_fibWithArgument():
     method.literalsize = 1
     method.bytes = bytecode
     method.argsize = 1
-    method.tempsize = 1
+    method._tempsize = 1
     literals = fakeliterals(space, "fib:")
     method.setliterals(literals)
     shadow.installmethod(literals[0], method)
@@ -607,7 +607,7 @@ def test_callPrimitiveAndPush_fallback():
     shadow = bootstrap_class(0).as_class_get_shadow(space)
     w_method = model.W_CompiledMethod(space, 0)
     w_method.argsize = 1
-    w_method.tempsize = 1
+    w_method._tempsize = 1
     w_method.literalsize = 1
     w_symbol = fakesymbol("+")
     shadow.installmethod(w_symbol, w_method)
@@ -619,7 +619,7 @@ def test_callPrimitiveAndPush_fallback():
     s_frame.push(space.w_one)
     w_active_context = step_in_interp(s_frame)
     s_active_context = w_active_context.as_context_get_shadow(space)
-    assert w_active_context.as_methodcontext_get_shadow(space).s_method() == shadow.s_methoddict().methoddict[w_symbol]
+    assert w_active_context.as_methodcontext_get_shadow(space).w_method() == shadow.s_methoddict().methoddict[w_symbol]
     assert s_active_context.w_receiver() is w_object
     assert w_active_context.as_methodcontext_get_shadow(space).gettemp(0).is_same_object(space.w_one)
     assert s_active_context.stack() == []
@@ -680,7 +680,7 @@ def test_singleExtendedSuperBytecode(bytecode=singleExtendedSuperBytecode + chr(
         assert s_active_context.stack() == []
         assert w_active_context.as_methodcontext_get_shadow(space).w_receiver() == w_object
         meth = w_specificclass.as_class_get_shadow(space).s_methoddict().methoddict[foo]
-        assert s_active_context.w_method() == meth.w_self()
+        assert s_active_context.w_method() == meth
         assert s_caller_context.stack() == []
 
 def test_secondExtendedSendBytecode():
@@ -999,11 +999,11 @@ def test_stacking_interpreter():
     w_method.islarge = 1
     w_method.bytes = bytes
     w_method.argsize=0
-    w_method.tempsize=1
+    w_method._tempsize=1
     w_method.setliterals([space.wrap_int(11)])
 
     #create a frame for that method
-    w_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(space.wrap_int(0), []).w_self()
+    w_frame = w_method.create_frame(space, space.wrap_int(0), []).w_self()
     try:
         interp.loop(w_frame)
     except interpreter.ReturnFromTopLevel, e:
@@ -1013,7 +1013,7 @@ def test_stacking_interpreter():
     try:
         interp = interpreter.Interpreter(space, None, "", max_stack_depth=10)
         interp._loop = True
-        interp.c_loop(w_method.as_compiledmethod_get_shadow(space).create_frame(space.wrap_int(0), []))
+        interp.c_loop(w_method.create_frame(space, space.wrap_int(0), []))
     except interpreter.StackOverflow, e:
         assert isinstance(e.s_context, shadow.MethodContextShadow)
     except interpreter.ReturnFromTopLevel, e:
@@ -1045,11 +1045,11 @@ def test_actual_stackdepth():
     w_method.islarge = 1
     w_method.bytes = bytes
     w_method.argsize=0
-    w_method.tempsize=1
+    w_method._tempsize=1
     w_method.setliterals([space.wrap_int(11)])
 
     #create a frame for that method
-    w_frame = w_method.as_compiledmethod_get_shadow(space).create_frame(space.wrap_int(0), []).w_self()
+    w_frame = w_method.create_frame(space, space.wrap_int(0), []).w_self()
     try:
         interp.loop(w_frame)
     except interpreter.ReturnFromTopLevel, e:

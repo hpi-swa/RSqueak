@@ -224,7 +224,7 @@ class ObjSpace(object):
 
     def newClosure(self, w_outer_ctxt, pc, numArgs, copiedValues):
         assert isinstance(w_outer_ctxt, model.W_PointersObject)
-        pc_with_bytecodeoffset = pc + w_outer_ctxt.as_context_get_shadow(self).s_method().bytecodeoffset + 1
+        pc_with_bytecodeoffset = pc + w_outer_ctxt.as_context_get_shadow(self).w_method().bytecodeoffset() + 1
         BlockClosureShadow = self.w_BlockClosure.as_class_get_shadow(self)
         numCopied = len(copiedValues)
         w_closure = BlockClosureShadow.new(numCopied)

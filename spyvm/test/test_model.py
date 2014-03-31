@@ -93,9 +93,7 @@ def test_method_lookup():
     class mockmethod(object):
         def __init__(self, val):
             self.val = val
-        def as_compiledmethod_get_shadow(self, space):
-            return self.val
-    w_class = bootstrap_class(mockmethod(0))
+    w_class = bootstrap_class(0)
     shadow = w_class.as_class_get_shadow(space)
     shadow.installmethod(w_foo, mockmethod(1))
     shadow.installmethod(w_bar, mockmethod(2))
@@ -105,11 +103,11 @@ def test_method_lookup():
     subshadow.installmethod(w_foo, mockmethod(3))
     shadow.initialize_methoddict()
     subshadow.initialize_methoddict()
-    assert shadow.lookup(w_foo) == 1
-    assert shadow.lookup(w_bar) == 2
+    assert shadow.lookup(w_foo).val == 1
+    assert shadow.lookup(w_bar).val == 2
     py.test.raises(MethodNotFound, shadow.lookup, "zork")
-    assert subshadow.lookup(w_foo) == 3
-    assert subshadow.lookup(w_bar) == 2
+    assert subshadow.lookup(w_foo).val == 3
+    assert subshadow.lookup(w_bar).val == 2
     py.test.raises(MethodNotFound, subshadow.lookup, "zork")
 
 def test_w_compiledin():
@@ -119,8 +117,26 @@ def test_w_compiledin():
     supershadow.installmethod(w_foo, model.W_CompiledMethod(space, 0))
     classshadow = w_class.as_class_get_shadow(space)
     classshadow.initialize_methoddict()
-    assert classshadow.lookup(w_foo).w_compiledin is w_super
+    assert classshadow.lookup(w_foo).compiled_in() is w_super
 
+def new_object(size=0):
+    return model.W_PointersObject(space, None, size)
+
+def test_w_compiledin_assoc():
+    val = new_object()
+    assoc = new_object(2)
+    assoc.store(space, 0, new_object())
+    assoc.store(space, 1, val)
+    meth = model.W_CompiledMethod(space, 0)
+    meth.setliterals([new_object(), new_object(), assoc ])
+    assert meth.compiled_in() == val
+    
+def test_w_compiledin_missing():
+    meth = model.W_CompiledMethod(space, 0)
+    meth.w_compiledin = None
+    meth.setliterals([new_object(), new_object() ])
+    assert meth.compiled_in() == None
+    
 def test_compiledmethod_setchar():
     w_method = model.W_CompiledMethod(space, 3)
     w_method.setchar(0, "c")

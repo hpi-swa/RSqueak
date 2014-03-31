@@ -16,7 +16,7 @@ that create W_PointersObjects of correct size with attached shadows.
 """
 import sys, weakref
 from spyvm import constants, error, version, storage_statistics
-from spyvm.version import elidable_for_version
+from spyvm.version import elidable_for_version, constant_for_version
 
 from rpython.rlib import rrandom, objectmodel, jit, signature
 from rpython.rlib.rarithmetic import intmask, r_uint, r_int
@@ -1126,9 +1126,14 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 
     repr_classname = "W_CompiledMethod"
     bytes_per_slot = 1
-    _immutable_fields_ = ["_shadow?"]
-    _attrs_ = ["bytes", "_likely_methodname", "header", "argsize", "primitive",
-                "literals", "tempsize", "literalsize", "islarge", "_shadow"]
+    _attrs_ = [ "version",
+                # Method header
+                "header", "_primitive", "literalsize", "islarge", "_tempsize", "argsize", 
+                # Main method content
+                "bytes", "literals", 
+                # Additional info about the method
+                "_likely_methodname", "w_compiledin" ]
+                
 ### Extension from Squeak 3.9 doc, which we do not implement:
 ###        trailer (variable)
 ###    The trailer has two variant formats.  In the first variant, the last
@@ -1139,11 +1144,10 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 ###    variables.  The number of bytes used for this purpose is the value of
 ###    the last byte in the method.
 
-    _shadow = None # Default value
     _likely_methodname = "<unknown>"
-
+    import_from_mixin(version.VersionMixin)
+    
     def __init__(self, space, bytecount=0, header=0):
-        self._shadow = None
         self.setheader(space, header)
         self.bytes = ["\x00"] * bytecount
 
@@ -1151,21 +1155,165 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         # Implicitely sets the header, including self.literalsize
         for i, w_object in enumerate(g_self.get_pointers()):
             self.literalatput0(space, i, w_object)
-        self.setbytes(g_self.get_bytes()[(self.literalsize + 1) * 4:])
+        self.setbytes(g_self.get_bytes()[self.bytecodeoffset():])
 
+    # === Setters ===
+        
+    def setheader(self, space, header):
+        _primitive, literalsize, islarge, tempsize, argsize = constants.decode_compiled_method_header(header)
+        self.literalsize = literalsize
+        self.literals = [space.w_nil] * self.literalsize
+        self.header = header
+        self.argsize = argsize
+        self._tempsize = tempsize
+        self._primitive = _primitive
+        self.islarge = islarge
+        self.w_compiledin = None
+        self.changed()
+        
+    def setliteral(self, index, w_lit):
+        self.literals[index] = w_lit
+        self.changed()
+        if index == len(self.literals):
+            self.w_compiledin = None
+    
+    def setliterals(self, literals):
+        """NOT RPYTHON""" # Only for testing, not safe.
+        self.literals = literals
+        self.changed()
+        self.w_compiledin = None
+    
+    def setbytes(self, bytes):
+        self.bytes = bytes
+        self.changed()
+        
+    def setchar(self, index0, character):
+        assert index0 >= 0
+        self.bytes[index0] = character
+        self.changed()
+    
+    # === Getters ===
+        
+    def getclass(self, space):
+        return space.w_CompiledMethod
+    
+    @constant_for_version
+    def size(self):
+        return self.headersize() + self.getliteralsize() + len(self.bytes)
+    
+    @constant_for_version
+    def tempsize(self):
+        return self._tempsize
+
+    @constant_for_version
+    def getliteralsize(self):
+        return self.literalsize * constants.BYTES_PER_WORD
+
+    @constant_for_version
+    def bytecodeoffset(self):
+        return self.getliteralsize() + self.headersize()
+
+    def headersize(self):
+        return constants.BYTES_PER_WORD
+
+    @constant_for_version
+    def getheader(self):
+        return self.header
+
+    @constant_for_version
+    def getliteral(self, index):
+        return self.literals[index]
+        
+    @constant_for_version
+    def primitive(self):
+        return self._primitive
+        
+    @constant_for_version
+    def compute_frame_size(self):
+        # From blue book: normal mc have place for 12 temps+maxstack
+        # mc for methods with islarge flag turned on 32
+        return 16 + self.islarge * 40 + self.argsize
+    
+    @constant_for_version
+    def getbytecode(self, pc):
+        assert pc >= 0 and pc < len(self.bytes)
+        return self.bytes[pc]
+    
+    @constant_for_version
+    def compiled_in(self):
+        w_compiledin = self.w_compiledin
+        if not w_compiledin:
+            if self.literals:
+                # (Blue book, p 607) All CompiledMethods that contain
+                # extended-super bytecodes have the clain which they are found as
+                # their last literal variable.
+                # Last of the literals is an association with compiledin as a class
+                w_association = self.literals[-1]
+                if isinstance(w_association, W_PointersObject) and w_association.size() >= 2:
+                    from spyvm import wrapper
+                    association = wrapper.AssociationWrapper(w_association.space(), w_association)
+                    w_compiledin = association.value()
+            self.w_compiledin = w_compiledin
+        return w_compiledin
+    
+    # === Object Access ===
+    
+    def literalat0(self, space, index0):
+        if index0 == 0:
+            return space.wrap_int(self.getheader())
+        else:
+            return self.getliteral(index0 - 1)
+
+    def literalatput0(self, space, index0, w_value):
+        if index0 == 0:
+            header = space.unwrap_int(w_value)
+            self.setheader(space, header)
+        else:
+            self.setliteral(index0 - 1, w_value)
+
+    def store(self, space, index0, w_v):
+        self.atput0(space, index0, w_v)
+
+    def at0(self, space, index0):
+        if index0 < self.bytecodeoffset():
+            # XXX: find out what happens if unaligned
+            return self.literalat0(space, index0 / constants.BYTES_PER_WORD)
+        else:
+            # From blue book:
+            # The literal count indicates the size of the
+            # CompiledMethod's literal frame.
+            # This, in turn, indicates where the
+            # CompiledMethod's bytecodes start.
+            index0 = index0 - self.bytecodeoffset()
+            assert index0 < len(self.bytes)
+            return space.wrap_int(ord(self.bytes[index0]))
+
+    def atput0(self, space, index0, w_value):
+        if index0 < self.bytecodeoffset():
+            if index0 % constants.BYTES_PER_WORD != 0:
+                raise error.PrimitiveFailedError("improper store")
+            self.literalatput0(space, index0 / constants.BYTES_PER_WORD, w_value)
+        else:
+            index0 = index0 - self.bytecodeoffset()
+            assert index0 < len(self.bytes)
+            self.setchar(index0, chr(space.unwrap_int(w_value)))
+        
+    # === Misc ===
+    
     def become(self, w_other):
         if not isinstance(w_other, W_CompiledMethod):
             return False
         self.argsize, w_other.argsize = w_other.argsize, self.argsize
-        self.primitive, w_other.primitive = w_other.primitive, self.primitive
+        self._primitive, w_other._primitive = w_other._primitive, self._primitive
         self.literals, w_other.literals = w_other.literals, self.literals
-        self.tempsize, w_other.tempsize = w_other.tempsize, self.tempsize
+        self._tempsize, w_other._tempsize = w_other._tempsize, self._tempsize
         self.bytes, w_other.bytes = w_other.bytes, self.bytes
         self.header, w_other.header = w_other.header, self.header
         self.literalsize, w_other.literalsize = w_other.literalsize, self.literalsize
         self.islarge, w_other.islarge = w_other.islarge, self.islarge
-        self._shadow, w_other._shadow = w_other._shadow, self._shadow
         W_AbstractObjectWithIdentityHash._become(self, w_other)
+        self.changed()
+        w_other.changed()
         return True
 
     def clone(self, space):
@@ -1174,8 +1322,28 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         copy.literals = list(self.literals)
         return copy
 
-    def getclass(self, space):
-        return space.w_CompiledMethod
+    def invariant(self):
+        return (W_Object.invariant(self) and
+                hasattr(self, 'literals') and
+                self.literals is not None and
+                hasattr(self, 'bytes') and
+                self.bytes is not None and
+                hasattr(self, 'argsize') and
+                self.argsize is not None and
+                hasattr(self, '_tempsize') and
+                self._tempsize is not None and
+                hasattr(self, '_primitive') and
+                self._primitive is not None)
+        
+    def is_array_object(self):
+        return True
+
+    def create_frame(self, space, receiver, arguments, sender = None):
+        from spyvm.shadow import MethodContextShadow
+        assert len(arguments) == self.argsize
+        return MethodContextShadow(space, None, self, receiver, arguments, sender)
+        
+    # === Printing ===
 
     def guess_classname (self):
         return "CompiledMethod"
@@ -1221,118 +1389,6 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     
     def get_identifier_string(self):
         return "%s >> #%s" % (self.guess_containing_classname(), self._likely_methodname)
-
-    def invariant(self):
-        return (W_Object.invariant(self) and
-                hasattr(self, 'literals') and
-                self.literals is not None and
-                hasattr(self, 'bytes') and
-                self.bytes is not None and
-                hasattr(self, 'argsize') and
-                self.argsize is not None and
-                hasattr(self, 'tempsize') and
-                self.tempsize is not None and
-                hasattr(self, 'primitive') and
-                self.primitive is not None)
-
-    def size(self):
-        return self.headersize() + self.getliteralsize() + len(self.bytes)
-    
-    def gettempsize(self):
-        return self.tempsize
-
-    def getliteralsize(self):
-        return self.literalsize * constants.BYTES_PER_WORD
-
-    def bytecodeoffset(self):
-        return self.getliteralsize() + self.headersize()
-
-    def headersize(self):
-        return constants.BYTES_PER_WORD
-
-    def getheader(self):
-        return self.header
-
-    def setheader(self, space, header):
-        primitive, literalsize, islarge, tempsize, argsize = constants.decode_compiled_method_header(header)
-        self.literalsize = literalsize
-        self.literals = [space.w_nil] * self.literalsize
-        self.header = header
-        self.argsize = argsize
-        self.tempsize = tempsize
-        self.primitive = primitive
-        self.islarge = islarge
-
-    def setliterals(self, literals):
-        """NOT RPYTHON
-           Only for testing"""
-        self.literals = literals
-        if self.has_shadow():
-            self._shadow.update()
-
-    def setbytes(self, bytes):
-        self.bytes = bytes
-
-    def as_compiledmethod_get_shadow(self, space):
-        from shadow import CompiledMethodShadow
-        if self._shadow is None:
-            self._shadow = CompiledMethodShadow(self, space)
-        return self._shadow
-
-    def literalat0(self, space, index0):
-        if index0 == 0:
-            return space.wrap_int(self.getheader())
-        else:
-            return self.literals[index0-1]
-
-    def literalatput0(self, space, index0, w_value):
-        if index0 == 0:
-            header = space.unwrap_int(w_value)
-            self.setheader(space, header)
-        else:
-            self.literals[index0-1] = w_value
-        if self.has_shadow():
-            self._shadow.update()
-
-    def store(self, space, index0, w_v):
-        self.atput0(space, index0, w_v)
-
-    def at0(self, space, index0):
-        if index0 < self.bytecodeoffset():
-            # XXX: find out what happens if unaligned
-            return self.literalat0(space, index0 / constants.BYTES_PER_WORD)
-        else:
-            # From blue book:
-            # The literal count indicates the size of the
-            # CompiledMethod's literal frame.
-            # This, in turn, indicates where the
-            # CompiledMethod's bytecodes start.
-            index0 = index0 - self.bytecodeoffset()
-            assert index0 < len(self.bytes)
-            return space.wrap_int(ord(self.bytes[index0]))
-
-    def atput0(self, space, index0, w_value):
-        if index0 < self.bytecodeoffset():
-            if index0 % constants.BYTES_PER_WORD != 0:
-                raise error.PrimitiveFailedError("improper store")
-            self.literalatput0(space, index0 / constants.BYTES_PER_WORD, w_value)
-        else:
-            # XXX use to-be-written unwrap_char
-            index0 = index0 - self.bytecodeoffset()
-            assert index0 < len(self.bytes)
-            self.setchar(index0, chr(space.unwrap_int(w_value)))
-
-    def setchar(self, index0, character):
-        assert index0 >= 0
-        self.bytes[index0] = character
-        if self.has_shadow():
-            self._shadow.update()
-
-    def has_shadow(self):
-        return self._shadow is not None
-
-    def is_array_object(self):
-        return True
 
 class DetachingShadowError(Exception):
     def __init__(self, old_shadow, new_shadow_class):

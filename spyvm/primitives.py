@@ -32,7 +32,7 @@ def assert_pointers(w_obj):
 # arguments, an interp and an argument_count
 # completes, and returns a result, or throws a PrimitiveFailedError.
 def make_failing(code):
-    def raise_failing_default(interp, s_frame, argument_count, s_method=None):
+    def raise_failing_default(interp, s_frame, argument_count, w_method=None):
         raise PrimitiveFailedError
     return raise_failing_default
 
@@ -98,9 +98,9 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
 
     def decorator(func):
         if unwrap_spec is None:
-            def wrapped(interp, s_frame, argument_count_m1, s_method=None):
+            def wrapped(interp, s_frame, argument_count_m1, w_method=None):
                 if compiled_method:
-                    w_result = func(interp, s_frame, argument_count_m1, s_method)
+                    w_result = func(interp, s_frame, argument_count_m1, w_method)
                 else:
                     w_result = func(interp, s_frame, argument_count_m1)
                 if result_is_new_frame:
@@ -113,7 +113,7 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
             assert (len_unwrap_spec == len(inspect.getargspec(func)[0]) + 1,
                     "wrong number of arguments")
             unrolling_unwrap_spec = unrolling_iterable(enumerate(unwrap_spec))
-            def wrapped(interp, s_frame, argument_count_m1, s_method=None):
+            def wrapped(interp, s_frame, argument_count_m1, w_method=None):
                 argument_count = argument_count_m1 + 1 # to account for the rcvr
                 assert argument_count == len_unwrap_spec
                 if s_frame.stackdepth() < len_unwrap_spec:
@@ -645,7 +645,7 @@ def func(interp, s_frame, w_rcvr, w_into):
     return w_rcvr
 
 @expose_primitive(BITBLT_COPY_BITS, clean_stack=False, no_result=False, compiled_method=True)
-def func(interp, s_frame, argcount, s_method):
+def func(interp, s_frame, argcount, w_method):
     from spyvm.interpreter import Return
     w_rcvr = s_frame.peek(0)
     try:
@@ -660,7 +660,7 @@ def func(interp, s_frame, argcount, s_method):
         return w_rcvr
     except shadow.MethodNotFound:
         from spyvm.plugins.bitblt import BitBltPlugin
-        BitBltPlugin.call("primitiveCopyBits", interp, s_frame, argcount, s_method)
+        BitBltPlugin.call("primitiveCopyBits", interp, s_frame, argcount, w_method)
         return w_rcvr
 
 @expose_primitive(BE_CURSOR)
@@ -874,9 +874,9 @@ def func(interp, s_frame, w_arg, w_rcvr):
     w_rcvr.w_class = w_arg_class
 
 @expose_primitive(EXTERNAL_CALL, clean_stack=False, no_result=True, compiled_method=True)
-def func(interp, s_frame, argcount, s_method):
+def func(interp, s_frame, argcount, w_method):
     space = interp.space
-    w_description = s_method.w_self().literalat0(space, 1)
+    w_description = w_method.literalat0(space, 1)
     if not isinstance(w_description, model.W_PointersObject) or w_description.size() < 2:
         raise PrimitiveFailedError
     w_modulename = w_description.at0(space, 0)
@@ -888,27 +888,26 @@ def func(interp, s_frame, argcount, s_method):
 
     if signature[0] == 'BitBltPlugin':
         from spyvm.plugins.bitblt import BitBltPlugin
-        return BitBltPlugin.call(signature[1], interp, s_frame, argcount, s_method)
+        return BitBltPlugin.call(signature[1], interp, s_frame, argcount, w_method)
     elif signature[0] == "SocketPlugin":
         from spyvm.plugins.socket import SocketPlugin
-        return SocketPlugin.call(signature[1], interp, s_frame, argcount, s_method)
+        return SocketPlugin.call(signature[1], interp, s_frame, argcount, w_method)
     elif signature[0] == "FilePlugin":
         from spyvm.plugins.fileplugin import FilePlugin
-        return FilePlugin.call(signature[1], interp, s_frame, argcount, s_method)
+        return FilePlugin.call(signature[1], interp, s_frame, argcount, w_method)
     elif signature[0] == "VMDebugging":
         from spyvm.plugins.vmdebugging import DebuggingPlugin
-        return DebuggingPlugin.call(signature[1], interp, s_frame, argcount, s_method)
+        return DebuggingPlugin.call(signature[1], interp, s_frame, argcount, w_method)
     else:
         from spyvm.interpreter_proxy import IProxy
-        return IProxy.call(signature, interp, s_frame, argcount, s_method)
+        return IProxy.call(signature, interp, s_frame, argcount, w_method)
     raise PrimitiveFailedError
 
 @expose_primitive(COMPILED_METHOD_FLUSH_CACHE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
     if not isinstance(w_rcvr, model.W_CompiledMethod):
         raise PrimitiveFailedError()
-    s_cm = w_rcvr.as_compiledmethod_get_shadow(interp.space)
-    w_class = s_cm.w_compiledin
+    w_class = w_rcvr.compiled_in()
     if w_class:
         w_class = assert_pointers(w_class)
         w_class.as_class_get_shadow(interp.space).flush_method_caches()
@@ -1369,18 +1368,18 @@ def func(interp, s_frame, w_rcvr, w_selector, args_w):
     s_frame.pop_n(2) # removing our arguments
 
     try:
-        s_method = w_rcvr.class_shadow(interp.space).lookup(w_selector)
+        w_method = w_rcvr.class_shadow(interp.space).lookup(w_selector)
     except MethodNotFound:
         return s_frame._doesNotUnderstand(w_selector, argcount, interp, w_rcvr)
 
-    code = s_method.primitive()
+    code = w_method.primitive()
     if code:
         s_frame.push_all(args_w)
         try:
-            return s_frame._call_primitive(code, interp, argcount, s_method, w_selector)
+            return s_frame._call_primitive(code, interp, argcount, w_method, w_selector)
         except PrimitiveFailedError:
             pass # ignore this error and fall back to the Smalltalk version
-    s_new_frame = s_method.create_frame(w_rcvr, args_w, s_frame)
+    s_new_frame = w_method.create_frame(interp.space, w_rcvr, args_w, s_frame)
     s_frame.pop()
     return interp.stack_frame(s_new_frame)
 
@@ -1388,12 +1387,10 @@ def func(interp, s_frame, w_rcvr, w_selector, args_w):
 def func(interp, s_frame, w_rcvr, args_w, w_cm):
     if not isinstance(w_cm, model.W_CompiledMethod):
         raise PrimitiveFailedError()
-
-    s_method = w_cm.as_compiledmethod_get_shadow(interp.space)
-    code = s_method.primitive()
+    code = w_cm.primitive()
     if code:
         raise PrimitiveFailedError("withArgs:executeMethod: not support with primitive method")
-    s_new_frame = s_method.create_frame(w_rcvr, args_w, s_frame)
+    s_new_frame = w_cm.create_frame(interp.space, w_rcvr, args_w, s_frame)
     return interp.stack_frame(s_new_frame)
 
 @expose_primitive(SIGNAL, unwrap_spec=[object], clean_stack=False, no_result=True)

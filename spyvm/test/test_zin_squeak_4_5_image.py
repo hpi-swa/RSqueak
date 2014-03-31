@@ -15,16 +15,15 @@ def test_all_pointers_are_valid():
     _test_all_pointers_are_valid(reader)
     _test_lookup_abs_in_integer(interp)
 
-def create_method_shadow(bytes, literals=[], islarge=0, argsize=0, tempsize=0):
+def create_method(bytes, literals=[], islarge=0, argsize=0, tempsize=0):
     w_method = model.W_CompiledMethod(space, len(bytes))
     w_method.bytes = bytes
     w_method.islarge = islarge
     w_method.argsize = argsize
-    w_method.tempsize = tempsize
+    w_method._tempsize = tempsize
 
     w_method.setliterals(literals)
-    s_method = w_method.as_compiledmethod_get_shadow(space)
-    return s_method
+    return w_method
 
 def test_ensure():
     #ensure
@@ -38,12 +37,12 @@ def test_ensure():
     ensure_ = find_symbol_in_methoddict_of('ensure:', s_class)
     assert ensure_ is not None, 'Using image without #ensure:-method.'
 
-    s_method = create_method_shadow(bytes, [ensure_, w('b1'), w('b2'),
+    w_method = create_method(bytes, [ensure_, w('b1'), w('b2'),
                                             w('ensure'), space.w_BlockClosure])
 
     # create a frame for our newly crafted method with a valid sender (to avoid raising returnFromTop to early)
-    s_initial_frame = create_method_shadow(chr(0x7c)).create_frame(w(0), [])
-    w_frame = s_method.create_frame(w(0), [], sender=s_initial_frame).w_self()
+    s_initial_frame = create_method(chr(0x7c)).create_frame(space, w(0), [])
+    w_frame = w_method.create_frame(space, w(0), [], sender=s_initial_frame).w_self()
 
     try:
         interp.loop(w_frame)
@@ -64,12 +63,12 @@ def test_ensure_save_original_nlr():
     ensure_ = find_symbol_in_methoddict_of('ensure:', s_class)
     assert ensure_ is not None, 'Using image without #ensure:-method.'
 
-    s_method = create_method_shadow(bytes, [ensure_, w('b1'), w('b2'),
+    w_method = create_method(bytes, [ensure_, w('b1'), w('b2'),
                                             w('ensure'), space.w_BlockClosure])
 
     # create a frame for our newly crafted method with a valid sender (to avoid raising returnFromTop to early)
-    s_initial_frame = create_method_shadow(chr(0x7c)).create_frame(w(0), [])
-    w_frame = s_method.create_frame(w(0), [], sender=s_initial_frame).w_self()
+    s_initial_frame = create_method(chr(0x7c)).create_frame(space, w(0), [])
+    w_frame = w_method.create_frame(space, w(0), [], sender=s_initial_frame).w_self()
 
     try:
         interp.loop(w_frame)

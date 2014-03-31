@@ -268,12 +268,12 @@ def methodArgumentCount():
 
 @expose_on_virtual_machine_proxy([], int)
 def methodPrimitiveIndex():
-    return IProxy.s_method.primitive()
+    return IProxy.w_method.primitive()
 
 @expose_on_virtual_machine_proxy([oop], int)
 def primitiveIndexOf(w_method):
     if isinstance(w_method, model.W_CompiledMethod):
-        return w_method.as_compiledmethod_get_shadow(None).primitive()
+        return w_method.primitive()
     else:
         raise ProxyFunctionFailed
 
@@ -642,7 +642,7 @@ def includesBehaviorThatOf(w_class, w_superclass):
 
 @expose_on_virtual_machine_proxy([], oop, minor=2)
 def primitiveMethod():
-    return IProxy.s_method.w_self()
+    return IProxy.w_method
 
 #     /* InterpreterProxy methodsFor: 'FFI support' */
 
@@ -1006,12 +1006,12 @@ class _InterpreterProxy(object):
         self.interp = None
         self.s_frame = None
         self.argcount = 0
-        self.s_method = None
+        self.w_method = None
         self.fail_reason = 0
         self.trace_proxy = False
 
-    def call(self, signature, interp, s_frame, argcount, s_method):
-        self.initialize_from_call(signature, interp, s_frame, argcount, s_method)
+    def call(self, signature, interp, s_frame, argcount, w_method):
+        self.initialize_from_call(signature, interp, s_frame, argcount, w_method)
         try:
             # eventual errors are caught by the calling function (EXTERNAL_CALL)
             external_function = rffi.cast(func_bool_void,
@@ -1044,11 +1044,11 @@ class _InterpreterProxy(object):
                 return _external_function
 
 
-    def initialize_from_call(self, signature, interp, s_frame, argcount, s_method):
+    def initialize_from_call(self, signature, interp, s_frame, argcount, w_method):
         self.interp = interp
         self.s_frame = s_frame
         self.argcount = argcount
-        self.s_method = s_method
+        self.w_method = w_method
         self.space = interp.space
         self.trace_proxy = interp.trace_proxy
         # ensure that space.w_nil gets the first possible oop

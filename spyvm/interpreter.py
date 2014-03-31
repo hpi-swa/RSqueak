@@ -17,8 +17,8 @@ class IllegalStoreError(Exception):
     """Illegal Store."""
 
 def get_printable_location(pc, self, method):
-    bc = ord(method.bytecode[pc])
-    name = method._w_self._likely_methodname
+    bc = ord(method.bytes[pc])
+    name = method._likely_methodname
     return '%d: [%s]%s (%s)' % (pc, hex(bc), BYTECODE_NAMES[bc], name)
 
 
@@ -90,7 +90,7 @@ class Interpreter(object):
                 s_new_context = s_sender
                 while s_new_context is not nlr.s_target_context:
                     s_sender = s_new_context.s_sender()
-                    if not s_new_context.is_closure_context() and s_new_context.s_method().primitive() == 198:
+                    if not s_new_context.is_closure_context() and s_new_context.w_method().primitive() == 198:
                         s_new_context.activate_unwind_context(self)
                     s_new_context.mark_returned()
                     s_new_context = s_sender
@@ -104,7 +104,7 @@ class Interpreter(object):
         old_pc = 0
         if not jit.we_are_jitted() and may_context_switch:
             self.quick_check_for_interrupt(s_context)
-        method = s_context.s_method()
+        method = s_context.w_method()
         while True:
             pc = s_context.pc()
             if pc < old_pc:
@@ -122,7 +122,7 @@ class Interpreter(object):
                 self.step(s_context)
             except Return, nlr:
                 if nlr.s_target_context is not s_context:
-                    if not s_context.is_closure_context() and s_context.s_method().primitive() == 198:
+                    if not s_context.is_closure_context() and s_context.w_method().primitive() == 198:
                         s_context.activate_unwind_context(self)
                     s_context.mark_returned()
                     raise nlr
@@ -165,8 +165,7 @@ class Interpreter(object):
         w_method.literalatput0(self.space, 1, w_selector)
         assert len(arguments_w) <= 7
         w_method.setbytes([chr(131), chr(len(arguments_w) << 5 + 0), chr(124)]) #returnTopFromMethod
-        s_method = w_method.as_compiledmethod_get_shadow(self.space)
-        s_frame = MethodContextShadow(self.space, None, s_method, w_receiver, [])
+        s_frame = MethodContextShadow(self.space, None, w_method, w_receiver, [])
         s_frame.push(w_receiver)
         s_frame.push_all(list(arguments_w))
 
@@ -285,14 +284,14 @@ class __extend__(ContextPartShadow):
 
     def pushLiteralConstantBytecode(self, interp, current_bytecode):
         index = current_bytecode & 31
-        self.push(self.s_method().getliteral(index))
+        self.push(self.w_method().getliteral(index))
 
     def pushLiteralVariableBytecode(self, interp, current_bytecode):
         # this bytecode assumes that literals[index] is an Association
         # which is an object with two named vars, and fetches the second
         # named var (the value).
         index = current_bytecode & 31
-        w_association = self.s_method().getliteral(index)
+        w_association = self.w_method().getliteral(index)
         association = wrapper.AssociationWrapper(self.space, w_association)
         self.push(association.value())
 
@@ -337,7 +336,7 @@ class __extend__(ContextPartShadow):
 
     # send, return bytecodes
     def sendLiteralSelectorBytecode(self, interp, current_bytecode):
-        w_selector = self.s_method().getliteral(current_bytecode & 15)
+        w_selector = self.w_method().getliteral(current_bytecode & 15)
         argcount = ((current_bytecode >> 4) & 3) - 1
         return self._sendSelfSelector(w_selector, argcount, interp)
 
@@ -347,7 +346,7 @@ class __extend__(ContextPartShadow):
                                   receiver, receiver.class_shadow(self.space))
 
     def _sendSuperSelector(self, w_selector, argcount, interp):
-        w_compiledin = self.s_method().w_compiledin
+        w_compiledin = self.w_method().compiled_in()
         assert isinstance(w_compiledin, model.W_PointersObject)
         s_compiledin = w_compiledin.as_class_get_shadow(self.space)
         return self._sendSelector(w_selector, argcount, interp, self.w_receiver(),
@@ -362,18 +361,18 @@ class __extend__(ContextPartShadow):
         assert argcount >= 0
 
         try:
-            s_method = receiverclassshadow.lookup(w_selector)
+            w_method = receiverclassshadow.lookup(w_selector)
         except MethodNotFound:
             return self._doesNotUnderstand(w_selector, argcount, interp, receiver)
 
-        code = s_method.primitive()
+        code = w_method.primitive()
         if code:
             try:
-                return self._call_primitive(code, interp, argcount, s_method, w_selector)
+                return self._call_primitive(code, interp, argcount, w_method, w_selector)
             except primitives.PrimitiveFailedError:
                 pass # ignore this error and fall back to the Smalltalk version
         arguments = self.pop_and_return_n(argcount)
-        s_frame = s_method.create_frame(receiver, arguments, self)
+        s_frame = w_method.create_frame(interp.space, receiver, arguments, self)
         self.pop() # receiver
 
         # ######################################################################
@@ -392,13 +391,13 @@ class __extend__(ContextPartShadow):
         w_message.store(self.space, 1, self.space.wrap_list(arguments))
         s_class = receiver.class_shadow(self.space)
         try:
-            s_method = s_class.lookup(self.space.objtable["w_doesNotUnderstand"])
+            w_method = s_class.lookup(self.space.objtable["w_doesNotUnderstand"])
         except MethodNotFound:
             from spyvm.shadow import ClassShadow
             assert isinstance(s_class, ClassShadow)
             print "Missing doesDoesNotUnderstand in hierarchy of %s" % s_class.getname()
             raise
-        s_frame = s_method.create_frame(receiver, [w_message], self)
+        s_frame = w_method.create_frame(interp.space, receiver, [w_message], self)
         self.pop()
 
         # ######################################################################
@@ -409,7 +408,7 @@ class __extend__(ContextPartShadow):
 
         return interp.stack_frame(s_frame)
 
-    def _call_primitive(self, code, interp, argcount, s_method, w_selector):
+    def _call_primitive(self, code, interp, argcount, w_method, w_selector):
         # the primitive pushes the result (if any) onto the stack itself
         if interp.should_trace():
             print "%sActually calling primitive %d" % (interp._last_indent, code,)
@@ -421,14 +420,14 @@ class __extend__(ContextPartShadow):
                     code, self.w_method()._likely_methodname, w_selector.as_repr_string())
         try:
             # note: argcount does not include rcvr
-            return func(interp, self, argcount, s_method)
+            return func(interp, self, argcount, w_method)
         except primitives.PrimitiveFailedError, e:
             if interp.trace:
                 print "%s primitive FAILED" % (
                 ' ' * (interp.max_stack_depth - interp.remaining_stack_depth),)
 
             if interp.should_trace(True):
-                print "PRIMITIVE FAILED: %d %s" % (s_method.primitive, w_selector.as_repr_string())
+                print "PRIMITIVE FAILED: %d %s" % (w_method.primitive, w_selector.as_repr_string())
             raise e
 
 
@@ -490,9 +489,9 @@ class __extend__(ContextPartShadow):
         elif variableType == 1:
             self.push(self.gettemp(variableIndex))
         elif variableType == 2:
-            self.push(self.s_method().getliteral(variableIndex))
+            self.push(self.w_method().getliteral(variableIndex))
         elif variableType == 3:
-            w_association = self.s_method().getliteral(variableIndex)
+            w_association = self.w_method().getliteral(variableIndex)
             association = wrapper.AssociationWrapper(self.space, w_association)
             self.push(association.value())
         else:
@@ -507,7 +506,7 @@ class __extend__(ContextPartShadow):
         elif variableType == 2:
             raise IllegalStoreError
         elif variableType == 3:
-            w_association = self.s_method().getliteral(variableIndex)
+            w_association = self.w_method().getliteral(variableIndex)
             association = wrapper.AssociationWrapper(self.space, w_association)
             association.store_value(self.top())
 
@@ -517,7 +516,7 @@ class __extend__(ContextPartShadow):
 
     def getExtendedSelectorArgcount(self):
         descriptor = self.getbytecode()
-        return ((self.s_method().getliteral(descriptor & 31)),
+        return ((self.w_method().getliteral(descriptor & 31)),
                 (descriptor >> 5))
 
     def singleExtendedSendBytecode(self, interp, current_bytecode):
@@ -531,21 +530,21 @@ class __extend__(ContextPartShadow):
         opType = second >> 5
         if opType == 0:
             # selfsend
-            return self._sendSelfSelector(self.s_method().getliteral(third),
+            return self._sendSelfSelector(self.w_method().getliteral(third),
                                           second & 31, interp)
         elif opType == 1:
             # supersend
-            return self._sendSuperSelector(self.s_method().getliteral(third),
+            return self._sendSuperSelector(self.w_method().getliteral(third),
                                            second & 31, interp)
         elif opType == 2:
             # pushReceiver
             self.push(self.w_receiver().fetch(self.space, third))
         elif opType == 3:
             # pushLiteralConstant
-            self.push(self.s_method().getliteral(third))
+            self.push(self.w_method().getliteral(third))
         elif opType == 4:
             # pushLiteralVariable
-            w_association = self.s_method().getliteral(third)
+            w_association = self.w_method().getliteral(third)
             association = wrapper.AssociationWrapper(self.space, w_association)
             self.push(association.value())
         elif opType == 5:
@@ -559,7 +558,7 @@ class __extend__(ContextPartShadow):
             except error.SenderChainManipulation, e:
                 raise StackOverflow(self)
         elif opType == 7:
-            w_association = self.s_method().getliteral(third)
+            w_association = self.w_method().getliteral(third)
             association = wrapper.AssociationWrapper(self.space, w_association)
             association.store_value(self.top())
 
@@ -569,7 +568,7 @@ class __extend__(ContextPartShadow):
 
     def secondExtendedSendBytecode(self, interp, current_bytecode):
         descriptor = self.getbytecode()
-        w_selector = self.s_method().getliteral(descriptor & 63)
+        w_selector = self.w_method().getliteral(descriptor & 63)
         argcount = descriptor >> 6
         return self._sendSelfSelector(w_selector, argcount, interp)
 
@@ -925,16 +924,16 @@ def debugging():
     ContextPartShadow._sendSelector = stepping_debugger_send(ContextPartShadow._sendSelector)
 
     def stepping_debugger_failed_primitive_halt(original):
-        def meth(self, code, interp, argcount, s_method, w_selector):
+        def meth(self, code, interp, argcount, w_method, w_selector):
             try:
-                original(self, code, interp, argcount, s_method, w_selector)
+                original(self, code, interp, argcount, w_method, w_selector)
             except primitives.PrimitiveFailedError, e:
                 if interp.halt_on_failing_primitives:
                     func = primitives.prim_holder.prim_table[code]
                     if func.func_name != 'raise_failing_default' and code != 83:
                         import pdb; pdb.set_trace()
                         try:
-                            func(interp, self, argcount, s_method) # will fail again
+                            func(interp, self, argcount, w_method) # will fail again
                         except primitives.PrimitiveFailedError:
                             pass
                 raise e
@@ -943,12 +942,12 @@ def debugging():
     ContextPartShadow._call_primitive = stepping_debugger_failed_primitive_halt(ContextPartShadow._call_primitive)
 
     def trace_missing_named_primitives(original):
-        def meth(interp, s_frame, argcount, s_method=None):
+        def meth(interp, s_frame, argcount, w_method=None):
             try:
-                return original(interp, s_frame, argcount, s_method=s_method)
+                return original(interp, s_frame, argcount, w_method=w_method)
             except primitives.PrimitiveFailedError, e:
                 space = interp.space
-                w_description = s_method.w_self().literalat0(space, 1)
+                w_description = w_method.literalat0(space, 1)
                 if not isinstance(w_description, model.W_PointersObject) or w_description.size() < 2:
                     raise e
                 w_modulename = w_description.at0(space, 0)
