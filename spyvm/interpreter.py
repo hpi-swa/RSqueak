@@ -18,7 +18,7 @@ class IllegalStoreError(Exception):
 
 def get_printable_location(pc, self, method):
     bc = ord(method.bytes[pc])
-    name = method._likely_methodname
+    name = method.get_identifier_string()
     return '%d: [%s]%s (%s)' % (pc, hex(bc), BYTECODE_NAMES[bc], name)
 
 
@@ -355,8 +355,8 @@ class __extend__(ContextPartShadow):
     def _sendSelector(self, w_selector, argcount, interp,
                       receiver, receiverclassshadow):
         if interp.should_trace():
-            print "%sSending selector %r to %r with: %r" % (
-                interp._last_indent, w_selector.as_repr_string(), receiver,
+            print "%sSending selector #%s to %r with: %r" % (
+                interp._last_indent, w_selector.as_string(), receiver,
                 [self.peek(argcount-1-i) for i in range(argcount)])
         assert argcount >= 0
 
@@ -402,7 +402,7 @@ class __extend__(ContextPartShadow):
 
         # ######################################################################
         if interp.trace:
-            print '%s%s missing: #%s' % (interp.padding('#'), s_frame.short_str(), w_selector.as_repr_string())
+            print '%s%s missing: #%s' % (interp.padding('#'), s_frame.short_str(), w_selector.as_string())
             if not objectmodel.we_are_translated():
                 import pdb; pdb.set_trace()
 
@@ -415,9 +415,9 @@ class __extend__(ContextPartShadow):
         func = primitives.prim_holder.prim_table[code]
         # ##################################################################
         if interp.trace:
-            print "%s-> primitive %d \t(in #%s, named #%s)" % (
+            print "%s-> primitive %d \t(in %s, named #%s)" % (
                 ' ' * (interp.max_stack_depth - interp.remaining_stack_depth),
-                    code, self.w_method()._likely_methodname, w_selector.as_repr_string())
+                    code, self.w_method().get_identifier_string(), w_selector.as_string())
         try:
             # note: argcount does not include rcvr
             return func(interp, self, argcount, w_method)
@@ -427,7 +427,7 @@ class __extend__(ContextPartShadow):
                 ' ' * (interp.max_stack_depth - interp.remaining_stack_depth),)
 
             if interp.should_trace(True):
-                print "PRIMITIVE FAILED: %d %s" % (w_method.primitive, w_selector.as_repr_string())
+                print "PRIMITIVE FAILED: %d #%s" % (w_method.primitive, w_selector.as_string())
             raise e
 
 
@@ -895,19 +895,19 @@ def debugging():
                       receiver, receiverclassshadow):
             options = [False]
             def next(): interp.message_stepping = True; print 'Now continue (c).'
-            def over(): options[0] = True; print  'Skipping #%s. You still need to continue(c).' % w_selector.as_repr_string()
+            def over(): options[0] = True; print  'Skipping #%s. You still need to continue(c).' % w_selector.as_string()
             def pstack(): print s_context.print_stack()
             if interp.message_stepping:
                 if argcount == 0:
-                    print "-> %s %s" % (receiver.as_repr_string(),
-                            w_selector.as_repr_string())
+                    print "-> %s #%s" % (receiver.as_repr_string(),
+                            w_selector.as_string())
                 elif argcount == 1:
-                    print "-> %s %s %s" % (receiver.as_repr_string(),
-                            w_selector.as_repr_string(),
+                    print "-> %s #%s %s" % (receiver.as_repr_string(),
+                            w_selector.as_string(),
                             s_context.peek(0).as_repr_string())
                 else:
-                    print "-> %s %s %r" % (receiver.as_repr_string(),
-                            w_selector.as_repr_string(),
+                    print "-> %s #%s %r" % (receiver.as_repr_string(),
+                            w_selector.as_string(),
                             [s_context.peek(argcount-1-i) for i in range(argcount)])
                 import pdb; pdb.set_trace()
             if options[0]:
