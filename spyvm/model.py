@@ -127,6 +127,12 @@ class W_Object(object):
         """Return True, if the receiver represents the nil object in the given Object Space."""
         return self.is_same_object(space.w_nil)
         
+    def is_class(self, space):
+        """ Return true, if the receiver seems to be a class.
+        We can not be completely sure about this (non-class objects might be
+        used as class)."""
+        return False
+        
     def become(self, other):
         """Become swaps two objects.
            False means swapping failed"""
@@ -509,12 +515,23 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
         # Don't construct the ClassShadow here, yet!
         self.w_class = g_self.get_class()
         
+    def is_class(self, space):
+        # This is a class if it's a Metaclass or an instance of a Metaclass.
+        if self.has_class():
+            w_Metaclass = space.classtable["w_Metaclass"]
+            w_class = self.getclass(space)
+            if w_Metaclass.is_same_object(w_class):
+                return True
+            if w_class.has_class():
+                return w_Metaclass.is_same_object(w_class.getclass(space))
+        return False
+        
     def getclass(self, space):
         return self.w_class
 
     def guess_classname(self):
         if self.has_class():
-            if self.w_class.has_shadow():
+            if self.w_class.has_space():
                 class_shadow = self.class_shadow(self.w_class.space())
                 return class_shadow.name
             else:
@@ -579,6 +596,12 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     def is_weak(self):
         from shadow import WeakListStorageShadow
         return isinstance(self.shadow, WeakListStorageShadow)
+    
+    def is_class(self, space):
+        from spyvm.shadow import ClassShadow
+        if isinstance(self.shadow, ClassShadow):
+            return True
+        return W_AbstractObjectWithClassReference.is_class(self, space)
     
     def assert_shadow(self):
         # Failing the following assert most likely indicates a bug. The shadow can only be absent during
@@ -715,6 +738,10 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     def has_shadow(self):
         return self._get_shadow() is not None
 
+    def has_space(self):
+        # The space is accessed through the shadow.
+        return self.has_shadow()
+    
     def _become(self, w_other):
         assert isinstance(w_other, W_PointersObject)
         self.shadow, w_other.shadow = w_other.shadow, self.shadow
@@ -1258,16 +1285,21 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def compiled_in(self):
         w_compiledin = self.w_compiledin
         if not w_compiledin:
-            if self.literals:
-                # (Blue book, p 607) All CompiledMethods that contain
-                # extended-super bytecodes have the clain which they are found as
-                # their last literal variable.
-                # Last of the literals is an association with compiledin as a class
-                w_association = self.literals[-1]
-                if isinstance(w_association, W_PointersObject) and w_association.size() >= 2:
-                    from spyvm import wrapper
-                    association = wrapper.AssociationWrapper(w_association.space(), w_association)
-                    w_compiledin = association.value()
+            literals = self.literals
+            if literals and len(literals) > 0:
+                # (Blue book, p 607) Last of the literals is either the containing class 
+                # or an association with compiledin as a class
+                w_candidate = literals[-1]
+                if isinstance(w_candidate, W_PointersObject) and w_candidate.has_space():
+                    space = w_candidate.space() # Not pretty to steal the space from another object.
+                    if w_candidate.is_class(space):
+                        w_compiledin = w_candidate
+                    elif w_candidate.size() >= 2:
+                        from spyvm import wrapper
+                        association = wrapper.AssociationWrapper(space, w_candidate)
+                        w_candidate = association.value()
+                        if w_candidate.is_class(space):
+                            w_compiledin = w_candidate
             self.w_compiledin = w_compiledin
         return w_compiledin
     
@@ -1378,29 +1410,11 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         return retval + "---------------------\n"
 
     def guess_containing_classname(self):
-        from spyvm.shadow import ClassShadow
-        guessed_classname = None
-        if len(self.literals) > 0:
-            w_candidate = self.literals[-1]
-            if isinstance(w_candidate, W_PointersObject):
-                c_shadow = w_candidate._get_shadow()
-                if isinstance(c_shadow, ClassShadow):
-                    guessed_classname = c_shadow.getname()
-                elif w_candidate.size() >= 2:
-                    w_class = w_candidate.fetch(None, 1)
-                    if isinstance(w_class, W_PointersObject):
-                        d_shadow = w_class._get_shadow()
-                        if isinstance(d_shadow, ClassShadow):
-                            guessed_classname = d_shadow.getname()
-        if guessed_classname:
-            class_cutoff = len(guessed_classname) - 6
-            if class_cutoff > 0:
-                classname = guessed_classname[0:class_cutoff]
-            else:
-                classname = guessed_classname
-        else:
-            classname = "<unknown>"
-        return classname
+        w_class = self.compiled_in()
+        if w_class and w_class.has_space():
+            # Not pretty to steal the space from another object.
+            return w_class.as_class_get_shadow(w_class.space()).getname()
+        return "? (no compiledin-info)"
     
     def get_identifier_string(self):
         return "%s >> #%s" % (self.guess_containing_classname(), self._likely_methodname)

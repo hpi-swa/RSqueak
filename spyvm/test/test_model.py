@@ -123,7 +123,7 @@ def new_object(size=0):
     return model.W_PointersObject(space, None, size)
 
 def test_w_compiledin_assoc():
-    val = new_object()
+    val = bootstrap_class(0)
     assoc = new_object(2)
     assoc.store(space, 0, new_object())
     assoc.store(space, 1, val)
