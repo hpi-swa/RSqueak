@@ -817,7 +817,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         return self._size
 
     def str_content(self):
-        return "'%s'" % self.as_string()
+        return self.as_string()
 
     def as_string(self):
         if self.bytes is not None:
@@ -1301,6 +1301,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
                         if w_candidate.is_class(space):
                             w_compiledin = w_candidate
             self.w_compiledin = w_compiledin
+        assert isinstance(w_compiledin, W_PointersObject)
         return w_compiledin
     
     # === Object Access ===
@@ -1418,6 +1419,19 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     
     def get_identifier_string(self):
         return "%s >> #%s" % (self.guess_containing_classname(), self._likely_methodname)
+
+    def safe_identifier_string(self):
+        if not we_are_translated():
+            return self.get_identifier_string()
+        # This has the same functionality as get_identifier_string, but without calling any
+        # methods in order to avoid side effects that prevent translation.
+        w_class = self.w_compiledin
+        if isinstance(w_class, W_PointersObject):
+            from spyvm.shadow import ClassShadow
+            s_class = w_class.shadow
+            if isinstance(s_class, ClassShadow):
+                return "%s >> #%s" % (s_class.getname(), self._likely_methodname)
+        return "#%s" % self._likely_methodname
 
 class DetachingShadowError(Exception):
     def __init__(self, old_shadow, new_shadow_class):

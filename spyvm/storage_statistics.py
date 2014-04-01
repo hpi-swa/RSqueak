@@ -73,7 +73,7 @@ class StorageStatistics(object):
             sizes = self.stats[key]
             sum = 0
             for s in sizes: sum += s
-            print "%s: %d times, avg size: %f" % (self.key_string(key), len(sizes), sum/len(sizes))
+            print "%s: %d times, avg size: %f" % (self.key_string(key), len(sizes), float(sum)/len(sizes))
             if self.do_stats_sizes:
                 print "       All sizes: %s" % sizes
 
