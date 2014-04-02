@@ -227,9 +227,10 @@ def target(driver, *args):
     if system.IS_64BIT:
         driver.exe_name += "-64"
     if hasattr(rgc, "stm_is_enabled"):
+        driver.exe_name += "-stm"
+        driver.config.translation.gc = "stmgc" # Sadly, this also has to be passed on the commandline
         driver.config.translation.stm = True
         driver.config.translation.thread = True
-        # driver.config.translation.gc = "stmgc"
         driver.config.translation.gcrootfinder = 'stm'
         driver.config.translation.rweakref = True
         driver.config.translation.shared = False
