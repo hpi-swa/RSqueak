@@ -17,7 +17,7 @@ def primitiveCopyBits(interp, s_frame, w_rcvr):
         raise PrimitiveFailedError("BitBlt primitive not called in BitBlt object!")
 
     # only allow combinationRules 0-41
-    combinationRule = interp.space.unwrap_positive_32bit_int(w_rcvr.fetch(interp.space, 3))
+    combinationRule = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 3))
     if combinationRule > 41:
         raise PrimitiveFailedError("Missing combinationRule %d" % combinationRule)
 

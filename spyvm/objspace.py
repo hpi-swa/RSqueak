@@ -1,6 +1,6 @@
 import os
 
-from spyvm import constants, model, shadow, wrapper, version
+from spyvm import constants, model, shadow, wrapper, system, version
 from spyvm.error import UnwrappingError, WrappingError, PrimitiveFailedError
 from rpython.rlib import jit, rpath
 from rpython.rlib.objectmodel import instantiate, specialize
@@ -15,7 +15,7 @@ class ObjSpace(object):
         self.make_bootstrap_objects()
 
     def find_executable(self, executable):
-        if os.sep in executable or (os.name == "nt" and ":" in executable):
+        if os.sep in executable or (system.IS_WINDOWS and ":" in executable):
             return executable
         path = os.environ.get("PATH")
         if path:
@@ -198,9 +198,8 @@ class ObjSpace(object):
     # methods for wrapping and unwrapping stuff
 
     def wrap_int(self, val):
-        from spyvm import constants
-        assert isinstance(val, int)
-        # we don't do tagging
+        if not isinstance(val, int):
+            raise WrappingError
         return model.W_SmallInteger(val)
 
     def wrap_uint(self, val):
