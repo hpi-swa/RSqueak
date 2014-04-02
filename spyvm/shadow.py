@@ -476,6 +476,8 @@ class ClassShadow(AbstractCachingShadow):
         while look_in_shadow is not None:
             w_method = look_in_shadow.s_methoddict().find_selector(w_selector)
             if w_method is not None:
+                # Old images don't store compiledin-info in literals.
+                w_method.w_compiledin = look_in_shadow.w_self()
                 return w_method
             look_in_shadow = look_in_shadow._s_superclass
         raise MethodNotFound(self, w_selector)

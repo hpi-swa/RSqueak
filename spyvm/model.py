@@ -817,7 +817,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         return self._size
 
     def str_content(self):
-        return self.as_string()
+        return "'%s'" % self.as_string()
 
     def as_string(self):
         if self.bytes is not None:
@@ -1301,7 +1301,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
                         if w_candidate.is_class(space):
                             w_compiledin = w_candidate
             self.w_compiledin = w_compiledin
-        assert isinstance(w_compiledin, W_PointersObject)
+        assert w_compiledin is None or isinstance(w_compiledin, W_PointersObject)
         return w_compiledin
     
     # === Object Access ===
