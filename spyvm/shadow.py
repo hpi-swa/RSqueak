@@ -34,7 +34,7 @@ class AbstractCachingShadow(AbstractShadow):
     import_from_mixin(version.VersionMixin)
 
     version = None
-    
+
     def __init__(self, space, w_self):
         AbstractShadow.__init__(self, space, w_self)
         self.changed()
@@ -78,7 +78,7 @@ class ClassShadow(AbstractCachingShadow):
 
     _attrs_ = ["name", "_instance_size", "instance_varsized", "instance_kind",
                 "_s_methoddict", "_s_superclass", "subclass_s"]
-    
+
     def __init__(self, space, w_self):
         # fields added here should also be in objspace.py:56ff, 300ff
         self.name = ''

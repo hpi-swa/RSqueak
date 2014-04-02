@@ -1,11 +1,20 @@
 import py
 import os
+import time
 from spyvm.shadow import ContextPartShadow, MethodContextShadow, BlockContextShadow, MethodNotFound
 from spyvm import model, constants, primitives, conftest, wrapper
 from spyvm.tool.bitmanipulation import splitter
 
 from rpython.rlib import jit
+from rpython.rlib.jit import hint
 from rpython.rlib import objectmodel, unroll
+try:
+    from rpython.rlib import rstm
+except:
+    pass
+from rpython.rlib import rthread
+
+THREAD_DEBUG = False
 
 class MissingBytecode(Exception):
     """Bytecode not implemented yet."""
@@ -22,6 +31,103 @@ def get_printable_location(pc, self, method):
     return '%d: [%s]%s (%s)' % (pc, hex(bc), BYTECODE_NAMES[bc], name)
 
 
+class SpinLock(wrapper.PartialBarrier):
+    """Replacement when rthread.Lock is not working"""
+
+    def __init__(self, initial=0):
+        assert initial == 0 or initial == 1
+        self._value = initial
+
+    def lock(self):
+        return self._value
+
+    def store_lock(self, i):
+        self._value = i
+
+    #
+    # def _test_and_set(self):
+    #     rstm.increment_atomic()
+    #     old_value = self._value
+    #     self._value = 1
+    #     rstm.decrement_atomic()
+    #     return old_value
+    #
+    # def wait(self):
+    #     while self._test_and_set():
+    #         time.sleep(0.001)
+    #         rstm.should_break_transaction()
+    #
+    # def signal(self):
+    #     self._value = 0
+    #     rstm.should_break_transaction()
+
+
+
+class Bootstrapper(object):
+    """
+    Bootstrapper bootstrapping interpreters in some native thread.
+    It uses lock-guarded global state, as rpython does not pass arguments
+    to OS threads.
+    """
+
+    def __init__(self):
+        self.lock = rthread.allocate_lock()
+        self.lock = SpinLock()
+
+        # critical values, only modify under lock:
+        self.interp = None
+        self.w_frame = None
+        self.w_stm_process = None
+        self.num_threads = 0
+
+    # wait for previous thread to start, then set global state
+    def acquire(interp, w_frame, w_stm_process):
+        #bootstrapper.lock.acquire(True)
+        bootstrapper.lock.wait(1, 'bootstrap')
+        bootstrapper.interp = interp
+        bootstrapper.w_frame = w_frame
+        bootstrapper.w_stm_process = w_stm_process
+
+    acquire = staticmethod(acquire)
+
+    # lock is released once the new thread started
+    def release():
+        bootstrapper.interp = None
+        bootstrapper.w_frame = None
+        bootstrapper.w_stm_process = None
+        bootstrapper.lock.signal('bootstrap')
+        #bootstrapper.lock.release()
+
+    release = staticmethod(release)
+
+    # HUGE RACE CONDITON!!!
+    def bootstrap():
+        #print "New thread reporting"
+        interp = bootstrapper.interp
+        w_frame = bootstrapper.w_frame
+        w_stm_process = bootstrapper.w_stm_process
+        assert isinstance(interp, Interpreter)
+        assert isinstance(w_frame, model.W_PointersObject)
+        assert isinstance(w_stm_process, model.W_PointersObject)
+        bootstrapper.num_threads += 1
+        bootstrapper.release()
+
+        # ...aaaaand go!
+        wrapper.StmProcessWrapper(interp.space, w_stm_process).store_lock(1)
+
+        interp.interpret_with_w_frame(w_frame, may_context_switch=False)
+
+        # Signal waiting processes
+        wrapper.StmProcessWrapper(interp.space, w_stm_process).signal('thread')
+
+        # cleanup
+        bootstrapper.num_threads -= 1
+
+    bootstrap = staticmethod(bootstrap)
+
+bootstrapper = Bootstrapper()
+
+
 class Interpreter(object):
     _immutable_fields_ = ["space", "image", "image_name",
                           "max_stack_depth", "interrupt_counter_size",
@@ -30,10 +136,11 @@ class Interpreter(object):
     cnt = 0
     _last_indent = ""
     jit_driver = jit.JitDriver(
-        greens=['pc', 'self', 'method'],
-        reds=['s_context'],
-        virtualizables=['s_context'],
-        get_printable_location=get_printable_location
+        greens=[],
+        reds=['self', 's_context'],
+        # virtualizables=['s_context'],
+        stm_do_transaction_breaks=True
+        # get_printable_location=get_printable_location
     )
 
     def __init__(self, space, image=None, image_name="", trace=False,
@@ -57,11 +164,38 @@ class Interpreter(object):
         except KeyError:
             self.interrupt_counter_size = constants.INTERRUPT_COUNTER_SIZE
         self.interrupt_check_counter = self.interrupt_counter_size
-        # ######################################################################
         self.trace = trace
         self.trace_proxy = False
 
-    def interpret_with_w_frame(self, w_frame):
+    def fork(self, w_frame, w_stm_process):
+
+        # clone interpreter (maybe implement a lightweight abstraction
+        # for an executor)
+
+        new_interp = Interpreter(
+            self.space,
+            self.image,
+            self.image_name,
+            self.trace,
+            self.max_stack_depth)
+        new_interp.remaining_stack_depth = self.remaining_stack_depth
+        new_interp._loop = self._loop
+        new_interp.next_wakeup_tick = self.next_wakeup_tick
+        new_interp.interrupt_check_counter = self.interrupt_check_counter
+        new_interp.trace_proxy = self.trace_proxy
+
+        #print 'Interpreter state copied'
+
+        # bootstrapping from (lock-guarded) global state:
+        bootstrapper.acquire(new_interp, w_frame, w_stm_process)
+        #print "Thread initialized"
+        # TODO: Deadlocks if the thread before died without calling bootstrapper.release()
+        rthread.start_new_thread(bootstrapper.bootstrap, ())
+        #print "Parent interpreter resuming"
+
+    def interpret_with_w_frame(self, w_frame, may_context_switch=True):
+        if THREAD_DEBUG: print "[Thread] Interpreter starting"
+        rstm.set_transaction_length(10000)  # from pypy
         try:
             self.loop(w_frame)
         except ReturnFromTopLevel, e:
@@ -74,16 +208,17 @@ class Interpreter(object):
             return conftest.option.bc_trace
         return conftest.option.prim_trace
 
-    def loop(self, w_active_context):
+    def loop(self, w_active_context, may_context_switch=True):
         # just a trampoline for the actual loop implemented in c_loop
         self._loop = True
         s_new_context = w_active_context.as_context_get_shadow(self.space)
         while True:
-            assert self.remaining_stack_depth == self.max_stack_depth
+            #assert self.remaining_stack_depth == self.max_stack_depth
             # Need to save s_sender, c_loop will nil this on return
             s_sender = s_new_context.s_sender()
+
             try:
-                s_new_context = self.c_loop(s_new_context)
+                self.stmloop(s_new_context, may_context_switch)
             except StackOverflow, e:
                 s_new_context = e.s_context
             except Return, nlr:
@@ -100,27 +235,42 @@ class Interpreter(object):
                     print "====== Switch from: %s to: %s ======" % (s_new_context.short_str(), p.s_new_context.short_str())
                 s_new_context = p.s_new_context
 
+    def stmloop(self, s_context, may_context_switch=True):
+        while True:
+            # if rstm.should_break_transaction():
+            #     print "will break transaction"
+
+            # STM-ONLY JITDRIVER!
+            self.jit_driver.jit_merge_point(
+                self=self, s_context=s_context)
+            if rstm.jit_stm_should_break_transaction(False):
+                rstm.jit_stm_transaction_break_point()
+            self = self._hints_for_stm()
+            self.c_loop(s_context, may_context_switch)
+
     def c_loop(self, s_context, may_context_switch=True):
         old_pc = 0
+
         if not jit.we_are_jitted() and may_context_switch:
             self.quick_check_for_interrupt(s_context)
-        method = s_context.s_method()
+
         while True:
             pc = s_context.pc()
             if pc < old_pc:
                 if jit.we_are_jitted():
                     self.quick_check_for_interrupt(s_context,
                                     dec=self._get_adapted_tick_counter())
-                self.jit_driver.can_enter_jit(
-                    pc=pc, self=self, method=method,
-                    s_context=s_context)
+                #self.jit_driver.can_enter_jit(
+                #    pc=pc, self=self, method=method,
+                #    s_context=s_context)
             old_pc = pc
-            self.jit_driver.jit_merge_point(
-                pc=pc, self=self, method=method,
-                s_context=s_context)
+
             try:
                 self.step(s_context)
+                if rstm.should_break_transaction():
+                    return
             except Return, nlr:
+
                 if nlr.s_target_context is not s_context:
                     if not s_context.is_closure_context() and s_context.s_method().primitive() == 198:
                         s_context.activate_unwind_context(self)
@@ -128,6 +278,17 @@ class Interpreter(object):
                     raise nlr
                 else:
                     s_context.push(nlr.value)
+
+            # gonna go parallel! (triggered by primitive)
+            except StmProcessFork, f:
+                #print "Interpreter loop about to fork"
+
+                self.fork(f.w_frame, f.w_stm_process)
+
+    def _hints_for_stm(self):
+        self = hint(self, stm_write=True)
+        self = hint(self, access_directly=True)
+        return self
 
     def _get_adapted_tick_counter(self):
         # Normally, the tick counter is decremented by 1 for every message send.
@@ -146,7 +307,7 @@ class Interpreter(object):
 
         self.remaining_stack_depth -= 1
         try:
-            retval = self.c_loop(s_new_frame, may_context_switch)
+            retval = self.stmloop(s_new_frame, may_context_switch)
         finally:
             self.remaining_stack_depth += 1
         return retval
@@ -232,6 +393,13 @@ class ProcessSwitch(Exception):
     _attrs_ = ["s_new_context"]
     def __init__(self, s_context):
         self.s_new_context = s_context
+
+
+class StmProcessFork(Exception):
+    _attrs_ = ["w_frame", "w_stm_process"]
+    def __init__(self, w_frame, w_stm_process):
+        self.w_frame = w_frame
+        self.w_stm_process = w_stm_process
 
 
 def make_call_primitive_bytecode(primitive, selector, argcount):

@@ -1,5 +1,8 @@
 from spyvm import model, constants
 from spyvm.error import FatalError, WrapperException, PrimitiveFailedError
+from rpython.rlib import rstm
+
+LOCK_DEBUG = False
 
 class Wrapper(object):
     def __init__(self, space, w_self):
@@ -79,6 +82,7 @@ class ProcessWrapper(LinkWrapper):
         w_frame = self.suspended_context()
         self.store_suspended_context(self.space.w_nil)
         self.store_my_list(self.space.w_nil)
+        #print sched.get_highest_priority_process()
         assert isinstance(w_frame, model.W_PointersObject)
         raise ProcessSwitch(w_frame.as_context_get_shadow(self.space))
 
@@ -113,6 +117,76 @@ class ProcessWrapper(LinkWrapper):
                 process_list.remove(self._w_self)
                 self.store_my_list(self.space.w_nil)
             return w_current_frame
+
+
+class PartialBarrier(object):
+    _mixin_ = True
+
+    def signal(self, what='unknown'):
+        if LOCK_DEBUG: print "[lock] signal %s" % what
+        self.store_lock(0)
+        #rstm.should_break_transaction()
+
+    def _test_and_set(self, i, what=''):
+        rstm.increment_atomic()
+        old_value = self.lock()
+        self.store_lock(i)
+        rstm.decrement_atomic()
+        if LOCK_DEBUG: print "[lock] read %s, set %s, %s" % (old_value, i, what)
+        return old_value
+
+    # i = 0 just waits but does not acquire (Barrier)
+    # i = 1 waits and acquires (Mutex)
+    def wait(self, i, what=''):
+        import time
+        if LOCK_DEBUG: print '[lock] %s waits' % what
+
+        # first, we have to wait for the lock
+        while self._test_and_set(1, what):
+            time.sleep(0.005)
+            #rstm.should_break_transaction()
+
+        # then we can modify the lock (i.e. setting it back to 0)
+        self.store_lock(i)
+
+        if LOCK_DEBUG: print '[lock] %s continues' % what
+
+
+class StmProcessWrapper(ProcessWrapper, PartialBarrier):
+
+    # Mis-using priority as lock, we don't need prios :P
+    lock, store_lock = make_int_getter_setter(2)
+
+    def put_to_sleep(self):
+        # Must not queue
+        pass
+
+    def activate(self):
+        # must be activated by STM_FORK primitive
+        pass
+
+    def deactivate(self, w_current_frame):
+        # must not be deactivated from outside
+        pass
+
+    def suspend(self, w_current_frame):
+        # must not be descheduled
+        pass
+
+    def is_active_process(self):
+        # we run in the dark / unseen by the scheduler
+        return False
+
+    def fork(self, w_current_frame):
+        from spyvm.interpreter import StmProcessFork
+        w_frame = self.suspended_context()
+
+        assert isinstance(w_frame, model.W_PointersObject)
+        #print "Breaking interpreter loop for forking"
+        # we need to pass control to the interpreter loop here
+        self.store_lock(1)
+        raise StmProcessFork(w_frame, self._w_self)
+
 
 class LinkedListWrapper(Wrapper):
     first_link, store_first_link = make_getter_setter(0)
@@ -176,6 +250,18 @@ class SchedulerWrapper(Wrapper):
         lists = Wrapper(self.space, self.priority_list())
 
         return ProcessListWrapper(self.space, lists.read(priority))
+
+    def get_highest_priority_process(self):
+        w_lists = self.priority_list()
+        # Asserts as W_PointersObjectonion in the varnish.
+        lists = Wrapper(self.space, w_lists)
+
+        for i in range(w_lists.size() - 1, -1, -1):
+            process_list = ProcessListWrapper(self.space, lists.read(i))
+            if not process_list.is_empty_list():
+                return process_list.first_link()
+
+        raise FatalError("Scheduler could not find a runnable process")
 
     def pop_highest_priority_process(self):
         w_lists = self.priority_list()

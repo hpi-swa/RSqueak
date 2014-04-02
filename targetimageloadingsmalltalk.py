@@ -8,10 +8,8 @@ from rpython.rlib import jit, rpath
 from spyvm import model, interpreter, squeakimage, objspace, wrapper,\
     error, shadow
 from spyvm.tool.analyseimage import create_image
-from spyvm.interpreter_proxy import VirtualMachine
 
-
-def _run_benchmark(interp, number, benchmark, arg):
+def _run_benchmark(interp, number, benchmark, arg, use_stm):
     from spyvm.plugins.vmdebugging import stop_ui_process
     stop_ui_process()
 
@@ -62,7 +60,7 @@ def _run_image(interp):
     except error.Exit, e:
         print e.msg
 
-def _run_code(interp, code, as_benchmark=False):
+def _run_code(interp, code, as_benchmark=False, use_stm=False):
     import time
     selector = "codeTest%d" % int(time.time())
     try:
@@ -96,7 +94,7 @@ def _run_code(interp, code, as_benchmark=False):
                 print w_result.as_repr_string().replace('\r', '\n')
         return 0
     else:
-        return _run_benchmark(interp, 0, selector, "")
+        return _run_benchmark(interp, 0, selector, "", use_stm)
 
 
 space = objspace.ObjSpace()
@@ -123,6 +121,7 @@ def _usage(argv):
           -n|--number [smallint, default: 0]
           -m|--method [benchmark on smallint]
           -a|--arg [string argument to #method]
+          --stm
           -r|--run [code string]
           -b|--benchmark [code string]
           -p|--poll_events
@@ -141,6 +140,7 @@ def entry_point(argv):
     number = 0
     benchmark = None
     trace = False
+    use_stm = False
     evented = True
     stringarg = ""
     code = None
@@ -172,6 +172,8 @@ def entry_point(argv):
             _arg_missing(argv, idx, arg)
             stringarg = argv[idx + 1]
             idx += 1
+        elif arg in ["--stm"]:
+            use_stm = True
         elif arg in ["-r", "--run"]:
             _arg_missing(argv, idx, arg)
             code = argv[idx + 1]
@@ -208,23 +210,30 @@ def entry_point(argv):
     interp = interpreter.Interpreter(space, image, image_name=path, trace=trace, evented=evented)
     space.runtime_setup(argv[0])
     if benchmark is not None:
-        return _run_benchmark(interp, number, benchmark, stringarg)
+        print "Running Benchmark"
+        return _run_benchmark(interp, number, benchmark, stringarg, use_stm)
     elif code is not None:
-        return _run_code(interp, code, as_benchmark=as_benchmark)
+        return _run_code(interp, code, as_benchmark=as_benchmark, use_stm=use_stm)
     else:
+        print "Running Image"
         _run_image(interp)
         return 0
 
 # _____ Define and setup target ___
 
-
 def target(driver, *args):
-    # driver.config.translation.gc = "stmgc"
-    # driver.config.translation.gcrootfinder = "stm"
     from rpython.rlib import rgc
+    driver.exe_name = 'rsqueak'
     if hasattr(rgc, "stm_is_enabled"):
         driver.config.translation.stm = True
         driver.config.translation.thread = True
+        driver.config.translation.gc = "stmgc"
+        driver.config.translation.gcrootfinder = 'stm'
+        driver.config.translation.rweakref = True
+        driver.config.translation.shared = False
+
+        # driver.config.translation.jit = True
+    print driver.config.translation
     return entry_point, None
 
 
