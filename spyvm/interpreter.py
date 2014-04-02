@@ -27,7 +27,6 @@ class Interpreter(object):
                           "max_stack_depth", "interrupt_counter_size",
                           "startup_time", "evented"]
     _w_last_active_context = None
-    cnt = 0
     _last_indent = ""
     jit_driver = jit.JitDriver(
         greens=['pc', 'self', 'method'],
