@@ -1076,7 +1076,16 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
         return self._real_depth_buffer
 
     def __del__(self):
-        lltype.free(self._real_depth_buffer, flavor='raw')
+        raw_free(self._real_depth_buffer, flavor='raw')
+
+
+from rpython.rlib import rgc
+if hasattr(rgc, "stm_is_enabled") and rgc.stm_is_enabled():
+    def raw_free(buf, flavor="raw"):
+        pass # XXX: doesn't work with STM-C7?
+else:
+    def raw_free(buf, flavor="raw"):
+        lltype.free(buf, flavor=flavor)
 
 
 class W_16BitDisplayBitmap(W_DisplayBitmap):
