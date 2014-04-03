@@ -8,6 +8,8 @@ def elidable_for_version(func):
         return func(self, *args)
     def meth(self, *args):
         return elidable_func(self, self.version, *args)
+    elidable_func.func_name = "elidable_" + func.func_name
+    meth.func_name = "elidable_meth_" + func.func_name
     return meth
 
 # In addition to marking the decorated function as "pure", both the receiver
