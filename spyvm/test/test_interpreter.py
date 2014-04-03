@@ -1,8 +1,10 @@
 import py, operator, sys
 from spyvm import model, interpreter, primitives, shadow, objspace, wrapper, constants
-from .util import create_space_interp, copy_to_module, cleanup_module
+from .util import create_space_interp, copy_to_module, cleanup_module, import_bytecodes
 from spyvm.wrapper import PointWrapper
 from spyvm.conftest import option
+
+import_bytecodes(__name__)
 
 def setup_module():
     space, interp = create_space_interp(bootstrap = True)
@@ -35,25 +37,6 @@ def assert_list(list, expected):
         if not isinstance(exp, model.W_Object):
             exp = w(exp)
         assert list[i].is_same_object(exp)
-
-# expose the bytecode's values as global constants.
-# Bytecodes that have a whole range are exposed as global functions:
-# call them with an argument 'n' to get the bytecode number 'base + n'.
-# XXX hackish
-def setup():
-    def make_getter(entry):
-        def get_opcode_chr(n):
-            opcode = entry[0] + n
-            assert entry[0] <= opcode <= entry[1]
-            return chr(opcode)
-        return get_opcode_chr
-    for entry in interpreter.BYTECODE_RANGES:
-        name = entry[-1]
-        if len(entry) == 2:     # no range
-            globals()[name] = chr(entry[0])
-        else:
-            globals()[name] = make_getter(entry)
-setup()
 
 def run_with_faked_primitive_methods(methods, func, active_context=None):
 

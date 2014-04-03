@@ -54,6 +54,24 @@ def cleanup_module(module_name):
         del mod._copied_objects_
         import gc; gc.collect()
 
+def import_bytecodes(module_name):
+    # expose the bytecode's values as global constants.
+    # Bytecodes that have a whole range are exposed as global functions:
+    # call them with an argument 'n' to get the bytecode number 'base + n'.
+    mod = sys.modules[module_name]
+    def make_getter(entry):
+        def get_opcode_chr(n):
+            opcode = entry[0] + n
+            assert entry[0] <= opcode <= entry[1]
+            return chr(opcode)
+        setattr(mod, name, get_opcode_chr)
+    for entry in interpreter.BYTECODE_RANGES:
+        name = entry[-1]
+        if len(entry) == 2:     # no range
+            setattr(mod, name, chr(entry[0]))
+        else:
+            make_getter(entry)
+
 class BootstrappedObjSpace(objspace.ObjSpace):
     
     def bootstrap(self):

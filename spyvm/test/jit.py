@@ -13,36 +13,15 @@ conftest.option = o
 
 from rpython.jit.metainterp.test.test_ajit import LLJitMixin
 
-from .util import bootstrap_class
+from .util import import_bytecodes
 from spyvm import model, interpreter, primitives, shadow
 from spyvm import objspace, squeakimage
 from spyvm.tool.analyseimage import create_squeakimage, create_testimage
 from rpython.rlib.streamio import open_file_as_stream
 
+import_bytecodes(__name__)
+
 space = objspace.ObjSpace()
-
-# expose the bytecode's values as global constants.
-# Bytecodes that have a whole range are exposed as global functions:
-# call them with an argument 'n' to get the bytecode number 'base + n'.
-# XXX hackish
-def setup():
-    def make_getter(entry):
-        def get_opcode_chr(n):
-            opcode = entry[0] + n
-            assert entry[0] <= opcode <= entry[1]
-            return chr(opcode)
-        return get_opcode_chr
-    for entry in interpreter.BYTECODE_RANGES:
-        name = entry[-1]
-        if len(entry) == 2:     # no range
-            globals()[name] = chr(entry[0])
-        else:
-            globals()[name] = make_getter(entry)
-setup()
-
-#
-# Tests
-#
 
 sys.setrecursionlimit(5000)
 
