@@ -93,6 +93,8 @@ def test_method_lookup():
     class mockmethod(object):
         def __init__(self, val):
             self.val = val
+        def set_compiled_in(self, w):
+            pass
     w_class = bootstrap_class(0)
     shadow = w_class.as_class_get_shadow(space)
     shadow.installmethod(w_foo, mockmethod(1))

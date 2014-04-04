@@ -1226,6 +1226,11 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         self.bytes[index0] = character
         self.changed()
     
+    def set_compiled_in(self, w_compiledin):
+        if not self.w_compiledin:
+            self.w_compiledin = w_compiledin
+            self.changed()
+    
     # === Getters ===
         
     def getclass(self, space):
@@ -1277,23 +1282,31 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def compiled_in(self):
         w_compiledin = self.w_compiledin
         if not w_compiledin:
-            literals = self.literals
-            if literals and len(literals) > 0:
-                # (Blue book, p 607) Last of the literals is either the containing class 
-                # or an association with compiledin as a class
-                w_candidate = literals[-1]
-                if isinstance(w_candidate, W_PointersObject) and w_candidate.has_space():
-                    space = w_candidate.space() # Not pretty to steal the space from another object.
-                    if w_candidate.is_class(space):
-                        w_compiledin = w_candidate
-                    elif w_candidate.size() >= 2:
-                        from spyvm import wrapper
-                        association = wrapper.AssociationWrapper(space, w_candidate)
-                        w_candidate = association.value()
-                        if w_candidate.is_class(space):
-                            w_compiledin = w_candidate
+            # If the method has not been looked up from a methoddict yet, try to get the
+            # containing class from it's literals. This should be rare in practice.
+            w_compiledin = self.compiled_in_from_literals()
             self.w_compiledin = w_compiledin
         assert w_compiledin is None or isinstance(w_compiledin, W_PointersObject)
+        return w_compiledin
+    
+    @jit.dont_look_inside # Tracing into this function is useless.
+    def compiled_in_from_literals(self):
+        w_compiledin = None
+        literals = self.literals
+        if literals and len(literals) > 0:
+            # (Blue book, p 607) Last of the literals is either the containing class 
+            # or an association with compiledin as a class
+            w_candidate = literals[-1]
+            if isinstance(w_candidate, W_PointersObject) and w_candidate.has_space():
+                space = w_candidate.space() # Not pretty to steal the space from another object.
+                if w_candidate.is_class(space):
+                    w_compiledin = w_candidate
+                elif w_candidate.size() >= 2:
+                    from spyvm import wrapper
+                    association = wrapper.AssociationWrapper(space, w_candidate)
+                    w_candidate = association.value()
+                    if w_candidate.is_class(space):
+                        w_compiledin = w_candidate
         return w_compiledin
     
     # === Object Access ===
