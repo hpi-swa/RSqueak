@@ -1,6 +1,6 @@
 import sys, weakref
 from spyvm import model, constants, error, wrapper, version
-from spyvm.version import elidable_for_version, constant_for_version
+from spyvm.version import elidable_for_version, constant_for_version, constant_for_version_arg
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib import rarithmetic, objectmodel, jit, longlong2float
 from rpython.rlib.objectmodel import import_from_mixin
@@ -305,14 +305,18 @@ class ClassShadow(AbstractCachingShadow):
             # In Slang the value is read directly as a boxed integer, so that
             # the code gets a "pointer" whose bits are set as above, but
             # shifted one bit to the left and with the lowest bit set to 1.
-
-            # compute the instance size (really the size, not the number of bytes)
+            
+            # Compute the instance size (really the size, not the number of bytes)
             instsize_lo = (classformat >> 1) & 0x3F
             instsize_hi = (classformat >> (9 + 1)) & 0xC0
             self._instance_size = (instsize_lo | instsize_hi) - 1  # subtract hdr
             # decode the instSpec
             format = (classformat >> 7) & 15
             self.instance_varsized = format >= 2
+            
+            # In case of raised exception below.
+            self.changed()
+            
             if format < 4:
                 self.instance_kind = POINTERS
             elif format == 4:
@@ -470,14 +474,16 @@ class ClassShadow(AbstractCachingShadow):
     # _______________________________________________________________
     # Other Methods
 
-    @constant_for_version
+    @constant_for_version_arg
     def lookup(self, w_selector):
         look_in_shadow = self
         while look_in_shadow is not None:
             w_method = look_in_shadow.s_methoddict().find_selector(w_selector)
             if w_method is not None:
                 # Old images don't store compiledin-info in literals.
-                w_method.w_compiledin = look_in_shadow.w_self()
+                if not w_method.w_compiledin:
+                    w_method.w_compiledin = look_in_shadow.w_self()
+                    w_method.changed()
                 return w_method
             look_in_shadow = look_in_shadow._s_superclass
         raise MethodNotFound(self, w_selector)

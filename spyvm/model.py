@@ -16,7 +16,7 @@ that create W_PointersObjects of correct size with attached shadows.
 """
 import sys, weakref
 from spyvm import constants, error, version, storage_statistics
-from spyvm.version import elidable_for_version, constant_for_version
+from spyvm.version import elidable_for_version, constant_for_version, constant_for_version_arg
 
 from rpython.rlib import rrandom, objectmodel, jit, signature
 from rpython.rlib.rarithmetic import intmask, r_uint, r_int
@@ -1164,6 +1164,8 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         header (4 bytes)
         literals (4 bytes each)
         bytecodes  (variable)
+    
+    An optional method trailer can be part of the bytecodes part.
     """
 
     repr_classname = "W_CompiledMethod"
@@ -1176,22 +1178,12 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
                 # Additional info about the method
                 "_likely_methodname", "w_compiledin" ]
 
-### Extension from Squeak 3.9 doc, which we do not implement:
-###        trailer (variable)
-###    The trailer has two variant formats.  In the first variant, the last
-###    byte is at least 252 and the last four bytes represent a source pointer
-###    into one of the sources files (see #sourcePointer).  In the second
-###    variant, the last byte is less than 252, and the last several bytes
-###    are a compressed version of the names of the method's temporary
-###    variables.  The number of bytes used for this purpose is the value of
-###    the last byte in the method.
-
     _likely_methodname = "<unknown>"
     import_from_mixin(version.VersionMixin)
     
     def __init__(self, space, bytecount=0, header=0):
-        self.setheader(space, header)
         self.bytes = ["\x00"] * bytecount
+        self.setheader(space, header)
 
     def fillin(self, space, g_self):
         # Implicitely sets the header, including self.literalsize
@@ -1200,7 +1192,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         self.setbytes(g_self.get_bytes()[self.bytecodeoffset():])
 
     # === Setters ===
-        
+    
     def setheader(self, space, header):
         _primitive, literalsize, islarge, tempsize, argsize = constants.decode_compiled_method_header(header)
         self.literalsize = literalsize
@@ -1215,15 +1207,15 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         
     def setliteral(self, index, w_lit):
         self.literals[index] = w_lit
-        self.changed()
         if index == len(self.literals):
             self.w_compiledin = None
+        self.changed()
     
     def setliterals(self, literals):
         """NOT RPYTHON""" # Only for testing, not safe.
         self.literals = literals
-        self.changed()
         self.w_compiledin = None
+        self.changed()
     
     def setbytes(self, bytes):
         self.bytes = bytes
@@ -1262,7 +1254,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def getheader(self):
         return self.header
 
-    @constant_for_version
+    @constant_for_version_arg
     def getliteral(self, index):
         return self.literals[index]
         
@@ -1276,7 +1268,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         # mc for methods with islarge flag turned on 32
         return 16 + self.islarge * 40 + self.argsize
     
-    @constant_for_version
+    @constant_for_version_arg
     def getbytecode(self, pc):
         assert pc >= 0 and pc < len(self.bytes)
         return self.bytes[pc]
@@ -1368,6 +1360,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         copy = W_CompiledMethod(space, 0, self.getheader())
         copy.bytes = list(self.bytes)
         copy.literals = list(self.literals)
+        copy.changed()
         return copy
 
     def invariant(self):
