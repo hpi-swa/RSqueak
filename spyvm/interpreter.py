@@ -345,9 +345,9 @@ class __extend__(ContextPartShadow):
                                   receiver, receiver.class_shadow(self.space))
 
     def _sendSuperSelector(self, w_selector, argcount, interp):
-        w_compiledin = self.w_method().compiled_in()
-        assert isinstance(w_compiledin, model.W_PointersObject)
-        s_compiledin = w_compiledin.as_class_get_shadow(self.space)
+        compiledin_class = self.w_method().compiled_in()
+        assert isinstance(compiledin_class, model.W_PointersObject)
+        s_compiledin = compiledin_class.as_class_get_shadow(self.space)
         return self._sendSelector(w_selector, argcount, interp, self.w_receiver(),
                                   s_compiledin.s_superclass())
 

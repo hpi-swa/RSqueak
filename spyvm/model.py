@@ -1176,9 +1176,10 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
                 # Main method content
                 "bytes", "literals", 
                 # Additional info about the method
-                "_likely_methodname", "w_compiledin" ]
+                "lookup_selector", "compiledin_class", "lookup_class" ]
 
-    _likely_methodname = "<unknown>"
+    lookup_selector = "<unknown>"
+    lookup_class = None
     import_from_mixin(version.VersionMixin)
     
     def __init__(self, space, bytecount=0, header=0):
@@ -1202,19 +1203,24 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         self._tempsize = tempsize
         self._primitive = _primitive
         self.islarge = islarge
-        self.w_compiledin = None
+        self.compiledin_class = None
         self.changed()
         
     def setliteral(self, index, w_lit):
         self.literals[index] = w_lit
         if index == len(self.literals):
-            self.w_compiledin = None
+            self.compiledin_class = None
         self.changed()
     
     def setliterals(self, literals):
         """NOT RPYTHON""" # Only for testing, not safe.
         self.literals = literals
-        self.w_compiledin = None
+        self.compiledin_class = None
+        self.changed()
+    
+    def set_lookup_class_and_name(self, w_class, selector):
+        self.lookup_class = w_class
+        self.lookup_selector = selector
         self.changed()
     
     def setbytes(self, bytes):
@@ -1225,11 +1231,6 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         assert index0 >= 0
         self.bytes[index0] = character
         self.changed()
-    
-    def set_compiled_in(self, w_compiledin):
-        if not self.w_compiledin:
-            self.w_compiledin = w_compiledin
-            self.changed()
     
     # === Getters ===
         
@@ -1278,36 +1279,32 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         assert pc >= 0 and pc < len(self.bytes)
         return self.bytes[pc]
     
-    @constant_for_version
     def compiled_in(self):
-        w_compiledin = self.w_compiledin
-        if not w_compiledin:
-            # If the method has not been looked up from a methoddict yet, try to get the
-            # containing class from it's literals. This should be rare in practice.
-            w_compiledin = self.compiled_in_from_literals()
-            self.w_compiledin = w_compiledin
-        assert w_compiledin is None or isinstance(w_compiledin, W_PointersObject)
-        return w_compiledin
+        # This method cannot be constant/elidable. Looking up the compiledin-class from
+        # the literals must be done lazily because we cannot analyze the literals
+        # properly during the fillin-phase.
+        
+        # Prefer the information stored in the CompiledMethod literal...
+        result = self.constant_lookup_class()
+        if not result:
+            # ...but fall back to our own information if nothing else available.
+            result = self.constant_compiledin_class()
+            if not result:
+                self.update_compiledin_class_from_literals()
+                result = self.constant_compiledin_class()
+        assert result is None or isinstance(result, W_PointersObject)
+        return result
     
-    @jit.dont_look_inside # Tracing into this function is useless.
-    def compiled_in_from_literals(self):
-        w_compiledin = None
-        literals = self.literals
-        if literals and len(literals) > 0:
-            # (Blue book, p 607) Last of the literals is either the containing class 
-            # or an association with compiledin as a class
-            w_candidate = literals[-1]
-            if isinstance(w_candidate, W_PointersObject) and w_candidate.has_space():
-                space = w_candidate.space() # Not pretty to steal the space from another object.
-                if w_candidate.is_class(space):
-                    w_compiledin = w_candidate
-                elif w_candidate.size() >= 2:
-                    from spyvm import wrapper
-                    association = wrapper.AssociationWrapper(space, w_candidate)
-                    w_candidate = association.value()
-                    if w_candidate.is_class(space):
-                        w_compiledin = w_candidate
-        return w_compiledin
+    @constant_for_version
+    def constant_compiledin_class(self):
+        return self.compiledin_class
+    
+    @constant_for_version
+    def constant_lookup_class(self):
+        return self.lookup_class
+    
+    def safe_compiled_in(self):
+        return self.constant_compiledin_class() or self.constant_lookup_class()
     
     # === Object Access ===
     
@@ -1353,6 +1350,27 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     
     # === Misc ===
     
+    def update_compiledin_class_from_literals(self):
+        # (Blue book, p 607) Last of the literals is either the containing class 
+        # or an association with compiledin as a class
+        literals = self.literals
+        if literals and len(literals) > 0:
+            w_literal = literals[-1]
+            if isinstance(w_literal, W_PointersObject) and w_literal.has_space():
+                space = w_literal.space() # Not pretty to steal the space from another object.
+                compiledin_class = None
+                if w_literal.is_class(space):
+                    compiledin_class = w_literal
+                elif w_literal.size() >= 2:
+                    from spyvm import wrapper
+                    association = wrapper.AssociationWrapper(space, w_literal)
+                    w_literal = association.value()
+                    if w_literal.is_class(space):
+                        compiledin_class = w_literal
+                if compiledin_class:
+                    self.compiledin_class = w_literal
+                    self.changed()
+    
     def _become(self, w_other):
         assert isinstance(w_other, W_CompiledMethod)
         self.argsize, w_other.argsize = w_other.argsize, self.argsize
@@ -1363,8 +1381,8 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         self.header, w_other.header = w_other.header, self.header
         self.literalsize, w_other.literalsize = w_other.literalsize, self.literalsize
         self.islarge, w_other.islarge = w_other.islarge, self.islarge
-        self._likely_methodname, w_other._likely_methodname = w_other._likely_methodname, self._likely_methodname
-        self.w_compiledin, w_other.w_compiledin = w_other.w_compiledin, self.w_compiledin
+        self.lookup_selector, w_other.lookup_selector = w_other.lookup_selector, self.lookup_selector
+        self.compiledin_class, w_other.compiledin_class = w_other.compiledin_class, self.compiledin_class
         W_AbstractObjectWithIdentityHash._become(self, w_other)
         self.changed()
         w_other.changed()
@@ -1373,6 +1391,8 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         copy = W_CompiledMethod(space, 0, self.getheader())
         copy.bytes = list(self.bytes)
         copy.literals = list(self.literals)
+        copy.compiledin_class = self.compiledin_class
+        copy.lookup_selector = self.lookup_selector
         copy.changed()
         return copy
 
@@ -1424,20 +1444,20 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         return "? (no compiledin-info)"
     
     def get_identifier_string(self):
-        return "%s >> #%s" % (self.guess_containing_classname(), self._likely_methodname)
+        return "%s >> #%s" % (self.guess_containing_classname(), self.lookup_selector)
 
     def safe_identifier_string(self):
         if not we_are_translated():
             return self.get_identifier_string()
         # This has the same functionality as get_identifier_string, but without calling any
         # methods in order to avoid side effects that prevent translation.
-        w_class = self.w_compiledin
+        w_class = self.safe_compiled_in()
         if isinstance(w_class, W_PointersObject):
             from spyvm.shadow import ClassShadow
             s_class = w_class.shadow
             if isinstance(s_class, ClassShadow):
-                return "%s >> #%s" % (s_class.getname(), self._likely_methodname)
-        return "#%s" % self._likely_methodname
+                return "%s >> #%s" % (s_class.getname(), self.lookup_selector)
+        return "#%s" % self.lookup_selector
 
 class DetachingShadowError(Exception):
     def __init__(self, old_shadow, new_shadow_class):

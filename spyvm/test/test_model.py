@@ -93,8 +93,6 @@ def test_method_lookup():
     class mockmethod(object):
         def __init__(self, val):
             self.val = val
-        def set_compiled_in(self, w):
-            pass
     w_class = bootstrap_class(0)
     shadow = w_class.as_class_get_shadow(space)
     shadow.installmethod(w_foo, mockmethod(1))
@@ -112,7 +110,7 @@ def test_method_lookup():
     assert subshadow.lookup(w_bar).val == 2
     py.test.raises(MethodNotFound, subshadow.lookup, "zork")
 
-def test_w_compiledin():
+def test_compiledin_class():
     w_super = bootstrap_class(0)
     w_class = bootstrap_class(0, w_superclass=w_super)
     supershadow = w_super.as_class_get_shadow(space)
@@ -124,7 +122,7 @@ def test_w_compiledin():
 def new_object(size=0):
     return model.W_PointersObject(space, None, size)
 
-def test_w_compiledin_assoc():
+def test_compiledin_class_assoc():
     val = bootstrap_class(0)
     assoc = new_object(2)
     assoc.store(space, 0, new_object())
@@ -133,9 +131,9 @@ def test_w_compiledin_assoc():
     meth.setliterals([new_object(), new_object(), assoc ])
     assert meth.compiled_in() == val
     
-def test_w_compiledin_missing():
+def test_compiledin_class_missing():
     meth = model.W_CompiledMethod(space, 0)
-    meth.w_compiledin = None
+    meth.compiledin_class = None
     meth.setliterals([new_object(), new_object() ])
     assert meth.compiled_in() == None
     

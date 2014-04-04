@@ -372,7 +372,7 @@ FAIL = 19
 @expose_primitive(FAIL)
 def func(interp, s_frame, argcount):
     from spyvm.error import Exit
-    if s_frame.w_method()._likely_methodname == 'doesNotUnderstand:':
+    if s_frame.w_method().lookup_selector == 'doesNotUnderstand:':
         print ''
         print s_frame.print_stack()
         w_message = s_frame.peek(0)

@@ -382,9 +382,13 @@ class ClassShadow(AbstractCachingShadow):
             if methoddict is s_new_methoddict:
                 return
             if methoddict: methoddict.s_class = None
-            self._s_methoddict = s_new_methoddict
-            self._s_methoddict.s_class = self
-            
+            self.store_s_methoddict(s_new_methoddict)
+    
+    def store_s_methoddict(self, s_methoddict):
+        s_methoddict.s_class = self
+        s_methoddict.sync_method_cache()
+        self._s_methoddict = s_methoddict
+    
     def attach_s_class(self, s_other):
         self.subclass_s[s_other] = None
 
@@ -480,7 +484,6 @@ class ClassShadow(AbstractCachingShadow):
         while look_in_shadow is not None:
             w_method = look_in_shadow.s_methoddict().find_selector(w_selector)
             if w_method is not None:
-                w_method.set_compiled_in(look_in_shadow.w_self())
                 return w_method
             look_in_shadow = look_in_shadow._s_superclass
         raise MethodNotFound(self, w_selector)
@@ -513,8 +516,7 @@ class ClassShadow(AbstractCachingShadow):
         if self._s_methoddict is None:
             w_methoddict = model.W_PointersObject(self.space, None, 2)
             w_methoddict.store(self.space, 1, model.W_PointersObject(self.space, None, 0))
-            self._s_methoddict = w_methoddict.as_methoddict_get_shadow(self.space)
-            self.s_methoddict().sync_method_cache()
+            self.store_s_methoddict(w_methoddict.as_methoddict_get_shadow(self.space))
         self.s_methoddict().invalid = False
 
     def installmethod(self, w_selector, w_method):
@@ -523,7 +525,7 @@ class ClassShadow(AbstractCachingShadow):
         self.initialize_methoddict()
         self.s_methoddict().methoddict[w_selector] = w_method
         if isinstance(w_method, model.W_CompiledMethod):
-            w_method.w_compiledin = self.w_self()
+            w_method.compiledin_class = self.w_self()
 
 class MethodDictionaryShadow(ListStorageShadow):
 
@@ -537,9 +539,6 @@ class MethodDictionaryShadow(ListStorageShadow):
         self.methoddict = {}
         ListStorageShadow.__init__(self, space, w_self, 0)
 
-    def attach_shadow(self):
-        self.sync_method_cache()
-        
     def update(self):
         self.sync_method_cache()
         
@@ -558,12 +557,6 @@ class MethodDictionaryShadow(ListStorageShadow):
         ListStorageShadow.store(self, n0, w_value)
         self.invalid = True
 
-    def _as_md_entry(self, w_selector):
-        if isinstance(w_selector, model.W_BytesObject):
-            return w_selector.as_string()
-        else:
-            return "%r" % w_selector # use the pointer for this
-
     def sync_method_cache(self):
         if self.size() == 0:
             return
@@ -576,7 +569,10 @@ class MethodDictionaryShadow(ListStorageShadow):
         for i in range(size):
             w_selector = self.w_self().fetch(self.space, constants.METHODDICT_NAMES_INDEX+i)
             if not w_selector.is_nil(self.space):
-                if not isinstance(w_selector, model.W_BytesObject):
+                if isinstance(w_selector, model.W_BytesObject):
+                    selector = w_selector.as_string()
+                else:
+                    selector = "? (non-byteobject selector)"
                     pass
                     # TODO: Check if there's more assumptions about this.
                     #       Putting any key in the methodDict and running with
@@ -588,9 +584,8 @@ class MethodDictionaryShadow(ListStorageShadow):
                                        "CompiledMethods only, for now. "
                                        "If the value observed is nil, our "
                                        "invalidating mechanism may be broken.")
-                selector = self._as_md_entry(w_selector)
                 self.methoddict[w_selector] = w_compiledmethod
-                w_compiledmethod._likely_methodname = selector
+                w_compiledmethod.set_lookup_class_and_name(self.s_class.w_self(), selector)
         if self.s_class:
             self.s_class.changed()
         self.invalid = False
