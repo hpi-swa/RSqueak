@@ -19,7 +19,7 @@ class IllegalStoreError(Exception):
 def get_printable_location(pc, self, method):
     bc = ord(method.bytes[pc])
     name = method.safe_identifier_string()
-    return '%d: [%s]%s (%s)' % (pc, hex(bc), BYTECODE_NAMES[bc], name)
+    return '(%s) [%d]: <%s>%s' % (name, pc, hex(bc), BYTECODE_NAMES[bc])
 
 
 class Interpreter(object):
@@ -825,11 +825,10 @@ def initialize_bytecode_names():
     result = [None] * 256
     for entry in BYTECODE_RANGES:
         if len(entry) == 2:
-            positions = [entry[0]]
+            result[entry[0]] = entry[1]
         else:
-            positions = range(entry[0], entry[1]+1)
-        for pos in positions:
-            result[pos] = entry[-1]
+            for arg, pos in enumerate(range(entry[0], entry[1]+1)):
+                result[pos] = "%s(%s)" % (entry[2], arg)
     assert None not in result
     return result
 
