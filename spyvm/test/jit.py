@@ -75,7 +75,7 @@ def run_image(imagename):
     import targetimageloadingsmalltalk
     interp = load(imagename)
     def interp_run_image():
-        return targetimageloadingsmalltalk._run_image(imagename)
+        return targetimageloadingsmalltalk._run_image(interp)
     return interp_run_image
 
 # ==== The following will build a JIT for the real entry-point.
@@ -129,8 +129,8 @@ def main():
     # ==== These entry-points pre-load the image and then use methods from the entry-point module.
     # ==== This is very close to what actually happens in the VM, but with a pre-loaded image.
     # func = run_benchmark(imagename, "loopTest2", 10000)
-    func = run_code(imagename, "^6+7")
-    # func = run_image(imagename)
+    # func = run_code(imagename, "^6+7", as_benchmark=True)
+    func = run_image(imagename)
     
     # ===== Now we can either simply execute the entry-point, or meta-interpret it (showing all encountered loops).
     # res = func()
