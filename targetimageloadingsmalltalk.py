@@ -18,14 +18,15 @@ def _run_benchmark(interp, number, benchmark, arg):
     from spyvm.plugins.vmdebugging import stop_ui_process
     stop_ui_process()
 
-    scheduler = wrapper.scheduler(interp.space)
+    space = interp.space
+    scheduler = wrapper.scheduler(space)
     w_hpp = scheduler.active_process()
     if space.unwrap_int(scheduler.active_process().fetch(space, 2)) > space.unwrap_int(w_hpp.fetch(space, 2)):
         w_hpp = scheduler.active_process()
     assert isinstance(w_hpp, model.W_PointersObject)
     w_benchmark_proc = model.W_PointersObject(
-        interp.space,
-        w_hpp.getclass(interp.space),
+        space,
+        w_hpp.getclass(space),
         w_hpp.size()
     )
 
@@ -43,7 +44,7 @@ def _run_benchmark(interp, number, benchmark, arg):
     w_benchmark_proc.store(space, 2, space.wrap_int(priority))
 
     # make process eligible for scheduling
-    wrapper.ProcessWrapper(interp.space, w_benchmark_proc).put_to_sleep()
+    wrapper.ProcessWrapper(space, w_benchmark_proc).put_to_sleep()
 
     t1 = time.time()
     w_result = _run_image(interp)
@@ -55,6 +56,7 @@ def _run_benchmark(interp, number, benchmark, arg):
     return -1
 
 def _run_image(interp):
+    space = interp.space
     ap = wrapper.ProcessWrapper(space, wrapper.scheduler(space).active_process())
     w_ctx = ap.suspended_context()
     assert isinstance(w_ctx, model.W_PointersObject)
@@ -67,9 +69,10 @@ def _run_image(interp):
 def _run_code(interp, code, as_benchmark=False):
     import time
     selector = "codeTest%d" % int(time.time())
+    space = interp.space
     try:
         w_result = interp.perform(
-            interp.space.w_SmallInteger,
+            space.w_SmallInteger,
             "compile:classified:notifying:",
             space.wrap_string("%s\r\n%s" % (selector, code)),
             space.wrap_string("spy-run-code"),
@@ -97,21 +100,19 @@ def _run_code(interp, code, as_benchmark=False):
     else:
         return _run_benchmark(interp, 0, selector, "")
 
-
-space = objspace.ObjSpace()
-
 def context_for(interp, number, benchmark, stringarg):
     # XXX: Copied from interpreter >> perform
+    space = interp.space
     argcount = 0 if stringarg == "" else 1
-    w_receiver = interp.space.wrap_int(number)
-    w_selector = interp.perform(interp.space.wrap_string(benchmark), "asSymbol")
+    w_receiver = space.wrap_int(number)
+    w_selector = interp.perform(space.wrap_string(benchmark), "asSymbol")
     w_method = model.W_CompiledMethod(space, header=512)
-    w_method.literalatput0(interp.space, 1, w_selector)
+    w_method.literalatput0(space, 1, w_selector)
     w_method.setbytes([chr(131), chr(argcount << 5), chr(124)]) #returnTopFromMethod
-    s_frame = shadow.MethodContextShadow(interp.space, None, w_method, w_receiver, [])
+    s_frame = shadow.MethodContextShadow(space, None, w_method, w_receiver, [])
     s_frame.push(w_receiver)
     if not stringarg == "":
-        s_frame.push(interp.space.wrap_string(stringarg))
+        s_frame.push(space.wrap_string(stringarg))
     return s_frame
 
 def _usage(argv):
@@ -135,6 +136,7 @@ def _arg_missing(argv, idx, arg):
     if len(argv) == idx + 1:
         raise RuntimeError("Error: missing argument after %s" % arg)
 
+prebuilt_space = objspace.ObjSpace()
 
 def entry_point(argv):
     idx = 1
@@ -209,7 +211,8 @@ def entry_point(argv):
     except OSError as e:
         os.write(2, "%s -- %s (LoadError)\n" % (os.strerror(e.errno), path))
         return 1
-
+    
+    space = prebuilt_space
     image_reader = squeakimage.reader_for_image(space, squeakimage.Stream(data=imagedata))
     image = create_image(space, image_reader)
     interp = interpreter.Interpreter(space, image, image_name=path, trace=trace, evented=evented)
