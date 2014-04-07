@@ -202,13 +202,13 @@ def entry_point(argv):
     path = rpath.rabspath(path)
     try:
         f = open_file_as_stream(path, mode="rb", buffering=0)
+        try:
+            imagedata = f.readall()
+        finally:
+            f.close()
     except OSError as e:
         os.write(2, "%s -- %s (LoadError)\n" % (os.strerror(e.errno), path))
         return 1
-    try:
-        imagedata = f.readall()
-    finally:
-        f.close()
 
     image_reader = squeakimage.reader_for_image(space, squeakimage.Stream(data=imagedata))
     image = create_image(space, image_reader)
