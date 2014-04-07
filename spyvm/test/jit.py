@@ -25,6 +25,7 @@ jit = LLJitMixin()
 # Pass a function inside here to meta-interpret it and show all encountered loops.
 def meta_interp(func):
     res = jit.meta_interp(func, [], listcomp=True, listops=True, backendopt=True, inline=True)
+    print "Finished"
     if res:
         print res.__repr__()
 
@@ -34,7 +35,7 @@ def meta_interp(func):
 def perform(receiver, selector, *args):
     _, interp, _, _ = read_image(imagename)
     def interp_miniloop():
-        interp.perform(receiver, selector, *args)
+        return interp.perform(receiver, selector, *args)
     return interp_miniloop
 
 # This will build a jit executing a synthetic method composed of the given bytecodes and literals,
@@ -49,22 +50,32 @@ def execute_frame(bytes, literals, stack):
     s_frame = shadow.MethodContextShadow(space, None, w_method, w_receiver, [])
     w_frame = s_frame.w_self()
     def interp_execute_bytes_with_stack():
-        interp.loop(w_frame)
+        return interp.loop(w_frame)
     return interp_execute_bytes_with_stack
 
-# This will build a JIT for the entire VM.
-def full_vm():
+# This will build a JIT for the entire VM. Arguments to the VM entry-point must be provided.
+def full_vm(args):
     import targetimageloadingsmalltalk
-    argv = sys.argv
     def interp_full_vm():
-        targetimageloadingsmalltalk.entry_point(argv)
+        return targetimageloadingsmalltalk.entry_point(args)
     return interp_full_vm
+
+def run_vm_code(imagename, code):
+    return full_vm(['images/' + imagename, '-r', code])
+
+def execute_vm_method(imagename, selector, receiver_num = 0, string_arg=None):
+    args = ['images/' + imagename, '-m', selector, '-n', receiver_num]
+    if string_arg:
+        args.extend(['-a', string_arg])
+    return full_vm(args)
 
 def main():
     # func = perform(model.W_SmallInteger(1000), 'loopTest2')
-    # func = perform(model.W_SmallInteger(777), 'name')
-    func = execute_frame([returnReceiver], [], [model.W_SmallInteger(42)])
+    func = perform(model.W_SmallInteger(777), 'name')
+    # func = execute_frame([returnReceiver], [], [model.W_SmallInteger(42)])
     # func = full_vm()
+    
+    # func()
     meta_interp(func)
 
 # This is for execution using pytest.py. This way you can get a pdb on assertion-errors etc.
