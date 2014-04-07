@@ -45,8 +45,7 @@ def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
         MAJOR = major
     def decorator(func):
         len_unwrap_spec = len(unwrap_spec)
-        assert (len_unwrap_spec == len(inspect.getargspec(func)[0]) + 1,
-                "wrong number of arguments")
+        assert len_unwrap_spec == len(inspect.getargspec(func)[0]), "wrong number of arguments"
         unrolling_unwrap_spec = unrolling_iterable(enumerate(unwrap_spec))
         def wrapped(*c_arguments):
             assert len_unwrap_spec == len(c_arguments)
