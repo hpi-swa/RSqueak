@@ -110,8 +110,7 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                     s_frame.push(w_result)
         else:
             len_unwrap_spec = len(unwrap_spec)
-            assert (len_unwrap_spec == len(inspect.getargspec(func)[0]) + 1,
-                    "wrong number of arguments")
+            assert (len_unwrap_spec + 2 == len(inspect.getargspec(func)[0])), "wrong number of arguments"
             unrolling_unwrap_spec = unrolling_iterable(enumerate(unwrap_spec))
             def wrapped(interp, s_frame, argument_count_m1, w_method=None):
                 argument_count = argument_count_m1 + 1 # to account for the rcvr
