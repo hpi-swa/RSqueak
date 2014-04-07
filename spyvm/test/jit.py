@@ -22,12 +22,14 @@ sys.setrecursionlimit(5000)
 import_bytecodes(__name__)
 jit = LLJitMixin()
 
+def print_result(res):
+    if res is not None:
+        print "Result: %r" % res
+
 # Pass a function inside here to meta-interpret it and show all encountered loops.
 def meta_interp(func):
     res = jit.meta_interp(func, [], listcomp=True, listops=True, backendopt=True, inline=True)
-    print "Finished"
-    if res:
-        print res.__repr__()
+    print_result(res)
 
 # ==== The following are factories for functions to be passed into meta_interp() ====
 
@@ -56,26 +58,38 @@ def execute_frame(bytes, literals, stack):
 # This will build a JIT for the entire VM. Arguments to the VM entry-point must be provided.
 def full_vm(args):
     import targetimageloadingsmalltalk
+    full_args = [sys.argv[0]]
+    full_args.extend([ str(a) for a in args ])
     def interp_full_vm():
-        return targetimageloadingsmalltalk.entry_point(args)
+        return targetimageloadingsmalltalk.entry_point(full_args)
     return interp_full_vm
 
-def run_vm_code(imagename, code):
-    return full_vm(['images/' + imagename, '-r', code])
+def open_image(imagename, additional_args = []):
+    args = ["images/" + imagename]
+    args.extend(additional_args)
+    return full_vm(args)
 
-def execute_vm_method(imagename, selector, receiver_num = 0, string_arg=None):
-    args = ['images/' + imagename, '-m', selector, '-n', receiver_num]
+def run_vm_code(imagename, code):
+    return open_image(['-r', code])
+
+def execute_vm_method(imagename, selector, receiver_num = None, string_arg=None):
+    args = ['-m', selector, '-n', receiver_num]
     if string_arg:
         args.extend(['-a', string_arg])
-    return full_vm(args)
+    if receiver_num:
+        args.extend(['-n', receiver_num])
+    return open_image(args)
 
 def main():
     # func = perform(model.W_SmallInteger(1000), 'loopTest2')
-    func = perform(model.W_SmallInteger(777), 'name')
+    # func = perform(model.W_SmallInteger(777), 'name')
     # func = execute_frame([returnReceiver], [], [model.W_SmallInteger(42)])
-    # func = full_vm()
+    # func = run_vm_code("mini.image", "^5+6")
+    # func = execute_vm_method("mini.image", "name", 33)
+    func = open_image("Squeak4.5-noBitBlt.image")
     
-    # func()
+    # import pdb; pdb.set_trace()
+    # print_result(func())
     meta_interp(func)
 
 # This is for execution using pytest.py. This way you can get a pdb on assertion-errors etc.
