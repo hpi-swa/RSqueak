@@ -110,9 +110,14 @@ def full_vm_method(imagename, selector, receiver_num=None, string_arg=None):
 
 def main():
     # ===== First define which image we are going to use.
-    imagename = "mini.image"
+    imagename = "minibluebookdebug.image"
+    # imagename = "mini.image"
     # imagename = "minitest.image"
     # imagename = "Squeak4.5-noBitBlt.image"
+    
+    # ===== Define the code to be executed, if any.
+    # code = "^6+7"
+    code = "10000 timesRepeat: [ 0 makeStackDepth: 10 ]"
     
     # ===== These entry-points pre-load the image and directly execute a single frame.
     # func = preload_perform(imagename, model.W_SmallInteger(1000), 'loopTest2')
@@ -122,15 +127,15 @@ def main():
     # ===== These execute the complete interpreter
     # ===== XXX These do not work because loading the image file while meta-interpreting always leads to 
     # ===== a 'Bad file descriptor' error.
-    # func = full_vm_code(imagename, "^5+6")
+    # func = full_vm_code(imagename, code)
     # func = full_vm_method(imagename, "name", 33)
     # func = full_vm_image(imagename)
     
     # ==== These entry-points pre-load the image and then use methods from the entry-point module.
     # ==== This is very close to what actually happens in the VM, but with a pre-loaded image.
     # func = run_benchmark(imagename, "loopTest2", 10000)
-    # func = run_code(imagename, "^6+7", as_benchmark=True)
-    func = run_image(imagename)
+    func = run_code(imagename, code, as_benchmark=False)
+    # func = run_image(imagename)
     
     # ===== Now we can either simply execute the entry-point, or meta-interpret it (showing all encountered loops).
     # res = func()
