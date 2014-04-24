@@ -368,6 +368,123 @@ class TestBasic(BaseJITTest):
         jump(p0, p3, p8, i557, p538, i562, p18, i545, p38, p40, p42, p44, p46, p48, p50, p52, p54, p56, p58, p60, p62, p64, p66, p68, p70, p72, p74, p76, p78, p80, p82, p84, p86, p88, p90, p92, p94, p96, p98, p100, p102, p104, p106, p108, p110, p112, p114, p116, p118, p120, p122, p124, p126, p128, p130, p132, p134, 1, p148, p717, i158, p156, p718, i165, p163, p146, i715, i179, p178, p719, i197, p188, p213, i221, p220, p228, p140, p242, i250, i252, i282, i293, i328, i315, i349, i510, p509, p538, p521, descr=TargetToken(169555520))]
         """)
 
+     # TODO: there shouldnt be allocations in this
+    def test_range_asOrderedCollection(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir,
+        """
+        (1 to: 10000) asOrderedCollection.
+        """)
+        self.assert_matches(traces[0].loop, """
+ guard_not_invalidated(descr=<Guard0x2b713d0>),
+ p173 = getarrayitem_gc(p53, 1, descr=<ArrayP 4>),
+ i174 = getfield_gc_pure(p173, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>),
+ i175 = int_ge(i174, i167),
+ guard_true(i175, descr=<Guard0x2b81490>),
+ cond_call(i75, 4712800, p67, descr=<Callv 0 r EF=2 OS=121>),
+ cond_call(i103, 4712800, p91, descr=<Callv 0 r EF=2 OS=121>),
+ cond_call(i103, 4712800, p91, descr=<Callv 0 r EF=2 OS=121>),
+ p176 = getarrayitem_gc(p105, 0, descr=<ArrayP 4>),
+ cond_call(i103, 4712800, p91, descr=<Callv 0 r EF=2 OS=121>),
+ p178 = new_with_vtable(ConstClass(W_SmallInteger)),
+ setfield_gc(p178, i167, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>),
+ setarrayitem_gc(p105, 1, p178, descr=<ArrayP 4>),
+ setarrayitem_gc(p79, 0, p176, descr=<ArrayP 4>),
+ setfield_gc(p67, 2, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>),
+ setfield_gc(p67, 15, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>),
+ setfield_gc(p67, p0, descr=<FieldP spyvm.shadow.ContextPartShadow.inst__s_sender 28>),
+ setfield_gc(ConstPtr(ptr81), i88, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>),
+ setarrayitem_gc(p79, 1, p178, descr=<ArrayP 4>),
+ guard_class(p176, 6040288, descr=<Guard0x2b81410>),
+ p179 = getfield_gc(p176, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_s_class 12>),
+ guard_value(p179, ConstPtr(ptr117), descr=<Guard0x2b81390>),
+ p180 = getfield_gc(p176, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>),
+ setarrayitem_gc(p79, 0, ConstPtr(null), descr=<ArrayP 4>),
+ setfield_gc(p67, 0, descr=<FieldU spyvm.shadow.ContextPartShadow.inst__stack_ptr 32>),
+ setfield_gc(ConstPtr(ptr81), i129, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>),
+ setarrayitem_gc(p79, 1, ConstPtr(null), descr=<ArrayP 4>),
+ guard_isnull(p180, descr=<Guard0x2b81310>),
+ p183 = getfield_gc(p176, descr=<FieldP spyvm.model.W_PointersObject.inst_fieldtypes 28>),
+ guard_value(p183, ConstPtr(ptr133), descr=<Guard0x2b81290>),
+ p184 = getfield_gc(p176, descr=<FieldP spyvm.model.W_PointersObject.inst__vars 24>),
+ p185 = getarrayitem_gc(p184, 2, descr=<ArrayP 4>),
+ p186 = getarrayitem_gc(p184, 0, descr=<ArrayP 4>),
+ guard_class(p186, 6040288, descr=<Guard0x2b81210>),
+ p187 = getfield_gc(p186, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_s_class 12>),
+ guard_value(p187, ConstPtr(ptr144), descr=<Guard0x2b81190>),
+ p188 = getfield_gc(p186, descr=<FieldP spyvm.model.W_AbstractPointersObject.inst__shadow 20>),
+ guard_isnull(p188, descr=<Guard0x2b81110>),
+ p189 = getfield_gc(p186, descr=<FieldP spyvm.model.W_PointersObject.inst__vars 24>),
+ i190 = arraylen_gc(p189, descr=<ArrayP 4>),
+ i191 = getfield_gc_pure(p185, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>),
+ i192 = int_eq(i191, i190),
+ guard_false(i192, descr=<Guard0x2b81090>),
+ i193 = int_add_ovf(i191, 1),
+ guard_no_overflow(descr=<Guard0x2b81010>),
+ i194 = int_ge(i191, 0),
+ guard_true(i194, descr=<Guard0x2b71f50>),
+ i195 = int_lt(i191, i190),
+ guard_true(i195, descr=<Guard0x2b71ed0>),
+ p196 = getfield_gc(p186, descr=<FieldP spyvm.model.W_PointersObject.inst_fieldtypes 28>),
+ guard_value(p196, ConstPtr(ptr156), descr=<Guard0x2b71e50>),
+ p197 = new_with_vtable(ConstClass(W_SmallInteger)),
+ setfield_gc(p197, i193, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>),
+ setarrayitem_gc(p184, 2, p197, descr=<ArrayP 4>),
+ setarrayitem_gc(p189, i191, p178, descr=<ArrayP 4>),
+ p198 = getarrayitem_gc(p53, 2, descr=<ArrayP 4>),
+ i199 = getfield_gc_pure(p198, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>),
+ setarrayitem_gc(p79, 0, ConstPtr(null), descr=<ArrayP 4>),
+ setfield_gc(p67, -1, descr=<FieldS spyvm.shadow.ContextPartShadow.inst__pc 24>),
+ setfield_gc(p67, ConstPtr(null), descr=<FieldP spyvm.shadow.ContextPartShadow.inst__s_sender 28>),
+ setfield_gc(ConstPtr(ptr81), i84, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>),
+ i200 = int_add_ovf(i167, i199),
+ guard_no_overflow(descr=<Guard0x2b71dd0>),
+ i201 = int_sub(i170, 8),
+ setfield_gc(ConstPtr(ptr81), i201, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 24>),
+ i202 = int_le(i201, 0),
+ guard_false(i202, descr=<Guard0x2b71d50>),
+ i203 = arraylen_gc(p53, descr=<ArrayP 4>),
+ i204 = arraylen_gc(p79, descr=<ArrayP 4>),
+ i205 = arraylen_gc(p105, descr=<ArrayP 4>),
+ jump(p0, p3, p6, i200, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p53, i75, p67, i103, p91, p105, p79, i88, i90, i129, i84, i201, descr=TargetToken(45055856))]
+        """)
+        
+    def test_indexOf(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir,
+        """
+        (1 to: 10000000) asOrderedCollection indexOf: 9999999.
+        """)
+        # First loop: asOrderedCollection, second loop: makeRoomAtLast
+        self.assert_matches(traces[2].loop, """
+ guard_not_invalidated(descr=<Guard0x2bac7d0>),
+ i127 = int_le(i121, i61),
+ guard_true(i127, descr=<Guard0x2bac790>),
+ setfield_gc(ConstPtr(ptr74), i81, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>),
+ i128 = int_add_ovf(i121, i91),
+ guard_no_overflow(descr=<Guard0x2bac750>),
+ i129 = int_sub(i128, 1),
+ i130 = int_gt(i129, i97),
+ guard_false(i130, descr=<Guard0x2bac710>),
+ i131 = int_sub(i129, 1),
+ i132 = int_ge(i131, 0),
+ guard_true(i132, descr=<Guard0x2bac6d0>),
+ i133 = int_lt(i131, i110),
+ guard_true(i133, descr=<Guard0x2bac690>),
+ p134 = getarrayitem_gc(p109, i131, descr=<ArrayP 4>),
+ setfield_gc(ConstPtr(ptr74), i77, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>),
+ guard_nonnull_class(p134, ConstClass(W_SmallInteger), descr=<Guard0x2bac650>),
+ i135 = getfield_gc_pure(p134, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>),
+ i136 = int_eq(i135, i118),
+ guard_false(i136, descr=<Guard0x2bac610>),
+ i137 = int_add_ovf(i121, 1),
+ guard_no_overflow(descr=<Guard0x2bac5d0>),
+ i138 = int_sub(i124, 6),
+ setfield_gc(ConstPtr(ptr74), i138, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 24>),
+ i139 = int_le(i138, 0),
+ guard_false(i139, descr=<Guard0x2bac590>),
+ i140 = arraylen_gc(p88, descr=<ArrayP 4>),
+ jump(p0, p3, p6, p8, p10, i137, p14, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, p48, p50, p52, i61, i81, i91, p63, p90, i67, i97, p96, p100, i110, p109, i77, i118, i138, p88, descr=TargetToken(45201344))]
+        """)
+        
     @py.test.mark.skipif("'just dozens of long traces'")
     def test_bitblt_draw_windows(self, spy, tmpdir):
         # This used to have a call to array comparison in it

@@ -2,8 +2,8 @@ import subprocess
 import os
 
 # TODO:
-from pypy.tool.jitlogparser.parser import SimpleParser, Op
-from pypy.tool.jitlogparser.storage import LoopStorage
+from rpython.tool.jitlogparser.parser import SimpleParser, Op
+from rpython.tool.jitlogparser.storage import LoopStorage
 
 from rpython.jit.metainterp.resoperation import opname
 from rpython.jit.tool import oparser

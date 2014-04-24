@@ -1,6 +1,6 @@
 import os
 
-from spyvm import constants, model, shadow, wrapper, system
+from spyvm import constants, model, shadow, wrapper, system, version
 from spyvm.error import UnwrappingError, WrappingError, PrimitiveFailedError
 from rpython.rlib import jit, rpath
 from rpython.rlib.objectmodel import instantiate, specialize
@@ -79,7 +79,7 @@ class ObjSpace(object):
         w_Class = self.classtable["w_Class"]
         s_Metaclass = self.classtable["w_Metaclass"].as_class_get_penumbra(self)
         # XXX
-        proto_shadow = w_ProtoObjectClass._shadow
+        proto_shadow = w_ProtoObjectClass.shadow
         proto_shadow.store_w_superclass(w_Class)
         # at this point, all classes that still lack a w_class are themselves
         # metaclasses
@@ -335,7 +335,7 @@ def bootstrap_class(space, instsize, w_superclass=None, w_metaclass=None,
     # XXX
     s = instantiate(shadow.ClassShadow)
     s.space = space
-    s.version = shadow.Version()
+    s.version = version.Version()
     s._w_self = w_class
     s.subclass_s = {}
     s._s_superclass = None

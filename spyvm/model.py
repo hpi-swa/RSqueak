@@ -15,12 +15,14 @@ W_BlockContext and W_MethodContext classes have been replaced by functions
 that create W_PointersObjects of correct size with attached shadows.
 """
 import sys, weakref
-from spyvm import constants, error, system
+from spyvm import constants, error, version, system
+from spyvm.version import elidable_for_version
 
 from rpython.rlib import rrandom, objectmodel, jit, signature
 from rpython.rlib.rarithmetic import intmask, r_uint32, r_uint, r_int
+from rpython.rlib.debug import make_sure_not_resized
 from rpython.tool.pairtype import extendabletype
-from rpython.rlib.objectmodel import instantiate, compute_hash
+from rpython.rlib.objectmodel import instantiate, compute_hash, import_from_mixin
 from rpython.rtyper.lltypesystem import lltype, rffi
 from rsdl import RSDL, RSDL_helper
 
@@ -448,7 +450,7 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
 
     def __str__(self):
         if isinstance(self, W_PointersObject) and self.has_shadow():
-            return self._shadow.getname()
+            return self._get_shadow().getname()
         else:
             name = None
             if self.has_class():
@@ -488,15 +490,20 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
 
 class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     """Common object."""
-    _attrs_ = ['_shadow']
+    _attrs_ = ['shadow']
+    
+    def changed(self):
+        # This is invoked when an instance-variable is changed.
+        # Kept here in case it might be usefull in the future.
+        pass
 
-    _shadow = None # Default value
+    shadow = None # Default value
 
     @jit.unroll_safe
     def __init__(self, space, w_class, size):
         """Create new object with size = fixed + variable size."""
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
-        self._shadow = None # Default value
+        self.store_shadow(None)
 
     def fillin(self, space, g_self):
         from spyvm.fieldtypes import fieldtypes_of
@@ -514,12 +521,12 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
 
     def fetch(self, space, n0):
         if self.has_shadow():
-            return self._shadow.fetch(n0)
+            return self._get_shadow().fetch(n0)
         return self._fetch(n0)
 
     def store(self, space, n0, w_value):
         if self.has_shadow():
-            return self._shadow.store(n0, w_value)
+            return self._get_shadow().store(n0, w_value)
         return self._store(n0, w_value)
 
     def varsize(self, space):
@@ -533,13 +540,17 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
 
     def size(self):
         if self.has_shadow():
-            return self._shadow.size()
+            return self._get_shadow().size()
         return self.basic_size()
 
     def store_shadow(self, shadow):
-        assert self._shadow is None or self._shadow is shadow
-        self._shadow = shadow
+        assert self.shadow is None or self.shadow is shadow
+        self.shadow = shadow
+        self.changed()
 
+    def _get_shadow(self):
+        return self.shadow
+    
     @objectmodel.specialize.arg(2)
     def attach_shadow_of_class(self, space, TheClass):
         shadow = TheClass(space, self)
@@ -549,7 +560,7 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
 
     @objectmodel.specialize.arg(2)
     def as_special_get_shadow(self, space, TheClass):
-        shadow = self._shadow
+        shadow = self._get_shadow()
         if not isinstance(shadow, TheClass):
             if shadow is not None:
                 raise DetachingShadowError(shadow, TheClass)
@@ -568,7 +579,7 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     # Should only be used during squeak-image loading.
     def as_class_get_penumbra(self, space):
         from spyvm.shadow import ClassShadow
-        s_class = self._shadow
+        s_class = self._get_shadow()
         if s_class is None:
             s_class = ClassShadow(space, self)
             self.store_shadow(s_class)
@@ -587,7 +598,7 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     def as_context_get_shadow(self, space):
         from spyvm.shadow import ContextPartShadow
         # XXX TODO should figure out itself if its method or block context
-        if self._shadow is None:
+        if self._get_shadow() is None:
             if ContextPartShadow.is_block_context(self, space):
                 return self.as_blockcontext_get_shadow(space)
             return self.as_methodcontext_get_shadow(space)
@@ -606,17 +617,19 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         return self.as_special_get_shadow(space, ObserveeShadow)
 
     def has_shadow(self):
-        return self._shadow is not None
+        return self._get_shadow() is not None
 
     def become(self, w_other):
         if not isinstance(w_other, W_AbstractPointersObject):
             return False
         # switching means also switching shadows
-        self._shadow, w_other._shadow = w_other._shadow, self._shadow
+        self.shadow, w_other.shadow = w_other.shadow, self.shadow
         # shadow links are in both directions -> also update shadows
-        if    self.has_shadow():    self._shadow._w_self = self
-        if w_other.has_shadow(): w_other._shadow._w_self = w_other
+        if    self.shadow is not None:    self.shadow._w_self = self
+        if w_other.shadow is not None: w_other.shadow._w_self = w_other
         W_AbstractObjectWithClassReference._become(self, w_other)
+        self.changed()
+        w_other.changed()
         return True
 
     @jit.elidable
@@ -633,24 +646,27 @@ class W_PointersObject(W_AbstractPointersObject):
         from spyvm.fieldtypes import fieldtypes_of_length
         """Create new object with size = fixed + variable size."""
         W_AbstractPointersObject.__init__(self, space, w_class, size)
-        vars = self._vars = [None] * size
+        vars = [None] * size
+        self.set_vars(vars)
         self.fieldtypes = fieldtypes_of_length(self.s_class, size)
         for i in range(size): # do it by hand for the JIT's sake
             vars[i] = w_nil
-
+    
+    def set_vars(self, new_vars):
+        self._vars = new_vars
+        make_sure_not_resized(self._vars)
+    
     def fillin(self, space, g_self):
         W_AbstractPointersObject.fillin(self, space, g_self)
         from spyvm.fieldtypes import fieldtypes_of
-        self._vars = g_self.get_pointers()
+        self.set_vars(g_self.get_pointers())
         self.fieldtypes = fieldtypes_of(self)
 
     def _fetch(self, n0):
-        # return self._vars[n0]
         fieldtypes = jit.promote(self.fieldtypes)
         return fieldtypes.fetch(self, n0)
 
     def _store(self, n0, w_value):
-        # self._vars[n0] = w_value
         fieldtypes = jit.promote(self.fieldtypes)
         return fieldtypes.store(self, n0, w_value)
 
@@ -671,7 +687,7 @@ class W_PointersObject(W_AbstractPointersObject):
     def clone(self, space):
         w_result = W_PointersObject(self.space, self.getclass(space),
                                     len(self._vars))
-        w_result._vars = [self.fetch(space, i) for i in range(len(self._vars))]
+        w_result.set_vars([self.fetch(space, i) for i in range(len(self._vars))])
         return w_result
 
     def fieldtype(self):
@@ -996,6 +1012,8 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
     _attrs_ = ['pixelbuffer', '_realsize', '_real_depth_buffer', 'display', '_depth']
     _immutable_fields_ = ['_realsize', 'display', '_depth', '_real_depth_buffer']
 
+    pixelbuffer = None
+    
     @staticmethod
     def create(space, w_class, size, depth, display):
         if depth < 8:
@@ -1202,11 +1220,11 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         if len(self.literals) > 0:
             w_candidate = self.literals[-1]
             if isinstance(w_candidate, W_PointersObject):
-                c_shadow = w_candidate._shadow
+                c_shadow = w_candidate._get_shadow()
                 if c_shadow is None and w_candidate.size() >= 2:
                     w_class = w_candidate._fetch(1)
                     if isinstance(w_class, W_PointersObject):
-                        d_shadow = w_class._shadow
+                        d_shadow = w_class._get_shadow()
                         if isinstance(d_shadow, shadow.ClassShadow):
                             classname = d_shadow.getname()
                 elif isinstance(shadow, shadow.ClassShadow):

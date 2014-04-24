@@ -12,3 +12,5 @@ images/package-cache
 versions
 coglinux
 *.orig
+spy-*.log
+SDL.dll

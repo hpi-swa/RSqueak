@@ -23,8 +23,8 @@ class MockFrame(model.W_PointersObject):
         self.s_class = space.w_MethodContext.as_class_get_shadow(space)
 
     def as_blockcontext_get_shadow(self):
-        self._shadow = shadow.BlockContextShadow(space, self)
-        return self._shadow
+        self.shadow = shadow.BlockContextShadow(space, self)
+        return self.shadow
 
 def wrap(x):
     if isinstance(x, int): return space.wrap_int(x)
@@ -806,13 +806,13 @@ def test_bitblt_copy_bits(monkeypatch):
         interp.image = Image()
 
     try:
-        monkeypatch.setattr(w_frame._shadow, "_sendSelfSelector", perform_mock)
+        monkeypatch.setattr(w_frame.shadow, "_sendSelfSelector", perform_mock)
         monkeypatch.setattr(bitblt.BitBltShadow, "sync_cache", sync_cache_mock)
         with py.test.raises(CallCopyBitsSimulation):
             prim_table[primitives.BITBLT_COPY_BITS](interp, w_frame.as_context_get_shadow(space), argument_count-1)
     finally:
         monkeypatch.undo()
-    assert w_frame._shadow.pop() is mock_bitblt # the receiver
+    assert w_frame.shadow.pop() is mock_bitblt # the receiver
 
 # Note:
 #   primitives.NEXT is unimplemented as it is a performance optimization
