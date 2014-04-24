@@ -223,9 +223,8 @@ def target(driver, *args):
     # driver.config.translation.gcrootfinder = "stm"
     from rpython.rlib import rgc
     if hasattr(rgc, "stm_is_enabled"):
-        pass
-        #driver.config.translation.stm = True
-        #driver.config.translation.thread = True
+        driver.config.translation.stm = True
+        driver.config.translation.thread = True
     return entry_point, None
 
 
