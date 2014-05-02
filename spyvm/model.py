@@ -1076,7 +1076,8 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
         return self._real_depth_buffer
 
     def __del__(self):
-        lltype.free(self._real_depth_buffer, flavor='raw')
+        pass
+        #lltype.free(self._real_depth_buffer, flavor='raw')
 
 
 class W_16BitDisplayBitmap(W_DisplayBitmap):
