@@ -31,7 +31,7 @@ class StorageStatistics(object):
             size = w_obj.size()
             
             key = self.make_key(operation, old_storage, new_storage)
-            if _stats.do_stats:
+            if self.do_stats:
                 self.stat_operation(key, size)
             if self.do_log:
                 if log_classname:
