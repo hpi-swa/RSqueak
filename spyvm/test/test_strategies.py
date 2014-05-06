@@ -177,8 +177,8 @@ def test_Float_store_SmallInt_to_List():
     check_arr(a, [1.2, 2, w_nil, w_nil, w_nil])
 
 def test_statistics_stats():
-    stats = storage_statistics.StorageStatistics()
     col = storage_statistics.DetailedStatisticsCollector()
+    stats = storage_statistics.StorageStatistics()
     col.storage_operation(stats.make_key("B", "old", "new"), 3, None)
     col.storage_operation(stats.make_key("B", "old", "new"), 4, None)
     col.storage_operation(stats.make_key("B", "old2", "new2"), 20, None)
@@ -201,4 +201,22 @@ def test_statistics_log():
     assert s == "Operation (old_storage -> new_storage) of classname size 22"
     s = log.log_string(stats.make_key("InitialOperation", None, "some_new_storage"), 40, "a_classname")
     assert s == "InitialOperation (some_new_storage) of a_classname size 40"
+    
+def test_statistics_stats_dot():
+    col = storage_statistics.DotStatisticsCollector()
+    stats = storage_statistics.StorageStatistics()
+    
+    col.storage_operation(stats.make_key("Switched", "old", "new"), 10, None)
+    col.storage_operation(stats.make_key("Switched", "old", "new"), 10, None)
+    col.storage_operation(stats.make_key("Switched", "new", "new2"), 10, None)
+    col.storage_operation(stats.make_key("Switched", "old2", "new"), 5, None)
+    col.storage_operation(stats.make_key("Initialized", None, "old"), 13, None)
+    col.storage_operation(stats.make_key("Initialized", None, "old"), 10, None)
+    col.storage_operation(stats.make_key("Initialized", None, "old"), 10, None)
+    col.storage_operation(stats.make_key("Initialized", None, "old2"), 15, None)
+    col.storage_operation(stats.make_key("Filledin", None, "old2"), 20, None)
+    col.storage_operation(stats.make_key("Filledin", None, "new"), 10, None)
+    col.storage_operation(stats.make_key("Filledin", None, "new"), 11, None)
+    
+    assert col.dot_string() == ""
     

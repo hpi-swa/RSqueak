@@ -189,6 +189,8 @@ def entry_point(argv):
             storage_statistics.activate_statistics(log=True)
         elif arg == "--strategy-stats":
             storage_statistics.activate_statistics(statistics=True)
+        elif arg == "--strategy-stats-dot":
+            storage_statistics.activate_statistics(dot=True)
         elif arg == "--strategy-stats-details":
             storage_statistics.activate_statistics(statistics=True, detailed_statistics=True)
         elif path is None:
