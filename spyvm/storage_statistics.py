@@ -119,13 +119,16 @@ class DotStatisticsCollector(StatisticsCollector):
         operations_map[key_type] = operations_map[key_type] + 1
         elements_map[key_type] = elements_map[key_type] + size
     
-    def print_result(self):
+    def print_results(self):
         print "Storage Statistics (dot format):"
         print "================================"
+        print "*/" # End the commend started in activate_statistics()
         print self.dot_string()
     
     def dot_string(self):
-		# Unfortunately, this is pretty complicated and messy... Sorry.
+        # Return a string that is valid dot code and can be parsed by the graphviz dot utility.
+        # Unfortunately, this is pretty complicated and messy... Sorry.
+        
         result = "digraph G {"
         result += "loading_image [label=\"Image Loading\",shape=box];"
         result += "created_object [label=\"Object Creation\",shape=box];"
@@ -139,7 +142,7 @@ class DotStatisticsCollector(StatisticsCollector):
                 source_node = key[1]
                 percent_ops = float(operations) / float(self.incoming_operations[source_node]) * 100
                 percent_elements = float(elements) / float(self.incoming_elements[source_node]) * 100
-                label_suffix = "\n%0.2f%% objects\n%0.2f%% elements" % (percent_ops, percent_elements)
+                label_suffix = "\n%d%% objects\n%d%% elements" % (int(percent_ops), int(percent_elements))
             elif operation_type == "Initialized":
                 source_node = "created_object"
             elif operation_type == "Filledin":
@@ -147,7 +150,7 @@ class DotStatisticsCollector(StatisticsCollector):
             else:
                 print "Could not handle storage operation %s" % operation_type
                 continue
-            result += "%s -> %s [label=\"%d (avg %0.2f)%s\"];" % (source_node, target_node, operations, float(elements)/float(operations), label_suffix)
+            result += "%s -> %s [label=\"%d objects\n%d elements per object%s\"];" % (source_node, target_node, operations, elements/operations, label_suffix)
         for type in self.incoming_operations:
             incoming_ops = self.incoming_operations[type]
             incoming_els = self.incoming_elements[type]
@@ -159,8 +162,10 @@ class DotStatisticsCollector(StatisticsCollector):
             else:
                 remaining_ops = incoming_ops
                 remaining_els = incoming_els
-            label += "\nRemaining objects: %d (%0.2f%%)" % (remaining_ops, float(remaining_ops)/incoming_ops*100)
-            label += "\nRemaining elements: %d (%0.2f%%)" % (remaining_els, float(remaining_els)/incoming_els*100)
+            percent_remaining_ops = float(remaining_ops) / incoming_ops * 100
+            percent_remaining_els = float(remaining_els) / incoming_els * 100
+            label += "\nRemaining objects: %d (%d%%)" % (remaining_ops, int(percent_remaining_ops))
+            label += "\nRemaining elements: %d (%d%%)" % (remaining_els, int(percent_remaining_els))
             result += "%s [label=\"%s%s\"];" % (type, type, label)
         result += "}"
         return result
@@ -192,6 +197,8 @@ def activate_statistics(log=False, statistics=False, detailed_statistics=False, 
         _stats.add_module(_detailedcollector)
     if dot:
         _stats.add_module(_dotcollector)
+        # Start a comment in order to make the entire output valid dot code. Hack.
+        print "/*"
 
 def print_statistics():
     _stats.print_results()
