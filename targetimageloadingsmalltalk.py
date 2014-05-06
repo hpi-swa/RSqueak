@@ -127,6 +127,7 @@ def _usage(argv):
           -p|--poll_events
           --strategy-log
           --strategy-stats
+		  --strategy-stats-dot
           --strategy-stats-details
           [image path, default: Squeak.image]
     """ % argv[0]
