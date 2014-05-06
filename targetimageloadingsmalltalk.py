@@ -127,7 +127,7 @@ def _usage(argv):
           -p|--poll_events
           --strategy-log
           --strategy-stats
-          --strategy-stats-with-sizes
+          --strategy-stats-details
           [image path, default: Squeak.image]
     """ % argv[0]
 
@@ -189,8 +189,8 @@ def entry_point(argv):
             storage_statistics.activate_statistics(log=True)
         elif arg == "--strategy-stats":
             storage_statistics.activate_statistics(statistics=True)
-        elif arg == "--strategy-stats-with-sizes":
-            storage_statistics.activate_statistics(statistics=True, statstics_sizes=True)
+        elif arg == "--strategy-stats-details":
+            storage_statistics.activate_statistics(statistics=True, detailed_statistics=True)
         elif path is None:
             path = argv[idx]
         else:

@@ -178,25 +178,27 @@ def test_Float_store_SmallInt_to_List():
 
 def test_statistics_stats():
     stats = storage_statistics.StorageStatistics()
-    stats.stat_operation(stats.make_key("B", "old", "new"), 3)
-    stats.stat_operation(stats.make_key("B", "old", "new"), 4)
-    stats.stat_operation(stats.make_key("B", "old2", "new2"), 20)
-    stats.stat_operation(stats.make_key("B", "old", "new"), 5)
-    stats.stat_operation(stats.make_key("A", "old", "new"), 1)
-    stats.stat_operation(stats.make_key("A", "old", "new"), 2)
-    stats.stat_operation(stats.make_key("C", "old", "new"), 10)
-    stats.stat_operation(stats.make_key("C", "old", "new"), 11)
-    keys = stats.sorted_keys()
+    col = storage_statistics.DetailedStatisticsCollector()
+    col.storage_operation(stats.make_key("B", "old", "new"), 3, None)
+    col.storage_operation(stats.make_key("B", "old", "new"), 4, None)
+    col.storage_operation(stats.make_key("B", "old2", "new2"), 20, None)
+    col.storage_operation(stats.make_key("B", "old", "new"), 5, None)
+    col.storage_operation(stats.make_key("A", "old", "new"), 1, None)
+    col.storage_operation(stats.make_key("A", "old", "new"), 2, None)
+    col.storage_operation(stats.make_key("C", "old", "new"), 10, None)
+    col.storage_operation(stats.make_key("C", "old", "new"), 11, None)
+    keys = col.sorted_keys()
     assert keys == [ ("A", "old", "new"), ("B", "old", "new"), ("B", "old2", "new2"), ("C", "old", "new") ]
-    assert stats.stats[keys[0]] == [1, 2]
-    assert stats.stats[keys[1]] == [3, 4, 5]
-    assert stats.stats[keys[2]] == [20]
-    assert stats.stats[keys[3]] == [10, 11]
+    assert col.stats[keys[0]] == [1, 2]
+    assert col.stats[keys[1]] == [3, 4, 5]
+    assert col.stats[keys[2]] == [20]
+    assert col.stats[keys[3]] == [10, 11]
     
 def test_statistics_log():
     stats = storage_statistics.StorageStatistics()
-    s = stats.log_operation_string(stats.make_key("Operation", "old_storage", "new_storage"), 22, "classname")
+    log = storage_statistics.StatisticsLogger()
+    s = log.log_string(stats.make_key("Operation", "old_storage", "new_storage"), 22, "classname")
     assert s == "Operation (old_storage -> new_storage) of classname size 22"
-    s = stats.log_operation_string(stats.make_key("InitialOperation", None, "some_new_storage"), 40, "a_classname")
+    s = log.log_string(stats.make_key("InitialOperation", None, "some_new_storage"), 40, "a_classname")
     assert s == "InitialOperation (some_new_storage) of a_classname size 40"
     
