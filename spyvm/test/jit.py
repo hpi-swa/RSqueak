@@ -52,7 +52,7 @@ def preload_execute_frame(imagename, bytes, literals, stack):
     s_frame = shadow.MethodContextShadow(space, None, w_method, w_receiver, [])
     w_frame = s_frame.w_self()
     def interp_execute_frame():
-        return interp.loop(w_frame)
+        return interp.interpret_toplevel(w_frame)
     return interp_execute_frame
 
 # ==== The following will pre-load images and build a jit based on methods from the entry-point module

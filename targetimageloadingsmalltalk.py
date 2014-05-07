@@ -68,26 +68,29 @@ def _run_image(interp):
 
 def _run_code(interp, code, as_benchmark=False):
     import time
-    selector = "codeTest%d" % int(time.time())
+    selector = "DoIt%d" % int(time.time())
     space = interp.space
+    w_receiver = space.w_nil
+    w_receiver_class = w_receiver.getclass(space)
     try:
         w_result = interp.perform(
-            space.w_SmallInteger,
+            w_receiver_class,
             "compile:classified:notifying:",
             space.wrap_string("%s\r\n%s" % (selector, code)),
             space.wrap_string("spy-run-code"),
             space.w_nil
         )
+        w_receiver_class.as_class_get_shadow(space).s_methoddict().sync_method_cache()
     except interpreter.ReturnFromTopLevel, e:
         print e.object
         return 1
     except error.Exit, e:
         print e.msg
         return 1
-
+    
     if not as_benchmark:
         try:
-            w_result = interp.perform(space.wrap_int(0), selector)
+            w_result = interp.perform(w_receiver, selector)
         except interpreter.ReturnFromTopLevel, e:
             print e.object
             return 1

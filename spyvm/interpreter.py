@@ -108,7 +108,7 @@ class Interpreter(object):
                 self.step(s_context)
             except Return, nlr:
                 if nlr.s_target_context is not s_context:
-                    if not s_context.is_closure_context() and s_context.w_method().primitive() == 198:
+                    if not s_context.is_closure_context() and method.primitive() == 198:
                         s_context.activate_unwind_context(self)
                     s_context.mark_returned()
                     raise nlr
@@ -201,18 +201,19 @@ class Interpreter(object):
                                             "asSymbol")
         else:
             w_selector = selector
-
+        
         w_method = model.W_CompiledMethod(self.space, header=512)
         w_method.literalatput0(self.space, 1, w_selector)
         assert len(arguments_w) <= 7
         w_method.setbytes([chr(131), chr(len(arguments_w) << 5 + 0), chr(124)]) #returnTopFromMethod
+        w_method.set_lookup_class_and_name(w_receiver.getclass(self.space), "Interpreter.perform")
         s_frame = MethodContextShadow(self.space, None, w_method, w_receiver, [])
         s_frame.push(w_receiver)
         s_frame.push_all(list(arguments_w))
-
+        
         self.interrupt_check_counter = self.interrupt_counter_size
         return self.interpret_toplevel(s_frame.w_self())
-        
+    
 class ReturnFromTopLevel(Exception):
     _attrs_ = ["object"]
     def __init__(self, object):
