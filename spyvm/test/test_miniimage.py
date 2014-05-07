@@ -1,6 +1,6 @@
 import py, math
 from spyvm import squeakimage, model, constants, interpreter, shadow, objspace, wrapper, primitives
-from .util import read_image, open_reader, copy_to_module, cleanup_module
+from .util import read_image, open_reader, copy_to_module, cleanup_module, TestInterpreter
 
 def setup_module():
     space, interp, image, reader = read_image("mini.image")
@@ -213,7 +213,7 @@ def test_runimage():
     w_ctx = ap.suspended_context()
     ap.store_suspended_context(space.w_nil)
 
-    interp = interpreter.Interpreter(space)
+    interp = TestInterpreter(space)
     interp.interpret_toplevel(w_ctx)
 
 def test_compile_method():
@@ -355,7 +355,7 @@ def test_step_run_something():
     s_ctx = w_ctx.as_context_get_shadow(space)
     ap.store_suspended_context(space.w_nil)
 
-    interp = interpreter.Interpreter(space)
+    interp = TestInterpreter(space)
     assert isinstance(s_ctx, shadow.MethodContextShadow)
     assert s_ctx.top().is_same_object(space.w_true)
     interp.step(s_ctx)

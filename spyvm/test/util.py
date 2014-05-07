@@ -17,7 +17,7 @@ def read_image(image_filename, bootstrap = bootstrap_by_default):
     reader.initialize()
     image = squeakimage.SqueakImage()
     image.from_reader(space, reader)
-    interp = interpreter.Interpreter(space, image)
+    interp = TestInterpreter(space, image)
     return space, interp, image, reader
 
 def create_space(bootstrap = bootstrap_by_default):
@@ -28,7 +28,7 @@ def create_space(bootstrap = bootstrap_by_default):
 
 def create_space_interp(bootstrap = bootstrap_by_default):
     space = create_space(bootstrap)
-    interp = interpreter.Interpreter(space)
+    interp = TestInterpreter(space)
     return space, interp
 
 def find_symbol_in_methoddict_of(string, s_class):
@@ -71,6 +71,21 @@ def import_bytecodes(module_name):
             setattr(mod, name, chr(entry[0]))
         else:
             make_getter(entry)
+
+# This interpreter allows fine grained control of the interpretation
+# by manually stepping through the bytecodes, if _loop is set to False.
+class TestInterpreter(interpreter.Interpreter):
+    _loop = False
+    
+    def loop(self, w_active_context):
+        self._loop = True
+        return interpreter.Interpreter.loop(self, w_active_context)
+    
+    def stack_frame(self, s_new_frame, may_context_switch=True):
+        if not self._loop:
+            return s_new_frame # this test is done to not loop in test,
+                               # but rather step just once where wanted
+        return interpreter.Interpreter.stack_frame(self, s_new_frame, may_context_switch)
 
 class BootstrappedObjSpace(objspace.ObjSpace):
     

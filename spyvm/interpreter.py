@@ -38,6 +38,8 @@ class Interpreter(object):
                  evented=True,
                  max_stack_depth=constants.MAX_LOOP_DEPTH):
         import time
+        
+        # === Initialize immutable variables
         self.space = space
         self.image = image
         self.image_name = image_name
@@ -46,22 +48,21 @@ class Interpreter(object):
         else:
             self.startup_time = constants.CompileTime
         self.max_stack_depth = max_stack_depth
-        self.remaining_stack_depth = max_stack_depth
-        self._loop = False
-        self.next_wakeup_tick = 0
         self.evented = evented
         try:
             self.interrupt_counter_size = int(os.environ["SPY_ICS"])
         except KeyError:
             self.interrupt_counter_size = constants.INTERRUPT_COUNTER_SIZE
+        
+        # === Initialize mutable variables
         self.interrupt_check_counter = self.interrupt_counter_size
-        # ######################################################################
+        self.remaining_stack_depth = max_stack_depth
+        self.next_wakeup_tick = 0
         self.trace = trace
         self.trace_proxy = False
 
     def loop(self, w_active_context):
         # just a trampoline for the actual loop implemented in c_loop
-        self._loop = True
         s_new_context = w_active_context.as_context_get_shadow(self.space)
         while True:
             assert self.remaining_stack_depth == self.max_stack_depth
@@ -114,9 +115,6 @@ class Interpreter(object):
                     s_context.push(nlr.value)
 
     def stack_frame(self, s_new_frame, may_context_switch=True):
-        if not self._loop:
-            return s_new_frame # this test is done to not loop in test,
-                               # but rather step just once where wanted
         if self.remaining_stack_depth <= 1:
             raise StackOverflow(s_new_frame)
 
@@ -180,7 +178,7 @@ class Interpreter(object):
             return self.trace
         if objectmodel.we_are_translated() or conftest.option is None:
             return False
-        if primitivies:
+        if primitives:
             return conftest.option.prim_trace
         else:
             return conftest.option.bc_trace

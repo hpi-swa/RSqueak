@@ -5,7 +5,7 @@ from spyvm.plugins import bitblt
 from rpython.rlib.rfloat import INFINITY, NAN, isinf, isnan
 from rpython.rlib.rarithmetic import intmask
 from rpython.rtyper.lltypesystem import lltype, rffi
-from .util import create_space, copy_to_module, cleanup_module
+from .util import create_space, copy_to_module, cleanup_module, TestInterpreter
 from .test_interpreter import _new_frame
 
 def setup_module():
@@ -47,7 +47,7 @@ def mock(space, stack, context = None):
         frame = context
         for i in range(len(stack)):
             frame.as_context_get_shadow(space).push(stack[i])
-    interp = interpreter.Interpreter(space, image_name=IMAGENAME)
+    interp = TestInterpreter(space, image_name=IMAGENAME)
     return interp, frame, len(stack)
 
 def _prim(space, code, stack, context = None):
@@ -595,7 +595,7 @@ def build_up_closure_environment(args, copiedValues=[]):
     closure = space.newClosure(w_frame, 4, #pc
                                 size_arguments, copiedValues)
     s_initial_context.push_all([closure] + args)
-    interp = interpreter.Interpreter(space)
+    interp = TestInterpreter(space)
     s_active_context = prim_table[primitives.CLOSURE_VALUE + size_arguments](interp, s_initial_context, size_arguments)
     return s_initial_context, closure, s_active_context
 
@@ -639,7 +639,7 @@ def test_primitive_next_instance():
     w_frame, s_context = new_frame("<never called, but needed for method generation>")
 
     s_context.push(space.w_Array)
-    interp = interpreter.Interpreter(space)
+    interp = TestInterpreter(space)
     prim_table[primitives.SOME_INSTANCE](interp, s_context, 0)
     w_1 = s_context.pop()
     assert w_1.getclass(space) is space.w_Array
@@ -655,7 +655,7 @@ def test_primitive_next_instance_wo_some_instance_in_same_frame():
     w_frame, s_context = new_frame("<never called, but needed for method generation>")
 
     s_context.push(space.w_Array)
-    interp = interpreter.Interpreter(space)
+    interp = TestInterpreter(space)
     w_1 = someInstances[0]
     assert w_1.getclass(space) is space.w_Array
 
@@ -680,7 +680,7 @@ def test_primitive_value_no_context_switch(monkeypatch):
 
     closure = space.newClosure(w_frame, 4, 0, [])
     s_frame = w_frame.as_methodcontext_get_shadow(space)
-    interp = interpreter.Interpreter(space, image_name=IMAGENAME)
+    interp = TestInterpreter(space, image_name=IMAGENAME)
     interp._loop = True
 
     try:

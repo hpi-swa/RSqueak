@@ -1,6 +1,6 @@
 import py, operator, sys
 from spyvm import model, interpreter, primitives, shadow, objspace, wrapper, constants
-from .util import create_space_interp, copy_to_module, cleanup_module, import_bytecodes
+from .util import create_space_interp, copy_to_module, cleanup_module, import_bytecodes, TestInterpreter
 from spyvm.wrapper import PointWrapper
 from spyvm.conftest import option
 
@@ -985,7 +985,7 @@ def test_stacking_interpreter():
     #         ifTrue: [ 0 ]
     #         ifFalse: [ (testBlock value: aNumber - 1) + aNumber ]].
     # ^ testBlock value: 11
-    interp = interpreter.Interpreter(space, max_stack_depth=3)
+    interp = TestInterpreter(space, max_stack_depth=3)
     #create a method with the correct bytecodes and a literal
     bytes = reduce(operator.add, map(chr, [0x8a, 0x01, 0x68, 0x10, 0x8f, 0x11,
         0x00, 0x11, 0x10, 0x75, 0xb6, 0x9a, 0x75, 0xa4, 0x09, 0x8c, 0x00, 0x01,
@@ -1007,7 +1007,7 @@ def test_stacking_interpreter():
     except interpreter.StackOverflow, e:
         assert False
     try:
-        interp = interpreter.Interpreter(space, None, "", max_stack_depth=10)
+        interp = TestInterpreter(space, image_name="", max_stack_depth=10)
         interp._loop = True
         interp.c_loop(w_method.create_frame(space, space.wrap_int(0), []))
     except interpreter.StackOverflow, e:
@@ -1015,7 +1015,7 @@ def test_stacking_interpreter():
     except interpreter.ReturnFromTopLevel, e:
         assert False
 
-class StackTestInterpreter(interpreter.Interpreter):
+class StackTestInterpreter(TestInterpreter):
     def stack_frame(self, w_frame, may_interrupt=True):
         stack_depth = self.max_stack_depth - self.remaining_stack_depth
         for i in range(stack_depth + 1):
