@@ -62,7 +62,7 @@ def _run_image(interp):
     assert isinstance(w_ctx, model.W_PointersObject)
     ap.store_suspended_context(space.w_nil)
     try:
-        return interp.interpret_with_w_frame(w_ctx)
+        return interp.interpret_toplevel(w_ctx)
     except error.Exit, e:
         print e.msg
 

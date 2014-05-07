@@ -214,7 +214,7 @@ def test_runimage():
     ap.store_suspended_context(space.w_nil)
 
     interp = interpreter.Interpreter(space)
-    interp.interpret_with_w_frame(w_ctx)
+    interp.interpret_toplevel(w_ctx)
 
 def test_compile_method():
     sourcecode = """fib

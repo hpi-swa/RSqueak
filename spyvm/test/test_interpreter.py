@@ -461,7 +461,7 @@ def test_fibWithArgument():
     s_frame.w_method().setliterals(literals)
     s_frame.push(w_object)
     s_frame.push(space.wrap_int(8))
-    result = interp.interpret_with_w_frame(w_frame)
+    result = interp.interpret_toplevel(w_frame)
     assert space.unwrap_int(result) == 34
 
 def test_send_to_primitive():
@@ -701,7 +701,7 @@ def interpret_bc(bcodes, literals, receiver=None):
     bcode = "".join([chr(x) for x in bcodes])
     w_frame, s_frame = new_frame(bcode, receiver=receiver)
     s_frame.w_method().setliterals(literals)
-    return interp.interpret_with_w_frame(w_frame)
+    return interp.interpret_toplevel(w_frame)
 
 # tests: bytecodePrimValue & bytecodePrimValueWithArg
 def test_bc_3_plus_4():

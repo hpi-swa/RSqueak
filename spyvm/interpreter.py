@@ -60,19 +60,6 @@ class Interpreter(object):
         self.trace = trace
         self.trace_proxy = False
 
-    def interpret_with_w_frame(self, w_frame):
-        try:
-            self.loop(w_frame)
-        except ReturnFromTopLevel, e:
-            return e.object
-
-    def should_trace(self, primitives=False):
-        if objectmodel.we_are_translated() or conftest.option is None:
-            return False
-        if not primitives:
-            return conftest.option.bc_trace
-        return conftest.option.prim_trace
-
     def loop(self, w_active_context):
         # just a trampoline for the actual loop implemented in c_loop
         self._loop = True
@@ -108,8 +95,7 @@ class Interpreter(object):
             pc = s_context.pc()
             if pc < old_pc:
                 if jit.we_are_jitted():
-                    self.quick_check_for_interrupt(s_context,
-                                    dec=self._get_adapted_tick_counter())
+                    self.jitted_check_for_interrupt(s_context)
                 self.jit_driver.can_enter_jit(
                     pc=pc, self=self, method=method,
                     s_context=s_context)
@@ -128,14 +114,6 @@ class Interpreter(object):
                 else:
                     s_context.push(nlr.value)
 
-    def _get_adapted_tick_counter(self):
-        # Normally, the tick counter is decremented by 1 for every message send.
-        # Since we don't know how many messages are called during this trace, we
-        # just decrement by 100th of the trace length (num of bytecodes).
-        trace_length = jit.current_trace_length()
-        decr_by = int(trace_length // 100)
-        return max(decr_by, 1)
-
     def stack_frame(self, s_new_frame, may_context_switch=True):
         if not self._loop:
             return s_new_frame # this test is done to not loop in test,
@@ -150,30 +128,17 @@ class Interpreter(object):
             self.remaining_stack_depth += 1
         return retval
 
-    def perform(self, w_receiver, selector, *arguments_w):
-        if isinstance(selector, str):
-            if selector == "asSymbol":
-                w_selector = self.image.w_asSymbol
-            else:
-                w_selector = self.perform(self.space.wrap_string(selector),
-                                            "asSymbol")
-        else:
-            w_selector = selector
-
-        w_method = model.W_CompiledMethod(self.space, header=512)
-        w_method.literalatput0(self.space, 1, w_selector)
-        assert len(arguments_w) <= 7
-        w_method.setbytes([chr(131), chr(len(arguments_w) << 5 + 0), chr(124)]) #returnTopFromMethod
-        s_frame = MethodContextShadow(self.space, None, w_method, w_receiver, [])
-        s_frame.push(w_receiver)
-        s_frame.push_all(list(arguments_w))
-
-        self.interrupt_check_counter = self.interrupt_counter_size
-        try:
-            self.loop(s_frame.w_self())
-        except ReturnFromTopLevel, e:
-            return e.object
-
+	# ============== Methods for handling user interrupts ==============
+	
+	def jitted_check_for_interrupt(self, s_frame):
+		# Normally, the tick counter is decremented by 1 for every message send.
+        # Since we don't know how many messages are called during this trace, we
+        # just decrement by 100th of the trace length (num of bytecodes).
+        trace_length = jit.current_trace_length()
+        decr_by = int(trace_length // 100)
+        decr_by = max(decr_by, 1)
+		self.quick_check_for_interrupt(s_frame, decr_by)
+	
     def quick_check_for_interrupt(self, s_frame, dec=1):
         self.interrupt_check_counter -= dec
         if self.interrupt_check_counter <= 0:
@@ -206,9 +171,47 @@ class Interpreter(object):
         from rpython.rlib.rarithmetic import intmask
         return intmask(int((time.time() - self.startup_time) * 1000) & constants.TAGGED_MASK)
 
-    def padding(self, symbol=' '):
+	# ============== Methods for the tracing functionality ==============
+		
+	def padding(self, symbol=' '):
         return symbol * (self.max_stack_depth - self.remaining_stack_depth)
+		
+    def should_trace(self, primitives=False):
+        if objectmodel.we_are_translated() or conftest.option is None:
+            return False
+        if not primitives:
+            return conftest.option.bc_trace
+        return conftest.option.prim_trace
+		
+	# ============== Convenience methods for executing code ==============
+	
+	def interpret_toplevel(self, w_frame):
+        try:
+            self.loop(w_frame)
+        except ReturnFromTopLevel, e:
+            return e.object
+		
+    def perform(self, w_receiver, selector, *arguments_w):
+        if isinstance(selector, str):
+            if selector == "asSymbol":
+                w_selector = self.image.w_asSymbol
+            else:
+                w_selector = self.perform(self.space.wrap_string(selector),
+                                            "asSymbol")
+        else:
+            w_selector = selector
 
+        w_method = model.W_CompiledMethod(self.space, header=512)
+        w_method.literalatput0(self.space, 1, w_selector)
+        assert len(arguments_w) <= 7
+        w_method.setbytes([chr(131), chr(len(arguments_w) << 5 + 0), chr(124)]) #returnTopFromMethod
+        s_frame = MethodContextShadow(self.space, None, w_method, w_receiver, [])
+        s_frame.push(w_receiver)
+        s_frame.push_all(list(arguments_w))
+
+        self.interrupt_check_counter = self.interrupt_counter_size
+		return self.interpret_toplevel(s_frame.w_self())
+		
 class ReturnFromTopLevel(Exception):
     _attrs_ = ["object"]
     def __init__(self, object):
