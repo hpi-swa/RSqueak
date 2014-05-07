@@ -26,8 +26,7 @@ class Interpreter(object):
     _immutable_fields_ = ["space", "image", "image_name",
                           "max_stack_depth", "interrupt_counter_size",
                           "startup_time", "evented"]
-    _w_last_active_context = None
-    _last_indent = ""
+    
     jit_driver = jit.JitDriver(
         greens=['pc', 'self', 'method'],
         reds=['s_context'],
@@ -82,7 +81,7 @@ class Interpreter(object):
                     s_new_context = s_sender
                 s_new_context.push(nlr.value)
             except ProcessSwitch, p:
-                if self.trace:
+                if self.tracing():
                     print "====== Switch from: %s to: %s ======" % (s_new_context.short_str(), p.s_new_context.short_str())
                 s_new_context = p.s_new_context
 
@@ -128,17 +127,17 @@ class Interpreter(object):
             self.remaining_stack_depth += 1
         return retval
 
-	# ============== Methods for handling user interrupts ==============
-	
-	def jitted_check_for_interrupt(self, s_frame):
-		# Normally, the tick counter is decremented by 1 for every message send.
+    # ============== Methods for handling user interrupts ==============
+    
+    def jitted_check_for_interrupt(self, s_frame):
+        # Normally, the tick counter is decremented by 1 for every message send.
         # Since we don't know how many messages are called during this trace, we
         # just decrement by 100th of the trace length (num of bytecodes).
         trace_length = jit.current_trace_length()
         decr_by = int(trace_length // 100)
         decr_by = max(decr_by, 1)
-		self.quick_check_for_interrupt(s_frame, decr_by)
-	
+        self.quick_check_for_interrupt(s_frame, decr_by)
+    
     def quick_check_for_interrupt(self, s_frame, dec=1):
         self.interrupt_check_counter -= dec
         if self.interrupt_check_counter <= 0:
@@ -171,26 +170,29 @@ class Interpreter(object):
         from rpython.rlib.rarithmetic import intmask
         return intmask(int((time.time() - self.startup_time) * 1000) & constants.TAGGED_MASK)
 
-	# ============== Methods for the tracing functionality ==============
-		
-	def padding(self, symbol=' '):
+    # ============== Methods for the tracing functionality ==============
+    
+    def padding(self, symbol=' '):
         return symbol * (self.max_stack_depth - self.remaining_stack_depth)
-		
-    def should_trace(self, primitives=False):
+    
+    def tracing(self, check_conftest=False, primitives=False):
+        if not check_conftest:
+            return self.trace
         if objectmodel.we_are_translated() or conftest.option is None:
             return False
-        if not primitives:
+        if primitivies:
+            return conftest.option.prim_trace
+        else:
             return conftest.option.bc_trace
-        return conftest.option.prim_trace
-		
-	# ============== Convenience methods for executing code ==============
-	
-	def interpret_toplevel(self, w_frame):
+        
+    # ============== Convenience methods for executing code ==============
+    
+    def interpret_toplevel(self, w_frame):
         try:
             self.loop(w_frame)
         except ReturnFromTopLevel, e:
             return e.object
-		
+        
     def perform(self, w_receiver, selector, *arguments_w):
         if isinstance(selector, str):
             if selector == "asSymbol":
@@ -210,8 +212,8 @@ class Interpreter(object):
         s_frame.push_all(list(arguments_w))
 
         self.interrupt_check_counter = self.interrupt_counter_size
-		return self.interpret_toplevel(s_frame.w_self())
-		
+        return self.interpret_toplevel(s_frame.w_self())
+        
 class ReturnFromTopLevel(Exception):
     _attrs_ = ["object"]
     def __init__(self, object):
@@ -356,9 +358,9 @@ class __extend__(ContextPartShadow):
 
     def _sendSelector(self, w_selector, argcount, interp,
                       receiver, receiverclassshadow):
-        if interp.should_trace():
+        if interp.tracing(check_conftest=True):
             print "%sSending selector #%s to %r with: %r" % (
-                interp._last_indent, w_selector.str_content(), receiver,
+                interp.padding(), w_selector.str_content(), receiver,
                 [self.peek(argcount-1-i) for i in range(argcount)])
         assert argcount >= 0
 
@@ -378,7 +380,7 @@ class __extend__(ContextPartShadow):
         self.pop() # receiver
 
         # ######################################################################
-        if interp.trace:
+        if interp.tracing():
             print interp.padding() + s_frame.short_str()
 
         return interp.stack_frame(s_frame)
@@ -403,7 +405,7 @@ class __extend__(ContextPartShadow):
         self.pop()
 
         # ######################################################################
-        if interp.trace:
+        if interp.tracing():
             print '%s%s missing: #%s' % (interp.padding('#'), s_frame.short_str(), w_selector.str_content())
             if not objectmodel.we_are_translated():
                 import pdb; pdb.set_trace()
@@ -412,23 +414,20 @@ class __extend__(ContextPartShadow):
 
     def _call_primitive(self, code, interp, argcount, w_method, w_selector):
         # the primitive pushes the result (if any) onto the stack itself
-        if interp.should_trace():
-            print "%sActually calling primitive %d" % (interp._last_indent, code,)
+        if interp.tracing(check_conftest=True):
+            print "%sActually calling primitive %d" % (interp.padding(), code,)
         func = primitives.prim_holder.prim_table[code]
         # ##################################################################
-        if interp.trace:
+        if interp.tracing():
             print "%s-> primitive %d \t(in %s, named #%s)" % (
-                ' ' * (interp.max_stack_depth - interp.remaining_stack_depth),
-                    code, self.w_method().get_identifier_string(), w_selector.str_content())
+                    interp.padding(), code, self.w_method().get_identifier_string(), w_selector.str_content())
         try:
             # note: argcount does not include rcvr
             return func(interp, self, argcount, w_method)
         except primitives.PrimitiveFailedError, e:
-            if interp.trace:
-                print "%s primitive FAILED" % (
-                ' ' * (interp.max_stack_depth - interp.remaining_stack_depth),)
-
-            if interp.should_trace(True):
+            if interp.tracing():
+                print "%s primitive FAILED" % interp.padding()
+            if interp.tracing(check_conftest=True, primitives=True):
                 print "PRIMITIVE FAILED: %d #%s" % (w_method.primitive, w_selector.str_content())
             raise e
 
@@ -440,7 +439,7 @@ class __extend__(ContextPartShadow):
         # unfortunately, the assert below is not true for some tests
         # assert self._stack_ptr == self.tempsize()
 
-        if interp.trace:
+        if interp.tracing():
             print '%s<- %s' % (interp.padding(), return_value.as_repr_string())
         raise Return(return_value, s_return_to)
 
