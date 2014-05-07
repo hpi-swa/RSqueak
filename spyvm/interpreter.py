@@ -83,7 +83,7 @@ class Interpreter(object):
                     s_new_context = s_sender
                 s_new_context.push(nlr.value)
             except ProcessSwitch, p:
-                if self.tracing():
+                if self.trace:
                     print "====== Switch from: %s to: %s ======" % (s_new_context.short_str(), p.s_new_context.short_str())
                 s_new_context = p.s_new_context
 
@@ -169,21 +169,6 @@ class Interpreter(object):
         from rpython.rlib.rarithmetic import intmask
         return intmask(int((time.time() - self.startup_time) * 1000) & constants.TAGGED_MASK)
 
-    # ============== Methods for the tracing functionality ==============
-    
-    def padding(self, symbol=' '):
-        return symbol * (self.max_stack_depth - self.remaining_stack_depth)
-    
-    def tracing(self, check_conftest=False, primitives=False):
-        if not check_conftest:
-            return self.trace
-        if objectmodel.we_are_translated() or conftest.option is None:
-            return False
-        if primitives:
-            return conftest.option.prim_trace
-        else:
-            return conftest.option.bc_trace
-        
     # ============== Convenience methods for executing code ==============
     
     def interpret_toplevel(self, w_frame):
@@ -191,7 +176,7 @@ class Interpreter(object):
             self.loop(w_frame)
         except ReturnFromTopLevel, e:
             return e.object
-        
+
     def perform(self, w_receiver, selector, *arguments_w):
         if isinstance(selector, str):
             if selector == "asSymbol":
@@ -214,6 +199,9 @@ class Interpreter(object):
         self.interrupt_check_counter = self.interrupt_counter_size
         return self.interpret_toplevel(s_frame.w_self())
     
+    def padding(self, symbol=' '):
+        return symbol * (self.max_stack_depth - self.remaining_stack_depth)
+
 class ReturnFromTopLevel(Exception):
     _attrs_ = ["object"]
     def __init__(self, object):
@@ -358,17 +346,12 @@ class __extend__(ContextPartShadow):
 
     def _sendSelector(self, w_selector, argcount, interp,
                       receiver, receiverclassshadow):
-        if interp.tracing(check_conftest=True):
-            print "%sSending selector #%s to %r with: %r" % (
-                interp.padding(), w_selector.str_content(), receiver,
-                [self.peek(argcount-1-i) for i in range(argcount)])
         assert argcount >= 0
-
         try:
             w_method = receiverclassshadow.lookup(w_selector)
         except MethodNotFound:
             return self._doesNotUnderstand(w_selector, argcount, interp, receiver)
-
+        
         code = w_method.primitive()
         if code:
             try:
@@ -380,11 +363,25 @@ class __extend__(ContextPartShadow):
         self.pop() # receiver
 
         # ######################################################################
-        if interp.tracing():
+        if interp.trace:
             print interp.padding() + s_frame.short_str()
 
         return interp.stack_frame(s_frame)
 
+    def _sendSpecialSelector(self, interp, receiver, special_selector, w_args=[]):
+        w_special_selector = self.space.objtable["w_" + special_selector]
+        s_class = receiver.class_shadow(self.space)
+        w_method = s_class.lookup(w_special_selector)
+        s_frame = w_method.create_frame(interp.space, receiver, w_args, self)
+        
+        # ######################################################################
+        if interp.trace:
+            print '%s %s %s: #%s' % (interp.padding('#'), special_selector, s_frame.short_str(), w_args)
+            if not objectmodel.we_are_translated():
+                import pdb; pdb.set_trace()
+        
+        return interp.stack_frame(s_frame)
+    
     def _doesNotUnderstand(self, w_selector, argcount, interp, receiver):
         arguments = self.pop_and_return_n(argcount)
         w_message_class = self.space.classtable["w_Message"]
@@ -393,44 +390,35 @@ class __extend__(ContextPartShadow):
         w_message = s_message_class.new()
         w_message.store(self.space, 0, w_selector)
         w_message.store(self.space, 1, self.space.wrap_list(arguments))
-        s_class = receiver.class_shadow(self.space)
+        self.pop() # The receiver, already known.
+        
         try:
-            w_method = s_class.lookup(self.space.objtable["w_doesNotUnderstand"])
+            return self._sendSpecialSelector(interp, receiver, "doesNotUnderstand", [w_message])
         except MethodNotFound:
             from spyvm.shadow import ClassShadow
+            s_class = receiver.class_shadow(self.space)
             assert isinstance(s_class, ClassShadow)
-            print "Missing doesDoesNotUnderstand in hierarchy of %s" % s_class.getname()
+            print "Missing doesNotUnderstand in hierarchy of %s" % s_class.getname()
             raise
-        s_frame = w_method.create_frame(interp.space, receiver, [w_message], self)
-        self.pop()
-
-        # ######################################################################
-        if interp.tracing():
-            print '%s%s missing: #%s' % (interp.padding('#'), s_frame.short_str(), w_selector.str_content())
-            if not objectmodel.we_are_translated():
-                import pdb; pdb.set_trace()
-
-        return interp.stack_frame(s_frame)
-
+    
+    def _mustBeBoolean(self, interp, receiver):
+        return self._sendSpecialSelector(interp, receiver, "mustBeBoolean")
+    
     def _call_primitive(self, code, interp, argcount, w_method, w_selector):
-        # the primitive pushes the result (if any) onto the stack itself
-        if interp.tracing(check_conftest=True):
-            print "%sActually calling primitive %d" % (interp.padding(), code,)
-        func = primitives.prim_holder.prim_table[code]
         # ##################################################################
-        if interp.tracing():
+        if interp.trace:
             print "%s-> primitive %d \t(in %s, named #%s)" % (
                     interp.padding(), code, self.w_method().get_identifier_string(), w_selector.str_content())
+        func = primitives.prim_holder.prim_table[code]
         try:
             # note: argcount does not include rcvr
+            # the primitive pushes the result (if any) onto the stack itself
             return func(interp, self, argcount, w_method)
         except primitives.PrimitiveFailedError, e:
-            if interp.tracing():
-                print "%s primitive FAILED" % interp.padding()
-            if interp.tracing(check_conftest=True, primitives=True):
-                print "PRIMITIVE FAILED: %d #%s" % (w_method.primitive, w_selector.str_content())
+            if interp.trace:
+                print "%s primitive %d FAILED\t (in %s, named %s)" % (
+                    interp.padding(), code, w_method.safe_identifier_string(), w_selector.str_content())
             raise e
-
 
     def _return(self, return_value, interp, s_return_to):
         # for tests, when returning from the top-level context
@@ -439,7 +427,7 @@ class __extend__(ContextPartShadow):
         # unfortunately, the assert below is not true for some tests
         # assert self._stack_ptr == self.tempsize()
 
-        if interp.tracing():
+        if interp.trace:
             print '%s<- %s' % (interp.padding(), return_value.as_repr_string())
         raise Return(return_value, s_return_to)
 
@@ -642,10 +630,20 @@ class __extend__(ContextPartShadow):
     def jump(self, offset):
         self.store_pc(self.pc() + offset)
 
-    def jumpConditional(self,bool,position):
-        if self.top() == bool: # XXX this seems wrong?
+    def jumpConditional(self, interp, expecting_true, position):
+        if expecting_true:
+            w_expected = interp.space.w_true
+            w_alternative = interp.space.w_false
+        else:
+            w_alternative = interp.space.w_true
+            w_expected = interp.space.w_false
+        
+        # Don't check the class, just compare with only two instances.
+        w_bool = self.pop()
+        if w_expected.is_same_object(w_bool):
             self.jump(position)
-        self.pop()
+        elif not w_alternative.is_same_object(w_bool):
+            self._mustBeBoolean(interp, w_bool)
 
     def shortJumpPosition(self, current_bytecode):
         return (current_bytecode & 7) + 1
@@ -654,8 +652,8 @@ class __extend__(ContextPartShadow):
         self.jump(self.shortJumpPosition(current_bytecode))
 
     def shortConditionalJump(self, interp, current_bytecode):
-        self.jumpConditional(
-                interp.space.w_false, self.shortJumpPosition(current_bytecode))
+        # The conditional jump is "jump on false"
+        self.jumpConditional(interp, False, self.shortJumpPosition(current_bytecode))
 
     def longUnconditionalJump(self, interp, current_bytecode):
         self.jump((((current_bytecode & 7) - 4) << 8) + self.getbytecode())
@@ -664,11 +662,10 @@ class __extend__(ContextPartShadow):
         return ((current_bytecode & 3) << 8) + self.getbytecode()
 
     def longJumpIfTrue(self, interp, current_bytecode):
-        self.jumpConditional(interp.space.w_true, self.longJumpPosition(current_bytecode))
+        self.jumpConditional(interp, True, self.longJumpPosition(current_bytecode))
 
     def longJumpIfFalse(self, interp, current_bytecode):
-        self.jumpConditional(interp.space.w_false, self.longJumpPosition(current_bytecode))
-
+        self.jumpConditional(interp, False, self.longJumpPosition(current_bytecode))
 
     bytecodePrimAdd = make_call_primitive_bytecode(primitives.ADD, "+", 1)
     bytecodePrimSubtract = make_call_primitive_bytecode(primitives.SUBTRACT, "-", 1)

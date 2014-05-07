@@ -333,12 +333,23 @@ def test_doesNotUnderstand():
     assert isinstance(w_dnu, model.W_BytesObject)
     assert w_dnu.as_string() == "doesNotUnderstand:"
 
+def test_mustBeBoolean():
+    w_mbb = interp.space.objtable["w_mustBeBoolean"]
+    assert isinstance(w_mbb, model.W_BytesObject)
+    assert w_mbb.as_string() == "mustBeBoolean"
+    
 def test_run_doesNotUnderstand():
     space, interp, _, _ = read_image('running-something-mini.image')
     w_result = interp.perform(interp.space.wrap_int(0), "runningADNU")
     assert isinstance(w_result, model.W_BytesObject)
     assert w_result.as_string() == "foobarThis:doesNotExist:('pypy' 'heya' )"
 
+def test_run_mustBeBoolean():
+    space, interp, _, _ = read_image('running-something-mini.image')
+    w_result = interp.perform(interp.space.wrap_int(0), "runningMustBeBoolean")
+    assert isinstance(w_result, model.W_BytesObject)
+    assert w_result.as_string() == "mustBeBoolean has been called"
+    
 def test_Message():
     w_message_cls = interp.space.w_Message
     assert w_message_cls is interp.space.classtable["w_Message"]
@@ -349,13 +360,16 @@ def test_Message():
     assert isinstance(w_message, model.W_PointersObject)
 
 def test_step_run_something():
+    # This test depends on the following code being executed in a workspace (the entire line):
+    # a := Smalltalk snapshotPrimitive. 1+2.
+    # This will save the image in a state that will satisfy the following test.
+    
     space, interp, _, _ = read_image('running-something-mini.image')
     ap = wrapper.ProcessWrapper(space, wrapper.scheduler(space).active_process())
     w_ctx = ap.suspended_context()
     s_ctx = w_ctx.as_context_get_shadow(space)
     ap.store_suspended_context(space.w_nil)
-
-    interp = TestInterpreter(space)
+    
     assert isinstance(s_ctx, shadow.MethodContextShadow)
     assert s_ctx.top().is_same_object(space.w_true)
     interp.step(s_ctx)

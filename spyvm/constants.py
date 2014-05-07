@@ -141,6 +141,7 @@ objects_in_special_object_table = {
     "smalltalkdict" : SO_SMALLTALK,
     "display" : SO_DISPLAY_OBJECT,
     "doesNotUnderstand" : SO_DOES_NOT_UNDERSTAND,
+    "mustBeBoolean" : SO_MUST_BE_BOOLEAN,
     "interrupt_semaphore" : SO_USER_INTERRUPT_SEMAPHORE,
     "timerSemaphore" : SO_TIMER_SEMAPHORE,
 }
