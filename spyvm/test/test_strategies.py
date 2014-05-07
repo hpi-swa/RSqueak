@@ -218,5 +218,7 @@ def test_statistics_stats_dot():
     col.storage_operation(stats.make_key("Filledin", None, "new"), 10, None)
     col.storage_operation(stats.make_key("Filledin", None, "new"), 11, None)
     
-    assert col.dot_string() == ""
+    # The dot-code is correct, I checked ;)
+    assert col.dot_string() == \
+    'digraph G {loading_image [label="Image Loading",shape=box];created_object [label="Object Creation",shape=box];created_object -> old2 [label="1 objects\n15 elements per object"];loading_image -> new [label="2 objects\n10 elements per object"];old -> new [label="2 objects\n10 elements per object\n66% objects\n60% elements"];loading_image -> old2 [label="1 objects\n20 elements per object"];created_object -> old [label="3 objects\n11 elements per object"];old2 -> new [label="1 objects\n5 elements per object\n50% objects\n14% elements"];new -> new2 [label="1 objects\n10 elements per object\n20% objects\n21% elements"];new2 [label="new2\nIncoming objects: 1\nIncoming elements: 10\nRemaining objects: 1 (100%)\nRemaining elements: 10 (100%)"];new [label="new\nIncoming objects: 5\nIncoming elements: 46\nRemaining objects: 4 (80%)\nRemaining elements: 36 (78%)"];old2 [label="old2\nIncoming objects: 2\nIncoming elements: 35\nRemaining objects: 1 (50%)\nRemaining elements: 30 (85%)"];old [label="old\nIncoming objects: 3\nIncoming elements: 33\nRemaining objects: 1 (33%)\nRemaining elements: 13 (39%)"];}'
     

@@ -13,8 +13,10 @@ class StatsSorter(TimSort):
             return a[0] < b[0]
 
 class StorageStatistics(object):
-    modules = []
-    using_classname = False
+    
+    def __init__(self):
+        self.modules = []
+        self.using_classname = False
     
     def add_module(self, module):
         if module not in self.modules:
@@ -73,7 +75,9 @@ class StatisticsLogger(StatisticsModule):
         pass
 
 class AbstractStatisticsCollector(StatisticsModule):
-    stats = {}
+    
+    def __init__(self):
+        self.stats = {}
     
     def storage_operation(self, operation_key, storage_size, element_classname):
         if not operation_key in self.stats:
@@ -100,10 +104,14 @@ class StatisticsCollector(AbstractStatisticsCollector):
             print "\t%s: %d times, avg size: %f" % (self.key_string(key), num, float(sum)/num)
 
 class DotStatisticsCollector(StatisticsCollector):
-    incoming_operations = {}
-    incoming_elements = {}
-    outgoing_operations = {}
-    outgoing_elements = {}
+    
+    def __init__(self):
+        AbstractStatisticsCollector.__init__(self)
+        self.incoming_operations = {}
+        self.incoming_elements = {}
+        self.outgoing_operations = {}
+        self.outgoing_elements = {}
+    
     def storage_operation(self, key, storage_size, element_classname):
         StatisticsCollector.storage_operation(self, key, storage_size, element_classname)
         source_type = key[1]
