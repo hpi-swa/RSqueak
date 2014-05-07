@@ -62,14 +62,15 @@ class Interpreter(object):
         self.trace_proxy = False
 
     def loop(self, w_active_context):
-        # just a trampoline for the actual loop implemented in c_loop
+        # just a trampoline for the actual loop implemented in loop_bytecodes
         s_new_context = w_active_context.as_context_get_shadow(self.space)
         while True:
             assert self.remaining_stack_depth == self.max_stack_depth
-            # Need to save s_sender, c_loop will nil this on return
+            # Need to save s_sender, loop_bytecodes will nil this on return
             s_sender = s_new_context.s_sender()
             try:
-                s_new_context = self.c_loop(s_new_context)
+                self.loop_bytecodes(s_new_context)
+                raise Exception("loop_bytecodes left without raising...")
             except StackOverflow, e:
                 s_new_context = e.s_context
             except Return, nlr:
@@ -86,7 +87,7 @@ class Interpreter(object):
                     print "====== Switch from: %s to: %s ======" % (s_new_context.short_str(), p.s_new_context.short_str())
                 s_new_context = p.s_new_context
 
-    def c_loop(self, s_context, may_context_switch=True):
+    def loop_bytecodes(self, s_context, may_context_switch=True):
         old_pc = 0
         if not jit.we_are_jitted() and may_context_switch:
             self.quick_check_for_interrupt(s_context)
@@ -113,17 +114,17 @@ class Interpreter(object):
                     raise nlr
                 else:
                     s_context.push(nlr.value)
-
+    
+    # This is just a wrapper around loop_bytecodes that handles the remaining_stack_depth mechanism
     def stack_frame(self, s_new_frame, may_context_switch=True):
         if self.remaining_stack_depth <= 1:
             raise StackOverflow(s_new_frame)
 
         self.remaining_stack_depth -= 1
         try:
-            retval = self.c_loop(s_new_frame, may_context_switch)
+            self.loop_bytecodes(s_new_frame, may_context_switch)
         finally:
             self.remaining_stack_depth += 1
-        return retval
 
     # ============== Methods for handling user interrupts ==============
     

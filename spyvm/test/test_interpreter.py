@@ -1009,7 +1009,7 @@ def test_stacking_interpreter():
     try:
         interp = TestInterpreter(space, image_name="", max_stack_depth=10)
         interp._loop = True
-        interp.c_loop(w_method.create_frame(space, space.wrap_int(0), []))
+        interp.loop_bytecodes(w_method.create_frame(space, space.wrap_int(0), []))
     except interpreter.StackOverflow, e:
         assert isinstance(e.s_context, shadow.MethodContextShadow)
     except interpreter.ReturnFromTopLevel, e:
@@ -1019,7 +1019,7 @@ class StackTestInterpreter(TestInterpreter):
     def stack_frame(self, w_frame, may_interrupt=True):
         stack_depth = self.max_stack_depth - self.remaining_stack_depth
         for i in range(stack_depth + 1):
-            assert sys._getframe(4 + i * 6).f_code.co_name == 'c_loop'
+            assert sys._getframe(4 + i * 6).f_code.co_name == 'loop_bytecodes'
         assert sys._getframe(5 + stack_depth * 6).f_code.co_name == 'loop'
         return interpreter.Interpreter.stack_frame(self, w_frame)
 
