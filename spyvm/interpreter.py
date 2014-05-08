@@ -4,7 +4,7 @@ from spyvm.shadow import ContextPartShadow, MethodContextShadow, BlockContextSha
 from spyvm import model, constants, primitives, conftest, wrapper
 from spyvm.tool.bitmanipulation import splitter
 
-from rpython.rlib import jit
+from rpython.rlib import jit, rstm
 from rpython.rlib import objectmodel, unroll
 
 class MissingBytecode(Exception):
@@ -33,6 +33,7 @@ class Interpreter(object):
         greens=['pc', 'self', 'method'],
         reds=['s_context'],
         virtualizables=['s_context'],
+        stm_do_transaction_breaks=True,
         get_printable_location=get_printable_location
     )
 
@@ -111,6 +112,8 @@ class Interpreter(object):
                 if jit.we_are_jitted():
                     self.quick_check_for_interrupt(s_context,
                                     dec=self._get_adapted_tick_counter())
+                    if rstm.jit_stm_should_break_transaction(True):
+                        rstm.jit_stm_transaction_break_point()
                 self.jit_driver.can_enter_jit(
                     pc=pc, self=self, method=method,
                     s_context=s_context)
@@ -118,6 +121,8 @@ class Interpreter(object):
             self.jit_driver.jit_merge_point(
                 pc=pc, self=self, method=method,
                 s_context=s_context)
+            if rstm.jit_stm_should_break_transaction(False):
+                rstm.jit_stm_transaction_break_point()
             try:
                 self.step(s_context)
             except Return, nlr:
