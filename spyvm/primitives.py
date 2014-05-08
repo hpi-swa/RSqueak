@@ -521,16 +521,11 @@ def func(interp, s_frame, w_frame, stackp):
     w_frame.store(interp.space, constants.CTXPART_STACKP_INDEX, interp.space.wrap_int(stackp))
     return w_frame
 
-
-def stm_enabled():
-    """NOT RPYTHON"""
+def get_instances_array(space, s_frame, w_class):
     from rpython.rlib import rgc
-    return hasattr(rgc, "stm_is_enabled") and rgc.stm_is_enabled()
-if stm_enabled():
-    def get_instances_array(space, s_frame, w_class):
+    if rgc.stm_is_enabled():
         return []
-else:
-    def get_instances_array(space, s_frame, w_class):
+    else:
         # This primitive returns some instance of the class on the stack.
         # Not sure quite how to do this; maintain a weak list of all
         # existing instances or something?
@@ -931,12 +926,13 @@ def func(interp, s_frame, w_rcvr):
     return w_rcvr
 
 
-if not stm_enabled():
-    # XXX: We don't have a global symbol cache. Instead, we get all
-    # method dictionary shadows (those exists for all methodDicts that
-    # have been modified) and flush them
-    @expose_primitive(SYMBOL_FLUSH_CACHE, unwrap_spec=[object])
-    def func(interp, s_frame, w_rcvr):
+# XXX: We don't have a global symbol cache. Instead, we get all
+# method dictionary shadows (those exists for all methodDicts that
+# have been modified) and flush them
+@expose_primitive(SYMBOL_FLUSH_CACHE, unwrap_spec=[object])
+def func(interp, s_frame, w_rcvr):
+    from rpython.rlib import rgc
+    if not rgc.stm_is_enabled():
         dicts_s = []
         from rpython.rlib import rgc
 
@@ -961,6 +957,8 @@ if not stm_enabled():
             if s_dict.invalid:
                 s_dict.sync_cache()
         return w_rcvr
+    else:
+        raise PrimitiveFailedError("SYMBOL_FLUSH_CACHE not implemented with STM")
 
 # ___________________________________________________________________________
 # Miscellaneous Primitives (120-127)
