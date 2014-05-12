@@ -84,7 +84,8 @@ class Interpreter(object):
                 s_new_context.push(nlr.value)
             except ProcessSwitch, p:
                 if self.trace:
-                    print "====== Switch from: %s to: %s ======" % (s_new_context.short_str(), p.s_new_context.short_str())
+                    print "====== Switched process from: %s" % s_new_context.short_str()
+					print "====== to: %s " % p.s_new_context.short_str()
                 s_new_context = p.s_new_context
 
     def loop_bytecodes(self, s_context, may_context_switch=True):
