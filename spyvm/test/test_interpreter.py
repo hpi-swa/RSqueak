@@ -118,9 +118,9 @@ def test_create_frame():
     assert s_frame.gettemp(2).is_nil(space)
     s_frame.settemp(2, w("spam"))
     assert s_frame.gettemp(2).as_string() == "spam"
-    assert s_frame.getbytecode() == ord("h")
-    assert s_frame.getbytecode() == ord("e")
-    assert s_frame.getbytecode() == ord("l")
+    assert s_frame.fetch_next_bytecode() == ord("h")
+    assert s_frame.fetch_next_bytecode() == ord("e")
+    assert s_frame.fetch_next_bytecode() == ord("l")
 
 def test_push_pop():
     _, frame = new_frame("")

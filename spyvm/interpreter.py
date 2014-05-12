@@ -469,7 +469,7 @@ class __extend__(ContextPartShadow):
 
     def extendedVariableTypeAndIndex(self):
         # AK please explain this method (a helper, I guess)
-        descriptor = self.getbytecode()
+        descriptor = self.fetch_next_bytecode()
         return ((descriptor >> 6) & 3), (descriptor & 63)
 
     def extendedPushBytecode(self, interp, current_bytecode):
@@ -505,7 +505,7 @@ class __extend__(ContextPartShadow):
         self.pop()
 
     def getExtendedSelectorArgcount(self):
-        descriptor = self.getbytecode()
+        descriptor = self.fetch_next_bytecode()
         return ((self.w_method().getliteral(descriptor & 31)),
                 (descriptor >> 5))
 
@@ -515,8 +515,8 @@ class __extend__(ContextPartShadow):
 
     def doubleExtendedDoAnythingBytecode(self, interp, current_bytecode):
         from spyvm import error
-        second = self.getbytecode()
-        third = self.getbytecode()
+        second = self.fetch_next_bytecode()
+        third = self.fetch_next_bytecode()
         opType = second >> 5
         if opType == 0:
             # selfsend
@@ -557,7 +557,7 @@ class __extend__(ContextPartShadow):
         return self._sendSuperSelector(w_selector, argcount, interp)
 
     def secondExtendedSendBytecode(self, interp, current_bytecode):
-        descriptor = self.getbytecode()
+        descriptor = self.fetch_next_bytecode()
         w_selector = self.w_method().getliteral(descriptor & 63)
         argcount = descriptor >> 6
         return self._sendSelfSelector(w_selector, argcount, interp)
@@ -567,7 +567,7 @@ class __extend__(ContextPartShadow):
 
     # closure bytecodes
     def pushNewArrayBytecode(self, interp, current_bytecode):
-        arraySize, popIntoArray = splitter[7, 1](self.getbytecode())
+        arraySize, popIntoArray = splitter[7, 1](self.fetch_next_bytecode())
         newArray = None
         if popIntoArray == 1:
            newArray = interp.space.wrap_list(self.pop_and_return_n(arraySize))
@@ -579,8 +579,8 @@ class __extend__(ContextPartShadow):
         raise MissingBytecode("experimentalBytecode")
 
     def _extract_index_and_temps(self):
-        index_in_array = self.getbytecode()
-        index_of_array = self.getbytecode()
+        index_in_array = self.fetch_next_bytecode()
+        index_of_array = self.fetch_next_bytecode()
         w_indirectTemps = self.gettemp(index_of_array)
         return index_in_array, w_indirectTemps
 
@@ -618,9 +618,9 @@ class __extend__(ContextPartShadow):
         self jump: blockSize
         """
         space = self.space
-        numArgs, numCopied = splitter[4, 4](self.getbytecode())
-        j = self.getbytecode()
-        i = self.getbytecode()
+        numArgs, numCopied = splitter[4, 4](self.fetch_next_bytecode())
+        j = self.fetch_next_bytecode()
+        i = self.fetch_next_bytecode()
         blockSize = (j << 8) | i
         #create new instance of BlockClosure
         w_closure = space.newClosure(self.w_self(), self.pc(), numArgs,
@@ -657,10 +657,10 @@ class __extend__(ContextPartShadow):
         self.jumpConditional(interp, False, self.shortJumpPosition(current_bytecode))
 
     def longUnconditionalJump(self, interp, current_bytecode):
-        self.jump((((current_bytecode & 7) - 4) << 8) + self.getbytecode())
+        self.jump((((current_bytecode & 7) - 4) << 8) + self.fetch_next_bytecode())
 
     def longJumpPosition(self, current_bytecode):
-        return ((current_bytecode & 3) << 8) + self.getbytecode()
+        return ((current_bytecode & 3) << 8) + self.fetch_next_bytecode()
 
     def longJumpIfTrue(self, interp, current_bytecode):
         self.jumpConditional(interp, True, self.longJumpPosition(current_bytecode))
@@ -852,7 +852,7 @@ BYTECODE_TABLE = initialize_bytecode_table()
 from rpython.rlib.unroll import unrolling_iterable
 unrolling_ranges = unrolling_iterable(BYTECODE_RANGES)
 def bytecode_step_translated(self, context):
-    bytecode = context.getbytecode()
+    bytecode = context.fetch_next_bytecode()
     for entry in unrolling_ranges:
         if len(entry) == 2:
             bc, methname = entry

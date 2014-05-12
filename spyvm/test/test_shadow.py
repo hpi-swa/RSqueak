@@ -162,11 +162,11 @@ def test_methodcontext():
                               # Point over 2 literals of size 4
     w_object = methodcontext(pc=13,method=w_m)
     s_object = w_object.as_methodcontext_get_shadow(space)
-    assert s_object.getbytecode() == 97
-    assert s_object.getbytecode() == 98
-    assert s_object.getbytecode() == 99
-    assert s_object.getbytecode() == 100
-    assert s_object.getbytecode() == 101
+    assert s_object.fetch_next_bytecode() == 97
+    assert s_object.fetch_next_bytecode() == 98
+    assert s_object.fetch_next_bytecode() == 99
+    assert s_object.fetch_next_bytecode() == 100
+    assert s_object.fetch_next_bytecode() == 101
     assert s_object.s_home() == s_object
 
 def assert_contains_nils(w_obj):

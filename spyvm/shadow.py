@@ -794,10 +794,10 @@ class ContextPartShadow(AbstractRedirectingShadow):
         # XXX this is incorrect when there is subclassing
         return self._w_self_size
     
-    def getbytecode(self):
+    def fetch_next_bytecode(self):
         jit.promote(self._pc)
         assert self._pc >= 0
-        bytecode = self.w_method().getbytecode(self._pc)
+        bytecode = self.w_method().fetch_next_bytecode(self._pc)
         currentBytecode = ord(bytecode)
         self._pc += 1
         return currentBytecode

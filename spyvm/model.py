@@ -1275,7 +1275,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         return 16 + self.islarge * 40 + self.argsize
     
     @constant_for_version_arg
-    def getbytecode(self, pc):
+    def fetch_next_bytecode(self, pc):
         assert pc >= 0 and pc < len(self.bytes)
         return self.bytes[pc]
     
