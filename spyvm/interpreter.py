@@ -126,7 +126,20 @@ class Interpreter(object):
             self.loop_bytecodes(s_new_frame, may_context_switch)
         finally:
             self.remaining_stack_depth += 1
-
+	
+	def step(self, context):
+		bytecode = context.fetch_next_bytecode()
+		for entry in UNROLLING_BYTECODE_RANGES:
+			if len(entry) == 2:
+				bc, methname = entry
+				if bytecode == bc:
+					return getattr(context, methname)(self, bytecode)
+			else:
+				start, stop, methname = entry
+				if start <= bytecode <= stop:
+					return getattr(context, methname)(self, bytecode)
+		assert 0, "unreachable"
+	
     # ============== Methods for handling user interrupts ==============
     
     def jitted_check_for_interrupt(self, s_frame):
@@ -820,6 +833,8 @@ BYTECODE_RANGES = [
             (208, 255, "sendLiteralSelectorBytecode"),
             ]
 
+from rpython.rlib.unroll import unrolling_iterable
+UNROLLING_BYTECODE_RANGES = unrolling_iterable(BYTECODE_RANGES)
 
 def initialize_bytecode_names():
     result = [None] * 256
@@ -848,23 +863,6 @@ def initialize_bytecode_table():
 
 # this table is only used for creating named bytecodes in tests and printing
 BYTECODE_TABLE = initialize_bytecode_table()
-
-from rpython.rlib.unroll import unrolling_iterable
-unrolling_ranges = unrolling_iterable(BYTECODE_RANGES)
-def bytecode_step_translated(self, context):
-    bytecode = context.fetch_next_bytecode()
-    for entry in unrolling_ranges:
-        if len(entry) == 2:
-            bc, methname = entry
-            if bytecode == bc:
-                return getattr(context, methname)(self, bytecode)
-        else:
-            start, stop, methname = entry
-            if start <= bytecode <= stop:
-                return getattr(context, methname)(self, bytecode)
-    assert 0, "unreachable"
-
-Interpreter.step = bytecode_step_translated
 
 # Smalltalk debugging facilities, patching Interpreter and ContextPartShadow
 # in order to enable tracing/jumping for message sends etc.
