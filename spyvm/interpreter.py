@@ -73,6 +73,8 @@ class Interpreter(object):
                 self.loop_bytecodes(s_new_context)
                 raise Exception("loop_bytecodes left without raising...")
             except StackOverflow, e:
+                if self.trace:
+                    print "====== StackOverflow, contexts forced to heap at: %s" % e.s_context.short_str()
                 s_new_context = e.s_context
             except Return, nlr:
                 s_new_context = s_sender
