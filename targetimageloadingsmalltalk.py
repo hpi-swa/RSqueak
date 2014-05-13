@@ -6,7 +6,7 @@ from rpython.rlib.streamio import open_file_as_stream
 from rpython.rlib import jit, rpath
 
 from spyvm import model, interpreter, squeakimage, objspace, wrapper,\
-    error, shadow, storage_statistics
+    error, shadow, storage_statistics, constants
 from spyvm.tool.analyseimage import create_image
 from spyvm.interpreter_proxy import VirtualMachine
 
@@ -128,13 +128,14 @@ def _usage(argv):
           -r|--run [code string]
           -b|--benchmark [code string]
           -p|--poll_events
+          -ni|--no-interrupts
+          -d|--max-stack-depth [number, default %d, <= 0 disables stack protection]
           --strategy-log
           --strategy-stats
-		  --strategy-stats-dot
+          --strategy-stats-dot
           --strategy-stats-details
           [image path, default: Squeak.image]
-    """ % argv[0]
-
+    """ % (argv[0], constants.MAX_LOOP_DEPTH)
 
 def _arg_missing(argv, idx, arg):
     if len(argv) == idx + 1:
@@ -152,6 +153,8 @@ def entry_point(argv):
     stringarg = ""
     code = None
     as_benchmark = False
+    max_stack_depth = constants.MAX_LOOP_DEPTH
+    interrupts = True
     
     while idx < len(argv):
         arg = argv[idx]
@@ -189,6 +192,12 @@ def entry_point(argv):
             code = argv[idx + 1]
             as_benchmark = True
             idx += 1
+        elif arg in ["-ni", "--no-interrupts"]:
+            interrupts = False
+        elif arg in ["-d", "--max-stack-depth"]:
+            _arg_missing(argv, idx, arg)
+            max_stack_depth = int(argv[idx + 1])
+            idx += 1
         elif arg == "--strategy-log":
             storage_statistics.activate_statistics(log=True)
         elif arg == "--strategy-stats":
@@ -221,7 +230,9 @@ def entry_point(argv):
     space = prebuilt_space
     image_reader = squeakimage.reader_for_image(space, squeakimage.Stream(data=imagedata))
     image = create_image(space, image_reader)
-    interp = interpreter.Interpreter(space, image, image_name=path, trace=trace, evented=evented)
+    interp = interpreter.Interpreter(space, image, image_name=path,
+                trace=trace, evented=evented,
+                interrupts=interrupts, max_stack_depth=max_stack_depth)
     space.runtime_setup(argv[0])
     result = 0
     if benchmark is not None:
