@@ -1008,7 +1008,7 @@ def test_stacking_interpreter():
         interp._loop = True
         interp.loop_bytecodes(w_method.create_frame(space, space.wrap_int(0), []))
     except interpreter.StackOverflow, e:
-        assert isinstance(e.s_context, shadow.MethodContextShadow)
+        assert isinstance(e.s_new_context, shadow.MethodContextShadow)
     except interpreter.ReturnFromTopLevel, e:
         assert False
 

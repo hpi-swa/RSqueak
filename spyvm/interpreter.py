@@ -72,7 +72,7 @@ class Interpreter(object):
                 self.loop_bytecodes(s_new_context)
                 raise Exception("loop_bytecodes left without raising...")
             except StackOverflow, e:
-                s_new_context = e.s_context
+                s_new_context = e.s_new_context
             except Return, nlr:
                 s_new_context = s_sender
                 while s_new_context is not nlr.s_target_context:
@@ -221,22 +221,27 @@ class ReturnFromTopLevel(Exception):
     def __init__(self, object):
         self.object = object
 
-class StackOverflow(Exception):
-    _attrs_ = ["s_context"]
-    def __init__(self, s_top_context):
-        self.s_context = s_top_context
-
 class Return(Exception):
     _attrs_ = ["value", "s_target_context"]
-    def __init__(self, object, s_context):
-        self.value = object
-        self.s_target_context = s_context
+    def __init__(self, s_target_context, w_result):
+        self.value = w_result
+        self.s_target_context = s_target_context
 
-class ProcessSwitch(Exception):
+class ContextSwitchException(Exception):
+    """General Exception that causes the interpreter to leave
+    the current context. The current pc is required in order to update
+    the context object that we are leaving."""
     _attrs_ = ["s_new_context"]
-    def __init__(self, s_context):
-        self.s_new_context = s_context
+    def __init__(self, s_new_context):
+        self.s_new_context = s_new_context
 
+class StackOverflow(ContextSwitchException):
+    """This causes the current jit-loop to be left.
+    This is an experimental mechanism to avoid stack-overflow errors
+    on OS level, and we suspect it breaks jit performance at least sometimes."""
+
+class ProcessSwitch(ContextSwitchException):
+    """This causes the interpreter to switch the executed context."""
 
 def make_call_primitive_bytecode(primitive, selector, argcount):
     def callPrimitive(self, interp, current_bytecode):
@@ -443,7 +448,7 @@ class __extend__(ContextPartShadow):
 
         if interp.trace:
             print '%s<- %s' % (interp.padding(), return_value.as_repr_string())
-        raise Return(return_value, s_return_to)
+        raise Return(s_return_to, return_value)
 
     def activate_unwind_context(self, interp):
         # the first temp is executed flag for both #ensure: and #ifCurtailed:
