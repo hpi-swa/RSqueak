@@ -25,7 +25,7 @@ def get_printable_location(pc, self, method):
 class Interpreter(object):
     _immutable_fields_ = ["space", "image", "image_name",
                           "max_stack_depth", "interrupt_counter_size",
-                          "startup_time", "evented"]
+                          "startup_time", "evented", "interrupts"]
     
     jit_driver = jit.JitDriver(
         greens=['pc', 'self', 'method'],
@@ -34,9 +34,9 @@ class Interpreter(object):
         get_printable_location=get_printable_location
     )
 
-    def __init__(self, space, image=None, image_name="", trace=False,
-                 evented=True,
-                 max_stack_depth=constants.MAX_LOOP_DEPTH):
+    def __init__(self, space, image=None, image_name="",
+                trace=False, evented=True, interrupts=True,
+                max_stack_depth=constants.MAX_LOOP_DEPTH):
         import time
         
         # === Initialize immutable variables
@@ -49,6 +49,7 @@ class Interpreter(object):
             self.startup_time = constants.CompileTime
         self.max_stack_depth = max_stack_depth
         self.evented = evented
+        self.interrupts = interrupts
         try:
             self.interrupt_counter_size = int(os.environ["SPY_ICS"])
         except KeyError:
@@ -56,7 +57,7 @@ class Interpreter(object):
         
         # === Initialize mutable variables
         self.interrupt_check_counter = self.interrupt_counter_size
-        self.remaining_stack_depth = max_stack_depth
+        self.current_stack_depth = 0
         self.next_wakeup_tick = 0
         self.trace = trace
         self.trace_proxy = False
@@ -65,13 +66,15 @@ class Interpreter(object):
         # This is the top-level loop and is not invoked recursively.
         s_new_context = w_active_context.as_context_get_shadow(self.space)
         while True:
-            assert self.remaining_stack_depth == self.max_stack_depth
+            assert self.current_stack_depth == 0
             # Need to save s_sender, loop_bytecodes will nil this on return
             s_sender = s_new_context.s_sender()
             try:
                 self.loop_bytecodes(s_new_context)
                 raise Exception("loop_bytecodes left without raising...")
             except StackOverflow, e:
+                if self.trace:
+                    print "====== StackOverflow, contexts forced to heap at: %s" % e.s_new_context.short_str()
                 s_new_context = e.s_new_context
             except Return, nlr:
                 s_new_context = s_sender
@@ -112,16 +115,17 @@ class Interpreter(object):
                 else:
                     s_context.push(nlr.value)
     
-    # This is just a wrapper around loop_bytecodes that handles the remaining_stack_depth mechanism
+    # This is just a wrapper around loop_bytecodes that handles the stack overflow protection mechanism
     def stack_frame(self, s_new_frame, may_context_switch=True):
-        if self.remaining_stack_depth <= 1:
-            raise StackOverflow(s_new_frame)
-
-        self.remaining_stack_depth -= 1
+        if self.max_stack_depth > 0:
+            if self.current_stack_depth >= self.max_stack_depth:
+                raise StackOverflow(s_new_frame)
+        
+        self.current_stack_depth += 1
         try:
             self.loop_bytecodes(s_new_frame, may_context_switch)
         finally:
-            self.remaining_stack_depth += 1
+            self.current_stack_depth -= 1
     
     def step(self, context):
         bytecode = context.fetch_next_bytecode()
@@ -139,6 +143,8 @@ class Interpreter(object):
     # ============== Methods for handling user interrupts ==============
     
     def jitted_check_for_interrupt(self, s_frame):
+        if not self.interrupts:
+            return
         # Normally, the tick counter is decremented by 1 for every message send.
         # Since we don't know how many messages are called during this trace, we
         # just decrement by 100th of the trace length (num of bytecodes).
@@ -148,6 +154,8 @@ class Interpreter(object):
         self.quick_check_for_interrupt(s_frame, decr_by)
     
     def quick_check_for_interrupt(self, s_frame, dec=1):
+        if not self.interrupts:
+            return
         self.interrupt_check_counter -= dec
         if self.interrupt_check_counter <= 0:
             self.interrupt_check_counter = self.interrupt_counter_size
@@ -210,7 +218,7 @@ class Interpreter(object):
         return self.interpret_toplevel(s_frame.w_self())
     
     def padding(self, symbol=' '):
-        return symbol * (self.max_stack_depth - self.remaining_stack_depth)
+        return symbol * self.current_stack_depth
 
 class ReturnFromTopLevel(Exception):
     _attrs_ = ["object"]

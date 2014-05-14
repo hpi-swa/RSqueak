@@ -1014,7 +1014,7 @@ def test_stacking_interpreter():
 
 class StackTestInterpreter(TestInterpreter):
     def stack_frame(self, w_frame, may_interrupt=True):
-        stack_depth = self.max_stack_depth - self.remaining_stack_depth
+        stack_depth = self.current_stack_depth
         for i in range(stack_depth + 1):
             assert sys._getframe(5 + i * 7).f_code.co_name == 'loop_bytecodes'
         assert sys._getframe(6 + stack_depth * 7).f_code.co_name == 'loop'
