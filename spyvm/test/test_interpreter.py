@@ -100,8 +100,6 @@ def _new_frame(space, bytes, receiver=None):
     return s_frame.w_self(), s_frame
 
 def new_frame(bytes, receiver=None):
-    if not receiver:
-        receiver = space.w_nil
     return _new_frame(space, bytes, receiver)
     
 def test_create_frame():
@@ -219,7 +217,6 @@ def test_storeAndPopTemporaryVariableBytecode(bytecode=storeAndPopTemporaryVaria
         step_in_interp(s_frame)
         assert s_frame.stack() == []
         for test_index in range(8):
-            print w_frame.fetch_all(s_frame.space)
             if test_index == index:
                 assert s_frame.gettemp(test_index).is_same_object(space.w_true)
             else:
@@ -712,7 +709,7 @@ def test_bc_3_plus_4():
     #   ^ [ 3 + 4 ] value
     assert interpret_bc(
         [ 137, 117, 200, 164, 4, 32, 33, 176, 125, 201, 124],
-        fakeliterals(space, space.wrap_int(3), space.wrap_int(4))).value == 7
+        fakeliterals(space, 3, 4)).value == 7
 
 
 def test_bc_x_plus_x_plus_1():
@@ -724,7 +721,7 @@ def test_bc_x_plus_x_plus_1():
     assert interpret_bc(
         [ 137, 118, 200, 164, 7, 104, 16, 16,
           176, 118, 176, 125, 32, 202, 124 ],
-        fakeliterals(space, space.wrap_int(3))).value == 7
+        fakeliterals(space, 3)).value == 7
 
 def test_bc_x_plus_y():
     # value2
@@ -737,7 +734,7 @@ def test_bc_x_plus_y():
         assert interpret_bc(
             [ 137, 119, 200, 164, 6, 105, 104, 16, 17,
               176, 125, 33, 34, 240, 124 ],
-            fakeliterals(space, "value:value:", space.wrap_int(3), space.wrap_int(4))).value == 7
+            fakeliterals(space, "value:value:", 3, 4)).value == 7
     run_with_faked_primitive_methods(
         [[space.w_BlockContext, primitives.VALUE,
           2, "value:value:"]],
@@ -751,7 +748,7 @@ def test_bc_push_rcvr_in_block():
     #   ^ [ self ] value
     assert interpret_bc(
         [ 137, 117, 200, 164, 2, 112, 125, 201, 124 ],
-        fakeliterals(space, space.wrap_int(3))).is_nil(space)
+        fakeliterals(space, 3)).is_nil(space)
 
 def test_bc_value_return():
     # valueReturn
