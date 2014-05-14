@@ -77,9 +77,7 @@ class Interpreter(object):
                 s_new_context = s_sender
                 while s_new_context is not nlr.s_target_context:
                     s_sender = s_new_context.s_sender()
-                    if not s_new_context.is_closure_context() and s_new_context.w_method().primitive() == 198:
-                        s_new_context.activate_unwind_context(self)
-                    s_new_context.mark_returned()
+                    s_new_context._activate_unwind_context(self)
                     s_new_context = s_sender
                 s_new_context.push(nlr.value)
             except ProcessSwitch, p:
@@ -109,9 +107,7 @@ class Interpreter(object):
                 self.step(s_context)
             except Return, nlr:
                 if nlr.s_target_context is not s_context:
-                    if not s_context.is_closure_context() and method.primitive() == 198:
-                        s_context.activate_unwind_context(self)
-                    s_context.mark_returned()
+                    s_context._activate_unwind_context(self)
                     raise nlr
                 else:
                     s_context.push(nlr.value)
@@ -604,14 +600,16 @@ class __extend__(ContextPartShadow):
             raise e
 
     def _return(self, return_value, interp, s_return_to):
-        # for tests, when returning from the top-level context
-        if s_return_to is None:
-            raise ReturnFromTopLevel(return_value)
-        # unfortunately, the assert below is not true for some tests
+        # unfortunately, this assert is not true for some tests. TODO fix this.
         # assert self._stack_ptr == self.tempsize()
-
+        
+        # ##################################################################
         if interp.trace:
             print '%s<- %s' % (interp.padding(), return_value.as_repr_string())
+        
+        if s_return_to is None:
+            # This should never happen while executing a normal image.
+            raise ReturnFromTopLevel(return_value)
         raise Return(s_return_to, return_value)
 
     # ====== Send/Return bytecodes ======
@@ -705,21 +703,25 @@ class __extend__(ContextPartShadow):
         return self._sendSelfSelector(w_selector, argcount, interp)
 
     # ====== Misc ======
-
-    def activate_unwind_context(self, interp):
-        # the first temp is executed flag for both #ensure: and #ifCurtailed:
+    
+    def _activate_unwind_context(self, interp):
+        # TODO put the constant somewhere else.
+        # Primitive 198 is used in BlockClosure >> ensure:
+        if self.is_closure_context() or self.w_method().primitive() != 198:
+            self.mark_returned()
+            return
+        # The first temp is executed flag for both #ensure: and #ifCurtailed:
         if self.gettemp(1).is_nil(self.space):
             self.settemp(1, self.space.w_true) # mark unwound
             self.push(self.gettemp(0)) # push the first argument
             try:
                 self.bytecodePrimValue(interp, 0)
             except Return, nlr:
-                if self is nlr.s_target_context:
-                    return
-                else:
-                    self.mark_returned()
+                if self is not nlr.s_target_context:
                     raise nlr
-        
+            finally:
+                self.mark_returned()
+    
     @bytecode_implementation()
     def unknownBytecode(self, interp, current_bytecode):
         raise MissingBytecode("unknownBytecode")
@@ -741,39 +743,40 @@ class __extend__(ContextPartShadow):
             w_alternative = interp.space.w_true
             w_expected = interp.space.w_false
         
-        # Don't check the class, just compare with only two instances.
+        # Don't check the class, just compare with only two Boolean instances.
         w_bool = self.pop()
         if w_expected.is_same_object(w_bool):
             self._jump(position)
         elif not w_alternative.is_same_object(w_bool):
             self._mustBeBoolean(interp, w_bool)
 
-    def _shortJumpPosition(self, current_bytecode):
+    def _shortJumpOffset(self, current_bytecode):
         return (current_bytecode & 7) + 1
 
-    def _longJumpPosition(self, current_bytecode, parameter):
+    def _longJumpOffset(self, current_bytecode, parameter):
         return ((current_bytecode & 3) << 8) + parameter
 
     @bytecode_implementation()
     def shortUnconditionalJumpBytecode(self, interp, current_bytecode):
-        self._jump(self._shortJumpPosition(current_bytecode))
+        self._jump(self._shortJumpOffset(current_bytecode))
 
     @bytecode_implementation()
     def shortConditionalJumpBytecode(self, interp, current_bytecode):
-        # The conditional _jump is "_jump on false"
-        self._jumpConditional(interp, False, self._shortJumpPosition(current_bytecode))
+        # The conditional jump is "jump on false"
+        self._jumpConditional(interp, False, self._shortJumpOffset(current_bytecode))
 
     @bytecode_implementation(parameter_bytes=1)
     def longUnconditionalJumpBytecode(self, interp, current_bytecode, parameter):
-        self._jump((((current_bytecode & 7) - 4) << 8) + parameter)
+        offset = (((current_bytecode & 7) - 4) << 8) + parameter
+        self._jump(offset)
 
     @bytecode_implementation(parameter_bytes=1)
     def longJumpIfTrueBytecode(self, interp, current_bytecode, parameter):
-        self._jumpConditional(interp, True, self._longJumpPosition(current_bytecode, parameter))
+        self._jumpConditional(interp, True, self._longJumpOffset(current_bytecode, parameter))
 
     @bytecode_implementation(parameter_bytes=1)
     def longJumpIfFalseBytecode(self, interp, current_bytecode, parameter):
-        self._jumpConditional(interp, False, self._longJumpPosition(current_bytecode, parameter))
+        self._jumpConditional(interp, False, self._longJumpOffset(current_bytecode, parameter))
 
     # ====== Bytecodes implemented with primitives and message sends ======
 
