@@ -62,7 +62,7 @@ class Interpreter(object):
         self.trace_proxy = False
 
     def loop(self, w_active_context):
-        # just a trampoline for the actual loop implemented in loop_bytecodes
+        # This is the top-level loop and is not invoked recursively.
         s_new_context = w_active_context.as_context_get_shadow(self.space)
         while True:
             assert self.remaining_stack_depth == self.max_stack_depth
@@ -243,7 +243,28 @@ class StackOverflow(ContextSwitchException):
 class ProcessSwitch(ContextSwitchException):
     """This causes the interpreter to switch the executed context."""
 
-def make_call_primitive_bytecode(primitive, selector, argcount):
+# This is a decorator for bytecode implementation methods.
+# parameter_bytes=N means N additional bytes are fetched as parameters.
+def bytecode_implementation(parameter_bytes=0):
+    def bytecode_implementation_decorator(actual_implementation_method):
+        from rpython.rlib.unroll import unrolling_zero
+        @jit.unroll_safe
+        def bytecode_implementation_wrapper(self, interp, current_bytecode):
+            parameters = ()
+            i = unrolling_zero
+            while i < parameter_bytes:
+                parameters += (self.fetch_next_bytecode(), )
+                i = i + 1
+            # This is a good place to step through bytecodes.
+            # import pdb; pdb.set_trace()
+            return actual_implementation_method(self, interp, current_bytecode, *parameters)
+        bytecode_implementation_wrapper.func_name = actual_implementation_method.func_name
+        return bytecode_implementation_wrapper
+    return bytecode_implementation_decorator
+
+def make_call_primitive_bytecode(primitive, selector, argcount, store_pc=False):
+    func = primitives.prim_table[primitive]
+    @bytecode_implementation()
     def callPrimitive(self, interp, current_bytecode):
         # WARNING: this is used for bytecodes for which it is safe to
         # directly call the primitive.  In general, it is not safe: for
@@ -252,8 +273,6 @@ def make_call_primitive_bytecode(primitive, selector, argcount):
         # else that the user put in a class in an 'at:' method.
         # The rule of thumb is that primitives with only int and float
         # in their unwrap_spec are safe.
-        # XXX move next line out of callPrimitive?
-        func = primitives.prim_table[primitive]
         try:
             return func(interp, self, argcount)
         except primitives.PrimitiveFailedError:
@@ -262,7 +281,8 @@ def make_call_primitive_bytecode(primitive, selector, argcount):
     return callPrimitive
 
 def make_call_primitive_bytecode_classbased(a_class_name, a_primitive, alternative_class_name, alternative_primitive, selector, argcount):
-    def callPrimitive(self, interp, current_bytecode):
+    @bytecode_implementation()
+    def callClassbasedPrimitive(self, interp, current_bytecode):
         rcvr = self.peek(argcount)
         receiver_class = rcvr.getclass(self.space)
         try:
@@ -275,7 +295,25 @@ def make_call_primitive_bytecode_classbased(a_class_name, a_primitive, alternati
         except primitives.PrimitiveFailedError:
             pass
         return self._sendSelfSelectorSpecial(selector, argcount, interp)
-    return callPrimitive
+    callClassbasedPrimitive.func_name = "callClassbasedPrimitive_%s" % selector
+    return callClassbasedPrimitive
+
+# Some selectors cannot be overwritten, therefore no need to handle PrimitiveFailed.
+def make_quick_call_primitive_bytecode(primitive_index, argcount):
+    func = primitives.prim_table[primitive_index]
+    @bytecode_implementation()
+    def quick_call_primitive_bytecode(self, interp, current_bytecode):
+        return func(interp, self, argcount)
+    return quick_call_primitive_bytecode
+
+# This is for bytecodes that actually implement a simple message-send.
+# We do not optimize anything for these cases.
+def make_send_selector_bytecode(selector, argcount):
+    @bytecode_implementation()
+    def selector_bytecode(self, interp, current_bytecode):
+        return self._sendSelfSelectorSpecial(selector, argcount, interp)
+    selector_bytecode.func_name = "selector_bytecode_%s" % selector
+    return selector_bytecode
 
 # ___________________________________________________________________________
 # Bytecode Implementations:
@@ -284,19 +322,25 @@ def make_call_primitive_bytecode_classbased(a_class_name, a_primitive, alternati
 
 # __extend__ adds new methods to the ContextPartShadow class
 class __extend__(ContextPartShadow):
-    # push bytecodes
+    
+    # ====== Push/Pop bytecodes ======
+    
+    @bytecode_implementation()
     def pushReceiverVariableBytecode(self, interp, current_bytecode):
         index = current_bytecode & 15
         self.push(self.w_receiver().fetch(self.space, index))
 
+    @bytecode_implementation()
     def pushTemporaryVariableBytecode(self, interp, current_bytecode):
         index = current_bytecode & 15
         self.push(self.gettemp(index))
 
+    @bytecode_implementation()
     def pushLiteralConstantBytecode(self, interp, current_bytecode):
         index = current_bytecode & 31
         self.push(self.w_method().getliteral(index))
 
+    @bytecode_implementation()
     def pushLiteralVariableBytecode(self, interp, current_bytecode):
         # this bytecode assumes that literals[index] is an Association
         # which is an object with two named vars, and fetches the second
@@ -306,46 +350,59 @@ class __extend__(ContextPartShadow):
         association = wrapper.AssociationWrapper(self.space, w_association)
         self.push(association.value())
 
+    @bytecode_implementation()
     def storeAndPopReceiverVariableBytecode(self, interp, current_bytecode):
         index = current_bytecode & 7
         self.w_receiver().store(self.space, index, self.pop())
 
+    @bytecode_implementation()
     def storeAndPopTemporaryVariableBytecode(self, interp, current_bytecode):
         index = current_bytecode & 7
         self.settemp(index, self.pop())
 
-    # push bytecodes
+    @bytecode_implementation()
     def pushReceiverBytecode(self, interp, current_bytecode):
         self.push(self.w_receiver())
 
+    @bytecode_implementation()
     def pushConstantTrueBytecode(self, interp, current_bytecode):
         self.push(interp.space.w_true)
 
+    @bytecode_implementation()
     def pushConstantFalseBytecode(self, interp, current_bytecode):
         self.push(interp.space.w_false)
 
+    @bytecode_implementation()
     def pushConstantNilBytecode(self, interp, current_bytecode):
         self.push(interp.space.w_nil)
 
+    @bytecode_implementation()
     def pushConstantMinusOneBytecode(self, interp, current_bytecode):
         self.push(interp.space.w_minus_one)
 
+    @bytecode_implementation()
     def pushConstantZeroBytecode(self, interp, current_bytecode):
         self.push(interp.space.w_zero)
 
+    @bytecode_implementation()
     def pushConstantOneBytecode(self, interp, current_bytecode):
         self.push(interp.space.w_one)
 
+    @bytecode_implementation()
     def pushConstantTwoBytecode(self, interp, current_bytecode):
         self.push(interp.space.w_two)
 
+    @bytecode_implementation()
     def pushActiveContextBytecode(self, interp, current_bytecode):
         self.push(self.w_self())
 
+    @bytecode_implementation()
     def duplicateTopBytecode(self, interp, current_bytecode):
         self.push(self.top())
 
-    # send, return bytecodes
+    # ====== Send/Return bytecodes ======
+    
+    @bytecode_implementation()
     def sendLiteralSelectorBytecode(self, interp, current_bytecode):
         w_selector = self.w_method().getliteral(current_bytecode & 15)
         argcount = ((current_bytecode >> 4) & 3) - 1
@@ -464,34 +521,40 @@ class __extend__(ContextPartShadow):
                     self.mark_returned()
                     raise nlr
 
+    @bytecode_implementation()
     def returnReceiverBytecode(self, interp, current_bytecode):
         return self._return(self.w_receiver(), interp, self.s_home().s_sender())
 
+    @bytecode_implementation()
     def returnTrueBytecode(self, interp, current_bytecode):
         return self._return(interp.space.w_true, interp, self.s_home().s_sender())
 
+    @bytecode_implementation()
     def returnFalseBytecode(self, interp, current_bytecode):
         return self._return(interp.space.w_false, interp, self.s_home().s_sender())
 
+    @bytecode_implementation()
     def returnNilBytecode(self, interp, current_bytecode):
         return self._return(interp.space.w_nil, interp, self.s_home().s_sender())
 
+    @bytecode_implementation()
     def returnTopFromMethodBytecode(self, interp, current_bytecode):
         return self._return(self.pop(), interp, self.s_home().s_sender())
 
+    @bytecode_implementation()
     def returnTopFromBlockBytecode(self, interp, current_bytecode):
         return self._return(self.pop(), interp, self.s_sender())
 
+    @bytecode_implementation()
     def unknownBytecode(self, interp, current_bytecode):
         raise MissingBytecode("unknownBytecode")
 
-    def extendedVariableTypeAndIndex(self):
-        # AK please explain this method (a helper, I guess)
-        descriptor = self.fetch_next_bytecode()
+    def _extendedVariableTypeAndIndex(self, descriptor):
         return ((descriptor >> 6) & 3), (descriptor & 63)
 
-    def extendedPushBytecode(self, interp, current_bytecode):
-        variableType, variableIndex = self.extendedVariableTypeAndIndex()
+    @bytecode_implementation(parameter_bytes=1)
+    def extendedPushBytecode(self, interp, current_bytecode, descriptor):
+        variableType, variableIndex = self._extendedVariableTypeAndIndex(descriptor)
         if variableType == 0:
             self.push(self.w_receiver().fetch(self.space, variableIndex))
         elif variableType == 1:
@@ -505,8 +568,8 @@ class __extend__(ContextPartShadow):
         else:
             assert 0
 
-    def extendedStoreBytecode(self, interp, current_bytecode):
-        variableType, variableIndex = self.extendedVariableTypeAndIndex()
+    def _extendedStoreBytecode(self, interp, current_bytecode, descriptor):
+        variableType, variableIndex = self._extendedVariableTypeAndIndex(descriptor)
         if variableType == 0:
             self.w_receiver().store(self.space, variableIndex, self.top())
         elif variableType == 1:
@@ -518,23 +581,27 @@ class __extend__(ContextPartShadow):
             association = wrapper.AssociationWrapper(self.space, w_association)
             association.store_value(self.top())
 
-    def extendedStoreAndPopBytecode(self, interp, current_bytecode):
-        self.extendedStoreBytecode(interp, current_bytecode)
+    @bytecode_implementation(parameter_bytes=1)
+    def extendedStoreBytecode(self, interp, current_bytecode, descriptor):
+        return self._extendedStoreBytecode(interp, current_bytecode, descriptor)
+            
+    @bytecode_implementation(parameter_bytes=1)
+    def extendedStoreAndPopBytecode(self, interp, current_bytecode, descriptor):
+        self._extendedStoreBytecode(interp, current_bytecode, descriptor)
         self.pop()
 
-    def getExtendedSelectorArgcount(self):
-        descriptor = self.fetch_next_bytecode()
+    def _getExtendedSelectorArgcount(self, descriptor):
         return ((self.w_method().getliteral(descriptor & 31)),
                 (descriptor >> 5))
 
-    def singleExtendedSendBytecode(self, interp, current_bytecode):
-        w_selector, argcount = self.getExtendedSelectorArgcount()
+    @bytecode_implementation(parameter_bytes=1)
+    def singleExtendedSendBytecode(self, interp, current_bytecode, descriptor):
+        w_selector, argcount = self._getExtendedSelectorArgcount(descriptor)
         return self._sendSelfSelector(w_selector, argcount, interp)
 
-    def doubleExtendedDoAnythingBytecode(self, interp, current_bytecode):
+    @bytecode_implementation(parameter_bytes=2)
+    def doubleExtendedDoAnythingBytecode(self, interp, current_bytecode, second, third):
         from spyvm import error
-        second = self.fetch_next_bytecode()
-        third = self.fetch_next_bytecode()
         opType = second >> 5
         if opType == 0:
             # selfsend
@@ -570,22 +637,24 @@ class __extend__(ContextPartShadow):
             association = wrapper.AssociationWrapper(self.space, w_association)
             association.store_value(self.top())
 
-    def singleExtendedSuperBytecode(self, interp, current_bytecode):
-        w_selector, argcount = self.getExtendedSelectorArgcount()
+    @bytecode_implementation(parameter_bytes=1)
+    def singleExtendedSuperBytecode(self, interp, current_bytecode, descriptor):
+        w_selector, argcount = self._getExtendedSelectorArgcount(descriptor)
         return self._sendSuperSelector(w_selector, argcount, interp)
 
-    def secondExtendedSendBytecode(self, interp, current_bytecode):
-        descriptor = self.fetch_next_bytecode()
+    @bytecode_implementation(parameter_bytes=1)
+    def secondExtendedSendBytecode(self, interp, current_bytecode, descriptor):
         w_selector = self.w_method().getliteral(descriptor & 63)
         argcount = descriptor >> 6
         return self._sendSelfSelector(w_selector, argcount, interp)
 
+    @bytecode_implementation()
     def popStackBytecode(self, interp, current_bytecode):
         self.pop()
-
-    # closure bytecodes
-    def pushNewArrayBytecode(self, interp, current_bytecode):
-        arraySize, popIntoArray = splitter[7, 1](self.fetch_next_bytecode())
+    
+    @bytecode_implementation(parameter_bytes=1)
+    def pushNewArrayBytecode(self, interp, current_bytecode, descriptor):
+        arraySize, popIntoArray = splitter[7, 1](descriptor)
         newArray = None
         if popIntoArray == 1:
            newArray = interp.space.wrap_list(self.pop_and_return_n(arraySize))
@@ -593,28 +662,31 @@ class __extend__(ContextPartShadow):
            newArray = interp.space.w_Array.as_class_get_shadow(interp.space).new(arraySize)
         self.push(newArray)
 
+    @bytecode_implementation()
     def experimentalBytecode(self, interp, current_bytecode):
         raise MissingBytecode("experimentalBytecode")
 
-    def _extract_index_and_temps(self):
-        index_in_array = self.fetch_next_bytecode()
-        index_of_array = self.fetch_next_bytecode()
+    def _extract_index_and_temps(self, index_in_array, index_of_array):
         w_indirectTemps = self.gettemp(index_of_array)
         return index_in_array, w_indirectTemps
-
-    def pushRemoteTempLongBytecode(self, interp, current_bytecode):
-        index_in_array, w_indirectTemps = self._extract_index_and_temps()
+    
+    @bytecode_implementation(parameter_bytes=2)
+    def pushRemoteTempLongBytecode(self, interp, current_bytecode, index_in_array, index_of_array):
+        index_in_array, w_indirectTemps = self._extract_index_and_temps(index_in_array, index_of_array)
         self.push(w_indirectTemps.at0(self.space, index_in_array))
 
-    def storeRemoteTempLongBytecode(self, interp, current_bytecode):
-        index_in_array, w_indirectTemps = self._extract_index_and_temps()
+    @bytecode_implementation(parameter_bytes=2)
+    def storeRemoteTempLongBytecode(self, interp, current_bytecode, index_in_array, index_of_array):
+        index_in_array, w_indirectTemps = self._extract_index_and_temps(index_in_array, index_of_array)
         w_indirectTemps.atput0(self.space, index_in_array, self.top())
 
-    def storeAndPopRemoteTempLongBytecode(self, interp, current_bytecode):
-        index_in_array, w_indirectTemps = self._extract_index_and_temps()
+    @bytecode_implementation(parameter_bytes=2)
+    def storeAndPopRemoteTempLongBytecode(self, interp, current_bytecode, index_in_array, index_of_array):
+        index_in_array, w_indirectTemps = self._extract_index_and_temps(index_in_array, index_of_array)
         w_indirectTemps.atput0(self.space, index_in_array, self.pop())
 
-    def pushClosureCopyCopiedValuesBytecode(self, interp, current_bytecode):
+    @bytecode_implementation(parameter_bytes=3)
+    def pushClosureCopyCopiedValuesBytecode(self, interp, current_bytecode, descriptor, j, i):
         """ Copied from Blogpost: http://www.mirandabanda.org/cogblog/2008/07/22/closures-part-ii-the-bytecodes/
         ContextPart>>pushClosureCopyNumCopiedValues: numCopied numArgs: numArgs blockSize: blockSize
         "Simulate the action of a 'closure copy' bytecode whose result is the
@@ -633,23 +705,22 @@ class __extend__(ContextPartShadow):
                                    startpc: pc
                                    numArgs: numArgs
                                    copiedValues: copiedValues).
-        self jump: blockSize
+        self _jump: blockSize
         """
+        
         space = self.space
-        numArgs, numCopied = splitter[4, 4](self.fetch_next_bytecode())
-        j = self.fetch_next_bytecode()
-        i = self.fetch_next_bytecode()
+        numArgs, numCopied = splitter[4, 4](descriptor)
         blockSize = (j << 8) | i
         #create new instance of BlockClosure
         w_closure = space.newClosure(self.w_self(), self.pc(), numArgs,
                                             self.pop_and_return_n(numCopied))
         self.push(w_closure)
-        self.jump(blockSize)
+        self._jump(blockSize)
 
-    def jump(self, offset):
+    def _jump(self, offset):
         self.store_pc(self.pc() + offset)
 
-    def jumpConditional(self, interp, expecting_true, position):
+    def _jumpConditional(self, interp, expecting_true, position):
         if expecting_true:
             w_expected = interp.space.w_true
             w_alternative = interp.space.w_false
@@ -660,31 +731,36 @@ class __extend__(ContextPartShadow):
         # Don't check the class, just compare with only two instances.
         w_bool = self.pop()
         if w_expected.is_same_object(w_bool):
-            self.jump(position)
+            self._jump(position)
         elif not w_alternative.is_same_object(w_bool):
             self._mustBeBoolean(interp, w_bool)
 
-    def shortJumpPosition(self, current_bytecode):
+    def _shortJumpPosition(self, current_bytecode):
         return (current_bytecode & 7) + 1
 
+    def _longJumpPosition(self, current_bytecode, parameter):
+        return ((current_bytecode & 3) << 8) + parameter
+
+    @bytecode_implementation()
     def shortUnconditionalJumpBytecode(self, interp, current_bytecode):
-        self.jump(self.shortJumpPosition(current_bytecode))
+        self._jump(self._shortJumpPosition(current_bytecode))
 
+    @bytecode_implementation()
     def shortConditionalJumpBytecode(self, interp, current_bytecode):
-        # The conditional jump is "jump on false"
-        self.jumpConditional(interp, False, self.shortJumpPosition(current_bytecode))
+        # The conditional _jump is "_jump on false"
+        self._jumpConditional(interp, False, self._shortJumpPosition(current_bytecode))
 
-    def longUnconditionalJumpBytecode(self, interp, current_bytecode):
-        self.jump((((current_bytecode & 7) - 4) << 8) + self.fetch_next_bytecode())
+    @bytecode_implementation(parameter_bytes=1)
+    def longUnconditionalJumpBytecode(self, interp, current_bytecode, parameter):
+        self._jump((((current_bytecode & 7) - 4) << 8) + parameter)
 
-    def longJumpPosition(self, current_bytecode):
-        return ((current_bytecode & 3) << 8) + self.fetch_next_bytecode()
+    @bytecode_implementation(parameter_bytes=1)
+    def longJumpIfTrueBytecode(self, interp, current_bytecode, parameter):
+        self._jumpConditional(interp, True, self._longJumpPosition(current_bytecode, parameter))
 
-    def longJumpIfTrueBytecode(self, interp, current_bytecode):
-        self.jumpConditional(interp, True, self.longJumpPosition(current_bytecode))
-
-    def longJumpIfFalseBytecode(self, interp, current_bytecode):
-        self.jumpConditional(interp, False, self.longJumpPosition(current_bytecode))
+    @bytecode_implementation(parameter_bytes=1)
+    def longJumpIfFalseBytecode(self, interp, current_bytecode, parameter):
+        self._jumpConditional(interp, False, self._longJumpPosition(current_bytecode, parameter))
 
     bytecodePrimAdd = make_call_primitive_bytecode(primitives.ADD, "+", 1)
     bytecodePrimSubtract = make_call_primitive_bytecode(primitives.SUBTRACT, "-", 1)
@@ -708,56 +784,25 @@ class __extend__(ContextPartShadow):
         w_selector = self.space.get_special_selector(selector)
         return self._sendSelfSelector(w_selector, numargs, interp)
 
-    def bytecodePrimAt(self, interp, current_bytecode):
-        # n.b.: depending on the type of the receiver, this may invoke
-        # primitives.AT, primitives.STRING_AT, or something else for all
-        # I know.
-        return self._sendSelfSelectorSpecial("at:", 1, interp)
+    bytecodePrimAt = make_send_selector_bytecode("at:", 1)
+    bytecodePrimAtPut = make_send_selector_bytecode("at:put:", 2)
+    bytecodePrimSize = make_send_selector_bytecode("size", 0)
+    bytecodePrimNext = make_send_selector_bytecode("next", 0)
+    bytecodePrimNextPut = make_send_selector_bytecode("nextPut:", 1)
+    bytecodePrimAtEnd = make_send_selector_bytecode("atEnd", 0)
 
-    def bytecodePrimAtPut(self, interp, current_bytecode):
-        # n.b. as above
-        return self._sendSelfSelectorSpecial("at:put:", 2, interp)
-
-    def bytecodePrimSize(self, interp, current_bytecode):
-        return self._sendSelfSelectorSpecial("size", 0, interp)
-
-    def bytecodePrimNext(self, interp, current_bytecode):
-        return self._sendSelfSelectorSpecial("next", 0, interp)
-
-    def bytecodePrimNextPut(self, interp, current_bytecode):
-        return self._sendSelfSelectorSpecial("nextPut:", 1, interp)
-
-    def bytecodePrimAtEnd(self, interp, current_bytecode):
-        return self._sendSelfSelectorSpecial("atEnd", 0, interp)
-
-    def bytecodePrimEquivalent(self, interp, current_bytecode):
-        # short-circuit: classes cannot override the '==' method,
-        # which cannot fail
-        primitives.prim_table[primitives.EQUIVALENT](interp, self, 1)
-
-    def bytecodePrimClass(self, interp, current_bytecode):
-        # short-circuit: classes cannot override the 'class' method,
-        # which cannot fail
-        primitives.prim_table[primitives.CLASS](interp, self, 0)
+    bytecodePrimEquivalent = make_quick_call_primitive_bytecode(primitives.EQUIVALENT, 1)
+    bytecodePrimClass = make_quick_call_primitive_bytecode(primitives.CLASS, 0)
 
     bytecodePrimBlockCopy = make_call_primitive_bytecode(primitives.BLOCK_COPY, "blockCopy:", 1)
     bytecodePrimValue = make_call_primitive_bytecode_classbased("w_BlockContext", primitives.VALUE, "w_BlockClosure", primitives.CLOSURE_VALUE, "value", 0)
     bytecodePrimValueWithArg = make_call_primitive_bytecode_classbased("w_BlockContext", primitives.VALUE, "w_BlockClosure", primitives.CLOSURE_VALUE_, "value:", 1)
 
-    def bytecodePrimDo(self, interp, current_bytecode):
-        return self._sendSelfSelectorSpecial("do:", 1, interp)
-
-    def bytecodePrimNew(self, interp, current_bytecode):
-        return self._sendSelfSelectorSpecial("new", 0, interp)
-
-    def bytecodePrimNewWithArg(self, interp, current_bytecode):
-        return self._sendSelfSelectorSpecial("new:", 1, interp)
-
-    def bytecodePrimPointX(self, interp, current_bytecode):
-        return self._sendSelfSelectorSpecial("x", 0, interp)
-
-    def bytecodePrimPointY(self, interp, current_bytecode):
-        return self._sendSelfSelectorSpecial("y", 0, interp)
+    bytecodePrimDo = make_send_selector_bytecode("do:", 1)
+    bytecodePrimNew = make_send_selector_bytecode("new", 0)
+    bytecodePrimNewWithArg = make_send_selector_bytecode("new:", 1)
+    bytecodePrimPointX = make_send_selector_bytecode("x", 0)
+    bytecodePrimPointY = make_send_selector_bytecode("y", 0)
 
 BYTECODE_RANGES = [
             (  0,  15, "pushReceiverVariableBytecode"),
