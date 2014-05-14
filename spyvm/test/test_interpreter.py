@@ -413,11 +413,11 @@ def test_bytecodePrimSize():
 # w_object - the actual object we will be sending the method to
 # bytecodes - the bytecode to be executed
 def sendBytecodesTest(w_class, w_object, bytecodes):
-    for bytecode, result in [ (returnReceiver, w_object),
-          (returnTrue, space.w_true),
-          (returnFalse, space.w_false),
-          (returnNil, space.w_nil),
-          (returnTopFromMethod, space.w_one) ]:
+    for bytecode, result in [ (returnReceiverBytecode, w_object),
+          (returnTrueBytecode, space.w_true),
+          (returnFalseBytecode, space.w_false),
+          (returnNilBytecode, space.w_nil),
+          (returnTopFromMethodBytecode, space.w_one) ]:
         shadow = w_class.as_class_get_shadow(space)
         w_method = model.W_CompiledMethod(space, 2)
         w_method.bytes = pushConstantOneBytecode + bytecode
@@ -457,7 +457,7 @@ def test_fibWithArgument():
     method.setliterals(literals)
     shadow.installmethod(literals[0], method)
     w_object = shadow.new()
-    w_frame, s_frame = new_frame(sendLiteralSelectorBytecode(16) + returnTopFromMethod)
+    w_frame, s_frame = new_frame(sendLiteralSelectorBytecode(16) + returnTopFromMethodBytecode)
     s_frame.w_method().setliterals(literals)
     s_frame.push(w_object)
     s_frame.push(space.wrap_int(8))
@@ -494,8 +494,8 @@ def test_makePoint():
     assert point.x() == 0
     assert point.y() == 1
 
-def test_longJumpIfTrue():
-    w_frame, s_frame = new_frame(longJumpIfTrue(0) + chr(15) + longJumpIfTrue(0) + chr(15))
+def test_longJumpIfTrueBytecode():
+    w_frame, s_frame = new_frame(longJumpIfTrueBytecode(0) + chr(15) + longJumpIfTrueBytecode(0) + chr(15))
     s_frame.push(space.w_false)
     pc = s_frame.pc() + 2
     step_in_interp(s_frame)
@@ -505,9 +505,9 @@ def test_longJumpIfTrue():
     step_in_interp(s_frame)
     assert s_frame.pc() == pc + 15
 
-def test_longJumpIfFalse():
-    w_frame, s_frame = new_frame(pushConstantTrueBytecode + longJumpIfFalse(0) + chr(15) +
-                             pushConstantFalseBytecode + longJumpIfFalse(0) + chr(15))
+def test_longJumpIfFalseBytecode():
+    w_frame, s_frame = new_frame(pushConstantTrueBytecode + longJumpIfFalseBytecode(0) + chr(15) +
+                             pushConstantFalseBytecode + longJumpIfFalseBytecode(0) + chr(15))
     step_in_interp(s_frame)
     pc = s_frame.pc() + 2
     step_in_interp(s_frame)
@@ -517,21 +517,21 @@ def test_longJumpIfFalse():
     step_in_interp(s_frame)
     assert s_frame.pc() == pc + 15
 
-def test_longUnconditionalJump():
-    w_frame, s_frame = new_frame(longUnconditionalJump(4) + chr(15))
+def test_longUnconditionalJumpBytecode():
+    w_frame, s_frame = new_frame(longUnconditionalJumpBytecode(4) + chr(15))
     pc = s_frame.pc() + 2
     step_in_interp(s_frame)
     assert s_frame.pc() == pc + 15
 
-def test_shortUnconditionalJump():
+def test_shortUnconditionalJumpBytecode():
     w_frame, s_frame = new_frame(chr(145))
     pc = s_frame.pc() + 1
     step_in_interp(s_frame)
     assert s_frame.pc() == pc + 2
 
-def test_shortConditionalJump():
-    w_frame, s_frame = new_frame(pushConstantTrueBytecode + shortConditionalJump(3) +
-                             pushConstantFalseBytecode + shortConditionalJump(3))
+def test_shortConditionalJumpBytecode():
+    w_frame, s_frame = new_frame(pushConstantTrueBytecode + shortConditionalJumpBytecode(3) +
+                             pushConstantFalseBytecode + shortConditionalJumpBytecode(3))
     step_in_interp(s_frame)
     pc = s_frame.pc() + 1
     step_in_interp(s_frame)

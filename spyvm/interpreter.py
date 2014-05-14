@@ -204,7 +204,7 @@ class Interpreter(object):
         w_method = model.W_CompiledMethod(self.space, header=512)
         w_method.literalatput0(self.space, 1, w_selector)
         assert len(arguments_w) <= 7
-        w_method.setbytes([chr(131), chr(len(arguments_w) << 5 + 0), chr(124)]) #returnTopFromMethod
+        w_method.setbytes([chr(131), chr(len(arguments_w) << 5 + 0), chr(124)]) #returnTopFromMethodBytecode
         w_method.set_lookup_class_and_name(w_receiver.getclass(self.space), "Interpreter.perform")
         s_frame = MethodContextShadow(self.space, None, w_method, w_receiver, [])
         s_frame.push(w_receiver)
@@ -459,22 +459,22 @@ class __extend__(ContextPartShadow):
                     self.mark_returned()
                     raise nlr
 
-    def returnReceiver(self, interp, current_bytecode):
+    def returnReceiverBytecode(self, interp, current_bytecode):
         return self._return(self.w_receiver(), interp, self.s_home().s_sender())
 
-    def returnTrue(self, interp, current_bytecode):
+    def returnTrueBytecode(self, interp, current_bytecode):
         return self._return(interp.space.w_true, interp, self.s_home().s_sender())
 
-    def returnFalse(self, interp, current_bytecode):
+    def returnFalseBytecode(self, interp, current_bytecode):
         return self._return(interp.space.w_false, interp, self.s_home().s_sender())
 
-    def returnNil(self, interp, current_bytecode):
+    def returnNilBytecode(self, interp, current_bytecode):
         return self._return(interp.space.w_nil, interp, self.s_home().s_sender())
 
-    def returnTopFromMethod(self, interp, current_bytecode):
+    def returnTopFromMethodBytecode(self, interp, current_bytecode):
         return self._return(self.pop(), interp, self.s_home().s_sender())
 
-    def returnTopFromBlock(self, interp, current_bytecode):
+    def returnTopFromBlockBytecode(self, interp, current_bytecode):
         return self._return(self.pop(), interp, self.s_sender())
 
     def unknownBytecode(self, interp, current_bytecode):
@@ -662,23 +662,23 @@ class __extend__(ContextPartShadow):
     def shortJumpPosition(self, current_bytecode):
         return (current_bytecode & 7) + 1
 
-    def shortUnconditionalJump(self, interp, current_bytecode):
+    def shortUnconditionalJumpBytecode(self, interp, current_bytecode):
         self.jump(self.shortJumpPosition(current_bytecode))
 
-    def shortConditionalJump(self, interp, current_bytecode):
+    def shortConditionalJumpBytecode(self, interp, current_bytecode):
         # The conditional jump is "jump on false"
         self.jumpConditional(interp, False, self.shortJumpPosition(current_bytecode))
 
-    def longUnconditionalJump(self, interp, current_bytecode):
+    def longUnconditionalJumpBytecode(self, interp, current_bytecode):
         self.jump((((current_bytecode & 7) - 4) << 8) + self.fetch_next_bytecode())
 
     def longJumpPosition(self, current_bytecode):
         return ((current_bytecode & 3) << 8) + self.fetch_next_bytecode()
 
-    def longJumpIfTrue(self, interp, current_bytecode):
+    def longJumpIfTrueBytecode(self, interp, current_bytecode):
         self.jumpConditional(interp, True, self.longJumpPosition(current_bytecode))
 
-    def longJumpIfFalse(self, interp, current_bytecode):
+    def longJumpIfFalseBytecode(self, interp, current_bytecode):
         self.jumpConditional(interp, False, self.longJumpPosition(current_bytecode))
 
     bytecodePrimAdd = make_call_primitive_bytecode(primitives.ADD, "+", 1)
@@ -769,12 +769,12 @@ BYTECODE_RANGES = [
             (117, "pushConstantZeroBytecode"),
             (118, "pushConstantOneBytecode"),
             (119, "pushConstantTwoBytecode"),
-            (120, "returnReceiver"),
-            (121, "returnTrue"),
-            (122, "returnFalse"),
-            (123, "returnNil"),
-            (124, "returnTopFromMethod"),
-            (125, "returnTopFromBlock"),
+            (120, "returnReceiverBytecode"),
+            (121, "returnTrueBytecode"),
+            (122, "returnFalseBytecode"),
+            (123, "returnNilBytecode"),
+            (124, "returnTopFromMethodBytecode"),
+            (125, "returnTopFromBlockBytecode"),
             (126, "unknownBytecode"),
             (127, "unknownBytecode"),
             (128, "extendedPushBytecode"),
@@ -793,11 +793,11 @@ BYTECODE_RANGES = [
             (141, "storeRemoteTempLongBytecode"),
             (142, "storeAndPopRemoteTempLongBytecode"),
             (143, "pushClosureCopyCopiedValuesBytecode"),
-            (144, 151, "shortUnconditionalJump"),
-            (152, 159, "shortConditionalJump"),
-            (160, 167, "longUnconditionalJump"),
-            (168, 171, "longJumpIfTrue"),
-            (172, 175, "longJumpIfFalse"),
+            (144, 151, "shortUnconditionalJumpBytecode"),
+            (152, 159, "shortConditionalJumpBytecode"),
+            (160, 167, "longUnconditionalJumpBytecode"),
+            (168, 171, "longJumpIfTrueBytecode"),
+            (172, 175, "longJumpIfFalseBytecode"),
             (176, "bytecodePrimAdd"),
             (177, "bytecodePrimSubtract"),
             (178, "bytecodePrimLessThan"),

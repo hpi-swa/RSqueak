@@ -111,7 +111,7 @@ def context_for(interp, number, benchmark, stringarg):
     w_selector = interp.perform(space.wrap_string(benchmark), "asSymbol")
     w_method = model.W_CompiledMethod(space, header=512)
     w_method.literalatput0(space, 1, w_selector)
-    w_method.setbytes([chr(131), chr(argcount << 5), chr(124)]) #returnTopFromMethod
+    w_method.setbytes([chr(131), chr(argcount << 5), chr(124)]) #returnTopFromMethodBytecodeBytecode
     s_frame = shadow.MethodContextShadow(space, None, w_method, w_receiver, [])
     s_frame.push(w_receiver)
     if not stringarg == "":

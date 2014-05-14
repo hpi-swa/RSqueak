@@ -122,7 +122,7 @@ def main():
     # ===== These entry-points pre-load the image and directly execute a single frame.
     # func = preload_perform(imagename, model.W_SmallInteger(1000), 'loopTest2')
     # func = preload_perform(imagename, model.W_SmallInteger(777), 'name')
-    # func = preload_execute_frame(imagename, [returnReceiver], [], [model.W_SmallInteger(42)])
+    # func = preload_execute_frame(imagename, [returnReceiverBytecodeBytecode], [], [model.W_SmallInteger(42)])
     
     # ===== These execute the complete interpreter
     # ===== XXX These do not work because loading the image file while meta-interpreting always leads to 
