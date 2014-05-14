@@ -274,6 +274,7 @@ def make_call_primitive_bytecode(primitive, selector, argcount, store_pc=False):
         except primitives.PrimitiveFailedError:
             pass
         return self._sendSelfSelectorSpecial(selector, argcount, interp)
+    callPrimitive.func_name = "callPrimitive_%s" % func.func_name
     return callPrimitive
 
 def make_call_primitive_bytecode_classbased(a_class_name, a_primitive, alternative_class_name, alternative_primitive, selector, argcount):
