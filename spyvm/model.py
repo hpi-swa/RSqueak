@@ -1275,7 +1275,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         return 16 + self.islarge * 40 + self.argsize
     
     @constant_for_version_arg
-    def fetch_next_bytecode(self, pc):
+    def fetch_bytecode(self, pc):
         assert pc >= 0 and pc < len(self.bytes)
         return self.bytes[pc]
     
@@ -1425,17 +1425,23 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def str_content(self):
         return self.get_identifier_string()
 
-    def as_string(self, markBytecode=0):
+    def bytecode_string(self, markBytecode=0):
         from spyvm.interpreter import BYTECODE_TABLE
+        retval = "Bytecode:------------"
         j = 1
-        retval  = "\nMethodname: " + self.get_identifier_string()
-        retval += "\nBytecode:------------\n"
         for i in self.bytes:
+            retval += '\n'
             retval += '->' if j is markBytecode else '  '
-            retval += ('%0.2i: 0x%0.2x(%0.3i) ' % (j ,ord(i), ord(i))) + BYTECODE_TABLE[ord(i)].__name__ + "\n"
+            retval += ('%0.2i: 0x%0.2x(%0.3i) ' % (j, ord(i), ord(i))) + BYTECODE_TABLE[ord(i)].__name__
             j += 1
-        return retval + "---------------------\n"
-
+        retval += "\n---------------------"
+        return retval
+        
+    def as_string(self, markBytecode=0):
+        retval  = "\nMethodname: " + self.get_identifier_string()
+        retval += "\n%s" % self.bytecode_string(markBytecode)
+        return retval
+    
     def guess_containing_classname(self):
         w_class = self.compiled_in()
         if w_class and w_class.has_space():

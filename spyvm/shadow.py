@@ -795,12 +795,14 @@ class ContextPartShadow(AbstractRedirectingShadow):
         return self._w_self_size
     
     def fetch_next_bytecode(self):
-        jit.promote(self._pc)
-        assert self._pc >= 0
-        bytecode = self.w_method().fetch_next_bytecode(self._pc)
-        currentBytecode = ord(bytecode)
+        pc = jit.promote(self._pc)
+        assert pc >= 0
         self._pc += 1
-        return currentBytecode
+        return self.fetch_bytecode(pc)
+    
+    def fetch_bytecode(self, pc):
+        bytecode = self.w_method().fetch_bytecode(pc)
+        return ord(bytecode)
     
     # ______________________________________________________________________
     # Temporary Variables
@@ -902,19 +904,48 @@ class ContextPartShadow(AbstractRedirectingShadow):
     # ______________________________________________________________________
     # Printing
 
+    def __str__(self):
+        retval = self.short_str()
+        retval += "\n%s" % self.w_method().bytecode_string(markBytecode=self.pc() + 1)
+        retval += "\nArgs:----------------"
+        argcount = self.w_method().argsize
+        j = 0
+        for w_obj in self._temps_and_stack[:self._stack_ptr]:
+            if j == argcount:
+                retval += "\nTemps:---------------"
+            if j == self.tempsize():
+                retval += "\nStack:---------------"
+            retval += "\n  %0.2i: %s" % (j, w_obj.as_repr_string())
+            j += 1
+        retval += "\n---------------------"
+        return retval
+    
+    def short_str(self):
+        arg_strings = self.argument_strings()
+        if len(arg_strings) > 0:
+            args = " , ".join(arg_strings)
+            args = " (%d arg(s): %s)" % (len(arg_strings), args)
+        else:
+            args = ""
+        return '%s [pc: %d] (rcvr: %s)%s' % (
+            self.method_str(),
+            self.pc() + 1,
+            self.w_receiver().as_repr_string(),
+            args
+        )
+    
     def print_stack(self, method=True):
         return self.print_padded_stack(method)[1]
-
+    
     def print_padded_stack(self, method):
         padding = ret_str = ''
         if self.s_sender() is not None:
-                padding, ret_str = self.s_sender().print_padded_stack(method)
+            padding, ret_str = self.s_sender().print_padded_stack(method)
         if method:
             desc = self.method_str()
         else:
             desc = self.short_str()
         return padding + ' ', '%s\n%s%s' % (ret_str, padding, desc)
-
 
 class BlockContextShadow(ContextPartShadow):
     _attrs_ = ['_w_home', '_initialip', '_eargc']
@@ -1034,15 +1065,11 @@ class BlockContextShadow(ContextPartShadow):
 
     # === Printing ===
     
-    def short_str(self):
-        return 'BlockContext of %s (%s) [%d]' % (
-            self.w_method().get_identifier_string(),
-            self.w_receiver().as_repr_string(),
-            self.pc() + 1
-        )
-
+    def argument_strings(self):
+        return []
+    
     def method_str(self):
-        return '[] of %s' % self.w_method().get_identifier_string()
+        return '[] in %s' % self.w_method().get_identifier_string()
 
 class MethodContextShadow(ContextPartShadow):
     _attrs_ = ['closure', '_w_receiver', '_w_method']
@@ -1192,35 +1219,17 @@ class MethodContextShadow(ContextPartShadow):
         self.stack_put(index0, w_value)
 
     # === Printing ===
-
-    def __str__(self):
-        retval = '\nMethodContext of:'
-        retval += self.w_method().as_string(markBytecode=self.pc() + 1)
-        retval += "Stackptr: %d (this is an empty ascending stack with args and temps (%d), then stack)" % (self._stack_ptr, self.tempsize())
-        retval += "\nStack   : " + str(self._temps_and_stack[:self._stack_ptr])
-        return retval
-
-    def short_str(self):
-        method_str = self.method_str()
-        argcount = method_str.count(':')
-        if argcount == 0:
-            return '%s (rcvr: %s) [pc: %d]' % (
-                method_str,
-                self.w_receiver().as_repr_string(),
-                self.pc() + 1
-            )
-        args = '%d' % argcount
+    
+    def argument_strings(self):
+        argcount = self.w_method().argsize
+        tempsize = self.w_method().tempsize()
+        args = []
         for i in range(argcount):
-            args += ': %s' % self.peek(argcount -1 - i).as_repr_string()
-        return '%s (rcvr: %s) [pc: %d] (%s)' % (
-            self.method_str(),
-            self.w_receiver().as_repr_string(),
-            self.pc() + 1,
-            args
-        )
+            args.append(self.peek(tempsize - i - 1).as_repr_string())
+        return args
 
     def method_str(self):
-        block = '[] of ' if self.is_closure_context() else ''
+        block = '[] in ' if self.is_closure_context() else ''
         return '%s%s' % (block, self.w_method().get_identifier_string())
 
 class CachedObjectShadow(AbstractCachingShadow):
