@@ -85,7 +85,7 @@ class Interpreter(object):
             except ProcessSwitch, p:
                 if self.trace:
                     print "====== Switched process from: %s" % s_new_context.short_str()
-					print "====== to: %s " % p.s_new_context.short_str()
+                    print "====== to: %s " % p.s_new_context.short_str()
                 s_new_context = p.s_new_context
 
     def loop_bytecodes(self, s_context, may_context_switch=True):
@@ -126,20 +126,20 @@ class Interpreter(object):
             self.loop_bytecodes(s_new_frame, may_context_switch)
         finally:
             self.remaining_stack_depth += 1
-	
-	def step(self, context):
-		bytecode = context.fetch_next_bytecode()
-		for entry in UNROLLING_BYTECODE_RANGES:
-			if len(entry) == 2:
-				bc, methname = entry
-				if bytecode == bc:
-					return getattr(context, methname)(self, bytecode)
-			else:
-				start, stop, methname = entry
-				if start <= bytecode <= stop:
-					return getattr(context, methname)(self, bytecode)
-		assert 0, "unreachable"
-	
+    
+    def step(self, context):
+        bytecode = context.fetch_next_bytecode()
+        for entry in UNROLLING_BYTECODE_RANGES:
+            if len(entry) == 2:
+                bc, methname = entry
+                if bytecode == bc:
+                    return getattr(context, methname)(self, bytecode)
+            else:
+                start, stop, methname = entry
+                if start <= bytecode <= stop:
+                    return getattr(context, methname)(self, bytecode)
+        assert 0, "unreachable"
+    
     # ============== Methods for handling user interrupts ==============
     
     def jitted_check_for_interrupt(self, s_frame):
