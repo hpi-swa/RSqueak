@@ -114,6 +114,41 @@ class ProcessWrapper(LinkWrapper):
                 self.store_my_list(self.space.w_nil)
             return w_current_frame
 
+class StmProcessWrapper(ProcessWrapper):
+
+    # Mis-using priority as lock, we don't need prios :P
+    lock, store_lock = make_int_getter_setter(2)
+
+    def put_to_sleep(self):
+        # Must not queue
+        pass
+
+    def activate(self):
+        # must be activated by STM_FORK primitive
+        pass
+
+    def deactivate(self, w_current_frame):
+        # must not be deactivated from outside
+        pass
+
+    def suspend(self, w_current_frame):
+        # must not be descheduled
+        pass
+
+    def is_active_process(self):
+        # we run in the dark / unseen by the scheduler
+        return False
+
+    def fork(self, w_current_frame):
+        from spyvm.interpreter import STMForkException
+        w_frame = self.suspended_context()
+
+        assert isinstance(w_frame, model.W_PointersObject)
+        print "Breaking interpreter loop for forking"
+        # we need to pass control to the interpreter loop here
+        # self.store_lock(1) Needed for join call
+        raise STMForkException(w_frame, self._w_self)
+
 class LinkedListWrapper(Wrapper):
     first_link, store_first_link = make_getter_setter(0)
     last_link, store_last_link = make_getter_setter(1)

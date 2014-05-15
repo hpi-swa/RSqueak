@@ -33,7 +33,8 @@ def make_failing(code):
 
 # Squeak has primitives all the way up to 575
 # So all optional primitives will default to the bytecode implementation
-prim_table = [make_failing(i) for i in range(576)]
+# Added more primitives 1350
+prim_table = [make_failing(i) for i in range(1350)]
 
 class PrimitiveHolder(object):
     _immutable_fields_ = ["prim_table[*]"]
@@ -1290,6 +1291,13 @@ SUSPEND = 88
 FLUSH_CACHE = 89
 WITH_ARGS_EXECUTE_METHOD = 188
 
+# STM Primitives
+STM_FORK = 1299  # 787 (+ 512) # resume in native thread
+STM_SIGNAL = 1300  # 788
+STM_WAIT = 1301  # 789
+STM_ATOMIC_ENTER = 1302  # 790
+STM_ATOMIC_LEAVE = 1303  # 791
+
 @expose_primitive(BLOCK_COPY, unwrap_spec=[object, int])
 def func(interp, s_frame, w_context, argcnt):
 
@@ -1455,6 +1463,15 @@ def func(interp, s_frame, w_rcvr):
     s_class = w_rcvr.as_class_get_shadow(interp.space)
     s_class.flush_caches()
     return w_rcvr
+
+@expose_primitive(STM_FORK, unwrap_spec=[object], no_result=True)
+def func(interp, s_frame, w_rcvr):
+    from rpython.rlib import rstm
+
+    print "STM_FORK primitive called"
+
+    #wrapper.StmProcessWrapper(interp.space, w_rcvr).fork(s_frame.w_self())
+    #rstm.should_break_transaction()
 
 # ___________________________________________________________________________
 # BlockClosure Primitives

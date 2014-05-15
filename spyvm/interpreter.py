@@ -1,11 +1,53 @@
 import py
 import os
+import time
+
 from spyvm.shadow import ContextPartShadow, MethodContextShadow, BlockContextShadow, MethodNotFound
 from spyvm import model, constants, primitives, conftest, wrapper
 from spyvm.tool.bitmanipulation import splitter
 
 from rpython.rlib import jit, rstm
 from rpython.rlib import objectmodel, unroll
+
+from rpython.rlib import rthread
+
+class STMForkException(Exception):
+
+    def __init__(self, w_frame, w_stm_process):
+        self.w_frame = w_frame
+        self.w_stm_process = w_stm_process
+
+class MyLock():
+    def __init__(self):
+        self.LOCK = None
+        self.a = 0
+
+mylock = MyLock()
+
+
+def my_little_thread():
+    while True:
+        acquired = mylock.LOCK.acquire(False)
+        if acquired:
+            mylock.a = 2
+            print "MY 2:", mylock.a
+            time.sleep(2.5)
+            mylock.LOCK.release()
+        else:
+            print "MY locked 10:", mylock.a
+
+def yours_little_thread():
+    while True:
+        acquired = mylock.LOCK.acquire(False)
+        if acquired:
+            mylock.a = 10
+            print "YOURS 10:", mylock.a
+            mylock.LOCK.release()
+            time.sleep(4.0)
+        else:
+            print "YOURS locked 2:", mylock.a
+
+
 
 class MissingBytecode(Exception):
     """Bytecode not implemented yet."""
@@ -21,6 +63,71 @@ def get_printable_location(pc, self, method):
     name = method._w_self._likely_methodname
     return '%d: [%s]%s (%s)' % (pc, hex(bc), BYTECODE_NAMES[bc], name)
 
+class Bootstrapper(object):
+    """
+    Bootstrapper bootstrapping interpreters in some native thread.
+    It uses lock-guarded global state, as rpython does not pass arguments
+    to OS threads.
+    """
+
+    def __init__(self):
+        self.lock = None
+        # critical values, only modify under lock:
+        self.interp = None
+        self.w_frame = None
+        self.w_stm_process = None
+        self.num_threads = 0
+
+    def get_lock(self):
+        if self.lock is None:
+            self.lock = rthread.allocate_lock()
+        return self.lock
+
+    # wait for previous thread to start, then set global state
+    def acquire(interp, w_frame, w_stm_process):
+        bootstrapper.get_lock().acquire(True)
+        bootstrapper.interp = interp
+        bootstrapper.w_frame = w_frame
+        bootstrapper.w_stm_process = w_stm_process
+
+    acquire = staticmethod(acquire)
+
+    # lock is released once the new thread started
+    def release():
+        bootstrapper.interp = None
+        bootstrapper.w_frame = None
+        bootstrapper.w_stm_process = None
+        bootstrapper.get_lock().release()
+
+    release = staticmethod(release)
+
+    def bootstrap():
+        print "New thread reporting"
+        interp = bootstrapper.interp
+        w_frame = bootstrapper.w_frame
+        w_stm_process = bootstrapper.w_stm_process
+        assert isinstance(interp, Interpreter)
+        #assert isinstance(w_frame, model.W_PointersObject)
+        #assert isinstance(w_stm_process, model.W_PointersObject)
+        bootstrapper.num_threads += 1
+        print "Me is started", bootstrapper.num_threads
+        bootstrapper.release()
+
+        # ...aaaaand go!
+        # wrapper.StmProcessWrapper(interp.space, w_stm_process).store_lock(1)
+
+        # interp.interpret_with_w_frame(w_frame, may_context_switch=False)
+        time.sleep(2.5)
+
+        # Signal waiting processes
+        #wrapper.StmProcessWrapper(interp.space, w_stm_process).signal('thread')
+
+        # cleanup
+        bootstrapper.num_threads -= 1
+
+    bootstrap = staticmethod(bootstrap)
+
+bootstrapper = Bootstrapper()
 
 class Interpreter(object):
     _immutable_fields_ = ["space", "image", "image_name",
@@ -61,6 +168,22 @@ class Interpreter(object):
         # ######################################################################
         self.trace = trace
         self.trace_proxy = False
+
+    def fork_interpreter_thread(self, w_frame, w_stm_process):
+        new_interp = Interpreter(
+            self.space,
+            self.image,
+            self.image_name,
+            self.trace,
+            self.max_stack_depth)
+        new_interp.remaining_stack_depth = self.remaining_stack_depth
+        new_interp._loop = self._loop
+        new_interp.next_wakeup_tick = self.next_wakeup_tick
+        new_interp.interrupt_check_counter = self.interrupt_check_counter
+        new_interp.trace_proxy = self.trace_proxy
+
+        bootstrapper.acquire(new_interp, None, None)
+        rthread.start_new_thread(bootstrapper.bootstrap, ())
 
     def interpret_with_w_frame(self, w_frame):
         try:
@@ -107,6 +230,7 @@ class Interpreter(object):
             self.quick_check_for_interrupt(s_context)
         method = s_context.s_method()
         while True:
+            print "another bytecode"
             pc = s_context.pc()
             if pc < old_pc:
                 if jit.we_are_jitted():
@@ -133,6 +257,9 @@ class Interpreter(object):
                     raise nlr
                 else:
                     s_context.push(nlr.value)
+            except STMForkException as fork_exception:
+                print "Fork requested"
+                #self.fork_interpreter_thread(fork_exception.w_frame, fork_exception.w_stm_process)
 
     def _get_adapted_tick_counter(self):
         # Normally, the tick counter is decremented by 1 for every message send.
