@@ -230,7 +230,6 @@ class Interpreter(object):
             self.quick_check_for_interrupt(s_context)
         method = s_context.s_method()
         while True:
-            print "another bytecode"
             pc = s_context.pc()
             if pc < old_pc:
                 if jit.we_are_jitted():
