@@ -1470,8 +1470,8 @@ def func(interp, s_frame, w_rcvr):
 
     print "STM_FORK primitive called"
 
-    #wrapper.StmProcessWrapper(interp.space, w_rcvr).fork(s_frame.w_self())
-    #rstm.should_break_transaction()
+    wrapper.StmProcessWrapper(interp.space, w_rcvr).fork(s_frame.w_self())
+    rstm.should_break_transaction()
 
 # ___________________________________________________________________________
 # BlockClosure Primitives

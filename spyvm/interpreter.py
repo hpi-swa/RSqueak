@@ -258,7 +258,7 @@ class Interpreter(object):
                     s_context.push(nlr.value)
             except STMForkException as fork_exception:
                 print "Fork requested"
-                #self.fork_interpreter_thread(fork_exception.w_frame, fork_exception.w_stm_process)
+                self.fork_interpreter_thread(fork_exception.w_frame, fork_exception.w_stm_process)
 
     def _get_adapted_tick_counter(self):
         # Normally, the tick counter is decremented by 1 for every message send.
