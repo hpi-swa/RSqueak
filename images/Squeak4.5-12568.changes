@@ -440,4 +440,322 @@
 		at: 14 at: 13 put: 1;
 		at: 12 at: 14 put: 1.			((numberOfRows > 16) and: (numberOfColumns > 16)) ifTrue: [		newField			at: 20 at: 3 put: 1;			at: 20 at: 4 put: 1;			at: 21 at: 2 put: 1;			at: 21 at: 5 put: 1;			at: 22 at: 3 put: 1;			at: 22 at: 4 put: 1;						at: 20 at: 20 put: 1;			at: 20 at: 21 put: 1;			at: 20 at: 22 put: 1.			].
 		
-	^ newField! !----SNAPSHOT----{21 January 2014 . 2:05:40 pm} Squeak4.5-12568.image priorSource: 84405!----STARTUP----{17 May 2014 . 11:47:50 pm} as /home/hub/hpi/stm/src/lang-smalltalk/images/Squeak4.5-12568.image!FileStream stdout nextPutAll: 'release.st'; cr; flush.!----SNAPSHOT----{17 May 2014 . 11:48:30 pm} Squeak4.5-12568.image priorSource: 86737!!Integer methodsFor: '*SPy-Benchmarks' stamp: 'hh 5/17/2014 23:49'!stmBenchmarkTest	FileStream stdout nextPutAll: 'starting stm process.'.	"^ StmProcess new fork"! !----QUIT----{17 May 2014 . 11:49:16 pm} Squeak4.5-12568.image priorSource: 86999!----STARTUP----{17 May 2014 . 11:50:46 pm} as /home/hub/hpi/stm/src/lang-smalltalk/images/Squeak4.5-12568.image!Process subclass: #StmProcess	instanceVariableNames: ''	classVariableNames: ''	poolDictionaries: ''	category: 'Kernel-Processes'!!Integer methodsFor: '*SPy-Benchmarks' stamp: 'hh 5/17/2014 23:53' prior: 33641587!stmBenchmarkTest	FileStream stdout nextPutAll: 'starting stm process.'.	^ StmProcess new fork.! !!StmProcess methodsFor: 'nil' stamp: 'hh 5/17/2014 23:54'!fork	<primitive: 787> 	FileStream stdout nextPutAll: 'Primitive stmFork failed'.	self primitiveFailed! !!StmProcess methodsFor: 'as yet unclassified' stamp: 'hh 5/17/2014 23:55' prior: 33642264!fork		<primitive: 787> 		self primitiveFailed! !----SNAPSHOT----{17 May 2014 . 11:55:14 pm} Squeak4.5-12568.image priorSource: 87255!----QUIT----{17 May 2014 . 11:55:30 pm} Squeak4.5-12568.image priorSource: 88078!----STARTUP----{22 May 2014 . 11:48:49 am} as D:\code\python\spy-vm\lang-smalltalk\images\Squeak4.5-12568.image!!StmProcess methodsFor: 'as yet unclassified' stamp: 'pre 5/22/2014 11:49'!wait		<primitive: 789> 		self primitiveFailed! !!Integer methodsFor: '*SPy-Benchmarks' stamp: 'pre 5/22/2014 11:50' prior: 33642105!stmBenchmarkTest	| p |	FileStream stdout nextPutAll: 'starting stm process.'.	p := StmProcess new fork.	p join! !!StmProcess methodsFor: 'as yet unclassified' stamp: 'pre 5/22/2014 11:50'!join		<primitive: 789> 		self primitiveFailed! !StmProcess removeSelector: #wait!----QUIT----{22 May 2014 . 11:50:32 am} Squeak4.5-12568.image priorSource: 88165!----STARTUP----{22 May 2014 . 1:53:40 pm} as D:\code\python\spy-vm\lang-smalltalk\images\Squeak4.5-12568.image!!BlockClosure methodsFor: 'STM' stamp: 'pre 5/22/2014 13:58'!newStmProcess	^ StmProcess forContext: [self value] asContext priority: Processor activePriority! !!BlockClosure methodsFor: 'STM' stamp: 'pre 5/22/2014 13:59' prior: 33568777!parallelFork	^ (self newStmProcess) fork; yourself! !BlockClosure removeSelector: #newStmProcess!!BlockClosure methodsFor: 'STM' stamp: 'pre 5/22/2014 13:59' prior: 33643726!parallelFork	^ (self newSTMProcess) fork; yourself! !!STMProcess methodsFor: 'as yet unclassified' stamp: 'pre 5/22/2014 14:00' prior: 33556280!primWait	<primitive: 789>	SPyVM print: ' Failed to wait for process!! '	self primitiveFailed.! !!STMProcess methodsFor: 'as yet unclassified' stamp: 'pre 5/22/2014 14:00' prior: 33644052!primWait	<primitive: 789>	SPyVM print: ' Failed to wait for process!! '.	self primitiveFailed.! !!STMProcess methodsFor: 'as yet unclassified' stamp: 'pre 5/22/2014 14:00' prior: 42636506!fork	<primitive: 787>	Transcript show: '* STM Process did not fork *' , Character cr.	self primitiveFailed.	self resume! !STMProcess removeSelector: #initialize!Process subclass: #STMProcess	instanceVariableNames: ''	classVariableNames: ''	poolDictionaries: ''	category: 'Kernel-STM'!Process subclass: #STMProcess	instanceVariableNames: 'lock'	classVariableNames: ''	poolDictionaries: ''	category: 'Kernel-STM'!!Integer methodsFor: '*SPy-Benchmarks' stamp: 'pre 5/22/2014 14:02' prior: 33643008!stmBenchmarkTest	| p |	FileStream stdout nextPutAll: 'starting stm process.'.	p := STMProcess new fork.	p join! !Smalltalk removeClassNamed: #StmProcess!Process subclass: #STMProcess	instanceVariableNames: ''	classVariableNames: ''	poolDictionaries: ''	category: 'Kernel-STM'!Process subclass: #STMProcess	instanceVariableNames: 'lock'	classVariableNames: ''	poolDictionaries: ''	category: 'Kernel-STM'!!Integer methodsFor: '*SPy-Benchmarks' stamp: 'pre 5/22/2014 14:03' prior: 33644952!stmBenchmarkTest	| p |	FileStream stdout nextPutAll: 'starting stm process.'.	p := [ 1 + 1. ] parallelFork.	p join! !----SNAPSHOT----{22 May 2014 . 2:03:31 pm} Squeak4.5-12568.image priorSource: 88855!----QUIT----{22 May 2014 . 2:06:55 pm} Squeak4.5-12568.image priorSource: 91148!----STARTUP----{22 May 2014 . 2:12:45 pm} as /home/hub/hpi/stm/src/lang-smalltalk/images/Squeak4.5-12568.image!----QUIT----{22 May 2014 . 2:13:22 pm} Squeak4.5-12568.image priorSource: 91234!----STARTUP----{22 May 2014 . 2:41:04 pm} as /home/hub/hpi/stm/src/lang-smalltalk/images/Squeak4.5-12568.image!!Integer methodsFor: '*SPy-Benchmarks' stamp: 'hh 5/22/2014 14:41'!paralellForkTest	| p |	FileStream stdout nextPutAll: 'starting stm process.'.	p := [ 1 + 1. ] parallelFork.	p join! !!Integer methodsFor: '*SPy-Benchmarks' stamp: 'hh 5/22/2014 14:42'!stmTest	| p |	FileStream stdout nextPutAll: 'starting stm process.'.	p := STMProcess new.	p join! !Integer removeSelector: #stmBenchmarkTest!----QUIT----{22 May 2014 . 2:42:38 pm} Squeak4.5-12568.image priorSource: 91430!----STARTUP----{22 May 2014 . 2:45:49 pm} as /home/hub/hpi/stm/src/lang-smalltalk/images/Squeak4.5-12568.image!!Integer methodsFor: '*SPy-Benchmarks' stamp: 'hh 5/22/2014 14:46' prior: 33646317!stmTest	| p |	FileStream stdout nextPutAll: 'starting stm process.'.	p := STMProcess new.	p wait! !!Integer methodsFor: '*SPy-Benchmarks' stamp: 'hh 5/22/2014 14:46' prior: 33646745!stmTest	| p |	FileStream stdout nextPutAll: 'starting stm process.'.	p := STMProcess new.	p wait.! !!Integer methodsFor: '*SPy-Benchmarks' stamp: 'hh 5/22/2014 14:46' prior: 33646127!paralellForkTest	| p |	FileStream stdout nextPutAll: 'starting stm process.'.	p := [ 1 + 1. ] parallelFork.	p wait! !----QUIT----{22 May 2014 . 2:46:59 pm} Squeak4.5-12568.image priorSource: 92032!----STARTUP----{22 May 2014 . 2:47:56 pm} as /home/hub/hpi/stm/src/lang-smalltalk/images/Squeak4.5-12568.image!!Integer methodsFor: '*SPy-Benchmarks' stamp: 'hh 5/22/2014 14:48'!parallelForkTest	| p |	FileStream stdout nextPutAll: 'starting stm process.'.	p := [ 1 + 1. ] parallelFork.	p wait! !Integer removeSelector: #paralellForkTest!----QUIT----{22 May 2014 . 2:48:13 pm} Squeak4.5-12568.image priorSource: 92811!
+	^ newField! !----SNAPSHOT----{21 January 2014 . 2:05:40 pm} Squeak4.5-12568.image priorSource: 84405!----STARTUP----{17 May 2014 . 11:47:50 pm} as /home/hub/hpi/stm/src/lang-smalltalk/images/Squeak4.5-12568.image!FileStream stdout nextPutAll: 'release.st'; cr; flush.!----SNAPSHOT----{17 May 2014 . 11:48:30 pm} Squeak4.5-12568.image priorSource: 86737!!Integer methodsFor: '*SPy-Benchmarks' stamp: 'hh 5/17/2014 23:49'!stmBenchmarkTest	FileStream stdout nextPutAll: 'starting stm process.'.	"^ StmProcess new fork"! !----QUIT----{17 May 2014 . 11:49:16 pm} Squeak4.5-12568.image priorSource: 86999!----STARTUP----{17 May 2014 . 11:50:46 pm} as /home/hub/hpi/stm/src/lang-smalltalk/images/Squeak4.5-12568.image!Process subclass: #StmProcess	instanceVariableNames: ''	classVariableNames: ''	poolDictionaries: ''	category: 'Kernel-Processes'!!Integer methodsFor: '*SPy-Benchmarks' stamp: 'hh 5/17/2014 23:53' prior: 33641587!stmBenchmarkTest	FileStream stdout nextPutAll: 'starting stm process.'.	^ StmProcess new fork.! !!StmProcess methodsFor: 'nil' stamp: 'hh 5/17/2014 23:54'!fork	<primitive: 787> 	FileStream stdout nextPutAll: 'Primitive stmFork failed'.	self primitiveFailed! !!StmProcess methodsFor: 'as yet unclassified' stamp: 'hh 5/17/2014 23:55' prior: 33642264!fork		<primitive: 787> 		self primitiveFailed! !----SNAPSHOT----{17 May 2014 . 11:55:14 pm} Squeak4.5-12568.image priorSource: 87255!----QUIT----{17 May 2014 . 11:55:30 pm} Squeak4.5-12568.image priorSource: 88078!----STARTUP----{22 May 2014 . 11:48:49 am} as D:\code\python\spy-vm\lang-smalltalk\images\Squeak4.5-12568.image!!StmProcess methodsFor: 'as yet unclassified' stamp: 'pre 5/22/2014 11:49'!wait		<primitive: 789> 		self primitiveFailed! !!Integer methodsFor: '*SPy-Benchmarks' stamp: 'pre 5/22/2014 11:50' prior: 33642105!stmBenchmarkTest	| p |	FileStream stdout nextPutAll: 'starting stm process.'.	p := StmProcess new fork.	p join! !!StmProcess methodsFor: 'as yet unclassified' stamp: 'pre 5/22/2014 11:50'!join		<primitive: 789> 		self primitiveFailed! !StmProcess removeSelector: #wait!----QUIT----{22 May 2014 . 11:50:32 am} Squeak4.5-12568.image priorSource: 88165!----STARTUP----{22 May 2014 . 1:53:40 pm} as D:\code\python\spy-vm\lang-smalltalk\images\Squeak4.5-12568.image!!BlockClosure methodsFor: 'STM' stamp: 'pre 5/22/2014 13:58'!newStmProcess	^ StmProcess forContext: [self value] asContext priority: Processor activePriority! !!BlockClosure methodsFor: 'STM' stamp: 'pre 5/22/2014 13:59' prior: 33568777!parallelFork	^ (self newStmProcess) fork; yourself! !BlockClosure removeSelector: #newStmProcess!!BlockClosure methodsFor: 'STM' stamp: 'pre 5/22/2014 13:59' prior: 33643726!parallelFork	^ (self newSTMProcess) fork; yourself! !!STMProcess methodsFor: 'as yet unclassified' stamp: 'pre 5/22/2014 14:00' prior: 33556280!primWait	<primitive: 789>	SPyVM print: ' Failed to wait for process!! '	self primitiveFailed.! !!STMProcess methodsFor: 'as yet unclassified' stamp: 'pre 5/22/2014 14:00' prior: 33644052!primWait	<primitive: 789>	SPyVM print: ' Failed to wait for process!! '.	self primitiveFailed.! !!STMProcess methodsFor: 'as yet unclassified' stamp: 'pre 5/22/2014 14:00' prior: 42636506!fork	<primitive: 787>	Transcript show: '* STM Process did not fork *' , Character cr.	self primitiveFailed.	self resume! !STMProcess removeSelector: #initialize!Process subclass: #STMProcess	instanceVariableNames: ''	classVariableNames: ''	poolDictionaries: ''	category: 'Kernel-STM'!Process subclass: #STMProcess	instanceVariableNames: 'lock'	classVariableNames: ''	poolDictionaries: ''	category: 'Kernel-STM'!!Integer methodsFor: '*SPy-Benchmarks' stamp: 'pre 5/22/2014 14:02' prior: 33643008!stmBenchmarkTest	| p |	FileStream stdout nextPutAll: 'starting stm process.'.	p := STMProcess new fork.	p join! !Smalltalk removeClassNamed: #StmProcess!Process subclass: #STMProcess	instanceVariableNames: ''	classVariableNames: ''	poolDictionaries: ''	category: 'Kernel-STM'!Process subclass: #STMProcess	instanceVariableNames: 'lock'	classVariableNames: ''	poolDictionaries: ''	category: 'Kernel-STM'!!Integer methodsFor: '*SPy-Benchmarks' stamp: 'pre 5/22/2014 14:03' prior: 33644952!stmBenchmarkTest	| p |	FileStream stdout nextPutAll: 'starting stm process.'.	p := [ 1 + 1. ] parallelFork.	p join! !----SNAPSHOT----{22 May 2014 . 2:03:31 pm} Squeak4.5-12568.image priorSource: 88855!----QUIT----{22 May 2014 . 2:06:55 pm} Squeak4.5-12568.image priorSource: 91148!----STARTUP----{22 May 2014 . 2:12:45 pm} as /home/hub/hpi/stm/src/lang-smalltalk/images/Squeak4.5-12568.image!----QUIT----{22 May 2014 . 2:13:22 pm} Squeak4.5-12568.image priorSource: 91234!----STARTUP----{22 May 2014 . 2:41:04 pm} as /home/hub/hpi/stm/src/lang-smalltalk/images/Squeak4.5-12568.image!!Integer methodsFor: '*SPy-Benchmarks' stamp: 'hh 5/22/2014 14:41'!paralellForkTest	| p |	FileStream stdout nextPutAll: 'starting stm process.'.	p := [ 1 + 1. ] parallelFork.	p join! !!Integer methodsFor: '*SPy-Benchmarks' stamp: 'hh 5/22/2014 14:42'!stmTest	| p |	FileStream stdout nextPutAll: 'starting stm process.'.	p := STMProcess new.	p join! !Integer removeSelector: #stmBenchmarkTest!----QUIT----{22 May 2014 . 2:42:38 pm} Squeak4.5-12568.image priorSource: 91430!----STARTUP----{22 May 2014 . 2:45:49 pm} as /home/hub/hpi/stm/src/lang-smalltalk/images/Squeak4.5-12568.image!!Integer methodsFor: '*SPy-Benchmarks' stamp: 'hh 5/22/2014 14:46' prior: 33646317!stmTest	| p |	FileStream stdout nextPutAll: 'starting stm process.'.	p := STMProcess new.	p wait! !!Integer methodsFor: '*SPy-Benchmarks' stamp: 'hh 5/22/2014 14:46' prior: 33646745!stmTest	| p |	FileStream stdout nextPutAll: 'starting stm process.'.	p := STMProcess new.	p wait.! !!Integer methodsFor: '*SPy-Benchmarks' stamp: 'hh 5/22/2014 14:46' prior: 33646127!paralellForkTest	| p |	FileStream stdout nextPutAll: 'starting stm process.'.	p := [ 1 + 1. ] parallelFork.	p wait! !----QUIT----{22 May 2014 . 2:46:59 pm} Squeak4.5-12568.image priorSource: 92032!----STARTUP----{22 May 2014 . 2:47:56 pm} as /home/hub/hpi/stm/src/lang-smalltalk/images/Squeak4.5-12568.image!!Integer methodsFor: '*SPy-Benchmarks' stamp: 'hh 5/22/2014 14:48'!parallelForkTest	| p |	FileStream stdout nextPutAll: 'starting stm process.'.	p := [ 1 + 1. ] parallelFork.	p wait! !Integer removeSelector: #paralellForkTest!----QUIT----{22 May 2014 . 2:48:13 pm} Squeak4.5-12568.image priorSource: 92811!----STARTUP----{22 May 2014 . 3:30:57 pm} as /home/hub/hpi/stm/src/lang-smalltalk/images/Squeak4.5-12568.image!----QUIT----{22 May 2014 . 3:31:15 pm} Squeak4.5-12568.image priorSource: 93241!----STARTUP----{22 May 2014 . 3:31:29 pm} as /home/hub/hpi/stm/src/lang-smalltalk/images/Squeak4.5-12568.image!Object subclass: #GameOfLifeField	instanceVariableNames: 'data height width'	classVariableNames: ''	poolDictionaries: ''	category: 'VM-GameOfLife'!Object subclass: #GameOfLifeField	instanceVariableNames: 'data height width'	classVariableNames: ''	poolDictionaries: ''	category: 'VM-GameOfLife'!!GameOfLifeField methodsFor: 'as yet unclassified' stamp: 'pre 1/19/2014 21:23' prior: 33618517!cellAliveAt: x at: y
+
+	^ (self at: x at: y) = 1! !!GameOfLifeField methodsFor: 'as yet unclassified' stamp: 'pre 1/19/2014 21:14' prior: 33618649!rows: numberOfRows columns: numberOfColumns
+
+	self height: numberOfRows.
+	self width: numberOfColumns.
+	self data: (Matrix rows: numberOfRows columns: numberOfColumns element: 0).
+	! !!GameOfLifeField methodsFor: 'accessing' stamp: 'pre 1/19/2014 21:25' prior: 33618905!at: x at:y
+	
+	((x < 1) or: [x > self width]) ifTrue: [ ^ 0 ].
+      ((y < 1) or: [y > self height]) ifTrue: [ ^ 0 ].
+
+	^ self data at: y at: x! !!GameOfLifeField methodsFor: 'accessing' stamp: 'pre 1/19/2014 21:25' prior: 33619122!at: x at:y put: aValue
+
+	self data at: y at: x put: aValue.! !!GameOfLifeField methodsFor: 'accessing' stamp: 'pre 1/19/2014 22:02' prior: 33619256!atRow: rowNumber put: aRow
+
+	self data atRow: rowNumber put: aRow! !!GameOfLifeField methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:45' prior: 33619396!data
+
+	^ data! !!GameOfLifeField methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:45' prior: 33619484!data: anObject
+
+	data := anObject! !!GameOfLifeField methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:45' prior: 33619592!height
+
+	^ height! !!GameOfLifeField methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:45' prior: 33619684!height: anObject
+
+	height := anObject! !!GameOfLifeField methodsFor: 'accessing' stamp: 'pre 1/19/2014 21:52' prior: 33635345!print
+
+	| resultString |
+	resultString := ''.
+	(1 to: self height) do: [:y |
+		(1 to: self width) do: [ :x |
+			resultString := resultString , (self data at: y at: x).].
+		resultString := resultString , Character cr ].
+	^ resultString			! !!GameOfLifeField methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:45' prior: 33620108!rowSlice: sliceSize collect: aBlock
+
+	! !!GameOfLifeField methodsFor: 'accessing' stamp: 'pre 1/19/2014 21:28' prior: 33620221!rowwiseFrom: startRow to: endRow collect: aBlock
+
+	| newField |
+	newField := GameOfLifeFieldSlice from: startRow to: endRow width: self width.
+	(startRow to: endRow) do: [ :y | 
+		(1 to: self width) do: [ :x | newField at: x at: y put: (aBlock value: self value: x value: y) ] ].
+	^ newField! !!GameOfLifeField methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:45' prior: 33620587!width
+
+	^ width! !!GameOfLifeField methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:45' prior: 33620677!width: anObject
+
+	width := anObject! !"-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- "!GameOfLifeField class	instanceVariableNames: ''!!GameOfLifeField class methodsFor: 'as yet unclassified' stamp: 'pre 1/19/2014 21:44' prior: 33640462!gliderFieldRows: numberOfRows columns: numberOfColumns
+
+	| newField |
+	newField := self new rows: numberOfRows columns: numberOfColumns.
+	
+	newField 
+		at: 8 at: 5 put: 1;
+		at: 9 at: 5 put: 1;	 
+		at: 10 at: 5 put: 1;
+		at: 10 at: 4 put: 1;
+		at: 9 at: 3 put: 1.
+		
+	^ newField! !!GameOfLifeField class methodsFor: 'as yet unclassified' stamp: 'pre 1/19/2014 20:43' prior: 33621282!rows: numberOfRows columns: numberOfColumns
+
+	^ self new rows: numberOfRows columns: numberOfColumns! !GameOfLifeField subclass: #GameOfLifeFieldSlice	instanceVariableNames: 'startRow endRow'	classVariableNames: ''	poolDictionaries: ''	category: 'VM-GameOfLife'!GameOfLifeField subclass: #GameOfLifeFieldSlice	instanceVariableNames: 'startRow endRow'	classVariableNames: ''	poolDictionaries: ''	category: 'VM-GameOfLife'!!GameOfLifeFieldSlice methodsFor: 'as yet unclassified' stamp: 'pre 1/20/2014 10:22' prior: 33621802!from: startRow to: endRow width: width
+
+	self startRow: startRow;
+		endRow: endRow;
+		width: width;
+		height: (endRow - startRow + 1);
+		data: (Matrix rows: (endRow - startRow + 1) columns: width).
+		
+	^ self! !!GameOfLifeFieldSlice methodsFor: 'as yet unclassified' stamp: 'pre 1/19/2014 21:31' prior: 33622100!rowwiseDo: aBlock
+
+	self startRow to: self endRow do: [ :rowNumber |
+		aBlock value: rowNumber value: (self data atRow: (rowNumber - self startRow) + 1).
+	].! !!GameOfLifeFieldSlice methodsFor: 'accessing' stamp: 'pre 1/19/2014 21:30' prior: 33622337!at: x at:y put: aValue
+
+	self data at: y +  1 - self startRow at: x put: aValue.! !!GameOfLifeFieldSlice methodsFor: 'accessing' stamp: 'pre 1/19/2014 21:11' prior: 33622497!endRow
+
+	^ endRow! !!GameOfLifeFieldSlice methodsFor: 'accessing' stamp: 'pre 1/19/2014 21:11' prior: 33622594!endRow: anObject
+
+	endRow := anObject! !!GameOfLifeFieldSlice methodsFor: 'accessing' stamp: 'pre 1/19/2014 21:11' prior: 33622711!startRow
+
+	^ startRow! !!GameOfLifeFieldSlice methodsFor: 'accessing' stamp: 'pre 1/19/2014 21:11' prior: 33622812!startRow: anObject
+
+	startRow := anObject! !"-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- "!GameOfLifeFieldSlice class	instanceVariableNames: ''!!GameOfLifeFieldSlice class methodsFor: 'as yet unclassified' stamp: 'pre 1/19/2014 20:53' prior: 33623064!from: startRow to: endRow width: width
+
+	^ self new from: startRow to: endRow width: width! !Object subclass: #STMSimulation	instanceVariableNames: 'processes field numberOfProcesses fieldSlices fieldNew'	classVariableNames: ''	poolDictionaries: ''	category: 'VM-GameOfLife'!Object subclass: #STMSimulation	instanceVariableNames: 'processes field numberOfProcesses fieldSlices fieldNew'	classVariableNames: ''	poolDictionaries: ''	category: 'VM-GameOfLife'!!STMSimulation methodsFor: 'as yet unclassified' stamp: 'pre 1/21/2014 09:44' prior: 33623613!initialField: aGameOfLifeField
+
+	self field: aGameOfLifeField.
+	self fieldNew: (GameOfLifeField rows: (aGameOfLifeField height) columns: (aGameOfLifeField width)).! !!STMSimulation methodsFor: 'as yet unclassified' stamp: 'pre 1/21/2014 09:50' prior: 33623859!simulateRound: roundNumber 
+
+	self processes: ((1 to: self numberOfProcesses) collect: [ :processNumber |
+		[| rows |
+		rows := self startProcess: processNumber.
+		rows rowwiseDo: [ :rowNumber :aRow | self fieldNew atRow: rowNumber put: aRow ]] parallelFork. ]).
+! !!STMSimulation methodsFor: 'as yet unclassified' stamp: 'pre 1/21/2014 09:44' prior: 33634806!simulateRounds: numberOfRounds
+	
+	| swapField |
+
+	1 to: numberOfRounds do: [ :roundNumber |
+		self simulateRound: roundNumber.
+		self processes do: [ :semaphore | semaphore wait. ].
+		
+		"Transcript show: self fieldNew print.
+		Transcript show: Character cr."
+		
+		swapField := self field.
+		self field: self fieldNew.
+		self fieldNew: swapField.
+	].
+
+	^ self field! !!STMSimulation methodsFor: 'as yet unclassified' stamp: 'pre 1/21/2014 09:44' prior: 33624653!startProcess: processNumber
+
+	| endOfSlice slice startOfSlice |
+	slice := (self field height / self numberOfProcesses).
+	startOfSlice := ((processNumber - 1) * slice) + 1.
+	endOfSlice := processNumber * slice.
+
+	^ self field rowwiseFrom: startOfSlice
+					to: endOfSlice
+					collect: [ :tempField :x :y | self thumbUpOrDownAt: x at: y on: tempField ]
+
+	
+	! !!STMSimulation methodsFor: 'as yet unclassified' stamp: 'pre 1/21/2014 09:44' prior: 33625092!thumbUpOrDownAt: x at: y on: tempField 
+	| liveCellCount |
+	
+	liveCellCount := (tempField at: x - 1 at: y - 1)
+				+ (tempField at: x + 0 at: y - 1)
+				+ (tempField at: x + 1 at: y - 1)
+				+ (tempField at: x - 1 at: y + 0)
+				+ (tempField at: x + 1 at: y + 0)
+				+ (tempField at: x - 1 at: y + 1)
+				+ (tempField at: x + 0 at: y + 1)
+				+ (tempField at: x + 1 at: y + 1).
+	
+	(tempField cellAliveAt: x at: y)
+		ifTrue: [((2 = liveCellCount)
+					or: [liveCellCount = 3])
+				ifTrue: [^ 1]
+				ifFalse: [^ 0]]
+		ifFalse: [(liveCellCount = 3)
+				ifTrue: [^ 1]
+				ifFalse: [^ 0]]! !!STMSimulation methodsFor: 'accessing' stamp: 'pre 1/21/2014 09:44' prior: 33625748!field
+
+	^ field! !!STMSimulation methodsFor: 'accessing' stamp: 'pre 1/21/2014 09:44' prior: 33625836!field: anObject
+
+	field := anObject! !!STMSimulation methodsFor: 'accessing' stamp: 'pre 1/21/2014 09:44' prior: 33625944!fieldNew
+
+	^ fieldNew! !!STMSimulation methodsFor: 'accessing' stamp: 'pre 1/21/2014 09:44' prior: 33626038!fieldNew: anObject
+
+	fieldNew := anObject! !!STMSimulation methodsFor: 'accessing' stamp: 'pre 1/21/2014 09:44' prior: 33626152!fieldSlices
+
+	^ fieldSlices! !!STMSimulation methodsFor: 'accessing' stamp: 'pre 1/21/2014 09:44' prior: 33626252!fieldSlices: anObject
+
+	fieldSlices := anObject! !!STMSimulation methodsFor: 'accessing' stamp: 'pre 1/21/2014 09:44' prior: 33626372!numberOfProcesses
+
+	^ numberOfProcesses! !!STMSimulation methodsFor: 'accessing' stamp: 'pre 1/21/2014 09:44' prior: 33626484!numberOfProcesses: aNumber
+
+	numberOfProcesses := aNumber
+	! !!STMSimulation methodsFor: 'accessing' stamp: 'pre 1/21/2014 09:44' prior: 33626616!processes
+
+	^ processes! !!STMSimulation methodsFor: 'accessing' stamp: 'pre 1/21/2014 09:44' prior: 33626712!processes: anObject
+
+	processes := anObject! !!STMSimulation methodsFor: 'initialize-release' stamp: 'pre 1/21/2014 09:44' prior: 33626837!initialize
+
+	self processes: OrderedCollection new.
+	! !"-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- "!STMSimulation class	instanceVariableNames: ''!!STMSimulation class methodsFor: 'as yet unclassified' stamp: 'pre 1/21/2014 09:44' prior: 33637232!benchmark
+
+	^ (1 to: 4) collect: [ :i |
+			[ self standardSimulation: (2 raisedTo: i) ] timeToRun ]! !!STMSimulation class methodsFor: 'as yet unclassified' stamp: 'pre 1/21/2014 09:44' prior: 33627275!benchmark2
+
+	^ (1 to: 5) collect: [ :i |
+			[ self standardSimulation2: (2 raisedTo: i) ] timeToRun ]! !!STMSimulation class methodsFor: 'as yet unclassified' stamp: 'pre 1/21/2014 09:44' prior: 33627465!standardSimulation2: numberOfProcesses
+
+	^ self new
+			numberOfProcesses: numberOfProcesses;
+			initialField: (GameOfLifeField gliderFieldRows: 32 columns: 32);
+			simulateRounds: 5.
+			
+			! !!STMSimulation class methodsFor: 'as yet unclassified' stamp: 'pre 1/21/2014 09:44' prior: 33637437!standardSimulation: numberOfProcesses
+
+	^ self new
+			numberOfProcesses: numberOfProcesses;
+			initialField: (GameOfLifeField gliderFieldRows: 32 columns: 32);
+			simulateRounds: 5.
+			
+			! !Object subclass: #Simulation	instanceVariableNames: 'processes field numberOfProcesses fieldSlices fieldNew'	classVariableNames: ''	poolDictionaries: ''	category: 'VM-GameOfLife'!Object subclass: #Simulation	instanceVariableNames: 'processes field numberOfProcesses fieldSlices fieldNew'	classVariableNames: ''	poolDictionaries: ''	category: 'VM-GameOfLife'!!Simulation methodsFor: 'as yet unclassified' stamp: 'pre 1/20/2014 13:37' prior: 33628383!initialField: aGameOfLifeField
+
+	self field: aGameOfLifeField.
+	self fieldNew: (GameOfLifeField rows: (aGameOfLifeField height) columns: (aGameOfLifeField width)).! !!Simulation methodsFor: 'as yet unclassified' stamp: 'pre 1/20/2014 13:44' prior: 33628626!simulateRound: roundNumber 
+
+	self processes: ((1 to: self numberOfProcesses) collect: [ :processNumber |
+		| semaphore |
+		semaphore := Semaphore new.
+		[| rows |
+		rows := self startProcess: processNumber.
+		rows rowwiseDo: [ :rowNumber :aRow | self fieldNew atRow: rowNumber put: aRow ].
+		semaphore signal] fork.
+		semaphore ]).
+! !!Simulation methodsFor: 'as yet unclassified' stamp: 'pre 1/20/2014 14:00' prior: 33629039!simulateRounds: numberOfRounds
+	
+	| swapField |
+
+	1 to: numberOfRounds do: [ :roundNumber |
+		self simulateRound: roundNumber.
+		self processes do: [ :semaphore | semaphore wait. ].
+		
+		"Transcript show: self fieldNew print.
+		Transcript show: Character cr."
+		
+		swapField := self field.
+		self field: self fieldNew.
+		self fieldNew: swapField.
+	].
+
+	^ self field! !!Simulation methodsFor: 'as yet unclassified' stamp: 'pre 1/20/2014 13:34' prior: 33629484!startProcess: processNumber
+
+	| endOfSlice slice startOfSlice |
+	slice := (self field height / self numberOfProcesses).
+	startOfSlice := ((processNumber - 1) * slice) + 1.
+	endOfSlice := processNumber * slice.
+
+	^ self field rowwiseFrom: startOfSlice
+					to: endOfSlice
+					collect: [ :tempField :x :y | self thumbUpOrDownAt: x at: y on: tempField ]
+
+	
+	! !!Simulation methodsFor: 'as yet unclassified' stamp: 'pre 1/20/2014 10:48' prior: 33629920!thumbUpOrDownAt: x at: y on: tempField 
+	| liveCellCount |
+	
+	liveCellCount := (tempField at: x - 1 at: y - 1)
+				+ (tempField at: x + 0 at: y - 1)
+				+ (tempField at: x + 1 at: y - 1)
+				+ (tempField at: x - 1 at: y + 0)
+				+ (tempField at: x + 1 at: y + 0)
+				+ (tempField at: x - 1 at: y + 1)
+				+ (tempField at: x + 0 at: y + 1)
+				+ (tempField at: x + 1 at: y + 1).
+	
+	(tempField cellAliveAt: x at: y)
+		ifTrue: [((2 = liveCellCount)
+					or: [liveCellCount = 3])
+				ifTrue: [^ 1]
+				ifFalse: [^ 0]]
+		ifFalse: [(liveCellCount = 3)
+				ifTrue: [^ 1]
+				ifFalse: [^ 0]]! !!Simulation methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:04' prior: 33630573!field
+
+	^ field! !!Simulation methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:04' prior: 33630658!field: anObject
+
+	field := anObject! !!Simulation methodsFor: 'accessing' stamp: 'pre 1/19/2014 22:06' prior: 33630763!fieldNew
+
+	^ fieldNew! !!Simulation methodsFor: 'accessing' stamp: 'pre 1/19/2014 22:06' prior: 33630854!fieldNew: anObject
+
+	fieldNew := anObject! !!Simulation methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:30' prior: 33630965!fieldSlices
+
+	^ fieldSlices! !!Simulation methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:30' prior: 33631062!fieldSlices: anObject
+
+	fieldSlices := anObject! !!Simulation methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:09' prior: 33631179!numberOfProcesses
+
+	^ numberOfProcesses! !!Simulation methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:09' prior: 33631288!numberOfProcesses: aNumber
+
+	numberOfProcesses := aNumber
+	! !!Simulation methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:04' prior: 33631417!processes
+
+	^ processes! !!Simulation methodsFor: 'accessing' stamp: 'pre 1/19/2014 20:04' prior: 33631510!processes: anObject
+
+	processes := anObject! !!Simulation methodsFor: 'initialize-release' stamp: 'pre 1/19/2014 20:04' prior: 33631632!initialize
+
+	self processes: OrderedCollection new.
+	! !"-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- "!Simulation class	instanceVariableNames: ''!!Simulation class methodsFor: 'as yet unclassified' stamp: 'pre 1/20/2014 14:08' prior: 33637027!benchmark
+
+	^ (1 to: 4) collect: [ :i |
+			[ self standardSimulation: (2 raisedTo: i) ] timeToRun ]! !!Simulation class methodsFor: 'as yet unclassified' stamp: 'pre 1/20/2014 14:09' prior: 33632061!benchmark2
+
+	^ (1 to: 5) collect: [ :i |
+			[ self standardSimulation2: (2 raisedTo: i) ] timeToRun ]! !!Simulation class methodsFor: 'as yet unclassified' stamp: 'pre 1/20/2014 13:59' prior: 33632248!standardSimulation2: numberOfProcesses
+
+	^ self new
+			numberOfProcesses: numberOfProcesses;
+			initialField: (GameOfLifeField gliderFieldRows: 32 columns: 32);
+			simulateRounds: 5.
+			
+			! !!Simulation class methodsFor: 'as yet unclassified' stamp: 'pre 1/20/2014 13:59' prior: 33632524!standardSimulation: numberOfProcesses
+
+	^ self new
+			numberOfProcesses: numberOfProcesses;
+			initialField: (GameOfLifeField gliderFieldRows: 32 columns: 32);
+			simulateRounds: 5.
+			
+			! !----End fileIn of /home/hub/Downloads/VM-GameOfLife.st----!!STMSimulation methodsFor: 'as yet unclassified' stamp: 'hh 5/22/2014 15:32' prior: 33654573!simulateRounds: numberOfRounds
+	
+	| swapField |
+
+	1 to: numberOfRounds do: [ :roundNumber |
+		self simulateRound: roundNumber.
+		self processes do: [ :semaphore | semaphore wait. ].
+		
+		SPyVM print self fieldNew print.
+		Transcript show: Character cr.
+		
+		swapField := self field.
+		self field: self fieldNew.
+		self fieldNew: swapField.
+	].
+
+	^ self field! !!STMSimulation methodsFor: 'as yet unclassified' stamp: 'hh 5/22/2014 15:33' prior: 33663832!simulateRounds: numberOfRounds
+	
+	| swapField |
+
+	1 to: numberOfRounds do: [ :roundNumber |
+		self simulateRound: roundNumber.
+		self processes do: [ :semaphore | semaphore wait. ].
+		
+		SPyVM print: (self fieldNew print).
+		SPyVM print: (Character cr).
+		
+		swapField := self field.
+		self field: self fieldNew.
+		self fieldNew: swapField.
+	].
+
+	^ self field! !----QUIT----{22 May 2014 . 3:33:07 pm} Squeak4.5-12568.image priorSource: 93437!----STARTUP----{22 May 2014 . 3:33:13 pm} as /home/hub/hpi/stm/src/lang-smalltalk/images/Squeak4.5-12568.image!!Integer methodsFor: '*SPy-Benchmarks' stamp: 'hh 5/22/2014 15:33'!gameLifeOfLife	STMSimulation benchmark.! !----QUIT----{22 May 2014 . 3:34:03 pm} Squeak4.5-12568.image priorSource: 110218!----STARTUP----{22 May 2014 . 3:34:57 pm} as /home/hub/hpi/stm/src/lang-smalltalk/images/Squeak4.5-12568.image!!Integer methodsFor: '*SPy-Benchmarks' stamp: 'hh 5/22/2014 15:35'!gameOfLife	STMSimulation benchmark.! !Integer removeSelector: #gameLifeOfLife!----QUIT----{22 May 2014 . 3:35:14 pm} Squeak4.5-12568.image priorSource: 110526!----STARTUP----{22 May 2014 . 3:36:22 pm} as /home/hub/hpi/stm/src/lang-smalltalk/images/Squeak4.5-12568.image!!Integer methodsFor: '*SPy-Benchmarks' stamp: 'hh 5/22/2014 15:36' prior: 33665224!gameOfLife	STMSimulation benchmark2.! !----QUIT----{22 May 2014 . 3:36:45 pm} Squeak4.5-12568.image priorSource: 110873!----STARTUP----{22 May 2014 . 3:36:49 pm} as /home/hub/hpi/stm/src/lang-smalltalk/images/Squeak4.5-12568.image!----QUIT----{22 May 2014 . 3:36:53 pm} Squeak4.5-12568.image priorSource: 111195!----STARTUP----{22 May 2014 . 3:36:56 pm} as /home/hub/hpi/stm/src/lang-smalltalk/images/Squeak4.5-12568.image!!Integer methodsFor: '*SPy-Benchmarks' stamp: 'hh 5/22/2014 15:37' prior: 33665587!gameOfLife	SPyVM print: STMSimulation benchmark2.! !----QUIT----{22 May 2014 . 3:37:32 pm} Squeak4.5-12568.image priorSource: 111392!----STARTUP----{22 May 2014 . 3:38:15 pm} as /home/hub/hpi/stm/src/lang-smalltalk/images/Squeak4.5-12568.image!----QUIT----{22 May 2014 . 3:38:35 pm} Squeak4.5-12568.image priorSource: 111727!
