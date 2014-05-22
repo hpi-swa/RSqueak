@@ -115,19 +115,12 @@ class Bootstrapper(object):
         print "Me is started", bootstrapper.num_threads
         bootstrapper.release()
 
-        # ...aaaaand go!
-        # wrapper.StmProcessWrapper(interp.space, w_stm_process).store_lock(1)
-
-        # interp.interpret_with_w_frame(w_frame, may_context_switch=False)
-        time.sleep(2.5)
-
-        s_stm_process = w_stm_process.as_special_get_shadow(interp.space, StmProcessShadow)
-        s_stm_process.lock.release()
-
-        # Signal waiting processes
-        #wrapper.StmProcessWrapper(interp.space, w_stm_process).signal('thread')
+        interp.interpret_with_w_frame(w_frame) #, may_context_switch=False
 
         # cleanup
+        s_stm_process = w_stm_process.as_special_get_shadow(interp.space, StmProcessShadow)
+        s_stm_process.signal()
+
         bootstrapper.num_threads -= 1
 
     bootstrap = staticmethod(bootstrap)

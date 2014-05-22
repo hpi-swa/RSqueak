@@ -116,9 +116,6 @@ class ProcessWrapper(LinkWrapper):
 
 class StmProcessWrapper(ProcessWrapper):
 
-    # Mis-using priority as lock, we don't need prios :P
-    lock, store_lock = make_int_getter_setter(2)
-
     def put_to_sleep(self):
         # Must not queue
         pass

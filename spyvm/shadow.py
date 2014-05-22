@@ -1140,3 +1140,6 @@ class StmProcessShadow(AbstractShadow):
         if lock_result:
             self.lock.release()
         return lock_result
+
+    def signal(self):
+        self.lock.release()
