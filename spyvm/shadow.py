@@ -2,7 +2,7 @@ import weakref
 from spyvm import model, constants, error, wrapper, version
 from spyvm.version import elidable_for_version, constant_for_version
 from rpython.tool.pairtype import extendabletype
-from rpython.rlib import rarithmetic, jit
+from rpython.rlib import rarithmetic, jit, rthread
 from rpython.rlib.objectmodel import import_from_mixin
 from rpython.rlib.debug import make_sure_not_resized
 
@@ -1122,3 +1122,21 @@ class ObserveeShadow(AbstractShadow):
         self.dependent = dependent
 
     def update(self): pass
+
+
+class StmProcessShadow(AbstractShadow):
+
+    def __init__(self, space, w_self):
+        AbstractShadow.__init__(self, space, w_self)
+        self.lock = rthread.allocate_lock()
+
+    def fork(self, w_current_frame):
+        from spyvm.interpreter import STMForkException
+        self.lock.acquire(True)
+        wrapper.StmProcessWrapper(self.space, self.w_self()).fork(w_current_frame)
+
+    def join(self, blocking):
+        lock_result = self.lock.acquire(blocking)
+        if lock_result:
+            self.lock.release()
+        return lock_result

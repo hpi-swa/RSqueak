@@ -1470,8 +1470,24 @@ def func(interp, s_frame, w_rcvr):
 
     print "STM_FORK primitive called"
 
-    wrapper.StmProcessWrapper(interp.space, w_rcvr).fork(s_frame.w_self())
-    rstm.should_break_transaction()
+    if not isinstance(w_rcvr, model.W_PointersObject):
+            raise PrimitiveFailedError("Fork primitive was not called on an StmProcess")
+    process_shadow = w_rcvr.as_special_get_shadow(interp.space, shadow.StmProcessShadow)
+    process_shadow.fork(s_frame.w_self())
+
+@expose_primitive(STM_WAIT, unwrap_spec=[object], no_result=True)
+def func(interp, s_frame, w_rcvr):
+    from rpython.rlib import rstm
+
+    print "STM_WAIT primitive called"
+
+    if not isinstance(w_rcvr, model.W_PointersObject):
+            raise PrimitiveFailedError("Join primitive was not called on an StmProcess")
+    process_shadow = w_rcvr.as_special_get_shadow(interp.space, shadow.StmProcessShadow)
+    process_shadow.join(True)
+
+    print "STM Rendezvous"
+    print "Should break: %s" % rstm.should_break_transaction()
 
 # ___________________________________________________________________________
 # BlockClosure Primitives

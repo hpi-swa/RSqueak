@@ -2,7 +2,7 @@ import py
 import os
 import time
 
-from spyvm.shadow import ContextPartShadow, MethodContextShadow, BlockContextShadow, MethodNotFound
+from spyvm.shadow import ContextPartShadow, MethodContextShadow, BlockContextShadow, MethodNotFound, StmProcessShadow
 from spyvm import model, constants, primitives, conftest, wrapper
 from spyvm.tool.bitmanipulation import splitter
 
@@ -105,10 +105,12 @@ class Bootstrapper(object):
         print "New thread reporting"
         interp = bootstrapper.interp
         w_frame = bootstrapper.w_frame
+
         w_stm_process = bootstrapper.w_stm_process
+
         assert isinstance(interp, Interpreter)
-        #assert isinstance(w_frame, model.W_PointersObject)
-        #assert isinstance(w_stm_process, model.W_PointersObject)
+        assert isinstance(w_frame, model.W_PointersObject)
+        assert isinstance(w_stm_process, model.W_PointersObject)
         bootstrapper.num_threads += 1
         print "Me is started", bootstrapper.num_threads
         bootstrapper.release()
@@ -118,6 +120,9 @@ class Bootstrapper(object):
 
         # interp.interpret_with_w_frame(w_frame, may_context_switch=False)
         time.sleep(2.5)
+
+        s_stm_process = w_stm_process.as_special_get_shadow(interp.space, StmProcessShadow)
+        s_stm_process.lock.release()
 
         # Signal waiting processes
         #wrapper.StmProcessWrapper(interp.space, w_stm_process).signal('thread')
@@ -182,7 +187,7 @@ class Interpreter(object):
         new_interp.interrupt_check_counter = self.interrupt_check_counter
         new_interp.trace_proxy = self.trace_proxy
 
-        bootstrapper.acquire(new_interp, None, None)
+        bootstrapper.acquire(new_interp, w_frame, w_stm_process)
         rthread.start_new_thread(bootstrapper.bootstrap, ())
 
     def interpret_with_w_frame(self, w_frame):

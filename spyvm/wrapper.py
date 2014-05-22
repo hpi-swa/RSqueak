@@ -145,8 +145,6 @@ class StmProcessWrapper(ProcessWrapper):
 
         assert isinstance(w_frame, model.W_PointersObject)
         print "Breaking interpreter loop for forking"
-        # we need to pass control to the interpreter loop here
-        # self.store_lock(1) Needed for join call
         raise STMForkException(w_frame, self._w_self)
 
 class LinkedListWrapper(Wrapper):
