@@ -1489,6 +1489,22 @@ def func(interp, s_frame, w_rcvr):
     print "STM Rendezvous"
     print "Should break: %s" % rstm.should_break_transaction()
 
+@expose_primitive(STM_ATOMIC_ENTER, unwrap_spec=[object], no_result=True)
+def func(interp, s_frame, w_rcvr):
+    from rpython.rlib import rstm
+
+    print "STM_ATOMIC_ENTER primitive called"
+
+    rstm.increment_atomic()
+
+@expose_primitive(STM_ATOMIC_LEAVE, unwrap_spec=[object], no_result=True)
+def func(interp, s_frame, w_rcvr):
+    from rpython.rlib import rstm
+
+    print "STM_ATOMIC_LEAVE primitive called"
+
+    rstm.decrement_atomic()
+
 # ___________________________________________________________________________
 # BlockClosure Primitives
 
