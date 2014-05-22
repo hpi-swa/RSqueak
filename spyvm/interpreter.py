@@ -201,7 +201,7 @@ class Interpreter(object):
         self._loop = True
         s_new_context = w_active_context.as_context_get_shadow(self.space)
         while True:
-            assert self.remaining_stack_depth == self.max_stack_depth
+            #assert self.remaining_stack_depth == self.max_stack_depth
             # Need to save s_sender, c_loop will nil this on return
             s_sender = s_new_context.s_sender()
             try:
