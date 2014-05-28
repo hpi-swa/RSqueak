@@ -49,7 +49,7 @@ class StorageStatistics(object):
 
 class StatisticsModule(object):
     uses_classname = False
-    def storage_operation(self, operation_key, storage_size, element_classname):
+    def storage_operation(self, operation_key, storage_size, container_classname):
         raise NotImplementedError("Abstract class")
     def print_results(self):
         raise NotImplementedError("Abstract class")
@@ -61,12 +61,12 @@ class StatisticsModule(object):
 
 class StatisticsLogger(StatisticsModule):
     uses_classname = True
-    def storage_operation(self, operation_key, storage_size, element_classname):
-        print self.log_string(operation_key, storage_size, element_classname)
+    def storage_operation(self, operation_key, storage_size, container_classname):
+        print self.log_string(operation_key, storage_size, container_classname)
     
-    def log_string(self, operation_key, storage_size, element_classname):
-        if element_classname:
-            return "%s of %s size %d" % (self.key_string(operation_key), element_classname, storage_size)
+    def log_string(self, operation_key, storage_size, container_classname):
+        if container_classname:
+            return "%s of %s size %d" % (self.key_string(operation_key), container_classname, storage_size)
         else:
             return "%s size %d" % (self.key_string(operation_key), storage_size)
     
@@ -79,7 +79,7 @@ class AbstractStatisticsCollector(StatisticsModule):
     def __init__(self):
         self.stats = {}
     
-    def storage_operation(self, operation_key, storage_size, element_classname):
+    def storage_operation(self, operation_key, storage_size, container_classname):
         if not operation_key in self.stats:
             self.stats[operation_key] = self.initial_value()
         self.increment_value(self.stats[operation_key], storage_size)
@@ -112,8 +112,8 @@ class DotStatisticsCollector(StatisticsCollector):
         self.outgoing_operations = {}
         self.outgoing_elements = {}
     
-    def storage_operation(self, key, storage_size, element_classname):
-        StatisticsCollector.storage_operation(self, key, storage_size, element_classname)
+    def storage_operation(self, key, storage_size, container_classname):
+        StatisticsCollector.storage_operation(self, key, storage_size, container_classname)
         source_type = key[1]
         target_type = key[2]
         self.fill_maps(self.incoming_operations, self.incoming_elements, target_type, storage_size)
