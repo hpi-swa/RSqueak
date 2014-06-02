@@ -181,6 +181,9 @@ class Interpreter(object):
         new_interp.trace_proxy = self.trace_proxy
 
         bootstrapper.acquire(new_interp, w_frame, w_stm_process)
+
+        rstm.set_transaction_length(1.0)
+
         rthread.start_new_thread(bootstrapper.bootstrap, ())
 
     def interpret_with_w_frame(self, w_frame):
@@ -222,6 +225,17 @@ class Interpreter(object):
                     print "====== Switch from: %s to: %s ======" % (s_new_context.short_str(), p.s_new_context.short_str())
                 s_new_context = p.s_new_context
 
+    def _end_c_loop(self, s_context, pc, method):
+        if jit.we_are_jitted():
+            self.quick_check_for_interrupt(s_context,
+                            dec=self._get_adapted_tick_counter())
+            if rstm.jit_stm_should_break_transaction(True):
+                rstm.jit_stm_transaction_break_point()
+        self.jit_driver.can_enter_jit(
+            pc=pc, self=self, method=method,
+            s_context=s_context)
+    _end_c_loop._dont_inline_ = True
+
     def c_loop(self, s_context, may_context_switch=True):
         old_pc = 0
         if not jit.we_are_jitted() and may_context_switch:
@@ -230,20 +244,13 @@ class Interpreter(object):
         while True:
             pc = s_context.pc()
             if pc < old_pc:
-                if jit.we_are_jitted():
-                    self.quick_check_for_interrupt(s_context,
-                                    dec=self._get_adapted_tick_counter())
-                    if rstm.jit_stm_should_break_transaction(True):
-                        rstm.jit_stm_transaction_break_point()
-                self.jit_driver.can_enter_jit(
-                    pc=pc, self=self, method=method,
-                    s_context=s_context)
-            old_pc = pc
+                self._end_c_loop(s_context, pc, method)
             self.jit_driver.jit_merge_point(
                 pc=pc, self=self, method=method,
                 s_context=s_context)
             if rstm.jit_stm_should_break_transaction(False):
                 rstm.jit_stm_transaction_break_point()
+            old_pc = pc
             try:
                 self.step(s_context)
             except Return, nlr:
