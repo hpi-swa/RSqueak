@@ -1468,7 +1468,7 @@ def func(interp, s_frame, w_rcvr):
 def func(interp, s_frame, w_rcvr):
     from rpython.rlib import rstm
 
-    print "STM_FORK primitive called"
+    #print "STM_FORK primitive called"
 
     if not isinstance(w_rcvr, model.W_PointersObject):
             raise PrimitiveFailedError("Fork primitive was not called on an StmProcess")
@@ -1479,21 +1479,21 @@ def func(interp, s_frame, w_rcvr):
 def func(interp, s_frame, w_rcvr):
     from rpython.rlib import rstm
 
-    print "STM_WAIT primitive called"
+    #print "STM_WAIT primitive called"
 
     if not isinstance(w_rcvr, model.W_PointersObject):
             raise PrimitiveFailedError("Join primitive was not called on an StmProcess")
     process_shadow = w_rcvr.as_special_get_shadow(interp.space, shadow.StmProcessShadow)
     process_shadow.join(True)
 
-    print "STM Rendezvous"
-    print "Should break: %s" % rstm.should_break_transaction()
+    #print "STM Rendezvous"
+    #print "Should break: %s" % rstm.should_break_transaction()
 
 @expose_primitive(STM_ATOMIC_ENTER, unwrap_spec=[object], no_result=True)
 def func(interp, s_frame, w_rcvr):
     from rpython.rlib import rstm
 
-    print "STM_ATOMIC_ENTER primitive called"
+    #print "STM_ATOMIC_ENTER primitive called"
 
     rstm.increment_atomic()
 
@@ -1501,7 +1501,7 @@ def func(interp, s_frame, w_rcvr):
 def func(interp, s_frame, w_rcvr):
     from rpython.rlib import rstm
 
-    print "STM_ATOMIC_LEAVE primitive called"
+    #print "STM_ATOMIC_LEAVE primitive called"
 
     rstm.decrement_atomic()
 
