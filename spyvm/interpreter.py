@@ -30,22 +30,24 @@ def my_little_thread():
         acquired = mylock.LOCK.acquire(False)
         if acquired:
             mylock.a = 2
-            print "MY 2:", mylock.a
+            #print "MY 2:", mylock.a
             time.sleep(2.5)
             mylock.LOCK.release()
         else:
-            print "MY locked 10:", mylock.a
+            pass
+            #print "MY locked 10:", mylock.a
 
 def yours_little_thread():
     while True:
         acquired = mylock.LOCK.acquire(False)
         if acquired:
             mylock.a = 10
-            print "YOURS 10:", mylock.a
+            #print "YOURS 10:", mylock.a
             mylock.LOCK.release()
             time.sleep(4.0)
         else:
-            print "YOURS locked 2:", mylock.a
+            pass
+            #print "YOURS locked 2:", mylock.a
 
 
 
@@ -53,7 +55,7 @@ class MissingBytecode(Exception):
     """Bytecode not implemented yet."""
     def __init__(self, bytecodename):
         self.bytecodename = bytecodename
-        print "MissingBytecode:", bytecodename     # hack for debugging
+        #print "MissingBytecode:", bytecodename     # hack for debugging
 
 class IllegalStoreError(Exception):
     """Illegal Store."""
@@ -102,7 +104,7 @@ class Bootstrapper(object):
     release = staticmethod(release)
 
     def bootstrap():
-        print "New thread reporting"
+        #print "New thread reporting"
         interp = bootstrapper.interp
         w_frame = bootstrapper.w_frame
 
@@ -112,7 +114,7 @@ class Bootstrapper(object):
         assert isinstance(w_frame, model.W_PointersObject)
         assert isinstance(w_stm_process, model.W_PointersObject)
         bootstrapper.num_threads += 1
-        print "Me is started", bootstrapper.num_threads
+        #print "Me is started", bootstrapper.num_threads
         bootstrapper.release()
 
         interp.interpret_with_w_frame(w_frame) #, may_context_switch=False
@@ -262,7 +264,7 @@ class Interpreter(object):
                 else:
                     s_context.push(nlr.value)
             except STMForkException as fork_exception:
-                print "Fork requested"
+                #print "Fork requested"
                 self.fork_interpreter_thread(fork_exception.w_frame, fork_exception.w_stm_process)
 
     def _get_adapted_tick_counter(self):
