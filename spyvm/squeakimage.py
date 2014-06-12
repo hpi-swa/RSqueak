@@ -561,8 +561,9 @@ class GenericObject(object):
         return bytes[:stop] # omit odd bytes
 
     def get_ruints(self, required_len=-1):
-        from rpython.rlib.rarithmetic import r_uint
-        words = [r_uint(x) for x in self.chunk.data]
+        from rpython.rlib.rarithmetic import r_uint32
+        # XXX: Fix for 64bit image support
+        words = [r_uint32(x) for x in self.chunk.data]
         if required_len != -1 and len(words) != required_len:
             raise CorruptImageError("Expected %d words, got %d" % (required_len, len(words)))
         return words
