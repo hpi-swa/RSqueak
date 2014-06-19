@@ -132,7 +132,8 @@ bootstrapper = Bootstrapper()
 class Interpreter(object):
     _immutable_fields_ = ["space", "image", "image_name",
                           "max_stack_depth", "interrupt_counter_size",
-                          "startup_time", "evented"]
+                          "startup_time", "evented",
+                          "vm_args", "smalltalk_args"]
     _w_last_active_context = None
     cnt = 0
     _last_indent = ""
@@ -145,7 +146,7 @@ class Interpreter(object):
     )
 
     def __init__(self, space, image=None, image_name="", trace=False,
-                 evented=True,
+                 evented=True, vm_args=['unknown'], smalltalk_args=[],
                  max_stack_depth=constants.MAX_LOOP_DEPTH):
         import time
         self.space = space
@@ -160,6 +161,8 @@ class Interpreter(object):
         self._loop = False
         self.next_wakeup_tick = 0
         self.evented = evented
+        self.vm_args = vm_args
+        self.smalltalk_args = smalltalk_args
         try:
             self.interrupt_counter_size = int(os.environ["SPY_ICS"])
         except KeyError:

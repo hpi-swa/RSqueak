@@ -144,10 +144,13 @@ def entry_point(argv):
     stringarg = ""
     code = None
     as_benchmark = False
+    smalltalk_args = []
 
     while idx < len(argv):
         arg = argv[idx]
-        if arg in ["-h", "--help"]:
+        if path is not None: # smalltalk args
+            smalltalk_args.append(arg)
+        elif arg in ["-h", "--help"]:
             _usage(argv)
             return 0
         elif arg in ["-j", "--jit"]:
@@ -204,7 +207,10 @@ def entry_point(argv):
 
     image_reader = squeakimage.reader_for_image(space, squeakimage.Stream(data=imagedata))
     image = create_image(space, image_reader)
-    interp = interpreter.Interpreter(space, image, image_name=path, trace=trace, evented=evented)
+    interp = interpreter.Interpreter(space, image, trace=trace, evented=evented,
+                                     image_name=path,
+                                     vm_args=argv, smalltalk_args=smalltalk_args,
+                                     )
     space.runtime_setup(argv[0])
     if benchmark is not None:
         return _run_benchmark(interp, number, benchmark, stringarg)

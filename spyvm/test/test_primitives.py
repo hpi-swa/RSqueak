@@ -37,7 +37,7 @@ def wrap(x):
 
 IMAGENAME = "anImage.image"
 
-def mock(stack, context = None):
+def mock(stack, context = None, interp=None):
     mapped_stack = [wrap(x) for x in stack]
     if context is None:
         frame = MockFrame(mapped_stack)
@@ -45,11 +45,12 @@ def mock(stack, context = None):
         frame = context
         for i in range(len(stack)):
             frame.as_context_get_shadow(space).push(stack[i])
-    interp = interpreter.Interpreter(space, image_name=IMAGENAME)
+    if interp is None:
+        interp = interpreter.Interpreter(space, image_name=IMAGENAME)
     return (interp, frame, len(stack))
 
-def prim(code, stack, context = None):
-    interp, w_frame, argument_count = mock(stack, context)
+def prim(code, stack, context = None, interp=None):
+    interp, w_frame, argument_count = mock(stack, context, interp=interp)
     prim_table[code](interp, w_frame.as_context_get_shadow(space), argument_count-1)
     res = w_frame.as_context_get_shadow(space).pop()
     s_frame = w_frame.as_context_get_shadow(space)
@@ -823,3 +824,39 @@ def test_bitblt_copy_bits(monkeypatch):
 #   primitives.VALUE_WITH_ARGS is tested in test_interpreter
 #   primitives.OBJECT_AT is tested in test_interpreter
 #   primitives.OBJECT_AT_PUT is tested in test_interpreter
+
+
+class TestPrimGetAttribute:
+    def get_argument(self, idx, **kwargs):
+        kwargs.setdefault('image_name', IMAGENAME)
+        interp = interpreter.Interpreter(space, **kwargs)
+        result = prim(primitives.GET_ATTRIBUTE, [idx], interp=interp)
+        if result.is_same_object(space.w_nil):
+            return None
+        else:
+            return result.as_string()
+
+    # VM args:
+    def test_not_passed_vm_argument(self):
+        assert self.get_argument(-1, vm_args=['rsqueask']) is None
+
+    def test_first_vm_argument(self):
+        assert self.get_argument(-1, vm_args=['rsqueask', 'test']) == 'test'
+
+    def test_second_vm_argument(self):
+        assert self.get_argument(-2, vm_args=['rsqueask', 'test', 'foo']) == 'foo'
+
+    # interp name:
+    def test_interp_name(self):
+        assert self.get_argument(0) == 'unknown'
+
+    # image name:
+    def test_image_name(self):
+        assert self.get_argument(1) == IMAGENAME
+
+    # smalltalk args:
+    def test_smalltalk_first_argument(self):
+        assert self.get_argument(2, smalltalk_args=['example.st']) == 'example.st'
+
+    def test_smalltalk_no_argument(self):
+        assert self.get_argument(2) is None

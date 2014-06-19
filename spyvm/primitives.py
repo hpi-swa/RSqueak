@@ -1101,6 +1101,7 @@ SHORT_AT = 143
 SHORT_AT_PUT = 144
 FILL = 145
 CLONE = 148
+GET_ATTRIBUTE = 149
 
 @expose_primitive(BEEP, unwrap_spec=[object])
 def func(interp, s_frame, w_receiver):
@@ -1142,6 +1143,42 @@ def func(interp, s_frame, w_arg, new_value):
 @expose_primitive(CLONE, unwrap_spec=[object])
 def func(interp, s_frame, w_arg):
     return w_arg.clone(interp.space)
+
+@expose_primitive(GET_ATTRIBUTE, unwrap_spec=[object, int])
+def func(interp, s_frame, _, idx):
+    if idx < 0:  # VM argument
+        vm_arg = -idx
+        if vm_arg < len(interp.vm_args):
+            return interp.space.wrap_string(interp.vm_args[vm_arg])
+        else:
+            return interp.space.w_nil
+    elif idx == 0:
+        return interp.space.wrap_string(interp.vm_args[0])
+    elif idx == 1:
+        return interp.space.wrap_string(interp.image_name)
+    elif idx == 1001:
+        # OS type: "unix", "win32", "mac", ...
+        return interp.space.w_nil
+    elif idx == 1002:
+        # OS name: "solaris2.5" on unix, "win95" on win32, ...
+        return interp.space.w_nil
+    elif idx == 1003:
+        # processor architecture: "68k", "x86", "PowerPC", ...
+        return interp.space.w_nil
+    elif idx == 1004:
+        # Interpreter version string
+        return interp.space.w_nil
+    elif idx == 1005:
+        # window system name
+        return interp.space.w_nil
+    elif idx == 1006:
+        # vm build string
+        return interp.space.w_nil
+    else:
+        smalltalk_arg = idx - 2
+        if smalltalk_arg < len(interp.smalltalk_args):
+            return interp.space.wrap_string(interp.smalltalk_args[smalltalk_arg])
+        return interp.space.w_nil
 
 # ___________________________________________________________________________
 # File primitives (150-169)
