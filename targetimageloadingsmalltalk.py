@@ -134,6 +134,7 @@ def _usage(argv):
           --strategy-stats
           --strategy-stats-dot
           --strategy-stats-details
+          --strategy-stats-histogram
           [image path, default: Squeak.image]
     """ % (argv[0], constants.MAX_LOOP_DEPTH)
 
@@ -204,6 +205,8 @@ def entry_point(argv):
             storage_statistics.activate_statistics(statistics=True)
         elif arg == "--strategy-stats-dot":
             storage_statistics.activate_statistics(dot=True)
+        elif arg == "--strategy-stats-histogram":
+            storage_statistics.activate_statistics(histogram=True)
         elif arg == "--strategy-stats-details":
             storage_statistics.activate_statistics(statistics=True, detailed_statistics=True)
         elif path is None:

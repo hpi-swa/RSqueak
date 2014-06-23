@@ -32,20 +32,18 @@ class StorageStatistics(object):
                 old_storage = None
             size = w_obj.size()
             
-            key = self.make_key(operation, old_storage, new_storage)
             if self.using_classname and log_classname:
                 classname = w_obj.guess_classname()
             else:
                 classname = None
             for module in self.modules:
+                key = module.make_key(operation, old_storage, new_storage)
                 module.storage_operation(key, size, classname)
     
-    def make_key(self, operation, old_storage, new_storage):
-        return (operation, old_storage, new_storage)
-        
     def print_results(self):
         for module in self.modules:
             module.print_results()
+            print "\n\n"
 
 class StatisticsModule(object):
     uses_classname = False
@@ -53,6 +51,8 @@ class StatisticsModule(object):
         raise NotImplementedError("Abstract class")
     def print_results(self):
         raise NotImplementedError("Abstract class")
+    def make_key(self, operation, old_storage, new_storage):
+        return (operation, old_storage, new_storage)
     def key_string(self, key):
         if key[1]:
             return "%s (%s -> %s)" % (key[0], key[1], key[2])
@@ -82,17 +82,46 @@ class AbstractStatisticsCollector(StatisticsModule):
     def storage_operation(self, operation_key, storage_size, container_classname):
         if not operation_key in self.stats:
             self.stats[operation_key] = self.initial_value()
-        self.increment_value(self.stats[operation_key], storage_size)
+        self.increment_value(self.stats[operation_key], storage_size, container_classname)
     
     def sorted_keys(self):
         keys = [ x for x in self.stats ]
         StatsSorter(keys).sort()
         return keys
 
+class HistogramStatisticsCollector(AbstractStatisticsCollector):
+    # Stores classnames with sizes
+    # Value: map <classname, (count, elements)>
+    
+    uses_classname = True
+    def initial_value(self): return {}
+    def increment_value(self, value_object, storage_size, container_classname):
+        if not container_classname in value_object:
+            value_object[container_classname] = [0, 0]
+        m = value_object[container_classname]
+        m[0] = m[0] + storage_size
+        m[1] = m[1] + 1
+    
+    def make_key(self, operation, old_storage, new_storage):
+        return (new_storage)
+    
+    def print_results(self):
+        print "## Histogram statistics:"
+        for key in self.sorted_keys():
+            print "##"
+            print "# %s" % key
+            print "Data Objects Elements"
+            classes = self.stats[key]
+            for cls in classes:
+                tuple = classes[cls]
+                sum = tuple[0]
+                num = tuple[1]
+                print "%s\t%d\t%d" % (cls, num, sum)
+    
 class StatisticsCollector(AbstractStatisticsCollector):
     # Value: [total_size, num_operations]
     def initial_value(self): return [0, 0]
-    def increment_value(self, value_object, storage_size):
+    def increment_value(self, value_object, storage_size, container_classname):
         value_object[0] = value_object[0] + storage_size
         value_object[1] = value_object[1] + 1
     def print_results(self):
@@ -106,7 +135,7 @@ class StatisticsCollector(AbstractStatisticsCollector):
 class DotStatisticsCollector(StatisticsCollector):
     
     def __init__(self):
-        AbstractStatisticsCollector.__init__(self)
+        StatisticsCollector.__init__(self)
         self.incoming_operations = {}
         self.incoming_elements = {}
         self.outgoing_operations = {}
@@ -181,7 +210,7 @@ class DotStatisticsCollector(StatisticsCollector):
 class DetailedStatisticsCollector(AbstractStatisticsCollector):
     # Value: list of numbers (sizes)
     def initial_value(self): return []
-    def increment_value(self, value_object, storage_size):
+    def increment_value(self, value_object, storage_size, container_classname):
         value_object.append(storage_size)
     def print_results(self):
         print "Detailed Storage Statistics:"
@@ -195,8 +224,9 @@ _logger = StatisticsLogger()
 _collector = StatisticsCollector()
 _detailedcollector = DetailedStatisticsCollector()
 _dotcollector = DotStatisticsCollector()
+_histogramcollector = HistogramStatisticsCollector()
 
-def activate_statistics(log=False, statistics=False, detailed_statistics=False, dot=False):
+def activate_statistics(log=False, statistics=False, detailed_statistics=False, dot=False, histogram=False):
     if log:
         _stats.add_module(_logger)
     if statistics:
@@ -207,6 +237,8 @@ def activate_statistics(log=False, statistics=False, detailed_statistics=False, 
         _stats.add_module(_dotcollector)
         # Start a comment in order to make the entire output valid dot code. Hack.
         print "/*"
+    if histogram:
+        _stats.add_module(_histogramcollector)
 
 def print_statistics():
     _stats.print_results()
