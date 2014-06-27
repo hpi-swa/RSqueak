@@ -1,5 +1,6 @@
 
 from rpython.rlib.listsort import TimSort
+from rpython.rlib.objectmodel import import_from_mixin
 
 class StatsSorter(TimSort):
     """Sort a tuple of 3 strings"""
@@ -74,7 +75,7 @@ class StatisticsLogger(StatisticsModule):
         # Nothing to do, this is just for logging during runtime.
         pass
 
-class AbstractStatisticsCollector(StatisticsModule):
+class StatisticsCollectorMixin(StatisticsModule):
     
     def __init__(self):
         self.stats = {}
@@ -89,9 +90,10 @@ class AbstractStatisticsCollector(StatisticsModule):
         StatsSorter(keys).sort()
         return keys
 
-class HistogramStatisticsCollector(AbstractStatisticsCollector):
+class HistogramStatisticsCollector(StatisticsModule):
     # Stores classnames with sizes
     # Value: map <classname, (count, elements)>
+    import_from_mixin(StatisticsCollectorMixin)
     
     uses_classname = True
     def initial_value(self): return {}
@@ -103,23 +105,27 @@ class HistogramStatisticsCollector(AbstractStatisticsCollector):
         m[1] = m[1] + 1
     
     def make_key(self, operation, old_storage, new_storage):
-        return (new_storage)
+        return (new_storage, "", "")
     
     def print_results(self):
         print "## Histogram statistics:"
-        for key in self.sorted_keys():
-            print "##"
-            print "# %s" % key
+        for key_tuple in self.sorted_keys():
+            key = key_tuple[0]
+            if not "Storage" in key:
+                continue
+            print "\n# %s" % key
             print "Data Objects Elements"
-            classes = self.stats[key]
+            classes = self.stats[key_tuple]
             for cls in classes:
                 tuple = classes[cls]
                 sum = tuple[0]
                 num = tuple[1]
-                print "%s\t%d\t%d" % (cls, num, sum)
+                print "%d slots in %d objects: %s" % (sum, num, cls)
     
-class StatisticsCollector(AbstractStatisticsCollector):
+class StatisticsCollector(StatisticsModule):
     # Value: [total_size, num_operations]
+    import_from_mixin(StatisticsCollectorMixin)
+    
     def initial_value(self): return [0, 0]
     def increment_value(self, value_object, storage_size, container_classname):
         value_object[0] = value_object[0] + storage_size
@@ -207,8 +213,10 @@ class DotStatisticsCollector(StatisticsCollector):
         result += "}"
         return result
     
-class DetailedStatisticsCollector(AbstractStatisticsCollector):
+class DetailedStatisticsCollector(StatisticsModule):
     # Value: list of numbers (sizes)
+    import_from_mixin(StatisticsCollectorMixin)
+    
     def initial_value(self): return []
     def increment_value(self, value_object, storage_size, container_classname):
         value_object.append(storage_size)
