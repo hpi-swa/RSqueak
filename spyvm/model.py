@@ -15,7 +15,7 @@ W_BlockContext and W_MethodContext classes have been replaced by functions
 that create W_PointersObjects of correct size with attached shadows.
 """
 import sys, weakref
-from spyvm import constants, error, version, storage_statistics
+from spyvm import constants, error, version, storage_logger
 from spyvm.version import elidable_for_version, constant_for_version, constant_for_version_arg
 
 from rpython.rlib import rrandom, objectmodel, jit, signature
@@ -566,7 +566,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['shadow']
     shadow = None
     repr_classname = "W_PointersObject"
-    log_storage = storage_statistics.log
+    log_storage = storage_logger.log
     
     @jit.unroll_safe
     def __init__(self, space, w_class, size, weak=False):

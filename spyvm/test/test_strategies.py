@@ -1,5 +1,5 @@
 import py
-from spyvm import wrapper, model, interpreter, shadow, storage_statistics
+from spyvm import wrapper, model, interpreter, shadow
 from spyvm.error import WrapperException, FatalError
 from .util import read_image, copy_to_module, cleanup_module
 
@@ -175,50 +175,3 @@ def test_Float_store_SmallInt_to_List():
     a.store(space, 1, space.wrap_int(2))
     assert isinstance(a.shadow, shadow.ListStorageShadow)
     check_arr(a, [1.2, 2, w_nil, w_nil, w_nil])
-
-def test_statistics_stats():
-    col = storage_statistics.DetailedStatisticsCollector()
-    stats = storage_statistics.StorageStatistics()
-    col.storage_operation(stats.make_key("B", "old", "new"), 3, None)
-    col.storage_operation(stats.make_key("B", "old", "new"), 4, None)
-    col.storage_operation(stats.make_key("B", "old2", "new2"), 20, None)
-    col.storage_operation(stats.make_key("B", "old", "new"), 5, None)
-    col.storage_operation(stats.make_key("A", "old", "new"), 1, None)
-    col.storage_operation(stats.make_key("A", "old", "new"), 2, None)
-    col.storage_operation(stats.make_key("C", "old", "new"), 10, None)
-    col.storage_operation(stats.make_key("C", "old", "new"), 11, None)
-    keys = col.sorted_keys()
-    assert keys == [ ("A", "old", "new"), ("B", "old", "new"), ("B", "old2", "new2"), ("C", "old", "new") ]
-    assert col.stats[keys[0]] == [1, 2]
-    assert col.stats[keys[1]] == [3, 4, 5]
-    assert col.stats[keys[2]] == [20]
-    assert col.stats[keys[3]] == [10, 11]
-    
-def test_statistics_log():
-    stats = storage_statistics.StorageStatistics()
-    log = storage_statistics.StatisticsLogger()
-    s = log.log_string(stats.make_key("Operation", "old_storage", "new_storage"), 22, "classname")
-    assert s == "Operation (old_storage -> new_storage) of classname size 22"
-    s = log.log_string(stats.make_key("InitialOperation", None, "some_new_storage"), 40, "a_classname")
-    assert s == "InitialOperation (some_new_storage) of a_classname size 40"
-    
-def test_statistics_stats_dot():
-    col = storage_statistics.DotStatisticsCollector()
-    stats = storage_statistics.StorageStatistics()
-    
-    col.storage_operation(stats.make_key("Switched", "old", "new"), 10, None)
-    col.storage_operation(stats.make_key("Switched", "old", "new"), 10, None)
-    col.storage_operation(stats.make_key("Switched", "new", "new2"), 10, None)
-    col.storage_operation(stats.make_key("Switched", "old2", "new"), 5, None)
-    col.storage_operation(stats.make_key("Initialized", None, "old"), 13, None)
-    col.storage_operation(stats.make_key("Initialized", None, "old"), 10, None)
-    col.storage_operation(stats.make_key("Initialized", None, "old"), 10, None)
-    col.storage_operation(stats.make_key("Initialized", None, "old2"), 15, None)
-    col.storage_operation(stats.make_key("Filledin", None, "old2"), 20, None)
-    col.storage_operation(stats.make_key("Filledin", None, "new"), 10, None)
-    col.storage_operation(stats.make_key("Filledin", None, "new"), 11, None)
-    
-    # The dot-code is correct, I checked ;)
-    assert col.dot_string() == \
-    'digraph G {loading_image [label="Image Loading",shape=box];created_object [label="Object Creation",shape=box];created_object -> old2 [label="1 objects\n15 elements per object"];loading_image -> new [label="2 objects\n10 elements per object"];old -> new [label="2 objects\n10 elements per object\n66% objects\n60% elements"];loading_image -> old2 [label="1 objects\n20 elements per object"];created_object -> old [label="3 objects\n11 elements per object"];old2 -> new [label="1 objects\n5 elements per object\n50% objects\n14% elements"];new -> new2 [label="1 objects\n10 elements per object\n20% objects\n21% elements"];new2 [label="new2\nIncoming objects: 1\nIncoming elements: 10\nRemaining objects: 1 (100%)\nRemaining elements: 10 (100%)"];new [label="new\nIncoming objects: 5\nIncoming elements: 46\nRemaining objects: 4 (80%)\nRemaining elements: 36 (78%)"];old2 [label="old2\nIncoming objects: 2\nIncoming elements: 35\nRemaining objects: 1 (50%)\nRemaining elements: 30 (85%)"];old [label="old\nIncoming objects: 3\nIncoming elements: 33\nRemaining objects: 1 (33%)\nRemaining elements: 13 (39%)"];}'
-    

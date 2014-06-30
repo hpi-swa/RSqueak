@@ -6,7 +6,7 @@ from rpython.rlib.streamio import open_file_as_stream
 from rpython.rlib import jit, rpath
 
 from spyvm import model, interpreter, squeakimage, objspace, wrapper,\
-    error, shadow, storage_statistics, constants
+    error, shadow, storage_logger, constants
 from spyvm.tool.analyseimage import create_image
 from spyvm.interpreter_proxy import VirtualMachine
 
@@ -130,11 +130,7 @@ def _usage(argv):
           -p|--poll_events
           -ni|--no-interrupts
           -d|--max-stack-depth [number, default %d, <= 0 disables stack protection]
-          --strategy-log
-          --strategy-stats
-          --strategy-stats-dot
-          --strategy-stats-details
-          --strategy-stats-histogram
+          -l|--storage-log
           [image path, default: Squeak.image]
     """ % (argv[0], constants.MAX_LOOP_DEPTH)
 
@@ -199,16 +195,8 @@ def entry_point(argv):
             _arg_missing(argv, idx, arg)
             max_stack_depth = int(argv[idx + 1])
             idx += 1
-        elif arg == "--strategy-log":
-            storage_statistics.activate_statistics(log=True)
-        elif arg == "--strategy-stats":
-            storage_statistics.activate_statistics(statistics=True)
-        elif arg == "--strategy-stats-dot":
-            storage_statistics.activate_statistics(dot=True)
-        elif arg == "--strategy-stats-histogram":
-            storage_statistics.activate_statistics(histogram=True)
-        elif arg == "--strategy-stats-details":
-            storage_statistics.activate_statistics(statistics=True, detailed_statistics=True)
+        elif arg in ["-l", "--storage-log"]:
+            storage_logger.activate()
         elif path is None:
             path = argv[idx]
         else:
@@ -245,7 +233,6 @@ def entry_point(argv):
     else:
         _run_image(interp)
         result = 0
-    storage_statistics.print_statistics()
     return result
 
 
