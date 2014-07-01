@@ -297,6 +297,8 @@ class StorageGraph(object):
         self.edges[key].add_log_entry(log_entry)
     
     def collapse_nodes(self, collapsed_nodes, new_name=None):
+        if len(collapsed_nodes) == 0:
+            return
         for node in collapsed_nodes:
             del self.nodes[node.name]
             for edge in node.incoming:

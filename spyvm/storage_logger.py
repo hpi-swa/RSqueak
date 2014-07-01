@@ -1,12 +1,16 @@
 
-# Put flag in a list to make it modifyable after compile time.
-_active = [False]
+# Put flag in an object to make it modifyable after compile time.
+class LoggerActive(object):
+    def __init__(self):
+        self.active = False
+
+_active = LoggerActive()
 
 def activate():
-    _active[0] = True
+    _active.active = True
 
 def log(w_obj, operation, old_storage_object=None, log_classname=True):
-    if not _active[0]:
+    if not _active.active:
         return
     
     # Gather information to be logged
