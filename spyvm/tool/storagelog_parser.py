@@ -293,7 +293,7 @@ class StorageNode(object):
         return set(set_dict.values())
     
     def __add__(self, other):
-        result = StorageNode("%s_%s" % (self.name, other.name))
+        result = StorageNode("%s %s" % (self.name, other.name))
         result.incoming = self.merge_edge_sets(self.incoming, other.incoming, "origin")
         # TODO bullshit code
         for edge in result.incoming:
@@ -493,14 +493,17 @@ def dot_string(graph, flags):
             incoming_cache[node.name] = incoming
             shape = ""
             label = "\nIncoming objects: %d" % incoming.objects
-            label += "\nIncoming elements: %d" % incoming.slots
-            if flags.percent and incoming.objects != 0:
-                percent_remaining_objects = " (%.1f%%)" % (remaining.objects * 100 / incoming.objects)
-                percent_remaining_slots = " (%.1f%%)" % (remaining.slots * 100 / incoming.slots)
+            label += "\nIncoming slots: %d" % incoming.slots
+            if remaining.objects == incoming.objects:
+                label += "\n(All remaining)"
             else:
-                percent_remaining_objects = percent_remaining_slots = ""
-            label += "\nRemaining objects: %d%s" % (remaining.objects, percent_remaining_objects)
-            label += "\nRemaining elements: %d%s" % (remaining.slots, percent_remaining_slots)
+                if flags.percent and incoming.objects != 0:
+                    percent_remaining_objects = " (%.1f%%)" % (remaining.objects * 100 / incoming.objects)
+                    percent_remaining_slots = " (%.1f%%)" % (remaining.slots * 100 / incoming.slots)
+                else:
+                    percent_remaining_objects = percent_remaining_slots = ""
+                label += "\nRemaining objects: %d%s" % (remaining.objects, percent_remaining_objects)
+                label += "\nRemaining slots: %d%s" % (remaining.slots, percent_remaining_slots)
         result += "%s [label=\"%s%s\"%s];" % (node.name.replace(" ", "_"), node.name, label, shape)
     
     for edge in graph.edges.values():
@@ -514,7 +517,7 @@ def dot_string(graph, flags):
         
         target_node = edge.target.name.replace(" ", "_")
         source_node = edge.origin.name.replace(" ", "_")
-        result += "%s -> %s [label=\"%s\n%s\n%d slots per object\"];" % (source_node, target_node, str_objects, str_slots, total.slots / total.objects)
+        result += "%s -> %s [label=\"%s\n%s\n%.1f slots per object\"];" % (source_node, target_node, str_objects, str_slots, total.slots / total.objects)
     
     result += "}"
     return result

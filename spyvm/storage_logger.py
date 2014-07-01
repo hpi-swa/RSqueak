@@ -1,6 +1,4 @@
 
-import sys
-
 # Put flags in an object to make it modifyable after compile time.
 class LoggerOptions(object):
     def __init__(self):
@@ -63,7 +61,7 @@ storage_map = {
 
 def binary_output(operation, old_storage, new_storage, classname, size):
     # Output a byte-coded log entry
-    bytes = bytearray()
+    bytes = [] # bytearray()
     
     # First 3 bytes: operation, old_storage, new_storage
     assert operation in operation_map, "Cannot handle operation %s" % operation
@@ -81,9 +79,14 @@ def binary_output(operation, old_storage, new_storage, classname, size):
     bytes.append((size & mask) >> 8)
     
     # Next: classname string plus terminating null-character
+    i = 5
     if classname:
         for c in classname:
-            bytes.append(c)
+            bytes.append(ord(c))
+            i += 1
     bytes.append(0)
     
-    sys.stdout.write(bytes)
+    # No simpler way for RPython's sake.
+    import os
+    for b in bytes:
+        os.write(1, chr(b))
