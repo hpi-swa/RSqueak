@@ -1,23 +1,76 @@
 
 import re, sys, operator
+import spyvm.storage_logger
 
 OPERATIONS = ["Filledin", "Initialized", "Switched"]
+
+# Reverse the two maps used to encode the byte encoded log-output
+storage_map = {v:k for k, v in spyvm.storage_logger.storage_map.items()}
+operation_map = {v:k for k, v in spyvm.storage_logger.operation_map.items()}
 
 # ====================================================================
 # ======== Basic functions
 # ====================================================================
 
+def filesize(file):
+    import os
+    return os.path.getsize(file.name)
+
 def parse(filename, flags):
     entries = []
     with open(filename, 'r', 1) as file:
-        while True:
-            line = file.readline()
-            if len(line) == 0:
-                break
-            entry = parse_line(line, flags)
-            if entry:
-                entries.append(entry)
+        if flags.binary:
+            while True:
+                try:
+                    entry = parse_binary(file)
+                    if entry == None:
+                        if flags.verbose:
+                            tell = file.tell()
+                            format = (tell, len(entries), filesize(file) - tell)
+                            print "Stopped parsing after %d bytes (%d entries). Ignoring leftover %d bytes." % format
+                        break
+                    else:
+                        entries.append(entry)
+                except:
+                    print "Exception while parsing file, after %d bytes (%d entries)" % (file.tell(), len(entries))
+                    raise
+        else:
+            while True:
+                line = file.readline()
+                if len(line) == 0:
+                    break
+                entry = parse_line(line, flags)
+                if entry:
+                    entries.append(entry)
     return entries
+
+def parse_binary(file):
+    # First 3 bytes: operation, old storage, new storage
+    header = file.read(3)
+    operation_byte = ord(header[0])
+    old_storage_byte = ord(header[1])
+    new_storage_byte = ord(header[2])
+    # This is the only way to check if we are reading a correct log entry
+    if operation_byte not in operation_map or old_storage_byte not in storage_map or new_storage_byte not in storage_map:
+        return None
+    operation = operation_map[operation_byte]
+    old_storage = storage_map[old_storage_byte]
+    new_storage = storage_map[new_storage_byte]
+    
+    # Next 2 bytes: object size (big endian)
+    size_bytes = file.read(2)
+    size = int(ord(size_bytes[0]) + (ord(size_bytes[1])<<8))
+    
+    # Last: classname, nul-terminated
+    classname = ""
+    while True:
+        byte = file.read(1)
+        if byte == chr(0):
+            break
+        classname += byte
+    if len(classname) == 0:
+        classname = None
+    return LogEntry(operation, old_storage, new_storage, classname, size)
 
 line_pattern = re.compile("^(?P<operation>\w+) \(((?P<old>\w+) -> )?(?P<new>\w+)\)( of (?P<classname>.+))? size (?P<size>[0-9]+)$")
 
@@ -32,25 +85,24 @@ def parse_line(line, flags):
     new_storage = result.group('new')
     classname = result.group('classname')
     size = result.group('size')
-    if old_storage is None:
-        if operation == "Filledin":
-            old_storage = " Image Loading Storage" # Space to be sorted to the beginning
-        elif operation == "Initialized":
-            old_storage = " Object Creation Storage"
-        else:
-            assert False, "old_storage has to be available in a Switched operation"
-    entry = LogEntry(operation, old_storage, new_storage, classname, size)
-    #entry.is_special = 
-    return entry
+    return LogEntry(operation, old_storage, new_storage, classname, size)
 
 class LogEntry(object):
     
     def __init__(self, operation, old_storage, new_storage, classname, size):
         self.operation = str(operation)
-        self.old_storage = str(old_storage)
         self.new_storage = str(new_storage)
         self.classname = str(classname)
         self.size = float(size)
+        
+        if old_storage is None:
+            if operation == "Filledin":
+                old_storage = " Image Loading Storage" # Space to be sorted to the beginning
+            elif operation == "Initialized":
+                old_storage = " Object Creation Storage"
+            else:
+                assert False, "old_storage has to be available in a Switched operation"
+        self.old_storage = str(old_storage)
     
     def full_key(self):
         return (self.operation, self.old_storage, self.new_storage)
@@ -471,7 +523,7 @@ def dot_string(graph, flags):
 # ======== Main
 # ====================================================================
 
-def command_print_entries(entries):
+def command_print_entries(entries, flags):
     for e in entries:
         print e
 
@@ -506,6 +558,7 @@ def main(argv):
         ('allstorage', '-a'),
         ('detailed', '-d'),
         ('classes', '-c'),
+        ('binary', '-b'),
     ])
     
     command_prefix = "command_"

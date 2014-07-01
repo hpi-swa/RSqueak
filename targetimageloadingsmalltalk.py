@@ -131,6 +131,7 @@ def _usage(argv):
           -ni|--no-interrupts
           -d|--max-stack-depth [number, default %d, <= 0 disables stack protection]
           -l|--storage-log
+          -lb|--storage-log-binary (output should be redirected to file)
           [image path, default: Squeak.image]
     """ % (argv[0], constants.MAX_LOOP_DEPTH)
 
@@ -197,6 +198,8 @@ def entry_point(argv):
             idx += 1
         elif arg in ["-l", "--storage-log"]:
             storage_logger.activate()
+        elif arg in ["-lb", "--storage-log-binary"]:
+            storage_logger.activate(binary=True)
         elif path is None:
             path = argv[idx]
         else:
