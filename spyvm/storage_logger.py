@@ -71,19 +71,26 @@ def binary_output(operation, old_storage, new_storage, classname, size):
     assert new_storage in storage_map, "Cannot handle new-storage type %s" % new_storage
     bytes.append(storage_map[new_storage])
     
-    # Next: 2 bytes encoding object size (big endian)
-    assert size < 2**16, "Object of type %s too large (size %d)" % (classname, size)
+    # Next: 4 bytes encoding object size (big endian)
+    # Assert not compiling in RPython
+    # assert size < 2**32, "Object of type %s too large (size %d)" % (classname, size)
     mask = (1<<8)-1
-    bytes.append(size & mask)
+    shift = 0
+    bytes.append((size & mask) >> shift)
     mask = mask<<8
-    bytes.append((size & mask) >> 8)
+    shift += 8
+    bytes.append((size & mask) >> shift)
+    mask = mask<<8
+    shift += 8
+    bytes.append((size & mask) >> shift)
+    mask = mask<<8
+    shift += 8
+    bytes.append((size & mask) >> shift)
     
     # Next: classname string plus terminating null-character
-    i = 5
     if classname:
         for c in classname:
             bytes.append(ord(c))
-            i += 1
     bytes.append(0)
     
     # No simpler way for RPython's sake.

@@ -57,9 +57,9 @@ def parse_binary(file):
     old_storage = storage_map[old_storage_byte]
     new_storage = storage_map[new_storage_byte]
     
-    # Next 2 bytes: object size (big endian)
-    size_bytes = file.read(2)
-    size = int(ord(size_bytes[0]) + (ord(size_bytes[1])<<8))
+    # Next 4 bytes: object size (big endian)
+    size_bytes = file.read(4)
+    size = int(ord(size_bytes[0]) + (ord(size_bytes[1])<<8) + (ord(size_bytes[2])<<16) + (ord(size_bytes[3])<<24))
     
     # Last: classname, nul-terminated
     classname = ""
