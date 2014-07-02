@@ -1,5 +1,5 @@
 
-import re, sys, operator
+import re, os, sys, operator
 import spyvm.storage_logger
 
 OPERATIONS = ["Filledin", "Initialized", "Switched"]
@@ -9,30 +9,35 @@ storage_map = {v:k for k, v in spyvm.storage_logger.storage_map.items()}
 operation_map = {v:k for k, v in spyvm.storage_logger.operation_map.items()}
 
 # ====================================================================
-# ======== Basic functions
+# ======== Logfile parsing
 # ====================================================================
 
-def filesize(file):
-    import os
-    return os.path.getsize(file.name)
-
-def parse(filename, flags):
-    entries = []
-    with open(filename, 'r', 1) as file:
+def parse(filename, flags, callback):
+    parsed_entries = 0
+    if filename == "-":
+        opener = lambda: sys.stdin
+    else:
+        opener = lambda: open(filename, 'r', 1)
+    with opener() as file:
         if flags.binary:
             while True:
                 try:
                     entry = parse_binary(file)
                     if entry == None:
                         if flags.verbose:
-                            tell = file.tell()
-                            format = (tell, len(entries), filesize(file) - tell)
-                            print "Stopped parsing after %d bytes (%d entries). Ignoring leftover %d bytes." % format
+                            if file is sys.stdin:
+                                print "Stopped after parsing %d entries." % parsed_entries
+                            else:
+                                tell = file.tell()
+                                format = (tell, parsed_entries, os.path.getsize(file.name) - tell)
+                                print "Stopped parsing after %d bytes (%d entries). Ignoring leftover %d bytes." % format
                         break
                     else:
-                        entries.append(entry)
+                        parsed_entries += 1
+                        callback(entry)
                 except:
-                    print "Exception while parsing file, after %d bytes (%d entries)" % (file.tell(), len(entries))
+                    tell = 0 if file is sys.stdin else file.tell()
+                    print "Exception while parsing file, after %d bytes (%d entries)" % (tell, len(entries))
                     raise
         else:
             while True:
@@ -41,30 +46,48 @@ def parse(filename, flags):
                     break
                 entry = parse_line(line, flags)
                 if entry:
-                    entries.append(entry)
-    return entries
+                    parsed_entries += 1
+                    callback(entry)
+    return parsed_entries
+
+def safe_read(file, size):
+    result = file.read(size)
+    retries = 20
+    # Try to work around stdin's unpredictability
+    while len(result) < size:
+        result += file.read(size - len(result))
+        retries -= 1
+        if retries < 0:
+            return None
+        import time
+        time.sleep(0.001)
+    return result
 
 def parse_binary(file):
     # First 3 bytes: operation, old storage, new storage
-    header = file.read(3)
+    header = safe_read(file, 3)
+    if header is None: return None
     operation_byte = ord(header[0])
     old_storage_byte = ord(header[1])
     new_storage_byte = ord(header[2])
     # This is the only way to check if we are reading a correct log entry
     if operation_byte not in operation_map or old_storage_byte not in storage_map or new_storage_byte not in storage_map:
+        print "Wrong 3 bytes: %d %d %d" % header
         return None
     operation = operation_map[operation_byte]
     old_storage = storage_map[old_storage_byte]
     new_storage = storage_map[new_storage_byte]
     
     # Next 4 bytes: object size (big endian)
-    size_bytes = file.read(4)
+    size_bytes = safe_read(file, 4)
+    if size_bytes is None: return None
     size = int(ord(size_bytes[0]) + (ord(size_bytes[1])<<8) + (ord(size_bytes[2])<<16) + (ord(size_bytes[3])<<24))
     
     # Last: classname, nul-terminated
     classname = ""
     while True:
-        byte = file.read(1)
+        byte = safe_read(file, 1)
+        if byte is None: return None
         if byte == chr(0):
             break
         classname += byte
@@ -135,7 +158,9 @@ class Operations(object):
             percent_objects = " (%.1f%%)" % (float(self.objects)*100 / total.objects)
         else:
             percent_objects = ""
-        return "%d%s slots in %d%s objects (avg size: %.1f)" % (self.slots, percent_slots, self.objects, percent_objects, avg_slots)
+        slots = format(self.slots, ",.0f")
+        objects = format(self.objects, ",.0f")
+        return "%s%s slots in %s%s objects (avg size: %.1f)" % (slots, percent_slots, objects, percent_objects, avg_slots)
     
     def __repr__(self):
         return "%s(%s)" % (self.__str__(), object.__repr__(self))
@@ -388,10 +413,11 @@ class StorageGraph(object):
         nodes.sort()
         return nodes
     
-def make_graph(entries):
+def make_graph(logfile, flags):
     graph = StorageGraph()
-    for e in entries:
-        graph.add_log_entry(e)
+    def callback(entry):
+        graph.add_log_entry(entry)
+    parse(logfile, flags, callback)
     graph.assert_sanity()
     return graph
 
@@ -399,11 +425,8 @@ def make_graph(entries):
 # ======== Command - Summarize log content
 # ====================================================================
 
-def command_summarize(entries, flags):
-    print_summary(entries, flags)
-
-def print_summary(entries, flags):
-    graph = make_graph(entries)
+def command_summarize(logfile, flags):
+    graph = make_graph(logfile, flags)
     if not flags.allstorage:
         graph.split_nodes()
     for node in graph.sorted_nodes():
@@ -456,17 +479,17 @@ StorageEdge.print_with_name = StorageEdge_print_with_name
 # ====================================================================
 
 # Output is valid dot code and can be parsed by the graphviz dot utility.
-def command_print_dot(entries, flags):
-    graph = make_graph(entries)
+def command_print_dot(logfile, flags):
+    graph = make_graph(logfile, flags)
     print "/*"
     print "Storage Statistics (dot format):"
     print "================================"
     print "*/"
     print dot_string(graph, flags)
 
-def command_dot(entries, flags):
+def command_dot(logfile, flags):
     import subprocess
-    dot = dot_string(make_graph(entries), flags)
+    dot = dot_string(make_graph(logfile, flags), flags)
     command = ["dot", "-Tjpg", "-o%s.jpg" % flags.logfile]
     print "Running:\n%s" % " ".join(command)
     p = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -487,33 +510,31 @@ def dot_string(graph, flags):
             # TODO This is a special node. Hacky way to find out.
             incoming_cache[node.name] = outgoing
             shape = ",shape=box"
-            label = "\nObjects: %d" % outgoing.objects
-            label += "\nSlots: %d" % outgoing.slots
+            label = "\nObjects: %s" % format(outgoing.objects, ",.0f")
+            label += "\nSlots: %s" % format(outgoing.slots, ",.0f")
         else:
             incoming_cache[node.name] = incoming
             shape = ""
-            label = "\nIncoming objects: %d" % incoming.objects
-            label += "\nIncoming slots: %d" % incoming.slots
-            if remaining.objects == incoming.objects:
-                label += "\n(All remaining)"
-            else:
+            label = "\nIncoming objects: %s" % format(incoming.objects, ",.0f")
+            label += "\nIncoming slots: %s" % format(incoming.slots, ",.0f")
+            if remaining.objects != incoming.objects:
                 if flags.percent and incoming.objects != 0:
-                    percent_remaining_objects = " (%.1f%%)" % (remaining.objects * 100 / incoming.objects)
-                    percent_remaining_slots = " (%.1f%%)" % (remaining.slots * 100 / incoming.slots)
+                    percent_remaining_objects = " (%.1f%%)" % (float(remaining.objects)*100 / incoming.objects)
+                    percent_remaining_slots = " (%.1f%%)" % (float(remaining.slots)*100 / incoming.slots)
                 else:
                     percent_remaining_objects = percent_remaining_slots = ""
-                label += "\nRemaining objects: %d%s" % (remaining.objects, percent_remaining_objects)
-                label += "\nRemaining slots: %d%s" % (remaining.slots, percent_remaining_slots)
+                label += "\nRemaining objects: %s%s" % (format(remaining.objects, ",.0f"), percent_remaining_objects)
+                label += "\nRemaining slots: %s%s" % (format(remaining.slots, ",.0f"), percent_remaining_slots)
         result += "%s [label=\"%s%s\"%s];" % (node.name.replace(" ", "_"), node.name, label, shape)
     
     for edge in graph.edges.values():
         total = edge.total()
-        str_objects = "%d objects" % total.objects
-        str_slots = "%d slots" % total.slots
+        str_objects = "%s objects" % format(total.objects, ",.0f")
+        str_slots = "%s slots" % format(total.slots, ",.0f")
         incoming = incoming_cache[edge.origin.name]
         if flags.percent and incoming.objects != 0:
-            str_objects += " (%.1f%%)" % (float(total.objects) * 100 / incoming.objects)
-            str_slots += " (%.1f%%)" % (float(total.slots) * 100 / incoming.slots)
+            str_objects += " (%.1f%%)" % (float(total.objects)*100 / incoming.objects)
+            str_slots += " (%.1f%%)" % (float(total.slots)*100 / incoming.slots)
         
         target_node = edge.target.name.replace(" ", "_")
         source_node = edge.origin.name.replace(" ", "_")
@@ -526,9 +547,10 @@ def dot_string(graph, flags):
 # ======== Main
 # ====================================================================
 
-def command_print_entries(entries, flags):
-    for e in entries:
-        print e
+def command_print_entries(logfile, flags):
+    def callback(entry):
+        print entry
+    parse(logfile, flags, callback)
 
 class Flags(object):
     
@@ -580,8 +602,7 @@ def main(argv):
         usage(flags, commands)
     
     func = module[command_prefix + command]
-    entries = parse(logfile, flags)
-    func(entries, flags)
+    func(logfile, flags)
 
 if __name__ == "__main__":
     main(sys.argv[1:])
