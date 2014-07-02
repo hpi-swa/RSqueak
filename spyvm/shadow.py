@@ -34,7 +34,7 @@ class AbstractCachingShadow(AbstractShadow):
     import_from_mixin(version.VersionMixin)
 
     version = None
-    
+
     def __init__(self, space, w_self):
         AbstractShadow.__init__(self, space, w_self)
         self.changed()
@@ -78,7 +78,7 @@ class ClassShadow(AbstractCachingShadow):
 
     _attrs_ = ["name", "_instance_size", "instance_varsized", "instance_kind",
                 "_s_methoddict", "_s_superclass", "subclass_s"]
-    
+
     def __init__(self, space, w_self):
         # fields added here should also be in objspace.py:56ff, 300ff
         self.name = ''
@@ -449,17 +449,19 @@ class AbstractRedirectingShadow(AbstractShadow):
 class ContextPartShadow(AbstractRedirectingShadow):
 
     __metaclass__ = extendabletype
-    _attrs_ = ['_s_sender', '_pc', '_temps_and_stack',
+    _attrs_ = ['_direct_s_sender', '_virtual_s_sender', '_pc', '_temps_and_stack',
             '_stack_ptr', 'instances_w']
 
     _virtualizable_ = [
-        "_s_sender", "_pc",
+        "_virtual_s_sender", "_direct_s_sender",
+        "_pc",
         "_temps_and_stack[*]", "_stack_ptr",
         "_w_self", "_w_self_size"
     ]
 
     def __init__(self, space, w_self):
-        self._s_sender = None
+        self._virtual_s_sender = jit.vref_None
+        self._direct_s_sender = None
         AbstractRedirectingShadow.__init__(self, space, w_self)
         self.instances_w = {}
 
@@ -541,25 +543,35 @@ class ContextPartShadow(AbstractRedirectingShadow):
         " Return self of the method, or the method that contains the block "
         return self.s_home().w_receiver()
 
-    def store_s_sender(self, s_sender):
-        assert s_sender is None or isinstance(s_sender, ContextPartShadow)
-        self._s_sender = s_sender
-        raise error.SenderChainManipulation(self)
+    def store_s_sender(self, direct=None, virtual=jit.vref_None, raiseError=True):
+        assert direct is None or virtual is jit.vref_None # can only set one or the other
+        if self._virtual_s_sender is not jit.vref_None and virtual is jit.vref_None:
+            # if we have a vref but we're removing it...
+            sender = self._virtual_s_sender()
+            jit.virtual_ref_finish(self._virtual_s_sender, sender)
+        self._virtual_s_sender = virtual
+        self._direct_s_sender = direct
+        if raiseError:
+            raise error.SenderChainManipulation(self)
 
     def store_w_sender(self, w_sender):
         assert isinstance(w_sender, model.W_PointersObject)
         if w_sender.is_same_object(self.space.w_nil):
-            self._s_sender = None
+            self.store_s_sender(raiseError=False)
         else:
-            self.store_s_sender(w_sender.as_context_get_shadow(self.space))
+            self.store_s_sender(direct=w_sender.as_context_get_shadow(self.space))
 
     def w_sender(self):
-        if self._s_sender is None:
+        sender = self.s_sender()
+        if sender is None:
             return self.space.w_nil
-        return self._s_sender.w_self()
+        return sender.w_self()
 
     def s_sender(self):
-        return self._s_sender
+        if self._direct_s_sender:
+            return self._direct_s_sender
+        else:
+            return self._virtual_s_sender()
 
     def store_unwrap_pc(self, w_pc):
         if w_pc.is_same_object(self.space.w_nil):
@@ -592,9 +604,15 @@ class ContextPartShadow(AbstractRedirectingShadow):
     def mark_returned(self):
         self.store_pc(-1)
         try:
-            self.store_s_sender(None)
+            self.store_s_sender()
         except error.SenderChainManipulation, e:
             assert self == e.s_context
+
+    def unvirtualize_sender(self):
+        sender = self.s_sender()
+        self.store_s_sender(direct=sender, raiseError=False)
+        if sender:
+            sender.unvirtualize_sender()
 
     def is_returned(self):
         return self.pc() == -1 and self.w_sender is self.space.w_nil
@@ -879,7 +897,7 @@ class MethodContextShadow(ContextPartShadow):
         s_new_context.store_w_method(s_method.w_self())
         if s_sender:
             try:
-                s_new_context.store_s_sender(s_sender)
+                s_new_context.store_s_sender(virtual=jit.virtual_ref(s_sender))
             except error.SenderChainManipulation, e:
                 assert s_new_context == e.s_context
         s_new_context.store_w_receiver(w_receiver)

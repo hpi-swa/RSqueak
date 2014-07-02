@@ -203,7 +203,7 @@ class W_SmallInteger(W_Object):
         return r_uint(val)
 
 
-    @jit.elidable
+    # @jit.elidable
     def as_repr_string(self):
         return "W_SmallInteger(%d)" % self.value
 
@@ -457,7 +457,7 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
                 name = self.s_class.name
             return "a %s" % (name or '?',)
 
-    @jit.elidable
+    # @jit.elidable
     def as_repr_string(self):
         return self.as_embellished_string("W_O /w Class", "")
 
@@ -491,7 +491,7 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
 class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
     """Common object."""
     _attrs_ = ['shadow']
-    
+
     def changed(self):
         # This is invoked when an instance-variable is changed.
         # Kept here in case it might be usefull in the future.
@@ -550,7 +550,7 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
 
     def _get_shadow(self):
         return self.shadow
-    
+
     @objectmodel.specialize.arg(2)
     def attach_shadow_of_class(self, space, TheClass):
         shadow = TheClass(space, self)
@@ -632,7 +632,7 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         w_other.changed()
         return True
 
-    @jit.elidable
+    # @jit.elidable
     def as_repr_string(self):
         return W_AbstractObjectWithClassReference.as_embellished_string(self,
                                 className='W_PointersObject',
@@ -651,11 +651,11 @@ class W_PointersObject(W_AbstractPointersObject):
         self.fieldtypes = fieldtypes_of_length(self.s_class, size)
         for i in range(size): # do it by hand for the JIT's sake
             vars[i] = w_nil
-    
+
     def set_vars(self, new_vars):
         self._vars = new_vars
         make_sure_not_resized(self._vars)
-    
+
     def fillin(self, space, g_self):
         W_AbstractPointersObject.fillin(self, space, g_self)
         from spyvm.fieldtypes import fieldtypes_of
@@ -1013,7 +1013,7 @@ class W_DisplayBitmap(W_AbstractObjectWithClassReference):
     _immutable_fields_ = ['_realsize', 'display', '_depth', '_real_depth_buffer']
 
     pixelbuffer = None
-    
+
     @staticmethod
     def create(space, w_class, size, depth, display):
         if depth < 8:

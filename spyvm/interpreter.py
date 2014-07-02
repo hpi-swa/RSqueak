@@ -86,6 +86,7 @@ class Interpreter(object):
                 s_new_context = self.c_loop(s_new_context)
             except StackOverflow, e:
                 s_new_context = e.s_context
+                s_new_context.unvirtualize_sender()
             except Return, nlr:
                 s_new_context = s_sender
                 while s_new_context is not nlr.s_target_context:
@@ -98,9 +99,11 @@ class Interpreter(object):
             except ProcessSwitch, p:
                 if self.trace:
                     print "====== Switch from: %s to: %s ======" % (s_new_context.short_str(), p.s_new_context.short_str())
+                s_new_context.unvirtualize_sender()
                 s_new_context = p.s_new_context
 
     def c_loop(self, s_context, may_context_switch=True):
+        assert isinstance(s_context, ContextPartShadow)
         old_pc = 0
         if not jit.we_are_jitted() and may_context_switch:
             self.quick_check_for_interrupt(s_context)

@@ -1315,7 +1315,7 @@ def finalize_block_ctx(interp, s_block_ctx, s_frame):
     # Set some fields
     s_block_ctx.store_pc(s_block_ctx.initialip())
     try:
-        s_block_ctx.store_s_sender(s_frame)
+        s_block_ctx.store_s_sender(virtual=jit.virtual_ref(s_frame))
     except SenderChainManipulation, e:
         assert e.s_context == s_block_ctx
     return s_block_ctx
