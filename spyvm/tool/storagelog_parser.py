@@ -1,12 +1,10 @@
 
 import re, os, sys, operator
-import spyvm.storage_logger
 
 OPERATIONS = ["Filledin", "Initialized", "Switched"]
 
-# Reverse the two maps used to encode the byte encoded log-output
-storage_map = {v:k for k, v in spyvm.storage_logger.storage_map.items()}
-operation_map = {v:k for k, v in spyvm.storage_logger.operation_map.items()}
+IMAGE_LOADING_STORAGE = " Image Loading Storage" # Space to be sorted to the beginning
+OBJECT_CREATION_STORAGE = " Object Creation Storage"
 
 # ====================================================================
 # ======== Logfile parsing
@@ -19,83 +17,17 @@ def parse(filename, flags, callback):
     else:
         opener = lambda: open(filename, 'r', 1)
     with opener() as file:
-        if flags.binary:
-            while True:
-                try:
-                    entry = parse_binary(file)
-                    if entry == None:
-                        if flags.verbose:
-                            if file is sys.stdin:
-                                print "Stopped after parsing %d entries." % parsed_entries
-                            else:
-                                tell = file.tell()
-                                format = (tell, parsed_entries, os.path.getsize(file.name) - tell)
-                                print "Stopped parsing after %d bytes (%d entries). Ignoring leftover %d bytes." % format
-                        break
-                    else:
-                        parsed_entries += 1
-                        callback(entry)
-                except:
-                    tell = 0 if file is sys.stdin else file.tell()
-                    print "Exception while parsing file, after %d bytes (%d entries)" % (tell, len(entries))
-                    raise
-        else:
-            while True:
-                line = file.readline()
-                if len(line) == 0:
-                    break
-                entry = parse_line(line, flags)
-                if entry:
-                    parsed_entries += 1
-                    callback(entry)
+        while True:
+            line = file.readline()
+            if len(line) == 0:
+                break
+            entry = parse_line(line, flags)
+            if entry:
+                parsed_entries += 1
+                callback(entry)
     return parsed_entries
 
-def safe_read(file, size):
-    result = file.read(size)
-    retries = 20
-    # Try to work around stdin's unpredictability
-    while len(result) < size:
-        result += file.read(size - len(result))
-        retries -= 1
-        if retries < 0:
-            return None
-        import time
-        time.sleep(0.001)
-    return result
-
-def parse_binary(file):
-    # First 3 bytes: operation, old storage, new storage
-    header = safe_read(file, 3)
-    if header is None: return None
-    operation_byte = ord(header[0])
-    old_storage_byte = ord(header[1])
-    new_storage_byte = ord(header[2])
-    # This is the only way to check if we are reading a correct log entry
-    if operation_byte not in operation_map or old_storage_byte not in storage_map or new_storage_byte not in storage_map:
-        print "Wrong 3 bytes: %d %d %d" % header
-        return None
-    operation = operation_map[operation_byte]
-    old_storage = storage_map[old_storage_byte]
-    new_storage = storage_map[new_storage_byte]
-    
-    # Next 4 bytes: object size (big endian)
-    size_bytes = safe_read(file, 4)
-    if size_bytes is None: return None
-    size = int(ord(size_bytes[0]) + (ord(size_bytes[1])<<8) + (ord(size_bytes[2])<<16) + (ord(size_bytes[3])<<24))
-    
-    # Last: classname, nul-terminated
-    classname = ""
-    while True:
-        byte = safe_read(file, 1)
-        if byte is None: return None
-        if byte == chr(0):
-            break
-        classname += byte
-    if len(classname) == 0:
-        classname = None
-    return LogEntry(operation, old_storage, new_storage, classname, size)
-
-line_pattern = re.compile("^(?P<operation>\w+) \(((?P<old>\w+) -> )?(?P<new>\w+)\)( of (?P<classname>.+))? size (?P<size>[0-9]+)$")
+line_pattern = re.compile("^(?P<operation>\w+) \(((?P<old>\w+) -> )?(?P<new>\w+)\)( of (?P<classname>.+))? size (?P<size>[0-9]+)( objects (?P<objects>[0-9]+))?$")
 
 def parse_line(line, flags):
     result = line_pattern.match(line)
@@ -108,32 +40,42 @@ def parse_line(line, flags):
     new_storage = result.group('new')
     classname = result.group('classname')
     size = result.group('size')
-    return LogEntry(operation, old_storage, new_storage, classname, size)
+    objects = result.group('objects')
+    return LogEntry(operation, old_storage, new_storage, classname, size, objects)
 
 class LogEntry(object):
     
-    def __init__(self, operation, old_storage, new_storage, classname, size):
+    def __init__(self, operation, old_storage, new_storage, classname, size, objects):
         self.operation = str(operation)
         self.new_storage = str(new_storage)
         self.classname = str(classname)
-        self.size = float(size)
+        self.size = int(size)
+        self.objects = int(objects) if objects else 1
         
         if old_storage is None:
             if operation == "Filledin":
-                old_storage = " Image Loading Storage" # Space to be sorted to the beginning
+                old_storage = IMAGE_LOADING_STORAGE
             elif operation == "Initialized":
-                old_storage = " Object Creation Storage"
+                old_storage = OBJECT_CREATION_STORAGE
             else:
                 assert False, "old_storage has to be available in a Switched operation"
         self.old_storage = str(old_storage)
     
+    def clear_old_storage(self):
+        if self.old_storage in (IMAGE_LOADING_STORAGE, OBJECT_CREATION_STORAGE):
+            self.old_storage = None
+    
     def full_key(self):
         return (self.operation, self.old_storage, self.new_storage)
+    
+    def __lt__(self, other):
+        return self.classname < other.classname
     
     def __str__(self):
         old_storage_string = "%s -> " % self.old_storage if self.old_storage else ""
         classname_string = " of %s" % self.classname if self.classname else ""
-        return "%s (%s%s)%s size %d" % (self.operation, old_storage_string, self.new_storage, classname_string, self.size)
+        objects_string = " objects %d" % self.objects if self.objects > 1 else ""
+        return "%s (%s%s)%s size %d%s" % (self.operation, old_storage_string, self.new_storage, classname_string, self.size, objects_string)
 
 # ====================================================================
 # ======== Graph parsing
@@ -158,8 +100,8 @@ class Operations(object):
             percent_objects = " (%.1f%%)" % (float(self.objects)*100 / total.objects)
         else:
             percent_objects = ""
-        slots = format(self.slots, ",.0f")
-        objects = format(self.objects, ",.0f")
+        slots = format(self.slots, ",d")
+        objects = format(self.objects, ",d")
         return "%s%s slots in %s%s objects (avg size: %.1f)" % (slots, percent_slots, objects, percent_objects, avg_slots)
     
     def __repr__(self):
@@ -167,7 +109,7 @@ class Operations(object):
     
     def add_log_entry(self, entry):
         self.slots = self.slots + entry.size
-        self.objects = self.objects + 1
+        self.objects = self.objects + entry.objects
     
     def __sub__(self, other):
         return Operations(self.objects - other.objects, self.slots - other.slots)
@@ -244,6 +186,17 @@ class StorageEdge(object):
     
     def add_log_entry(self, entry):
         self.cls(entry.classname).add_log_entry(entry)
+    
+    def as_log_entries(self):
+        entries = []
+        for classname, ops in self.classes.classes.items():
+            entry = LogEntry(self.operation, self.origin.name, self.target.name, classname, ops.slots, ops.objects)
+            entry.clear_old_storage()
+            entries.append(entry)
+        return entries
+    
+    def __lt__(self, other):
+        return self.full_key() < other.full_key()
     
     def __str__(self):
         return "[%s %s -> %s]" % (self.operation, self.origin, self.target)
@@ -544,13 +497,27 @@ def dot_string(graph, flags):
     return result
 
 # ====================================================================
-# ======== Main
+# ======== Other commands
 # ====================================================================
+
+def command_aggregate(logfile, flags):
+    graph = make_graph(logfile, flags)
+    edges = graph.edges.values()
+    edges.sort()
+    for edge in edges:
+        logentries = edge.as_log_entries()
+        logentries.sort()
+        for entry in logentries:
+            print entry
 
 def command_print_entries(logfile, flags):
     def callback(entry):
         print entry
     parse(logfile, flags, callback)
+
+# ====================================================================
+# ======== Main
+# ====================================================================
 
 class Flags(object):
     
@@ -583,7 +550,6 @@ def main(argv):
         ('allstorage', '-a'),
         ('detailed', '-d'),
         ('classes', '-c'),
-        ('binary', '-b'),
     ])
     
     command_prefix = "command_"
