@@ -543,12 +543,14 @@ class ContextPartShadow(AbstractRedirectingShadow):
         " Return self of the method, or the method that contains the block "
         return self.s_home().w_receiver()
 
+    def restore_s_sender(self, s_direct):
+        if self._virtual_s_sender is not jit.vref_None:
+            # virtual sender wasn't already cleared by e.g. mark_returned
+            self._virtual_s_sender = jit.vref_None
+            self._direct_s_sender = s_direct
+
     def store_s_sender(self, direct=None, virtual=jit.vref_None, raiseError=True):
         assert direct is None or virtual is jit.vref_None # can only set one or the other
-        if self._virtual_s_sender is not jit.vref_None and virtual is jit.vref_None:
-            # if we have a vref but we're removing it...
-            sender = self._virtual_s_sender()
-            jit.virtual_ref_finish(self._virtual_s_sender, sender)
         self._virtual_s_sender = virtual
         self._direct_s_sender = direct
         if raiseError:
@@ -607,12 +609,6 @@ class ContextPartShadow(AbstractRedirectingShadow):
             self.store_s_sender()
         except error.SenderChainManipulation, e:
             assert self == e.s_context
-
-    def unvirtualize_sender(self):
-        sender = self.s_sender()
-        self.store_s_sender(direct=sender, raiseError=False)
-        if sender:
-            sender.unvirtualize_sender()
 
     def is_returned(self):
         return self.pc() == -1 and self.w_sender is self.space.w_nil
@@ -897,7 +893,7 @@ class MethodContextShadow(ContextPartShadow):
         s_new_context.store_w_method(s_method.w_self())
         if s_sender:
             try:
-                s_new_context.store_s_sender(virtual=jit.virtual_ref(s_sender))
+                s_new_context.store_s_sender(direct=s_sender)
             except error.SenderChainManipulation, e:
                 assert s_new_context == e.s_context
         s_new_context.store_w_receiver(w_receiver)
