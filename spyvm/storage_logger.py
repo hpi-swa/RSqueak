@@ -1,18 +1,46 @@
 
-# Put flags in an object to make it modifyable after compile time.
-class LoggerOptions(object):
+class Logger(object):
     def __init__(self):
         self.active = False
-        self.binary = False
+        self.aggregate = False
+        self.logs = {}
+    
+    def log(self, operation, old_storage, new_storage, classname, size):
+        if self.aggregate:
+            key = (operation, old_storage, new_storage, classname)
+            if key not in self.logs:
+                self.logs[key] = [0, 0]
+            tuple = self.logs[key]
+            tuple[0] += size
+            tuple[1] += 1
+        else:
+            self.output(operation, old_storage, new_storage, classname, size, 1)
+    
+    def print_aggregated_log(self):
+        if not self.aggregate:
+            return
+        for key, tuple in self.logs.items():
+            operation, old_storage, new_storage, classname = key
+            slots, objects = tuple
+            self.output(operation, old_storage, new_storage, classname, slots, objects)
+    
+    def output(self, operation, old_storage, new_storage, classname, slots, objects):
+        old_storage_string = "%s -> " % old_storage if old_storage else ""
+        classname_string = " of %s" % classname if classname else ""
+        format = (operation, old_storage_string, new_storage, classname_string, slots, objects)
+        print "%s (%s%s)%s size %d objects %d" % format
 
-_options = LoggerOptions()
+_logger = Logger()
 
-def activate(binary = False):
-    _options.active = True
-    _options.binary = binary
+def activate(aggregate=False):
+    _logger.active = True
+    _logger.aggregate = aggregate
+
+def print_aggregated_log():
+    _logger.print_aggregated_log()
 
 def log(w_obj, operation, old_storage_object=None, log_classname=True):
-    if not _options.active:
+    if not _logger.active:
         return
     
     # Gather information to be logged
@@ -27,73 +55,5 @@ def log(w_obj, operation, old_storage_object=None, log_classname=True):
     else:
         classname = None
     
-    if _options.binary:
-        binary_output(operation, old_storage, new_storage, classname, size)
-    else:
-        output(operation, old_storage, new_storage, classname, size)
-
-def output(operation, old_storage, new_storage, classname, size):
-    # Construct and print a simple logstring
-    old_storage_string = "%s -> " % old_storage if old_storage else ""
-    classname_string = " of %s" % classname if classname else ""
-    print "%s (%s%s)%s size %d" % (operation, old_storage_string, new_storage, classname_string, size)
+    _logger.log(operation, old_storage, new_storage, classname, size)
     
-operation_map = {
-    "Filledin": 1,
-    "Initialized": 2,
-    "Switched": 3,
-}
-
-storage_map = {
-    "AllNilStorageShadow": 1,
-    "SmallIntegerOrNilStorageShadow": 2,
-    "FloatOrNilStorageShadow": 3,
-    "ListStorageShadow": 4,
-    "WeakListStorageShadow": 5,
-    "ClassShadow": 6,
-    "MethodDictionaryShadow": 7,
-    "BlockContextShadow": 8,
-    "MethodContextShadow": 9,
-    "CachedObjectShadow": 10,
-    "ObserveeShadow": 11,
-    None: 12,
-}
-
-def binary_output(operation, old_storage, new_storage, classname, size):
-    # Output a byte-coded log entry
-    bytes = [] # bytearray()
-    
-    # First 3 bytes: operation, old_storage, new_storage
-    assert operation in operation_map, "Cannot handle operation %s" % operation
-    bytes.append(operation_map[operation])
-    assert old_storage in storage_map, "Cannot handle old-storage type %s" % old_storage
-    bytes.append(storage_map[old_storage])
-    assert new_storage in storage_map, "Cannot handle new-storage type %s" % new_storage
-    bytes.append(storage_map[new_storage])
-    
-    # Next: 4 bytes encoding object size (big endian)
-    # Assert not compiling in RPython
-    # assert size < 2**32, "Object of type %s too large (size %d)" % (classname, size)
-    mask = (1<<8)-1
-    shift = 0
-    bytes.append((size & mask) >> shift)
-    mask = mask<<8
-    shift += 8
-    bytes.append((size & mask) >> shift)
-    mask = mask<<8
-    shift += 8
-    bytes.append((size & mask) >> shift)
-    mask = mask<<8
-    shift += 8
-    bytes.append((size & mask) >> shift)
-    
-    # Next: classname string plus terminating null-character
-    if classname:
-        for c in classname:
-            bytes.append(ord(c))
-    bytes.append(0)
-    
-    # No simpler way for RPython's sake.
-    import os
-    for b in bytes:
-        os.write(1, chr(b))
