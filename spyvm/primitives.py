@@ -1335,6 +1335,10 @@ STM_WAIT = 1301  # 789
 STM_ATOMIC_ENTER = 1302  # 790
 STM_ATOMIC_LEAVE = 1303  # 791
 
+# OS Lock Primitives
+OS_LOCK_LOCK = 1304  # 792
+OS_LOCK_RELEASE = 1305  # 793
+
 @expose_primitive(BLOCK_COPY, unwrap_spec=[object, int])
 def func(interp, s_frame, w_context, argcnt):
 
@@ -1541,6 +1545,26 @@ def func(interp, s_frame, w_rcvr):
     #print "STM_ATOMIC_LEAVE primitive called"
 
     rstm.decrement_atomic()
+
+@expose_primitive(OS_LOCK_LOCK, unwrap_spec=[object], no_result=True)
+def func(interp, s_frame, w_rcvr):
+    from rpython.rlib import rthread
+
+    if not isinstance(w_rcvr, model.W_PointersObject):
+            raise PrimitiveFailedError("OS_LOCK_LOCK primitive was not called on an OSLock Object")
+
+    lock_shadow = w_rcvr.as_special_get_shadow(interp.space, shadow.OSLockShadow)
+    lock_shadow.os_lock()
+
+@expose_primitive(OS_LOCK_RELEASE, unwrap_spec=[object], no_result=True)
+def func(interp, s_frame, w_rcvr):
+    from rpython.rlib import rthread
+
+    if not isinstance(w_rcvr, model.W_PointersObject):
+            raise PrimitiveFailedError("OS_LOCK_LOCK primitive was not called on an OSLock Object")
+
+    lock_shadow = w_rcvr.as_special_get_shadow(interp.space, shadow.OSLockShadow)
+    lock_shadow.os_release()
 
 # ___________________________________________________________________________
 # BlockClosure Primitives

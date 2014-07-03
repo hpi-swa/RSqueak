@@ -1143,3 +1143,16 @@ class StmProcessShadow(AbstractShadow):
 
     def signal(self):
         self.lock.release()
+
+class OSLockShadow(AbstractShadow):
+
+    def __init__(self, space, w_self):
+        AbstractShadow.__init__(self, space, w_self)
+        self.intern_lock = rthread.allocate_lock()
+
+    def os_lock(self):
+        self.intern_lock.acquire(True)
+
+    def os_release(self):
+        self.intern_lock.release()
+
