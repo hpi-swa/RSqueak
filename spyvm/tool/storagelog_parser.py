@@ -27,7 +27,7 @@ def parse(filename, flags, callback):
                 callback(entry)
     return parsed_entries
 
-line_pattern = re.compile("^(?P<operation>\w+) \(((?P<old>\w+) -> )?(?P<new>\w+)\)( of (?P<classname>.+))? size (?P<size>[0-9]+)( objects (?P<objects>[0-9]+))?( elements: (?P<classnames>.+( .+)+))?$")
+line_pattern = re.compile("^(?P<operation>\w+) \(((?P<old>\w+) -> )?(?P<new>\w+)\)( of (?P<classname>.+))? size (?P<size>[0-9]+)( objects (?P<objects>[0-9]+))?( elements: (?P<classnames>.+( .+)*))?$")
 
 def parse_line(line, flags):
     result = line_pattern.match(line)
