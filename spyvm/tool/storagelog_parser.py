@@ -27,7 +27,7 @@ def parse(filename, flags, callback):
                 callback(entry)
     return parsed_entries
 
-line_pattern = re.compile("^(?P<operation>\w+) \(((?P<old>\w+) -> )?(?P<new>\w+)\)( of (?P<classname>.+))? size (?P<size>[0-9]+)( objects (?P<objects>[0-9]+))?$")
+line_pattern = re.compile("^(?P<operation>\w+) \(((?P<old>\w+) -> )?(?P<new>\w+)\)( of (?P<classname>.+))? size (?P<size>[0-9]+)( objects (?P<objects>[0-9]+))?( elements: (?P<classnames>.+( .+)+))?$")
 
 def parse_line(line, flags):
     result = line_pattern.match(line)
@@ -41,16 +41,20 @@ def parse_line(line, flags):
     classname = result.group('classname')
     size = result.group('size')
     objects = result.group('objects')
-    return LogEntry(operation, old_storage, new_storage, classname, size, objects)
+    classnames = result.group('classnames')
+    if classnames is not None:
+        classnames = classnames.split(' ')
+    return LogEntry(operation, old_storage, new_storage, classname, size, objects, classnames)
 
 class LogEntry(object):
     
-    def __init__(self, operation, old_storage, new_storage, classname, size, objects):
+    def __init__(self, operation, old_storage, new_storage, classname, size, objects, classnames):
         self.operation = str(operation)
         self.new_storage = str(new_storage)
         self.classname = str(classname)
         self.size = int(size)
         self.objects = int(objects) if objects else 1
+        self.classnames = set(classnames) if classnames else set()
         
         if old_storage is None:
             if operation == "Filledin":
@@ -83,9 +87,10 @@ class LogEntry(object):
 
 class Operations(object):
     
-    def __init__(self, objects=0, slots=0):
+    def __init__(self, objects=0, slots=0, element_classnames=[]):
         self.objects = objects
         self.slots = slots
+        self.element_classnames = set(element_classnames)
     
     def __str__(self, total=None):
         if self.objects == 0:
@@ -102,7 +107,9 @@ class Operations(object):
             percent_objects = ""
         slots = format(self.slots, ",d")
         objects = format(self.objects, ",d")
-        return "%s%s slots in %s%s objects (avg size: %.1f)" % (slots, percent_slots, objects, percent_objects, avg_slots)
+        classnames = (" [ elements: %s ]" % ' '.join([str(x) for x in self.element_classnames])) \
+                                    if len(self.element_classnames) else ""
+        return "%s%s slots in %s%s objects (avg size: %.1f)%s" % (slots, percent_slots, objects, percent_objects, avg_slots, classnames)
     
     def __repr__(self):
         return "%s(%s)" % (self.__str__(), object.__repr__(self))
@@ -110,6 +117,7 @@ class Operations(object):
     def add_log_entry(self, entry):
         self.slots = self.slots + entry.size
         self.objects = self.objects + entry.objects
+        self.element_classnames |= entry.classnames
     
     def __sub__(self, other):
         return Operations(self.objects - other.objects, self.slots - other.slots)

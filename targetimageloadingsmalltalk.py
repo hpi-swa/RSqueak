@@ -132,6 +132,7 @@ def _usage(argv):
           -d|--max-stack-depth [number, default %d, <= 0 disables stack protection]
           -l|--storage-log
           -L|--storage-log-aggregate
+          -E|--storage-log-elements
           [image path, default: Squeak.image]
     """ % (argv[0], constants.MAX_LOOP_DEPTH)
 
@@ -200,6 +201,8 @@ def entry_point(argv):
             storage_logger.activate()
         elif arg in ["-L", "--storage-log-aggregate"]:
             storage_logger.activate(aggregate=True)
+        elif arg in ["-E", "--storage-log-elements"]:
+            storage_logger.activate(elements=True)
         elif path is None:
             path = argv[idx]
         else:
