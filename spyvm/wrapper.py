@@ -82,37 +82,36 @@ class ProcessWrapper(LinkWrapper):
         assert isinstance(w_frame, model.W_PointersObject)
         raise ProcessSwitch(w_frame.as_context_get_shadow(self.space))
 
-    def deactivate(self, w_current_frame):
-        self.put_to_sleep()
-        self.store_suspended_context(w_current_frame)
+    def deactivate(self, s_current_frame, put_to_sleep=True):
+        if put_to_sleep:
+            self.put_to_sleep()
+        self.store_suspended_context(s_current_frame.w_self())
 
-    def resume(self, w_current_frame):
+    def resume(self, s_current_frame):
         sched = scheduler(self.space)
         active_process = ProcessWrapper(self.space, sched.active_process())
         active_priority = active_process.priority()
         priority = self.priority()
         if priority > active_priority:
-            active_process.deactivate(w_current_frame)
-            return self.activate()
+            active_process.deactivate(s_current_frame)
+            self.activate()
         else:
             self.put_to_sleep()
-            return w_current_frame
 
     def is_active_process(self):
         return self._w_self.is_same_object(scheduler(self.space).active_process())
 
-    def suspend(self, w_current_frame):
+    def suspend(self, s_current_frame):
         if self.is_active_process():
             assert self.my_list().is_nil(self.space)
             w_process = scheduler(self.space).pop_highest_priority_process()
-            self.store_suspended_context(w_current_frame)
-            return ProcessWrapper(self.space, w_process).activate()
+            self.deactivate(s_current_frame, put_to_sleep=False)
+            ProcessWrapper(self.space, w_process).activate()
         else:
             if not self.my_list().is_nil(self.space):
                 process_list = ProcessListWrapper(self.space, self.my_list())
                 process_list.remove(self._w_self)
                 self.store_my_list(self.space.w_nil)
-            return w_current_frame
 
 class LinkedListWrapper(Wrapper):
     first_link, store_first_link = make_getter_setter(0)
@@ -212,24 +211,22 @@ class SemaphoreWrapper(LinkedListWrapper):
 
     excess_signals, store_excess_signals = make_int_getter_setter(2)
 
-    def signal(self, w_current_frame):
+    def signal(self, s_current_frame):
         if self.is_empty_list():
             value = self.excess_signals()
             self.store_excess_signals(value + 1)
-            return w_current_frame
         else:
             process = self.remove_first_link_of_list()
-            return ProcessWrapper(self.space, process).resume(w_current_frame)
+            ProcessWrapper(self.space, process).resume(s_current_frame)
 
-    def wait(self, w_current_frame):
+    def wait(self, s_current_frame):
         excess = self.excess_signals()
         w_process = scheduler(self.space).active_process()
         if excess > 0:
             self.store_excess_signals(excess - 1)
-            return w_current_frame
         else:
             self.add_last_link(w_process)
-            return ProcessWrapper(self.space, w_process).suspend(w_current_frame)
+            ProcessWrapper(self.space, w_process).suspend(s_current_frame)
 
 class PointWrapper(Wrapper):
     x, store_x = make_int_getter_setter(0)
@@ -241,7 +238,7 @@ class BlockClosureWrapper(VarsizedWrapper):
     startpc, store_startpc = make_int_getter_setter(constants.BLKCLSR_STARTPC)
     numArgs, store_numArgs = make_int_getter_setter(constants.BLKCLSR_NUMARGS)
 
-    def asContextWithSender(self, w_context, arguments):
+    def create_frame(self, arguments=[]):
         from spyvm import shadow
         w_outerContext = self.outerContext()
         if not isinstance(w_outerContext, model.W_PointersObject):
@@ -250,10 +247,8 @@ class BlockClosureWrapper(VarsizedWrapper):
         w_method = s_outerContext.w_method()
         w_receiver = s_outerContext.w_receiver()
         pc = self.startpc() - w_method.bytecodeoffset() - 1
-        s_new_frame = shadow.MethodContextShadow(self.space, None, w_method, w_receiver,
-                     arguments, s_sender=w_context.get_shadow(self.space),
-                     closure=self, pc=pc)
-        return s_new_frame
+        return shadow.MethodContextShadow(self.space, w_method=w_method, w_receiver=w_receiver,
+                     arguments=arguments, closure=self, pc=pc)
 
     def tempsize(self):
         # We ignore the number of temps a block has, because the first

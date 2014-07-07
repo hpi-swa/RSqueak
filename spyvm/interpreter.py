@@ -68,7 +68,9 @@ class Interpreter(object):
         while True:
             assert self.current_stack_depth == 0
             # Need to save s_sender, loop_bytecodes will nil this on return
-            s_sender = s_new_context.s_sender()
+            # Virtual references are not allowed here, and neither are "fresh" contexts (except for the toplevel one).
+            assert s_new_context.virtual_sender is jit.vref_None
+            s_sender = s_new_context.direct_sender
             try:
                 self.loop_bytecodes(s_new_context)
                 raise Exception("loop_bytecodes left without raising...")
@@ -79,7 +81,7 @@ class Interpreter(object):
             except Return, nlr:
                 s_new_context = s_sender
                 while s_new_context is not nlr.s_target_context:
-                    s_sender = s_new_context.s_sender()
+                    s_sender = s_new_context.direct_sender
                     s_new_context._activate_unwind_context(self)
                     s_new_context = s_sender
                 s_new_context.push(nlr.value)
@@ -88,7 +90,7 @@ class Interpreter(object):
                     print "====== Switched process from: %s" % s_new_context.short_str()
                     print "====== to: %s " % p.s_new_context.short_str()
                 s_new_context = p.s_new_context
-
+        
     def loop_bytecodes(self, s_context, may_context_switch=True):
         old_pc = 0
         if not jit.we_are_jitted() and may_context_switch:
@@ -98,6 +100,7 @@ class Interpreter(object):
             pc = s_context.pc()
             if pc < old_pc:
                 if jit.we_are_jitted():
+                    # Do the interrupt-check at the end of a loop, don't interrupt loops midway.
                     self.jitted_check_for_interrupt(s_context)
                 self.jit_driver.can_enter_jit(
                     pc=pc, self=self, method=method,
@@ -115,17 +118,30 @@ class Interpreter(object):
                 else:
                     s_context.push(nlr.value)
     
-    # This is just a wrapper around loop_bytecodes that handles the stack overflow protection mechanism
-    def stack_frame(self, s_new_frame, may_context_switch=True):
-        if self.max_stack_depth > 0:
-            if self.current_stack_depth >= self.max_stack_depth:
-                raise StackOverflow(s_new_frame)
-        
-        self.current_stack_depth += 1
+    # This is a wrapper around loop_bytecodes that cleanly enters/leaves the frame
+    # and handles the stack overflow protection mechanism.
+    def stack_frame(self, s_frame, s_sender, may_context_switch=True):
+        assert s_frame.virtual_sender is jit.vref_None
         try:
-            self.loop_bytecodes(s_new_frame, may_context_switch)
+            # Enter the context - store a virtual reference back to the sender
+            # Non-fresh contexts can happen, e.g. when activating a stored BlockContext.
+            # The same frame object must not pass through here recursively!
+            if s_frame.is_fresh():
+                s_frame.virtual_sender = jit.virtual_ref(s_sender)
+            
+            self.current_stack_depth += 1
+            if self.max_stack_depth > 0:
+                if self.current_stack_depth >= self.max_stack_depth:
+                    raise StackOverflow(s_frame)
+            
+            # Now (continue to) execute the context bytecodes
+            self.loop_bytecodes(s_frame, may_context_switch)
         finally:
             self.current_stack_depth -= 1
+            # Cleanly leave the context. This will finish the virtual sender-reference, if
+            # it is still there, which can happen in case of ProcessSwitch or StackOverflow;
+            # in case of a Return, this will already be handled while unwinding the stack.
+            s_frame.finish_virtual_sender()
     
     def step(self, context):
         bytecode = context.fetch_next_bytecode()
@@ -177,7 +193,7 @@ class Interpreter(object):
             self.next_wakeup_tick = 0
             semaphore = self.space.objtable["w_timerSemaphore"]
             if not semaphore.is_nil(self.space):
-                wrapper.SemaphoreWrapper(self.space, semaphore).signal(s_frame.w_self())
+                wrapper.SemaphoreWrapper(self.space, semaphore).signal(s_frame)
         # We have no finalization process, so far.
         # We do not support external semaphores.
             # In cog, the method to add such a semaphore is only called in GC.
@@ -195,7 +211,12 @@ class Interpreter(object):
         except ReturnFromTopLevel, e:
             return e.object
 
-    def perform(self, w_receiver, selector, *arguments_w):
+    def perform(self, w_receiver, selector, *w_arguments):
+        s_frame = self.create_toplevel_context(w_receiver, selector, *w_arguments)
+        self.interrupt_check_counter = self.interrupt_counter_size
+        return self.interpret_toplevel(s_frame.w_self())
+    
+    def create_toplevel_context(self, w_receiver, selector, *w_arguments):
         if isinstance(selector, str):
             if selector == "asSymbol":
                 w_selector = self.image.w_asSymbol
@@ -207,15 +228,13 @@ class Interpreter(object):
         
         w_method = model.W_CompiledMethod(self.space, header=512)
         w_method.literalatput0(self.space, 1, w_selector)
-        assert len(arguments_w) <= 7
-        w_method.setbytes([chr(131), chr(len(arguments_w) << 5 + 0), chr(124)]) #returnTopFromMethodBytecode
+        assert len(w_arguments) <= 7
+        w_method.setbytes([chr(131), chr(len(w_arguments) << 5 + 0), chr(124)]) #returnTopFromMethodBytecode
         w_method.set_lookup_class_and_name(w_receiver.getclass(self.space), "Interpreter.perform")
-        s_frame = MethodContextShadow(self.space, None, w_method, w_receiver, [])
+        s_frame = MethodContextShadow(self.space, w_method=w_method, w_receiver=w_receiver)
         s_frame.push(w_receiver)
-        s_frame.push_all(list(arguments_w))
-        
-        self.interrupt_check_counter = self.interrupt_counter_size
-        return self.interpret_toplevel(s_frame.w_self())
+        s_frame.push_all(list(w_arguments))
+        return s_frame
     
     def padding(self, symbol=' '):
         return symbol * self.current_stack_depth
@@ -233,8 +252,7 @@ class Return(Exception):
 
 class ContextSwitchException(Exception):
     """General Exception that causes the interpreter to leave
-    the current context. The current pc is required in order to update
-    the context object that we are leaving."""
+    the current context."""
     _attrs_ = ["s_new_context"]
     def __init__(self, s_new_context):
         self.s_new_context = s_new_context
@@ -528,7 +546,7 @@ class __extend__(ContextPartShadow):
                                   s_compiledin.s_superclass())
 
     def _sendSelector(self, w_selector, argcount, interp,
-                      receiver, receiverclassshadow):
+                      receiver, receiverclassshadow, w_arguments=None):
         assert argcount >= 0
         try:
             w_method = receiverclassshadow.lookup(w_selector)
@@ -537,19 +555,22 @@ class __extend__(ContextPartShadow):
         
         code = w_method.primitive()
         if code:
+            if w_arguments:
+                self.push_all(w_arguments)
             try:
                 return self._call_primitive(code, interp, argcount, w_method, w_selector)
             except primitives.PrimitiveFailedError:
                 pass # ignore this error and fall back to the Smalltalk version
-        arguments = self.pop_and_return_n(argcount)
-        s_frame = w_method.create_frame(interp.space, receiver, arguments, self)
+        if not w_arguments:
+            w_arguments = self.pop_and_return_n(argcount)
+        s_frame = w_method.create_frame(interp.space, receiver, w_arguments)
         self.pop() # receiver
 
         # ######################################################################
         if interp.trace:
             print interp.padding() + s_frame.short_str()
 
-        return interp.stack_frame(s_frame)
+        return interp.stack_frame(s_frame, self)
 
     @objectmodel.specialize.arg(1)
     def _sendSelfSelectorSpecial(self, selector, numargs, interp):
@@ -560,7 +581,7 @@ class __extend__(ContextPartShadow):
         w_special_selector = self.space.objtable["w_" + special_selector]
         s_class = receiver.class_shadow(self.space)
         w_method = s_class.lookup(w_special_selector)
-        s_frame = w_method.create_frame(interp.space, receiver, w_args, self)
+        s_frame = w_method.create_frame(interp.space, receiver, w_args)
         
         # ######################################################################
         if interp.trace:
@@ -568,7 +589,7 @@ class __extend__(ContextPartShadow):
             if not objectmodel.we_are_translated():
                 import pdb; pdb.set_trace()
         
-        return interp.stack_frame(s_frame)
+        return interp.stack_frame(s_frame, self)
     
     def _doesNotUnderstand(self, w_selector, argcount, interp, receiver):
         arguments = self.pop_and_return_n(argcount)

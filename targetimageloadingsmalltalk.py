@@ -104,19 +104,11 @@ def _run_code(interp, code, as_benchmark=False):
         return _run_benchmark(interp, 0, selector, "")
 
 def context_for(interp, number, benchmark, stringarg):
-    # XXX: Copied from interpreter >> perform
-    space = interp.space
-    argcount = 0 if stringarg == "" else 1
-    w_receiver = space.wrap_int(number)
-    w_selector = interp.perform(space.wrap_string(benchmark), "asSymbol")
-    w_method = model.W_CompiledMethod(space, header=512)
-    w_method.literalatput0(space, 1, w_selector)
-    w_method.setbytes([chr(131), chr(argcount << 5), chr(124)]) #returnTopFromMethodBytecodeBytecode
-    s_frame = shadow.MethodContextShadow(space, None, w_method, w_receiver, [])
-    s_frame.push(w_receiver)
-    if not stringarg == "":
-        s_frame.push(space.wrap_string(stringarg))
-    return s_frame
+    w_receiver = interp.space.wrap_int(number)
+    if stringarg:
+        return interp.create_toplevel_context(w_receiver, benchmark, interp.space.wrap_string(stringarg))
+    else:
+        return interp.create_toplevel_context(w_receiver, benchmark)
 
 def _usage(argv):
     print """

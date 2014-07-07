@@ -12,7 +12,7 @@ def teardown_module():
     cleanup_module(__name__)
 
 def new_frame():
-    return _new_frame(space, "")[0]
+    return _new_frame(space, "")[0].as_context_get_shadow(space)
 
 def test_simpleread():
     w_o = model.W_PointersObject(space, None, 2)
@@ -152,7 +152,7 @@ class TestScheduler(object):
 
     def test_suspend_asleep(self):
         process, old_process = self.make_processes(4, 2, space.w_false)
-        w_frame = process.suspend(space.w_true)
+        process.suspend(space.w_true)
         process_list = wrapper.scheduler(space).get_process_list(process.priority())
         assert process_list.first_link() is process_list.last_link()
         assert process_list.first_link().is_nil(space)
@@ -168,7 +168,7 @@ class TestScheduler(object):
         assert process_list.first_link() is process_list.last_link()
         assert process_list.first_link().is_nil(space)
         assert old_process.my_list().is_nil(space)
-        assert old_process.suspended_context() is current_context
+        assert old_process.suspended_context() is current_context.w_self()
         assert wrapper.scheduler(space).active_process() is process._w_self
 
     def new_process_consistency(self, process, old_process, w_active_context):
@@ -181,15 +181,16 @@ class TestScheduler(object):
         assert priority_list.first_link() is process._w_self
 
     def old_process_consistency(self, old_process, old_process_context):
-        assert old_process.suspended_context() is old_process_context
+        assert old_process.suspended_context() is old_process_context.w_self()
         priority_list = wrapper.scheduler(space).get_process_list(old_process.priority())
         assert priority_list.first_link() is old_process._w_self
 
     def make_processes(self, sleepingpriority, runningpriority,
                              sleepingcontext):
+        if not isinstance(sleepingcontext, model.W_Object):
+            sleepingcontext = sleepingcontext.w_self()
         scheduler = wrapper.scheduler(space)
-        sleeping = new_process(priority=sleepingpriority,
-                               w_suspended_context=sleepingcontext)
+        sleeping = new_process(priority=sleepingpriority, w_suspended_context=sleepingcontext)
         sleeping.put_to_sleep()
         running = new_process(priority=runningpriority)
         scheduler.store_active_process(running._w_self)

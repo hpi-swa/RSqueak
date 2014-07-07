@@ -56,7 +56,7 @@ def tinyBenchmarks():
     w_method = s_class.lookup("tinyBenchmarks")
 
     assert w_method
-    w_frame = w_method.create_frame(interp.space, w_object, [])
+    w_frame = w_method.create_frame(interp.space, w_object)
     interp.store_w_active_context(w_frame)
 
     from spyvm.interpreter import BYTECODE_TABLE

@@ -607,13 +607,14 @@ class AbstractRedirectingShadow(AbstractShadow):
 class ContextPartShadow(AbstractRedirectingShadow):
 
     __metaclass__ = extendabletype
-    _attrs_ = ['_s_sender', '_pc', '_temps_and_stack',
+    _attrs_ = ['direct_sender', 'virtual_sender',
+            '_pc', '_temps_and_stack',
             '_stack_ptr', 'instances_w']
     repr_classname = "ContextPartShadow"
     
     _virtualizable_ = [
-        "_s_sender", "_pc",
-        "_temps_and_stack[*]", "_stack_ptr",
+        'direct_sender', 'virtual_sender',
+        "_pc", "_temps_and_stack[*]", "_stack_ptr",
         "_w_self", "_w_self_size"
     ]
 
@@ -621,7 +622,8 @@ class ContextPartShadow(AbstractRedirectingShadow):
     # Initialization
     
     def __init__(self, space, w_self):
-        self._s_sender = None
+        self.direct_sender = None
+        self.virtual_sender = jit.vref_None
         AbstractRedirectingShadow.__init__(self, space, w_self)
         self.instances_w = {}
 
@@ -671,7 +673,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
         if n0 == constants.CTXPART_SENDER_INDEX:
             assert isinstance(w_value, model.W_PointersObject)
             if w_value.is_nil(self.space):
-                self._s_sender = None
+                self.store_s_sender(None, raise_error=False)
             else:
                 self.store_s_sender(w_value.as_context_get_shadow(self.space))
             return
@@ -690,19 +692,40 @@ class ContextPartShadow(AbstractRedirectingShadow):
             raise error.WrapperException("Index in context out of bounds")
     
     # === Sender ===
+    # There are two fields for the sender (virtual and direct). Only one of them is can be set at a time.
+    # As long as the frame object is virtualized, using the virtual reference should increase performance.
+    # As soon as a frame object is forced to the heap, the direct reference must be used.
     
-    def store_s_sender(self, s_sender):
-        assert s_sender is None or isinstance(s_sender, ContextPartShadow)
-        self._s_sender = s_sender
-        raise error.SenderChainManipulation(self)
+    def is_fresh(self):
+        return self.direct_sender is None and self.virtual_sender is jit.vref_None
+    
+    def finish_virtual_sender(self, save_direct_sender=True):
+        if self.virtual_sender is not jit.vref_None:
+            sender = self.virtual_sender()
+            jit.virtual_ref_finish(self.virtual_sender, sender)
+            self.virtual_sender = jit.vref_None
+            if save_direct_sender:
+                self.direct_sender = sender
+    
+    def store_s_sender(self, s_sender, raise_error=True):
+        # If we have a virtual back reference, we must finish it before storing the direct reference.
+        self.finish_virtual_sender(save_direct_sender=False)
+        self.direct_sender = s_sender
+        if raise_error:
+            raise error.SenderChainManipulation(self)
     
     def w_sender(self):
-        if self._s_sender is None:
+        sender = self.s_sender()
+        if sender is None:
             return self.space.w_nil
-        return self._s_sender.w_self()
+        return sender.w_self()
     
     def s_sender(self):
-        return self._s_sender
+        if self.direct_sender:
+            return self.direct_sender
+        else:
+            result = self.virtual_sender()
+            return result
     
     # === Stack Pointer ===
     
@@ -779,10 +802,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
     
     def mark_returned(self):
         self.store_pc(-1)
-        try:
-            self.store_s_sender(None)
-        except error.SenderChainManipulation, e:
-            assert self == e.s_context
+        self.store_s_sender(None, raise_error=False)
 
     def is_returned(self):
         return self.pc() == -1 and self.w_sender().is_nil(self.space)
@@ -1042,7 +1062,10 @@ class BlockContextShadow(ContextPartShadow):
         initialip = self.initialip()
         initialip += 1 + self.w_method().literalsize
         return self.space.wrap_int(initialip)
-
+    
+    def reset_pc(self):
+        self.store_pc(self.initialip())
+    
     def initialip(self):
         return self._initialip
         
@@ -1079,7 +1102,7 @@ class MethodContextShadow(ContextPartShadow):
     
     @jit.unroll_safe
     def __init__(self, space, w_self=None, w_method=None, w_receiver=None,
-                              arguments=None, s_sender=None, closure=None, pc=0):
+                              arguments=[], closure=None, pc=0):
         self = jit.hint(self, access_directly=True, fresh_virtualizable=True)
         ContextPartShadow.__init__(self, space, w_self)
         self.store_w_receiver(w_receiver)
@@ -1095,18 +1118,9 @@ class MethodContextShadow(ContextPartShadow):
         else:
             self._w_method = None
         
-        if s_sender:
-            try:
-                self.store_s_sender(s_sender)
-            except error.SenderChainManipulation, e:
-                assert self == e.s_context
-        
-        if arguments:
-            argc = len(arguments)
-            for i0 in range(argc):
-                self.settemp(i0, arguments[i0])
-        else:
-            argc = 0
+        argc = len(arguments)
+        for i0 in range(argc):
+            self.settemp(i0, arguments[i0])
         
         if closure:
             for i0 in range(closure.size()):

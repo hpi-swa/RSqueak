@@ -42,10 +42,11 @@ def test_ensure():
 
     # create a frame for our newly crafted method with a valid sender (to avoid raising returnFromTop to early)
     s_initial_frame = create_method(chr(0x7c)).create_frame(space, w(0), [])
-    w_frame = w_method.create_frame(space, w(0), [], sender=s_initial_frame).w_self()
-
+    s_frame = w_method.create_frame(space, w(0))
+    s_frame.store_s_sender(s_initial_frame, raise_error=False)
+    
     try:
-        interp.loop(w_frame)
+        interp.loop(s_frame.w_self())
     except interpreter.ReturnFromTopLevel, e:
         assert e.object.as_string() == 'b2'
     except interpreter.StackOverflow, e:
@@ -67,11 +68,12 @@ def test_ensure_save_original_nlr():
                                             w('ensure'), space.w_BlockClosure])
 
     # create a frame for our newly crafted method with a valid sender (to avoid raising returnFromTop to early)
-    s_initial_frame = create_method(chr(0x7c)).create_frame(space, w(0), [])
-    w_frame = w_method.create_frame(space, w(0), [], sender=s_initial_frame).w_self()
-
+    s_initial_frame = create_method(chr(0x7c)).create_frame(space, w(0))
+    s_frame = w_method.create_frame(space, w(0))
+    s_frame.store_s_sender(s_initial_frame, raise_error=False)
+    
     try:
-        interp.loop(w_frame)
+        interp.loop(s_frame.w_self())
     except interpreter.ReturnFromTopLevel, e:
         assert e.object.as_string() == 'b1'
     except interpreter.StackOverflow, e:

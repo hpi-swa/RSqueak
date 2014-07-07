@@ -1411,15 +1411,15 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         
     def is_array_object(self):
         return True
-
-    def create_frame(self, space, receiver, arguments, sender = None):
+        
+    def create_frame(self, space, receiver, arguments=[]):
         from spyvm.shadow import MethodContextShadow
         assert len(arguments) == self.argsize
-        return MethodContextShadow(space, None, self, receiver, arguments, sender)
+        return MethodContextShadow(space, w_method=self, w_receiver=receiver, arguments=arguments)
         
     # === Printing ===
 
-    def guess_classname (self):
+    def guess_classname(self):
         return "CompiledMethod"
         
     def str_content(self):

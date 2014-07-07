@@ -10,6 +10,10 @@ from spyvm import wrapper
 
 from rpython.rlib import rarithmetic, rfloat, unroll, jit
 
+def assert_class(interp, w_obj, w_class):
+    if not w_obj.getclass(interp.space).is_same_object(w_class):
+        raise PrimitiveFailedError()
+
 def assert_bounds(n0, minimum, maximum):
     if not minimum <= n0 < maximum:
         raise PrimitiveFailedError()
@@ -100,17 +104,17 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
         if unwrap_spec is None:
             def wrapped(interp, s_frame, argument_count_m1, w_method=None):
                 if compiled_method:
-                    w_result = func(interp, s_frame, argument_count_m1, w_method)
+                    result = func(interp, s_frame, argument_count_m1, w_method)
                 else:
-                    w_result = func(interp, s_frame, argument_count_m1)
+                    result = func(interp, s_frame, argument_count_m1)
                 if result_is_new_frame:
-                    return interp.stack_frame(w_result, may_context_switch)
+                    return interp.stack_frame(result, s_frame, may_context_switch)
                 if not no_result:
-                    assert w_result is not None
-                    s_frame.push(w_result)
+                    assert result is not None
+                    s_frame.push(result)
         else:
             len_unwrap_spec = len(unwrap_spec)
-            assert (len_unwrap_spec + 2 == len(inspect.getargspec(func)[0])), "wrong number of arguments"
+            assert len_unwrap_spec + 2 == len(inspect.getargspec(func)[0]), "wrong number of arguments"
             unrolling_unwrap_spec = unrolling_iterable(enumerate(unwrap_spec))
             def wrapped(interp, s_frame, argument_count_m1, w_method=None):
                 argument_count = argument_count_m1 + 1 # to account for the rcvr
@@ -153,7 +157,7 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                     if clean_stack:
                         # happens only if no exception occurs!
                         s_frame.pop_n(len_unwrap_spec)
-                    return interp.stack_frame(s_new_frame, may_context_switch)
+                    return interp.stack_frame(s_new_frame, s_frame, may_context_switch)
                 else:
                     w_result = func(interp, s_frame, *args)
                     # After calling primitive, reload context-shadow in case it
@@ -379,7 +383,6 @@ def func(interp, s_frame, argcount):
         print ("%s" % s_frame.peek(1)).replace('\r', '\n')
         if isinstance(w_message, model.W_PointersObject):
             print ('%s' % w_message.fetch_all(s_frame.space)).replace('\r', '\n')
-        # raise Exit('Probably Debugger called...')
     raise PrimitiveFailedError()
 
 # ___________________________________________________________________________
@@ -593,8 +596,7 @@ def func(interp, s_frame, w_obj):
 @expose_primitive(NEW_METHOD, unwrap_spec=[object, int, int])
 def func(interp, s_frame, w_class, bytecount, header):
     # We ignore w_class because W_CompiledMethod is special
-    w_method = model.W_CompiledMethod(s_frame.space, bytecount, header)
-    return w_method
+    return model.W_CompiledMethod(interp.space, bytecount, header)
 
 # ___________________________________________________________________________
 # I/O Primitives
@@ -965,15 +967,14 @@ def func(interp, s_frame, argument_count):
     raise PrimitiveFailedError
 
 @expose_primitive(LOW_SPACE_SEMAPHORE, unwrap_spec=[object, object])
-def func(interp, s_frame, w_reciver, i):
+def func(interp, s_frame, w_receiver, i):
     # dont know when the space runs out
-    return w_reciver
-
+    return w_receiver
 
 @expose_primitive(SIGNAL_AT_BYTES_LEFT, unwrap_spec=[object, int])
-def func(interp, s_frame, w_reciver, i):
+def func(interp, s_frame, w_receiver, i):
     # dont know when the space runs out
-    return w_reciver
+    return w_receiver
 
 @expose_primitive(DEFER_UPDATES, unwrap_spec=[object, bool])
 def func(interp, s_frame, w_receiver, flag):
@@ -1287,19 +1288,8 @@ def func(interp, s_frame, w_context, argcnt):
     # The block bytecodes are stored inline: so we skip past the
     # byteodes to invoke this primitive to find them (hence +2)
     initialip = s_frame.pc() + 2
-    s_new_context = shadow.BlockContextShadow(
-                        interp.space, None, w_method_context, argcnt, initialip)
+    s_new_context = shadow.BlockContextShadow(interp.space, None, w_method_context, argcnt, initialip)
     return s_new_context.w_self()
-    
-def finalize_block_ctx(interp, s_block_ctx, s_frame):
-    from spyvm.error import SenderChainManipulation
-    # Set some fields
-    s_block_ctx.store_pc(s_block_ctx.initialip())
-    try:
-        s_block_ctx.store_s_sender(s_frame)
-    except SenderChainManipulation, e:
-        assert e.s_context == s_block_ctx
-    return s_block_ctx
 
 @expose_primitive(VALUE, result_is_new_frame=True)
 def func(interp, s_frame, argument_count):
@@ -1333,7 +1323,8 @@ def func(interp, s_frame, argument_count):
     s_block_ctx.push_all(block_args)
 
     s_frame.pop()
-    return finalize_block_ctx(interp, s_block_ctx, s_frame)
+    s_block_ctx.reset_pc()
+    return s_block_ctx
 
 @expose_primitive(VALUE_WITH_ARGS, unwrap_spec=[object, list],
                   result_is_new_frame=True)
@@ -1352,7 +1343,8 @@ def func(interp, s_frame, w_block_ctx, args_w):
 
     # XXX Check original logic. Image does not test this anyway
     # because falls back to value + internal implementation
-    return finalize_block_ctx(interp, s_block_ctx, s_frame)
+    s_block_ctx.reset_pc()
+    return s_block_ctx
 
 @expose_primitive(PERFORM)
 def func(interp, s_frame, argcount):
@@ -1361,72 +1353,49 @@ def func(interp, s_frame, argcount):
 @expose_primitive(PERFORM_WITH_ARGS,
                   unwrap_spec=[object, object, list],
                   no_result=True, clean_stack=False)
-def func(interp, s_frame, w_rcvr, w_selector, args_w):
+def func(interp, s_frame, w_rcvr, w_selector, w_arguments):
     from spyvm.shadow import MethodNotFound
-    argcount = len(args_w)
     s_frame.pop_n(2) # removing our arguments
+    
+    return s_frame._sendSelector(w_selector, len(w_arguments), interp, w_rcvr,
+                        w_rcvr.class_shadow(interp.space), w_arguments=w_arguments)
 
-    try:
-        w_method = w_rcvr.class_shadow(interp.space).lookup(w_selector)
-    except MethodNotFound:
-        return s_frame._doesNotUnderstand(w_selector, argcount, interp, w_rcvr)
-
-    code = w_method.primitive()
-    if code:
-        s_frame.push_all(args_w)
-        try:
-            return s_frame._call_primitive(code, interp, argcount, w_method, w_selector)
-        except PrimitiveFailedError:
-            pass # ignore this error and fall back to the Smalltalk version
-    s_new_frame = w_method.create_frame(interp.space, w_rcvr, args_w, s_frame)
-    s_frame.pop()
-    return interp.stack_frame(s_new_frame)
-
-@expose_primitive(WITH_ARGS_EXECUTE_METHOD, unwrap_spec=[object, list, object], no_result=True)
+@expose_primitive(WITH_ARGS_EXECUTE_METHOD,
+    result_is_new_frame=True, unwrap_spec=[object, list, object])
 def func(interp, s_frame, w_rcvr, args_w, w_cm):
     if not isinstance(w_cm, model.W_CompiledMethod):
         raise PrimitiveFailedError()
     code = w_cm.primitive()
     if code:
         raise PrimitiveFailedError("withArgs:executeMethod: not support with primitive method")
-    s_new_frame = w_cm.create_frame(interp.space, w_rcvr, args_w, s_frame)
-    return interp.stack_frame(s_new_frame)
+    return w_cm.create_frame(interp.space, w_rcvr, args_w)
+
+
+# XXX we might want to disable the assert_class checks in the 4 primitives below
 
 @expose_primitive(SIGNAL, unwrap_spec=[object], clean_stack=False, no_result=True)
 def func(interp, s_frame, w_rcvr):
-    # XXX we might want to disable this check
-    if not w_rcvr.getclass(interp.space).is_same_object(
-        interp.space.w_Semaphore):
-        raise PrimitiveFailedError()
-    wrapper.SemaphoreWrapper(interp.space, w_rcvr).signal(s_frame.w_self())
+    assert_class(interp, w_rcvr, interp.space.w_Semaphore)
+    wrapper.SemaphoreWrapper(interp.space, w_rcvr).signal(s_frame)
 
 @expose_primitive(WAIT, unwrap_spec=[object], clean_stack=False, no_result=True)
 def func(interp, s_frame, w_rcvr):
-    # XXX we might want to disable this check
-    if not w_rcvr.getclass(interp.space).is_same_object(
-        interp.space.w_Semaphore):
-        raise PrimitiveFailedError()
-    wrapper.SemaphoreWrapper(interp.space, w_rcvr).wait(s_frame.w_self())
+    assert_class(interp, w_rcvr, interp.space.w_Semaphore)
+    wrapper.SemaphoreWrapper(interp.space, w_rcvr).wait(s_frame)
 
-@expose_primitive(RESUME, unwrap_spec=[object], result_is_new_frame=True, clean_stack=False)
+@expose_primitive(RESUME, unwrap_spec=[object], no_result=True, clean_stack=False)
 def func(interp, s_frame, w_rcvr):
-    # XXX we might want to disable this check
-    if not w_rcvr.getclass(interp.space).is_same_object(
-        interp.space.w_Process):
-        raise PrimitiveFailedError()
-    w_frame = wrapper.ProcessWrapper(interp.space, w_rcvr).resume(s_frame.w_self())
-    w_frame = interp.space.unwrap_pointersobject(w_frame)
-    return w_frame.as_context_get_shadow(interp.space)
+    import pdb; pdb.set_trace()
+    assert_class(interp, w_rcvr, interp.space.w_Process)
+    wrapper.ProcessWrapper(interp.space, w_rcvr).resume(s_frame)
 
-@expose_primitive(SUSPEND, unwrap_spec=[object], result_is_new_frame=True, clean_stack=False)
+@expose_primitive(SUSPEND, unwrap_spec=[object], no_result=True, clean_stack=False)
 def func(interp, s_frame, w_rcvr):
-    # XXX we might want to disable this check
-    if not w_rcvr.getclass(interp.space).is_same_object(
-        interp.space.w_Process):
-        raise PrimitiveFailedError()
-    w_frame = wrapper.ProcessWrapper(interp.space, w_rcvr).suspend(s_frame.w_self())
-    w_frame = interp.space.unwrap_pointersobject(w_frame)
-    return w_frame.as_context_get_shadow(interp.space)
+    import pdb; pdb.set_trace()
+    assert_class(interp, w_rcvr, interp.space.w_Process)
+    wrapper.ProcessWrapper(interp.space, w_rcvr).suspend(s_frame)
+    
+    
 
 @expose_primitive(FLUSH_CACHE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
@@ -1455,11 +1424,9 @@ def func(interp, s_frame, outerContext, numArgs, copiedValues):
     return w_context
 
 
-def activateClosure(interp, s_frame, w_block, args_w):
+def activateClosure(interp, w_block, args_w):
     space = interp.space
-    if not w_block.getclass(space).is_same_object(
-            space.w_BlockClosure):
-        raise PrimitiveFailedError()
+    assert_class(interp, w_block, space.w_BlockClosure)
     block = wrapper.BlockClosureWrapper(space, w_block)
     if not block.numArgs() == len(args_w):
         raise PrimitiveFailedError()
@@ -1470,7 +1437,7 @@ def activateClosure(interp, s_frame, w_block, args_w):
 
     # additionally to the smalltalk implementation, this also pushes
     # args and copiedValues
-    s_new_frame = block.asContextWithSender(s_frame.w_self(), args_w)
+    s_new_frame = block.create_frame(args_w)
     w_closureMethod = s_new_frame.w_method()
 
     assert isinstance(w_closureMethod, model.W_CompiledMethod)
@@ -1481,35 +1448,35 @@ def activateClosure(interp, s_frame, w_block, args_w):
 
 @expose_primitive(CLOSURE_VALUE, unwrap_spec=[object], result_is_new_frame=True)
 def func(interp, s_frame, w_block_closure):
-    return activateClosure(interp, s_frame, w_block_closure, [])
+    return activateClosure(interp, w_block_closure, [])
 
 @expose_primitive(CLOSURE_VALUE_, unwrap_spec=[object, object], result_is_new_frame=True)
 def func(interp, s_frame, w_block_closure, w_a0):
-    return activateClosure(interp, s_frame, w_block_closure, [w_a0])
+    return activateClosure(interp, w_block_closure, [w_a0])
 
 @expose_primitive(CLOSURE_VALUE_VALUE, unwrap_spec=[object, object, object], result_is_new_frame=True)
 def func(interp, s_frame, w_block_closure, w_a0, w_a1):
-    return activateClosure(interp, s_frame, w_block_closure, [w_a0, w_a1])
+    return activateClosure(interp, w_block_closure, [w_a0, w_a1])
 
 @expose_primitive(CLOSURE_VALUE_VALUE_VALUE, unwrap_spec=[object, object, object, object], result_is_new_frame=True)
 def func(interp, s_frame, w_block_closure, w_a0, w_a1, w_a2):
-    return activateClosure(interp, s_frame, w_block_closure, [w_a0, w_a1, w_a2])
+    return activateClosure(interp, w_block_closure, [w_a0, w_a1, w_a2])
 
 @expose_primitive(CLOSURE_VALUE_VALUE_VALUE_VALUE, unwrap_spec=[object, object, object, object, object], result_is_new_frame=True)
 def func(interp, s_frame, w_block_closure, w_a0, w_a1, w_a2, w_a3):
-    return activateClosure(interp, s_frame, w_block_closure, [w_a0, w_a1, w_a2, w_a3])
+    return activateClosure(interp, w_block_closure, [w_a0, w_a1, w_a2, w_a3])
 
 @expose_primitive(CLOSURE_VALUE_WITH_ARGS, unwrap_spec=[object, list], result_is_new_frame=True)
 def func(interp, s_frame, w_block_closure, args_w):
-    return activateClosure(interp, s_frame, w_block_closure, args_w)
+    return activateClosure(interp, w_block_closure, args_w)
 
 @expose_primitive(CLOSURE_VALUE_NO_CONTEXT_SWITCH, unwrap_spec=[object], result_is_new_frame=True, may_context_switch=False)
 def func(interp, s_frame, w_block_closure):
-    return activateClosure(interp, s_frame, w_block_closure, [])
+    return activateClosure(interp, w_block_closure, [])
 
 @expose_primitive(CLOSURE_VALUE_NO_CONTEXT_SWITCH_, unwrap_spec=[object, object], result_is_new_frame=True, may_context_switch=False)
 def func(interp, s_frame, w_block_closure, w_a0):
-    return activateClosure(interp, s_frame, w_block_closure, [w_a0])
+    return activateClosure(interp, w_block_closure, [w_a0])
 
 # ___________________________________________________________________________
 # Override the default primitive to give latitude to the VM in context management.
