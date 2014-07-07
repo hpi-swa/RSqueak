@@ -10,201 +10,114 @@ from spyvm import model, interpreter, squeakimage, objspace, wrapper,\
 from spyvm.tool.analyseimage import create_image
 from spyvm.interpreter_proxy import VirtualMachine
 
-def print_result(w_result):
-    # This will also print contents of strings/symbols/numbers
-    print w_result.as_repr_string().replace('\r', '\n')
-
-def _run_benchmark(interp, number, benchmark, arg):
-    from spyvm.plugins.vmdebugging import stop_ui_process
-    stop_ui_process()
-
-    space = interp.space
-    scheduler = wrapper.scheduler(space)
-    w_hpp = scheduler.active_process()
-    if space.unwrap_int(scheduler.active_process().fetch(space, 2)) > space.unwrap_int(w_hpp.fetch(space, 2)):
-        w_hpp = scheduler.active_process()
-    assert isinstance(w_hpp, model.W_PointersObject)
-    w_benchmark_proc = model.W_PointersObject(
-        space,
-        w_hpp.getclass(space),
-        w_hpp.size()
-    )
-
-    s_frame = context_for(interp, number, benchmark, arg)
-    # second variable is suspended context
-    w_benchmark_proc.store(space, 1, s_frame.w_self())
-
-    # third variable is priority
-    priority = space.unwrap_int(w_hpp.fetch(space, 2)) / 2 + 1
-    # Priorities below 10 are not allowed in newer versions of Squeak.
-    if interp.image.version.has_closures:
-        priority = max(11, priority)
-    else:
-        priority = 7
-    w_benchmark_proc.store(space, 2, space.wrap_int(priority))
-
-    # make process eligible for scheduling
-    wrapper.ProcessWrapper(space, w_benchmark_proc).put_to_sleep()
-
-    t1 = time.time()
-    w_result = _run_image(interp)
-    t2 = time.time()
-    if w_result:
-        print_result(w_result)
-        print "took %s seconds" % (t2 - t1)
-        return 0
-    return -1
-
-def _run_image(interp):
-    space = interp.space
-    ap = wrapper.ProcessWrapper(space, wrapper.scheduler(space).active_process())
-    w_ctx = ap.suspended_context()
-    assert isinstance(w_ctx, model.W_PointersObject)
-    ap.store_suspended_context(space.w_nil)
-    try:
-        return interp.interpret_toplevel(w_ctx)
-    except error.Exit, e:
-        print e.msg
-
-def _run_code(interp, code, as_benchmark=False):
-    import time
-    selector = "DoIt%d" % int(time.time())
-    space = interp.space
-    w_receiver = space.w_nil
-    w_receiver_class = w_receiver.getclass(space)
-    try:
-        w_result = interp.perform(
-            w_receiver_class,
-            "compile:classified:notifying:",
-            space.wrap_string("%s\r\n%s" % (selector, code)),
-            space.wrap_string("spy-run-code"),
-            space.w_nil
-        )
-        w_receiver_class.as_class_get_shadow(space).s_methoddict().sync_method_cache()
-    except interpreter.ReturnFromTopLevel, e:
-        print e.object
-        return 1
-    except error.Exit, e:
-        print e.msg
-        return 1
-    
-    if not as_benchmark:
-        try:
-            w_result = interp.perform(w_receiver, selector)
-        except interpreter.ReturnFromTopLevel, e:
-            print e.object
-            return 1
-        except error.Exit, e:
-            print e.msg
-            return 1
-        if w_result:
-            print_result(w_result)
-        return 0
-    else:
-        return _run_benchmark(interp, 0, selector, "")
-
-def context_for(interp, number, benchmark, stringarg):
-    w_receiver = interp.space.wrap_int(number)
-    if stringarg:
-        return interp.create_toplevel_context(w_receiver, benchmark, interp.space.wrap_string(stringarg))
-    else:
-        return interp.create_toplevel_context(w_receiver, benchmark)
-
 def _usage(argv):
     print """
-    Usage: %s
-          -j|--jit [jitargs]
-          -n|--number [smallint, default: 0]
-          -m|--method [benchmark on smallint]
-          -a|--arg [string argument to #method]
-          -r|--run [code string]
-          -b|--benchmark [code string]
-          -p|--poll_events
-          -ni|--no-interrupts
-          -d|--max-stack-depth [number, default %d, <= 0 disables stack protection]
-          -l|--storage-log
-          -L|--storage-log-aggregate
-          -E|--storage-log-elements
-          [image path, default: Squeak.image]
+    Usage: %s <path> [-r|-m] [-naH] [-jpis] [-tlLE]
+            <path> - image path (default: Squeak.image)
+          
+          Execution mode:
+            (no flags)             - Image will be normally opened.
+            -r|--run <code>        - Code will be compiled and executed, result printed.
+            -m|--method <selector> - Selector will be sent to a SmallInteger, result printed.
+            -h|--help              - Output this and exit.
+            
+          Execution parameters:
+            -n|--num <int> - Only with -m or -r, SmallInteger to be used as receiver (default: nil).
+            -a|--arg <arg> - Only with -m, will be used as single String argument.
+            -H|--headless  - Only with -m or -r, run in headless mode.
+                             Execute the context directly, ignoring the active context in the image.
+                             The execution will 'hijack' the active process.
+                             Image window will probably not open. Good for benchmarking.
+                             By default, a high-priority process will be created for the context, then the image
+                             will be started normally.
+            -u             - Only with -m or -r, try to stop UI-process at startup. Can help with -H.
+            
+          Other parameters:
+            -j|--jit <jitargs> - jitargs will be passed to the jit configuration.
+            -p|--poll          - Actively poll for events. Try this if the image is not responding well.
+            -i|--no-interrupts - Disable timer interrupt. Disables non-cooperative scheduling.
+            -s <num>           - After num stack frames, the entire stack will be dumped to the heap.
+                                 This breaks performance, but protects agains stack overflow.
+                                 num <= 0 disables stack protection (default: %d)
+            
+          Logging parameters:
+            -t|--trace                 - Output a trace of each message, primitive, return value and process switch.
+            -l|--storage-log           - Output a log of storage operations.
+            -L|--storage-log-aggregate - Output an aggregated storage log at the end of execution.
+            -E|--storage-log-elements  - Include classnames of elements into the storage log.
+            
     """ % (argv[0], constants.MAX_LOOP_DEPTH)
 
-def _arg_missing(argv, idx, arg):
-    if len(argv) == idx + 1:
+def get_parameter(argv, idx, arg):
+    if len(argv) < idx + 1:
         raise RuntimeError("Error: missing argument after %s" % arg)
-
+    return argv[idx], idx + 1
+    
 prebuilt_space = objspace.ObjSpace()
 
 def entry_point(argv):
-    idx = 1
-    path = None
+    # == Main execution parameters
+    selector = None
+    code = ""
     number = 0
-    benchmark = None
-    trace = False
-    evented = True
-    stringarg = ""
-    code = None
-    as_benchmark = False
-    max_stack_depth = constants.MAX_LOOP_DEPTH
+    have_number = False
+    stringarg = None
+    headless = False
+    # == Other parameters
+    poll = False
     interrupts = True
+    max_stack_depth = constants.MAX_LOOP_DEPTH
+    trace = False
+    
+    path = argv[1] if len(argv) > 1 else "Squeak.image"
+    idx = 2
     
     while idx < len(argv):
         arg = argv[idx]
+        idx += 1
         if arg in ["-h", "--help"]:
             _usage(argv)
             return 0
         elif arg in ["-j", "--jit"]:
-            _arg_missing(argv, idx, arg)
-            jitarg = argv[idx + 1]
-            idx += 1
+            jitarg, idx = get_parameter(argv, idx, arg)
             jit.set_user_param(interpreter.Interpreter.jit_driver, jitarg)
         elif arg in ["-n", "--number"]:
-            _arg_missing(argv, idx, arg)
-            number = int(argv[idx + 1])
-            idx += 1
+            numarg, idx = get_parameter(argv, idx, arg)
+            number = int(numarg)
+            have_number = True
         elif arg in ["-m", "--method"]:
-            _arg_missing(argv, idx, arg)
-            benchmark = argv[idx + 1]
-            idx += 1
+            selector, idx = get_parameter(argv, idx, arg)
         elif arg in ["-t", "--trace"]:
             trace = True
-        elif arg in ["-p", "--poll_events"]:
-            evented = False
+        elif arg in ["-p", "--poll"]:
+            poll = True
         elif arg in ["-a", "--arg"]:
-            _arg_missing(argv, idx, arg)
-            stringarg = argv[idx + 1]
-            idx += 1
+            stringarg, idx = get_parameter(argv, idx, arg)
         elif arg in ["-r", "--run"]:
-            _arg_missing(argv, idx, arg)
-            code = argv[idx + 1]
-            as_benchmark = False
-            idx += 1
-        elif arg in ["-b", "--benchmark"]:
-            _arg_missing(argv, idx, arg)
-            code = argv[idx + 1]
-            as_benchmark = True
-            idx += 1
-        elif arg in ["-ni", "--no-interrupts"]:
+            code, idx = get_parameter(argv, idx, arg)
+        elif arg in ["-i", "--no-interrupts"]:
             interrupts = False
-        elif arg in ["-d", "--max-stack-depth"]:
-            _arg_missing(argv, idx, arg)
-            max_stack_depth = int(argv[idx + 1])
-            idx += 1
+        elif arg in ["-s"]:
+            arg, idx = get_parameter(argv, idx, arg)
+            max_stack_depth = int(arg)
+        elif arg in ["-H", "--headless"]:
+            headless = True
+        elif arg in ["-u"]:
+            from spyvm.plugins.vmdebugging import stop_ui_process
+            stop_ui_process()
         elif arg in ["-l", "--storage-log"]:
             storage_logger.activate()
         elif arg in ["-L", "--storage-log-aggregate"]:
             storage_logger.activate(aggregate=True)
         elif arg in ["-E", "--storage-log-elements"]:
             storage_logger.activate(elements=True)
-        elif path is None:
-            path = argv[idx]
         else:
             _usage(argv)
             return -1
-        idx += 1
-
-    if path is None:
-        path = "Squeak.image"
-
+    
+    if code and selector:
+        raise RuntimeError("Cannot handle both -r and -m.")
+    
     path = rpath.rabspath(path)
     try:
         f = open_file_as_stream(path, mode="rb", buffering=0)
@@ -216,27 +129,108 @@ def entry_point(argv):
         os.write(2, "%s -- %s (LoadError)\n" % (os.strerror(e.errno), path))
         return 1
     
+    # Load & prepare image and environment
     space = prebuilt_space
     image_reader = squeakimage.reader_for_image(space, squeakimage.Stream(data=imagedata))
     image = create_image(space, image_reader)
     interp = interpreter.Interpreter(space, image, image_name=path,
-                trace=trace, evented=evented,
+                trace=trace, evented=not poll,
                 interrupts=interrupts, max_stack_depth=max_stack_depth)
     space.runtime_setup(argv[0])
-    result = 0
-    if benchmark is not None:
-        result = _run_benchmark(interp, number, benchmark, stringarg)
-    elif code is not None:
-        result = _run_code(interp, code, as_benchmark=as_benchmark)
+    
+    # Create context to be executed
+    if code or selector:
+        if not have_number:
+            w_receiver = interp.space.w_nil
+        else:
+            w_receiver = interp.space.wrap_int(number)
+        if code:
+            selector = compile_code(interp, w_receiver, code)
+            if selector is None:
+                return -1 # Compilation failed, message is printed.
+        s_frame = create_context(interp, w_receiver, selector, stringarg)
+        if headless:
+            context = s_frame
+        else:
+            create_process(interp, s_frame)
+            context = active_context(interp.space)
     else:
-        _run_image(interp)
-        result = 0
+        context = active_context(interp.space)
+    
+    w_result = execute_context(interp, context)
+    print result_string(w_result)
     storage_logger.print_aggregated_log()
-    return result
+    return 0
 
+def result_string(w_result):
+    # This will also print contents of strings/symbols/numbers
+    return w_result.as_repr_string().replace('\r', '\n')
 
-# _____ Define and setup target ___
+def compile_code(interp, w_receiver, code):
+    import time
+    selector = "DoIt%d" % int(time.time())
+    space = interp.space
+    w_receiver_class = w_receiver.getclass(space)
+    try:
+        w_result = interp.perform(
+            w_receiver_class,
+            "compile:classified:notifying:",
+            w_arguments = [space.wrap_string("%s\r\n%s" % (selector, code)),
+            space.wrap_string("spy-run-code"),
+            space.w_nil]
+        )
+        # TODO - is this expected in every image?
+        if not isinstance(w_result, model.W_BytesObject) or w_result.as_string() != selector:
+            print "Compilation failed, unexpected result: %s" % result_string(w_result)
+            return None
+    except error.Exit, e:
+        print "Exited while compiling code: %s" % e.msg
+        return None
+    w_receiver_class.as_class_get_shadow(space).s_methoddict().sync_method_cache()
+    return selector
+    
+def create_context(interp, w_receiver, selector, stringarg):
+    args = []
+    if stringarg:
+        args.append(interp.space.wrap_string(stringarg))
+    return interp.create_toplevel_context(w_receiver, selector, w_arguments = args)
+    
+def create_process(interp, s_frame):
+    space = interp.space
+    w_active_process = wrapper.scheduler(space).active_process()
+    assert isinstance(w_active_process, model.W_PointersObject)
+    w_benchmark_proc = model.W_PointersObject(
+        space, w_active_process.getclass(space), w_active_process.size()
+    )
+    if interp.image.version.has_closures:
+        # Priorities below 10 are not allowed in newer versions of Squeak.
+        active_priority = space.unwrap_int(w_active_process.fetch(space, 2))
+        priority = active_priority / 2 + 1
+        priority = max(11, priority)
+    else:
+        priority = 7
+    w_benchmark_proc.store(space, 1, s_frame.w_self())
+    w_benchmark_proc.store(space, 2, space.wrap_int(priority))
+    
+    # Make process eligible for scheduling
+    wrapper.ProcessWrapper(space, w_benchmark_proc).put_to_sleep()
+    
+def active_context(space):
+    w_active_process = wrapper.scheduler(space).active_process()
+    active_process = wrapper.ProcessWrapper(space, w_active_process)
+    w_active_context = active_process.suspended_context()
+    assert isinstance(w_active_context, model.W_PointersObject)
+    active_process.store_suspended_context(space.w_nil)
+    return w_active_context.as_context_get_shadow(space)
 
+def execute_context(interp, s_frame, measure=False):
+    try:
+        return interp.interpret_toplevel(s_frame.w_self())
+    except error.Exit, e:
+        print "Exited: %s" % e.msg
+        return None
+    
+# _____ Target and Main _____
 
 def target(driver, *args):
     # driver.config.translation.gc = "stmgc"
@@ -247,11 +241,9 @@ def target(driver, *args):
         driver.config.translation.thread = True
     return entry_point, None
 
-
 def jitpolicy(self):
     from rpython.jit.codewriter.policy import JitPolicy
     return JitPolicy()
-
 
 if __name__ == "__main__":
     entry_point(sys.argv)
