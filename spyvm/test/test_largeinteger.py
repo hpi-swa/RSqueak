@@ -7,7 +7,6 @@ from rpython.rlib.rarithmetic import intmask, r_uint
 def setup_module():
     space, interp, _, _ = read_image('bootstrapped.image')
     w = space.w
-    perform = interp.perform
     copy_to_module(locals(), __name__)
     interp.trace = False
     space.initialize_class(space.w_String, interp)

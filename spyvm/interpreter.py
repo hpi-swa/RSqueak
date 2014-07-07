@@ -211,20 +211,18 @@ class Interpreter(object):
         except ReturnFromTopLevel, e:
             return e.object
 
-    def perform(self, w_receiver, selector, *w_arguments):
-        s_frame = self.create_toplevel_context(w_receiver, selector, *w_arguments)
+    def perform(self, w_receiver, selector="", w_selector=None, w_arguments=[]):
+        s_frame = self.create_toplevel_context(w_receiver, selector, w_selector, w_arguments)
         self.interrupt_check_counter = self.interrupt_counter_size
         return self.interpret_toplevel(s_frame.w_self())
     
-    def create_toplevel_context(self, w_receiver, selector, *w_arguments):
-        if isinstance(selector, str):
+    def create_toplevel_context(self, w_receiver, selector="", w_selector=None, w_arguments=[]):
+        if w_selector is None:
+            assert selector, "Need either string or W_Object selector"
             if selector == "asSymbol":
                 w_selector = self.image.w_asSymbol
             else:
-                w_selector = self.perform(self.space.wrap_string(selector),
-                                            "asSymbol")
-        else:
-            w_selector = selector
+                w_selector = self.perform(self.space.wrap_string(selector), "asSymbol")
         
         w_method = model.W_CompiledMethod(self.space, header=512)
         w_method.literalatput0(self.space, 1, w_selector)

@@ -5,7 +5,10 @@ from .util import read_image, open_reader, copy_to_module, cleanup_module, TestI
 def setup_module():
     space, interp, image, reader = read_image("mini.image")
     w = space.w
-    perform = interp.perform
+    def perform_wrapper(receiver, selector, *args):
+        w_selector = None if isinstance(selector, str) else selector
+        return interp.perform(receiver, selector, w_selector, list(args))
+    perform = perform_wrapper
     copy_to_module(locals(), __name__)
 
 def teardown_module():
@@ -191,7 +194,7 @@ def _test_lookup_abs_in_integer(interp):
     w_abs = interp.perform(interp.space.w("abs"), "asSymbol")
     for value in [10, -3, 0]:
         w_object = model.W_SmallInteger(value)
-        w_res = interp.perform(w_object, w_abs)
+        w_res = interp.perform(w_object, w_selector=w_abs)
         assert w_res.value == abs(value)
 
 def test_lookup_abs_in_integer():

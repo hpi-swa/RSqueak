@@ -266,5 +266,5 @@ class BootstrappedObjSpace(objspace.ObjSpace):
     def initialize_class(self, w_class, interp):
         initialize_symbol = find_symbol_in_methoddict_of("initialize", 
                             w_class.class_shadow(self))
-        interp.perform(w_class, initialize_symbol)
+        interp.perform(w_class, w_selector=initialize_symbol)
         

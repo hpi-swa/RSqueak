@@ -36,7 +36,7 @@ def load(imagename):
 def preload_perform(imagename, receiver, selector, *args):
     interp = load(imagename)
     def interp_miniloop():
-        return interp.perform(receiver, selector, *args)
+        return interp.perform(receiver, selector, w_arguments=list(args))
     return interp_miniloop
 
 # This will build a jit executing a synthetic method composed of the given bytecodes and literals,
