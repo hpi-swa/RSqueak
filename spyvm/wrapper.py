@@ -93,8 +93,9 @@ class ProcessWrapper(LinkWrapper):
         active_priority = active_process.priority()
         priority = self.priority()
         if priority > active_priority:
-            active_process.deactivate(s_current_frame)
-            self.activate()
+            if not self.space.suppress_process_switch:
+                active_process.deactivate(s_current_frame)
+                self.activate()
         else:
             self.put_to_sleep()
 
@@ -103,10 +104,11 @@ class ProcessWrapper(LinkWrapper):
 
     def suspend(self, s_current_frame):
         if self.is_active_process():
-            assert self.my_list().is_nil(self.space)
-            w_process = scheduler(self.space).pop_highest_priority_process()
-            self.deactivate(s_current_frame, put_to_sleep=False)
-            ProcessWrapper(self.space, w_process).activate()
+            if not self.space.suppress_process_switch:
+                assert self.my_list().is_nil(self.space)
+                w_process = scheduler(self.space).pop_highest_priority_process()
+                self.deactivate(s_current_frame, put_to_sleep=False)
+                ProcessWrapper(self.space, w_process).activate()
         else:
             if not self.my_list().is_nil(self.space):
                 process_list = ProcessListWrapper(self.space, self.my_list())

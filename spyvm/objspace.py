@@ -21,6 +21,9 @@ class ObjSpace(object):
         
         self.make_bootstrap_classes()
         self.make_bootstrap_objects()
+        
+        # This is a hack; see compile_code() in targetimageloadingsmalltalk.py
+        self.suppress_process_switch = False
 
     def find_executable(self, executable):
         if os.sep in executable or (os.name == "nt" and ":" in executable):

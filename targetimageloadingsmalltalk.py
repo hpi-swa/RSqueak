@@ -172,13 +172,22 @@ def compile_code(interp, w_receiver, code):
     space = interp.space
     w_receiver_class = w_receiver.getclass(space)
     try:
-        w_result = interp.perform(
-            w_receiver_class,
-            "compile:classified:notifying:",
-            w_arguments = [space.wrap_string("%s\r\n%s" % (selector, code)),
-            space.wrap_string("spy-run-code"),
-            space.w_nil]
-        )
+        try:
+            # The suppress_process_switch flag is a hack/workaround to enable compiling code
+            # before having initialized the image cleanly. The problem is that the TimingSemaphore is not yet
+            # registered (primitive 136 not called), so the idle process will never be left once it is entered.
+            # TODO - Find a way to cleanly initialize the image, without executing the active_context of the image.
+            # Instead, we want to execute our own context. Then remove this flag (and all references to it)
+            interp.space.suppress_process_switch = True
+            w_result = interp.perform(
+                w_receiver_class,
+                "compile:classified:notifying:",
+                w_arguments = [space.wrap_string("%s\r\n%s" % (selector, code)),
+                space.wrap_string("spy-run-code"),
+                space.w_nil]
+            )
+        finally:
+            interp.space.suppress_process_switch = False
         # TODO - is this expected in every image?
         if not isinstance(w_result, model.W_BytesObject) or w_result.as_string() != selector:
             print "Compilation failed, unexpected result: %s" % result_string(w_result)
