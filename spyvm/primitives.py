@@ -1385,13 +1385,11 @@ def func(interp, s_frame, w_rcvr):
 
 @expose_primitive(RESUME, unwrap_spec=[object], no_result=True, clean_stack=False)
 def func(interp, s_frame, w_rcvr):
-    import pdb; pdb.set_trace()
     assert_class(interp, w_rcvr, interp.space.w_Process)
     wrapper.ProcessWrapper(interp.space, w_rcvr).resume(s_frame)
 
 @expose_primitive(SUSPEND, unwrap_spec=[object], no_result=True, clean_stack=False)
 def func(interp, s_frame, w_rcvr):
-    import pdb; pdb.set_trace()
     assert_class(interp, w_rcvr, interp.space.w_Process)
     wrapper.ProcessWrapper(interp.space, w_rcvr).suspend(s_frame)
     
