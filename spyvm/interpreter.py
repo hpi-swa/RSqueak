@@ -141,7 +141,7 @@ class Interpreter(object):
             # Cleanly leave the context. This will finish the virtual sender-reference, if
             # it is still there, which can happen in case of ProcessSwitch or StackOverflow;
             # in case of a Return, this will already be handled while unwinding the stack.
-            s_frame.finish_virtual_sender()
+            s_frame.finish_virtual_sender(s_sender)
 
     def step(self, context):
         bytecode = context.fetch_next_bytecode()

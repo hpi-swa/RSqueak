@@ -699,13 +699,15 @@ class ContextPartShadow(AbstractRedirectingShadow):
     def is_fresh(self):
         return self.direct_sender is None and self.virtual_sender is jit.vref_None
 
-    def finish_virtual_sender(self, save_direct_sender=True):
+    def finish_virtual_sender(self, s_sender):
         if self.virtual_sender is not jit.vref_None:
-            sender = self.virtual_sender() # xxx: check if we can move this down
-            jit.virtual_ref_finish(self.virtual_sender, sender)
-            self.virtual_sender = jit.vref_None
-            if save_direct_sender:
+            if self.pc() != -1:
+                # stack is unrolling, but this frame was not
+                # marked_returned: it is an escaped frame
+                sender = self.virtual_sender()
                 self.direct_sender = sender
+            jit.virtual_ref_finish(self.virtual_sender, s_sender)
+            self.virtual_sender = jit.vref_None
 
     def store_s_sender(self, s_sender, raise_error=True):
         # If we have a virtual back reference, we must finish it before storing the direct reference.
