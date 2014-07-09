@@ -178,7 +178,7 @@ def compile_code(interp, w_receiver, code):
             # registered (primitive 136 not called), so the idle process will never be left once it is entered.
             # TODO - Find a way to cleanly initialize the image, without executing the active_context of the image.
             # Instead, we want to execute our own context. Then remove this flag (and all references to it)
-            interp.space.suppress_process_switch = True
+            interp.space.suppress_process_switch[0] = True
             w_result = interp.perform(
                 w_receiver_class,
                 "compile:classified:notifying:",
@@ -187,7 +187,7 @@ def compile_code(interp, w_receiver, code):
                 space.w_nil]
             )
         finally:
-            interp.space.suppress_process_switch = False
+            interp.space.suppress_process_switch[0] = False
         # TODO - is this expected in every image?
         if not isinstance(w_result, model.W_BytesObject) or w_result.as_string() != selector:
             print "Compilation failed, unexpected result: %s" % result_string(w_result)

@@ -86,7 +86,7 @@ class Interpreter(object):
                     s_new_context = s_sender
                 s_new_context.push(nlr.value)
             except ProcessSwitch, p:
-                assert not self.space.suppress_process_switch, "ProcessSwitch should be disabled..."
+                assert not self.space.suppress_process_switch[0], "ProcessSwitch should be disabled..."
                 if self.trace:
                     print "====== Switched process from: %s" % s_new_context.short_str()
                     print "====== to: %s " % p.s_new_context.short_str()
