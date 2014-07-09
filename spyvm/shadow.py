@@ -20,7 +20,7 @@ class AbstractShadow(object):
     _immutable_fields_ = ['space']
     provides_getname = False
     repr_classname = "AbstractShadow"
-    
+
     def __init__(self, space, w_self):
         self.space = space
         assert w_self is None or isinstance(w_self, model.W_PointersObject)
@@ -34,19 +34,19 @@ class AbstractShadow(object):
             return "<%s %s>" % (self.repr_classname, self.getname())
         else:
             return "<%s>" % self.repr_classname
-    
+
     def fetch(self, n0):
         raise NotImplementedError("Abstract class")
     def store(self, n0, w_value):
         raise NotImplementedError("Abstract class")
     def size(self):
         raise NotImplementedError("Abstract class")
-    
+
     def attach_shadow(self): pass
-    
+
     def copy_field_from(self, n0, other_shadow):
         self.store(n0, other_shadow.fetch(n0))
-    
+
     # This can be overwritten to change the order of initialization.
     def copy_from(self, other_shadow):
         assert self.size() == other_shadow.size()
@@ -98,24 +98,24 @@ class AbstractValueOrNilStorageMixin(object):
     # Class must provide: wrap, unwrap, nil_value, is_nil_value, wrapper_class
     _attrs_ = ['storage']
     _immutable_fields_ = ['storage']
-    
+
     def __init__(self, space, w_self, size):
         AbstractStorageShadow.__init__(self, space, w_self, size)
         self.storage = [self.nil_value] * size
-    
+
     def size(self):
         return len(self.storage)
-    
+
     def generalized_strategy_for(self, w_val):
         return ListStorageShadow
-    
+
     def fetch(self, n0):
         val = self.storage[n0]
         if self.is_nil_value(val):
             return self.space.w_nil
         else:
             return self.wrap(self.space, val)
-        
+
     def do_store(self, n0, w_val):
         if w_val.is_nil(self.space):
             self.storage[n0] = self.nil_value
@@ -134,7 +134,7 @@ class SmallIntegerOrNilStorageShadow(AbstractStorageShadow):
     nil_value = constants.MAXINT
     wrapper_class = model.W_SmallInteger
     import_from_mixin(AbstractValueOrNilStorageMixin)
-    
+
     @staticmethod
     def static_can_contain(space, w_val):
         return _value_or_nil_can_handle(SmallIntegerOrNilStorageShadow, space, w_val)
@@ -153,7 +153,7 @@ class FloatOrNilStorageShadow(AbstractStorageShadow):
     nil_value = sys.float_info.max
     wrapper_class = model.W_Float
     import_from_mixin(AbstractValueOrNilStorageMixin)
-    
+
     @staticmethod
     def static_can_contain(space, w_val):
         return _value_or_nil_can_handle(FloatOrNilStorageShadow, space, w_val)
@@ -193,17 +193,17 @@ def find_storage_for_objects(space, vars, weak=False):
         if float_can_handle and not FloatOrNilStorageShadow.static_can_contain(space, w_obj):
             float_can_handle = False
             specialized_strategies = specialized_strategies - 1
-        
+
         if specialized_strategies <= 0:
             return ListStorageShadow
-    
+
     if all_nil_can_handle:
         return AllNilStorageShadow
     if small_int_can_handle:
         return SmallIntegerOrNilStorageShadow
     if float_can_handle:
         return FloatOrNilStorageShadow
-    
+
     # If this happens, please look for a bug in the code above.
     assert False, "No strategy could be found for list..."
 
@@ -223,7 +223,7 @@ class ListStorageShadow(AbstractStorageShadow):
     _immutable_fields_ = ['storage']
     repr_classname = "ListStorageShadow"
     import_from_mixin(ListStorageMixin)
-    
+
     def initialize_storage(self, size):
         self.storage = [self.space.w_nil] * size
     def fetch(self, n0):
@@ -236,7 +236,7 @@ class WeakListStorageShadow(AbstractStorageShadow):
     _immutable_fields_ = ['storage']
     repr_classname = "WeakListStorageShadow"
     import_from_mixin(ListStorageMixin)
-    
+
     def initialize_storage(self, size):
         self.storage = [weakref.ref(self.space.w_nil)] * size
     def fetch(self, n0):
@@ -245,14 +245,14 @@ class WeakListStorageShadow(AbstractStorageShadow):
     def store(self, n0, w_value):
         assert w_value is not None
         self.storage[n0] = weakref.ref(w_value)
-    
+
 class AbstractCachingShadow(ListStorageShadow):
     _immutable_fields_ = ['version?']
     _attrs_ = ['version']
     repr_classname = "AbstractCachingShadow"
     import_from_mixin(version.VersionMixin)
     version = None
-    
+
     def __init__(self, space, w_self):
         ListStorageShadow.__init__(self, space, w_self, 0)
         self.changed()
@@ -284,7 +284,7 @@ class ClassShadow(AbstractCachingShadow):
     _s_superclass = _s_methoddict = None
     provides_getname = True
     repr_classname = "ClassShadow"
-    
+
     def __init__(self, space, w_self):
         self.subclass_s = {}
         AbstractCachingShadow.__init__(self, space, w_self)
@@ -305,7 +305,7 @@ class ClassShadow(AbstractCachingShadow):
             # In Slang the value is read directly as a boxed integer, so that
             # the code gets a "pointer" whose bits are set as above, but
             # shifted one bit to the left and with the lowest bit set to 1.
-            
+
             # Compute the instance size (really the size, not the number of bytes)
             instsize_lo = (classformat >> 1) & 0x3F
             instsize_hi = (classformat >> (9 + 1)) & 0xC0
@@ -313,10 +313,10 @@ class ClassShadow(AbstractCachingShadow):
             # decode the instSpec
             format = (classformat >> 7) & 15
             self.instance_varsized = format >= 2
-            
+
             # In case of raised exception below.
             self.changed()
-            
+
             if format < 4:
                 self.instance_kind = POINTERS
             elif format == 4:
@@ -356,7 +356,7 @@ class ClassShadow(AbstractCachingShadow):
                 return
         # Some of the special info has changed -> Switch version.
         self.changed()
-    
+
     def store_w_superclass(self, w_class):
         superclass = self._s_superclass
         if w_class is None or w_class.is_nil(self.space):
@@ -383,24 +383,24 @@ class ClassShadow(AbstractCachingShadow):
                 return
             if methoddict: methoddict.s_class = None
             self.store_s_methoddict(s_new_methoddict)
-    
+
     def store_s_methoddict(self, s_methoddict):
         s_methoddict.s_class = self
         s_methoddict.sync_method_cache()
         self._s_methoddict = s_methoddict
-    
+
     def attach_s_class(self, s_other):
         self.subclass_s[s_other] = None
 
     def detach_s_class(self, s_other):
         del self.subclass_s[s_other]
-    
+
     def store_w_name(self, w_name):
         if isinstance(w_name, model.W_BytesObject):
             self.name = w_name.as_string()
         else:
             self.name = None
-    
+
     @jit.unroll_safe
     def flush_method_caches(self):
         look_in_shadow = self
@@ -497,7 +497,7 @@ class ClassShadow(AbstractCachingShadow):
             self.version = version
             for s_class in self.subclass_s:
                 s_class.superclass_changed(version)
-        
+
     # _______________________________________________________________
     # Methods used only in testing
 
@@ -532,7 +532,7 @@ class MethodDictionaryShadow(ListStorageShadow):
     _immutable_fields_ = ['invalid?', 's_class']
     _attrs_ = ['methoddict', 'invalid', 's_class']
     repr_classname = "MethodDictionaryShadow"
-    
+
     def __init__(self, space, w_self):
         self.invalid = True
         self.s_class = None
@@ -541,7 +541,7 @@ class MethodDictionaryShadow(ListStorageShadow):
 
     def update(self):
         self.sync_method_cache()
-        
+
     def find_selector(self, w_selector):
         if self.invalid:
             return None # we may be invalid if Smalltalk code did not call flushCache
@@ -593,7 +593,7 @@ class MethodDictionaryShadow(ListStorageShadow):
 class AbstractRedirectingShadow(AbstractShadow):
     _attrs_ = ['_w_self_size']
     repr_classname = "AbstractRedirectingShadow"
-    
+
     def __init__(self, space, w_self):
         AbstractShadow.__init__(self, space, w_self)
         if w_self is not None:
@@ -611,7 +611,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
             '_pc', '_temps_and_stack',
             '_stack_ptr', 'instances_w']
     repr_classname = "ContextPartShadow"
-    
+
     _virtualizable_ = [
         'direct_sender', 'virtual_sender',
         "_pc", "_temps_and_stack[*]", "_stack_ptr",
@@ -620,7 +620,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
     # ______________________________________________________________________
     # Initialization
-    
+
     def __init__(self, space, w_self):
         self.direct_sender = None
         self.virtual_sender = jit.vref_None
@@ -632,26 +632,26 @@ class ContextPartShadow(AbstractRedirectingShadow):
             AbstractRedirectingShadow.copy_field_from(self, n0, other_shadow)
         except error.SenderChainManipulation, e:
             assert e.s_context == self
-        
+
     def copy_from(self, other_shadow):
         # Some fields have to be initialized before the rest, to ensure correct initialization.
         privileged_fields = self.fields_to_copy_first()
         for n0 in privileged_fields:
             self.copy_field_from(n0, other_shadow)
-        
+
         # Now the temp size will be known.
         self.init_stack_and_temps()
-        
+
         for n0 in range(self.size()):
             if n0 not in privileged_fields:
                 self.copy_field_from(n0, other_shadow)
-        
+
     def fields_to_copy_first(self):
         return []
-    
+
     # ______________________________________________________________________
     # Accessing object fields
-    
+
     def fetch(self, n0):
         if n0 == constants.CTXPART_SENDER_INDEX:
             return self.w_sender()
@@ -690,45 +690,45 @@ class ContextPartShadow(AbstractRedirectingShadow):
         else:
             # XXX later should store tail out of known context part as well
             raise error.WrapperException("Index in context out of bounds")
-    
+
     # === Sender ===
     # There are two fields for the sender (virtual and direct). Only one of them is can be set at a time.
     # As long as the frame object is virtualized, using the virtual reference should increase performance.
     # As soon as a frame object is forced to the heap, the direct reference must be used.
-    
+
     def is_fresh(self):
         return self.direct_sender is None and self.virtual_sender is jit.vref_None
-    
+
     def finish_virtual_sender(self, save_direct_sender=True):
         if self.virtual_sender is not jit.vref_None:
-            sender = self.virtual_sender()
+            sender = self.virtual_sender() # xxx: check if we can move this down
             jit.virtual_ref_finish(self.virtual_sender, sender)
             self.virtual_sender = jit.vref_None
             if save_direct_sender:
                 self.direct_sender = sender
-    
+
     def store_s_sender(self, s_sender, raise_error=True):
         # If we have a virtual back reference, we must finish it before storing the direct reference.
-        self.finish_virtual_sender(save_direct_sender=False)
+        # self.finish_virtual_sender(save_direct_sender=False)
         self.direct_sender = s_sender
         if raise_error:
             raise error.SenderChainManipulation(self)
-    
+
     def w_sender(self):
         sender = self.s_sender()
         if sender is None:
             return self.space.w_nil
         return sender.w_self()
-    
+
     def s_sender(self):
         if self.direct_sender:
             return self.direct_sender
         else:
             result = self.virtual_sender()
             return result
-    
+
     # === Stack Pointer ===
-    
+
     def unwrap_store_stackpointer(self, w_sp1):
         # the stackpointer in the W_PointersObject starts counting at the
         # tempframe start
@@ -747,12 +747,12 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
     def stackdepth(self):
         return rarithmetic.intmask(self._stack_ptr)
-    
+
     def wrap_stackpointer(self):
         return self.space.wrap_int(self.stackdepth())
 
     # === Program Counter ===
-        
+
     def store_unwrap_pc(self, w_pc):
         if w_pc.is_nil(self.space):
             self.store_pc(-1)
@@ -777,9 +777,9 @@ class ContextPartShadow(AbstractRedirectingShadow):
     def store_pc(self, newpc):
         assert newpc >= -1
         self._pc = newpc
-    
+
     # === Subclassed accessors ===
-    
+
     def s_home(self):
         raise NotImplementedError()
 
@@ -788,18 +788,18 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
     def w_receiver(self):
         raise NotImplementedError()
-    
+
     def w_method(self):
         raise NotImplementedError()
-    
+
     def tempsize(self):
         raise NotImplementedError()
-    
+
     def is_closure_context(self):
         raise NotImplementedError()
-    
+
     # === Other properties of Contexts ===
-    
+
     def mark_returned(self):
         self.store_pc(-1)
         self.store_s_sender(None, raise_error=False)
@@ -809,25 +809,25 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
     def external_stackpointer(self):
         return self.stackdepth() + self.stackstart()
-    
+
     def stackend(self):
         # XXX this is incorrect when there is subclassing
         return self._w_self_size
-    
+
     def fetch_next_bytecode(self):
         pc = jit.promote(self._pc)
         assert pc >= 0
         self._pc += 1
         return self.fetch_bytecode(pc)
-    
+
     def fetch_bytecode(self, pc):
         bytecode = self.w_method().fetch_bytecode(pc)
         return ord(bytecode)
-    
+
     # ______________________________________________________________________
     # Temporary Variables
     #
-    # Every context has it's own stack. BlockContexts share their temps with 
+    # Every context has it's own stack. BlockContexts share their temps with
     # their home contexts. MethodContexts created from a BlockClosure get their
     # temps copied from the closure upon activation. Changes are not propagated back;
     # this is handled by the compiler by allocating an extra Array for temps.
@@ -837,7 +837,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
     def settemp(self, index, w_value):
         raise NotImplementedError()
-    
+
     # ______________________________________________________________________
     # Stack Manipulation
 
@@ -851,13 +851,13 @@ class ContextPartShadow(AbstractRedirectingShadow):
         for i in range(tempsize):
             temps_and_stack[i] = self.space.w_nil
         self._stack_ptr = rarithmetic.r_uint(tempsize) # we point after the last element
-    
+
     def stack_get(self, index0):
         return self._temps_and_stack[index0]
-    
+
     def stack_put(self, index0, w_val):
         self._temps_and_stack[index0] = w_val
-    
+
     def stack(self):
         """NOT_RPYTHON""" # purely for testing
         return self._temps_and_stack[self.tempsize():self._stack_ptr]
@@ -912,7 +912,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
     # ______________________________________________________________________
     # Primitive support
-    
+
     def store_instances_array(self, w_class, match_w):
         # used for primitives 77 & 78
         self.instances_w[w_class] = match_w
@@ -939,7 +939,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
             j += 1
         retval += "\n---------------------"
         return retval
-    
+
     def short_str(self):
         arg_strings = self.argument_strings()
         if len(arg_strings) > 0:
@@ -953,10 +953,10 @@ class ContextPartShadow(AbstractRedirectingShadow):
             self.w_receiver().as_repr_string(),
             args
         )
-    
+
     def print_stack(self, method=True):
         return self.print_padded_stack(method)[1]
-    
+
     def print_padded_stack(self, method):
         padding = ret_str = ''
         if self.s_sender() is not None:
@@ -970,9 +970,9 @@ class ContextPartShadow(AbstractRedirectingShadow):
 class BlockContextShadow(ContextPartShadow):
     _attrs_ = ['_w_home', '_initialip', '_eargc']
     repr_classname = "BlockContextShadow"
-    
+
     # === Initialization ===
-    
+
     def __init__(self, space, w_self=None, w_home=None, argcnt=0, initialip=0):
         self = jit.hint(self, access_directly=True, fresh_virtualizable=True)
         creating_w_self = w_self is None
@@ -992,40 +992,40 @@ class BlockContextShadow(ContextPartShadow):
 
     def fields_to_copy_first(self):
         return [ constants.BLKCTX_HOME_INDEX ]
-        
+
     # === Implemented accessors ===
-        
+
     def s_home(self):
         return self._w_home.as_methodcontext_get_shadow(self.space)
-        
+
     def stackstart(self):
         return constants.BLKCTX_STACK_START
 
     def tempsize(self):
         # A blockcontext doesn't have any temps
         return 0
-        
+
     def w_receiver(self):
         return self.s_home().w_receiver()
-        
+
     def w_method(self):
         retval = self.s_home().w_method()
         assert isinstance(retval, model.W_CompiledMethod)
         return retval
-    
+
     def is_closure_context(self):
         return True
-    
+
     # === Temporary variables ===
-    
+
     def gettemp(self, index):
         return self.s_home().gettemp(index)
 
     def settemp(self, index, w_value):
         self.s_home().settemp(index, w_value)
-    
+
     # === Accessing object fields ===
-    
+
     def fetch(self, n0):
         if n0 == constants.BLKCTX_HOME_INDEX:
             return self._w_home
@@ -1045,11 +1045,11 @@ class BlockContextShadow(ContextPartShadow):
             return self.unwrap_store_eargc(w_value)
         else:
             return ContextPartShadow.store(self, n0, w_value)
-    
+
     def store_w_home(self, w_home):
         assert isinstance(w_home, model.W_PointersObject)
         self._w_home = w_home
-    
+
     def unwrap_store_initialip(self, w_value):
         initialip = self.space.unwrap_int(w_value)
         initialip -= 1 + self.w_method().literalsize
@@ -1057,18 +1057,18 @@ class BlockContextShadow(ContextPartShadow):
 
     def store_initialip(self, initialip):
         self._initialip = initialip
-        
+
     def wrap_initialip(self):
         initialip = self.initialip()
         initialip += 1 + self.w_method().literalsize
         return self.space.wrap_int(initialip)
-    
+
     def reset_pc(self):
         self.store_pc(self.initialip())
-    
+
     def initialip(self):
         return self._initialip
-        
+
     def unwrap_store_eargc(self, w_value):
         self.store_expected_argument_count(self.space.unwrap_int(w_value))
 
@@ -1082,24 +1082,24 @@ class BlockContextShadow(ContextPartShadow):
         self._eargc = argc
 
     # === Stack Manipulation ===
-    
+
     def reset_stack(self):
         self.pop_n(self.stackdepth())
 
     # === Printing ===
-    
+
     def argument_strings(self):
         return []
-    
+
     def method_str(self):
         return '[] in %s' % self.w_method().get_identifier_string()
 
 class MethodContextShadow(ContextPartShadow):
     _attrs_ = ['closure', '_w_receiver', '_w_method']
     repr_classname = "MethodContextShadow"
-    
+
     # === Initialization ===
-    
+
     @jit.unroll_safe
     def __init__(self, space, w_self=None, w_method=None, w_receiver=None,
                               arguments=[], closure=None, pc=0):
@@ -1108,7 +1108,7 @@ class MethodContextShadow(ContextPartShadow):
         self.store_w_receiver(w_receiver)
         self.store_pc(pc)
         self.closure = closure
-        
+
         if w_method:
             self.store_w_method(w_method)
             # The summand is needed, because we calculate i.a. our stackdepth relative of the size of w_self.
@@ -1117,20 +1117,20 @@ class MethodContextShadow(ContextPartShadow):
             self.init_stack_and_temps()
         else:
             self._w_method = None
-        
+
         argc = len(arguments)
         for i0 in range(argc):
             self.settemp(i0, arguments[i0])
-        
+
         if closure:
             for i0 in range(closure.size()):
                 self.settemp(i0+argc, closure.at0(i0))
 
     def fields_to_copy_first(self):
         return [ constants.MTHDCTX_METHOD, constants.MTHDCTX_CLOSURE_OR_NIL ]
-    
+
     # === Accessing object fields ===
-    
+
     def fetch(self, n0):
         if n0 == constants.MTHDCTX_METHOD:
             return self.w_method()
@@ -1164,12 +1164,12 @@ class MethodContextShadow(ContextPartShadow):
             return self.settemp(temp_i, w_value)
         else:
             return ContextPartShadow.store(self, n0, w_value)
-    
+
     def store_w_receiver(self, w_receiver):
         self._w_receiver = w_receiver
-    
+
     # === Implemented Accessors ===
-    
+
     def s_home(self):
         if self.is_closure_context():
             # this is a context for a blockClosure
@@ -1182,31 +1182,31 @@ class MethodContextShadow(ContextPartShadow):
             return s_outerContext.s_home()
         else:
             return self
-    
+
     def stackstart(self):
         return constants.MTHDCTX_TEMP_FRAME_START
-        
+
     def store_w_method(self, w_method):
         assert isinstance(w_method, model.W_CompiledMethod)
         self._w_method = w_method
 
     def w_receiver(self):
         return self._w_receiver
-        
+
     def w_method(self):
         retval = self._w_method
         assert isinstance(retval, model.W_CompiledMethod)
         return retval
-    
+
     def tempsize(self):
         if not self.is_closure_context():
             return self.w_method().tempsize()
         else:
             return self.closure.tempsize()
-    
+
     def is_closure_context(self):
         return self.closure is not None
-    
+
     # ______________________________________________________________________
     # Marriage of MethodContextShadows with PointerObjects only when required
 
@@ -1223,9 +1223,9 @@ class MethodContextShadow(ContextPartShadow):
             self._w_self = w_self
             self._w_self_size = w_self.size()
             return w_self
-    
+
     # === Temporary variables ===
-    
+
     def gettemp(self, index0):
         return self.stack_get(index0)
 
@@ -1233,7 +1233,7 @@ class MethodContextShadow(ContextPartShadow):
         self.stack_put(index0, w_value)
 
     # === Printing ===
-    
+
     def argument_strings(self):
         argcount = self.w_method().argsize
         tempsize = self.w_method().tempsize()
