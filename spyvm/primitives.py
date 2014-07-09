@@ -1356,7 +1356,7 @@ def func(interp, s_frame, argcount):
 def func(interp, s_frame, w_rcvr, w_selector, w_arguments):
     from spyvm.shadow import MethodNotFound
     s_frame.pop_n(2) # removing our arguments
-    
+
     return s_frame._sendSelector(w_selector, len(w_arguments), interp, w_rcvr,
                         w_rcvr.class_shadow(interp.space), w_arguments=w_arguments)
 
@@ -1392,8 +1392,8 @@ def func(interp, s_frame, w_rcvr):
 def func(interp, s_frame, w_rcvr):
     assert_class(interp, w_rcvr, interp.space.w_Process)
     wrapper.ProcessWrapper(interp.space, w_rcvr).suspend(s_frame)
-    
-    
+
+
 
 @expose_primitive(FLUSH_CACHE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
