@@ -8,6 +8,10 @@ from rpython.rlib.rarithmetic import intmask, r_uint, int_between
 
 class ObjSpace(object):
     def __init__(self):
+        # If this is True, then no optimizing storage strategies will be used.
+        # Intended for performance comparisons. Breaks tests.
+        self.no_specialized_storage = [False]
+        
         self.classtable = {}
         self.objtable = {}
         self._executable_path = [""] # XXX: we cannot set the attribute

@@ -38,6 +38,7 @@ def _usage(argv):
             -s <num>           - After num stack frames, the entire stack will be dumped to the heap.
                                  This breaks performance, but protects agains stack overflow.
                                  num <= 0 disables stack protection (default: %d)
+            -S                 - Disable specialized storage strategies; always use generic ListStorage
             
           Logging parameters:
             -t|--trace                 - Output a trace of each message, primitive, return value and process switch.
@@ -49,13 +50,25 @@ def _usage(argv):
 
 def get_parameter(argv, idx, arg):
     if len(argv) < idx + 1:
-        raise RuntimeError("Error: missing argument after %s" % arg)
+        raise error.Exit("Missing argument after %s" % arg)
     return argv[idx], idx + 1
+    
+def get_int_parameter(argv, idx, arg):
+    param, idx = get_parameter(argv, idx, arg)
+    try:
+        result = int(param)
+    except ValueError, e:
+        raise error.Exit("Non-int argument after %s" % arg)
+    return result, idx
+    
+def print_error(str):
+    os.write(2, str + os.linesep)
     
 prebuilt_space = objspace.ObjSpace()
 
 def entry_point(argv):
     # == Main execution parameters
+    path = None
     selector = None
     code = ""
     number = 0
@@ -68,54 +81,61 @@ def entry_point(argv):
     max_stack_depth = constants.MAX_LOOP_DEPTH
     trace = False
     
-    path = argv[1] if len(argv) > 1 else "Squeak.image"
-    idx = 2
-    
-    while idx < len(argv):
-        arg = argv[idx]
-        idx += 1
-        if arg in ["-h", "--help"]:
-            _usage(argv)
-            return 0
-        elif arg in ["-j", "--jit"]:
-            jitarg, idx = get_parameter(argv, idx, arg)
-            jit.set_user_param(interpreter.Interpreter.jit_driver, jitarg)
-        elif arg in ["-n", "--number"]:
-            numarg, idx = get_parameter(argv, idx, arg)
-            number = int(numarg)
-            have_number = True
-        elif arg in ["-m", "--method"]:
-            selector, idx = get_parameter(argv, idx, arg)
-        elif arg in ["-t", "--trace"]:
-            trace = True
-        elif arg in ["-p", "--poll"]:
-            poll = True
-        elif arg in ["-a", "--arg"]:
-            stringarg, idx = get_parameter(argv, idx, arg)
-        elif arg in ["-r", "--run"]:
-            code, idx = get_parameter(argv, idx, arg)
-        elif arg in ["-i", "--no-interrupts"]:
-            interrupts = False
-        elif arg in ["-s"]:
-            arg, idx = get_parameter(argv, idx, arg)
-            max_stack_depth = int(arg)
-        elif arg in ["-P", "--process"]:
-            headless = False
-        elif arg in ["-u"]:
-            from spyvm.plugins.vmdebugging import stop_ui_process
-            stop_ui_process()
-        elif arg in ["-l", "--storage-log"]:
-            storage_logger.activate()
-        elif arg in ["-L", "--storage-log-aggregate"]:
-            storage_logger.activate(aggregate=True)
-        elif arg in ["-E", "--storage-log-elements"]:
-            storage_logger.activate(elements=True)
-        else:
-            _usage(argv)
-            return -1
-    
-    if code and selector:
-        raise RuntimeError("Cannot handle both -r and -m.")
+    space = prebuilt_space
+    idx = 1
+    try:
+        while idx < len(argv):
+            arg = argv[idx]
+            idx += 1
+            if arg in ["-h", "--help"]:
+                _usage(argv)
+                return 0
+            elif arg in ["-j", "--jit"]:
+                jitarg, idx = get_parameter(argv, idx, arg)
+                jit.set_user_param(interpreter.Interpreter.jit_driver, jitarg)
+            elif arg in ["-n", "--number"]:
+                number, idx = get_int_parameter(argv, idx, arg)
+                have_number = True
+            elif arg in ["-m", "--method"]:
+                selector, idx = get_parameter(argv, idx, arg)
+            elif arg in ["-t", "--trace"]:
+                trace = True
+            elif arg in ["-p", "--poll"]:
+                poll = True
+            elif arg in ["-a", "--arg"]:
+                stringarg, idx = get_parameter(argv, idx, arg)
+            elif arg in ["-r", "--run"]:
+                code, idx = get_parameter(argv, idx, arg)
+            elif arg in ["-i", "--no-interrupts"]:
+                interrupts = False
+            elif arg in ["-s"]:
+                max_stack_depth, idx = get_int_parameter(argv, idx, arg)
+            elif arg in ["-P", "--process"]:
+                headless = False
+            elif arg in ["-S"]:
+                space.no_specialized_storage[0] = True
+            elif arg in ["-u"]:
+                from spyvm.plugins.vmdebugging import stop_ui_process
+                stop_ui_process()
+            elif arg in ["-l", "--storage-log"]:
+                storage_logger.activate()
+            elif arg in ["-L", "--storage-log-aggregate"]:
+                storage_logger.activate(aggregate=True)
+            elif arg in ["-E", "--storage-log-elements"]:
+                storage_logger.activate(elements=True)
+            elif path is None:
+                path = arg
+            else:
+                _usage(argv)
+                return -1
+        
+        if path is None:
+            path = "Squeak.image"
+        if code and selector:
+            raise error.Exit("Cannot handle both -r and -m.")
+    except error.Exit as e:
+        print_error("Parameter error: %s" % e.msg)
+        return 1
     
     path = rpath.rabspath(path)
     try:
@@ -125,17 +145,17 @@ def entry_point(argv):
         finally:
             f.close()
     except OSError as e:
-        os.write(2, "%s -- %s (LoadError)\n" % (os.strerror(e.errno), path))
+        print_error("%s -- %s (LoadError)" % (os.strerror(e.errno), path))
         return 1
     
     # Load & prepare image and environment
-    space = prebuilt_space
     image_reader = squeakimage.reader_for_image(space, squeakimage.Stream(data=imagedata))
     image = create_image(space, image_reader)
     interp = interpreter.Interpreter(space, image, image_name=path,
                 trace=trace, evented=not poll,
                 interrupts=interrupts, max_stack_depth=max_stack_depth)
     space.runtime_setup(argv[0])
+    print_error("") # Line break after image-loading characters
     
     # Create context to be executed
     if code or selector:
@@ -172,30 +192,31 @@ def compile_code(interp, w_receiver, code):
     selector = "DoIt%d" % int(time.time())
     space = interp.space
     w_receiver_class = w_receiver.getclass(space)
+    
+    # The suppress_process_switch flag is a hack/workaround to enable compiling code
+    # before having initialized the image cleanly. The problem is that the TimingSemaphore is not yet
+    # registered (primitive 136 not called), so the idle process will never be left once it is entered.
+    # TODO - Find a way to cleanly initialize the image, without executing the active_context of the image.
+    # Instead, we want to execute our own context. Then remove this flag (and all references to it)
+    interp.space.suppress_process_switch[0] = True
     try:
-        try:
-            # The suppress_process_switch flag is a hack/workaround to enable compiling code
-            # before having initialized the image cleanly. The problem is that the TimingSemaphore is not yet
-            # registered (primitive 136 not called), so the idle process will never be left once it is entered.
-            # TODO - Find a way to cleanly initialize the image, without executing the active_context of the image.
-            # Instead, we want to execute our own context. Then remove this flag (and all references to it)
-            interp.space.suppress_process_switch[0] = True
-            w_result = interp.perform(
-                w_receiver_class,
-                "compile:classified:notifying:",
-                w_arguments = [space.wrap_string("%s\r\n%s" % (selector, code)),
-                space.wrap_string("spy-run-code"),
-                space.w_nil]
-            )
-        finally:
-            interp.space.suppress_process_switch[0] = False
+        w_result = interp.perform(
+            w_receiver_class,
+            "compile:classified:notifying:",
+            w_arguments = [space.wrap_string("%s\r\n%s" % (selector, code)),
+            space.wrap_string("spy-run-code"),
+            space.w_nil]
+        )
+        
         # TODO - is this expected in every image?
         if not isinstance(w_result, model.W_BytesObject) or w_result.as_string() != selector:
-            print "Compilation failed, unexpected result: %s" % result_string(w_result)
+            print_error("Compilation failed, unexpected result: %s" % result_string(w_result))
             return None
     except error.Exit, e:
-        print "Exited while compiling code: %s" % e.msg
+        print_error("Exited while compiling code: %s" % e.msg)
         return None
+    finally:
+            interp.space.suppress_process_switch[0] = False
     w_receiver_class.as_class_get_shadow(space).s_methoddict().sync_method_cache()
     return selector
     
@@ -234,11 +255,10 @@ def active_context(space):
     return w_active_context.as_context_get_shadow(space)
 
 def execute_context(interp, s_frame, measure=False):
-    print "" # Line break after image-loading-indicator characters
     try:
         return interp.interpret_toplevel(s_frame.w_self())
     except error.Exit, e:
-        print "Exited: %s" % e.msg
+        print_error("Exited: %s" % e.msg)
         return None
     
 # _____ Target and Main _____

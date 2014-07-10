@@ -229,7 +229,7 @@ class SDLDisplay(object):
                     return
                 elif c_type == RSDL.QUIT:
                     from spyvm.error import Exit
-                    raise Exit("Window closed..")
+                    raise Exit("Window closed")
         finally:
             lltype.free(event, flavor='raw')
 
