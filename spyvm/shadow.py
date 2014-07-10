@@ -607,13 +607,13 @@ class AbstractRedirectingShadow(AbstractShadow):
 class ContextPartShadow(AbstractRedirectingShadow):
 
     __metaclass__ = extendabletype
-    _attrs_ = ['direct_sender', 'virtual_sender',
+    _attrs_ = ['_s_sender',
             '_pc', '_temps_and_stack',
             '_stack_ptr', 'instances_w']
     repr_classname = "ContextPartShadow"
 
     _virtualizable_ = [
-        'direct_sender', 'virtual_sender',
+        '_s_sender',
         "_pc", "_temps_and_stack[*]", "_stack_ptr",
         "_w_self", "_w_self_size"
     ]
@@ -622,8 +622,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
     # Initialization
 
     def __init__(self, space, w_self):
-        self.direct_sender = None
-        self.virtual_sender = jit.vref_None
+        self._s_sender = None
         AbstractRedirectingShadow.__init__(self, space, w_self)
         self.instances_w = {}
 
@@ -692,27 +691,9 @@ class ContextPartShadow(AbstractRedirectingShadow):
             raise error.WrapperException("Index in context out of bounds")
 
     # === Sender ===
-    # There are two fields for the sender (virtual and direct). Only one of them is can be set at a time.
-    # As long as the frame object is virtualized, using the virtual reference should increase performance.
-    # As soon as a frame object is forced to the heap, the direct reference must be used.
-
-    def is_fresh(self):
-        return self.direct_sender is None and self.virtual_sender is jit.vref_None
-
-    def finish_virtual_sender(self, s_sender):
-        if self.virtual_sender is not jit.vref_None:
-            if self.pc() != -1:
-                # stack is unrolling, but this frame was not
-                # marked_returned: it is an escaped frame
-                sender = self.virtual_sender()
-                self.direct_sender = sender
-            jit.virtual_ref_finish(self.virtual_sender, s_sender)
-            self.virtual_sender = jit.vref_None
 
     def store_s_sender(self, s_sender, raise_error=True):
-        # If we have a virtual back reference, we must finish it before storing the direct reference.
-        # self.finish_virtual_sender(save_direct_sender=False)
-        self.direct_sender = s_sender
+        self._s_sender = s_sender
         if raise_error:
             raise error.SenderChainManipulation(self)
 
@@ -723,11 +704,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
         return sender.w_self()
 
     def s_sender(self):
-        if self.direct_sender:
-            return self.direct_sender
-        else:
-            result = self.virtual_sender()
-            return result
+        return self._s_sender
 
     # === Stack Pointer ===
 

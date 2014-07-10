@@ -67,10 +67,7 @@ class Interpreter(object):
         s_new_context = w_active_context.as_context_get_shadow(self.space)
         while True:
             assert self.current_stack_depth == 0
-            # Need to save s_sender, loop_bytecodes will nil this on return
-            # Virtual references are not allowed here, and neither are "fresh" contexts (except for the toplevel one).
-            assert s_new_context.virtual_sender is jit.vref_None
-            s_sender = s_new_context.direct_sender
+            s_sender = s_new_context.s_sender()
             try:
                 self.loop_bytecodes(s_new_context)
                 raise Exception("loop_bytecodes left without raising...")
@@ -81,7 +78,7 @@ class Interpreter(object):
             except Return, nlr:
                 s_new_context = s_sender
                 while s_new_context is not nlr.s_target_context:
-                    s_sender = s_new_context.direct_sender
+                    s_sender = s_new_context.s_sender()
                     s_new_context._activate_unwind_context(self)
                     s_new_context = s_sender
                 s_new_context.push(nlr.value)
@@ -122,27 +119,19 @@ class Interpreter(object):
     # This is a wrapper around loop_bytecodes that cleanly enters/leaves the frame
     # and handles the stack overflow protection mechanism.
     def stack_frame(self, s_frame, s_sender, may_context_switch=True):
-        assert s_frame.virtual_sender is jit.vref_None
         try:
-            # Enter the context - store a virtual reference back to the sender
-            # Non-fresh contexts can happen, e.g. when activating a stored BlockContext.
-            # The same frame object must not pass through here recursively!
-            if s_frame.is_fresh() and s_sender is not None:
-                s_frame.virtual_sender = jit.virtual_ref(s_sender)
-
+            if s_frame._s_sender is None and s_sender is not None:
+                s_frame.store_s_sender(s_sender, raise_error=False)
+            
             self.current_stack_depth += 1
             if self.max_stack_depth > 0:
                 if self.current_stack_depth >= self.max_stack_depth:
                     raise StackOverflow(s_frame)
-
+            
             # Now (continue to) execute the context bytecodes
             self.loop_bytecodes(s_frame, may_context_switch)
         finally:
             self.current_stack_depth -= 1
-            # Cleanly leave the context. This will finish the virtual sender-reference, if
-            # it is still there, which can happen in case of ProcessSwitch or StackOverflow;
-            # in case of a Return, this will already be handled while unwinding the stack.
-            s_frame.finish_virtual_sender(s_sender)
 
     def step(self, context):
         bytecode = context.fetch_next_bytecode()
