@@ -1548,23 +1548,29 @@ def func(interp, s_frame, w_rcvr):
 
 @expose_primitive(OS_LOCK_LOCK, unwrap_spec=[object], no_result=True)
 def func(interp, s_frame, w_rcvr):
-    from rpython.rlib import rthread
+    from rpython.rlib.rthread import RThreadError
 
     if not isinstance(w_rcvr, model.W_PointersObject):
-            raise PrimitiveFailedError("OS_LOCK_LOCK primitive was not called on an OSLock Object")
+        raise PrimitiveFailedError("OS_LOCK_LOCK primitive was not called on an OSLock Object")
 
     lock_shadow = w_rcvr.as_special_get_shadow(interp.space, shadow.OSLockShadow)
-    lock_shadow.os_lock()
+    try:
+        lock_shadow.os_lock()
+    except RThreadError as e:
+        raise PrimitiveFailedError("OS_LOCK_LOCK primitive failed: " + str(e))
 
 @expose_primitive(OS_LOCK_RELEASE, unwrap_spec=[object], no_result=True)
 def func(interp, s_frame, w_rcvr):
-    from rpython.rlib import rthread
+    from rpython.rlib.rthread import RThreadError
 
     if not isinstance(w_rcvr, model.W_PointersObject):
-            raise PrimitiveFailedError("OS_LOCK_LOCK primitive was not called on an OSLock Object")
+        raise PrimitiveFailedError("OS_LOCK_LOCK primitive was not called on an OSLock Object")
 
     lock_shadow = w_rcvr.as_special_get_shadow(interp.space, shadow.OSLockShadow)
-    lock_shadow.os_release()
+    try:
+        lock_shadow.os_release()
+    except RThreadError as e:
+        raise PrimitiveFailedError("OS_LOCK_RELEASE primitive failed: " + str(e))
 
 # ___________________________________________________________________________
 # BlockClosure Primitives
