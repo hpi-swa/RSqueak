@@ -800,6 +800,9 @@ class ContextPartShadow(AbstractRedirectingShadow):
     def is_closure_context(self):
         raise NotImplementedError()
 
+    def home_is_self(self):
+        raise NotImplementedError()
+
     # === Other properties of Contexts ===
 
     def mark_returned(self):
@@ -1018,6 +1021,9 @@ class BlockContextShadow(ContextPartShadow):
     def is_closure_context(self):
         return True
 
+    def home_is_self(self):
+        return False
+
     # === Temporary variables ===
 
     def gettemp(self, index):
@@ -1208,6 +1214,9 @@ class MethodContextShadow(ContextPartShadow):
 
     def is_closure_context(self):
         return self.closure is not None
+
+    def home_is_self(self):
+        return not self.is_closure_context()
 
     # ______________________________________________________________________
     # Marriage of MethodContextShadows with PointerObjects only when required
