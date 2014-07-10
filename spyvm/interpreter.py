@@ -72,11 +72,13 @@ class Interpreter(object):
                     print "====== StackOverflow, contexts forced to heap at: %s" % e.s_new_context.short_str()
                 s_new_context = e.s_new_context
             except Return, nlr:
+                assert nlr.s_target_context or nlr.is_local
                 s_new_context = s_sender
-                while s_new_context is not nlr.s_target_context:
-                    s_sender = s_new_context.s_sender()
-                    s_new_context._activate_unwind_context(self)
-                    s_new_context = s_sender
+                if not nlr.is_local:
+                    while s_new_context is not nlr.s_target_context:
+                        s_sender = s_new_context.s_sender()
+                        s_new_context._activate_unwind_context(self)
+                        s_new_context = s_sender
                 s_new_context.push(nlr.value)
             except ProcessSwitch, p:
                 assert not self.space.suppress_process_switch[0], "ProcessSwitch should be disabled..."
@@ -106,11 +108,16 @@ class Interpreter(object):
             try:
                 self.step(s_context)
             except Return, nlr:
-                if nlr.s_target_context is not s_context:
+                if nlr.s_target_context is s_context or nlr.is_local:
+                    s_context.push(nlr.value)
+                else:
+                    if nlr.s_target_context is None:
+                        # This is the case where we are returning to our sender.
+                        # Mark the return as local, so our sender will take it
+                        nlr.is_local = True
                     s_context._activate_unwind_context(self)
                     raise nlr
-                else:
-                    s_context.push(nlr.value)
+
 
     # This is a wrapper around loop_bytecodes that cleanly enters/leaves the frame
     # and handles the stack overflow protection mechanism.
@@ -224,10 +231,11 @@ class ReturnFromTopLevel(Exception):
         self.object = object
 
 class Return(Exception):
-    _attrs_ = ["value", "s_target_context"]
+    _attrs_ = ["value", "s_target_context", "is_local"]
     def __init__(self, s_target_context, w_result):
         self.value = w_result
         self.s_target_context = s_target_context
+        self.is_local = False
 
 class ContextSwitchException(Exception):
     """General Exception that causes the interpreter to leave
@@ -623,7 +631,7 @@ class __extend__(ContextPartShadow):
                     interp.padding(), code, w_method.safe_identifier_string(), w_selector.str_content())
             raise e
 
-    def _return(self, return_value, interp, s_return_to):
+    def _return(self, return_value, interp, local_return=False):
         # unfortunately, this assert is not true for some tests. TODO fix this.
         # assert self._stack_ptr == self.tempsize()
 
@@ -631,36 +639,47 @@ class __extend__(ContextPartShadow):
         if interp.trace:
             print '%s<- %s' % (interp.padding(), return_value.as_repr_string())
 
-        if s_return_to is None:
-            # This should never happen while executing a normal image.
-            raise ReturnFromTopLevel(return_value)
+        if self.home_is_self() or local_return:
+            # a local return just needs to go up the stack once. there
+            # it will find the sender as a local, and we don't have to
+            # force the reference
+            s_return_to = None
+            if self.s_sender() is None:
+                # This should never happen while executing a normal image.
+                raise ReturnFromTopLevel(return_value)
+        else:
+            s_return_to = self.s_home().s_sender()
+            if s_return_to is None:
+                # This should never happen while executing a normal image.
+                raise ReturnFromTopLevel(return_value)
+
         raise Return(s_return_to, return_value)
 
     # ====== Send/Return bytecodes ======
 
     @bytecode_implementation()
     def returnReceiverBytecode(self, interp, current_bytecode):
-        return self._return(self.w_receiver(), interp, self.s_home().s_sender())
+        return self._return(self.w_receiver(), interp)
 
     @bytecode_implementation()
     def returnTrueBytecode(self, interp, current_bytecode):
-        return self._return(interp.space.w_true, interp, self.s_home().s_sender())
+        return self._return(interp.space.w_true, interp)
 
     @bytecode_implementation()
     def returnFalseBytecode(self, interp, current_bytecode):
-        return self._return(interp.space.w_false, interp, self.s_home().s_sender())
+        return self._return(interp.space.w_false, interp)
 
     @bytecode_implementation()
     def returnNilBytecode(self, interp, current_bytecode):
-        return self._return(interp.space.w_nil, interp, self.s_home().s_sender())
+        return self._return(interp.space.w_nil, interp)
 
     @bytecode_implementation()
     def returnTopFromMethodBytecode(self, interp, current_bytecode):
-        return self._return(self.pop(), interp, self.s_home().s_sender())
+        return self._return(self.pop(), interp)
 
     @bytecode_implementation()
     def returnTopFromBlockBytecode(self, interp, current_bytecode):
-        return self._return(self.pop(), interp, self.s_sender())
+        return self._return(self.pop(), interp, local_return=True)
 
     @bytecode_implementation()
     def sendLiteralSelectorBytecode(self, interp, current_bytecode):
@@ -741,7 +760,8 @@ class __extend__(ContextPartShadow):
             try:
                 self.bytecodePrimValue(interp, 0)
             except Return, nlr:
-                if self is not nlr.s_target_context:
+                assert nlr.s_target_context or nlr.is_local
+                if self is not nlr.s_target_context and not nlr.is_local:
                     raise nlr
             finally:
                 self.mark_returned()
