@@ -190,6 +190,5 @@ def decode_compiled_method_header(header):
 # Interpreter constants
 #
 
-MAX_LOOP_DEPTH = 100
 INTERRUPT_COUNTER_SIZE = 10000
 CompileTime = time.time()

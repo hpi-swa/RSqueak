@@ -18,7 +18,7 @@ class BaseJITTest(object):
     def run(self, spy, tmpdir, code):
         logfile = str(tmpdir.join("x.pypylog"))
         proc = subprocess.Popen(
-            [str(spy), "-r", code.replace("\n", "\r\n"), BenchmarkImage],
+            [str(spy), BenchmarkImage, "-r", code.replace("\n", "\r\n")],
             cwd=str(tmpdir),
             env={"PYPYLOG": "jit-log-opt:%s" % logfile,
                  "SDL_VIDEODRIVER": "dummy"}

@@ -14,13 +14,13 @@ def _usage(argv):
     print """
     Usage: %s <path> [-r|-m] [-naHu] [-jpis] [-tlLE]
             <path> - image path (default: Squeak.image)
-          
+
           Execution mode:
             (no flags)             - Image will be normally opened.
             -r|--run <code>        - Code will be compiled and executed, result printed.
             -m|--method <selector> - Selector will be sent to a SmallInteger, result printed.
             -h|--help              - Output this and exit.
-            
+
           Execution parameters:
             -n|--num <int> - Only with -m or -r, SmallInteger to be used as receiver (default: nil).
             -a|--arg <arg> - Only with -m, will be used as single String argument.
@@ -30,7 +30,7 @@ def _usage(argv):
                              in the image and execute the context directly. The image window will
                              probably not open. Good for benchmarking.
             -u             - Only with -m or -r, try to stop UI-process at startup. Can help benchmarking.
-            
+
           Other parameters:
             -j|--jit <jitargs> - jitargs will be passed to the jit configuration.
             -p|--poll          - Actively poll for events. Try this if the image is not responding well.
@@ -45,8 +45,8 @@ def _usage(argv):
             -l|--storage-log           - Output a log of storage operations.
             -L|--storage-log-aggregate - Output an aggregated storage log at the end of execution.
             -E|--storage-log-elements  - Include classnames of elements into the storage log.
-            
-    """ % (argv[0], constants.MAX_LOOP_DEPTH)
+
+    """ % argv[0]
 
 def get_parameter(argv, idx, arg):
     if len(argv) < idx + 1:
@@ -78,7 +78,6 @@ def entry_point(argv):
     # == Other parameters
     poll = False
     interrupts = True
-    max_stack_depth = constants.MAX_LOOP_DEPTH
     trace = False
     
     space = prebuilt_space
@@ -147,13 +146,13 @@ def entry_point(argv):
     except OSError as e:
         print_error("%s -- %s (LoadError)" % (os.strerror(e.errno), path))
         return 1
-    
+
     # Load & prepare image and environment
     image_reader = squeakimage.reader_for_image(space, squeakimage.Stream(data=imagedata))
     image = create_image(space, image_reader)
     interp = interpreter.Interpreter(space, image, image_name=path,
                 trace=trace, evented=not poll,
-                interrupts=interrupts, max_stack_depth=max_stack_depth)
+                interrupts=interrupts)
     space.runtime_setup(argv[0])
     print_error("") # Line break after image-loading characters
     
@@ -175,7 +174,7 @@ def entry_point(argv):
             context = active_context(interp.space)
     else:
         context = active_context(interp.space)
-    
+
     w_result = execute_context(interp, context)
     print result_string(w_result)
     storage_logger.print_aggregated_log()
@@ -219,13 +218,13 @@ def compile_code(interp, w_receiver, code):
             interp.space.suppress_process_switch[0] = False
     w_receiver_class.as_class_get_shadow(space).s_methoddict().sync_method_cache()
     return selector
-    
+
 def create_context(interp, w_receiver, selector, stringarg):
     args = []
     if stringarg:
         args.append(interp.space.wrap_string(stringarg))
     return interp.create_toplevel_context(w_receiver, selector, w_arguments = args)
-    
+
 def create_process(interp, s_frame):
     space = interp.space
     w_active_process = wrapper.scheduler(space).active_process()
@@ -242,10 +241,10 @@ def create_process(interp, s_frame):
         priority = 7
     w_benchmark_proc.store(space, 1, s_frame.w_self())
     w_benchmark_proc.store(space, 2, space.wrap_int(priority))
-    
+
     # Make process eligible for scheduling
     wrapper.ProcessWrapper(space, w_benchmark_proc).put_to_sleep()
-    
+
 def active_context(space):
     w_active_process = wrapper.scheduler(space).active_process()
     active_process = wrapper.ProcessWrapper(space, w_active_process)
@@ -260,7 +259,7 @@ def execute_context(interp, s_frame, measure=False):
     except error.Exit, e:
         print_error("Exited: %s" % e.msg)
         return None
-    
+
 # _____ Target and Main _____
 
 def target(driver, *args):

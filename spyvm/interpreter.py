@@ -4,7 +4,7 @@ from spyvm.shadow import ContextPartShadow, MethodContextShadow, BlockContextSha
 from spyvm import model, constants, primitives, conftest, wrapper
 from spyvm.tool.bitmanipulation import splitter
 
-from rpython.rlib import jit
+from rpython.rlib import jit, rstackovf
 from rpython.rlib import objectmodel, unroll
 
 class MissingBytecode(Exception):
@@ -24,7 +24,7 @@ def get_printable_location(pc, self, method):
 
 class Interpreter(object):
     _immutable_fields_ = ["space", "image", "image_name",
-                          "max_stack_depth", "interrupt_counter_size",
+                          "interrupt_counter_size",
                           "startup_time", "evented", "interrupts"]
 
     jit_driver = jit.JitDriver(
@@ -35,8 +35,7 @@ class Interpreter(object):
     )
 
     def __init__(self, space, image=None, image_name="",
-                trace=False, evented=True, interrupts=True,
-                max_stack_depth=constants.MAX_LOOP_DEPTH):
+                trace=False, evented=True, interrupts=True):
         import time
 
         # === Initialize immutable variables
@@ -47,7 +46,6 @@ class Interpreter(object):
             self.startup_time = image.startup_time
         else:
             self.startup_time = constants.CompileTime
-        self.max_stack_depth = max_stack_depth
         self.evented = evented
         self.interrupts = interrupts
         try:
@@ -57,7 +55,6 @@ class Interpreter(object):
 
         # === Initialize mutable variables
         self.interrupt_check_counter = self.interrupt_counter_size
-        self.current_stack_depth = 0
         self.next_wakeup_tick = 0
         self.trace = trace
         self.trace_proxy = False
@@ -66,7 +63,6 @@ class Interpreter(object):
         # This is the top-level loop and is not invoked recursively.
         s_new_context = w_active_context.as_context_get_shadow(self.space)
         while True:
-            assert self.current_stack_depth == 0
             s_sender = s_new_context.s_sender()
             try:
                 self.loop_bytecodes(s_new_context)
@@ -76,11 +72,13 @@ class Interpreter(object):
                     print "====== StackOverflow, contexts forced to heap at: %s" % e.s_new_context.short_str()
                 s_new_context = e.s_new_context
             except Return, nlr:
+                assert nlr.s_target_context or nlr.is_local
                 s_new_context = s_sender
-                while s_new_context is not nlr.s_target_context:
-                    s_sender = s_new_context.s_sender()
-                    s_new_context._activate_unwind_context(self)
-                    s_new_context = s_sender
+                if not nlr.is_local:
+                    while s_new_context is not nlr.s_target_context:
+                        s_sender = s_new_context.s_sender()
+                        s_new_context._activate_unwind_context(self)
+                        s_new_context = s_sender
                 s_new_context.push(nlr.value)
             except ProcessSwitch, p:
                 assert not self.space.suppress_process_switch[0], "ProcessSwitch should be disabled..."
@@ -110,11 +108,16 @@ class Interpreter(object):
             try:
                 self.step(s_context)
             except Return, nlr:
-                if nlr.s_target_context is not s_context:
+                if nlr.s_target_context is s_context or nlr.is_local:
+                    s_context.push(nlr.value)
+                else:
+                    if nlr.s_target_context is None:
+                        # This is the case where we are returning to our sender.
+                        # Mark the return as local, so our sender will take it
+                        nlr.is_local = True
                     s_context._activate_unwind_context(self)
                     raise nlr
-                else:
-                    s_context.push(nlr.value)
+
 
     # This is a wrapper around loop_bytecodes that cleanly enters/leaves the frame
     # and handles the stack overflow protection mechanism.
@@ -122,16 +125,11 @@ class Interpreter(object):
         try:
             if s_frame._s_sender is None and s_sender is not None:
                 s_frame.store_s_sender(s_sender, raise_error=False)
-            
-            self.current_stack_depth += 1
-            if self.max_stack_depth > 0:
-                if self.current_stack_depth >= self.max_stack_depth:
-                    raise StackOverflow(s_frame)
-            
             # Now (continue to) execute the context bytecodes
             self.loop_bytecodes(s_frame, may_context_switch)
-        finally:
-            self.current_stack_depth -= 1
+        except rstackovf.StackOverflow:
+            rstackovf.check_stack_overflow()
+            raise StackOverflow(s_frame)
 
     def step(self, context):
         bytecode = context.fetch_next_bytecode()
@@ -205,7 +203,7 @@ class Interpreter(object):
         s_frame = self.create_toplevel_context(w_receiver, selector, w_selector, w_arguments)
         self.interrupt_check_counter = self.interrupt_counter_size
         return self.interpret_toplevel(s_frame.w_self())
-    
+
     def create_toplevel_context(self, w_receiver, selector="", w_selector=None, w_arguments=[]):
         if w_selector is None:
             assert selector, "Need either string or W_Object selector"
@@ -213,7 +211,7 @@ class Interpreter(object):
                 w_selector = self.image.w_asSymbol
             else:
                 w_selector = self.perform(self.space.wrap_string(selector), "asSymbol")
-        
+
         w_method = model.W_CompiledMethod(self.space, header=512)
         w_method.literalatput0(self.space, 1, w_selector)
         assert len(w_arguments) <= 7
@@ -225,7 +223,7 @@ class Interpreter(object):
         return s_frame
 
     def padding(self, symbol=' '):
-        return symbol * self.current_stack_depth
+        return symbol
 
 class ReturnFromTopLevel(Exception):
     _attrs_ = ["object"]
@@ -233,10 +231,11 @@ class ReturnFromTopLevel(Exception):
         self.object = object
 
 class Return(Exception):
-    _attrs_ = ["value", "s_target_context"]
+    _attrs_ = ["value", "s_target_context", "is_local"]
     def __init__(self, s_target_context, w_result):
         self.value = w_result
         self.s_target_context = s_target_context
+        self.is_local = False
 
 class ContextSwitchException(Exception):
     """General Exception that causes the interpreter to leave
@@ -632,7 +631,7 @@ class __extend__(ContextPartShadow):
                     interp.padding(), code, w_method.safe_identifier_string(), w_selector.str_content())
             raise e
 
-    def _return(self, return_value, interp, s_return_to):
+    def _return(self, return_value, interp, local_return=False):
         # unfortunately, this assert is not true for some tests. TODO fix this.
         # assert self._stack_ptr == self.tempsize()
 
@@ -640,36 +639,47 @@ class __extend__(ContextPartShadow):
         if interp.trace:
             print '%s<- %s' % (interp.padding(), return_value.as_repr_string())
 
-        if s_return_to is None:
-            # This should never happen while executing a normal image.
-            raise ReturnFromTopLevel(return_value)
+        if self.home_is_self() or local_return:
+            # a local return just needs to go up the stack once. there
+            # it will find the sender as a local, and we don't have to
+            # force the reference
+            s_return_to = None
+            if self.s_sender() is None:
+                # This should never happen while executing a normal image.
+                raise ReturnFromTopLevel(return_value)
+        else:
+            s_return_to = self.s_home().s_sender()
+            if s_return_to is None:
+                # This should never happen while executing a normal image.
+                raise ReturnFromTopLevel(return_value)
+
         raise Return(s_return_to, return_value)
 
     # ====== Send/Return bytecodes ======
 
     @bytecode_implementation()
     def returnReceiverBytecode(self, interp, current_bytecode):
-        return self._return(self.w_receiver(), interp, self.s_home().s_sender())
+        return self._return(self.w_receiver(), interp)
 
     @bytecode_implementation()
     def returnTrueBytecode(self, interp, current_bytecode):
-        return self._return(interp.space.w_true, interp, self.s_home().s_sender())
+        return self._return(interp.space.w_true, interp)
 
     @bytecode_implementation()
     def returnFalseBytecode(self, interp, current_bytecode):
-        return self._return(interp.space.w_false, interp, self.s_home().s_sender())
+        return self._return(interp.space.w_false, interp)
 
     @bytecode_implementation()
     def returnNilBytecode(self, interp, current_bytecode):
-        return self._return(interp.space.w_nil, interp, self.s_home().s_sender())
+        return self._return(interp.space.w_nil, interp)
 
     @bytecode_implementation()
     def returnTopFromMethodBytecode(self, interp, current_bytecode):
-        return self._return(self.pop(), interp, self.s_home().s_sender())
+        return self._return(self.pop(), interp)
 
     @bytecode_implementation()
     def returnTopFromBlockBytecode(self, interp, current_bytecode):
-        return self._return(self.pop(), interp, self.s_sender())
+        return self._return(self.pop(), interp, local_return=True)
 
     @bytecode_implementation()
     def sendLiteralSelectorBytecode(self, interp, current_bytecode):
@@ -738,9 +748,7 @@ class __extend__(ContextPartShadow):
     # ====== Misc ======
 
     def _activate_unwind_context(self, interp):
-        # TODO put the constant somewhere else.
-        # Primitive 198 is used in BlockClosure >> ensure:
-        if self.is_closure_context() or self.w_method().primitive() != 198:
+        if self.is_closure_context() or not self.is_BlockClosure_ensure():
             self.mark_returned()
             return
         # The first temp is executed flag for both #ensure: and #ifCurtailed:
@@ -750,7 +758,8 @@ class __extend__(ContextPartShadow):
             try:
                 self.bytecodePrimValue(interp, 0)
             except Return, nlr:
-                if self is not nlr.s_target_context:
+                assert nlr.s_target_context or nlr.is_local
+                if self is not nlr.s_target_context and not nlr.is_local:
                     raise nlr
             finally:
                 self.mark_returned()
@@ -964,11 +973,9 @@ BYTECODE_TABLE = initialize_bytecode_table()
 # in order to enable tracing/jumping for message sends etc.
 def debugging():
     def stepping_debugger_init(original):
-        def meth(self, space, image=None, image_name="", trace=False,
-                max_stack_depth=constants.MAX_LOOP_DEPTH):
+        def meth(self, space, image=None, image_name="", trace=False):
             return_value = original(self, space, image=image,
-                                    image_name=image_name, trace=trace,
-                                    max_stack_depth=max_stack_depth)
+                                    image_name=image_name, trace=trace)
             # ##############################################################
 
             self.message_stepping = False
