@@ -748,9 +748,7 @@ class __extend__(ContextPartShadow):
     # ====== Misc ======
 
     def _activate_unwind_context(self, interp):
-        # TODO put the constant somewhere else.
-        # Primitive 198 is used in BlockClosure >> ensure:
-        if self.is_closure_context() or self.w_method().primitive() != 198:
+        if self.is_closure_context() or not self.is_BlockClosure_ensure():
             self.mark_returned()
             return
         # The first temp is executed flag for both #ensure: and #ifCurtailed:

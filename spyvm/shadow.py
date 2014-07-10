@@ -777,6 +777,9 @@ class ContextPartShadow(AbstractRedirectingShadow):
     def is_closure_context(self):
         raise NotImplementedError()
 
+    def is_BlockClosure_ensure(self):
+        raise NotImplementedError()
+
     def home_is_self(self):
         raise NotImplementedError()
 
@@ -998,6 +1001,9 @@ class BlockContextShadow(ContextPartShadow):
     def is_closure_context(self):
         return True
 
+    def is_BlockClosure_ensure(self):
+        return False
+
     def home_is_self(self):
         return False
 
@@ -1080,7 +1086,7 @@ class BlockContextShadow(ContextPartShadow):
         return '[] in %s' % self.w_method().get_identifier_string()
 
 class MethodContextShadow(ContextPartShadow):
-    _attrs_ = ['closure', '_w_receiver', '_w_method']
+    _attrs_ = ['closure', '_w_receiver', '_w_method', '_is_BlockClosure_ensure']
     repr_classname = "MethodContextShadow"
 
     # === Initialization ===
@@ -1102,6 +1108,7 @@ class MethodContextShadow(ContextPartShadow):
             self.init_stack_and_temps()
         else:
             self._w_method = None
+            self._is_BlockClosure_ensure = False
 
         argc = len(arguments)
         for i0 in range(argc):
@@ -1174,6 +1181,9 @@ class MethodContextShadow(ContextPartShadow):
     def store_w_method(self, w_method):
         assert isinstance(w_method, model.W_CompiledMethod)
         self._w_method = w_method
+        if w_method:
+            # Primitive 198 is used in BlockClosure >> ensure:
+            self._is_BlockClosure_ensure = (w_method.primitive() == 198)
 
     def w_receiver(self):
         return self._w_receiver
@@ -1191,6 +1201,9 @@ class MethodContextShadow(ContextPartShadow):
 
     def is_closure_context(self):
         return self.closure is not None
+
+    def is_BlockClosure_ensure(self):
+        return self._is_BlockClosure_ensure
 
     def home_is_self(self):
         return not self.is_closure_context()
