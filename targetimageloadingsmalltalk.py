@@ -87,7 +87,7 @@ def _run_code(interp, code, as_benchmark=False):
     except error.Exit, e:
         print e.msg
         return 1
-    
+
     if not as_benchmark:
         try:
             w_result = interp.perform(w_receiver, selector)
@@ -121,12 +121,11 @@ def _usage(argv):
           -b|--benchmark [code string]
           -p|--poll_events
           -ni|--no-interrupts
-          -d|--max-stack-depth [number, default %d, <= 0 disables stack protection]
           -l|--storage-log
           -L|--storage-log-aggregate
           -E|--storage-log-elements
           [image path, default: Squeak.image]
-    """ % (argv[0], constants.MAX_LOOP_DEPTH)
+    """ % argv[0]
 
 def _arg_missing(argv, idx, arg):
     if len(argv) == idx + 1:
@@ -144,9 +143,8 @@ def entry_point(argv):
     stringarg = ""
     code = None
     as_benchmark = False
-    max_stack_depth = constants.MAX_LOOP_DEPTH
     interrupts = True
-    
+
     while idx < len(argv):
         arg = argv[idx]
         if arg in ["-h", "--help"]:
@@ -185,10 +183,6 @@ def entry_point(argv):
             idx += 1
         elif arg in ["-ni", "--no-interrupts"]:
             interrupts = False
-        elif arg in ["-d", "--max-stack-depth"]:
-            _arg_missing(argv, idx, arg)
-            max_stack_depth = int(argv[idx + 1])
-            idx += 1
         elif arg in ["-l", "--storage-log"]:
             storage_logger.activate()
         elif arg in ["-L", "--storage-log-aggregate"]:
@@ -215,13 +209,13 @@ def entry_point(argv):
     except OSError as e:
         os.write(2, "%s -- %s (LoadError)\n" % (os.strerror(e.errno), path))
         return 1
-    
+
     space = prebuilt_space
     image_reader = squeakimage.reader_for_image(space, squeakimage.Stream(data=imagedata))
     image = create_image(space, image_reader)
     interp = interpreter.Interpreter(space, image, image_name=path,
                 trace=trace, evented=evented,
-                interrupts=interrupts, max_stack_depth=max_stack_depth)
+                interrupts=interrupts)
     space.runtime_setup(argv[0])
     result = 0
     if benchmark is not None:

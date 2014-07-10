@@ -4,7 +4,7 @@ from spyvm.shadow import ContextPartShadow, MethodContextShadow, BlockContextSha
 from spyvm import model, constants, primitives, conftest, wrapper
 from spyvm.tool.bitmanipulation import splitter
 
-from rpython.rlib import jit
+from rpython.rlib import jit, rstackovf
 from rpython.rlib import objectmodel, unroll
 
 class MissingBytecode(Exception):
@@ -24,7 +24,7 @@ def get_printable_location(pc, self, method):
 
 class Interpreter(object):
     _immutable_fields_ = ["space", "image", "image_name",
-                          "max_stack_depth", "interrupt_counter_size",
+                          "interrupt_counter_size",
                           "startup_time", "evented", "interrupts"]
 
     jit_driver = jit.JitDriver(
@@ -35,8 +35,7 @@ class Interpreter(object):
     )
 
     def __init__(self, space, image=None, image_name="",
-                trace=False, evented=True, interrupts=True,
-                max_stack_depth=constants.MAX_LOOP_DEPTH):
+                trace=False, evented=True, interrupts=True):
         import time
 
         # === Initialize immutable variables
@@ -47,7 +46,6 @@ class Interpreter(object):
             self.startup_time = image.startup_time
         else:
             self.startup_time = constants.CompileTime
-        self.max_stack_depth = max_stack_depth
         self.evented = evented
         self.interrupts = interrupts
         try:
@@ -57,7 +55,6 @@ class Interpreter(object):
 
         # === Initialize mutable variables
         self.interrupt_check_counter = self.interrupt_counter_size
-        self.current_stack_depth = 0
         self.next_wakeup_tick = 0
         self.trace = trace
         self.trace_proxy = False
@@ -66,7 +63,6 @@ class Interpreter(object):
         # This is the top-level loop and is not invoked recursively.
         s_new_context = w_active_context.as_context_get_shadow(self.space)
         while True:
-            assert self.current_stack_depth == 0
             # Need to save s_sender, loop_bytecodes will nil this on return
             # Virtual references are not allowed here, and neither are "fresh" contexts (except for the toplevel one).
             assert s_new_context.virtual_sender is jit.vref_None
@@ -128,16 +124,12 @@ class Interpreter(object):
             # The same frame object must not pass through here recursively!
             if s_frame.is_fresh() and s_sender is not None:
                 s_frame.virtual_sender = jit.virtual_ref(s_sender)
-
-            self.current_stack_depth += 1
-            if self.max_stack_depth > 0:
-                if self.current_stack_depth >= self.max_stack_depth:
-                    raise StackOverflow(s_frame)
-
             # Now (continue to) execute the context bytecodes
             self.loop_bytecodes(s_frame, may_context_switch)
+        except rstackovf.StackOverflow:
+            rstackovf.check_stack_overflow()
+            raise StackOverflow(s_frame)
         finally:
-            self.current_stack_depth -= 1
             # Cleanly leave the context. This will finish the virtual sender-reference, if
             # it is still there, which can happen in case of ProcessSwitch or StackOverflow;
             # in case of a Return, this will already be handled while unwinding the stack.
@@ -237,7 +229,7 @@ class Interpreter(object):
         return s_frame
 
     def padding(self, symbol=' '):
-        return symbol * self.current_stack_depth
+        return symbol
 
 class ReturnFromTopLevel(Exception):
     _attrs_ = ["object"]
@@ -976,11 +968,9 @@ BYTECODE_TABLE = initialize_bytecode_table()
 # in order to enable tracing/jumping for message sends etc.
 def debugging():
     def stepping_debugger_init(original):
-        def meth(self, space, image=None, image_name="", trace=False,
-                max_stack_depth=constants.MAX_LOOP_DEPTH):
+        def meth(self, space, image=None, image_name="", trace=False):
             return_value = original(self, space, image=image,
-                                    image_name=image_name, trace=trace,
-                                    max_stack_depth=max_stack_depth)
+                                    image_name=image_name, trace=trace)
             # ##############################################################
 
             self.message_stepping = False
