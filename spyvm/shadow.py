@@ -38,16 +38,27 @@ class AbstractShadow(object):
     def size(self):
         raise NotImplementedError("Abstract class")
 
+    # This will invoke an appropriate copy_from_* method.
+    # Overwriting this allows optimized transitions between certain storage types.
+    def copy_into(self, other_shadow):
+        other_shadow.copy_from(self)
+    
     def attach_shadow(self): pass
 
     def copy_field_from(self, n0, other_shadow):
         self.store(n0, other_shadow.fetch(n0))
 
-    # This can be overwritten to change the order of initialization.
     def copy_from(self, other_shadow):
         assert self.size() == other_shadow.size()
         for i in range(self.size()):
             self.copy_field_from(i, other_shadow)
+    
+    def copy_from_AllNil(self, all_nil_storage):
+        self.copy_from(all_nil_storage)
+    def copy_from_SmallIntegerOrNil(self, small_int_storage):
+        self.copy_from(small_int_storage)
+    def copy_from_FloatOrNil(self, float_storage):
+        self.copy_from(float_storage)
 
 class AbstractStorageShadow(AbstractShadow):
     _attrs_ = []
@@ -80,6 +91,8 @@ class AllNilStorageShadow(AbstractStorageShadow):
         if n0 >= self._size:
             raise IndexError
         return self.space.w_nil
+    def copy_into(self, other_shadow):
+        other_shadow.copy_from_AllNil(self)
     def do_store(self, n0, w_value):
         pass
     def size(self):
@@ -117,6 +130,9 @@ class AbstractValueOrNilStorageMixin(object):
             self.storage[n0] = self.nil_value
         else:
             self.storage[n0] = self.unwrap(self.space, w_val)
+            
+    def copy_from_AllNil(self, all_nil_storage):
+        pass # Already initialized
 
 # This is to avoid code duplication
 @objectmodel.specialize.arg(0)
@@ -143,6 +159,8 @@ class SmallIntegerOrNilStorageShadow(AbstractStorageShadow):
     @staticmethod
     def unwrap(space, w_val):
         return space.unwrap_int(w_val)
+    def copy_into(self, other_shadow):
+        other_shadow.copy_from_SmallIntegerOrNil(self)
 
 class FloatOrNilStorageShadow(AbstractStorageShadow):
     repr_classname = "FloatOrNilStorageShadow"
@@ -162,6 +180,8 @@ class FloatOrNilStorageShadow(AbstractStorageShadow):
     @staticmethod
     def unwrap(space, w_val):
         return space.unwrap_float(w_val)
+    def copy_into(self, other_shadow):
+        other_shadow.copy_from_FloatOrNil(self)
 
 def empty_storage(space, w_self, size, weak=False):
     if weak:
@@ -170,6 +190,7 @@ def empty_storage(space, w_self, size, weak=False):
         return ListStorageShadow(space, w_self, size)
     return AllNilStorageShadow(space, w_self, size)
 
+@jit.unroll_safe
 def find_storage_for_objects(space, vars, weak=False):
     if weak:
         return WeakListStorageShadow
@@ -212,7 +233,10 @@ class ListStorageMixin(object):
     def copy_from(self, other_shadow):
         if self.size() != other_shadow.size():
             self.initialize_storage(other_shadow.size())
-        AbstractShadow.copy_from(self, other_shadow)
+        for i in range(self.size()):
+            w_val = other_shadow.fetch(i)
+            if not w_val.is_nil(self.space):
+                self.store(i, w_val)
 
 class ListStorageShadow(AbstractStorageShadow):
     _attrs_ = ['storage']

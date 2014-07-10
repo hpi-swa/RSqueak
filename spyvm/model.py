@@ -614,7 +614,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     
     def switch_shadow(self, new_shadow, w_element=None):
         old_shadow = self.assert_shadow()
-        new_shadow.copy_from(old_shadow)
+        old_shadow.copy_into(new_shadow)
         self.store_shadow(new_shadow)
         new_shadow.attach_shadow()
         self.log_storage("Switched", old_shadow, w_element=w_element)
