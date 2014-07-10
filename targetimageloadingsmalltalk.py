@@ -125,6 +125,7 @@ def _usage(argv):
           -r|--run [code string]
           -b|--benchmark [code string]
           -p|--poll_events
+          -s|--smalltalk-args [argument to pass]
           [image path, default: Squeak.image]
     """ % argv[0]
 
@@ -148,9 +149,7 @@ def entry_point(argv):
 
     while idx < len(argv):
         arg = argv[idx]
-        if path is not None: # smalltalk args
-            smalltalk_args.append(arg)
-        elif arg in ["-h", "--help"]:
+        if arg in ["-h", "--help"]:
             _usage(argv)
             return 0
         elif arg in ["-j", "--jit"]:
@@ -183,6 +182,9 @@ def entry_point(argv):
             _arg_missing(argv, idx, arg)
             code = argv[idx + 1]
             as_benchmark = True
+            idx += 1
+        elif arg in ["-s", "--smalltalk-args"]:
+            smalltalk_args.append(argv[idx + 1])
             idx += 1
         elif path is None:
             path = argv[idx]
