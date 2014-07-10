@@ -163,6 +163,8 @@ def entry_point(argv):
 
 def result_string(w_result):
     # This will also print contents of strings/symbols/numbers
+    if not w_result:
+        return ""
     return w_result.as_repr_string().replace('\r', '\n')
 
 def compile_code(interp, w_receiver, code):
@@ -232,6 +234,7 @@ def active_context(space):
     return w_active_context.as_context_get_shadow(space)
 
 def execute_context(interp, s_frame, measure=False):
+    print "" # Line break after image-loading-indicator characters
     try:
         return interp.interpret_toplevel(s_frame.w_self())
     except error.Exit, e:
