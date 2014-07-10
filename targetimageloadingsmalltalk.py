@@ -12,7 +12,7 @@ from spyvm.interpreter_proxy import VirtualMachine
 
 def _usage(argv):
     print """
-    Usage: %s <path> [-r|-m] [-naH] [-jpis] [-tlLE]
+    Usage: %s <path> [-r|-m] [-naHu] [-jpis] [-tlLE]
             <path> - image path (default: Squeak.image)
           
           Execution mode:
@@ -24,13 +24,12 @@ def _usage(argv):
           Execution parameters:
             -n|--num <int> - Only with -m or -r, SmallInteger to be used as receiver (default: nil).
             -a|--arg <arg> - Only with -m, will be used as single String argument.
-            -H|--headless  - Only with -m or -r, run in headless mode.
-                             Execute the context directly, ignoring the active context in the image.
-                             The execution will 'hijack' the active process.
-                             Image window will probably not open. Good for benchmarking.
-                             By default, a high-priority process will be created for the context, then the image
-                             will be started normally.
-            -u             - Only with -m or -r, try to stop UI-process at startup. Can help with -H.
+            -P|--process   - Only with -m or -r, create a high-priority Process for the context.
+                             The images last active Process will be started first.
+                             By default, run in headless mode. This will ignore the active process
+                             in the image and execute the context directly. The image window will
+                             probably not open. Good for benchmarking.
+            -u             - Only with -m or -r, try to stop UI-process at startup. Can help benchmarking.
             
           Other parameters:
             -j|--jit <jitargs> - jitargs will be passed to the jit configuration.
@@ -62,7 +61,7 @@ def entry_point(argv):
     number = 0
     have_number = False
     stringarg = None
-    headless = False
+    headless = True
     # == Other parameters
     poll = False
     interrupts = True
@@ -100,8 +99,8 @@ def entry_point(argv):
         elif arg in ["-s"]:
             arg, idx = get_parameter(argv, idx, arg)
             max_stack_depth = int(arg)
-        elif arg in ["-H", "--headless"]:
-            headless = True
+        elif arg in ["-P", "--process"]:
+            headless = False
         elif arg in ["-u"]:
             from spyvm.plugins.vmdebugging import stop_ui_process
             stop_ui_process()
