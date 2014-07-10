@@ -14,13 +14,13 @@ def _usage(argv):
     print """
     Usage: %s <path> [-r|-m] [-naHu] [-jpis] [-tlLE]
             <path> - image path (default: Squeak.image)
-          
+
           Execution mode:
             (no flags)             - Image will be normally opened.
             -r|--run <code>        - Code will be compiled and executed, result printed.
             -m|--method <selector> - Selector will be sent to a SmallInteger, result printed.
             -h|--help              - Output this and exit.
-            
+
           Execution parameters:
             -n|--num <int> - Only with -m or -r, SmallInteger to be used as receiver (default: nil).
             -a|--arg <arg> - Only with -m, will be used as single String argument.
@@ -30,28 +30,25 @@ def _usage(argv):
                              in the image and execute the context directly. The image window will
                              probably not open. Good for benchmarking.
             -u             - Only with -m or -r, try to stop UI-process at startup. Can help benchmarking.
-            
+
           Other parameters:
             -j|--jit <jitargs> - jitargs will be passed to the jit configuration.
             -p|--poll          - Actively poll for events. Try this if the image is not responding well.
             -i|--no-interrupts - Disable timer interrupt. Disables non-cooperative scheduling.
-            -s <num>           - After num stack frames, the entire stack will be dumped to the heap.
-                                 This breaks performance, but protects agains stack overflow.
-                                 num <= 0 disables stack protection (default: %d)
-            
+
           Logging parameters:
             -t|--trace                 - Output a trace of each message, primitive, return value and process switch.
             -l|--storage-log           - Output a log of storage operations.
             -L|--storage-log-aggregate - Output an aggregated storage log at the end of execution.
             -E|--storage-log-elements  - Include classnames of elements into the storage log.
-            
-    """ % (argv[0], constants.MAX_LOOP_DEPTH)
+
+    """ % argv[0]
 
 def get_parameter(argv, idx, arg):
     if len(argv) < idx + 1:
         raise RuntimeError("Error: missing argument after %s" % arg)
     return argv[idx], idx + 1
-    
+
 prebuilt_space = objspace.ObjSpace()
 
 def entry_point(argv):
@@ -65,12 +62,11 @@ def entry_point(argv):
     # == Other parameters
     poll = False
     interrupts = True
-    max_stack_depth = constants.MAX_LOOP_DEPTH
     trace = False
-    
+
     path = argv[1] if len(argv) > 1 else "Squeak.image"
     idx = 2
-    
+
     while idx < len(argv):
         arg = argv[idx]
         idx += 1
@@ -96,9 +92,6 @@ def entry_point(argv):
             code, idx = get_parameter(argv, idx, arg)
         elif arg in ["-i", "--no-interrupts"]:
             interrupts = False
-        elif arg in ["-s"]:
-            arg, idx = get_parameter(argv, idx, arg)
-            max_stack_depth = int(arg)
         elif arg in ["-P", "--process"]:
             headless = False
         elif arg in ["-u"]:
@@ -113,10 +106,10 @@ def entry_point(argv):
         else:
             _usage(argv)
             return -1
-    
+
     if code and selector:
         raise RuntimeError("Cannot handle both -r and -m.")
-    
+
     path = rpath.rabspath(path)
     try:
         f = open_file_as_stream(path, mode="rb", buffering=0)
@@ -127,16 +120,16 @@ def entry_point(argv):
     except OSError as e:
         os.write(2, "%s -- %s (LoadError)\n" % (os.strerror(e.errno), path))
         return 1
-    
+
     # Load & prepare image and environment
     space = prebuilt_space
     image_reader = squeakimage.reader_for_image(space, squeakimage.Stream(data=imagedata))
     image = create_image(space, image_reader)
     interp = interpreter.Interpreter(space, image, image_name=path,
                 trace=trace, evented=not poll,
-                interrupts=interrupts, max_stack_depth=max_stack_depth)
+                interrupts=interrupts)
     space.runtime_setup(argv[0])
-    
+
     # Create context to be executed
     if code or selector:
         if not have_number:
@@ -155,7 +148,7 @@ def entry_point(argv):
             context = active_context(interp.space)
     else:
         context = active_context(interp.space)
-    
+
     w_result = execute_context(interp, context)
     print result_string(w_result)
     storage_logger.print_aggregated_log()
@@ -198,13 +191,13 @@ def compile_code(interp, w_receiver, code):
         return None
     w_receiver_class.as_class_get_shadow(space).s_methoddict().sync_method_cache()
     return selector
-    
+
 def create_context(interp, w_receiver, selector, stringarg):
     args = []
     if stringarg:
         args.append(interp.space.wrap_string(stringarg))
     return interp.create_toplevel_context(w_receiver, selector, w_arguments = args)
-    
+
 def create_process(interp, s_frame):
     space = interp.space
     w_active_process = wrapper.scheduler(space).active_process()
@@ -221,10 +214,10 @@ def create_process(interp, s_frame):
         priority = 7
     w_benchmark_proc.store(space, 1, s_frame.w_self())
     w_benchmark_proc.store(space, 2, space.wrap_int(priority))
-    
+
     # Make process eligible for scheduling
     wrapper.ProcessWrapper(space, w_benchmark_proc).put_to_sleep()
-    
+
 def active_context(space):
     w_active_process = wrapper.scheduler(space).active_process()
     active_process = wrapper.ProcessWrapper(space, w_active_process)
@@ -240,7 +233,7 @@ def execute_context(interp, s_frame, measure=False):
     except error.Exit, e:
         print "Exited: %s" % e.msg
         return None
-    
+
 # _____ Target and Main _____
 
 def target(driver, *args):
