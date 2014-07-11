@@ -693,9 +693,11 @@ class ContextPartShadow(AbstractRedirectingShadow):
     # === Sender ===
 
     def store_s_sender(self, s_sender, raise_error=True):
-        self._s_sender = s_sender
-        if raise_error:
-            raise error.SenderChainManipulation(self)
+        if self._s_sender is not s_sender:
+            # it happens
+            self._s_sender = s_sender
+            if raise_error:
+                raise error.SenderChainManipulation(self)
 
     def w_sender(self):
         sender = self.s_sender()

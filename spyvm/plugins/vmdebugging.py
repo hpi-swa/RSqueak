@@ -8,15 +8,15 @@ DebuggingPlugin.userdata['stop_ui'] = False
 def stop_ui_process():
     DebuggingPlugin.userdata['stop_ui'] = True
 
-@DebuggingPlugin.expose_primitive(unwrap_spec=[object])
-def trace(interp, s_frame, w_rcvr):
-    interp.trace = True
-    return w_rcvr
+# @DebuggingPlugin.expose_primitive(unwrap_spec=[object])
+# def trace(interp, s_frame, w_rcvr):
+#     interp.trace = True
+#     return w_rcvr
 
-@DebuggingPlugin.expose_primitive(unwrap_spec=[object])
-def untrace(interp, s_frame, w_rcvr):
-    interp.trace = False
-    return w_rcvr
+# @DebuggingPlugin.expose_primitive(unwrap_spec=[object])
+# def untrace(interp, s_frame, w_rcvr):
+#     interp.trace = False
+#     return w_rcvr
 
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object])
 def trace_proxy(interp, s_frame, w_rcvr):

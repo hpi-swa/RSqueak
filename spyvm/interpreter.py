@@ -25,7 +25,7 @@ def get_printable_location(pc, self, method):
 class Interpreter(object):
     _immutable_fields_ = ["space", "image", "image_name",
                           "interrupt_counter_size",
-                          "startup_time", "evented", "interrupts"]
+                          "startup_time", "trace", "evented", "interrupts"]
 
     jit_driver = jit.JitDriver(
         greens=['pc', 'self', 'method'],
@@ -57,6 +57,7 @@ class Interpreter(object):
         self.interrupt_check_counter = self.interrupt_counter_size
         self.next_wakeup_tick = 0
         self.trace = trace
+        self.current_stack_depth = 0
         self.trace_proxy = False
 
     def loop(self, w_active_context):
@@ -69,7 +70,7 @@ class Interpreter(object):
                 raise Exception("loop_bytecodes left without raising...")
             except StackOverflow, e:
                 if self.trace:
-                    print "====== StackOverflow, contexts forced to heap at: %s" % e.s_new_context.short_str()
+                    print "====== StackOverflow, contexts forced to heap at: \n%s" % e.s_new_context.print_stack()
                 s_new_context = e.s_new_context
             except Return, nlr:
                 assert nlr.s_target_context or nlr.is_local
@@ -80,6 +81,10 @@ class Interpreter(object):
                         s_new_context._activate_unwind_context(self)
                         s_new_context = s_sender
                 s_new_context.push(nlr.value)
+            except SenderManipulation, e:
+                if self.trace:
+                    print "====== SenderManipulation out of process, all contexts forced to heap!!!\n%s" % e.s_new_context.print_stack()
+                s_new_context = e.s_new_context
             except ProcessSwitch, p:
                 assert not self.space.suppress_process_switch[0], "ProcessSwitch should be disabled..."
                 if self.trace:
@@ -223,7 +228,7 @@ class Interpreter(object):
         return s_frame
 
     def padding(self, symbol=' '):
-        return symbol
+        return symbol * self.current_stack_depth
 
 class ReturnFromTopLevel(Exception):
     _attrs_ = ["object"]
@@ -243,6 +248,10 @@ class ContextSwitchException(Exception):
     _attrs_ = ["s_new_context"]
     def __init__(self, s_new_context):
         self.s_new_context = s_new_context
+
+class SenderManipulation(ContextSwitchException):
+    """This forces frames to the heap down to where the sender was
+    manipulated."""
 
 class StackOverflow(ContextSwitchException):
     """This causes the current jit-loop to be left.
@@ -570,6 +579,7 @@ class __extend__(ContextPartShadow):
 
         # ######################################################################
         if interp.trace:
+            interp.current_stack_depth += 1
             print interp.padding() + s_frame.short_str()
 
         return interp.stack_frame(s_frame, self)
@@ -723,12 +733,18 @@ class __extend__(ContextPartShadow):
             try:
                 self.w_receiver().store(self.space, third, self.top())
             except error.SenderChainManipulation, e:
-                raise StackOverflow(self)
+                # TODO: shouldn't need to throw, simply mark the
+                # receiver as dirty and handle it when we return out
+                # of that context
+                raise SenderManipulation(self)
         elif opType == 6:
             try:
                 self.w_receiver().store(self.space, third, self.pop())
             except error.SenderChainManipulation, e:
-                raise StackOverflow(self)
+                # TODO: shouldn't need to throw, simply mark the
+                # receiver as dirty and handle it when we return out
+                # of that context
+                raise SenderManipulation(self)
         elif opType == 7:
             w_association = self.w_method().getliteral(third)
             association = wrapper.AssociationWrapper(self.space, w_association)
