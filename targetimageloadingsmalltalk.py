@@ -12,7 +12,7 @@ from spyvm.interpreter_proxy import VirtualMachine
 
 def _usage(argv):
     print """
-    Usage: %s <path> [-r|-m] [-naHu] [-jpis] [-tlLE]
+    Usage: %s <path> [-r|-m|-h] [-naPu] [-jpis] [-tlLE]
             <path> - image path (default: Squeak.image)
 
           Execution mode:
@@ -35,9 +35,6 @@ def _usage(argv):
             -j|--jit <jitargs> - jitargs will be passed to the jit configuration.
             -p|--poll          - Actively poll for events. Try this if the image is not responding well.
             -i|--no-interrupts - Disable timer interrupt. Disables non-cooperative scheduling.
-            -s <num>           - After num stack frames, the entire stack will be dumped to the heap.
-                                 This breaks performance, but protects agains stack overflow.
-                                 num <= 0 disables stack protection (default: %d)
             -S                 - Disable specialized storage strategies; always use generic ListStorage
             
           Logging parameters:
