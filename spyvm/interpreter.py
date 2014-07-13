@@ -128,10 +128,11 @@ class Interpreter(object):
             # Now (continue to) execute the context bytecodes
             self.loop_bytecodes(s_frame, may_context_switch)
         except rstackovf.StackOverflow:
-            if self.is_tracing():
-                self.stack_depth -= 1
             rstackovf.check_stack_overflow()
             raise StackOverflow(s_frame)
+        finally:
+            if self.is_tracing():
+                self.stack_depth -= 1
 
     def step(self, context):
         bytecode = context.fetch_next_bytecode()
@@ -229,7 +230,7 @@ class Interpreter(object):
         
     def padding(self, symbol=' '):
         assert self.is_tracing()
-        return self.stack_depth * symbol
+        return symbol * self.stack_depth
 
 class ReturnFromTopLevel(Exception):
     _attrs_ = ["object"]

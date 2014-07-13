@@ -370,24 +370,31 @@ def func(interp, s_frame, x, y):
 
 FAIL = 19
 
+def get_string(w_obj):
+    if isinstance(w_obj, model.W_BytesObject):
+        return w_obj.as_string()
+    return w_obj.as_repr_string()
+
 @expose_primitive(FAIL)
 def func(interp, s_frame, argcount):
     if interp.space.headless.is_set() and s_frame.w_method().lookup_selector == 'doesNotUnderstand:':
-        w_msg = s_frame.peek(1)
-        if isinstance(w_msg, model.W_BytesObject):
-            print "== Error message: %s" % w_msg.as_string()
+        print "== Error message: %s" % get_string(s_frame.peek(1))
+        print "== Receiver: %s" % s_frame.w_receiver().as_repr_string()
+        w_arguments = s_frame.w_arguments()
+        if len(w_arguments) >= 1:
+            w_message = w_arguments[0]
+            if isinstance(w_message, model.W_PointersObject):
+                fields = w_message.fetch_all(interp.space)
+                if len(fields) >= 1:
+                    print "== Selector: %s" % get_string(fields[0])
+                if len(fields) >= 2:
+                    w_args = fields[0]
+                    if isinstance(w_args, model.W_PointersObject):
+                        arg_strings = [ get_string(w_arg) for w_arg in w_args.fetch_all(interp.space) ]
+                        print "== Arguments: %s" % ', '.join(arg_strings)
+            else:
+                print "== Message: %s" % w_message
         print "== VM Stack:%s" % s_frame.print_stack()
-        print "== Message:"
-        for w_argument in s_frame.w_arguments():
-            print w_argument.as_repr_string()
-            if isinstance(w_argument, model.W_PointersObject):
-                fields = w_argument.fetch_all(interp.space)
-                for i, w_field in enumerate(fields):
-                    print "\t%s" % w_field.as_repr_string()
-                    if i == 1 and isinstance(w_field, model.W_PointersObject):
-                        # These are the arguments to the not-undersood message
-                        for w_field_field in w_field.fetch_all(interp.space):
-                            print "\t\t%s" % w_field_field.as_repr_string()
         w_stack = s_frame.peek(0)
         if isinstance(w_stack, model.W_BytesObject):
             print "== Squeak stack:\n%s" % w_stack.as_string()
