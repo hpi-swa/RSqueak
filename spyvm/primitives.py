@@ -2,10 +2,8 @@ import os
 import inspect
 import math
 import operator
-from spyvm import model, shadow
-from spyvm import constants, display
-from spyvm.error import PrimitiveFailedError, \
-    PrimitiveNotYetWrittenError
+from spyvm import model, shadow, error, constants, display
+from spyvm.error import PrimitiveFailedError, PrimitiveNotYetWrittenError
 from spyvm import wrapper
 
 from rpython.rlib import rarithmetic, rfloat, unroll, jit
@@ -374,14 +372,26 @@ FAIL = 19
 
 @expose_primitive(FAIL)
 def func(interp, s_frame, argcount):
-    if s_frame.w_method().lookup_selector == 'doesNotUnderstand:':
-        print ''
-        print s_frame.print_stack()
-        w_message = s_frame.peek(0)
-        print ("%s" % w_message).replace('\r', '\n')
-        print ("%s" % s_frame.peek(1)).replace('\r', '\n')
-        if isinstance(w_message, model.W_PointersObject):
-            print ('%s' % w_message.fetch_all(s_frame.space)).replace('\r', '\n')
+    if interp.space.headless.is_set() and s_frame.w_method().lookup_selector == 'doesNotUnderstand:':
+        w_msg = s_frame.peek(1)
+        if isinstance(w_msg, model.W_BytesObject):
+            print "== Error message: %s" % w_msg.as_string()
+        print "== VM Stack:%s" % s_frame.print_stack()
+        print "== Message:"
+        for w_argument in s_frame.w_arguments():
+            print w_argument.as_repr_string()
+            if isinstance(w_argument, model.W_PointersObject):
+                fields = w_argument.fetch_all(interp.space)
+                for i, w_field in enumerate(fields):
+                    print "\t%s" % w_field.as_repr_string()
+                    if i == 1 and isinstance(w_field, model.W_PointersObject):
+                        # These are the arguments to the not-undersood message
+                        for w_field_field in w_field.fetch_all(interp.space):
+                            print "\t\t%s" % w_field_field.as_repr_string()
+        w_stack = s_frame.peek(0)
+        if isinstance(w_stack, model.W_BytesObject):
+            print "== Squeak stack:\n%s" % w_stack.as_string()
+        raise error.Exit("Unhandled doesNotUnderstand:")
     raise PrimitiveFailedError()
 
 # ___________________________________________________________________________

@@ -821,9 +821,10 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
 
     def as_string(self):
         if self.bytes is not None:
-            return "".join(self.bytes)
+            string = "".join(self.bytes)
         else:
-            return "".join([self.c_bytes[i] for i in range(self.size())])
+            string = "".join([self.c_bytes[i] for i in range(self.size())])
+        return string.replace('\r', '\n')
 
     def invariant(self):
         if not W_AbstractObjectWithClassReference.invariant(self):

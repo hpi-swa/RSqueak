@@ -929,6 +929,9 @@ class ContextPartShadow(AbstractRedirectingShadow):
     # ______________________________________________________________________
     # Printing
 
+    def argument_strings(self):
+        return [ w_arg.as_repr_string() for w_arg in self.w_arguments() ]
+    
     def __str__(self):
         retval = self.short_str()
         retval += "\n%s" % self.w_method().bytecode_string(markBytecode=self.pc() + 1)
@@ -1099,7 +1102,7 @@ class BlockContextShadow(ContextPartShadow):
 
     # === Printing ===
 
-    def argument_strings(self):
+    def w_arguments(self):
         return []
 
     def method_str(self):
@@ -1255,13 +1258,9 @@ class MethodContextShadow(ContextPartShadow):
 
     # === Printing ===
 
-    def argument_strings(self):
+    def w_arguments(self):
         argcount = self.w_method().argsize
-        tempsize = self.w_method().tempsize()
-        args = []
-        for i in range(argcount):
-            args.append(self.peek(tempsize - i - 1).as_repr_string())
-        return args
+        return [ self.stack_get(i) for i in range(argcount) ]
 
     def method_str(self):
         block = '[] in ' if self.is_closure_context() else ''

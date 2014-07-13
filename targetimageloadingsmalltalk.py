@@ -165,6 +165,7 @@ def entry_point(argv):
                 return -1 # Compilation failed, message is printed.
         s_frame = create_context(interp, w_receiver, selector, stringarg)
         if headless:
+            space.headless.set()
             context = s_frame
         else:
             create_process(interp, s_frame)
