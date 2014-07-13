@@ -1,7 +1,7 @@
 import py
 import os
 from spyvm.shadow import ContextPartShadow, MethodContextShadow, BlockContextShadow, MethodNotFound
-from spyvm import model, constants, primitives, conftest, wrapper
+from spyvm import model, constants, primitives, conftest, wrapper, objspace
 from spyvm.tool.bitmanipulation import splitter
 
 from rpython.rlib import jit, rstackovf
@@ -36,8 +36,6 @@ class Interpreter(object):
 
     def __init__(self, space, image=None, image_name="",
                 trace=False, evented=True, interrupts=True):
-        import time
-
         # === Initialize immutable variables
         self.space = space
         self.image = image
@@ -56,8 +54,9 @@ class Interpreter(object):
         # === Initialize mutable variables
         self.interrupt_check_counter = self.interrupt_counter_size
         self.next_wakeup_tick = 0
-        self.trace = trace
-        self.trace_proxy = False
+        self.trace = objspace.ConstantFlag(trace)
+        self.trace_proxy = objspace.ConstantFlag()
+        self.stack_depth = 0
 
     def loop(self, w_active_context):
         # This is the top-level loop and is not invoked recursively.
@@ -68,7 +67,7 @@ class Interpreter(object):
                 self.loop_bytecodes(s_new_context)
                 raise Exception("loop_bytecodes left without raising...")
             except StackOverflow, e:
-                if self.trace:
+                if self.is_tracing():
                     print "====== StackOverflow, contexts forced to heap at: %s" % e.s_new_context.short_str()
                 s_new_context = e.s_new_context
             except Return, nlr:
@@ -81,8 +80,8 @@ class Interpreter(object):
                         s_new_context = s_sender
                 s_new_context.push(nlr.value)
             except ProcessSwitch, p:
-                assert not self.space.suppress_process_switch[0], "ProcessSwitch should be disabled..."
-                if self.trace:
+                assert not self.space.suppress_process_switch.is_set(), "ProcessSwitch should be disabled..."
+                if self.is_tracing():
                     print "====== Switched process from: %s" % s_new_context.short_str()
                     print "====== to: %s " % p.s_new_context.short_str()
                 s_new_context = p.s_new_context
@@ -118,16 +117,19 @@ class Interpreter(object):
                     s_context._activate_unwind_context(self)
                     raise nlr
 
-
     # This is a wrapper around loop_bytecodes that cleanly enters/leaves the frame
     # and handles the stack overflow protection mechanism.
     def stack_frame(self, s_frame, s_sender, may_context_switch=True):
         try:
+            if self.is_tracing():
+                self.stack_depth += 1
             if s_frame._s_sender is None and s_sender is not None:
                 s_frame.store_s_sender(s_sender, raise_error=False)
             # Now (continue to) execute the context bytecodes
             self.loop_bytecodes(s_frame, may_context_switch)
         except rstackovf.StackOverflow:
+            if self.is_tracing():
+                self.stack_depth -= 1
             rstackovf.check_stack_overflow()
             raise StackOverflow(s_frame)
 
@@ -184,7 +186,7 @@ class Interpreter(object):
                 wrapper.SemaphoreWrapper(self.space, semaphore).signal(s_frame)
         # We have no finalization process, so far.
         # We do not support external semaphores.
-            # In cog, the method to add such a semaphore is only called in GC.
+        # In cog, the method to add such a semaphore is only called in GC.
 
     def time_now(self):
         import time
@@ -222,8 +224,12 @@ class Interpreter(object):
         s_frame.push_all(list(w_arguments))
         return s_frame
 
+    def is_tracing(self):
+        return self.trace.is_set()
+        
     def padding(self, symbol=' '):
-        return symbol
+        assert self.is_tracing()
+        return self.stack_depth * symbol
 
 class ReturnFromTopLevel(Exception):
     _attrs_ = ["object"]
@@ -245,9 +251,9 @@ class ContextSwitchException(Exception):
         self.s_new_context = s_new_context
 
 class StackOverflow(ContextSwitchException):
-    """This causes the current jit-loop to be left.
-    This is an experimental mechanism to avoid stack-overflow errors
-    on OS level, and we suspect it breaks jit performance at least sometimes."""
+    """This causes the current jit-loop to be left, thus avoiding stack overflows.
+    This breaks performance, so it should rarely happen.
+    In case of severe performance problems, execute with -t and check if this occurrs."""
 
 class ProcessSwitch(ContextSwitchException):
     """This causes the interpreter to switch the executed context."""
@@ -569,7 +575,7 @@ class __extend__(ContextPartShadow):
         self.pop() # receiver
 
         # ######################################################################
-        if interp.trace:
+        if interp.is_tracing():
             print interp.padding() + s_frame.short_str()
 
         return interp.stack_frame(s_frame, self)
@@ -586,7 +592,7 @@ class __extend__(ContextPartShadow):
         s_frame = w_method.create_frame(interp.space, receiver, w_args)
 
         # ######################################################################
-        if interp.trace:
+        if interp.is_tracing():
             print '%s %s %s: #%s' % (interp.padding('#'), special_selector, s_frame.short_str(), w_args)
             if not objectmodel.we_are_translated():
                 import pdb; pdb.set_trace()
@@ -617,7 +623,7 @@ class __extend__(ContextPartShadow):
 
     def _call_primitive(self, code, interp, argcount, w_method, w_selector):
         # ##################################################################
-        if interp.trace:
+        if interp.is_tracing():
             print "%s-> primitive %d \t(in %s, named #%s)" % (
                     interp.padding(), code, self.w_method().get_identifier_string(), w_selector.str_content())
         func = primitives.prim_holder.prim_table[code]
@@ -626,7 +632,7 @@ class __extend__(ContextPartShadow):
             # the primitive pushes the result (if any) onto the stack itself
             return func(interp, self, argcount, w_method)
         except primitives.PrimitiveFailedError, e:
-            if interp.trace:
+            if interp.is_tracing():
                 print "%s primitive %d FAILED\t (in %s, named %s)" % (
                     interp.padding(), code, w_method.safe_identifier_string(), w_selector.str_content())
             raise e
@@ -636,7 +642,7 @@ class __extend__(ContextPartShadow):
         # assert self._stack_ptr == self.tempsize()
 
         # ##################################################################
-        if interp.trace:
+        if interp.is_tracing():
             print '%s<- %s' % (interp.padding(), return_value.as_repr_string())
 
         if self.home_is_self() or local_return:
@@ -644,16 +650,16 @@ class __extend__(ContextPartShadow):
             # it will find the sender as a local, and we don't have to
             # force the reference
             s_return_to = None
-            if self.s_sender() is None:
-                # This should never happen while executing a normal image.
-                raise ReturnFromTopLevel(return_value)
+            return_from_top = self.s_sender() is None
         else:
             s_return_to = self.s_home().s_sender()
-            if s_return_to is None:
-                # This should never happen while executing a normal image.
-                raise ReturnFromTopLevel(return_value)
-
-        raise Return(s_return_to, return_value)
+            return_from_top = s_return_to is None
+        
+        if return_from_top:
+            # This should never happen while executing a normal image.
+            raise ReturnFromTopLevel(return_value)
+        else:
+            raise Return(s_return_to, return_value)
 
     # ====== Send/Return bytecodes ======
 

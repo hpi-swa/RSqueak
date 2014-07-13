@@ -109,7 +109,7 @@ def entry_point(argv):
             elif arg in ["-P", "--process"]:
                 headless = False
             elif arg in ["-S"]:
-                space.no_specialized_storage[0] = True
+                space.no_specialized_storage.set()
             elif arg in ["-u"]:
                 from spyvm.plugins.vmdebugging import stop_ui_process
                 stop_ui_process()
@@ -156,9 +156,9 @@ def entry_point(argv):
     # Create context to be executed
     if code or selector:
         if not have_number:
-            w_receiver = interp.space.w_nil
+            w_receiver = space.w_nil
         else:
-            w_receiver = interp.space.wrap_int(number)
+            w_receiver = space.wrap_int(number)
         if code:
             selector = compile_code(interp, w_receiver, code)
             if selector is None:
@@ -168,9 +168,9 @@ def entry_point(argv):
             context = s_frame
         else:
             create_process(interp, s_frame)
-            context = active_context(interp.space)
+            context = active_context(space)
     else:
-        context = active_context(interp.space)
+        context = active_context(space)
 
     w_result = execute_context(interp, context)
     print result_string(w_result)
@@ -184,7 +184,6 @@ def result_string(w_result):
     return w_result.as_repr_string().replace('\r', '\n')
 
 def compile_code(interp, w_receiver, code):
-    import time
     selector = "DoIt%d" % int(time.time())
     space = interp.space
     w_receiver_class = w_receiver.getclass(space)
@@ -194,7 +193,7 @@ def compile_code(interp, w_receiver, code):
     # registered (primitive 136 not called), so the idle process will never be left once it is entered.
     # TODO - Find a way to cleanly initialize the image, without executing the active_context of the image.
     # Instead, we want to execute our own context. Then remove this flag (and all references to it)
-    interp.space.suppress_process_switch[0] = True
+    space.suppress_process_switch.set()
     try:
         w_result = interp.perform(
             w_receiver_class,
@@ -212,7 +211,7 @@ def compile_code(interp, w_receiver, code):
         print_error("Exited while compiling code: %s" % e.msg)
         return None
     finally:
-            interp.space.suppress_process_switch[0] = False
+            space.suppress_process_switch.unset()
     w_receiver_class.as_class_get_shadow(space).s_methoddict().sync_method_cache()
     return selector
 

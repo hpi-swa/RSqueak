@@ -10,22 +10,22 @@ def stop_ui_process():
 
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object])
 def trace(interp, s_frame, w_rcvr):
-    interp.trace = True
+    interp.trace.set()
     return w_rcvr
 
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object])
 def untrace(interp, s_frame, w_rcvr):
-    interp.trace = False
+    interp.trace.unset()
     return w_rcvr
 
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object])
 def trace_proxy(interp, s_frame, w_rcvr):
-    interp.trace_proxy = True
+    interp.trace_proxy.set()
     return w_rcvr
 
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object])
 def untrace_proxy(interp, s_frame, w_rcvr):
-    interp.trace_proxy = False
+    interp.trace_proxy.unset()
     return w_rcvr
 
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object])

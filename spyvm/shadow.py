@@ -186,7 +186,7 @@ class FloatOrNilStorageShadow(AbstractStorageShadow):
 def empty_storage(space, w_self, size, weak=False):
     if weak:
         return WeakListStorageShadow(space, w_self, size)
-    if space.no_specialized_storage[0]:
+    if space.no_specialized_storage.is_set():
         return ListStorageShadow(space, w_self, size)
     return AllNilStorageShadow(space, w_self, size)
 
@@ -194,7 +194,7 @@ def empty_storage(space, w_self, size, weak=False):
 def find_storage_for_objects(space, vars, weak=False):
     if weak:
         return WeakListStorageShadow
-    if space.no_specialized_storage[0]:
+    if space.no_specialized_storage.is_set():
         return ListStorageShadow
     specialized_strategies = 3
     all_nil_can_handle = True

@@ -6,11 +6,33 @@ from rpython.rlib import jit, rpath
 from rpython.rlib.objectmodel import instantiate, specialize
 from rpython.rlib.rarithmetic import intmask, r_uint, int_between
 
+class ConstantFlag(object):
+    """Boolean flag that can be edited, but will be promoted
+    to a constant when jitting."""
+    
+    def __init__(self, set_initially=False):
+        self.flag = [set_initially]
+    
+    def is_set(self):
+        flag = jit.promote(self.flag[0])
+        return flag
+    
+    def set(self):
+        self.flag[0] = True
+    
+    def unset(self):
+        self.flag[0] = False
+    
+    def set_to(self, flag):
+        self.flag[0] = flag
+
 class ObjSpace(object):
     def __init__(self):
-        # If this is True, then no optimizing storage strategies will be used.
+        # If this flag is set, then no optimizing storage strategies will be used.
         # Intended for performance comparisons. Breaks tests.
-        self.no_specialized_storage = [False]
+        self.no_specialized_storage = ConstantFlag()
+        # This is a hack; see compile_code() in targetimageloadingsmalltalk.py
+        self.suppress_process_switch = ConstantFlag()
         
         self.classtable = {}
         self.objtable = {}
@@ -25,9 +47,6 @@ class ObjSpace(object):
         
         self.make_bootstrap_classes()
         self.make_bootstrap_objects()
-        
-        # This is a hack; see compile_code() in targetimageloadingsmalltalk.py
-        self.suppress_process_switch = [False]
 
     def find_executable(self, executable):
         if os.sep in executable or (os.name == "nt" and ":" in executable):

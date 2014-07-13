@@ -8,7 +8,7 @@ def setup_module():
     space, interp, _, _ = read_image('bootstrapped.image')
     w = space.w
     copy_to_module(locals(), __name__)
-    interp.trace = False
+    interp.trace.unset()
     space.initialize_class(space.w_String, interp)
 
 def teardown_module():
@@ -37,8 +37,8 @@ def do_primitive(selector, operation, i=None, j=None, trace=False):
         w_selector = space.get_special_selector(selector)
     except Exception:
         w_selector = find_symbol_in_methoddict_of(selector, w(intmask(candidates[0])).getclass(space).shadow)
-
-    interp.trace=trace
+    
+    interp.trace.set_to(trace)
     for i, v in enumerate(candidates):
         x = w_l(v)
         if j is None:
@@ -50,7 +50,7 @@ def do_primitive(selector, operation, i=None, j=None, trace=False):
                 y = w_l(j)
         z = perform_primitive(x, w_selector, y)
         assert r_uint(z.value) == r_uint(operation(v, y.value))
-    interp.trace=False
+    interp.trace.unset()
 
 def test_bitAnd():
     do_primitive("bitAnd:", operator.and_)
