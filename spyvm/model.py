@@ -1154,7 +1154,7 @@ class W_MappingDisplayBitmap(W_DisplayBitmap):
 
     def compute_pos(self, n):
         return n * (NATIVE_DEPTH / self._depth)
-
+        
 # XXX Shouldn't compiledmethod have class reference for subclassed compiled
 # methods?
 class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
@@ -1185,20 +1185,22 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     
     def __init__(self, space, bytecount=0, header=0):
         self.bytes = ["\x00"] * bytecount
-        self.setheader(space, header)
+        self.setheader(space, header, initializing=True)
 
     def fillin(self, space, g_self):
         # Implicitely sets the header, including self.literalsize
         for i, w_object in enumerate(g_self.get_pointers()):
-            self.literalatput0(space, i, w_object)
+            self.literalatput0(space, i, w_object, initializing=True)
         self.setbytes(g_self.get_bytes()[self.bytecodeoffset():])
 
     # === Setters ===
     
-    def setheader(self, space, header):
+    def setheader(self, space, header, initializing=False):
         _primitive, literalsize, islarge, tempsize, argsize = constants.decode_compiled_method_header(header)
-        self.literalsize = literalsize
-        self.literals = [space.w_nil] * self.literalsize
+        if initializing or self.literalsize != literalsize:
+            # Keep the literals if possible.
+            self.literalsize = literalsize
+            self.literals = [space.w_nil] * self.literalsize
         self.header = header
         self.argsize = argsize
         self._tempsize = tempsize
@@ -1314,11 +1316,11 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
             return space.wrap_int(self.getheader())
         else:
             return self.getliteral(index0 - 1)
-
-    def literalatput0(self, space, index0, w_value):
+            
+    def literalatput0(self, space, index0, w_value, initializing=False):
         if index0 == 0:
             header = space.unwrap_int(w_value)
-            self.setheader(space, header)
+            self.setheader(space, header, initializing=initializing)
         else:
             self.setliteral(index0 - 1, w_value)
 
