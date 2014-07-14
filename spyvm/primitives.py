@@ -6,7 +6,7 @@ from spyvm import model, shadow, error, constants, display
 from spyvm.error import PrimitiveFailedError, PrimitiveNotYetWrittenError
 from spyvm import wrapper
 
-from rpython.rlib import rarithmetic, rfloat, unroll, jit
+from rpython.rlib import rarithmetic, rfloat, unroll, jit, objectmodel
 
 def assert_class(interp, w_obj, w_class):
     if not w_obj.getclass(interp.space).is_same_object(w_class):
@@ -375,30 +375,34 @@ def get_string(w_obj):
         return w_obj.as_string()
     return w_obj.as_repr_string()
 
+def exitFromHeadlessExecution(s_frame, selector="", w_message=None):
+    if not objectmodel.we_are_translated():
+        import pdb; pdb.set_trace()
+    print "== Receiver: %s" % s_frame.w_receiver().as_repr_string()
+    if isinstance(w_message, model.W_PointersObject):
+        fields = w_message.fetch_all(s_frame.space)
+        if len(fields) >= 1:
+            print "== Selector: %s" % get_string(fields[0])
+        if len(fields) >= 2:
+            w_args = fields[1]
+            if isinstance(w_args, model.W_PointersObject):
+                arg_strings = [ get_string(w_arg) for w_arg in w_args.fetch_all(s_frame.space) ]
+                if len(arg_strings) > 0:
+                    print "== Arguments: %s" % ', '.join(arg_strings)
+    print "== Smalltalk Stack:%s" % s_frame.print_stack()
+    if selector == "":
+        selector = s_frame.w_method().lookup_selector
+    raise error.Exit("Unhandled %s in headless mode." % selector)
+    
 @expose_primitive(FAIL)
 def func(interp, s_frame, argcount):
-    if interp.space.headless.is_set() and s_frame.w_method().lookup_selector == 'doesNotUnderstand:':
-        print "== Error message: %s" % get_string(s_frame.peek(1))
-        print "== Receiver: %s" % s_frame.w_receiver().as_repr_string()
-        w_arguments = s_frame.w_arguments()
-        if len(w_arguments) >= 1:
-            w_message = w_arguments[0]
-            if isinstance(w_message, model.W_PointersObject):
-                fields = w_message.fetch_all(interp.space)
-                if len(fields) >= 1:
-                    print "== Selector: %s" % get_string(fields[0])
-                if len(fields) >= 2:
-                    w_args = fields[0]
-                    if isinstance(w_args, model.W_PointersObject):
-                        arg_strings = [ get_string(w_arg) for w_arg in w_args.fetch_all(interp.space) ]
-                        print "== Arguments: %s" % ', '.join(arg_strings)
-            else:
-                print "== Message: %s" % w_message
-        print "== VM Stack:%s" % s_frame.print_stack()
-        w_stack = s_frame.peek(0)
-        if isinstance(w_stack, model.W_BytesObject):
-            print "== Squeak stack:\n%s" % w_stack.as_string()
-        raise error.Exit("Unhandled doesNotUnderstand:")
+    if interp.space.headless.is_set():
+        w_message = None
+        if s_frame.w_method().lookup_selector == 'doesNotUnderstand:':
+            w_arguments = s_frame.w_arguments()
+            if len(w_arguments) >= 1:
+                w_message = w_arguments[0]
+        exitFromHeadlessExecution(s_frame, w_message=w_message)
     raise PrimitiveFailedError()
 
 # ___________________________________________________________________________
@@ -725,6 +729,9 @@ def func(interp, s_frame, argcount):
 
 @expose_primitive(BE_DISPLAY, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
+    if interp.space.headless.is_set():
+        exitFromHeadlessExecution(s_frame)
+    
     if not isinstance(w_rcvr, model.W_PointersObject) or w_rcvr.size() < 4:
         raise PrimitiveFailedError
     # the fields required are bits (a pointer to a Bitmap), width, height, depth
@@ -857,7 +864,6 @@ def func(interp, s_frame, w_rcvr):
 
 @expose_primitive(EXIT_TO_DEBUGGER, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    from rpython.rlib import objectmodel
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
     raise PrimitiveNotYetWrittenError()
@@ -930,36 +936,38 @@ def func(interp, s_frame, w_rcvr):
         w_class.as_class_get_shadow(interp.space).flush_method_caches()
     return w_rcvr
 
+@objectmodel.specialize.arg(0)
+def walk_gc_references(func, gcrefs):
+    from rpython.rlib import rgc
+    for gcref in gcrefs:
+        if gcref and not rgc.get_gcflag_extra(gcref):
+            try:
+                rgc.toggle_gcflag_extra(gcref)
+                func(gcref)
+                walk_gc_references(func, rgc.get_rpy_referents(gcref))
+            finally:
+                rgc.toggle_gcflag_extra(gcref)
 
+@objectmodel.specialize.arg(0)
+def walk_gc_objects(func):
+    from rpython.rlib import rgc
+    walk_gc_references(func, rgc.get_rpy_roots())
+
+@objectmodel.specialize.arg(0, 1)
+def walk_gc_objects_of_type(type, func):
+    from rpython.rlib import rgc
+    def check_type(gcref):
+        w_obj = rgc.try_cast_gcref_to_instance(type, gcref)
+        if w_obj:
+            func(w_obj)
+    walk_gc_objects(check_type)
+    
 if not stm_enabled():
-    # XXX: We don't have a global symbol cache. Instead, we get all
-    # method dictionary shadows (those exists for all methodDicts that
-    # have been modified) and flush them
+    # XXX: We don't have a global symbol cache. Instead, we walk all
+    # MethodDictionaryShadow objects and flush them.
     @expose_primitive(SYMBOL_FLUSH_CACHE, unwrap_spec=[object])
     def func(interp, s_frame, w_rcvr):
-        dicts_s = []
-        from rpython.rlib import rgc
-
-        roots = [gcref for gcref in rgc.get_rpy_roots() if gcref]
-        pending = roots[:]
-        while pending:
-            gcref = pending.pop()
-            if not rgc.get_gcflag_extra(gcref):
-                rgc.toggle_gcflag_extra(gcref)
-                w_obj = rgc.try_cast_gcref_to_instance(shadow.MethodDictionaryShadow, gcref)
-                if w_obj is not None:
-                    dicts_s.append(w_obj)
-                pending.extend(rgc.get_rpy_referents(gcref))
-
-        while roots:
-            gcref = roots.pop()
-            if rgc.get_gcflag_extra(gcref):
-                rgc.toggle_gcflag_extra(gcref)
-                roots.extend(rgc.get_rpy_referents(gcref))
-
-        for s_dict in dicts_s:
-            if s_dict.invalid:
-                s_dict.sync_method_cache()
+        walk_gc_objects_of_type(shadow.MethodDictionaryShadow, lambda s_dict: s_dict.flush_method_cache())
         return w_rcvr
 
 # ___________________________________________________________________________

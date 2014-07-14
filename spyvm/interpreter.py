@@ -224,7 +224,7 @@ class Interpreter(object):
         s_frame.push(w_receiver)
         s_frame.push_all(list(w_arguments))
         return s_frame
-
+        
     # ============== Methods for tracing, printing and debugging ==============
 
     def activate_trace(self, trace_depth=0):
@@ -585,7 +585,7 @@ class __extend__(ContextPartShadow):
             w_method = receiverclassshadow.lookup(w_selector)
         except MethodNotFound:
             return self._doesNotUnderstand(w_selector, argcount, interp, receiver)
-
+        
         code = w_method.primitive()
         if code:
             if w_arguments:
@@ -615,7 +615,7 @@ class __extend__(ContextPartShadow):
         s_class = receiver.class_shadow(self.space)
         w_method = s_class.lookup(w_special_selector)
         s_frame = w_method.create_frame(interp.space, receiver, w_args)
-
+        
         # ######################################################################
         if interp.is_tracing():
             interp.print_padded('-> %s %s' % (special_selector, s_frame.short_str()))
@@ -635,13 +635,15 @@ class __extend__(ContextPartShadow):
         self.pop() # The receiver, already known.
 
         try:
+            if interp.space.headless.is_set():
+                primitives.exitFromHeadlessExecution(self, "doesNotUnderstand:", w_message)
             return self._sendSpecialSelector(interp, receiver, "doesNotUnderstand", [w_message])
         except MethodNotFound:
             from spyvm.shadow import ClassShadow
             s_class = receiver.class_shadow(self.space)
             assert isinstance(s_class, ClassShadow)
-            print "Missing doesNotUnderstand in hierarchy of %s" % s_class.getname()
-            raise
+            from spyvm import error
+            raise error.Exit("Missing doesNotUnderstand in hierarchy of %s" % s_class.getname())
 
     def _mustBeBoolean(self, interp, receiver):
         return self._sendSpecialSelector(interp, receiver, "mustBeBoolean")
@@ -665,11 +667,11 @@ class __extend__(ContextPartShadow):
     def _return(self, return_value, interp, local_return=False):
         # unfortunately, this assert is not true for some tests. TODO fix this.
         # assert self._stack_ptr == self.tempsize()
-
+        
         # ##################################################################
         if interp.is_tracing():
             interp.print_padded('<- ' + return_value.as_repr_string())
-
+        
         if self.home_is_self() or local_return:
             # a local return just needs to go up the stack once. there
             # it will find the sender as a local, and we don't have to
