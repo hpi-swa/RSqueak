@@ -195,11 +195,12 @@ def test_replace_to_bc():
     assert s_object.fetch(1).value == 13
 
 def test_cached_object_shadow():
-    w_o = space.wrap_list([0, 1, 2, 3, 4, 5, 6, 7])
+    l = map(space.w, [0, 1, 2, 3, 4, 5, 6, 7])
+    w_o = space.wrap_list(l)
     s_o = w_o.as_cached_object_get_shadow(space)
     version = s_o.version
     for i in range(w_o.size()):
-        assert w_o.at0(space, i) == i
+        assert w_o.at0(space, i) == l[i]
     w_o.atput0(space, 0, 8)
     assert version is not s_o.version
     assert w_o.at0(space, 0) == 8
