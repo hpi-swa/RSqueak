@@ -693,7 +693,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         old_shadow = self._get_shadow()
         shadow = old_shadow
         if not isinstance(old_shadow, TheClass):
-            shadow = TheClass(space, self)
+            shadow = TheClass(space, self, old_shadow.size())
             self.switch_shadow(shadow)
         return shadow
 

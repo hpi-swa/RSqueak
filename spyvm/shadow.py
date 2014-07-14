@@ -17,7 +17,7 @@ class AbstractShadow(object):
     provides_getname = False
     repr_classname = "AbstractShadow"
 
-    def __init__(self, space, w_self):
+    def __init__(self, space, w_self, size):
         self.space = space
         assert w_self is None or isinstance(w_self, model.W_PointersObject)
         self._w_self = w_self
@@ -64,7 +64,7 @@ class AbstractStorageShadow(AbstractShadow):
     _attrs_ = []
     repr_classname = "AbstractStorageShadow"
     def __init__(self, space, w_self, size):
-        AbstractShadow.__init__(self, space, w_self)
+        AbstractShadow.__init__(self, space, w_self, size)
     def store(self, n0, w_val):
         if self.can_contain(w_val):
             return self.do_store(n0, w_val)
@@ -79,6 +79,15 @@ class AbstractStorageShadow(AbstractShadow):
         raise NotImplementedError()
     def generalized_strategy_for(self, w_val):
         raise NotImplementedError()
+    
+    def copy_from_AllNil(self, all_nil_storage):
+        pass # Already initialized
+    def copy_from(self, other_shadow):
+        assert self.size() == other_shadow.size()
+        for i in range(self.size()):
+            w_val = other_shadow.fetch(i)
+            if not w_val.is_nil(self.space): # nil fields already initialized
+                self.store(i, w_val)
 
 class AllNilStorageShadow(AbstractStorageShadow):
     repr_classname = "AllNilStorageShadow"
@@ -130,9 +139,6 @@ class AbstractValueOrNilStorageMixin(object):
             self.storage[n0] = self.nil_value
         else:
             self.storage[n0] = self.unwrap(self.space, w_val)
-            
-    def copy_from_AllNil(self, all_nil_storage):
-        pass # Already initialized
 
 # This is to avoid code duplication
 @objectmodel.specialize.arg(0)
@@ -230,13 +236,6 @@ class ListStorageMixin(object):
         self.initialize_storage(size)
     def size(self):
         return len(self.storage)
-    def copy_from(self, other_shadow):
-        if self.size() != other_shadow.size():
-            self.initialize_storage(other_shadow.size())
-        for i in range(self.size()):
-            w_val = other_shadow.fetch(i)
-            if not w_val.is_nil(self.space):
-                self.store(i, w_val)
 
 class ListStorageShadow(AbstractStorageShadow):
     _attrs_ = ['storage']
@@ -273,8 +272,8 @@ class AbstractCachingShadow(ListStorageShadow):
     import_from_mixin(version.VersionMixin)
     version = None
 
-    def __init__(self, space, w_self):
-        ListStorageShadow.__init__(self, space, w_self, 0)
+    def __init__(self, space, w_self, size):
+        ListStorageShadow.__init__(self, space, w_self, size)
         self.changed()
 
 # ____________________________________________________________
@@ -305,9 +304,9 @@ class ClassShadow(AbstractCachingShadow):
     provides_getname = True
     repr_classname = "ClassShadow"
 
-    def __init__(self, space, w_self):
+    def __init__(self, space, w_self, size):
         self.subclass_s = {}
-        AbstractCachingShadow.__init__(self, space, w_self)
+        AbstractCachingShadow.__init__(self, space, w_self, size)
 
     def store(self, n0, w_val):
         AbstractCachingShadow.store(self, n0, w_val)
@@ -425,7 +424,7 @@ class ClassShadow(AbstractCachingShadow):
     def flush_method_caches(self):
         look_in_shadow = self
         while look_in_shadow is not None:
-            look_in_shadow.s_methoddict().sync_method_cache()
+            look_in_shadow.s_methoddict().flush_method_cache()
             look_in_shadow = look_in_shadow._s_superclass
 
     def new(self, extrasize=0):
@@ -535,7 +534,7 @@ class ClassShadow(AbstractCachingShadow):
         "NOT_RPYTHON"     # this is only for testing.
         if self._s_methoddict is None:
             w_methoddict = model.W_PointersObject(self.space, None, 2)
-            w_methoddict.store(self.space, 1, model.W_PointersObject(self.space, None, 0))
+            w_methoddict.store(self.space, constants.METHODDICT_VALUES_INDEX, model.W_PointersObject(self.space, None, 0))
             self.store_s_methoddict(w_methoddict.as_methoddict_get_shadow(self.space))
         self.s_methoddict().invalid = False
 
@@ -553,11 +552,11 @@ class MethodDictionaryShadow(ListStorageShadow):
     _attrs_ = ['methoddict', 'invalid', 's_class']
     repr_classname = "MethodDictionaryShadow"
 
-    def __init__(self, space, w_self):
+    def __init__(self, space, w_self, size):
         self.invalid = True
         self.s_class = None
         self.methoddict = {}
-        ListStorageShadow.__init__(self, space, w_self, 0)
+        ListStorageShadow.__init__(self, space, w_self, size)
 
     def update(self):
         self.sync_method_cache()
@@ -567,7 +566,7 @@ class MethodDictionaryShadow(ListStorageShadow):
             return None # we may be invalid if Smalltalk code did not call flushCache
         return self.methoddict.get(w_selector, None)
 
-    # Remove update call for changes to ourselves:
+    # We do not call update() after changes to ourselves:
     # Whenever a method is added, it's keyword is added to w_self, then the
     # w_compiled_method is added to our observee.
     # sync_method_cache at this point would not have the desired effect, because in
@@ -575,17 +574,30 @@ class MethodDictionaryShadow(ListStorageShadow):
     # its contents array is filled with the value belonging to the new key.
     def store(self, n0, w_value):
         ListStorageShadow.store(self, n0, w_value)
-        self.invalid = True
-
+        if n0 == constants.METHODDICT_VALUES_INDEX:
+            self.setup_notification()
+        if n0 >= constants.METHODDICT_NAMES_INDEX:
+            self.invalid = True
+    
+    def setup_notification(self):
+        self.w_values().as_observed_get_shadow(self.space).notify(self)
+        
+    def w_values(self):
+        w_values = self.fetch(constants.METHODDICT_VALUES_INDEX)
+        assert isinstance(w_values, model.W_PointersObject)
+        return w_values
+        
+    def flush_method_cache(self):   
+        # Lazy synchronization: Only flush the cache, if we are already synchronized.
+        if self.invalid:
+            self.sync_method_cache()
+        
     def sync_method_cache(self):
         if self.size() == 0:
             return
-        w_values = self.fetch(constants.METHODDICT_VALUES_INDEX)
-        assert isinstance(w_values, model.W_PointersObject)
-        s_values = w_values.as_observed_get_shadow(self.space)
-        s_values.notify(self)
-        size = self.size() - constants.METHODDICT_NAMES_INDEX
         self.methoddict = {}
+        size = self.size() - constants.METHODDICT_NAMES_INDEX
+        w_values = self.w_values()
         for i in range(size):
             w_selector = self.w_self().fetch(self.space, constants.METHODDICT_NAMES_INDEX+i)
             if not w_selector.is_nil(self.space):
@@ -614,12 +626,12 @@ class AbstractRedirectingShadow(AbstractShadow):
     _attrs_ = ['_w_self_size']
     repr_classname = "AbstractRedirectingShadow"
 
-    def __init__(self, space, w_self):
-        AbstractShadow.__init__(self, space, w_self)
+    def __init__(self, space, w_self, size):
         if w_self is not None:
             self._w_self_size = w_self.size()
         else:
-            self._w_self_size = 0
+            self._w_self_size = size
+        AbstractShadow.__init__(self, space, w_self, self._w_self_size)
 
     def size(self):
         return self._w_self_size
@@ -641,9 +653,9 @@ class ContextPartShadow(AbstractRedirectingShadow):
     # ______________________________________________________________________
     # Initialization
 
-    def __init__(self, space, w_self):
+    def __init__(self, space, w_self, size=0):
         self._s_sender = None
-        AbstractRedirectingShadow.__init__(self, space, w_self)
+        AbstractRedirectingShadow.__init__(self, space, w_self, size)
         self.instances_w = {}
 
     def copy_field_from(self, n0, other_shadow):
@@ -981,14 +993,14 @@ class BlockContextShadow(ContextPartShadow):
 
     # === Initialization ===
 
-    def __init__(self, space, w_self=None, w_home=None, argcnt=0, initialip=0):
+    def __init__(self, space, w_self=None, size=0, w_home=None, argcnt=0, initialip=0):
         self = jit.hint(self, access_directly=True, fresh_virtualizable=True)
         creating_w_self = w_self is None
         if creating_w_self:
             s_home = w_home.as_methodcontext_get_shadow(space)
             contextsize = s_home.size() - s_home.tempsize()
             w_self = model.W_PointersObject(space, space.w_BlockContext, contextsize)
-        ContextPartShadow.__init__(self, space, w_self)
+        ContextPartShadow.__init__(self, space, w_self, size)
         if creating_w_self:
             w_self.store_shadow(self)
         self.store_expected_argument_count(argcnt)
@@ -1115,10 +1127,10 @@ class MethodContextShadow(ContextPartShadow):
     # === Initialization ===
 
     @jit.unroll_safe
-    def __init__(self, space, w_self=None, w_method=None, w_receiver=None,
+    def __init__(self, space, w_self=None, size=0, w_method=None, w_receiver=None,
                               arguments=[], closure=None, pc=0):
         self = jit.hint(self, access_directly=True, fresh_virtualizable=True)
-        ContextPartShadow.__init__(self, space, w_self)
+        ContextPartShadow.__init__(self, space, w_self, size)
         self.store_w_receiver(w_receiver)
         self.store_pc(pc)
         self.closure = closure
@@ -1280,8 +1292,8 @@ class CachedObjectShadow(AbstractCachingShadow):
 class ObserveeShadow(ListStorageShadow):
     _attrs_ = ['dependent']
     repr_classname = "ObserveeShadow"
-    def __init__(self, space, w_self):
-        ListStorageShadow.__init__(self, space, w_self, 0)
+    def __init__(self, space, w_self, size):
+        ListStorageShadow.__init__(self, space, w_self, size)
         self.dependent = None
 
     def store(self, n0, w_value):

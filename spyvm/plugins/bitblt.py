@@ -727,8 +727,8 @@ class FormShadow(AbstractCachingShadow):
     _attrs_ = ["w_bits", "width", "height", "depth", "offsetX",
                "offsetY", "msb", "pixPerWord", "pitch", "invalid"]
 
-    def __init__(self, space, w_self):
-        AbstractCachingShadow.__init__(self, space, w_self)
+    def __init__(self, space, w_self, size):
+        AbstractCachingShadow.__init__(self, space, w_self, size)
         self.invalid = False
 
     def intOrIfNil(self, w_int, i):

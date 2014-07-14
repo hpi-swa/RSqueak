@@ -1314,7 +1314,7 @@ def func(interp, s_frame, w_context, argcnt):
     # The block bytecodes are stored inline: so we skip past the
     # byteodes to invoke this primitive to find them (hence +2)
     initialip = s_frame.pc() + 2
-    s_new_context = shadow.BlockContextShadow(interp.space, None, w_method_context, argcnt, initialip)
+    s_new_context = shadow.BlockContextShadow(interp.space, None, 0, w_method_context, argcnt, initialip)
     return s_new_context.w_self()
 
 @expose_primitive(VALUE, result_is_new_frame=True)
