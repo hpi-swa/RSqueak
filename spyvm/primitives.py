@@ -967,7 +967,9 @@ if not stm_enabled():
     # MethodDictionaryShadow objects and flush them.
     @expose_primitive(SYMBOL_FLUSH_CACHE, unwrap_spec=[object])
     def func(interp, s_frame, w_rcvr):
-        walk_gc_objects_of_type(shadow.MethodDictionaryShadow, lambda s_dict: s_dict.flush_method_cache())
+        # This takes a long time (at least in interpreted mode), and is not really necessary.
+        # We are monitoring changes to MethodDictionaries, so there is no need for the image to tell us.
+        #walk_gc_objects_of_type(shadow.MethodDictionaryShadow, lambda s_dict: s_dict.flush_method_cache())
         return w_rcvr
 
 # ___________________________________________________________________________
