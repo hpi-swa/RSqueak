@@ -1016,8 +1016,8 @@ class _InterpreterProxy(object):
             # eventual errors are caught by the calling function (EXTERNAL_CALL)
             external_function = rffi.cast(func_bool_void,
                             self.loadFunctionFrom(signature[0], signature[1]))
-            if interp.trace:
-                print "%sCalling %s >> %s" % (interp.padding(), signature[0], signature[1])
+            if interp.is_tracing():
+                interp.print_padded("Calling %s >> %s" % (signature[0], signature[1]))
             external_function()
 
             if not self.fail_reason == 0:

@@ -35,7 +35,7 @@ class Interpreter(object):
     )
 
     def __init__(self, space, image=None, image_name="",
-                trace=False, evented=True, interrupts=True):
+                trace_depth=-1, evented=True, interrupts=True):
         # === Initialize immutable variables
         self.space = space
         self.image = image
@@ -54,7 +54,7 @@ class Interpreter(object):
         # === Initialize mutable variables
         self.interrupt_check_counter = self.interrupt_counter_size
         self.next_wakeup_tick = 0
-        self.trace = objspace.ConstantFlag(trace)
+        self.trace_depth = trace_depth
         self.trace_proxy = objspace.ConstantFlag()
         self.stack_depth = 0
 
@@ -225,12 +225,36 @@ class Interpreter(object):
         s_frame.push_all(list(w_arguments))
         return s_frame
 
-    def is_tracing(self):
-        return self.trace.is_set()
+    # ============== Methods for tracing, printing and debugging ==============
+
+    def activate_trace(self, trace_depth=0):
+        self.trace_depth = trace_depth
         
-    def padding(self, symbol=' '):
-        assert self.is_tracing()
-        return symbol * self.stack_depth
+    def deactivate_trace(self):
+        self.trace_depth = -1
+        
+    def is_tracing(self):
+        return jit.promote(self.trace_depth) >= 0
+        
+    def print_padded(self, str):
+        depth = jit.promote(self.trace_depth)
+        assert depth >= 0
+        if self.stack_depth <= depth:
+            print (' ' * self.stack_depth) + str
+    
+    def activate_debug_bytecode(self):
+        "NOT_RPYTHON"
+        def do_break(self):
+            import pdb
+            if self.break_on_bytecodes:
+                pdb.set_trace()
+        Interpreter.debug_bytecode = do_break
+        self.break_on_bytecodes = True
+    
+    def debug_bytecode(self):
+        # This is for debugging. In a pdb console, execute the following:
+        # self.activate_debug_bytecode()
+        pass
 
 class ReturnFromTopLevel(Exception):
     _attrs_ = ["object"]
@@ -287,7 +311,7 @@ def bytecode_implementation(parameter_bytes=0):
                 parameters += (self.fetch_next_bytecode(), )
                 i = i + 1
             # This is a good place to step through bytecodes.
-            # import pdb; pdb.set_trace()
+            interp.debug_bytecode()
             return actual_implementation_method(self, interp, current_bytecode, *parameters)
         bytecode_implementation_wrapper.func_name = actual_implementation_method.func_name
         return bytecode_implementation_wrapper
@@ -577,7 +601,7 @@ class __extend__(ContextPartShadow):
 
         # ######################################################################
         if interp.is_tracing():
-            print interp.padding() + s_frame.short_str()
+            interp.print_padded('-> ' + s_frame.short_str())
 
         return interp.stack_frame(s_frame, self)
 
@@ -594,7 +618,7 @@ class __extend__(ContextPartShadow):
 
         # ######################################################################
         if interp.is_tracing():
-            print '%s %s %s: #%s' % (interp.padding('#'), special_selector, s_frame.short_str(), w_args)
+            interp.print_padded('-> %s %s' % (special_selector, s_frame.short_str()))
             if not objectmodel.we_are_translated():
                 import pdb; pdb.set_trace()
 
@@ -625,8 +649,8 @@ class __extend__(ContextPartShadow):
     def _call_primitive(self, code, interp, argcount, w_method, w_selector):
         # ##################################################################
         if interp.is_tracing():
-            print "%s-> primitive %d \t(in %s, named #%s)" % (
-                    interp.padding(), code, self.w_method().get_identifier_string(), w_selector.str_content())
+            interp.print_padded("-> primitive %d \t(in %s, named #%s)" % (
+                                    code, self.w_method().get_identifier_string(), w_selector.str_content()))
         func = primitives.prim_holder.prim_table[code]
         try:
             # note: argcount does not include rcvr
@@ -634,8 +658,8 @@ class __extend__(ContextPartShadow):
             return func(interp, self, argcount, w_method)
         except primitives.PrimitiveFailedError, e:
             if interp.is_tracing():
-                print "%s primitive %d FAILED\t (in %s, named %s)" % (
-                    interp.padding(), code, w_method.safe_identifier_string(), w_selector.str_content())
+                interp.print_padded("-- primitive %d FAILED\t (in %s, named %s)" % (
+                            code, w_method.safe_identifier_string(), w_selector.str_content()))
             raise e
 
     def _return(self, return_value, interp, local_return=False):
@@ -644,7 +668,7 @@ class __extend__(ContextPartShadow):
 
         # ##################################################################
         if interp.is_tracing():
-            print '%s<- %s' % (interp.padding(), return_value.as_repr_string())
+            interp.print_padded('<- ' + return_value.as_repr_string())
 
         if self.home_is_self() or local_return:
             # a local return just needs to go up the stack once. there
