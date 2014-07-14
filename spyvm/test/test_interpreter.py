@@ -26,8 +26,11 @@ def step_in_interp(ctxt): # due to missing resets in between tests
         if retval is not None:
             return retval.w_self()
     except interpreter.Return, nlr:
-        nlr.s_target_context.push(nlr.value)
-        return nlr.s_target_context.w_self()
+        new_context = nlr.s_target_context
+        if new_context is None:
+            new_context = ctxt.s_sender()
+        new_context.push(nlr.value)
+        return new_context.w_self()
 
 def assert_list(list, expected):
     for i in range(len(list)):
@@ -974,81 +977,6 @@ def test_blockclosure_return():
         [[space.w_BlockClosure, primitives.CLOSURE_VALUE_VALUE,
             2, "value:value:"]],
         test)
-
-def test_stacking_interpreter():
-    # | testBlock |
-    # testBlock := [ :aNumber |
-    #     aNumber = 0
-    #         ifTrue: [ 0 ]
-    #         ifFalse: [ (testBlock value: aNumber - 1) + aNumber ]].
-    # ^ testBlock value: 11
-    interp = TestInterpreter(space, max_stack_depth=3)
-    #create a method with the correct bytecodes and a literal
-    bytes = reduce(operator.add, map(chr, [0x8a, 0x01, 0x68, 0x10, 0x8f, 0x11,
-        0x00, 0x11, 0x10, 0x75, 0xb6, 0x9a, 0x75, 0xa4, 0x09, 0x8c, 0x00, 0x01,
-        0x10, 0x76, 0xb1, 0xca, 0x10, 0xb0, 0x7d, 0x8e, 0x00, 0x00, 0x8c, 0x00,
-        0x00, 0x20, 0xca, 0x7c]))
-    w_method = model.W_CompiledMethod(space, len(bytes))
-    w_method.islarge = 1
-    w_method.bytes = bytes
-    w_method.argsize=0
-    w_method._tempsize=1
-    w_method.setliterals([space.wrap_int(11)])
-
-    #create a frame for that method
-    w_frame = w_method.create_frame(space, space.wrap_int(0), []).w_self()
-    try:
-        interp.loop(w_frame)
-    except interpreter.ReturnFromTopLevel, e:
-        assert space.unwrap_int(e.object) == 66
-    except interpreter.StackOverflow, e:
-        assert False
-    try:
-        interp = TestInterpreter(space, image_name="", max_stack_depth=10)
-        interp._loop = True
-        interp.loop_bytecodes(w_method.create_frame(space, space.wrap_int(0), []))
-    except interpreter.StackOverflow, e:
-        assert isinstance(e.s_new_context, shadow.MethodContextShadow)
-    except interpreter.ReturnFromTopLevel, e:
-        assert False
-
-class StackTestInterpreter(TestInterpreter):
-    def stack_frame(self, s_frame, s_sender, may_interrupt=True):
-        stack_depth = self.current_stack_depth
-        for i in range(stack_depth + 1):
-            assert sys._getframe(5 + i * 7).f_code.co_name == 'loop_bytecodes'
-        assert sys._getframe(6 + stack_depth * 7).f_code.co_name == 'loop'
-        return interpreter.Interpreter.stack_frame(self, s_frame, s_sender, may_interrupt)
-
-def test_actual_stackdepth():
-    # | testBlock |
-    # testBlock := [ :aNumber |
-    #     aNumber = 0
-    #         ifTrue: [ 2 ]
-    #         ifFalse: [ (testBlock value: aNumber - 1) + aNumber ]].
-    # ^ testBlock value: 11
-    interp = StackTestInterpreter(space, max_stack_depth=10)
-    #create a method with the correct bytecodes and a literal
-    bytes = reduce(operator.add, map(chr, [0x8a, 0x01, 0x68, 0x10, 0x8f, 0x11,
-        0x00, 0x11, 0x10, 0x75, 0xb6, 0x9a, 0x77, 0xa4, 0x09, 0x8c, 0x00, 0x01,
-        0x10, 0x76, 0xb1, 0xca, 0x10, 0xb0, 0x7d, 0x8e, 0x00, 0x00, 0x8c, 0x00,
-        0x00, 0x20, 0xca, 0x7c]))
-
-    w_method = model.W_CompiledMethod(space, len(bytes))
-    w_method.islarge = 1
-    w_method.bytes = bytes
-    w_method.argsize=0
-    w_method._tempsize=1
-    w_method.setliterals([space.wrap_int(11)])
-
-    #create a frame for that method
-    w_frame = w_method.create_frame(space, space.wrap_int(0), []).w_self()
-    try:
-        interp.loop(w_frame)
-    except interpreter.ReturnFromTopLevel, e:
-        assert space.unwrap_int(e.object) == 68
-    except interpreter.StackOverflow, e:
-        assert False
 
 def test_c_stack_reset_on_sender_chain_manipulation():
     bytes = reduce(operator.add, map(chr, [0x84, 0xc0, 0x00]))
