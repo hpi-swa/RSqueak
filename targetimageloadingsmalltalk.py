@@ -12,7 +12,7 @@ from spyvm.interpreter_proxy import VirtualMachine
 
 def _usage(argv):
     print """
-    Usage: %s <path> [-r|-m|-h] [-naPu] [-jpis] [-tlLE]
+    Usage: %s <path> [-r|-m|-h] [-naPu] [-jpiS] [-tlLE]
             <path> - image path (default: Squeak.image)
 
           Execution mode:
@@ -104,8 +104,6 @@ def entry_point(argv):
                 code, idx = get_parameter(argv, idx, arg)
             elif arg in ["-i", "--no-interrupts"]:
                 interrupts = False
-            elif arg in ["-s"]:
-                max_stack_depth, idx = get_int_parameter(argv, idx, arg)
             elif arg in ["-P", "--process"]:
                 headless = False
             elif arg in ["-S"]:
@@ -172,7 +170,7 @@ def entry_point(argv):
             context = active_context(space)
     else:
         context = active_context(space)
-
+    
     w_result = execute_context(interp, context)
     print result_string(w_result)
     storage_logger.print_aggregated_log()
