@@ -64,6 +64,16 @@ def print_error(str):
     
 prebuilt_space = objspace.ObjSpace()
 
+def safe_entry_point(argv):
+    try:
+        return entry_point(argv)
+    except error.Exit, e:
+        print_error("Exited: %s" % e.msg)
+        return -1
+    except Exception, e:
+        print_error("Exception: %s" % str(e))
+        return -1
+
 def entry_point(argv):
     # == Main execution parameters
     path = None
@@ -146,7 +156,7 @@ def entry_point(argv):
     except OSError as e:
         print_error("%s -- %s (LoadError)" % (os.strerror(e.errno), path))
         return 1
-
+    
     # Load & prepare image and environment
     image_reader = squeakimage.reader_for_image(space, squeakimage.Stream(data=imagedata))
     image = create_image(space, image_reader)
@@ -164,8 +174,6 @@ def entry_point(argv):
             w_receiver = space.wrap_int(number)
         if code:
             selector = compile_code(interp, w_receiver, code)
-            if selector is None:
-                return -1 # Compilation failed, message is printed.
         s_frame = create_context(interp, w_receiver, selector, stringarg)
         if headless:
             space.headless.set()
@@ -198,24 +206,19 @@ def compile_code(interp, w_receiver, code):
     # TODO - Find a way to cleanly initialize the image, without executing the active_context of the image.
     # Instead, we want to execute our own context. Then remove this flag (and all references to it)
     space.suppress_process_switch.set()
-    try:
-        w_result = interp.perform(
-            w_receiver_class,
-            "compile:classified:notifying:",
-            w_arguments = [space.wrap_string("%s\r\n%s" % (selector, code)),
-            space.wrap_string("spy-run-code"),
-            space.w_nil]
-        )
-        
-        # TODO - is this expected in every image?
-        if not isinstance(w_result, model.W_BytesObject) or w_result.as_string() != selector:
-            print_error("Compilation failed, unexpected result: %s" % result_string(w_result))
-            return None
-    except error.Exit, e:
-        print_error("Exited while compiling code: %s" % e.msg)
-        return None
-    finally:
-            space.suppress_process_switch.unset()
+    
+    w_result = interp.perform(
+        w_receiver_class,
+        "compile:classified:notifying:",
+        w_arguments = [space.wrap_string("%s\r\n%s" % (selector, code)),
+        space.wrap_string("spy-run-code"),
+        space.w_nil]
+    )
+    # TODO - is this expected in every image?
+    if not isinstance(w_result, model.W_BytesObject) or w_result.as_string() != selector:
+        raise error.Exit("Unexpected compilation result (probably failed to compile): %s" % result_string(w_result))
+    space.suppress_process_switch.unset()
+    
     w_receiver_class.as_class_get_shadow(space).s_methoddict().sync_method_cache()
     return selector
 
@@ -253,12 +256,8 @@ def active_context(space):
     active_process.store_suspended_context(space.w_nil)
     return w_active_context.as_context_get_shadow(space)
 
-def execute_context(interp, s_frame, measure=False):
-    try:
-        return interp.interpret_toplevel(s_frame.w_self())
-    except error.Exit, e:
-        print_error("Exited: %s" % e.msg)
-        return None
+def execute_context(interp, s_frame):
+    return interp.interpret_toplevel(s_frame.w_self())
 
 # _____ Target and Main _____
 
@@ -269,11 +268,11 @@ def target(driver, *args):
     if hasattr(rgc, "stm_is_enabled"):
         driver.config.translation.stm = True
         driver.config.translation.thread = True
-    return entry_point, None
+    return safe_entry_point, None
 
 def jitpolicy(self):
     from rpython.jit.codewriter.policy import JitPolicy
     return JitPolicy()
 
 if __name__ == "__main__":
-    entry_point(sys.argv)
+    safe_entry_point(sys.argv)
