@@ -268,6 +268,7 @@ def target(driver, *args):
     if hasattr(rgc, "stm_is_enabled"):
         driver.config.translation.stm = True
         driver.config.translation.thread = True
+    driver.exe_name = "rsqueak"
     return safe_entry_point, None
 
 def jitpolicy(self):
