@@ -17,40 +17,6 @@ class STMForkException(Exception):
         self.w_frame = w_frame
         self.w_stm_process = w_stm_process
 
-class MyLock():
-    def __init__(self):
-        self.LOCK = None
-        self.a = 0
-
-mylock = MyLock()
-
-
-def my_little_thread():
-    while True:
-        acquired = mylock.LOCK.acquire(False)
-        if acquired:
-            mylock.a = 2
-            #print "MY 2:", mylock.a
-            time.sleep(2.5)
-            mylock.LOCK.release()
-        else:
-            pass
-            #print "MY locked 10:", mylock.a
-
-def yours_little_thread():
-    while True:
-        acquired = mylock.LOCK.acquire(False)
-        if acquired:
-            mylock.a = 10
-            #print "YOURS 10:", mylock.a
-            mylock.LOCK.release()
-            time.sleep(4.0)
-        else:
-            pass
-            #print "YOURS locked 2:", mylock.a
-
-
-
 class MissingBytecode(Exception):
     """Bytecode not implemented yet."""
     def __init__(self, bytecodename):
