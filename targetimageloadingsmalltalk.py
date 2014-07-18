@@ -3,7 +3,7 @@ import sys, time
 import os
 
 from rpython.rlib.streamio import open_file_as_stream
-from rpython.rlib import jit, rpath
+from rpython.rlib import jit, rpath, objectmodel
 
 from spyvm import model, interpreter, squeakimage, objspace, wrapper,\
     error, shadow, storage_logger, constants
@@ -72,6 +72,9 @@ def safe_entry_point(argv):
         return -1
     except Exception, e:
         print_error("Exception: %s" % str(e))
+        if not objectmodel.we_are_translated():
+            import traceback
+            traceback.print_exc()
         return -1
 
 def entry_point(argv):
