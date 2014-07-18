@@ -983,4 +983,4 @@ def test_c_stack_reset_on_sender_chain_manipulation():
     w_frame, s_frame = new_frame(bytes)
     s_frame.store_w_receiver(w_frame)
     s_frame.push(w_frame)
-    py.test.raises(interpreter.StackOverflow, step_in_interp, s_frame)
+    py.test.raises(interpreter.SenderChainManipulation, step_in_interp, s_frame)

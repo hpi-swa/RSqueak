@@ -30,7 +30,3 @@ class Exit(Exception):
     _attrs_ = ["msg"]
     def __init__(self, msg):
         self.msg = msg
-
-class SenderChainManipulation(Exception):
-    def __init__(self, manipulated_context):
-        self.s_context = manipulated_context

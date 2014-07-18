@@ -70,6 +70,10 @@ class Interpreter(object):
                 if self.is_tracing():
                     print "====== StackOverflow, contexts forced to heap at: %s" % e.s_new_context.short_str()
                 s_new_context = e.s_new_context
+            except SenderChainManipulation, e:
+                if self.is_tracing():
+                    print "====== SenderChainManipulation, contexts forced to heap at: %s" % e.s_new_context.short_str()
+                s_new_context = e.s_new_context
             except Return, nlr:
                 assert nlr.s_target_context or nlr.is_local
                 s_new_context = s_sender
@@ -198,13 +202,13 @@ class Interpreter(object):
 
     def interpret_toplevel(self, w_frame):
         try:
+            self.interrupt_check_counter = self.interrupt_counter_size
             self.loop(w_frame)
         except ReturnFromTopLevel, e:
             return e.object
 
     def perform(self, w_receiver, selector="", w_selector=None, w_arguments=[]):
         s_frame = self.create_toplevel_context(w_receiver, selector, w_selector, w_arguments)
-        self.interrupt_check_counter = self.interrupt_counter_size
         return self.interpret_toplevel(s_frame.w_self())
 
     def create_toplevel_context(self, w_receiver, selector="", w_selector=None, w_arguments=[]):
@@ -276,13 +280,18 @@ class ContextSwitchException(Exception):
         self.s_new_context = s_new_context
 
 class StackOverflow(ContextSwitchException):
-    """This causes the current jit-loop to be left, thus avoiding stack overflows.
+    """This causes the current jit-loop to be left, dumping all virtualized objects to the heap.
     This breaks performance, so it should rarely happen.
     In case of severe performance problems, execute with -t and check if this occurrs."""
 
 class ProcessSwitch(ContextSwitchException):
-    """This causes the interpreter to switch the executed context."""
+    """This causes the interpreter to switch the executed context.
+    Triggered when switching the process."""
 
+class SenderChainManipulation(ContextSwitchException):
+    """Manipulation of the sender chain can invalidate the jitted C stack.
+    We have to dump all virtual objects and rebuild the stack.
+    We try to raise this as rarely as possible and as late as possible."""
 
 import rpython.rlib.unroll
 if hasattr(unroll, "unrolling_zero"):
@@ -753,15 +762,16 @@ class __extend__(ContextPartShadow):
             association = wrapper.AssociationWrapper(self.space, w_association)
             self.push(association.value())
         elif opType == 5:
+            # TODO - the following two special cases should not be necessary
             try:
                 self.w_receiver().store(self.space, third, self.top())
-            except error.SenderChainManipulation, e:
-                raise StackOverflow(self)
+            except SenderChainManipulation, e:
+                raise SenderChainManipulation(self)
         elif opType == 6:
             try:
                 self.w_receiver().store(self.space, third, self.pop())
-            except error.SenderChainManipulation, e:
-                raise StackOverflow(self)
+            except SenderChainManipulation, e:
+                raise SenderChainManipulation(self)
         elif opType == 7:
             w_association = self.w_method().getliteral(third)
             association = wrapper.AssociationWrapper(self.space, w_association)

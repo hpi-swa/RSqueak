@@ -659,10 +659,11 @@ class ContextPartShadow(AbstractRedirectingShadow):
         self.instances_w = {}
 
     def copy_field_from(self, n0, other_shadow):
+        from spyvm.interpreter import SenderChainManipulation
         try:
             AbstractRedirectingShadow.copy_field_from(self, n0, other_shadow)
-        except error.SenderChainManipulation, e:
-            assert e.s_context == self
+        except SenderChainManipulation, e:
+            assert e.s_new_context == self
 
     def copy_from(self, other_shadow):
         # Some fields have to be initialized before the rest, to ensure correct initialization.
@@ -725,9 +726,11 @@ class ContextPartShadow(AbstractRedirectingShadow):
     # === Sender ===
 
     def store_s_sender(self, s_sender, raise_error=True):
-        self._s_sender = s_sender
-        if raise_error:
-            raise error.SenderChainManipulation(self)
+        if s_sender is not self._s_sender:
+            self._s_sender = s_sender
+            if raise_error:
+                from spyvm.interpreter import SenderChainManipulation
+                raise SenderChainManipulation(self)
 
     def w_sender(self):
         sender = self.s_sender()
