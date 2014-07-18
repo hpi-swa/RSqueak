@@ -66,13 +66,9 @@ class Interpreter(object):
             try:
                 self.loop_bytecodes(s_new_context)
                 raise Exception("loop_bytecodes left without raising...")
-            except StackOverflow, e:
+            except ContextSwitchException, e:
                 if self.is_tracing():
-                    print "====== StackOverflow, contexts forced to heap at: %s" % e.s_new_context.short_str()
-                s_new_context = e.s_new_context
-            except SenderChainManipulation, e:
-                if self.is_tracing():
-                    print "====== SenderChainManipulation, contexts forced to heap at: %s" % e.s_new_context.short_str()
+                    e.print_trace(s_new_context)
                 s_new_context = e.s_new_context
             except Return, nlr:
                 assert nlr.s_target_context or nlr.is_local
@@ -83,13 +79,7 @@ class Interpreter(object):
                         s_new_context._activate_unwind_context(self)
                         s_new_context = s_sender
                 s_new_context.push(nlr.value)
-            except ProcessSwitch, p:
-                assert not self.space.suppress_process_switch.is_set(), "ProcessSwitch should be disabled..."
-                if self.is_tracing():
-                    print "====== Switched process from: %s" % s_new_context.short_str()
-                    print "====== to: %s " % p.s_new_context.short_str()
-                s_new_context = p.s_new_context
-
+    
     def loop_bytecodes(self, s_context, may_context_switch=True):
         old_pc = 0
         if not jit.we_are_jitted() and may_context_switch:
@@ -267,23 +257,34 @@ class Return(Exception):
 class ContextSwitchException(Exception):
     """General Exception that causes the interpreter to leave
     the current context."""
+    
     _attrs_ = ["s_new_context"]
+    type = "ContextSwitch"
     def __init__(self, s_new_context):
         self.s_new_context = s_new_context
-
+    
+    def print_trace(self, old_context):
+        print "====== %s, contexts forced to heap at: %s" % (self.type, self.s_new_context.short_str())
+        
 class StackOverflow(ContextSwitchException):
     """This causes the current jit-loop to be left, dumping all virtualized objects to the heap.
     This breaks performance, so it should rarely happen.
     In case of severe performance problems, execute with -t and check if this occurrs."""
-
+    type = "Stack Overflow"
+    
 class ProcessSwitch(ContextSwitchException):
     """This causes the interpreter to switch the executed context.
     Triggered when switching the process."""
-
+    
+    def print_trace(self, old_context):
+        print "====== Switched process from: %s" % old_context.short_str()
+        print "====== to: %s " % self.s_new_context.short_str()
+    
 class SenderChainManipulation(ContextSwitchException):
     """Manipulation of the sender chain can invalidate the jitted C stack.
     We have to dump all virtual objects and rebuild the stack.
     We try to raise this as rarely as possible and as late as possible."""
+    type = "Sender Manipulation"
 
 import rpython.rlib.unroll
 if hasattr(unroll, "unrolling_zero"):
