@@ -35,7 +35,7 @@ class Interpreter(object):
     )
 
     def __init__(self, space, image=None, image_name="",
-                trace_depth=-1, evented=True, interrupts=True):
+                trace=False, evented=True, interrupts=True):
         # === Initialize immutable variables
         self.space = space
         self.image = image
@@ -54,7 +54,7 @@ class Interpreter(object):
         # === Initialize mutable variables
         self.interrupt_check_counter = self.interrupt_counter_size
         self.next_wakeup_tick = 0
-        self.trace_depth = trace_depth
+        self.trace = trace
         self.trace_proxy = objspace.ConstantFlag()
         self.stack_depth = 0
 
@@ -230,21 +230,13 @@ class Interpreter(object):
         return s_frame
         
     # ============== Methods for tracing, printing and debugging ==============
-
-    def activate_trace(self, trace_depth=0):
-        self.trace_depth = trace_depth
-        
-    def deactivate_trace(self):
-        self.trace_depth = -1
-        
+    
     def is_tracing(self):
-        return jit.promote(self.trace_depth) >= 0
-        
+        return jit.promote(self.trace)
+    
     def print_padded(self, str):
-        depth = jit.promote(self.trace_depth)
-        assert depth >= 0
-        if self.stack_depth <= depth:
-            print (' ' * self.stack_depth) + str
+        assert self.is_tracing()
+        print (' ' * self.stack_depth) + str
     
     def activate_debug_bytecode(self):
         "NOT_RPYTHON"

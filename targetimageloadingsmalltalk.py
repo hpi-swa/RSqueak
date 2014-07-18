@@ -12,7 +12,7 @@ from spyvm.interpreter_proxy import VirtualMachine
 
 def _usage(argv):
     print """
-    Usage: %s <path> [-r|-m|-h] [-naPu] [-jpiS] [-tTlLE]
+    Usage: %s <path> [-r|-m|-h] [-naPu] [-jpiS] [-tlLE]
             <path> - image path (default: Squeak.image)
 
           Execution mode:
@@ -39,7 +39,6 @@ def _usage(argv):
             
           Logging parameters:
             -t|--trace                 - Output a trace of each message, primitive, return value and process switch.
-            -T <depth>                 - Like -t, but limit the stack depth for the trace to <depth>.
             -l|--storage-log           - Output a log of storage operations.
             -L|--storage-log-aggregate - Output an aggregated storage log at the end of execution.
             -E|--storage-log-elements  - Include classnames of elements into the storage log.
@@ -89,7 +88,7 @@ def entry_point(argv):
     # == Other parameters
     poll = False
     interrupts = True
-    trace_depth = -1
+    trace = False
     
     space = prebuilt_space
     idx = 1
@@ -109,11 +108,7 @@ def entry_point(argv):
             elif arg in ["-m", "--method"]:
                 selector, idx = get_parameter(argv, idx, arg)
             elif arg in ["-t", "--trace"]:
-                trace_depth = sys.maxint
-            elif arg in ["-T"]:
-                trace_depth, idx = get_int_parameter(argv, idx, arg)
-                if trace_depth < 0:
-                    raise error.Exit("Need argument >= 0 for -T.")
+                trace = True
             elif arg in ["-p", "--poll"]:
                 poll = True
             elif arg in ["-a", "--arg"]:
@@ -164,7 +159,7 @@ def entry_point(argv):
     image_reader = squeakimage.reader_for_image(space, squeakimage.Stream(data=imagedata))
     image = create_image(space, image_reader)
     interp = interpreter.Interpreter(space, image, image_name=path,
-                trace_depth=trace_depth, evented=not poll,
+                trace=trace, evented=not poll,
                 interrupts=interrupts)
     space.runtime_setup(argv[0])
     print_error("") # Line break after image-loading characters
