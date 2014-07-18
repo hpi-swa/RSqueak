@@ -633,18 +633,29 @@ class AbstractRedirectingShadow(AbstractShadow):
     def size(self):
         return self._w_self_size
 
+class ContextState(object):
+    def __init__(self, name):
+        self.name = name
+    def __str__(self):
+        return self.name
+    def __repr__(self):
+        return self.name
+InactiveContext = ContextState("InactiveContext")
+ActiveContext = ContextState("ActiveContext")
+DirtyContext = ContextState("DirtyContext")
+
 class ContextPartShadow(AbstractRedirectingShadow):
 
     __metaclass__ = extendabletype
     _attrs_ = ['_s_sender',
             '_pc', '_temps_and_stack',
-            '_stack_ptr', 'instances_w']
+            '_stack_ptr', 'instances_w', 'state']
     repr_classname = "ContextPartShadow"
 
     _virtualizable_ = [
         '_s_sender',
         "_pc", "_temps_and_stack[*]", "_stack_ptr",
-        "_w_self", "_w_self_size"
+        "_w_self", "_w_self_size", 'state'
     ]
 
     # ______________________________________________________________________
@@ -654,13 +665,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
         self._s_sender = None
         AbstractRedirectingShadow.__init__(self, space, w_self, size)
         self.instances_w = {}
-
-    def copy_field_from(self, n0, other_shadow):
-        from spyvm.interpreter import SenderChainManipulation
-        try:
-            AbstractRedirectingShadow.copy_field_from(self, n0, other_shadow)
-        except SenderChainManipulation, e:
-            assert e.s_new_context == self
+        self.state = InactiveContext
 
     def copy_from(self, other_shadow):
         # Some fields have to be initialized before the rest, to ensure correct initialization.
@@ -702,7 +707,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
         if n0 == constants.CTXPART_SENDER_INDEX:
             assert isinstance(w_value, model.W_PointersObject)
             if w_value.is_nil(self.space):
-                self.store_s_sender(None, raise_error=False)
+                self.store_s_sender(None)
             else:
                 self.store_s_sender(w_value.as_context_get_shadow(self.space))
             return
@@ -722,12 +727,12 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
     # === Sender ===
 
-    def store_s_sender(self, s_sender, raise_error=True):
+    def store_s_sender(self, s_sender):
         if s_sender is not self._s_sender:
             self._s_sender = s_sender
-            if raise_error:
-                from spyvm.interpreter import SenderChainManipulation
-                raise SenderChainManipulation(self)
+            # If new sender is None, we are just being marked as returned.
+            if s_sender is not None and self.state is ActiveContext:
+                self.state = DirtyContext
 
     def w_sender(self):
         sender = self.s_sender()
@@ -819,7 +824,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
     def mark_returned(self):
         self.store_pc(-1)
-        self.store_s_sender(None, raise_error=False)
+        self.store_s_sender(None)
 
     def is_returned(self):
         return self.pc() == -1 and self.w_sender().is_nil(self.space)

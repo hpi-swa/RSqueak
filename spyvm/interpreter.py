@@ -1,6 +1,6 @@
 import os
 
-from spyvm.shadow import MethodContextShadow
+from spyvm.shadow import MethodContextShadow, ActiveContext, InactiveContext, DirtyContext
 from spyvm import model, constants, wrapper, objspace, interpreter_bytecodes
 
 from rpython.rlib import jit, rstackovf, unroll
@@ -151,8 +151,10 @@ class Interpreter(object):
             if self.is_tracing():
                 self.stack_depth += 1
             if s_frame._s_sender is None and s_sender is not None:
-                s_frame.store_s_sender(s_sender, raise_error=False)
+                s_frame.store_s_sender(s_sender)
             # Now (continue to) execute the context bytecodes
+            assert s_frame.state is InactiveContext
+            s_frame.state = ActiveContext
             self.loop_bytecodes(s_frame, may_context_switch)
         except rstackovf.StackOverflow:
             rstackovf.check_stack_overflow()
@@ -160,7 +162,11 @@ class Interpreter(object):
         finally:
             if self.is_tracing():
                 self.stack_depth -= 1
-
+            dirty_frame = s_frame.state is DirtyContext
+            s_frame.state = InactiveContext
+            if dirty_frame:
+                raise SenderChainManipulation(s_frame)
+    
     def step(self, context):
         bytecode = context.fetch_next_bytecode()
         for entry in UNROLLING_BYTECODE_RANGES:
