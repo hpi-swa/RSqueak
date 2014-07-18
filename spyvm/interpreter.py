@@ -1,6 +1,6 @@
 import py
 import os
-from spyvm.shadow import ContextPartShadow, MethodContextShadow, BlockContextShadow, MethodNotFound
+from spyvm.shadow import ContextPartShadow, MethodContextShadow, BlockContextShadow, MethodNotFound, ActiveContext, InactiveContext, DirtyContext
 from spyvm import model, constants, primitives, conftest, wrapper, objspace
 from spyvm.tool.bitmanipulation import splitter
 
@@ -118,8 +118,10 @@ class Interpreter(object):
             if self.is_tracing():
                 self.stack_depth += 1
             if s_frame._s_sender is None and s_sender is not None:
-                s_frame.store_s_sender(s_sender, raise_error=False)
+                s_frame.store_s_sender(s_sender)
             # Now (continue to) execute the context bytecodes
+            assert s_frame.state is InactiveContext
+            s_frame.state = ActiveContext
             self.loop_bytecodes(s_frame, may_context_switch)
         except rstackovf.StackOverflow:
             rstackovf.check_stack_overflow()
@@ -127,7 +129,11 @@ class Interpreter(object):
         finally:
             if self.is_tracing():
                 self.stack_depth -= 1
-
+            dirty_frame = s_frame.state is DirtyContext
+            s_frame.state = InactiveContext
+            if dirty_frame:
+                raise SenderChainManipulation(s_frame)
+    
     def step(self, context):
         bytecode = context.fetch_next_bytecode()
         for entry in UNROLLING_BYTECODE_RANGES:
@@ -755,16 +761,9 @@ class __extend__(ContextPartShadow):
             association = wrapper.AssociationWrapper(self.space, w_association)
             self.push(association.value())
         elif opType == 5:
-            # TODO - the following two special cases should not be necessary
-            try:
-                self.w_receiver().store(self.space, third, self.top())
-            except SenderChainManipulation, e:
-                raise SenderChainManipulation(self)
+            self.w_receiver().store(self.space, third, self.top())
         elif opType == 6:
-            try:
-                self.w_receiver().store(self.space, third, self.pop())
-            except SenderChainManipulation, e:
-                raise SenderChainManipulation(self)
+            self.w_receiver().store(self.space, third, self.pop())
         elif opType == 7:
             w_association = self.w_method().getliteral(third)
             association = wrapper.AssociationWrapper(self.space, w_association)
