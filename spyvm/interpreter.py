@@ -60,25 +60,58 @@ class Interpreter(object):
 
     def loop(self, w_active_context):
         # This is the top-level loop and is not invoked recursively.
-        s_new_context = w_active_context.as_context_get_shadow(self.space)
+        s_context = w_active_context.as_context_get_shadow(self.space)
         while True:
-            s_sender = s_new_context.s_sender()
+            s_sender = s_context.s_sender()
             try:
-                self.loop_bytecodes(s_new_context)
+                self.stack_frame(s_context, None)
                 raise Exception("loop_bytecodes left without raising...")
             except ContextSwitchException, e:
                 if self.is_tracing():
-                    e.print_trace(s_new_context)
-                s_new_context = e.s_new_context
-            except Return, nlr:
-                assert nlr.s_target_context or nlr.is_local
-                s_new_context = s_sender
-                if not nlr.is_local:
-                    while s_new_context is not nlr.s_target_context:
-                        s_sender = s_new_context.s_sender()
-                        s_new_context._activate_unwind_context(self)
-                        s_new_context = s_sender
-                s_new_context.push(nlr.value)
+                    e.print_trace()
+                s_context = e.s_new_context
+            except LocalReturn, ret:
+                s_context = self.unwind_context_chain(s_sender, s_sender, ret.value)
+            except Return, ret:
+                s_context = self.unwind_context_chain(s_sender, ret.s_target_context, ret.value)
+            except NonVirtualReturn, ret:
+                if self.is_tracing():
+                    ret.print_trace()
+                s_context = self.unwind_context_chain(ret.s_current_context, ret.s_target_context, ret.value)
+    
+    # This is a wrapper around loop_bytecodes that cleanly enters/leaves the frame,
+    # handles the stack overflow protection mechanism and handles/dispatches Returns.
+    def stack_frame(self, s_frame, s_sender, may_context_switch=True):
+        try:
+            if self.is_tracing():
+                self.stack_depth += 1
+            if s_frame._s_sender is None and s_sender is not None:
+                s_frame.store_s_sender(s_sender)
+            # Now (continue to) execute the context bytecodes
+            assert s_frame.state is InactiveContext
+            s_frame.state = ActiveContext
+            self.loop_bytecodes(s_frame, may_context_switch)
+        except rstackovf.StackOverflow:
+            rstackovf.check_stack_overflow()
+            raise StackOverflow(s_frame)
+        except Return, e:
+            # Do not catch NonVirtualReturn. If there are multiple dirty contexts
+            # on the stack, the inner-most one will count.
+            if s_frame.state is DirtyContext:
+                s_sender = s_frame.s_sender()
+                s_frame._activate_unwind_context(self)
+                target_context = s_sender if e.is_local else e.s_target_context
+                raise NonVirtualReturn(target_context, e.value, s_sender)
+            else:
+                s_frame._activate_unwind_context(self)
+                if e.s_target_context is s_sender or e.is_local:
+                    raise LocalReturn(e.value)
+                else:
+                    raise e
+        finally:
+            if self.is_tracing():
+                self.stack_depth -= 1
+            s_frame.state = InactiveContext
     
     def loop_bytecodes(self, s_context, may_context_switch=True):
         old_pc = 0
@@ -100,39 +133,22 @@ class Interpreter(object):
                 s_context=s_context)
             try:
                 self.step(s_context)
-            except Return, nlr:
-                if nlr.s_target_context is s_context or nlr.is_local:
-                    s_context.push(nlr.value)
-                else:
-                    if nlr.s_target_context is None:
-                        # This is the case where we are returning to our sender.
-                        # Mark the return as local, so our sender will take it
-                        nlr.is_local = True
-                    s_context._activate_unwind_context(self)
-                    raise nlr
-
-    # This is a wrapper around loop_bytecodes that cleanly enters/leaves the frame
-    # and handles the stack overflow protection mechanism.
-    def stack_frame(self, s_frame, s_sender, may_context_switch=True):
-        try:
-            if self.is_tracing():
-                self.stack_depth += 1
-            if s_frame._s_sender is None and s_sender is not None:
-                s_frame.store_s_sender(s_sender)
-            # Now (continue to) execute the context bytecodes
-            assert s_frame.state is InactiveContext
-            s_frame.state = ActiveContext
-            self.loop_bytecodes(s_frame, may_context_switch)
-        except rstackovf.StackOverflow:
-            rstackovf.check_stack_overflow()
-            raise StackOverflow(s_frame)
-        finally:
-            if self.is_tracing():
-                self.stack_depth -= 1
-            dirty_frame = s_frame.state is DirtyContext
-            s_frame.state = InactiveContext
-            if dirty_frame:
-                raise SenderChainManipulation(s_frame)
+            except LocalReturn, ret:
+                s_context.push(ret.value)
+    
+    def unwind_context_chain(self, start_context, target_context, return_value):
+        if start_context is None:
+            # This is the toplevel frame. Execution ended.
+            raise ReturnFromTopLevel(return_value)
+        assert target_context
+        context = start_context
+        while context is not target_context:
+            assert context, "Sender chain ended without finding return-context."
+            s_sender = context.s_sender()
+            context._activate_unwind_context(self)
+            context = s_sender
+        context.push(return_value)
+        return context
     
     def step(self, context):
         bytecode = context.fetch_next_bytecode()
@@ -253,44 +269,60 @@ class ReturnFromTopLevel(Exception):
     def __init__(self, object):
         self.object = object
 
-class Return(Exception):
-    _attrs_ = ["value", "s_target_context", "is_local"]
+class LocalReturn(Exception):
+    _attrs_ = ["value"]
+    def __init__(self, value):
+        self.value = value
+
+class AbstractReturn(Exception):
+    _attrs_ = ["value", "s_target_context"]
     def __init__(self, s_target_context, w_result):
         self.value = w_result
         self.s_target_context = s_target_context
-        self.is_local = False
+
+class Return(AbstractReturn):
+    """This is the basic Return, handled on the C-stack,
+    without forcing all contexts to the heap."""
+    _attrs_ = ["is_local"]
+    def __init__(self, s_target_context, w_result, is_local):
+        AbstractReturn.__init__(self, s_target_context, w_result)
+        self.is_local = is_local
+    
+class NonVirtualReturn(AbstractReturn):
+    """This Return will be passed through the entire C-stack built from stack_frame()
+    invokations. Used when the sender-chain has been manipulated.
+    s_current_context is the context where the outermost loop()
+    will start unrolling the context-chain and looking for s_target_context."""
+    
+    _attrs_ = ["s_current_context"]
+    def __init__(self, s_target_context, w_result, s_current_context):
+        AbstractReturn.__init__(self, s_target_context, w_result)
+        self.s_current_context = s_current_context
+    
+    def print_trace(self):
+        print "====== Sender Chain Manipulation, contexts forced to heap at: %s" % self.s_current_context.short_str()
 
 class ContextSwitchException(Exception):
     """General Exception that causes the interpreter to leave
     the current context."""
-    
     _attrs_ = ["s_new_context"]
-    type = "ContextSwitch"
     def __init__(self, s_new_context):
         self.s_new_context = s_new_context
-    
-    def print_trace(self, old_context):
-        print "====== %s, contexts forced to heap at: %s" % (self.type, self.s_new_context.short_str())
-        
+
 class StackOverflow(ContextSwitchException):
     """This causes the current jit-loop to be left, dumping all virtualized objects to the heap.
     This breaks performance, so it should rarely happen.
     In case of severe performance problems, execute with -t and check if this occurrs."""
-    type = "Stack Overflow"
     
+    def print_trace(self):
+        print "====== Stack Overflow, contexts forced to heap at: %s" % self.s_new_context.short_str()
+
 class ProcessSwitch(ContextSwitchException):
     """This causes the interpreter to switch the executed context.
     Triggered when switching the process."""
     
-    def print_trace(self, old_context):
-        print "====== Switched process from: %s" % old_context.short_str()
-        print "====== to: %s " % self.s_new_context.short_str()
-    
-class SenderChainManipulation(ContextSwitchException):
-    """Manipulation of the sender chain can invalidate the jitted C stack.
-    We have to dump all virtual objects and rebuild the stack.
-    We try to raise this as rarely as possible and as late as possible."""
-    type = "Sender Manipulation"
+    def print_trace(self):
+        print "====== Switched Process to: %s" % self.s_new_context.short_str()
 
 import rpython.rlib.unroll
 if hasattr(unroll, "unrolling_zero"):
@@ -305,7 +337,6 @@ else:
         def __rsub__(self, other):
             return unrolling_int(int.__rsub__(self, other))
     unrolling_zero = unrolling_int(0)
-
 
 # This is a decorator for bytecode implementation methods.
 # parameter_bytes=N means N additional bytes are fetched as parameters.
@@ -685,16 +716,12 @@ class __extend__(ContextPartShadow):
             # it will find the sender as a local, and we don't have to
             # force the reference
             s_return_to = None
-            return_from_top = self.s_sender() is None
+            is_local = True
         else:
             s_return_to = self.s_home().s_sender()
-            return_from_top = s_return_to is None
+            is_local = False
         
-        if return_from_top:
-            # This should never happen while executing a normal image.
-            raise ReturnFromTopLevel(return_value)
-        else:
-            raise Return(s_return_to, return_value)
+        raise Return(s_return_to, return_value, is_local)
 
     # ====== Send/Return bytecodes ======
 
