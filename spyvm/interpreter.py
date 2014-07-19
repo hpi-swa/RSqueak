@@ -819,10 +819,8 @@ class __extend__(ContextPartShadow):
             self.push(self.gettemp(0)) # push the first argument
             try:
                 self.bytecodePrimValue(interp, 0)
-            except Return, nlr:
-                assert nlr.s_target_context or nlr.is_local
-                if self is not nlr.s_target_context and not nlr.is_local:
-                    raise nlr
+            except LocalReturn, ret:
+                pass # Local return value of ensure: block is ignored
             finally:
                 self.mark_returned()
 
