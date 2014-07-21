@@ -161,10 +161,10 @@ def entry_point(argv):
     # Load & prepare image and environment
     image_reader = squeakimage.reader_for_image(space, squeakimage.Stream(data=imagedata))
     image = create_image(space, image_reader)
-    interp = interpreter.Interpreter(space, image, image_name=path,
+    interp = interpreter.Interpreter(space, image,
                 trace=trace, evented=not poll,
                 interrupts=interrupts)
-    space.runtime_setup(argv[0])
+    space.runtime_setup(argv[0], path)
     print_error("") # Line break after image-loading characters
     
     # Create context to be executed

@@ -14,8 +14,7 @@ class ConstantFlag(object):
         self.flag = [set_initially]
     
     def is_set(self):
-        flag = jit.promote(self.flag[0])
-        return flag
+        return jit.promote(self.flag[0])
     
     def set(self):
         self.flag[0] = True
@@ -25,6 +24,16 @@ class ConstantFlag(object):
     
     def set_to(self, flag):
         self.flag[0] = flag
+
+class ConstantString(object):
+    def __init__(self):
+        self.value = [""]
+    
+    def get(self):
+        return jit.promote(self.value[0])
+    
+    def set(self, value):
+        self.value[0] = value
 
 class ObjSpace(object):
     def __init__(self):
@@ -38,8 +47,8 @@ class ObjSpace(object):
         
         self.classtable = {}
         self.objtable = {}
-        self._executable_path = [""] # XXX: we cannot set the attribute
-                                  # directly on the frozen objectspace
+        self._executable_path = ConstantString()
+        self._image_name = ConstantString()
         
         # Create the nil object.
         # Circumvent the constructor because nil is already referenced there.
@@ -62,11 +71,12 @@ class ObjSpace(object):
                     break
         return rpath.rabspath(executable)
 
-    def runtime_setup(self, executable):
+    def runtime_setup(self, executable, image_name):
         fullpath = rpath.rabspath(self.find_executable(executable))
         i = fullpath.rfind(os.path.sep) + 1
         assert i > 0
-        self._executable_path[0] = fullpath[:i]
+        self._executable_path.set(fullpath[:i])
+        self._image_name.set(image_name)
 
     def populate_special_objects(self, specials):
         for name, idx in constants.objects_in_special_object_table.items():
@@ -77,7 +87,10 @@ class ObjSpace(object):
         self.classtable["w_Metaclass"] = self.w_SmallInteger.w_class.w_class
         
     def executable_path(self):
-        return self._executable_path[0]
+        return self._executable_path.get()
+    
+    def image_name(self):
+        return self._image_name.get()
     
     def add_bootstrap_class(self, name, cls):
         self.classtable[name] = cls

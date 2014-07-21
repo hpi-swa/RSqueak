@@ -47,7 +47,8 @@ def mock(space, stack, context = None):
         frame = context
         for i in range(len(stack)):
             frame.as_context_get_shadow(space).push(stack[i])
-    interp = TestInterpreter(space, image_name=IMAGENAME)
+    interp = TestInterpreter(space)
+    interp.space._image_name.set(IMAGENAME)
     return interp, frame, len(stack)
 
 def _prim(space, code, stack, context = None):
@@ -680,7 +681,7 @@ def test_primitive_value_no_context_switch(monkeypatch):
 
     closure = space.newClosure(w_frame, 4, 0, [])
     s_frame = w_frame.as_methodcontext_get_shadow(space)
-    interp = TestInterpreter(space, image_name=IMAGENAME)
+    interp = TestInterpreter(space)
     interp._loop = True
 
     try:

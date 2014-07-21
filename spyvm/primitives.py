@@ -982,7 +982,7 @@ DRAW_RECTANGLE = 127
 def func(interp, s_frame, argument_count):
     if argument_count == 0:
         s_frame.pop()
-        return interp.space.wrap_string(interp.image_name)
+        return interp.space.wrap_string(interp.space.image_name())
     elif argument_count == 1:
         pass # XXX
     raise PrimitiveFailedError
