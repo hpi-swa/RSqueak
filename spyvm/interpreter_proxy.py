@@ -17,7 +17,7 @@ from rpython.rtyper.lltypesystem.lltype import FuncType, Ptr
 from rpython.rtyper.lltypesystem import lltype, rffi
 from rpython.rlib.unroll import unrolling_iterable
 
-from spyvm import error, model, model_display, objspace
+from spyvm import error, model, model_display, objspace, wrapper
 
 sqInt = rffi.INT
 sqLong = rffi.LONG
@@ -559,7 +559,8 @@ def showDisplayBitsLeftTopRightBottom(w_dest_form, l, t, r, b):
     # display memory
     space = IProxy.space
     if w_dest_form.is_same_object(space.objtable['w_display']):
-        w_display_bitmap = model_display.get_display_bitmap(IProxy.interp, w_dest_form)
+        form = wrapper.FormWrapper(space, w_dest_form)
+        w_display_bitmap = form.get_display_bitmap(IProxy.interp)
         w_display_bitmap.update_from_buffer()
         w_display_bitmap.flush_to_screen()
     return 0

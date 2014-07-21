@@ -1,4 +1,4 @@
-from spyvm import model, constants
+from spyvm import model, model_display, constants
 from spyvm.error import FatalError, WrapperException, PrimitiveFailedError
 
 class Wrapper(object):
@@ -262,6 +262,21 @@ class BlockClosureWrapper(VarsizedWrapper):
 
     def size(self):
         return self._w_self.size() - constants.BLKCLSR_SIZE
+
+class FormWrapper(Wrapper):
+    bits, store_bits = make_getter_setter(constants.FORM_BITS)
+    width, store_width = make_int_getter_setter(constants.FORM_WIDTH)
+    height, store_height = make_int_getter_setter(constants.FORM_HEIGHT)
+    depth, store_depth = make_int_getter_setter(constants.FORM_DEPTH)
+    
+    def get_display_bitmap(self, interp, sdldisplay=None):
+        w_bitmap = self.bits()
+        if not isinstance(w_bitmap, model_display.W_DisplayBitmap):
+            w_display_bitmap = model_display.from_words_object(interp, w_bitmap, self, sdldisplay)
+            self.store_bits(w_display_bitmap)
+        else:
+            w_display_bitmap = w_bitmap
+        return w_display_bitmap
 
 # XXX Wrappers below are not used yet.
 class OffsetWrapper(Wrapper):

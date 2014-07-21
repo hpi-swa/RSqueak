@@ -734,14 +734,13 @@ def func(interp, s_frame, w_rcvr):
     
     if not isinstance(w_rcvr, model.W_PointersObject) or w_rcvr.size() < 4:
         raise PrimitiveFailedError
-    # the fields required are bits (a pointer to a Bitmap), width, height, depth
-
-    # XXX: TODO get the initial image TODO: figure out whether we
-    # should decide the width an report it in the other SCREEN_SIZE
-    w_bitmap = w_rcvr.fetch(interp.space, 0)
-    width = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 1))
-    height = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 2))
-    depth = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 3))
+    
+    # TODO: figure out whether we should decide the width an report it in the SCREEN_SIZE primitive
+    form = wrapper.FormWrapper(interp.space, w_rcvr)
+    w_bitmap = form.bits()
+    width = form.width()
+    height = form.height()
+    depth = form.depth()
 
     sdldisplay = None
 
@@ -751,7 +750,7 @@ def func(interp, s_frame, w_rcvr):
         if isinstance(w_prev_bitmap, model_display.W_DisplayBitmap):
             sdldisplay = w_prev_bitmap.display
             sdldisplay.set_video_mode(width, height, depth)
-
+    
     if isinstance(w_bitmap, model_display.W_DisplayBitmap):
         assert (sdldisplay is None) or (sdldisplay is w_bitmap.display)
         sdldisplay = w_bitmap.display
@@ -759,7 +758,7 @@ def func(interp, s_frame, w_rcvr):
         w_display_bitmap = w_bitmap
     else:
         assert isinstance(w_bitmap, model.W_WordsObject)
-        w_display_bitmap = model_display.get_display_bitmap(interp, w_rcvr, sdldisplay=sdldisplay)
+        w_display_bitmap = form.get_display_bitmap(interp, sdldisplay)
     
     w_display_bitmap.flush_to_screen()
     if interp.image:
