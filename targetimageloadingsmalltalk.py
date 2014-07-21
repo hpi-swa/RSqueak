@@ -69,7 +69,7 @@ def safe_entry_point(argv):
     except error.Exit, e:
         print_error("Exited: %s" % e.msg)
         return -1
-    except Exception, e:
+    except BaseException, e:
         print_error("Exception: %s" % str(e))
         if not objectmodel.we_are_translated():
             import traceback
