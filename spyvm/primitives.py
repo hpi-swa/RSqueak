@@ -860,8 +860,8 @@ def func(interp, s_frame, w_rcvr):
 
 @expose_primitive(EXIT_TO_DEBUGGER, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    if not objectmodel.we_are_translated():
-        import pdb; pdb.set_trace()
+    if interp.space.headless.is_set():
+        exitFromHeadlessExecution(s_frame, "EXIT_TO_DEBUGGER")
     raise PrimitiveNotYetWrittenError()
 
 @expose_primitive(CHANGE_CLASS, unwrap_spec=[object, object], no_result=True)
