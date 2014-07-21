@@ -2,7 +2,7 @@ import os
 import inspect
 import math
 import operator
-from spyvm import model, shadow, error, constants, display
+from spyvm import model, model_display, shadow, error, constants, display
 from spyvm.error import PrimitiveFailedError, PrimitiveNotYetWrittenError
 from spyvm import wrapper
 
@@ -676,7 +676,7 @@ def func(interp, s_frame, argcount, w_method):
         w_display = interp.space.objtable['w_display']
         if w_dest_form.is_same_object(w_display):
             w_bitmap = w_display.fetch(interp.space, 0)
-            assert isinstance(w_bitmap, model.W_DisplayBitmap)
+            assert isinstance(w_bitmap, model_display.W_DisplayBitmap)
             w_bitmap.flush_to_screen()
         return w_rcvr
     except shadow.MethodNotFound:
@@ -748,23 +748,19 @@ def func(interp, s_frame, w_rcvr):
     w_prev_display = interp.space.objtable['w_display']
     if w_prev_display:
         w_prev_bitmap = w_prev_display.fetch(interp.space, 0)
-        if isinstance(w_prev_bitmap, model.W_DisplayBitmap):
+        if isinstance(w_prev_bitmap, model_display.W_DisplayBitmap):
             sdldisplay = w_prev_bitmap.display
             sdldisplay.set_video_mode(width, height, depth)
 
-    if isinstance(w_bitmap, model.W_DisplayBitmap):
+    if isinstance(w_bitmap, model_display.W_DisplayBitmap):
         assert (sdldisplay is None) or (sdldisplay is w_bitmap.display)
         sdldisplay = w_bitmap.display
         sdldisplay.set_video_mode(width, height, depth)
         w_display_bitmap = w_bitmap
     else:
         assert isinstance(w_bitmap, model.W_WordsObject)
-        w_display_bitmap = w_bitmap.as_display_bitmap(
-            w_rcvr,
-            interp,
-            sdldisplay=sdldisplay
-        )
-
+        w_display_bitmap = model_display.get_display_bitmap(interp, w_rcvr, sdldisplay=sdldisplay)
+    
     w_display_bitmap.flush_to_screen()
     if interp.image:
         interp.image.lastWindowSize = (width << 16)  + height
@@ -1142,7 +1138,7 @@ def func(interp, s_frame, w_arg, new_value):
             raise PrimitiveFailedError
         for i in xrange(w_arg.size()):
             w_arg.setchar(i, chr(new_value))
-    elif isinstance(w_arg, model.W_WordsObject) or isinstance(w_arg, model.W_DisplayBitmap):
+    elif isinstance(w_arg, model.W_WordsObject) or isinstance(w_arg, model_display.W_DisplayBitmap):
         for i in xrange(w_arg.size()):
             w_arg.setword(i, new_value)
     else:

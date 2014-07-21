@@ -1,6 +1,6 @@
 import os
 
-from spyvm import constants, model, shadow, wrapper, version
+from spyvm import constants, model, model_display, shadow, wrapper, version
 from spyvm.error import UnwrappingError, WrappingError, PrimitiveFailedError
 from rpython.rlib import jit, rpath
 from rpython.rlib.objectmodel import instantiate, specialize
@@ -237,7 +237,7 @@ class ObjSpace(object):
         w_display = self.objtable['w_display']
         if w_display:
             w_bitmap = w_display.fetch(self, 0)
-            if isinstance(w_bitmap, model.W_DisplayBitmap):
+            if isinstance(w_bitmap, model_display.W_DisplayBitmap):
                 return w_bitmap.display
         raise PrimitiveFailedError("No display")
 

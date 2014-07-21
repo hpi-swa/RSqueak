@@ -17,7 +17,7 @@ from rpython.rtyper.lltypesystem.lltype import FuncType, Ptr
 from rpython.rtyper.lltypesystem import lltype, rffi
 from rpython.rlib.unroll import unrolling_iterable
 
-from spyvm import error, model, objspace
+from spyvm import error, model, model_display, objspace
 
 sqInt = rffi.INT
 sqLong = rffi.LONG
@@ -242,7 +242,7 @@ def firstIndexableField(w_object):
         return w_object.convert_to_c_layout()
     elif isinstance(w_object, model.W_BytesObject):
         return rffi.cast(sqIntArrayPtr, w_object.convert_to_c_layout())
-    elif isinstance(w_object, model.W_DisplayBitmap):
+    elif isinstance(w_object, model_display.W_DisplayBitmap):
         return rffi.cast(sqIntArrayPtr, w_object.convert_to_c_layout())
     else:
         raise ProxyFunctionFailed
@@ -529,7 +529,7 @@ def failed():
 @expose_on_virtual_machine_proxy([], int)
 def fullDisplayUpdate():
     w_display = IProxy.space.objtable['w_display']
-    if isinstance(w_display, model.W_DisplayBitmap):
+    if isinstance(w_display, model_display.W_DisplayBitmap):
         w_display.update_from_buffer()
         w_display.flush_to_screen()
         return 0
@@ -559,16 +559,7 @@ def showDisplayBitsLeftTopRightBottom(w_dest_form, l, t, r, b):
     # display memory
     space = IProxy.space
     if w_dest_form.is_same_object(space.objtable['w_display']):
-        w_bitmap = w_dest_form.fetch(space, 0)
-        if not isinstance(w_bitmap, model.W_DisplayBitmap):
-            assert isinstance(w_bitmap, model.W_WordsObject)
-            w_display_bitmap = w_bitmap.as_display_bitmap(
-                w_dest_form,
-                IProxy.interp,
-                sdldisplay=None
-            )
-        else:
-            w_display_bitmap = w_bitmap
+        w_display_bitmap = model_display.get_display_bitmap(IProxy.interp, w_dest_form)
         w_display_bitmap.update_from_buffer()
         w_display_bitmap.flush_to_screen()
     return 0

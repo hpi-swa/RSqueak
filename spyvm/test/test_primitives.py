@@ -1,5 +1,5 @@
 import py, os, math, time
-from spyvm import model, shadow, interpreter, constants, primitives, objspace, wrapper, display
+from spyvm import model, model_display, shadow, interpreter, constants, primitives, objspace, wrapper, display
 from spyvm.primitives import prim_table, PrimitiveFailedError
 from spyvm.plugins import bitblt
 from rpython.rlib.rfloat import INFINITY, NAN, isinf, isnan
@@ -721,7 +721,7 @@ def test_primitive_be_display():
     assert space.objtable["w_display"] is mock_display
     w_bitmap = mock_display.fetch(space, 0)
     assert w_bitmap is not w_wordbmp
-    assert isinstance(w_bitmap, model.W_DisplayBitmap)
+    assert isinstance(w_bitmap, model_display.W_DisplayBitmap)
     sdldisplay = w_bitmap.display
     assert isinstance(sdldisplay, display.SDLDisplay)
 
@@ -733,7 +733,7 @@ def test_primitive_be_display():
     prim(primitives.BE_DISPLAY, [mock_display2])
     assert space.objtable["w_display"] is mock_display2
     w_bitmap2 = mock_display.fetch(space, 0)
-    assert isinstance(w_bitmap2, model.W_DisplayBitmap)
+    assert isinstance(w_bitmap2, model_display.W_DisplayBitmap)
     assert w_bitmap.display is w_bitmap2.display
     assert sdldisplay.width == 32
     assert sdldisplay.height == 10
