@@ -1467,8 +1467,3 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
             if isinstance(s_class, ClassShadow):
                 return "%s >> #%s" % (s_class.getname(), self.lookup_selector)
         return "#%s" % self.lookup_selector
-
-class DetachingShadowError(Exception):
-    def __init__(self, old_shadow, new_shadow_class):
-        self.old_shadow = old_shadow
-        self.new_shadow_class = new_shadow_class
