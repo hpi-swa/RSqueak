@@ -36,6 +36,7 @@ def _usage(argv):
             -p|--poll          - Actively poll for events. Try this if the image is not responding well.
             -i|--no-interrupts - Disable timer interrupt. Disables non-cooperative scheduling.
             -S                 - Disable specialized storage strategies; always use generic ListStorage
+            --hacks            - Enable Spy hacks. Set display color depth to 8.
             
           Logging parameters:
             -t|--trace                 - Output a trace of each message, primitive, return value and process switch.
@@ -119,6 +120,8 @@ def entry_point(argv):
                 interrupts = False
             elif arg in ["-P", "--process"]:
                 headless = False
+            elif arg in ["--hacks"]:
+                space.run_spy_hacks.set()
             elif arg in ["-S"]:
                 space.no_specialized_storage.set()
             elif arg in ["-u"]:

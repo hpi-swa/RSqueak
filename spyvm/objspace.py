@@ -33,6 +33,7 @@ class ObjSpace(object):
         self.no_specialized_storage = ConstantFlag()
         # This is a hack; see compile_code() in targetimageloadingsmalltalk.py
         self.suppress_process_switch = ConstantFlag()
+        self.run_spy_hacks = ConstantFlag()
         self.headless = ConstantFlag()
         
         self.classtable = {}
