@@ -1,6 +1,6 @@
 
 from spyvm import model, constants, display
-from rpython.rlib import jit
+from rpython.rlib import jit, objectmodel
 from rpython.rtyper.lltypesystem import lltype, rffi
 from rpython.rlib.rarithmetic import r_uint
 
@@ -11,7 +11,7 @@ def from_words_object(w_obj, form):
     w_class = w_obj.getclass(space)
     
     if depth < 8:
-        w_display_bitmap = W_MappingDisplayBitmap(space, w_class, size, depth, form.width())
+        w_display_bitmap = W_MappingDisplayBitmap(space, w_class, size, depth)
     elif depth == 8:
         w_display_bitmap = W_8BitDisplayBitmap(space, w_class, size, depth)
     elif depth == 16:
@@ -159,45 +159,47 @@ class W_8BitDisplayBitmap(W_DisplayBitmap):
         else:
             self.pixelbuffer_UINT()[n] = r_uint(word)
 
+BITS = r_uint(32)
 class W_MappingDisplayBitmap(W_DisplayBitmap):
     
     repr_classname = "W_MappingDisplayBitmap"
-    _attrs_ = ['mapping_factor', 'words_per_line', 'bits_in_last_word', 'width']
-    _immutable_fields_ = ['mapping_factor', 'words_per_line', 'bits_in_last_word', 'width']
+    _attrs_ = ['words_per_line', 'bits_in_last_word', 'pitch']
+    _immutable_fields_ = ['words_per_line?', 'bits_in_last_word?', 'pitch?']
     
-    pixel_per_word = constants.BYTES_PER_WORD
-    
-    def __init__(self, space, w_class, size, depth, width):
+    def __init__(self, space, w_class, size, depth):
         assert depth in [1, 2, 4]
-        width = r_uint(width)
-        self.width = width
-        self.mapping_factor = display.MINIMUM_DEPTH / depth
-        self.words_per_line = r_uint(width / 32 + 1)
-        self.bits_in_last_word = width % 32
         W_DisplayBitmap.__init__(self, space, w_class, size, depth)
+    
+    def take_over_display(self):
+        pitch = r_uint(self.display.pitch)
+        self.pitch = pitch
+        self.bits_in_last_word = pitch % BITS
+        self.words_per_line = r_uint((pitch - self.bits_in_last_word) / BITS)
+        if self.bits_in_last_word > 0:
+            self.words_per_line += 1
+        W_DisplayBitmap.take_over_display(self)
     
     @jit.unroll_safe
     def set_pixelbuffer_word(self, n, word):
         n = r_uint(n)
-        word = r_uint(word)
-        pos = self.compute_pos(n)
-        buf = self.display.screen.c_pixels
-        
-        if (n+1) % self.words_per_line == 0:
+        if ((n+1) % self.words_per_line) == 0 and self.bits_in_last_word > 0:
             # This is the last word on the line. A few bits are cut off.
             bits = self.bits_in_last_word
         else:
-            bits = 32
+            bits = BITS
         
+        word = r_uint(word)
+        pos = self.compute_pos(n)
+        buf = rffi.ptradd(self.display.screen.c_pixels, pos)
         depth = r_uint(self._depth)
-        rshift = 32 - depth
-        for i in range(r_uint(bits) / depth):
+        rshift = BITS - depth
+        for i in range(bits / depth):
             pixel = word >> rshift
-            buf[pos] = rffi.cast(rffi.UCHAR, pixel)
-            word <<= self._depth
-            pos += 1
-        
+            buf[i] = rffi.cast(rffi.UCHAR, pixel)
+            word <<= depth
+    
     def compute_pos(self, n):
         word_on_line = n % self.words_per_line
-        complete_lines = r_uint((n - word_on_line) / self.words_per_line)
-        return complete_lines * self.width + 32*word_on_line
+        y = r_uint((n - word_on_line) / self.words_per_line)
+        x = word_on_line * BITS / r_uint(self._depth)
+        return y * r_uint(self.pitch) + x
