@@ -74,11 +74,7 @@ class SDLDisplay(object):
         self.bpp = rffi.getintfield(self.screen.c_format, 'c_BytesPerPixel')
         self.pitch = rffi.getintfield(self.screen, 'c_pitch')
     
-    def get_pixelbuffer_UCHAR(self):
-        # return jit.promote(rffi.cast(RSDL.Uint8P, self.screen.c_pixels))
-        return jit.promote(self.screen.c_pixels)
-    
-    def get_pixelbuffer_UINT(self):
+    def get_pixelbuffer(self):
         return jit.promote(rffi.cast(RSDL.Uint32P, self.screen.c_pixels))
     
     def defer_updates(self, flag):

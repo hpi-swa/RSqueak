@@ -61,14 +61,14 @@ class W_DisplayBitmap(model.W_AbstractObjectWithClassReference):
     
     # === Graphics
     
-    def pixelbuffer_UINT(self):
-        return self.display.get_pixelbuffer_UINT()
+    def pixelbuffer(self):
+        return self.display.get_pixelbuffer()
     
     def pixelbuffer_UCHAR(self):
         return self.display.get_pixelbuffer_UCHAR()
     
     def set_pixelbuffer_word(self, n, word):
-        self.pixelbuffer_UINT()[n] = word
+        self.pixelbuffer()[n] = word
     
     def take_over_display(self):
         # Make sure FrameWrapper.take_over_display() is called first for the correct Frame object.
@@ -135,7 +135,7 @@ class W_16BitDisplayBitmap(W_DisplayBitmap):
             ((msb & mask) << 11)
         )
         
-        self.pixelbuffer_UINT()[n] = r_uint(lsb | (msb << 16))
+        self.pixelbuffer()[n] = r_uint(lsb | (msb << 16))
 
 class W_8BitDisplayBitmap(W_DisplayBitmap):
     
@@ -143,7 +143,7 @@ class W_8BitDisplayBitmap(W_DisplayBitmap):
     
     def set_pixelbuffer_word(self, n, word):
         # Invert the byte-order.
-        self.pixelbuffer_UINT()[n] = r_uint(
+        self.pixelbuffer()[n] = r_uint(
             (word >> 24) |
             ((word >> 8) & 0x0000ff00) |
             ((word << 8) & 0x00ff0000) |
