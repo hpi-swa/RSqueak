@@ -269,15 +269,24 @@ class FormWrapper(Wrapper):
     height, store_height = make_int_getter_setter(constants.FORM_HEIGHT)
     depth, store_depth = make_int_getter_setter(constants.FORM_DEPTH)
     
-    def get_display_bitmap(self, interp, sdldisplay=None):
+    def create_display_bitmap(self):
+        w_display_bitmap = model_display.from_words_object(self.bits(), self)
+        self.store_bits(w_display_bitmap)
+        return w_display_bitmap
+    
+    def get_display_bitmap(self):
         w_bitmap = self.bits()
         if not isinstance(w_bitmap, model_display.W_DisplayBitmap):
-            w_display_bitmap = model_display.from_words_object(interp, w_bitmap, self, sdldisplay)
-            self.store_bits(w_display_bitmap)
+            w_display_bitmap = self.create_display_bitmap()
         else:
             w_display_bitmap = w_bitmap
+            if w_display_bitmap._depth != self.depth():
+                w_display_bitmap = self.create_display_bitmap()
         return w_display_bitmap
-
+    
+    def take_over_display(self):
+        self.space.display().set_video_mode(self.width(), self.height(), self.depth())
+    
 # XXX Wrappers below are not used yet.
 class OffsetWrapper(Wrapper):
     offset_x  = make_int_getter(0)

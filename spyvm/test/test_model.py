@@ -404,15 +404,7 @@ def test_display_bitmap():
         assert target.pixelbuffer[i] == 0x0
 
 def test_display_offset_computation():
-
-    def get_pixelbuffer(self):
-        return lltype.malloc(rffi.ULONGP.TO, self.width * self.height * 32, flavor='raw')
-    display.SDLDisplay.get_pixelbuffer = get_pixelbuffer
-    d = display.SDLDisplay("test")
-    d.set_video_mode(18, 5, 1)
-
-    dbitmap = model_display.W_DisplayBitmap.create(space, space.w_Array, 5, 1, d)
-
+    dbitmap = model_display.W_MappingDisplayBitmap(space, space.w_Array, 5, 1)
     assert dbitmap.compute_pos(0) == 0
     assert dbitmap.compute_pos(1) == 8
     assert dbitmap.size() == 5 * 8

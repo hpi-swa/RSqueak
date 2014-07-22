@@ -1,39 +1,47 @@
 import os
 
-from spyvm import constants, model, model_display, shadow, wrapper, version
+from spyvm import constants, model, model_display, shadow, wrapper, version, display
 from spyvm.error import UnwrappingError, WrappingError, PrimitiveFailedError
 from rpython.rlib import jit, rpath
-from rpython.rlib.objectmodel import instantiate, specialize
+from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin
 from rpython.rlib.rarithmetic import intmask, r_uint, int_between
 
-class ConstantFlag(object):
-    """Boolean flag that can be edited, but will be promoted
+class ConstantMixin(object):
+    """Mixin for constant values that can be edited, but will be promoted
     to a constant when jitting."""
     
-    def __init__(self, set_initially=False):
-        self.flag = [set_initially]
-    
-    def is_set(self):
-        return jit.promote(self.flag[0])
-    
-    def set(self):
-        self.flag[0] = True
-    
-    def unset(self):
-        self.flag[0] = False
-    
-    def set_to(self, flag):
-        self.flag[0] = flag
-
-class ConstantString(object):
-    def __init__(self):
-        self.value = [""]
-    
-    def get(self):
-        return jit.promote(self.value[0])
+    def __init__(self, initial_value = None):
+        if initial_value is None:
+            initial_value = self.default_value
+        self.value = [initial_value]
     
     def set(self, value):
         self.value[0] = value
+    
+    def get(self):
+        value = jit.promote(self.value[0])
+        return value
+
+class ConstantFlag(object):
+    import_from_mixin(ConstantMixin)
+    default_value = False
+    def is_set(self):
+        return self.get()
+    def activate(self):
+        self.set(True)
+    def deactivate(self):
+        self.set(False)
+
+class ConstantString(object):
+    import_from_mixin(ConstantMixin)
+    default_value = ""
+    def get(self):
+        # Promoting does not work on strings...
+        return self.value[0]
+    
+class ConstantObject(object):
+    import_from_mixin(ConstantMixin)
+    default_value = None
 
 class ObjSpace(object):
     def __init__(self):
@@ -49,6 +57,7 @@ class ObjSpace(object):
         self.objtable = {}
         self._executable_path = ConstantString()
         self._image_name = ConstantString()
+        self._display = ConstantObject()
         
         # Create the nil object.
         # Circumvent the constructor because nil is already referenced there.
@@ -85,12 +94,6 @@ class ObjSpace(object):
                 self.objtable[name] = specials[idx]
         # XXX this is kind of hacky, but I don't know where else to get Metaclass
         self.classtable["w_Metaclass"] = self.w_SmallInteger.w_class.w_class
-        
-    def executable_path(self):
-        return self._executable_path.get()
-    
-    def image_name(self):
-        return self._image_name.get()
     
     def add_bootstrap_class(self, name, cls):
         self.classtable[name] = cls
@@ -138,14 +141,8 @@ class ObjSpace(object):
             name = "w_" + name
             if not name in self.objtable:
                 self.add_bootstrap_object(name, None)
-    
-    @specialize.arg(1)
-    def get_special_selector(self, selector):
-        i0 = constants.find_selectorindex(selector)
-        self.w_special_selectors.as_cached_object_get_shadow(self)
-        return self.w_special_selectors.fetch(self, i0)
 
-    # methods for wrapping and unwrapping stuff
+    # ============= Methods for wrapping and unwrapping stuff =============
 
     def wrap_int(self, val):
         from spyvm import constants
@@ -247,14 +244,30 @@ class ObjSpace(object):
 
         return [w_array.at0(self, i) for i in range(w_array.size())]
 
-    def get_display(self):
-        w_display = self.objtable['w_display']
-        if w_display:
-            w_bitmap = w_display.fetch(self, 0)
-            if isinstance(w_bitmap, model_display.W_DisplayBitmap):
-                return w_bitmap.display
-        raise PrimitiveFailedError("No display")
-
+    # ============= Access to static information =============
+    
+    @specialize.arg(1)
+    def get_special_selector(self, selector):
+        i0 = constants.find_selectorindex(selector)
+        self.w_special_selectors.as_cached_object_get_shadow(self)
+        return self.w_special_selectors.fetch(self, i0)
+    
+    def executable_path(self):
+        return self._executable_path.get()
+    
+    def image_name(self):
+        return self._image_name.get()
+    
+    def display(self):
+        disp = self._display.get()
+        if disp is None:
+            # Create lazy to allow headless execution.
+            disp = display.SDLDisplay(self.image_name())
+            self._display.set(disp)
+        return disp
+    
+    # ============= Other Methods =============
+    
     def _freeze_(self):
         return True
 

@@ -560,7 +560,7 @@ def showDisplayBitsLeftTopRightBottom(w_dest_form, l, t, r, b):
     space = IProxy.space
     if w_dest_form.is_same_object(space.objtable['w_display']):
         form = wrapper.FormWrapper(space, w_dest_form)
-        w_display_bitmap = form.get_display_bitmap(IProxy.interp)
+        w_display_bitmap = form.get_display_bitmap()
         w_display_bitmap.update_from_buffer()
         w_display_bitmap.flush_to_screen()
     return 0
@@ -1000,7 +1000,7 @@ class _InterpreterProxy(object):
         self.argcount = 0
         self.w_method = None
         self.fail_reason = 0
-        self.trace_proxy.unset()
+        self.trace_proxy.deactivate()
 
     def call(self, signature, interp, s_frame, argcount, w_method):
         self.initialize_from_call(signature, interp, s_frame, argcount, w_method)
@@ -1042,7 +1042,7 @@ class _InterpreterProxy(object):
         self.argcount = argcount
         self.w_method = w_method
         self.space = interp.space
-        self.trace_proxy.set_to(interp.trace_proxy.is_set())
+        self.trace_proxy.set(interp.trace_proxy.is_set())
         # ensure that space.w_nil gets the first possible oop
         self.object_to_oop(self.space.w_nil)
 

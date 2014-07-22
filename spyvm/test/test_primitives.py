@@ -765,7 +765,7 @@ def test_primitive_force_display_update(monkeypatch):
         raise DisplayFlush
 
     try:
-        monkeypatch.setattr(space.get_display().__class__, "flip", flush_to_screen_mock)
+        monkeypatch.setattr(space.display().__class__, "flip", flush_to_screen_mock)
         with py.test.raises(DisplayFlush):
             prim(primitives.FORCE_DISPLAY_UPDATE, [mock_display])
     finally:

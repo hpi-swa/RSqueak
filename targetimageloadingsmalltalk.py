@@ -121,9 +121,12 @@ def entry_point(argv):
             elif arg in ["-P", "--process"]:
                 headless = False
             elif arg in ["--hacks"]:
-                space.run_spy_hacks.set()
+                space.run_spy_hacks.activate()
+            elif arg in ["--invert"]:
+                from spyvm import model_display
+                model_display.invert_byte_order[0] = True
             elif arg in ["-S"]:
-                space.no_specialized_storage.set()
+                space.no_specialized_storage.activate()
             elif arg in ["-u"]:
                 from spyvm.plugins.vmdebugging import stop_ui_process
                 stop_ui_process()
@@ -177,7 +180,7 @@ def entry_point(argv):
             selector = compile_code(interp, w_receiver, code)
         s_frame = create_context(interp, w_receiver, selector, stringarg)
         if headless:
-            space.headless.set()
+            space.headless.activate()
             context = s_frame
         else:
             create_process(interp, s_frame)
@@ -206,7 +209,7 @@ def compile_code(interp, w_receiver, code):
     # registered (primitive 136 not called), so the idle process will never be left once it is entered.
     # TODO - Find a way to cleanly initialize the image, without executing the active_context of the image.
     # Instead, we want to execute our own context. Then remove this flag (and all references to it)
-    space.suppress_process_switch.set()
+    space.suppress_process_switch.activate()
     
     w_result = interp.perform(
         w_receiver_class,
@@ -218,7 +221,7 @@ def compile_code(interp, w_receiver, code):
     # TODO - is this expected in every image?
     if not isinstance(w_result, model.W_BytesObject) or w_result.as_string() != selector:
         raise error.Exit("Unexpected compilation result (probably failed to compile): %s" % result_string(w_result))
-    space.suppress_process_switch.unset()
+    space.suppress_process_switch.deactivate()
     
     w_receiver_class.as_class_get_shadow(space).s_methoddict().sync_method_cache()
     return selector
