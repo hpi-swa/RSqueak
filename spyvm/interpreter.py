@@ -23,7 +23,7 @@ def get_printable_location(pc, self, method):
 
 
 class Interpreter(object):
-    _immutable_fields_ = ["space", "image", "image_name",
+    _immutable_fields_ = ["space", "image",
                           "interrupt_counter_size",
                           "startup_time", "evented", "interrupts"]
 
@@ -34,12 +34,11 @@ class Interpreter(object):
         get_printable_location=get_printable_location
     )
 
-    def __init__(self, space, image=None, image_name="",
+    def __init__(self, space, image=None,
                 trace=False, evented=True, interrupts=True):
         # === Initialize immutable variables
         self.space = space
         self.image = image
-        self.image_name = image_name
         if image:
             self.startup_time = image.startup_time
         else:
@@ -1033,9 +1032,8 @@ BYTECODE_TABLE = initialize_bytecode_table()
 # in order to enable tracing/jumping for message sends etc.
 def debugging():
     def stepping_debugger_init(original):
-        def meth(self, space, image=None, image_name="", trace=False):
-            return_value = original(self, space, image=image,
-                                    image_name=image_name, trace=trace)
+        def meth(self, space, image=None, trace=False):
+            return_value = original(self, space, image=image, trace=trace)
             # ##############################################################
 
             self.message_stepping = False

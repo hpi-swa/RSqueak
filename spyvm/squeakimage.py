@@ -386,12 +386,13 @@ class SqueakImage(object):
         self.startup_time = time.time()
 
     def run_spy_hacks(self, space):
-        pass
-        # w_display = space.objtable["w_display"]
-        # if w_display is not None and not w_display.is_nil(space):
-        #     if space.unwrap_int(w_display.fetch(space, 3)) < 8:
-        #         # non-native indexed color depth not well supported
-        #         w_display.store(space, 3, space.wrap_int(8))
+        if not space.run_spy_hacks.is_set():
+            return
+        w_display = space.objtable["w_display"]
+        if w_display is not None and not w_display.is_nil(space):
+            if space.unwrap_int(w_display.fetch(space, 3)) < 8:
+                # non-native indexed color depth not well supported
+                w_display.store(space, 3, space.wrap_int(8))
 
     def find_symbol(self, space, reader, symbol):
         w_dnu = self.special(constants.SO_DOES_NOT_UNDERSTAND)

@@ -2,7 +2,7 @@ import os
 import inspect
 import math
 import operator
-from spyvm import model, shadow, error, constants, display
+from spyvm import model, model_display, shadow, error, constants, display
 from spyvm.error import PrimitiveFailedError, PrimitiveNotYetWrittenError
 from spyvm import wrapper
 
@@ -644,7 +644,7 @@ KBD_PEEK = 109
 
 @expose_primitive(MOUSE_POINT, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    x, y = interp.space.get_display().mouse_point()
+    x, y = interp.space.display().mouse_point()
     w_point = model.W_PointersObject(interp.space, interp.space.w_Point, 2)
     w_point.store(interp.space, 0, interp.space.wrap_int(x))
     w_point.store(interp.space, 1, interp.space.wrap_int(y))
@@ -656,7 +656,7 @@ def func(interp, s_frame, w_rcvr):
 def func(interp, s_frame, w_rcvr, w_into):
     if not interp.evented:
         raise PrimitiveFailedError()
-    ary = interp.space.get_display().get_next_event(time=interp.time_now())
+    ary = interp.space.display().get_next_event(time=interp.time_now())
     for i in range(8):
         w_into.store(interp.space, i, interp.space.wrap_int(ary[i]))
     # XXX - hack
@@ -676,7 +676,7 @@ def func(interp, s_frame, argcount, w_method):
         w_display = interp.space.objtable['w_display']
         if w_dest_form.is_same_object(w_display):
             w_bitmap = w_display.fetch(interp.space, 0)
-            assert isinstance(w_bitmap, model.W_DisplayBitmap)
+            assert isinstance(w_bitmap, model_display.W_DisplayBitmap)
             w_bitmap.flush_to_screen()
         return w_rcvr
     except shadow.MethodNotFound:
@@ -731,45 +731,23 @@ def func(interp, s_frame, argcount):
 def func(interp, s_frame, w_rcvr):
     if interp.space.headless.is_set():
         exitFromHeadlessExecution(s_frame)
-    
     if not isinstance(w_rcvr, model.W_PointersObject) or w_rcvr.size() < 4:
         raise PrimitiveFailedError
-    # the fields required are bits (a pointer to a Bitmap), width, height, depth
-
-    # XXX: TODO get the initial image TODO: figure out whether we
-    # should decide the width an report it in the other SCREEN_SIZE
-    w_bitmap = w_rcvr.fetch(interp.space, 0)
-    width = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 1))
-    height = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 2))
-    depth = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 3))
-
-    sdldisplay = None
-
-    w_prev_display = interp.space.objtable['w_display']
-    if w_prev_display:
-        w_prev_bitmap = w_prev_display.fetch(interp.space, 0)
-        if isinstance(w_prev_bitmap, model.W_DisplayBitmap):
-            sdldisplay = w_prev_bitmap.display
-            sdldisplay.set_video_mode(width, height, depth)
-
-    if isinstance(w_bitmap, model.W_DisplayBitmap):
-        assert (sdldisplay is None) or (sdldisplay is w_bitmap.display)
-        sdldisplay = w_bitmap.display
-        sdldisplay.set_video_mode(width, height, depth)
-        w_display_bitmap = w_bitmap
-    else:
-        assert isinstance(w_bitmap, model.W_WordsObject)
-        w_display_bitmap = w_bitmap.as_display_bitmap(
-            w_rcvr,
-            interp,
-            sdldisplay=sdldisplay
-        )
-
-    w_display_bitmap.flush_to_screen()
-    if interp.image:
-        interp.image.lastWindowSize = (width << 16)  + height
+    
+    old_display = interp.space.objtable['w_display']
+    if isinstance(old_display, model_display.W_DisplayBitmap):
+        old_display.relinquish_display()
     interp.space.objtable['w_display'] = w_rcvr
-
+    
+    # TODO: figure out whether we should decide the width an report it in the SCREEN_SIZE primitive
+    form = wrapper.FormWrapper(interp.space, w_rcvr)
+    form.take_over_display()
+    w_display_bitmap = form.get_display_bitmap()
+    w_display_bitmap.take_over_display()
+    w_display_bitmap.flush_to_screen()
+    
+    if interp.image:
+        interp.image.lastWindowSize = (form.width() << 16) + form.height()
     return w_rcvr
 
 @expose_primitive(STRING_REPLACE, unwrap_spec=[object, index1_0, index1_0, object, index1_0])
@@ -812,12 +790,12 @@ def func(interp, s_frame, w_rcvr):
 
 @expose_primitive(MOUSE_BUTTONS, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    btn = interp.space.get_display().mouse_button()
+    btn = interp.space.display().mouse_button()
     return interp.space.wrap_int(btn)
 
 @expose_primitive(KBD_NEXT, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    code = interp.space.get_display().next_keycode()
+    code = interp.space.display().next_keycode()
     if code & 0xFF == 0:
         return interp.space.w_nil
     else:
@@ -825,7 +803,7 @@ def func(interp, s_frame, w_rcvr):
 
 @expose_primitive(KBD_PEEK, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    code = interp.space.get_display().peek_keycode()
+    code = interp.space.display().peek_keycode()
     if code & 0xFF == 0:
         return interp.space.w_nil
     else:
@@ -864,8 +842,8 @@ def func(interp, s_frame, w_rcvr):
 
 @expose_primitive(EXIT_TO_DEBUGGER, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    if not objectmodel.we_are_translated():
-        import pdb; pdb.set_trace()
+    if interp.space.headless.is_set():
+        exitFromHeadlessExecution(s_frame, "EXIT_TO_DEBUGGER")
     raise PrimitiveNotYetWrittenError()
 
 @expose_primitive(CHANGE_CLASS, unwrap_spec=[object, object], no_result=True)
@@ -987,7 +965,7 @@ DRAW_RECTANGLE = 127
 def func(interp, s_frame, argument_count):
     if argument_count == 0:
         s_frame.pop()
-        return interp.space.wrap_string(interp.image_name)
+        return interp.space.wrap_string(interp.space.image_name())
     elif argument_count == 1:
         pass # XXX
     raise PrimitiveFailedError
@@ -1004,7 +982,7 @@ def func(interp, s_frame, w_receiver, i):
 
 @expose_primitive(DEFER_UPDATES, unwrap_spec=[object, bool])
 def func(interp, s_frame, w_receiver, flag):
-    sdldisplay = interp.space.get_display()
+    sdldisplay = interp.space.display()
     sdldisplay.defer_updates(flag)
     return w_receiver
 
@@ -1058,7 +1036,7 @@ def func(interp, s_frame, w_rcvr):
 
 @expose_primitive(SET_INTERRUPT_KEY, unwrap_spec=[object, int])
 def func(interp, s_frame, w_rcvr, encoded_key):
-    interp.space.get_display().set_interrupt_key(interp.space, encoded_key)
+    interp.space.display().set_interrupt_key(interp.space, encoded_key)
     return w_rcvr
 
 @expose_primitive(INTERRUPT_SEMAPHORE, unwrap_spec=[object, object])
@@ -1142,7 +1120,7 @@ def func(interp, s_frame, w_arg, new_value):
             raise PrimitiveFailedError
         for i in xrange(w_arg.size()):
             w_arg.setchar(i, chr(new_value))
-    elif isinstance(w_arg, model.W_WordsObject) or isinstance(w_arg, model.W_DisplayBitmap):
+    elif isinstance(w_arg, model.W_WordsObject) or isinstance(w_arg, model_display.W_DisplayBitmap):
         for i in xrange(w_arg.size()):
             w_arg.setword(i, new_value)
     else:
@@ -1531,7 +1509,7 @@ def func(interp, s_frame, w_rcvr, time_mu_s):
 
 @expose_primitive(FORCE_DISPLAY_UPDATE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    interp.space.get_display().flip(force=True)
+    interp.space.display().flip(force=True)
     return w_rcvr
 
 # ___________________________________________________________________________

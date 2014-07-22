@@ -36,6 +36,7 @@ def _usage(argv):
             -p|--poll          - Actively poll for events. Try this if the image is not responding well.
             -i|--no-interrupts - Disable timer interrupt. Disables non-cooperative scheduling.
             -S                 - Disable specialized storage strategies; always use generic ListStorage
+            --hacks            - Enable Spy hacks. Set display color depth to 8.
             
           Logging parameters:
             -t|--trace                 - Output a trace of each message, primitive, return value and process switch.
@@ -69,7 +70,7 @@ def safe_entry_point(argv):
     except error.Exit, e:
         print_error("Exited: %s" % e.msg)
         return -1
-    except Exception, e:
+    except BaseException, e:
         print_error("Exception: %s" % str(e))
         if not objectmodel.we_are_translated():
             import traceback
@@ -119,8 +120,10 @@ def entry_point(argv):
                 interrupts = False
             elif arg in ["-P", "--process"]:
                 headless = False
+            elif arg in ["--hacks"]:
+                space.run_spy_hacks.activate()
             elif arg in ["-S"]:
-                space.no_specialized_storage.set()
+                space.no_specialized_storage.activate()
             elif arg in ["-u"]:
                 from spyvm.plugins.vmdebugging import stop_ui_process
                 stop_ui_process()
@@ -158,10 +161,10 @@ def entry_point(argv):
     # Load & prepare image and environment
     image_reader = squeakimage.reader_for_image(space, squeakimage.Stream(data=imagedata))
     image = create_image(space, image_reader)
-    interp = interpreter.Interpreter(space, image, image_name=path,
+    interp = interpreter.Interpreter(space, image,
                 trace=trace, evented=not poll,
                 interrupts=interrupts)
-    space.runtime_setup(argv[0])
+    space.runtime_setup(argv[0], path)
     print_error("") # Line break after image-loading characters
     
     # Create context to be executed
@@ -174,7 +177,7 @@ def entry_point(argv):
             selector = compile_code(interp, w_receiver, code)
         s_frame = create_context(interp, w_receiver, selector, stringarg)
         if headless:
-            space.headless.set()
+            space.headless.activate()
             context = s_frame
         else:
             create_process(interp, s_frame)
@@ -203,7 +206,7 @@ def compile_code(interp, w_receiver, code):
     # registered (primitive 136 not called), so the idle process will never be left once it is entered.
     # TODO - Find a way to cleanly initialize the image, without executing the active_context of the image.
     # Instead, we want to execute our own context. Then remove this flag (and all references to it)
-    space.suppress_process_switch.set()
+    space.suppress_process_switch.activate()
     
     w_result = interp.perform(
         w_receiver_class,
@@ -215,7 +218,7 @@ def compile_code(interp, w_receiver, code):
     # TODO - is this expected in every image?
     if not isinstance(w_result, model.W_BytesObject) or w_result.as_string() != selector:
         raise error.Exit("Unexpected compilation result (probably failed to compile): %s" % result_string(w_result))
-    space.suppress_process_switch.unset()
+    space.suppress_process_switch.deactivate()
     
     w_receiver_class.as_class_get_shadow(space).s_methoddict().sync_method_cache()
     return selector

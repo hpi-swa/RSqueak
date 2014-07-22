@@ -1,5 +1,5 @@
 import py, math, socket
-from spyvm import model, shadow, objspace, error, display
+from spyvm import model, model_display, shadow, objspace, error, display
 from spyvm.shadow import MethodNotFound, WEAK_POINTERS
 from rpython.rlib.rarithmetic import intmask, r_uint
 from rpython.rtyper.lltypesystem import lltype, rffi
@@ -387,7 +387,7 @@ def test_display_bitmap():
     d = display.SDLDisplay("test")
     d.set_video_mode(32, 10, 1)
 
-    target = model.W_DisplayBitmap.create(space, space.w_Array, 10, 1, d)
+    target = model_display.W_DisplayBitmap.create(space, space.w_Array, 10, 1, d)
     target.setword(0, r_uint(0xFF00))
     assert bin(target.getword(0)) == bin(0xFF00)
     target.setword(0, r_uint(0x00FF00FF))
@@ -404,15 +404,7 @@ def test_display_bitmap():
         assert target.pixelbuffer[i] == 0x0
 
 def test_display_offset_computation():
-
-    def get_pixelbuffer(self):
-        return lltype.malloc(rffi.ULONGP.TO, self.width * self.height * 32, flavor='raw')
-    display.SDLDisplay.get_pixelbuffer = get_pixelbuffer
-    d = display.SDLDisplay("test")
-    d.set_video_mode(18, 5, 1)
-
-    dbitmap = model.W_DisplayBitmap.create(space, space.w_Array, 5, 1, d)
-
+    dbitmap = model_display.W_MappingDisplayBitmap(space, space.w_Array, 5, 1)
     assert dbitmap.compute_pos(0) == 0
     assert dbitmap.compute_pos(1) == 8
     assert dbitmap.size() == 5 * 8

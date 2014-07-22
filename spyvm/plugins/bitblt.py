@@ -1,4 +1,4 @@
-from spyvm import model
+from spyvm import model_display, model
 from spyvm.error import PrimitiveFailedError
 from spyvm.shadow import AbstractCachingShadow
 from spyvm.plugins.plugin import Plugin
@@ -32,7 +32,7 @@ def primitiveCopyBits(interp, s_frame, w_rcvr):
         s_frame.push(interp.space.wrap_int(s_bitblt.bitCount))
     elif w_dest_form.is_same_object(space.objtable['w_display']):
         w_bitmap = w_dest_form.fetch(space, 0)
-        assert isinstance(w_bitmap, model.W_DisplayBitmap)
+        assert isinstance(w_bitmap, model_display.W_DisplayBitmap)
         w_bitmap.flush_to_screen()
     return w_rcvr
 
@@ -741,7 +741,7 @@ class FormShadow(AbstractCachingShadow):
         self.w_bits = self.fetch(0)
         if self.w_bits.is_nil(self.space):
             return
-        if not (isinstance(self.w_bits, model.W_WordsObject) or isinstance(self.w_bits, model.W_DisplayBitmap)):
+        if not (isinstance(self.w_bits, model.W_WordsObject) or isinstance(self.w_bits, model_display.W_DisplayBitmap)):
             return
         self.width = self.intOrIfNil(self.fetch(1), 0)
         self.height = self.intOrIfNil(self.fetch(2), 0)
