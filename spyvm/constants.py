@@ -54,6 +54,11 @@ BLKCLSR_STARTPC = 1
 BLKCLSR_NUMARGS = 2
 BLKCLSR_SIZE = 3
 
+FORM_BITS = 0
+FORM_WIDTH = 1
+FORM_HEIGHT = 2
+FORM_DEPTH = 3
+
 # ___________________________________________________________________________
 # Miscellaneous constants
 

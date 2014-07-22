@@ -35,12 +35,13 @@ WindowEventActivated = 4
 WindowEventPaint = 5
 WindowEventStinks = 6
 
+MINIMUM_DEPTH = 8
 
 class SDLDisplay(object):
     _attrs_ = ["screen", "width", "height", "depth", "surface", "has_surface",
                "mouse_position", "button", "key", "interrupt_key", "_defer_updates",
-               "_deferred_event", "pixelbuffer"]
-    _immutable_fields_ = ["pixelbuffer?"]
+               "_deferred_event", "bpp", "pitch"]
+    #_immutable_fields_ = ["pixelbuffer?"]
 
     def __init__(self, title):
         assert RSDL.Init(RSDL.INIT_VIDEO) >= 0
@@ -58,26 +59,27 @@ class SDLDisplay(object):
     def set_video_mode(self, w, h, d):
         assert w > 0 and h > 0
         assert d in [1, 2, 4, 8, 16, 32]
+        if d < MINIMUM_DEPTH:
+            d = MINIMUM_DEPTH
         self.width = w
         self.height = h
         self.depth = d
         flags = RSDL.HWPALETTE | RSDL.RESIZABLE | RSDL.ASYNCBLIT | RSDL.DOUBLEBUF
-        if d < 8:
-            d = 8
         self.screen = RSDL.SetVideoMode(w, h, d, flags)
         if not self.screen:
             print "Could not open display at depth %d" % d
             raise RuntimeError
-        elif d == 8:
+        elif d == MINIMUM_DEPTH:
             self.set_squeak_colormap(self.screen)
-        self.pixelbuffer = rffi.cast(rffi.UINTP, self.screen.c_pixels)
-
+        self.bpp = rffi.getintfield(self.screen.c_format, 'c_BytesPerPixel')
+        self.pitch = rffi.getintfield(self.screen, 'c_pitch')
+    
     def get_pixelbuffer(self):
-        return jit.promote(self.pixelbuffer)
-
+        return jit.promote(rffi.cast(RSDL.Uint32P, self.screen.c_pixels))
+    
     def defer_updates(self, flag):
         self._defer_updates = flag
-
+    
     def flip(self, force=False):
         if (not self._defer_updates) or force:
             RSDL.Flip(self.screen)

@@ -1,5 +1,5 @@
 import py, os, math, time
-from spyvm import model, shadow, interpreter, constants, primitives, objspace, wrapper, display
+from spyvm import model, model_display, shadow, interpreter, constants, primitives, objspace, wrapper, display
 from spyvm.primitives import prim_table, PrimitiveFailedError
 from spyvm.plugins import bitblt
 from rpython.rlib.rfloat import INFINITY, NAN, isinf, isnan
@@ -47,7 +47,8 @@ def mock(space, stack, context = None):
         frame = context
         for i in range(len(stack)):
             frame.as_context_get_shadow(space).push(stack[i])
-    interp = TestInterpreter(space, image_name=IMAGENAME)
+    interp = TestInterpreter(space)
+    interp.space._image_name.set(IMAGENAME)
     return interp, frame, len(stack)
 
 def _prim(space, code, stack, context = None):
@@ -680,7 +681,7 @@ def test_primitive_value_no_context_switch(monkeypatch):
 
     closure = space.newClosure(w_frame, 4, 0, [])
     s_frame = w_frame.as_methodcontext_get_shadow(space)
-    interp = TestInterpreter(space, image_name=IMAGENAME)
+    interp = TestInterpreter(space)
     interp._loop = True
 
     try:
@@ -721,7 +722,7 @@ def test_primitive_be_display():
     assert space.objtable["w_display"] is mock_display
     w_bitmap = mock_display.fetch(space, 0)
     assert w_bitmap is not w_wordbmp
-    assert isinstance(w_bitmap, model.W_DisplayBitmap)
+    assert isinstance(w_bitmap, model_display.W_DisplayBitmap)
     sdldisplay = w_bitmap.display
     assert isinstance(sdldisplay, display.SDLDisplay)
 
@@ -733,7 +734,7 @@ def test_primitive_be_display():
     prim(primitives.BE_DISPLAY, [mock_display2])
     assert space.objtable["w_display"] is mock_display2
     w_bitmap2 = mock_display.fetch(space, 0)
-    assert isinstance(w_bitmap2, model.W_DisplayBitmap)
+    assert isinstance(w_bitmap2, model_display.W_DisplayBitmap)
     assert w_bitmap.display is w_bitmap2.display
     assert sdldisplay.width == 32
     assert sdldisplay.height == 10
@@ -764,7 +765,7 @@ def test_primitive_force_display_update(monkeypatch):
         raise DisplayFlush
 
     try:
-        monkeypatch.setattr(space.get_display().__class__, "flip", flush_to_screen_mock)
+        monkeypatch.setattr(space.display().__class__, "flip", flush_to_screen_mock)
         with py.test.raises(DisplayFlush):
             prim(primitives.FORCE_DISPLAY_UPDATE, [mock_display])
     finally:
