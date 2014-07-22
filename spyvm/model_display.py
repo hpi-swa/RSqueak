@@ -24,12 +24,6 @@ def from_words_object(w_obj, form):
     
     return w_display_bitmap
 
-invert_byte_order = [False]
-
-def invert():
-    inv = invert_byte_order[0]
-    return jit.promote(inv)
-
 class W_DisplayBitmap(model.W_AbstractObjectWithClassReference):
     _attrs_ = ['pixelbuffer_words', '_real_depth_buffer', '_realsize', 'display', '_depth']
     _immutable_fields_ = ['pixelbuffer_words?', '_real_depth_buffer', '_realsize', 'display', '_depth']
@@ -148,16 +142,13 @@ class W_8BitDisplayBitmap(W_DisplayBitmap):
     repr_classname = "W_8BitDisplayBitmap"
     
     def set_pixelbuffer_word(self, n, word):
-        if invert():
-            # Invert the byte-order.
-            self.pixelbuffer_UINT()[n] = r_uint(
-                (word >> 24) |
-                ((word >> 8) & 0x0000ff00) |
-                ((word << 8) & 0x00ff0000) |
-                (word << 24)
-            )
-        else:
-            self.pixelbuffer_UINT()[n] = r_uint(word)
+        # Invert the byte-order.
+        self.pixelbuffer_UINT()[n] = r_uint(
+            (word >> 24) |
+            ((word >> 8) & 0x0000ff00) |
+            ((word << 8) & 0x00ff0000) |
+            (word << 24)
+        )
 
 BITS = r_uint(32)
 class W_MappingDisplayBitmap(W_DisplayBitmap):

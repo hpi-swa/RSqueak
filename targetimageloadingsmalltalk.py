@@ -122,9 +122,6 @@ def entry_point(argv):
                 headless = False
             elif arg in ["--hacks"]:
                 space.run_spy_hacks.activate()
-            elif arg in ["--invert"]:
-                from spyvm import model_display
-                model_display.invert_byte_order[0] = True
             elif arg in ["-S"]:
                 space.no_specialized_storage.activate()
             elif arg in ["-u"]:
