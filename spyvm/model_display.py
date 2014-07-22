@@ -171,7 +171,7 @@ class W_MappingDisplayBitmap(W_DisplayBitmap):
         W_DisplayBitmap.__init__(self, space, w_class, size, depth)
     
     def take_over_display(self):
-        pitch = r_uint(self.display.pitch)
+        pitch = r_uint(self.display.pitch) # The pitch is different from the width input to SDL!
         self.pitch = pitch
         self.bits_in_last_word = pitch % BITS
         self.words_per_line = r_uint((pitch - self.bits_in_last_word) / BITS)
@@ -202,4 +202,4 @@ class W_MappingDisplayBitmap(W_DisplayBitmap):
         word_on_line = n % self.words_per_line
         y = r_uint((n - word_on_line) / self.words_per_line)
         x = word_on_line * BITS / r_uint(self._depth)
-        return y * r_uint(self.pitch) + x
+        return y * self.pitch + x
