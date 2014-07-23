@@ -685,12 +685,13 @@ class __extend__(ContextPartShadow):
 
     def _mustBeBoolean(self, interp, receiver):
         return self._sendSpecialSelector(interp, receiver, "mustBeBoolean")
-
+        
     def _call_primitive(self, code, interp, argcount, w_method, w_selector):
         # ##################################################################
         if interp.is_tracing():
-            interp.print_padded("-> primitive %d \t(in %s, named #%s)" % (
-                                    code, self.w_method().get_identifier_string(), w_selector.str_content()))
+            interp.print_padded("-> primitive %d \t(in %s, named %s)" % (
+                                    code, self.w_method().get_identifier_string(),
+                                    w_selector.selector_string()))
         func = primitives.prim_holder.prim_table[code]
         try:
             # note: argcount does not include rcvr
@@ -699,7 +700,7 @@ class __extend__(ContextPartShadow):
         except primitives.PrimitiveFailedError, e:
             if interp.is_tracing():
                 interp.print_padded("-- primitive %d FAILED\t (in %s, named %s)" % (
-                            code, w_method.safe_identifier_string(), w_selector.str_content()))
+                            code, w_method.safe_identifier_string(), w_selector.selector_string()))
             raise e
 
     def _return(self, return_value, interp, local_return=False):
