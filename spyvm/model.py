@@ -194,6 +194,9 @@ class W_Object(object):
 
     def repr_content(self):
         return self.str_content()
+        
+    def selector_string(self):
+        return self.as_repr_string()
 
 class W_SmallInteger(W_Object):
     """Boxed integer value"""
@@ -817,15 +820,22 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         return self._size
 
     def str_content(self):
-        return "'%s'" % self.as_string()
+        if self.has_class() and self.w_class.has_space():
+            if self.w_class.space().omit_printing_raw_bytes.is_set():
+                return "<omitted>"
+        else:
+            return "'%s'" % self.as_string().replace('\r', '\n')
 
     def as_string(self):
         if self.bytes is not None:
             string = "".join(self.bytes)
         else:
             string = "".join([self.c_bytes[i] for i in range(self.size())])
-        return string.replace('\r', '\n')
-
+        return string
+    
+    def selector_string(self):
+        return "#" + self.as_string()
+    
     def invariant(self):
         if not W_AbstractObjectWithClassReference.invariant(self):
             return False

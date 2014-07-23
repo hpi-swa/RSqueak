@@ -12,7 +12,7 @@ from spyvm.interpreter_proxy import VirtualMachine
 
 def _usage(argv):
     print """
-    Usage: %s <path> [-r|-m|-h] [-naPu] [-jpiS] [-tlLE]
+    Usage: %s <path> [-r|-m|-h] [-naPu] [-jpiS] [-tslLE]
             <path> - image path (default: Squeak.image)
 
           Execution mode:
@@ -40,6 +40,7 @@ def _usage(argv):
             
           Logging parameters:
             -t|--trace                 - Output a trace of each message, primitive, return value and process switch.
+            -s|--safe-trace            - Like -t, but without printing contents of BytesObjects
             -l|--storage-log           - Output a log of storage operations.
             -L|--storage-log-aggregate - Output an aggregated storage log at the end of execution.
             -E|--storage-log-elements  - Include classnames of elements into the storage log.
@@ -110,6 +111,9 @@ def entry_point(argv):
                 selector, idx = get_parameter(argv, idx, arg)
             elif arg in ["-t", "--trace"]:
                 trace = True
+            elif arg in ["-s", "--safe-trace"]:
+                trace = True
+                space.omit_printing_raw_bytes.activate()
             elif arg in ["-p", "--poll"]:
                 poll = True
             elif arg in ["-a", "--arg"]:
