@@ -404,12 +404,23 @@ def test_display_bitmap():
     for i in xrange(6, 8):
         assert target.pixelbuffer[i] == 0x0
 
-def test_display_offset_computation():
-    dbitmap = model_display.W_MappingDisplayBitmap(space, space.w_Array, 5, 1)
+def test_display_offset_computation_even():
+    dbitmap = model_display.W_MappingDisplayBitmap(space, space.w_Array, 200, 1)
+    dbitmap.pitch = 64
+    dbitmap.words_per_line = 2
     assert dbitmap.compute_pos(0) == 0
-    assert dbitmap.compute_pos(1) == 8
-    assert dbitmap.size() == 5 * 8
+    assert dbitmap.compute_pos(1) == 32
+    assert dbitmap.compute_pos(2) == 64
 
+def test_display_offset_computation_uneven():
+    dbitmap = model_display.W_MappingDisplayBitmap(space, space.w_Array, 200, 1)
+    dbitmap.pitch = 67
+    dbitmap.words_per_line = 2
+    assert dbitmap.compute_pos(0) == 0
+    assert dbitmap.compute_pos(1) == 32
+    assert dbitmap.compute_pos(2) == 67
+    assert dbitmap.compute_pos(3) == 67 + 32
+    
 @py.test.mark.skipif("socket.gethostname() == 'precise32'")
 def test_weak_pointers():
     w_cls = bootstrap_class(2)
