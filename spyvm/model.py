@@ -823,8 +823,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         if self.has_class() and self.w_class.has_space():
             if self.w_class.space().omit_printing_raw_bytes.is_set():
                 return "<omitted>"
-        else:
-            return "'%s'" % self.as_string().replace('\r', '\n')
+        return "'%s'" % self.as_string().replace('\r', '\n')
 
     def as_string(self):
         if self.bytes is not None:
