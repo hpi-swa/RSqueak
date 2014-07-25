@@ -286,11 +286,8 @@ COMPILED_METHOD = 4
 FLOAT = 5
 LARGE_POSITIVE_INTEGER = 6
 
-class MethodNotFound(error.SmalltalkException):
-    pass
-
 class ClassShadowError(error.SmalltalkException):
-    pass
+    exception_type = "ClassShadowError"
 
 class ClassShadow(AbstractCachingShadow):
     """A shadow for Smalltalk objects that are classes
@@ -505,7 +502,7 @@ class ClassShadow(AbstractCachingShadow):
             if w_method is not None:
                 return w_method
             look_in_shadow = look_in_shadow._s_superclass
-        raise MethodNotFound(self, w_selector)
+        raise error.MethodNotFound()
 
     def changed(self):
         self.superclass_changed(version.Version())

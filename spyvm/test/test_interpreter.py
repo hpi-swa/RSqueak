@@ -1,5 +1,5 @@
 import py, operator, sys
-from spyvm import model, interpreter, primitives, shadow, objspace, wrapper, constants
+from spyvm import model, interpreter, primitives, shadow, objspace, wrapper, constants, error
 from .util import create_space_interp, copy_to_module, cleanup_module, import_bytecodes, TestInterpreter
 from spyvm.wrapper import PointWrapper
 from spyvm.conftest import option
@@ -139,7 +139,7 @@ def test_push_pop():
 
 def test_unknownBytecode():
     w_frame, s_frame = new_frame(unknownBytecode)
-    py.test.raises(interpreter.MissingBytecode, step_in_interp, s_frame)
+    py.test.raises(error.MissingBytecode, step_in_interp, s_frame)
 
 # push bytecodes
 def test_pushReceiverBytecode():
@@ -579,7 +579,7 @@ def test_extendedStoreAndPopBytecode():
 
     test_storeAndPopTemporaryVariableBytecode(lambda index: extendedStoreAndPopBytecode + chr((1<<6) + index))
 
-    py.test.raises(interpreter.IllegalStoreError,
+    py.test.raises(error.FatalError,
                    test_storeAndPopTemporaryVariableBytecode,
                    lambda index: extendedStoreAndPopBytecode + chr((2<<6) + index))
 

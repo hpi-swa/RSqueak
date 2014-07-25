@@ -679,7 +679,7 @@ def func(interp, s_frame, argcount, w_method):
             assert isinstance(w_bitmap, model_display.W_DisplayBitmap)
             w_bitmap.flush_to_screen()
         return w_rcvr
-    except shadow.MethodNotFound:
+    except error.MethodNotFound:
         from spyvm.plugins.bitblt import BitBltPlugin
         BitBltPlugin.call("primitiveCopyBits", interp, s_frame, argcount, w_method)
         return w_rcvr
@@ -1358,9 +1358,7 @@ def func(interp, s_frame, argcount):
                   unwrap_spec=[object, object, list],
                   no_result=True, clean_stack=False)
 def func(interp, s_frame, w_rcvr, w_selector, w_arguments):
-    from spyvm.shadow import MethodNotFound
     s_frame.pop_n(2) # removing our arguments
-
     return s_frame._sendSelector(w_selector, len(w_arguments), interp, w_rcvr,
                         w_rcvr.class_shadow(interp.space), w_arguments=w_arguments)
 

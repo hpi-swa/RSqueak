@@ -1280,7 +1280,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         return self.get_identifier_string()
 
     def bytecode_string(self, markBytecode=0):
-        from spyvm.interpreter import BYTECODE_TABLE
+        from spyvm.interpreter_bytecodes import BYTECODE_TABLE
         retval = "Bytecode:------------"
         j = 1
         for i in self.bytes:

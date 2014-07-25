@@ -59,7 +59,7 @@ def tinyBenchmarks():
     w_frame = w_method.create_frame(interp.space, w_object)
     interp.store_w_active_context(w_frame)
 
-    from spyvm.interpreter import BYTECODE_TABLE
+    from spyvm.interpreter_bytecodes import BYTECODE_TABLE
     while True:
         try:
             interp.step()
