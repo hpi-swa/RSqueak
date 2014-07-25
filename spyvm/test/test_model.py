@@ -1,6 +1,7 @@
 import py, math, socket
 from spyvm import model, model_display, shadow, objspace, error, display
-from spyvm.shadow import MethodNotFound, WEAK_POINTERS
+from spyvm.error import MethodNotFound
+from spyvm.shadow import WEAK_POINTERS
 from rpython.rlib.rarithmetic import intmask, r_uint
 from rpython.rtyper.lltypesystem import lltype, rffi
 from .util import create_space, copy_to_module, cleanup_module

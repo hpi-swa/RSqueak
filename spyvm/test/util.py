@@ -1,5 +1,5 @@
 import sys
-from spyvm import model, shadow, objspace, version, constants, squeakimage, interpreter
+from spyvm import model, shadow, objspace, version, constants, squeakimage, interpreter, interpreter_bytecodes
 from rpython.rlib.objectmodel import instantiate
 
 # Most tests don't need a bootstrapped objspace. Those that do, indicate so explicitely.
@@ -65,7 +65,7 @@ def import_bytecodes(module_name):
             assert entry[0] <= opcode <= entry[1]
             return chr(opcode)
         setattr(mod, name, get_opcode_chr)
-    for entry in interpreter.BYTECODE_RANGES:
+    for entry in interpreter_bytecodes.BYTECODE_RANGES:
         name = entry[-1]
         if len(entry) == 2:     # no range
             setattr(mod, name, chr(entry[0]))
