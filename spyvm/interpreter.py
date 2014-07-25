@@ -12,10 +12,15 @@ class ReturnFromTopLevel(Exception):
 
 class Return(Exception):
     _attrs_ = ["value", "s_target_context", "is_local"]
-    def __init__(self, s_target_context, w_result):
+    def __init__(self, s_target_context, w_result, is_local):
         self.value = w_result
         self.s_target_context = s_target_context
-        self.is_local = False
+        self.is_local = is_local
+
+class LocalReturn(Exception):
+    _attrs_ = ["value"]
+    def __init__(self, value):
+        self.value = value
 
 class ContextSwitchException(Exception):
     """General Exception that causes the interpreter to leave
@@ -97,21 +102,44 @@ class Interpreter(object):
         while True:
             s_sender = s_new_context.s_sender()
             try:
-                self.loop_bytecodes(s_new_context)
+                self.stack_frame(s_new_context, None)
                 raise Exception("loop_bytecodes left without raising...")
             except ContextSwitchException, e:
                 if self.is_tracing():
                     e.print_trace(s_new_context)
                 s_new_context = e.s_new_context
-            except Return, nlr:
-                assert nlr.s_target_context or nlr.is_local
-                s_new_context = s_sender
-                if not nlr.is_local:
-                    while s_new_context is not nlr.s_target_context:
-                        s_sender = s_new_context.s_sender()
-                        s_new_context._activate_unwind_context(self)
-                        s_new_context = s_sender
-                s_new_context.push(nlr.value)
+            except LocalReturn, ret:
+                s_new_context = self.unwind_context_chain(s_sender, s_sender, ret.value)
+            except Return, ret:
+                s_new_context = self.unwind_context_chain(s_sender, ret.s_target_context, ret.value)
+    
+    # This is a wrapper around loop_bytecodes that cleanly enters/leaves the frame
+    # and handles the stack overflow protection mechanism.
+    def stack_frame(self, s_frame, s_sender, may_context_switch=True):
+        try:
+            if self.is_tracing():
+                self.stack_depth += 1
+            if s_frame._s_sender is None and s_sender is not None:
+                s_frame.store_s_sender(s_sender)
+            # Now (continue to) execute the context bytecodes
+            assert s_frame.state is InactiveContext
+            s_frame.state = ActiveContext
+            self.loop_bytecodes(s_frame, may_context_switch)
+        except rstackovf.StackOverflow:
+            rstackovf.check_stack_overflow()
+            raise StackOverflow(s_frame)
+        except Return, ret:
+            if ret.is_local:
+                raise LocalReturn(ret.value)
+            else:
+                raise ret
+        finally:
+            if self.is_tracing():
+                self.stack_depth -= 1
+            dirty_frame = s_frame.state is DirtyContext
+            s_frame.state = InactiveContext
+            if dirty_frame:
+                raise SenderChainManipulation(s_frame)
     
     def loop_bytecodes(self, s_context, may_context_switch=True):
         old_pc = 0
@@ -133,39 +161,22 @@ class Interpreter(object):
                 s_context=s_context)
             try:
                 self.step(s_context)
-            except Return, nlr:
-                if nlr.s_target_context is s_context or nlr.is_local:
-                    s_context.push(nlr.value)
-                else:
-                    if nlr.s_target_context is None:
-                        # This is the case where we are returning to our sender.
-                        # Mark the return as local, so our sender will take it
-                        nlr.is_local = True
-                    s_context._activate_unwind_context(self)
-                    raise nlr
-
-    # This is a wrapper around loop_bytecodes that cleanly enters/leaves the frame
-    # and handles the stack overflow protection mechanism.
-    def stack_frame(self, s_frame, s_sender, may_context_switch=True):
-        try:
-            if self.is_tracing():
-                self.stack_depth += 1
-            if s_frame._s_sender is None and s_sender is not None:
-                s_frame.store_s_sender(s_sender)
-            # Now (continue to) execute the context bytecodes
-            assert s_frame.state is InactiveContext
-            s_frame.state = ActiveContext
-            self.loop_bytecodes(s_frame, may_context_switch)
-        except rstackovf.StackOverflow:
-            rstackovf.check_stack_overflow()
-            raise StackOverflow(s_frame)
-        finally:
-            if self.is_tracing():
-                self.stack_depth -= 1
-            dirty_frame = s_frame.state is DirtyContext
-            s_frame.state = InactiveContext
-            if dirty_frame:
-                raise SenderChainManipulation(s_frame)
+            except LocalReturn, ret:
+                s_context.push(ret.value)
+    
+    def unwind_context_chain(self, start_context, target_context, return_value):
+        if start_context is None:
+            # This is the toplevel frame. Execution ended.
+            raise ReturnFromTopLevel(return_value)
+        assert target_context
+        context = start_context
+        while context is not target_context:
+            assert context, "Sender chain ended without finding return-context."
+            s_sender = context.s_sender()
+            context._activate_unwind_context(self)
+            context = s_sender
+        context.push(return_value)
+        return context
     
     def step(self, context):
         bytecode = context.fetch_next_bytecode()

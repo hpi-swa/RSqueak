@@ -394,18 +394,13 @@ class __extend__(ContextPartShadow):
             # it will find the sender as a local, and we don't have to
             # force the reference
             s_return_to = None
-            return_from_top = self.s_sender() is None
+            is_local = True
         else:
             s_return_to = self.s_home().s_sender()
-            return_from_top = s_return_to is None
+            is_local = False
         
-        if return_from_top:
-            # This should never happen while executing a normal image.
-            from spyvm.interpreter import ReturnFromTopLevel
-            raise ReturnFromTopLevel(return_value)
-        else:
-            from spyvm.interpreter import Return
-            raise Return(s_return_to, return_value)
+        from spyvm.interpreter import Return
+        raise Return(s_return_to, return_value, is_local)
 
     # ====== Send/Return bytecodes ======
 
@@ -508,16 +503,15 @@ class __extend__(ContextPartShadow):
         if self.gettemp(1).is_nil(self.space):
             self.settemp(1, self.space.w_true) # mark unwound
             self.push(self.gettemp(0)) # push the first argument
-            from spyvm.interpreter import Return
+            from spyvm.interpreter import LocalReturn
             try:
                 self.bytecodePrimValue(interp, 0)
-            except Return, nlr:
-                assert nlr.s_target_context or nlr.is_local
-                if self is not nlr.s_target_context and not nlr.is_local:
-                    raise nlr
+            except LocalReturn:
+                # Local return value of ensure: block is ignored
+                pass
             finally:
                 self.mark_returned()
-
+    
     @bytecode_implementation()
     def unknownBytecode(self, interp, current_bytecode):
         raise error.MissingBytecode("unknownBytecode")
