@@ -1,5 +1,5 @@
 
-from spyvm.shadow import ContextPartShadow
+from spyvm.shadow import ContextPartShadow, ClassShadow
 from spyvm import model, primitives, wrapper, error
 from spyvm.tool.bitmanipulation import splitter
 from rpython.rlib import objectmodel, unroll, jit
@@ -357,7 +357,6 @@ class __extend__(ContextPartShadow):
                 primitives.exitFromHeadlessExecution(self, "doesNotUnderstand:", w_message)
             return self._sendSpecialSelector(interp, receiver, "doesNotUnderstand", [w_message])
         except error.MethodNotFound:
-            from spyvm.shadow import ClassShadow
             s_class = receiver.class_shadow(self.space)
             assert isinstance(s_class, ClassShadow)
             raise error.Exit("Missing doesNotUnderstand in hierarchy of %s" % s_class.getname())
@@ -509,6 +508,7 @@ class __extend__(ContextPartShadow):
         if self.gettemp(1).is_nil(self.space):
             self.settemp(1, self.space.w_true) # mark unwound
             self.push(self.gettemp(0)) # push the first argument
+            from spyvm.interpreter import Return
             try:
                 self.bytecodePrimValue(interp, 0)
             except Return, nlr:

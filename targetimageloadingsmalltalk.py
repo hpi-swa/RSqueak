@@ -72,7 +72,7 @@ def safe_entry_point(argv):
         print_error("Exited: %s" % e.msg)
         return -1
     except error.SmalltalkException, e:
-        print_error("Unhandled Smalltalk Exception type %s. Message: %s" % (e.exception_type, e.msg)
+        print_error("Unhandled %s. Message: %s" % (e.exception_type, e.msg))
         return -1
     except BaseException, e:
         print_error("Exception: %s" % str(e))
