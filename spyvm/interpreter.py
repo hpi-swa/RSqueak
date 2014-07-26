@@ -12,10 +12,15 @@ class ReturnFromTopLevel(Exception):
 
 class Return(Exception):
     _attrs_ = ["value", "s_target_context", "is_local"]
-    def __init__(self, s_target_context, w_result):
+    def __init__(self, s_target_context, w_result, is_local):
         self.value = w_result
         self.s_target_context = s_target_context
-        self.is_local = False
+        self.is_local = is_local
+
+class LocalReturn(Exception):
+    _attrs_ = ["value"]
+    def __init__(self, value):
+        self.value = value
 
 class ContextSwitchException(Exception):
     """General Exception that causes the interpreter to leave
@@ -104,14 +109,16 @@ class Interpreter(object):
                 if self.is_tracing() or self.trace_important:
                     e.print_trace(s_new_context)
                 s_new_context = e.s_new_context
-            except Return, nlr:
-                assert nlr.s_target_context or nlr.is_local
+            except LocalReturn, nlr:
                 s_new_context = s_sender
-                if not nlr.is_local:
-                    while s_new_context is not nlr.s_target_context:
-                        s_sender = s_new_context.s_sender()
-                        s_new_context._activate_unwind_context(self)
-                        s_new_context = s_sender
+                s_new_context.push(nlr.value)
+            except Return, nlr:
+                assert nlr.s_target_context and not nlr.is_local
+                s_new_context = s_sender
+                while s_new_context is not nlr.s_target_context:
+                    s_sender = s_new_context.s_sender()
+                    s_new_context._activate_unwind_context(self)
+                    s_new_context = s_sender
                 s_new_context.push(nlr.value)
     
     # This is a wrapper around loop_bytecodes that cleanly enters/leaves the frame
@@ -124,6 +131,12 @@ class Interpreter(object):
                 s_frame.store_s_sender(s_sender, raise_error=False)
             # Now (continue to) execute the context bytecodes
             self.loop_bytecodes(s_frame, may_context_switch)
+        except Return, ret:
+            s_frame._activate_unwind_context(self)
+            if ret.s_target_context is s_sender or ret.is_local:
+                raise LocalReturn(ret.value)
+            else:
+                raise ret
         except rstackovf.StackOverflow:
             rstackovf.check_stack_overflow()
             raise StackOverflow(s_frame)
@@ -151,16 +164,8 @@ class Interpreter(object):
                 s_context=s_context)
             try:
                 self.step(s_context)
-            except Return, nlr:
-                if nlr.s_target_context is s_context or nlr.is_local:
-                    s_context.push(nlr.value)
-                else:
-                    if nlr.s_target_context is None:
-                        # This is the case where we are returning to our sender.
-                        # Mark the return as local, so our sender will take it
-                        nlr.is_local = True
-                    s_context._activate_unwind_context(self)
-                    raise nlr
+            except LocalReturn, ret:
+                s_context.push(ret.value)
 
     def step(self, context):
         bytecode = context.fetch_next_bytecode()

@@ -394,8 +394,10 @@ class __extend__(ContextPartShadow):
             # it will find the sender as a local, and we don't have to
             # force the reference
             s_return_to = None
+            is_local = True
             return_from_top = self.s_sender() is None
         else:
+            is_local = False
             s_return_to = self.s_home().s_sender()
             return_from_top = s_return_to is None
         
@@ -405,7 +407,7 @@ class __extend__(ContextPartShadow):
             raise ReturnFromTopLevel(return_value)
         else:
             from spyvm.interpreter import Return
-            raise Return(s_return_to, return_value)
+            raise Return(s_return_to, return_value, is_local)
 
     # ====== Send/Return bytecodes ======
 
@@ -508,13 +510,11 @@ class __extend__(ContextPartShadow):
         if self.gettemp(1).is_nil(self.space):
             self.settemp(1, self.space.w_true) # mark unwound
             self.push(self.gettemp(0)) # push the first argument
-            from spyvm.interpreter import Return
+            from spyvm.interpreter import LocalReturn
             try:
                 self.bytecodePrimValue(interp, 0)
-            except Return, nlr:
-                assert nlr.s_target_context or nlr.is_local
-                if self is not nlr.s_target_context and not nlr.is_local:
-                    raise nlr
+            except LocalReturn:
+                pass # Ignore local return value of ensure block.
             finally:
                 self.mark_returned()
 
