@@ -231,6 +231,7 @@ class ImageReader(object):
         self.init_w_objects()
         self.fillin_w_objects()
         self.synchronize_shadows()
+        os.write(2, "\n")
 
     def read_version(self):
         # 1 word version
