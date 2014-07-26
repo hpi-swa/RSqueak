@@ -12,7 +12,7 @@ from spyvm.interpreter_proxy import VirtualMachine
 
 def _usage(argv):
     print """
-    Usage: %s <path> [-r|-m|-h] [-naPu] [-jpiS] [-tslLE]
+    Usage: %s <path> [-r|-m|-h] [-naPu] [-jpiS] [-tTslLE]
             <path> - image path (default: Squeak.image)
 
           Execution mode:
@@ -40,7 +40,8 @@ def _usage(argv):
             
           Logging parameters:
             -t|--trace                 - Output a trace of each message, primitive, return value and process switch.
-            -s|--safe-trace            - Like -t, but without printing contents of BytesObjects
+            -T                         - Trace important events (Process switch, stack overflow, sender chain manipulation)
+            -s|--safe-trace            - If tracing is active, omit printing contents of BytesObjects
             -l|--storage-log           - Output a log of storage operations.
             -L|--storage-log-aggregate - Output an aggregated storage log at the end of execution.
             -E|--storage-log-elements  - Include classnames of elements into the storage log.
@@ -94,6 +95,7 @@ def entry_point(argv):
     poll = False
     interrupts = True
     trace = False
+    trace_important = False
     
     space = prebuilt_space
     idx = 1
@@ -114,8 +116,9 @@ def entry_point(argv):
                 selector, idx = get_parameter(argv, idx, arg)
             elif arg in ["-t", "--trace"]:
                 trace = True
+            elif arg in ["-T"]:
+                trace_important = True
             elif arg in ["-s", "--safe-trace"]:
-                trace = True
                 space.omit_printing_raw_bytes.activate()
             elif arg in ["-p", "--poll"]:
                 poll = True
@@ -169,8 +172,8 @@ def entry_point(argv):
     image_reader = squeakimage.reader_for_image(space, squeakimage.Stream(data=imagedata))
     image = create_image(space, image_reader)
     interp = interpreter.Interpreter(space, image,
-                trace=trace, evented=not poll,
-                interrupts=interrupts)
+                trace=trace, trace_important=trace_important,
+                evented=not poll, interrupts=interrupts)
     space.runtime_setup(argv[0], path)
     print_error("") # Line break after image-loading characters
     

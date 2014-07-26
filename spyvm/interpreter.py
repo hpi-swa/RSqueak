@@ -58,7 +58,7 @@ def get_printable_location(pc, self, method):
 
 class Interpreter(object):
     _immutable_fields_ = ["space", "image",
-                          "interrupt_counter_size",
+                          "interrupt_counter_size", "trace_important",
                           "startup_time", "evented", "interrupts"]
 
     jit_driver = jit.JitDriver(
@@ -68,7 +68,7 @@ class Interpreter(object):
         get_printable_location=get_printable_location
     )
 
-    def __init__(self, space, image=None,
+    def __init__(self, space, image=None, trace_important=False,
                 trace=False, evented=True, interrupts=True):
         # === Initialize immutable variables
         self.space = space
@@ -79,6 +79,7 @@ class Interpreter(object):
             self.startup_time = constants.CompileTime
         self.evented = evented
         self.interrupts = interrupts
+        self.trace_important = trace_important
         try:
             self.interrupt_counter_size = int(os.environ["SPY_ICS"])
         except KeyError:
@@ -100,7 +101,7 @@ class Interpreter(object):
                 self.loop_bytecodes(s_new_context)
                 raise Exception("loop_bytecodes left without raising...")
             except ContextSwitchException, e:
-                if self.is_tracing():
+                if self.is_tracing() or self.trace_important:
                     e.print_trace(s_new_context)
                 s_new_context = e.s_new_context
             except Return, nlr:
