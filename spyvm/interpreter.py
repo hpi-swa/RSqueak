@@ -98,7 +98,7 @@ class Interpreter(object):
         while True:
             s_sender = s_new_context.s_sender()
             try:
-                self.loop_bytecodes(s_new_context)
+                self.stack_frame(s_new_context, None)
                 raise Exception("loop_bytecodes left without raising...")
             except ContextSwitchException, e:
                 if self.is_tracing() or self.trace_important:
@@ -113,6 +113,23 @@ class Interpreter(object):
                         s_new_context._activate_unwind_context(self)
                         s_new_context = s_sender
                 s_new_context.push(nlr.value)
+    
+    # This is a wrapper around loop_bytecodes that cleanly enters/leaves the frame
+    # and handles the stack overflow protection mechanism.
+    def stack_frame(self, s_frame, s_sender, may_context_switch=True):
+        try:
+            if self.is_tracing():
+                self.stack_depth += 1
+            if s_frame._s_sender is None and s_sender is not None:
+                s_frame.store_s_sender(s_sender, raise_error=False)
+            # Now (continue to) execute the context bytecodes
+            self.loop_bytecodes(s_frame, may_context_switch)
+        except rstackovf.StackOverflow:
+            rstackovf.check_stack_overflow()
+            raise StackOverflow(s_frame)
+        finally:
+            if self.is_tracing():
+                self.stack_depth -= 1
     
     def loop_bytecodes(self, s_context, may_context_switch=True):
         old_pc = 0
@@ -144,23 +161,6 @@ class Interpreter(object):
                         nlr.is_local = True
                     s_context._activate_unwind_context(self)
                     raise nlr
-
-    # This is a wrapper around loop_bytecodes that cleanly enters/leaves the frame
-    # and handles the stack overflow protection mechanism.
-    def stack_frame(self, s_frame, s_sender, may_context_switch=True):
-        try:
-            if self.is_tracing():
-                self.stack_depth += 1
-            if s_frame._s_sender is None and s_sender is not None:
-                s_frame.store_s_sender(s_sender, raise_error=False)
-            # Now (continue to) execute the context bytecodes
-            self.loop_bytecodes(s_frame, may_context_switch)
-        except rstackovf.StackOverflow:
-            rstackovf.check_stack_overflow()
-            raise StackOverflow(s_frame)
-        finally:
-            if self.is_tracing():
-                self.stack_depth -= 1
 
     def step(self, context):
         bytecode = context.fetch_next_bytecode()
