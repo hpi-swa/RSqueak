@@ -2,17 +2,14 @@ import py
 from spyvm import wrapper, model, interpreter, objspace
 from spyvm.error import WrapperException, FatalError
 from .util import create_space, copy_to_module, cleanup_module
-from spyvm.test.test_interpreter import _new_frame
 
 def setup_module():
     space = create_space(bootstrap = True)
+    new_frame = lambda: space.make_frame("")[1]
     copy_to_module(locals(), __name__)
 
 def teardown_module():
     cleanup_module(__name__)
-
-def new_frame():
-    return _new_frame(space, "")[0].as_context_get_shadow(space)
 
 def test_simpleread():
     w_o = model.W_PointersObject(space, None, 2)

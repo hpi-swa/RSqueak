@@ -9,15 +9,21 @@ import_bytecodes(__name__)
 def setup_module():
     space, interp = create_space_interp(bootstrap = True)
     w = space.w
+    interpret_bc = interp.interpret_bc
     copy_to_module(locals(), __name__)
 
 def teardown_module():
     cleanup_module(__name__)
 
+# ======= Helper methods =======
+
 def bootstrap_class(instsize, w_superclass=None, w_metaclass=None,
                     name='?', format=shadow.POINTERS, varsized=True):
     return space.bootstrap_class(instsize, w_superclass, w_metaclass,
                     name, format, varsized)
+
+def new_frame(bytes, receiver=None):
+    return space.make_frame(bytes, receiver=receiver, args=[w("foo"), w("bar")])
 
 def step_in_interp(ctxt): # due to missing resets in between tests
     interp._loop = False
@@ -89,22 +95,8 @@ def fakeliterals(space, *literals):
         return lit
     return [fakeliteral(lit) for lit in literals]
 
-def _new_frame(space, bytes, receiver=None):
-    assert isinstance(bytes, str)
-    w_method = model.W_CompiledMethod(space, len(bytes))
-    w_method.islarge = 1
-    w_method.bytes = bytes
-    w_method.argsize=2
-    w_method._tempsize=8
-    w_method.setliterals([model.W_PointersObject(space, None, 2)])
-    if receiver is None:
-        receiver = space.w_nil
-    s_frame = w_method.create_frame(space, receiver, [space.w("foo"), space.w("bar")])
-    return s_frame.w_self(), s_frame
+# ======= Test methods =======
 
-def new_frame(bytes, receiver=None):
-    return _new_frame(space, bytes, receiver)
-    
 def test_create_frame():
     w_method = model.W_CompiledMethod(space, len("hello"))
     w_method.bytes="hello"
@@ -694,14 +686,6 @@ def test_doubleExtendedDoAnythinBytecode():
     test_storeAndPopReceiverVariableBytecode(lambda index: doubleExtendedDoAnythingBytecode + chr(6<<5) + chr(index))
 
     storeAssociation(doubleExtendedDoAnythingBytecode + chr(7<<5) + chr(0))
-
-def interpret_bc(bcodes, literals, receiver=None):
-    if not receiver:
-        receiver = space.w_nil
-    bcode = "".join([chr(x) for x in bcodes])
-    w_frame, s_frame = new_frame(bcode, receiver=receiver)
-    s_frame.w_method().setliterals(literals)
-    return interp.interpret_toplevel(w_frame)
 
 # tests: bytecodePrimValue & bytecodePrimValueWithArg
 def test_bc_3_plus_4():

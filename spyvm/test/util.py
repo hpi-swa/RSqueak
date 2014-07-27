@@ -31,14 +31,6 @@ def create_space_interp(bootstrap = bootstrap_by_default):
     interp = TestInterpreter(space)
     return space, interp
 
-def find_symbol_in_methoddict_of(string, s_class):
-    s_methoddict = s_class.s_methoddict()
-    s_methoddict.sync_method_cache()
-    methoddict_w = s_methoddict.methoddict
-    for each in methoddict_w.keys():
-        if each.as_string() == string:
-            return each
-
 def copy_to_module(locals, module_name):
     mod = sys.modules[module_name]
     mod._copied_objects_ = []
@@ -88,6 +80,22 @@ class TestInterpreter(interpreter.Interpreter):
             s_new_frame.store_s_sender(s_sender)
             return s_new_frame
         return interpreter.Interpreter.stack_frame(self, s_new_frame, s_sender, may_context_switch)
+    
+    # ============ Helpers for executing ============
+    
+    def interpret_bc(self, bcodes, literals=None, receiver=None):
+        w_frame, s_frame = self.space.make_frame(bcodes, literals=literals, receiver=receiver)
+        self.space.wrap_frame(s_frame)
+        return self.interpret_toplevel(w_frame)
+        
+    def execute_method(self, w_method):
+        s_frame = w_method.create_frame(self.space, self.space.w(0))
+        self.space.wrap_frame(s_frame)
+        try:
+            self.loop(s_frame.w_self())
+        except interpreter.ReturnFromTopLevel, e:
+            return e.object
+        assert False, "Frame did not return correctly."
 
 class BootstrappedObjSpace(objspace.ObjSpace):
     
@@ -264,7 +272,45 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         raise Exception("Cannot wrap %r" % any)
     
     def initialize_class(self, w_class, interp):
-        initialize_symbol = find_symbol_in_methoddict_of("initialize", 
+        initialize_symbol = self.find_symbol_in_methoddict("initialize", 
                             w_class.class_shadow(self))
         interp.perform(w_class, w_selector=initialize_symbol)
+    
+    def find_symbol_in_methoddict(self, string, cls):
+        if isinstance(cls, model.W_PointersObject):
+            cls = cls.as_class_get_shadow(self)
+        s_methoddict = cls.s_methoddict()
+        s_methoddict.sync_method_cache()
+        methoddict_w = s_methoddict.methoddict
+        for each in methoddict_w.keys():
+            if each.as_string() == string:
+                return each
+        assert False, 'Using image without %s method in class %s.' % (string, cls.name)
+
+    # ============ Helpers for executing ============
+    
+    def wrap_frame(self, s_frame):
+        # Add a toplevel frame around s_frame to properly return.
+        toplevel_frame = self.make_method([0x7c]).create_frame(self, self.w(0), [])
+        s_frame.store_s_sender(toplevel_frame)
+        
+    def make_method(self, bytes, literals=None, numargs=0):
+        if not isinstance(bytes, str):
+            bytes = "".join([chr(x) for x in bytes])
+        w_method = model.W_CompiledMethod(self, len(bytes))
+        w_method.islarge = 1
+        w_method.bytes = bytes
+        w_method.argsize=numargs
+        w_method._tempsize=8
+        if literals is None:
+            literals = [model.W_PointersObject(self, None, 2)]
+        w_method.setliterals(literals)
+        return w_method
+    
+    def make_frame(self, bytes, literals=None, receiver=None, args=[]):
+        w_method = self.make_method(bytes, literals, len(args))
+        if receiver is None:
+            receiver = self.w_nil
+        s_frame = w_method.create_frame(self, receiver, args)
+        return s_frame.w_self(), s_frame
         

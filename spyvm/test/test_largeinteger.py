@@ -1,7 +1,7 @@
 import py, operator
 from spyvm import squeakimage, model, constants, error, interpreter, shadow, primitives
 from spyvm.test.test_primitives import MockFrame
-from .util import read_image, find_symbol_in_methoddict_of, copy_to_module, cleanup_module
+from .util import read_image, copy_to_module, cleanup_module
 from rpython.rlib.rarithmetic import intmask, r_uint
 
 def setup_module():
@@ -36,7 +36,7 @@ def do_primitive(selector, operation, i=None, j=None, trace=False):
     try:
         w_selector = space.get_special_selector(selector)
     except Exception:
-        w_selector = find_symbol_in_methoddict_of(selector, w(intmask(candidates[0])).getclass(space).shadow)
+        w_selector = space.find_symbol_in_methoddict(selector, w(intmask(candidates[0])).getclass(space))
     
     interp.trace = trace
     for i, v in enumerate(candidates):

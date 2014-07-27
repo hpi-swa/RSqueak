@@ -6,19 +6,16 @@ from rpython.rlib.rfloat import INFINITY, NAN, isinf, isnan
 from rpython.rlib.rarithmetic import intmask
 from rpython.rtyper.lltypesystem import lltype, rffi
 from .util import create_space, copy_to_module, cleanup_module, TestInterpreter
-from .test_interpreter import _new_frame
 
 def setup_module():
     space = create_space(bootstrap = True)
     wrap = space.w
     bootstrap_class = space.bootstrap_class
+    new_frame = space.make_frame
     copy_to_module(locals(), __name__)
 
 def teardown_module():
     cleanup_module(__name__)
-
-def new_frame(bytes):
-    return _new_frame(space, bytes, space.w_nil)
 
 class MockFrame(model.W_PointersObject):
     def __init__(self, space, stack):
