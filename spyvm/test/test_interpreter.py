@@ -978,9 +978,34 @@ def test_blockclosure_return():
             2, "value:value:"]],
         test)
 
-def test_c_stack_reset_on_sender_chain_manipulation():
+def test_frame_dirty_if_active():
     bytes = reduce(operator.add, map(chr, [0x84, 0xc0, 0x00]))
     w_frame, s_frame = new_frame(bytes)
     s_frame.store_w_receiver(w_frame)
     s_frame.push(w_frame)
-    py.test.raises(interpreter.SenderChainManipulation, step_in_interp, s_frame)
+    s_frame.state = shadow.ActiveContext
+    step_in_interp(s_frame)
+    assert s_frame.state is shadow.DirtyContext
+
+def test_frame_not_dirty_if_inactive():
+    bytes = reduce(operator.add, map(chr, [0x84, 0xc0, 0x00]))
+    w_frame, s_frame = new_frame(bytes)
+    w_other_frame, s_other_frame = new_frame("")
+    s_frame.store_w_receiver(w_other_frame)
+    s_frame.push(w_frame)
+    s_frame.state = shadow.ActiveContext
+    step_in_interp(s_frame)
+    assert s_frame.state is shadow.ActiveContext
+    assert s_other_frame.state is shadow.InactiveContext
+    
+def test_raise_NonVirtualReturn_on_dirty_frame():
+    bytes = reduce(operator.add, map(chr, [0x84, 0xc0, 0x00])) + returnTopFromMethodBytecode
+    w_frame, s_frame = new_frame(bytes)
+    s_frame.store_w_receiver(w_frame)
+    s_frame.push(w_frame)
+    
+    interp._loop = True
+    def do_test():
+        interp.stack_frame(s_frame, None)
+    py.test.raises(interpreter.NonVirtualReturn, do_test)
+    

@@ -30,7 +30,8 @@ def bytecode_implementation(parameter_bytes=0):
                 parameters += (self.fetch_next_bytecode(), )
                 i = i + 1
             # This is a good place to step through bytecodes.
-            self.debug_bytecode()
+            
+            self.debug_bytecode(interp)
             return actual_implementation_method(self, interp, current_bytecode, *parameters)
         bytecode_implementation_wrapper.func_name = actual_implementation_method.func_name
         return bytecode_implementation_wrapper
@@ -118,7 +119,7 @@ class __extend__(ContextPartShadow):
     def pushLiteralVariableBytecode(self, interp, current_bytecode):
         # this bytecode assumes that literals[index] is an Association
         # which is an object with two named vars, and fetches the second
-        # named var (the value).
+        # named var (the value).    
         index = current_bytecode & 31
         w_association = self.w_method().getliteral(index)
         association = wrapper.AssociationWrapper(self.space, w_association)
@@ -337,8 +338,6 @@ class __extend__(ContextPartShadow):
         # ######################################################################
         if interp.is_tracing():
             interp.print_padded('-> %s %s' % (special_selector, s_frame.short_str()))
-            if not objectmodel.we_are_translated():
-                import pdb; pdb.set_trace()
 
         return interp.stack_frame(s_frame, self)
 
@@ -394,18 +393,12 @@ class __extend__(ContextPartShadow):
             # it will find the sender as a local, and we don't have to
             # force the reference
             s_return_to = None
-            return_from_top = self.s_sender() is None
         else:
             s_return_to = self.s_home().s_sender()
-            return_from_top = s_return_to is None
+            assert s_return_to, "No sender to return to!"
         
-        if return_from_top:
-            # This should never happen while executing a normal image.
-            from spyvm.interpreter import ReturnFromTopLevel
-            raise ReturnFromTopLevel(return_value)
-        else:
-            from spyvm.interpreter import Return
-            raise Return(s_return_to, return_value)
+        from spyvm.interpreter import Return
+        raise Return(s_return_to, return_value)
 
     # ====== Send/Return bytecodes ======
 
@@ -450,7 +443,6 @@ class __extend__(ContextPartShadow):
 
     @bytecode_implementation(parameter_bytes=2)
     def doubleExtendedDoAnythingBytecode(self, interp, current_bytecode, second, third):
-        from spyvm.interpreter import SenderChainManipulation
         opType = second >> 5
         if opType == 0:
             # selfsend
@@ -472,16 +464,9 @@ class __extend__(ContextPartShadow):
             association = wrapper.AssociationWrapper(self.space, w_association)
             self.push(association.value())
         elif opType == 5:
-            # TODO - the following two special cases should not be necessary
-            try:
-                self.w_receiver().store(self.space, third, self.top())
-            except SenderChainManipulation, e:
-                raise SenderChainManipulation(self)
+            self.w_receiver().store(self.space, third, self.top())
         elif opType == 6:
-            try:
-                self.w_receiver().store(self.space, third, self.pop())
-            except SenderChainManipulation, e:
-                raise SenderChainManipulation(self)
+            self.w_receiver().store(self.space, third, self.pop())
         elif opType == 7:
             w_association = self.w_method().getliteral(third)
             association = wrapper.AssociationWrapper(self.space, w_association)
@@ -511,13 +496,13 @@ class __extend__(ContextPartShadow):
             from spyvm.interpreter import Return
             try:
                 self.bytecodePrimValue(interp, 0)
-            except Return, nlr:
-                assert nlr.s_target_context or nlr.is_local
-                if self is not nlr.s_target_context and not nlr.is_local:
-                    raise nlr
+            except Return, ret:
+                # Local return value of ensure: block is ignored
+                if not ret.arrived_at_target:
+                    raise ret
             finally:
                 self.mark_returned()
-
+    
     @bytecode_implementation()
     def unknownBytecode(self, interp, current_bytecode):
         raise error.MissingBytecode("unknownBytecode")
@@ -613,7 +598,7 @@ class __extend__(ContextPartShadow):
     bytecodePrimPointX = make_send_selector_bytecode("x", 0)
     bytecodePrimPointY = make_send_selector_bytecode("y", 0)
     
-    def debug_bytecode(self):
+    def debug_bytecode(self, interp):
         # Hook used in interpreter_debugging
         pass
     

@@ -49,8 +49,8 @@ def activate_debugging():
     
     @patch_context
     def debug_bytecode(original):
-        def meth(self):
-            if self.step_bytecodes:
+        def meth(self, interp):
+            if interp.step_bytecodes:
                 _break() # Continue stepping from here to get to the current bytecode execution
         return meth
     
