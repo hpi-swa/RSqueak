@@ -11,11 +11,13 @@ class ReturnFromTopLevel(Exception):
         self.object = object
 
 class Return(Exception):
-    _attrs_ = ["value", "s_target_context", "is_local"]
-    def __init__(self, s_target_context, w_result, is_local):
+    _attrs_ = ["value", "s_target_context", "is_local", "arrived_at_target"]
+    _immutable_attrs_ = ["value", "s_target_context", "is_local"]
+    def __init__(self, s_target_context, w_result):
         self.value = w_result
         self.s_target_context = s_target_context
-        self.is_local = is_local
+        self.arrived_at_target = False
+        self.is_local = s_target_context is None
 
 class NonVirtualReturn(Exception):
     _attrs_ = ["s_target_context", "s_current_context", "value"]
@@ -26,11 +28,6 @@ class NonVirtualReturn(Exception):
     
     def print_trace(self):
         print "\n====== Sender Chain Manipulation, contexts forced to heap at: %s" % self.s_current_context.short_str()
-
-class LocalReturn(Exception):
-    _attrs_ = ["value"]
-    def __init__(self, value):
-        self.value = value
 
 class ContextSwitchException(Exception):
     """General Exception that causes the interpreter to leave
@@ -108,14 +105,13 @@ class Interpreter(object):
                 if self.is_tracing():
                     e.print_trace()
                 s_context = e.s_new_context
-            except LocalReturn, ret:
-                s_context = self.unwind_context_chain(s_sender, s_sender, ret.value, "LocalReturn")
             except Return, ret:
-                s_context = self.unwind_context_chain(s_sender, ret.s_target_context, ret.value, "Return")
+                target = s_sender if ret.arrived_at_target else ret.s_target_context
+                s_context = self.unwind_context_chain(s_sender, target, ret.value)
             except NonVirtualReturn, ret:
                 if self.is_tracing():
                     ret.print_trace()
-                s_context = self.unwind_context_chain(ret.s_current_context, ret.s_target_context, ret.value, "NonVirtual")
+                s_context = self.unwind_context_chain(ret.s_current_context, ret.s_target_context, ret.value)
     
     # This is a wrapper around loop_bytecodes that cleanly enters/leaves the frame,
     # handles the stack overflow protection mechanism and handles/dispatches Returns.
@@ -140,10 +136,9 @@ class Interpreter(object):
                 raise NonVirtualReturn(target_context, s_sender, ret.value)
             else:
                 s_frame._activate_unwind_context(self)
-                if ret.s_target_context is s_sender or ret.is_local:
-                    raise LocalReturn(ret.value)
-                else:
-                    raise ret
+                if ret.is_local or ret.s_target_context is s_sender:
+                    ret.arrived_at_target = True
+                raise ret
         finally:
             if self.is_tracing():
                 self.stack_depth -= 1
@@ -169,10 +164,13 @@ class Interpreter(object):
                 s_context=s_context)
             try:
                 self.step(s_context)
-            except LocalReturn, ret:
-                s_context.push(ret.value)
+            except Return, ret:
+                if ret.arrived_at_target:
+                    s_context.push(ret.value)
+                else:
+                    raise ret
     
-    def unwind_context_chain(self, start_context, target_context, return_value, source=""):
+    def unwind_context_chain(self, start_context, target_context, return_value):
         if start_context is None:
             # This is the toplevel frame. Execution ended.
             raise ReturnFromTopLevel(return_value)
@@ -180,8 +178,7 @@ class Interpreter(object):
         context = start_context
         while context is not target_context:
             if not context:
-                msg = "Context chain ended (source: %s) while trying to return\n%s\nfrom\n%s\n(pc %s)\nto\n%s\n(pc %s)" % (
-                        source,
+                msg = "Context chain ended while trying to return\n%s\nfrom\n%s\n(pc %s)\nto\n%s\n(pc %s)" % (
                         return_value.as_repr_string(),
                         start_context.short_str(),
                         start_context.pc(),
