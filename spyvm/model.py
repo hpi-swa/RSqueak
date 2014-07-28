@@ -544,9 +544,9 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
             return "? (no class)"
     
     def invariant(self):
-        from spyvm import shadow
+        from spyvm import storage_classes
         return (W_AbstractObjectWithIdentityHash.invariant(self) and
-                isinstance(self.w_class.shadow, shadow.ClassShadow))
+                isinstance(self.w_class.shadow, storage_classes.ClassShadow))
 
     def _become(self, w_other):
         assert isinstance(w_other, W_AbstractObjectWithClassReference)
@@ -578,7 +578,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         self.initialize_storage(space, size, weak)
     
     def initialize_storage(self, space, size, weak=False):
-        from spyvm.shadow import empty_storage
+        from spyvm.storage import empty_storage
         storage = empty_storage(space, self, size, weak)
         self.store_shadow(storage)
         self.log_storage("Initialized")
@@ -590,18 +590,18 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
             g_obj.fillin(space)
         pointers = g_self.get_pointers()
         # TODO -- Also handle weak objects loaded from images.
-        from spyvm.shadow import find_storage_for_objects
+        from spyvm.storage import find_storage_for_objects
         storage = find_storage_for_objects(space, pointers, g_self.isweak())(space, self, len(pointers))
         self.store_shadow(storage)
         self.store_all(space, pointers)
         self.log_storage("Filledin", log_classname=False)
     
     def is_weak(self):
-        from shadow import WeakListStorageShadow
+        from storage import WeakListStorageShadow
         return isinstance(self.shadow, WeakListStorageShadow)
     
     def is_class(self, space):
-        from spyvm.shadow import ClassShadow
+        from spyvm.storage_classes import ClassShadow
         if isinstance(self.shadow, ClassShadow):
             return True
         return W_AbstractObjectWithClassReference.is_class(self, space)
@@ -701,23 +701,23 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         return shadow
 
     def get_shadow(self, space):
-        from spyvm.shadow import AbstractShadow
+        from spyvm.storage import AbstractShadow
         return self.as_special_get_shadow(space, AbstractShadow)
 
     def as_class_get_shadow(self, space):
-        from spyvm.shadow import ClassShadow
+        from spyvm.storage_classes import ClassShadow
         return jit.promote(self.as_special_get_shadow(space, ClassShadow))
 
     def as_blockcontext_get_shadow(self, space):
-        from spyvm.shadow import BlockContextShadow
+        from spyvm.storage_contexts import BlockContextShadow
         return self.as_special_get_shadow(space, BlockContextShadow)
 
     def as_methodcontext_get_shadow(self, space):
-        from spyvm.shadow import MethodContextShadow
+        from spyvm.storage_contexts import MethodContextShadow
         return self.as_special_get_shadow(space, MethodContextShadow)
 
     def as_context_get_shadow(self, space):
-        from spyvm.shadow import ContextPartShadow
+        from spyvm.storage_contexts import ContextPartShadow
         if not isinstance(self.shadow, ContextPartShadow):
             if self.getclass(space).is_same_object(space.w_BlockContext):
                 return self.as_blockcontext_get_shadow(space)
@@ -727,15 +727,15 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         return self.as_special_get_shadow(space, ContextPartShadow)
 
     def as_methoddict_get_shadow(self, space):
-        from spyvm.shadow import MethodDictionaryShadow
+        from spyvm.storage_classes import MethodDictionaryShadow
         return self.as_special_get_shadow(space, MethodDictionaryShadow)
 
     def as_cached_object_get_shadow(self, space):
-        from spyvm.shadow import CachedObjectShadow
+        from spyvm.storage import CachedObjectShadow
         return self.as_special_get_shadow(space, CachedObjectShadow)
 
     def as_observed_get_shadow(self, space):
-        from spyvm.shadow import ObserveeShadow
+        from spyvm.storage import ObserveeShadow
         return self.as_special_get_shadow(space, ObserveeShadow)
 
     def has_shadow(self):
@@ -1267,7 +1267,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         return True
         
     def create_frame(self, space, receiver, arguments=[]):
-        from spyvm.shadow import MethodContextShadow
+        from spyvm.storage_contexts import MethodContextShadow
         assert len(arguments) == self.argsize
         return MethodContextShadow(space, w_method=self, w_receiver=receiver, arguments=arguments)
         
@@ -1313,7 +1313,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         # methods in order to avoid side effects that prevent translation.
         w_class = self.safe_compiled_in()
         if isinstance(w_class, W_PointersObject):
-            from spyvm.shadow import ClassShadow
+            from spyvm.storage_classes import ClassShadow
             s_class = w_class.shadow
             if isinstance(s_class, ClassShadow):
                 return "%s >> #%s" % (s_class.getname(), self.lookup_selector)

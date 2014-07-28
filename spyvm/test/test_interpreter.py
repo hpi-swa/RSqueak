@@ -1,7 +1,6 @@
 import py, operator, sys
-from spyvm import model, interpreter, primitives, shadow, objspace, wrapper, constants, error
-from .util import create_space_interp, copy_to_module, cleanup_module, import_bytecodes, TestInterpreter
-from spyvm.wrapper import PointWrapper
+from spyvm import model, interpreter, primitives, storage_classes, storage_contexts, wrapper, constants, error
+from .util import create_space_interp, copy_to_module, cleanup_module, import_bytecodes
 from spyvm.conftest import option
 
 import_bytecodes(__name__)
@@ -18,7 +17,7 @@ def teardown_module():
 # ======= Helper methods =======
 
 def bootstrap_class(instsize, w_superclass=None, w_metaclass=None,
-                    name='?', format=shadow.POINTERS, varsized=True):
+                    name='?', format=storage_classes.POINTERS, varsized=True):
     return space.bootstrap_class(instsize, w_superclass, w_metaclass,
                     name, format, varsized)
 
@@ -482,7 +481,7 @@ def test_makePoint():
     step_in_interp(s_frame)
     step_in_interp(s_frame)
     w_point = s_frame.top()
-    point = PointWrapper(interp.space, w_point)
+    point = wrapper.PointWrapper(interp.space, w_point)
     assert point.x() == 0
     assert point.y() == 1
 
@@ -967,9 +966,9 @@ def test_frame_dirty_if_active():
     w_frame, s_frame = new_frame(bytes)
     s_frame.store_w_receiver(w_frame)
     s_frame.push(w_frame)
-    s_frame.state = shadow.ActiveContext
+    s_frame.state = storage_contexts.ActiveContext
     step_in_interp(s_frame)
-    assert s_frame.state is shadow.DirtyContext
+    assert s_frame.state is storage_contexts.DirtyContext
 
 def test_frame_not_dirty_if_inactive():
     bytes = reduce(operator.add, map(chr, [0x84, 0xc0, 0x00]))
@@ -977,10 +976,10 @@ def test_frame_not_dirty_if_inactive():
     w_other_frame, s_other_frame = new_frame("")
     s_frame.store_w_receiver(w_other_frame)
     s_frame.push(w_frame)
-    s_frame.state = shadow.ActiveContext
+    s_frame.state = storage_contexts.ActiveContext
     step_in_interp(s_frame)
-    assert s_frame.state is shadow.ActiveContext
-    assert s_other_frame.state is shadow.InactiveContext
+    assert s_frame.state is storage_contexts.ActiveContext
+    assert s_other_frame.state is storage_contexts.InactiveContext
     
 def test_raise_NonVirtualReturn_on_dirty_frame():
     bytes = reduce(operator.add, map(chr, [0x84, 0xc0, 0x00])) + returnTopFromMethodBytecode

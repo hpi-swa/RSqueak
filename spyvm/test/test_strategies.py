@@ -1,6 +1,5 @@
-import py
-from spyvm import wrapper, model, interpreter, shadow
-from spyvm.error import WrapperException, FatalError
+
+from spyvm import model, storage
 from .util import read_image, copy_to_module, cleanup_module
 
 def setup_module():
@@ -48,13 +47,13 @@ def check_arr(arr, expected):
 
 def test_EmptyArray():
     a = arr(5)
-    assert isinstance(a.shadow, shadow.AllNilStorageShadow)
+    assert isinstance(a.shadow, storage.AllNilStorageShadow)
 
 def test_StoreNil():
     a = arr(5)
     a.store(space, 0, w_nil)
     a.store(space, 4, w_nil)
-    assert isinstance(a.shadow, shadow.AllNilStorageShadow)
+    assert isinstance(a.shadow, storage.AllNilStorageShadow)
 
 def test_FetchNil():
     a = arr(5)
@@ -68,13 +67,13 @@ def test_AllNilSize():
 
 def test_AllNil_to_List():
     a = list_arr(5)
-    assert isinstance(a.shadow, shadow.ListStorageShadow)
+    assert isinstance(a.shadow, storage.ListStorageShadow)
 
 def test_List_store():
     a = list_arr(5)
     a.store(space, 1, arr(1))
     a.store(space, 4, arr(1))
-    assert isinstance(a.shadow, shadow.ListStorageShadow)
+    assert isinstance(a.shadow, storage.ListStorageShadow)
 
 def test_List_fetch():
     a = list_arr(5)
@@ -90,14 +89,14 @@ def test_List_size():
 
 def test_AllNil_to_Int():
     a = int_arr(5)
-    assert isinstance(a.shadow, shadow.SmallIntegerOrNilStorageShadow)
+    assert isinstance(a.shadow, storage.SmallIntegerOrNilStorageShadow)
     check_arr(a, [12, w_nil, w_nil, w_nil, w_nil])
 
 def test_SmallInt_store():
     a = int_arr(5)
     a.store(space, 1, space.wrap_int(20))
     a.store(space, 2, space.wrap_int(20))
-    assert isinstance(a.shadow, shadow.SmallIntegerOrNilStorageShadow)
+    assert isinstance(a.shadow, storage.SmallIntegerOrNilStorageShadow)
     check_arr(a, [12, 20, 20, w_nil, w_nil])
 
 def test_SmallInt_store_nil_to_nil():
@@ -123,26 +122,26 @@ def test_SmallInt_delete():
 def test_SmallInt_to_List():
     a = int_arr(5)
     a.store(space, 1, arr(1))
-    assert isinstance(a.shadow, shadow.ListStorageShadow)
+    assert isinstance(a.shadow, storage.ListStorageShadow)
 
 def test_SmallInt_store_Float_to_List():
     a = int_arr(5)
     a.store(space, 1, space.wrap_float(2.2))
-    assert isinstance(a.shadow, shadow.ListStorageShadow)
+    assert isinstance(a.shadow, storage.ListStorageShadow)
     check_arr(a, [12, 2.2, w_nil, w_nil, w_nil])
     
 # ====== FloatOrNil StorageShadow
 
 def test_AllNil_to_Float():
     a = float_arr(5)
-    assert isinstance(a.shadow, shadow.FloatOrNilStorageShadow)
+    assert isinstance(a.shadow, storage.FloatOrNilStorageShadow)
     check_arr(a, [1.2, w_nil, w_nil, w_nil, w_nil])
 
 def test_Float_store():
     a = float_arr(5)
     a.store(space, 1, space.wrap_float(20.0))
     a.store(space, 2, space.wrap_float(20.0))
-    assert isinstance(a.shadow, shadow.FloatOrNilStorageShadow)
+    assert isinstance(a.shadow, storage.FloatOrNilStorageShadow)
     check_arr(a, [1.2, 20.0, 20.0, w_nil, w_nil])
 
 def test_Float_store_nil_to_nil():
@@ -168,10 +167,10 @@ def test_Float_delete():
 def test_Float_to_List():
     a = float_arr(5)
     a.store(space, 1, arr(1))
-    assert isinstance(a.shadow, shadow.ListStorageShadow)
+    assert isinstance(a.shadow, storage.ListStorageShadow)
 
 def test_Float_store_SmallInt_to_List():
     a = float_arr(5)
     a.store(space, 1, space.wrap_int(2))
-    assert isinstance(a.shadow, shadow.ListStorageShadow)
+    assert isinstance(a.shadow, storage.ListStorageShadow)
     check_arr(a, [1.2, 2, w_nil, w_nil, w_nil])

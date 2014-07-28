@@ -1,4 +1,4 @@
-from spyvm import squeakimage, model, constants, interpreter, shadow, objspace
+from spyvm import model
 from .util import read_image, copy_to_module, cleanup_module
 
 import operator

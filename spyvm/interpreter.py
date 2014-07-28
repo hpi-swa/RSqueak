@@ -1,6 +1,6 @@
 import os
 
-from spyvm.shadow import MethodContextShadow, ActiveContext, InactiveContext, DirtyContext
+from spyvm.storage_contexts import MethodContextShadow, ActiveContext, InactiveContext, DirtyContext
 from spyvm import model, constants, wrapper, objspace, interpreter_bytecodes, error
 
 from rpython.rlib import jit, rstackovf, unroll

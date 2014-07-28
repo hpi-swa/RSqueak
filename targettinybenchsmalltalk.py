@@ -1,15 +1,13 @@
 #! /usr/bin/env python
-import os, sys
-from spyvm import model, interpreter, primitives, shadow, constants
-from spyvm.tool.analyseimage import create_squeakimage, create_testimage
-
+import sys
 from rpython.jit.codewriter.policy import JitPolicy
+from spyvm import model, interpreter
+from spyvm.tool.analyseimage import create_testimage
 
 # This loads the whole mini.image in advance.  At run-time,
 # it executes the tinyBenchmark.  In this way we get an RPython
 # "image" frozen into the executable, mmap'ed by the OS from
 # there and loaded lazily when needed :-)
-
 
 # XXX this only compiles if sys.recursionlimit is high enough!
 # On non-Linux platforms I don't know if there is enough stack to

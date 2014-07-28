@@ -241,7 +241,7 @@ class BlockClosureWrapper(VarsizedWrapper):
     numArgs, store_numArgs = make_int_getter_setter(constants.BLKCLSR_NUMARGS)
 
     def create_frame(self, arguments=[]):
-        from spyvm import shadow
+        from spyvm import storage_contexts
         w_outerContext = self.outerContext()
         if not isinstance(w_outerContext, model.W_PointersObject):
             raise PrimitiveFailedError
@@ -249,7 +249,7 @@ class BlockClosureWrapper(VarsizedWrapper):
         w_method = s_outerContext.w_method()
         w_receiver = s_outerContext.w_receiver()
         pc = self.startpc() - w_method.bytecodeoffset() - 1
-        return shadow.MethodContextShadow(self.space, w_method=w_method, w_receiver=w_receiver,
+        return storage_contexts.MethodContextShadow(self.space, w_method=w_method, w_receiver=w_receiver,
                      arguments=arguments, closure=self, pc=pc)
 
     def tempsize(self):

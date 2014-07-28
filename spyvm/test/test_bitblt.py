@@ -1,4 +1,4 @@
-from spyvm import model, shadow, constants, interpreter, objspace
+from spyvm import model
 from spyvm.plugins import bitblt
 from .util import create_space, copy_to_module, cleanup_module
 

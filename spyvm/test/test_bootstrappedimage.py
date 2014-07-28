@@ -1,6 +1,4 @@
 import py
-from spyvm import squeakimage, model, constants
-from spyvm import interpreter, shadow
 from .util import read_image, copy_to_module, cleanup_module
 
 def setup_module():

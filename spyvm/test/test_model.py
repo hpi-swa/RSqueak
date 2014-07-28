@@ -1,7 +1,5 @@
 import py, math, socket
-from spyvm import model, model_display, shadow, objspace, error, display
-from spyvm.error import MethodNotFound
-from spyvm.shadow import WEAK_POINTERS
+from spyvm import model, model_display, storage_classes, error, display
 from rpython.rlib.rarithmetic import intmask, r_uint
 from rpython.rtyper.lltypesystem import lltype, rffi
 from .util import create_space, copy_to_module, cleanup_module
@@ -41,7 +39,7 @@ def test_new_namedvars():
     assert w_myinstance.fetch(space, 1) is w_myinstance
 
 def test_bytes_object():
-    w_class = bootstrap_class(0, format=shadow.BYTES)
+    w_class = bootstrap_class(0, format=storage_classes.BYTES)
     w_bytes = w_class.as_class_get_shadow(space).new(20)
     assert w_bytes.getclass(space).is_same_object(w_class)
     assert w_bytes.size() == 20
@@ -53,7 +51,7 @@ def test_bytes_object():
     py.test.raises(IndexError, lambda: w_bytes.getchar(20))
 
 def test_c_bytes_object():
-    w_class = bootstrap_class(0, format=shadow.BYTES)
+    w_class = bootstrap_class(0, format=storage_classes.BYTES)
     w_bytes = w_class.as_class_get_shadow(space).new(20)
     w_bytes.convert_to_c_layout()
     assert w_bytes.getclass(space).is_same_object(w_class)
@@ -66,7 +64,7 @@ def test_c_bytes_object():
     py.test.raises(IndexError, lambda: w_bytes.getchar(20))
 
 def test_word_object():
-    w_class = bootstrap_class(0, format=shadow.WORDS)
+    w_class = bootstrap_class(0, format=storage_classes.WORDS)
     w_bytes = w_class.as_class_get_shadow(space).new(20)
     assert w_bytes.getclass(space).is_same_object(w_class)
     assert w_bytes.size() == 20
@@ -78,7 +76,7 @@ def test_word_object():
     py.test.raises(AssertionError, lambda: w_bytes.getword(20))
 
 def test_c_word_object():
-    w_class = bootstrap_class(0, format=shadow.WORDS)
+    w_class = bootstrap_class(0, format=storage_classes.WORDS)
     w_bytes = w_class.as_class_get_shadow(space).new(20)
     w_bytes.convert_to_c_layout()
     assert w_bytes.getclass(space).is_same_object(w_class)
@@ -106,10 +104,10 @@ def test_method_lookup():
     subshadow.initialize_methoddict()
     assert shadow.lookup(w_foo).val == 1
     assert shadow.lookup(w_bar).val == 2
-    py.test.raises(MethodNotFound, shadow.lookup, "zork")
+    py.test.raises(error.MethodNotFound, shadow.lookup, "zork")
     assert subshadow.lookup(w_foo).val == 3
     assert subshadow.lookup(w_bar).val == 2
-    py.test.raises(MethodNotFound, subshadow.lookup, "zork")
+    py.test.raises(error.MethodNotFound, subshadow.lookup, "zork")
 
 def test_compiledin_class():
     w_super = bootstrap_class(0)
@@ -425,7 +423,7 @@ def test_display_offset_computation_uneven():
 def test_weak_pointers():
     w_cls = bootstrap_class(2)
     s_cls = w_cls.as_class_get_shadow(space)
-    s_cls.instance_kind = WEAK_POINTERS
+    s_cls.instance_kind = storage_classes.WEAK_POINTERS
 
     weak_object = s_cls.new()
     referenced = model.W_SmallInteger(10)
