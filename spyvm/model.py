@@ -578,10 +578,8 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         self.initialize_storage(space, size, weak)
     
     def initialize_storage(self, space, size, weak=False):
-        from spyvm.storage import empty_storage
-        storage = empty_storage(space, self, size, weak)
-        self.store_shadow(storage)
-        self.log_storage("Initialized")
+        storage = space.strategy_factory.empty_storage(self, size, weak)
+        self.store_shadow(storage, operation="Initialized")
     
     def fillin(self, space, g_self):
         W_AbstractObjectWithClassReference.fillin(self, space, g_self)
@@ -589,12 +587,10 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         for g_obj in g_self.pointers:
             g_obj.fillin(space)
         pointers = g_self.get_pointers()
-        # TODO -- Also handle weak objects loaded from images.
-        from spyvm.storage import find_storage_for_objects
-        storage = find_storage_for_objects(space, pointers, g_self.isweak())(space, self, len(pointers))
-        self.store_shadow(storage)
+        storage_type = space.strategy_factory.strategy_type_for(pointers, g_self.isweak())
+        storage = storage_type(space, self, len(pointers))
+        self.store_shadow(storage, operation="Filledin", log_classname=False)
         self.store_all(space, pointers)
-        self.log_storage("Filledin", log_classname=False)
     
     def is_weak(self):
         from storage import WeakListStorageShadow
@@ -620,12 +616,6 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         self.store_shadow(new_shadow)
         old_shadow.copy_into(new_shadow)
         new_shadow.attach_shadow()
-        self.log_storage("Switched", old_shadow, w_element=w_element)
-    
-    def store_with_new_storage(self, new_storage, n0, w_val):
-        space = self.space()
-        self.switch_shadow(new_storage(space, self, self.size()), w_element=w_val)
-        self.store(space, n0, w_val)
     
     def space(self):
         return self.assert_shadow().space
@@ -685,8 +675,10 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     def instsize(self):
         return self.class_shadow(self.space()).instsize()
 
-    def store_shadow(self, shadow):
+    def store_shadow(self, shadow, operation="", w_element=None, log_classname=True):
+        old_shadow = self.shadow
         self.shadow = shadow
+        self.log_storage(operation, old_shadow, log_classname, w_element)
 
     def _get_shadow(self):
         return self.shadow
@@ -696,8 +688,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         old_shadow = self._get_shadow()
         shadow = old_shadow
         if not isinstance(old_shadow, TheClass):
-            shadow = TheClass(space, self, old_shadow.size())
-            self.switch_shadow(shadow)
+            shadow = space.strategy_factory.switch_strategy(old_shadow, TheClass)
         return shadow
 
     def get_shadow(self, space):

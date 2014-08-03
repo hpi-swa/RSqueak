@@ -1,9 +1,10 @@
 
-import sys, weakref
+import weakref
 from spyvm import model, version, constants
 from spyvm.version import elidable_for_version
 from rpython.rlib import objectmodel, jit
 from rpython.rlib.objectmodel import import_from_mixin
+import rstrategies as rstrat
 
 class AbstractShadow(object):
     """A shadow is an optional extra bit of information that
@@ -60,211 +61,94 @@ class AbstractShadow(object):
 # ========== Storage classes implementing storage strategies ==========
 
 class AbstractStorageShadow(AbstractShadow):
-    _attrs_ = []
     repr_classname = "AbstractStorageShadow"
+    import_from_mixin(rstrat.SafeIndexingMixin)
     
-    def store(self, n0, w_val):
-        if self.can_contain(w_val):
-            return self.do_store(n0, w_val)
-        new_storage = self.generalized_strategy_for(w_val)
-        return self._w_self.store_with_new_storage(new_storage, n0, w_val)
-    def can_contain(self, w_val):
-        return self.static_can_contain(self.space, w_val)
-    @staticmethod
-    def static_can_contain(space, w_val):
-        raise NotImplementedError()
-    def do_store(self, n0, w_val):
-        raise NotImplementedError()
-    def generalized_strategy_for(self, w_val):
-        raise NotImplementedError()
+    def __init__(self, space, w_self, size):
+        AbstractShadow.__init__(self, space, w_self, size)
+        self.init_strategy(size)
     
-    def copy_from_AllNil(self, all_nil_storage):
-        pass # Already initialized
-    def copy_from(self, other_shadow):
-        assert self.size() == other_shadow.size()
-        for i in range(self.size()):
-            w_val = other_shadow.fetch(i)
-            if not w_val.is_nil(self.space): # nil fields already initialized
-                self.store(i, w_val)
+    def strategy_factory(self):
+        return self.space.strategy_factory
+    
+    def copy_from_AllNilStrategy(self, all_nil_storage):
+        pass # Fields already initialized to nil
 
 class AllNilStorageShadow(AbstractStorageShadow):
     repr_classname = "AllNilStorageShadow"
-    _attrs_ = ['_size']
-    _immutable_fields_ = ['_size']
-    def __init__(self, space, w_self, size):
-        AbstractStorageShadow.__init__(self, space, w_self, size)
-        self._size = size
-    def fetch(self, n0):
-        if n0 >= self._size:
-            raise IndexError
-        return self.space.w_nil
-    def copy_into(self, other_shadow):
-        other_shadow.copy_from_AllNil(self)
-    def do_store(self, n0, w_value):
-        pass
-    def size(self):
-        return self._size
-    def generalized_strategy_for(self, w_val):
-        return find_storage_for_objects(self.space, [w_val])
-    @staticmethod
-    def static_can_contain(space, w_val):
-        return isinstance(w_val, model.W_Object) and w_val.is_nil(space)
-
-class AbstractValueOrNilStorageMixin(object):
-    # Class must provide: wrap, unwrap, nil_value, is_nil_value, wrapper_class
-    _attrs_ = ['storage']
-    _immutable_fields_ = ['storage']
-
-    def __init__(self, space, w_self, size):
-        AbstractStorageShadow.__init__(self, space, w_self, size)
-        self.storage = [self.nil_value] * size
-
-    def size(self):
-        return len(self.storage)
-
-    def generalized_strategy_for(self, w_val):
-        return ListStorageShadow
-
-    def fetch(self, n0):
-        val = self.storage[n0]
-        if self.is_nil_value(val):
-            return self.space.w_nil
-        else:
-            return self.wrap(self.space, val)
-
-    def do_store(self, n0, w_val):
-        if w_val.is_nil(self.space):
-            self.storage[n0] = self.nil_value
-        else:
-            self.storage[n0] = self.unwrap(self.space, w_val)
-
-# This is to avoid code duplication
-@objectmodel.specialize.arg(0)
-def _value_or_nil_can_handle(cls, space, w_val):
-    return isinstance(w_val, model.W_Object) and w_val.is_nil(space) or \
-            (isinstance(w_val, cls.wrapper_class) \
-            and not cls.is_nil_value(cls.unwrap(space, w_val)))
+    import_from_mixin(rstrat.SingleValueStrategy)
+    def value(self): return self.space.w_nil
 
 class SmallIntegerOrNilStorageShadow(AbstractStorageShadow):
     repr_classname = "SmallIntegerOrNilStorageShadow"
-    nil_value = constants.MAXINT
-    wrapper_class = model.W_SmallInteger
-    import_from_mixin(AbstractValueOrNilStorageMixin)
-
-    @staticmethod
-    def static_can_contain(space, w_val):
-        return _value_or_nil_can_handle(SmallIntegerOrNilStorageShadow, space, w_val)
-    @staticmethod
-    def is_nil_value(val):
-        return val == SmallIntegerOrNilStorageShadow.nil_value
-    @staticmethod
-    def wrap(space, val):
-        return space.wrap_int(val)
-    @staticmethod
-    def unwrap(space, w_val):
-        return space.unwrap_int(w_val)
-    def copy_into(self, other_shadow):
-        other_shadow.copy_from_SmallIntegerOrNil(self)
+    import_from_mixin(rstrat.TaggingStrategy)
+    contained_type = model.W_SmallInteger
+    def wrap(self, val): return self.space.wrap_int(val)
+    def unwrap(self, w_val): return self.space.unwrap_int(w_val)
+    def default_value(self): return self.space.w_nil
+    def wrapped_tagged_value(self): return self.space.w_nil
+    def unwrapped_tagged_value(self): return constants.MAXINT
 
 class FloatOrNilStorageShadow(AbstractStorageShadow):
     repr_classname = "FloatOrNilStorageShadow"
-    nil_value = sys.float_info.max
-    wrapper_class = model.W_Float
-    import_from_mixin(AbstractValueOrNilStorageMixin)
-
-    @staticmethod
-    def static_can_contain(space, w_val):
-        return _value_or_nil_can_handle(FloatOrNilStorageShadow, space, w_val)
-    @staticmethod
-    def is_nil_value(val):
-        return val == FloatOrNilStorageShadow.nil_value
-    @staticmethod
-    def wrap(space, val):
-        return space.wrap_float(val)
-    @staticmethod
-    def unwrap(space, w_val):
-        return space.unwrap_float(w_val)
-    def copy_into(self, other_shadow):
-        other_shadow.copy_from_FloatOrNil(self)
-
-def empty_storage(space, w_self, size, weak=False):
-    if weak:
-        return WeakListStorageShadow(space, w_self, size)
-    if space.no_specialized_storage.is_set():
-        return ListStorageShadow(space, w_self, size)
-    return AllNilStorageShadow(space, w_self, size)
-
-@jit.unroll_safe
-def find_storage_for_objects(space, vars, weak=False):
-    if weak:
-        return WeakListStorageShadow
-    if space.no_specialized_storage.is_set():
-        return ListStorageShadow
-    specialized_strategies = 3
-    all_nil_can_handle = True
-    small_int_can_handle = True
-    float_can_handle = True
-    for w_obj in vars:
-        if all_nil_can_handle and not AllNilStorageShadow.static_can_contain(space, w_obj):
-            all_nil_can_handle = False
-            specialized_strategies = specialized_strategies - 1
-        if small_int_can_handle and not SmallIntegerOrNilStorageShadow.static_can_contain(space, w_obj):
-            small_int_can_handle = False
-            specialized_strategies = specialized_strategies - 1
-        if float_can_handle and not FloatOrNilStorageShadow.static_can_contain(space, w_obj):
-            float_can_handle = False
-            specialized_strategies = specialized_strategies - 1
-
-        if specialized_strategies <= 0:
-            return ListStorageShadow
-
-    if all_nil_can_handle:
-        return AllNilStorageShadow
-    if small_int_can_handle:
-        return SmallIntegerOrNilStorageShadow
-    if float_can_handle:
-        return FloatOrNilStorageShadow
-
-    # If this happens, please look for a bug in the code above.
-    assert False, "No strategy could be found for list..."
-
-class ListStorageMixin(object):
-    def __init__(self, space, w_self, size):
-        AbstractStorageShadow.__init__(self, space, w_self, size)
-        self.initialize_storage(size)
-    def size(self):
-        return len(self.storage)
+    import_from_mixin(rstrat.TaggingStrategy)
+    contained_type = model.W_Float
+    def wrap(self, val): return self.space.wrap_float(val)
+    def unwrap(self, w_val): return self.space.unwrap_float(w_val)
+    def default_value(self): return self.space.w_nil
+    def wrapped_tagged_value(self): return self.space.w_nil
+    def unwrapped_tagged_value(self): import sys; return sys.float_info.max
 
 class ListStorageShadow(AbstractStorageShadow):
-    _attrs_ = ['storage']
-    _immutable_fields_ = ['storage']
     repr_classname = "ListStorageShadow"
-    import_from_mixin(ListStorageMixin)
-
-    def initialize_storage(self, size):
-        self.storage = [self.space.w_nil] * size
-    def fetch(self, n0):
-        return self.storage[n0]
-    def store(self, n0, w_value):
-        self.storage[n0] = w_value
+    import_from_mixin(rstrat.GenericStrategy)
+    def default_value(self): return self.space.w_nil
 
 class WeakListStorageShadow(AbstractStorageShadow):
-    _attrs_ = ['storage']
-    _immutable_fields_ = ['storage']
     repr_classname = "WeakListStorageShadow"
-    import_from_mixin(ListStorageMixin)
+    import_from_mixin(rstrat.WeakGenericStrategy)
+    def default_value(self): return self.space.w_nil
 
-    def initialize_storage(self, size):
-        self.storage = [weakref.ref(self.space.w_nil)] * size
-    def fetch(self, n0):
-        weakobj = self.storage[n0]
-        return weakobj() or self.space.w_nil
-    def store(self, n0, w_value):
-        assert w_value is not None
-        self.storage[n0] = weakref.ref(w_value)
-        
+class StrategyFactory(rstrat.StrategyFactory):
+    _immutable_fields_ = ["space", "no_specialized_storage?"]
+    def __init__(self, space):
+        from spyvm import objspace
+        self.space = space
+        self.no_specialized_storage = objspace.ConstantFlag()
+        rstrat.StrategyFactory.__init__(self, AbstractStorageShadow, {
+            AllNilStorageShadow: [SmallIntegerOrNilStorageShadow,
+                                    FloatOrNilStorageShadow,
+                                    ListStorageShadow],
+            SmallIntegerOrNilStorageShadow: [ListStorageShadow],
+            FloatOrNilStorageShadow: [ListStorageShadow],
+        })
+    
+    def strategy_type_for(self, objects, weak=False):
+        if weak:
+            WeakListStorageShadow
+        if self.no_specialized_storage.is_set():
+            return ListStorageShadow
+        return rstrat.StrategyFactory.strategy_type_for(self, objects)
+    
+    def empty_storage(self, w_self, size, weak=False):
+        if weak:
+            return WeakListStorageShadow(self.space, w_self, size)
+        if self.no_specialized_storage.is_set():
+            return ListStorageShadow(self.space, w_self, size)
+        return AllNilStorageShadow(self.space, w_self, size)
+    
+    def instantiate_and_switch(self, old_strategy, size, strategy_class):
+        w_self = old_strategy.w_self()
+        instance = strategy_class(self.space, w_self, size)
+        w_self.store_shadow(instance)
+        instance.attach_shadow()
+        return instance
+    
+    def instantiate_empty(self, strategy_type):
+        return strategy_type(self.space, None, 0)
+
 # ========== Other storage classes, non-strategies ==========
-        
+
 class AbstractRedirectingShadow(AbstractShadow):
     _attrs_ = ['_w_self_size']
     repr_classname = "AbstractRedirectingShadow"

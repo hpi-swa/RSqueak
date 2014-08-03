@@ -1,6 +1,6 @@
 import os
 
-from spyvm import constants, model, model_display, wrapper, version, display
+from spyvm import constants, model, model_display, wrapper, version, display, storage
 from spyvm.error import UnwrappingError, WrappingError, PrimitiveFailedError
 from rpython.rlib import jit, rpath
 from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin
@@ -66,6 +66,7 @@ class ObjSpace(object):
         w_nil.w_class = None
         self.add_bootstrap_object("w_nil", w_nil)
         
+        self.strategy_factory = storage.StrategyFactory(self)
         self.make_bootstrap_classes()
         self.make_bootstrap_objects()
 

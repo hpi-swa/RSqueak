@@ -129,7 +129,7 @@ def entry_point(argv):
             elif arg in ["--hacks"]:
                 space.run_spy_hacks.activate()
             elif arg in ["-S"]:
-                space.no_specialized_storage.activate()
+                space.strategy_factory.no_specialized_storage.activate()
             elif arg in ["-u"]:
                 from spyvm.plugins.vmdebugging import stop_ui_process
                 stop_ui_process()
