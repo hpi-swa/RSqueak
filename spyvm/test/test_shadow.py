@@ -1,7 +1,6 @@
 import random
-from spyvm import model, shadow, constants, interpreter, objspace, wrapper
+from spyvm import model, storage_classes, constants, wrapper
 from .util import create_space, copy_to_module, cleanup_module
-from test_model import joinbits
 
 def setup_module():
     space = create_space(bootstrap = True)
@@ -62,15 +61,15 @@ def basicshape(name, format, kind, varsized, instsize):
     assert classshadow.s_superclass() is w_Object.as_class_get_shadow(space)
 
 def test_basic_shape():
-    yield basicshape, "Empty",        0x02,    shadow.POINTERS, False, 0
-    yield basicshape, "Seven",        0x90,    shadow.POINTERS, False, 7
-    yield basicshape, "Seventyseven", 0x1009C, shadow.POINTERS, False, 77
-    yield basicshape, "EmptyVar",     0x102,   shadow.POINTERS, True,  0
-    yield basicshape, "VarTwo",       0x3986,  shadow.POINTERS, True,  2
-    yield basicshape, "VarSeven",     0x190,   shadow.POINTERS, True,  7
-    yield basicshape, "Bytes",        0x402,   shadow.BYTES,    True,  0
-    yield basicshape, "Words",        0x302,   shadow.WORDS,    True,  0
-    yield basicshape, "CompiledMeth", 0xE02,   shadow.COMPILED_METHOD, True, 0
+    yield basicshape, "Empty",        0x02,    storage_classes.POINTERS, False, 0
+    yield basicshape, "Seven",        0x90,    storage_classes.POINTERS, False, 7
+    yield basicshape, "Seventyseven", 0x1009C, storage_classes.POINTERS, False, 77
+    yield basicshape, "EmptyVar",     0x102,   storage_classes.POINTERS, True,  0
+    yield basicshape, "VarTwo",       0x3986,  storage_classes.POINTERS, True,  2
+    yield basicshape, "VarSeven",     0x190,   storage_classes.POINTERS, True,  7
+    yield basicshape, "Bytes",        0x402,   storage_classes.BYTES,    True,  0
+    yield basicshape, "Words",        0x302,   storage_classes.WORDS,    True,  0
+    yield basicshape, "CompiledMeth", 0xE02,   storage_classes.COMPILED_METHOD, True, 0
 
 def test_methoddict():
     methods = {'foo': model.W_CompiledMethod(space, 0),

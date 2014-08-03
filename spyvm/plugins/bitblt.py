@@ -1,6 +1,6 @@
 from spyvm import model_display, model
 from spyvm.error import PrimitiveFailedError
-from spyvm.shadow import AbstractCachingShadow
+from spyvm.storage import AbstractCachingShadow
 from spyvm.plugins.plugin import Plugin
 
 from rpython.rlib import jit, objectmodel

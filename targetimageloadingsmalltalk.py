@@ -1,14 +1,10 @@
 #! /usr/bin/env python
-import sys, time
-import os
+import sys, time, os
 
 from rpython.rlib.streamio import open_file_as_stream
 from rpython.rlib import jit, rpath, objectmodel
-
-from spyvm import model, interpreter, squeakimage, objspace, wrapper,\
-    error, shadow, storage_logger, constants
+from spyvm import model, interpreter, squeakimage, objspace, wrapper, error, storage_logger
 from spyvm.tool.analyseimage import create_image
-from spyvm.interpreter_proxy import VirtualMachine
 
 def _usage(argv):
     print """

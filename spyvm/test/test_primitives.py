@@ -1,8 +1,8 @@
 import py, os, math, time
-from spyvm import model, model_display, shadow, interpreter, constants, primitives, objspace, wrapper, display
+from spyvm import model, model_display, storage_contexts, constants, primitives, wrapper, display
 from spyvm.primitives import prim_table, PrimitiveFailedError
 from spyvm.plugins import bitblt
-from rpython.rlib.rfloat import INFINITY, NAN, isinf, isnan
+from rpython.rlib.rfloat import isinf, isnan
 from rpython.rlib.rarithmetic import intmask
 from rpython.rtyper.lltypesystem import lltype, rffi
 from .util import create_space, copy_to_module, cleanup_module, TestInterpreter
@@ -30,8 +30,8 @@ class MockFrame(model.W_PointersObject):
         self.w_class = space.w_MethodContext
 
     def as_blockcontext_get_shadow(self, space):
-        if not isinstance(self.shadow, shadow.BlockContextShadow):
-            self.shadow = shadow.BlockContextShadow(space, self)
+        if not isinstance(self.shadow, storage_contexts.BlockContextShadow):
+            self.shadow = storage_contexts.BlockContextShadow(space, self)
         return self.shadow
 
 IMAGENAME = "anImage.image"

@@ -1,5 +1,5 @@
 import py, math
-from spyvm import squeakimage, model, constants, interpreter, shadow, objspace, wrapper, primitives
+from spyvm import model, constants, storage_contexts, wrapper, primitives
 from .util import read_image, open_reader, copy_to_module, cleanup_module, TestInterpreter
 
 def setup_module():
@@ -256,7 +256,7 @@ def test_become():
 def test_step_forged_image():
     ap = wrapper.ProcessWrapper(space, wrapper.scheduler(space).active_process())
     s_ctx = ap.suspended_context().as_context_get_shadow(space)
-    assert isinstance(s_ctx, shadow.MethodContextShadow)
+    assert isinstance(s_ctx, storage_contexts.MethodContextShadow)
     assert s_ctx.top().is_same_object(space.w_true)
 
 def test_cached_methoddict():
@@ -373,7 +373,7 @@ def test_step_run_something():
     s_ctx = w_ctx.as_context_get_shadow(space)
     ap.store_suspended_context(space.w_nil)
     
-    assert isinstance(s_ctx, shadow.MethodContextShadow)
+    assert isinstance(s_ctx, storage_contexts.MethodContextShadow)
     assert s_ctx.top().is_same_object(space.w_true)
     interp.step(s_ctx)
     interp.step(s_ctx)

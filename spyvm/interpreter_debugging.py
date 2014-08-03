@@ -1,6 +1,6 @@
 
 import pdb
-from spyvm.shadow import ContextPartShadow
+from spyvm.storage_contexts import ContextPartShadow
 from spyvm import model, constants, primitives
 
 # This module patches up the interpreter and adds breakpoints at certain execution points.

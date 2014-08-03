@@ -13,7 +13,7 @@ conftest.option = o
 
 from rpython.jit.metainterp.test.test_ajit import LLJitMixin
 from spyvm.test.util import import_bytecodes, read_image
-from spyvm import model, shadow
+from spyvm import model, storage_contexts
 
 sys.setrecursionlimit(5000)
 import_bytecodes(__name__)
@@ -49,7 +49,7 @@ def preload_execute_frame(imagename, bytes, literals, stack):
     w_method.literals = literals
     w_method.setbytes(bytes)
     w_receiver = stack[0]
-    s_frame = shadow.MethodContextShadow(space, w_method=w_method, w_receiver=w_receiver)
+    s_frame = storage_contexts.MethodContextShadow(space, w_method=w_method, w_receiver=w_receiver)
     w_frame = s_frame.w_self()
     def interp_execute_frame():
         return interp.interpret_toplevel(w_frame)

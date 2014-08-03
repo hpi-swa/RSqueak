@@ -1,5 +1,6 @@
 
-from spyvm.shadow import ContextPartShadow, ClassShadow
+from spyvm.storage_contexts import ContextPartShadow
+from spyvm.storage_classes import ClassShadow
 from spyvm import model, primitives, wrapper, error
 from spyvm.tool.bitmanipulation import splitter
 from rpython.rlib import objectmodel, unroll, jit

@@ -1,5 +1,5 @@
 import sys
-from spyvm import model, shadow, objspace, version, constants, squeakimage, interpreter, interpreter_bytecodes
+from spyvm import model, storage_classes, objspace, version, constants, squeakimage, interpreter, interpreter_bytecodes
 from rpython.rlib.objectmodel import instantiate
 
 # Most tests don't need a bootstrapped objspace. Those that do, indicate so explicitely.
@@ -164,7 +164,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
                                          name=meta_nm[2:])
             self.add_bootstrap_class(meta_nm, w_meta_cls)
             return w_meta_cls
-        def define_cls(cls_nm, supercls_nm, instvarsize=0, format=shadow.POINTERS, varsized=False):
+        def define_cls(cls_nm, supercls_nm, instvarsize=0, format=storage_classes.POINTERS, varsized=False):
             assert cls_nm.startswith("w_")
             w_meta_cls = create_metaclass(cls_nm, supercls_nm)
             w_cls = self.bootstrap_class(instvarsize,
@@ -193,7 +193,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         define_cls("w_False", "w_Boolean")
         
         # Now patch up the already created special classes
-        def patch_special_cls(cls_nm, supercls_nm, instvarsize=0, format=shadow.POINTERS, varsized=False):
+        def patch_special_cls(cls_nm, supercls_nm, instvarsize=0, format=storage_classes.POINTERS, varsized=False):
             assert cls_nm.startswith("w_")
             w_meta_cls = create_metaclass(cls_nm, supercls_nm)
             
@@ -207,19 +207,19 @@ class BootstrappedObjSpace(objspace.ObjSpace):
                         format=format,
                         varsized=varsized,
                         name=cls_nm[2:])
-        patch_special_cls("w_Bitmap", "w_ArrayedCollection", varsized=True, format=shadow.WORDS) 
+        patch_special_cls("w_Bitmap", "w_ArrayedCollection", varsized=True, format=storage_classes.WORDS) 
         patch_special_cls("w_SmallInteger", "w_Integer")
-        patch_special_cls("w_String", "w_ArrayedCollection", format=shadow.BYTES)
+        patch_special_cls("w_String", "w_ArrayedCollection", format=storage_classes.BYTES)
         patch_special_cls("w_Array", "w_ArrayedCollection", varsized=True)
-        patch_special_cls("w_Float", "w_Number", format=shadow.BYTES)
+        patch_special_cls("w_Float", "w_Number", format=storage_classes.BYTES)
         patch_special_cls("w_MethodContext", "w_ContextPart")
         patch_special_cls("w_BlockContext", "w_ContextPart", instvarsize=constants.BLKCTX_STACK_START)
         patch_special_cls("w_BlockClosure", "w_Object", instvarsize=constants.BLKCLSR_SIZE, varsized=True)
         patch_special_cls("w_Point", "w_Object")
-        patch_special_cls("w_LargePositiveInteger", "w_Integer", format=shadow.BYTES)
+        patch_special_cls("w_LargePositiveInteger", "w_Integer", format=storage_classes.BYTES)
         patch_special_cls("w_Message", "w_Object")
-        patch_special_cls("w_ByteArray", "w_ArrayedCollection", format=shadow.BYTES)
-        patch_special_cls("w_CompiledMethod", "w_ByteArray", format=shadow.COMPILED_METHOD)
+        patch_special_cls("w_ByteArray", "w_ArrayedCollection", format=storage_classes.BYTES)
+        patch_special_cls("w_CompiledMethod", "w_ByteArray", format=storage_classes.COMPILED_METHOD)
         patch_special_cls("w_Semaphore", "w_LinkedList")
         patch_special_cls("w_Character", "w_Magnitude", instvarsize=1)
         patch_special_cls("w_Process", "w_Link")
@@ -234,8 +234,8 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         patch_bootstrap_object(self.w_special_selectors, self.w_Array, len(constants.SPECIAL_SELECTORS) * 2)
 
     def patch_class(self, w_class, instsize, w_superclass=None, w_metaclass=None,
-                        name='?', format=shadow.POINTERS, varsized=False):
-        s = instantiate(shadow.ClassShadow)
+                        name='?', format=storage_classes.POINTERS, varsized=False):
+        s = instantiate(storage_classes.ClassShadow)
         s.space = self
         s.version = version.Version()
         s._w_self = w_class
@@ -246,12 +246,12 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         s._instance_size = instsize
         s.instance_kind = format
         s._s_methoddict = None
-        s.instance_varsized = varsized or format != shadow.POINTERS
+        s.instance_varsized = varsized or format != storage_classes.POINTERS
         w_class.store_shadow(s)
         w_class.w_class = w_metaclass
         
     def bootstrap_class(self, instsize, w_superclass=None, w_metaclass=None,
-                        name='?', format=shadow.POINTERS, varsized=False):
+                        name='?', format=storage_classes.POINTERS, varsized=False):
         w_class = model.W_PointersObject(self, w_metaclass, 0)
         self.patch_class(w_class, instsize, w_superclass, w_metaclass, name, format, varsized)
         return w_class

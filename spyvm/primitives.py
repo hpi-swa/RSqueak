@@ -2,7 +2,7 @@ import os
 import inspect
 import math
 import operator
-from spyvm import model, model_display, shadow, error, constants, display
+from spyvm import model, model_display, storage_contexts, error, constants, display
 from spyvm.error import PrimitiveFailedError, PrimitiveNotYetWrittenError
 from spyvm import wrapper
 
@@ -947,7 +947,7 @@ if not stm_enabled():
     def func(interp, s_frame, w_rcvr):
         # This takes a long time (at least in interpreted mode), and is not really necessary.
         # We are monitoring changes to MethodDictionaries, so there is no need for the image to tell us.
-        #walk_gc_objects_of_type(shadow.MethodDictionaryShadow, lambda s_dict: s_dict.flush_method_cache())
+        #walk_gc_objects_of_type(storage_contexts.MethodDictionaryShadow, lambda s_dict: s_dict.flush_method_cache())
         return w_rcvr
 
 # ___________________________________________________________________________
@@ -1292,7 +1292,7 @@ def func(interp, s_frame, w_context, argcnt):
     # The block bytecodes are stored inline: so we skip past the
     # byteodes to invoke this primitive to find them (hence +2)
     initialip = s_frame.pc() + 2
-    s_new_context = shadow.BlockContextShadow(interp.space, None, 0, w_method_context, argcnt, initialip)
+    s_new_context = storage_contexts.BlockContextShadow(interp.space, None, 0, w_method_context, argcnt, initialip)
     return s_new_context.w_self()
 
 @expose_primitive(VALUE, result_is_new_frame=True)

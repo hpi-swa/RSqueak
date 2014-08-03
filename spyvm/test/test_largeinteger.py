@@ -1,5 +1,5 @@
-import py, operator
-from spyvm import squeakimage, model, constants, error, interpreter, shadow, primitives
+import operator
+from spyvm import model, constants, primitives
 from spyvm.test.test_primitives import MockFrame
 from .util import read_image, copy_to_module, cleanup_module
 from rpython.rlib.rarithmetic import intmask, r_uint
