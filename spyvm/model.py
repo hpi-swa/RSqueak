@@ -1269,7 +1269,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def create_frame(self, space, receiver, arguments=[]):
         from spyvm.storage_contexts import MethodContextShadow
         assert len(arguments) == self.argsize
-        return MethodContextShadow(space, w_method=self, w_receiver=receiver, arguments=arguments)
+        return MethodContextShadow.build(space, self, receiver, arguments)
         
     # === Printing ===
 

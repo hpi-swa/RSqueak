@@ -31,7 +31,7 @@ class MockFrame(model.W_PointersObject):
 
     def as_blockcontext_get_shadow(self, space):
         if not isinstance(self.shadow, storage_contexts.BlockContextShadow):
-            self.shadow = storage_contexts.BlockContextShadow(space, self)
+            self.shadow = storage_contexts.BlockContextShadow(space, self, self.size())
         return self.shadow
 
 IMAGENAME = "anImage.image"
