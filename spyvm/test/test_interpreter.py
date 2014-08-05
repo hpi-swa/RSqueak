@@ -1,7 +1,6 @@
 import py, operator, sys
 from spyvm import model, interpreter, primitives, storage_classes, storage_contexts, wrapper, constants, error
 from .util import create_space_interp, copy_to_module, cleanup_module, import_bytecodes
-from spyvm.conftest import option
 
 import_bytecodes(__name__)
 
@@ -839,14 +838,6 @@ def test_bc_objectAtAndAtPut():
         [[space.w_CompiledMethod, primitives.OBJECT_AT, 1, "objectAt:"],
          [space.w_CompiledMethod, primitives.OBJECT_AT_PUT, 2, "objectAt:put:"]],
         test)
-
-def test_runwithtrace():
-    # We run random tests with the bc_trace option turned on explicitely
-    bc_trace = option.bc_trace
-    option.bc_trace = True
-    test_storeAndPopReceiverVariableBytecode()
-    test_bc_objectAtAndAtPut()
-    option.bc_trace = bc_trace
 
 # Closure Bytecodes
 def test_bc_pushNewArrayBytecode(bytecode=pushNewArrayBytecode):
