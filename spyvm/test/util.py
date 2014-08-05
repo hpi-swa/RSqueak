@@ -1,4 +1,4 @@
-import sys
+import py, sys
 from spyvm import model, storage_classes, objspace, version, constants, squeakimage, interpreter, interpreter_bytecodes
 from rpython.rlib.objectmodel import instantiate
 
@@ -6,15 +6,16 @@ from rpython.rlib.objectmodel import instantiate
 # This way, as many tests as possible use the real, not-bootstrapped ObjSpace.
 bootstrap_by_default = False
 
+image_dir = py.path.local(__file__).dirpath().dirpath().dirpath('images')
+
 def open_reader(space, imagefilename):
-    from spyvm.tool.analyseimage import image_dir
-    imagefilename = image_dir.join(imagefilename)
-    return squeakimage.reader_for_image(space, squeakimage.Stream(imagefilename.open(mode="rb")))
+    stream = squeakimage.Stream(filename=str(image_dir.join(imagefilename).strpath))
+    return squeakimage.reader_for_image(space, stream)
 
 def read_image(image_filename, bootstrap = bootstrap_by_default):
     space = create_space(bootstrap)
     reader = open_reader(space, image_filename)
-    reader.initialize()
+    reader.read_all()
     image = squeakimage.SqueakImage()
     image.from_reader(space, reader)
     interp = TestInterpreter(space, image)

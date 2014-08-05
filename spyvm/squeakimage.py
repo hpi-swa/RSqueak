@@ -1,12 +1,11 @@
-import py
-import os
-import sys
-import time
-from spyvm import constants
-from spyvm import model
+import os, sys, time
+from spyvm import constants, model
 from spyvm.tool.bitmanipulation import splitter
+from rpython.rlib import objectmodel, streamio
 
-from rpython.rlib import objectmodel
+# ____________________________________________________________
+#
+# Stream class for reading raw input data
 
 def chrs2int(b):
     assert len(b) == 4
@@ -38,26 +37,28 @@ def swapped_chrs2long(b):
     return (      first << 56 | ord(b[6]) << 48 | ord(b[5]) << 40 | ord(b[4]) << 32
             | ord(b[3]) << 24 | ord(b[2]) << 16 | ord(b[1]) <<  8 | ord(b[0])      )
 
-
-# ____________________________________________________________
-#
-# Reads an image file and creates all model objects
-
 class Stream(object):
-    """ Simple input stream """
-    def __init__(self, inputfile=None, data=None):
-        if inputfile is None and data is None:
-            raise RuntimeError("need to supply either inputfile or data")
-
-        if inputfile:
+    """ Simple input stream. Constructor can raise OSError. """
+    
+    def __init__(self, filename=None, inputfile=None, data=None):
+        if filename:
+            f = streamio.open_file_as_stream(filename, mode="rb", buffering=0)
+            try:
+                self.data = f.readall()
+            finally:
+                f.close()
+        elif inputfile:
             try:
                 self.data = inputfile.read()
             finally:
                 inputfile.close()
-        else:
+        elif data:
             self.data = data
+        else:
+            raise RuntimeError("need to supply either inputfile or data")
+        
         self.reset()
-
+    
     def peek(self):
         if self.pos >= len(self.data):
             raise IndexError
@@ -72,7 +73,6 @@ class Stream(object):
                 return swapped_chrs2int(data_peek)
             else:
                 return chrs2int(data_peek)
-
 
     def next(self):
         integer = self.peek()
@@ -101,7 +101,6 @@ class Stream(object):
         self.pos += jump
         self.count += jump
 
-
     def length(self):
         return len(self.data)
 
@@ -117,13 +116,23 @@ class Stream(object):
         self.use_long_read = False
 
 
+# ____________________________________________________________
+#
+# Constants and image versions.
+
+# from the squeak source code:
+# in squeak, the compact classes array can be found at this position
+# in the special objects array
+COMPACT_CLASSES_ARRAY = 28
+
+# The image data can optionally start after this fixed offset.
+POSSIBLE_IMAGE_OFFSET = 512
+
 class CorruptImageError(Exception):
     pass
 
 class UnsupportedImageError(Exception):
     pass
-
-# ____________________________________________________________
 
 class ImageVersion(object):
 
@@ -159,7 +168,6 @@ if sys.maxint == 2 ** 63 - 1:
                         ImageVersion(68003, False, True,  True,  True ),
 })
 
-
 def version(magic):
     ver = image_versions.get(magic, None)
     if ver is None:
@@ -168,15 +176,13 @@ def version(magic):
     #     raise UnsupportedImageError
     return ver
 
-possible_image_offset = 512
-
 def version_from_stream(stream):
     # 32 bit
     try:
         return version(stream.peek())
     except CorruptImageError as e:
-        if stream.length() > possible_image_offset + 4:
-            stream.skipbytes(possible_image_offset)
+        if stream.length() > POSSIBLE_IMAGE_OFFSET + 4:
+            stream.skipbytes(POSSIBLE_IMAGE_OFFSET)
             try:
                 return version(stream.peek())
             except CorruptImageError:
@@ -189,8 +195,8 @@ def version_from_stream(stream):
             assert v.is_64bit
             return v
         except CorruptImageError as e:
-            if stream.length() > possible_image_offset + 4:
-                stream.skipbytes(possible_image_offset)
+            if stream.length() > POSSIBLE_IMAGE_OFFSET + 4:
+                stream.skipbytes(POSSIBLE_IMAGE_OFFSET)
                 try:
                     v = version(stream.peek())
                     assert v.is_64bit
@@ -200,12 +206,22 @@ def version_from_stream(stream):
         raise
 
 
+# ____________________________________________________________
+#
+# Parser classes for Squeak image format.
 
 def reader_for_image(space, stream):
     ver = version_from_stream(stream)
     if not ver.is_big_endian:
         stream.swap = True
     return ImageReader(space, stream, ver)
+
+def parse_image(space, stream):
+    image_reader = reader_for_image(space, stream)
+    image_reader.read_all()
+    image = SqueakImage()
+    image.from_reader(space, image_reader)
+    return image
 
 class ImageReader(object):
 
@@ -222,8 +238,7 @@ class ImageReader(object):
 
         self.lastWindowSize = 0
 
-    def initialize(self):
-        # XXX should be called something like read_full_image
+    def read_all(self):
         self.read_header()
         self.read_body()
         self.init_compactclassesarray()
@@ -257,7 +272,6 @@ class ImageReader(object):
         self.stream.skipbytes(headersize - self.stream.pos)
 
     def read_body(self):
-        import sys
         self.stream.reset_count()
         while self.stream.count < self.endofmemory:
             chunk, pos = self.read_object()
@@ -372,7 +386,6 @@ class SqueakImage(object):
                           "is_modern", "startup_time"]
 
     def from_reader(self, space, reader):
-        from spyvm import constants
         self.special_objects = [g_object.w_object for g_object in
                                 reader.chunks[reader.specialobjectspointer]
                                 .g_object.pointers]
@@ -414,11 +427,6 @@ class SqueakImage(object):
 
     def special(self, index):
         return self.special_objects[index]
-
-# from the squeak source code:
-# in squeak, the compact classes array can be found at this position
-# in the special objects array
-COMPACT_CLASSES_ARRAY = 28
 
 # ____________________________________________________________
 

@@ -1,8 +1,7 @@
 #! /usr/bin/env python
 import sys
 from rpython.jit.codewriter.policy import JitPolicy
-from spyvm import model, interpreter
-from spyvm.tool.analyseimage import create_testimage
+from spyvm import model, objspace, interpreter, squeakimage
 
 # This loads the whole mini.image in advance.  At run-time,
 # it executes the tinyBenchmark.  In this way we get an RPython
@@ -14,10 +13,11 @@ from spyvm.tool.analyseimage import create_testimage
 # compile...
 #sys.setrecursionlimit(100000)
 
+imagefile = ""
+
 def setup():
-    from spyvm import objspace
     space = objspace.ObjSpace()
-    image = create_testimage(space)
+    image = squeakimage.parse_image(space, Stream(filename=imagefile))
     interp = interpreter.Interpreter(space, image)
     w_selector = interp.perform(space.wrap_string("loopTest"), "asSymbol")
     w_object = model.W_SmallInteger(0)

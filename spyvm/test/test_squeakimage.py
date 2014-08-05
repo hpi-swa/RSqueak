@@ -26,7 +26,7 @@ def joinbits(values, lengths):
 
 def imagestream_mock(string):
     f = StringIO.StringIO(string)
-    return squeakimage.Stream(f)
+    return squeakimage.Stream(inputfile=f)
 
 def imagereader_mock(string):
     stream = imagestream_mock(string)
