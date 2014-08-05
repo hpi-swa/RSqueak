@@ -1,5 +1,5 @@
 import py, sys
-from spyvm import model, storage_classes, objspace, version, constants, squeakimage, interpreter, interpreter_bytecodes
+from spyvm import model, storage_classes, objspace, util, constants, squeakimage, interpreter, interpreter_bytecodes
 from rpython.rlib.objectmodel import instantiate
 
 # Most tests don't need a bootstrapped objspace. Those that do, indicate so explicitely.
@@ -237,7 +237,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
                         name='?', format=storage_classes.POINTERS, varsized=False):
         s = instantiate(storage_classes.ClassShadow)
         s.space = self
-        s.version = version.Version()
+        s.version = util.version.Version()
         s._w_self = w_class
         s.subclass_s = {}
         s._s_superclass = None

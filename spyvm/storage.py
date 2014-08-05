@@ -1,7 +1,7 @@
 
 import sys, weakref
-from spyvm import model, version, constants
-from spyvm.version import elidable_for_version
+from spyvm import model, constants
+from spyvm.util.version import elidable_for_version, VersionMixin
 from rpython.rlib import objectmodel, jit
 from rpython.rlib.objectmodel import import_from_mixin
 
@@ -283,7 +283,7 @@ class AbstractCachingShadow(ListStorageShadow):
     _immutable_fields_ = ['version?']
     _attrs_ = ['version']
     repr_classname = "AbstractCachingShadow"
-    import_from_mixin(version.VersionMixin)
+    import_from_mixin(VersionMixin)
     version = None
 
     def __init__(self, space, w_self, size):

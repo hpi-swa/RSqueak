@@ -1,7 +1,7 @@
 
-from spyvm import model, constants, error, wrapper, version
+from spyvm import model, constants, error, wrapper
 from spyvm.storage import AbstractCachingShadow, ListStorageShadow
-from spyvm.version import constant_for_version, constant_for_version_arg
+from spyvm.util.version import constant_for_version, constant_for_version_arg, Version
 from rpython.rlib import jit
 
 POINTERS = 0
@@ -231,7 +231,7 @@ class ClassShadow(AbstractCachingShadow):
         raise error.MethodNotFound()
 
     def changed(self):
-        self.superclass_changed(version.Version())
+        self.superclass_changed(Version())
 
     # this is done, because the class-hierarchy contains cycles
     def superclass_changed(self, version):
