@@ -16,8 +16,7 @@ def read_image(image_filename, bootstrap = bootstrap_by_default):
     space = create_space(bootstrap)
     reader = open_reader(space, image_filename)
     reader.read_all()
-    image = squeakimage.SqueakImage()
-    image.from_reader(space, reader)
+    image = squeakimage.SqueakImage(space, reader)
     interp = TestInterpreter(space, image)
     return space, interp, image, reader
 

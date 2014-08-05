@@ -219,9 +219,7 @@ def reader_for_image(space, stream):
 def parse_image(space, stream):
     image_reader = reader_for_image(space, stream)
     image_reader.read_all()
-    image = SqueakImage()
-    image.from_reader(space, image_reader)
-    return image
+    return SqueakImage(space, image_reader)
 
 class ImageReader(object):
 
@@ -385,7 +383,7 @@ class SqueakImage(object):
     _immutable_fields_ = ["w_asSymbol", "w_simulateCopyBits", "version",
                           "is_modern", "startup_time"]
 
-    def from_reader(self, space, reader):
+    def __init__(self, space, reader):
         self.special_objects = [g_object.w_object for g_object in
                                 reader.chunks[reader.specialobjectspointer]
                                 .g_object.pointers]
