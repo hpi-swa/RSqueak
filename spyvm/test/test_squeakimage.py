@@ -1,7 +1,7 @@
 import py, StringIO, sys
 from struct import pack
 from spyvm import squeakimage
-from spyvm.squeakimage import chrs2int, chrs2long, swapped_chrs2long
+from spyvm.util.stream import chrs2int, chrs2long, swapped_chrs2long
 from spyvm import objspace
 from .util import create_space, copy_to_module, cleanup_module
 
