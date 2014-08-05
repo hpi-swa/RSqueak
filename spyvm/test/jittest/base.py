@@ -3,7 +3,7 @@ import os
 from rpython.tool.jitlogparser.parser import Op
 from rpython.jit.metainterp.resoperation import opname
 from rpython.jit.tool import oparser
-from spyvm.tool import logparser
+from spyvm.util import logparser
 
 BasePath = os.path.abspath(
     os.path.join(

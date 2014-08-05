@@ -1,6 +1,6 @@
 import os, sys, time
 from spyvm import constants, model
-from spyvm.tool.bitmanipulation import splitter
+from spyvm.util.bitmanipulation import splitter
 from rpython.rlib import objectmodel, streamio
 
 # ____________________________________________________________

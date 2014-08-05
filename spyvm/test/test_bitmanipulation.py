@@ -1,4 +1,4 @@
-from spyvm.tool.bitmanipulation import splitter
+from spyvm.util.bitmanipulation import splitter
 
 
 def test_simple_splitbits():

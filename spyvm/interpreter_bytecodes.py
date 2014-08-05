@@ -2,7 +2,7 @@
 from spyvm.storage_contexts import ContextPartShadow
 from spyvm.storage_classes import ClassShadow
 from spyvm import model, primitives, wrapper, error
-from spyvm.tool.bitmanipulation import splitter
+from spyvm.util.bitmanipulation import splitter
 from rpython.rlib import objectmodel, unroll, jit
 
 # unrolling_zero has been removed from rlib at some point.

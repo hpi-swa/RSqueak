@@ -1,5 +1,5 @@
 import sys, os, shutil
-from spyvm.tool import logparser
+from spyvm.util import logparser
 
 def main(argv):
     if len(argv) != 1:
