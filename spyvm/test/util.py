@@ -8,15 +8,16 @@ bootstrap_by_default = False
 
 image_dir = py.path.local(__file__).dirpath().dirpath().dirpath('images')
 
+def image_stream(imagefilename):
+    return squeakimage.Stream(filename=str(image_dir.join(imagefilename).strpath))
+
 def open_reader(space, imagefilename):
-    stream = squeakimage.Stream(filename=str(image_dir.join(imagefilename).strpath))
-    return squeakimage.reader_for_image(space, stream)
+    return squeakimage.ImageReader(space, image_stream(imagefilename))
 
 def read_image(image_filename, bootstrap = bootstrap_by_default):
     space = create_space(bootstrap)
     reader = open_reader(space, image_filename)
-    reader.read_all()
-    image = squeakimage.SqueakImage(space, reader)
+    image = reader.create_image()
     interp = TestInterpreter(space, image)
     return space, interp, image, reader
 

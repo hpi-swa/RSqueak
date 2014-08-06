@@ -159,7 +159,7 @@ def entry_point(argv):
         return 1
     
     # Load & prepare image and environment
-    image = squeakimage.parse_image(space, stream)
+    image = squeakimage.ImageReader(space, stream).create_image()
     interp = interpreter.Interpreter(space, image,
                 trace=trace, trace_important=trace_important,
                 evented=not poll, interrupts=interrupts)

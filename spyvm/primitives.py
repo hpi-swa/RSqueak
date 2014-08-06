@@ -711,7 +711,7 @@ def func(interp, s_frame, argcount):
     height = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 2))
     depth = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 3))
     hotpt = wrapper.PointWrapper(interp.space, w_rcvr.fetch(interp.space, 4))
-    if not interp.image.is_modern:
+    if not interp.image.version.is_modern:
         display.SDLCursor.set(
             w_bitmap.words,
             width,

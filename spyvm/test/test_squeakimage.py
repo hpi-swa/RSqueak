@@ -1,8 +1,7 @@
 import py, StringIO, sys
 from struct import pack
-from spyvm import squeakimage
+from spyvm import squeakimage, error
 from spyvm.util.stream import chrs2int, chrs2long, swapped_chrs2long
-from spyvm import objspace
 from .util import create_space, copy_to_module, cleanup_module
 
 def setup_module():
@@ -30,7 +29,7 @@ def imagestream_mock(string):
 
 def imagereader_mock(string):
     stream = imagestream_mock(string)
-    return squeakimage.reader_for_image(space, stream)
+    return squeakimage.ImageReader(space, stream)
 
 SIMPLE_VERSION_HEADER = pack(">i", 6502)
 SIMPLE_VERSION_HEADER_LE = pack("<i", 6502)
@@ -55,9 +54,9 @@ def test_stream():
     assert n == 6502 
     py.test.raises(IndexError, lambda: stream.next())
     
-def test_stream_swap():
+def test_stream_little_endian():
     stream = imagestream_mock('\x66\x19\x00\x00')
-    stream.swap = True
+    stream.big_endian = False
     first = stream.next()
     assert first == 6502 
     py.test.raises(IndexError, lambda: stream.next())
@@ -106,7 +105,7 @@ def test_ints2str():
 def test_freeblock():
     r = imagereader_mock(SIMPLE_VERSION_HEADER + "\x00\x00\x00\x02")
     r.read_version()
-    py.test.raises(squeakimage.CorruptImageError, lambda: r.read_object())
+    py.test.raises(error.CorruptImageError, lambda: r.read_object())
 
 def test_1wordobjectheader():
     s = ints2str(joinbits([3, 1, 2, 3, 4], [2,6,4,5,12]))

@@ -17,7 +17,8 @@ imagefile = ""
 
 def setup():
     space = objspace.ObjSpace()
-    image = squeakimage.parse_image(space, Stream(filename=imagefile))
+    stream = squeakimage.Stream(filename=imagefile)
+    image = squeakimage.ImageReader(space, stream).create_image()
     interp = interpreter.Interpreter(space, image)
     w_selector = interp.perform(space.wrap_string("loopTest"), "asSymbol")
     w_object = model.W_SmallInteger(0)

@@ -59,15 +59,15 @@ class Stream(object):
             raise IndexError
         data_peek = self.data[self.pos:self.pos + self.word_size]
         if self.use_long_read:
-            if self.swap:
-                return swapped_chrs2long(data_peek)
-            else:
+            if self.big_endian:
                 return chrs2long(data_peek)
-        else:
-            if self.swap:
-                return swapped_chrs2int(data_peek)
             else:
+                return swapped_chrs2long(data_peek)
+        else:
+            if self.big_endian:
                 return chrs2int(data_peek)
+            else:
+                return swapped_chrs2int(data_peek)
 
     def next(self):
         integer = self.peek()
@@ -76,7 +76,7 @@ class Stream(object):
         return integer
 
     def reset(self):
-        self.swap = False
+        self.big_endian = True
         self.pos = 0
         self.count = 0
         self.be_32bit()
