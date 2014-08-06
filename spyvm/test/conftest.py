@@ -10,6 +10,13 @@ def pytest_addoption(parser):
         help="Additionally execute slow tests (loading full Squeak image or long execution)"
     )
     group.addoption(
+        "--all", "-A",
+        dest="execute-all-tests",
+        action="store_true",
+        default=False,
+        help="Execute all tests"
+    )
+    group.addoption(
         "--jit",
         dest="rsqueak-binary",
         action="store",

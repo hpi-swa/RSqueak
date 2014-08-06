@@ -2,12 +2,15 @@ import py, sys
 from spyvm import model, storage_classes, objspace, util, constants, squeakimage, interpreter, interpreter_bytecodes
 from rpython.rlib.objectmodel import instantiate
 
-# Use this as decorator, if the test takes longer then a few seconds.
-# This option is configured in conftest.py.
+# Use these as decorators, if the test takes longer then a few seconds.
+# The according options is configured in conftest.py.
 # To mark all tests in a module as slow, add this line to the module:
 # pytestmark = slow_test
-slow_test = py.test.mark.skipif('not config.getvalue("execute-slow-tests")',
-                        reason="Slow tests are being skipped. Add --slow to execute all tests.")
+slow_test = py.test.mark.skipif('not config.getvalue("execute-slow-tests") or config.getvalue("execute-all-tests")',
+                        reason="Slow tests are being skipped. Add --slow|-S to execute slow tests.")
+
+very_slow_test = py.test.mark.skipif('not config.getvalue("execute-all-tests")',
+                        reason="Very slow tests are being skipped. Add --all|-A to execute all tests.")
 
 # Most tests don't need a bootstrapped objspace. Those that do, indicate so explicitely.
 # This way, as many tests as possible use the real, not-bootstrapped ObjSpace.

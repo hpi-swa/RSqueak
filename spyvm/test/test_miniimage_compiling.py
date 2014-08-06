@@ -2,8 +2,6 @@ import py, math
 from spyvm import model, constants, storage_contexts, wrapper, primitives, interpreter, error
 from .util import read_image, open_reader, copy_to_module, cleanup_module, TestInterpreter, slow_test
 
-pytestmark = slow_test
-
 def setup_module():
     space, interp, _, _ = read_image("mini.image")
     w = space.w
@@ -18,6 +16,10 @@ def teardown_module():
 
 # ------ tests ------------------------------------------
 
+def test_load_image():
+    pass
+
+@slow_test
 def test_compile_method():
     sourcecode = """fib
                         ^self < 2
@@ -26,6 +28,7 @@ def test_compile_method():
     perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
     assert perform(w(10), "fib").is_same_object(w(89))
 
+@slow_test
 def test_become():
     sourcecode = """
     testBecome
@@ -52,6 +55,7 @@ def test_become():
     w_result = perform(w(10), "testBecome")
     assert space.unwrap_int(w_result) == 42
 
+@slow_test
 def test_cached_methoddict():
     sourcecode = """fib
                         ^self < 2

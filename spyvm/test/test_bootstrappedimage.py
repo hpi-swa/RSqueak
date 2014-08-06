@@ -1,5 +1,5 @@
 import py
-from .util import read_image, copy_to_module, cleanup_module, slow_test
+from .util import read_image, copy_to_module, cleanup_module, slow_test, very_slow_test
 
 def setup_module():
     space, interp, image, reader = read_image("bootstrapped.image")
@@ -14,7 +14,7 @@ def test_symbol_asSymbol():
     w_result = perform(image.w_asSymbol, "asSymbol")
     assert w_result is image.w_asSymbol
 
-@slow_test
+@very_slow_test
 def test_retrieve_symbol():
     """asSymbol
     "This is the only place that new Symbols are created. A Symbol is created

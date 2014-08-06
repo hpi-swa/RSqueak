@@ -5,7 +5,7 @@ from spyvm.plugins import bitblt
 from rpython.rlib.rfloat import isinf, isnan
 from rpython.rlib.rarithmetic import intmask
 from rpython.rtyper.lltypesystem import lltype, rffi
-from .util import create_space, copy_to_module, cleanup_module, TestInterpreter, slow_test
+from .util import create_space, copy_to_module, cleanup_module, TestInterpreter, slow_test, very_slow_test
 
 def setup_module():
     space = create_space(bootstrap = True)
@@ -626,14 +626,14 @@ def test_primitive_closure_value_value_with_temps():
     assert s_new_context.gettemp(1).as_string() == "second arg"
     assert s_new_context.gettemp(2).as_string() == "some value"
 
-@slow_test
+@very_slow_test
 def test_primitive_some_instance():
     import gc; gc.collect()
     someInstance = map(space.wrap_list, [[1], [2]])
     w_r = prim(primitives.SOME_INSTANCE, [space.w_Array])
     assert w_r.getclass(space) is space.w_Array
 
-@slow_test
+@very_slow_test
 def test_primitive_next_instance():
     someInstances = map(space.wrap_list, [[2], [3]])
     w_frame, s_context = new_frame("<never called, but needed for method generation>")
@@ -650,7 +650,7 @@ def test_primitive_next_instance():
     assert w_2.getclass(space) is space.w_Array
     assert w_1 is not w_2
 
-@slow_test
+@very_slow_test
 def test_primitive_next_instance_wo_some_instance_in_same_frame():
     someInstances = map(space.wrap_list, [[2], [3]])
     w_frame, s_context = new_frame("<never called, but needed for method generation>")

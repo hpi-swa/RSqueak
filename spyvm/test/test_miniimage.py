@@ -1,6 +1,6 @@
 import py, math
 from spyvm import model, constants, storage_contexts, wrapper, primitives, interpreter, error
-from .util import read_image, open_reader, copy_to_module, cleanup_module, TestInterpreter, slow_test
+from .util import read_image, open_reader, copy_to_module, cleanup_module, TestInterpreter, very_slow_test
 
 def setup_module():
     space, interp, image, reader = read_image("mini.image")
@@ -200,7 +200,7 @@ def test_map_mirrors_to_classtable():
     w_false = image.special(constants.SO_FALSE)
     assert w_false.is_same_object(space.w_false)
 
-@slow_test
+@very_slow_test
 def test_runimage_and_quit():
     from targetimageloadingsmalltalk import active_context, execute_context
     space, interp = runningExitImage(cached=False)
