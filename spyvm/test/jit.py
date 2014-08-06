@@ -112,7 +112,6 @@ def main():
     # ===== First define which image we are going to use.
     imagename = "minibluebookdebug.image"
     # imagename = "mini.image"
-    # imagename = "minitest.image"
     # imagename = "Squeak4.5-noBitBlt.image"
     
     # ===== Define the code to be executed, if any.

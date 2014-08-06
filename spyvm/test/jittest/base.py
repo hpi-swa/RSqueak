@@ -1,24 +1,17 @@
-import subprocess
-import os
+import subprocess, os
 from rpython.tool.jitlogparser.parser import Op
 from rpython.jit.metainterp.resoperation import opname
 from rpython.jit.tool import oparser
 from spyvm.util import logparser
+from spyvm.test.util import image_path
 
-BasePath = os.path.abspath(
-    os.path.join(
-        os.path.join(os.path.dirname(__file__), os.path.pardir),
-        os.path.pardir,
-        os.path.pardir
-    )
-)
-BenchmarkImage = os.path.join(os.path.dirname(__file__), "benchmark.image")
+TestImage = image_path("jittest.image")
 
 class BaseJITTest(object):
     def run(self, spy, tmpdir, code):
         logfile = str(tmpdir.join("x.pypylog"))
         proc = subprocess.Popen(
-            [str(spy), BenchmarkImage, "-r", code.replace("\n", "\r\n")],
+            [str(spy), TestImage, "-r", code.replace("\n", "\r\n")],
             cwd=str(tmpdir),
             env={"PYPYLOG": "jit-log-opt:%s" % logfile,
                  "SDL_VIDEODRIVER": "dummy"}

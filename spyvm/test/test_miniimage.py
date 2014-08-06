@@ -216,7 +216,7 @@ def test_runimage_and_quit():
     # After starting, the image quits immediately. This allows testing the full image execution.
     
     from targetimageloadingsmalltalk import active_context, execute_context
-    space, interp, _, _ = read_image('running-exit.image')
+    space, interp, _, _ = read_image('mini-running-exit.image')
     frame = active_context(space)
     try:
         execute_context(interp, frame)
@@ -344,13 +344,13 @@ def test_mustBeBoolean():
     assert w_mbb.as_string() == "mustBeBoolean"
     
 def test_run_doesNotUnderstand():
-    space, interp, _, _ = read_image('running-something-mini.image')
+    space, interp, _, _ = read_image('mini-running-something.image')
     w_result = interp.perform(interp.space.wrap_int(0), "runningADNU")
     assert isinstance(w_result, model.W_BytesObject)
     assert w_result.as_string() == "foobarThis:doesNotExist:('pypy' 'heya' )"
 
 def test_run_mustBeBoolean():
-    space, interp, _, _ = read_image('running-something-mini.image')
+    space, interp, _, _ = read_image('mini-running-something.image')
     w_result = interp.perform(interp.space.wrap_int(0), "runningMustBeBoolean")
     assert isinstance(w_result, model.W_BytesObject)
     assert w_result.as_string() == "mustBeBoolean has been called"
@@ -369,7 +369,7 @@ def test_step_run_something():
     # a := Smalltalk snapshotPrimitive. 1+2.
     # This will save the image in a state that will satisfy the following test.
     
-    space, interp, _, _ = read_image('running-something-mini.image')
+    space, interp, _, _ = read_image('mini-running-something.image')
     ap = wrapper.ProcessWrapper(space, wrapper.scheduler(space).active_process())
     w_ctx = ap.suspended_context()
     s_ctx = w_ctx.as_context_get_shadow(space)

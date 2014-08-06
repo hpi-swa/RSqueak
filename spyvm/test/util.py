@@ -6,10 +6,13 @@ from rpython.rlib.objectmodel import instantiate
 # This way, as many tests as possible use the real, not-bootstrapped ObjSpace.
 bootstrap_by_default = False
 
-image_dir = py.path.local(__file__).dirpath().dirpath().dirpath('images')
+image_dir = py.path.local(__file__).dirpath('images')
+
+def image_path(imagefilename):
+    return image_dir.join(imagefilename).strpath
 
 def image_stream(imagefilename):
-    return squeakimage.Stream(filename=str(image_dir.join(imagefilename).strpath))
+    return squeakimage.Stream(filename=image_path(imagefilename))
 
 def open_reader(space, imagefilename):
     return squeakimage.ImageReader(space, image_stream(imagefilename))
