@@ -1,6 +1,6 @@
 import os, time
 from spyvm import constants, model, util, error
-from spyvm.util import stream
+from spyvm.util import stream, system
 from spyvm.util.bitmanipulation import splitter
 from rpython.rlib import objectmodel
 
@@ -32,6 +32,8 @@ class ImageVersion(object):
     def configure_stream(self, stream):
         stream.big_endian = self.is_big_endian
         if self.is_64bit:
+            if not system.IS_64BIT:
+                raise error.FatalError("Cannot handle 64-bit image.")
             stream.be_64bit()
         else:
             stream.be_32bit()
@@ -43,14 +45,16 @@ image_versions = {
     0x68190000:         ImageVersion(6504,  False, False, True,  False),
     0x00001969:         ImageVersion(6505,  True,  False, True,  True ),
     0x69190000:         ImageVersion(6505,  False, False, True,  True ),
-    
-    # Versions for 64 bit images
-    0x00000000000109A0: ImageVersion(68000, True,  True,  False, False),
-    -0x5ff6ff0000000000:ImageVersion(68000, False, True,  False, False), # 0xA009010000000000
-    0x00000000000109A2: ImageVersion(68002, True,  True,  True,  False),
-    -0x5df6ff0000000000:ImageVersion(68002, False, True,  True,  False), # 0xA209010000000000
-    0x00000000000109A3: ImageVersion(68003, True,  True,  True,  True ),
-    -0x5cf6ff0000000000:ImageVersion(68003, False, True,  True,  True ), # 0xA309010000000000
+}
+
+image_versions_64bit = {
+    # Versions for 64 bit images (expressed as two 32-bit words)
+    (0x00000000,  0x000109A0): ImageVersion(68000, True,  True,  False, False),
+    (-0x5ff6ff00, 0x00000000): ImageVersion(68000, False, True,  False, False), # 0xA009010000000000
+    (0x00000000,  0x000109A2): ImageVersion(68002, True,  True,  True,  False),
+    (-0x5df6ff00, 0x00000000): ImageVersion(68002, False, True,  True,  False), # 0xA209010000000000
+    (0x00000000,  0x000109A3): ImageVersion(68003, True,  True,  True,  True ),
+    (-0x5cf6ff00, 0x00000000): ImageVersion(68003, False, True,  True,  True ), # 0xA309010000000000
 }
 
 # ____________________________________________________________
@@ -59,20 +63,13 @@ image_versions = {
 
 class ImageReader(object):
     
-    _attrs_ = [ "space", "stream", "version",
-        "chunks", # Dictionary mapping old address to chunk object
-        "chunklist", # Flat list of all read chunks
-        "intcache", # Cached instances of SmallInteger
-        "lastWindowSize"
-    ]
-    
     def __init__(self, space, stream):
         self.space = space
         self.stream = stream
         self.version = None
-        self.chunks = {}
-        self.chunklist = []
-        self.intcache = {}
+        self.chunks = {} # Dictionary mapping old address to chunk object
+        self.chunklist = [] # Flat list of all read chunks
+        self.intcache = {} # Cached instances of SmallInteger
         self.lastWindowSize = 0
     
     def create_image(self):
@@ -94,25 +91,25 @@ class ImageReader(object):
         self.fillin_w_objects()
 
     def try_read_version(self):
-        version = image_versions.get(self.stream.next(), None)
+        magic1 = self.stream.next()
+        version = image_versions.get(magic1, None)
         if version:
             return version
-        self.stream.reset()
-        if self.stream.length() > POSSIBLE_IMAGE_OFFSET + 4:
-            self.stream.skipbytes(POSSIBLE_IMAGE_OFFSET)
-            version = image_versions.get(self.stream.next(), None)
-            if not version:
-                self.stream.reset()
-            return version
+        # Check 64 bit version
+        magic2 = self.stream.next()
+        version = image_versions_64bit.get((magic1, magic2), None)
+        if not version:
+            self.stream.reset()
+        return version
 
     def read_version(self):
         version = self.try_read_version()
         if not version:
-            # Try 64 bit
-            self.stream.be_64bit()
-            version = self.try_read_version()
-            if not version:
-                raise error.CorruptImageError("Illegal version magic.")
+            if self.stream.length() > POSSIBLE_IMAGE_OFFSET + 4:
+                self.stream.skipbytes(POSSIBLE_IMAGE_OFFSET)
+                version = self.try_read_version()
+        if not version:
+            raise error.CorruptImageError("Illegal version magic.")
         version.configure_stream(self.stream)
         self.version = version
     
