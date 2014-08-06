@@ -2,6 +2,13 @@ import py, sys
 from spyvm import model, storage_classes, objspace, util, constants, squeakimage, interpreter, interpreter_bytecodes
 from rpython.rlib.objectmodel import instantiate
 
+# Use this as decorator, if the test takes longer then a few seconds.
+# This option is configured in conftest.py.
+# To mark all tests in a module as slow, add this line to the module:
+# pytestmark = slow_test
+slow_test = py.test.mark.skipif('not config.getvalue("execute-slow-tests")',
+                        reason="Slow tests are being skipped. Add --slow to execute all tests.")
+
 # Most tests don't need a bootstrapped objspace. Those that do, indicate so explicitely.
 # This way, as many tests as possible use the real, not-bootstrapped ObjSpace.
 bootstrap_by_default = False
@@ -17,10 +24,16 @@ def image_stream(imagefilename):
 def open_reader(space, imagefilename):
     return squeakimage.ImageReader(space, image_stream(imagefilename))
 
-def read_image(image_filename, bootstrap = bootstrap_by_default):
-    space = create_space(bootstrap)
-    reader = open_reader(space, image_filename)
-    image = reader.create_image()
+image_cache = {}
+
+def read_image(image_filename, cached=True):
+    if cached and image_filename in image_cache:
+        space, reader, image = image_cache.get(image_filename)
+    else:
+        space = create_space()
+        reader = open_reader(space, image_filename)
+        image = reader.create_image()
+        image_cache[image_filename] = (space, reader, image)
     interp = TestInterpreter(space, image)
     return space, interp, image, reader
 
@@ -35,7 +48,7 @@ def create_space_interp(bootstrap = bootstrap_by_default):
     interp = TestInterpreter(space)
     return space, interp
 
-def copy_to_module(locals, module_name):
+def copy_to_module(locals, module_name, all_tests_slow = False):
     mod = sys.modules[module_name]
     mod._copied_objects_ = []
     for name, obj in locals.items():

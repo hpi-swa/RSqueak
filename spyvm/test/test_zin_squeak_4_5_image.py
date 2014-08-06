@@ -1,7 +1,8 @@
-from spyvm import model
-from .util import read_image, copy_to_module, cleanup_module
-
 import operator
+from spyvm import model
+from .util import read_image, copy_to_module, cleanup_module, slow_test
+
+pytestmark = slow_test
 
 def setup_module():
     space, interp, image, reader = read_image('Squeak4.5-12568.image')

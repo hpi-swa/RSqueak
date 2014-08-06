@@ -1,7 +1,7 @@
 import operator
 from spyvm import model, constants, primitives
 from spyvm.test.test_primitives import MockFrame
-from .util import read_image, copy_to_module, cleanup_module
+from .util import read_image, copy_to_module, cleanup_module, slow_test
 from rpython.rlib.rarithmetic import intmask, r_uint
 
 def setup_module():
@@ -9,7 +9,6 @@ def setup_module():
     w = space.w
     copy_to_module(locals(), __name__)
     interp.trace = False
-    space.initialize_class(space.w_String, interp)
 
 def teardown_module():
     cleanup_module(__name__)
@@ -71,14 +70,4 @@ def test_bitShift():
             return a >> -b
         else:
             return a << b
-#    do_primitive("bitShift:", shift, j=-5)
-    do_primitive("bitShift:", shift, i=[9470032], j=[6]) # 8
-
-# def test_primitiveAdd():
-#     do_primitive("+", operator.add)
-
-# def test_primitiveSub():
-#     do_primitive("-", operator.sub, j=[0xFF, 0xFFFF, 0xF0E0D0C0], i=[-1, -1, -1])
-#     do_primitive("-", operator.sub)
-    # do_primitive("-", operator.sub, i=[0xFF], j=0x3FFFFFFF)
-
+    do_primitive("bitShift:", shift, i=[9470032], j=[6])

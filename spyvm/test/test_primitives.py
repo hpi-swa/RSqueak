@@ -5,7 +5,7 @@ from spyvm.plugins import bitblt
 from rpython.rlib.rfloat import isinf, isnan
 from rpython.rlib.rarithmetic import intmask
 from rpython.rtyper.lltypesystem import lltype, rffi
-from .util import create_space, copy_to_module, cleanup_module, TestInterpreter
+from .util import create_space, copy_to_module, cleanup_module, TestInterpreter, slow_test
 
 def setup_module():
     space = create_space(bootstrap = True)
@@ -626,12 +626,14 @@ def test_primitive_closure_value_value_with_temps():
     assert s_new_context.gettemp(1).as_string() == "second arg"
     assert s_new_context.gettemp(2).as_string() == "some value"
 
+@slow_test
 def test_primitive_some_instance():
     import gc; gc.collect()
     someInstance = map(space.wrap_list, [[1], [2]])
     w_r = prim(primitives.SOME_INSTANCE, [space.w_Array])
     assert w_r.getclass(space) is space.w_Array
 
+@slow_test
 def test_primitive_next_instance():
     someInstances = map(space.wrap_list, [[2], [3]])
     w_frame, s_context = new_frame("<never called, but needed for method generation>")
@@ -648,6 +650,7 @@ def test_primitive_next_instance():
     assert w_2.getclass(space) is space.w_Array
     assert w_1 is not w_2
 
+@slow_test
 def test_primitive_next_instance_wo_some_instance_in_same_frame():
     someInstances = map(space.wrap_list, [[2], [3]])
     w_frame, s_context = new_frame("<never called, but needed for method generation>")
@@ -702,12 +705,6 @@ def test_primitive_value_no_context_switch(monkeypatch):
         monkeypatch.undo()
 
 def test_primitive_be_display():
-    # XXX: Patch SDLDisplay -> get_pixelbuffer() to circumvent
-    # double-free bug
-    def get_pixelbuffer(self):
-        return lltype.malloc(rffi.ULONGP.TO, self.width * self.height * 32, flavor='raw')
-    display.SDLDisplay.get_pixelbuffer = get_pixelbuffer
-
     assert space.objtable["w_display"] is None
     mock_display = model.W_PointersObject(space, space.w_Point, 4)
     w_wordbmp = model.W_WordsObject(space, space.w_Array, 10)
@@ -741,12 +738,6 @@ def test_primitive_be_display():
     assert mock_display.fetch(space, 0) is w_bitmap
 
 def test_primitive_force_display_update(monkeypatch):
-    # XXX: Patch SDLDisplay -> get_pixelbuffer() to circumvent
-    # double-free bug
-    def get_pixelbuffer(self):
-        return lltype.malloc(rffi.ULONGP.TO, self.width * self.height * 32, flavor='raw')
-    display.SDLDisplay.get_pixelbuffer = get_pixelbuffer
-
     mock_display = model.W_PointersObject(space, space.w_Point, 4)
     w_wordbmp = model.W_WordsObject(space, space.w_Array, 10)
     mock_display.store(space, 0, w_wordbmp) # bitmap
