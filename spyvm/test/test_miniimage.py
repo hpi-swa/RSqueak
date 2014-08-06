@@ -1,5 +1,5 @@
 import py, math
-from spyvm import model, constants, storage_contexts, wrapper, primitives
+from spyvm import model, constants, storage_contexts, wrapper, primitives, interpreter, error
 from .util import read_image, open_reader, copy_to_module, cleanup_module, TestInterpreter
 
 def setup_module():
@@ -210,14 +210,18 @@ def test_map_mirrors_to_classtable():
     w_false = image.special(constants.SO_FALSE)
     assert w_false.is_same_object(space.w_false)
 
-def test_runimage():
-    py.test.skip("This method actually runs an image. Fails since no graphical primitives yet")
-    ap = wrapper.ProcessWrapper(space, wrapper.scheduler(space).active_process())
-    w_ctx = ap.suspended_context()
-    ap.store_suspended_context(space.w_nil)
-
-    interp = TestInterpreter(space)
-    interp.interpret_toplevel(w_ctx)
+def test_runimage_and_quit():
+    # This image has been prepared executing the following DoIt (the entire line):
+    # Smalltalk snapshotPrimitive. Smalltalk snapshot: false andQuit: true.
+    # After starting, the image quits immediately. This allows testing the full image execution.
+    
+    from targetimageloadingsmalltalk import active_context, execute_context
+    space, interp, _, _ = read_image('running-exit.image')
+    frame = active_context(space)
+    try:
+        execute_context(interp, frame)
+    except error.Exit, e:
+        assert e.msg == "Quit-Primitive called"
 
 def test_compile_method():
     sourcecode = """fib
@@ -260,8 +264,6 @@ def test_step_forged_image():
     assert s_ctx.top().is_same_object(space.w_true)
 
 def test_cached_methoddict():
-    py.test.skip('Should test the same as test_shadow.test_cached_methoddict, as long '
-                'as the implementation of MethodDictionary>>#at:put does not change.')
     sourcecode = """fib
                         ^self < 2
                             ifTrue: [ 1 ]

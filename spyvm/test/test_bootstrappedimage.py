@@ -15,12 +15,6 @@ def test_symbol_asSymbol():
     w_result = perform(image.w_asSymbol, "asSymbol")
     assert w_result is image.w_asSymbol
 
-def test_create_new_symbol():
-    py.test.skip("This test takes quite long and is actually included in test_retrieve_symbol.")
-    w_result = perform(w("someString"), "asSymbol")
-    assert w_result is not None
-    assert w_result.as_string() == "someString"
-
 def test_retrieve_symbol():
     """asSymbol
     "This is the only place that new Symbols are created. A Symbol is created
@@ -30,6 +24,7 @@ def test_retrieve_symbol():
             self = sym
                 ifTrue: [ ^ sym ] ].
     ^ (Symbol basicNew: self size) initFrom: self"""
+    
     w_result = perform(w("someString"), "asSymbol")
     assert w_result.as_string() == "someString"
     w_anotherSymbol = perform(w("someString"), "asSymbol")

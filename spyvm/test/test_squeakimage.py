@@ -187,8 +187,8 @@ def test_simple_image():
     assert r.stream.pos == len(image_2)
 
 def test_simple_image64():
-    if not sys.maxint == 2 ** 63 - 1:
-      py.test.skip("on 32 bit platforms, we can't need to check for 64 bit images")
+    #if not sys.maxint == 2 ** 63 - 1:
+    #  py.test.skip("on 32 bit platforms, we can't need to check for 64 bit images")
     word_size = 8
     header_size = 16 * word_size
 
