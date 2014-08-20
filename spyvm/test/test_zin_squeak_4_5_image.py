@@ -1,6 +1,6 @@
 import operator
 from spyvm import model
-from .util import read_image, copy_to_module, cleanup_module, slow_test
+from .util import read_image, copy_to_module, cleanup_module, slow_test, very_slow_test
 
 # The tests are quick, but loading the big image takes time.
 pytestmark = slow_test
@@ -17,7 +17,8 @@ def teardown_module():
 def test_all_pointers_are_valid():
     from test_miniimage import _test_all_pointers_are_valid
     _test_all_pointers_are_valid(reader)
-    
+
+@very_slow_test
 def test_lookup_abs_in_integer():
     from test_miniimage import _test_lookup_abs_in_integer
     _test_lookup_abs_in_integer(interp)
