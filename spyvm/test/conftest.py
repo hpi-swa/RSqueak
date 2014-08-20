@@ -21,10 +21,10 @@ def pytest_addoption(parser):
         dest="rsqueak-binary",
         action="store",
         default=None,
-        help="Path to a compiled rsqueak binary"
+        help="Path to a compiled rsqueak binary. Enables jit tests."
     )
 
-# The 'spy' parameter is used in tests under jittest/
+# The 'jit' parameter is used in tests under jittest/
 def pytest_funcarg__spy(request):
     val = request.config.getvalue("rsqueak-binary")
     if not val:

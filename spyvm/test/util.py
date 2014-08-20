@@ -6,7 +6,8 @@ from rpython.rlib.objectmodel import instantiate
 # The according options is configured in conftest.py.
 # To mark all tests in a module as slow, add this line to the module:
 # pytestmark = slow_test
-slow_test = py.test.mark.skipif('not config.getvalue("execute-slow-tests") or config.getvalue("execute-all-tests")',
+slow_test = py.test.mark.skipif('    not config.getvalue("execute-slow-tests")' +
+                                'and not config.getvalue("execute-all-tests")',
                         reason="Slow tests are being skipped. Add --slow|-S to execute slow tests.")
 
 very_slow_test = py.test.mark.skipif('not config.getvalue("execute-all-tests")',
