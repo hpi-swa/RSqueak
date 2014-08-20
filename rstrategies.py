@@ -151,6 +151,7 @@ class EmptyStrategy(AbstractStrategy):
     
 class SingleValueStrategy(AbstractStrategy):
     _immutable_fields_ = ["_size", "val"]
+    _attrs_ = ["_size", "val"]
     # == Required:
     # See AbstractStrategy
     # check_index_*(...) - use mixin SafeIndexingMixin or UnsafeIndexingMixin
@@ -176,15 +177,13 @@ class SingleValueStrategy(AbstractStrategy):
 
 class StrategyWithStorage(AbstractStrategy):
     _immutable_fields_ = ["storage"]
+    _attrs_ = ["storage"]
     # == Required:
     # See AbstractStrategy
     # check_index_*(...) - use mixin SafeIndexingMixin, UnsafeIndexingMixin or VariableSizeMixin
     # default_value(self) - The value to be initially contained in this strategy
     
     def init_strategy(self, initial_size):
-        self.init_StrategyWithStorage(initial_size)
-    
-    def init_StrategyWithStorage(self, initial_size):
         default = self._unwrap(self.default_value())
         self.storage = [default] * initial_size
     
@@ -318,22 +317,17 @@ class TaggingStrategy(SingleTypeStrategy):
     # wrapped_tagged_value(self) - The tagged object
     # unwrapped_tagged_value(self) - The unwrapped tag value representing the tagged object
     
-    def init_strategy(self, initial_size):
-        self.tag = self.unwrapped_tagged_value()
-        self.w_tag = self.wrapped_tagged_value()
-        self.init_StrategyWithStorage(initial_size)
-    
     def check_can_handle(self, value):
-        return value is self.w_tag or \
+        return value is self.wrapped_tagged_value() or \
                 (isinstance(value, self.contained_type) and \
-                self.unwrap(value) != self.tag)
+                self.unwrap(value) != self.unwrapped_tagged_value())
     
     def _unwrap(self, value):
-        if value is self.w_tag:
-            return self.tag
+        if value is self.wrapped_tagged_value():
+            return self.unwrapped_tagged_value()
         return self.unwrap(value)
     
     def _wrap(self, value):
-        if value == self.tag:
-            return self.w_tag
+        if value == self.unwrapped_tagged_value():
+            return self.wrapped_tagged_value()
         return self.wrap(value)

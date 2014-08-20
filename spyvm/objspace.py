@@ -45,9 +45,6 @@ class ConstantObject(object):
 
 class ObjSpace(object):
     def __init__(self):
-        # If this flag is set, then no optimizing storage strategies will be used.
-        # Intended for performance comparisons. Breaks tests.
-        self.no_specialized_storage = ConstantFlag()
         # This is a hack; see compile_code() in targetimageloadingsmalltalk.py
         self.suppress_process_switch = ConstantFlag()
         self.run_spy_hacks = ConstantFlag()
