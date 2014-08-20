@@ -1,9 +1,9 @@
 
 from spyvm import model, storage
-from .util import read_image, copy_to_module, cleanup_module
+from .util import create_space_interp, copy_to_module, cleanup_module
 
 def setup_module():
-    space, interp, _, _ = read_image('bootstrapped.image')
+    space, interp = create_space_interp()
     class_Array = space.classtable["w_Array"]
     w_nil = space.w_nil
     copy_to_module(locals(), __name__)

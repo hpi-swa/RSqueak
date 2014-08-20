@@ -1,7 +1,7 @@
 import operator
 from spyvm import model, constants, primitives
 from spyvm.test.test_primitives import MockFrame
-from .util import read_image, copy_to_module, cleanup_module, slow_test
+from .util import read_image, copy_to_module, cleanup_module
 from rpython.rlib.rarithmetic import intmask, r_uint
 
 def setup_module():

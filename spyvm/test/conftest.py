@@ -3,18 +3,18 @@ import py
 def pytest_addoption(parser):
     group = parser.getgroup("RSqueak test options")
     group.addoption(
+        "--quick", "-Q",
+        dest="execute-quick-tests",
+        action="store_false",
+        default=True,
+        help="Only execute quick tests (no image loading or long execution)"
+    )
+    group.addoption(
         "--slow", "-S",
         dest="execute-slow-tests",
         action="store_true",
         default=False,
-        help="Additionally execute slow tests (loading full Squeak image or long execution)"
-    )
-    group.addoption(
-        "--all", "-A",
-        dest="execute-all-tests",
-        action="store_true",
-        default=False,
-        help="Execute all tests"
+        help="Execute all tests (including very slow tests)"
     )
     group.addoption(
         "--jit",

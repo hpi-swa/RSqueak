@@ -5,7 +5,7 @@ from spyvm.plugins import bitblt
 from rpython.rlib.rfloat import isinf, isnan
 from rpython.rlib.rarithmetic import intmask
 from rpython.rtyper.lltypesystem import lltype, rffi
-from .util import create_space, copy_to_module, cleanup_module, TestInterpreter, slow_test, very_slow_test
+from .util import create_space, copy_to_module, cleanup_module, TestInterpreter, very_slow_test
 
 def setup_module():
     space = create_space(bootstrap = True)
