@@ -2,15 +2,23 @@
 import weakref
 from rpython.rlib import jit
 
+def collect_subclasses(cls):
+    "NOT_RPYTHON"
+    subclasses = []
+    for subcls in cls.__subclasses__():
+        subclasses.append(subcls)
+        subclasses.extend(collect_subclasses(subcls))
+    return subclasses
+
 class StrategyFactory(object):
-    _immutable_fields_ = ["strategies[*]"]
+    _immutable_fields_ = ["xx[*]"]
     
-    def __init__(self, strategy_root_class, transitions):
-        self.strategies = []
-        self.root_class = strategy_root_class
+    def __init__(self, root_class, all_strategy_classes=None):
+        if all_strategy_classes is None:
+            all_strategy_classes = collect_subclasses(root_class)
+        self.strategies = all_strategy_classes
         
-        for strategy_class, generalized in transitions.items():
-            self.strategies.append(strategy_class)
+        for strategy_class in self.strategies:
             strategy_class._strategy_instance = self.instantiate_empty(strategy_class)
             
             # Patch root class: Add default handler for visitor
@@ -18,14 +26,17 @@ class StrategyFactory(object):
                 self.copy_from(other)
             funcname = "copy_from_" + strategy_class.__name__
             copy_from_OTHER.func_name = funcname
-            setattr(self.root_class, funcname, copy_from_OTHER)
+            setattr(root_class, funcname, copy_from_OTHER)
             
             # Patch strategy class: Add polymorphic visitor function
             def initiate_copy_into(self, other):
                 getattr(other, funcname)(self)
             strategy_class.initiate_copy_into = initiate_copy_into
-            
-            self.create_transition(strategy_class, generalized)
+    
+    def setup_strategy_transitions(self, transitions):
+        "NOT_RPYTHON"
+        for strategy_class, generalized in transitions.items():
+            generalize(generalized)(strategy_class)
     
     # Instantiate new_strategy_type with size, replace old_strategy with it,
     # and return the new instance
@@ -39,6 +50,7 @@ class StrategyFactory(object):
     def switch_strategy(self, old_strategy, new_strategy_type):
         new_instance = self.instantiate_and_switch(old_strategy, old_strategy.size(), new_strategy_type)
         old_strategy.initiate_copy_into(new_instance)
+        new_instance.strategy_switched()
         return new_instance
     
     @jit.unroll_safe
@@ -55,6 +67,7 @@ class StrategyFactory(object):
         for i, strategy_type in enumerate(self.strategies):
             if can_handle[i]:
                 return strategy_type
+        raise Exception("Could not find strategy to handle: %s" % objects)
     
     def cannot_handle_value(self, old_strategy, index0, value):
         strategy_type = old_strategy.generalized_strategy_for(value)
@@ -64,23 +77,43 @@ class StrategyFactory(object):
     def _freeze_(self):
         # Instance will be frozen at compile time, making accesses constant.
         return True
-    
-    def create_transition(self, strategy_class, generalized):
+
+def generalize(generalized):
+    def decorator(strategy_class):
         # Patch strategy class: Add generalized_strategy_for
+        # TODO - optimize this method
+        @jit.unroll_safe
         def generalized_strategy_for(self, value):
             for strategy in generalized:
                 if strategy._strategy_instance.check_can_handle(value):
                     return strategy
             raise Exception("Could not find generalized strategy for %s coming from %s" % (value, self))
         strategy_class.generalized_strategy_for = generalized_strategy_for
+        return strategy_class
+    return decorator
+
+class AbstractCollection(object):
+    # == Required:
+    # store(self, n0, e)
+    
+    def strategy_switched(self): pass
+    def init_strategy(self, initial_size): pass
+    
+    def initiate_copy_into(self, other):
+        other.copy_from(self)
+    
+    def copy_from(self, other):
+        assert self.size() == other.size()
+        for i in range(self.size()):
+            self.copy_field_from(i, other)
+    
+    def copy_field_from(self, n0, other):
+        self.store(n0, other.fetch(n0))
     
 class AbstractStrategy(object):
     # == Required:
     # strategy_factory(self) - Access to StorageFactory
     # __init__(...) - Constructor should invoke the provided init_strategy(self, size) method
-    
-    def init_strategy(self, initial_size):
-        pass
     
     def store(self, index0, value):
         raise NotImplementedError("Abstract method")
@@ -96,17 +129,6 @@ class AbstractStrategy(object):
     
     def cannot_handle_value(self, index0, value):
         self.strategy_factory().cannot_handle_value(self, index0, value)
-    
-    def initiate_copy_into(self, other):
-        other.copy_from(self)
-    
-    def copy_from(self, other):
-        assert self.size() == other.size()
-        for i in range(self.size()):
-            self.copy_field_from(i, other)
-    
-    def copy_field_from(self, n0, other):
-        self.store(n0, other.fetch(n0))
     
 # ============== Special Strategies with no storage array ==============
 

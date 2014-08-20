@@ -792,7 +792,7 @@ def test_bitblt_copy_bits(monkeypatch):
 
     try:
         monkeypatch.setattr(w_frame.shadow, "_sendSelfSelector", perform_mock)
-        monkeypatch.setattr(bitblt.BitBltShadow, "attach_shadow", sync_cache_mock)
+        monkeypatch.setattr(bitblt.BitBltShadow, "strategy_switched", sync_cache_mock)
         with py.test.raises(CallCopyBitsSimulation):
             prim_table[primitives.BITBLT_COPY_BITS](interp, w_frame.as_context_get_shadow(space), argument_count-1)
     finally:

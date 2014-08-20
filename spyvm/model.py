@@ -611,12 +611,6 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         assert shadow, "The shadow has not been initialized yet!"
         return shadow
     
-    def switch_shadow(self, new_shadow, w_element=None):
-        old_shadow = self.assert_shadow()
-        self.store_shadow(new_shadow)
-        old_shadow.copy_into(new_shadow)
-        new_shadow.attach_shadow()
-    
     def space(self):
         return self.assert_shadow().space
         
@@ -675,7 +669,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     def instsize(self):
         return self.class_shadow(self.space()).instsize()
 
-    def store_shadow(self, shadow, operation="", w_element=None, log_classname=True):
+    def store_shadow(self, shadow, operation="Switched", w_element=None, log_classname=True):
         old_shadow = self.shadow
         self.shadow = shadow
         self.log_storage(operation, old_shadow, log_classname, w_element)

@@ -47,14 +47,12 @@ def intOrIfNil(space, w_int, i):
 
 
 class BitBltShadow(AbstractCachingShadow):
+    repr_classname = "BitBltShadow"
     WordSize = 32
     MaskTable = [r_uint(0)]
     for i in xrange(WordSize):
         MaskTable.append(r_uint((2 ** (i + 1)) - 1))
     AllOnes = r_uint(0xFFFFFFFF)
-
-    def attach_shadow(self):
-        pass
 
     def intOrIfNil(self, w_int, i):
         return intOrIfNil(self.space, w_int, i)
@@ -724,6 +722,7 @@ class BitBltShadow(AbstractCachingShadow):
 
 
 class FormShadow(AbstractCachingShadow):
+    repr_classname = "FormShadow"
     _attrs_ = ["w_bits", "width", "height", "depth", "offsetX",
                "offsetY", "msb", "pixPerWord", "pitch", "invalid"]
 
@@ -734,7 +733,7 @@ class FormShadow(AbstractCachingShadow):
     def intOrIfNil(self, w_int, i):
         return intOrIfNil(self.space, w_int, i)
 
-    def attach_shadow(self):
+    def strategy_switched(self):
         self.invalid = True
         if self.size() < 5:
             return
