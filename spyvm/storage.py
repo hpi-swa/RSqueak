@@ -46,17 +46,19 @@ class AbstractStorageShadow(AbstractShadow):
     def copy_from_AllNilStrategy(self, all_nil_storage):
         pass # Fields already initialized to nil
 
+@rstrat.strategy()
 class ListStorageShadow(AbstractStorageShadow):
     repr_classname = "ListStorageShadow"
     import_from_mixin(rstrat.GenericStrategy)
     def default_value(self): return self.space.w_nil
 
+@rstrat.strategy()
 class WeakListStorageShadow(AbstractStorageShadow):
     repr_classname = "WeakListStorageShadow"
     import_from_mixin(rstrat.WeakGenericStrategy)
     def default_value(self): return self.space.w_nil
 
-@rstrat.generalize([ListStorageShadow])
+@rstrat.strategy(generalize=[ListStorageShadow])
 class SmallIntegerOrNilStorageShadow(AbstractStorageShadow):
     repr_classname = "SmallIntegerOrNilStorageShadow"
     import_from_mixin(rstrat.TaggingStrategy)
@@ -67,7 +69,7 @@ class SmallIntegerOrNilStorageShadow(AbstractStorageShadow):
     def wrapped_tagged_value(self): return self.space.w_nil
     def unwrapped_tagged_value(self): return constants.MAXINT
 
-@rstrat.generalize([ListStorageShadow])
+@rstrat.strategy(generalize=[ListStorageShadow])
 class FloatOrNilStorageShadow(AbstractStorageShadow):
     repr_classname = "FloatOrNilStorageShadow"
     import_from_mixin(rstrat.TaggingStrategy)
@@ -78,7 +80,7 @@ class FloatOrNilStorageShadow(AbstractStorageShadow):
     def wrapped_tagged_value(self): return self.space.w_nil
     def unwrapped_tagged_value(self): import sys; return sys.float_info.max
 
-@rstrat.generalize([
+@rstrat.strategy(generalize=[
     SmallIntegerOrNilStorageShadow,
     FloatOrNilStorageShadow,
     ListStorageShadow])
@@ -93,7 +95,7 @@ class StrategyFactory(rstrat.StrategyFactory):
         from spyvm import objspace
         self.space = space
         self.no_specialized_storage = objspace.ConstantFlag()
-        rstrat.StrategyFactory.__init__(self, AbstractStorageShadow)
+        rstrat.StrategyFactory.__init__(self, AbstractShadow)
     
     def strategy_type_for(self, objects, weak=False):
         if weak:

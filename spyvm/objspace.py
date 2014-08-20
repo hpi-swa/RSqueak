@@ -1,6 +1,6 @@
 import os
 
-from spyvm import constants, model, wrapper, display
+from spyvm import constants, model, wrapper, display, storage
 from spyvm.error import UnwrappingError, WrappingError
 from rpython.rlib import jit, rpath
 from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin

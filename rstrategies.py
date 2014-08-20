@@ -11,15 +11,17 @@ def collect_subclasses(cls):
     return subclasses
 
 class StrategyFactory(object):
-    _immutable_fields_ = ["xx[*]"]
+    _immutable_fields_ = ["strategies[*]"]
     
     def __init__(self, root_class, all_strategy_classes=None):
         if all_strategy_classes is None:
             all_strategy_classes = collect_subclasses(root_class)
-        self.strategies = all_strategy_classes
+        self.strategies = []
         
-        for strategy_class in self.strategies:
-            strategy_class._strategy_instance = self.instantiate_empty(strategy_class)
+        for strategy_class in all_strategy_classes:
+            if hasattr(strategy_class, "_is_strategy") and strategy_class._is_strategy:
+                strategy_class._strategy_instance = self.instantiate_empty(strategy_class)
+                self.strategies.append(strategy_class)
             
             # Patch root class: Add default handler for visitor
             def copy_from_OTHER(self, other):
@@ -33,10 +35,10 @@ class StrategyFactory(object):
                 getattr(other, funcname)(self)
             strategy_class.initiate_copy_into = initiate_copy_into
     
-    def setup_strategy_transitions(self, transitions):
+    def decorate_strategies(self, transitions):
         "NOT_RPYTHON"
         for strategy_class, generalized in transitions.items():
-            generalize(generalized)(strategy_class)
+            strategy(generalized)(strategy_class)
     
     # Instantiate new_strategy_type with size, replace old_strategy with it,
     # and return the new instance
@@ -78,17 +80,19 @@ class StrategyFactory(object):
         # Instance will be frozen at compile time, making accesses constant.
         return True
 
-def generalize(generalized):
+def strategy(generalize=None):
     def decorator(strategy_class):
-        # Patch strategy class: Add generalized_strategy_for
-        # TODO - optimize this method
-        @jit.unroll_safe
-        def generalized_strategy_for(self, value):
-            for strategy in generalized:
-                if strategy._strategy_instance.check_can_handle(value):
-                    return strategy
-            raise Exception("Could not find generalized strategy for %s coming from %s" % (value, self))
-        strategy_class.generalized_strategy_for = generalized_strategy_for
+        # Patch strategy class: Add generalized_strategy_for and mark as strategy class.
+        if generalize:
+            # TODO - optimize this method
+            @jit.unroll_safe
+            def generalized_strategy_for(self, value):
+                for strategy in generalize:
+                    if strategy._strategy_instance.check_can_handle(value):
+                        return strategy
+                raise Exception("Could not find generalized strategy for %s coming from %s" % (value, self))
+            strategy_class.generalized_strategy_for = generalized_strategy_for
+        strategy_class._is_strategy = True
         return strategy_class
     return decorator
 
