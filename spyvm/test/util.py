@@ -6,11 +6,11 @@ from rpython.rlib.objectmodel import instantiate
 # The according options is configured in conftest.py.
 # To mark all tests in a module as slow, add this line to the module:
 # pytestmark = slow_test
-slow_test = py.test.mark.skipif('not config.getvalue("execute-slow-tests") or config.getvalue("execute-all-tests")',
-                        reason="Slow tests are being skipped. Add --slow|-S to execute slow tests.")
+slow_test = py.test.mark.skipif('not config.getvalue("execute-quick-tests")',
+                        reason="Slow tests are being skipped because of -Q|--quick option.")
 
-very_slow_test = py.test.mark.skipif('not config.getvalue("execute-all-tests")',
-                        reason="Very slow tests are being skipped. Add --all|-A to execute all tests.")
+very_slow_test = py.test.mark.skipif('not config.getvalue("execute-slow-tests")',
+                        reason="Very slow tests are being skipped. Add --slow|-S to execute all tests.")
 
 # Most tests don't need a bootstrapped objspace. Those that do, indicate so explicitely.
 # This way, as many tests as possible use the real, not-bootstrapped ObjSpace.

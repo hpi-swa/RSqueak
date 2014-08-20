@@ -1,6 +1,8 @@
 import py, math
 from spyvm import model, constants, storage_contexts, wrapper, primitives, interpreter, error
-from .util import read_image, open_reader, copy_to_module, cleanup_module, TestInterpreter, very_slow_test
+from .util import read_image, open_reader, copy_to_module, cleanup_module, TestInterpreter, slow_test, very_slow_test
+
+pytestmark = slow_test
 
 def setup_module():
     space, interp, image, reader = read_image("mini.image")
