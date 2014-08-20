@@ -1,10 +1,8 @@
 #! /usr/bin/env python
 import sys, time, os
 
-from rpython.rlib.streamio import open_file_as_stream
 from rpython.rlib import jit, rpath, objectmodel
 from spyvm import model, interpreter, squeakimage, objspace, wrapper, error, storage_logger
-from spyvm.tool.analyseimage import create_image
 
 def _usage(argv):
     print """
@@ -155,18 +153,13 @@ def entry_point(argv):
     
     path = rpath.rabspath(path)
     try:
-        f = open_file_as_stream(path, mode="rb", buffering=0)
-        try:
-            imagedata = f.readall()
-        finally:
-            f.close()
+        stream = squeakimage.Stream(filename=path)
     except OSError as e:
         print_error("%s -- %s (LoadError)" % (os.strerror(e.errno), path))
         return 1
     
     # Load & prepare image and environment
-    image_reader = squeakimage.reader_for_image(space, squeakimage.Stream(data=imagedata))
-    image = create_image(space, image_reader)
+    image = squeakimage.ImageReader(space, stream).create_image()
     interp = interpreter.Interpreter(space, image,
                 trace=trace, trace_important=trace_important,
                 evented=not poll, interrupts=interrupts)

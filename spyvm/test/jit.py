@@ -49,7 +49,7 @@ def preload_execute_frame(imagename, bytes, literals, stack):
     w_method.literals = literals
     w_method.setbytes(bytes)
     w_receiver = stack[0]
-    s_frame = storage_contexts.MethodContextShadow(space, w_method=w_method, w_receiver=w_receiver)
+    s_frame = storage_contexts.MethodContextShadow.build(space, w_method, w_receiver)
     w_frame = s_frame.w_self()
     def interp_execute_frame():
         return interp.interpret_toplevel(w_frame)
@@ -112,7 +112,6 @@ def main():
     # ===== First define which image we are going to use.
     imagename = "minibluebookdebug.image"
     # imagename = "mini.image"
-    # imagename = "minitest.image"
     # imagename = "Squeak4.5-noBitBlt.image"
     
     # ===== Define the code to be executed, if any.

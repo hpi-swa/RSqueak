@@ -1,6 +1,6 @@
 import py, math
-from spyvm import model, constants, storage_contexts, wrapper, primitives
-from .util import read_image, open_reader, copy_to_module, cleanup_module, TestInterpreter
+from spyvm import model, constants, storage_contexts, wrapper, primitives, interpreter, error
+from .util import read_image, open_reader, copy_to_module, cleanup_module, TestInterpreter, very_slow_test
 
 def setup_module():
     space, interp, image, reader = read_image("mini.image")
@@ -14,35 +14,32 @@ def setup_module():
 def teardown_module():
     cleanup_module(__name__)
 
-def open_miniimage():
-    return open_reader(space, "mini.image")
+def runningSomethingImage(cached=True):
+    # This image has been created by executing the followin entire line in a workspace:
+    # a := Smalltalk snapshotPrimitive. 1+2.
+    # This way, the first few operations when opening this image are predetermined.
+    space, interp, _, _ = read_image('mini-running-something.image', cached=cached)
+    return space, interp
 
-def find_symbol(name):
-    if name == "asSymbol":
-        return image.w_asSymbol
-    return perform(space.wrap_string(name), "asSymbol")
-
-def get_reader():
-    return reader
-
-def get_image():
-    return image
+def runningExitImage(cached=True):
+    # This image has been created by executing the followin entire line in a workspace:
+    # Smalltalk snapshotPrimitive. Smalltalk snapshot: false andQuit: true.
+    # After starting, the image quits immediately. This allows testing the full image execution.
+    space, interp, _, _ = read_image('mini-running-exit.image', cached=cached)
+    return space, interp
 
 def get_float_class():
-    image = get_image()
     return image.special(constants.SO_FLOAT_CLASS)
-
+    
 # ------ tests ------------------------------------------
 
 def test_read_header():
-    reader = open_miniimage()
-    reader.read_header()
     assert reader.endofmemory == 726592
     assert reader.oldbaseaddress == -1221464064
     assert reader.specialobjectspointer == -1221336216
 
 def test_read_all_header():
-    reader = open_miniimage()
+    reader = open_reader(space, "mini.image")
     reader.read_header()
     next = reader.stream.peek()
     assert next != 0 #expects object header, which must not be 0x00000000
@@ -55,11 +52,9 @@ def _test_all_pointers_are_valid(reader):
                     assert pointer in reader.chunks
 
 def test_all_pointers_are_valid():
-    reader = get_reader()
     _test_all_pointers_are_valid(reader)
     
 def test_there_are_31_compact_classes():
-    reader = get_reader()
     assert len(reader.compactclasses) == 31
 
 def test_float_class_size():
@@ -98,7 +93,6 @@ def test_str_class_object():
     assert str(w_float_class.getclass(space).getclass(space).getclass(space)) == "Metaclass class"
 
 def test_nil_true_false():
-    image = get_image()
     w = image.special(constants.SO_NIL)
     w.class_shadow(space)
     assert str(w) == "a UndefinedObject"
@@ -110,7 +104,6 @@ def test_nil_true_false():
     assert str(w) == "a True"
 
 def test_scheduler():
-    image = get_image()
     w = image.special(constants.SO_SCHEDULERASSOCIATIONPOINTER)
     w0 = w.fetch(space, 0)
     assert str(w0) == "a Symbol('Processor')"
@@ -123,7 +116,6 @@ def test_special_classes0():
         obj = image.special(so_index)
         obj.as_class_get_shadow(space)
         assert str(obj) == expected_name
-    image = get_image()
     # w = image.special(constants.SO_BITMAP_CLASS)
     # assert str(w) == "Bitmap"
     test_classname(constants.SO_SMALLINTEGER_CLASS, "SmallInteger")
@@ -146,7 +138,6 @@ def test_special_classes0():
     SO_CHARACTER_CLASS = 19"""
 
 def test_name_of_shadow_of_specials():
-    image = get_image()
     w_doesnot = image.special(constants.SO_DOES_NOT_UNDERSTAND)
     assert repr(w_doesnot.class_shadow(space)) == "<ClassShadow Symbol>"
     assert repr(space.w_nil.class_shadow(space)) == "<ClassShadow UndefinedObject>"
@@ -158,7 +149,6 @@ def test_name_of_shadow_of_specials():
     assert repr(space.w_false.class_shadow(space)) == "<ClassShadow False>"
 
 def test_special_objects0():
-    image = get_image()
     w = image.special(constants.SO_DOES_NOT_UNDERSTAND)
     assert str(w) == "a Symbol('doesNotUnderstand:')"
     assert str(w.getclass(space)) == "Symbol" # for some strange reason not a symbol
@@ -210,48 +200,15 @@ def test_map_mirrors_to_classtable():
     w_false = image.special(constants.SO_FALSE)
     assert w_false.is_same_object(space.w_false)
 
-def test_runimage():
-    py.test.skip("This method actually runs an image. Fails since no graphical primitives yet")
-    ap = wrapper.ProcessWrapper(space, wrapper.scheduler(space).active_process())
-    w_ctx = ap.suspended_context()
-    ap.store_suspended_context(space.w_nil)
-
-    interp = TestInterpreter(space)
-    interp.interpret_toplevel(w_ctx)
-
-def test_compile_method():
-    sourcecode = """fib
-                        ^self < 2
-                            ifTrue: [ 1 ]
-                            ifFalse: [ (self - 1) fib + (self - 2) fib ]"""
-    perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
-    assert perform(w(10), "fib").is_same_object(w(89))
-
-def test_become():
-    sourcecode = """
-    testBecome
-      | p1 p2 a |
-      p1 := 1@2.
-      p2 := #(3 4 5).
-      a := p1 -> p2.
-      (1@2 = a key)        ifFalse: [^1].
-      (#(3 4 5) = a value) ifFalse: [^2].
-      (p1 -> p2 = a)       ifFalse: [^3].
-      (p1 == a key)        ifFalse: [^4].
-      (p2 == a value)      ifFalse: [^5].
-      p1 become: p2.
-      (1@2 = a value)      ifFalse: [^6].
-      (3 = (a key at: 1))  ifFalse: [^7].
-      (4 = (a key at: 2))  ifFalse: [^8].
-      (5 = (a key at: 3))  ifFalse: [^9].
-      (p1 -> p2 = a)       ifFalse: [^10].
-      (p1 == a key)        ifFalse: [^11].
-      (p2 == a value)      ifFalse: [^12].
-
-      ^42"""
-    perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
-    w_result = perform(w(10), "testBecome")
-    assert space.unwrap_int(w_result) == 42
+@very_slow_test
+def test_runimage_and_quit():
+    from targetimageloadingsmalltalk import active_context, execute_context
+    space, interp = runningExitImage(cached=False)
+    frame = active_context(space)
+    try:
+        execute_context(interp, frame)
+    except error.Exit, e:
+        assert e.msg == "Quit-Primitive called"
 
 def test_step_forged_image():
     ap = wrapper.ProcessWrapper(space, wrapper.scheduler(space).active_process())
@@ -259,29 +216,13 @@ def test_step_forged_image():
     assert isinstance(s_ctx, storage_contexts.MethodContextShadow)
     assert s_ctx.top().is_same_object(space.w_true)
 
-def test_cached_methoddict():
-    py.test.skip('Should test the same as test_shadow.test_cached_methoddict, as long '
-                'as the implementation of MethodDictionary>>#at:put does not change.')
-    sourcecode = """fib
-                        ^self < 2
-                            ifTrue: [ 1 ]
-                            ifFalse: [ ((self - 1) fib + (self - 2) fib) + 1 ]"""
-    perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
-    assert perform(w(5), "fib").is_same_object(w(15))
-    sourcecode = """fib
-                        ^self < 2
-                            ifTrue: [ 1 ]
-                            ifFalse: [ (self - 1) fib + (self - 2) fib ]"""
-    perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
-    assert perform(w(10), "fib").is_same_object(w(89))
-
 def test_create_new_symbol():
     w_result = perform(w("someString"), "asSymbol")
     assert w_result is not None
     assert w_result.as_string() == "someString"
 
 def test_create_new_symbol_new_with_arg0():
-    w_dnu = get_image().special(constants.SO_DOES_NOT_UNDERSTAND)
+    w_dnu = image.special(constants.SO_DOES_NOT_UNDERSTAND)
     w_Symbol = w_dnu.getclass(space)
     w_res = perform(w_Symbol, "new:", w(0))
     assert w_res.getclass(space).is_same_object(w_Symbol)
@@ -298,14 +239,6 @@ def test_new_float_as_w_float():
     w_result = perform(interp.space.w_Float, "new")
     assert w_result is not None
     assert isinstance(w_result, model.W_Float)
-
-def test_compiling_float():
-    sourcecode = """aFloat
-                        ^ 1.1"""
-    perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
-    w_result = perform(w(10), "aFloat")
-    assert isinstance(w_result, model.W_Float)
-    assert w_result.value == 1.1
 
 def test_existing_large_positive_integer_as_W_LargePositiveInteger1Word():
     w_result = perform(interp.space.w_Float, "pi")
@@ -324,13 +257,6 @@ def test_large_positive_integer_operations():
     assert w_result is not None
     assert isinstance(w_result, model.W_BytesObject)
 
-def test_compiling_large_positive_integer():
-    sourcecode = """aLargeInteger
-                        ^ 16rFFFFFFFF"""
-    perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
-    w_result = perform(w(10), "aLargeInteger")
-    assert isinstance(w_result, model.W_LargePositiveInteger1Word)
-
 def test_doesNotUnderstand():
     w_dnu = interp.space.objtable["w_doesNotUnderstand"]
     assert isinstance(w_dnu, model.W_BytesObject)
@@ -341,18 +267,6 @@ def test_mustBeBoolean():
     assert isinstance(w_mbb, model.W_BytesObject)
     assert w_mbb.as_string() == "mustBeBoolean"
     
-def test_run_doesNotUnderstand():
-    space, interp, _, _ = read_image('running-something-mini.image')
-    w_result = interp.perform(interp.space.wrap_int(0), "runningADNU")
-    assert isinstance(w_result, model.W_BytesObject)
-    assert w_result.as_string() == "foobarThis:doesNotExist:('pypy' 'heya' )"
-
-def test_run_mustBeBoolean():
-    space, interp, _, _ = read_image('running-something-mini.image')
-    w_result = interp.perform(interp.space.wrap_int(0), "runningMustBeBoolean")
-    assert isinstance(w_result, model.W_BytesObject)
-    assert w_result.as_string() == "mustBeBoolean has been called"
-    
 def test_Message():
     w_message_cls = interp.space.w_Message
     assert w_message_cls is interp.space.classtable["w_Message"]
@@ -362,12 +276,21 @@ def test_Message():
     w_message = s_message_cls.new()
     assert isinstance(w_message, model.W_PointersObject)
 
-def test_step_run_something():
-    # This test depends on the following code being executed in a workspace (the entire line):
-    # a := Smalltalk snapshotPrimitive. 1+2.
-    # This will save the image in a state that will satisfy the following test.
+def test_primitive_perform_with_args():
+    from spyvm.test.test_primitives import _prim
+    w_o = space.wrap_list([1, 2, 3])
+    w_methoddict = w_o.class_shadow(space).s_superclass().s_superclass().w_methoddict()
+    w_methoddict.as_methoddict_get_shadow(space).sync_method_cache()
+    selectors_w = w_methoddict.shadow.methoddict.keys()
+    w_sel = None
+    for sel in selectors_w:
+        if sel.as_string() == 'size':
+            w_sel = sel
+    size = _prim(space, primitives.PERFORM_WITH_ARGS, [w_o, w_sel, []])
+    assert size.value == 3
     
-    space, interp, _, _ = read_image('running-something-mini.image')
+def test_step_run_something():
+    space, interp = runningSomethingImage(cached=False)
     ap = wrapper.ProcessWrapper(space, wrapper.scheduler(space).active_process())
     w_ctx = ap.suspended_context()
     s_ctx = w_ctx.as_context_get_shadow(space)
@@ -383,15 +306,14 @@ def test_step_run_something():
     interp.step(s_ctx)
     assert s_ctx.top().value == 3
 
-def test_primitive_perform_with_args():
-    from spyvm.test.test_primitives import _prim
-    w_o = space.wrap_list([1, 2, 3])
-    w_methoddict = w_o.class_shadow(space).s_superclass().s_superclass().w_methoddict()
-    w_methoddict.as_methoddict_get_shadow(space).sync_method_cache()
-    selectors_w = w_methoddict.shadow.methoddict.keys()
-    w_sel = None
-    for sel in selectors_w:
-        if sel.as_string() == 'size':
-            w_sel = sel
-    size = _prim(space, primitives.PERFORM_WITH_ARGS, [w_o, w_sel, []])
-    assert size.value == 3
+def test_run_doesNotUnderstand():
+    space, interp = runningSomethingImage()
+    w_result = interp.perform(interp.space.wrap_int(0), "runningADNU")
+    assert isinstance(w_result, model.W_BytesObject)
+    assert w_result.as_string() == "foobarThis:doesNotExist:('pypy' 'heya' )"
+
+def test_run_mustBeBoolean():
+    space, interp = runningSomethingImage()
+    w_result = interp.perform(interp.space.wrap_int(0), "runningMustBeBoolean")
+    assert isinstance(w_result, model.W_BytesObject)
+    assert w_result.as_string() == "mustBeBoolean has been called"

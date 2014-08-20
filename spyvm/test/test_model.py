@@ -376,31 +376,30 @@ def test_WordsObject_short_atput():
     assert target.getword(0) == 0xffff0100
     assert target.getword(1) == 0x7fff8000
 
-@py.test.mark.skipif("'This test must be fixed!'")
 def test_display_bitmap():
-    # XXX: Patch SDLDisplay -> get_pixelbuffer() to circumvent
-    # double-free bug
-    def get_pixelbuffer(self):
-        return lltype.malloc(rffi.ULONGP.TO, self.width * self.height * 32, flavor='raw')
-    display.SDLDisplay.get_pixelbuffer = get_pixelbuffer
-    d = display.SDLDisplay("test")
-    d.set_video_mode(32, 10, 1)
-
-    target = model_display.W_DisplayBitmap.create(space, space.w_Array, 10, 1, d)
+    size = 10
+    space.display().set_video_mode(32, size, 1)
+    target = model_display.W_MappingDisplayBitmap(space, space.w_Array, size, 1)
+    for idx in range(size):
+        target.setword(idx, r_uint(0))
+    target.take_over_display()
+    
     target.setword(0, r_uint(0xFF00))
     assert bin(target.getword(0)) == bin(0xFF00)
     target.setword(0, r_uint(0x00FF00FF))
     assert bin(target.getword(0)) == bin(0x00FF00FF)
     target.setword(0, r_uint(0xFF00FF00))
     assert bin(target.getword(0)) == bin(0xFF00FF00)
+    
+    buf = target.pixelbuffer()
     for i in xrange(2):
-        assert target.pixelbuffer[i] == 0x01010101
+        assert buf[i] == 0x01010101
     for i in xrange(2, 4):
-        assert target.pixelbuffer[i] == 0x0
+        assert buf[i] == 0x0
     for i in xrange(4, 6):
-        assert target.pixelbuffer[i] == 0x01010101
+        assert buf[i] == 0x01010101
     for i in xrange(6, 8):
-        assert target.pixelbuffer[i] == 0x0
+        assert buf[i] == 0x0
 
 def test_display_offset_computation_even():
     dbitmap = model_display.W_MappingDisplayBitmap(space, space.w_Array, 200, 1)
@@ -419,7 +418,6 @@ def test_display_offset_computation_uneven():
     assert dbitmap.compute_pos(2) == 67
     assert dbitmap.compute_pos(3) == 67 + 32
     
-@py.test.mark.skipif("socket.gethostname() == 'precise32'")
 def test_weak_pointers():
     w_cls = bootstrap_class(2)
     s_cls = w_cls.as_class_get_shadow(space)

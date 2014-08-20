@@ -10,13 +10,10 @@ Squeak model.
                 W_BytesObject
                 W_WordsObject
             W_CompiledMethod
-
-W_BlockContext and W_MethodContext classes have been replaced by functions
-that create W_PointersObjects of correct size with attached shadows.
 """
-import sys, weakref
-from spyvm import constants, error, version, storage_logger
-from spyvm.version import elidable_for_version, constant_for_version, constant_for_version_arg
+import sys
+from spyvm import constants, error, storage_logger
+from spyvm.util.version import constant_for_version, constant_for_version_arg, VersionMixin
 
 from rpython.rlib import rrandom, objectmodel, jit, signature
 from rpython.rlib.rarithmetic import intmask, r_uint, r_int
@@ -1017,7 +1014,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 
     lookup_selector = "<unknown>"
     lookup_class = None
-    import_from_mixin(version.VersionMixin)
+    import_from_mixin(VersionMixin)
     
     def __init__(self, space, bytecount=0, header=0):
         self.bytes = ["\x00"] * bytecount
@@ -1254,7 +1251,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def create_frame(self, space, receiver, arguments=[]):
         from spyvm.storage_contexts import MethodContextShadow
         assert len(arguments) == self.argsize
-        return MethodContextShadow(space, w_method=self, w_receiver=receiver, arguments=arguments)
+        return MethodContextShadow.build(space, self, receiver, arguments)
         
     # === Printing ===
 

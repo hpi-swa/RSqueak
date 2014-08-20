@@ -42,3 +42,6 @@ class Exit(Exception):
     _attrs_ = ["msg"]
     def __init__(self, msg):
         self.msg = msg
+
+class CorruptImageError(Exit):
+    pass

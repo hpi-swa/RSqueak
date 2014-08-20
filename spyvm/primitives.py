@@ -711,7 +711,7 @@ def func(interp, s_frame, argcount):
     height = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 2))
     depth = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 3))
     hotpt = wrapper.PointWrapper(interp.space, w_rcvr.fetch(interp.space, 4))
-    if not interp.image.is_modern:
+    if not interp.image.version.is_modern:
         display.SDLCursor.set(
             w_bitmap.words,
             width,
@@ -1287,12 +1287,12 @@ def func(interp, s_frame, w_context, argcnt):
     # context of the receiver is used for the new BlockContext.
     # Note that in our impl, MethodContext.w_home == self
     w_context = assert_pointers(w_context)
-    w_method_context = w_context.as_context_get_shadow(interp.space).s_home().w_self()
+    s_method_context = w_context.as_context_get_shadow(interp.space).s_home()
 
     # The block bytecodes are stored inline: so we skip past the
-    # byteodes to invoke this primitive to find them (hence +2)
+    # bytecodes to invoke this primitive to get to them.
     initialip = s_frame.pc() + 2
-    s_new_context = storage_contexts.BlockContextShadow(interp.space, None, 0, w_method_context, argcnt, initialip)
+    s_new_context = storage_contexts.BlockContextShadow.build(interp.space, s_method_context, argcnt, initialip)
     return s_new_context.w_self()
 
 @expose_primitive(VALUE, result_is_new_frame=True)

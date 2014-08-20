@@ -2,8 +2,11 @@
 from spyvm import model, constants, error, wrapper
 from spyvm.storage import AbstractRedirectingShadow
 from rpython.tool.pairtype import extendabletype
-from rpython.rlib import rarithmetic, jit
-from rpython.rlib.debug import make_sure_not_resized
+from rpython.rlib import rarithmetic, jit, objectmodel
+
+@objectmodel.specialize.call_location()
+def fresh_virtualizable(x):
+    return jit.hint(x, access_directly=True, fresh_virtualizable=True)
 
 class ContextState(object):
     def __init__(self, name):
@@ -33,11 +36,12 @@ class ContextPartShadow(AbstractRedirectingShadow):
     # ______________________________________________________________________
     # Initialization
 
-    def __init__(self, space, w_self, size=0):
+    def __init__(self, space, w_self, size):
         self._s_sender = None
         AbstractRedirectingShadow.__init__(self, space, w_self, size)
         self.instances_w = {}
         self.state = InactiveContext
+        self.store_pc(0)
 
     def copy_from(self, other_shadow):
         # Some fields have to be initialized before the rest, to ensure correct initialization.
@@ -237,15 +241,15 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
     @jit.unroll_safe
     def init_stack_and_temps(self):
+        self = fresh_virtualizable(self)
         stacksize = self.stackend() - self.stackstart()
         tempsize = self.tempsize()
         temps_and_stack = [None] * (stacksize + tempsize)
         self._temps_and_stack = temps_and_stack
-        make_sure_not_resized(temps_and_stack)
         for i in range(tempsize):
             temps_and_stack[i] = self.space.w_nil
         self._stack_ptr = rarithmetic.r_uint(tempsize) # we point after the last element
-
+    
     def stack_get(self, index0):
         return self._temps_and_stack[index0]
 
@@ -369,24 +373,29 @@ class BlockContextShadow(ContextPartShadow):
     repr_classname = "BlockContextShadow"
 
     # === Initialization ===
-
-    def __init__(self, space, w_self=None, size=0, w_home=None, argcnt=0, initialip=0):
-        self = jit.hint(self, access_directly=True, fresh_virtualizable=True)
-        creating_w_self = w_self is None
-        if creating_w_self:
-            s_home = w_home.as_methodcontext_get_shadow(space)
-            contextsize = s_home.size() - s_home.tempsize()
-            w_self = model.W_PointersObject(space, space.w_BlockContext, contextsize)
+    
+    @staticmethod
+    def build(space, s_home, argcnt, pc):
+        size = s_home.size() - s_home.tempsize()
+        w_self = model.W_PointersObject(space, space.w_BlockContext, size)
+        
+        ctx = BlockContextShadow(space, w_self, size)
+        ctx.store_expected_argument_count(argcnt)
+        ctx.store_w_home(s_home.w_self())
+        ctx.store_initialip(pc)
+        ctx.store_pc(pc)
+        
+        w_self.store_shadow(ctx)
+        ctx.init_stack_and_temps()
+        return ctx
+    
+    def __init__(self, space, w_self, size):
+        self = fresh_virtualizable(self)
         ContextPartShadow.__init__(self, space, w_self, size)
-        if creating_w_self:
-            w_self.store_shadow(self)
-        self.store_expected_argument_count(argcnt)
-        self.store_initialip(initialip)
-        if w_home:
-            self.store_w_home(w_home)
-        self.store_pc(initialip)
-        self.init_stack_and_temps()
-
+        self._w_home = None
+        self._initialip = 0
+        self._eargc = 0
+    
     def fields_to_copy_first(self):
         return [ constants.BLKCTX_HOME_INDEX ]
 
@@ -502,37 +511,43 @@ class MethodContextShadow(ContextPartShadow):
     repr_classname = "MethodContextShadow"
 
     # === Initialization ===
-
-    @jit.unroll_safe
-    def __init__(self, space, w_self=None, size=0, w_method=None, w_receiver=None,
-                              arguments=[], closure=None, pc=0):
-        self = jit.hint(self, access_directly=True, fresh_virtualizable=True)
+    
+    @staticmethod
+    def build(space, w_method, w_receiver, arguments=[], closure=None):
+        s_MethodContext = space.w_MethodContext.as_class_get_shadow(space)
+        size = w_method.compute_frame_size() + s_MethodContext.instsize()
+        
+        ctx = MethodContextShadow(space, None, size)
+        ctx.store_w_receiver(w_receiver)
+        ctx.store_w_method(w_method)
+        ctx.closure = closure
+        ctx.init_stack_and_temps()
+        ctx.initialize_temps(arguments)
+        return ctx
+    
+    def __init__(self, space, w_self, size):
+        self = fresh_virtualizable(self)
         ContextPartShadow.__init__(self, space, w_self, size)
-        self.store_w_receiver(w_receiver)
-        self.store_pc(pc)
-        self.closure = closure
-
-        if w_method:
-            self.store_w_method(w_method)
-            # The summand is needed, because we calculate i.a. our stackdepth relative of the size of w_self.
-            size = w_method.compute_frame_size() + self.space.w_MethodContext.as_class_get_shadow(self.space).instsize()
-            self._w_self_size = size
-            self.init_stack_and_temps()
-        else:
-            self._w_method = None
-            self._is_BlockClosure_ensure = False
-
+        self.closure = None
+        self._w_method = None
+        self._w_receiver = None
+        self._is_BlockClosure_ensure = False
+    
+    def fields_to_copy_first(self):
+        return [ constants.MTHDCTX_METHOD, constants.MTHDCTX_CLOSURE_OR_NIL ]
+    
+    @jit.unroll_safe
+    def initialize_temps(self, arguments):
         argc = len(arguments)
         for i0 in range(argc):
             self.settemp(i0, arguments[i0])
-
+        closure = self.closure
         if closure:
+            pc = closure.startpc() - self.w_method().bytecodeoffset() - 1
+            self.store_pc(pc)
             for i0 in range(closure.size()):
                 self.settemp(i0+argc, closure.at0(i0))
-
-    def fields_to_copy_first(self):
-        return [ constants.MTHDCTX_METHOD, constants.MTHDCTX_CLOSURE_OR_NIL ]
-
+    
     # === Accessing object fields ===
 
     def fetch(self, n0):
@@ -593,9 +608,8 @@ class MethodContextShadow(ContextPartShadow):
     def store_w_method(self, w_method):
         assert isinstance(w_method, model.W_CompiledMethod)
         self._w_method = w_method
-        if w_method:
-            # Primitive 198 is used in BlockClosure >> ensure:
-            self._is_BlockClosure_ensure = (w_method.primitive() == 198)
+        # Primitive 198 is a marker used in BlockClosure >> ensure:
+        self._is_BlockClosure_ensure = (w_method.primitive() == 198)
 
     def w_receiver(self):
         return self._w_receiver
@@ -627,14 +641,10 @@ class MethodContextShadow(ContextPartShadow):
         if self._w_self is not None:
             return self._w_self
         else:
-            s_MethodContext = self.space.w_MethodContext.as_class_get_shadow(self.space)
-            size = self.size() - s_MethodContext.instsize()
             space = self.space
-            w_self = s_MethodContext.new(size)
-            assert isinstance(w_self, model.W_PointersObject)
+            w_self = model.W_PointersObject(space, space.w_MethodContext, self.size())
             w_self.store_shadow(self)
             self._w_self = w_self
-            self._w_self_size = w_self.size()
             return w_self
 
     # === Temporary variables ===

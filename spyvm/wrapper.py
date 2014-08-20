@@ -248,9 +248,7 @@ class BlockClosureWrapper(VarsizedWrapper):
         s_outerContext = w_outerContext.as_context_get_shadow(self.space)
         w_method = s_outerContext.w_method()
         w_receiver = s_outerContext.w_receiver()
-        pc = self.startpc() - w_method.bytecodeoffset() - 1
-        return storage_contexts.MethodContextShadow(self.space, w_method=w_method, w_receiver=w_receiver,
-                     arguments=arguments, closure=self, pc=pc)
+        return storage_contexts.MethodContextShadow.build(self.space, w_method, w_receiver, arguments, self)
 
     def tempsize(self):
         # We ignore the number of temps a block has, because the first

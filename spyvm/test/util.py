@@ -1,22 +1,42 @@
-import sys
-from spyvm import model, storage_classes, objspace, version, constants, squeakimage, interpreter, interpreter_bytecodes
+import py, sys
+from spyvm import model, storage_classes, objspace, util, constants, squeakimage, interpreter, interpreter_bytecodes
 from rpython.rlib.objectmodel import instantiate
+
+# Use these as decorators, if the test takes longer then a few seconds.
+# The according options is configured in conftest.py.
+# To mark all tests in a module as slow, add this line to the module:
+# pytestmark = slow_test
+slow_test = py.test.mark.skipif('not config.getvalue("execute-slow-tests") or config.getvalue("execute-all-tests")',
+                        reason="Slow tests are being skipped. Add --slow|-S to execute slow tests.")
+
+very_slow_test = py.test.mark.skipif('not config.getvalue("execute-all-tests")',
+                        reason="Very slow tests are being skipped. Add --all|-A to execute all tests.")
 
 # Most tests don't need a bootstrapped objspace. Those that do, indicate so explicitely.
 # This way, as many tests as possible use the real, not-bootstrapped ObjSpace.
 bootstrap_by_default = False
 
-def open_reader(space, imagefilename):
-    from spyvm.tool.analyseimage import image_dir
-    imagefilename = image_dir.join(imagefilename)
-    return squeakimage.reader_for_image(space, squeakimage.Stream(imagefilename.open(mode="rb")))
+image_dir = py.path.local(__file__).dirpath('images')
 
-def read_image(image_filename, bootstrap = bootstrap_by_default):
-    space = create_space(bootstrap)
-    reader = open_reader(space, image_filename)
-    reader.initialize()
-    image = squeakimage.SqueakImage()
-    image.from_reader(space, reader)
+def image_path(imagefilename):
+    return image_dir.join(imagefilename).strpath
+
+def image_stream(imagefilename):
+    return squeakimage.Stream(filename=image_path(imagefilename))
+
+def open_reader(space, imagefilename):
+    return squeakimage.ImageReader(space, image_stream(imagefilename))
+
+image_cache = {}
+
+def read_image(image_filename, cached=True):
+    if cached and image_filename in image_cache:
+        space, reader, image = image_cache.get(image_filename)
+    else:
+        space = create_space()
+        reader = open_reader(space, image_filename)
+        image = reader.create_image()
+        image_cache[image_filename] = (space, reader, image)
     interp = TestInterpreter(space, image)
     return space, interp, image, reader
 
@@ -31,7 +51,7 @@ def create_space_interp(bootstrap = bootstrap_by_default):
     interp = TestInterpreter(space)
     return space, interp
 
-def copy_to_module(locals, module_name):
+def copy_to_module(locals, module_name, all_tests_slow = False):
     mod = sys.modules[module_name]
     mod._copied_objects_ = []
     for name, obj in locals.items():
@@ -237,7 +257,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
                         name='?', format=storage_classes.POINTERS, varsized=False):
         s = instantiate(storage_classes.ClassShadow)
         s.space = self
-        s.version = version.Version()
+        s.version = util.version.Version()
         s._w_self = w_class
         s.subclass_s = {}
         s._s_superclass = None

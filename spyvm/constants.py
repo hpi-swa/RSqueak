@@ -2,7 +2,7 @@ import sys
 import time
 from rpython.rlib.jit import elidable
 
-from spyvm.tool.bitmanipulation import splitter
+from spyvm.util.bitmanipulation import splitter
 
 # ___________________________________________________________________________
 # Slot Names
