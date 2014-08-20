@@ -680,6 +680,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         shadow = old_shadow
         if not isinstance(old_shadow, TheClass):
             shadow = space.strategy_factory.switch_strategy(old_shadow, TheClass)
+        assert isinstance(shadow, TheClass)
         return shadow
 
     def get_shadow(self, space):

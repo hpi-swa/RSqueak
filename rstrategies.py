@@ -2,6 +2,11 @@
 import weakref
 from rpython.rlib import jit
 
+class StrategyMetaclass(type):
+    def __new__(self, name, bases, attrs):
+        attrs['_is_strategy'] = False
+        return super(StrategyMetaclass, self).__new__(self, name, bases, attrs)
+
 def collect_subclasses(cls):
     "NOT_RPYTHON"
     subclasses = []

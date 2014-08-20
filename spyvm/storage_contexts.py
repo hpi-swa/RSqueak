@@ -3,6 +3,7 @@ from spyvm import model, constants, error, wrapper
 from spyvm.storage import AbstractRedirectingShadow
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib import rarithmetic, jit, objectmodel
+import rstrategies as rstrat
 
 @objectmodel.specialize.call_location()
 def fresh_virtualizable(x):
@@ -19,9 +20,12 @@ InactiveContext = ContextState("InactiveContext")
 ActiveContext = ContextState("ActiveContext")
 DirtyContext = ContextState("DirtyContext")
 
+class ExtendableStrategyMetaclass(extendabletype, rstrat.StrategyMetaclass):
+    pass
+
 class ContextPartShadow(AbstractRedirectingShadow):
 
-    __metaclass__ = extendabletype
+    __metaclass__ = ExtendableStrategyMetaclass
     _attrs_ = ['_s_sender',
             '_pc', '_temps_and_stack',
             '_stack_ptr', 'instances_w', 'state']

@@ -127,6 +127,7 @@ class ClassShadow(AbstractCachingShadow):
             self.store_s_methoddict(s_new_methoddict)
 
     def store_s_methoddict(self, s_methoddict):
+        assert isinstance(s_methoddict, MethodDictionaryShadow)
         s_methoddict.s_class = self
         s_methoddict.sync_method_cache()
         self._s_methoddict = s_methoddict
@@ -192,20 +193,6 @@ class ClassShadow(AbstractCachingShadow):
     #
     # included so that we can reproduce code from the reference impl
     # more easily
-
-    def ispointers(self):
-        " True if instances of this class have data stored as pointers "
-        XXX   # what about weak pointers?
-        return self.format == POINTERS
-
-    def iswords(self):
-        " True if instances of this class have data stored as numerical words "
-        XXX   # what about weak pointers?
-        return self.format in (POINTERS, WORDS)
-
-    def isbytes(self):
-        " True if instances of this class have data stored as numerical bytes "
-        return self.format == BYTES
 
     @constant_for_version
     def isvariable(self):

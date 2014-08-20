@@ -14,6 +14,7 @@ class AbstractShadow(object):
     _immutable_fields_ = ['space']
     provides_getname = False
     repr_classname = "AbstractShadow"
+    __metaclass__ = rstrat.StrategyMetaclass
     import_from_mixin(rstrat.AbstractCollection)
     
     def __init__(self, space, w_self, size):
@@ -75,11 +76,12 @@ class FloatOrNilStorageShadow(AbstractStorageShadow):
     repr_classname = "FloatOrNilStorageShadow"
     import_from_mixin(rstrat.TaggingStrategy)
     contained_type = model.W_Float
+    tag_float = sys.float_info.max
     def wrap(self, val): return self.space.wrap_float(val)
     def unwrap(self, w_val): return self.space.unwrap_float(w_val)
     def default_value(self): return self.space.w_nil
     def wrapped_tagged_value(self): return self.space.w_nil
-    def unwrapped_tagged_value(self): import sys; return sys.float_info.max
+    def unwrapped_tagged_value(self): return self.tag_float
 
 @rstrat.strategy(generalize=[
     SmallIntegerOrNilStorageShadow,
