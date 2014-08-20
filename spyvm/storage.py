@@ -34,6 +34,7 @@ class AbstractShadow(object):
 
 class AbstractStorageShadow(AbstractShadow):
     repr_classname = "AbstractStorageShadow"
+    _attrs_ = []
     import_from_mixin(rstrat.SafeIndexingMixin)
     
     def __init__(self, space, w_self, size):
