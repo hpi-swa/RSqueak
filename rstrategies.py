@@ -5,6 +5,7 @@ from rpython.rlib import jit
 class StrategyMetaclass(type):
     def __new__(self, name, bases, attrs):
         attrs['_is_strategy'] = False
+        attrs['_specializations'] = []
         return super(StrategyMetaclass, self).__new__(self, name, bases, attrs)
 
 def collect_subclasses(cls):
@@ -39,11 +40,30 @@ class StrategyFactory(object):
             def initiate_copy_into(self, other):
                 getattr(other, funcname)(self)
             strategy_class.initiate_copy_into = initiate_copy_into
+        self.order_strategies()
     
     def decorate_strategies(self, transitions):
         "NOT_RPYTHON"
         for strategy_class, generalized in transitions.items():
             strategy(generalized)(strategy_class)
+    
+    def order_strategies(self):
+        "NOT_RPYTHON"
+        def get_generalization_depth(strategy, visited=None):
+            if visited is None:
+                visited = set()
+            if strategy._generalizations:
+                if strategy in visited:
+                    raise Exception("Cycle in generalization-tree of %s" % strategy)
+                visited.add(strategy)
+                depth = 0
+                for generalization in strategy._generalizations:
+                    other_depth = get_generalization_depth(generalization, visited)
+                    depth = max(depth, other_depth)
+                return depth + 1
+            else:
+                return 0
+        self.strategies.sort(key=get_generalization_depth, reverse=True)
     
     # Instantiate new_strategy_type with size, replace old_strategy with it,
     # and return the new instance
@@ -97,7 +117,10 @@ def strategy(generalize=None):
                         return strategy
                 raise Exception("Could not find generalized strategy for %s coming from %s" % (value, self))
             strategy_class.generalized_strategy_for = generalized_strategy_for
+            for generalized in generalize:
+                generalized._specializations.append(strategy_class)
         strategy_class._is_strategy = True
+        strategy_class._generalizations = generalize
         return strategy_class
     return decorator
 

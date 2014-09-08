@@ -54,7 +54,6 @@ class ListStorageShadow(AbstractStorageShadow):
     import_from_mixin(rstrat.GenericStrategy)
     def default_value(self): return self.space.w_nil
 
-@rstrat.strategy()
 class WeakListStorageShadow(AbstractStorageShadow):
     repr_classname = "WeakListStorageShadow"
     import_from_mixin(rstrat.WeakGenericStrategy)
