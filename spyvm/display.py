@@ -56,6 +56,10 @@ class SDLDisplay(object):
         self._deferred_event = None
         self._defer_updates = False
 
+    def __del__(self):
+        # Close the display.
+        RSDL.Quit()
+    
     def set_video_mode(self, w, h, d):
         assert w > 0 and h > 0
         assert d in [1, 2, 4, 8, 16, 32]
