@@ -1,9 +1,13 @@
-import operator
+import operator, sys
 from spyvm import model
 from .util import read_image, copy_to_module, cleanup_module, slow_test, very_slow_test
 
 # The tests are quick, but loading the big image takes time.
 pytestmark = slow_test
+
+# Otherwise the image does not load on some systems.
+# This is not required when using pypy.
+sys.setrecursionlimit(100000)
 
 def setup_module():
     space, interp, image, reader = read_image('Squeak4.5-12568.image')

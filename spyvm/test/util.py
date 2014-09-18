@@ -10,7 +10,7 @@ slow_test = py.test.mark.skipif('not config.getvalue("execute-quick-tests")',
                         reason="Slow tests are being skipped because of -Q|--quick option.")
 
 very_slow_test = py.test.mark.skipif('not config.getvalue("execute-slow-tests")',
-                        reason="Very slow tests are being skipped. Add --slow|-S to execute all tests.")
+                        reason="Very slow tests are being skipped. Add -S|--slow to execute all tests.")
 
 # Most tests don't need a bootstrapped objspace. Those that do, indicate so explicitely.
 # This way, as many tests as possible use the real, not-bootstrapped ObjSpace.

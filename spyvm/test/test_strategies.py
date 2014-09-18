@@ -43,6 +43,18 @@ def check_arr(arr, expected):
         else:
             assert False, "Unexpected array of expected values."
 
+# ====== StrategyFactory
+
+def test_ordered_strategies():
+    strategies = space.strategy_factory.strategies
+    assert len(strategies) == 4
+    index_nil = strategies.index(storage.AllNilStorageShadow)
+    index_float = strategies.index(storage.FloatOrNilStorageShadow)
+    index_int = strategies.index(storage.SmallIntegerOrNilStorageShadow)
+    index_list = strategies.index(storage.ListStorageShadow)
+    assert index_nil < index_float < index_list
+    assert index_nil < index_int < index_list
+
 # ====== AllNil StorageShadow
 
 def test_EmptyArray():
