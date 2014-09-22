@@ -36,7 +36,7 @@ class AbstractShadow(object):
 class AbstractStorageShadow(AbstractShadow):
     repr_classname = "AbstractStorageShadow"
     _attrs_ = []
-    import_from_mixin(rstrat.SafeIndexingMixin)
+    import_from_mixin(rstrat.UnsafeIndexingMixin)
     
     def __init__(self, space, w_self, size):
         AbstractShadow.__init__(self, space, w_self, size)
@@ -45,19 +45,20 @@ class AbstractStorageShadow(AbstractShadow):
     def strategy_factory(self):
         return self.space.strategy_factory
     
-    def copy_from_AllNilStrategy(self, all_nil_storage):
+    def copy_from_AllNilStorageShadow(self, all_nil_storage):
         pass # Fields already initialized to nil
+
+    def default_value(self):
+        return self.space.w_nil
 
 @rstrat.strategy()
 class ListStorageShadow(AbstractStorageShadow):
     repr_classname = "ListStorageShadow"
     import_from_mixin(rstrat.GenericStrategy)
-    def default_value(self): return self.space.w_nil
 
 class WeakListStorageShadow(AbstractStorageShadow):
     repr_classname = "WeakListStorageShadow"
     import_from_mixin(rstrat.WeakGenericStrategy)
-    def default_value(self): return self.space.w_nil
 
 @rstrat.strategy(generalize=[ListStorageShadow])
 class SmallIntegerOrNilStorageShadow(AbstractStorageShadow):
@@ -66,7 +67,6 @@ class SmallIntegerOrNilStorageShadow(AbstractStorageShadow):
     contained_type = model.W_SmallInteger
     def wrap(self, val): return self.space.wrap_int(val)
     def unwrap(self, w_val): return self.space.unwrap_int(w_val)
-    def default_value(self): return self.space.w_nil
     def wrapped_tagged_value(self): return self.space.w_nil
     def unwrapped_tagged_value(self): return constants.MAXINT
 
@@ -78,7 +78,6 @@ class FloatOrNilStorageShadow(AbstractStorageShadow):
     tag_float = sys.float_info.max
     def wrap(self, val): return self.space.wrap_float(val)
     def unwrap(self, w_val): return self.space.unwrap_float(w_val)
-    def default_value(self): return self.space.w_nil
     def wrapped_tagged_value(self): return self.space.w_nil
     def unwrapped_tagged_value(self): return self.tag_float
 

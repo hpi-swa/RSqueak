@@ -31,6 +31,10 @@ def test_new():
 def test_new_namedvars():
     w_mycls = bootstrap_class(3)
     w_myinstance = w_mycls.as_class_get_shadow(space).new()
+    
+    w_myinstance.store(space, 0, w_myinstance) # Make sure ListStorage is used
+    w_myinstance.store(space, 0, space.w_nil)
+    
     assert isinstance(w_myinstance, model.W_PointersObject)
     assert w_myinstance.getclass(space).is_same_object(w_mycls)
     assert w_myinstance.fetch(space, 0).is_nil(space)

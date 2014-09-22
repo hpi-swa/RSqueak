@@ -28,19 +28,21 @@ class StrategyFactory(object):
             if hasattr(strategy_class, "_is_strategy") and strategy_class._is_strategy:
                 strategy_class._strategy_instance = self.instantiate_empty(strategy_class)
                 self.strategies.append(strategy_class)
-            
-            # Patch root class: Add default handler for visitor
-            def copy_from_OTHER(self, other):
-                self.copy_from(other)
-            funcname = "copy_from_" + strategy_class.__name__
-            copy_from_OTHER.func_name = funcname
-            setattr(root_class, funcname, copy_from_OTHER)
-            
-            # Patch strategy class: Add polymorphic visitor function
-            def initiate_copy_into(self, other):
-                getattr(other, funcname)(self)
-            strategy_class.initiate_copy_into = initiate_copy_into
+            self.patch_strategy_class(strategy_class, root_class)
         self.order_strategies()
+    
+    def patch_strategy_class(self, strategy_class, root_class):
+        # Patch root class: Add default handler for visitor
+        def copy_from_OTHER(self, other):
+            self.copy_from(other)
+        funcname = "copy_from_" + strategy_class.__name__
+        copy_from_OTHER.func_name = funcname
+        setattr(root_class, funcname, copy_from_OTHER)
+        
+        # Patch strategy class: Add polymorphic visitor function
+        def initiate_copy_into(self, other):
+            getattr(other, funcname)(self)
+        strategy_class.initiate_copy_into = initiate_copy_into
     
     def decorate_strategies(self, transitions):
         "NOT_RPYTHON"
@@ -178,8 +180,8 @@ class EmptyStrategy(AbstractStrategy):
         return False
     
 class SingleValueStrategy(AbstractStrategy):
-    _immutable_fields_ = ["_size", "val"]
-    _attrs_ = ["_size", "val"]
+    _immutable_fields_ = ["_size"]
+    _attrs_ = ["_size"]
     # == Required:
     # See AbstractStrategy
     # check_index_*(...) - use mixin SafeIndexingMixin or UnsafeIndexingMixin
@@ -187,19 +189,18 @@ class SingleValueStrategy(AbstractStrategy):
     
     def init_strategy(self, initial_size):
         self._size = initial_size
-        self.val = self.value()
     def fetch(self, index0):
         self.check_index_fetch(index0)
-        return self.val
+        return self.value()
     def store(self, index0, value):
         self.check_index_store(index0)
-        if self.val is value:
+        if self.value() is value:
             return
         self.cannot_handle_value(index0, value)
     def size(self):
         return self._size
     def check_can_handle(self, value):
-        return value is self.val
+        return value is self.value()
     
 # ============== Basic strategies with storage ==============
 

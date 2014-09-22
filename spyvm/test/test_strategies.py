@@ -55,6 +55,18 @@ def test_ordered_strategies():
     assert index_nil < index_float < index_list
     assert index_nil < index_int < index_list
 
+def test_optimized_strategy_switch(monkeypatch):
+    a = arr(5)
+    def copy_from(self, other):
+        assert False, "The default copy_from() routine should not be called!"
+    
+    monkeypatch.setattr(storage.AbstractStorageShadow, "copy_from", copy_from)
+    try:
+        s = a.shadow
+        s.strategy_factory().switch_strategy(s, storage.SmallIntegerOrNilStorageShadow)
+    finally:
+        monkeypatch.undo()
+    
 # ====== AllNil StorageShadow
 
 def test_EmptyArray():
