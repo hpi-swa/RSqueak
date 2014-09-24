@@ -89,6 +89,7 @@ class ImageReader(object):
         self.assign_prebuilt_constants()
         self.init_w_objects()
         self.fillin_w_objects()
+        self.populate_special_objects()
 
     def try_read_version(self):
         magic1 = self.stream.next()
@@ -190,19 +191,17 @@ class ImageReader(object):
     
     def init_g_objects(self):
         for chunk in self.chunks.itervalues():
-            chunk.as_g_object(self) # initialized g_object
+            chunk.as_g_object(self) # initialize g_object
+        self.special_g_objects = self.chunks[self.specialobjectspointer].g_object.pointers
 
     def assign_prebuilt_constants(self):
         # Assign classes and objects that in special objects array that are already created.
         self._assign_prebuilt_constants(constants.objects_in_special_object_table, self.space.objtable)
+        classtable = self.space.classtable
         if not self.version.is_modern:
-            classtable = {}
-            for name, so_index in self.space.classtable.items():
-                # In non-modern images (pre 4.0), there was no BlockClosure class.
-                if not name == "BlockClosure":
-                    classtable[name] = so_index
-        else:
-            classtable = self.space.classtable
+            classtable = dict(classtable)
+            # In non-modern images (pre 4.0), there was no BlockClosure class.
+            del classtable["w_BlockClosure"]
         self._assign_prebuilt_constants(constants.classes_in_special_object_table, classtable)
 
     def _assign_prebuilt_constants(self, names_and_indices, prebuilt_objects):
@@ -210,20 +209,24 @@ class ImageReader(object):
             name = "w_" + name
             if name in prebuilt_objects:
                 w_object = prebuilt_objects[name]
-                if self.special_object(so_index).w_object is None:
-                    self.special_object(so_index).w_object = w_object
+                g_object = self.special_object(so_index)
+                if g_object.w_object is None:
+                    g_object.w_object = w_object
                 else:
-                    if not self.special_object(0).w_object.is_nil(self.space):
+                    if not g_object.w_object.is_nil(self.space):
                        raise Warning('Object found in multiple places in the special objects array')
     
     def special_object(self, index):
-        special = self.chunks[self.specialobjectspointer].g_object.pointers
-        return special[index]
+        return self.special_g_objects[index]
     
     def init_w_objects(self):
         for chunk in self.chunks.itervalues():
             chunk.g_object.init_w_object()
+        self.special_w_objects = [g.w_object for g in self.special_g_objects]
 
+    def populate_special_objects(self):
+        self.space.populate_special_objects(self.special_w_objects)
+    
     def fillin_w_objects(self):
         self.filledin_objects = 0
         for chunk in self.chunks.itervalues():
@@ -241,10 +244,7 @@ class SqueakImage(object):
 
     def __init__(self, reader):
         space = reader.space
-        self.special_objects = [g_object.w_object for g_object in
-                                reader.chunks[reader.specialobjectspointer]
-                                .g_object.pointers]
-        space.populate_special_objects(self.special_objects)
+        self.special_objects = reader.special_w_objects
         self.w_asSymbol = self.find_symbol(space, reader, "asSymbol")
         self.w_simulateCopyBits = self.find_symbol(space, reader, "simulateCopyBits")
         self.lastWindowSize = reader.lastWindowSize

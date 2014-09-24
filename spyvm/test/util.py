@@ -252,7 +252,14 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         patch_bootstrap_object(self.w_true, self.w_True, 0)
         patch_bootstrap_object(self.w_false, self.w_False, 0)
         patch_bootstrap_object(self.w_special_selectors, self.w_Array, len(constants.SPECIAL_SELECTORS) * 2)
-
+        patch_bootstrap_object(self.w_charactertable, self.w_Array, 256)
+        
+        # Bootstrap character table
+        for i in range(256):
+            w_cinst = model.W_PointersObject(self, self.w_Character, 1)
+            w_cinst.store(self, constants.CHARACTER_VALUE_INDEX, model.W_SmallInteger(i))
+            self.w_charactertable.store(self, i, w_cinst)
+    
     def patch_class(self, w_class, instsize, w_superclass=None, w_metaclass=None,
                         name='?', format=storage_classes.POINTERS, varsized=False):
         s = instantiate(storage_classes.ClassShadow)

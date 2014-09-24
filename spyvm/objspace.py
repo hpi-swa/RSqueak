@@ -43,6 +43,9 @@ class ConstantObject(object):
     import_from_mixin(ConstantMixin)
     default_value = None
 
+def empty_object():
+    return instantiate(model.W_PointersObject)
+    
 class ObjSpace(object):
     def __init__(self):
         # This is a hack; see compile_code() in targetimageloadingsmalltalk.py
@@ -59,7 +62,7 @@ class ObjSpace(object):
         
         # Create the nil object.
         # Circumvent the constructor because nil is already referenced there.
-        w_nil = instantiate(model.W_PointersObject)
+        w_nil = empty_object()
         w_nil.w_class = None
         self.add_bootstrap_object("w_nil", w_nil)
         
@@ -101,7 +104,7 @@ class ObjSpace(object):
     def make_bootstrap_classes(self):
         names = [ "w_" + name for name in constants.classes_in_special_object_table.keys() ]
         for name in names:
-            cls = model.W_PointersObject(self, None, 0)
+            cls = empty_object()
             self.add_bootstrap_class(name, cls)
         
     def add_bootstrap_object(self, name, obj):
@@ -109,23 +112,12 @@ class ObjSpace(object):
         setattr(self, name, obj)
     
     def make_bootstrap_object(self, name):
-        obj = model.W_PointersObject(self, None, 0)
+        obj = empty_object()
         self.add_bootstrap_object(name, obj)
     
-    def make_character_table(self):
-        def build_char(i):
-            # TODO - This is pretty hacky, maybe not required? At least eliminate the constant 1.
-            w_cinst = model.W_PointersObject(self, self.w_Character, 1)
-            w_cinst.store(self, constants.CHARACTER_VALUE_INDEX,
-                          model.W_SmallInteger(i))
-            return w_cinst
-        char_table = model.W_PointersObject(self, self.classtable['w_Array'], 256)
-        for i in range(256):
-            char_table.store(self, i, build_char(i))
-        self.add_bootstrap_object("w_charactertable", char_table)
-    
     def make_bootstrap_objects(self):
-        self.make_character_table()
+        self.make_bootstrap_object("w_charactertable")
+        self.make_bootstrap_object("w_true")
         self.make_bootstrap_object("w_true")
         self.make_bootstrap_object("w_false")
         self.make_bootstrap_object("w_special_selectors")

@@ -586,6 +586,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         pointers = g_self.get_pointers()
         storage_type = space.strategy_factory.strategy_type_for(pointers, g_self.isweak())
         storage = storage_type(space, self, len(pointers))
+        assert self.shadow is None, "Shadow should not be initialized yet!"
         self.store_shadow(storage, operation="Filledin", log_classname=False)
         self.store_all(space, pointers)
     
