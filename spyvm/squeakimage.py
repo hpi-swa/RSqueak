@@ -199,7 +199,7 @@ class ImageReader(object):
         self._assign_prebuilt_constants(constants.objects_in_special_object_table, self.space.objtable)
         classtable = self.space.classtable
         if not self.version.is_modern:
-            classtable = dict(classtable)
+            classtable = classtable.copy()
             # In non-modern images (pre 4.0), there was no BlockClosure class.
             del classtable["w_BlockClosure"]
         self._assign_prebuilt_constants(constants.classes_in_special_object_table, classtable)
