@@ -53,6 +53,7 @@ class ObjSpace(object):
         self.run_spy_hacks = ConstantFlag()
         self.headless = ConstantFlag()
         self.omit_printing_raw_bytes = ConstantFlag()
+        self.image_loaded = ConstantFlag()
         
         self.classtable = {}
         self.objtable = {}
@@ -88,6 +89,7 @@ class ObjSpace(object):
         assert i > 0
         self._executable_path.set(fullpath[:i])
         self._image_name.set(image_name)
+        self.image_loaded.activate()
 
     def populate_special_objects(self, specials):
         for name, idx in constants.objects_in_special_object_table.items():
