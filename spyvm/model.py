@@ -574,8 +574,8 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         self.initialize_storage(space, size, weak)
     
     def initialize_storage(self, space, size, weak=False):
-        storage = space.strategy_factory.empty_storage(self, size, weak)
-        self.store_shadow(storage)
+        storage_type = space.strategy_factory.empty_storage_type(self, size, weak)
+        space.strategy_factory.set_initial_strategy(self, storage_type, size)
     
     def fillin(self, space, g_self):
         W_AbstractObjectWithClassReference.fillin(self, space, g_self)
@@ -584,10 +584,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
             g_obj.fillin(space)
         pointers = g_self.get_pointers()
         storage_type = space.strategy_factory.strategy_type_for(pointers, g_self.isweak())
-        storage = storage_type(space, self, len(pointers))
-        assert self.shadow is None, "Shadow should not be initialized yet!"
-        self.store_shadow(storage)
-        self.store_all(space, pointers)
+        space.strategy_factory.set_initial_strategy(self, storage_type, len(pointers), pointers)
     
     def is_weak(self):
         from storage import WeakListStorageShadow

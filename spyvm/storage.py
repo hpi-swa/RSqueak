@@ -100,17 +100,27 @@ class StrategyFactory(rstrat.StrategyFactory):
     
     def strategy_type_for(self, objects, weak=False):
         if weak:
-            WeakListStorageShadow
+            return WeakListStorageShadow
         if self.no_specialized_storage.is_set():
             return ListStorageShadow
         return rstrat.StrategyFactory.strategy_type_for(self, objects)
     
-    def empty_storage(self, w_self, size, weak=False):
+    def empty_storage_type(self, w_self, size, weak=False):
         if weak:
-            return WeakListStorageShadow(self.space, w_self, size)
+            return WeakListStorageShadow
         if self.no_specialized_storage.is_set():
-            return ListStorageShadow(self.space, w_self, size)
-        return AllNilStorageShadow(self.space, w_self, size)
+            return ListStorageShadow
+        return AllNilStorageShadow
+    
+    def set_initial_strategy(self, w_object, strategy_type, size, elements=None):
+        assert w_object.shadow is None, "Shadow should not be initialized yet!"
+        strategy = strategy_type(self.space, w_object, size)
+        w_object.store_shadow(strategy)
+        if elements:
+            w_object.store_all(self.space, elements)
+        strategy.strategy_switched()
+        if self.logger.active:
+            self.log(strategy)
     
     def instantiate_and_switch(self, old_strategy, size, strategy_class):
         w_self = old_strategy.w_self()
