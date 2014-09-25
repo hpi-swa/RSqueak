@@ -2,7 +2,7 @@
 import sys, time, os
 
 from rpython.rlib import jit, rpath, objectmodel
-from spyvm import model, interpreter, squeakimage, objspace, wrapper, error, storage_logger
+from spyvm import model, interpreter, squeakimage, objspace, wrapper, error
 
 def _usage(argv):
     print """
@@ -38,7 +38,6 @@ def _usage(argv):
             -s|--safe-trace            - If tracing is active, omit printing contents of BytesObjects
             -l|--storage-log           - Output a log of storage operations.
             -L|--storage-log-aggregate - Output an aggregated storage log at the end of execution.
-            -E|--storage-log-elements  - Include classnames of elements into the storage log.
 
     """ % argv[0]
 
@@ -75,6 +74,8 @@ def safe_entry_point(argv):
             import traceback
             traceback.print_exc()
         return -1
+    finally:
+        prebuilt_space.strategy_factory.logger.print_aggregated_log()
 
 def entry_point(argv):
     # == Main execution parameters
@@ -132,11 +133,9 @@ def entry_point(argv):
                 from spyvm.plugins.vmdebugging import stop_ui_process
                 stop_ui_process()
             elif arg in ["-l", "--storage-log"]:
-                storage_logger.activate()
+                space.strategy_factory.logger.activate()
             elif arg in ["-L", "--storage-log-aggregate"]:
-                storage_logger.activate(aggregate=True)
-            elif arg in ["-E", "--storage-log-elements"]:
-                storage_logger.activate(elements=True)
+                space.strategy_factory.logger.activate(aggregate=True)
             elif path is None:
                 path = arg
             else:
@@ -186,7 +185,6 @@ def entry_point(argv):
     
     w_result = execute_context(interp, context)
     print result_string(w_result)
-    storage_logger.print_aggregated_log()
     return 0
 
 def result_string(w_result):

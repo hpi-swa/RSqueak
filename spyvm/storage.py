@@ -91,7 +91,7 @@ class AllNilStorageShadow(AbstractStorageShadow):
     def value(self): return self.space.w_nil
 
 class StrategyFactory(rstrat.StrategyFactory):
-    _immutable_fields_ = ["space", "no_specialized_storage?"]
+    _immutable_fields_ = ["space", "no_specialized_storage"]
     def __init__(self, space):
         from spyvm import objspace
         self.space = space
@@ -120,7 +120,21 @@ class StrategyFactory(rstrat.StrategyFactory):
     
     def instantiate_empty(self, strategy_type):
         return strategy_type(self.space, None, 0)
-
+    
+    def log(self, new_strategy, old_strategy=None, new_element=None):
+        # Gather information to be logged
+        image_loaded = self.space.image_loaded.is_set()
+        size = new_strategy.size()
+        new_strategy_str = new_strategy.repr_classname
+        old_strategy_str = old_strategy.repr_classname if old_strategy else None
+        classname = new_strategy.w_self().guess_classname() if image_loaded else None
+        element_classname = new_element.guess_classname() if new_element and image_loaded else None
+        if image_loaded:
+            cause = "Switched" if old_strategy else "Initialized"
+        else:
+            cause = "Filledin"
+        self.logger.log(new_strategy_str, size, cause, old_strategy_str, classname, element_classname)
+    
 # ========== Other storage classes, non-strategies ==========
 
 class AbstractRedirectingShadow(AbstractShadow):

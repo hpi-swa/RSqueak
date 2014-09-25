@@ -1,6 +1,7 @@
 
 import re, os, sys, operator
 
+# TODO generalize this - read all operations occuring in the logfile
 OPERATIONS = ["Filledin", "Initialized", "Switched"]
 
 IMAGE_LOADING_STORAGE = " Image Loading Storage" # Space to be sorted to the beginning
@@ -44,6 +45,7 @@ def parse_line(line, flags):
     classnames = result.group('classnames')
     if classnames is not None:
         classnames = classnames.split(' ')
+    
     return LogEntry(operation, old_storage, new_storage, classname, size, objects, classnames)
 
 class LogEntry(object):
@@ -64,6 +66,7 @@ class LogEntry(object):
             else:
                 assert False, "old_storage has to be available in a Switched operation"
         self.old_storage = str(old_storage)
+        assert old_storage != new_storage, "old and new storage identical in log entry: %s" % self
     
     def clear_old_storage(self):
         if self.old_storage in (IMAGE_LOADING_STORAGE, OBJECT_CREATION_STORAGE):
@@ -74,6 +77,9 @@ class LogEntry(object):
     
     def __lt__(self, other):
         return self.classname < other.classname
+    
+    def __repr__(self):
+        return "%s(%s)" % (self.__str__(), object.__repr__(self))
     
     def __str__(self):
         old_storage_string = "%s -> " % self.old_storage if self.old_storage else ""
@@ -178,6 +184,9 @@ class StorageEdge(object):
         self.classes = ClassOperations()
         self.origin = origin
         self.target = target
+        
+        if self.origin is not None and self.origin is self.target and self.operation != "Filledin":
+            import pdb; pdb.set_trace()
     
     def full_key(self):
         return (self.operation, self.origin.name, self.target.name)
@@ -198,7 +207,7 @@ class StorageEdge(object):
     def as_log_entries(self):
         entries = []
         for classname, ops in self.classes.classes.items():
-            entry = LogEntry(self.operation, self.origin.name, self.target.name, classname, ops.slots, ops.objects)
+            entry = LogEntry(self.operation, self.origin.name, self.target.name, classname, ops.slots, ops.objects, ops.element_classnames)
             entry.clear_old_storage()
             entries.append(entry)
         return entries

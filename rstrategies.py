@@ -1,5 +1,6 @@
 
 import weakref
+import rstrategies_logger
 from rpython.rlib import jit
 
 class StrategyMetaclass(type):
@@ -17,12 +18,13 @@ def collect_subclasses(cls):
     return subclasses
 
 class StrategyFactory(object):
-    _immutable_fields_ = ["strategies[*]"]
+    _immutable_fields_ = ["strategies[*]", "logger"]
     
     def __init__(self, root_class, all_strategy_classes=None):
         if all_strategy_classes is None:
             all_strategy_classes = collect_subclasses(root_class)
         self.strategies = []
+        self.logger = rstrategies_logger.Logger()
         
         for strategy_class in all_strategy_classes:
             if hasattr(strategy_class, "_is_strategy") and strategy_class._is_strategy:
@@ -76,10 +78,23 @@ class StrategyFactory(object):
     def instantiate_empty(self, strategy_type):
         raise NotImplementedError("Abstract method")
     
-    def switch_strategy(self, old_strategy, new_strategy_type):
+    # This can be overwritten into a more appropriate call to self.logger.log
+    def log(self, new_strategy, old_strategy=None, new_element=None):
+        str = lambda obj: obj.__str__().replace(" ", "").replace("\n", "") if obj else None
+        new_strategy_str = str(new_strategy)
+        old_strategy_str = str(old_strategy)
+        element_typename = str(new_element)
+        size = new_strategy.size()
+        typename = None
+        cause = "SwitchedStrategy"
+        self.logger.log(new_strategy_str, size, cause, old_strategy_str, typename, element_typename)
+    
+    def switch_strategy(self, old_strategy, new_strategy_type, new_element=None):
         new_instance = self.instantiate_and_switch(old_strategy, old_strategy.size(), new_strategy_type)
         old_strategy.initiate_copy_into(new_instance)
         new_instance.strategy_switched()
+        if self.logger.active:
+            self.log(new_instance, old_strategy, new_element)
         return new_instance
     
     @jit.unroll_safe
@@ -100,7 +115,7 @@ class StrategyFactory(object):
     
     def cannot_handle_value(self, old_strategy, index0, value):
         strategy_type = old_strategy.generalized_strategy_for(value)
-        new_instance = self.switch_strategy(old_strategy, strategy_type)
+        new_instance = self.switch_strategy(old_strategy, strategy_type, new_element=value)
         new_instance.store(index0, value)
     
     def _freeze_(self):

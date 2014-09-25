@@ -12,7 +12,7 @@ Squeak model.
             W_CompiledMethod
 """
 import sys
-from spyvm import constants, error, storage_logger
+from spyvm import constants, error
 from spyvm.util.version import constant_for_version, constant_for_version_arg, VersionMixin
 
 from rpython.rlib import rrandom, objectmodel, jit, signature
@@ -566,7 +566,6 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['shadow']
     shadow = None
     repr_classname = "W_PointersObject"
-    log_storage = storage_logger.log
     
     @jit.unroll_safe
     def __init__(self, space, w_class, size, weak=False):
@@ -576,7 +575,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     
     def initialize_storage(self, space, size, weak=False):
         storage = space.strategy_factory.empty_storage(self, size, weak)
-        self.store_shadow(storage, operation="Initialized")
+        self.store_shadow(storage)
     
     def fillin(self, space, g_self):
         W_AbstractObjectWithClassReference.fillin(self, space, g_self)
@@ -587,7 +586,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         storage_type = space.strategy_factory.strategy_type_for(pointers, g_self.isweak())
         storage = storage_type(space, self, len(pointers))
         assert self.shadow is None, "Shadow should not be initialized yet!"
-        self.store_shadow(storage, operation="Filledin", log_classname=False)
+        self.store_shadow(storage)
         self.store_all(space, pointers)
     
     def is_weak(self):
@@ -667,10 +666,9 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     def instsize(self):
         return self.class_shadow(self.space()).instsize()
 
-    def store_shadow(self, shadow, operation="Switched", w_element=None, log_classname=True):
+    def store_shadow(self, shadow):
         old_shadow = self.shadow
         self.shadow = shadow
-        self.log_storage(operation, old_shadow, log_classname, w_element)
 
     def _get_shadow(self):
         return self.shadow
