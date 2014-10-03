@@ -1,7 +1,7 @@
 
 import weakref
 import rstrategies_logger
-from rpython.rlib import jit
+from rpython.rlib import jit, objectmodel
 
 class StrategyMetaclass(type):
     def __new__(self, name, bases, attrs):
@@ -80,21 +80,24 @@ class StrategyFactory(object):
     
     # This can be overwritten into a more appropriate call to self.logger.log
     def log(self, new_strategy, old_strategy=None, new_element=None):
-        str = lambda obj: obj.__str__().replace(" ", "").replace("\n", "") if obj else None
-        new_strategy_str = str(new_strategy)
-        old_strategy_str = str(old_strategy)
-        element_typename = str(new_element)
+        if not self.logger.active: return
+        new_strategy_str = self.log_string_for_object(new_strategy)
+        old_strategy_str = self.log_string_for_object(old_strategy)
+        element_typename = self.log_string_for_object(new_element)
         size = new_strategy.size()
-        typename = None
-        cause = "SwitchedStrategy"
+        typename = ""
+        cause = "Switched" if old_strategy else "Created"
         self.logger.log(new_strategy_str, size, cause, old_strategy_str, typename, element_typename)
+        
+    @objectmodel.specialize.call_location()
+    def log_string_for_object(self, obj):
+        return obj.__class__.__name__ if obj else ""
     
     def switch_strategy(self, old_strategy, new_strategy_type, new_element=None):
         new_instance = self.instantiate_and_switch(old_strategy, old_strategy.size(), new_strategy_type)
         old_strategy.initiate_copy_into(new_instance)
         new_instance.strategy_switched()
-        if self.logger.active:
-            self.log(new_instance, old_strategy, new_element)
+        self.log(new_instance, old_strategy, new_element)
         return new_instance
     
     @jit.unroll_safe

@@ -12,9 +12,7 @@ class LogEntry(object):
             self.element_typenames[element_typename] = None
     
     def classnames(self):
-        if len(self.element_typenames) > 0:
-            return self.element_typenames.keys()
-        return None
+        return self.element_typenames.keys()
 
 class Logger(object):
     _attrs_ = ["active", "aggregate", "logs"]
@@ -29,7 +27,7 @@ class Logger(object):
         self.active = True
         self.aggregate = self.aggregate or aggregate
     
-    def log(self, new_strategy, size, cause=None, old_strategy=None, typename=None, element_typename=None):
+    def log(self, new_strategy, size, cause="", old_strategy="", typename="", element_typename=""):
         if self.aggregate:
             key = (cause, old_strategy, new_strategy, typename)
             if key not in self.logs:
@@ -37,7 +35,7 @@ class Logger(object):
             entry = self.logs[key]
             entry.add(size, element_typename)
         else:
-            element_typenames = [ element_typename ] if element_typename else None
+            element_typenames = [ element_typename ] if element_typename else []
             self.output(cause, old_strategy, new_strategy, typename, size, 1, element_typenames)
     
     def print_aggregated_log(self):

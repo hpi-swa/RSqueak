@@ -119,8 +119,7 @@ class StrategyFactory(rstrat.StrategyFactory):
         if elements:
             w_object.store_all(self.space, elements)
         strategy.strategy_switched()
-        if self.logger.active:
-            self.log(strategy)
+        self.log(strategy)
     
     def instantiate_and_switch(self, old_strategy, size, strategy_class):
         w_self = old_strategy.w_self()
@@ -132,13 +131,14 @@ class StrategyFactory(rstrat.StrategyFactory):
         return strategy_type(self.space, None, 0)
     
     def log(self, new_strategy, old_strategy=None, new_element=None):
+        if not self.logger.active: return
         # Gather information to be logged
         image_loaded = self.space.image_loaded.is_set()
         size = new_strategy.size()
         new_strategy_str = new_strategy.repr_classname
-        old_strategy_str = old_strategy.repr_classname if old_strategy else None
-        classname = new_strategy.w_self().guess_classname() if image_loaded else None
-        element_classname = new_element.guess_classname() if new_element and image_loaded else None
+        old_strategy_str = old_strategy.repr_classname if old_strategy else ""
+        classname = new_strategy.w_self().guess_classname() if image_loaded else ""
+        element_classname = new_element.guess_classname() if new_element and image_loaded else ""
         if image_loaded:
             cause = "Switched" if old_strategy else "Initialized"
         else:
