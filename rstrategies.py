@@ -116,11 +116,6 @@ class StrategyFactory(object):
                 return strategy_type
         raise Exception("Could not find strategy to handle: %s" % objects)
     
-    def cannot_handle_value(self, old_strategy, index0, value):
-        strategy_type = old_strategy.generalized_strategy_for(value)
-        new_instance = self.switch_strategy(old_strategy, strategy_type, new_element=value)
-        new_instance.store(index0, value)
-    
     def _freeze_(self):
         # Instance will be frozen at compile time, making accesses constant.
         return True
@@ -167,6 +162,8 @@ class AbstractStrategy(object):
     # strategy_factory(self) - Access to StorageFactory
     # __init__(...) - Constructor should invoke the provided init_strategy(self, size) method
     
+    # Main Fixedsize API
+    
     def store(self, index0, value):
         raise NotImplementedError("Abstract method")
     
@@ -175,13 +172,52 @@ class AbstractStrategy(object):
     
     def size(self):
         raise NotImplementedError("Abstract method")
-        
+    
+    # Fixedsize utility methods
+    
+    def slice(self, start, end):
+        return [ self.fetch(i) for i in range(start, end)]
+    
+    def fetch_all(self):
+        return self.slice(0, self.size())
+    
+    # Main Varsize API
+    
+    def insert(self, index0, list_w):
+        raise NotImplementedError("Abstract method")
+    
+    def delete(self, start, end):
+        raise NotImplementedError("Abstract method")
+    
+    # Varsize utility methods
+    
+    def append(self, list_w):
+        self.insert(self.size(), list_w)        
+    
+    def pop(self, index0):
+        e = self.fetch(index0)
+        self.delete(index0, index0+1)
+        return e
+
+    # Internal methods
+    
     def check_can_handle(self, value):
         raise NotImplementedError("Abstract method")
     
-    def cannot_handle_value(self, index0, value):
-        self.strategy_factory().cannot_handle_value(self, index0, value)
-    
+    def generalize_for_value(self, value):
+        strategy_type = self.generalized_strategy_for(value)
+        new_instance = self.strategy_factory().switch_strategy(self, strategy_type, new_element=value)
+        return new_instance
+        
+    def cannot_handle_store(self, index0, value):
+        new_instance = self.generalize_for_value(value)
+        new_instance.store(index0, value)
+        
+    def cannot_handle_insert(self, index0, list_w):
+        # TODO - optimize. Prevent multiple generalizations and slicing done by callers.
+        new_strategy = self.generalize_for_value(list_w[0])
+        new_strategy.insert(index0, list_w)
+
 # ============== Special Strategies with no storage array ==============
 
 class EmptyStrategy(AbstractStrategy):
@@ -191,7 +227,11 @@ class EmptyStrategy(AbstractStrategy):
     def fetch(self, index0):
         raise IndexError
     def store(self, index0, value):
-        self.cannot_handle_value(index0, value)
+        self.cannot_handle_insert(index0, [value])
+    def insert(self, index0, list_w):
+        self.cannot_handle_insert(index0, list_w)
+    def delete(self, start, end):
+        self.check_index_range(start, end)
     def size(self):
         return 0
     def check_can_handle(self, value):
@@ -212,9 +252,22 @@ class SingleValueStrategy(AbstractStrategy):
         return self.value()
     def store(self, index0, value):
         self.check_index_store(index0)
-        if self.value() is value:
+        if self.check_can_handle(value):
             return
-        self.cannot_handle_value(index0, value)
+        self.cannot_handle_store(index0, value)
+    
+    @jit.unroll_safe
+    def insert(self, index0, list_w):
+        for i in range(len(list_w)):
+            if self.check_can_handle(list_w[handled]):
+                self._size += 1
+            else:
+                self.cannot_handle_insert(index0 + i, list_w[i:])
+                return
+    
+    def delete(self, start, end):
+        self.check_index_range(start, end)
+        self._size -= (end - start)
     def size(self):
         return self._size
     def check_can_handle(self, value):
@@ -227,7 +280,7 @@ class StrategyWithStorage(AbstractStrategy):
     _attrs_ = ["storage"]
     # == Required:
     # See AbstractStrategy
-    # check_index_*(...) - use mixin SafeIndexingMixin, UnsafeIndexingMixin or VariableSizeMixin
+    # check_index_*(...) - use mixin SafeIndexingMixin or UnsafeIndexingMixin
     # default_value(self) - The value to be initially contained in this strategy
     
     def init_strategy(self, initial_size):
@@ -240,7 +293,7 @@ class StrategyWithStorage(AbstractStrategy):
             unwrapped = self._unwrap(wrapped_value)
             self.storage[index0] = unwrapped
         else:
-            self.cannot_handle_value(index0, wrapped_value)
+            self.cannot_handle_store(index0, wrapped_value)
     
     def fetch(self, index0):
         self.check_index_fetch(index0)
@@ -255,6 +308,22 @@ class StrategyWithStorage(AbstractStrategy):
     
     def size(self):
         return len(self.storage)
+    
+    @jit.unroll_safe
+    def insert(self, start, list_w):
+        if start > self.size():
+            start = self.size()
+        for i in range(len(list_w)):
+            if self.check_can_handle(list_w[i]):
+                self.storage.insert(start + i, self._unwrap(list_w[i]))
+            else:
+                self.cannot_handle_insert(start + i, list_w[i:])
+                return
+    
+    def delete(self, start, end):
+        self.check_index_range(start, end)
+        assert start >= 0 and end >= 0
+        del self.storage[start : end]
     
 class GenericStrategy(StrategyWithStorage):
     # == Required:
@@ -279,13 +348,18 @@ class WeakGenericStrategy(StrategyWithStorage):
     def check_can_handle(self, wrapped_value):
         return True
     
-# ============== Mixins for StrategyWithStorage ==============
+# ============== Mixins for index checking operations ==============
 
 class SafeIndexingMixin(object):
     def check_index_store(self, index0):
         self.check_index(index0)
     def check_index_fetch(self, index0):
         self.check_index(index0)
+    def check_index_range(self, start, end):
+        if end < start:
+            raise IndexError
+        self.check_index(start)
+        self.check_index(end)
     def check_index(self, index0):
         if index0 < 0 or index0 >= self.size():
             raise IndexError
@@ -295,47 +369,9 @@ class UnsafeIndexingMixin(object):
         pass
     def check_index_fetch(self, index0):
         pass
-
-class VariableSizeMixin(object):
-    # This can be used with StrategyWithStorage
-    # to add functionality for resizing the storage.
-    # Can be combined with either *IndexingMixin or *AutoresizeMixin
-    
-    @jit.unroll_safe
-    def grow(self, by):
-        if by <= 0:
-            raise ValueError
-        for _ in range(by):
-            self.storage.append(self.default_value())
-    
-    @jit.unroll_safe
-    def shrink(self, by):
-        if by <= 0:
-            raise ValueError
-        if by > self.size():
-            raise ValueError
-        for _ in range(by):
-            self.storage.pop()
-    
-class SafeAutoresizeMixin(object):
-    def check_index_fetch(self, index0):
-        if index0 < 0 or index0 > self.size():
-            raise IndexError
-    def check_index_store(self, index0):
-        size = self.size()
-        if index0 < 0:
-            raise IndexError
-        if index0 >= size:
-            self.grow(index0 - size + 1)
-    
-class UnsafeAutoresizeMixin(object):
-    def check_index_fetch(self, index0):
+    def check_index_range(self, start, end):
         pass
-    def check_index_store(self, index0):
-        size = self.size()
-        if index0 >= size:
-            self.grow(index0 - size)
-    
+
 # ============== Specialized Storage Strategies ==============
 
 class SpecializedStrategy(StrategyWithStorage):
