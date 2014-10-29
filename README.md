@@ -56,6 +56,10 @@ targetimageloadingsmalltalk-c. Start it with the following:
 ./targetimageloadingsmalltalk-c images/Squeak4.5-*.image
 ```
 
+STM-enabled SPY
+===
+This is a branch of SPY which incorporates the RPython STM transformation. Most of the initial code base comes from the results of a project seminar (https://bitbucket.org/amintos/lang-smalltalk). The stmgc-c7 branch is based on this version and the 64bit branch.
+
 Setup for stm-enabled SPY
 ---
 You can see the current state of the integration of the RPython STM in our stmgc-c7 branch.
