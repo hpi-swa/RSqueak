@@ -195,7 +195,6 @@ class W_SmallInteger(W_Object):
         return r_uint(val)
 
 
-    @jit.elidable
     def as_repr_string(self):
         return "W_SmallInteger(%d)" % self.value
 
@@ -450,7 +449,6 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
                 name = self.s_class.name
             return "a %s" % (name or '?',)
 
-    @jit.elidable
     def as_repr_string(self):
         return self.as_embellished_string("W_O /w Class", "")
 
@@ -625,7 +623,6 @@ class W_AbstractPointersObject(W_AbstractObjectWithClassReference):
         w_other.changed()
         return True
 
-    @jit.elidable
     def as_repr_string(self):
         return W_AbstractObjectWithClassReference.as_embellished_string(self,
                                 className='W_PointersObject',
