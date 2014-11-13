@@ -348,7 +348,7 @@ class WeakGenericStrategy(StrategyWithStorage):
     def check_can_handle(self, wrapped_value):
         return True
     
-# ============== Mixins for index checking operations ==============
+# ============== Mixins for StrategyWithStorage ==============
 
 class SafeIndexingMixin(object):
     def check_index_store(self, index0):
