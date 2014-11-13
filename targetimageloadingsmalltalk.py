@@ -11,19 +11,22 @@ def _usage(argv):
 
           Execution mode:
             (no flags)             - Image will be normally opened.
-            -r|--run <code>        - Code will be compiled and executed, result printed.
-            -m|--method <selector> - Selector will be sent to a SmallInteger, result printed.
+            -r|--run <code>        - Code will be compiled and executed in headless mode, result printed.
+            -m|--method <selector> - Selector will be sent to a SmallInteger in headless mode, result printed.
             -h|--help              - Output this and exit.
 
           Execution parameters:
-            -n|--num <int> - Only with -m or -r, SmallInteger to be used as receiver (default: nil).
-            -a|--arg <arg> - Only with -m, will be used as single String argument.
-            -P|--process   - Only with -m or -r, create a high-priority Process for the context.
-                             The images last active Process will be started first.
-                             By default, run in headless mode. This will ignore the active process
-                             in the image and execute the context directly. The image window will
-                             probably not open. Good for benchmarking.
-            -u             - Only with -m or -r, try to stop UI-process at startup. Can help benchmarking.
+            -n|--num <int> - Only with -m or -r. SmallInteger to be used as receiver (default: nil).
+            -a|--arg <arg> - Only with -m. Will be used as single String argument.
+            -P|--process   - Only with -m or -r. Disable headless mode.
+                             A high-priority Process for the new context will be created.
+                             The last active Process in the image will be started,
+                             but then quickly switch to the new synthetic high-prio Process.
+                             By default, in headless mode, the active process in the image will be ignored,
+                             and the image window will probably not open (good for benchmarking).
+                             Headless mode also influences error reporting.
+                             Without -r or -m, headless mode is always disabled.
+            -u             - Only with -m or -r. Try to stop UI-process at startup. Can help benchmarking.
 
           Other parameters:
             -j|--jit <jitargs> - jitargs will be passed to the jit configuration.
