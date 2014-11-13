@@ -8,18 +8,18 @@ Setup
 
 ### Required Projects
 You need three repositories: 
-* [This one](https://bitbucket.org/pypy/lang-smalltalk)
-* [pypy/pypy](https://bitbucket.org/pypy/pypy)
-* [pypy/rsdl](https://bitbucket.org/pypy/rsdl)
+ * [This one](https://bitbucket.org/pypy/lang-smalltalk)
+ * [pypy/pypy](https://bitbucket.org/pypy/pypy)
+ * [pypy/rsdl](https://bitbucket.org/pypy/rsdl)
     * Alternatively download RSDL package from [PYPI](https://pypi.python.org/pypi/rsdl)
     * Then unpack and install it using ```python setup.py install``` or ```pypy setup.py install```
 
 ### Required packages
 You need the following packages on your OS. Install with your favorite package manager:
-* pypy
+ * pypy
     * For faster translation of the RSqueak VM. Alternatively use default Python.
-* libsdl-dev
-* libffi-dev
+ * libsdl-dev
+ * libffi-dev
 
 ### Adjusting the PYTHONPATH
 In order to allow the RPython toolchain to find the rsdl and pypy packages you have to add the two folders to the PYTHONPATH.
