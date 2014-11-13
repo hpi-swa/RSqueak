@@ -1,138 +1,42 @@
-import py
-import os
-import sys
-import time
-from spyvm import constants
-from spyvm import model
-from spyvm.tool.bitmanipulation import splitter
-
+import os, time
+from spyvm import constants, model, util, error
+from spyvm.util import stream, system
+from spyvm.util.bitmanipulation import splitter
 from rpython.rlib import objectmodel
 
-def chrs2int(b):
-    assert len(b) == 4
-    first = ord(b[0]) # big endian
-    if first & 0x80 != 0:
-        first = first - 0x100
-    return (first << 24 | ord(b[1]) << 16 | ord(b[2]) << 8 | ord(b[3]))
-
-def swapped_chrs2int(b):
-    assert len(b) == 4
-    first = ord(b[3]) # little endian
-    if first & 0x80 != 0:
-        first = first - 0x100
-    return (first << 24 | ord(b[2]) << 16 | ord(b[1]) << 8 | ord(b[0]))
-
-def chrs2long(b):
-    assert len(b) == 8
-    first = ord(b[0]) # big endian
-    if first & 0x80 != 0:
-        first = first - 0x100
-    return (      first << 56 | ord(b[1]) << 48 | ord(b[2]) << 40 | ord(b[3]) << 32
-            | ord(b[4]) << 24 | ord(b[5]) << 16 | ord(b[6]) <<  8 | ord(b[7])      )
-
-def swapped_chrs2long(b):
-    assert len(b) == 8
-    first = ord(b[7]) # little endian
-    if first & 0x80 != 0:
-        first = first - 0x100
-    return (      first << 56 | ord(b[6]) << 48 | ord(b[5]) << 40 | ord(b[4]) << 32
-            | ord(b[3]) << 24 | ord(b[2]) << 16 | ord(b[1]) <<  8 | ord(b[0])      )
-
+# Access for module users
+Stream = stream.Stream
 
 # ____________________________________________________________
 #
-# Reads an image file and creates all model objects
+# Constants and image versions.
 
-class Stream(object):
-    """ Simple input stream """
-    def __init__(self, inputfile=None, data=None):
-        if inputfile is None and data is None:
-            raise RuntimeError("need to supply either inputfile or data")
+# from the squeak source code:
+# in squeak, the compact classes array can be found at this position
+# in the special objects array
+COMPACT_CLASSES_ARRAY = 28
 
-        if inputfile:
-            try:
-                self.data = inputfile.read()
-            finally:
-                inputfile.close()
-        else:
-            self.data = data
-        self.reset()
-
-    def peek(self):
-        if self.pos >= len(self.data):
-            raise IndexError
-        data_peek = self.data[self.pos:self.pos + self.word_size]
-        if self.use_long_read:
-            if self.swap:
-                return swapped_chrs2long(data_peek)
-            else:
-                return chrs2long(data_peek)
-        else:
-            if self.swap:
-                return swapped_chrs2int(data_peek)
-            else:
-                return chrs2int(data_peek)
-
-
-    def next(self):
-        integer = self.peek()
-        self.pos += self.word_size
-        self.count += self.word_size
-        return integer
-
-    def reset(self):
-        self.swap = False
-        self.pos = 0
-        self.count = 0
-        self.be_32bit()
-
-    def reset_count(self):
-        self.count = 0
-
-    def skipbytes(self, jump):
-        assert jump > 0
-        assert (self.pos + jump) <= len(self.data)
-        self.pos += jump
-        self.count += jump
-
-    def skipwords(self, jump):
-        self.skipbytes(jump * self.word_size)
-        assert (self.pos + jump) <= len(self.data)
-        self.pos += jump
-        self.count += jump
-
-
-    def length(self):
-        return len(self.data)
-
-    def close(self):
-        pass # already closed
-
-    def be_64bit(self):
-        self.word_size = 8
-        self.use_long_read = True
-
-    def be_32bit(self):
-        self.word_size = 4
-        self.use_long_read = False
-
-
-class CorruptImageError(Exception):
-    pass
-
-class UnsupportedImageError(Exception):
-    pass
-
-# ____________________________________________________________
+# The image data can optionally start after this fixed offset.
+POSSIBLE_IMAGE_OFFSET = 512
 
 class ImageVersion(object):
-
+    
     def __init__(self, magic, is_big_endian, is_64bit, has_closures, has_floats_reversed):
         self.magic = magic
         self.is_big_endian = is_big_endian
         self.is_64bit = is_64bit
         self.has_closures = has_closures
         self.has_floats_reversed = has_floats_reversed
+        self.is_modern = magic > 6502
+    
+    def configure_stream(self, stream):
+        stream.big_endian = self.is_big_endian
+        if self.is_64bit:
+            if not system.IS_64BIT:
+                raise error.FatalError("Cannot handle 64-bit image.")
+            stream.be_64bit()
+        else:
+            stream.be_32bit()
 
 image_versions = {
     0x00001966:         ImageVersion(6502,  True,  False, False, False),
@@ -141,105 +45,77 @@ image_versions = {
     0x68190000:         ImageVersion(6504,  False, False, True,  False),
     0x00001969:         ImageVersion(6505,  True,  False, True,  True ),
     0x69190000:         ImageVersion(6505,  False, False, True,  True ),
-    0x00000000000109A0: ImageVersion(68000, True,  True,  False, False),
 }
 
-if sys.maxint == 2 ** 63 - 1:
-    image_versions.update({
-   -0x5ff6ff0000000000:
-    # signed version of 0xA009010000000000:
-                        ImageVersion(68000, False, True,  False, False),
-    0x00000000000109A2: ImageVersion(68002, True,  True,  True,  False),
-   -0x5df6ff0000000000:
-    # signed version of 0xA209010000000000:
-                        ImageVersion(68002, False, True,  True,  False),
-    0x00000000000109A3: ImageVersion(68003, True,  True,  True,  True ),
-   -0x5cf6ff0000000000:
-    # signed version of 0xA309010000000000:
-                        ImageVersion(68003, False, True,  True,  True ),
-})
+image_versions_64bit = {
+    # Versions for 64 bit images (expressed as two 32-bit words)
+    (0x00000000,  0x000109A0): ImageVersion(68000, True,  True,  False, False),
+    (-0x5ff6ff00, 0x00000000): ImageVersion(68000, False, True,  False, False), # 0xA009010000000000
+    (0x00000000,  0x000109A2): ImageVersion(68002, True,  True,  True,  False),
+    (-0x5df6ff00, 0x00000000): ImageVersion(68002, False, True,  True,  False), # 0xA209010000000000
+    (0x00000000,  0x000109A3): ImageVersion(68003, True,  True,  True,  True ),
+    (-0x5cf6ff00, 0x00000000): ImageVersion(68003, False, True,  True,  True ), # 0xA309010000000000
+}
 
-
-def version(magic):
-    ver = image_versions.get(magic, None)
-    if ver is None:
-        raise CorruptImageError
-    # if ver.is_64bit or ver.has_floats_reversed:
-    #     raise UnsupportedImageError
-    return ver
-
-possible_image_offset = 512
-
-def version_from_stream(stream):
-    # 32 bit
-    try:
-        return version(stream.peek())
-    except CorruptImageError as e:
-        if stream.length() > possible_image_offset + 4:
-            stream.skipbytes(possible_image_offset)
-            try:
-                return version(stream.peek())
-            except CorruptImageError:
-                pass # raise original error
-        # 64 bit
-        stream.reset()
-        stream.be_64bit()
-        try:
-            v = version(stream.peek())
-            assert v.is_64bit
-            return v
-        except CorruptImageError as e:
-            if stream.length() > possible_image_offset + 4:
-                stream.skipbytes(possible_image_offset)
-                try:
-                    v = version(stream.peek())
-                    assert v.is_64bit
-                    return v
-                except CorruptImageError:
-                    pass # raise original error
-        raise
-
-
-
-def reader_for_image(space, stream):
-    ver = version_from_stream(stream)
-    if not ver.is_big_endian:
-        stream.swap = True
-    return ImageReader(space, stream, ver)
+# ____________________________________________________________
+#
+# Parser classes for Squeak image format.
 
 class ImageReader(object):
-
-    def __init__(self, space, stream, version):
+    
+    def __init__(self, space, stream):
         self.space = space
         self.stream = stream
-        self.version = version
-        # dictionary mapping old address to chunk object
-        self.chunks = {}
-        self.chunklist = []
-        # cache wrapper integers
-        self.intcache = {}
-
+        self.version = None
+        self.chunks = {} # Dictionary mapping old address to chunk object
+        self.chunklist = [] # Flat list of all read chunks
+        self.intcache = {} # Cached instances of SmallInteger
         self.lastWindowSize = 0
-
-    def initialize(self):
-        # XXX should be called something like read_full_image
+    
+    def create_image(self):
+        self.read_all()
+        return SqueakImage(self)
+    
+    def log_progress(self, progress, char):
+        if progress % 1000 == 0:
+            os.write(2, char)
+    
+    def read_all(self):
         self.read_header()
         self.read_body()
         self.init_compactclassesarray()
-        # until here, the chunks are generated
+        # All chunks are read, now convert them to real objects.
         self.init_g_objects()
+        self.assign_prebuilt_constants()
         self.init_w_objects()
         self.fillin_w_objects()
-        self.synchronize_shadows()
+        self.populate_special_objects()
+
+    def try_read_version(self):
+        magic1 = self.stream.next()
+        version = image_versions.get(magic1, None)
+        if version:
+            return version
+        # Check 64 bit version
+        magic2 = self.stream.next()
+        version = image_versions_64bit.get((magic1, magic2), None)
+        if not version:
+            self.stream.reset()
+        return version
 
     def read_version(self):
-        # 1 word version
-        magic = self.stream.next()
-        assert self.version.magic == magic
-
+        version = self.try_read_version()
+        if not version:
+            if self.stream.length() > POSSIBLE_IMAGE_OFFSET + 4:
+                self.stream.skipbytes(POSSIBLE_IMAGE_OFFSET)
+                version = self.try_read_version()
+        if not version:
+            raise error.CorruptImageError("Illegal version magic.")
+        version.configure_stream(self.stream)
+        self.version = version
+    
     def read_header(self):
         self.read_version()
-        #------
         # 1 word headersize
         headersize = self.stream.next()
         # 1 word size of the full image
@@ -250,76 +126,20 @@ class ImageReader(object):
         self.specialobjectspointer = self.stream.next()
         # 1 word last used hash
         lasthash = self.stream.next()
-        self.lastWindowSize = savedwindowssize = self.stream.next()
-        # print "savedwindowssize: ", savedwindowssize >> 16, "@", savedwindowssize & 0xffff
+        self.lastWindowSize = self.stream.next()
         fullscreenflag = self.stream.next()
         extravmmemory = self.stream.next()
         self.stream.skipbytes(headersize - self.stream.pos)
-
+    
     def read_body(self):
-        import sys
         self.stream.reset_count()
         while self.stream.count < self.endofmemory:
             chunk, pos = self.read_object()
-            if len(self.chunklist) % 1000 == 0: os.write(2,'#')
+            self.log_progress(len(self.chunklist), '#')
             self.chunklist.append(chunk)
             self.chunks[pos + self.oldbaseaddress] = chunk
         self.stream.close()
-        self.swap = self.stream.swap #save for later
-        self.stream = None
         return self.chunklist # return for testing
-
-    def init_g_objects(self):
-        for chunk in self.chunks.itervalues():
-            chunk.as_g_object(self) # initialized g_object
-
-    def init_w_objects(self):
-        self.assign_prebuilt_constants()
-        for chunk in self.chunks.itervalues():
-            chunk.g_object.init_w_object()
-
-    def assign_prebuilt_constants(self):
-        # assign w_objects for objects that are already in objtable
-        for name, so_index in constants.objects_in_special_object_table.items():
-            w_object = self.space.objtable["w_" + name]
-            if self.special_object(so_index).w_object is None:
-                self.special_object(so_index).w_object = w_object
-            else:
-                if self.special_object(0).w_object is not self.space.w_nil:
-                   raise Warning('Object found in multiple places in the special objects array')
-        # assign w_objects for objects that are already in classtable
-        for name, so_index in constants.classes_in_special_object_table.items():
-            w_object = self.space.classtable["w_" + name]
-            if self.special_object(so_index).w_object is None:
-                self.special_object(so_index).w_object = w_object
-            else:
-                if self.special_object(0).w_object is not self.space.w_nil:
-                   raise Warning('Object found in multiple places in the special objects array')
-
-    def special_object(self, index):
-        special = self.chunks[self.specialobjectspointer].g_object.pointers
-        return special[index]
-
-    def fillin_w_objects(self):
-        for chunk in self.chunks.itervalues():
-            chunk.g_object.w_object.fillin(self.space, chunk.g_object)
-
-    def synchronize_shadows(self):
-        for chunk in self.chunks.itervalues():
-            casted = chunk.g_object.w_object
-            if isinstance(casted, model.W_PointersObject) and casted.has_shadow():
-                casted.shadow.update()
-
-    def init_compactclassesarray(self):
-        """ from the blue book (CompiledMethod Symbol Array PseudoContext LargePositiveInteger nil MethodDictionary Association Point Rectangle nil TranslatedMethod BlockContext MethodContext nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil ) """
-        special = self.chunks[self.specialobjectspointer]
-        assert special.size > 24 #at least
-        assert special.format == 2
-        # squeak-specific: compact classes array
-        chunk = self.chunks[special.data[COMPACT_CLASSES_ARRAY]]
-        assert len(chunk.data) == 31
-        assert chunk.format == 2
-        self.compactclasses = [self.chunks[pointer] for pointer in chunk.data]
 
     def read_object(self):
         kind = self.stream.peek() & 3 # 2 bits
@@ -330,7 +150,7 @@ class ImageReader(object):
         elif kind == 3: # 11 bits
             chunk, pos = self.read_1wordobjectheader()
         else: # 10 bits
-            raise CorruptImageError("Unused block not allowed in image")
+            raise error.CorruptImageError("Unused block not allowed in image")
         size = chunk.size
         chunk.data = [self.stream.next()
                      for _ in range(size - 1)] #size-1, excluding header
@@ -357,38 +177,89 @@ class ImageReader(object):
         kind, _, format, _, idhash = splitter[2,6,4,5,12](self.stream.next())
         assert kind == 0
         return ImageChunk(self.space, size, format, classid, idhash), self.stream.count - 4
+    
+    def init_compactclassesarray(self):
+        """ from the blue book (CompiledMethod Symbol Array PseudoContext LargePositiveInteger nil MethodDictionary Association Point Rectangle nil TranslatedMethod BlockContext MethodContext nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil ) """
+        special = self.chunks[self.specialobjectspointer]
+        assert special.size > 24 #at least
+        assert special.format == 2
+        # squeak-specific: compact classes array
+        chunk = self.chunks[special.data[COMPACT_CLASSES_ARRAY]]
+        assert len(chunk.data) == 31
+        assert chunk.format == 2
+        self.compactclasses = [self.chunks[pointer] for pointer in chunk.data]
+    
+    def init_g_objects(self):
+        for chunk in self.chunks.itervalues():
+            chunk.as_g_object(self) # initialize g_object
+        self.special_g_objects = self.chunks[self.specialobjectspointer].g_object.pointers
+
+    def assign_prebuilt_constants(self):
+        # Assign classes and objects that in special objects array that are already created.
+        self._assign_prebuilt_constants(constants.objects_in_special_object_table, self.space.objtable)
+        classtable = self.space.classtable
+        if not self.version.is_modern:
+            classtable = classtable.copy()
+            # In non-modern images (pre 4.0), there was no BlockClosure class.
+            del classtable["w_BlockClosure"]
+        self._assign_prebuilt_constants(constants.classes_in_special_object_table, classtable)
+
+    def _assign_prebuilt_constants(self, names_and_indices, prebuilt_objects):
+        for name, so_index in names_and_indices.items():
+            name = "w_" + name
+            if name in prebuilt_objects:
+                w_object = prebuilt_objects[name]
+                g_object = self.special_object(so_index)
+                if g_object.w_object is None:
+                    g_object.w_object = w_object
+                else:
+                    if not g_object.w_object.is_nil(self.space):
+                       raise Warning('Object found in multiple places in the special objects array')
+    
+    def special_object(self, index):
+        return self.special_g_objects[index]
+    
+    def init_w_objects(self):
+        for chunk in self.chunks.itervalues():
+            chunk.g_object.init_w_object()
+        self.special_w_objects = [g.w_object for g in self.special_g_objects]
+
+    def populate_special_objects(self):
+        self.space.populate_special_objects(self.special_w_objects)
+    
+    def fillin_w_objects(self):
+        self.filledin_objects = 0
+        for chunk in self.chunks.itervalues():
+            chunk.g_object.fillin(self.space)
+
+    def log_object_filledin(self):
+        self.filledin_objects = self.filledin_objects + 1
+        self.log_progress(self.filledin_objects, '%')
 
 
 # ____________________________________________________________
 
 class SqueakImage(object):
-    _immutable_fields_ = ["w_asSymbol", "w_simulateCopyBits", "version",
-                          "is_modern", "startup_time"]
+    _immutable_fields_ = ["w_asSymbol", "w_simulateCopyBits", "version", "startup_time"]
 
-    def from_reader(self, space, reader):
-        from spyvm import constants
-        self.special_objects = [g_object.w_object for g_object in
-                                reader.chunks[reader.specialobjectspointer]
-                                .g_object.pointers]
-
-        for name, idx in constants.objects_in_special_object_table.items():
-            space.objtable["w_" + name] = self.special_objects[idx]
-
+    def __init__(self, reader):
+        space = reader.space
+        self.special_objects = reader.special_w_objects
         self.w_asSymbol = self.find_symbol(space, reader, "asSymbol")
         self.w_simulateCopyBits = self.find_symbol(space, reader, "simulateCopyBits")
         self.lastWindowSize = reader.lastWindowSize
         self.version = reader.version
-        self.is_modern = reader.version.magic > 6502
         self.run_spy_hacks(space)
         self.startup_time = time.time()
 
     def run_spy_hacks(self, space):
-        pass
-        # w_display = space.objtable["w_display"]
-        # if w_display is not None and w_display is not space.w_nil:
-        #     if space.unwrap_int(w_display.fetch(space, 3)) < 8:
-        #         # non-native indexed color depth not well supported
-        #         w_display.store(space, 3, space.wrap_int(8))
+        if not space.run_spy_hacks.is_set():
+            return
+        w_display = space.objtable["w_display"]
+        if w_display is not None and not w_display.is_nil(space):
+            if space.unwrap_int(w_display.fetch(space, 3)) < 8:
+                # non-native indexed color depth not well supported
+                w_display.store(space, 3, space.wrap_int(8))
 
     def find_symbol(self, space, reader, symbol):
         w_dnu = self.special(constants.SO_DOES_NOT_UNDERSTAND)
@@ -411,11 +282,6 @@ class SqueakImage(object):
     def special(self, index):
         return self.special_objects[index]
 
-# from the squeak source code:
-# in squeak, the compact classes array can be found at this position
-# in the special objects array
-COMPACT_CLASSES_ARRAY = 28
-
 # ____________________________________________________________
 
 class GenericObject(object):
@@ -428,6 +294,7 @@ class GenericObject(object):
     def __init__(self, space):
         self.space = space
         self.reader = None
+        self.filled_in = False
 
     def isinitialized(self):
         return self.reader is not None
@@ -442,6 +309,7 @@ class GenericObject(object):
             w_int = self.space.wrap_int(value)
             reader.intcache[value] = w_int
         self.w_object = w_int
+        self.filled_in = True
 
     def initialize(self, chunk, reader):
         self.reader = reader
@@ -498,8 +366,11 @@ class GenericObject(object):
         return self.iswords() and self.space.w_Float.is_same_object(self.g_class.w_object)
 
     def ispointers(self):
-        return self.format < 5 #TODO, what about compiled methods?
+        return self.format < 5
 
+    def isweak(self):
+        return self.format == 4
+        
     def iscompiledmethod(self):
         return 12 <= self.format <= 15
 
@@ -523,10 +394,9 @@ class GenericObject(object):
             # the instantiate call circumvents the constructors
             # and makes empty objects
             if self.ispointers():
-                # XXX self.format == 4 is weak
                 self.w_object = objectmodel.instantiate(model.W_PointersObject)
             elif self.format == 5:
-                raise CorruptImageError("Unknown format 5")
+                raise error.CorruptImageError("Unknown format 5")
             elif self.isfloat():
                 self.w_object = objectmodel.instantiate(model.W_Float)
             elif self.is32bitlargepositiveinteger():
@@ -534,7 +404,7 @@ class GenericObject(object):
             elif self.iswords():
                 self.w_object = objectmodel.instantiate(model.W_WordsObject)
             elif self.format == 7:
-                raise CorruptImageError("Unknown format 7, no 64-bit support yet :-)")
+                raise error.CorruptImageError("Unknown format 7, no 64-bit support yet :-)")
             elif self.isbytes():
                 self.w_object = objectmodel.instantiate(model.W_BytesObject)
             elif self.iscompiledmethod():
@@ -545,18 +415,18 @@ class GenericObject(object):
 
     def get_bytes(self):
         bytes = []
-        if self.reader.swap:
+        if self.reader.version.is_big_endian:
             for each in self.chunk.data:
-                bytes.append(chr((each >> 0) & 0xff))
-                bytes.append(chr((each >> 8) & 0xff))
-                bytes.append(chr((each >> 16) & 0xff))
                 bytes.append(chr((each >> 24) & 0xff))
+                bytes.append(chr((each >> 16) & 0xff))
+                bytes.append(chr((each >> 8) & 0xff))
+                bytes.append(chr((each >> 0) & 0xff))
         else:
             for each in self.chunk.data:
-                bytes.append(chr((each >> 24) & 0xff))
-                bytes.append(chr((each >> 16) & 0xff))
-                bytes.append(chr((each >> 8) & 0xff))
                 bytes.append(chr((each >> 0) & 0xff))
+                bytes.append(chr((each >> 8) & 0xff))
+                bytes.append(chr((each >> 16) & 0xff))
+                bytes.append(chr((each >> 24) & 0xff))
         stop = len(bytes) - (self.format & 3)
         assert stop >= 0
         return bytes[:stop] # omit odd bytes
@@ -565,12 +435,21 @@ class GenericObject(object):
         from rpython.rlib.rarithmetic import r_uint
         words = [r_uint(x) for x in self.chunk.data]
         if required_len != -1 and len(words) != required_len:
-            raise CorruptImageError("Expected %d words, got %d" % (required_len, len(words)))
+            raise error.CorruptImageError("Expected %d words, got %d" % (required_len, len(words)))
         return words
 
-    def get_pointers(self):
+    def fillin(self, space):
+        if not self.filled_in:
+            self.filled_in = True
+            self.w_object.fillin(space, self)
+            self.reader.log_object_filledin()
+        
+    def get_g_pointers(self):
         assert self.pointers is not None
-        return [g_object.w_object for g_object in self.pointers]
+        return self.pointers
+    
+    def get_pointers(self):
+        return [g_object.w_object for g_object in self.get_g_pointers()]
 
     def get_class(self):
         w_class = self.g_class.w_object

@@ -1,16 +1,73 @@
 import os
 
-from spyvm import constants, model, shadow, wrapper, version
-from spyvm.error import UnwrappingError, WrappingError, PrimitiveFailedError
+from spyvm import constants, model, wrapper, display, storage
+from spyvm.error import UnwrappingError, WrappingError
 from rpython.rlib import jit, rpath
-from rpython.rlib.objectmodel import instantiate, specialize
+from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin
 from rpython.rlib.rarithmetic import intmask, r_uint, int_between
 
+class ConstantMixin(object):
+    """Mixin for constant values that can be edited, but will be promoted
+    to a constant when jitting."""
+    
+    def __init__(self, initial_value = None):
+        if initial_value is None:
+            initial_value = self.default_value
+        self.value = [initial_value]
+    
+    def set(self, value):
+        self.value[0] = value
+    
+    def get(self):
+        value = jit.promote(self.value[0])
+        return value
+
+class ConstantFlag(object):
+    import_from_mixin(ConstantMixin)
+    default_value = False
+    def is_set(self):
+        return self.get()
+    def activate(self):
+        self.set(True)
+    def deactivate(self):
+        self.set(False)
+
+class ConstantString(object):
+    import_from_mixin(ConstantMixin)
+    default_value = ""
+    def get(self):
+        # Promoting does not work on strings...
+        return self.value[0]
+    
+class ConstantObject(object):
+    import_from_mixin(ConstantMixin)
+    default_value = None
+
+def empty_object():
+    return instantiate(model.W_PointersObject)
+    
 class ObjSpace(object):
     def __init__(self):
+        # This is a hack; see compile_code() in targetimageloadingsmalltalk.py
+        self.suppress_process_switch = ConstantFlag()
+        self.run_spy_hacks = ConstantFlag()
+        self.headless = ConstantFlag()
+        self.omit_printing_raw_bytes = ConstantFlag()
+        self.image_loaded = ConstantFlag()
+        
         self.classtable = {}
-        self._executable_path = [""] # XXX: we cannot set the attribute
-                                  # directly on the frozen objectspace
+        self.objtable = {}
+        self._executable_path = ConstantString()
+        self._image_name = ConstantString()
+        self._display = ConstantObject()
+        
+        # Create the nil object.
+        # Circumvent the constructor because nil is already referenced there.
+        w_nil = empty_object()
+        w_nil.w_class = None
+        self.add_bootstrap_object("w_nil", w_nil)
+        
+        self.strategy_factory = storage.StrategyFactory(self)
         self.make_bootstrap_classes()
         self.make_bootstrap_objects()
 
@@ -26,176 +83,59 @@ class ObjSpace(object):
                     break
         return rpath.rabspath(executable)
 
-    def runtime_setup(self, executable):
+    def runtime_setup(self, executable, image_name):
         fullpath = rpath.rabspath(self.find_executable(executable))
         i = fullpath.rfind(os.path.sep) + 1
         assert i > 0
-        self._executable_path[0] = fullpath[:i]
+        self._executable_path.set(fullpath[:i])
+        self._image_name.set(image_name)
+        self.image_loaded.activate()
 
-    def executable_path(self):
-        return self._executable_path[0]
-
+    def populate_special_objects(self, specials):
+        for name, idx in constants.objects_in_special_object_table.items():
+            name = "w_" + name
+            if not name in self.objtable or not self.objtable[name]:
+                self.objtable[name] = specials[idx]
+        # XXX this is kind of hacky, but I don't know where else to get Metaclass
+        self.classtable["w_Metaclass"] = self.w_SmallInteger.w_class.w_class
+    
+    def add_bootstrap_class(self, name, cls):
+        self.classtable[name] = cls
+        setattr(self, name, cls)
+    
     def make_bootstrap_classes(self):
-        def define_core_cls(name, w_superclass, w_metaclass):
-            assert name.startswith('w_')
-            w_class = bootstrap_class(self, instsize=0,    # XXX
-                                      w_superclass=w_superclass,
-                                      w_metaclass=w_metaclass,
-                                      name=name[2:])
-            self.classtable[name] = w_class
-            return w_class
-
-        #   A complete minimal setup (including Behavior) would look like this
-        #
-        #   class:              superclass:         metaclass:
-        #   ------------------- ------------------- -------------------
-        #   Object              *nil                 Object class
-        #   Behavior            Object              Behavior class
-        #   ClassDescription    Behavior            ClassDescription class
-        #   Class               ClassDescription    Class class
-        #   Metaclass           ClassDescription    Metaclass class
-        #   Object class        *Class              *Metaclass
-        #   Behavior class      Object class        *Metaclass
-        #   ClassDescription cl Behavior class      *Metaclass
-        #   Class class         ClassDescription cl *Metaclass
-        #   Metaclass class     ClassDescription cl *Metaclass
-
-        #    Class Name            Super class name
-        cls_nm_tbl = [
-            ["w_Object",           "w_ProtoObject"], # there is not ProtoObject in mini.image
-            ["w_Behavior",         "w_Object"],
-            ["w_ClassDescription", "w_Behavior"],
-            ["w_Class",            "w_ClassDescription"],
-            ["w_Metaclass",        "w_ClassDescription"],
-            ]
-        define_core_cls("w_ProtoObjectClass", None, None)
-        w_ProtoObjectClass = self.classtable["w_ProtoObjectClass"]
-        define_core_cls("w_ProtoObject", None, w_ProtoObjectClass)
-        for (cls_nm, super_cls_nm) in cls_nm_tbl:
-            meta_nm = cls_nm + "Class"
-            meta_super_nm = super_cls_nm + "Class"
-            w_metacls = define_core_cls(meta_nm, self.classtable[meta_super_nm], None)
-            define_core_cls(cls_nm, self.classtable[super_cls_nm], w_metacls)
-        w_Class = self.classtable["w_Class"]
-        s_Metaclass = self.classtable["w_Metaclass"].as_class_get_penumbra(self)
-        # XXX
-        proto_shadow = w_ProtoObjectClass.shadow
-        proto_shadow.store_w_superclass(w_Class)
-        # at this point, all classes that still lack a w_class are themselves
-        # metaclasses
-        for nm, w_cls_obj in self.classtable.items():
-            if w_cls_obj.s_class is None:
-                w_cls_obj.s_class = s_Metaclass
-
-        def define_cls(cls_nm, supercls_nm, instvarsize=0, format=shadow.POINTERS,
-                       varsized=False):
-            assert cls_nm.startswith("w_")
-            meta_nm = cls_nm + "Class"
-            meta_super_nm = supercls_nm + "Class"
-            w_Metaclass = self.classtable["w_Metaclass"]
-            w_meta_cls = self.classtable[meta_nm] = \
-                         bootstrap_class(self, 0,   # XXX
-                                         self.classtable[meta_super_nm],
-                                         w_Metaclass,
-                                         name=meta_nm[2:])
-            w_cls = self.classtable[cls_nm] = \
-                         bootstrap_class(self, instvarsize,
-                                         self.classtable[supercls_nm],
-                                         w_meta_cls,
-                                         format=format,
-                                         varsized=varsized,
-                                         name=cls_nm[2:])
-
-        define_cls("w_Magnitude", "w_Object")
-        define_cls("w_Character", "w_Magnitude", instvarsize=1)
-        define_cls("w_Number", "w_Magnitude")
-        define_cls("w_Integer", "w_Number")
-        define_cls("w_SmallInteger", "w_Integer")
-        define_cls("w_LargePositiveInteger", "w_Integer", format=shadow.BYTES)
-        define_cls("w_Float", "w_Number", format=shadow.BYTES)
-        define_cls("w_Message", "w_Object")
-        define_cls("w_Collection", "w_Object")
-        define_cls("w_SequenceableCollection", "w_Collection")
-        define_cls("w_ArrayedCollection", "w_SequenceableCollection")
-        define_cls("w_Array", "w_ArrayedCollection", varsized=True)
-        define_cls("w_String", "w_ArrayedCollection", format=shadow.BYTES)
-        define_cls("w_Bitmap", "w_ArrayedCollection", varsized=True, format=shadow.WORDS)
-        define_cls("w_UndefinedObject", "w_Object")
-        define_cls("w_Boolean", "w_Object")
-        define_cls("w_True", "w_Boolean")
-        define_cls("w_False", "w_Boolean")
-        define_cls("w_ByteArray", "w_ArrayedCollection", format=shadow.BYTES)
-        define_cls("w_MethodDict", "w_Object", instvarsize=2, varsized=True)
-        define_cls("w_CompiledMethod", "w_ByteArray", format=shadow.COMPILED_METHOD)
-        define_cls("w_ContextPart", "w_Object")
-        define_cls("w_MethodContext", "w_ContextPart")
-        define_cls("w_Link", "w_Object")
-        define_cls("w_Process", "w_Link")
-        define_cls("w_Point", "w_Object")
-        define_cls("w_LinkedList", "w_SequenceableCollection")
-        define_cls("w_Semaphore", "w_LinkedList")
-        define_cls("w_BlockContext", "w_ContextPart",
-                   instvarsize=constants.BLKCTX_STACK_START)
-        define_cls("w_BlockClosure", "w_Object",
-                   instvarsize=constants.BLKCLSR_SIZE,
-                   varsized=True)
-        # make better accessors for classes that can be found in special object
-        # table
-        for name in constants.classes_in_special_object_table.keys():
-            name = 'w_' + name
-            setattr(self, name, self.classtable.get(name))
-
+        names = [ "w_" + name for name in constants.classes_in_special_object_table.keys() ]
+        for name in names:
+            cls = empty_object()
+            self.add_bootstrap_class(name, cls)
+        
+    def add_bootstrap_object(self, name, obj):
+        self.objtable[name] = obj
+        setattr(self, name, obj)
+    
+    def make_bootstrap_object(self, name):
+        obj = empty_object()
+        self.add_bootstrap_object(name, obj)
+    
     def make_bootstrap_objects(self):
-        def bld_char(i):
-            w_cinst = self.w_Character.as_class_get_shadow(self).new()
-            w_cinst.store(self, constants.CHARACTER_VALUE_INDEX,
-                          model.W_SmallInteger(i))
-            return w_cinst
-        w_charactertable = model.W_PointersObject(self,
-            self.classtable['w_Array'], 256)
-        self.w_charactertable = w_charactertable
-        for i in range(256):
-            self.w_charactertable.atput0(self, i, bld_char(i))
-
-
-        # Very special nil hack: in order to allow W_PointersObject's to
-        # initialize their fields to nil, we have to create it in the model
-        # package, and then patch up its fields here:
-        def patch_nil(w_nil):
-            from spyvm.fieldtypes import nilTyper
-            w_nil.space = self
-            w_nil.fieldtypes = nilTyper
-            w_nil.s_class = self.classtable['w_UndefinedObject'].as_class_get_penumbra(self)
-            return w_nil
-        w_nil = self.w_nil = patch_nil(model.w_nil)
-
-        w_true = self.classtable['w_True'].as_class_get_shadow(self).new()
-        self.w_true = w_true
-        w_false = self.classtable['w_False'].as_class_get_shadow(self).new()
-        self.w_false = w_false
-        self.w_minus_one = model.W_SmallInteger(-1)
-        self.w_zero = model.W_SmallInteger(0)
-        self.w_one = model.W_SmallInteger(1)
-        self.w_two = model.W_SmallInteger(2)
-        w_special_selectors = model.W_PointersObject(self,
-            self.classtable['w_Array'], len(constants.SPECIAL_SELECTORS) * 2)
-        self.w_special_selectors = w_special_selectors
-
-        self.objtable = {}
+        self.make_bootstrap_object("w_charactertable")
+        self.make_bootstrap_object("w_true")
+        self.make_bootstrap_object("w_true")
+        self.make_bootstrap_object("w_false")
+        self.make_bootstrap_object("w_special_selectors")
+        self.add_bootstrap_object("w_minus_one", model.W_SmallInteger(-1))
+        self.add_bootstrap_object("w_zero", model.W_SmallInteger(0))
+        self.add_bootstrap_object("w_one", model.W_SmallInteger(1))
+        self.add_bootstrap_object("w_two", model.W_SmallInteger(2))
+        
+        # Certain special objects are already created. The rest will be
+        # populated when the image is loaded, but prepare empty slots for them.
         for name in constants.objects_in_special_object_table:
             name = "w_" + name
-            try:
-                self.objtable[name] = locals()[name]
-            except KeyError, e:
-                self.objtable[name] = None
+            if not name in self.objtable:
+                self.add_bootstrap_object(name, None)
 
-    @specialize.arg(1)
-    def get_special_selector(self, selector):
-        i0 = constants.find_selectorindex(selector)
-        self.w_special_selectors.as_cached_object_get_shadow(self)
-        return self.w_special_selectors.fetch(self, i0)
-
-    # methods for wrapping and unwrapping stuff
+    # ============= Methods for wrapping and unwrapping stuff =============
 
     def wrap_int(self, val):
         from spyvm import constants
@@ -288,11 +228,6 @@ class ObjSpace(object):
         elif isinstance(w_v, model.W_SmallInteger): return float(w_v.value)
         raise UnwrappingError()
 
-    def unwrap_pointersobject(self, w_v):
-        if not isinstance(w_v, model.W_PointersObject):
-            raise UnwrappingError()
-        return w_v
-
     @jit.look_inside_iff(lambda self, w_array: jit.isconstant(w_array.size()))
     def unwrap_array(self, w_array):
         # Check that our argument has pointers format and the class:
@@ -302,20 +237,36 @@ class ObjSpace(object):
 
         return [w_array.at0(self, i) for i in range(w_array.size())]
 
-    def get_display(self):
-        w_display = self.objtable['w_display']
-        if w_display:
-            w_bitmap = w_display.fetch(self, 0)
-            if isinstance(w_bitmap, model.W_DisplayBitmap):
-                return w_bitmap.display
-        raise PrimitiveFailedError("No display")
-
+    # ============= Access to static information =============
+    
+    @specialize.arg(1)
+    def get_special_selector(self, selector):
+        i0 = constants.find_selectorindex(selector)
+        self.w_special_selectors.as_cached_object_get_shadow(self)
+        return self.w_special_selectors.fetch(self, i0)
+    
+    def executable_path(self):
+        return self._executable_path.get()
+    
+    def image_name(self):
+        return self._image_name.get()
+    
+    def display(self):
+        disp = self._display.get()
+        if disp is None:
+            # Create lazy to allow headless execution.
+            disp = display.SDLDisplay(self.image_name())
+            self._display.set(disp)
+        return disp
+    
+    # ============= Other Methods =============
+    
     def _freeze_(self):
         return True
 
     def newClosure(self, w_outer_ctxt, pc, numArgs, copiedValues):
         assert isinstance(w_outer_ctxt, model.W_PointersObject)
-        pc_with_bytecodeoffset = pc + w_outer_ctxt.as_context_get_shadow(self).s_method().bytecodeoffset + 1
+        pc_with_bytecodeoffset = pc + w_outer_ctxt.as_context_get_shadow(self).w_method().bytecodeoffset() + 1
         BlockClosureShadow = self.w_BlockClosure.as_class_get_shadow(self)
         numCopied = len(copiedValues)
         w_closure = BlockClosureShadow.new(numCopied)
@@ -326,25 +277,3 @@ class ObjSpace(object):
         for i0 in range(numCopied):
             closure.atput0(i0, copiedValues[i0])
         return w_closure
-
-
-def bootstrap_class(space, instsize, w_superclass=None, w_metaclass=None,
-                    name='?', format=shadow.POINTERS, varsized=False):
-    from spyvm import model
-    w_class = model.W_PointersObject(space, w_metaclass, 0)
-                                             # a dummy placeholder for testing
-    # XXX
-    s = instantiate(shadow.ClassShadow)
-    s.space = space
-    s.version = version.Version()
-    s._w_self = w_class
-    s.subclass_s = {}
-    s._s_superclass = None
-    s.store_w_superclass(w_superclass)
-    s.name = name
-    s._instance_size = instsize
-    s.instance_kind = format
-    s._s_methoddict = None
-    s.instance_varsized = varsized or format != shadow.POINTERS
-    w_class.store_shadow(s)
-    return w_class

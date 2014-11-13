@@ -20,12 +20,12 @@ def untrace(interp, s_frame, w_rcvr):
 
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object])
 def trace_proxy(interp, s_frame, w_rcvr):
-    interp.trace_proxy = True
+    interp.trace_proxy.activate()
     return w_rcvr
 
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object])
 def untrace_proxy(interp, s_frame, w_rcvr):
-    interp.trace_proxy = False
+    interp.trace_proxy.deactivate()
     return w_rcvr
 
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object])

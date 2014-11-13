@@ -1,36 +1,47 @@
-# some exception classes for the Smalltalk VM
+
+# Some exception classes for the Smalltalk VM
 
 class SmalltalkException(Exception):
     """Base class for Smalltalk exception hierarchy"""
+    exception_type = "SmalltalkException"
+    _attrs_ = ["msg"]
+    def __init__(self, msg="<no message>"):
+        self.msg = msg
 
 class PrimitiveFailedError(SmalltalkException):
-    pass
+    exception_type = "PrimitiveFailedError"
 
 class PrimitiveNotYetWrittenError(PrimitiveFailedError):
-    pass
+    exception_type = "PrimitiveNotYetWrittenError"
 
 class UnwrappingError(PrimitiveFailedError):
-    pass
+    exception_type = "UnwrappingError"
 
 class WrappingError(PrimitiveFailedError):
-    pass
+    exception_type = "WrappingError"
 
 class WrapperException(SmalltalkException):
-    def __init__(self, msg):
-        self.msg = msg
+    exception_type = "WrapperException"
 
 class FatalError(SmalltalkException):
-    def __init__(self, msg):
-        self.msg = msg
+    exception_type = "FatalError"
 
 class BlockCannotReturnError(SmalltalkException):
-	pass
+	exception_type = "BlockCannotReturnError"
+
+class MethodNotFound(SmalltalkException):
+    exception_type = "MethodNotFound"
+
+class MissingBytecode(SmalltalkException):
+    """Bytecode not implemented yet."""
+    exception_type = "MissingBytecode"
+    def __init__(self, bytecodename):
+        SmalltalkException.__init__(self, "Missing bytecode encountered: %s" % bytecodename)
 
 class Exit(Exception):
     _attrs_ = ["msg"]
     def __init__(self, msg):
         self.msg = msg
 
-class SenderChainManipulation(Exception):
-    def __init__(self, manipulated_context):
-        self.s_context = manipulated_context
+class CorruptImageError(Exit):
+    pass

@@ -1,11 +1,15 @@
-import py
-from spyvm import squeakimage
-from spyvm.squeakimage import chrs2int, chrs2long, swapped_chrs2long
-from spyvm import objspace
-
+import py, StringIO, sys
 from struct import pack
+from spyvm import squeakimage, error
+from spyvm.util.stream import chrs2int, chrs2long, swapped_chrs2long
+from .util import create_space, copy_to_module, cleanup_module
 
-space = objspace.ObjSpace()
+def setup_module():
+    space = create_space()
+    copy_to_module(locals(), __name__)
+
+def teardown_module():
+    cleanup_module(__name__)
 
 # ----- helpers ----------------------------------------------
 
@@ -20,14 +24,12 @@ def joinbits(values, lengths):
     return result   
 
 def imagestream_mock(string):
-    import StringIO
     f = StringIO.StringIO(string)
-    return squeakimage.Stream(f)
+    return squeakimage.Stream(inputfile=f)
 
 def imagereader_mock(string):
     stream = imagestream_mock(string)
-    return squeakimage.reader_for_image(space, stream)
-
+    return squeakimage.ImageReader(space, stream)
 
 SIMPLE_VERSION_HEADER = pack(">i", 6502)
 SIMPLE_VERSION_HEADER_LE = pack("<i", 6502)
@@ -52,9 +54,9 @@ def test_stream():
     assert n == 6502 
     py.test.raises(IndexError, lambda: stream.next())
     
-def test_stream_swap():
+def test_stream_little_endian():
     stream = imagestream_mock('\x66\x19\x00\x00')
-    stream.swap = True
+    stream.big_endian = False
     first = stream.next()
     assert first == 6502 
     py.test.raises(IndexError, lambda: stream.next())
@@ -103,7 +105,7 @@ def test_ints2str():
 def test_freeblock():
     r = imagereader_mock(SIMPLE_VERSION_HEADER + "\x00\x00\x00\x02")
     r.read_version()
-    py.test.raises(squeakimage.CorruptImageError, lambda: r.read_object())
+    py.test.raises(error.CorruptImageError, lambda: r.read_object())
 
 def test_1wordobjectheader():
     s = ints2str(joinbits([3, 1, 2, 3, 4], [2,6,4,5,12]))
@@ -183,43 +185,46 @@ def test_simple_image():
     r.read_header()
     assert r.stream.pos == len(image_2)
 
-def test_simple_image64():
-    import sys
-    if not sys.maxint == 2 ** 63 - 1:
-      py.test.skip("on 32 bit platforms, we can't need to check for 64 bit images")
-    word_size = 8
-    header_size = 16 * word_size
+def test_simple_image64(monkeypatch):
+    from spyvm.util import system
+    monkeypatch.setattr(system, "IS_64BIT", True)
+    
+    try:
+        word_size = 8
+        header_size = 16 * word_size
 
-    image_1 = (pack(">Q", 68002)         # 1 version
-               + pack(">q", header_size) # 2 64 byte header
-               + pack(">q", 0)           # 3 no body
-               + pack(">q", 0)           # 4 old base addresss unset
-               + pack(">q", 0)           # 5 no spl objs array
-               + ("\x12\x34\x56\x78" * 2)# 6 last hash
-               + pack(">H", 480)         # 7 window 480 height
-               +     pack(">H", 640)     #   window 640 width
-               +     pack(">i", 0)       #   pad
-               + pack(">q", 0)           # 8 not fullscreen
-               + pack(">q", 0)           # 9 no extra memory
-               + ("\x00" * (header_size - (9 * word_size))))
-    r = imagereader_mock(image_1)
-    # does not raise
-    r.read_header()
-    assert r.stream.pos == len(image_1)
+        image_1 = (pack(">Q", 68002)         # 1 version
+                   + pack(">q", header_size) # 2 64 byte header
+                   + pack(">q", 0)           # 3 no body
+                   + pack(">q", 0)           # 4 old base addresss unset
+                   + pack(">q", 0)           # 5 no spl objs array
+                   + ("\x12\x34\x56\x78" * 2)# 6 last hash
+                   + pack(">H", 480)         # 7 window 480 height
+                   +     pack(">H", 640)     #   window 640 width
+                   +     pack(">i", 0)       #   pad
+                   + pack(">q", 0)           # 8 not fullscreen
+                   + pack(">q", 0)           # 9 no extra memory
+                   + ("\x00" * (header_size - (9 * word_size))))
+        r = imagereader_mock(image_1)
+        # does not raise
+        r.read_header()
+        assert r.stream.pos == len(image_1)
 
-    image_2 = (pack("<Q", 68002)         # 1 version
-               + pack("<q", header_size) # 2 64 byte header
-               + pack("<q", 0)           # 3 no body
-               + pack("<q", 0)           # 4 old base addresss unset
-               + pack("<q", 0)           # 5 no spl objs array
-               + ("\x12\x34\x56\x78" * 2)# 6 last hash
-               + pack("<H", 480)         # 7 window 480 height
-               +     pack("<H", 640)     #   window 640 width
-               +     pack(">i", 0)       #   pad
-               + pack(">q", 0)           # 8 not fullscreen
-               + pack("<q", 0)           # 9 no extra memory
-               + ("\x00" * (header_size - (9 * word_size))))
-    r = imagereader_mock(image_2)
-    # does not raise
-    r.read_header()
-    assert r.stream.pos == len(image_2)
+        image_2 = (pack("<Q", 68002)         # 1 version
+                   + pack("<q", header_size) # 2 64 byte header
+                   + pack("<q", 0)           # 3 no body
+                   + pack("<q", 0)           # 4 old base addresss unset
+                   + pack("<q", 0)           # 5 no spl objs array
+                   + ("\x12\x34\x56\x78" * 2)# 6 last hash
+                   + pack("<H", 480)         # 7 window 480 height
+                   +     pack("<H", 640)     #   window 640 width
+                   +     pack(">i", 0)       #   pad
+                   + pack(">q", 0)           # 8 not fullscreen
+                   + pack("<q", 0)           # 9 no extra memory
+                   + ("\x00" * (header_size - (9 * word_size))))
+        r = imagereader_mock(image_2)
+        # does not raise
+        r.read_header()
+        assert r.stream.pos == len(image_2)
+    finally:
+        monkeypatch.undo()

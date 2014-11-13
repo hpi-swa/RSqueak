@@ -1,18 +1,24 @@
-import py
-import sys
-from spyvm import objspace
+import py, sys
+from spyvm import objspace, model
+from rpython.rlib.rarithmetic import r_uint
+from .util import create_space, copy_to_module, cleanup_module
 
-space = objspace.ObjSpace()
+def setup_module():
+    space = create_space(bootstrap = True)
+    copy_to_module(locals(), __name__)
+
+def teardown_module():
+    cleanup_module(__name__)
 
 def ismetaclass(w_cls):
     # Heuristic to detect if this is a metaclass. Don't use apart
     # from in this test file, because classtable['w_Metaclass'] is
     # bogus after loading an image.
-    return w_cls.s_class is space.classtable['w_Metaclass'].shadow
+    return w_cls.w_class is space.classtable['w_Metaclass']
 
 def test_every_class_is_an_instance_of_a_metaclass():
     for (nm, w_cls) in space.classtable.items():
-        assert ismetaclass(w_cls) or ismetaclass(w_cls.s_class._w_self)
+        assert ismetaclass(w_cls) or ismetaclass(w_cls.w_class)
 
 def test_every_metaclass_inherits_from_class_and_behavior():
     s_Class = space.classtable['w_Class'].as_class_get_shadow(space)
@@ -28,7 +34,6 @@ def test_metaclass_of_metaclass_is_an_instance_of_metaclass():
     assert w_Metaclass.getclass(space).getclass(space) is w_Metaclass
 
 def test_ruint():
-    from spyvm import model
     """
     | a b |
     a := (9223372036854775808).
@@ -40,7 +45,6 @@ def test_ruint():
     => 27670116110564327424
     """
 
-    from rpython.rlib.rarithmetic import r_uint
     for num in [0, 1, 41, 100, 2**31, sys.maxint + 1, -1]:
         num = r_uint(num)
         assert space.unwrap_uint(space.wrap_uint(num)) == num

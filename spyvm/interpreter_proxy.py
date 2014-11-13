@@ -17,7 +17,7 @@ from rpython.rtyper.lltypesystem.lltype import FuncType, Ptr
 from rpython.rtyper.lltypesystem import lltype, rffi
 from rpython.rlib.unroll import unrolling_iterable
 
-from spyvm import error, model
+from spyvm import error, model, model_display, objspace, wrapper
 
 sqInt = rffi.INT
 sqLong = rffi.LONG
@@ -45,13 +45,12 @@ def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
         MAJOR = major
     def decorator(func):
         len_unwrap_spec = len(unwrap_spec)
-        assert (len_unwrap_spec == len(inspect.getargspec(func)[0]) + 1,
-                "wrong number of arguments")
+        assert len_unwrap_spec == len(inspect.getargspec(func)[0]), "wrong number of arguments"
         unrolling_unwrap_spec = unrolling_iterable(enumerate(unwrap_spec))
         def wrapped(*c_arguments):
             assert len_unwrap_spec == len(c_arguments)
             args = ()
-            if IProxy.trace_proxy:
+            if IProxy.trace_proxy.is_set():
                 print 'Called InterpreterProxy >> %s' % func.func_name,
             assert IProxy.s_frame is not None and IProxy.space is not None and IProxy.interp is not None
             try:
@@ -64,7 +63,7 @@ def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
                     else:
                         args += (c_arg, )
                 result = func(*args)
-                if IProxy.trace_proxy:
+                if IProxy.trace_proxy.is_set():
                     print '\t-> %s' % result
                 if result_type is oop:
                     assert isinstance(result, model.W_Object)
@@ -81,7 +80,7 @@ def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
                 else:
                     return result
             except error.PrimitiveFailedError:
-                if IProxy.trace_proxy:
+                if IProxy.trace_proxy.is_set():
                     print '\t-> failed'
                 IProxy.failed()
                 from rpython.rlib.objectmodel import we_are_translated
@@ -192,13 +191,7 @@ def arrayValueOf(w_array):
 
 @expose_on_virtual_machine_proxy([oop], int)
 def byteSizeOf(w_object):
-    s_class = w_object.shadow_of_my_class(IProxy.space)
-    size = s_class.instsize()
-    if s_class.isvariable():
-        size += w_object.primsize(IProxy.space)
-    if not isinstance(w_object, model.W_BytesObject):
-        size *= 4
-    return size
+    return w_object.bytesize()
 
 @expose_on_virtual_machine_proxy([int, oop], list)
 def fetchArrayofObject(fieldIndex, w_object):
@@ -249,7 +242,7 @@ def firstIndexableField(w_object):
         return w_object.convert_to_c_layout()
     elif isinstance(w_object, model.W_BytesObject):
         return rffi.cast(sqIntArrayPtr, w_object.convert_to_c_layout())
-    elif isinstance(w_object, model.W_DisplayBitmap):
+    elif isinstance(w_object, model_display.W_DisplayBitmap):
         return rffi.cast(sqIntArrayPtr, w_object.convert_to_c_layout())
     else:
         raise ProxyFunctionFailed
@@ -274,12 +267,12 @@ def methodArgumentCount():
 
 @expose_on_virtual_machine_proxy([], int)
 def methodPrimitiveIndex():
-    return IProxy.s_method.primitive()
+    return IProxy.w_method.primitive()
 
 @expose_on_virtual_machine_proxy([oop], int)
 def primitiveIndexOf(w_method):
     if isinstance(w_method, model.W_CompiledMethod):
-        return w_method.as_compiledmethod_get_shadow().primitive()
+        return w_method.primitive()
     else:
         raise ProxyFunctionFailed
 
@@ -308,7 +301,7 @@ def stObjectatput(w_object, n0, w_value):
 
 @expose_on_virtual_machine_proxy([oop], int)
 def stSizeOf(w_object):
-    return w_object.primsize(IProxy.space)
+    return w_object.varsize()
 
 @expose_on_virtual_machine_proxy([int, oop, int], oop)
 def storeIntegerofObjectwithValue(n0, w_object, a):
@@ -371,7 +364,7 @@ def isPointers(w_object):
 
 @expose_on_virtual_machine_proxy([oop], bool)
 def isWeak(w_object):
-    return isinstance(w_object, model.W_WeakPointersObject)
+    return isinstance(w_object, model.W_PointersObject) and w_object.is_weak()
 
 @expose_on_virtual_machine_proxy([oop], bool)
 def isWords(w_object):
@@ -386,9 +379,9 @@ def isWordsOrBytes(w_object):
 @expose_on_virtual_machine_proxy([oop], bool)
 def booleanValueOf(w_object):
     space = IProxy.space
-    if w_object is space.w_true:
+    if space.w_true.is_same_object(w_object):
         return True
-    if w_object is space.w_false:
+    if space.w_false.is_same_object(w_object):
         return False
     raise ProxyFunctionFailed
 
@@ -536,7 +529,7 @@ def failed():
 @expose_on_virtual_machine_proxy([], int)
 def fullDisplayUpdate():
     w_display = IProxy.space.objtable['w_display']
-    if isinstance(w_display, model.W_DisplayBitmap):
+    if isinstance(w_display, model_display.W_DisplayBitmap):
         w_display.update_from_buffer()
         w_display.flush_to_screen()
         return 0
@@ -566,16 +559,8 @@ def showDisplayBitsLeftTopRightBottom(w_dest_form, l, t, r, b):
     # display memory
     space = IProxy.space
     if w_dest_form.is_same_object(space.objtable['w_display']):
-        w_bitmap = w_dest_form.fetch(space, 0)
-        if not isinstance(w_bitmap, model.W_DisplayBitmap):
-            assert isinstance(w_bitmap, model.W_WordsObject)
-            w_display_bitmap = w_bitmap.as_display_bitmap(
-                w_dest_form,
-                IProxy.interp,
-                sdldisplay=None
-            )
-        else:
-            w_display_bitmap = w_bitmap
+        form = wrapper.FormWrapper(space, w_dest_form)
+        w_display_bitmap = form.get_display_bitmap()
         w_display_bitmap.update_from_buffer()
         w_display_bitmap.flush_to_screen()
     return 0
@@ -648,7 +633,7 @@ def includesBehaviorThatOf(w_class, w_superclass):
 
 @expose_on_virtual_machine_proxy([], oop, minor=2)
 def primitiveMethod():
-    return IProxy.s_method.w_self()
+    return IProxy.w_method
 
 #     /* InterpreterProxy methodsFor: 'FFI support' */
 
@@ -727,14 +712,13 @@ def signed64BitValueOf(w_number):
 # #if VM_PROXY_MINOR > 5
 @expose_on_virtual_machine_proxy([oop], bool, minor=5)
 def isArray(w_object):
+    # TODO - are ByteObjects and WordObjects not considered Arrays?
+    # What are the exact semantics of this? Should only the class Array return true?
     if not isinstance(w_object, model.W_PointersObject):
         return False
     space = IProxy.space
-    s_class = w_object.shadow_of_my_class(space)
-    if s_class.instsize() == 0 and s_class.isvariable():
-        return True
-    else:
-        return False
+    s_class = w_object.class_shadow(space)
+    return s_class.instsize() == 0 and s_class.isvariable()
 
 @expose_on_virtual_machine_proxy([], int, minor=5)
 def forceInterruptCheck():
@@ -1007,24 +991,25 @@ class _InterpreterProxy(object):
         self.object_map = {}
         self.loaded_modules = {}
         self.remappable_objects = []
+        self.trace_proxy = objspace.ConstantFlag()
         self.reset()
 
     def reset(self):
         self.interp = None
         self.s_frame = None
         self.argcount = 0
-        self.s_method = None
+        self.w_method = None
         self.fail_reason = 0
-        self.trace_proxy = False
+        self.trace_proxy.deactivate()
 
-    def call(self, signature, interp, s_frame, argcount, s_method):
-        self.initialize_from_call(signature, interp, s_frame, argcount, s_method)
+    def call(self, signature, interp, s_frame, argcount, w_method):
+        self.initialize_from_call(signature, interp, s_frame, argcount, w_method)
         try:
             # eventual errors are caught by the calling function (EXTERNAL_CALL)
             external_function = rffi.cast(func_bool_void,
                             self.loadFunctionFrom(signature[0], signature[1]))
-            if interp.trace:
-                print "%sCalling %s >> %s" % (interp.padding(), signature[0], signature[1])
+            if interp.is_tracing():
+                interp.print_padded("Calling %s >> %s" % (signature[0], signature[1]))
             external_function()
 
             if not self.fail_reason == 0:
@@ -1051,13 +1036,13 @@ class _InterpreterProxy(object):
                 return _external_function
 
 
-    def initialize_from_call(self, signature, interp, s_frame, argcount, s_method):
+    def initialize_from_call(self, signature, interp, s_frame, argcount, w_method):
         self.interp = interp
         self.s_frame = s_frame
         self.argcount = argcount
-        self.s_method = s_method
+        self.w_method = w_method
         self.space = interp.space
-        self.trace_proxy = interp.trace_proxy
+        self.trace_proxy.set(interp.trace_proxy.is_set())
         # ensure that space.w_nil gets the first possible oop
         self.object_to_oop(self.space.w_nil)
 
@@ -1156,7 +1141,7 @@ IProxy = _InterpreterProxy()
 # # Class extensions for Array conversion
 # class __extend__(model.W_PointersObject):
 #     def as_c_array(self, proxy):
-#         return map(lambda x: proxy.object_to_oop(x), self.vars[self.instsize(space):])
+#         return map(lambda x: proxy.object_to_oop(x), self.vars[self.instsize():])
 
 # class __extend__(model.W_BytesObject):
 #     def as_c_array(self, proxy):

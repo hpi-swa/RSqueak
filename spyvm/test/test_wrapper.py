@@ -1,18 +1,20 @@
 import py
 from spyvm import wrapper, model, interpreter, objspace
 from spyvm.error import WrapperException, FatalError
+from .util import create_space, copy_to_module, cleanup_module
 
-from spyvm.test.test_interpreter import new_frame as new_frame_tuple
+def setup_module():
+    space = create_space(bootstrap = True)
+    new_frame = lambda: space.make_frame("")[1]
+    copy_to_module(locals(), __name__)
 
-space = objspace.ObjSpace()
-
-def new_frame():
-    return new_frame_tuple("")[0]
+def teardown_module():
+    cleanup_module(__name__)
 
 def test_simpleread():
     w_o = model.W_PointersObject(space, None, 2)
     w = wrapper.Wrapper(space, w_o)
-    w_o._vars[0] = "hello"
+    w_o.store(space, 0, "hello")
     assert w.read(0) == "hello"
     w.write(1, "b")
     assert w.read(1) == "b"
@@ -22,7 +24,7 @@ def test_simpleread():
 def test_accessor_generators():
     w_o = model.W_PointersObject(space, None, 1)
     w = wrapper.LinkWrapper(space, w_o)
-    w_o._vars[0] = "hello"
+    w_o.store(space, 0, "hello")
     assert w.next_link() == "hello"
     w.store_next_link("boe")
     assert w.next_link() == "boe"
@@ -67,10 +69,16 @@ def test_linked_list():
     linkedlist.remove(w_last)
     assert linkedlist.last_link() is w_first
 
-def new_process(w_next=space.w_nil,
-                w_my_list=space.w_nil,
-                w_suspended_context=space.w_nil,
+def new_process(w_next=None,
+                w_my_list=None,
+                w_suspended_context=None,
                 priority=0):
+    if w_next is None:
+        w_next = space.w_nil
+    if w_my_list is None:
+        w_my_list = space.w_nil
+    if w_suspended_context is None:
+        w_suspended_context = space.w_nil
     w_priority = space.wrap_int(priority)
     w_process = model.W_PointersObject(space, None, 4)
     process = wrapper.ProcessWrapper(space, w_process)
@@ -86,7 +94,7 @@ def new_processlist(processes_w=[]):
     w_last = space.w_nil
     for w_process in processes_w[::-1]:
         w_first = newprocess(w_first, w_processlist)._w_self
-        if w_last is space.w_nil:
+        if w_last.is_nil(space):
             w_last = w_first
     pl = wrapper.ProcessListWrapper(space, w_processlist)
     pl.store_first_link(w_first)
@@ -106,7 +114,9 @@ def new_prioritylist(prioritydict=None):
 
     return prioritylist
 
-def new_scheduler(w_process=space.w_nil, prioritydict=None):
+def new_scheduler(w_process=None, prioritydict=None):
+    if w_process is None:
+        w_process = space.w_nil
     priority_list = new_prioritylist(prioritydict)
     w_scheduler = model.W_PointersObject(space, None, 2)
     scheduler = wrapper.SchedulerWrapper(space, w_scheduler)
@@ -139,11 +149,11 @@ class TestScheduler(object):
 
     def test_suspend_asleep(self):
         process, old_process = self.make_processes(4, 2, space.w_false)
-        w_frame = process.suspend(space.w_true)
+        process.suspend(space.w_true)
         process_list = wrapper.scheduler(space).get_process_list(process.priority())
         assert process_list.first_link() is process_list.last_link()
-        assert process_list.first_link() is space.w_nil
-        assert process.my_list() is space.w_nil
+        assert process_list.first_link().is_nil(space)
+        assert process.my_list().is_nil(space)
 
     def test_suspend_active(self):
         suspended_context = new_frame()
@@ -153,9 +163,9 @@ class TestScheduler(object):
             old_process.suspend(current_context)
         process_list = wrapper.scheduler(space).get_process_list(old_process.priority())
         assert process_list.first_link() is process_list.last_link()
-        assert process_list.first_link() is space.w_nil
-        assert old_process.my_list() is space.w_nil
-        assert old_process.suspended_context() is current_context
+        assert process_list.first_link().is_nil(space)
+        assert old_process.my_list().is_nil(space)
+        assert old_process.suspended_context() is current_context.w_self()
         assert wrapper.scheduler(space).active_process() is process._w_self
 
     def new_process_consistency(self, process, old_process, w_active_context):
@@ -168,15 +178,16 @@ class TestScheduler(object):
         assert priority_list.first_link() is process._w_self
 
     def old_process_consistency(self, old_process, old_process_context):
-        assert old_process.suspended_context() is old_process_context
+        assert old_process.suspended_context() is old_process_context.w_self()
         priority_list = wrapper.scheduler(space).get_process_list(old_process.priority())
         assert priority_list.first_link() is old_process._w_self
 
     def make_processes(self, sleepingpriority, runningpriority,
                              sleepingcontext):
+        if not isinstance(sleepingcontext, model.W_Object):
+            sleepingcontext = sleepingcontext.w_self()
         scheduler = wrapper.scheduler(space)
-        sleeping = new_process(priority=sleepingpriority,
-                               w_suspended_context=sleepingcontext)
+        sleeping = new_process(priority=sleepingpriority, w_suspended_context=sleepingcontext)
         sleeping.put_to_sleep()
         running = new_process(priority=runningpriority)
         scheduler.store_active_process(running._w_self)

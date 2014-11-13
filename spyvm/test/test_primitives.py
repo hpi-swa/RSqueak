@@ -1,63 +1,66 @@
-import py
-import os
-import math
+import py, os, math, time
+from spyvm import model, model_display, storage_contexts, constants, primitives, wrapper, display
 from spyvm.primitives import prim_table, PrimitiveFailedError
-from spyvm import model, shadow, interpreter
-from spyvm import constants, primitives, objspace, wrapper, display
 from spyvm.plugins import bitblt
+from rpython.rlib.rfloat import isinf, isnan
+from rpython.rlib.rarithmetic import intmask
+from rpython.rtyper.lltypesystem import lltype, rffi
+from .util import create_space, copy_to_module, cleanup_module, TestInterpreter, very_slow_test
 
-from rpython.rlib.rfloat import INFINITY, NAN, isinf, isnan
+def setup_module():
+    space = create_space(bootstrap = True)
+    wrap = space.w
+    bootstrap_class = space.bootstrap_class
+    new_frame = space.make_frame
+    copy_to_module(locals(), __name__)
 
-mockclass = objspace.bootstrap_class
-
-space = objspace.ObjSpace()
+def teardown_module():
+    cleanup_module(__name__)
 
 class MockFrame(model.W_PointersObject):
-    def __init__(self, stack):
-        self._vars = [None] * 6 + stack + [space.w_nil] * 6
-        s_self = self.as_blockcontext_get_shadow()
+    def __init__(self, space, stack):
+        size = 6 + len(stack) + 6
+        self.initialize_storage(space, size)
+        self.store_all(space, [None] * 6 + stack + [space.w_nil] * 6)
+        s_self = self.as_blockcontext_get_shadow(space)
         s_self.init_stack_and_temps()
         s_self.reset_stack()
         s_self.push_all(stack)
         s_self.store_expected_argument_count(0)
-        self.s_class = space.w_MethodContext.as_class_get_shadow(space)
+        self.w_class = space.w_MethodContext
 
-    def as_blockcontext_get_shadow(self):
-        self.shadow = shadow.BlockContextShadow(space, self)
+    def as_blockcontext_get_shadow(self, space):
+        if not isinstance(self.shadow, storage_contexts.BlockContextShadow):
+            self.shadow = storage_contexts.BlockContextShadow(space, self, self.size())
         return self.shadow
-
-def wrap(x):
-    if isinstance(x, int): return space.wrap_int(x)
-    if isinstance(x, float): return space.wrap_float(x)
-    if isinstance(x, model.W_Object): return x
-    if isinstance(x, str) and len(x) == 1: return space.wrap_char(x)
-    if isinstance(x, str): return space.wrap_string(x)
-    if isinstance(x, list): return space.wrap_list(x)
-    raise NotImplementedError
 
 IMAGENAME = "anImage.image"
 
-def mock(stack, context = None):
-    mapped_stack = [wrap(x) for x in stack]
+def mock(space, stack, context = None):
+    mapped_stack = [space.w(x) for x in stack]
     if context is None:
-        frame = MockFrame(mapped_stack)
+        frame = MockFrame(space, mapped_stack)
     else:
         frame = context
         for i in range(len(stack)):
             frame.as_context_get_shadow(space).push(stack[i])
-    interp = interpreter.Interpreter(space, image_name=IMAGENAME)
-    return (interp, frame, len(stack))
+    interp = TestInterpreter(space)
+    interp.space._image_name.set(IMAGENAME)
+    return interp, frame, len(stack)
 
-def prim(code, stack, context = None):
-    interp, w_frame, argument_count = mock(stack, context)
+def _prim(space, code, stack, context = None):
+    interp, w_frame, argument_count = mock(space, stack, context)
     prim_table[code](interp, w_frame.as_context_get_shadow(space), argument_count-1)
     res = w_frame.as_context_get_shadow(space).pop()
     s_frame = w_frame.as_context_get_shadow(space)
     assert not s_frame.stackdepth() - s_frame.tempsize() # check args are consumed
     return res
 
+def prim(code, stack, context = None):
+    return _prim(space, code, stack, context)
+    
 def prim_fails(code, stack):
-    interp, w_frame, argument_count = mock(stack)
+    interp, w_frame, argument_count = mock(space, stack)
     orig_stack = list(w_frame.as_context_get_shadow(space).stack())
     with py.test.raises(PrimitiveFailedError):
         prim_table[code](interp, w_frame.as_context_get_shadow(space), argument_count - 1)
@@ -176,7 +179,6 @@ def test_small_int_bit_shift_negative():
     assert prim(primitives.BIT_SHIFT, [-4, 27]).value == -536870912
 
 def test_small_int_bit_shift_fail():
-    from rpython.rlib.rarithmetic import intmask
     prim_fails(primitives.BIT_SHIFT, [4, 32])
     prim_fails(primitives.BIT_SHIFT, [4, 31])
     w_result = prim(primitives.BIT_SHIFT, [4, 29])
@@ -216,7 +218,7 @@ def test_float_times_two_power():
     assert prim(primitives.FLOAT_TIMES_TWO_POWER, [213.0, 1020]).value == float('inf')
 
 def test_at():
-    w_obj = mockclass(space, 0, varsized=True).as_class_get_shadow(space).new(1)
+    w_obj = bootstrap_class(0, varsized=True).as_class_get_shadow(space).new(1)
     foo = wrap("foo")
     w_obj.store(space, 0, foo)
     assert prim(primitives.AT, [w_obj, 1]) is foo
@@ -227,11 +229,11 @@ def test_at():
     assert prim(primitives.AT, [w_obj, 1]) == foo
 
 def test_invalid_at():
-    w_obj = mockclass(space, 0).as_class_get_shadow(space).new()
+    w_obj = bootstrap_class(0).as_class_get_shadow(space).new()
     prim_fails(primitives.AT, [w_obj, 1])
 
 def test_at_put():
-    w_obj = mockclass(space, 0, varsized=1).as_class_get_shadow(space).new(1)
+    w_obj = bootstrap_class(0, varsized=1).as_class_get_shadow(space).new(1)
     assert prim(primitives.AT_PUT, [w_obj, 1, 22]).value == 22
     assert prim(primitives.AT, [w_obj, 1]).value == 22
 
@@ -244,19 +246,19 @@ def test_at_and_at_put_bytes():
     assert prim(primitives.AT, [w_str, 3]).value == ord('c')
 
 def test_invalid_at_put():
-    w_obj = mockclass(space, 0).as_class_get_shadow(space).new()
+    w_obj = bootstrap_class(0).as_class_get_shadow(space).new()
     prim_fails(primitives.AT_PUT, [w_obj, 1, 22])
 
 def test_size():
-    w_obj = mockclass(space, 0, varsized=True).as_class_get_shadow(space).new(0)
+    w_obj = bootstrap_class(0, varsized=True).as_class_get_shadow(space).new(0)
     assert prim(primitives.SIZE, [w_obj]).value == 0
-    w_obj = mockclass(space, 3, varsized=True).as_class_get_shadow(space).new(5)
+    w_obj = bootstrap_class(3, varsized=True).as_class_get_shadow(space).new(5)
     assert prim(primitives.SIZE, [w_obj]).value == 5
 
 def test_size_of_compiled_method():
     literalsize = 3
     bytecount = 3
-    w_cm = model.W_CompiledMethod(bytecount)
+    w_cm = model.W_CompiledMethod(space, bytecount)
     w_cm.literalsize = literalsize
     assert prim(primitives.SIZE, [w_cm]).value == (literalsize+1)*constants.BYTES_PER_WORD + bytecount
 
@@ -274,7 +276,7 @@ def test_invalid_object_at():
     prim_fails(primitives.OBJECT_AT, ["q", constants.CHARACTER_VALUE_INDEX+2])
 
 def test_invalid_object_at_put():
-    w_obj = mockclass(space, 1).as_class_get_shadow(space).new()
+    w_obj = bootstrap_class(1).as_class_get_shadow(space).new()
     prim_fails(primitives.OBJECT_AT_PUT, [w_obj, 2, 42])
 
 def test_string_at_put():
@@ -324,7 +326,7 @@ def test_inst_var_at_put():
     w_q = space.w_Character.as_class_get_shadow(space).new()
     vidx = constants.CHARACTER_VALUE_INDEX+1
     ordq = ord("q")
-    assert prim(primitives.INST_VAR_AT, [w_q, vidx]) == space.w_nil
+    assert prim(primitives.INST_VAR_AT, [w_q, vidx]).is_nil(space)
     assert prim(primitives.INST_VAR_AT_PUT, [w_q, vidx, ordq]).value == ordq
     assert prim(primitives.INST_VAR_AT, [w_q, vidx]).value == ordq
 
@@ -339,7 +341,7 @@ def test_class():
 
 def test_as_oop():
     # I checked potato, and that returns the hash for as_oop
-    w_obj = mockclass(space, 0).as_class_get_shadow(space).new()
+    w_obj = bootstrap_class(0).as_class_get_shadow(space).new()
     w_obj.hash = 22
     assert prim(primitives.AS_OOP, [w_obj]).value == 22
 
@@ -357,7 +359,7 @@ def test_const_primitives():
         (primitives.PUSH_TWO, space.w_two),
         ]:
         assert prim(code, [space.w_nil]).is_same_object(const)
-    assert prim(primitives.PUSH_SELF, [space.w_nil]).is_same_object(space.w_nil)
+    assert prim(primitives.PUSH_SELF, [space.w_nil]).is_nil(space)
     assert prim(primitives.PUSH_SELF, ["a"]) is wrap("a")
 
 def test_boolean():
@@ -426,14 +428,12 @@ def test_times_two_power():
     assert equals_ttp(1.5,-1,0.75)
 
 def test_primitive_milliseconds_clock():
-    import time
     start = prim(primitives.MILLISECOND_CLOCK, [0]).value
     time.sleep(0.3)
     stop = prim(primitives.MILLISECOND_CLOCK, [0]).value
     assert start + 250 <= stop
 
 def test_signal_at_milliseconds():
-    import time
     future = prim(primitives.MILLISECOND_CLOCK, [0]).value + 400
     sema = space.w_Semaphore.as_class_get_shadow(space).new()
     prim(primitives.SIGNAL_AT_MILLISECONDS, [space.w_nil, sema, future])
@@ -449,7 +449,7 @@ def test_full_gc():
 
 def test_interrupt_semaphore():
     prim(primitives.INTERRUPT_SEMAPHORE, [1, space.w_true])
-    assert space.objtable["w_interrupt_semaphore"] is space.w_nil
+    assert space.objtable["w_interrupt_semaphore"].is_nil(space)
 
     class SemaphoreInst(model.W_Object):
         def getclass(self, space):
@@ -459,7 +459,6 @@ def test_interrupt_semaphore():
     assert space.objtable["w_interrupt_semaphore"] is w_semaphore
 
 def test_seconds_clock():
-    import time
     now = int(time.time())
     w_smalltalk_now1 = prim(primitives.SECONDS_CLOCK, [42])
     w_smalltalk_now2 = prim(primitives.SECONDS_CLOCK, [42])
@@ -480,11 +479,11 @@ def test_load_inst_var():
 def test_new_method():
     bytecode = ''.join(map(chr, [ 16, 119, 178, 154, 118, 164, 11, 112, 16, 118, 177, 224, 112, 16, 119, 177, 224, 176, 124 ]))
 
-    shadow = mockclass(space, 0).as_class_get_shadow(space)
+    shadow = bootstrap_class(0).as_class_get_shadow(space)
     w_method = prim(primitives.NEW_METHOD, [space.w_CompiledMethod, len(bytecode), 1025])
     assert w_method.literalat0(space, 0).value == 1025
     assert w_method.literalsize == 2
-    assert w_method.literalat0(space, 1).is_same_object(space.w_nil)
+    assert w_method.literalat0(space, 1).is_nil(space)
     assert w_method.bytes == ["\x00"] * len(bytecode)
 
 def test_image_name():
@@ -492,7 +491,7 @@ def test_image_name():
     assert w_v.bytes == list(IMAGENAME)
 
 def test_clone():
-    w_obj = mockclass(space, 1, varsized=True).as_class_get_shadow(space).new(1)
+    w_obj = bootstrap_class(1, varsized=True).as_class_get_shadow(space).new(1)
     w_obj.atput0(space, 0, space.wrap_int(1))
     w_v = prim(primitives.CLONE, [w_obj])
     assert space.unwrap_int(w_v.at0(space, 0)) == 1
@@ -558,19 +557,15 @@ def test_file_write_errors(monkeypatch):
         )
 
 def test_directory_delimitor():
-    import os.path
     w_c = prim(primitives.DIRECTORY_DELIMITOR, [1])
     assert space.unwrap_char(w_c) == os.path.sep
 
 def test_primitive_closure_copyClosure():
-    from test_interpreter import new_frame
-    w_frame, s_frame = new_frame("<never called, but used for method generation>",
-            space=space)
-    w_outer_frame, s_initial_context = new_frame("<never called, but used for method generation>",
-        space=space)
+    w_frame, s_frame = new_frame("<never called, but used for method generation>")
+    w_outer_frame, s_initial_context = new_frame("<never called, but used for method generation>")
     w_block = prim(primitives.CLOSURE_COPY_WITH_COPIED_VALUES, map(wrap,
                     [w_outer_frame, 2, [wrap(1), wrap(2)]]), w_frame)
-    assert w_block is not space.w_nil
+    assert not w_block.is_nil(space)
     w_w_block = wrapper.BlockClosureWrapper(space, w_block)
     assert w_w_block.startpc() is 5
     assert w_w_block.at0(0) == wrap(1)
@@ -592,32 +587,30 @@ def test_primitive_string_copy():
     prim_fails(primitives.STRING_REPLACE, [['a', 'b'], 1, 4, "ccccc", 1])
 
 def build_up_closure_environment(args, copiedValues=[]):
-    from test_interpreter import new_frame
-    w_frame, s_initial_context = new_frame("<never called, but used for method generation>",
-        space=space)
+    w_frame, s_initial_context = new_frame("<never called, but used for method generation>")
 
     size_arguments = len(args)
     closure = space.newClosure(w_frame, 4, #pc
                                 size_arguments, copiedValues)
     s_initial_context.push_all([closure] + args)
-    interp = interpreter.Interpreter(space)
+    interp = TestInterpreter(space)
     s_active_context = prim_table[primitives.CLOSURE_VALUE + size_arguments](interp, s_initial_context, size_arguments)
     return s_initial_context, closure, s_active_context
 
 def test_primitive_closure_value():
     s_initial_context, closure, s_new_context = build_up_closure_environment([])
 
-    assert s_new_context.w_closure_or_nil is closure
+    assert s_new_context.closure._w_self is closure
     assert s_new_context.s_sender() is s_initial_context
-    assert s_new_context.w_receiver() is space.w_nil
+    assert s_new_context.w_receiver().is_nil(space)
 
 def test_primitive_closure_value_value():
     s_initial_context, closure, s_new_context = build_up_closure_environment([
             wrap("first arg"), wrap("second arg")])
 
-    assert s_new_context.w_closure_or_nil is closure
+    assert s_new_context.closure._w_self is closure
     assert s_new_context.s_sender() is s_initial_context
-    assert s_new_context.w_receiver() is space.w_nil
+    assert s_new_context.w_receiver().is_nil(space)
     assert s_new_context.gettemp(0).as_string() == "first arg"
     assert s_new_context.gettemp(1).as_string() == "second arg"
 
@@ -626,27 +619,27 @@ def test_primitive_closure_value_value_with_temps():
             [wrap("first arg"), wrap("second arg")],
         copiedValues=[wrap('some value')])
 
-    assert s_new_context.w_closure_or_nil is closure
+    assert s_new_context.closure._w_self is closure
     assert s_new_context.s_sender() is s_initial_context
-    assert s_new_context.w_receiver() is space.w_nil
+    assert s_new_context.w_receiver().is_nil(space)
     assert s_new_context.gettemp(0).as_string() == "first arg"
     assert s_new_context.gettemp(1).as_string() == "second arg"
     assert s_new_context.gettemp(2).as_string() == "some value"
 
+@very_slow_test
 def test_primitive_some_instance():
     import gc; gc.collect()
     someInstance = map(space.wrap_list, [[1], [2]])
     w_r = prim(primitives.SOME_INSTANCE, [space.w_Array])
     assert w_r.getclass(space) is space.w_Array
 
+@very_slow_test
 def test_primitive_next_instance():
     someInstances = map(space.wrap_list, [[2], [3]])
-    from test_interpreter import new_frame
-    w_frame, s_context = new_frame("<never called, but needed for method generation>",
-        space=space)
+    w_frame, s_context = new_frame("<never called, but needed for method generation>")
 
     s_context.push(space.w_Array)
-    interp = interpreter.Interpreter(space)
+    interp = TestInterpreter(space)
     prim_table[primitives.SOME_INSTANCE](interp, s_context, 0)
     w_1 = s_context.pop()
     assert w_1.getclass(space) is space.w_Array
@@ -657,14 +650,13 @@ def test_primitive_next_instance():
     assert w_2.getclass(space) is space.w_Array
     assert w_1 is not w_2
 
+@very_slow_test
 def test_primitive_next_instance_wo_some_instance_in_same_frame():
     someInstances = map(space.wrap_list, [[2], [3]])
-    from test_interpreter import new_frame
-    w_frame, s_context = new_frame("<never called, but needed for method generation>",
-        space=space)
+    w_frame, s_context = new_frame("<never called, but needed for method generation>")
 
     s_context.push(space.w_Array)
-    interp = interpreter.Interpreter(space)
+    interp = TestInterpreter(space)
     w_1 = someInstances[0]
     assert w_1.getclass(space) is space.w_Array
 
@@ -685,13 +677,11 @@ def test_primitive_value_no_context_switch(monkeypatch):
     def step(s_frame):
         raise Stepping
 
-    from test_interpreter import new_frame
-    w_frame, s_initial_context = new_frame("<never called, but used for method generation>",
-        space=space)
+    w_frame, s_initial_context = new_frame("<never called, but used for method generation>")
 
     closure = space.newClosure(w_frame, 4, 0, [])
     s_frame = w_frame.as_methodcontext_get_shadow(space)
-    interp = interpreter.Interpreter(space, image_name=IMAGENAME)
+    interp = TestInterpreter(space)
     interp._loop = True
 
     try:
@@ -715,13 +705,6 @@ def test_primitive_value_no_context_switch(monkeypatch):
         monkeypatch.undo()
 
 def test_primitive_be_display():
-    # XXX: Patch SDLDisplay -> get_pixelbuffer() to circumvent
-    # double-free bug
-    def get_pixelbuffer(self):
-        from rpython.rtyper.lltypesystem import lltype, rffi
-        return lltype.malloc(rffi.ULONGP.TO, self.width * self.height * 32, flavor='raw')
-    display.SDLDisplay.get_pixelbuffer = get_pixelbuffer
-
     assert space.objtable["w_display"] is None
     mock_display = model.W_PointersObject(space, space.w_Point, 4)
     w_wordbmp = model.W_WordsObject(space, space.w_Array, 10)
@@ -733,7 +716,7 @@ def test_primitive_be_display():
     assert space.objtable["w_display"] is mock_display
     w_bitmap = mock_display.fetch(space, 0)
     assert w_bitmap is not w_wordbmp
-    assert isinstance(w_bitmap, model.W_DisplayBitmap)
+    assert isinstance(w_bitmap, model_display.W_DisplayBitmap)
     sdldisplay = w_bitmap.display
     assert isinstance(sdldisplay, display.SDLDisplay)
 
@@ -745,7 +728,7 @@ def test_primitive_be_display():
     prim(primitives.BE_DISPLAY, [mock_display2])
     assert space.objtable["w_display"] is mock_display2
     w_bitmap2 = mock_display.fetch(space, 0)
-    assert isinstance(w_bitmap2, model.W_DisplayBitmap)
+    assert isinstance(w_bitmap2, model_display.W_DisplayBitmap)
     assert w_bitmap.display is w_bitmap2.display
     assert sdldisplay.width == 32
     assert sdldisplay.height == 10
@@ -755,13 +738,6 @@ def test_primitive_be_display():
     assert mock_display.fetch(space, 0) is w_bitmap
 
 def test_primitive_force_display_update(monkeypatch):
-    # XXX: Patch SDLDisplay -> get_pixelbuffer() to circumvent
-    # double-free bug
-    def get_pixelbuffer(self):
-        from rpython.rtyper.lltypesystem import lltype, rffi
-        return lltype.malloc(rffi.ULONGP.TO, self.width * self.height * 32, flavor='raw')
-    display.SDLDisplay.get_pixelbuffer = get_pixelbuffer
-
     mock_display = model.W_PointersObject(space, space.w_Point, 4)
     w_wordbmp = model.W_WordsObject(space, space.w_Array, 10)
     mock_display.store(space, 0, w_wordbmp) # bitmap
@@ -777,7 +753,7 @@ def test_primitive_force_display_update(monkeypatch):
         raise DisplayFlush
 
     try:
-        monkeypatch.setattr(space.get_display().__class__, "flip", flush_to_screen_mock)
+        monkeypatch.setattr(space.display().__class__, "flip", flush_to_screen_mock)
         with py.test.raises(DisplayFlush):
             prim(primitives.FORCE_DISPLAY_UPDATE, [mock_display])
     finally:
@@ -801,13 +777,13 @@ def test_bitblt_copy_bits(monkeypatch):
     def sync_cache_mock(self):
         raise CallCopyBitsSimulation
 
-    interp, w_frame, argument_count = mock([mock_bitblt], None)
+    interp, w_frame, argument_count = mock(space, [mock_bitblt], None)
     if interp.image is None:
         interp.image = Image()
 
     try:
         monkeypatch.setattr(w_frame.shadow, "_sendSelfSelector", perform_mock)
-        monkeypatch.setattr(bitblt.BitBltShadow, "sync_cache", sync_cache_mock)
+        monkeypatch.setattr(bitblt.BitBltShadow, "strategy_switched", sync_cache_mock)
         with py.test.raises(CallCopyBitsSimulation):
             prim_table[primitives.BITBLT_COPY_BITS](interp, w_frame.as_context_get_shadow(space), argument_count-1)
     finally:

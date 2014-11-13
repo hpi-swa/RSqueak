@@ -1,13 +1,17 @@
 import random
-from spyvm import model, shadow, constants, interpreter
-from spyvm import objspace
+from spyvm import model, storage_classes, constants, wrapper
+from .util import create_space, copy_to_module, cleanup_module
 
-space = objspace.ObjSpace()
+def setup_module():
+    space = create_space(bootstrap = True)
+    w_Object     = space.classtable['w_Object']
+    w_Metaclass  = space.classtable['w_Metaclass']
+    w_MethodDict = space.classtable['w_MethodDict']
+    w_Array      = space.classtable['w_Array']
+    copy_to_module(locals(), __name__)
 
-w_Object = space.classtable['w_Object']
-w_Metaclass  = space.classtable['w_Metaclass']
-w_MethodDict = space.classtable['w_MethodDict']
-w_Array      = space.classtable['w_Array']
+def teardown_module():
+    cleanup_module(__name__)
 
 def build_methoddict(methods):
     size = int(len(methods) * 1.5)
@@ -28,8 +32,10 @@ def build_methoddict(methods):
         w_array.store(space, pos, w_compiledmethod)
     return w_methoddict
 
-def build_smalltalk_class(name, format, w_superclass=w_Object,
+def build_smalltalk_class(name, format, w_superclass=None,
                           w_classofclass=None, methods={}):
+    if w_superclass is None:
+        w_superclass = w_Object
     if w_classofclass is None:
         w_classofclass = build_smalltalk_class(None, 0x94,
                                                w_superclass.getclass(space),
@@ -42,7 +48,7 @@ def build_smalltalk_class(name, format, w_superclass=w_Object,
     w_class.store(space, constants.CLASS_FORMAT_INDEX, space.wrap_int(format))
     if name is not None:
         w_class.store(space, constants.CLASS_NAME_INDEX, space.wrap_string(name))
-    w_class.as_class_get_shadow(space).s_methoddict().sync_cache()
+    w_class.as_class_get_shadow(space).s_methoddict().sync_method_cache()
     return w_class
 
 def basicshape(name, format, kind, varsized, instsize):
@@ -55,40 +61,44 @@ def basicshape(name, format, kind, varsized, instsize):
     assert classshadow.s_superclass() is w_Object.as_class_get_shadow(space)
 
 def test_basic_shape():
-    yield basicshape, "Empty",        0x02,    shadow.POINTERS, False, 0
-    yield basicshape, "Seven",        0x90,    shadow.POINTERS, False, 7
-    yield basicshape, "Seventyseven", 0x1009C, shadow.POINTERS, False, 77
-    yield basicshape, "EmptyVar",     0x102,   shadow.POINTERS, True,  0
-    yield basicshape, "VarTwo",       0x3986,  shadow.POINTERS, True,  2
-    yield basicshape, "VarSeven",     0x190,   shadow.POINTERS, True,  7
-    yield basicshape, "Bytes",        0x402,   shadow.BYTES,    True,  0
-    yield basicshape, "Words",        0x302,   shadow.WORDS,    True,  0
-    yield basicshape, "CompiledMeth", 0xE02,   shadow.COMPILED_METHOD, True, 0
+    yield basicshape, "Empty",        0x02,    storage_classes.POINTERS, False, 0
+    yield basicshape, "Seven",        0x90,    storage_classes.POINTERS, False, 7
+    yield basicshape, "Seventyseven", 0x1009C, storage_classes.POINTERS, False, 77
+    yield basicshape, "EmptyVar",     0x102,   storage_classes.POINTERS, True,  0
+    yield basicshape, "VarTwo",       0x3986,  storage_classes.POINTERS, True,  2
+    yield basicshape, "VarSeven",     0x190,   storage_classes.POINTERS, True,  7
+    yield basicshape, "Bytes",        0x402,   storage_classes.BYTES,    True,  0
+    yield basicshape, "Words",        0x302,   storage_classes.WORDS,    True,  0
+    yield basicshape, "CompiledMeth", 0xE02,   storage_classes.COMPILED_METHOD, True, 0
 
 def test_methoddict():
-    methods = {'foo': model.W_CompiledMethod(0),
-               'bar': model.W_CompiledMethod(0)}
+    methods = {'foo': model.W_CompiledMethod(space, 0),
+               'bar': model.W_CompiledMethod(space, 0)}
     w_class = build_smalltalk_class("Demo", 0x90, methods=methods)
     classshadow = w_class.as_class_get_shadow(space)
     methoddict = classshadow.s_methoddict().methoddict
     assert len(methods) == len(methoddict)
     for w_key, value in methoddict.items():
-        assert methods[w_key.as_string()].as_compiledmethod_get_shadow(space) is value
+        assert methods[w_key.as_string()] is value
 
-def method(tempsize=3,argsize=2, bytes="abcde"):
-    w_m = model.W_CompiledMethod()
+def create_method(tempsize=3,argsize=2, bytes="abcde"):
+    w_m = model.W_CompiledMethod(space, )
     w_m.bytes = bytes
-    w_m.tempsize = tempsize
+    w_m._tempsize = tempsize
     w_m.argsize = argsize
     w_m.literalsize = 2
     return w_m
 
-def methodcontext(w_sender=space.w_nil, pc=13, stackpointer=0, stacksize=5,
-                  method=method()):
-    w_object = model.W_PointersObject(space, space.w_MethodContext, constants.MTHDCTX_TEMP_FRAME_START+method.tempsize+stacksize)
+def methodcontext(w_sender=None, pc=13, stackpointer=0, stacksize=5,
+                  method=None):
+    if w_sender is None:
+        w_sender = space.w_nil
+    if method is None:
+        method = create_method()
+    w_object = model.W_PointersObject(space, space.w_MethodContext, constants.MTHDCTX_TEMP_FRAME_START+method.tempsize()+stacksize)
     w_object.store(space, constants.CTXPART_SENDER_INDEX, w_sender)
     w_object.store(space, constants.CTXPART_PC_INDEX, space.wrap_int(pc))
-    w_object.store(space, constants.CTXPART_STACKP_INDEX, space.wrap_int(method.tempsize+stackpointer))
+    w_object.store(space, constants.CTXPART_STACKP_INDEX, space.wrap_int(method.tempsize()+stackpointer))
     w_object.store(space, constants.MTHDCTX_METHOD, method)
     # XXX
     w_object.store(space, constants.MTHDCTX_CLOSURE_OR_NIL, space.w_nil)
@@ -97,8 +107,12 @@ def methodcontext(w_sender=space.w_nil, pc=13, stackpointer=0, stacksize=5,
     w_object.store(space, constants.MTHDCTX_TEMP_FRAME_START, space.wrap_string('el'))
     return w_object
 
-def blockcontext(w_sender=space.w_nil, pc=13, stackpointer=1, stacksize=5,
-                  home=methodcontext()):
+def blockcontext(w_sender=None, pc=13, stackpointer=1, stacksize=5,
+                  home=None):
+    if w_sender is None:
+        w_sender = space.w_nil
+    if home is None:
+        home = methodcontext()
     w_object = model.W_PointersObject(space, space.w_MethodContext, constants.MTHDCTX_TEMP_FRAME_START+stacksize)
     w_object.store(space, constants.CTXPART_SENDER_INDEX, w_sender)
     w_object.store(space, constants.CTXPART_PC_INDEX, space.wrap_int(pc))
@@ -110,7 +124,7 @@ def blockcontext(w_sender=space.w_nil, pc=13, stackpointer=1, stacksize=5,
     return w_object
 
 def test_context():
-    w_m = method()
+    w_m = create_method()
     w_object = methodcontext(stackpointer=3, method=w_m)
     w_object2 = methodcontext(w_sender=w_object)
     s_object = w_object.as_methodcontext_get_shadow(space)
@@ -143,68 +157,49 @@ def test_context():
     assert s_object.stackdepth() == s_object.tempsize()
 
 def test_methodcontext():
-    w_m = method()
+    w_m = create_method()
                               # Point over 2 literals of size 4
     w_object = methodcontext(pc=13,method=w_m)
     s_object = w_object.as_methodcontext_get_shadow(space)
-    assert s_object.getbytecode() == 97
-    assert s_object.getbytecode() == 98
-    assert s_object.getbytecode() == 99
-    assert s_object.getbytecode() == 100
-    assert s_object.getbytecode() == 101
+    assert s_object.fetch_next_bytecode() == 97
+    assert s_object.fetch_next_bytecode() == 98
+    assert s_object.fetch_next_bytecode() == 99
+    assert s_object.fetch_next_bytecode() == 100
+    assert s_object.fetch_next_bytecode() == 101
     assert s_object.s_home() == s_object
 
+def assert_contains_nils(w_obj):
+    for i in range(w_obj.size()):
+        assert w_obj.fetch(space, i).is_nil(space)
+
 def test_attach_mc():
-    w_m = method()
+    w_m = create_method()
     w_object = methodcontext(pc=13, method=w_m)
-    old_vars = w_object._vars
     s_object = w_object.as_methodcontext_get_shadow(space)
-    assert w_object._vars is None
+    assert s_object.fetch(1).value == 13
 
 def test_attach_bc():
     w_object = blockcontext(pc=13)
-    old_vars = w_object._vars
     s_object = w_object.as_blockcontext_get_shadow(space)
-    assert w_object._vars is None
+    assert s_object.fetch(1).value == 13
 
 def test_replace_to_bc():
     w_object = blockcontext(pc=13)
-    old_vars = w_object._vars
     s_object = w_object.as_blockcontext_get_shadow(space)
     s_object.shadow = None
     s_newobject = w_object.as_blockcontext_get_shadow(space)
     assert ([s_newobject.fetch(i) for i in range(s_newobject.size())] ==
             [s_object.fetch(i) for i in range(s_newobject.size())])
     assert w_object.shadow is s_newobject
-
-def test_compiledmethodshadow():
-    from test_model import joinbits
-    header = joinbits([0,2,0,1,0,0],[9,8,1,6,4,1])
-
-    w_compiledmethod = model.W_CompiledMethod(3, header)
-    w_compiledmethod.setbytes(list("abc"))
-    shadow = w_compiledmethod.as_compiledmethod_get_shadow(space)
-    assert shadow.bytecode == "abc"
-    assert shadow.bytecodeoffset == 12
-    assert shadow.literalsize == 8 # 12 - 4byte header
-    assert shadow.tempsize() == 1
-
-    w_compiledmethod.literalatput0(space, 1, 17)
-    w_compiledmethod.literalatput0(space, 2, 41)
-    assert w_compiledmethod._shadow is not None
-    assert shadow.literals == [17, 41]
-
-    w_compiledmethod.atput0(space, 14, space.wrap_int(ord("x")))
-
-    assert shadow.bytecode == "abx"
-    assert shadow is w_compiledmethod.as_compiledmethod_get_shadow(space)
+    assert s_object.fetch(1).value == 13
 
 def test_cached_object_shadow():
-    w_o = space.wrap_list([0, 1, 2, 3, 4, 5, 6, 7])
+    l = map(space.w, [0, 1, 2, 3, 4, 5, 6, 7])
+    w_o = space.wrap_list(l)
     s_o = w_o.as_cached_object_get_shadow(space)
     version = s_o.version
     for i in range(w_o.size()):
-        assert w_o.at0(space, i) == i
+        assert w_o.at0(space, i) == l[i]
     w_o.atput0(space, 0, 8)
     assert version is not s_o.version
     assert w_o.at0(space, 0) == 8
@@ -230,66 +225,63 @@ def test_observee_shadow():
 
 def test_cached_methoddict():
     # create a methoddict
-    foo = model.W_CompiledMethod(0)
-    bar = model.W_CompiledMethod(0)
-    baz = model.W_CompiledMethod(0)
+    foo = model.W_CompiledMethod(space, 0)
+    bar = model.W_CompiledMethod(space, 0)
+    baz = model.W_CompiledMethod(space, 0)
     methods = {'foo': foo,
                'bar': bar}
     w_class = build_smalltalk_class("Demo", 0x90, methods=methods)
     s_class = w_class.as_class_get_shadow(space)
     s_methoddict = s_class.s_methoddict()
-    s_methoddict.sync_cache()
+    s_methoddict.sync_method_cache()
     i = 0
-    key = s_methoddict.w_self()._fetch(constants.METHODDICT_NAMES_INDEX+i)
-    while key is space.w_nil:
+    key = s_methoddict.w_self().fetch(s_methoddict.space, constants.METHODDICT_NAMES_INDEX+i)
+    while key.is_nil(space):
         i = i + 1
-        key = s_methoddict.w_self()._fetch(constants.METHODDICT_NAMES_INDEX+i)
+        key = s_methoddict.w_self().fetch(s_methoddict.space, constants.METHODDICT_NAMES_INDEX+i)
 
-    assert (s_class.lookup(key) is foo.as_compiledmethod_get_shadow(space)
-            or s_class.lookup(key) is bar.as_compiledmethod_get_shadow(space))
+    assert (s_class.lookup(key) is foo
+            or s_class.lookup(key) is bar)
     # change that entry
-    w_array = s_class.w_methoddict()._fetch(constants.METHODDICT_VALUES_INDEX)
+    w_array = s_class.w_methoddict().fetch(s_class.space, constants.METHODDICT_VALUES_INDEX)
     version = s_class.version
     w_array.atput0(space, i, baz)
 
-    assert s_class.lookup(key) is baz.as_compiledmethod_get_shadow(space)
+    assert s_class.lookup(key) is baz
     assert version is not s_class.version
 
 def test_updating_class_changes_subclasses():
     w_parent = build_smalltalk_class("Demo", 0x90,
-            methods={'bar': model.W_CompiledMethod(0)})
+            methods={'bar': model.W_CompiledMethod(space, 0)})
     w_class = build_smalltalk_class("Demo", 0x90,
-            methods={'foo': model.W_CompiledMethod(0)}, w_superclass=w_parent)
+            methods={'foo': model.W_CompiledMethod(space, 0)}, w_superclass=w_parent)
     s_class = w_class.as_class_get_shadow(space)
     version = s_class.version
 
-    w_method = model.W_CompiledMethod(0)
+    w_method = model.W_CompiledMethod(space, 0)
     key = space.wrap_string('foo')
 
     s_md = w_parent.as_class_get_shadow(space).s_methoddict()
-    s_md.sync_cache()
-    w_ary = s_md._w_self._fetch(constants.METHODDICT_VALUES_INDEX)
+    s_md.sync_method_cache()
+    w_ary = s_md._w_self.fetch(s_md.space, constants.METHODDICT_VALUES_INDEX)
     s_md._w_self.atput0(space, 0, key)
     w_ary.atput0(space, 0, w_method)
 
-    assert s_class.lookup(key) is w_method.as_compiledmethod_get_shadow(space)
+    assert s_class.lookup(key) is w_method
     assert s_class.version is not version
     assert s_class.version is w_parent.as_class_get_shadow(space).version
 
 def test_returned_contexts_pc():
     w_context = methodcontext()
     s_context = w_context.as_methodcontext_get_shadow(space)
-    assert w_context.fetch(space, constants.CTXPART_PC_INDEX) is not space.w_nil
+    assert not w_context.fetch(space, constants.CTXPART_PC_INDEX).is_nil(space)
     s_context.mark_returned()
-    assert w_context.fetch(space, constants.CTXPART_PC_INDEX) is space.w_nil
+    assert w_context.fetch(space, constants.CTXPART_PC_INDEX).is_nil(space)
 
 def test_methodcontext_s_home():
-    from spyvm.wrapper import BlockClosureWrapper
     w_context = methodcontext()
     s_context = w_context.as_methodcontext_get_shadow(space)
-    w_middle_context = methodcontext(w_sender=w_context)
-    s_middle_context = w_middle_context.as_methodcontext_get_shadow(space)
 
     w_closure = space.newClosure(w_context, 3, 0, [])
-    s_closure_context = BlockClosureWrapper(space, w_closure).asContextWithSender(w_middle_context, [])
+    s_closure_context = wrapper.BlockClosureWrapper(space, w_closure).create_frame()
     assert s_closure_context.s_home() is s_context

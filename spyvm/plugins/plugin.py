@@ -9,12 +9,12 @@ class Plugin(object):
         self.prims = {}
         self.userdata = {}
 
-    def call(self, name, interp, s_frame, argcount, s_method):
+    def call(self, name, interp, s_frame, argcount, w_method):
         func = self._find_prim(name)
         if not func:
             raise error.PrimitiveFailedError("Not implemented: %s" % name)
         else:
-            return func(interp, s_frame, argcount, s_method)
+            return func(interp, s_frame, argcount, w_method)
 
     @jit.elidable
     def _find_prim(self, name):

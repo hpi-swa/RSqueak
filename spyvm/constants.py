@@ -2,7 +2,7 @@ import sys
 import time
 from rpython.rlib.jit import elidable
 
-from spyvm.tool.bitmanipulation import splitter
+from spyvm.util.bitmanipulation import splitter
 
 # ___________________________________________________________________________
 # Slot Names
@@ -54,11 +54,17 @@ BLKCLSR_STARTPC = 1
 BLKCLSR_NUMARGS = 2
 BLKCLSR_SIZE = 3
 
+FORM_BITS = 0
+FORM_WIDTH = 1
+FORM_HEIGHT = 2
+FORM_DEPTH = 3
+
 # ___________________________________________________________________________
 # Miscellaneous constants
 
 LITERAL_START = 1 # index of the first literal after the method header
 BYTES_PER_WORD = 4
+WORDS_IN_FLOAT = 2 # Fixed number of word-slots in a Squeak Float object
 
 # ___________________________________________________________________________
 # Special objects indices
@@ -127,7 +133,7 @@ classes_in_special_object_table = {
     "Process" : SO_PROCESS_CLASS,
 #    "PseudoContext" : SO_PSEUDOCONTEXT_CLASS,
 #    "TranslatedMethod" : SO_TRANSLATEDMETHOD_CLASS,
-    # "LargeNegativeInteger" : SO_LARGENEGATIVEINTEGER_CLASS, # Not available in mini.image
+#    "LargeNegativeInteger" : SO_LARGENEGATIVEINTEGER_CLASS, # Not available in mini.image
 }
 
 objects_in_special_object_table = {
@@ -140,6 +146,7 @@ objects_in_special_object_table = {
     "smalltalkdict" : SO_SMALLTALK,
     "display" : SO_DISPLAY_OBJECT,
     "doesNotUnderstand" : SO_DOES_NOT_UNDERSTAND,
+    "mustBeBoolean" : SO_MUST_BE_BOOLEAN,
     "interrupt_semaphore" : SO_USER_INTERRUPT_SEMAPHORE,
     "timerSemaphore" : SO_TIMER_SEMAPHORE,
 }
@@ -188,6 +195,5 @@ def decode_compiled_method_header(header):
 # Interpreter constants
 #
 
-MAX_LOOP_DEPTH = 100
 INTERRUPT_COUNTER_SIZE = 10000
 CompileTime = time.time()
