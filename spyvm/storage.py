@@ -205,18 +205,18 @@ class ObserveeShadow(ListStrategy):
     """
     A generic shadow that notifies a single observer object whenever changes are made.
     """
-    _attrs_ = ['dependent']
+    _attrs_ = ['observer']
     repr_classname = "ObserveeShadow"
     def __init__(self, space, w_self, size):
         ListStrategy.__init__(self, space, w_self, size)
-        self.dependent = None
+        self.observer = None
 
     def store(self, n0, w_value):
         ListStrategy.store(self, n0, w_value)
-        if self.dependent:
-            self.dependent.update()
+        if self.observer:
+            self.observer.notify()
 
-    def notify(self, dependent):
-        if self.dependent is not None and dependent is not self.dependent:
-            raise RuntimeError('Meant to be observed by only one value, so far')
-        self.dependent = dependent
+    def set_observer(self, observer):
+        if self.observer is not None and observer is not self.observer:
+            raise RuntimeError('Meant to be observed by only one observer, so far')
+        self.observer = observer

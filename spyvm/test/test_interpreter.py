@@ -69,7 +69,7 @@ def run_with_faked_primitive_methods(methods, func, active_context=None):
         # Uninstall those methods:
         for (w_class, _, _, methname) in methods:
             s_class = w_class.as_class_get_shadow(space)
-            s_class.s_methoddict().update()
+            s_class.s_methoddict().sync_method_cache()
 
 def fakesymbol(s, _cache={}):
     try:

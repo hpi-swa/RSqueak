@@ -268,7 +268,7 @@ class MethodDictionaryShadow(ListStrategy):
         self.methoddict = {}
         ListStrategy.__init__(self, space, w_self, size)
 
-    def update(self):
+    def notify(self):
         self.sync_method_cache()
 
     def find_selector(self, w_selector):
@@ -276,7 +276,7 @@ class MethodDictionaryShadow(ListStrategy):
             return None # we may be invalid if Smalltalk code did not call flushCache
         return self.methoddict.get(w_selector, None)
 
-    # We do not call update() after changes to ourselves:
+    # We do not call notify() after changes to ourselves:
     # Whenever a method is added, it's keyword is added to w_self, then the
     # w_compiled_method is added to our observee.
     # sync_method_cache at this point would not have the desired effect, because in
@@ -290,7 +290,7 @@ class MethodDictionaryShadow(ListStrategy):
             self.invalid = True
     
     def setup_notification(self):
-        self.w_values().as_observed_get_shadow(self.space).notify(self)
+        self.w_values().as_observed_get_shadow(self.space).set_observer(self)
         
     def w_values(self):
         w_values = self.fetch(constants.METHODDICT_VALUES_INDEX)

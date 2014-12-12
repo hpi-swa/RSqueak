@@ -208,16 +208,16 @@ def test_observee_shadow():
     notified = False
     class Observer():
         def __init__(self): self.notified = False
-        def update(self): self.notified = True
+        def notify(self): self.notified = True
     o = Observer()
     w_o = w_Array.as_class_get_shadow(space).new(1)
-    w_o.as_observed_get_shadow(space).notify(o)
+    w_o.as_observed_get_shadow(space).set_observer(o)
     assert not o.notified
     w_o.store(space, 0, 1)
     assert o.notified
     assert w_o.fetch(space, 0) == 1
     try:
-        w_o.strategy.notify(Observer())
+        w_o.strategy.set_observer(Observer())
     except RuntimeError:
         pass
     else:
