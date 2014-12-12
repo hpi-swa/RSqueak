@@ -679,10 +679,6 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         assert isinstance(shadow, TheClass)
         return shadow
 
-    def get_shadow(self, space):
-        from spyvm.storage import AbstractObjectStorage
-        return self.as_special_get_shadow(space, AbstractObjectStorage)
-
     def as_class_get_shadow(self, space):
         from spyvm.storage_classes import ClassShadow
         return jit.promote(self.as_special_get_shadow(space, ClassShadow))
