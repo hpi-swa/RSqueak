@@ -283,7 +283,7 @@ def test_primitive_perform_with_args():
     w_o = space.wrap_list([1, 2, 3])
     w_methoddict = w_o.class_shadow(space).s_superclass().s_superclass().w_methoddict()
     w_methoddict.as_methoddict_get_shadow(space).sync_method_cache()
-    selectors_w = w_methoddict.shadow.methoddict.keys()
+    selectors_w = w_methoddict.strategy.methoddict.keys()
     w_sel = None
     for sel in selectors_w:
         if sel.as_string() == 'size':

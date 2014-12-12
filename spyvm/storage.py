@@ -113,7 +113,7 @@ class StrategyFactory(rstrat.StrategyFactory):
         return AllNilStrategy
     
     def set_initial_strategy(self, w_object, strategy_type, size, elements=None):
-        assert w_object.shadow is None, "Shadow should not be initialized yet!"
+        assert w_object.strategy is None, "Shadow should not be initialized yet!"
         strategy = strategy_type(self.space, w_object, size)
         w_object.store_shadow(strategy)
         if elements:

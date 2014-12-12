@@ -543,7 +543,7 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     def invariant(self):
         from spyvm import storage_classes
         return (W_AbstractObjectWithIdentityHash.invariant(self) and
-                isinstance(self.w_class.shadow, storage_classes.ClassShadow))
+                isinstance(self.w_class.strategy, storage_classes.ClassShadow))
 
     def _become(self, w_other):
         assert isinstance(w_other, W_AbstractObjectWithClassReference)
@@ -563,8 +563,8 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
 
 class W_PointersObject(W_AbstractObjectWithClassReference):
     """Common object."""
-    _attrs_ = ['shadow']
-    shadow = None
+    _attrs_ = ['strategy']
+    strategy = None
     repr_classname = "W_PointersObject"
     
     @jit.unroll_safe
@@ -588,28 +588,28 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     
     def is_weak(self):
         from storage import WeakListStrategy
-        return isinstance(self.shadow, WeakListStrategy)
+        return isinstance(self.strategy, WeakListStrategy)
     
     def is_class(self, space):
         from spyvm.storage_classes import ClassShadow
-        if isinstance(self.shadow, ClassShadow):
+        if isinstance(self.strategy, ClassShadow):
             return True
         return W_AbstractObjectWithClassReference.is_class(self, space)
     
     def assert_shadow(self):
-        # Failing the following assert most likely indicates a bug. The shadow can only be absent during
+        # Failing the following assert most likely indicates a bug. The strategy can only be absent during
         # the bootstrapping sequence. It will be initialized in the fillin() method. Before that, it should
-        # not be switched to a specialized shadow, and the space is also not yet available here! Otherwise,
-        # the specialized shadow will attempt to read information from an uninitialized object.
-        shadow = self.shadow
-        assert shadow, "The shadow has not been initialized yet!"
-        return shadow
+        # not be switched to a specialized strategy, and the space is also not yet available here! 
+        # Otherwise, the specialized strategy will attempt to read information from an uninitialized object.
+        strategy = self.strategy
+        assert strategy, "The strategy has not been initialized yet!"
+        return strategy
     
     def space(self):
         return self.assert_shadow().space
         
     def __str__(self):
-        if self.has_shadow() and self.shadow.provides_getname:
+        if self.has_shadow() and self.strategy.provides_getname:
             return self._get_shadow().getname()
         else:
             return W_AbstractObjectWithClassReference.__str__(self)
@@ -618,8 +618,8 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         shadow_info = "no shadow"
         name = ""
         if self.has_shadow():
-            shadow_info = self.shadow.__repr__()
-            if self.shadow.provides_getname:
+            shadow_info = self.strategy.__repr__()
+            if self.strategy.provides_getname:
                 name = " [%s]" % self._get_shadow().getname()
         return '(%s) len=%d%s' % (shadow_info, self.size(), name)
     
@@ -656,19 +656,19 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     def size(self):
         if not self.has_shadow():
             # TODO - this happens only for objects bootstrapped in ObjSpace.
-            # Think of a way to avoid this check. Usually, self.shadow is never None.
+            # Think of a way to avoid this check. Usually, self.strategy is never None.
             return 0
         return self._get_shadow().size()
         
     def instsize(self):
         return self.class_shadow(self.space()).instsize()
 
-    def store_shadow(self, shadow):
-        old_shadow = self.shadow
-        self.shadow = shadow
+    def store_shadow(self, strategy):
+        old_shadow = self.strategy
+        self.strategy = strategy
 
     def _get_shadow(self):
-        return self.shadow
+        return self.strategy
     
     @objectmodel.specialize.arg(2)
     def as_special_get_shadow(self, space, TheClass):
@@ -693,7 +693,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
 
     def as_context_get_shadow(self, space):
         from spyvm.storage_contexts import ContextPartShadow
-        if not isinstance(self.shadow, ContextPartShadow):
+        if not isinstance(self.strategy, ContextPartShadow):
             if self.getclass(space).is_same_object(space.w_BlockContext):
                 return self.as_blockcontext_get_shadow(space)
             if self.getclass(space).is_same_object(space.w_MethodContext):
@@ -722,10 +722,10 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     
     def _become(self, w_other):
         assert isinstance(w_other, W_PointersObject)
-        self.shadow, w_other.shadow = w_other.shadow, self.shadow
+        self.strategy, w_other.strategy = w_other.strategy, self.strategy
         # shadow links are in both directions -> also update shadows
-        if    self.shadow is not None:    self.shadow._w_self = self
-        if w_other.shadow is not None: w_other.shadow._w_self = w_other
+        if    self.strategy is not None:    self.strategy._w_self = self
+        if w_other.strategy is not None: w_other.strategy._w_self = w_other
         W_AbstractObjectWithClassReference._become(self, w_other)
 
     @jit.unroll_safe
@@ -1289,7 +1289,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         w_class = self.safe_compiled_in()
         if isinstance(w_class, W_PointersObject):
             from spyvm.storage_classes import ClassShadow
-            s_class = w_class.shadow
+            s_class = w_class.strategy
             if isinstance(s_class, ClassShadow):
                 return "%s >> #%s" % (s_class.getname(), self.lookup_selector)
         return "#%s" % self.lookup_selector

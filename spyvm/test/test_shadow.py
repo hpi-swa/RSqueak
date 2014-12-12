@@ -186,11 +186,11 @@ def test_attach_bc():
 def test_replace_to_bc():
     w_object = blockcontext(pc=13)
     s_object = w_object.as_blockcontext_get_shadow(space)
-    s_object.shadow = None
+    s_object.strategy = None
     s_newobject = w_object.as_blockcontext_get_shadow(space)
     assert ([s_newobject.fetch(i) for i in range(s_newobject.size())] ==
             [s_object.fetch(i) for i in range(s_newobject.size())])
-    assert w_object.shadow is s_newobject
+    assert w_object.strategy is s_newobject
     assert s_object.fetch(1).value == 13
 
 def test_cached_object_shadow():
@@ -217,7 +217,7 @@ def test_observee_shadow():
     assert o.notified
     assert w_o.fetch(space, 0) == 1
     try:
-        w_o.shadow.notify(Observer())
+        w_o.strategy.notify(Observer())
     except RuntimeError:
         pass
     else:

@@ -166,7 +166,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
             meta_super_nm = super_cls_nm + "Class"
             w_metacls = define_core_cls(meta_nm, self.classtable[meta_super_nm], None)
             define_core_cls(cls_nm, self.classtable[super_cls_nm], w_metacls)
-        proto_shadow = w_ProtoObjectClass.shadow
+        proto_shadow = w_ProtoObjectClass.strategy
         proto_shadow.store_w_superclass(self.w_Class)
         # at this point, all classes that still lack a w_class are themselves metaclasses
         for nm, w_cls_obj in self.classtable.items():
