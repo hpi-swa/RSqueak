@@ -6,42 +6,60 @@ from spyvm import model, interpreter, squeakimage, objspace, wrapper, error
 
 def _usage(argv):
     print """
-    Usage: %s <path> [-r|-m|-h] [-naPu] [-jpiS] [-tTslLE]
+    Usage: %s <path> [-r|-m|-h] [-naPu] [-jpiS] [-tTslL]
             <path> - image path (default: Squeak.image)
 
           Execution mode:
             (no flags)             - Image will be normally opened.
-            -r|--run <code>        - Code will be compiled and executed in headless mode, result printed.
-            -m|--method <selector> - Selector will be sent to a SmallInteger in headless mode, result printed.
-            -h|--help              - Output this and exit.
+            -r|--run <code>        - Code will be compiled and executed in
+                                     headless mode, result printed.
+            -m|--method <selector> - Selector will be sent to a SmallInteger in
+                                     headless mode, result printed.
+            -h|--help              - Output this message and exit.
+
+          Headless mode:
+            When starting the image without -r or -m, the last running Process
+            in the image will be executed. This Process will open the image
+            window and initialize the environment. In headless mode, this
+            Process is ignored; instead, a new context will be created and
+            directly executed. When this context returns, the VM terminates.
+            In headless mode certain errors make the VM exit directly. This
+            should prevent the image from opening a Debugger when the world is
+            not visible. Headless mode is good for benchmarking and quick
+            experiments.
 
           Execution parameters:
-            -n|--num <int> - Only with -m or -r. SmallInteger to be used as receiver (default: nil).
-            -a|--arg <arg> - Only with -m. Will be used as single String argument.
+            -n|--num <int> - Only with -m or -r. SmallInteger to be used as
+                             receiver (default: nil).
+            -a|--arg <arg> - Only with -m. Will be used as String argument.
             -P|--process   - Only with -m or -r. Disable headless mode.
-                             A high-priority Process for the new context will be created.
-                             The last active Process in the image will be started,
-                             but then quickly switch to the new synthetic high-prio Process.
-                             By default, in headless mode, the active process in the image will be ignored,
-                             and the image window will probably not open (good for benchmarking).
-                             Headless mode also influences error reporting.
-                             Without -r or -m, headless mode is always disabled.
-            -u             - Only with -m or -r. Try to stop UI-process at startup. Can help benchmarking.
+                             A high-priority Process for the new context will
+                             be created. The last active Process in the image
+                             will be started, but then quickly switch to the
+                             synthetic high-prio Process.
+            -u             - Only with -m or -r. Try to stop UI-process at
+                             startup. Can help benchmarking.
 
           Other parameters:
-            -j|--jit <jitargs> - jitargs will be passed to the jit configuration.
-            -p|--poll          - Actively poll for events. Try this if the image is not responding well.
-            -i|--no-interrupts - Disable timer interrupt. Disables non-cooperative scheduling.
-            -S                 - Disable specialized storage strategies; always use generic ListStorage
-            --hacks            - Enable Spy hacks. Set display color depth to 8.
+            -j|--jit <jitargs> - jitargs will be passed to the jit config.
+            -p|--poll          - Actively poll for events. Try this if the
+                                 image is not responding well.
+            -i|--no-interrupts - Disable timer interrupt.
+                                 Disables non-cooperative scheduling.
+            -S                 - Disable specialized storage strategies.
+                                 always use generic ListStrategy.
+            --hacks            - Enable Spy hacks. Set display color depth to 8
             
           Logging parameters:
-            -t|--trace                 - Output a trace of each message, primitive, return value and process switch.
-            -T                         - Trace important events (Process switch, stack overflow, sender chain manipulation)
-            -s|--safe-trace            - If tracing is active, omit printing contents of BytesObjects
-            -l|--storage-log           - Output a log of storage operations.
-            -L|--storage-log-aggregate - Output an aggregated storage log at the end of execution.
-
+            -t|--trace       - Output a trace of each message, primitive,
+                               return value and process switch.
+            -T               - Trace important events: Process switch,
+                               stack overflow, sender chain manipulation
+            -s|--safe-trace  - If tracing is active, omit printing contents of
+                               BytesObjects
+            -l|--storage-log - Output a log of storage operations.
+            -L               - Output an aggregated storage log at the end of
+                               execution.
     """ % argv[0]
 
 def get_parameter(argv, idx, arg):
@@ -137,7 +155,7 @@ def entry_point(argv):
                 stop_ui_process()
             elif arg in ["-l", "--storage-log"]:
                 space.strategy_factory.logger.activate()
-            elif arg in ["-L", "--storage-log-aggregate"]:
+            elif arg in ["-L"]:
                 space.strategy_factory.logger.activate(aggregate=True)
             elif path is None:
                 path = arg

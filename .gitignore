@@ -8,6 +8,7 @@ images/resources*
 *package-cache/
 
 rsqueak
+rsqueak.exe
 spy-*.log
 
 versions
