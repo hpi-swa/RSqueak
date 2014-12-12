@@ -6,14 +6,14 @@ from rpython.rlib import objectmodel, jit
 from rpython.rlib.objectmodel import import_from_mixin
 import rstrategies as rstrat
 
-class AbstractShadow(object):
+class AbstractObjectStorage(object):
     """A shadow is an optional extra bit of information that
     can be attached at run-time to any Smalltalk object.
     """
     _attrs_ = ['_w_self', 'space']
     _immutable_fields_ = ['space']
     provides_getname = False
-    repr_classname = "AbstractShadow"
+    repr_classname = "AbstractObjectStorage"
     __metaclass__ = rstrat.StrategyMetaclass
     import_from_mixin(rstrat.AbstractCollection)
     
@@ -33,36 +33,36 @@ class AbstractShadow(object):
 
 # ========== Storage classes implementing storage strategies ==========
 
-class AbstractStorageShadow(AbstractShadow):
-    repr_classname = "AbstractStorageShadow"
+class AbstractStrategy(AbstractObjectStorage):
+    repr_classname = "AbstractStrategy"
     _attrs_ = []
     import_from_mixin(rstrat.UnsafeIndexingMixin)
     
     def __init__(self, space, w_self, size):
-        AbstractShadow.__init__(self, space, w_self, size)
+        AbstractObjectStorage.__init__(self, space, w_self, size)
         self.init_strategy(size)
     
     def strategy_factory(self):
         return self.space.strategy_factory
     
-    def copy_from_AllNilStorageShadow(self, all_nil_storage):
+    def copy_from_AllNilStrategy(self, all_nil_storage):
         pass # Fields already initialized to nil
 
     def default_value(self):
         return self.space.w_nil
 
 @rstrat.strategy()
-class ListStorageShadow(AbstractStorageShadow):
-    repr_classname = "ListStorageShadow"
+class ListStrategy(AbstractStrategy):
+    repr_classname = "ListStrategy"
     import_from_mixin(rstrat.GenericStrategy)
 
-class WeakListStorageShadow(AbstractStorageShadow):
-    repr_classname = "WeakListStorageShadow"
+class WeakListStrategy(AbstractStrategy):
+    repr_classname = "WeakListStrategy"
     import_from_mixin(rstrat.WeakGenericStrategy)
 
-@rstrat.strategy(generalize=[ListStorageShadow])
-class SmallIntegerOrNilStorageShadow(AbstractStorageShadow):
-    repr_classname = "SmallIntegerOrNilStorageShadow"
+@rstrat.strategy(generalize=[ListStrategy])
+class SmallIntegerOrNilStrategy(AbstractStrategy):
+    repr_classname = "SmallIntegerOrNilStrategy"
     import_from_mixin(rstrat.TaggingStrategy)
     contained_type = model.W_SmallInteger
     def wrap(self, val): return self.space.wrap_int(val)
@@ -70,9 +70,9 @@ class SmallIntegerOrNilStorageShadow(AbstractStorageShadow):
     def wrapped_tagged_value(self): return self.space.w_nil
     def unwrapped_tagged_value(self): return constants.MAXINT
 
-@rstrat.strategy(generalize=[ListStorageShadow])
-class FloatOrNilStorageShadow(AbstractStorageShadow):
-    repr_classname = "FloatOrNilStorageShadow"
+@rstrat.strategy(generalize=[ListStrategy])
+class FloatOrNilStrategy(AbstractStrategy):
+    repr_classname = "FloatOrNilStrategy"
     import_from_mixin(rstrat.TaggingStrategy)
     contained_type = model.W_Float
     tag_float = sys.float_info.max
@@ -82,11 +82,11 @@ class FloatOrNilStorageShadow(AbstractStorageShadow):
     def unwrapped_tagged_value(self): return self.tag_float
 
 @rstrat.strategy(generalize=[
-    SmallIntegerOrNilStorageShadow,
-    FloatOrNilStorageShadow,
-    ListStorageShadow])
-class AllNilStorageShadow(AbstractStorageShadow):
-    repr_classname = "AllNilStorageShadow"
+    SmallIntegerOrNilStrategy,
+    FloatOrNilStrategy,
+    ListStrategy])
+class AllNilStrategy(AbstractStrategy):
+    repr_classname = "AllNilStrategy"
     import_from_mixin(rstrat.SingleValueStrategy)
     def value(self): return self.space.w_nil
 
@@ -96,21 +96,21 @@ class StrategyFactory(rstrat.StrategyFactory):
         from spyvm import objspace
         self.space = space
         self.no_specialized_storage = objspace.ConstantFlag()
-        rstrat.StrategyFactory.__init__(self, AbstractShadow)
+        rstrat.StrategyFactory.__init__(self, AbstractObjectStorage)
     
     def strategy_type_for(self, objects, weak=False):
         if weak:
-            return WeakListStorageShadow
+            return WeakListStrategy
         if self.no_specialized_storage.is_set():
-            return ListStorageShadow
+            return ListStrategy
         return rstrat.StrategyFactory.strategy_type_for(self, objects)
     
     def empty_storage_type(self, w_self, size, weak=False):
         if weak:
-            return WeakListStorageShadow
+            return WeakListStrategy
         if self.no_specialized_storage.is_set():
-            return ListStorageShadow
-        return AllNilStorageShadow
+            return ListStrategy
+        return AllNilStrategy
     
     def set_initial_strategy(self, w_object, strategy_type, size, elements=None):
         assert w_object.shadow is None, "Shadow should not be initialized yet!"
@@ -147,7 +147,7 @@ class StrategyFactory(rstrat.StrategyFactory):
     
 # ========== Other storage classes, non-strategies ==========
 
-class AbstractRedirectingShadow(AbstractShadow):
+class AbstractRedirectingShadow(AbstractObjectStorage):
     _attrs_ = ['_w_self_size']
     repr_classname = "AbstractRedirectingShadow"
 
@@ -156,12 +156,12 @@ class AbstractRedirectingShadow(AbstractShadow):
             self._w_self_size = w_self.size()
         else:
             self._w_self_size = size
-        AbstractShadow.__init__(self, space, w_self, self._w_self_size)
+        AbstractObjectStorage.__init__(self, space, w_self, self._w_self_size)
 
     def size(self):
         return self._w_self_size
 
-class AbstractCachingShadow(ListStorageShadow):
+class AbstractCachingShadow(ListStrategy):
     _immutable_fields_ = ['version?']
     _attrs_ = ['version']
     repr_classname = "AbstractCachingShadow"
@@ -169,7 +169,7 @@ class AbstractCachingShadow(ListStorageShadow):
     version = None
 
     def __init__(self, space, w_self, size):
-        ListStorageShadow.__init__(self, space, w_self, size)
+        ListStrategy.__init__(self, space, w_self, size)
         self.changed()
 
 class CachedObjectShadow(AbstractCachingShadow):
@@ -183,15 +183,15 @@ class CachedObjectShadow(AbstractCachingShadow):
         AbstractCachingShadow.store(self, n0, w_value)
         self.changed()
 
-class ObserveeShadow(ListStorageShadow):
+class ObserveeShadow(ListStrategy):
     _attrs_ = ['dependent']
     repr_classname = "ObserveeShadow"
     def __init__(self, space, w_self, size):
-        ListStorageShadow.__init__(self, space, w_self, size)
+        ListStrategy.__init__(self, space, w_self, size)
         self.dependent = None
 
     def store(self, n0, w_value):
-        ListStorageShadow.store(self, n0, w_value)
+        ListStrategy.store(self, n0, w_value)
         if self.dependent:
             self.dependent.update()
 

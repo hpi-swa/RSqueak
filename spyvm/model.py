@@ -587,8 +587,8 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         space.strategy_factory.set_initial_strategy(self, storage_type, len(pointers), pointers)
     
     def is_weak(self):
-        from storage import WeakListStorageShadow
-        return isinstance(self.shadow, WeakListStorageShadow)
+        from storage import WeakListStrategy
+        return isinstance(self.shadow, WeakListStrategy)
     
     def is_class(self, space):
         from spyvm.storage_classes import ClassShadow
@@ -680,8 +680,8 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         return shadow
 
     def get_shadow(self, space):
-        from spyvm.storage import AbstractShadow
-        return self.as_special_get_shadow(space, AbstractShadow)
+        from spyvm.storage import AbstractObjectStorage
+        return self.as_special_get_shadow(space, AbstractObjectStorage)
 
     def as_class_get_shadow(self, space):
         from spyvm.storage_classes import ClassShadow

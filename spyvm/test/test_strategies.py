@@ -48,10 +48,10 @@ def check_arr(arr, expected):
 def test_ordered_strategies():
     strategies = space.strategy_factory.strategies
     assert len(strategies) == 4
-    index_nil = strategies.index(storage.AllNilStorageShadow)
-    index_float = strategies.index(storage.FloatOrNilStorageShadow)
-    index_int = strategies.index(storage.SmallIntegerOrNilStorageShadow)
-    index_list = strategies.index(storage.ListStorageShadow)
+    index_nil = strategies.index(storage.AllNilStrategy)
+    index_float = strategies.index(storage.FloatOrNilStrategy)
+    index_int = strategies.index(storage.SmallIntegerOrNilStrategy)
+    index_list = strategies.index(storage.ListStrategy)
     assert index_nil < index_float < index_list
     assert index_nil < index_int < index_list
 
@@ -60,24 +60,24 @@ def test_optimized_strategy_switch(monkeypatch):
     def copy_from(self, other):
         assert False, "The default copy_from() routine should not be called!"
     
-    monkeypatch.setattr(storage.AbstractStorageShadow, "copy_from", copy_from)
+    monkeypatch.setattr(storage.AbstractStrategy, "copy_from", copy_from)
     try:
         s = a.shadow
-        s.strategy_factory().switch_strategy(s, storage.SmallIntegerOrNilStorageShadow)
+        s.strategy_factory().switch_strategy(s, storage.SmallIntegerOrNilStrategy)
     finally:
         monkeypatch.undo()
     
-# ====== AllNil StorageShadow
+# ====== AllNil Strategy
 
 def test_EmptyArray():
     a = arr(5)
-    assert isinstance(a.shadow, storage.AllNilStorageShadow)
+    assert isinstance(a.shadow, storage.AllNilStrategy)
 
 def test_StoreNil():
     a = arr(5)
     a.store(space, 0, w_nil)
     a.store(space, 4, w_nil)
-    assert isinstance(a.shadow, storage.AllNilStorageShadow)
+    assert isinstance(a.shadow, storage.AllNilStrategy)
 
 def test_FetchNil():
     a = arr(5)
@@ -87,17 +87,17 @@ def test_AllNilSize():
     a = arr(5)
     assert a.size() == 5
 
-# ====== List StorageShadow
+# ====== List Strategy
 
 def test_AllNil_to_List():
     a = list_arr(5)
-    assert isinstance(a.shadow, storage.ListStorageShadow)
+    assert isinstance(a.shadow, storage.ListStrategy)
 
 def test_List_store():
     a = list_arr(5)
     a.store(space, 1, arr(1))
     a.store(space, 4, arr(1))
-    assert isinstance(a.shadow, storage.ListStorageShadow)
+    assert isinstance(a.shadow, storage.ListStrategy)
 
 def test_List_fetch():
     a = list_arr(5)
@@ -109,18 +109,18 @@ def test_List_size():
     a.store(space, 1, arr(1))
     assert a.size() == 5
 
-# ====== SmallIntegerOrNil StorageShadow
+# ====== SmallIntegerOrNil Strategy
 
 def test_AllNil_to_Int():
     a = int_arr(5)
-    assert isinstance(a.shadow, storage.SmallIntegerOrNilStorageShadow)
+    assert isinstance(a.shadow, storage.SmallIntegerOrNilStrategy)
     check_arr(a, [12, w_nil, w_nil, w_nil, w_nil])
 
 def test_SmallInt_store():
     a = int_arr(5)
     a.store(space, 1, space.wrap_int(20))
     a.store(space, 2, space.wrap_int(20))
-    assert isinstance(a.shadow, storage.SmallIntegerOrNilStorageShadow)
+    assert isinstance(a.shadow, storage.SmallIntegerOrNilStrategy)
     check_arr(a, [12, 20, 20, w_nil, w_nil])
 
 def test_SmallInt_store_nil_to_nil():
@@ -146,26 +146,26 @@ def test_SmallInt_delete():
 def test_SmallInt_to_List():
     a = int_arr(5)
     a.store(space, 1, arr(1))
-    assert isinstance(a.shadow, storage.ListStorageShadow)
+    assert isinstance(a.shadow, storage.ListStrategy)
 
 def test_SmallInt_store_Float_to_List():
     a = int_arr(5)
     a.store(space, 1, space.wrap_float(2.2))
-    assert isinstance(a.shadow, storage.ListStorageShadow)
+    assert isinstance(a.shadow, storage.ListStrategy)
     check_arr(a, [12, 2.2, w_nil, w_nil, w_nil])
     
-# ====== FloatOrNil StorageShadow
+# ====== FloatOrNil Strategy
 
 def test_AllNil_to_Float():
     a = float_arr(5)
-    assert isinstance(a.shadow, storage.FloatOrNilStorageShadow)
+    assert isinstance(a.shadow, storage.FloatOrNilStrategy)
     check_arr(a, [1.2, w_nil, w_nil, w_nil, w_nil])
 
 def test_Float_store():
     a = float_arr(5)
     a.store(space, 1, space.wrap_float(20.0))
     a.store(space, 2, space.wrap_float(20.0))
-    assert isinstance(a.shadow, storage.FloatOrNilStorageShadow)
+    assert isinstance(a.shadow, storage.FloatOrNilStrategy)
     check_arr(a, [1.2, 20.0, 20.0, w_nil, w_nil])
 
 def test_Float_store_nil_to_nil():
@@ -191,10 +191,10 @@ def test_Float_delete():
 def test_Float_to_List():
     a = float_arr(5)
     a.store(space, 1, arr(1))
-    assert isinstance(a.shadow, storage.ListStorageShadow)
+    assert isinstance(a.shadow, storage.ListStrategy)
 
 def test_Float_store_SmallInt_to_List():
     a = float_arr(5)
     a.store(space, 1, space.wrap_int(2))
-    assert isinstance(a.shadow, storage.ListStorageShadow)
+    assert isinstance(a.shadow, storage.ListStrategy)
     check_arr(a, [1.2, 2, w_nil, w_nil, w_nil])

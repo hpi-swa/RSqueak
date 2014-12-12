@@ -1,6 +1,6 @@
 
 from spyvm import model, constants, error, wrapper
-from spyvm.storage import AbstractCachingShadow, ListStorageShadow
+from spyvm.storage import AbstractCachingShadow, ListStrategy
 from spyvm.util.version import constant_for_version, constant_for_version_arg, Version
 from rpython.rlib import jit
 
@@ -256,7 +256,7 @@ class ClassShadow(AbstractCachingShadow):
         if isinstance(w_method, model.W_CompiledMethod):
             w_method.compiledin_class = self.w_self()
 
-class MethodDictionaryShadow(ListStorageShadow):
+class MethodDictionaryShadow(ListStrategy):
 
     _immutable_fields_ = ['invalid?', 's_class']
     _attrs_ = ['methoddict', 'invalid', 's_class']
@@ -266,7 +266,7 @@ class MethodDictionaryShadow(ListStorageShadow):
         self.invalid = True
         self.s_class = None
         self.methoddict = {}
-        ListStorageShadow.__init__(self, space, w_self, size)
+        ListStrategy.__init__(self, space, w_self, size)
 
     def update(self):
         self.sync_method_cache()
@@ -283,7 +283,7 @@ class MethodDictionaryShadow(ListStorageShadow):
     # the Smalltalk Implementation, the dictionary changes first. Afterwards
     # its contents array is filled with the value belonging to the new key.
     def store(self, n0, w_value):
-        ListStorageShadow.store(self, n0, w_value)
+        ListStrategy.store(self, n0, w_value)
         if n0 == constants.METHODDICT_VALUES_INDEX:
             self.setup_notification()
         if n0 >= constants.METHODDICT_NAMES_INDEX:
