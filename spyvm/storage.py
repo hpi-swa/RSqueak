@@ -7,8 +7,12 @@ from rpython.rlib.objectmodel import import_from_mixin
 import rstrategies as rstrat
 
 class AbstractObjectStorage(object):
-    """A shadow is an optional extra bit of information that
-    can be attached at run-time to any Smalltalk object.
+    """Subclasses of this handle the information contained in Smalltalk objects.
+    The common API allows to store and fetch elements from object slots.
+    Every object has some kind of storage representation attached.
+    Some subclasses (those with *Shadow in their name) contain additional information,
+    required by the VM. These 'shadows' not only manage the memory of their Smalltalk objects,
+    but are also the VM-internal representation of these objects.
     """
     _attrs_ = ['_w_self', 'space']
     _immutable_fields_ = ['space']
@@ -34,6 +38,10 @@ class AbstractObjectStorage(object):
 # ========== Storage classes implementing storage strategies ==========
 
 class AbstractStrategy(AbstractObjectStorage):
+    """
+    Strategies handle 'simple' object storage, without additional VM-internal information.
+    Depending on the data inside an object, different optimizing strategies are used.
+    """
     repr_classname = "AbstractStrategy"
     _attrs_ = []
     import_from_mixin(rstrat.UnsafeIndexingMixin)
@@ -115,7 +123,7 @@ class StrategyFactory(rstrat.StrategyFactory):
     def set_initial_strategy(self, w_object, strategy_type, size, elements=None):
         assert w_object.strategy is None, "Shadow should not be initialized yet!"
         strategy = strategy_type(self.space, w_object, size)
-        w_object.store_shadow(strategy)
+        w_object.store_strategy(strategy)
         if elements:
             w_object.store_all(self.space, elements)
         strategy.strategy_switched()
@@ -124,7 +132,7 @@ class StrategyFactory(rstrat.StrategyFactory):
     def instantiate_and_switch(self, old_strategy, size, strategy_class):
         w_self = old_strategy.w_self()
         instance = strategy_class(self.space, w_self, size)
-        w_self.store_shadow(instance)
+        w_self.store_strategy(instance)
         return instance
     
     def instantiate_empty(self, strategy_type):
@@ -148,6 +156,9 @@ class StrategyFactory(rstrat.StrategyFactory):
 # ========== Other storage classes, non-strategies ==========
 
 class AbstractRedirectingShadow(AbstractObjectStorage):
+    """
+    Abstract shadow for handling the object storage in a completely customized way.
+    """
     _attrs_ = ['_w_self_size']
     repr_classname = "AbstractRedirectingShadow"
 
@@ -162,6 +173,10 @@ class AbstractRedirectingShadow(AbstractObjectStorage):
         return self._w_self_size
 
 class AbstractCachingShadow(ListStrategy):
+    """
+    Abstract shadow maintaining an empty version object for the 
+    underlying Smalltalk object. The version object allows jit-related optimizations.
+    """
     _immutable_fields_ = ['version?']
     _attrs_ = ['version']
     repr_classname = "AbstractCachingShadow"
@@ -173,6 +188,9 @@ class AbstractCachingShadow(ListStrategy):
         self.changed()
 
 class CachedObjectShadow(AbstractCachingShadow):
+    """
+    A shadow which treats its contents as jit constants as the object is not modified.
+    """
     repr_classname = "CachedObjectShadow"
 
     @elidable_for_version
@@ -184,6 +202,9 @@ class CachedObjectShadow(AbstractCachingShadow):
         self.changed()
 
 class ObserveeShadow(ListStrategy):
+    """
+    A generic shadow that notifies a single observer object whenever changes are made.
+    """
     _attrs_ = ['dependent']
     repr_classname = "ObserveeShadow"
     def __init__(self, space, w_self, size):

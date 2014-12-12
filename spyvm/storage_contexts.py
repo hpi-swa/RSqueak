@@ -389,7 +389,7 @@ class BlockContextShadow(ContextPartShadow):
         ctx.store_initialip(pc)
         ctx.store_pc(pc)
         
-        w_self.store_shadow(ctx)
+        w_self.store_strategy(ctx)
         ctx.init_stack_and_temps()
         return ctx
     
@@ -647,7 +647,7 @@ class MethodContextShadow(ContextPartShadow):
         else:
             space = self.space
             w_self = model.W_PointersObject(space, space.w_MethodContext, self.size())
-            w_self.store_shadow(self)
+            w_self.store_strategy(self)
             self._w_self = w_self
             return w_self
 

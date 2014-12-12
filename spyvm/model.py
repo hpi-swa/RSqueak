@@ -596,7 +596,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
             return True
         return W_AbstractObjectWithClassReference.is_class(self, space)
     
-    def assert_shadow(self):
+    def assert_strategy(self):
         # Failing the following assert most likely indicates a bug. The strategy can only be absent during
         # the bootstrapping sequence. It will be initialized in the fillin() method. Before that, it should
         # not be switched to a specialized strategy, and the space is also not yet available here! 
@@ -606,22 +606,22 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         return strategy
     
     def space(self):
-        return self.assert_shadow().space
+        return self.assert_strategy().space
         
     def __str__(self):
-        if self.has_shadow() and self.strategy.provides_getname:
-            return self._get_shadow().getname()
+        if self.has_strategy() and self.strategy.provides_getname:
+            return self._get_strategy().getname()
         else:
             return W_AbstractObjectWithClassReference.__str__(self)
     
     def repr_content(self):
-        shadow_info = "no shadow"
+        strategy_info = "no strategy"
         name = ""
-        if self.has_shadow():
-            shadow_info = self.strategy.__repr__()
+        if self.has_strategy():
+            strategy_info = self.strategy.__repr__()
             if self.strategy.provides_getname:
-                name = " [%s]" % self._get_shadow().getname()
-        return '(%s) len=%d%s' % (shadow_info, self.size(), name)
+                name = " [%s]" % self._get_strategy().getname()
+        return '(%s) len=%d%s' % (strategy_info, self.size(), name)
     
     def fetch_all(self, space):
         return [self.fetch(space, i) for i in range(self.size())]
@@ -648,34 +648,32 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         self.store(space, index0 + self.instsize(), w_value)
 
     def fetch(self, space, n0):
-        return self._get_shadow().fetch(n0)
+        return self._get_strategy().fetch(n0)
 
     def store(self, space, n0, w_value):
-        return self._get_shadow().store(n0, w_value)
+        return self._get_strategy().store(n0, w_value)
 
     def size(self):
-        if not self.has_shadow():
+        if not self.has_strategy():
             # TODO - this happens only for objects bootstrapped in ObjSpace.
             # Think of a way to avoid this check. Usually, self.strategy is never None.
             return 0
-        return self._get_shadow().size()
+        return self._get_strategy().size()
         
     def instsize(self):
         return self.class_shadow(self.space()).instsize()
 
-    def store_shadow(self, strategy):
-        old_shadow = self.strategy
+    def store_strategy(self, strategy):
         self.strategy = strategy
 
-    def _get_shadow(self):
+    def _get_strategy(self):
         return self.strategy
     
     @objectmodel.specialize.arg(2)
     def as_special_get_shadow(self, space, TheClass):
-        old_shadow = self._get_shadow()
-        shadow = old_shadow
-        if not isinstance(old_shadow, TheClass):
-            shadow = space.strategy_factory.switch_strategy(old_shadow, TheClass)
+        shadow = self._get_strategy()
+        if not isinstance(shadow, TheClass):
+            shadow = space.strategy_factory.switch_strategy(shadow, TheClass)
         assert isinstance(shadow, TheClass)
         return shadow
 
@@ -713,17 +711,17 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         from spyvm.storage import ObserveeShadow
         return self.as_special_get_shadow(space, ObserveeShadow)
 
-    def has_shadow(self):
-        return self._get_shadow() is not None
+    def has_strategy(self):
+        return self._get_strategy() is not None
 
     def has_space(self):
-        # The space is accessed through the shadow.
-        return self.has_shadow()
+        # The space is accessed through the strategy.
+        return self.has_strategy()
     
     def _become(self, w_other):
         assert isinstance(w_other, W_PointersObject)
         self.strategy, w_other.strategy = w_other.strategy, self.strategy
-        # shadow links are in both directions -> also update shadows
+        # strategy links are in both directions -> also update strategies
         if    self.strategy is not None:    self.strategy._w_self = self
         if w_other.strategy is not None: w_other.strategy._w_self = w_other
         W_AbstractObjectWithClassReference._become(self, w_other)
