@@ -1,17 +1,16 @@
-syntax: glob
 *.py[co]
 *~
+*.swp
+*.orig
+
 pypy-c-jit-*
-images/Squeak*
 images/resources*
 *package-cache/
-Squeak*
-*TAGS
-targetimageloadingsmalltalk-*c
-images/package-cache
+
+rsqueak*
+spy-*.log
+
+local
 versions
 coglinux
-*.orig
 SDL.dll
-spy-*.log
-st-*
