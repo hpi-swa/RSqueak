@@ -1,0 +1,13 @@
+# .coveragerc file to control coverage.py (code coverage plugin for pytest)
+# Get it here: https://pypi.python.org/pypi/pytest-cov
+# Examples:
+# $ python -m pytest spyvm/test --cov spyvm --cov-report html --cov-config .coveragerc
+
+[run]
+omit =
+    spyvm/test/*
+    spyvm/util/logparser.py
+    spyvm/tools/*
+    spyvm/interpreter_debugging.py
+    */__init__.py
+    # spyvm/plugins/*

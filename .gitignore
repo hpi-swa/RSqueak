@@ -7,11 +7,10 @@ pypy-c-jit-*
 images/resources*
 *package-cache/
 
-rsqueak
-rsqueak.exe
+rsqueak*
 spy-*.log
 
+local
 versions
 coglinux
 SDL.dll
-st-*
