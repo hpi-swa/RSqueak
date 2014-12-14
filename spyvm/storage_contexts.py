@@ -52,7 +52,7 @@ class ContextPartShadow(AbstractObjectStorage):
     # Initialization
     
     def __init__(self, space, w_self, size):
-        super(ContextPartShadow, self).__init__(space, w_self, size)
+        AbstractObjectStorage.__init__(self, space, w_self, size)
         self._s_sender = None
         if w_self is not None:
             self._w_self_size = w_self.size()
@@ -421,7 +421,7 @@ class BlockContextShadow(ContextPartShadow):
     
     def __init__(self, space, w_self, size):
         self = fresh_virtualizable(self)
-        super(BlockContextShadow, self).__init__(space, w_self, size)
+        ContextPartShadow.__init__(self, space, w_self, size)
         self._w_home = None
         self._initialip = 0
         self._eargc = 0
@@ -476,7 +476,7 @@ class BlockContextShadow(ContextPartShadow):
         if n0 == constants.BLKCTX_BLOCK_ARGUMENT_COUNT_INDEX:
             return self.wrap_eargc()
         else:
-            return super(BlockContextShadow, self).fetch(w_self, n0)
+            return ContextPartShadow.fetch(self, w_self, n0)
 
     def store(self, w_self, n0, w_value):
         if n0 == constants.BLKCTX_HOME_INDEX:
@@ -486,7 +486,7 @@ class BlockContextShadow(ContextPartShadow):
         if n0 == constants.BLKCTX_BLOCK_ARGUMENT_COUNT_INDEX:
             return self.unwrap_store_eargc(w_value)
         else:
-            return super(BlockContextShadow, self).store(w_self, n0, w_value)
+            return ContextPartShadow.store(self, w_self, n0, w_value)
 
     def store_w_home(self, w_home):
         assert isinstance(w_home, model.W_PointersObject)
@@ -557,7 +557,7 @@ class MethodContextShadow(ContextPartShadow):
     
     def __init__(self, space, w_self, size):
         self = fresh_virtualizable(self)
-        super(MethodContextShadow, self).__init__(space, w_self, size)
+        ContextPartShadow.__init__(self, space, w_self, size)
         self.closure = None
         self._w_method = None
         self._w_receiver = None
@@ -594,7 +594,7 @@ class MethodContextShadow(ContextPartShadow):
         if (0 <= temp_i < self.tempsize()):
             return self.gettemp(temp_i)
         else:
-            return super(MethodContextShadow, self).fetch(w_self, n0)
+            return ContextPartShadow.fetch(self, w_self, n0)
 
     def store(self, w_self, n0, w_value):
         if n0 == constants.MTHDCTX_METHOD:
@@ -612,7 +612,7 @@ class MethodContextShadow(ContextPartShadow):
         if (0 <=  temp_i < self.tempsize()):
             return self.settemp(temp_i, w_value)
         else:
-            return super(MethodContextShadow, self).store(w_self, n0, w_value)
+            return ContextPartShadow.store(self, w_self, n0, w_value)
 
     def store_w_receiver(self, w_receiver):
         self._w_receiver = w_receiver

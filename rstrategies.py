@@ -27,7 +27,7 @@ class StrategyMetaclass(type):
         erase, unerase = rerased.new_static_erasing_pair(name)
         attrs['erase'] = erase
         attrs['unerase'] = unerase
-        return super(StrategyMetaclass, self).__new__(self, name, bases, attrs)
+        return type.__new__(self, name, bases, attrs)
     
 def strategy(generalize=None, singleton=True):
     def decorator(strategy_class):

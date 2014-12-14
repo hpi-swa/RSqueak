@@ -394,7 +394,7 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
     def _become(self, w_other):
         self.value, w_other.value = w_other.value, self.value
         self._exposed_size, w_other._exposed_size = w_other._exposed_size, self._exposed_size
-        super(W_LargePositiveInteger1Word, self)._become(self, w_other)
+        W_AbstractObjectWithIdentityHash._become(self, w_other)
 
 class W_Float(W_AbstractObjectWithIdentityHash):
     """Boxed float value."""
@@ -436,7 +436,7 @@ class W_Float(W_AbstractObjectWithIdentityHash):
     def _become(self, w_other):
         assert isinstance(w_other, W_Float)
         self.value, w_other.value = w_other.value, self.value
-        super(W_Float, self)._become(self, w_other)
+        W_AbstractObjectWithIdentityHash._become(self, w_other)
 
     def is_same_object(self, other):
         if not isinstance(other, W_Float):

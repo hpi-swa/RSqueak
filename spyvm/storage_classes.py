@@ -29,10 +29,10 @@ class ClassShadow(AbstractCachingShadow):
 
     def __init__(self, space, w_self, size):
         self.subclass_s = {}
-        super(ClassShadow, self).__init__(space, w_self, size)
+        AbstractCachingShadow.__init__(self, space, w_self, size)
 
     def store(self, w_self, n0, w_val):
-        super(ClassShadow, self).store(w_self, n0, w_val)
+        AbstractCachingShadow.store(self, w_self, n0, w_val)
         if n0 == constants.CLASS_SUPERCLASS_INDEX:
             self.store_w_superclass(w_val)
         elif n0 == constants.CLASS_METHODDICT_INDEX:
@@ -265,7 +265,7 @@ class MethodDictionaryShadow(AbstractGenericShadow):
         self.invalid = True
         self.s_class = None
         self.methoddict = {}
-        super(MethodDictionaryShadow, self).__init__(space, w_self, size)
+        AbstractGenericShadow.__init__(self, space, w_self, size)
 
     def notify(self):
         self.sync_method_cache()
@@ -282,7 +282,7 @@ class MethodDictionaryShadow(AbstractGenericShadow):
     # the Smalltalk Implementation, the dictionary changes first. Afterwards
     # its contents array is filled with the value belonging to the new key.
     def store(self, w_self, n0, w_value):
-        super(MethodDictionaryShadow, self).store(w_self, n0, w_value)
+        AbstractGenericShadow.store(self, w_self, n0, w_value)
         if n0 == constants.METHODDICT_VALUES_INDEX:
             self.setup_notification()
         if n0 >= constants.METHODDICT_NAMES_INDEX:

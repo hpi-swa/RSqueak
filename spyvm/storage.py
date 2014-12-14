@@ -61,6 +61,7 @@ class AbstractStrategy(AbstractObjectStorage):
 
 @rstrat.strategy()
 class ListStrategy(AbstractStrategy):
+    _attrs_ = []
     repr_classname = "ListStrategy"
     import_from_mixin(rstrat.GenericStrategy)
 
@@ -104,7 +105,7 @@ class StrategyFactory(rstrat.StrategyFactory):
         from spyvm import objspace
         self.space = space
         self.no_specialized_storage = objspace.ConstantFlag()
-        super(StrategyFactory, self).__init__(AbstractObjectStorage)
+        rstrat.StrategyFactory.__init__(self, AbstractObjectStorage)
     
     def instantiate_strategy(self, strategy_type, w_self=None, initial_size=0):
         return strategy_type(self.space, w_self, initial_size)
@@ -114,7 +115,7 @@ class StrategyFactory(rstrat.StrategyFactory):
             return WeakListStrategy
         if self.no_specialized_storage.is_set():
             return ListStrategy
-        return super(StrategyFactory, self).strategy_type_for(objects)
+        return rstrat.StrategyFactory.strategy_type_for(self, objects)
     
     def empty_storage_type(self, w_self, size, weak=False):
         if weak:
@@ -165,7 +166,7 @@ class AbstractGenericShadow(ListStrategy):
     _immutable_fields_ = ['_w_self?']
     import_from_mixin(ShadowMixin)
     def __init__(self, space, w_self, size):
-        super(AbstractGenericShadow, self).__init__(space, w_self, size)
+        ListStrategy.__init__(self, space, w_self, size)
         assert w_self is None or isinstance(w_self, model.W_PointersObject)
         self._w_self = w_self
     def convert_storage_from(self, w_self, previous_strategy):
@@ -185,7 +186,7 @@ class AbstractCachingShadow(AbstractGenericShadow):
     version = None
 
     def __init__(self, space, w_self, size):
-        super(AbstractCachingShadow, self).__init__(space, w_self, size)
+        AbstractGenericShadow.__init__(self, space, w_self, size)
         self.changed()
 
 class CachedObjectShadow(AbstractCachingShadow):
@@ -196,10 +197,10 @@ class CachedObjectShadow(AbstractCachingShadow):
 
     @elidable_for_version
     def fetch(self, w_self, n0):
-        return super(CachedObjectShadow, self).fetch(w_self, n0)
+        return AbstractCachingShadow.fetch(self, w_self, n0)
 
     def store(self, w_self, n0, w_value):
-        super(CachedObjectShadow, self).store(w_self, n0, w_value)
+        AbstractCachingShadow.store(self, w_self, n0, w_value)
         self.changed()
 
 class ObserveeShadow(AbstractGenericShadow):
@@ -209,11 +210,11 @@ class ObserveeShadow(AbstractGenericShadow):
     _attrs_ = ['observer']
     repr_classname = "ObserveeShadow"
     def __init__(self, space, w_self, size):
-        super(ObserveeShadow, self).__init__(space, w_self, size)
+        AbstractGenericShadow.__init__(self, space, w_self, size)
         self.observer = None
 
     def store(self, w_self, n0, w_value):
-        super(ObserveeShadow, self).store(w_self, n0, w_value)
+        AbstractGenericShadow.store(self, w_self, n0, w_value)
         if self.observer:
             self.observer.notify()
 
