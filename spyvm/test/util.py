@@ -275,6 +275,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         s._s_methoddict = None
         s.instance_varsized = varsized or format != storage_classes.POINTERS
         w_class.store_strategy(s)
+        s.initialize_storage(w_class, 0)
         w_class.w_class = w_metaclass
         
     def bootstrap_class(self, instsize, w_superclass=None, w_metaclass=None,

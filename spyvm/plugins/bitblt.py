@@ -89,30 +89,30 @@ class BitBltShadow(AbstractCachingShadow):
 
     def loadBitBlt(self):
         self.success = True
-        self.w_destForm = self.fetch(0)
+        self.w_destForm = self.own_fetch(0)
         self.dest = self.loadForm(self.w_destForm)
-        self.w_sourceForm = self.fetch(1)
+        self.w_sourceForm = self.own_fetch(1)
         if not self.w_sourceForm.is_nil(self.space):
             self.source = self.loadForm(self.w_sourceForm)
         else:
             self.source = None
-        self.halftone = self.loadHalftone(self.fetch(2))
-        self.combinationRule = self.space.unwrap_int(self.fetch(3))
-        self.destX = self.intOrIfNil(self.fetch(4), 0)
-        self.destY = self.intOrIfNil(self.fetch(5), 0)
-        self.width = self.intOrIfNil(self.fetch(6), self.dest.width)
-        self.height = self.intOrIfNil(self.fetch(7), self.dest.height)
-        self.clipX = self.intOrIfNil(self.fetch(10), 0)
-        self.clipY = self.intOrIfNil(self.fetch(11), 0)
-        self.clipW = self.intOrIfNil(self.fetch(12), self.width)
-        self.clipH = self.intOrIfNil(self.fetch(13), self.height)
+        self.halftone = self.loadHalftone(self.own_fetch(2))
+        self.combinationRule = self.space.unwrap_int(self.own_fetch(3))
+        self.destX = self.intOrIfNil(self.own_fetch(4), 0)
+        self.destY = self.intOrIfNil(self.own_fetch(5), 0)
+        self.width = self.intOrIfNil(self.own_fetch(6), self.dest.width)
+        self.height = self.intOrIfNil(self.own_fetch(7), self.dest.height)
+        self.clipX = self.intOrIfNil(self.own_fetch(10), 0)
+        self.clipY = self.intOrIfNil(self.own_fetch(11), 0)
+        self.clipW = self.intOrIfNil(self.own_fetch(12), self.width)
+        self.clipH = self.intOrIfNil(self.own_fetch(13), self.height)
         if not self.source:
             self.sourceX = 0
             self.sourceY = 0
         else:
-            self.loadColorMap(self.fetch(14))
-            self.sourceX = self.intOrIfNil(self.fetch(8), 0)
-            self.sourceY = self.intOrIfNil(self.fetch(9), 0)
+            self.loadColorMap(self.own_fetch(14))
+            self.sourceX = self.intOrIfNil(self.own_fetch(8), 0)
+            self.sourceY = self.intOrIfNil(self.own_fetch(9), 0)
 
     def copyBits(self):
         self.bitCount = 0
@@ -733,18 +733,18 @@ class FormShadow(AbstractCachingShadow):
     def intOrIfNil(self, w_int, i):
         return intOrIfNil(self.space, w_int, i)
 
-    def strategy_switched(self):
+    def strategy_switched(self, w_self):
         self.invalid = True
-        if self.size() < 5:
+        if self.size(w_self) < 5:
             return
-        self.w_bits = self.fetch(0)
+        self.w_bits = self.own_fetch(0)
         if self.w_bits.is_nil(self.space):
             return
         if not (isinstance(self.w_bits, model.W_WordsObject) or isinstance(self.w_bits, model_display.W_DisplayBitmap)):
             return
-        self.width = self.intOrIfNil(self.fetch(1), 0)
-        self.height = self.intOrIfNil(self.fetch(2), 0)
-        self.depth = self.intOrIfNil(self.fetch(3), 0)
+        self.width = self.intOrIfNil(self.own_fetch(1), 0)
+        self.height = self.intOrIfNil(self.own_fetch(2), 0)
+        self.depth = self.intOrIfNil(self.own_fetch(3), 0)
         if self.width < 0 or self.height < 0:
             return
         self.msb = self.depth > 0
@@ -752,7 +752,7 @@ class FormShadow(AbstractCachingShadow):
             self.depth = -self.depth
         if self.depth == 0:
             return
-        w_offset = self.fetch(4)
+        w_offset = self.own_fetch(4)
         assert isinstance(w_offset, model.W_PointersObject)
         if not w_offset.is_nil(self.space):
             self.offsetX = self.intOrIfNil(w_offset.fetch(self.space, 0), 0)

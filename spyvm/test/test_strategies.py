@@ -57,13 +57,13 @@ def test_ordered_strategies():
 
 def test_optimized_strategy_switch(monkeypatch):
     a = arr(5)
-    def copy_from(self, other):
-        assert False, "The default copy_from() routine should not be called!"
+    def convert_storage_from(self, other):
+        assert False, "The default convert_storage_from() routine should not be called!"
     
-    monkeypatch.setattr(storage.AbstractStrategy, "copy_from", copy_from)
+    monkeypatch.setattr(storage.AbstractStrategy, "convert_storage_from", convert_storage_from)
     try:
         s = a.strategy
-        s.strategy_factory().switch_strategy(s, storage.SmallIntegerOrNilStrategy)
+        s.strategy_factory().switch_strategy(a, s, storage.SmallIntegerOrNilStrategy)
     finally:
         monkeypatch.undo()
     

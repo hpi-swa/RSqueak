@@ -176,22 +176,22 @@ def test_attach_mc():
     w_m = create_method()
     w_object = methodcontext(pc=13, method=w_m)
     s_object = w_object.as_methodcontext_get_shadow(space)
-    assert s_object.fetch(1).value == 13
+    assert s_object.fetch(w_object, 1).value == 13
 
 def test_attach_bc():
     w_object = blockcontext(pc=13)
     s_object = w_object.as_blockcontext_get_shadow(space)
-    assert s_object.fetch(1).value == 13
+    assert s_object.fetch(w_object, 1).value == 13
 
 def test_replace_to_bc():
     w_object = blockcontext(pc=13)
     s_object = w_object.as_blockcontext_get_shadow(space)
     s_object.strategy = None
     s_newobject = w_object.as_blockcontext_get_shadow(space)
-    assert ([s_newobject.fetch(i) for i in range(s_newobject.size())] ==
-            [s_object.fetch(i) for i in range(s_newobject.size())])
+    assert ([s_newobject.own_fetch(i) for i in range(s_newobject.own_size())] ==
+            [s_object.own_fetch(i) for i in range(s_newobject.own_size())])
     assert w_object.strategy is s_newobject
-    assert s_object.fetch(1).value == 13
+    assert s_object.own_fetch(1).value == 13
 
 def test_cached_object_shadow():
     l = map(space.w, [0, 1, 2, 3, 4, 5, 6, 7])

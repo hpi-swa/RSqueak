@@ -1,8 +1,9 @@
 
 from spyvm import model, constants, error, wrapper
-from spyvm.storage import AbstractRedirectingShadow
+from spyvm.storage import AbstractObjectStorage, ShadowMixin
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib import rarithmetic, jit, objectmodel
+from rpython.rlib.objectmodel import import_from_mixin
 import rstrategies as rstrat
 
 @objectmodel.specialize.call_location()
@@ -23,50 +24,75 @@ DirtyContext = ContextState("DirtyContext")
 class ExtendableStrategyMetaclass(extendabletype, rstrat.StrategyMetaclass):
     pass
 
-class ContextPartShadow(AbstractRedirectingShadow):
-
+class ContextPartShadow(AbstractObjectStorage):
+    """
+    This Shadow handles the entire object storage on its own, ignoring the storage
+    field in W_PointersObject. The w_self parameter in fetch/store/size etc. is ignored,
+    and the own_fetch/own_store/own_size methods from ShadowMixin should be used instead.
+    This shadow can exist without a real W_PointersObject.
+    """
+    
     __metaclass__ = ExtendableStrategyMetaclass
-    _attrs_ = ['_s_sender',
-            '_pc', '_temps_and_stack',
-            '_stack_ptr', 'instances_w', 'state']
     repr_classname = "ContextPartShadow"
-
+    _attrs_ = [
+        '_s_sender',
+        '_pc', '_temps_and_stack', '_stack_ptr',
+        '_w_self', '_w_self_size', 'state',
+        'instances_w'
+    ]
     _virtualizable_ = [
         '_s_sender',
         "_pc", "_temps_and_stack[*]", "_stack_ptr",
         "_w_self", "_w_self_size", 'state'
     ]
-
+    
+    import_from_mixin(ShadowMixin)
+    
     # ______________________________________________________________________
     # Initialization
-
+    
     def __init__(self, space, w_self, size):
+        super(ContextPartShadow, self).__init__(space, w_self, size)
         self._s_sender = None
-        AbstractRedirectingShadow.__init__(self, space, w_self, size)
+        if w_self is not None:
+            self._w_self_size = w_self.size()
+        else:
+            self._w_self_size = size
+        self._w_self = w_self
         self.instances_w = {}
         self.state = InactiveContext
         self.store_pc(0)
-
-    def copy_from(self, other_shadow):
+        
+    def initialize_storage(self, w_self, initial_size):
+        # The context object holds all of its storage itself.
+        self.set_storage(w_self, None)
+    
+    def convert_storage_from(self, w_self, previous_strategy):
         # Some fields have to be initialized before the rest, to ensure correct initialization.
-        privileged_fields = self.fields_to_copy_first()
+        size = previous_strategy.size(w_self)
+        privileged_fields = self.fields_to_convert_first()
+        storage = previous_strategy.fetch_all(w_self)
+        self.initialize_storage(w_self, size)
         for n0 in privileged_fields:
-            self.copy_field_from(n0, other_shadow)
-
+            self.store(w_self, n0, storage[n0])
+        
         # Now the temp size will be known.
         self.init_stack_and_temps()
-
-        for n0 in range(self.size()):
+        # After this, convert the rest of the fields.
+        for n0 in range(size):
             if n0 not in privileged_fields:
-                self.copy_field_from(n0, other_shadow)
+                self.store(w_self, n0, storage[n0])
 
-    def fields_to_copy_first(self):
+    def fields_to_convert_first(self):
         return []
 
     # ______________________________________________________________________
     # Accessing object fields
-
-    def fetch(self, n0):
+    
+    def size(self, w_self):
+        return self._w_self_size
+    
+    def fetch(self, w_self, n0):
         if n0 == constants.CTXPART_SENDER_INDEX:
             return self.w_sender()
         if n0 == constants.CTXPART_PC_INDEX:
@@ -83,7 +109,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
             # XXX later should store tail out of known context part as well
             raise error.WrapperException("Index in context out of bounds")
 
-    def store(self, n0, w_value):
+    def store(self, w_self, n0, w_value):
         if n0 == constants.CTXPART_SENDER_INDEX:
             assert isinstance(w_value, model.W_PointersObject)
             if w_value.is_nil(self.space):
@@ -380,7 +406,7 @@ class BlockContextShadow(ContextPartShadow):
     
     @staticmethod
     def build(space, s_home, argcnt, pc):
-        size = s_home.size() - s_home.tempsize()
+        size = s_home.own_size() - s_home.tempsize()
         w_self = model.W_PointersObject(space, space.w_BlockContext, size)
         
         ctx = BlockContextShadow(space, w_self, size)
@@ -395,12 +421,12 @@ class BlockContextShadow(ContextPartShadow):
     
     def __init__(self, space, w_self, size):
         self = fresh_virtualizable(self)
-        ContextPartShadow.__init__(self, space, w_self, size)
+        super(BlockContextShadow, self).__init__(space, w_self, size)
         self._w_home = None
         self._initialip = 0
         self._eargc = 0
     
-    def fields_to_copy_first(self):
+    def fields_to_convert_first(self):
         return [ constants.BLKCTX_HOME_INDEX ]
 
     # === Implemented accessors ===
@@ -442,7 +468,7 @@ class BlockContextShadow(ContextPartShadow):
 
     # === Accessing object fields ===
 
-    def fetch(self, n0):
+    def fetch(self, w_self, n0):
         if n0 == constants.BLKCTX_HOME_INDEX:
             return self._w_home
         if n0 == constants.BLKCTX_INITIAL_IP_INDEX:
@@ -450,9 +476,9 @@ class BlockContextShadow(ContextPartShadow):
         if n0 == constants.BLKCTX_BLOCK_ARGUMENT_COUNT_INDEX:
             return self.wrap_eargc()
         else:
-            return ContextPartShadow.fetch(self, n0)
+            return super(BlockContextShadow, self).fetch(w_self, n0)
 
-    def store(self, n0, w_value):
+    def store(self, w_self, n0, w_value):
         if n0 == constants.BLKCTX_HOME_INDEX:
             return self.store_w_home(w_value)
         if n0 == constants.BLKCTX_INITIAL_IP_INDEX:
@@ -460,7 +486,7 @@ class BlockContextShadow(ContextPartShadow):
         if n0 == constants.BLKCTX_BLOCK_ARGUMENT_COUNT_INDEX:
             return self.unwrap_store_eargc(w_value)
         else:
-            return ContextPartShadow.store(self, n0, w_value)
+            return super(BlockContextShadow, self).store(w_self, n0, w_value)
 
     def store_w_home(self, w_home):
         assert isinstance(w_home, model.W_PointersObject)
@@ -531,13 +557,13 @@ class MethodContextShadow(ContextPartShadow):
     
     def __init__(self, space, w_self, size):
         self = fresh_virtualizable(self)
-        ContextPartShadow.__init__(self, space, w_self, size)
+        super(MethodContextShadow, self).__init__(space, w_self, size)
         self.closure = None
         self._w_method = None
         self._w_receiver = None
         self._is_BlockClosure_ensure = False
     
-    def fields_to_copy_first(self):
+    def fields_to_convert_first(self):
         return [ constants.MTHDCTX_METHOD, constants.MTHDCTX_CLOSURE_OR_NIL ]
     
     @jit.unroll_safe
@@ -554,12 +580,12 @@ class MethodContextShadow(ContextPartShadow):
     
     # === Accessing object fields ===
 
-    def fetch(self, n0):
+    def fetch(self, w_self, n0):
         if n0 == constants.MTHDCTX_METHOD:
             return self.w_method()
         if n0 == constants.MTHDCTX_CLOSURE_OR_NIL:
             if self.closure:
-                return self.closure._w_self
+                return self.closure.wrapped
             else:
                 return self.space.w_nil
         if n0 == constants.MTHDCTX_RECEIVER:
@@ -568,9 +594,9 @@ class MethodContextShadow(ContextPartShadow):
         if (0 <= temp_i < self.tempsize()):
             return self.gettemp(temp_i)
         else:
-            return ContextPartShadow.fetch(self, n0)
+            return super(MethodContextShadow, self).fetch(w_self, n0)
 
-    def store(self, n0, w_value):
+    def store(self, w_self, n0, w_value):
         if n0 == constants.MTHDCTX_METHOD:
             return self.store_w_method(w_value)
         if n0 == constants.MTHDCTX_CLOSURE_OR_NIL:
@@ -586,7 +612,7 @@ class MethodContextShadow(ContextPartShadow):
         if (0 <=  temp_i < self.tempsize()):
             return self.settemp(temp_i, w_value)
         else:
-            return ContextPartShadow.store(self, n0, w_value)
+            return super(MethodContextShadow, self).store(w_self, n0, w_value)
 
     def store_w_receiver(self, w_receiver):
         self._w_receiver = w_receiver
@@ -646,7 +672,7 @@ class MethodContextShadow(ContextPartShadow):
             return self._w_self
         else:
             space = self.space
-            w_self = model.W_PointersObject(space, space.w_MethodContext, self.size())
+            w_self = model.W_PointersObject(space, space.w_MethodContext, self._w_self_size)
             w_self.store_strategy(self)
             self._w_self = w_self
             return w_self

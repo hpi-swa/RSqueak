@@ -22,6 +22,7 @@ from rpython.tool.pairtype import extendabletype
 from rpython.rlib.objectmodel import instantiate, compute_hash, import_from_mixin, we_are_translated
 from rpython.rtyper.lltypesystem import lltype, rffi
 from rsdl import RSDL, RSDL_helper
+import rstrategies as rstrat
 
 class W_Object(object):
     """Root of Squeak model, abstract."""
@@ -304,7 +305,6 @@ class W_AbstractObjectWithIdentityHash(W_Object):
         return self.__class__ is w_other.__class__
     
     def _become(self, w_other):
-        assert isinstance(w_other, W_AbstractObjectWithIdentityHash)
         self.hash, w_other.hash = w_other.hash, self.hash
 
 class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
@@ -392,10 +392,9 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
         return True
         
     def _become(self, w_other):
-        assert isinstance(w_other, W_LargePositiveInteger1Word)
         self.value, w_other.value = w_other.value, self.value
         self._exposed_size, w_other._exposed_size = w_other._exposed_size, self._exposed_size
-        W_AbstractObjectWithIdentityHash._become(self, w_other)
+        super(W_LargePositiveInteger1Word, self)._become(self, w_other)
 
 class W_Float(W_AbstractObjectWithIdentityHash):
     """Boxed float value."""
@@ -437,7 +436,7 @@ class W_Float(W_AbstractObjectWithIdentityHash):
     def _become(self, w_other):
         assert isinstance(w_other, W_Float)
         self.value, w_other.value = w_other.value, self.value
-        W_AbstractObjectWithIdentityHash._become(self, w_other)
+        super(W_Float, self)._become(self, w_other)
 
     def is_same_object(self, other):
         if not isinstance(other, W_Float):
@@ -563,9 +562,10 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
 
 class W_PointersObject(W_AbstractObjectWithClassReference):
     """Common object."""
-    _attrs_ = ['strategy']
+    _attrs_ = ['strategy', '_storage']
     strategy = None
     repr_classname = "W_PointersObject"
+    rstrat.make_accessors(strategy='strategy', storage='_storage')
     
     @jit.unroll_safe
     def __init__(self, space, w_class, size, weak=False):
@@ -629,6 +629,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     def store_all(self, space, collection):
         # Be tolerant: copy over as many elements as possible, set rest to nil.
         # The size of the object cannot be changed in any case.
+        # TODO use store_all() provided by strategy?
         my_length = self.size()
         incoming_length = min(my_length, len(collection))
         i = 0
@@ -648,17 +649,17 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         self.store(space, index0 + self.instsize(), w_value)
 
     def fetch(self, space, n0):
-        return self._get_strategy().fetch(n0)
+        return self._get_strategy().fetch(self, n0)
 
     def store(self, space, n0, w_value):
-        return self._get_strategy().store(n0, w_value)
+        return self._get_strategy().store(self, n0, w_value)
 
     def size(self):
         if not self.has_strategy():
             # TODO - this happens only for objects bootstrapped in ObjSpace.
             # Think of a way to avoid this check. Usually, self.strategy is never None.
             return 0
-        return self._get_strategy().size()
+        return self._get_strategy().size(self)
         
     def instsize(self):
         return self.class_shadow(self.space()).instsize()
@@ -673,7 +674,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     def as_special_get_shadow(self, space, TheClass):
         shadow = self._get_strategy()
         if not isinstance(shadow, TheClass):
-            shadow = space.strategy_factory.switch_strategy(shadow, TheClass)
+            shadow = space.strategy_factory.switch_strategy(self, shadow, TheClass)
         assert isinstance(shadow, TheClass)
         return shadow
 
@@ -720,10 +721,10 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     
     def _become(self, w_other):
         assert isinstance(w_other, W_PointersObject)
+        if    self.has_strategy(): self.strategy.become(w_other)
+        if w_other.has_strategy(): w_other.strategy.become(self)
         self.strategy, w_other.strategy = w_other.strategy, self.strategy
-        # strategy links are in both directions -> also update strategies
-        if    self.strategy is not None:    self.strategy._w_self = self
-        if w_other.strategy is not None: w_other.strategy._w_self = w_other
+        self._storage, w_other._storage = w_other._storage, self._storage
         W_AbstractObjectWithClassReference._become(self, w_other)
 
     @jit.unroll_safe
@@ -732,7 +733,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         w_result = W_PointersObject(space, self.getclass(space), len(my_pointers))
         w_result.store_all(space, my_pointers)
         return w_result
-        
+
 class W_BytesObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['bytes', 'c_bytes', '_size']
     repr_classname = 'W_BytesObject'
