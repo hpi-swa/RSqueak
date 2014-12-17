@@ -982,4 +982,26 @@ def test_raise_NonVirtualReturn_on_dirty_frame():
     def do_test():
         interp.stack_frame(s_frame, None)
     py.test.raises(interpreter.NonVirtualReturn, do_test)
-    
+
+
+
+def test_objectsAsMethods():
+    w_foo = space.wrap_string("foo")
+    w_runwithin = space.wrap_string("run:with:in:")
+
+    w_holderclass = bootstrap_class(0)
+    w_class = bootstrap_class(0)
+    w_method = model.W_CompiledMethod(space, 1)
+    w_method.setchar(0, chr(121)) #quickreturn true
+
+    classshadow = w_class.as_class_get_shadow(space)
+    classshadow.installmethod(w_runwithin, w_method)
+    w_object = classshadow.new()
+    holdershadow = w_holderclass.as_class_get_shadow(space)
+    holdershadow.installmethod(w_foo, w_object)
+    w_holderobject = holdershadow.new()
+
+    bytecodes = [ 112, 208, 124 ] #pushReceiverBytecode, sendBytecode for first literal
+    literals = [ w_foo ]
+
+    assert interpret_bc(bytecodes, literals, w_holderobject) == space.w_true
