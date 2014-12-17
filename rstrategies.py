@@ -2,6 +2,7 @@
 import weakref, sys
 import rstrategies_logger
 from rpython.rlib import jit, objectmodel, rerased
+from rpython.rlib.objectmodel import specialize
 
 def make_accessors(strategy='strategy', storage='storage'):
     def make_getter(attr):
@@ -15,8 +16,6 @@ def make_accessors(strategy='strategy', storage='storage'):
     classdef['_set_strategy'] = make_setter(strategy)
     classdef['_get_storage'] = make_getter(storage)
     classdef['_set_storage'] = make_setter(storage)
-    classdef[strategy] = None
-    classdef[storage] = None
 
 class StrategyMetaclass(type):
     def __new__(self, name, bases, attrs):
@@ -24,9 +23,15 @@ class StrategyMetaclass(type):
         attrs['_is_singleton'] = False
         attrs['_specializations'] = []
         # Not every strategy uses rerased-pairs, but they won't hury
-        erase, unerase = rerased.new_static_erasing_pair(name)
-        attrs['erase'] = erase
-        attrs['unerase'] = unerase
+        erase, unerase = rerased.new_erasing_pair(name)
+        def get_storage(self, w_self):
+            erased = self.strategy_factory().get_storage(w_self)
+            return unerase(erased)
+        def set_storage(self, w_self, storage):
+            erased = erase(storage)
+            self.strategy_factory().set_storage(w_self, erased)
+        attrs['get_storage'] = get_storage
+        attrs['set_storage'] = set_storage
         return type.__new__(self, name, bases, attrs)
     
 def strategy(generalize=None, singleton=True):
@@ -117,10 +122,15 @@ class StrategyFactory(object):
     def instantiate_strategy(self, strategy_type, w_self=None, initial_size=0):
         return strategy_type()
     
+    # These storage accessors are specialized because the storage field is 
+    # populated by erased-objects which seem to be incompatible sometimes.
+    @specialize.call_location()
     def get_storage(self, obj):
         return obj._get_storage()
+    @specialize.call_location()
     def set_storage(self, obj, val):
         return obj._set_storage(val)
+    
     def get_strategy(self, obj):
         return obj._get_strategy()
     def set_strategy(self, obj, val):
@@ -244,14 +254,6 @@ class AbstractStrategy(object):
 
     # Internal methods
     
-    def get_storage(self, w_self):
-        erased = self.strategy_factory().get_storage(w_self)
-        return self.unerase(erased)
-    
-    def set_storage(self, w_self, storage):
-        erased = self.erase(storage)
-        self.strategy_factory().set_storage(w_self, erased)
-    
     def initialize_storage(self, w_self, initial_size):
         raise NotImplementedError("Abstract method")
     
@@ -308,6 +310,12 @@ class EmptyStrategy(AbstractStrategy):
     def check_can_handle(self, value):
         return False
 
+class SingleValueStrategyStorage(object):
+    """Small container object for a size value."""
+    _attrs_ = ['size']
+    def __init__(self, size=0):
+        self.size = size
+
 class SingleValueStrategy(AbstractStrategy):
     # == Required:
     # See AbstractStrategy
@@ -315,9 +323,10 @@ class SingleValueStrategy(AbstractStrategy):
     # value(self) - the single value contained in this strategy. Should be constant.
     
     def initialize_storage(self, w_self, initial_size):
-        self.set_storage(w_self, initial_size)
+        storage_obj = SingleValueStrategyStorage(initial_size)
+        self.set_storage(w_self, storage_obj)
     def convert_storage_from(self, w_self, previous_strategy):
-        self.set_storage(w_self, previous_strategy.size(w_self))
+        self.initialize_storage(w_self, previous_strategy.size(w_self))
     
     def fetch(self, w_self, index0):
         self.check_index_fetch(w_self, index0)
@@ -330,18 +339,19 @@ class SingleValueStrategy(AbstractStrategy):
     
     @jit.unroll_safe
     def insert(self, w_self, index0, list_w):
+        storage_obj = self.get_storage(w_self)
         for i in range(len(list_w)):
             if self.check_can_handle(list_w[handled]):
-                self._size += 1
+                storage_obj.size += 1
             else:
                 self.cannot_handle_insert(w_self, index0 + i, list_w[i:])
                 return
     
     def delete(self, w_self, start, end):
         self.check_index_range(w_self, start, end)
-        self._size -= (end - start)
+        self.get_storage(w_self).size -= (end - start)
     def size(self, w_self):
-        return self.get_storage(w_self)
+        return self.get_storage(w_self).size
     def check_can_handle(self, value):
         return value is self.value()
     
