@@ -305,6 +305,7 @@ class W_AbstractObjectWithIdentityHash(W_Object):
         return self.__class__ is w_other.__class__
     
     def _become(self, w_other):
+        assert isinstance(w_other, W_AbstractObjectWithIdentityHash)
         self.hash, w_other.hash = w_other.hash, self.hash
 
 class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
@@ -392,6 +393,7 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
         return True
         
     def _become(self, w_other):
+        assert isinstance(w_other, W_LargePositiveInteger1Word)
         self.value, w_other.value = w_other.value, self.value
         self._exposed_size, w_other._exposed_size = w_other._exposed_size, self._exposed_size
         W_AbstractObjectWithIdentityHash._become(self, w_other)

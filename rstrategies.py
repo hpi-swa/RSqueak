@@ -341,7 +341,7 @@ class SingleValueStrategy(AbstractStrategy):
     def insert(self, w_self, index0, list_w):
         storage_obj = self.get_storage(w_self)
         for i in range(len(list_w)):
-            if self.check_can_handle(list_w[handled]):
+            if self.check_can_handle(list_w[i]):
                 storage_obj.size += 1
             else:
                 self.cannot_handle_insert(w_self, index0 + i, list_w[i:])

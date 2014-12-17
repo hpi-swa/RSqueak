@@ -128,7 +128,7 @@ class StrategyFactory(rstrat.StrategyFactory):
         if not self.logger.active: return
         # Gather information to be logged
         image_loaded = self.space.image_loaded.is_set()
-        size = new_strategy.size()
+        size = new_strategy.size(w_self)
         new_strategy_str = new_strategy.repr_classname
         old_strategy_str = old_strategy.repr_classname if old_strategy else ""
         classname = w_self.guess_classname() if image_loaded else ""
