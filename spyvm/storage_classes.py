@@ -321,9 +321,9 @@ class MethodDictionaryShadow(ListStorageShadow):
                     #       perform is actually supported in Squeak
                     # raise ClassShadowError("bogus selector in method dict")
                 w_compiledmethod = w_values.fetch(self.space, i)
-                if not isinstance(w_compiledmethod, model.W_CompiledMethod):
+                if not isinstance(w_compiledmethod, model.W_Object):
                     raise ClassShadowError("The methoddict must contain "
-                                       "CompiledMethods only, for now. "
+                                       "CompiledMethods or Objects only, for now. "
                                        "If the value observed is nil, our "
                                        "invalidating mechanism may be broken.")
                 self.methoddict[w_selector] = w_compiledmethod
