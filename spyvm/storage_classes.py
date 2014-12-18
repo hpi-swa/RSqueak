@@ -327,7 +327,8 @@ class MethodDictionaryShadow(ListStorageShadow):
                                        "If the value observed is nil, our "
                                        "invalidating mechanism may be broken.")
                 self.methoddict[w_selector] = w_compiledmethod
-                w_compiledmethod.set_lookup_class_and_name(self.s_class.w_self(), selector)
+                if isinstance(w_compiledmethod, model.W_CompiledMethod):
+                    w_compiledmethod.set_lookup_class_and_name(self.s_class.w_self(), selector)
         if self.s_class:
             self.s_class.changed()
         self.invalid = False
