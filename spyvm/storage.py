@@ -1,7 +1,7 @@
 
 import sys
 from spyvm import model, constants
-from spyvm.util.version import elidable_for_version_2args, VersionMixin
+from spyvm.util.version import VersionMixin
 from rpython.rlib import objectmodel, jit
 from rpython.rlib.objectmodel import import_from_mixin
 import rstrategies as rstrat
@@ -191,13 +191,9 @@ class AbstractCachingShadow(AbstractGenericShadow):
 
 class CachedObjectShadow(AbstractCachingShadow):
     """
-    A shadow which treats its contents as jit constants as the object is not modified.
+    A shadow which treats its contents as jit constants as long as the object is not modified.
     """
     repr_classname = "CachedObjectShadow"
-
-    @elidable_for_version_2args
-    def fetch(self, w_self, n0):
-        return AbstractCachingShadow.fetch(self, w_self, n0)
 
     def store(self, w_self, n0, w_value):
         AbstractCachingShadow.store(self, w_self, n0, w_value)
