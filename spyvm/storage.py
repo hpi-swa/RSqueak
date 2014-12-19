@@ -1,7 +1,7 @@
 
 import sys
 from spyvm import model, constants
-from spyvm.util.version import elidable_for_version, VersionMixin
+from spyvm.util.version import elidable_for_version_2args, VersionMixin
 from rpython.rlib import objectmodel, jit
 from rpython.rlib.objectmodel import import_from_mixin
 import rstrategies as rstrat
@@ -195,7 +195,7 @@ class CachedObjectShadow(AbstractCachingShadow):
     """
     repr_classname = "CachedObjectShadow"
 
-    @elidable_for_version
+    @elidable_for_version_2args
     def fetch(self, w_self, n0):
         return AbstractCachingShadow.fetch(self, w_self, n0)
 

@@ -2,12 +2,12 @@ from rpython.rlib import jit
 
 # This declares the decorated function as "pure" while the self-object
 # has an unchanged version. Neither self nor self.version are promoted to constants.
-def elidable_for_version(func):
+def elidable_for_version_2args(func):
     @jit.elidable
-    def elidable_func(self, version, *args):
-        return func(self, *args)
-    def meth(self, *args):
-        return elidable_func(self, self.version, *args)
+    def elidable_func(self, version, arg1, arg2):
+        return func(self, arg1, arg2)
+    def meth(self, arg1, arg2):
+        return elidable_func(self, self.version, arg1, arg2)
     elidable_func.func_name = "elidable_" + func.func_name
     meth.func_name = "elidable_meth_" + func.func_name
     return meth
