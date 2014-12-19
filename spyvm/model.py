@@ -565,6 +565,9 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
 class W_PointersObject(W_AbstractObjectWithClassReference):
     """Common object."""
     _attrs_ = ['strategy', '_storage']
+    # TODO -- is it viable to have these as pseudo-immutable?
+    # Measurably increases performance, since they do change rarely.
+    _immutable_attrs_ = ['strategy?', '_storage?']
     strategy = None
     repr_classname = "W_PointersObject"
     rstrat.make_accessors(strategy='strategy', storage='_storage')

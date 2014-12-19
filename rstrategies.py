@@ -42,7 +42,7 @@ def strategy(generalize=None, singleton=True):
             def generalized_strategy_for(self, value):
                 # TODO - optimize this method
                 for strategy in generalize:
-                    if self.strategy_factory().strategy_instances[strategy].check_can_handle(value):
+                    if self.strategy_factory().strategy_singleton_instance(strategy).check_can_handle(value):
                         return strategy
                 raise Exception("Could not find generalized strategy for %s coming from %s" % (value, self))
             strategy_class.generalized_strategy_for = generalized_strategy_for
@@ -55,7 +55,8 @@ def strategy(generalize=None, singleton=True):
     return decorator
 
 class StrategyFactory(object):
-    _immutable_fields_ = ["strategies[*]", "logger"]
+    _immutable_fields_ = ["strategies[*]", "logger", "strategy_singleton_field"]
+    factory_instance_counter = 0
     
     def __init__(self, root_class, all_strategy_classes=None):
         if all_strategy_classes is None:
@@ -63,13 +64,20 @@ class StrategyFactory(object):
         self.strategies = []
         self.logger = rstrategies_logger.Logger()
         
-        self.strategy_instances = {}
+        # This is to avoid confusion between multiple factories existing simultaneously (e.g. in tests)
+        self.strategy_singleton_field = "__singleton_%i" % StrategyFactory.factory_instance_counter
+        StrategyFactory.factory_instance_counter += 1
+        
         for strategy_class in all_strategy_classes:
             if strategy_class._is_strategy:
-                self.strategy_instances[strategy_class] = self.instantiate_strategy(strategy_class)
+                setattr(strategy_class, self.strategy_singleton_field, self.instantiate_strategy(strategy_class))
                 self.strategies.append(strategy_class)
             self.patch_strategy_class(strategy_class, root_class)
         self.order_strategies()
+    
+    @jit.elidable
+    def strategy_singleton_instance(self, strategy_class):
+        return getattr(strategy_class, self.strategy_singleton_field)
     
     def patch_strategy_class(self, strategy_class, root_class):
         "NOT_RPYTHON"
@@ -153,7 +161,7 @@ class StrategyFactory(object):
     
     def switch_strategy(self, w_self, old_strategy, new_strategy_type, new_element=None):
         if new_strategy_type._is_singleton:
-            new_strategy = self.strategy_instances[new_strategy_type]
+            new_strategy = self.strategy_singleton_instance(new_strategy_type)
         else:
             size = old_strategy.size(w_self)
             new_strategy = self.instantiate_strategy(new_strategy_type, w_self, size)
@@ -166,7 +174,7 @@ class StrategyFactory(object):
     def set_initial_strategy(self, w_self, strategy_type, size, elements=None):
         assert self.get_strategy(w_self) is None, "Strategy should not be initialized yet!"
         if strategy_type._is_singleton:
-            strategy = self.strategy_instances[strategy_type]
+            strategy = self.strategy_singleton_instance(strategy_type)
         else:
             strategy = self.instantiate_strategy(strategy_type, w_self, size)
         self.set_strategy(w_self, strategy)
@@ -187,7 +195,7 @@ class StrategyFactory(object):
             if specialized_strategies <= 1:
                 break
             for i, strategy in enumerate(self.strategies):
-                if can_handle[i] and not self.strategy_instances[strategy].check_can_handle(obj):
+                if can_handle[i] and not self.strategy_singleton_instance(strategy).check_can_handle(obj):
                     can_handle[i] = False
                     specialized_strategies -= 1
         for i, strategy_type in enumerate(self.strategies):
@@ -264,6 +272,7 @@ class AbstractStrategy(object):
         # This will be overwritten in patch_strategy_class
         new_strategy.convert_storage_from(w_self, self)
     
+    @jit.unroll_safe
     def convert_storage_from(self, w_self, previous_strategy):
         # This is a very unefficient (but most generic) way to do this.
         # Subclasses should specialize.
@@ -367,6 +376,7 @@ class StrategyWithStorage(AbstractStrategy):
         default = self._unwrap(self.default_value())
         self.set_storage(w_self, [default] * initial_size)
     
+    @jit.unroll_safe
     def convert_storage_from(self, w_self, previous_strategy):
         size = previous_strategy.size(w_self)
         new_storage = [ self._unwrap(previous_strategy.fetch(w_self, i))
