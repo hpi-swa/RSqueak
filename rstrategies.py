@@ -159,7 +159,12 @@ class StrategyFactory(object):
     def log_string_for_object(self, obj):
         return obj.__class__.__name__ if obj else ""
     
-    def switch_strategy(self, w_self, old_strategy, new_strategy_type, new_element=None):
+    def switch_strategy(self, w_self, new_strategy_type, new_element=None):
+        """
+        Switch the strategy of w_self to the new type.
+        new_element can be given as as hint, purely for logging purposes.
+        """
+        old_strategy = self.get_strategy(w_self)
         if new_strategy_type._is_singleton:
             new_strategy = self.strategy_singleton_instance(new_strategy_type)
         else:
@@ -172,6 +177,12 @@ class StrategyFactory(object):
         return new_strategy
     
     def set_initial_strategy(self, w_self, strategy_type, size, elements=None):
+        """
+        Initialize the strategy and storage fields of w_self.
+        This must be called before switch_strategy or any strategy method can be used.
+        elements is an optional list of values initially stored in w_self.
+        If given, then len(elements) == size must hold.
+        """
         assert self.get_strategy(w_self) is None, "Strategy should not be initialized yet!"
         if strategy_type._is_singleton:
             strategy = self.strategy_singleton_instance(strategy_type)
@@ -189,6 +200,9 @@ class StrategyFactory(object):
     
     @jit.unroll_safe
     def strategy_type_for(self, objects):
+        """
+        Return the best-fitting strategy to hold all given objects.
+        """
         specialized_strategies = len(self.strategies)
         can_handle = [True] * specialized_strategies
         for obj in objects:
@@ -283,7 +297,7 @@ class AbstractStrategy(object):
     
     def generalize_for_value(self, w_self, value):
         strategy_type = self.generalized_strategy_for(value)
-        new_instance = self.strategy_factory().switch_strategy(w_self, self, strategy_type, new_element=value)
+        new_instance = self.strategy_factory().switch_strategy(w_self, strategy_type, new_element=value)
         return new_instance
         
     def cannot_handle_store(self, w_self, index0, value):

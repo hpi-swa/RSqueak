@@ -63,7 +63,7 @@ def test_optimized_strategy_switch(monkeypatch):
     monkeypatch.setattr(storage.AbstractStrategy, "convert_storage_from", convert_storage_from)
     try:
         s = a.strategy
-        s.strategy_factory().switch_strategy(a, s, storage.SmallIntegerOrNilStrategy)
+        s.strategy_factory().switch_strategy(a, storage.SmallIntegerOrNilStrategy)
     finally:
         monkeypatch.undo()
     
