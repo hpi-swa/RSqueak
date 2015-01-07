@@ -305,11 +305,18 @@ class __extend__(ContextPartShadow):
             w_method = receiverclassshadow.lookup(w_selector)
         except error.MethodNotFound:
             return self._doesNotUnderstand(w_selector, argcount, interp, receiver)
-        
-        if isinstance(w_method, model.W_CompiledMethod):
-            code = w_method.primitive()
-        else:
-            code = 248 # primitiveInvokeObjectAsMethod, replace this with the constant
+
+        if not isinstance(w_method, model.W_CompiledMethod):
+            #fixme: this should be passed to the primitive in another way
+            self.push(w_selector)
+            try:
+                return self._call_primitive(248, interp, argcount, w_method, w_selector)
+            except error.PrimitiveFailedError:
+                #err well, this does not happen
+                assert False
+                return
+
+        code = w_method.primitive()
         if code:
             if w_arguments:
                 self.push_all(w_arguments)
@@ -371,7 +378,7 @@ class __extend__(ContextPartShadow):
         
     def _call_primitive(self, code, interp, argcount, w_method, w_selector):
         # ##################################################################
-        if interp.is_tracing():
+        if interp.is_tracing() and isinstance(w_method, model.W_CompiledMethod):
             interp.print_padded("-> primitive %d \t(in %s, named %s)" % (
                                     code, self.w_method().get_identifier_string(),
                                     w_selector.selector_string()))
@@ -381,7 +388,7 @@ class __extend__(ContextPartShadow):
             # the primitive pushes the result (if any) onto the stack itself
             return func(interp, self, argcount, w_method)
         except error.PrimitiveFailedError, e:
-            if interp.is_tracing():
+            if interp.is_tracing() and isinstance(w_method, model.W_CompiledMethod):
                 interp.print_padded("-- primitive %d FAILED\t (in %s, named %s)" % (
                             code, w_method.safe_identifier_string(), w_selector.selector_string()))
             raise e

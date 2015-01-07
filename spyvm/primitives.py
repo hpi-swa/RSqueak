@@ -59,7 +59,7 @@ pos_32bit_int = object()
 
 def expose_primitive(code, unwrap_spec=None, no_result=False,
                     result_is_new_frame=False, may_context_switch=True,
-                    clean_stack=True, compiled_method=False):
+                    clean_stack=True, compiled_method=False, method_object=False):
     # heuristics to give it a nice name
     name = None
     for key, value in globals().iteritems():
@@ -77,7 +77,7 @@ def expose_primitive(code, unwrap_spec=None, no_result=False,
         wrapped = wrap_primitive(
             unwrap_spec=unwrap_spec, no_result=no_result,
             result_is_new_frame=result_is_new_frame, may_context_switch=may_context_switch,
-            clean_stack=clean_stack, compiled_method=compiled_method
+            clean_stack=clean_stack, compiled_method=compiled_method, method_object=method_object
         )(func)
         wrapped.func_name = "wrap_prim_" + name
         prim_table[code] = wrapped
@@ -88,7 +88,7 @@ def expose_primitive(code, unwrap_spec=None, no_result=False,
 
 def wrap_primitive(unwrap_spec=None, no_result=False,
                    result_is_new_frame=False, may_context_switch=True,
-                   clean_stack=True, compiled_method=False):
+                   clean_stack=True, compiled_method=False, method_object=False):
     # some serious magic, don't look
     from rpython.rlib.unroll import unrolling_iterable
 
@@ -101,7 +101,10 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
     def decorator(func):
         if unwrap_spec is None:
             def wrapped(interp, s_frame, argument_count_m1, w_method=None):
-                if compiled_method:
+                if method_object:
+                    result = func(interp, s_frame, argument_count_m1, w_method)
+                elif compiled_method:
+                    assert(isinstance(w_method, model.W_CompiledMethod))
                     result = func(interp, s_frame, argument_count_m1, w_method)
                 else:
                     result = func(interp, s_frame, argument_count_m1)
@@ -1512,12 +1515,34 @@ def func(interp, s_frame, w_rcvr):
 
 # ___________________________________________________________________________
 # VM implementor primitives
+VM_INVOKE_OBJECT_AS_METHOD = 248
 VM_CLEAR_PROFILE = 250
 VM_CONTROL_PROFILING = 251
 VM_PROFILE_SAMPLES_INTO = 252
 VM_PROFILE_INFO_INTO = 253
 VM_PARAMETERS = 254
 INST_VARS_PUT_FROM_STACK = 255 # Never used except in Disney tests.  Remove after 2.3 release.
+
+@expose_primitive(VM_INVOKE_OBJECT_AS_METHOD, method_object=True)
+def func(interp, s_frame, argcount, w_objectAsMethod):
+    w_selector = s_frame.pop()
+    args = []
+    for i in range(0,argcount):
+        args.insert(0, s_frame.pop())
+    arguments_w = interp.space.wrap_list(args)
+    w_rcvr = s_frame.pop()
+    w_newrcvr = w_objectAsMethod
+
+    if (interp.cached_runwithin is None):
+        w_string = interp.space.wrap_string("run:with:in:")
+        interp.cached_runwithin = interp.perform(w_string, selector="asSymbol")
+    w_newselector = interp.cached_runwithin
+
+    w_newarguments = [w_selector, arguments_w, w_rcvr]
+
+    s_frame.push(w_newrcvr)
+    return s_frame._sendSelector(w_newselector, len(w_newarguments), interp, w_newrcvr,
+                        w_newrcvr.class_shadow(interp.space), w_arguments=w_newarguments)
 
 @expose_primitive(VM_PARAMETERS)
 def func(interp, s_frame, argcount):

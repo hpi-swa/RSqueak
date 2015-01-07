@@ -992,7 +992,10 @@ def test_objectsAsMethods():
     w_holderclass = bootstrap_class(0)
     w_class = bootstrap_class(0)
     w_method = model.W_CompiledMethod(space, 1)
-    w_method.setchar(0, chr(121)) #quickreturn true
+    w_method.setchar(0, chr(122)) #quickreturn false
+    w_method.argsize = 3
+
+    interp.cached_runwithin = w_runwithin;
 
     classshadow = w_class.as_class_get_shadow(space)
     classshadow.installmethod(w_runwithin, w_method)
@@ -1004,4 +1007,4 @@ def test_objectsAsMethods():
     bytecodes = [ 112, 208, 124 ] #pushReceiverBytecode, sendBytecode for first literal
     literals = [ w_foo ]
 
-    assert interpret_bc(bytecodes, literals, w_holderobject) == space.w_true
+    assert interpret_bc(bytecodes, literals, w_holderobject) == space.w_false
