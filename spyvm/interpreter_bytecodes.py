@@ -308,21 +308,19 @@ class __extend__(ContextPartShadow):
         
         if isinstance(w_method, model.W_CompiledMethod):
             code = w_method.primitive()
-            if code:
-                if w_arguments:
-                    self.push_all(w_arguments)
-                try:
-                    return self._call_primitive(code, interp, argcount, w_method, w_selector)
-                except error.PrimitiveFailedError:
-                    pass # ignore this error and fall back to the Smalltalk version
-            if not w_arguments:
-                w_arguments = self.pop_and_return_n(argcount)
-            s_frame = w_method.create_frame(interp.space, receiver, w_arguments)
-            self.pop() # receiver
         else:
-            #first test: push true
-            return self._call_primitive(257, interp, argcount, None, w_selector)
-            #self.pop() #receiver
+            code = 248 # primitiveInvokeObjectAsMethod, replace this with the constant
+        if code:
+            if w_arguments:
+                self.push_all(w_arguments)
+            try:
+                return self._call_primitive(code, interp, argcount, w_method, w_selector)
+            except error.PrimitiveFailedError:
+                pass # ignore this error and fall back to the Smalltalk version
+        if not w_arguments:
+            w_arguments = self.pop_and_return_n(argcount)
+        s_frame = w_method.create_frame(interp.space, receiver, w_arguments)
+        self.pop() # receiver
 
         # ######################################################################
         if interp.is_tracing():
