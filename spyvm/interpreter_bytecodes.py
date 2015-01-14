@@ -299,23 +299,39 @@ class __extend__(ContextPartShadow):
                                   s_compiledin.s_superclass())
 
     def _sendSelector(self, w_selector, argcount, interp,
-                      receiver, receiverclassshadow, w_arguments=None):
+                      receiver, receiverclassshadow, w_arguments=None,
+                      in_oam=False):
         assert argcount >= 0
+        assert isinstance(w_selector, model.W_BytesObject)
+        if in_oam: print "in inner _sendSelector"
+        in_answer42 = False
+        if w_selector.as_string() == "answer42":
+            print "processing send of #answer42"
+            in_answer42 = True
         try:
             w_method = receiverclassshadow.lookup(w_selector)
         except error.MethodNotFound:
+            print "raising does not understand"
+            if in_answer42:
+                print "immediately when looking up #answer42"
+            print "from ", \
+                    receiver.as_repr_string(), ">>", w_selector.as_repr_string()
+            #print "looked up in ", receiverclassshadow.as_repr_string()
             return self._doesNotUnderstand(w_selector, argcount, interp, receiver)
 
         if not isinstance(w_method, model.W_CompiledMethod):
+            print "invoking an object as method"
             #fixme: this should be passed to the primitive in another way
             self.push(w_selector)
             try:
-                return self._call_primitive(248, interp, argcount, w_method, w_selector)
+                return self._call_primitive(primitives.VM_INVOKE_OBJECT_AS_METHOD,
+                        interp, argcount, w_method, w_selector)
             except error.PrimitiveFailedError:
                 #err well, this does not happen
                 assert False
                 return
 
+        if in_oam: print "doing usual stuff in _sendSelector"
         code = w_method.primitive()
         if code:
             if w_arguments:
@@ -333,6 +349,7 @@ class __extend__(ContextPartShadow):
         if interp.is_tracing():
             interp.print_padded('-> ' + s_frame.short_str())
 
+        if in_oam: print "entering usual stack_frame from oam"
         return interp.stack_frame(s_frame, self)
 
     @objectmodel.specialize.arg(1)
