@@ -320,7 +320,9 @@ class __extend__(ContextPartShadow):
             return self._doesNotUnderstand(w_selector, argcount, interp, receiver)
 
         if not isinstance(w_method, model.W_CompiledMethod):
-            print "invoking an object as method"
+            print "invoking an object as method: ", w_method.as_repr_string()
+            if w_arguments:
+                self.push_all(w_arguments)
             #fixme: this should be passed to the primitive in another way
             self.push(w_selector)
             try:
@@ -331,7 +333,6 @@ class __extend__(ContextPartShadow):
                 assert False
                 return
 
-        if in_oam: print "doing usual stuff in _sendSelector"
         code = w_method.primitive()
         if code:
             if w_arguments:
