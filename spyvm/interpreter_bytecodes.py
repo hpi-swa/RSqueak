@@ -312,11 +312,10 @@ class __extend__(ContextPartShadow):
             w_method = receiverclassshadow.lookup(w_selector)
         except error.MethodNotFound:
             print "raising does not understand"
-            if in_answer42:
-                print "immediately when looking up #answer42"
-            print "from ", \
-                    receiver.as_repr_string(), ">>", w_selector.as_repr_string()
-            #print "looked up in ", receiverclassshadow.as_repr_string()
+            if w_arguments:
+                self.push_all(w_arguments)
+                # the arguments will be popped again in doesNotUnderstand but
+                # jit compilation should be able to remove those operations
             return self._doesNotUnderstand(w_selector, argcount, interp, receiver)
 
         if not isinstance(w_method, model.W_CompiledMethod):
