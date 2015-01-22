@@ -726,6 +726,12 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     
     def _become(self, w_other):
         assert isinstance(w_other, W_PointersObject)
+
+        # XXX: Special handling for growing method dicts (w_other may have a simple ListStorageShadow at this point)
+        from spyvm.storage_classes import MethodDictionaryShadow
+        if isinstance(self.shadow, MethodDictionaryShadow):
+            self.shadow.handle_become(w_other.as_methoddict_get_shadow(self.shadow.space))
+
         self.shadow, w_other.shadow = w_other.shadow, self.shadow
         # shadow links are in both directions -> also update shadows
         if    self.shadow is not None:    self.shadow._w_self = self

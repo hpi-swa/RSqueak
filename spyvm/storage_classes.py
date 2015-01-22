@@ -268,6 +268,13 @@ class MethodDictionaryShadow(ListStorageShadow):
         self.methoddict = {}
         ListStorageShadow.__init__(self, space, w_self, size)
 
+    def handle_become(self, s_other):
+        self_s_class, other_s_class = self.s_class, s_other.s_class
+        if self_s_class:
+            self_s_class.store_s_methoddict(s_other)
+        if other_s_class:
+            other_s_class.store_s_methoddict(self)
+
     def update(self):
         self.sync_method_cache()
 
