@@ -16,7 +16,7 @@ class AbstractShadow(object):
     repr_classname = "AbstractShadow"
     __metaclass__ = rstrat.StrategyMetaclass
     import_from_mixin(rstrat.AbstractCollection)
-    
+
     def __init__(self, space, w_self, size):
         self.space = space
         assert w_self is None or isinstance(w_self, model.W_PointersObject)
@@ -46,14 +46,14 @@ class AbstractStorageShadow(AbstractShadow):
     repr_classname = "AbstractStorageShadow"
     _attrs_ = []
     import_from_mixin(rstrat.UnsafeIndexingMixin)
-    
+
     def __init__(self, space, w_self, size):
         AbstractShadow.__init__(self, space, w_self, size)
         self.init_strategy(size)
-    
+
     def strategy_factory(self):
         return self.space.strategy_factory
-    
+
     def copy_from_AllNilStorageShadow(self, all_nil_storage):
         pass # Fields already initialized to nil
 
@@ -106,21 +106,21 @@ class StrategyFactory(rstrat.StrategyFactory):
         self.space = space
         self.no_specialized_storage = objspace.ConstantFlag()
         rstrat.StrategyFactory.__init__(self, AbstractShadow)
-    
+
     def strategy_type_for(self, objects, weak=False):
         if weak:
             return WeakListStorageShadow
         if self.no_specialized_storage.is_set():
             return ListStorageShadow
         return rstrat.StrategyFactory.strategy_type_for(self, objects)
-    
+
     def empty_storage_type(self, w_self, size, weak=False):
         if weak:
             return WeakListStorageShadow
         if self.no_specialized_storage.is_set():
             return ListStorageShadow
         return AllNilStorageShadow
-    
+
     def set_initial_strategy(self, w_object, strategy_type, size, elements=None):
         assert w_object.shadow is None, "Shadow should not be initialized yet!"
         strategy = strategy_type(self.space, w_object, size)
@@ -129,16 +129,16 @@ class StrategyFactory(rstrat.StrategyFactory):
             w_object.store_all(self.space, elements)
         strategy.strategy_switched()
         self.log(strategy)
-    
+
     def instantiate_and_switch(self, old_strategy, size, strategy_class):
         w_self = old_strategy.w_self()
         instance = strategy_class(self.space, w_self, size)
         w_self.store_shadow(instance)
         return instance
-    
+
     def instantiate_empty(self, strategy_type):
         return strategy_type(self.space, None, 0)
-    
+
     def log(self, new_strategy, old_strategy=None, new_element=None):
         if not self.logger.active: return
         # Gather information to be logged
@@ -153,7 +153,7 @@ class StrategyFactory(rstrat.StrategyFactory):
         else:
             cause = "Filledin"
         self.logger.log(new_strategy_str, size, cause, old_strategy_str, classname, element_classname)
-    
+
 # ========== Other storage classes, non-strategies ==========
 
 class AbstractRedirectingShadow(AbstractShadow):

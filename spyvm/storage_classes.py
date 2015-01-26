@@ -302,20 +302,20 @@ class MethodDictionaryShadow(ListStorageShadow):
             self.setup_notification()
         if n0 >= constants.METHODDICT_NAMES_INDEX:
             self.invalid = True
-    
+
     def setup_notification(self):
         self.w_values().as_observed_get_shadow(self.space).notify(self)
-        
+
     def w_values(self):
         w_values = self.fetch(constants.METHODDICT_VALUES_INDEX)
         assert isinstance(w_values, model.W_PointersObject)
         return w_values
-        
-    def flush_method_cache(self):   
+
+    def flush_method_cache(self):
         # Lazy synchronization: Only flush the cache, if we are already synchronized.
         if self.invalid:
             self.sync_method_cache()
-        
+
     def sync_method_cache(self):
         if self.size() == 0:
             return
