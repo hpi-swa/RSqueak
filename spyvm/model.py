@@ -728,8 +728,10 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         assert isinstance(w_other, W_PointersObject)
         self.shadow, w_other.shadow = w_other.shadow, self.shadow
         # shadow links are in both directions -> also update shadows
-        if    self.shadow is not None:    self.shadow._w_self = self
-        if w_other.shadow is not None: w_other.shadow._w_self = w_other
+        if self.shadow:
+            self.shadow.s_become(self, w_other)
+        elif w_other.shadow:
+            w_other.shadow.s_become(w_other, self)
         W_AbstractObjectWithClassReference._become(self, w_other)
 
     @jit.unroll_safe

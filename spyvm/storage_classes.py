@@ -268,6 +268,20 @@ class MethodDictionaryShadow(ListStorageShadow):
         self.methoddict = {}
         ListStorageShadow.__init__(self, space, w_self, size)
 
+    def s_become(self, w_self, w_other):
+        self._s_become(w_self, w_other.shadow, w_other)
+
+    def _s_become(self, w_self, s_other_ignored, w_other):
+        # Force other to become a methoddict
+        s_other = w_other.as_methoddict_get_shadow(self.space)
+        # Do normal self ptr swap
+        ListStorageShadow._s_become(self, w_self, s_other, w_other)
+        # Swap class pointers
+        self.s_class, s_other.s_class = s_other.s_class, self.s_class
+        # Conditionally inform the class about the swap
+        if self.s_class: self.s_class.store_s_methoddict(self)
+        if s_other.s_class: s_other.s_class.store_s_methoddict(s_other)
+
     def update(self):
         self.sync_method_cache()
 

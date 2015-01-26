@@ -31,6 +31,15 @@ class AbstractShadow(object):
         else:
             return "<%s>" % self.repr_classname
 
+    def s_become(self, w_self, w_other):
+        if w_other.shadow:
+            w_other.shadow._s_become(w_other, self, w_self)
+        else:
+            self._w_self = w_self
+
+    def _s_become(self, w_self, s_other, w_other):
+        self._w_self, s_other._w_self = w_self, w_other
+
 # ========== Storage classes implementing storage strategies ==========
 
 class AbstractStorageShadow(AbstractShadow):
