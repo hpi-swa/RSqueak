@@ -27,8 +27,15 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
     __metaclass__ = ExtendableStrategyMetaclass
     _attrs_ = ['_s_sender',
-            '_pc', '_temps_and_stack',
-            '_stack_ptr', 'instances_w', 'state']
+               '_pc', '_temps_and_stack',
+               '_stack_ptr', 'instances_w', 'state',
+               # Virtualizable doesn't really work with subclassing,
+               # so we have all attributes in the top-level class
+               #
+               # From BlockContext:
+               '_w_home', '_initialip', '_eargc',
+               # From MethodContext
+               'closure', '_w_receiver', '_w_method', '_is_BlockClosure_ensure']
     repr_classname = "ContextPartShadow"
 
     _virtualizable_ = [
@@ -38,7 +45,14 @@ class ContextPartShadow(AbstractRedirectingShadow):
         "_stack_ptr",
         "_w_self",
         "_w_self_size",
-        'state'
+        'state',
+        '_w_home',
+        '_initialip',
+        '_eargc',
+        'closure',
+        '_w_receiver',
+        '_w_method',
+        '_is_BlockClosure_ensure'
     ]
 
     # ______________________________________________________________________
@@ -377,7 +391,6 @@ class ContextPartShadow(AbstractRedirectingShadow):
         return padding + ' ', '%s\n%s%s' % (ret_str, padding, desc)
 
 class BlockContextShadow(ContextPartShadow):
-    _attrs_ = ['_w_home', '_initialip', '_eargc']
     repr_classname = "BlockContextShadow"
 
     # === Initialization ===
@@ -515,7 +528,6 @@ class BlockContextShadow(ContextPartShadow):
         return '[] in %s' % self.w_method().get_identifier_string()
 
 class MethodContextShadow(ContextPartShadow):
-    _attrs_ = ['closure', '_w_receiver', '_w_method', '_is_BlockClosure_ensure']
     repr_classname = "MethodContextShadow"
 
     # === Initialization ===
