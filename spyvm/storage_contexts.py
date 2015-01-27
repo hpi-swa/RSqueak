@@ -33,8 +33,12 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
     _virtualizable_ = [
         '_s_sender',
-        "_pc", "_temps_and_stack[*]", "_stack_ptr",
-        "_w_self", "_w_self_size", 'state'
+        "_pc",
+        # "_temps_and_stack[*]",
+        "_stack_ptr",
+        "_w_self",
+        "_w_self_size",
+        'state'
     ]
 
     # ______________________________________________________________________
