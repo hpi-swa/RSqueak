@@ -257,7 +257,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
         for i in range(tempsize):
             temps_and_stack[i] = self.space.w_nil
         self._stack_ptr = rarithmetic.r_uint(tempsize) # we point after the last element
-    
+
     def stack_get(self, index0):
         return self._temps_and_stack[index0]
 
@@ -332,7 +332,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
     def argument_strings(self):
         return [ w_arg.as_repr_string() for w_arg in self.w_arguments() ]
-    
+
     def __str__(self):
         retval = self.short_str()
         retval += "\n%s" % self.w_method().bytecode_string(markBytecode=self.pc() + 1)
@@ -381,29 +381,29 @@ class BlockContextShadow(ContextPartShadow):
     repr_classname = "BlockContextShadow"
 
     # === Initialization ===
-    
+
     @staticmethod
     def build(space, s_home, argcnt, pc):
         size = s_home.size() - s_home.tempsize()
         w_self = model.W_PointersObject(space, space.w_BlockContext, size)
-        
+
         ctx = BlockContextShadow(space, w_self, size)
         ctx.store_expected_argument_count(argcnt)
         ctx.store_w_home(s_home.w_self())
         ctx.store_initialip(pc)
         ctx.store_pc(pc)
-        
+
         w_self.store_shadow(ctx)
         ctx.init_stack_and_temps()
         return ctx
-    
+
     def __init__(self, space, w_self, size):
         self = fresh_virtualizable(self)
         ContextPartShadow.__init__(self, space, w_self, size)
         self._w_home = None
         self._initialip = 0
         self._eargc = 0
-    
+
     def fields_to_copy_first(self):
         return [ constants.BLKCTX_HOME_INDEX ]
 
@@ -519,12 +519,12 @@ class MethodContextShadow(ContextPartShadow):
     repr_classname = "MethodContextShadow"
 
     # === Initialization ===
-    
+
     @staticmethod
     def build(space, w_method, w_receiver, arguments=[], closure=None):
         s_MethodContext = space.w_MethodContext.as_class_get_shadow(space)
         size = w_method.compute_frame_size() + s_MethodContext.instsize()
-        
+
         ctx = MethodContextShadow(space, None, size)
         ctx.store_w_receiver(w_receiver)
         ctx.store_w_method(w_method)
@@ -532,7 +532,7 @@ class MethodContextShadow(ContextPartShadow):
         ctx.init_stack_and_temps()
         ctx.initialize_temps(arguments)
         return ctx
-    
+
     def __init__(self, space, w_self, size):
         self = fresh_virtualizable(self)
         ContextPartShadow.__init__(self, space, w_self, size)
@@ -540,10 +540,10 @@ class MethodContextShadow(ContextPartShadow):
         self._w_method = None
         self._w_receiver = None
         self._is_BlockClosure_ensure = False
-    
+
     def fields_to_copy_first(self):
         return [ constants.MTHDCTX_METHOD, constants.MTHDCTX_CLOSURE_OR_NIL ]
-    
+
     @jit.unroll_safe
     def initialize_temps(self, arguments):
         argc = len(arguments)
@@ -555,7 +555,7 @@ class MethodContextShadow(ContextPartShadow):
             self.store_pc(pc)
             for i0 in range(closure.size()):
                 self.settemp(i0+argc, closure.at0(i0))
-    
+
     # === Accessing object fields ===
 
     def fetch(self, n0):
