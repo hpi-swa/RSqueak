@@ -689,23 +689,11 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
 
     def as_blockcontext_get_shadow(self, space):
         from spyvm.storage_contexts import BlockContextShadow
-        old_shadow = self._get_shadow()
-        if not isinstance(old_shadow, BlockContextShadow):
-            return BlockContextShadow.build_copy_from(
-                space, self, old_shadow.size(), old_shadow
-            )
-        else:
-            return old_shadow
+        return self.as_special_get_shadow(space, BlockContextShadow)
 
     def as_methodcontext_get_shadow(self, space):
         from spyvm.storage_contexts import MethodContextShadow
-        old_shadow = self._get_shadow()
-        if not isinstance(old_shadow, MethodContextShadow):
-            return MethodContextShadow.build_copy_from(
-                space, self, old_shadow.size(), old_shadow
-            )
-        else:
-            return old_shadow
+        return self.as_special_get_shadow(space, MethodContextShadow)
 
     def as_context_get_shadow(self, space):
         from spyvm.storage_contexts import ContextPartShadow

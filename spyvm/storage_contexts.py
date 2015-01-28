@@ -41,7 +41,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
     _virtualizable_ = [
         '_s_sender',
         "_pc",
-        "_temps_and_stack[*]",
+        # "_temps_and_stack[*]",
         "_stack_ptr",
         "_w_self",
         "_w_self_size",
@@ -400,7 +400,7 @@ class BlockContextShadow(ContextPartShadow):
         size = s_home.size() - s_home.tempsize()
         w_self = model.W_PointersObject(space, space.w_BlockContext, size)
 
-        ctx = BlockContextShadow(space, w_self, size, True)
+        ctx = BlockContextShadow(space, w_self, size)
         ctx.store_expected_argument_count(argcnt)
         ctx.store_w_home(s_home.w_self())
         ctx.store_initialip(pc)
@@ -410,15 +410,7 @@ class BlockContextShadow(ContextPartShadow):
         ctx.init_stack_and_temps()
         return ctx
 
-    @staticmethod
-    def build_copy_from(space, w_self, size, old_shadow):
-        ctx = BlockContextShadow(space, w_self, size, True)
-        ctx.copy_from(old_shadow)
-        w_self.store_shadow(ctx)
-        return ctx
-
-    def __init__(self, space, w_self, size, hack=False):
-        assert hack
+    def __init__(self, space, w_self, size):
         self = fresh_virtualizable(self)
         ContextPartShadow.__init__(self, space, w_self, size)
         self._w_home = None
@@ -545,7 +537,7 @@ class MethodContextShadow(ContextPartShadow):
         s_MethodContext = space.w_MethodContext.as_class_get_shadow(space)
         size = w_method.compute_frame_size() + s_MethodContext.instsize()
 
-        ctx = MethodContextShadow(space, None, size, True)
+        ctx = MethodContextShadow(space, None, size)
         ctx.store_w_receiver(w_receiver)
         ctx.store_w_method(w_method)
         ctx.closure = closure
@@ -553,15 +545,7 @@ class MethodContextShadow(ContextPartShadow):
         ctx.initialize_temps(arguments)
         return ctx
 
-    @staticmethod
-    def build_copy_from(space, w_self, size, old_shadow):
-        ctx = MethodContextShadow(space, w_self, size, True)
-        ctx.copy_from(old_shadow)
-        w_self.store_shadow(ctx)
-        return ctx
-
-    def __init__(self, space, w_self, size, hack=False):
-        assert hack
+    def __init__(self, space, w_self, size):
         self = fresh_virtualizable(self)
         ContextPartShadow.__init__(self, space, w_self, size)
         self.closure = None
