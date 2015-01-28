@@ -867,15 +867,6 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
     def is_array_object(self):
         return True
 
-    def convert_to_c_layout(self):
-        if self.bytes is None:
-            return self.c_bytes
-        else:
-            size = self.size()
-            c_bytes = self.c_bytes = rffi.str2charp(self.as_string())
-            self.bytes = None
-            return c_bytes
-
     def _become(self, w_other):
         assert isinstance(w_other, W_BytesObject)
         self.bytes, w_other.bytes = w_other.bytes, self.bytes
@@ -964,19 +955,6 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
 
     def is_array_object(self):
         return True
-
-    def convert_to_c_layout(self):
-        if self.words is None:
-            return self.c_words
-        else:
-            from spyvm.interpreter_proxy import sqIntArrayPtr
-            size = self.size()
-            old_words = self.words
-            c_words = self.c_words = lltype.malloc(sqIntArrayPtr.TO, size, flavor='raw')
-            for i in range(size):
-                c_words[i] = intmask(old_words[i])
-            self.words = None
-            return c_words
 
     def _become(self, w_other):
         assert isinstance(w_other, W_WordsObject)

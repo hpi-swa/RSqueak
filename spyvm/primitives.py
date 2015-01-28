@@ -393,7 +393,7 @@ def exitFromHeadlessExecution(s_frame, selector="", w_message=None):
     if selector == "":
         selector = s_frame.w_method().lookup_selector
     raise error.Exit("Unhandled %s in headless mode." % selector)
-    
+
 @expose_primitive(FAIL)
 def func(interp, s_frame, argcount):
     if interp.space.headless.is_set():
@@ -733,19 +733,19 @@ def func(interp, s_frame, w_rcvr):
         exitFromHeadlessExecution(s_frame)
     if not isinstance(w_rcvr, model.W_PointersObject) or w_rcvr.size() < 4:
         raise PrimitiveFailedError
-    
+
     old_display = interp.space.objtable['w_display']
     if isinstance(old_display, model_display.W_DisplayBitmap):
         old_display.relinquish_display()
     interp.space.objtable['w_display'] = w_rcvr
-    
+
     # TODO: figure out whether we should decide the width an report it in the SCREEN_SIZE primitive
     form = wrapper.FormWrapper(interp.space, w_rcvr)
     form.take_over_display()
     w_display_bitmap = form.get_display_bitmap()
     w_display_bitmap.take_over_display()
     w_display_bitmap.flush_to_screen()
-    
+
     if interp.image:
         interp.image.lastWindowSize = (form.width() << 16) + form.height()
     return w_rcvr
@@ -900,9 +900,7 @@ def func(interp, s_frame, argcount, w_method):
         from spyvm.plugins.vmdebugging import DebuggingPlugin
         return DebuggingPlugin.call(signature[1], interp, s_frame, argcount, w_method)
     else:
-        from spyvm.interpreter_proxy import IProxy
-        return IProxy.call(signature, interp, s_frame, argcount, w_method)
-    raise PrimitiveFailedError
+        raise PrimitiveFailedError
 
 @expose_primitive(COMPILED_METHOD_FLUSH_CACHE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
@@ -939,7 +937,7 @@ def walk_gc_objects_of_type(type, func):
         if w_obj:
             func(w_obj)
     walk_gc_objects(check_type)
-    
+
 if not stm_enabled():
     # XXX: We don't have a global symbol cache. Instead, we walk all
     # MethodDictionaryShadow objects and flush them.
