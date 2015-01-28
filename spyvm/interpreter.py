@@ -103,14 +103,14 @@ class Interpreter(object):
                 self.stack_frame(s_context, None)
                 raise Exception("loop_bytecodes left without raising...")
             except ContextSwitchException, e:
-                if self.is_tracing():
+                if self.is_tracing() or self.trace_important:
                     e.print_trace()
                 s_context = e.s_new_context
             except Return, ret:
                 target = s_sender if ret.arrived_at_target else ret.s_target_context
                 s_context = self.unwind_context_chain(s_sender, target, ret.value)
             except NonVirtualReturn, ret:
-                if self.is_tracing():
+                if self.is_tracing() or self.trace_important:
                     ret.print_trace()
                 s_context = self.unwind_context_chain(ret.s_current_context, ret.s_target_context, ret.value)
     
