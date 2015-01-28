@@ -299,19 +299,11 @@ class __extend__(ContextPartShadow):
                                   s_compiledin.s_superclass())
 
     def _sendSelector(self, w_selector, argcount, interp,
-                      receiver, receiverclassshadow, w_arguments=None,
-                      in_oam=False):
+                      receiver, receiverclassshadow, w_arguments=None):
         assert argcount >= 0
-        assert isinstance(w_selector, model.W_BytesObject)
-        if in_oam: print "in inner _sendSelector"
-        in_answer42 = False
-        if w_selector.as_string() == "answer42":
-            print "processing send of #answer42"
-            in_answer42 = True
         try:
             w_method = receiverclassshadow.lookup(w_selector)
         except error.MethodNotFound:
-            print "raising does not understand"
             if w_arguments:
                 self.push_all(w_arguments)
                 # the arguments will be popped again in doesNotUnderstand but
@@ -319,14 +311,12 @@ class __extend__(ContextPartShadow):
             return self._doesNotUnderstand(w_selector, argcount, interp, receiver)
 
         if not isinstance(w_method, model.W_CompiledMethod):
-            print "invoking an object as method: ", w_method.as_repr_string()
             if w_arguments:
                 self.push_all(w_arguments)
             #fixme: this should be passed to the primitive in another way
             self.push(w_selector)
             try:
-                return self._call_primitive(primitives.VM_INVOKE_OBJECT_AS_METHOD,
-                        interp, argcount, w_method, w_selector)
+                return self._call_primitive(248, interp, argcount, w_method, w_selector)
             except error.PrimitiveFailedError:
                 #err well, this does not happen
                 assert False
@@ -349,7 +339,6 @@ class __extend__(ContextPartShadow):
         if interp.is_tracing():
             interp.print_padded('-> ' + s_frame.short_str())
 
-        if in_oam: print "entering usual stack_frame from oam"
         return interp.stack_frame(s_frame, self)
 
     @objectmodel.specialize.arg(1)

@@ -1525,7 +1525,6 @@ INST_VARS_PUT_FROM_STACK = 255 # Never used except in Disney tests.  Remove afte
 
 @expose_primitive(VM_INVOKE_OBJECT_AS_METHOD, method_object=True)
 def func(interp, s_frame, argcount, w_objectAsMethod):
-    print "entered INVOKE_OBJECT_AS_METHOD"
     w_selector = s_frame.pop()
     args = s_frame.pop_and_return_n(argcount)
     arguments_w = interp.space.wrap_list(args)
@@ -1540,13 +1539,8 @@ def func(interp, s_frame, argcount, w_objectAsMethod):
     w_newarguments = [w_selector, arguments_w, w_rcvr]
 
     s_frame.push(w_newrcvr)
-    try:
-        res = s_frame._sendSelector(w_newselector, len(w_newarguments), interp, w_newrcvr,
-                            w_newrcvr.class_shadow(interp.space), w_arguments=w_newarguments,
-                            in_oam=True)
-        return res
-    finally:
-        print "returning (or erring) from INVOKE_OBJECT_AS_METHOD"
+    return s_frame._sendSelector(w_newselector, len(w_newarguments), interp, w_newrcvr,
+                        w_newrcvr.class_shadow(interp.space), w_arguments=w_newarguments)
 
 @expose_primitive(VM_PARAMETERS)
 def func(interp, s_frame, argcount):
