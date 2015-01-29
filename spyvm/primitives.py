@@ -1523,7 +1523,7 @@ VM_PROFILE_INFO_INTO = 253
 VM_PARAMETERS = 254
 INST_VARS_PUT_FROM_STACK = 255 # Never used except in Disney tests.  Remove after 2.3 release.
 
-@expose_primitive(VM_INVOKE_OBJECT_AS_METHOD, method_object=True)
+@expose_primitive(VM_INVOKE_OBJECT_AS_METHOD, method_object=True, result_is_new_frame=True, may_context_switch=False)
 def func(interp, s_frame, argcount, w_objectAsMethod):
     w_selector = s_frame.pop()
     args = s_frame.pop_and_return_n(argcount)
