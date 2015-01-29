@@ -65,10 +65,17 @@ def run_benchmark(imagename, benchmark, number=0, arg=""):
     return interp_run_benchmarks
 
 def run_code(imagename, code, as_benchmark=False):
-    import targetimageloadingsmalltalk
+    from targetimageloadingsmalltalk import prebuilt_space as space, \
+            compile_code, create_context, execute_context
     interp = load(imagename)
     def interp_run_code():
-        return targetimageloadingsmalltalk._run_code(interp, code, as_benchmark)
+        w_receiver = space.w_nil
+        selector = compile_code(interp, w_receiver, code)
+        s_frame = create_context(interp, w_receiver, selector, None)
+        space.headless.activate()
+        context = s_frame
+        w_result = execute_context(interp, context)
+        return 0
     return interp_run_code
 
 def run_image(imagename):
@@ -110,8 +117,8 @@ def full_vm_method(imagename, selector, receiver_num=None, string_arg=None):
 
 def main():
     # ===== First define which image we are going to use.
-    imagename = "minibluebookdebug.image"
-    # imagename = "mini.image"
+    # imagename = "minibluebookdebug.image"
+    imagename = "mini.image"
     # imagename = "Squeak4.5-noBitBlt.image"
     
     # ===== Define the code to be executed, if any.
