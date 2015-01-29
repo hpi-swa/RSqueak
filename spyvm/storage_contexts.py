@@ -41,7 +41,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
     _virtualizable_ = [
         '_s_sender',
         "_pc",
-        # "_temps_and_stack[*]",
+        "_temps_and_stack[*]",
         "_stack_ptr",
         "_w_self",
         "_w_self_size",
@@ -64,22 +64,6 @@ class ContextPartShadow(AbstractRedirectingShadow):
         self.instances_w = {}
         self.state = InactiveContext
         self.store_pc(0)
-
-    def copy_from(self, other_shadow):
-        # Some fields have to be initialized before the rest, to ensure correct initialization.
-        privileged_fields = self.fields_to_copy_first()
-        for n0 in privileged_fields:
-            self.copy_field_from(n0, other_shadow)
-
-        # Now the temp size will be known.
-        self.init_stack_and_temps()
-
-        for n0 in range(self.size()):
-            if n0 not in privileged_fields:
-                self.copy_field_from(n0, other_shadow)
-
-    def fields_to_copy_first(self):
-        return []
 
     # ______________________________________________________________________
     # Accessing object fields
@@ -400,7 +384,8 @@ class BlockContextShadow(ContextPartShadow):
         size = s_home.size() - s_home.tempsize()
         w_self = model.W_PointersObject(space, space.w_BlockContext, size)
 
-        ctx = BlockContextShadow(space, w_self, size)
+        ctx = BlockContextShadow(space, None, size)
+        ctx._w_self = w_self
         ctx.store_expected_argument_count(argcnt)
         ctx.store_w_home(s_home.w_self())
         ctx.store_initialip(pc)
@@ -413,12 +398,24 @@ class BlockContextShadow(ContextPartShadow):
     def __init__(self, space, w_self, size):
         self = fresh_virtualizable(self)
         ContextPartShadow.__init__(self, space, w_self, size)
-        self._w_home = None
-        self._initialip = 0
-        self._eargc = 0
-
-    def fields_to_copy_first(self):
-        return [ constants.BLKCTX_HOME_INDEX ]
+        if w_self is None:
+            self._w_home = None
+            self._initialip = 0
+            self._eargc = 0
+        else:
+            self.unwrap_store_eargc(
+                w_self.fetch(space, constants.BLKCTX_BLOCK_ARGUMENT_COUNT_INDEX)
+            )
+            self.store_w_home(
+                w_self.fetch(space, constants.BLKCTX_HOME_INDEX)
+            )
+            self.unwrap_store_initialip(
+                w_self.fetch(space, constants.BLKCTX_INITIAL_IP_INDEX)
+            )
+            self.store_unwrap_pc(
+                w_self.fetch(space, constants.CTXPART_PC_INDEX)
+            )
+            self.init_stack_and_temps()
 
     # === Implemented accessors ===
 
@@ -545,16 +542,21 @@ class MethodContextShadow(ContextPartShadow):
         ctx.initialize_temps(arguments)
         return ctx
 
-    def __init__(self, space, w_self, size):
+    def __init__(self, space, w_self, size, build=False):
         self = fresh_virtualizable(self)
         ContextPartShadow.__init__(self, space, w_self, size)
-        self.closure = None
-        self._w_method = None
-        self._w_receiver = None
-        self._is_BlockClosure_ensure = False
-
-    def fields_to_copy_first(self):
-        return [ constants.MTHDCTX_METHOD, constants.MTHDCTX_CLOSURE_OR_NIL ]
+        if w_self is None:
+            self.closure = None
+            self._w_method = None
+            self._w_receiver = None
+            self._is_BlockClosure_ensure = False
+        else:
+            self.store_w_receiver(w_self.fetch(space, constants.MTHDCTX_RECEIVER))
+            self.store_w_method(w_self.fetch(space, constants.MTHDCTX_METHOD))
+            self.store_w_closure(
+                w_self.fetch(space, constants.MTHDCTX_CLOSURE_OR_NIL)
+            )
+            self.init_stack_and_temps()
 
     @jit.unroll_safe
     def initialize_temps(self, arguments):
@@ -590,10 +592,7 @@ class MethodContextShadow(ContextPartShadow):
         if n0 == constants.MTHDCTX_METHOD:
             return self.store_w_method(w_value)
         if n0 == constants.MTHDCTX_CLOSURE_OR_NIL:
-            if w_value.is_nil(self.space):
-                self.closure = None
-            else:
-                self.closure = wrapper.BlockClosureWrapper(self.space, w_value)
+            self.store_w_closure(w_value)
             return
         if n0 == constants.MTHDCTX_RECEIVER:
             self.store_w_receiver(w_value)
@@ -644,6 +643,12 @@ class MethodContextShadow(ContextPartShadow):
             return self.w_method().tempsize()
         else:
             return self.closure.tempsize()
+
+    def store_w_closure(self, w_value):
+        if w_value.is_nil(self.space):
+            self.closure = None
+        else:
+            self.closure = wrapper.BlockClosureWrapper(self.space, w_value)
 
     def is_closure_context(self):
         return self.closure is not None
