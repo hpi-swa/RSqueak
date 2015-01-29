@@ -94,8 +94,6 @@ class Interpreter(object):
         self.trace_proxy = objspace.ConstantFlag()
         self.stack_depth = 0
 
-        self.cached_runwithin = None
-
     def loop(self, w_active_context):
         # This is the top-level loop and is not invoked recursively.
         self.shadow = w_active_context.as_context_get_shadow(self.space)
