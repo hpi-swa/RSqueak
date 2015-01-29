@@ -294,7 +294,10 @@ class MethodDictionaryShadow(ListStorageShadow):
         if n0 == constants.METHODDICT_VALUES_INDEX:
             self.setup_notification()
         if n0 >= constants.METHODDICT_NAMES_INDEX:
-            self.invalid = True
+            #self.invalid = True
+            # the caller / user cannot be expected to add the compiledMethod to the observee next
+            # in case of clone / copyFrom the compiledMethod is already contained
+            self.sync_method_cache()
     
     def setup_notification(self):
         self.w_values().as_observed_get_shadow(self.space).notify(self)
@@ -327,6 +330,7 @@ class MethodDictionaryShadow(ListStorageShadow):
                     #       Putting any key in the methodDict and running with
                     #       perform is actually supported in Squeak
                     # raise ClassShadowError("bogus selector in method dict")
+
                 w_compiledmethod = w_values.fetch(self.space, i)
                 if not isinstance(w_compiledmethod, model.W_Object):
                     raise ClassShadowError("The methoddict must contain "
@@ -334,8 +338,10 @@ class MethodDictionaryShadow(ListStorageShadow):
                                        "If the value observed is nil, our "
                                        "invalidating mechanism may be broken.")
                 self.methoddict[w_selector] = w_compiledmethod
-                if isinstance(w_compiledmethod, model.W_CompiledMethod):
-                    w_compiledmethod.set_lookup_class_and_name(self.s_class.w_self(), selector)
+                if isinstance(w_compiledmethod, model.W_CompiledMethod) and self.s_class:
+                    if (w_compiledmethod.lookup_class is not self.s_class.w_self() or
+                        w_compiledmethod.lookup_selector is not selector):
+                        w_compiledmethod.set_lookup_class_and_name(self.s_class.w_self(), selector)
         if self.s_class:
             self.s_class.changed()
         self.invalid = False
