@@ -23,7 +23,7 @@ class MockFrame(model.W_PointersObject):
         self.initialize_storage(space, size)
         self.store_all(space, [None] * 6 + stack + [space.w_nil] * 6)
         s_self = self.as_blockcontext_get_shadow(space)
-        s_self.init_stack_and_temps()
+        s_self.initialize_stack_pointer()
         s_self.reset_stack()
         s_self.push_all(stack)
         s_self.store_expected_argument_count(0)
