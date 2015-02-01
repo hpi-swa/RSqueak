@@ -349,11 +349,19 @@ class __extend__(ContextPartShadow):
     def _sendSpecialSelector(self, interp, receiver, special_selector, w_args=[]):
         w_special_selector = self.space.objtable["w_" + special_selector]
         s_class = receiver.class_shadow(self.space)
-        w_method = s_class.lookup(w_special_selector)
+
+        try:
+            w_method = s_class.lookup(w_special_selector)
+        except error.MethodNotFound:
+            if w_args:
+                self.push_all(w_args)
+                # the arguments will be popped again in doesNotUnderstand but
+                # jit compilation should be able to remove those operations
+            return self._doesNotUnderstand(w_special_selector, len(w_args), interp, receiver)
+
         if not isinstance(w_method, model.W_CompiledMethod):
             raise Exception("SpecialSelector can't be an Object")
         s_frame = w_method.create_frame(interp.space, receiver, w_args)
-        
         # ######################################################################
         if interp.is_tracing():
             interp.print_padded('-> %s %s' % (special_selector, s_frame.short_str()))

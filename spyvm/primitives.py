@@ -1531,16 +1531,10 @@ def func(interp, s_frame, argcount, w_objectAsMethod):
     w_rcvr = s_frame.pop()
     w_newrcvr = w_objectAsMethod
 
-    if (interp.cached_runwithin is None):
-        w_string = interp.space.wrap_string("run:with:in:")
-        interp.cached_runwithin = interp.perform(w_string, selector="asSymbol")
-    w_newselector = interp.cached_runwithin
-
     w_newarguments = [w_selector, arguments_w, w_rcvr]
 
     s_frame.push(w_newrcvr)
-    return s_frame._sendSelector(w_newselector, len(w_newarguments), interp, w_newrcvr,
-                        w_newrcvr.class_shadow(interp.space), w_arguments=w_newarguments)
+    return s_frame._sendSpecialSelector(interp, w_newrcvr, "runWithIn", w_newarguments);
 
 @expose_primitive(VM_PARAMETERS)
 def func(interp, s_frame, argcount):
