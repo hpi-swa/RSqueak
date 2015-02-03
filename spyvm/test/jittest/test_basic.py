@@ -31,7 +31,7 @@ class TestBasic(BaseJITTest):
          guard_true(i29, descr=<Guard0x2e96b50>),
          label(p0, p1, i16, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, descr=TargetToken(48874112)),
          guard_class(p0, 23085560, descr=<Guard0x2e96b10>),
-         p31 = getfield_gc(p0, descr=<FieldP spyvm.shadow.MethodContextShadow.inst__w_method 44>),
+         p31 = getfield_gc(p0, descr=<FieldP spyvm.shadow.ContextPartShadow.inst__w_method 44>),
          p32 = getfield_gc(p31, descr=<FieldP spyvm.model.W_CompiledMethod.inst_version 56>),
          guard_value(p31, ConstPtr(ptr33), descr=<Guard0x2e96ad0>),
          guard_value(p32, ConstPtr(ptr34), descr=<Guard0x2e96a90>),

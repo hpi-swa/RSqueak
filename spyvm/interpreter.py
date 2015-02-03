@@ -1,6 +1,6 @@
 import os
 
-from spyvm.storage_contexts import MethodContextShadow, ActiveContext, InactiveContext, DirtyContext
+from spyvm.storage_contexts import ContextPartShadow, ActiveContext, InactiveContext, DirtyContext
 from spyvm import model, constants, wrapper, objspace, interpreter_bytecodes, error
 
 from rpython.rlib import jit, rstackovf, unroll
@@ -278,7 +278,7 @@ class Interpreter(object):
         assert len(w_arguments) <= 7
         w_method.setbytes([chr(131), chr(len(w_arguments) << 5 + 0), chr(124)]) #returnTopFromMethodBytecode
         w_method.set_lookup_class_and_name(w_receiver.getclass(self.space), "Interpreter.perform")
-        s_frame = MethodContextShadow.build(self.space, w_method, w_receiver)
+        s_frame = ContextPartShadow.build_method_context(self.space, w_method, w_receiver)
         s_frame.push(w_receiver)
         s_frame.push_all(list(w_arguments))
         return s_frame

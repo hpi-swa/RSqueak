@@ -132,7 +132,16 @@ class StrategyFactory(rstrat.StrategyFactory):
 
     def instantiate_and_switch(self, old_strategy, size, strategy_class):
         w_self = old_strategy.w_self()
-        instance = strategy_class(self.space, w_self, size)
+
+        # XXX: Special handling for contexts
+        from spyvm.storage_contexts import BlockContextMarkerClass, MethodContextMarkerClass, ContextPartShadow
+        if strategy_class is BlockContextMarkerClass:
+            instance = ContextPartShadow(self.space, w_self, size, is_block_context=True)
+        elif strategy_class is MethodContextMarkerClass:
+            instance = ContextPartShadow(self.space, w_self, size, is_block_context=False)
+        else:
+            instance = strategy_class(self.space, w_self, size)
+
         w_self.store_shadow(instance)
         return instance
 

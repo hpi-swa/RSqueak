@@ -215,7 +215,7 @@ def test_runimage_and_quit():
 def test_step_forged_image():
     ap = wrapper.ProcessWrapper(space, wrapper.scheduler(space).active_process())
     s_ctx = ap.suspended_context().as_context_get_shadow(space)
-    assert isinstance(s_ctx, storage_contexts.MethodContextShadow)
+    assert isinstance(s_ctx, storage_contexts.ContextPartShadow)
     assert s_ctx.top().is_same_object(space.w_true)
 
 def test_create_new_symbol():
@@ -297,8 +297,8 @@ def test_step_run_something():
     w_ctx = ap.suspended_context()
     s_ctx = w_ctx.as_context_get_shadow(space)
     ap.store_suspended_context(space.w_nil)
-    
-    assert isinstance(s_ctx, storage_contexts.MethodContextShadow)
+
+    assert isinstance(s_ctx, storage_contexts.ContextPartShadow)
     assert s_ctx.top().is_same_object(space.w_true)
     interp.step(s_ctx)
     interp.step(s_ctx)
