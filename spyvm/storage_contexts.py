@@ -69,6 +69,11 @@ class ContextPartShadow(AbstractRedirectingShadow):
         self.instances_w = {}
         self.state = InactiveContext
         self.store_pc(0)
+        if self.is_block_context:
+            temps_and_stack = [None] * self.stack_and_temps_size()
+        else:
+            temps_and_stack = [None] * 64
+        self._temps_and_stack = temps_and_stack
         # From BlockContext
         self._w_home = None
         self._initialip = 0
@@ -320,15 +325,19 @@ class ContextPartShadow(AbstractRedirectingShadow):
     # ______________________________________________________________________
     # Stack Manipulation
 
+    def stack_and_temps_size(self):
+        self = fresh_virtualizable(self)
+        stacksize = self.stackend() - self.stackstart()
+        tempsize = self.tempsize()
+        return stacksize + tempsize
+
     @jit.unroll_safe
     def init_stack_and_temps(self):
         self = fresh_virtualizable(self)
         stacksize = self.stackend() - self.stackstart()
         tempsize = self.tempsize()
-        temps_and_stack = [None] * (stacksize + tempsize)
-        self._temps_and_stack = temps_and_stack
         for i in range(tempsize):
-            temps_and_stack[i] = self.space.w_nil
+            self._temps_and_stack[i] = self.space.w_nil
         self._stack_ptr = rarithmetic.r_uint(tempsize) # we point after the last element
 
     def stack_get(self, index0):
