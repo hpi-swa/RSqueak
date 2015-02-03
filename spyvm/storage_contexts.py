@@ -84,6 +84,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
         self._w_receiver = None
         self._is_BlockClosure_ensure = False
 
+    @jit.unroll_safe
     def copy_from(self, other_shadow):
         # Some fields have to be initialized before the rest, to ensure correct initialization.
         privileged_fields = self.fields_to_copy_first()
