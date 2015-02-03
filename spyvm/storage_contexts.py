@@ -184,6 +184,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
         # Stackpointer from smalltalk world == stacksize in python world
         self.store_stackpointer(self.space.unwrap_int(w_sp1))
 
+    @jit.unroll_safe
     def store_stackpointer(self, size):
         depth = self.stackdepth()
         if size < depth:
