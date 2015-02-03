@@ -85,18 +85,25 @@ class ContextPartShadow(AbstractRedirectingShadow):
         self._is_BlockClosure_ensure = False
 
     @jit.unroll_safe
-    def copy_from(self, other_shadow):
+    def pre_copy_from(self, other_shadow):
         # Some fields have to be initialized before the rest, to ensure correct initialization.
         privileged_fields = self.fields_to_copy_first()
         for n0 in privileged_fields:
             self.copy_field_from(n0, other_shadow)
 
-        # Now the temp size will be known.
-        self.init_stack_and_temps()
-
+    @jit.unroll_safe
+    def post_copy_from(self, other_shadow):
+        privileged_fields = self.fields_to_copy_first()
         for n0 in range(self.size()):
             if n0 not in privileged_fields:
                 self.copy_field_from(n0, other_shadow)
+
+    @jit.unroll_safe
+    def copy_from(self, other_shadow):
+        self.pre_copy_from(other_shadow)
+        # Now the temp size will be known.
+        self.init_stack_and_temps()
+        self.post_copy_from(other_shadow)
 
     def fields_to_copy_first(self):
         if self.is_block_context:
