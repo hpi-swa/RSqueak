@@ -18,7 +18,7 @@ class TestBasic(BaseJITTest):
          jump(p0, p3, i60, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, i61, descr=TargetToken(53667152))
         """)
         self.assert_matches(traces[0].bridges[0], """
-        
+
          f18 = call(ConstClass(ll_time.ll_time_time), descr=<Callf 8 EF=4>),
          setfield_gc(ConstPtr(ptr19), 10000, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 24>),
          guard_no_exception(descr=<Guard0x2e964d0>),
@@ -360,7 +360,7 @@ class TestBasic(BaseJITTest):
             i777 = arraylen_gc(p581, descr=<ArrayP 4>)
             jump(p0, p3, p8, i615, p596, i620, p18, i603, p38, p40, p42, p44, p46, p48, p50, p52, p54, p56, p58, p60, p62, p64, p66, p68, p70, p72, p74, p76, p78, p80, p82, p84, p86, p88, p90, p92, p94, p96, p98, p100, p102, p104, p106, p108, p110, p112, p114, p116, p118, p120, p122, p124, p126, p128, p130, p132, p134, 1, p149, p773, i162, p158, p774, i171, p167, p147, i771, i187, p184, p190, p775, i224, p200, p247, i256, p254, p263, p142, p281, i290, i292, i328, i343, i386, i373, i571, p569, p596, p581, descr=TargetToken(48932608))
         """)
-        
+
     @py.test.mark.skipif("'just dozens of long traces'")
     def test_bitblt_draw_windows(self, spy, tmpdir):
         # This used to have a call to array comparison in it

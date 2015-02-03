@@ -58,7 +58,7 @@ def _prim(space, code, stack, context = None):
 
 def prim(code, stack, context = None):
     return _prim(space, code, stack, context)
-    
+
 def prim_fails(code, stack):
     interp, w_frame, argument_count = mock(space, stack)
     orig_stack = list(w_frame.as_context_get_shadow(space).stack())

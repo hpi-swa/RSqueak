@@ -25,7 +25,7 @@ class NonVirtualReturn(Exception):
         self.value = w_result
         self.s_target_context = s_target_context
         self.s_current_context = s_current_context
-    
+
     def print_trace(self):
         print "\n====== Sender Chain Manipulation, contexts forced to heap at: %s" % self.s_current_context.short_str()
 
@@ -36,21 +36,21 @@ class ContextSwitchException(Exception):
     type = "ContextSwitch"
     def __init__(self, s_new_context):
         self.s_new_context = s_new_context
-    
+
     def print_trace(self):
         print "\n====== %s at: %s" % (self.type, self.s_new_context.short_str())
-    
+
 class StackOverflow(ContextSwitchException):
     """This causes the current jit-loop to be left, dumping all virtualized objects to the heap.
     This breaks performance, so it should rarely happen.
     In case of severe performance problems, execute with -t and check if this occurrs."""
     type = "Stack Overflow"
-    
+
 class ProcessSwitch(ContextSwitchException):
     """This causes the interpreter to switch the executed context.
     Triggered when switching the process."""
     type = "Process Switch"
-    
+
 UNROLLING_BYTECODE_RANGES = unroll.unrolling_iterable(interpreter_bytecodes.BYTECODE_RANGES)
 
 def get_printable_location(pc, self, method):
@@ -113,7 +113,7 @@ class Interpreter(object):
                 if self.is_tracing() or self.trace_important:
                     ret.print_trace()
                 s_context = self.unwind_context_chain(ret.s_current_context, ret.s_target_context, ret.value)
-    
+
     # This is a wrapper around loop_bytecodes that cleanly enters/leaves the frame,
     # handles the stack overflow protection mechanism and handles/dispatches Returns.
     def stack_frame(self, s_frame, s_sender, may_context_switch=True):
@@ -144,7 +144,7 @@ class Interpreter(object):
             if self.is_tracing():
                 self.stack_depth -= 1
             s_frame.state = InactiveContext
-    
+
     def loop_bytecodes(self, s_context, may_context_switch=True):
         old_pc = 0
         if not jit.we_are_jitted() and may_context_switch:
@@ -170,7 +170,7 @@ class Interpreter(object):
                     s_context.push(ret.value)
                 else:
                     raise ret
-    
+
     def unwind_context_chain(self, start_context, target_context, return_value):
         if start_context is None:
             # This is the toplevel frame. Execution ended.
@@ -191,7 +191,7 @@ class Interpreter(object):
             context = s_sender
         context.push(return_value)
         return context
-    
+
     def step(self, context):
         bytecode = context.fetch_next_bytecode()
         for entry in UNROLLING_BYTECODE_RANGES:
@@ -282,12 +282,12 @@ class Interpreter(object):
         s_frame.push(w_receiver)
         s_frame.push_all(list(w_arguments))
         return s_frame
-        
+
     # ============== Methods for tracing and printing ==============
-    
+
     def is_tracing(self):
         return jit.promote(self.trace)
-    
+
     def print_padded(self, str):
         assert self.is_tracing()
         print (' ' * self.stack_depth) + str

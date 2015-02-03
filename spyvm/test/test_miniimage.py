@@ -32,7 +32,7 @@ def runningExitImage(cached=True):
 
 def get_float_class():
     return image.special(constants.SO_FLOAT_CLASS)
-    
+
 # ------ tests ------------------------------------------
 
 def test_read_header():
@@ -55,7 +55,7 @@ def _test_all_pointers_are_valid(reader):
 
 def test_all_pointers_are_valid():
     _test_all_pointers_are_valid(reader)
-    
+
 def test_there_are_31_compact_classes():
     assert len(reader.compactclasses) == 31
 
@@ -70,7 +70,7 @@ def test_float_class_name():
     assert w_float_class_name.bytes == list("Float")
 
 # TODO - many of these test would belong in test_model.py
-    
+
 def test_str_float():
     assert str(space.wrap_float(3.0)) == "a Float(3.000000)"
 
@@ -84,13 +84,13 @@ def test_str_class_object():
     w_float_class = get_float_class()
     w_float_class.as_class_get_shadow(space)
     assert str(w_float_class) == "Float"
-    
+
     w_float_class.class_shadow(space)
     assert str(w_float_class.getclass(space)) == "Float class"
-    
+
     w_float_class.getclass(space).class_shadow(space)
     assert str(w_float_class.getclass(space).getclass(space)) == "Metaclass"
-    
+
     w_float_class.getclass(space).getclass(space).class_shadow(space)
     assert str(w_float_class.getclass(space).getclass(space).getclass(space)) == "Metaclass class"
 
@@ -268,7 +268,7 @@ def test_mustBeBoolean():
     w_mbb = interp.space.objtable["w_mustBeBoolean"]
     assert isinstance(w_mbb, model.W_BytesObject)
     assert w_mbb.as_string() == "mustBeBoolean"
-    
+
 def test_Message():
     w_message_cls = interp.space.w_Message
     assert w_message_cls is interp.space.classtable["w_Message"]
@@ -290,7 +290,7 @@ def test_primitive_perform_with_args():
             w_sel = sel
     size = _prim(space, primitives.PERFORM_WITH_ARGS, [w_o, w_sel, []])
     assert size.value == 3
-    
+
 def test_step_run_something():
     space, interp = runningSomethingImage(cached=False)
     ap = wrapper.ProcessWrapper(space, wrapper.scheduler(space).active_process())
