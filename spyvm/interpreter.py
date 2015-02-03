@@ -12,7 +12,7 @@ class ReturnFromTopLevel(Exception):
 
 class Return(Exception):
     _attrs_ = ["value", "s_target_context", "is_local", "arrived_at_target"]
-    _immutable_attrs_ = ["value", "s_target_context", "is_local"]
+    _immutable_fields_ = ["value", "s_target_context", "is_local"]
     def __init__(self, s_target_context, w_result):
         self.value = w_result
         self.s_target_context = s_target_context
