@@ -1515,25 +1515,12 @@ def func(interp, s_frame, w_rcvr):
 
 # ___________________________________________________________________________
 # VM implementor primitives
-VM_INVOKE_OBJECT_AS_METHOD = 248
 VM_CLEAR_PROFILE = 250
 VM_CONTROL_PROFILING = 251
 VM_PROFILE_SAMPLES_INTO = 252
 VM_PROFILE_INFO_INTO = 253
 VM_PARAMETERS = 254
 INST_VARS_PUT_FROM_STACK = 255 # Never used except in Disney tests.  Remove after 2.3 release.
-
-@expose_primitive(VM_INVOKE_OBJECT_AS_METHOD, method_object=True, result_is_new_frame=True, may_context_switch=False)
-def func(interp, s_frame, argcount, w_objectAsMethod):
-    w_selector = s_frame.pop()
-    args = s_frame.pop_and_return_n(argcount)
-    arguments_w = interp.space.wrap_list_unroll_safe(args)
-    w_rcvr = s_frame.pop()
-    w_newrcvr = w_objectAsMethod
-    s_frame.push(w_newrcvr)
-
-    w_newarguments = [w_selector, arguments_w, w_rcvr]
-
 
 @expose_primitive(VM_PARAMETERS)
 def func(interp, s_frame, argcount):

@@ -314,9 +314,10 @@ class __extend__(ContextPartShadow):
             if w_arguments:
                 self.push_all(w_arguments)
             #fixme: this should be passed to the primitive in another way
-            self.push(w_selector)
+            #self.push(w_selector)
             try:
-                return self._call_primitive(248, interp, argcount, w_method, w_selector)
+                #return self._call_primitive(248, interp, argcount, w_method, w_selector)
+                return self._sendOamSelector(interp, argcount, w_method, w_selector)
             except error.PrimitiveFailedError:
                 #err well, this does not happen
                 assert False
@@ -340,6 +341,17 @@ class __extend__(ContextPartShadow):
             interp.print_padded('-> ' + s_frame.short_str())
 
         return interp.stack_frame(s_frame, self)
+
+    def _sendOamSelector(self, interp, argcount, w_method, w_selector):
+        args = self.pop_and_return_n(argcount)
+        arguments_w = interp.space.wrap_list(args)
+        w_rcvr = self.pop()
+        w_newrcvr = w_method
+
+        w_newarguments = [w_selector, arguments_w, w_rcvr]
+
+        self.push(w_newrcvr)
+        return self._sendSpecialSelector(interp, w_newrcvr, "runWithIn", w_newarguments);
 
     @objectmodel.specialize.arg(1)
     def _sendSelfSelectorSpecial(self, selector, numargs, interp):
