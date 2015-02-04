@@ -1530,10 +1530,10 @@ def func(interp, s_frame, argcount, w_objectAsMethod):
     arguments_w = interp.space.wrap_list(args)
     w_rcvr = s_frame.pop()
     w_newrcvr = w_objectAsMethod
+    s_frame.push(w_newrcvr)
 
     w_newarguments = [w_selector, arguments_w, w_rcvr]
 
-    s_frame.push(w_newrcvr)
     return s_frame._sendSpecialSelector(interp, w_newrcvr, "runWithIn", w_newarguments);
 
 @expose_primitive(VM_PARAMETERS)
