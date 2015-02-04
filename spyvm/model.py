@@ -687,36 +687,23 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         from spyvm.storage_classes import ClassShadow
         return jit.promote(self.as_special_get_shadow(space, ClassShadow))
 
-    @objectmodel.specialize.arg(2)
-    def as_context_part_get_shadow(self, space, TheClass):
-        from spyvm.storage_contexts import ContextPartShadow
-        old_shadow = self._get_shadow()
-        shadow = old_shadow
-        if not isinstance(old_shadow, ContextPartShadow):
-            shadow = space.strategy_factory.switch_strategy(old_shadow, TheClass)
-        assert isinstance(shadow, ContextPartShadow)
-        return shadow
-
     def as_blockcontext_get_shadow(self, space):
-        from spyvm.storage_contexts import BlockContextMarkerClass
-        return self.as_context_part_get_shadow(space, BlockContextMarkerClass)
+        from spyvm.storage_contexts import BlockContextShadow
+        return self.as_special_get_shadow(space, BlockContextShadow)
 
     def as_methodcontext_get_shadow(self, space):
-        from spyvm.storage_contexts import MethodContextMarkerClass
-        return self.as_context_part_get_shadow(space, MethodContextMarkerClass)
+        from spyvm.storage_contexts import MethodContextShadow
+        return self.as_special_get_shadow(space, MethodContextShadow)
 
     def as_context_get_shadow(self, space):
         from spyvm.storage_contexts import ContextPartShadow
-        shadow = self._get_shadow()
-        if not isinstance(shadow, ContextPartShadow):
+        if not isinstance(self.shadow, ContextPartShadow):
             if self.getclass(space).is_same_object(space.w_BlockContext):
                 return self.as_blockcontext_get_shadow(space)
             if self.getclass(space).is_same_object(space.w_MethodContext):
                 return self.as_methodcontext_get_shadow(space)
             raise ValueError("This object cannot be treated like a Context object!")
-        else:
-            assert isinstance(shadow, ContextPartShadow)
-            return shadow
+        return self.as_special_get_shadow(space, ContextPartShadow)
 
     def as_methoddict_get_shadow(self, space):
         from spyvm.storage_classes import MethodDictionaryShadow
@@ -1239,9 +1226,9 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         return True
 
     def create_frame(self, space, receiver, arguments=[]):
-        from spyvm.storage_contexts import ContextPartShadow
+        from spyvm.storage_contexts import MethodContextShadow
         assert len(arguments) == self.argsize
-        return ContextPartShadow.build_method_context(space, self, receiver, arguments)
+        return MethodContextShadow.build(space, self, receiver, arguments)
 
     # === Printing ===
 
