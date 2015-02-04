@@ -47,6 +47,8 @@ def empty_object():
     return instantiate(model.W_PointersObject)
     
 class ObjSpace(object):
+    _immutable_fields_ = ['objtable']
+
     def __init__(self):
         # This is a hack; see compile_code() in targetimageloadingsmalltalk.py
         self.suppress_process_switch = ConstantFlag()
@@ -134,6 +136,10 @@ class ObjSpace(object):
             name = "w_" + name
             if not name in self.objtable:
                 self.add_bootstrap_object(name, None)
+
+    @jit.elidable
+    def special_object(self, which):
+        return self.objtable[which]
 
     # ============= Methods for wrapping and unwrapping stuff =============
 

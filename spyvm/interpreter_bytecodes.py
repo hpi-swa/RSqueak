@@ -347,8 +347,9 @@ class __extend__(ContextPartShadow):
         return self._sendSelfSelector(w_selector, numargs, interp)
 
     def _sendSpecialSelector(self, interp, receiver, special_selector, w_args=[]):
-        w_special_selector = self.space.objtable["w_" + special_selector]
-        s_class = receiver.class_shadow(self.space)
+        space = jit.promote(self.space)
+        w_special_selector = space.special_object("w_" + special_selector)
+        s_class = receiver.class_shadow(space)
 
         try:
             w_method = s_class.lookup(w_special_selector)
