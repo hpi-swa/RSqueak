@@ -61,7 +61,11 @@ class ContextPartShadow(AbstractRedirectingShadow):
     # ______________________________________________________________________
     # Initialization
 
-    def __init__(self, space, w_self, size, is_block_context=False):
+    @jit.unroll_safe
+    def __init__(self, space, w_self, size, is_block_context=False, w_method=None, closure=None):
+        old_shadow = None
+        if w_self: old_shadow = w_self.shadow
+
         self = fresh_virtualizable(self)
         self.is_block_context = is_block_context
         self._s_sender = None
@@ -69,11 +73,6 @@ class ContextPartShadow(AbstractRedirectingShadow):
         self.instances_w = {}
         self.state = InactiveContext
         self.store_pc(0)
-        if self.is_block_context:
-            temps_and_stack = [None] * self.stack_and_temps_size()
-        else:
-            temps_and_stack = [None] * 64
-        self._temps_and_stack = temps_and_stack
         # From BlockContext
         self._w_home = None
         self._initialip = 0
@@ -84,9 +83,32 @@ class ContextPartShadow(AbstractRedirectingShadow):
         self._w_receiver = None
         self._is_BlockClosure_ensure = False
 
+
+        if old_shadow and not is_block_context:
+            if not closure:
+                w_closure = old_shadow.fetch(constants.MTHDCTX_CLOSURE_OR_NIL)
+                if w_closure is not space.w_nil:
+                    closure = wrapper.BlockClosureWrapper(space, w_closure)
+            if not w_method and not closure:
+                w_method = old_shadow.fetch(constants.MTHDCTX_METHOD)
+        # Let's create the stack array
+        if is_block_context or closure:
+            self.closure = closure
+            stacksize = self.stacksize() + self.tempsize()
+        elif w_method:
+            self.store_w_method(w_method)
+            # Magic numbers... Takes care of cases where reflective
+            # code writes more than actual stack size
+            assert isinstance(w_method, model.W_CompiledMethod)
+            stacksize = w_method.compute_frame_size()
+        else:
+            assert False
+        self._temps_and_stack = [space.w_nil] * stacksize
+
     @jit.unroll_safe
     def pre_copy_from(self, other_shadow):
-        # Some fields have to be initialized before the rest, to ensure correct initialization.
+        # Some fields have to be initialized before the rest, to
+        # ensure correct initialization.
         privileged_fields = self.fields_to_copy_first()
         for n0 in privileged_fields:
             self.copy_field_from(n0, other_shadow)
@@ -102,7 +124,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
     def copy_from(self, other_shadow):
         self.pre_copy_from(other_shadow)
         # Now the temp size will be known.
-        self.init_stack_and_temps()
+        self.init_stack_ptr()
         self.post_copy_from(other_shadow)
 
     def fields_to_copy_first(self):
@@ -334,25 +356,18 @@ class ContextPartShadow(AbstractRedirectingShadow):
     # ______________________________________________________________________
     # Stack Manipulation
 
-    def stack_and_temps_size(self):
-        self = fresh_virtualizable(self)
-        stacksize = self.stackend() - self.stackstart()
-        tempsize = self.tempsize()
-        return stacksize + tempsize
+    def stacksize(self):
+        return self.stackend() - self.stackstart()
 
-    @jit.unroll_safe
-    def init_stack_and_temps(self):
-        self = fresh_virtualizable(self)
-        stacksize = self.stackend() - self.stackstart()
+    def init_stack_ptr(self):
         tempsize = self.tempsize()
-        for i in range(tempsize):
-            self._temps_and_stack[i] = self.space.w_nil
         self._stack_ptr = rarithmetic.r_uint(tempsize) # we point after the last element
 
     def stack_get(self, index0):
         return self._temps_and_stack[index0]
 
     def stack_put(self, index0, w_val):
+        assert w_val is not None
         self._temps_and_stack[index0] = w_val
 
     def stack(self):
@@ -363,7 +378,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
         #assert self._stack_ptr > self.tempsize()
         ptr = jit.promote(self._stack_ptr) - 1
         ret = self.stack_get(ptr)   # you get OverflowError if the stack is empty
-        self.stack_put(ptr, None)
+        self.stack_put(ptr, self.space.w_nil)
         self._stack_ptr = ptr
         return ret
 
@@ -399,7 +414,7 @@ class ContextPartShadow(AbstractRedirectingShadow):
         while n > 0:
             n -= 1
             self._stack_ptr -= 1
-            self.stack_put(self._stack_ptr, None)
+            self.stack_put(self._stack_ptr, self.space.w_nil)
 
     @jit.unroll_safe
     def pop_and_return_n(self, n):
@@ -500,7 +515,7 @@ class __extend__(ContextPartShadow):
         ctx.store_initialip(pc)
         ctx.store_pc(pc)
         w_self.store_shadow(ctx)
-        ctx.init_stack_and_temps()
+        ctx.init_stack_ptr()
         return ctx
 
     # === Implemented accessors ===
@@ -622,11 +637,11 @@ class __extend__(ContextPartShadow):
         s_MethodContext = space.w_MethodContext.as_class_get_shadow(space)
         size = w_method.compute_frame_size() + s_MethodContext.instsize()
 
-        ctx = ContextPartShadow(space, None, size, is_block_context=False)
+        ctx = ContextPartShadow(space, None, size, is_block_context=False, w_method=w_method, closure=closure)
         ctx.store_w_receiver(w_receiver)
         ctx.store_w_method(w_method)
         ctx.closure = closure
-        ctx.init_stack_and_temps()
+        ctx.init_stack_ptr()
         ctx.initialize_temps(arguments)
         return ctx
 
