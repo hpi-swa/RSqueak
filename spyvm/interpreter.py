@@ -123,7 +123,7 @@ class Interpreter(object):
             if s_frame._s_sender is None and s_sender is not None:
                 s_frame.store_s_sender(s_sender)
             # Now (continue to) execute the context bytecodes
-            assert s_frame.state is InactiveContext
+            # assert s_frame.state is InactiveContext
             s_frame.state = ActiveContext
             self.loop_bytecodes(s_frame, may_context_switch)
         except rstackovf.StackOverflow:
