@@ -987,12 +987,14 @@ def test_raise_NonVirtualReturn_on_dirty_frame():
 
 def test_objectsAsMethods():
     w_foo = space.wrap_string("foo")
+    w_foo_ = space.wrap_string("foo:")
     w_runwithin = space.special_object("w_runWithIn")
 
     w_holderclass = bootstrap_class(0)
     w_class = bootstrap_class(0)
     w_method = model.W_CompiledMethod(space, 1)
-    w_method.setchar(0, chr(122)) #quickreturn false
+    w_method.setbytes(str(bytearray([0x10, 0x11, 0x12, 0x8a, 0x83, 0x7c])))
+    # "^ {selector. args. receiver}" push temps, pop 3 into array, return top
     w_method.argsize = 3
 
     classshadow = w_class.as_class_get_shadow(space)
@@ -1000,9 +1002,27 @@ def test_objectsAsMethods():
     w_object = classshadow.new()
     holdershadow = w_holderclass.as_class_get_shadow(space)
     holdershadow.installmethod(w_foo, w_object)
+    holdershadow.installmethod(w_foo_, w_object)
     w_holderobject = holdershadow.new()
 
     bytecodes = [ 112, 208, 124 ] #pushReceiverBytecode, sendBytecode for first literal
+    # ^ self foo
     literals = [ w_foo ]
+    runwithin_args_w = interpret_bc(bytecodes, literals, w_holderobject)
+    w_runwithin_args = space.unwrap_array(runwithin_args_w)
+    assert w_runwithin_args[0] == w_foo
+    assert w_runwithin_args[1].getclass(space).is_same_object(space.w_Array)
+    assert w_runwithin_args[1].size() == 0 # foo has no arguments
+    assert w_runwithin_args[2] == w_holderobject
 
-    assert interpret_bc(bytecodes, literals, w_holderobject) == space.w_false
+    bytecodes = [0x70, 0x70, 0xE0, 0x7c] #push receiver 2x, send literal with one arg
+    # ^ self foo: self
+    literals = [ w_foo_ ]
+    runwithin_args_w = interpret_bc(bytecodes, literals, w_holderobject)
+    w_runwithin_args = space.unwrap_array(runwithin_args_w)
+    assert w_runwithin_args[0] == w_foo_
+    assert w_runwithin_args[1].getclass(space).is_same_object(space.w_Array)
+    assert w_runwithin_args[1].size() == 1 # foo: has one argument
+    assert w_runwithin_args[1].fetch(space, 0) == w_holderobject # receiver was used as argument
+    assert w_runwithin_args[2] == w_holderobject
+
