@@ -246,7 +246,6 @@ class ClassShadow(AbstractCachingShadow):
             w_methoddict = model.W_PointersObject(self.space, None, 2)
             w_methoddict.store(self.space, constants.METHODDICT_VALUES_INDEX, model.W_PointersObject(self.space, None, 0))
             self.store_s_methoddict(w_methoddict.as_methoddict_get_shadow(self.space))
-        self.s_methoddict().invalid = False
 
     def installmethod(self, w_selector, w_method):
         "NOT_RPYTHON"     # this is only for testing.
@@ -258,12 +257,11 @@ class ClassShadow(AbstractCachingShadow):
 
 class MethodDictionaryShadow(ListStorageShadow):
 
-    _immutable_fields_ = ['invalid?', 's_class']
-    _attrs_ = ['methoddict', 'invalid', 's_class']
+    _immutable_fields_ = ['s_class']
+    _attrs_ = ['methoddict', 's_class']
     repr_classname = "MethodDictionaryShadow"
 
     def __init__(self, space, w_self, size):
-        self.invalid = True
         self.s_class = None
         self.methoddict = {}
         ListStorageShadow.__init__(self, space, w_self, size)
@@ -279,8 +277,6 @@ class MethodDictionaryShadow(ListStorageShadow):
         self.sync_method_cache()
 
     def find_selector(self, w_selector):
-        if self.invalid:
-            return None # we may be invalid if Smalltalk code did not call flushCache
         return self.methoddict.get(w_selector, None)
 
     # We do not call update() after changes to ourselves:
@@ -294,9 +290,8 @@ class MethodDictionaryShadow(ListStorageShadow):
         if n0 == constants.METHODDICT_VALUES_INDEX:
             self.setup_notification()
         if n0 >= constants.METHODDICT_NAMES_INDEX:
-            #self.invalid = True
-            # the caller / user cannot be expected to add the compiledMethod to the observee next
-            # in case of clone / copyFrom the compiledMethod is already contained
+            # the caller / user cannot be expected to add the compiledMethod to the observee next (as indicated above)
+            # in case of clone / copyFrom the compiledMethod is already contained, so a sync is necessary here too
             self.sync_method_cache()
     
     def setup_notification(self):
@@ -306,12 +301,10 @@ class MethodDictionaryShadow(ListStorageShadow):
         w_values = self.fetch(constants.METHODDICT_VALUES_INDEX)
         assert isinstance(w_values, model.W_PointersObject)
         return w_values
-        
-    def flush_method_cache(self):   
-        # Lazy synchronization: Only flush the cache, if we are already synchronized.
-        if self.invalid:
-            self.sync_method_cache()
-        
+
+    def flush_method_cache(self):
+        self.sync_method_cache()
+
     def sync_method_cache(self):
         if self.size() == 0:
             return
@@ -343,4 +336,3 @@ class MethodDictionaryShadow(ListStorageShadow):
                         w_compiledmethod.set_lookup_class_and_name(self.s_class.w_self(), selector)
         if self.s_class:
             self.s_class.changed()
-        self.invalid = False
