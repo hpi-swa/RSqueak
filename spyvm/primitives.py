@@ -1527,7 +1527,7 @@ INST_VARS_PUT_FROM_STACK = 255 # Never used except in Disney tests.  Remove afte
 def func(interp, s_frame, argcount, w_objectAsMethod):
     w_selector = s_frame.pop()
     args = s_frame.pop_and_return_n(argcount)
-    arguments_w = interp.space.wrap_list(args)
+    arguments_w = interp.space.wrap_list_unroll_safe(args)
     w_rcvr = s_frame.pop()
     w_newrcvr = w_objectAsMethod
     s_frame.push(w_newrcvr)

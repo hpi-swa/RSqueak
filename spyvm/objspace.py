@@ -194,6 +194,14 @@ class ObjSpace(object):
             res.atput0(self, i, lst_w[i])
         return res
 
+    @jit.unroll_safe
+    def wrap_list_unroll_safe(self, lst_w):
+        lstlen = len(lst_w)
+        res = self.w_Array.as_class_get_shadow(self).new(lstlen)
+        for i in range(lstlen):
+            res.atput0(self, i, lst_w[i])
+        return res
+
     def unwrap_int(self, w_value):
         if isinstance(w_value, model.W_SmallInteger):
             return intmask(w_value.value)
