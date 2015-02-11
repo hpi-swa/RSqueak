@@ -29,7 +29,7 @@ class W_Object(object):
     _settled_ = True
     repr_classname = "W_Object"
     bytes_per_slot = constants.BYTES_PER_WORD
-    
+
     def size(self):
         """Return the number of "slots" or "items" in the receiver object.
         This means different things for different objects.
@@ -37,7 +37,7 @@ class W_Object(object):
         for PointerObject the number of pointers (regardless if it's varsized or not).
         """
         return 0
-    
+
     def instsize(self):
         """Return the number of slots of the object reserved for instance variables (not number of bytes).
         Only returns something non-zero for W_PointersObjects,
@@ -56,7 +56,7 @@ class W_Object(object):
         The reported size may differ from the actual size in Spy's object
         space, as memory representation varies depending on PyPy translation."""
         return self.size() * self.bytes_per_slot
-        
+
     def getclass(self, space):
         """Return Squeak class."""
         raise NotImplementedError()
@@ -108,7 +108,7 @@ class W_Object(object):
 
     def getclass(self, space):
         raise NotImplementedError()
-        
+
     def class_shadow(self, space):
         """Return internal representation of Squeak class."""
         return self.getclass(space).as_class_get_shadow(space)
@@ -123,13 +123,13 @@ class W_Object(object):
     def is_nil(self, space):
         """Return True, if the receiver represents the nil object in the given Object Space."""
         return self.is_same_object(space.w_nil)
-        
+
     def is_class(self, space):
         """ Return true, if the receiver seems to be a class.
         We can not be completely sure about this (non-class objects might be
         used as class)."""
         return False
-        
+
     def become(self, other):
         """Become swaps two objects.
            False means swapping failed"""
@@ -152,7 +152,7 @@ class W_Object(object):
         if not name:
             name = "?"
         return name
-    
+
     def lshift(self, space, shift):
         raise error.PrimitiveFailedError()
 
@@ -164,15 +164,15 @@ class W_Object(object):
 
     def is_array_object(self):
         return False
-        
+
     # Methods for printing this object
-    
+
     def guess_classname(self):
         """Get the name of the class of the receiver without using a space.
         If the shadow of the class of the receiver is not yet initialized,
         this might not return a correct name."""
         return "?"
-    
+
     def __repr__(self):
         return self.as_repr_string()
 
@@ -182,16 +182,16 @@ class W_Object(object):
             return "a %s(%s)" % (self.guess_classname(), content)
         else:
             return "a %s" % (self.guess_classname())
-        
+
     def str_content(self):
         return ""
-    
+
     def as_repr_string(self):
         return "<%s (a %s) %s>" % (self.repr_classname, self.guess_classname(), self.repr_content())
 
     def repr_content(self):
         return self.str_content()
-        
+
     def selector_string(self):
         return self.as_repr_string()
 
@@ -202,7 +202,7 @@ class W_SmallInteger(W_Object):
     __slots__ = ('value',)     # the only allowed slot here
     _immutable_fields_ = ["value"]
     repr_classname = "W_SmallInteger"
-    
+
     def __init__(self, value):
         self.value = intmask(value)
 
@@ -242,7 +242,7 @@ class W_SmallInteger(W_Object):
 
     def guess_classname(self):
         return "SmallInteger"
-    
+
     def str_content(self):
         return "%d" % self.value
 
@@ -270,14 +270,14 @@ class W_AbstractObjectWithIdentityHash(W_Object):
     ints and floats)."""
     _attrs_ = ['hash']
     repr_classname = "W_AbstractObjectWithIdentityHash"
-    
+
     hash_generator = rrandom.Random()
     UNASSIGNED_HASH = sys.maxint
     hash = UNASSIGNED_HASH # default value
 
     def fillin(self, space, g_self):
         self.hash = g_self.get_hash()
-        
+
     def setchar(self, n0, character):
         raise NotImplementedError()
 
@@ -297,12 +297,12 @@ class W_AbstractObjectWithIdentityHash(W_Object):
             return False
         self._become(w_other)
         return True
-    
+
     def can_become(self, w_other):
         # TODO -- what about become: with a Float and a CompiledMethod etc.?
         # We might be in trouble regarding W_LargePositiveInteger1Word, too.
         return self.__class__ is w_other.__class__
-    
+
     def _become(self, w_other):
         assert isinstance(w_other, W_AbstractObjectWithIdentityHash)
         self.hash, w_other.hash = w_other.hash, self.hash
@@ -312,7 +312,7 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
     _attrs_ = ["value", "_exposed_size"]
     repr_classname = "W_LargePositiveInteger1Word"
     bytes_per_slot = 1
-    
+
     def __init__(self, value, size=4):
         self.value = intmask(value)
         self._exposed_size = size
@@ -329,10 +329,10 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
 
     def getclass(self, space):
         return space.w_LargePositiveInteger
-    
+
     def guess_classname(self):
         return "LargePositiveInteger"
-    
+
     def invariant(self):
         return isinstance(self.value, int)
 
@@ -381,16 +381,16 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
         new_value = self.value & r_uint(~(0xff << skew))
         new_value |= r_uint(byte << skew)
         self.value = intmask(new_value)
-    
+
     def size(self):
         return self._exposed_size
-        
+
     def invariant(self):
         return isinstance(self.value, int)
 
     def is_array_object(self):
         return True
-        
+
     def _become(self, w_other):
         assert isinstance(w_other, W_LargePositiveInteger1Word)
         self.value, w_other.value = w_other.value, self.value
@@ -401,7 +401,7 @@ class W_Float(W_AbstractObjectWithIdentityHash):
     """Boxed float value."""
     _attrs_ = ['value']
     repr_classname = "W_Float"
-    
+
     def fillin_fromwords(self, space, high, low):
         from rpython.rlib.rstruct.ieee import float_unpack
         from rpython.rlib.rarithmetic import r_ulonglong
@@ -424,10 +424,10 @@ class W_Float(W_AbstractObjectWithIdentityHash):
 
     def guess_classname(self):
         return "Float"
-        
+
     def str_content(self):
         return "%f" % self.value
-        
+
     def gethash(self):
         return intmask(compute_hash(self.value)) // 2
 
@@ -498,7 +498,7 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     _attrs_ = ['w_class']
     repr_classname = "W_AbstractObjectWithClassReference"
     w_class = None
-    
+
     def __init__(self, space, w_class):
         if w_class is not None:     # it's None only for testing and space generation
             assert isinstance(w_class, W_PointersObject)
@@ -508,13 +508,13 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
 
     def repr_content(self):
         return 'len=%d %s' % (self.size(), self.str_content())
-    
+
     def fillin(self, space, g_self):
         W_AbstractObjectWithIdentityHash.fillin(self, space, g_self)
         # The class data will be initialized lazily, after the initial fillin-sequence is over.
         # Don't construct the ClassShadow here, yet!
         self.w_class = g_self.get_class()
-        
+
     def is_class(self, space):
         # This is a class if it's a Metaclass or an instance of a Metaclass.
         if self.has_class():
@@ -525,7 +525,7 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
             if w_class.has_class():
                 return w_Metaclass.is_same_object(w_class.getclass(space))
         return False
-        
+
     def getclass(self, space):
         return self.w_class
 
@@ -539,7 +539,7 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
                 return "?? (class not initialized)"
         else:
             return "? (no class)"
-    
+
     def invariant(self):
         from spyvm import storage_classes
         return (W_AbstractObjectWithIdentityHash.invariant(self) and
@@ -566,17 +566,17 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['shadow']
     shadow = None
     repr_classname = "W_PointersObject"
-    
+
     @jit.unroll_safe
     def __init__(self, space, w_class, size, weak=False):
         """Create new object with size = fixed + variable size."""
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
         self.initialize_storage(space, size, weak)
-    
+
     def initialize_storage(self, space, size, weak=False):
         storage_type = space.strategy_factory.empty_storage_type(self, size, weak)
         space.strategy_factory.set_initial_strategy(self, storage_type, size)
-    
+
     def fillin(self, space, g_self):
         W_AbstractObjectWithClassReference.fillin(self, space, g_self)
         # Recursive fillin required to enable specialized storage strategies.
@@ -585,17 +585,17 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         pointers = g_self.get_pointers()
         storage_type = space.strategy_factory.strategy_type_for(pointers, g_self.isweak())
         space.strategy_factory.set_initial_strategy(self, storage_type, len(pointers), pointers)
-    
+
     def is_weak(self):
         from storage import WeakListStorageShadow
         return isinstance(self.shadow, WeakListStorageShadow)
-    
+
     def is_class(self, space):
         from spyvm.storage_classes import ClassShadow
         if isinstance(self.shadow, ClassShadow):
             return True
         return W_AbstractObjectWithClassReference.is_class(self, space)
-    
+
     def assert_shadow(self):
         # Failing the following assert most likely indicates a bug. The shadow can only be absent during
         # the bootstrapping sequence. It will be initialized in the fillin() method. Before that, it should
@@ -604,16 +604,16 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         shadow = self.shadow
         assert shadow, "The shadow has not been initialized yet!"
         return shadow
-    
+
     def space(self):
         return self.assert_shadow().space
-        
+
     def __str__(self):
         if self.has_shadow() and self.shadow.provides_getname:
             return self._get_shadow().getname()
         else:
             return W_AbstractObjectWithClassReference.__str__(self)
-    
+
     def repr_content(self):
         shadow_info = "no shadow"
         name = ""
@@ -622,10 +622,10 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
             if self.shadow.provides_getname:
                 name = " [%s]" % self._get_shadow().getname()
         return '(%s) len=%d%s' % (shadow_info, self.size(), name)
-    
+
     def fetch_all(self, space):
         return [self.fetch(space, i) for i in range(self.size())]
-    
+
     def store_all(self, space, collection):
         # Be tolerant: copy over as many elements as possible, set rest to nil.
         # The size of the object cannot be changed in any case.
@@ -638,7 +638,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         while i < my_length:
             self.store(space, i, space.w_nil)
             i = i+1
-        
+
     def at0(self, space, index0):
         # To test, at0 = in varsize part
         return self.fetch(space, index0 + self.instsize())
@@ -659,7 +659,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
             # Think of a way to avoid this check. Usually, self.shadow is never None.
             return 0
         return self._get_shadow().size()
-        
+
     def instsize(self):
         return self.class_shadow(self.space()).instsize()
 
@@ -669,7 +669,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
 
     def _get_shadow(self):
         return self.shadow
-    
+
     @objectmodel.specialize.arg(2)
     def as_special_get_shadow(self, space, TheClass):
         old_shadow = self._get_shadow()
@@ -687,23 +687,36 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         from spyvm.storage_classes import ClassShadow
         return jit.promote(self.as_special_get_shadow(space, ClassShadow))
 
+    @objectmodel.specialize.arg(2)
+    def as_context_part_get_shadow(self, space, TheClass):
+        from spyvm.storage_contexts import ContextPartShadow
+        old_shadow = self._get_shadow()
+        shadow = old_shadow
+        if not isinstance(old_shadow, ContextPartShadow):
+            shadow = space.strategy_factory.switch_strategy(old_shadow, TheClass)
+        assert isinstance(shadow, ContextPartShadow)
+        return shadow
+
     def as_blockcontext_get_shadow(self, space):
-        from spyvm.storage_contexts import BlockContextShadow
-        return self.as_special_get_shadow(space, BlockContextShadow)
+        from spyvm.storage_contexts import BlockContextMarkerClass
+        return self.as_context_part_get_shadow(space, BlockContextMarkerClass)
 
     def as_methodcontext_get_shadow(self, space):
-        from spyvm.storage_contexts import MethodContextShadow
-        return self.as_special_get_shadow(space, MethodContextShadow)
+        from spyvm.storage_contexts import MethodContextMarkerClass
+        return self.as_context_part_get_shadow(space, MethodContextMarkerClass)
 
     def as_context_get_shadow(self, space):
         from spyvm.storage_contexts import ContextPartShadow
-        if not isinstance(self.shadow, ContextPartShadow):
+        shadow = self._get_shadow()
+        if not isinstance(shadow, ContextPartShadow):
             if self.getclass(space).is_same_object(space.w_BlockContext):
                 return self.as_blockcontext_get_shadow(space)
             if self.getclass(space).is_same_object(space.w_MethodContext):
                 return self.as_methodcontext_get_shadow(space)
             raise ValueError("This object cannot be treated like a Context object!")
-        return self.as_special_get_shadow(space, ContextPartShadow)
+        else:
+            assert isinstance(shadow, ContextPartShadow)
+            return shadow
 
     def as_methoddict_get_shadow(self, space):
         from spyvm.storage_classes import MethodDictionaryShadow
@@ -723,19 +736,16 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     def has_space(self):
         # The space is accessed through the shadow.
         return self.has_shadow()
-    
+
     def _become(self, w_other):
         assert isinstance(w_other, W_PointersObject)
 
-        # XXX: Special handling for growing method dicts (w_other may have a simple ListStorageShadow at this point)
-        from spyvm.storage_classes import MethodDictionaryShadow
-        if isinstance(self.shadow, MethodDictionaryShadow):
-            self.shadow.handle_become(w_other.as_methoddict_get_shadow(self.shadow.space))
-
         self.shadow, w_other.shadow = w_other.shadow, self.shadow
         # shadow links are in both directions -> also update shadows
-        if    self.shadow is not None:    self.shadow._w_self = self
-        if w_other.shadow is not None: w_other.shadow._w_self = w_other
+        if self.shadow:
+            self.shadow.s_become(self, w_other)
+        elif w_other.shadow:
+            w_other.shadow.s_become(w_other, self)
         W_AbstractObjectWithClassReference._become(self, w_other)
 
     @jit.unroll_safe
@@ -744,12 +754,12 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         w_result = W_PointersObject(space, self.getclass(space), len(my_pointers))
         w_result.store_all(space, my_pointers)
         return w_result
-        
+
 class W_BytesObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['bytes', 'c_bytes', '_size']
     repr_classname = 'W_BytesObject'
     bytes_per_slot = 1
-    
+
     def __init__(self, space, w_class, size):
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
         assert isinstance(size, int)
@@ -816,10 +826,10 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         else:
             string = "".join([self.c_bytes[i] for i in range(self.size())])
         return string
-    
+
     def selector_string(self):
         return "#" + self.as_string()
-    
+
     def invariant(self):
         if not W_AbstractObjectWithClassReference.invariant(self):
             return False
@@ -871,22 +881,13 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
     def is_array_object(self):
         return True
 
-    def convert_to_c_layout(self):
-        if self.bytes is None:
-            return self.c_bytes
-        else:
-            size = self.size()
-            c_bytes = self.c_bytes = rffi.str2charp(self.as_string())
-            self.bytes = None
-            return c_bytes
-
     def _become(self, w_other):
         assert isinstance(w_other, W_BytesObject)
         self.bytes, w_other.bytes = w_other.bytes, self.bytes
         self.c_bytes, w_other.c_bytes = w_other.c_bytes, self.c_bytes
         self._size, w_other._size = w_other._size, self._size
         W_AbstractObjectWithClassReference._become(self, w_other)
-    
+
     def __del__(self):
         if self.bytes is None:
             rffi.free_charp(self.c_bytes)
@@ -894,7 +895,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
 class W_WordsObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['words', 'c_words', '_size']
     repr_classname = "W_WordsObject"
-    
+
     def __init__(self, space, w_class, size):
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
         self.words = [r_uint(0)] * size
@@ -969,26 +970,13 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
     def is_array_object(self):
         return True
 
-    def convert_to_c_layout(self):
-        if self.words is None:
-            return self.c_words
-        else:
-            from spyvm.interpreter_proxy import sqIntArrayPtr
-            size = self.size()
-            old_words = self.words
-            c_words = self.c_words = lltype.malloc(sqIntArrayPtr.TO, size, flavor='raw')
-            for i in range(size):
-                c_words[i] = intmask(old_words[i])
-            self.words = None
-            return c_words
-    
     def _become(self, w_other):
         assert isinstance(w_other, W_WordsObject)
         self.words, w_other.words = w_other.words, self.words
         self.c_words, w_other.c_words = w_other.c_words, self.c_words
         self._size, w_other._size = w_other._size, self._size
         W_AbstractObjectWithClassReference._become(self, w_other)
-    
+
     def __del__(self):
         if self.words is None:
             lltype.free(self.c_words, flavor='raw')
@@ -1001,7 +989,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         header (4 bytes)
         literals (4 bytes each)
         bytecodes  (variable)
-    
+
     An optional method trailer can be part of the bytecodes part.
     """
 
@@ -1009,16 +997,16 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     bytes_per_slot = 1
     _attrs_ = [ "version",
                 # Method header
-                "header", "_primitive", "literalsize", "islarge", "_tempsize", "argsize", 
+                "header", "_primitive", "literalsize", "islarge", "_tempsize", "argsize",
                 # Main method content
-                "bytes", "literals", 
+                "bytes", "literals",
                 # Additional info about the method
                 "lookup_selector", "compiledin_class", "lookup_class" ]
 
     lookup_selector = "<unknown>"
     lookup_class = None
     import_from_mixin(VersionMixin)
-    
+
     def __init__(self, space, bytecount=0, header=0):
         self.bytes = ["\x00"] * bytecount
         self.setheader(space, header, initializing=True)
@@ -1030,7 +1018,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         self.setbytes(g_self.get_bytes()[self.bytecodeoffset():])
 
     # === Setters ===
-    
+
     def setheader(self, space, header, initializing=False):
         _primitive, literalsize, islarge, tempsize, argsize = constants.decode_compiled_method_header(header)
         if initializing or self.literalsize != literalsize:
@@ -1044,42 +1032,42 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         self.islarge = islarge
         self.compiledin_class = None
         self.changed()
-        
+
     def setliteral(self, index, w_lit):
         self.literals[index] = w_lit
         if index == len(self.literals):
             self.compiledin_class = None
         self.changed()
-    
+
     def setliterals(self, literals):
         """NOT RPYTHON""" # Only for testing, not safe.
         self.literals = literals
         self.compiledin_class = None
         self.changed()
-    
+
     def set_lookup_class_and_name(self, w_class, selector):
         self.lookup_class = w_class
         self.lookup_selector = selector
         self.changed()
-    
+
     def setbytes(self, bytes):
         self.bytes = bytes
         self.changed()
-        
+
     def setchar(self, index0, character):
         assert index0 >= 0
         self.bytes[index0] = character
         self.changed()
-    
+
     # === Getters ===
-        
+
     def getclass(self, space):
         return space.w_CompiledMethod
-    
+
     @constant_for_version
     def size(self):
         return self.headersize() + self.getliteralsize() + len(self.bytes)
-    
+
     @constant_for_version
     def tempsize(self):
         return self._tempsize
@@ -1102,27 +1090,27 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     @constant_for_version_arg
     def getliteral(self, index):
         return self.literals[index]
-        
+
     @constant_for_version
     def primitive(self):
         return self._primitive
-        
+
     @constant_for_version
     def compute_frame_size(self):
         # From blue book: normal mc have place for 12 temps+maxstack
         # mc for methods with islarge flag turned on 32
         return 16 + self.islarge * 40 + self.argsize
-    
+
     @constant_for_version_arg
     def fetch_bytecode(self, pc):
         assert pc >= 0 and pc < len(self.bytes)
         return self.bytes[pc]
-    
+
     def compiled_in(self):
         # This method cannot be constant/elidable. Looking up the compiledin-class from
         # the literals must be done lazily because we cannot analyze the literals
         # properly during the fillin-phase.
-        
+
         # Prefer the information stored in the CompiledMethod literal...
         result = self.constant_lookup_class()
         if not result:
@@ -1133,26 +1121,26 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
                 result = self.constant_compiledin_class()
         assert result is None or isinstance(result, W_PointersObject)
         return result
-    
+
     @constant_for_version
     def constant_compiledin_class(self):
         return self.compiledin_class
-    
+
     @constant_for_version
     def constant_lookup_class(self):
         return self.lookup_class
-    
+
     def safe_compiled_in(self):
         return self.constant_compiledin_class() or self.constant_lookup_class()
-    
+
     # === Object Access ===
-    
+
     def literalat0(self, space, index0):
         if index0 == 0:
             return space.wrap_int(self.getheader())
         else:
             return self.getliteral(index0 - 1)
-            
+
     def literalatput0(self, space, index0, w_value, initializing=False):
         if index0 == 0:
             header = space.unwrap_int(w_value)
@@ -1186,11 +1174,11 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
             index0 = index0 - self.bytecodeoffset()
             assert index0 < len(self.bytes)
             self.setchar(index0, chr(space.unwrap_int(w_value)))
-    
+
     # === Misc ===
-    
+
     def update_compiledin_class_from_literals(self):
-        # (Blue book, p 607) Last of the literals is either the containing class 
+        # (Blue book, p 607) Last of the literals is either the containing class
         # or an association with compiledin as a class
         literals = self.literals
         if literals and len(literals) > 0:
@@ -1209,7 +1197,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
                 if compiledin_class:
                     self.compiledin_class = w_literal
                     self.changed()
-    
+
     def _become(self, w_other):
         assert isinstance(w_other, W_CompiledMethod)
         self.argsize, w_other.argsize = w_other.argsize, self.argsize
@@ -1247,20 +1235,20 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
                 self._tempsize is not None and
                 hasattr(self, '_primitive') and
                 self._primitive is not None)
-        
+
     def is_array_object(self):
         return True
-        
+
     def create_frame(self, space, receiver, arguments=[]):
-        from spyvm.storage_contexts import MethodContextShadow
+        from spyvm.storage_contexts import ContextPartShadow
         assert len(arguments) == self.argsize
-        return MethodContextShadow.build(space, self, receiver, arguments)
-        
+        return ContextPartShadow.build_method_context(space, self, receiver, arguments)
+
     # === Printing ===
 
     def guess_classname(self):
         return "CompiledMethod"
-        
+
     def str_content(self):
         return self.get_identifier_string()
 
@@ -1275,19 +1263,19 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
             j += 1
         retval += "\n---------------------"
         return retval
-        
+
     def as_string(self, markBytecode=0):
         retval  = "\nMethodname: " + self.get_identifier_string()
         retval += "\n%s" % self.bytecode_string(markBytecode)
         return retval
-    
+
     def guess_containing_classname(self):
         w_class = self.compiled_in()
         if w_class and w_class.has_space():
             # Not pretty to steal the space from another object.
             return w_class.as_class_get_shadow(w_class.space()).getname()
         return "? (no compiledin-info)"
-    
+
     def get_identifier_string(self):
         return "%s >> #%s" % (self.guess_containing_classname(), self.lookup_selector)
 

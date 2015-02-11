@@ -31,10 +31,10 @@ def test_new():
 def test_new_namedvars():
     w_mycls = bootstrap_class(3)
     w_myinstance = w_mycls.as_class_get_shadow(space).new()
-    
+
     w_myinstance.store(space, 0, w_myinstance) # Make sure ListStorage is used
     w_myinstance.store(space, 0, space.w_nil)
-    
+
     assert isinstance(w_myinstance, model.W_PointersObject)
     assert w_myinstance.getclass(space).is_same_object(w_mycls)
     assert w_myinstance.fetch(space, 0).is_nil(space)
@@ -54,6 +54,7 @@ def test_bytes_object():
     assert w_bytes.getchar(0) == "\x00"
     py.test.raises(IndexError, lambda: w_bytes.getchar(20))
 
+@py.test.mark.skipif("'removed interpreter proxy'")
 def test_c_bytes_object():
     w_class = bootstrap_class(0, format=storage_classes.BYTES)
     w_bytes = w_class.as_class_get_shadow(space).new(20)
@@ -79,6 +80,7 @@ def test_word_object():
     assert w_bytes.getword(0) == 0
     py.test.raises(AssertionError, lambda: w_bytes.getword(20))
 
+@py.test.mark.skipif("'removed interpreter proxy'")
 def test_c_word_object():
     w_class = bootstrap_class(0, format=storage_classes.WORDS)
     w_bytes = w_class.as_class_get_shadow(space).new(20)
@@ -133,13 +135,13 @@ def test_compiledin_class_assoc():
     meth = model.W_CompiledMethod(space, 0)
     meth.setliterals([new_object(), new_object(), assoc ])
     assert meth.compiled_in() == val
-    
+
 def test_compiledin_class_missing():
     meth = model.W_CompiledMethod(space, 0)
     meth.compiledin_class = None
     meth.setliterals([new_object(), new_object() ])
     assert meth.compiled_in() == None
-    
+
 def test_compiledmethod_setchar():
     w_method = model.W_CompiledMethod(space, 3)
     w_method.setchar(0, "c")
@@ -387,14 +389,14 @@ def test_display_bitmap():
     for idx in range(size):
         target.setword(idx, r_uint(0))
     target.take_over_display()
-    
+
     target.setword(0, r_uint(0xFF00))
     assert bin(target.getword(0)) == bin(0xFF00)
     target.setword(0, r_uint(0x00FF00FF))
     assert bin(target.getword(0)) == bin(0x00FF00FF)
     target.setword(0, r_uint(0xFF00FF00))
     assert bin(target.getword(0)) == bin(0xFF00FF00)
-    
+
     buf = target.pixelbuffer()
     for i in xrange(2):
         assert buf[i] == 0x01010101
@@ -421,7 +423,7 @@ def test_display_offset_computation_uneven():
     assert dbitmap.compute_pos(1) == 32
     assert dbitmap.compute_pos(2) == 67
     assert dbitmap.compute_pos(3) == 67 + 32
-    
+
 def test_weak_pointers():
     w_cls = bootstrap_class(2)
     s_cls = w_cls.as_class_get_shadow(space)

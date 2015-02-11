@@ -59,7 +59,7 @@ class SDLDisplay(object):
     def __del__(self):
         # Close the display.
         RSDL.Quit()
-    
+
     def set_video_mode(self, w, h, d):
         assert w > 0 and h > 0
         assert d in [1, 2, 4, 8, 16, 32]
@@ -77,13 +77,13 @@ class SDLDisplay(object):
             self.set_squeak_colormap(self.screen)
         self.bpp = rffi.getintfield(self.screen.c_format, 'c_BytesPerPixel')
         self.pitch = rffi.getintfield(self.screen, 'c_pitch')
-    
+
     def get_pixelbuffer(self):
         return jit.promote(rffi.cast(RSDL.Uint32P, self.screen.c_pixels))
-    
+
     def defer_updates(self, flag):
         self._defer_updates = flag
-    
+
     def flip(self, force=False):
         if (not self._defer_updates) or force:
             RSDL.Flip(self.screen)

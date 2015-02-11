@@ -248,7 +248,7 @@ class BlockClosureWrapper(VarsizedWrapper):
         s_outerContext = w_outerContext.as_context_get_shadow(self.space)
         w_method = s_outerContext.w_method()
         w_receiver = s_outerContext.w_receiver()
-        return storage_contexts.MethodContextShadow.build(self.space, w_method, w_receiver, arguments, self)
+        return storage_contexts.ContextPartShadow.build_method_context(self.space, w_method, w_receiver, arguments, self)
 
     def tempsize(self):
         # We ignore the number of temps a block has, because the first
@@ -266,12 +266,12 @@ class FormWrapper(Wrapper):
     width, store_width = make_int_getter_setter(constants.FORM_WIDTH)
     height, store_height = make_int_getter_setter(constants.FORM_HEIGHT)
     depth, store_depth = make_int_getter_setter(constants.FORM_DEPTH)
-    
+
     def create_display_bitmap(self):
         w_display_bitmap = model_display.from_words_object(self.bits(), self)
         self.store_bits(w_display_bitmap)
         return w_display_bitmap
-    
+
     def get_display_bitmap(self):
         w_bitmap = self.bits()
         if not isinstance(w_bitmap, model_display.W_DisplayBitmap):
@@ -281,10 +281,10 @@ class FormWrapper(Wrapper):
             if w_display_bitmap._depth != self.depth():
                 w_display_bitmap = self.create_display_bitmap()
         return w_display_bitmap
-    
+
     def take_over_display(self):
         self.space.display().set_video_mode(self.width(), self.height(), self.depth())
-    
+
 # XXX Wrappers below are not used yet.
 class OffsetWrapper(Wrapper):
     offset_x  = make_int_getter(0)

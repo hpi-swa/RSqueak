@@ -49,7 +49,7 @@ def preload_execute_frame(imagename, bytes, literals, stack):
     w_method.literals = literals
     w_method.setbytes(bytes)
     w_receiver = stack[0]
-    s_frame = storage_contexts.MethodContextShadow.build(space, w_method, w_receiver)
+    s_frame = storage_contexts.ContextPartShadow.build_method_context(space, w_method, w_receiver)
     w_frame = s_frame.w_self()
     def interp_execute_frame():
         return interp.interpret_toplevel(w_frame)
@@ -104,7 +104,7 @@ def full_vm_image(imagename, additional_args = []):
 
 def full_vm_code(imagename, code):
     return full_vm_image(imagename, ['-r', code])
-    
+
 def full_vm_method(imagename, selector, receiver_num=None, string_arg=None):
     args = ['-m', selector]
     if string_arg:
@@ -120,29 +120,29 @@ def main():
     # imagename = "minibluebookdebug.image"
     imagename = "mini.image"
     # imagename = "Squeak4.5-noBitBlt.image"
-    
+
     # ===== Define the code to be executed, if any.
     # code = "^6+7"
     code = "10000 timesRepeat: [ 0 makeStackDepth: 10 ]"
-    
+
     # ===== These entry-points pre-load the image and directly execute a single frame.
     # func = preload_perform(imagename, model.W_SmallInteger(1000), 'loopTest2')
     # func = preload_perform(imagename, model.W_SmallInteger(777), 'name')
     # func = preload_execute_frame(imagename, [returnReceiverBytecodeBytecode], [], [model.W_SmallInteger(42)])
-    
+
     # ===== These execute the complete interpreter
-    # ===== XXX These do not work because loading the image file while meta-interpreting always leads to 
+    # ===== XXX These do not work because loading the image file while meta-interpreting always leads to
     # ===== a 'Bad file descriptor' error.
     # func = full_vm_code(imagename, code)
     # func = full_vm_method(imagename, "name", 33)
     # func = full_vm_image(imagename)
-    
+
     # ==== These entry-points pre-load the image and then use methods from the entry-point module.
     # ==== This is very close to what actually happens in the VM, but with a pre-loaded image.
     # func = run_benchmark(imagename, "loopTest2", 10000)
     func = run_code(imagename, code, as_benchmark=False)
     # func = run_image(imagename)
-    
+
     # ===== Now we can either simply execute the entry-point, or meta-interpret it (showing all encountered loops).
     # res = func()
     res = meta_interp(func)
