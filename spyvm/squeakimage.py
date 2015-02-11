@@ -221,6 +221,9 @@ class ImageReader(object):
                     pass
     
     def special_object(self, index):
+        # while python would raise an IndexError, after translation a nonexisting key results in a segfault...
+        if index >= len(self.special_g_objects):
+            raise IndexError
         return self.special_g_objects[index]
     
     def init_w_objects(self):
