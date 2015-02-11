@@ -94,6 +94,18 @@ class Interpreter(object):
         self.trace_proxy = objspace.ConstantFlag()
         self.stack_depth = 0
 
+    def populate_remaining_special_objects(self):
+        for name, idx in constants.objects_in_special_object_table.items():
+            name = "w_" + name
+            if name not in self.space.objtable or not self.space.objtable[name]:
+                if name == "w_runWithIn":
+                    w_string = self.space.wrap_string("run:with:in:")
+                    self.space.objtable[name] = self.perform(w_string, selector="asSymbol")
+                    assert self.space.objtable[name]
+                    pass;
+                else:
+                    raise Exception("don't know how to populate " + name + " which was not in special objects table")
+
     def loop(self, w_active_context):
         # This is the top-level loop and is not invoked recursively.
         self.shadow = w_active_context.as_context_get_shadow(self.space)

@@ -166,6 +166,7 @@ def entry_point(argv):
                 trace=trace, trace_important=trace_important,
                 evented=not poll, interrupts=interrupts)
     space.runtime_setup(argv[0], path)
+    interp.populate_remaining_special_objects()
     print_error("") # Line break after image-loading characters
     
     # Create context to be executed

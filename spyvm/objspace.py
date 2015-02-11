@@ -97,7 +97,11 @@ class ObjSpace(object):
         for name, idx in constants.objects_in_special_object_table.items():
             name = "w_" + name
             if not name in self.objtable or not self.objtable[name]:
-                self.objtable[name] = specials[idx]
+                try:
+                    self.objtable[name] = specials[idx]
+                except IndexError:
+                    # if it's not yet in the table, the interpreter has to fill the gap later in populate_remaining_special_objects
+                    self.objtable[name] = None
         # XXX this is kind of hacky, but I don't know where else to get Metaclass
         self.classtable["w_Metaclass"] = self.w_SmallInteger.w_class.w_class
     
@@ -121,7 +125,7 @@ class ObjSpace(object):
     
     def make_bootstrap_objects(self):
         self.make_bootstrap_object("w_charactertable")
-        self.make_bootstrap_object("w_true")
+        self.make_bootstrap_object("w_true") #XXX: should this be nil?
         self.make_bootstrap_object("w_true")
         self.make_bootstrap_object("w_false")
         self.make_bootstrap_object("w_special_selectors")
