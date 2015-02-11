@@ -4,6 +4,9 @@ import sys, time, os
 from rpython.rlib import jit, rpath, objectmodel
 from spyvm import model, interpreter, squeakimage, objspace, wrapper, error
 
+sys.setrecursionlimit(15000)
+
+
 def _usage(argv):
     print """
     Usage: %s <path> [-r|-m|-h] [-naPu] [-jpiS] [-tTslLE]
