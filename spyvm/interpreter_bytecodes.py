@@ -313,7 +313,7 @@ class __extend__(ContextPartShadow):
         if not isinstance(w_method, model.W_CompiledMethod):
             if w_arguments:
                 self.push_all(w_arguments)
-            return self._sendOamSelector(interp, argcount, w_method, w_selector)
+            return self._invokeObjectAsMethod(interp, argcount, w_method, w_selector)
 
         code = w_method.primitive()
         if code:
@@ -334,7 +334,7 @@ class __extend__(ContextPartShadow):
 
         return interp.stack_frame(s_frame, self)
 
-    def _sendOamSelector(self, interp, argcount, w_method, w_selector):
+    def _invokeObjectAsMethod(self, interp, argcount, w_method, w_selector):
         args = self.pop_and_return_n(argcount)
         arguments_w = interp.space.wrap_list(args)
         w_rcvr = self.pop()
