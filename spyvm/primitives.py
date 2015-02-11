@@ -667,22 +667,9 @@ def func(interp, s_frame, w_rcvr, w_into):
 
 @expose_primitive(BITBLT_COPY_BITS, clean_stack=False, no_result=False, compiled_method=True)
 def func(interp, s_frame, argcount, w_method):
-    from spyvm.interpreter import Return
     w_rcvr = s_frame.peek(0)
-    try:
-        s_frame._sendSelfSelector(interp.image.w_simulateCopyBits, 0, interp)
-    except Return:
-        w_dest_form = w_rcvr.fetch(interp.space, 0)
-        w_display = interp.space.objtable['w_display']
-        if w_dest_form.is_same_object(w_display):
-            w_bitmap = w_display.fetch(interp.space, 0)
-            assert isinstance(w_bitmap, model_display.W_DisplayBitmap)
-            w_bitmap.flush_to_screen()
-        return w_rcvr
-    except error.MethodNotFound:
-        from spyvm.plugins.bitblt import BitBltPlugin
-        BitBltPlugin.call("primitiveCopyBits", interp, s_frame, argcount, w_method)
-        return w_rcvr
+    from spyvm.plugins.bitblt import BitBltPlugin
+    return BitBltPlugin.call("primitiveCopyBits", interp, s_frame, argcount, w_method)
 
 @expose_primitive(BE_CURSOR)
 def func(interp, s_frame, argcount):

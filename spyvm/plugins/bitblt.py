@@ -10,31 +10,66 @@ from rpython.rlib.rarithmetic import r_uint, intmask
 BitBltPlugin = Plugin()
 
 
-@BitBltPlugin.expose_primitive(unwrap_spec=[object], clean_stack=True)
-def primitiveCopyBits(interp, s_frame, w_rcvr):
+def image_side_copy_bits(interp, s_frame, w_rcvr):
+    from spyvm.interpreter import Return
+    if interp.image.w_simulateCopyBits is not space.w_nil:
+        try:
+            s_frame._sendSelfSelector(interp.image.w_simulateCopyBits, 0, interp)
+        except Return:
+            return True
+        except error.MethodNotFound:
+            return False
+    elif interp.image.w_copyBitsSimulated is not space.w_nil:
+        try:
+            s_frame._sendSelfSelector(interp.image.w_simulateCopyBits, 0, interp)
+        except Return:
+            return True
+        except error.MethodNotFound:
+            return False
+    else:
+        return False
+
+
+def maybe_flush_screen(interp, w_rcvr):
+    import spyvm.model_display
+    w_dest_form = w_rcvr.fetch(interp.space, 0)
+    w_display = interp.space.objtable['w_display']
+    if w_dest_form.is_same_object(w_display):
+        w_bitmap = w_display.fetch(interp.space, 0)
+        assert isinstance(w_bitmap, model_display.W_DisplayBitmap)
+        w_bitmap.flush_to_screen()
+
+
+@BitBltPlugin.expose_primitive(unwrap_spec=None, clean_stack=True)
+def primitiveCopyBits(interp, s_frame, argcount):
+    if argcount == 0:
+        w_rcvr = s_frame.peek(0)
+    else:
+        assert argcount == 1
+        w_rcvr = s_frame.peek(1)
+
     from spyvm.interpreter import Return
     if not isinstance(w_rcvr, model.W_PointersObject) or w_rcvr.size() < 15:
         raise PrimitiveFailedError("BitBlt primitive not called in BitBlt object!")
 
-    # only allow combinationRules 0-41
-    combinationRule = interp.space.unwrap_positive_32bit_int(w_rcvr.fetch(interp.space, 3))
-    if combinationRule > 41:
-        raise PrimitiveFailedError("Missing combinationRule %d" % combinationRule)
+    if image_side_copy_bits(interp, s_frame, w_rcvr):
+        maybe_flush_screen(interp, w_rcvr)
+        return w_rcvr
+    else:
+        # only allow combinationRules 0-41
+        combinationRule = interp.space.unwrap_positive_32bit_int(w_rcvr.fetch(interp.space, 3))
+        if combinationRule > 41:
+            raise PrimitiveFailedError("Missing combinationRule %d" % combinationRule)
 
-    space = interp.space
-    s_bitblt = w_rcvr.as_special_get_shadow(space, BitBltShadow)
-    s_bitblt.loadBitBlt()
-    s_bitblt.copyBits()
-
-    w_dest_form = w_rcvr.fetch(space, 0)
-    if (combinationRule == 22 or combinationRule == 32):
-        s_frame.pop() # pops the next value under BitBlt
-        s_frame.push(interp.space.wrap_int(s_bitblt.bitCount))
-    elif w_dest_form.is_same_object(space.objtable['w_display']):
-        w_bitmap = w_dest_form.fetch(space, 0)
-        assert isinstance(w_bitmap, model_display.W_DisplayBitmap)
-        w_bitmap.flush_to_screen()
-    return w_rcvr
+        s_bitblt = w_rcvr.as_special_get_shadow(interp.space, BitBltShadow)
+        s_bitblt.loadBitBlt()
+        s_bitblt.copyBits()
+        if (combinationRule == 22 or combinationRule == 32):
+            s_frame.pop() # pops the next value under BitBlt
+            s_frame.push(interp.space.wrap_int(s_bitblt.bitCount))
+        else:
+            maybe_flush_screen(interp, w_rcvr)
+        return w_rcvr
 
 
 def intOrIfNil(space, w_int, i):

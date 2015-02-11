@@ -240,13 +240,20 @@ class ImageReader(object):
 # ____________________________________________________________
 
 class SqueakImage(object):
-    _immutable_fields_ = ["w_asSymbol", "w_simulateCopyBits", "version", "startup_time"]
+    _immutable_fields_ = [
+        "w_asSymbol",
+        "w_simulateCopyBits",
+        "w_copyBitsSimulated",
+        "version",
+        "startup_time"
+    ]
 
     def __init__(self, reader):
         space = reader.space
         self.special_objects = reader.special_w_objects
         self.w_asSymbol = self.find_symbol(space, reader, "asSymbol")
         self.w_simulateCopyBits = self.find_symbol(space, reader, "simulateCopyBits")
+        self.w_copyBitsSimulated = self.find_symbol(space, reader, "copyBitsSimulated")
         self.lastWindowSize = reader.lastWindowSize
         self.version = reader.version
         self.run_spy_hacks(space)
@@ -275,8 +282,8 @@ class SqueakImage(object):
             if not w_obj.getclass(space).is_same_object(w_Symbol):
                 continue
             if w_obj.as_string() == symbol:
-                break
-        assert w_obj is not None
+                return w_obj
+        w_obj = space.w_nil
         return w_obj
 
     def special(self, index):
