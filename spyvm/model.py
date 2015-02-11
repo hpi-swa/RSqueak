@@ -755,9 +755,10 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         return w_result
 
 class W_BytesObject(W_AbstractObjectWithClassReference):
-    _attrs_ = ['bytes', 'c_bytes', '_size']
+    _attrs_ = ['bytes', '_size']
     repr_classname = 'W_BytesObject'
     bytes_per_slot = 1
+    _immutable_fields_ = ['bytes?', '_size?']
 
     def __init__(self, space, w_class, size):
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
@@ -777,19 +778,11 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         self.setchar(index0, chr(space.unwrap_int(w_value)))
 
     def getchar(self, n0):
-        if self.bytes is not None:
-            return self.bytes[n0]
-        else:
-            if n0 >= self._size:
-                raise IndexError
-            return self.c_bytes[n0]
+        return self.bytes[n0]
 
     def setchar(self, n0, character):
         assert len(character) == 1
-        if self.bytes is not None:
-            self.bytes[n0] = character
-        else:
-            self.c_bytes[n0] = character
+        self.bytes[n0] = character
 
     def short_at0(self, space, index0):
         byte_index0 = index0 * 2
@@ -820,10 +813,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         return "'%s'" % self.as_string().replace('\r', '\n')
 
     def as_string(self):
-        if self.bytes is not None:
-            string = "".join(self.bytes)
-        else:
-            string = "".join([self.c_bytes[i] for i in range(self.size())])
+        string = "".join(self.bytes)
         return string
 
     def selector_string(self):
@@ -861,10 +851,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
     def clone(self, space):
         size = self.size()
         w_result = W_BytesObject(space, self.getclass(space), size)
-        if self.bytes is not None:
-            w_result.bytes = list(self.bytes)
-        else:
-            w_result.bytes = [self.c_bytes[i] for i in range(size)]
+        w_result.bytes = list(self.bytes)
         return w_result
 
     def unwrap_uint(self, space):
@@ -883,17 +870,14 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
     def _become(self, w_other):
         assert isinstance(w_other, W_BytesObject)
         self.bytes, w_other.bytes = w_other.bytes, self.bytes
-        self.c_bytes, w_other.c_bytes = w_other.c_bytes, self.c_bytes
         self._size, w_other._size = w_other._size, self._size
         W_AbstractObjectWithClassReference._become(self, w_other)
 
-    def __del__(self):
-        if self.bytes is None:
-            rffi.free_charp(self.c_bytes)
 
 class W_WordsObject(W_AbstractObjectWithClassReference):
-    _attrs_ = ['words', 'c_words', '_size']
+    _attrs_ = ['words', '_size']
     repr_classname = "W_WordsObject"
+    _immutable_fields_ = ['words?', 'size?']
 
     def __init__(self, space, w_class, size):
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
@@ -915,16 +899,10 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
 
     def getword(self, n):
         assert self.size() > n >= 0
-        if self.words is not None:
-            return self.words[n]
-        else:
-            return r_uint(self.c_words[n])
+        return self.words[n]
 
     def setword(self, n, word):
-        if self.words is not None:
-            self.words[n] = r_uint(word)
-        else:
-            self.c_words[n] = intmask(word)
+        self.words[n] = r_uint(word)
 
     def short_at0(self, space, index0):
         word = intmask(self.getword(index0 / 2))
@@ -960,10 +938,7 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
     def clone(self, space):
         size = self.size()
         w_result = W_WordsObject(space, self.getclass(space), size)
-        if self.words is not None:
-            w_result.words = list(self.words)
-        else:
-            w_result.words = [r_uint(self.c_words[i]) for i in range(size)]
+        w_result.words = list(self.words)
         return w_result
 
     def is_array_object(self):
@@ -972,13 +947,9 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
     def _become(self, w_other):
         assert isinstance(w_other, W_WordsObject)
         self.words, w_other.words = w_other.words, self.words
-        self.c_words, w_other.c_words = w_other.c_words, self.c_words
         self._size, w_other._size = w_other._size, self._size
         W_AbstractObjectWithClassReference._become(self, w_other)
 
-    def __del__(self):
-        if self.words is None:
-            lltype.free(self.c_words, flavor='raw')
 
 class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     """My instances are methods suitable for interpretation by the virtual machine.  This is the only class in the system whose instances intermix both indexable pointer fields and indexable integer fields.
