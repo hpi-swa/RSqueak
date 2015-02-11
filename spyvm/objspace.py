@@ -47,6 +47,8 @@ def empty_object():
     return instantiate(model.W_PointersObject)
     
 class ObjSpace(object):
+    _immutable_fields_ = ['objtable']
+
     def __init__(self):
         # This is a hack; see compile_code() in targetimageloadingsmalltalk.py
         self.suppress_process_switch = ConstantFlag()
@@ -135,6 +137,10 @@ class ObjSpace(object):
             if not name in self.objtable:
                 self.add_bootstrap_object(name, None)
 
+    @jit.elidable
+    def special_object(self, which):
+        return self.objtable[which]
+
     # ============= Methods for wrapping and unwrapping stuff =============
 
     def wrap_int(self, val):
@@ -182,6 +188,14 @@ class ObjSpace(object):
         Converts a Python list of wrapped objects into
         a wrapped smalltalk array
         """
+        lstlen = len(lst_w)
+        res = self.w_Array.as_class_get_shadow(self).new(lstlen)
+        for i in range(lstlen):
+            res.atput0(self, i, lst_w[i])
+        return res
+
+    @jit.unroll_safe
+    def wrap_list_unroll_safe(self, lst_w):
         lstlen = len(lst_w)
         res = self.w_Array.as_class_get_shadow(self).new(lstlen)
         for i in range(lstlen):
