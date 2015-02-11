@@ -20,7 +20,7 @@ COMPACT_CLASSES_ARRAY = 28
 POSSIBLE_IMAGE_OFFSET = 512
 
 class ImageVersion(object):
-    
+
     def __init__(self, magic, is_big_endian, is_64bit, has_closures, has_floats_reversed):
         self.magic = magic
         self.is_big_endian = is_big_endian
@@ -28,7 +28,7 @@ class ImageVersion(object):
         self.has_closures = has_closures
         self.has_floats_reversed = has_floats_reversed
         self.is_modern = magic > 6502
-    
+
     def configure_stream(self, stream):
         stream.big_endian = self.is_big_endian
         if self.is_64bit:
@@ -62,7 +62,7 @@ image_versions_64bit = {
 # Parser classes for Squeak image format.
 
 class ImageReader(object):
-    
+
     def __init__(self, space, stream):
         self.space = space
         self.stream = stream
@@ -71,15 +71,15 @@ class ImageReader(object):
         self.chunklist = [] # Flat list of all read chunks
         self.intcache = {} # Cached instances of SmallInteger
         self.lastWindowSize = 0
-    
+
     def create_image(self):
         self.read_all()
         return SqueakImage(self)
-    
+
     def log_progress(self, progress, char):
         if progress % 1000 == 0:
             os.write(2, char)
-    
+
     def read_all(self):
         self.read_header()
         self.read_body()
@@ -113,7 +113,7 @@ class ImageReader(object):
             raise error.CorruptImageError("Illegal version magic.")
         version.configure_stream(self.stream)
         self.version = version
-    
+
     def read_header(self):
         self.read_version()
         # 1 word headersize
@@ -130,7 +130,7 @@ class ImageReader(object):
         fullscreenflag = self.stream.next()
         extravmmemory = self.stream.next()
         self.stream.skipbytes(headersize - self.stream.pos)
-    
+
     def read_body(self):
         self.stream.reset_count()
         while self.stream.count < self.endofmemory:
@@ -177,7 +177,7 @@ class ImageReader(object):
         kind, _, format, _, idhash = splitter[2,6,4,5,12](self.stream.next())
         assert kind == 0
         return ImageChunk(self.space, size, format, classid, idhash), self.stream.count - 4
-    
+
     def init_compactclassesarray(self):
         """ from the blue book (CompiledMethod Symbol Array PseudoContext LargePositiveInteger nil MethodDictionary Association Point Rectangle nil TranslatedMethod BlockContext MethodContext nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil ) """
         special = self.chunks[self.specialobjectspointer]
@@ -188,7 +188,7 @@ class ImageReader(object):
         assert len(chunk.data) == 31
         assert chunk.format == 2
         self.compactclasses = [self.chunks[pointer] for pointer in chunk.data]
-    
+
     def init_g_objects(self):
         for chunk in self.chunks.itervalues():
             chunk.as_g_object(self) # initialize g_object
@@ -215,10 +215,10 @@ class ImageReader(object):
                 else:
                     if not g_object.w_object.is_nil(self.space):
                        raise Warning('Object found in multiple places in the special objects array')
-    
+
     def special_object(self, index):
         return self.special_g_objects[index]
-    
+
     def init_w_objects(self):
         for chunk in self.chunks.itervalues():
             chunk.g_object.init_w_object()
@@ -226,7 +226,7 @@ class ImageReader(object):
 
     def populate_special_objects(self):
         self.space.populate_special_objects(self.special_w_objects)
-    
+
     def fillin_w_objects(self):
         self.filledin_objects = 0
         for chunk in self.chunks.itervalues():
@@ -377,7 +377,7 @@ class GenericObject(object):
 
     def isweak(self):
         return self.format == 4
-        
+
     def iscompiledmethod(self):
         return 12 <= self.format <= 15
 
@@ -450,11 +450,11 @@ class GenericObject(object):
             self.filled_in = True
             self.w_object.fillin(space, self)
             self.reader.log_object_filledin()
-        
+
     def get_g_pointers(self):
         assert self.pointers is not None
         return self.pointers
-    
+
     def get_pointers(self):
         return [g_object.w_object for g_object in self.get_g_pointers()]
 
