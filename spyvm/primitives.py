@@ -667,7 +667,6 @@ def func(interp, s_frame, w_rcvr, w_into):
 
 @expose_primitive(BITBLT_COPY_BITS, clean_stack=False, no_result=False, compiled_method=True)
 def func(interp, s_frame, argcount, w_method):
-    w_rcvr = s_frame.peek(0)
     from spyvm.plugins.bitblt import BitBltPlugin
     return BitBltPlugin.call("primitiveCopyBits", interp, s_frame, argcount, w_method)
 
