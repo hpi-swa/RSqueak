@@ -333,8 +333,7 @@ class MethodDictionaryShadow(ListStorageShadow):
 
                 w_compiledmethod = w_values.fetch(self.space, i)
                 if not isinstance(w_compiledmethod, model.W_Object):
-                    raise ClassShadowError("The methoddict must contain "
-                                       "CompiledMethods or Objects only, for now. "
+                    raise ClassShadowError("The methoddict must contain only wrapped Objects."
                                        "If the value observed is nil, our "
                                        "invalidating mechanism may be broken.")
                 self.methoddict[w_selector] = w_compiledmethod

@@ -108,8 +108,7 @@ class Interpreter(object):
 
     def loop(self, w_active_context):
         # This is the top-level loop and is not invoked recursively.
-        self.shadow = w_active_context.as_context_get_shadow(self.space)
-        s_context = self.shadow
+        s_context = w_active_context.as_context_get_shadow(self.space)
         while True:
             s_sender = s_context.s_sender()
             try:

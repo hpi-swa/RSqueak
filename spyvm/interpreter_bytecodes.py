@@ -313,15 +313,7 @@ class __extend__(ContextPartShadow):
         if not isinstance(w_method, model.W_CompiledMethod):
             if w_arguments:
                 self.push_all(w_arguments)
-            #fixme: this should be passed to the primitive in another way
-            #self.push(w_selector)
-            try:
-                #return self._call_primitive(248, interp, argcount, w_method, w_selector)
-                return self._sendOamSelector(interp, argcount, w_method, w_selector)
-            except error.PrimitiveFailedError:
-                #err well, this does not happen
-                assert False
-                return
+            return self._sendOamSelector(interp, argcount, w_method, w_selector)
 
         code = w_method.primitive()
         if code:
