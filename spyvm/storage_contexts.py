@@ -7,7 +7,7 @@ import rstrategies as rstrat
 
 @objectmodel.specialize.call_location()
 def fresh_virtualizable(x):
-    return x #jit.hint(x, access_directly=True, fresh_virtualizable=True)
+    return jit.hint(x, access_directly=True, fresh_virtualizable=True)
 
 class ContextState(object):
     def __init__(self, name):
@@ -31,11 +31,11 @@ class ContextPartShadow(AbstractRedirectingShadow):
             '_stack_ptr', 'instances_w', 'state']
     repr_classname = "ContextPartShadow"
 
-    #_virtualizable_ = [
-    #    '_s_sender',
-    #    "_pc", "_temps_and_stack[*]", "_stack_ptr",
-    #    "_w_self", "_w_self_size", 'state'
-    #]
+    _virtualizable_ = [
+        '_s_sender',
+        "_pc", "_temps_and_stack[*]", "_stack_ptr",
+        "_w_self", "_w_self_size", 'state'
+    ]
 
     # ______________________________________________________________________
     # Initialization

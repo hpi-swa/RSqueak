@@ -66,7 +66,7 @@ class Interpreter(object):
     jit_driver = jit.JitDriver(
         greens=['pc', 'self', 'method'],
         reds=['s_context'],
-        #virtualizables=['s_context'],
+        virtualizables=['s_context'],
         get_printable_location=get_printable_location
     )
 
