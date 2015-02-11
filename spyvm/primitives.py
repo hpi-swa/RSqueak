@@ -813,8 +813,12 @@ SYMBOL_FLUSH_CACHE = 119
 def func(interp, s_frame, w_arg, w_rcvr):
     return interp.space.wrap_bool(w_arg.is_same_object(w_rcvr))
 
-@expose_primitive(CLASS, unwrap_spec=[object])
-def func(interp, s_frame, w_obj):
+@expose_primitive(CLASS, unwrap_spec=None)
+def func(interp, s_frame, argcount):
+    w_obj = s_frame.pop()
+    if argcount == 1:
+        # XXX TODO: check if this is right
+        s_frame.pop() # receiver, in ContextPart>>objectClass:
     return w_obj.getclass(interp.space)
 
 @expose_primitive(BYTES_LEFT, unwrap_spec=[object])
