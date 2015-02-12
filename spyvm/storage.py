@@ -39,8 +39,13 @@ class AbstractObjectStorage(object):
         raise NotImplementedError("Smalltalk objects are fixed size")
     def delete(self, w_self, start, end):
         raise NotImplementedError("Smalltalk objects are fixed size")
+    def is_shadow(self):
+        return False
+    def handles_become(self):
+        """Only shadows are non-singletons and actually handle become"""
+        return self.is_shadow()
     def become(self, w_other):
-        raise NotImplementedError("Abstract method")
+        raise NotImplementedError("This strategy doesn't handle become.")
 
 # ========== Storage classes implementing storage strategies ==========
 
@@ -53,9 +58,6 @@ class AbstractStrategy(AbstractObjectStorage):
     _attrs_ = []
     import_from_mixin(rstrat.UnsafeIndexingMixin)
     
-    def become(self, w_other):
-        # Singleton strategies are not affected by become.
-        pass
     def default_value(self):
         return self.space.w_nil
 
@@ -108,7 +110,17 @@ class StrategyFactory(rstrat.StrategyFactory):
         rstrat.StrategyFactory.__init__(self, AbstractObjectStorage)
     
     def instantiate_strategy(self, strategy_type, w_self=None, initial_size=0):
-        return strategy_type(self.space, w_self, initial_size)
+        
+        # XXX: Special handling for contexts
+        from spyvm.storage_contexts import BlockContextMarkerClass, MethodContextMarkerClass, ContextPartShadow
+        if strategy_type is BlockContextMarkerClass:
+            instance = ContextPartShadow(self.space, w_self, initial_size, is_block_context=True)
+        elif strategy_type is MethodContextMarkerClass:
+            instance = ContextPartShadow(self.space, w_self, initial_size, is_block_context=False)
+        else:
+            instance = strategy_type(self.space, w_self, initial_size)
+        
+        return instance
     
     def strategy_type_for(self, objects, weak=False):
         if weak:
@@ -116,7 +128,7 @@ class StrategyFactory(rstrat.StrategyFactory):
         if self.no_specialized_storage.is_set():
             return ListStrategy
         return rstrat.StrategyFactory.strategy_type_for(self, objects)
-    
+
     def empty_storage_type(self, w_self, size, weak=False):
         if weak:
             return WeakListStrategy
@@ -138,18 +150,24 @@ class StrategyFactory(rstrat.StrategyFactory):
         else:
             cause = "Filledin"
         self.logger.log(new_strategy_str, size, cause, old_strategy_str, classname, element_classname)
-    
+
 # ========== Other storage classes, non-strategies ==========
 
 class ShadowMixin(object):
     """
     Shadows are non-singleton strategies. They maintain a backpointer to their shadowed
-    W_PointersObject instance.
+    W_PointersObject instance. This is a mixin, because it is used at several places in the
+    class tree.
     """
     def w_self(self):
         return self._w_self
+    def is_shadow(self):
+        return True
     def become(self, w_other):
+        w_self = self._w_self
         self._w_self = w_other
+        if w_other.has_strategy() and w_other._get_strategy().is_shadow():
+            w_other._get_strategy()._w_self = w_self
     def own_size(self):
         return self.size(self._w_self)
     def own_store(self, i, val):
@@ -159,8 +177,8 @@ class ShadowMixin(object):
 
 class AbstractGenericShadow(ListStrategy):
     """
-    This class acts as a generic storage strategy, but allows safe subclassing
-    for more specific, non-singleton strategies
+    This class behaves just like a generic list storage strategy,
+    but allows safe subclassing for more specific, non-singleton strategies.
     """
     _attrs_ = ['_w_self']
     _immutable_fields_ = ['_w_self?']
@@ -171,7 +189,7 @@ class AbstractGenericShadow(ListStrategy):
         self._w_self = w_self
     def convert_storage_from(self, w_self, previous_strategy):
         # Subclasses need a store() invokation for every field.
-        # This 'naive' implementation is available in AbstractStrategy
+        # This 'naive' implementation is available in AbstractStrategy.
         AbstractObjectStorage.convert_storage_from(self, w_self, previous_strategy)
 
 class AbstractCachingShadow(AbstractGenericShadow):

@@ -267,6 +267,17 @@ class MethodDictionaryShadow(AbstractGenericShadow):
         self.methoddict = {}
         AbstractGenericShadow.__init__(self, space, w_self, size)
 
+    def become(self, w_self, w_other):
+        # Force other to become a methoddict
+        s_other = w_other.as_methoddict_get_shadow(self.space)
+        # Do normal self ptr swap
+        AbstractGenericShadow.become(self, w_other)
+        # Swap class pointers
+        self.s_class, s_other.s_class = s_other.s_class, self.s_class
+        # Conditionally inform the class about the swap
+        if self.s_class: self.s_class.store_s_methoddict(self)
+        if s_other.s_class: s_other.s_class.store_s_methoddict(s_other)
+
     def notify(self):
         self.sync_method_cache()
 
@@ -287,7 +298,7 @@ class MethodDictionaryShadow(AbstractGenericShadow):
             self.setup_notification()
         if n0 >= constants.METHODDICT_NAMES_INDEX:
             self.invalid = True
-    
+
     def setup_notification(self):
         self.w_values().as_observed_get_shadow(self.space).set_observer(self)
         
@@ -295,12 +306,12 @@ class MethodDictionaryShadow(AbstractGenericShadow):
         w_values = self.own_fetch(constants.METHODDICT_VALUES_INDEX)
         assert isinstance(w_values, model.W_PointersObject)
         return w_values
-        
-    def flush_method_cache(self):   
+
+    def flush_method_cache(self):
         # Lazy synchronization: Only flush the cache, if we are already synchronized.
         if self.invalid:
             self.sync_method_cache()
-        
+
     def sync_method_cache(self):
         size = self.own_size()
         if size == 0:

@@ -23,15 +23,15 @@ class MockFrame(model.W_PointersObject):
         self.initialize_storage(space, size)
         self.store_all(space, [None] * 6 + stack + [space.w_nil] * 6)
         s_self = self.as_blockcontext_get_shadow(space)
-        s_self.init_stack_and_temps()
+        s_self.init_stack_ptr()
         s_self.reset_stack()
         s_self.push_all(stack)
         s_self.store_expected_argument_count(0)
         self.w_class = space.w_MethodContext
 
     def as_blockcontext_get_shadow(self, space):
-        if not isinstance(self.strategy, storage_contexts.BlockContextShadow):
-            self.strategy = storage_contexts.BlockContextShadow(space, self, self.size())
+        if not isinstance(self.strategy, storage_contexts.ContextPartShadow):
+            self.strategy = storage_contexts.ContextPartShadow(space, self, self.size(), is_block_context=True)
         return self.strategy
 
 IMAGENAME = "anImage.image"
@@ -58,7 +58,7 @@ def _prim(space, code, stack, context = None):
 
 def prim(code, stack, context = None):
     return _prim(space, code, stack, context)
-    
+
 def prim_fails(code, stack):
     interp, w_frame, argument_count = mock(space, stack)
     orig_stack = list(w_frame.as_context_get_shadow(space).stack())
