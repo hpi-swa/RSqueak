@@ -1,6 +1,6 @@
 
 from spyvm import model, constants, error, wrapper
-from spyvm.storage import AbstractObjectStorage, ShadowMixin, AbstractGenericShadow
+from spyvm.storage import AbstractStrategy, ShadowMixin, AbstractGenericShadow
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib import rarithmetic, jit, objectmodel
 from rpython.rlib.objectmodel import import_from_mixin
@@ -24,9 +24,9 @@ DirtyContext = ContextState("DirtyContext")
 class ExtendableStrategyMetaclass(extendabletype, rstrat.StrategyMetaclass):
     pass
 
-class ContextPartShadow(AbstractObjectStorage):
+class ContextPartShadow(AbstractStrategy):
     """
-    This Shadow handles the entire object storage on its own, ignoring the storage
+    This Shadow handles the entire object storage on its own, ignoring the _storage
     field in W_PointersObject. The w_self parameter in fetch/store/size etc. is ignored,
     and the own_fetch/own_store/own_size methods from ShadowMixin should be used instead.
     This shadow can exist without a W_PointersObject.
@@ -75,7 +75,7 @@ class ContextPartShadow(AbstractObjectStorage):
     @jit.unroll_safe
     def __init__(self, space, w_self, size):
         self = fresh_virtualizable(self)
-        AbstractObjectStorage.__init__(self, space, w_self, size)
+        AbstractStrategy.__init__(self, space, w_self, size)
         
         # If w_self is not given, is_block_context must be set explicitely!
         if w_self is not None:
