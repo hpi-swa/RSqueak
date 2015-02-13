@@ -14,3 +14,5 @@ local
 versions
 coglinux
 SDL.dll
+
+/pypy/
