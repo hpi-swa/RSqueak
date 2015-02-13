@@ -10,7 +10,7 @@ pytestmark = slow_test
 sys.setrecursionlimit(100000)
 
 def setup_module():
-    space, interp, image, reader = read_image('Squeak4.5-13702.image')
+    space, interp, image, reader = read_image('Squeak4.5-12568.image')
     w = space.w
     find_symbol = space.find_symbol_in_methoddict
     copy_to_module(locals(), __name__)
