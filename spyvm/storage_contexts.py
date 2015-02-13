@@ -36,8 +36,8 @@ class ContextPartShadow(AbstractObjectStorage):
     __metaclass__ = ExtendableStrategyMetaclass
     import_from_mixin(ShadowMixin)
 
-    _attrs_ = ['_s_sender',
-               '_pc', '_temps_and_stack',
+    _attrs_ = [ '_w_self', '_w_self_size',
+               '_s_sender', '_pc', '_temps_and_stack',
                '_stack_ptr', 'instances_w', 'state',
                # Virtualizable doesn't really work with subclassing,
                # so we have all attributes in the top-level class
@@ -49,12 +49,12 @@ class ContextPartShadow(AbstractObjectStorage):
                'is_block_context']
 
     _virtualizable_ = [
+        "_w_self",
+        "_w_self_size",
         '_s_sender',
         "_pc",
         "_temps_and_stack[*]",
         "_stack_ptr",
-        "_w_self",
-        "_w_self_size",
         'state',
         '_w_home',
         '_initialip',

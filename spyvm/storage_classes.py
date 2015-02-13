@@ -267,7 +267,7 @@ class MethodDictionaryShadow(AbstractGenericShadow):
         self.methoddict = {}
         AbstractGenericShadow.__init__(self, space, w_self, size)
 
-    def become(self, w_self, w_other):
+    def become(self, w_other):
         # Force other to become a methoddict
         s_other = w_other.as_methoddict_get_shadow(self.space)
         # Do normal self ptr swap

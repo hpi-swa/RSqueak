@@ -46,6 +46,10 @@ class AbstractObjectStorage(object):
         return self.is_shadow()
     def become(self, w_other):
         raise NotImplementedError("This strategy doesn't handle become.")
+    def onesided_become(self, w_other):
+        # This is only needed in ShadowProxy, but has to be pulled up here because
+        # both AbstractGenericShadow and ContextPartShadow use it.
+        raise NotImplementedError("This strategy doesn't handle become.")
 
 # ========== Storage classes implementing storage strategies ==========
 
@@ -165,9 +169,11 @@ class ShadowMixin(object):
         return True
     def become(self, w_other):
         w_self = self._w_self
-        self._w_self = w_other
+        self.onesided_become(w_other)
         if w_other.has_strategy() and w_other._get_strategy().is_shadow():
-            w_other._get_strategy()._w_self = w_self
+            w_other._get_strategy().onesided_become(w_self)
+    def onesided_become(self, w_other):
+        self._w_self = w_other
     def own_size(self):
         return self.size(self._w_self)
     def own_store(self, i, val):
