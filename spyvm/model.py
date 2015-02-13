@@ -687,35 +687,9 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         from spyvm.storage_classes import ClassShadow
         return jit.promote(self.as_special_get_shadow(space, ClassShadow))
 
-    @objectmodel.specialize.arg(2)
-    def as_context_part_get_shadow(self, space, TheClass):
-        from spyvm.storage_contexts import ContextPartShadow
-        shadow = self._get_strategy()
-        if not isinstance(shadow, ContextPartShadow):
-            shadow = space.strategy_factory.switch_strategy(self, TheClass)
-        assert isinstance(shadow, ContextPartShadow)
-        return shadow
-
-    def as_blockcontext_get_shadow(self, space):
-        from spyvm.storage_contexts import BlockContextMarkerClass
-        return self.as_context_part_get_shadow(space, BlockContextMarkerClass)
-
-    def as_methodcontext_get_shadow(self, space):
-        from spyvm.storage_contexts import MethodContextMarkerClass
-        return self.as_context_part_get_shadow(space, MethodContextMarkerClass)
-
     def as_context_get_shadow(self, space):
         from spyvm.storage_contexts import ContextPartShadow
-        shadow = self._get_strategy()
-        if not isinstance(self.strategy, ContextPartShadow):
-            if self.getclass(space).is_same_object(space.w_BlockContext):
-                return self.as_blockcontext_get_shadow(space)
-            if self.getclass(space).is_same_object(space.w_MethodContext):
-                return self.as_methodcontext_get_shadow(space)
-            raise ValueError("This object cannot be treated like a Context object!")
-        else:
-            assert isinstance(shadow, ContextPartShadow)
-            return shadow
+        return self.as_special_get_shadow(space, ContextPartShadow)
 
     def as_methoddict_get_shadow(self, space):
         from spyvm.storage_classes import MethodDictionaryShadow

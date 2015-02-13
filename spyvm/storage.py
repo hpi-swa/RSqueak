@@ -114,17 +114,7 @@ class StrategyFactory(rstrat.StrategyFactory):
         rstrat.StrategyFactory.__init__(self, AbstractObjectStorage)
     
     def instantiate_strategy(self, strategy_type, w_self=None, initial_size=0):
-        
-        # XXX: Special handling for contexts
-        from spyvm.storage_contexts import BlockContextMarkerClass, MethodContextMarkerClass, ContextPartShadow
-        if strategy_type is BlockContextMarkerClass:
-            instance = ContextPartShadow(self.space, w_self, initial_size, is_block_context=True)
-        elif strategy_type is MethodContextMarkerClass:
-            instance = ContextPartShadow(self.space, w_self, initial_size, is_block_context=False)
-        else:
-            instance = strategy_type(self.space, w_self, initial_size)
-        
-        return instance
+        return strategy_type(self.space, w_self, initial_size)
     
     def strategy_type_for(self, objects, weak=False):
         if weak:

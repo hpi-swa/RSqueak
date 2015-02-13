@@ -22,16 +22,17 @@ class MockFrame(model.W_PointersObject):
         size = 6 + len(stack) + 6
         self.initialize_storage(space, size)
         self.store_all(space, [None] * 6 + stack + [space.w_nil] * 6)
-        s_self = self.as_blockcontext_get_shadow(space)
+        s_self = self.as_context_get_shadow(space)
         s_self.init_stack_ptr()
         s_self.reset_stack()
         s_self.push_all(stack)
         s_self.store_expected_argument_count(0)
         self.w_class = space.w_MethodContext
 
-    def as_blockcontext_get_shadow(self, space):
+    def as_context_get_shadow(self, space):
         if not isinstance(self.strategy, storage_contexts.ContextPartShadow):
-            self.strategy = storage_contexts.ContextPartShadow(space, self, self.size(), is_block_context=True)
+            self.strategy = storage_contexts.ContextPartShadow(space, self, self.size(), \
+                                context_type=storage_contexts.TYPE_BLOCK_CONTEXT)
         return self.strategy
 
 IMAGENAME = "anImage.image"
@@ -680,7 +681,7 @@ def test_primitive_value_no_context_switch(monkeypatch):
     w_frame, s_initial_context = new_frame("<never called, but used for method generation>")
 
     closure = space.newClosure(w_frame, 4, 0, [])
-    s_frame = w_frame.as_methodcontext_get_shadow(space)
+    s_frame = w_frame.as_context_get_shadow(space)
     interp = TestInterpreter(space)
     interp._loop = True
 

@@ -1310,7 +1310,7 @@ def func(interp, s_frame, argument_count):
         raise PrimitiveFailedError()
 
     w_block_ctx = assert_pointers(w_block_ctx)
-    s_block_ctx = w_block_ctx.as_blockcontext_get_shadow(interp.space)
+    s_block_ctx = w_block_ctx.as_context_get_shadow(interp.space)
 
     exp_arg_cnt = s_block_ctx.expected_argument_count()
     if argument_count != exp_arg_cnt: # exp_arg_cnt doesn't count self
@@ -1333,7 +1333,7 @@ def func(interp, s_frame, argument_count):
 def func(interp, s_frame, w_block_ctx, args_w):
 
     w_block_ctx = assert_pointers(w_block_ctx)
-    s_block_ctx = w_block_ctx.as_blockcontext_get_shadow(interp.space)
+    s_block_ctx = w_block_ctx.as_context_get_shadow(interp.space)
     exp_arg_cnt = s_block_ctx.expected_argument_count()
 
     if len(args_w) != exp_arg_cnt:
