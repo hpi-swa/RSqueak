@@ -3,25 +3,27 @@ import sys
 from rpython.jit.codewriter.policy import JitPolicy
 from spyvm import model, objspace, interpreter, squeakimage
 
-# This loads the whole mini.image in advance.  At run-time,
-# it executes the tinyBenchmark.  In this way we get an RPython
+# This loads an image file in advance and includes it in the
+# translation-output. At run-time, the defined selector is sent
+# to the defined SmallInteger. This way we get an RPython
 # "image" frozen into the executable, mmap'ed by the OS from
 # there and loaded lazily when needed :-)
+# Besides testing etc., this can be used to create standalone
+# binaries executing a smalltalk program.
 
-# XXX this only compiles if sys.recursionlimit is high enough!
-# On non-Linux platforms I don't know if there is enough stack to
-# compile...
-#sys.setrecursionlimit(100000)
+sys.setrecursionlimit(100000)
 
-imagefile = ""
+imagefile = "images/mini.image"
+selector = "loopTest"
+receiver = 0
 
 def setup():
     space = objspace.ObjSpace()
     stream = squeakimage.Stream(filename=imagefile)
     image = squeakimage.ImageReader(space, stream).create_image()
     interp = interpreter.Interpreter(space, image)
-    w_selector = interp.perform(space.wrap_string("loopTest"), "asSymbol")
-    w_object = model.W_SmallInteger(0)
+    w_selector = interp.perform(space.wrap_string(selector), "asSymbol")
+    w_object = model.W_SmallInteger(receiver)
     s_class = w_object.class_shadow(space)
     w_method = s_class.lookup(w_selector)
     s_frame = w_method.create_frame(space, w_object)
