@@ -1,5 +1,4 @@
 language: python
-sudo: false
 python:
   - 2.7
 env:
@@ -7,17 +6,14 @@ env:
     - TEST_TYPE=own
     - TEST_TYPE=translate
 install:
-  - pip install rsdl --use-mirrors
-  - wget https://bitbucket.org/pypy/pypy/get/default.tar.bz2 -O `pwd`/../pypy.tar.bz2 || wget https://bitbucket.org/pypy/pypy/get/default.tar.bz2 -O `pwd`/../pypy.tar.bz2
-  - tar -xf `pwd`/../pypy.tar.bz2 -C `pwd`/../
-  - mv ../pypy-pypy* ../pypy-pypy
+  - export chroot="$PWD"/buildroot.i386
+  - .travis/setup_chroot.sh
 script:
-  - export PYTHONPATH=$PYTHONPATH:../pypy-pypy/:.
   - "case \"$TEST_TYPE\" in
        own)
-         py.test
+         sudo i386 chroot \"$chroot\" sh -c \"cd $PWD && echo $(pwd) && ls && PYTHONPATH=$PYTHONPATH:pypy-pypy/:pypy-rsdl/:. python2.7 pypy-pypy/pytest.py -s spyvm/test/\"
          ;;
-      translate)
-        python ../pypy-pypy/rpython/bin/rpython --batch targetimageloadingsmalltalk.py
-        ;;
-    esac"
+       translate)
+         sudo i386 chroot \"$chroot\" sh -c \"cd $PWD && echo $(pwd) && ls && PYTHONPATH=$PYTHONPATH:pypy-pypy/:pypy-rsdl/:. python2.7 pypy-pypy/rpython/bin/rpython --batch -Ojit targetimageloadingsmalltalk.py\"
+         ;;
+     esac"
