@@ -125,7 +125,6 @@ class ObjSpace(object):
     
     def make_bootstrap_objects(self):
         self.make_bootstrap_object("w_charactertable")
-        self.make_bootstrap_object("w_true") #XXX: should this be nil?
         self.make_bootstrap_object("w_true")
         self.make_bootstrap_object("w_false")
         self.make_bootstrap_object("w_special_selectors")
