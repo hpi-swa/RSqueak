@@ -15,5 +15,7 @@ script:
          ;;
        translate)
          sudo i386 chroot \"$chroot\" sh -c \"cd $PWD && echo $(pwd) && ls && PYTHONPATH=$PYTHONPATH:pypy-pypy/:pypy-rsdl/:. python2.7 pypy-pypy/rpython/bin/rpython --batch -Ojit targetimageloadingsmalltalk.py\"
+         mv rsqueak rsqueak-x86-Linux-jit-\"$TRAVIS_COMMIT\"
+         curl -T rsqueak* http://www.lively-kernel.org/babelsberg/RSqueak/
          ;;
      esac"
