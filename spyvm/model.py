@@ -22,6 +22,7 @@ from rpython.tool.pairtype import extendabletype
 from rpython.rlib.objectmodel import instantiate, compute_hash, import_from_mixin, we_are_translated
 from rpython.rtyper.lltypesystem import lltype, rffi
 from rsdl import RSDL, RSDL_helper
+import rstrategies as rstrat
 
 class W_Object(object):
     """Root of Squeak model, abstract."""
@@ -543,7 +544,7 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     def invariant(self):
         from spyvm import storage_classes
         return (W_AbstractObjectWithIdentityHash.invariant(self) and
-                isinstance(self.w_class.shadow, storage_classes.ClassShadow))
+                isinstance(self.w_class.strategy, storage_classes.ClassShadow))
 
     def _become(self, w_other):
         assert isinstance(w_other, W_AbstractObjectWithClassReference)
@@ -563,10 +564,14 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
 
 class W_PointersObject(W_AbstractObjectWithClassReference):
     """Common object."""
-    _attrs_ = ['shadow']
-    shadow = None
+    _attrs_ = ['strategy', '_storage']
+    # TODO -- is it viable to have these as pseudo-immutable?
+    # Measurably increases performance, since they do change rarely.
+    _immutable_attrs_ = ['strategy?', '_storage?']
+    strategy = None
     repr_classname = "W_PointersObject"
-
+    rstrat.make_accessors(strategy='strategy', storage='_storage')
+    
     @jit.unroll_safe
     def __init__(self, space, w_class, size, weak=False):
         """Create new object with size = fixed + variable size."""
@@ -587,48 +592,49 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         space.strategy_factory.set_initial_strategy(self, storage_type, len(pointers), pointers)
 
     def is_weak(self):
-        from storage import WeakListStorageShadow
-        return isinstance(self.shadow, WeakListStorageShadow)
-
+        from storage import WeakListStrategy
+        return isinstance(self.strategy, WeakListStrategy)
+    
     def is_class(self, space):
         from spyvm.storage_classes import ClassShadow
-        if isinstance(self.shadow, ClassShadow):
+        if isinstance(self.strategy, ClassShadow):
             return True
         return W_AbstractObjectWithClassReference.is_class(self, space)
-
-    def assert_shadow(self):
-        # Failing the following assert most likely indicates a bug. The shadow can only be absent during
+    
+    def assert_strategy(self):
+        # Failing the following assert most likely indicates a bug. The strategy can only be absent during
         # the bootstrapping sequence. It will be initialized in the fillin() method. Before that, it should
-        # not be switched to a specialized shadow, and the space is also not yet available here! Otherwise,
-        # the specialized shadow will attempt to read information from an uninitialized object.
-        shadow = self.shadow
-        assert shadow, "The shadow has not been initialized yet!"
-        return shadow
-
+        # not be switched to a specialized strategy, and the space is also not yet available here! 
+        # Otherwise, the specialized strategy will attempt to read information from an uninitialized object.
+        strategy = self.strategy
+        assert strategy, "The strategy has not been initialized yet!"
+        return strategy
+    
     def space(self):
-        return self.assert_shadow().space
-
+        return self.assert_strategy().space
+        
     def __str__(self):
-        if self.has_shadow() and self.shadow.provides_getname:
-            return self._get_shadow().getname()
+        if self.has_strategy() and self.strategy.provides_getname:
+            return self._get_strategy().getname()
         else:
             return W_AbstractObjectWithClassReference.__str__(self)
 
     def repr_content(self):
-        shadow_info = "no shadow"
+        strategy_info = "no strategy"
         name = ""
-        if self.has_shadow():
-            shadow_info = self.shadow.__repr__()
-            if self.shadow.provides_getname:
-                name = " [%s]" % self._get_shadow().getname()
-        return '(%s) len=%d%s' % (shadow_info, self.size(), name)
-
+        if self.has_strategy():
+            strategy_info = self.strategy.__repr__()
+            if self.strategy.provides_getname:
+                name = " [%s]" % self._get_strategy().getname()
+        return '(%s) len=%d%s' % (strategy_info, self.size(), name)
+    
     def fetch_all(self, space):
         return [self.fetch(space, i) for i in range(self.size())]
 
     def store_all(self, space, collection):
         # Be tolerant: copy over as many elements as possible, set rest to nil.
         # The size of the object cannot be changed in any case.
+        # TODO use store_all() provided by strategy?
         my_length = self.size()
         incoming_length = min(my_length, len(collection))
         i = 0
@@ -648,75 +654,42 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         self.store(space, index0 + self.instsize(), w_value)
 
     def fetch(self, space, n0):
-        return self._get_shadow().fetch(n0)
+        return self._get_strategy().fetch(self, n0)
 
     def store(self, space, n0, w_value):
-        return self._get_shadow().store(n0, w_value)
+        return self._get_strategy().store(self, n0, w_value)
 
     def size(self):
-        if not self.has_shadow():
+        if not self.has_strategy():
             # TODO - this happens only for objects bootstrapped in ObjSpace.
-            # Think of a way to avoid this check. Usually, self.shadow is never None.
+            # Think of a way to avoid this check. Usually, self.strategy is never None.
             return 0
-        return self._get_shadow().size()
-
+        return self._get_strategy().size(self)
+        
     def instsize(self):
         return self.class_shadow(self.space()).instsize()
 
-    def store_shadow(self, shadow):
-        old_shadow = self.shadow
-        self.shadow = shadow
+    def store_strategy(self, strategy):
+        self.strategy = strategy
 
-    def _get_shadow(self):
-        return self.shadow
-
+    def _get_strategy(self):
+        return self.strategy
+    
     @objectmodel.specialize.arg(2)
     def as_special_get_shadow(self, space, TheClass):
-        old_shadow = self._get_shadow()
-        shadow = old_shadow
-        if not isinstance(old_shadow, TheClass):
-            shadow = space.strategy_factory.switch_strategy(old_shadow, TheClass)
+        shadow = self._get_strategy()
+        if not isinstance(shadow, TheClass):
+            shadow = space.strategy_factory.switch_strategy(self, TheClass)
         assert isinstance(shadow, TheClass)
         return shadow
-
-    def get_shadow(self, space):
-        from spyvm.storage import AbstractShadow
-        return self.as_special_get_shadow(space, AbstractShadow)
 
     def as_class_get_shadow(self, space):
         from spyvm.storage_classes import ClassShadow
         return jit.promote(self.as_special_get_shadow(space, ClassShadow))
 
-    @objectmodel.specialize.arg(2)
-    def as_context_part_get_shadow(self, space, TheClass):
-        from spyvm.storage_contexts import ContextPartShadow
-        old_shadow = self._get_shadow()
-        shadow = old_shadow
-        if not isinstance(old_shadow, ContextPartShadow):
-            shadow = space.strategy_factory.switch_strategy(old_shadow, TheClass)
-        assert isinstance(shadow, ContextPartShadow)
-        return shadow
-
-    def as_blockcontext_get_shadow(self, space):
-        from spyvm.storage_contexts import BlockContextMarkerClass
-        return self.as_context_part_get_shadow(space, BlockContextMarkerClass)
-
-    def as_methodcontext_get_shadow(self, space):
-        from spyvm.storage_contexts import MethodContextMarkerClass
-        return self.as_context_part_get_shadow(space, MethodContextMarkerClass)
-
     def as_context_get_shadow(self, space):
         from spyvm.storage_contexts import ContextPartShadow
-        shadow = self._get_shadow()
-        if not isinstance(shadow, ContextPartShadow):
-            if self.getclass(space).is_same_object(space.w_BlockContext):
-                return self.as_blockcontext_get_shadow(space)
-            if self.getclass(space).is_same_object(space.w_MethodContext):
-                return self.as_methodcontext_get_shadow(space)
-            raise ValueError("This object cannot be treated like a Context object!")
-        else:
-            assert isinstance(shadow, ContextPartShadow)
-            return shadow
+        return self.as_special_get_shadow(space, ContextPartShadow)
 
     def as_methoddict_get_shadow(self, space):
         from spyvm.storage_classes import MethodDictionaryShadow
@@ -730,21 +703,24 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         from spyvm.storage import ObserveeShadow
         return self.as_special_get_shadow(space, ObserveeShadow)
 
-    def has_shadow(self):
-        return self._get_shadow() is not None
+    def has_strategy(self):
+        return self._get_strategy() is not None
 
     def has_space(self):
-        # The space is accessed through the shadow.
-        return self.has_shadow()
-
+        # The space is accessed through the strategy.
+        return self.has_strategy()
+    
     def _become(self, w_other):
         assert isinstance(w_other, W_PointersObject)
-        self.shadow, w_other.shadow = w_other.shadow, self.shadow
-        # shadow links are in both directions -> also update shadows
-        if self.shadow:
-            self.shadow.s_become(self, w_other)
-        elif w_other.shadow:
-            w_other.shadow.s_become(w_other, self)
+        # Only one strategy will handle the become (or none of them).
+        # The receivers strategy gets the first shot.
+        # If it doesn't want to, let the w_other's strategy handle it.
+        if self.has_strategy() and self._get_strategy().handles_become():
+            self.strategy.become(w_other)
+        elif self.has_strategy() and self._get_strategy().handles_become():
+            w_other.strategy.become(self)
+        self.strategy, w_other.strategy = w_other.strategy, self.strategy
+        self._storage, w_other._storage = w_other._storage, self._storage
         W_AbstractObjectWithClassReference._become(self, w_other)
 
     @jit.unroll_safe
@@ -1257,7 +1233,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         w_class = self.safe_compiled_in()
         if isinstance(w_class, W_PointersObject):
             from spyvm.storage_classes import ClassShadow
-            s_class = w_class.shadow
+            s_class = w_class.strategy
             if isinstance(s_class, ClassShadow):
                 return "%s >> #%s" % (s_class.getname(), self.lookup_selector)
         return "#%s" % self.lookup_selector

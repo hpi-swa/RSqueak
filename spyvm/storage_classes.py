@@ -1,6 +1,6 @@
 
 from spyvm import model, constants, error, wrapper
-from spyvm.storage import AbstractCachingShadow, ListStorageShadow
+from spyvm.storage import AbstractCachingShadow, AbstractGenericShadow
 from spyvm.util.version import constant_for_version, constant_for_version_arg, Version
 from rpython.rlib import jit
 
@@ -31,8 +31,8 @@ class ClassShadow(AbstractCachingShadow):
         self.subclass_s = {}
         AbstractCachingShadow.__init__(self, space, w_self, size)
 
-    def store(self, n0, w_val):
-        AbstractCachingShadow.store(self, n0, w_val)
+    def store(self, w_self, n0, w_val):
+        AbstractCachingShadow.store(self, w_self, n0, w_val)
         if n0 == constants.CLASS_SUPERCLASS_INDEX:
             self.store_w_superclass(w_val)
         elif n0 == constants.CLASS_METHODDICT_INDEX:
@@ -84,9 +84,9 @@ class ClassShadow(AbstractCachingShadow):
             else:
                 raise ClassShadowError("unknown format %d" % (format,))
         else:
-            if self._w_self.w_class == self.space.classtable["w_Metaclass"]:
+            if w_self.w_class == self.space.classtable["w_Metaclass"]:
                 # In case of Metaclasses, the "instance" class is stored in the last field.
-                if n0 == self.size() - 1 and isinstance(w_val, model.W_PointersObject):
+                if n0 == self.size(w_self) - 1 and isinstance(w_val, model.W_PointersObject):
                     cl_shadow = w_val.as_class_get_shadow(self.space)
                     self.name = "%s class" % cl_shadow.getname()
                 else:
@@ -256,8 +256,7 @@ class ClassShadow(AbstractCachingShadow):
         if isinstance(w_method, model.W_CompiledMethod):
             w_method.compiledin_class = self.w_self()
 
-class MethodDictionaryShadow(ListStorageShadow):
-
+class MethodDictionaryShadow(AbstractGenericShadow):
     _immutable_fields_ = ['invalid?', 's_class']
     _attrs_ = ['methoddict', 'invalid', 's_class']
     repr_classname = "MethodDictionaryShadow"
@@ -266,23 +265,20 @@ class MethodDictionaryShadow(ListStorageShadow):
         self.invalid = True
         self.s_class = None
         self.methoddict = {}
-        ListStorageShadow.__init__(self, space, w_self, size)
+        AbstractGenericShadow.__init__(self, space, w_self, size)
 
-    def s_become(self, w_self, w_other):
-        self._s_become(w_self, w_other.shadow, w_other)
-
-    def _s_become(self, w_self, s_other_ignored, w_other):
+    def become(self, w_other):
         # Force other to become a methoddict
         s_other = w_other.as_methoddict_get_shadow(self.space)
         # Do normal self ptr swap
-        ListStorageShadow._s_become(self, w_self, s_other, w_other)
+        AbstractGenericShadow.become(self, w_other)
         # Swap class pointers
         self.s_class, s_other.s_class = s_other.s_class, self.s_class
         # Conditionally inform the class about the swap
         if self.s_class: self.s_class.store_s_methoddict(self)
         if s_other.s_class: s_other.s_class.store_s_methoddict(s_other)
 
-    def update(self):
+    def notify(self):
         self.sync_method_cache()
 
     def find_selector(self, w_selector):
@@ -290,24 +286,24 @@ class MethodDictionaryShadow(ListStorageShadow):
             return None # we may be invalid if Smalltalk code did not call flushCache
         return self.methoddict.get(w_selector, None)
 
-    # We do not call update() after changes to ourselves:
+    # We do not call notify() after changes to ourselves:
     # Whenever a method is added, it's keyword is added to w_self, then the
     # w_compiled_method is added to our observee.
     # sync_method_cache at this point would not have the desired effect, because in
     # the Smalltalk Implementation, the dictionary changes first. Afterwards
     # its contents array is filled with the value belonging to the new key.
-    def store(self, n0, w_value):
-        ListStorageShadow.store(self, n0, w_value)
+    def store(self, w_self, n0, w_value):
+        AbstractGenericShadow.store(self, w_self, n0, w_value)
         if n0 == constants.METHODDICT_VALUES_INDEX:
             self.setup_notification()
         if n0 >= constants.METHODDICT_NAMES_INDEX:
             self.invalid = True
 
     def setup_notification(self):
-        self.w_values().as_observed_get_shadow(self.space).notify(self)
-
+        self.w_values().as_observed_get_shadow(self.space).set_observer(self)
+        
     def w_values(self):
-        w_values = self.fetch(constants.METHODDICT_VALUES_INDEX)
+        w_values = self.own_fetch(constants.METHODDICT_VALUES_INDEX)
         assert isinstance(w_values, model.W_PointersObject)
         return w_values
 
@@ -317,13 +313,14 @@ class MethodDictionaryShadow(ListStorageShadow):
             self.sync_method_cache()
 
     def sync_method_cache(self):
-        if self.size() == 0:
+        size = self.own_size()
+        if size == 0:
             return
         self.methoddict = {}
-        size = self.size() - constants.METHODDICT_NAMES_INDEX
+        size -= constants.METHODDICT_NAMES_INDEX
         w_values = self.w_values()
         for i in range(size):
-            w_selector = self.w_self().fetch(self.space, constants.METHODDICT_NAMES_INDEX+i)
+            w_selector = self.own_fetch(constants.METHODDICT_NAMES_INDEX+i)
             if not w_selector.is_nil(self.space):
                 if isinstance(w_selector, model.W_BytesObject):
                     selector = w_selector.as_string()

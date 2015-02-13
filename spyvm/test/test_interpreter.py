@@ -69,7 +69,7 @@ def run_with_faked_primitive_methods(methods, func, active_context=None):
         # Uninstall those methods:
         for (w_class, _, _, methname) in methods:
             s_class = w_class.as_class_get_shadow(space)
-            s_class.s_methoddict().update()
+            s_class.s_methoddict().sync_method_cache()
 
 def fakesymbol(s, _cache={}):
     try:
@@ -421,8 +421,8 @@ def sendBytecodesTest(w_class, w_object, bytecodes):
         s_active_context = w_active_context.as_context_get_shadow(space)
         assert s_active_context.w_sender() == w_frame
         assert s_active_context.stack() == []
-        assert w_active_context.as_methodcontext_get_shadow(space).w_receiver().is_same_object(w_object)
-        assert w_active_context.as_methodcontext_get_shadow(space).w_method().is_same_object(shadow.s_methoddict().methoddict[w_foo])
+        assert w_active_context.as_context_get_shadow(space).w_receiver().is_same_object(w_object)
+        assert w_active_context.as_context_get_shadow(space).w_method().is_same_object(shadow.s_methoddict().methoddict[w_foo])
         assert s_frame.stack() == []
         step_in_interp(s_active_context)
         w_active_context = step_in_interp(s_active_context)
@@ -592,9 +592,9 @@ def test_callPrimitiveAndPush_fallback():
     s_frame.push(space.w_one)
     w_active_context = step_in_interp(s_frame)
     s_active_context = w_active_context.as_context_get_shadow(space)
-    assert w_active_context.as_methodcontext_get_shadow(space).w_method() == shadow.s_methoddict().methoddict[w_symbol]
+    assert w_active_context.as_context_get_shadow(space).w_method() == shadow.s_methoddict().methoddict[w_symbol]
     assert s_active_context.w_receiver() is w_object
-    assert w_active_context.as_methodcontext_get_shadow(space).gettemp(0).is_same_object(space.w_one)
+    assert w_active_context.as_context_get_shadow(space).gettemp(0).is_same_object(space.w_one)
     assert s_active_context.stack() == []
 
 def test_bytecodePrimBool():
@@ -651,7 +651,7 @@ def test_singleExtendedSuperBytecode(bytecode=singleExtendedSuperBytecode + chr(
         s_active_context = w_active_context.as_context_get_shadow(space)
         assert s_active_context.w_sender() == w_caller_context
         assert s_active_context.stack() == []
-        assert w_active_context.as_methodcontext_get_shadow(space).w_receiver() == w_object
+        assert w_active_context.as_context_get_shadow(space).w_receiver() == w_object
         meth = w_specificclass.as_class_get_shadow(space).s_methoddict().methoddict[foo]
         assert s_active_context.w_method() == meth
         assert s_caller_context.stack() == []

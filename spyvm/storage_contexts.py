@@ -1,8 +1,9 @@
 
 from spyvm import model, constants, error, wrapper
-from spyvm.storage import AbstractRedirectingShadow
+from spyvm.storage import AbstractObjectStorage, ShadowMixin, AbstractGenericShadow
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib import rarithmetic, jit, objectmodel
+from rpython.rlib.objectmodel import import_from_mixin
 import rstrategies as rstrat
 
 @objectmodel.specialize.call_location()
@@ -23,29 +24,37 @@ DirtyContext = ContextState("DirtyContext")
 class ExtendableStrategyMetaclass(extendabletype, rstrat.StrategyMetaclass):
     pass
 
-class ContextPartShadow(AbstractRedirectingShadow):
-
-    __metaclass__ = ExtendableStrategyMetaclass
-    _attrs_ = ['_s_sender',
-               '_pc', '_temps_and_stack',
-               '_stack_ptr', 'instances_w', 'state',
-               # Virtualizable doesn't really work with subclassing,
-               # so we have all attributes in the top-level class
-               # From BlockContext:
-               '_w_home', '_initialip', '_eargc',
-               # From MethodContext
-               'closure', '_w_receiver', '_w_method', '_is_BlockClosure_ensure',
-               # And a switch to tell which is which
-               'is_block_context']
+class ContextPartShadow(AbstractObjectStorage):
+    """
+    This Shadow handles the entire object storage on its own, ignoring the storage
+    field in W_PointersObject. The w_self parameter in fetch/store/size etc. is ignored,
+    and the own_fetch/own_store/own_size methods from ShadowMixin should be used instead.
+    This shadow can exist without a real W_PointersObject.
+    """
     repr_classname = "ContextPartShadow"
 
+    __metaclass__ = ExtendableStrategyMetaclass
+    import_from_mixin(ShadowMixin)
+
+    _attrs_ = ['_w_self', '_w_self_size',
+               'instances_w', 'state',
+               'is_block_context',
+               
+               # Core context data
+               '_s_sender', '_pc', '_temps_and_stack', '_stack_ptr',
+               # For BlockContext:
+               '_w_home', '_initialip', '_eargc',
+               # For MethodContext
+               'closure', '_w_receiver', '_w_method', '_is_BlockClosure_ensure'
+               ]
+
     _virtualizable_ = [
+        "_w_self",
+        "_w_self_size",
         '_s_sender',
         "_pc",
         "_temps_and_stack[*]",
         "_stack_ptr",
-        "_w_self",
-        "_w_self_size",
         'state',
         '_w_home',
         '_initialip',
@@ -60,19 +69,31 @@ class ContextPartShadow(AbstractRedirectingShadow):
 
     # ______________________________________________________________________
     # Initialization
-
+    
     @jit.unroll_safe
-    def __init__(self, space, w_self, size, is_block_context=False, w_method=None, closure=None):
-        old_shadow = None
-        if w_self: old_shadow = w_self.shadow
-
+    def __init__(self, space, w_self, size):
         self = fresh_virtualizable(self)
-        self.is_block_context = is_block_context
+        AbstractObjectStorage.__init__(self, space, w_self, size)
+        
+        # If w_self is not given, is_block_context must be set explicitely!
+        if w_self is not None:
+            if w_self.getclass(space).is_same_object(space.w_BlockContext):
+                self.is_block_context = True
+            elif w_self.getclass(space).is_same_object(space.w_MethodContext):
+                self.is_block_context = False
+            else:
+                raise ValueError("Object %s cannot be treated like a Context object!" % w_self)
+        
         self._s_sender = None
-        AbstractRedirectingShadow.__init__(self, space, w_self, size)
+        if w_self is not None:
+            self._w_self_size = w_self.size()
+        else:
+            self._w_self_size = size
+        self._w_self = w_self
         self.instances_w = {}
         self.state = InactiveContext
         self.store_pc(0)
+        
         # From BlockContext
         self._w_home = None
         self._initialip = 0
@@ -82,52 +103,31 @@ class ContextPartShadow(AbstractRedirectingShadow):
         self._w_method = None
         self._w_receiver = None
         self._is_BlockClosure_ensure = False
-
-
-        if old_shadow and not is_block_context:
-            if not closure:
-                w_closure = old_shadow.fetch(constants.MTHDCTX_CLOSURE_OR_NIL)
-                if w_closure is not space.w_nil:
-                    closure = wrapper.BlockClosureWrapper(space, w_closure)
-            if not w_method and not closure:
-                w_method = old_shadow.fetch(constants.MTHDCTX_METHOD)
-        # Let's create the stack array
-        if is_block_context or closure:
-            self.closure = closure
-            stacksize = self.stacksize() + self.tempsize()
-        elif w_method:
-            self.store_w_method(w_method)
-            # Magic numbers... Takes care of cases where reflective
-            # code writes more than actual stack size
-            assert isinstance(w_method, model.W_CompiledMethod)
-            stacksize = w_method.compute_frame_size()
-        else:
-            assert False
-        self._temps_and_stack = [space.w_nil] * stacksize
-
+        
+    def initialize_storage(self, w_self, initial_size):
+        # The context object holds all of its storage itself.
+        self.set_storage(w_self, None)
+    
     @jit.unroll_safe
-    def pre_copy_from(self, other_shadow):
-        # Some fields have to be initialized before the rest, to
-        # ensure correct initialization.
-        privileged_fields = self.fields_to_copy_first()
+    def convert_storage_from(self, w_self, previous_strategy):
+        # Some fields have to be initialized before the rest,
+        # to ensure correct initialization.
+        size = previous_strategy.size(w_self)
+        privileged_fields = self.fields_to_convert_first()
+        storage = previous_strategy.fetch_all(w_self)
+        self.initialize_storage(w_self, size)
         for n0 in privileged_fields:
-            self.copy_field_from(n0, other_shadow)
-
-    @jit.unroll_safe
-    def post_copy_from(self, other_shadow):
-        privileged_fields = self.fields_to_copy_first()
-        for n0 in range(self.size()):
-            if n0 not in privileged_fields:
-                self.copy_field_from(n0, other_shadow)
-
-    @jit.unroll_safe
-    def copy_from(self, other_shadow):
-        self.pre_copy_from(other_shadow)
+            self.store(w_self, n0, storage[n0])
+        
         # Now the temp size will be known.
-        self.init_stack_ptr()
-        self.post_copy_from(other_shadow)
-
-    def fields_to_copy_first(self):
+        self.init_temps_and_stack()
+        
+        # After this, convert the rest of the fields.
+        for n0 in range(size):
+            if n0 not in privileged_fields:
+                self.store(w_self, n0, storage[n0])
+    
+    def fields_to_convert_first(self):
         if self.is_block_context:
             return [ constants.BLKCTX_HOME_INDEX ]
         else:
@@ -136,13 +136,16 @@ class ContextPartShadow(AbstractRedirectingShadow):
     # ______________________________________________________________________
     # Accessing object fields
 
-    def fetch(self, n0):
+    def size(self, w_self):
+        return self._w_self_size
+    
+    def fetch(self, w_self, n0):
         if self.is_block_context:
-            return self.fetch_block_context(n0)
+            return self.fetch_block_context(w_self, n0)
         else:
-            return self.fetch_method_context(n0)
+            return self.fetch_method_context(w_self, n0)
 
-    def fetch_context_part(self, n0):
+    def fetch_context_part(self, w_self, n0):
         if n0 == constants.CTXPART_SENDER_INDEX:
             return self.w_sender()
         if n0 == constants.CTXPART_PC_INDEX:
@@ -159,13 +162,13 @@ class ContextPartShadow(AbstractRedirectingShadow):
             # XXX later should store tail out of known context part as well
             raise error.WrapperException("Index in context out of bounds")
 
-    def store(self, n0, w_value):
+    def store(self, w_self, n0, w_value):
         if self.is_block_context:
-            return self.store_block_context(n0, w_value)
+            return self.store_block_context(w_self, n0, w_value)
         else:
-            return self.store_method_context(n0, w_value)
+            return self.store_method_context(w_self, n0, w_value)
 
-    def store_context_part(self, n0, w_value):
+    def store_context_part(self, w_self, n0, w_value):
         if n0 == constants.CTXPART_SENDER_INDEX:
             assert isinstance(w_value, model.W_PointersObject)
             if w_value.is_nil(self.space):
@@ -359,7 +362,22 @@ class ContextPartShadow(AbstractRedirectingShadow):
     def stacksize(self):
         return self.stackend() - self.stackstart()
 
-    def init_stack_ptr(self):
+    def full_stacksize(self):
+        if not self.is_block_context:
+            # Magic numbers... Takes care of cases where reflective
+            # code writes more than actual stack size
+            method = self.w_method()
+            assert isinstance(method, model.W_CompiledMethod)
+            stacksize = method.compute_frame_size()
+        else:
+            # TODO why not use method.compute_frame_size for BlockContext too?
+            stacksize = self.stacksize() # no temps
+        return stacksize
+
+    def init_temps_and_stack(self):
+        self = fresh_virtualizable(self)
+        stacksize = self.full_stacksize()
+        self._temps_and_stack = [self.space.w_nil] * stacksize
         tempsize = self.tempsize()
         self._stack_ptr = rarithmetic.r_uint(tempsize) # we point after the last element
 
@@ -495,9 +513,6 @@ class ContextPartShadow(AbstractRedirectingShadow):
         return padding + ' ', '%s\n%s%s' % (ret_str, padding, desc)
 
 
-class BlockContextMarkerClass(AbstractRedirectingShadow):
-    pass
-
 
 class __extend__(ContextPartShadow):
     # repr_classname = "BlockContextShadow"
@@ -506,22 +521,23 @@ class __extend__(ContextPartShadow):
 
     @staticmethod
     def build_block_context(space, s_home, argcnt, pc):
-        size = s_home.size() - s_home.tempsize()
+        size = s_home.own_size() - s_home.tempsize()
         w_self = model.W_PointersObject(space, space.w_BlockContext, size)
 
-        ctx = ContextPartShadow(space, w_self, size, is_block_context=True)
+        ctx = ContextPartShadow(space, w_self, size)
+        ctx.is_block_context = True
         ctx.store_expected_argument_count(argcnt)
         ctx.store_w_home(s_home.w_self())
         ctx.store_initialip(pc)
         ctx.store_pc(pc)
-        w_self.store_shadow(ctx)
-        ctx.init_stack_ptr()
+        w_self.store_strategy(ctx)
+        ctx.init_temps_and_stack()
         return ctx
 
     # === Implemented accessors ===
 
     def s_home_block_context(self):
-        return self._w_home.as_methodcontext_get_shadow(self.space)
+        return self._w_home.as_context_get_shadow(self.space)
 
     def stackstart_block_context(self):
         return constants.BLKCTX_STACK_START
@@ -554,7 +570,7 @@ class __extend__(ContextPartShadow):
 
     # === Accessing object fields ===
 
-    def fetch_block_context(self, n0):
+    def fetch_block_context(self, w_self, n0):
         if n0 == constants.BLKCTX_HOME_INDEX:
             return self._w_home
         if n0 == constants.BLKCTX_INITIAL_IP_INDEX:
@@ -562,9 +578,9 @@ class __extend__(ContextPartShadow):
         if n0 == constants.BLKCTX_BLOCK_ARGUMENT_COUNT_INDEX:
             return self.wrap_eargc()
         else:
-            return self.fetch_context_part(n0)
+            return self.fetch_context_part(w_self, n0)
 
-    def store_block_context(self, n0, w_value):
+    def store_block_context(self, w_self, n0, w_value):
         if n0 == constants.BLKCTX_HOME_INDEX:
             return self.store_w_home(w_value)
         if n0 == constants.BLKCTX_INITIAL_IP_INDEX:
@@ -572,7 +588,7 @@ class __extend__(ContextPartShadow):
         if n0 == constants.BLKCTX_BLOCK_ARGUMENT_COUNT_INDEX:
             return self.unwrap_store_eargc(w_value)
         else:
-            return self.store_context_part(n0, w_value)
+            return self.store_context_part(w_self, n0, w_value)
 
     def store_w_home(self, w_home):
         assert isinstance(w_home, model.W_PointersObject)
@@ -623,10 +639,6 @@ class __extend__(ContextPartShadow):
         return '[] in %s' % self.w_method().get_identifier_string()
 
 
-class MethodContextMarkerClass(AbstractRedirectingShadow):
-    pass
-
-
 class __extend__(ContextPartShadow):
     # repr_classname = "MethodContextShadow"
 
@@ -637,11 +649,12 @@ class __extend__(ContextPartShadow):
         s_MethodContext = space.w_MethodContext.as_class_get_shadow(space)
         size = w_method.compute_frame_size() + s_MethodContext.instsize()
 
-        ctx = ContextPartShadow(space, None, size, is_block_context=False, w_method=w_method, closure=closure)
+        ctx = ContextPartShadow(space, None, size)
+        ctx.is_block_context = False
         ctx.store_w_receiver(w_receiver)
         ctx.store_w_method(w_method)
         ctx.closure = closure
-        ctx.init_stack_ptr()
+        ctx.init_temps_and_stack()
         ctx.initialize_temps(arguments)
         return ctx
 
@@ -659,12 +672,12 @@ class __extend__(ContextPartShadow):
 
     # === Accessing object fields ===
 
-    def fetch_method_context(self, n0):
+    def fetch_method_context(self, w_self, n0):
         if n0 == constants.MTHDCTX_METHOD:
             return self.w_method()
         if n0 == constants.MTHDCTX_CLOSURE_OR_NIL:
             if self.closure:
-                return self.closure._w_self
+                return self.closure.wrapped
             else:
                 return self.space.w_nil
         if n0 == constants.MTHDCTX_RECEIVER:
@@ -673,9 +686,9 @@ class __extend__(ContextPartShadow):
         if (0 <= temp_i < self.tempsize()):
             return self.gettemp(temp_i)
         else:
-            return self.fetch_context_part(n0)
+            return self.fetch_context_part(w_self, n0)
 
-    def store_method_context(self, n0, w_value):
+    def store_method_context(self, w_self, n0, w_value):
         if n0 == constants.MTHDCTX_METHOD:
             return self.store_w_method(w_value)
         if n0 == constants.MTHDCTX_CLOSURE_OR_NIL:
@@ -691,7 +704,7 @@ class __extend__(ContextPartShadow):
         if (0 <=  temp_i < self.tempsize()):
             return self.settemp(temp_i, w_value)
         else:
-            return self.store_context_part(n0, w_value)
+            return self.store_context_part(w_self, n0, w_value)
 
     def store_w_receiver(self, w_receiver):
         self._w_receiver = w_receiver
@@ -748,8 +761,8 @@ class __extend__(ContextPartShadow):
             return self._w_self
         else:
             space = self.space
-            w_self = model.W_PointersObject(space, space.w_MethodContext, self.size())
-            w_self.store_shadow(self)
+            w_self = model.W_PointersObject(space, space.w_MethodContext, self._w_self_size)
+            w_self.store_strategy(self)
             self._w_self = w_self
             return w_self
 

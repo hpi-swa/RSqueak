@@ -1,28 +1,28 @@
 
 import sys
 from spyvm import model, constants
-from spyvm.util.version import elidable_for_version, VersionMixin
+from spyvm.util.version import VersionMixin
 from rpython.rlib import objectmodel, jit
 from rpython.rlib.objectmodel import import_from_mixin
 import rstrategies as rstrat
 
-class AbstractShadow(object):
-    """A shadow is an optional extra bit of information that
-    can be attached at run-time to any Smalltalk object.
+class AbstractObjectStorage(object):
+    """Subclasses of this handle the information contained in Smalltalk objects.
+    The common API allows to store and fetch elements from object slots.
+    Every object has some kind of storage representation attached.
+    Some subclasses (those with *Shadow in their name) contain additional information,
+    required by the VM. These 'shadows' not only manage the memory of their Smalltalk objects,
+    but are also the VM-internal representation of these objects.
     """
-    _attrs_ = ['_w_self', 'space']
+    _attrs_ = ['space']
     _immutable_fields_ = ['space']
     provides_getname = False
-    repr_classname = "AbstractShadow"
+    repr_classname = "AbstractObjectStorage"
     __metaclass__ = rstrat.StrategyMetaclass
-    import_from_mixin(rstrat.AbstractCollection)
-
+    import_from_mixin(rstrat.AbstractStrategy)
+    
     def __init__(self, space, w_self, size):
         self.space = space
-        assert w_self is None or isinstance(w_self, model.W_PointersObject)
-        self._w_self = w_self
-    def w_self(self):
-        return self._w_self
     def getname(self):
         raise NotImplementedError("Abstract class")
     def __repr__(self):
@@ -30,48 +30,54 @@ class AbstractShadow(object):
             return "<%s %s>" % (self.repr_classname, self.getname())
         else:
             return "<%s>" % self.repr_classname
-
-    def s_become(self, w_self, w_other):
-        if w_other.shadow:
-            w_other.shadow._s_become(w_other, self, w_self)
-        else:
-            self._w_self = w_self
-
-    def _s_become(self, w_self, s_other, w_other):
-        self._w_self, s_other._w_self = w_self, w_other
+    def strategy_factory(self):
+        return self.space.strategy_factory
+    def convert_storage_from_AllNilStrategy(self, w_self, all_nil_storage):
+        # Fields are initialized to nil
+        self.initialize_storage(w_self, all_nil_storage.size(w_self))
+    def insert(self, w_self, index0, list_w):
+        raise NotImplementedError("Smalltalk objects are fixed size")
+    def delete(self, w_self, start, end):
+        raise NotImplementedError("Smalltalk objects are fixed size")
+    def is_shadow(self):
+        return False
+    def handles_become(self):
+        """Only shadows are non-singletons and actually handle become"""
+        return self.is_shadow()
+    def become(self, w_other):
+        raise NotImplementedError("This strategy doesn't handle become.")
+    def onesided_become(self, w_other):
+        # This is only needed in ShadowProxy, but has to be pulled up here because
+        # both AbstractGenericShadow and ContextPartShadow use it.
+        raise NotImplementedError("This strategy doesn't handle become.")
 
 # ========== Storage classes implementing storage strategies ==========
 
-class AbstractStorageShadow(AbstractShadow):
-    repr_classname = "AbstractStorageShadow"
+class AbstractStrategy(AbstractObjectStorage):
+    """
+    Strategies handle 'simple' object storage, without additional VM-internal information.
+    Depending on the data inside an object, different optimizing strategies are used.
+    """
+    repr_classname = "AbstractStrategy"
     _attrs_ = []
     import_from_mixin(rstrat.UnsafeIndexingMixin)
-
-    def __init__(self, space, w_self, size):
-        AbstractShadow.__init__(self, space, w_self, size)
-        self.init_strategy(size)
-
-    def strategy_factory(self):
-        return self.space.strategy_factory
-
-    def copy_from_AllNilStorageShadow(self, all_nil_storage):
-        pass # Fields already initialized to nil
-
+    
     def default_value(self):
         return self.space.w_nil
 
 @rstrat.strategy()
-class ListStorageShadow(AbstractStorageShadow):
-    repr_classname = "ListStorageShadow"
+class ListStrategy(AbstractStrategy):
+    _attrs_ = []
+    repr_classname = "ListStrategy"
     import_from_mixin(rstrat.GenericStrategy)
 
-class WeakListStorageShadow(AbstractStorageShadow):
-    repr_classname = "WeakListStorageShadow"
+class WeakListStrategy(AbstractStrategy):
+    repr_classname = "WeakListStrategy"
     import_from_mixin(rstrat.WeakGenericStrategy)
 
-@rstrat.strategy(generalize=[ListStorageShadow])
-class SmallIntegerOrNilStorageShadow(AbstractStorageShadow):
-    repr_classname = "SmallIntegerOrNilStorageShadow"
+@rstrat.strategy(generalize=[ListStrategy])
+class SmallIntegerOrNilStrategy(AbstractStrategy):
+    repr_classname = "SmallIntegerOrNilStrategy"
     import_from_mixin(rstrat.TaggingStrategy)
     contained_type = model.W_SmallInteger
     def wrap(self, val): return self.space.wrap_int(val)
@@ -79,9 +85,9 @@ class SmallIntegerOrNilStorageShadow(AbstractStorageShadow):
     def wrapped_tagged_value(self): return self.space.w_nil
     def unwrapped_tagged_value(self): return constants.MAXINT
 
-@rstrat.strategy(generalize=[ListStorageShadow])
-class FloatOrNilStorageShadow(AbstractStorageShadow):
-    repr_classname = "FloatOrNilStorageShadow"
+@rstrat.strategy(generalize=[ListStrategy])
+class FloatOrNilStrategy(AbstractStrategy):
+    repr_classname = "FloatOrNilStrategy"
     import_from_mixin(rstrat.TaggingStrategy)
     contained_type = model.W_Float
     tag_float = sys.float_info.max
@@ -91,11 +97,11 @@ class FloatOrNilStorageShadow(AbstractStorageShadow):
     def unwrapped_tagged_value(self): return self.tag_float
 
 @rstrat.strategy(generalize=[
-    SmallIntegerOrNilStorageShadow,
-    FloatOrNilStorageShadow,
-    ListStorageShadow])
-class AllNilStorageShadow(AbstractStorageShadow):
-    repr_classname = "AllNilStorageShadow"
+    SmallIntegerOrNilStrategy,
+    FloatOrNilStrategy,
+    ListStrategy])
+class AllNilStrategy(AbstractStrategy):
+    repr_classname = "AllNilStrategy"
     import_from_mixin(rstrat.SingleValueStrategy)
     def value(self): return self.space.w_nil
 
@@ -105,57 +111,33 @@ class StrategyFactory(rstrat.StrategyFactory):
         from spyvm import objspace
         self.space = space
         self.no_specialized_storage = objspace.ConstantFlag()
-        rstrat.StrategyFactory.__init__(self, AbstractShadow)
-
+        rstrat.StrategyFactory.__init__(self, AbstractObjectStorage)
+    
+    def instantiate_strategy(self, strategy_type, w_self=None, initial_size=0):
+        return strategy_type(self.space, w_self, initial_size)
+    
     def strategy_type_for(self, objects, weak=False):
         if weak:
-            return WeakListStorageShadow
+            return WeakListStrategy
         if self.no_specialized_storage.is_set():
-            return ListStorageShadow
+            return ListStrategy
         return rstrat.StrategyFactory.strategy_type_for(self, objects)
 
     def empty_storage_type(self, w_self, size, weak=False):
         if weak:
-            return WeakListStorageShadow
+            return WeakListStrategy
         if self.no_specialized_storage.is_set():
-            return ListStorageShadow
-        return AllNilStorageShadow
-
-    def set_initial_strategy(self, w_object, strategy_type, size, elements=None):
-        assert w_object.shadow is None, "Shadow should not be initialized yet!"
-        strategy = strategy_type(self.space, w_object, size)
-        w_object.store_shadow(strategy)
-        if elements:
-            w_object.store_all(self.space, elements)
-        strategy.strategy_switched()
-        self.log(strategy)
-
-    def instantiate_and_switch(self, old_strategy, size, strategy_class):
-        w_self = old_strategy.w_self()
-
-        # XXX: Special handling for contexts
-        from spyvm.storage_contexts import BlockContextMarkerClass, MethodContextMarkerClass, ContextPartShadow
-        if strategy_class is BlockContextMarkerClass:
-            instance = ContextPartShadow(self.space, w_self, size, is_block_context=True)
-        elif strategy_class is MethodContextMarkerClass:
-            instance = ContextPartShadow(self.space, w_self, size, is_block_context=False)
-        else:
-            instance = strategy_class(self.space, w_self, size)
-
-        w_self.store_shadow(instance)
-        return instance
-
-    def instantiate_empty(self, strategy_type):
-        return strategy_type(self.space, None, 0)
-
-    def log(self, new_strategy, old_strategy=None, new_element=None):
+            return ListStrategy
+        return AllNilStrategy
+    
+    def log(self, w_self, new_strategy, old_strategy=None, new_element=None):
         if not self.logger.active: return
         # Gather information to be logged
         image_loaded = self.space.image_loaded.is_set()
-        size = new_strategy.size()
+        size = new_strategy.size(w_self)
         new_strategy_str = new_strategy.repr_classname
         old_strategy_str = old_strategy.repr_classname if old_strategy else ""
-        classname = new_strategy.w_self().guess_classname() if image_loaded else ""
+        classname = w_self.guess_classname() if image_loaded else ""
         element_classname = new_element.guess_classname() if new_element and image_loaded else ""
         if image_loaded:
             cause = "Switched" if old_strategy else "Initialized"
@@ -165,21 +147,52 @@ class StrategyFactory(rstrat.StrategyFactory):
 
 # ========== Other storage classes, non-strategies ==========
 
-class AbstractRedirectingShadow(AbstractShadow):
-    _attrs_ = ['_w_self_size']
-    repr_classname = "AbstractRedirectingShadow"
+class ShadowMixin(object):
+    """
+    Shadows are non-singleton strategies. They maintain a backpointer to their shadowed
+    W_PointersObject instance. This is a mixin, because it is used at several places in the
+    class tree.
+    """
+    def w_self(self):
+        return self._w_self
+    def is_shadow(self):
+        return True
+    def become(self, w_other):
+        w_self = self._w_self
+        self.onesided_become(w_other)
+        if w_other.has_strategy() and w_other._get_strategy().is_shadow():
+            w_other._get_strategy().onesided_become(w_self)
+    def onesided_become(self, w_other):
+        self._w_self = w_other
+    def own_size(self):
+        return self.size(self._w_self)
+    def own_store(self, i, val):
+        self.store(self._w_self, i, val)
+    def own_fetch(self, i):
+        return self.fetch(self._w_self, i)
 
+class AbstractGenericShadow(ListStrategy):
+    """
+    This class behaves just like a generic list storage strategy,
+    but allows safe subclassing for more specific, non-singleton strategies.
+    """
+    _attrs_ = ['_w_self']
+    _immutable_fields_ = ['_w_self?']
+    import_from_mixin(ShadowMixin)
     def __init__(self, space, w_self, size):
-        if w_self is not None:
-            self._w_self_size = w_self.size()
-        else:
-            self._w_self_size = size
-        AbstractShadow.__init__(self, space, w_self, self._w_self_size)
+        ListStrategy.__init__(self, space, w_self, size)
+        assert w_self is None or isinstance(w_self, model.W_PointersObject)
+        self._w_self = w_self
+    def convert_storage_from(self, w_self, previous_strategy):
+        # Subclasses need a store() invokation for every field.
+        # This 'naive' implementation is available in AbstractStrategy.
+        AbstractObjectStorage.convert_storage_from(self, w_self, previous_strategy)
 
-    def size(self):
-        return self._w_self_size
-
-class AbstractCachingShadow(ListStorageShadow):
+class AbstractCachingShadow(AbstractGenericShadow):
+    """
+    Abstract shadow maintaining an empty version object for the 
+    underlying Smalltalk object. The version object allows jit-related optimizations.
+    """
     _immutable_fields_ = ['version?']
     _attrs_ = ['version']
     repr_classname = "AbstractCachingShadow"
@@ -187,33 +200,35 @@ class AbstractCachingShadow(ListStorageShadow):
     version = None
 
     def __init__(self, space, w_self, size):
-        ListStorageShadow.__init__(self, space, w_self, size)
+        AbstractGenericShadow.__init__(self, space, w_self, size)
         self.changed()
 
 class CachedObjectShadow(AbstractCachingShadow):
+    """
+    A shadow which treats its contents as jit constants as long as the object is not modified.
+    """
     repr_classname = "CachedObjectShadow"
 
-    @elidable_for_version
-    def fetch(self, n0):
-        return AbstractCachingShadow.fetch(self, n0)
-
-    def store(self, n0, w_value):
-        AbstractCachingShadow.store(self, n0, w_value)
+    def store(self, w_self, n0, w_value):
+        AbstractCachingShadow.store(self, w_self, n0, w_value)
         self.changed()
 
-class ObserveeShadow(ListStorageShadow):
-    _attrs_ = ['dependent']
+class ObserveeShadow(AbstractGenericShadow):
+    """
+    A generic shadow that notifies a single observer object whenever changes are made.
+    """
+    _attrs_ = ['observer']
     repr_classname = "ObserveeShadow"
     def __init__(self, space, w_self, size):
-        ListStorageShadow.__init__(self, space, w_self, size)
-        self.dependent = None
+        AbstractGenericShadow.__init__(self, space, w_self, size)
+        self.observer = None
 
-    def store(self, n0, w_value):
-        ListStorageShadow.store(self, n0, w_value)
-        if self.dependent:
-            self.dependent.update()
+    def store(self, w_self, n0, w_value):
+        AbstractGenericShadow.store(self, w_self, n0, w_value)
+        if self.observer:
+            self.observer.notify()
 
-    def notify(self, dependent):
-        if self.dependent is not None and dependent is not self.dependent:
-            raise RuntimeError('Meant to be observed by only one value, so far')
-        self.dependent = dependent
+    def set_observer(self, observer):
+        if self.observer is not None and observer is not self.observer:
+            raise RuntimeError('Meant to be observed by only one observer, so far')
+        self.observer = observer

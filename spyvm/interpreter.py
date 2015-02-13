@@ -1,9 +1,14 @@
 import os
+import sys
+
+sys.setrecursionlimit(1000000)
 
 from spyvm.storage_contexts import ContextPartShadow, ActiveContext, InactiveContext, DirtyContext
 from spyvm import model, constants, wrapper, objspace, interpreter_bytecodes, error
 
 from rpython.rlib import jit, rstackovf, unroll
+
+
 
 class ReturnFromTopLevel(Exception):
     _attrs_ = ["object"]

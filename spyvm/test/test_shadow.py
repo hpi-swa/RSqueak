@@ -113,7 +113,7 @@ def blockcontext(w_sender=None, pc=13, stackpointer=1, stacksize=5,
         w_sender = space.w_nil
     if home is None:
         home = methodcontext()
-    w_object = model.W_PointersObject(space, space.w_MethodContext, constants.MTHDCTX_TEMP_FRAME_START+stacksize)
+    w_object = model.W_PointersObject(space, space.w_BlockContext, constants.MTHDCTX_TEMP_FRAME_START+stacksize)
     w_object.store(space, constants.CTXPART_SENDER_INDEX, w_sender)
     w_object.store(space, constants.CTXPART_PC_INDEX, space.wrap_int(pc))
     w_object.store(space, constants.CTXPART_STACKP_INDEX, space.wrap_int(stackpointer))
@@ -127,9 +127,9 @@ def test_context():
     w_m = create_method()
     w_object = methodcontext(stackpointer=3, method=w_m)
     w_object2 = methodcontext(w_sender=w_object)
-    s_object = w_object.as_methodcontext_get_shadow(space)
+    s_object = w_object.as_context_get_shadow(space)
     assert len(s_object.stack()) == 3
-    s_object2 = w_object2.as_methodcontext_get_shadow(space)
+    s_object2 = w_object2.as_context_get_shadow(space)
     assert w_object2.fetch(space, constants.CTXPART_SENDER_INDEX) == w_object
     assert s_object.w_self() == w_object
     assert s_object2.w_self() == w_object2
@@ -160,7 +160,7 @@ def test_methodcontext():
     w_m = create_method()
                               # Point over 2 literals of size 4
     w_object = methodcontext(pc=13,method=w_m)
-    s_object = w_object.as_methodcontext_get_shadow(space)
+    s_object = w_object.as_context_get_shadow(space)
     assert s_object.fetch_next_bytecode() == 97
     assert s_object.fetch_next_bytecode() == 98
     assert s_object.fetch_next_bytecode() == 99
@@ -175,23 +175,23 @@ def assert_contains_nils(w_obj):
 def test_attach_mc():
     w_m = create_method()
     w_object = methodcontext(pc=13, method=w_m)
-    s_object = w_object.as_methodcontext_get_shadow(space)
-    assert s_object.fetch(1).value == 13
+    s_object = w_object.as_context_get_shadow(space)
+    assert s_object.fetch(w_object, 1).value == 13
 
 def test_attach_bc():
     w_object = blockcontext(pc=13)
-    s_object = w_object.as_blockcontext_get_shadow(space)
-    assert s_object.fetch(1).value == 13
+    s_object = w_object.as_context_get_shadow(space)
+    assert s_object.fetch(w_object, 1).value == 13
 
 def test_replace_to_bc():
     w_object = blockcontext(pc=13)
-    s_object = w_object.as_blockcontext_get_shadow(space)
-    s_object.shadow = None
-    s_newobject = w_object.as_blockcontext_get_shadow(space)
-    assert ([s_newobject.fetch(i) for i in range(s_newobject.size())] ==
-            [s_object.fetch(i) for i in range(s_newobject.size())])
-    assert w_object.shadow is s_newobject
-    assert s_object.fetch(1).value == 13
+    s_object = w_object.as_context_get_shadow(space)
+    s_object.strategy = None
+    s_newobject = w_object.as_context_get_shadow(space)
+    assert ([s_newobject.own_fetch(i) for i in range(s_newobject.own_size())] ==
+            [s_object.own_fetch(i) for i in range(s_newobject.own_size())])
+    assert w_object.strategy is s_newobject
+    assert s_object.own_fetch(1).value == 13
 
 def test_cached_object_shadow():
     l = map(space.w, [0, 1, 2, 3, 4, 5, 6, 7])
@@ -208,16 +208,16 @@ def test_observee_shadow():
     notified = False
     class Observer():
         def __init__(self): self.notified = False
-        def update(self): self.notified = True
+        def notify(self): self.notified = True
     o = Observer()
     w_o = w_Array.as_class_get_shadow(space).new(1)
-    w_o.as_observed_get_shadow(space).notify(o)
+    w_o.as_observed_get_shadow(space).set_observer(o)
     assert not o.notified
     w_o.store(space, 0, 1)
     assert o.notified
     assert w_o.fetch(space, 0) == 1
     try:
-        w_o.shadow.notify(Observer())
+        w_o.strategy.set_observer(Observer())
     except RuntimeError:
         pass
     else:
@@ -273,14 +273,14 @@ def test_updating_class_changes_subclasses():
 
 def test_returned_contexts_pc():
     w_context = methodcontext()
-    s_context = w_context.as_methodcontext_get_shadow(space)
+    s_context = w_context.as_context_get_shadow(space)
     assert not w_context.fetch(space, constants.CTXPART_PC_INDEX).is_nil(space)
     s_context.mark_returned()
     assert w_context.fetch(space, constants.CTXPART_PC_INDEX).is_nil(space)
 
 def test_methodcontext_s_home():
     w_context = methodcontext()
-    s_context = w_context.as_methodcontext_get_shadow(space)
+    s_context = w_context.as_context_get_shadow(space)
 
     w_closure = space.newClosure(w_context, 3, 0, [])
     s_closure_context = wrapper.BlockClosureWrapper(space, w_closure).create_frame()

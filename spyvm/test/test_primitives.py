@@ -19,20 +19,20 @@ def teardown_module():
 
 class MockFrame(model.W_PointersObject):
     def __init__(self, space, stack):
+        self.w_class = space.w_BlockContext
         size = 6 + len(stack) + 6
         self.initialize_storage(space, size)
         self.store_all(space, [None] * 6 + stack + [space.w_nil] * 6)
-        s_self = self.as_blockcontext_get_shadow(space)
-        s_self.init_stack_and_temps()
+        s_self = self.as_context_get_shadow(space)
         s_self.reset_stack()
         s_self.push_all(stack)
         s_self.store_expected_argument_count(0)
-        self.w_class = space.w_MethodContext
 
-    def as_blockcontext_get_shadow(self, space):
-        if not isinstance(self.shadow, storage_contexts.ContextPartShadow):
-            self.shadow = storage_contexts.ContextPartShadow(space, self, self.size(), is_block_context=True)
-        return self.shadow
+    def as_context_get_shadow(self, space):
+        if not isinstance(self.strategy, storage_contexts.ContextPartShadow):
+            self.strategy = storage_contexts.ContextPartShadow(space, self, self.size())
+            self.strategy.init_temps_and_stack()
+        return self.strategy
 
 IMAGENAME = "anImage.image"
 
@@ -600,7 +600,7 @@ def build_up_closure_environment(args, copiedValues=[]):
 def test_primitive_closure_value():
     s_initial_context, closure, s_new_context = build_up_closure_environment([])
 
-    assert s_new_context.closure._w_self is closure
+    assert s_new_context.closure.wrapped is closure
     assert s_new_context.s_sender() is s_initial_context
     assert s_new_context.w_receiver().is_nil(space)
 
@@ -608,7 +608,7 @@ def test_primitive_closure_value_value():
     s_initial_context, closure, s_new_context = build_up_closure_environment([
             wrap("first arg"), wrap("second arg")])
 
-    assert s_new_context.closure._w_self is closure
+    assert s_new_context.closure.wrapped is closure
     assert s_new_context.s_sender() is s_initial_context
     assert s_new_context.w_receiver().is_nil(space)
     assert s_new_context.gettemp(0).as_string() == "first arg"
@@ -619,7 +619,7 @@ def test_primitive_closure_value_value_with_temps():
             [wrap("first arg"), wrap("second arg")],
         copiedValues=[wrap('some value')])
 
-    assert s_new_context.closure._w_self is closure
+    assert s_new_context.closure.wrapped is closure
     assert s_new_context.s_sender() is s_initial_context
     assert s_new_context.w_receiver().is_nil(space)
     assert s_new_context.gettemp(0).as_string() == "first arg"
@@ -680,7 +680,7 @@ def test_primitive_value_no_context_switch(monkeypatch):
     w_frame, s_initial_context = new_frame("<never called, but used for method generation>")
 
     closure = space.newClosure(w_frame, 4, 0, [])
-    s_frame = w_frame.as_methodcontext_get_shadow(space)
+    s_frame = w_frame.as_context_get_shadow(space)
     interp = TestInterpreter(space)
     interp._loop = True
 
@@ -782,13 +782,13 @@ def test_bitblt_copy_bits(monkeypatch):
         interp.image = Image()
 
     try:
-        monkeypatch.setattr(w_frame.shadow, "_sendSelfSelector", perform_mock)
+        monkeypatch.setattr(w_frame.strategy, "_sendSelfSelector", perform_mock)
         monkeypatch.setattr(bitblt.BitBltShadow, "strategy_switched", sync_cache_mock)
         with py.test.raises(CallCopyBitsSimulation):
             prim_table[primitives.BITBLT_COPY_BITS](interp, w_frame.as_context_get_shadow(space), argument_count-1)
     finally:
         monkeypatch.undo()
-    assert w_frame.shadow.pop() is mock_bitblt # the receiver
+    assert w_frame.strategy.pop() is mock_bitblt # the receiver
 
 # Note:
 #   primitives.NEXT is unimplemented as it is a performance optimization

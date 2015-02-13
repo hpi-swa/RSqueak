@@ -166,7 +166,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
             meta_super_nm = super_cls_nm + "Class"
             w_metacls = define_core_cls(meta_nm, self.classtable[meta_super_nm], None)
             define_core_cls(cls_nm, self.classtable[super_cls_nm], w_metacls)
-        proto_shadow = w_ProtoObjectClass.shadow
+        proto_shadow = w_ProtoObjectClass.strategy
         proto_shadow.store_w_superclass(self.w_Class)
         # at this point, all classes that still lack a w_class are themselves metaclasses
         for nm, w_cls_obj in self.classtable.items():
@@ -274,7 +274,8 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         s.instance_kind = format
         s._s_methoddict = None
         s.instance_varsized = varsized or format != storage_classes.POINTERS
-        w_class.store_shadow(s)
+        w_class.store_strategy(s)
+        s.initialize_storage(w_class, 0)
         w_class.w_class = w_metaclass
         
     def bootstrap_class(self, instsize, w_superclass=None, w_metaclass=None,
