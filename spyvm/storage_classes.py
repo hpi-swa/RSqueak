@@ -246,7 +246,6 @@ class ClassShadow(AbstractCachingShadow):
             w_methoddict = model.W_PointersObject(self.space, None, 2)
             w_methoddict.store(self.space, constants.METHODDICT_VALUES_INDEX, model.W_PointersObject(self.space, None, 0))
             self.store_s_methoddict(w_methoddict.as_methoddict_get_shadow(self.space))
-        self.s_methoddict().invalid = False
 
     def installmethod(self, w_selector, w_method):
         "NOT_RPYTHON"     # this is only for testing.
@@ -257,12 +256,11 @@ class ClassShadow(AbstractCachingShadow):
             w_method.compiledin_class = self.w_self()
 
 class MethodDictionaryShadow(AbstractGenericShadow):
-    _immutable_fields_ = ['invalid?', 's_class']
-    _attrs_ = ['methoddict', 'invalid', 's_class']
+    _immutable_fields_ = ['s_class']
+    _attrs_ = ['methoddict', 's_class']
     repr_classname = "MethodDictionaryShadow"
 
     def __init__(self, space, w_self, size):
-        self.invalid = True
         self.s_class = None
         self.methoddict = {}
         AbstractGenericShadow.__init__(self, space, w_self, size)
@@ -282,8 +280,6 @@ class MethodDictionaryShadow(AbstractGenericShadow):
         self.sync_method_cache()
 
     def find_selector(self, w_selector):
-        if self.invalid:
-            return None # we may be invalid if Smalltalk code did not call flushCache
         return self.methoddict.get(w_selector, None)
 
     # We do not call notify() after changes to ourselves:
@@ -297,20 +293,20 @@ class MethodDictionaryShadow(AbstractGenericShadow):
         if n0 == constants.METHODDICT_VALUES_INDEX:
             self.setup_notification()
         if n0 >= constants.METHODDICT_NAMES_INDEX:
-            self.invalid = True
+            # the caller / user cannot be expected to add the compiledMethod to the observee next (as indicated above)
+            # in case of clone / copyFrom the compiledMethod is already contained, so a sync is necessary here too
+            self.sync_method_cache()
 
     def setup_notification(self):
         self.w_values().as_observed_get_shadow(self.space).set_observer(self)
-        
+
     def w_values(self):
         w_values = self.own_fetch(constants.METHODDICT_VALUES_INDEX)
         assert isinstance(w_values, model.W_PointersObject)
         return w_values
 
     def flush_method_cache(self):
-        # Lazy synchronization: Only flush the cache, if we are already synchronized.
-        if self.invalid:
-            self.sync_method_cache()
+        self.sync_method_cache()
 
     def sync_method_cache(self):
         size = self.own_size()
@@ -331,14 +327,16 @@ class MethodDictionaryShadow(AbstractGenericShadow):
                     #       Putting any key in the methodDict and running with
                     #       perform is actually supported in Squeak
                     # raise ClassShadowError("bogus selector in method dict")
+
                 w_compiledmethod = w_values.fetch(self.space, i)
-                if not isinstance(w_compiledmethod, model.W_CompiledMethod):
-                    raise ClassShadowError("The methoddict must contain "
-                                       "CompiledMethods only, for now. "
+                if not isinstance(w_compiledmethod, model.W_Object):
+                    raise ClassShadowError("The methoddict must contain only wrapped Objects."
                                        "If the value observed is nil, our "
                                        "invalidating mechanism may be broken.")
                 self.methoddict[w_selector] = w_compiledmethod
-                w_compiledmethod.set_lookup_class_and_name(self.s_class.w_self(), selector)
+                if isinstance(w_compiledmethod, model.W_CompiledMethod) and self.s_class:
+                    if (w_compiledmethod.lookup_class is not self.s_class.w_self() or
+                        w_compiledmethod.lookup_selector is not selector):
+                        w_compiledmethod.set_lookup_class_and_name(self.s_class.w_self(), selector)
         if self.s_class:
             self.s_class.changed()
-        self.invalid = False

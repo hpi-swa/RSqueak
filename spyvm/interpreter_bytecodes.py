@@ -304,8 +304,17 @@ class __extend__(ContextPartShadow):
         try:
             w_method = receiverclassshadow.lookup(w_selector)
         except error.MethodNotFound:
+            if w_arguments:
+                self.push_all(w_arguments)
+                # the arguments will be popped again in doesNotUnderstand but
+                # jit compilation should be able to remove those operations
             return self._doesNotUnderstand(w_selector, argcount, interp, receiver)
-        
+
+        if not isinstance(w_method, model.W_CompiledMethod):
+            if w_arguments:
+                self.push_all(w_arguments)
+            return self._invokeObjectAsMethod(interp, argcount, w_method, w_selector)
+
         code = w_method.primitive()
         if code:
             if w_arguments:
@@ -325,17 +334,39 @@ class __extend__(ContextPartShadow):
 
         return interp.stack_frame(s_frame, self)
 
+    def _invokeObjectAsMethod(self, interp, argcount, w_method, w_selector):
+        args = self.pop_and_return_n(argcount)
+        arguments_w = interp.space.wrap_list(args)
+        w_rcvr = self.pop()
+        w_newrcvr = w_method
+
+        w_newarguments = [w_selector, arguments_w, w_rcvr]
+
+        self.push(w_newrcvr)
+        return self._sendSpecialSelector(interp, w_newrcvr, "runWithIn", w_newarguments);
+
     @objectmodel.specialize.arg(1)
     def _sendSelfSelectorSpecial(self, selector, numargs, interp):
         w_selector = self.space.get_special_selector(selector)
         return self._sendSelfSelector(w_selector, numargs, interp)
 
     def _sendSpecialSelector(self, interp, receiver, special_selector, w_args=[]):
-        w_special_selector = self.space.objtable["w_" + special_selector]
-        s_class = receiver.class_shadow(self.space)
-        w_method = s_class.lookup(w_special_selector)
+        space = jit.promote(self.space)
+        w_special_selector = space.special_object("w_" + special_selector)
+        s_class = receiver.class_shadow(space)
+
+        try:
+            w_method = s_class.lookup(w_special_selector)
+        except error.MethodNotFound:
+            if w_args:
+                self.push_all(w_args)
+                # the arguments will be popped again in doesNotUnderstand but
+                # jit compilation should be able to remove those operations
+            return self._doesNotUnderstand(w_special_selector, len(w_args), interp, receiver)
+
+        if not isinstance(w_method, model.W_CompiledMethod):
+            raise Exception("SpecialSelector can't be an Object")
         s_frame = w_method.create_frame(interp.space, receiver, w_args)
-        
         # ######################################################################
         if interp.is_tracing():
             interp.print_padded('-> %s %s' % (special_selector, s_frame.short_str()))
@@ -366,7 +397,7 @@ class __extend__(ContextPartShadow):
         
     def _call_primitive(self, code, interp, argcount, w_method, w_selector):
         # ##################################################################
-        if interp.is_tracing():
+        if interp.is_tracing() and isinstance(w_method, model.W_CompiledMethod):
             interp.print_padded("-> primitive %d \t(in %s, named %s)" % (
                                     code, self.w_method().get_identifier_string(),
                                     w_selector.selector_string()))
@@ -376,7 +407,7 @@ class __extend__(ContextPartShadow):
             # the primitive pushes the result (if any) onto the stack itself
             return func(interp, self, argcount, w_method)
         except error.PrimitiveFailedError, e:
-            if interp.is_tracing():
+            if interp.is_tracing() and isinstance(w_method, model.W_CompiledMethod):
                 interp.print_padded("-- primitive %d FAILED\t (in %s, named %s)" % (
                             code, w_method.safe_identifier_string(), w_selector.selector_string()))
             raise e

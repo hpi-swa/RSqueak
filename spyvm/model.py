@@ -571,7 +571,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     strategy = None
     repr_classname = "W_PointersObject"
     rstrat.make_accessors(strategy='strategy', storage='_storage')
-    
+
     @jit.unroll_safe
     def __init__(self, space, w_class, size, weak=False):
         """Create new object with size = fixed + variable size."""
@@ -594,25 +594,25 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     def is_weak(self):
         from storage import WeakListStrategy
         return isinstance(self.strategy, WeakListStrategy)
-    
+
     def is_class(self, space):
         from spyvm.storage_classes import ClassShadow
         if isinstance(self.strategy, ClassShadow):
             return True
         return W_AbstractObjectWithClassReference.is_class(self, space)
-    
+
     def assert_strategy(self):
         # Failing the following assert most likely indicates a bug. The strategy can only be absent during
         # the bootstrapping sequence. It will be initialized in the fillin() method. Before that, it should
-        # not be switched to a specialized strategy, and the space is also not yet available here! 
+        # not be switched to a specialized strategy, and the space is also not yet available here!
         # Otherwise, the specialized strategy will attempt to read information from an uninitialized object.
         strategy = self.strategy
         assert strategy, "The strategy has not been initialized yet!"
         return strategy
-    
+
     def space(self):
         return self.assert_strategy().space
-        
+
     def __str__(self):
         if self.has_strategy() and self.strategy.provides_getname:
             return self._get_strategy().getname()
@@ -627,7 +627,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
             if self.strategy.provides_getname:
                 name = " [%s]" % self._get_strategy().getname()
         return '(%s) len=%d%s' % (strategy_info, self.size(), name)
-    
+
     def fetch_all(self, space):
         return [self.fetch(space, i) for i in range(self.size())]
 
@@ -665,7 +665,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
             # Think of a way to avoid this check. Usually, self.strategy is never None.
             return 0
         return self._get_strategy().size(self)
-        
+
     def instsize(self):
         return self.class_shadow(self.space()).instsize()
 
@@ -674,7 +674,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
 
     def _get_strategy(self):
         return self.strategy
-    
+
     @objectmodel.specialize.arg(2)
     def as_special_get_shadow(self, space, TheClass):
         shadow = self._get_strategy()
@@ -709,7 +709,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     def has_space(self):
         # The space is accessed through the strategy.
         return self.has_strategy()
-    
+
     def _become(self, w_other):
         assert isinstance(w_other, W_PointersObject)
         # Only one strategy will handle the become (or none of them).

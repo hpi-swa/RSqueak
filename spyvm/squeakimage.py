@@ -208,15 +208,22 @@ class ImageReader(object):
         for name, so_index in names_and_indices.items():
             name = "w_" + name
             if name in prebuilt_objects:
-                w_object = prebuilt_objects[name]
-                g_object = self.special_object(so_index)
-                if g_object.w_object is None:
-                    g_object.w_object = w_object
-                else:
-                    if not g_object.w_object.is_nil(self.space):
-                       raise Warning('Object found in multiple places in the special objects array')
+                try:
+                    w_object = prebuilt_objects[name]
+                    g_object = self.special_object(so_index)
+                    if g_object.w_object is None:
+                        g_object.w_object = w_object
+                    else:
+                        if not g_object.w_object.is_nil(self.space):
+                           raise Warning('Object found in multiple places in the special objects array')
+                except IndexError:
+                    # certain special objects might not yet be in the image's table
+                    pass
     
     def special_object(self, index):
+        # while python would raise an IndexError, after translation a nonexisting key results in a segfault...
+        if index >= len(self.special_g_objects):
+            raise IndexError
         return self.special_g_objects[index]
     
     def init_w_objects(self):

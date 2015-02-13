@@ -112,6 +112,7 @@ SO_PSEUDOCONTEXT_CLASS = 39
 SO_TRANSLATEDMETHOD_CLASS = 40
 SO_FINALIZATION_SEMPAHORE = 41
 SO_LARGENEGATIVEINTEGER_CLASS = 42
+SO_RUN_WITH_IN = 49
 
 # XXX more missing?
 classes_in_special_object_table = {
@@ -149,6 +150,7 @@ objects_in_special_object_table = {
     "mustBeBoolean" : SO_MUST_BE_BOOLEAN,
     "interrupt_semaphore" : SO_USER_INTERRUPT_SEMAPHORE,
     "timerSemaphore" : SO_TIMER_SEMAPHORE,
+    "runWithIn" : SO_RUN_WITH_IN,
 }
 
 LONG_BIT = 32
