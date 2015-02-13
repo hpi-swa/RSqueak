@@ -19,20 +19,19 @@ def teardown_module():
 
 class MockFrame(model.W_PointersObject):
     def __init__(self, space, stack):
+        self.w_class = space.w_BlockContext
         size = 6 + len(stack) + 6
         self.initialize_storage(space, size)
         self.store_all(space, [None] * 6 + stack + [space.w_nil] * 6)
         s_self = self.as_context_get_shadow(space)
-        s_self.init_stack_ptr()
         s_self.reset_stack()
         s_self.push_all(stack)
         s_self.store_expected_argument_count(0)
-        self.w_class = space.w_MethodContext
 
     def as_context_get_shadow(self, space):
         if not isinstance(self.strategy, storage_contexts.ContextPartShadow):
-            self.strategy = storage_contexts.ContextPartShadow(space, self, self.size(), \
-                                context_type=storage_contexts.TYPE_BLOCK_CONTEXT)
+            self.strategy = storage_contexts.ContextPartShadow(space, self, self.size())
+            self.strategy.init_temps_and_stack()
         return self.strategy
 
 IMAGENAME = "anImage.image"

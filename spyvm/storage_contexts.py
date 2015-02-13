@@ -24,11 +24,6 @@ DirtyContext = ContextState("DirtyContext")
 class ExtendableStrategyMetaclass(extendabletype, rstrat.StrategyMetaclass):
     pass
 
-# Constants for the constructor
-TYPE_UNKNOWN = 0
-TYPE_METHOD_CONTEXT = 1
-TYPE_BLOCK_CONTEXT = 2
-
 class ContextPartShadow(AbstractObjectStorage):
     """
     This Shadow handles the entire object storage on its own, ignoring the storage
@@ -41,17 +36,17 @@ class ContextPartShadow(AbstractObjectStorage):
     __metaclass__ = ExtendableStrategyMetaclass
     import_from_mixin(ShadowMixin)
 
-    _attrs_ = [ '_w_self', '_w_self_size',
-               '_s_sender', '_pc', '_temps_and_stack',
-               '_stack_ptr', 'instances_w', 'state',
-               # Virtualizable doesn't really work with subclassing,
-               # so we have all attributes in the top-level class
-               # From BlockContext:
+    _attrs_ = ['_w_self', '_w_self_size',
+               'instances_w', 'state',
+               'is_block_context',
+               
+               # Core context data
+               '_s_sender', '_pc', '_temps_and_stack', '_stack_ptr',
+               # For BlockContext:
                '_w_home', '_initialip', '_eargc',
-               # From MethodContext
-               'closure', '_w_receiver', '_w_method', '_is_BlockClosure_ensure',
-               # And a switch to tell which is which
-               'is_block_context']
+               # For MethodContext
+               'closure', '_w_receiver', '_w_method', '_is_BlockClosure_ensure'
+               ]
 
     _virtualizable_ = [
         "_w_self",
@@ -76,18 +71,12 @@ class ContextPartShadow(AbstractObjectStorage):
     # Initialization
     
     @jit.unroll_safe
-    def __init__(self, space, w_self, size, context_type=TYPE_UNKNOWN, w_method=None, closure=None):
+    def __init__(self, space, w_self, size):
         self = fresh_virtualizable(self)
-        old_shadow = None
-        if w_self: old_shadow = w_self._get_strategy()
         AbstractObjectStorage.__init__(self, space, w_self, size)
         
-        if context_type == TYPE_METHOD_CONTEXT:
-            self.is_block_context = False
-        elif context_type == TYPE_BLOCK_CONTEXT:
-            self.is_block_context = True
-        else:
-            assert w_self is not None
+        # If w_self is not given, is_block_context must be set explicitely!
+        if w_self is not None:
             if w_self.getclass(space).is_same_object(space.w_BlockContext):
                 self.is_block_context = True
             elif w_self.getclass(space).is_same_object(space.w_MethodContext):
@@ -115,29 +104,6 @@ class ContextPartShadow(AbstractObjectStorage):
         self._w_receiver = None
         self._is_BlockClosure_ensure = False
         
-        # TODO not sure if this is necessary, strategy-switch
-        # mechanism should be enough.
-        if old_shadow and not self.is_block_context:
-            if not closure:
-                w_closure = old_shadow.fetch(w_self, constants.MTHDCTX_CLOSURE_OR_NIL)
-                if w_closure is not space.w_nil:
-                    closure = wrapper.BlockClosureWrapper(space, w_closure)
-            if not w_method and not closure:
-                w_method = old_shadow.fetch(w_self, constants.MTHDCTX_METHOD)
-        # Let's create the stack array
-        if self.is_block_context or closure:
-            self.closure = closure
-            stacksize = self.stacksize() + self.tempsize()
-        elif w_method:
-            self.store_w_method(w_method)
-            # Magic numbers... Takes care of cases where reflective
-            # code writes more than actual stack size
-            assert isinstance(w_method, model.W_CompiledMethod)
-            stacksize = w_method.compute_frame_size()
-        else:
-            assert False
-        self._temps_and_stack = [space.w_nil] * stacksize
-        
     def initialize_storage(self, w_self, initial_size):
         # The context object holds all of its storage itself.
         self.set_storage(w_self, None)
@@ -154,7 +120,7 @@ class ContextPartShadow(AbstractObjectStorage):
             self.store(w_self, n0, storage[n0])
         
         # Now the temp size will be known.
-        self.init_stack_ptr()
+        self.init_temps_and_stack()
         
         # After this, convert the rest of the fields.
         for n0 in range(size):
@@ -396,7 +362,22 @@ class ContextPartShadow(AbstractObjectStorage):
     def stacksize(self):
         return self.stackend() - self.stackstart()
 
-    def init_stack_ptr(self):
+    def full_stacksize(self):
+        if not self.is_block_context:
+            # Magic numbers... Takes care of cases where reflective
+            # code writes more than actual stack size
+            method = self.w_method()
+            assert isinstance(method, model.W_CompiledMethod)
+            stacksize = method.compute_frame_size()
+        else:
+            # TODO why not use method.compute_frame_size for BlockContext too?
+            stacksize = self.stacksize() # no temps
+        return stacksize
+
+    def init_temps_and_stack(self):
+        self = fresh_virtualizable(self)
+        stacksize = self.full_stacksize()
+        self._temps_and_stack = [self.space.w_nil] * stacksize
         tempsize = self.tempsize()
         self._stack_ptr = rarithmetic.r_uint(tempsize) # we point after the last element
 
@@ -543,13 +524,14 @@ class __extend__(ContextPartShadow):
         size = s_home.own_size() - s_home.tempsize()
         w_self = model.W_PointersObject(space, space.w_BlockContext, size)
 
-        ctx = ContextPartShadow(space, w_self, size, context_type=TYPE_BLOCK_CONTEXT)
+        ctx = ContextPartShadow(space, w_self, size)
+        ctx.is_block_context = True
         ctx.store_expected_argument_count(argcnt)
         ctx.store_w_home(s_home.w_self())
         ctx.store_initialip(pc)
         ctx.store_pc(pc)
         w_self.store_strategy(ctx)
-        ctx.init_stack_ptr()
+        ctx.init_temps_and_stack()
         return ctx
 
     # === Implemented accessors ===
@@ -667,11 +649,12 @@ class __extend__(ContextPartShadow):
         s_MethodContext = space.w_MethodContext.as_class_get_shadow(space)
         size = w_method.compute_frame_size() + s_MethodContext.instsize()
 
-        ctx = ContextPartShadow(space, None, size, context_type=TYPE_METHOD_CONTEXT, w_method=w_method, closure=closure)
+        ctx = ContextPartShadow(space, None, size)
+        ctx.is_block_context = False
         ctx.store_w_receiver(w_receiver)
         ctx.store_w_method(w_method)
         ctx.closure = closure
-        ctx.init_stack_ptr()
+        ctx.init_temps_and_stack()
         ctx.initialize_temps(arguments)
         return ctx
 
