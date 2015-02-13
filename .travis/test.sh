@@ -11,6 +11,7 @@ esac
 
 sudo i386 chroot "$chroot" sh -c "
     cd $PWD &&
-    echo $(pwd) &&
+    echo \$(pwd) &&
     ls &&
-    PYTHONPATH=$PYTHONPATH:pypy-pypy/:pypy-rsdl/:. python2.7 pypy-pypy/pytest.py -s $testflag spyvm/test/"
+    PYTHONPATH=\"$PYTHONPATH:pypy-pypy/:pypy-rsdl/:.\"
+            python2.7 pypy-pypy/pytest.py -s $testflag spyvm/test/"

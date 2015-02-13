@@ -3,7 +3,7 @@ set -ex
 
 sudo i386 chroot "$chroot" sh -c "
     cd $PWD &&
-    echo $(pwd) &&
+    echo \$(pwd) &&
     ls &&
-    PYTHONPATH=$PYTHONPATH:pypy-pypy/:pypy-rsdl/:.
+    PYTHONPATH=\"$PYTHONPATH:pypy-pypy/:pypy-rsdl/:.\"
             python2.7 pypy-pypy/rpython/bin/rpython --batch -Ojit targetimageloadingsmalltalk.py"
