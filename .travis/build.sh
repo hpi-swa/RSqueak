@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -ex
 
 sudo i386 chroot "$chroot" sh -c "
