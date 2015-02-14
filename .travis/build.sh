@@ -17,3 +17,4 @@ if [ $exitcode -eq 0 ]; then
 	fi
     fi
 fi
+exit $exitcode
