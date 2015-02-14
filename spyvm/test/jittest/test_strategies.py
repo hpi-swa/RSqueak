@@ -53,7 +53,7 @@ class TestBasic(BaseJITTest):
              guard_nonnull_class(p213, 23088412, descr=<Guard0x2eb3050>),
              p214 = getfield_gc_pure(p213, descr=<FieldP spyvm.strategy.SmallIntegerOrNilStrategy.inst_storage 16>),
              i215 = arraylen_gc(p214, descr=<ArrayS 4>),
-             i216 = getfield_gc_pure(p213, descr=<FieldU spyvm.strategy.AbstractObjectStorage.inst_space 12>),
+             i216 = getfield_gc_pure(p213, descr=<FieldU spyvm.strategy.AbstractStrategy.inst_space 12>),
              guard_nonnull_class(p209, 23083336, descr=<Guard0x2ea3f90>),
              i217 = getfield_gc_pure(p209, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>),
              i218 = int_eq(i217, i215),

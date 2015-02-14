@@ -47,6 +47,8 @@ def empty_object():
     return instantiate(model.W_PointersObject)
     
 class ObjSpace(object):
+    _immutable_fields_ = ['objtable']
+
     def __init__(self):
         # This is a hack; see compile_code() in targetimageloadingsmalltalk.py
         self.suppress_process_switch = ConstantFlag()
@@ -95,7 +97,11 @@ class ObjSpace(object):
         for name, idx in constants.objects_in_special_object_table.items():
             name = "w_" + name
             if not name in self.objtable or not self.objtable[name]:
-                self.objtable[name] = specials[idx]
+                try:
+                    self.objtable[name] = specials[idx]
+                except IndexError:
+                    # if it's not yet in the table, the interpreter has to fill the gap later in populate_remaining_special_objects
+                    self.objtable[name] = None
         # XXX this is kind of hacky, but I don't know where else to get Metaclass
         self.classtable["w_Metaclass"] = self.w_SmallInteger.w_class.w_class
     
@@ -120,7 +126,6 @@ class ObjSpace(object):
     def make_bootstrap_objects(self):
         self.make_bootstrap_object("w_charactertable")
         self.make_bootstrap_object("w_true")
-        self.make_bootstrap_object("w_true")
         self.make_bootstrap_object("w_false")
         self.make_bootstrap_object("w_special_selectors")
         self.add_bootstrap_object("w_minus_one", model.W_SmallInteger(-1))
@@ -134,6 +139,10 @@ class ObjSpace(object):
             name = "w_" + name
             if not name in self.objtable:
                 self.add_bootstrap_object(name, None)
+
+    @jit.elidable
+    def special_object(self, which):
+        return self.objtable[which]
 
     # ============= Methods for wrapping and unwrapping stuff =============
 
@@ -182,6 +191,14 @@ class ObjSpace(object):
         Converts a Python list of wrapped objects into
         a wrapped smalltalk array
         """
+        lstlen = len(lst_w)
+        res = self.w_Array.as_class_get_shadow(self).new(lstlen)
+        for i in range(lstlen):
+            res.atput0(self, i, lst_w[i])
+        return res
+
+    @jit.unroll_safe
+    def wrap_list_unroll_safe(self, lst_w):
         lstlen = len(lst_w)
         res = self.w_Array.as_class_get_shadow(self).new(lstlen)
         for i in range(lstlen):

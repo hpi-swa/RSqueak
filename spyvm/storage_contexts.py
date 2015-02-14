@@ -1,6 +1,6 @@
 
 from spyvm import model, constants, error, wrapper
-from spyvm.storage import AbstractObjectStorage, ShadowMixin, AbstractGenericShadow
+from spyvm.storage import AbstractStrategy, ShadowMixin, AbstractGenericShadow
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib import rarithmetic, jit, objectmodel
 from rpython.rlib.objectmodel import import_from_mixin
@@ -24,12 +24,14 @@ DirtyContext = ContextState("DirtyContext")
 class ExtendableStrategyMetaclass(extendabletype, rstrat.StrategyMetaclass):
     pass
 
-class ContextPartShadow(AbstractObjectStorage):
+class ContextPartShadow(AbstractStrategy):
     """
-    This Shadow handles the entire object storage on its own, ignoring the storage
+    This Shadow handles the entire object storage on its own, ignoring the _storage
     field in W_PointersObject. The w_self parameter in fetch/store/size etc. is ignored,
     and the own_fetch/own_store/own_size methods from ShadowMixin should be used instead.
-    This shadow can exist without a real W_PointersObject.
+    This shadow can exist without a W_PointersObject.
+    In order to integrate well with the RPython toolchain (virtualizables and jit), this
+    class actually represents one of two classes, determined by the is_block_context switch.
     """
     repr_classname = "ContextPartShadow"
 
@@ -42,9 +44,9 @@ class ContextPartShadow(AbstractObjectStorage):
                
                # Core context data
                '_s_sender', '_pc', '_temps_and_stack', '_stack_ptr',
-               # For BlockContext:
+               # BlockContext data
                '_w_home', '_initialip', '_eargc',
-               # For MethodContext
+               # MethodContext data
                'closure', '_w_receiver', '_w_method', '_is_BlockClosure_ensure'
                ]
 
@@ -73,7 +75,7 @@ class ContextPartShadow(AbstractObjectStorage):
     @jit.unroll_safe
     def __init__(self, space, w_self, size):
         self = fresh_virtualizable(self)
-        AbstractObjectStorage.__init__(self, space, w_self, size)
+        AbstractStrategy.__init__(self, space, w_self, size)
         
         # If w_self is not given, is_block_context must be set explicitely!
         if w_self is not None:
@@ -136,16 +138,16 @@ class ContextPartShadow(AbstractObjectStorage):
     # ______________________________________________________________________
     # Accessing object fields
 
-    def size(self, w_self):
+    def size(self, ignored_w_self):
         return self._w_self_size
     
-    def fetch(self, w_self, n0):
+    def fetch(self, ignored_w_self, n0):
         if self.is_block_context:
-            return self.fetch_block_context(w_self, n0)
+            return self.fetch_block_context(n0)
         else:
-            return self.fetch_method_context(w_self, n0)
+            return self.fetch_method_context(n0)
 
-    def fetch_context_part(self, w_self, n0):
+    def fetch_context_part(self, n0):
         if n0 == constants.CTXPART_SENDER_INDEX:
             return self.w_sender()
         if n0 == constants.CTXPART_PC_INDEX:
@@ -162,13 +164,13 @@ class ContextPartShadow(AbstractObjectStorage):
             # XXX later should store tail out of known context part as well
             raise error.WrapperException("Index in context out of bounds")
 
-    def store(self, w_self, n0, w_value):
+    def store(self, ignored_w_self, n0, w_value):
         if self.is_block_context:
-            return self.store_block_context(w_self, n0, w_value)
+            return self.store_block_context(n0, w_value)
         else:
-            return self.store_method_context(w_self, n0, w_value)
+            return self.store_method_context(n0, w_value)
 
-    def store_context_part(self, w_self, n0, w_value):
+    def store_context_part(self, n0, w_value):
         if n0 == constants.CTXPART_SENDER_INDEX:
             assert isinstance(w_value, model.W_PointersObject)
             if w_value.is_nil(self.space):
@@ -260,7 +262,12 @@ class ContextPartShadow(AbstractObjectStorage):
         assert newpc >= -1
         self._pc = newpc
 
-    # === Subclassed accessors ===
+    # ______________________________________________________________________
+    # Specialized accessors
+    # 
+    # These methods have different versions depending on whether the receiver
+    # is a BlockContext or MethodContext. The call is forwarded to a specialized
+    # version, like a manual kind of inheritance.
 
     def s_home(self):
         if self.is_block_context:
@@ -310,6 +317,26 @@ class ContextPartShadow(AbstractObjectStorage):
         else:
             return self.home_is_self_method_context()
 
+    # ______________________________________________________________________
+    # Temporary Variables
+    #
+    # Every context has it's own stack. BlockContexts share their temps with
+    # their home contexts. MethodContexts created from a BlockClosure get their
+    # temps copied from the closure upon activation. Changes are not propagated back;
+    # this is handled by the compiler by allocating an extra Array for temps.
+
+    def gettemp(self, index):
+        if self.is_block_context:
+            return self.gettemp_block_context(index)
+        else:
+            return self.gettemp_method_context(index)
+
+    def settemp(self, index, w_value):
+        if self.is_block_context:
+            return self.settemp_block_context(index, w_value)
+        else:
+            return self.settemp_method_context(index, w_value)
+            
     # === Other properties of Contexts ===
 
     def mark_returned(self):
@@ -335,26 +362,6 @@ class ContextPartShadow(AbstractObjectStorage):
     def fetch_bytecode(self, pc):
         bytecode = self.w_method().fetch_bytecode(pc)
         return ord(bytecode)
-
-    # ______________________________________________________________________
-    # Temporary Variables
-    #
-    # Every context has it's own stack. BlockContexts share their temps with
-    # their home contexts. MethodContexts created from a BlockClosure get their
-    # temps copied from the closure upon activation. Changes are not propagated back;
-    # this is handled by the compiler by allocating an extra Array for temps.
-
-    def gettemp(self, index):
-        if self.is_block_context:
-            return self.gettemp_block_context(index)
-        else:
-            return self.gettemp_method_context(index)
-
-    def settemp(self, index, w_value):
-        if self.is_block_context:
-            return self.settemp_block_context(index, w_value)
-        else:
-            return self.settemp_method_context(index, w_value)
 
     # ______________________________________________________________________
     # Stack Manipulation
@@ -515,7 +522,7 @@ class ContextPartShadow(AbstractObjectStorage):
 
 
 class __extend__(ContextPartShadow):
-    # repr_classname = "BlockContextShadow"
+    # Extensions for --- BlockContextShadow ---
 
     # === Initialization ===
 
@@ -570,7 +577,7 @@ class __extend__(ContextPartShadow):
 
     # === Accessing object fields ===
 
-    def fetch_block_context(self, w_self, n0):
+    def fetch_block_context(self, n0):
         if n0 == constants.BLKCTX_HOME_INDEX:
             return self._w_home
         if n0 == constants.BLKCTX_INITIAL_IP_INDEX:
@@ -578,9 +585,9 @@ class __extend__(ContextPartShadow):
         if n0 == constants.BLKCTX_BLOCK_ARGUMENT_COUNT_INDEX:
             return self.wrap_eargc()
         else:
-            return self.fetch_context_part(w_self, n0)
+            return self.fetch_context_part(n0)
 
-    def store_block_context(self, w_self, n0, w_value):
+    def store_block_context(self, n0, w_value):
         if n0 == constants.BLKCTX_HOME_INDEX:
             return self.store_w_home(w_value)
         if n0 == constants.BLKCTX_INITIAL_IP_INDEX:
@@ -588,7 +595,7 @@ class __extend__(ContextPartShadow):
         if n0 == constants.BLKCTX_BLOCK_ARGUMENT_COUNT_INDEX:
             return self.unwrap_store_eargc(w_value)
         else:
-            return self.store_context_part(w_self, n0, w_value)
+            return self.store_context_part(n0, w_value)
 
     def store_w_home(self, w_home):
         assert isinstance(w_home, model.W_PointersObject)
@@ -640,7 +647,7 @@ class __extend__(ContextPartShadow):
 
 
 class __extend__(ContextPartShadow):
-    # repr_classname = "MethodContextShadow"
+    # Extensions for --- MethodContextShadow ---
 
     # === Initialization ===
 
@@ -672,7 +679,7 @@ class __extend__(ContextPartShadow):
 
     # === Accessing object fields ===
 
-    def fetch_method_context(self, w_self, n0):
+    def fetch_method_context(self, n0):
         if n0 == constants.MTHDCTX_METHOD:
             return self.w_method()
         if n0 == constants.MTHDCTX_CLOSURE_OR_NIL:
@@ -686,9 +693,9 @@ class __extend__(ContextPartShadow):
         if (0 <= temp_i < self.tempsize()):
             return self.gettemp(temp_i)
         else:
-            return self.fetch_context_part(w_self, n0)
+            return self.fetch_context_part(n0)
 
-    def store_method_context(self, w_self, n0, w_value):
+    def store_method_context(self, n0, w_value):
         if n0 == constants.MTHDCTX_METHOD:
             return self.store_w_method(w_value)
         if n0 == constants.MTHDCTX_CLOSURE_OR_NIL:
@@ -704,7 +711,7 @@ class __extend__(ContextPartShadow):
         if (0 <=  temp_i < self.tempsize()):
             return self.settemp(temp_i, w_value)
         else:
-            return self.store_context_part(w_self, n0, w_value)
+            return self.store_context_part(n0, w_value)
 
     def store_w_receiver(self, w_receiver):
         self._w_receiver = w_receiver

@@ -1269,7 +1269,6 @@ WITH_ARGS_EXECUTE_METHOD = 188
 
 @expose_primitive(BLOCK_COPY, unwrap_spec=[object, int])
 def func(interp, s_frame, w_context, argcnt):
-
     # From B.B.: If receiver is a MethodContext, then it becomes
     # the new BlockContext's home context.  Otherwise, the home
     # context of the receiver is used for the new BlockContext.

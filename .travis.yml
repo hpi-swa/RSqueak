@@ -1,19 +1,14 @@
 language: python
 python:
   - 2.7
-env:
-  matrix:
-    - TEST_TYPE=own
-    - TEST_TYPE=translate
+#env:
+#  matrix:
+#    - TEST_TYPE=default
+#    - TEST_TYPE=quick
+#    - TEST_TYPE=slow
 install:
   - export chroot="$PWD"/buildroot.i386
   - .travis/setup_chroot.sh
 script:
-  - "case \"$TEST_TYPE\" in
-       own)
-         sudo i386 chroot \"$chroot\" sh -c \"cd $PWD && echo $(pwd) && ls && PYTHONPATH=$PYTHONPATH:pypy-pypy/:pypy-rsdl/:. python2.7 pypy-pypy/pytest.py -s spyvm/test/\"
-         ;;
-       translate)
-         sudo i386 chroot \"$chroot\" sh -c \"cd $PWD && echo $(pwd) && ls && PYTHONPATH=$PYTHONPATH:pypy-pypy/:pypy-rsdl/:. python2.7 pypy-pypy/rpython/bin/rpython --batch -Ojit targetimageloadingsmalltalk.py\"
-         ;;
-     esac"
+  - .travis/test.sh
+  - .travis/build.sh

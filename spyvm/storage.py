@@ -6,7 +6,24 @@ from rpython.rlib import objectmodel, jit
 from rpython.rlib.objectmodel import import_from_mixin
 import rstrategies as rstrat
 
-class AbstractObjectStorage(object):
+"""
+A note on terminology:
+A normal smalltalk objects contains references to other objects. These pointers
+are the *storage* of the object. In RSqueak, each W_PointersObject passes 
+handling of its storage to a *strategy* object (subclass of AbstractStrategy).
+Most objects are handled by a subclass of SingletonStorageStrategy. These classes
+implement the actual "storage strategy" concept ("Storage Strategies for Collections
+in Dynamically Typed Languages", Bolcz et al., 2013). To support these singleton 
+strategies, W_PointersObject have a _storage field for arbitrary usage by their
+strategy.
+Strategies including the "ShadowMixin" are called *shadows*. Shadows are not
+singletons and are bound to a single W_PointersObject and store additional state 
+required to implement the language semantics. ShadowMixin is used by ContextPartShadow
+(storage_context.py) and AbstractGenericStrategy, which is extended by various classes
+in storage_classes.py.
+"""
+
+class AbstractStrategy(object):
     """Subclasses of this handle the information contained in Smalltalk objects.
     The common API allows to store and fetch elements from object slots.
     Every object has some kind of storage representation attached.
@@ -17,7 +34,7 @@ class AbstractObjectStorage(object):
     _attrs_ = ['space']
     _immutable_fields_ = ['space']
     provides_getname = False
-    repr_classname = "AbstractObjectStorage"
+    repr_classname = "AbstractStrategy"
     __metaclass__ = rstrat.StrategyMetaclass
     import_from_mixin(rstrat.AbstractStrategy)
     
@@ -53,9 +70,10 @@ class AbstractObjectStorage(object):
 
 # ========== Storage classes implementing storage strategies ==========
 
-class AbstractStrategy(AbstractObjectStorage):
+class AbstractStrategy(AbstractStrategy):
     """
-    Strategies handle 'simple' object storage, without additional VM-internal information.
+    Singleton strategies handle 'simple' object storage in normal objects, without
+    additional VM-internal information.
     Depending on the data inside an object, different optimizing strategies are used.
     """
     repr_classname = "AbstractStrategy"
@@ -111,7 +129,7 @@ class StrategyFactory(rstrat.StrategyFactory):
         from spyvm import objspace
         self.space = space
         self.no_specialized_storage = objspace.ConstantFlag()
-        rstrat.StrategyFactory.__init__(self, AbstractObjectStorage)
+        rstrat.StrategyFactory.__init__(self, AbstractStrategy)
     
     def instantiate_strategy(self, strategy_type, w_self=None, initial_size=0):
         return strategy_type(self.space, w_self, initial_size)
@@ -186,7 +204,7 @@ class AbstractGenericShadow(ListStrategy):
     def convert_storage_from(self, w_self, previous_strategy):
         # Subclasses need a store() invokation for every field.
         # This 'naive' implementation is available in AbstractStrategy.
-        AbstractObjectStorage.convert_storage_from(self, w_self, previous_strategy)
+        AbstractStrategy.convert_storage_from(self, w_self, previous_strategy)
 
 class AbstractCachingShadow(AbstractGenericShadow):
     """
