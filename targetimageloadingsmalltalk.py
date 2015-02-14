@@ -4,6 +4,9 @@ import sys, time, os
 from rpython.rlib import jit, rpath, objectmodel
 from spyvm import model, interpreter, squeakimage, objspace, wrapper, error
 
+sys.setrecursionlimit(15000)
+
+
 def _usage(argv):
     print """
     Usage: %s <path> [-r|-m|-h] [-naPu] [-jpiS] [-tTslL]
@@ -49,7 +52,7 @@ def _usage(argv):
             -S                 - Disable specialized storage strategies.
                                  always use generic ListStrategy.
             --hacks            - Enable Spy hacks. Set display color depth to 8
-            
+
           Logging parameters:
             -t|--trace       - Output a trace of each message, primitive,
                                return value and process switch.
@@ -66,7 +69,7 @@ def get_parameter(argv, idx, arg):
     if len(argv) < idx + 1:
         raise error.Exit("Missing argument after %s" % arg)
     return argv[idx], idx + 1
-    
+
 def get_int_parameter(argv, idx, arg):
     param, idx = get_parameter(argv, idx, arg)
     try:
@@ -74,10 +77,10 @@ def get_int_parameter(argv, idx, arg):
     except ValueError, e:
         raise error.Exit("Non-int argument after %s" % arg)
     return result, idx
-    
+
 def print_error(str):
     os.write(2, str + os.linesep)
-    
+
 prebuilt_space = objspace.ObjSpace()
 
 def safe_entry_point(argv):
@@ -112,7 +115,7 @@ def entry_point(argv):
     interrupts = True
     trace = False
     trace_important = False
-    
+
     space = prebuilt_space
     idx = 1
     try:
@@ -162,7 +165,7 @@ def entry_point(argv):
             else:
                 _usage(argv)
                 return -1
-        
+
         if path is None:
             path = "Squeak.image"
         if code and selector:
@@ -170,14 +173,14 @@ def entry_point(argv):
     except error.Exit as e:
         print_error("Parameter error: %s" % e.msg)
         return 1
-    
+
     path = rpath.rabspath(path)
     try:
         stream = squeakimage.Stream(filename=path)
     except OSError as e:
         print_error("%s -- %s (LoadError)" % (os.strerror(e.errno), path))
         return 1
-    
+
     # Load & prepare image and environment
     image = squeakimage.ImageReader(space, stream).create_image()
     interp = interpreter.Interpreter(space, image,
@@ -186,7 +189,7 @@ def entry_point(argv):
     space.runtime_setup(argv[0], path)
     interp.populate_remaining_special_objects()
     print_error("") # Line break after image-loading characters
-    
+
     # Create context to be executed
     if code or selector:
         if not have_number:
@@ -204,7 +207,7 @@ def entry_point(argv):
             context = active_context(space)
     else:
         context = active_context(space)
-    
+
     w_result = execute_context(interp, context)
     print result_string(w_result)
     return 0
@@ -219,14 +222,14 @@ def compile_code(interp, w_receiver, code):
     selector = "DoIt%d" % int(time.time())
     space = interp.space
     w_receiver_class = w_receiver.getclass(space)
-    
+
     # The suppress_process_switch flag is a hack/workaround to enable compiling code
     # before having initialized the image cleanly. The problem is that the TimingSemaphore is not yet
     # registered (primitive 136 not called), so the idle process will never be left once it is entered.
     # TODO - Find a way to cleanly initialize the image, without executing the active_context of the image.
     # Instead, we want to execute our own context. Then remove this flag (and all references to it)
     space.suppress_process_switch.activate()
-    
+
     w_result = interp.perform(
         w_receiver_class,
         "compile:classified:notifying:",
@@ -238,7 +241,7 @@ def compile_code(interp, w_receiver, code):
     if not isinstance(w_result, model.W_BytesObject) or w_result.as_string() != selector:
         raise error.Exit("Unexpected compilation result (probably failed to compile): %s" % result_string(w_result))
     space.suppress_process_switch.deactivate()
-    
+
     w_receiver_class.as_class_get_shadow(space).s_methoddict().sync_method_cache()
     return selector
 

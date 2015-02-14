@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -ex
 
 sudo i386 chroot "$chroot" sh -c "
@@ -17,3 +17,4 @@ if [ $exitcode -eq 0 ]; then
 	fi
     fi
 fi
+exit $exitcode
