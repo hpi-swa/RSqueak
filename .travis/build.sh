@@ -6,4 +6,4 @@ sudo i386 chroot "$chroot" sh -c "
     echo \$(pwd) &&
     ls &&
     PYTHONPATH=\"$PYTHONPATH:pypy-pypy/:pypy-rsdl/:.\"\
-            python2.7 pypy-pypy/rpython/bin/rpython --batch -Ojit targetimageloadingsmalltalk.py"
+            python2.7 pypy-pypy/rpython/bin/rpython --batch -Ojit targetrsqueak.py"
