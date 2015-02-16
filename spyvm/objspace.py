@@ -50,7 +50,7 @@ class ObjSpace(object):
     _immutable_fields_ = ['objtable']
 
     def __init__(self):
-        # This is a hack; see compile_code() in targetimageloadingsmalltalk.py
+        # This is a hack; see compile_code() in targetrsqueak.py
         self.suppress_process_switch = ConstantFlag()
         self.run_spy_hacks = ConstantFlag()
         self.headless = ConstantFlag()

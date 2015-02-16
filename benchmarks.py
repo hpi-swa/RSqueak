@@ -220,10 +220,10 @@ Cog = Project(
 RSqueakVM = Project(
     "lang-smalltalk",
     executables=[
-        Executable("rsqueakvm", "bash"),
-        # Executable("rsqueakvm-nojit", "./targetimageloadingsmalltalk-nojit-c")
+        Executable("rsqueak", "bash"),
+        # Executable("rsqueak-nojit", "./rsqueak-nojit-c")
     ],
-    arguments=["-c", "./targetimageloadingsmalltalk-c images/%s.image -m runSPyBenchmarks > >(tee stdout.log) 2> >(tee stderr.log >&2)" % SqueakImage]
+    arguments=["-c", "./rsqueak images/%s.image -m runSPyBenchmarks > >(tee stdout.log) 2> >(tee stderr.log >&2)" % SqueakImage]
 )
 
 

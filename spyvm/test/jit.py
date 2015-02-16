@@ -14,6 +14,7 @@ conftest.option = o
 from rpython.jit.metainterp.test.test_ajit import LLJitMixin
 from spyvm.test.util import import_bytecodes, read_image
 from spyvm import model, storage_contexts
+import targetrsqueak as rsqueak
 
 sys.setrecursionlimit(5000)
 import_bytecodes(__name__)
@@ -58,14 +59,13 @@ def preload_execute_frame(imagename, bytes, literals, stack):
 # ==== The following will pre-load images and build a jit based on methods from the entry-point module
 
 def run_benchmark(imagename, benchmark, number=0, arg=""):
-    import targetimageloadingsmalltalk
     interp = load(imagename)
     def interp_run_benchmark():
-        return targetimageloadingsmalltalk._run_benchmark(interp, number, benchmark, arg)
+        return rsqueak._run_benchmark(interp, number, benchmark, arg)
     return interp_run_benchmarks
 
 def run_code(imagename, code, as_benchmark=False):
-    from targetimageloadingsmalltalk import prebuilt_space as space, \
+    from rsqueak import prebuilt_space as space, \
             compile_code, create_context, execute_context
     interp = load(imagename)
     def interp_run_code():
@@ -79,22 +79,20 @@ def run_code(imagename, code, as_benchmark=False):
     return interp_run_code
 
 def run_image(imagename):
-    import targetimageloadingsmalltalk
     interp = load(imagename)
     def interp_run_image():
-        return targetimageloadingsmalltalk._run_image(interp)
+        return rsqueak._run_image(interp)
     return interp_run_image
 
 # ==== The following will build a JIT for the real entry-point.
 
 def full_vm(args):
-    import targetimageloadingsmalltalk
-    module_file = targetimageloadingsmalltalk.__file__[:-1]
+    module_file = rsqueak.__file__[:-1]
     full_args = [ module_file ]
     full_args.extend([ str(a) for a in args ])
     print ">> Entry Point arguments: %r" % full_args
     def interp_full_vm():
-        return targetimageloadingsmalltalk.entry_point(full_args)
+        return rsqueak.entry_point(full_args)
     return interp_full_vm
 
 def full_vm_image(imagename, additional_args = []):
