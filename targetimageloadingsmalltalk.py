@@ -282,12 +282,6 @@ def execute_context(interp, s_frame):
 # _____ Target and Main _____
 
 def target(driver, *args):
-    # driver.config.translation.gc = "stmgc"
-    # driver.config.translation.gcrootfinder = "stm"
-    from rpython.rlib import rgc
-    if hasattr(rgc, "stm_is_enabled"):
-        driver.config.translation.stm = True
-        driver.config.translation.thread = True
     driver.exe_name = "rsqueak"
     return safe_entry_point, None
 
