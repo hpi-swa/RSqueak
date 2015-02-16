@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 import sys, time, os
-
+from rpython.jit.codewriter.policy import JitPolicy
 from rpython.rlib import jit, rpath, objectmodel
 from spyvm import model, interpreter, squeakimage, objspace, wrapper, error
 
@@ -286,7 +286,6 @@ def target(driver, *args):
     return safe_entry_point, None
 
 def jitpolicy(self):
-    from rpython.jit.codewriter.policy import JitPolicy
     return JitPolicy()
 
 if __name__ == "__main__":
