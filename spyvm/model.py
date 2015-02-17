@@ -628,9 +628,11 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
                 name = " [%s]" % self._get_strategy().getname()
         return '(%s) len=%d%s' % (strategy_info, self.size(), name)
 
+    @jit.look_inside_iff(lambda self, space: self.size() < 64)
     def fetch_all(self, space):
         return [self.fetch(space, i) for i in range(self.size())]
 
+    @jit.look_inside_iff(lambda self, space, collection: len(collection) < 64)
     def store_all(self, space, collection):
         # Be tolerant: copy over as many elements as possible, set rest to nil.
         # The size of the object cannot be changed in any case.
