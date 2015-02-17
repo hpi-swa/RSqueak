@@ -2,7 +2,7 @@
 from spyvm import model, constants, error, wrapper
 from spyvm.storage import AbstractStrategy, ShadowMixin, AbstractGenericShadow
 from rpython.tool.pairtype import extendabletype
-from rpython.rlib import rarithmetic, jit, objectmodel
+from rpython.rlib import jit, objectmodel
 from rpython.rlib.objectmodel import import_from_mixin
 import rstrategies as rstrat
 
@@ -230,7 +230,7 @@ class ContextPartShadow(AbstractStrategy):
                 self.push(self.space.w_nil)
 
     def stackdepth(self):
-        return rarithmetic.intmask(self._stack_ptr)
+        return self._stack_ptr
 
     def wrap_stackpointer(self):
         return self.space.wrap_int(self.stackdepth())
@@ -386,13 +386,15 @@ class ContextPartShadow(AbstractStrategy):
         stacksize = self.full_stacksize()
         self._temps_and_stack = [self.space.w_nil] * stacksize
         tempsize = self.tempsize()
-        self._stack_ptr = rarithmetic.r_uint(tempsize) # we point after the last element
+        self._stack_ptr = tempsize # we point after the last element
 
     def stack_get(self, index0):
+        assert index0 >= 0
         return self._temps_and_stack[index0]
 
     def stack_put(self, index0, w_val):
         assert w_val is not None
+        assert index0 >= 0
         self._temps_and_stack[index0] = w_val
 
     def stack(self):
@@ -404,6 +406,7 @@ class ContextPartShadow(AbstractStrategy):
         ptr = jit.promote(self._stack_ptr) - 1
         ret = self.stack_get(ptr)   # you get OverflowError if the stack is empty
         self.stack_put(ptr, self.space.w_nil)
+        assert ptr >= 0
         self._stack_ptr = ptr
         return ret
 
@@ -423,13 +426,11 @@ class ContextPartShadow(AbstractStrategy):
         return self.peek(0)
 
     def set_top(self, value, position=0):
-        rpos = rarithmetic.r_uint(position)
-        ptr = self._stack_ptr + ~rpos
+        ptr = self._stack_ptr - position - 1
         self.stack_put(ptr, value)
 
     def peek(self, idx):
-        rpos = rarithmetic.r_uint(idx)
-        ptr = jit.promote(self._stack_ptr) + ~rpos
+        ptr = jit.promote(self._stack_ptr) - idx - 1
         return self.stack_get(ptr)
 
     @jit.unroll_safe
@@ -438,6 +439,7 @@ class ContextPartShadow(AbstractStrategy):
         jit.promote(self._stack_ptr)
         while n > 0:
             n -= 1
+            assert self._stack_ptr >= 1
             self._stack_ptr -= 1
             self.stack_put(self._stack_ptr, self.space.w_nil)
 
