@@ -759,37 +759,6 @@ def test_primitive_force_display_update(monkeypatch):
     finally:
         monkeypatch.undo()
 
-def test_bitblt_copy_bits(monkeypatch):
-    class CallCopyBitsSimulation(Exception):
-        pass
-    class Image():
-        def __init__(self):
-            self.w_simulateCopyBits = "simulateCopyBits"
-
-    mock_bitblt = model.W_PointersObject(space, space.w_Point, 15)
-    mock_bitblt.store(space, 3, space.wrap_int(15)) # combination rule
-
-    def perform_mock(w_selector, argcount, interp):
-        if w_selector == "simulateCopyBits" or w_selector.as_string() == "simulateCopyBits":
-            assert argcount == 0
-            raise CallCopyBitsSimulation
-
-    def sync_cache_mock(self):
-        raise CallCopyBitsSimulation
-
-    interp, w_frame, argument_count = mock(space, [mock_bitblt], None)
-    if interp.image is None:
-        interp.image = Image()
-
-    try:
-        monkeypatch.setattr(w_frame.strategy, "_sendSelfSelector", perform_mock)
-        monkeypatch.setattr(bitblt.BitBltShadow, "strategy_switched", sync_cache_mock)
-        with py.test.raises(CallCopyBitsSimulation):
-            prim_table[primitives.BITBLT_COPY_BITS](interp, w_frame.as_context_get_shadow(space), argument_count-1)
-    finally:
-        monkeypatch.undo()
-    assert w_frame.strategy.pop() is mock_bitblt # the receiver
-
 # Note:
 #   primitives.NEXT is unimplemented as it is a performance optimization
 #   primitives.NEXT_PUT is unimplemented as it is a performance optimization

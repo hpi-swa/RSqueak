@@ -39,20 +39,15 @@ Interpreter:
 [ ] Implement context rewinding
 
 Squeakimage:
-[ ] Implement image writer
+[ ] Implement image writer, refactor SqueakImage
 
 Shadows:
 [ ] What to do with shadows when their w_self changes class?
 [ ] Weak references for subclasses
 
+- Printing context objects: fix showing wrong PC
+- Graphical Artficats in font rendering
+- Test or delete Plugins
+- Inject and test StackOverflow error. Might crash VM, because PC is pre-incremented.
 
-Optimizations:
-use integer tagging primitives to get more compact code:
-    def wrap_int(self, val):
-        from rpython.rlib import rerased
-        try:
-            return model.W_SmallInteger(rerased.erase_int(val))
-        except OverflowError:
-            raise WrappingError("integer too large to fit into a tagged pointer")
 
-use special class for 1WordLargeIntegers
