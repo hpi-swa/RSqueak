@@ -1,6 +1,8 @@
-#!/bin/sh
-
+#!/bin/bash
 set -ex
+
+if [ "$TEST_TYPE" == "64bitdefault" ]; then exit 0; fi
+if [ "$TEST_TYPE" == "64bitbuild" ]; then exit 0; fi
 
 # Prepare an i386 chroot. This is required as we otherwise can't install
 # our dependencies to be able to compile a 32bit binary. Ubuntu...
