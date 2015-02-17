@@ -1,20 +1,24 @@
 #!/bin/bash
 set -ex
 
-sudo i386 chroot "$chroot" sh -c "
+if [ "$TEST_TYPE" == "build" ]; then
+    sudo i386 chroot "$chroot" sh -c "
     cd $PWD &&
     echo \$(pwd) &&
     ls &&
     PYTHONPATH=\"$PYTHONPATH:pypy-pypy/:pypy-rsdl/:.\"\
             python2.7 pypy-pypy/rpython/bin/rpython --batch -Ojit targetimageloadingsmalltalk.py"
 
-exitcode=$?
-if [ $exitcode -eq 0 ]; then
-    if [ "$TRAVIS_BRANCH" == "master" ]; then
-	if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
-	    mv rsqueak rsqueak-x86-Linux-jit-$TRAVIS_COMMIT
-	    curl -T rsqueak-x86-Linux-jit-* http://www.lively-kernel.org/babelsberg/RSqueak/
-	fi
+    exitcode=$?
+    if [ $exitcode -eq 0 ]; then
+        if [ "$TRAVIS_BRANCH" == "master" ]; then
+	    if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
+	        mv rsqueak rsqueak-x86-Linux-jit-$TRAVIS_COMMIT
+                curl -T rsqueak-x86-Linux-jit-* http://www.lively-kernel.org/babelsberg/RSqueak/
+	    fi
+        fi
     fi
+    exit $exitcode
+else
+    exit 0
 fi
-exit $exitcode
