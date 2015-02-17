@@ -54,7 +54,6 @@ def test_bytes_object():
     assert w_bytes.getchar(0) == "\x00"
     py.test.raises(IndexError, lambda: w_bytes.getchar(20))
 
-@py.test.mark.skipif("'removed interpreter proxy'")
 def test_c_bytes_object():
     w_class = bootstrap_class(0, format=storage_classes.BYTES)
     w_bytes = w_class.as_class_get_shadow(space).new(20)
@@ -80,7 +79,6 @@ def test_word_object():
     assert w_bytes.getword(0) == 0
     py.test.raises(AssertionError, lambda: w_bytes.getword(20))
 
-@py.test.mark.skipif("'removed interpreter proxy'")
 def test_c_word_object():
     w_class = bootstrap_class(0, format=storage_classes.WORDS)
     w_bytes = w_class.as_class_get_shadow(space).new(20)

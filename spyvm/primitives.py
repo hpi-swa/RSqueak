@@ -868,6 +868,13 @@ def func(interp, s_frame, argcount, w_method):
         raise PrimitiveFailedError
     signature = (w_modulename.as_string(), w_functionname.as_string())
 
+    if interp.space.use_plugins.is_set():
+        from spyvm.plugins.squeak_plugin_proxy import IProxy, MissingPlugin
+        try:
+            return IProxy.call(signature, interp, s_frame, argcount, w_method)
+        except MissingPlugin:
+            pass
+
     if signature[0] == 'BitBltPlugin':
         from spyvm.plugins.bitblt import BitBltPlugin
         return BitBltPlugin.call(signature[1], interp, s_frame, argcount, w_method)

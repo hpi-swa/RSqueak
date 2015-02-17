@@ -1,3 +1,6 @@
+# This simulates the Squeak VM plugin interface so we can fall back to
+# externally built Squeak plugins
+
 # struct VirtualMachine* sqGetInterpreterProxy(void);
 
 # typedef struct VirtualMachine {
@@ -16,6 +19,7 @@ from rpython.rlib.exports import export_struct
 from rpython.rtyper.lltypesystem.lltype import FuncType, Ptr
 from rpython.rtyper.lltypesystem import lltype, rffi
 from rpython.rlib.unroll import unrolling_iterable
+from rpython.rlib.rarithmetic import intmask, r_uint, r_int
 
 from spyvm import error, model, model_display, objspace, wrapper
 
@@ -32,6 +36,9 @@ functions = []
 oop = object()
 
 class ProxyFunctionFailed(error.PrimitiveFailedError):
+    pass
+
+class MissingPlugin(error.PrimitiveFailedError):
     pass
 
 def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
@@ -990,6 +997,7 @@ class _InterpreterProxy(object):
         self.oop_map = {}
         self.object_map = {}
         self.loaded_modules = {}
+        self.missing_modules = []
         self.remappable_objects = []
         self.trace_proxy = objspace.ConstantFlag()
         self.reset()
@@ -1019,8 +1027,14 @@ class _InterpreterProxy(object):
 
     def loadFunctionFrom(self, module_name, function_name):
         from rpython.rlib.rdynload import dlsym
-        if module_name not in self.loaded_modules:
-            module = self.load_and_initialize(module_name)
+        module = None
+        if module_name in self.missing_modules:
+            raise MissingPlugin
+        elif module_name not in self.loaded_modules:
+            try:
+                module = self.load_and_initialize(module_name)
+            finally:
+                if module is None: self.missing_modules.append(module_name)
         else:
             module = self.loaded_modules[module_name]
 
@@ -1095,7 +1109,7 @@ class _InterpreterProxy(object):
             module = dlopen(c_name)
         except DLOpenError, e:
             rffi.free_charp(c_name)
-            raise error.PrimitiveFailedError
+            raise MissingPlugin
 
         try:
             try:

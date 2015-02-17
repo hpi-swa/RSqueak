@@ -52,6 +52,9 @@ def _usage(argv):
             -S                 - Disable specialized storage strategies.
                                  always use generic ListStrategy.
             --hacks            - Enable Spy hacks. Set display color depth to 8
+            --use-plugins      - Directs named primitives to go to the native
+                                 Squeak plugins, which must be in the dynamic
+                                 linker path.
 
           Logging parameters:
             -t|--trace       - Output a trace of each message, primitive,
@@ -151,6 +154,8 @@ def entry_point(argv):
                 headless = False
             elif arg in ["--hacks"]:
                 space.run_spy_hacks.activate()
+            elif arg in ["--use-plugins"]:
+                space.use_plugins.activate()
             elif arg in ["-S"]:
                 space.strategy_factory.no_specialized_storage.activate()
             elif arg in ["-u"]:
