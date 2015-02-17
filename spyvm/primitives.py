@@ -641,9 +641,9 @@ def func(interp, s_frame, w_rcvr):
     w_point.store(interp.space, 1, interp.space.wrap_int(y))
     return w_point
 
+@expose_primitive(GET_NEXT_EVENT, unwrap_spec=[object, object])
 @jit.unroll_safe
 @jit.look_inside
-@expose_primitive(GET_NEXT_EVENT, unwrap_spec=[object, object])
 def func(interp, s_frame, w_rcvr, w_into):
     if not interp.evented:
         raise PrimitiveFailedError()
@@ -728,6 +728,7 @@ def func(interp, s_frame, w_rcvr):
     return w_rcvr
 
 @expose_primitive(STRING_REPLACE, unwrap_spec=[object, index1_0, index1_0, object, index1_0])
+@jit.look_inside_iff(lambda interp, s_frame, w_rcvr, start, stop, w_replacement, repStart: stop - start < 32)
 def func(interp, s_frame, w_rcvr, start, stop, w_replacement, repStart):
     """replaceFrom: start to: stop with: replacement startingAt: repStart
     Primitive. This destructively replaces elements from start to stop in the
@@ -867,6 +868,13 @@ def func(interp, s_frame, argcount, w_method):
             isinstance(w_functionname, model.W_BytesObject)):
         raise PrimitiveFailedError
     signature = (w_modulename.as_string(), w_functionname.as_string())
+
+    if interp.space.use_plugins.is_set():
+        from spyvm.plugins.squeak_plugin_proxy import IProxy, MissingPlugin
+        try:
+            return IProxy.call(signature, interp, s_frame, argcount, w_method)
+        except MissingPlugin:
+            pass
 
     if signature[0] == 'BitBltPlugin':
         from spyvm.plugins.bitblt import BitBltPlugin

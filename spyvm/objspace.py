@@ -54,6 +54,7 @@ class ObjSpace(object):
         self.suppress_process_switch = ConstantFlag()
         self.run_spy_hacks = ConstantFlag()
         self.headless = ConstantFlag()
+        self.use_plugins = ConstantFlag()
         self.omit_printing_raw_bytes = ConstantFlag()
         self.image_loaded = ConstantFlag()
         
