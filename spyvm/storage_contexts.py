@@ -41,7 +41,7 @@ class ContextPartShadow(AbstractStrategy):
     _attrs_ = ['_w_self', '_w_self_size',
                'instances_w', 'state',
                'is_block_context',
-               
+
                # Core context data
                '_s_sender', '_pc', '_temps_and_stack', '_stack_ptr',
                # BlockContext data
@@ -71,12 +71,12 @@ class ContextPartShadow(AbstractStrategy):
 
     # ______________________________________________________________________
     # Initialization
-    
+
     @jit.unroll_safe
     def __init__(self, space, w_self, size):
         self = fresh_virtualizable(self)
         AbstractStrategy.__init__(self, space, w_self, size)
-        
+
         # If w_self is not given, is_block_context must be set explicitely!
         if w_self is not None:
             if w_self.getclass(space).is_same_object(space.w_BlockContext):
@@ -85,7 +85,7 @@ class ContextPartShadow(AbstractStrategy):
                 self.is_block_context = False
             else:
                 raise ValueError("Object %s cannot be treated like a Context object!" % w_self)
-        
+
         self._s_sender = None
         if w_self is not None:
             self._w_self_size = w_self.size()
@@ -95,7 +95,7 @@ class ContextPartShadow(AbstractStrategy):
         self.instances_w = {}
         self.state = InactiveContext
         self.store_pc(0)
-        
+
         # From BlockContext
         self._w_home = None
         self._initialip = 0
@@ -105,11 +105,11 @@ class ContextPartShadow(AbstractStrategy):
         self._w_method = None
         self._w_receiver = None
         self._is_BlockClosure_ensure = False
-        
+
     def initialize_storage(self, w_self, initial_size):
         # The context object holds all of its storage itself.
         self.set_storage(w_self, None)
-    
+
     @jit.unroll_safe
     def convert_storage_from(self, w_self, previous_strategy):
         # Some fields have to be initialized before the rest,
@@ -120,15 +120,15 @@ class ContextPartShadow(AbstractStrategy):
         self.initialize_storage(w_self, size)
         for n0 in privileged_fields:
             self.store(w_self, n0, storage[n0])
-        
+
         # Now the temp size will be known.
         self.init_temps_and_stack()
-        
+
         # After this, convert the rest of the fields.
         for n0 in range(size):
             if n0 not in privileged_fields:
                 self.store(w_self, n0, storage[n0])
-    
+
     def fields_to_convert_first(self):
         if self.is_block_context:
             return [ constants.BLKCTX_HOME_INDEX ]
@@ -140,7 +140,7 @@ class ContextPartShadow(AbstractStrategy):
 
     def size(self, ignored_w_self):
         return self._w_self_size
-    
+
     def fetch(self, ignored_w_self, n0):
         if self.is_block_context:
             return self.fetch_block_context(n0)
@@ -264,7 +264,7 @@ class ContextPartShadow(AbstractStrategy):
 
     # ______________________________________________________________________
     # Specialized accessors
-    # 
+    #
     # These methods have different versions depending on whether the receiver
     # is a BlockContext or MethodContext. The call is forwarded to a specialized
     # version, like a manual kind of inheritance.
@@ -336,7 +336,7 @@ class ContextPartShadow(AbstractStrategy):
             return self.settemp_block_context(index, w_value)
         else:
             return self.settemp_method_context(index, w_value)
-            
+
     # === Other properties of Contexts ===
 
     def mark_returned(self):
