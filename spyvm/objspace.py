@@ -282,6 +282,7 @@ class ObjSpace(object):
     def _freeze_(self):
         return True
 
+    @jit.unroll_safe
     def newClosure(self, w_outer_ctxt, pc, numArgs, copiedValues):
         assert isinstance(w_outer_ctxt, model.W_PointersObject)
         pc_with_bytecodeoffset = pc + w_outer_ctxt.as_context_get_shadow(self).w_method().bytecodeoffset() + 1
