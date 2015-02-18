@@ -10,14 +10,14 @@ slow) testflag="-S" ;;
 esac
 
 case "$BUILD_ARCH" in
-32bit)
+64bit)
     echo $(pwd)
     ls
     PYTHONPATH="$PYTHONPATH:pypy-pypy/:pypy-rsdl/:."\
             python2.7 pypy-pypy/pytest.py -s $testflag spyvm/test/
     exit $?
     ;;
-64bit)
+32bit)
     sudo i386 chroot "$chroot" sh -c "
         cd $PWD &&
         echo \$(pwd) &&
