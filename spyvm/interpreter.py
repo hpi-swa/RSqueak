@@ -64,9 +64,14 @@ def get_printable_location(pc, self, method):
     return '(%s) [%d]: <%s>%s' % (name, pc, hex(bc), interpreter_bytecodes.BYTECODE_NAMES[bc])
 
 class Interpreter(object):
-    _immutable_fields_ = ["space", "image",
-                          "interrupt_counter_size", "trace_important",
-                          "startup_time", "evented", "interrupts"]
+    _immutable_fields_ = ["space",
+                          "image",
+                          "startup_time",
+                          "evented",
+                          "interrupts",
+                          "trace_important",
+                          "interrupt_counter_size",
+                          "trace"]
 
     jit_driver = jit.JitDriver(
         greens=['pc', 'self', 'method'],
@@ -91,11 +96,11 @@ class Interpreter(object):
             self.interrupt_counter_size = int(os.environ["SPY_ICS"])
         except KeyError:
             self.interrupt_counter_size = constants.INTERRUPT_COUNTER_SIZE
+        self.trace = trace
 
         # === Initialize mutable variables
         self.interrupt_check_counter = self.interrupt_counter_size
         self.next_wakeup_tick = 0
-        self.trace = trace
         self.trace_proxy = objspace.ConstantFlag()
         self.stack_depth = 0
 

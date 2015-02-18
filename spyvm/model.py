@@ -798,6 +798,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
                 return "<omitted>"
         return "'%s'" % self.as_string().replace('\r', '\n')
 
+    @jit.look_inside_iff(lambda self: self._size < 256)
     def as_string(self):
         if self.bytes is None:
             return "".join([self.c_bytes[i] for i in range(self.size())])
