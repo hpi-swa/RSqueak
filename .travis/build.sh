@@ -9,7 +9,7 @@ case "$BUILD_ARCH" in
     ls &&
     PYTHONPATH=\"$PYTHONPATH:pypy-pypy/:pypy-rsdl/:.\"\
             python2.7 pypy-pypy/rpython/bin/rpython --batch -Ojit targetrsqueak.py"
-    mv rsqueak* rsqueak-x86-Linux-jit-$TRAVIS_COMMIT || true
+    cp rsqueak* rsqueak-x86-Linux-jit-$TRAVIS_COMMIT || true
     exitcode=$?
     ;;
 64bit)
@@ -17,7 +17,7 @@ case "$BUILD_ARCH" in
     ls
     PYTHONPATH="$PYTHONPATH:pypy-pypy/:pypy-rsdl/:." python2.7 \
             pypy-pypy/rpython/bin/rpython --batch -Ojit targetrsqueak.py
-    mv rsqueak* rsqueak-x86_64-Linux-jit-$TRAVIS_COMMIT || true
+    cp rsqueak* rsqueak-x86_64-Linux-jit-$TRAVIS_COMMIT || true
     exitcode=$?
     ;;
 *) exit 0 ;;
@@ -29,5 +29,9 @@ if [ $exitcode -eq 0 ]; then
             curl -T rsqueak-x86* http://www.lively-kernel.org/babelsberg/RSqueak/
 	fi
     fi
+    PYTHONPATH="$PYTHONPATH:pypy-pypy/:pypy-rsdl/:." python2.7 \
+	pypy-pypy/pytest.py --jit=./rsqueak spyvm/test/jittest/
+    exit $?
+else
+    exit $exitcode
 fi
-exit $exitcode
