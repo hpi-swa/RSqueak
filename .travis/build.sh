@@ -29,6 +29,7 @@ if [ $exitcode -eq 0 ]; then
             curl -T rsqueak-x86* http://www.lively-kernel.org/babelsberg/RSqueak/
 	fi
     fi
+    sudo rm -rf pypy-pypy/rpython/_cache
     PYTHONPATH="$PYTHONPATH:pypy-pypy/:pypy-rsdl/:." python2.7 \
 	pypy-pypy/pytest.py --jit=./rsqueak spyvm/test/jittest/
     exit $?
