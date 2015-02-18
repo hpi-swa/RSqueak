@@ -24,6 +24,7 @@ case "$BUILD_ARCH" in
         ls &&
         PYTHONPATH=\"$PYTHONPATH:pypy-pypy/:pypy-rsdl/:.\"\
             python2.7 pypy-pypy/pytest.py -s $testflag spyvm/test/"
+    ;;
 *) exit 0 ;;
 esac
 
