@@ -1,11 +1,19 @@
 language: python
 python:
   - 2.7
-#env:
-#  matrix:
-#    - TEST_TYPE=default
-#    - TEST_TYPE=quick
-#    - TEST_TYPE=slow
+env:
+  matrix:
+    - TEST_TYPE=default
+    - TEST_TYPE=quick
+    - TEST_TYPE=slow
+    - TEST_TYPE=build
+    - TEST_TYPE=64bitdefault
+    - TEST_TYPE=64bitbuild
+matrix:
+  fast_finish: true
+  allow_failures:
+    - env: TEST_TYPE=64bitdefault
+    - env: TEST_TYPE=64bitbuild
 install:
   - export chroot="$PWD"/buildroot.i386
   - .travis/setup_chroot.sh

@@ -32,6 +32,8 @@ def setup():
 interp, s_frame = setup()
 
 def entry_point(argv):
+    if len(argv) > 1:
+        print "This RSqueak VM has an embedded image and ignores all cli-parameters."
     try:
         interp.loop(s_frame.w_self())
     except interpreter.ReturnFromTopLevel, e:
@@ -43,7 +45,8 @@ def entry_point(argv):
 
 # _____ Define and setup target ___
 
-def target(*args):
+def target(driver, *args):
+    driver.exe_name = "rsqueak-embedded"
     return entry_point, None
 
 def jitpolicy(driver):
