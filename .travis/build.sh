@@ -1,7 +1,8 @@
 #!/bin/bash
 set -ex
 
-if [ "$TEST_TYPE" == "build" ]; then
+case "$BUILD_ARCH" in
+32bit)
     sudo i386 chroot "$chroot" sh -c "
     cd $PWD &&
     echo \$(pwd) &&
@@ -10,16 +11,17 @@ if [ "$TEST_TYPE" == "build" ]; then
             python2.7 pypy-pypy/rpython/bin/rpython --batch -Ojit targetrsqueak.py"
     mv rsqueak* rsqueak-x86-Linux-jit-$TRAVIS_COMMIT || true
     exitcode=$?
-else if [ "$TEST_TYPE" == "64bitbuild" ]; then
+    ;;
+64bit)
     echo $(pwd)
     ls
     PYTHONPATH="$PYTHONPATH:pypy-pypy/:pypy-rsdl/:." python2.7 \
-            pypy-pypy/rpython/bin/rpython --batch -Ojit targetimageloadingsmalltalk.py
+            pypy-pypy/rpython/bin/rpython --batch -Ojit targetrsqueak.py
     mv rsqueak* rsqueak-x86_64-Linux-jit-$TRAVIS_COMMIT || true
     exitcode=$?
-else
-    exit 0
-fi fi
+    ;;
+*) exit 0 ;;
+esac
 
 if [ $exitcode -eq 0 ]; then
     if [ "$TRAVIS_BRANCH" == "master" ]; then

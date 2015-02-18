@@ -1,25 +1,29 @@
 #!/bin/sh
 set -ex
 
-if [ "$TEST_TYPE" == "64bitdefault" ]; then
+case "$TEST_TYPE" in
+default) testflag="" ;;
+quick) testflag="-Q" ;;
+slow) testflag="-S" ;;
+*) echo "Wrong TEST_TYPE value ($TEST_TYPE), not executing tests"
+   exit 0 ;;
+esac
+
+case "$BUILD_ARCH" in
+32bit)
     echo $(pwd)
     ls
     PYTHONPATH="$PYTHONPATH:pypy-pypy/:pypy-rsdl/:."\
-            python2.7 pypy-pypy/pytest.py -s spyvm/test/
+            python2.7 pypy-pypy/pytest.py -s $testflag spyvm/test/
     exit $?
-else
-    case "$TEST_TYPE" in
-       default) testflag="" ;;
-       quick) testflag="-Q" ;;
-       slow) testflag="-S" ;;
-       *) echo "Wrong TEST_TYPE value ($TEST_TYPE), not executing tests"
-          exit 0 ;;
-    esac
-
+    ;;
+64bit)
     sudo i386 chroot "$chroot" sh -c "
         cd $PWD &&
         echo \$(pwd) &&
         ls &&
         PYTHONPATH=\"$PYTHONPATH:pypy-pypy/:pypy-rsdl/:.\"\
             python2.7 pypy-pypy/pytest.py -s $testflag spyvm/test/"
-fi
+*) exit 0 ;;
+esac
+
