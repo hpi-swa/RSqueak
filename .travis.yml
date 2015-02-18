@@ -4,19 +4,17 @@ python:
 env:
   matrix:
     - TEST_TYPE=default
-    - TEST_TYPE=quick
-    - TEST_TYPE=slow
-    - TEST_TYPE=build
-    - TEST_TYPE=64bitdefault
-    - TEST_TYPE=64bitbuild
+    - BUILD_ARCH=32bit
+    - BUILD_ARCH=64bit
+    - BUILD_TYPE=test
+    - BUILD_TYPE=build
 matrix:
   fast_finish: true
   allow_failures:
-    - env: TEST_TYPE=64bitdefault
-    - env: TEST_TYPE=64bitbuild
+    - env: BUILD_ARCH=64bit
 install:
   - export chroot="$PWD"/buildroot.i386
   - .travis/setup_chroot.sh
 script:
-  - .travis/test.sh
-  - .travis/build.sh
+  - if [ "$BUILD_TYPE" == test ]; then .travis/test.sh; fi
+  - if [ "$BUILD_TYPE" == build ]; then .travis/build.sh; fi
