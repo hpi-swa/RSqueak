@@ -30,8 +30,8 @@ if [ $exitcode -eq 0 ]; then
 	fi
     fi
     sudo rm -rf pypy-pypy/rpython/_cache
-    PYTHONPATH="$PYTHONPATH:pypy-pypy/:pypy-rsdl/:." python2.7 \
-	pypy-pypy/pytest.py --jit=./rsqueak spyvm/test/jittest/
+    export PYTHONPATH="$PYTHONPATH:pypy-pypy/:pypy-rsdl/:."
+    sudo python2.7 pypy-pypy/pytest.py --jit=./rsqueak spyvm/test/jittest/
     exit $?
 else
     exit $exitcode
