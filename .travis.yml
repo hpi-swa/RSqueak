@@ -4,6 +4,7 @@ python:
 env:
   global:
     - TEST_TYPE=default 
+    - EXECUTE_JITTESTS=no
   matrix:
     - BUILD_ARCH=32bit BUILD_TYPE=test
     - BUILD_ARCH=32bit BUILD_TYPE=build

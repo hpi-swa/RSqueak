@@ -3,6 +3,7 @@ set -ex
 
 case "$BUILD_ARCH" in
 32bit)
+    binary=rsqueak
     sudo i386 chroot "$chroot" sh -c "
     cd $PWD &&
     echo \$(pwd) &&
@@ -13,6 +14,7 @@ case "$BUILD_ARCH" in
     exitcode=$?
     ;;
 64bit)
+    binary=rsqueak-64
     echo $(pwd)
     ls
     PYTHONPATH="$PYTHONPATH:pypy-pypy/:pypy-rsdl/:." python2.7 \
@@ -30,9 +32,11 @@ if [ $exitcode -eq 0 ]; then
 	fi
     fi
     sudo rm -rf pypy-pypy/rpython/_cache
-    PYTHONPATH="$PYTHONPATH:pypy-pypy/:pypy-rsdl/:." python2.7 \
-	pypy-pypy/pytest.py --jit=./rsqueak spyvm/test/jittest/
-    exit $?
+    if [ yes == "$EXECUTE_JITTESTS" ]; then
+        PYTHONPATH="$PYTHONPATH:pypy-pypy/:pypy-rsdl/:." python2.7 \
+	    pypy-pypy/pytest.py --jit=./$binary spyvm/test/jittest/
+        exit $?
+    fi
 else
     exit $exitcode
 fi
