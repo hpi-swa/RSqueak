@@ -31,7 +31,7 @@ def bytecode_implementation(parameter_bytes=0):
                 parameters += (self.fetch_next_bytecode(), )
                 i = i + 1
             # This is a good place to step through bytecodes.
-            
+
             self.debug_bytecode(interp)
             return actual_implementation_method(self, interp, current_bytecode, *parameters)
         bytecode_implementation_wrapper.func_name = actual_implementation_method.func_name
@@ -98,7 +98,7 @@ def make_send_selector_bytecode(selector, argcount):
 # "self" is always a ContextPartShadow instance.
 # __extend__ adds new methods to the ContextPartShadow class
 class __extend__(ContextPartShadow):
-    
+
     # ====== Push/Pop bytecodes ======
 
     @bytecode_implementation()
@@ -120,7 +120,7 @@ class __extend__(ContextPartShadow):
     def pushLiteralVariableBytecode(self, interp, current_bytecode):
         # this bytecode assumes that literals[index] is an Association
         # which is an object with two named vars, and fetches the second
-        # named var (the value).    
+        # named var (the value).
         index = current_bytecode & 31
         w_association = self.w_method().getliteral(index)
         association = wrapper.AssociationWrapper(self.space, w_association)
@@ -394,7 +394,7 @@ class __extend__(ContextPartShadow):
 
     def _mustBeBoolean(self, interp, receiver):
         return self._sendSpecialSelector(interp, receiver, "mustBeBoolean")
-        
+
     def _call_primitive(self, code, interp, argcount, w_method, w_selector):
         # ##################################################################
         if interp.is_tracing() and isinstance(w_method, model.W_CompiledMethod):
@@ -415,11 +415,11 @@ class __extend__(ContextPartShadow):
     def _return(self, return_value, interp, local_return=False):
         # unfortunately, this assert is not true for some tests. TODO fix this.
         # assert self._stack_ptr == self.tempsize()
-        
+
         # ##################################################################
         if interp.is_tracing():
             interp.print_padded('<- ' + return_value.as_repr_string())
-        
+
         if self.home_is_self() or local_return:
             # a local return just needs to go up the stack once. there
             # it will find the sender as a local, and we don't have to
@@ -428,7 +428,7 @@ class __extend__(ContextPartShadow):
         else:
             s_return_to = self.s_home().s_sender()
             assert s_return_to, "No sender to return to!"
-        
+
         from spyvm.interpreter import Return
         raise Return(s_return_to, return_value)
 
@@ -534,7 +534,7 @@ class __extend__(ContextPartShadow):
                     raise ret
             finally:
                 self.mark_returned()
-    
+
     @bytecode_implementation()
     def unknownBytecode(self, interp, current_bytecode):
         raise error.MissingBytecode("unknownBytecode")
@@ -629,11 +629,11 @@ class __extend__(ContextPartShadow):
     bytecodePrimNewWithArg = make_send_selector_bytecode("new:", 1)
     bytecodePrimPointX = make_send_selector_bytecode("x", 0)
     bytecodePrimPointY = make_send_selector_bytecode("y", 0)
-    
+
     def debug_bytecode(self, interp):
         # Hook used in interpreter_debugging
         pass
-    
+
 BYTECODE_RANGES = [
             (  0,  15, "pushReceiverVariableBytecode"),
             ( 16,  31, "pushTemporaryVariableBytecode"),
