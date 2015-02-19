@@ -40,7 +40,7 @@ MINIMUM_DEPTH = 8
 class SDLDisplay(object):
     _attrs_ = ["screen", "width", "height", "depth", "surface", "has_surface",
                "mouse_position", "button", "key", "interrupt_key", "_defer_updates",
-               "_deferred_event", "bpp", "pitch"]
+               "_deferred_events", "bpp", "pitch"]
     #_immutable_fields_ = ["pixelbuffer?"]
 
     def __init__(self, title):
@@ -53,7 +53,7 @@ class SDLDisplay(object):
         self.interrupt_key = 15 << 8 # pushing all four meta keys, of which we support three...
         self.button = 0
         self.key = 0
-        self._deferred_event = None
+        self._deferred_events = []
         self._defer_updates = False
 
     def __del__(self):
@@ -182,9 +182,8 @@ class SDLDisplay(object):
                 0]
 
     def get_next_event(self, time=0):
-        if self._deferred_event:
-            deferred = self._deferred_event
-            self._deferred_event = None
+        if len(self._deferred_events) > 0:
+            deferred = self._deferred_events.pop()
             return deferred
 
         event = lltype.malloc(RSDL.Event, flavor="raw")
@@ -201,17 +200,17 @@ class SDLDisplay(object):
                     self.handle_keypress(c_type, event)
                     return self.get_next_key_event(EventKeyDown, time)
                 elif c_type == RSDL.KEYUP:
-                    self._deferred_event = self.get_next_key_event(EventKeyUp, time)
+                    self._deferred_events.append(self.get_next_key_event(EventKeyUp, time))
                     return self.get_next_key_event(EventKeyChar, time)
                 elif c_type == RSDL.VIDEORESIZE:
                     self.screen = RSDL.GetVideoSurface()
-                    self._deferred_event = [EventTypeWindow, time, WindowEventPaint,
-                                            0, 0, int(self.screen.c_w), int(self.screen.c_h), 0]
+                    self._deferred_events.append([EventTypeWindow, time, WindowEventPaint,
+                                            0, 0, int(self.screen.c_w), int(self.screen.c_h), 0])
                     return [EventTypeWindow, time, WindowEventMetricChange,
                             0, 0, int(self.screen.c_w), int(self.screen.c_h), 0]
                 elif c_type == RSDL.VIDEOEXPOSE:
-                    self._deferred_event = [EventTypeWindow, time, WindowEventPaint,
-                                            0, 0, int(self.screen.c_w), int(self.screen.c_h), 0]
+                    self._deferred_events([EventTypeWindow, time, WindowEventPaint,
+                                            0, 0, int(self.screen.c_w), int(self.screen.c_h), 0])
                     return [EventTypeWindow, time, WindowEventActivated, 0, 0, 0, 0, 0]
                 elif c_type == RSDL.QUIT:
                     return [EventTypeWindow, time, WindowEventClose, 0, 0, 0, 0, 0]
