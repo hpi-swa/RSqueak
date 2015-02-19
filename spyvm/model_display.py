@@ -1,5 +1,6 @@
 
 from spyvm import model, constants, display
+from spyvm.util import system
 from rpython.rlib import jit, objectmodel
 from rpython.rtyper.lltypesystem import lltype, rffi
 from rpython.rlib.rarithmetic import r_uint
@@ -20,8 +21,7 @@ def map_word_bgra(word):
         (word & r_uint(0xFF000000)) >> 24
     )
 map_word = map_word_argb
-import sys
-if sys.platform == "darwin":
+if system.IS_DARWIN:
     map_word = map_word_bgra
 
 
@@ -144,18 +144,18 @@ class W_16BitDisplayBitmap(W_DisplayBitmap):
         lsb = (r_uint(word) & r_uint(0xffff0000)) >> 16
         msb = (r_uint(word) & r_uint(0x0000ffff))
 
-        # Invert order of rgb-components
-        lsb = (
-            ((lsb >> 10) & mask) |
-            (((lsb >> 5) & mask) << 6) |
-            ((lsb & mask) << 11)
-        )
-        msb = (
-            ((msb >> 10) & mask) |
-            (((msb >> 5) & mask) << 6) |
-            ((msb & mask) << 11)
-        )
-
+        if not system.IS_DARWIN:
+            # Invert order of rgb-components
+            lsb = (
+                ((lsb >> 10) & mask) |
+                (((lsb >> 5) & mask) << 6) |
+                ((lsb & mask) << 11)
+            )
+            msb = (
+                ((msb >> 10) & mask) |
+                (((msb >> 5) & mask) << 6) |
+                ((msb & mask) << 11)
+            )
         self.pixelbuffer()[n] = r_uint(lsb | (msb << 16))
 
 class W_8BitDisplayBitmap(W_DisplayBitmap):
