@@ -202,16 +202,16 @@ class SDLDisplay(object):
                 elif c_type == RSDL.KEYUP:
                     self._deferred_events.append(self.get_next_key_event(EventKeyUp, time))
                     return self.get_next_key_event(EventKeyChar, time)
-                elif c_type == RSDL.VIDEORESIZE:
-                    self.screen = RSDL.GetVideoSurface()
-                    self._deferred_events.append([EventTypeWindow, time, WindowEventPaint,
-                                            0, 0, int(self.screen.c_w), int(self.screen.c_h), 0])
-                    return [EventTypeWindow, time, WindowEventMetricChange,
-                            0, 0, int(self.screen.c_w), int(self.screen.c_h), 0]
-                elif c_type == RSDL.VIDEOEXPOSE:
-                    self._deferred_events([EventTypeWindow, time, WindowEventPaint,
-                                            0, 0, int(self.screen.c_w), int(self.screen.c_h), 0])
-                    return [EventTypeWindow, time, WindowEventActivated, 0, 0, 0, 0, 0]
+                # elif c_type == RSDL.VIDEORESIZE:
+                #     self.screen = RSDL.GetVideoSurface()
+                #     self._deferred_events.append([EventTypeWindow, time, WindowEventPaint,
+                #                             0, 0, int(self.screen.c_w), int(self.screen.c_h), 0])
+                #     return [EventTypeWindow, time, WindowEventMetricChange,
+                #             0, 0, int(self.screen.c_w), int(self.screen.c_h), 0]
+                # elif c_type == RSDL.VIDEOEXPOSE:
+                #     self._deferred_events([EventTypeWindow, time, WindowEventPaint,
+                #                             0, 0, int(self.screen.c_w), int(self.screen.c_h), 0])
+                #     return [EventTypeWindow, time, WindowEventActivated, 0, 0, 0, 0, 0]
                 elif c_type == RSDL.QUIT:
                     return [EventTypeWindow, time, WindowEventClose, 0, 0, 0, 0, 0]
         finally:
