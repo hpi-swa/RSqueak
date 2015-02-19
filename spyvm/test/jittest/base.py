@@ -51,5 +51,5 @@ class Parser(oparser.OpParser):
     def getvar(self, arg):
         return arg
 
-    def create_op(self, opnum, args, res, descr):
+    def create_op(self, opnum, args, res, descr, fail_args):
         return Op(opname[opnum].lower(), args, res, descr)
