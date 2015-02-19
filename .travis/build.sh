@@ -33,9 +33,26 @@ if [ $exitcode -eq 0 ]; then
     fi
     sudo rm -rf pypy-pypy/rpython/_cache
     if [ yes == "$EXECUTE_JITTESTS" ]; then
-        PYTHONPATH="$PYTHONPATH:pypy-pypy/:pypy-rsdl/:." python2.7 \
-	    pypy-pypy/pytest.py --jit=./$binary spyvm/test/jittest/
-        exit $?
+	case "$BUILD_ARCH" in
+	    32bit)
+		sudo i386 chroot "$chroot" sh -c "
+                cd $PWD &&
+                echo \$(pwd) &&
+                ls &&
+                PYTHONPATH=\"$PYTHONPATH:pypy-pypy/:pypy-rsdl/:.\"\
+                    python2.7 pypy-pypy/pytest.py --jit=./$binary spyvm/test/jittest/"
+		exitcode=$?
+		;;
+	    64bit)
+		PYTHONPATH="$PYTHONPATH:pypy-pypy/:pypy-rsdl/:." python2.7 \
+		    pypy-pypy/pytest.py --jit=./$binary spyvm/test/jittest/
+		exitcode=$?
+		;;
+	    *)
+		exitcode=0
+		;;
+	esac
+        exit $exitcode
     fi
 else
     exit $exitcode
