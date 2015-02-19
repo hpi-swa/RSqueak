@@ -497,6 +497,7 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     """Objects with arbitrary class (ie not CompiledMethod, SmallInteger or
     Float)."""
     _attrs_ = ['w_class']
+    _immutable_fields_ = ['w_class?']
     repr_classname = "W_AbstractObjectWithClassReference"
     w_class = None
 
@@ -1005,7 +1006,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
                 "bytes", "literals",
                 # Additional info about the method
                 "lookup_selector", "compiledin_class", "lookup_class" ]
-
+    _immutable_fields_ = ["version?"]
     lookup_selector = "<unknown>"
     lookup_class = None
     import_from_mixin(VersionMixin)

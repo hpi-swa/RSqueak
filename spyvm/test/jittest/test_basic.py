@@ -8,6 +8,7 @@ class TestBasic(BaseJITTest):
         0 to: 1000000000 do: [:t|nil].
         """)
         self.assert_matches(traces[0].loop, """
+         guard_not_invalidated(descr=<Guard0x910a1f0>),
          i59 = int_le(i51, 1000000000),
          guard_true(i59, descr=<Guard0x3336290>),
          i60 = int_add(i51, 1),
@@ -33,8 +34,6 @@ class TestBasic(BaseJITTest):
         guard_true(i39, descr=<Guard0x9161b50>),
         i40 = getfield_gc_pure(p0, descr=<FieldU spyvm.storage_contexts.ContextPartShadow.inst_is_block_context 69>),
         guard_value(i40, 0, descr=<Guard0x9161b20>),
-        p43 = getfield_gc(ConstPtr(ptr42), descr=<FieldP spyvm.model.W_CompiledMethod.inst_version 56>),
-        guard_value(p43, ConstPtr(ptr44), descr=<Guard0x9161af0>),
         jump(p0, p1, p2, i3, i4, p5, i6, i7, p8, p9, p10, i24, p11, p12, p13, p14, p15, p16, p17, p18, p19, p20, p21, p22, p23, 10000, descr=TargetToken(152597176))
         """)
 
@@ -46,10 +45,10 @@ class TestBasic(BaseJITTest):
         ^ i
         """)
         self.assert_matches(traces[0].loop, """
+        guard_not_invalidated(descr=<Guard0x8e3dc04>),
         i83 = int_le(i77, 10000),
         guard_true(i83, descr=<Guard0x8e3dc40>),
         p84 = getarrayitem_gc(p61, 36, descr=<ArrayP 4>),
-        guard_not_invalidated(descr=<Guard0x8e3dc04>),
         guard_value(p84, ConstPtr(ptr69), descr=<Guard0x8e3dbc8>),
         i85 = int_add(i77, 1),
         i86 = int_sub(i80, 1),
@@ -73,9 +72,9 @@ class TestBasic(BaseJITTest):
         ^ i
         """)
         self.assert_matches(traces[0].loop, """
+        guard_not_invalidated(descr=<Guard0x9730760>),
         i71 = int_le(i64, 100000),
         guard_true(i71, descr=<Guard0x9730790>),
-        guard_not_invalidated(descr=<Guard0x9730760>),
         i72 = int_add(i64, 1),
         i73 = int_sub(i68, 1),
         setfield_gc(ConstPtr(ptr65), i73, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 20>),
@@ -101,6 +100,7 @@ class TestBasic(BaseJITTest):
         ^ i
         """)
         self.assert_matches(traces[0].loop, """
+         guard_not_invalidated(descr=<Guard0x9730760>),
          i72 = int_le(i64, 100000),
          guard_true(i72, descr=<Guard0x2e98590>),
          i73 = int_add(i64, 1),
@@ -376,6 +376,7 @@ class TestBasic(BaseJITTest):
         1 to: 10000 do: [:i | p + p].
         """)
         self.assert_matches(traces[0].loop, """
+        guard_not_invalidated(descr=<Guard0x9730760>),
         i68 = int_le(i61, 10000),
         guard_true(i68, descr=<Guard0x916d700>),
         i69 = int_add(i61, 1),
@@ -393,10 +394,10 @@ class TestBasic(BaseJITTest):
         1 to: 10000 do: [:i | p + p].
         """)
         self.assert_matches(traces[0].loop, """
+        guard_not_invalidated(descr=<Guard0x93168f8>),
         i129 = int_le(i123, 10000),
         guard_true(i129, descr=<Guard0x9316934>),
         p130 = getarrayitem_gc(p62, 0, descr=<ArrayP 4>),
-        guard_not_invalidated(descr=<Guard0x93168f8>),
         guard_value(p130, ConstPtr(ptr69), descr=<Guard0x93168bc>),
         i131 = getarrayitem_gc(p84, 0, descr=<ArrayS 4>),
         i132 = int_eq(i131, 2147483647),
