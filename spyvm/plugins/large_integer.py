@@ -27,12 +27,30 @@ for (name, (op, absolute)) in ops.items():
     make_func(op, absolute)
 
 
+@LargeIntegerPlugin.expose_primitive(unwrap_spec=[rbigint, rbigint, bool])
+def primDigitDivNegative(interp, s_frame, self, arg, neg):
+    quo, rem = self.abs().divmod(arg)
+    if neg: quo = quo.neg()
+    return interp.space.wrap_list([
+        interp.space.wrap_bigint(quo),
+        interp.space.wrap_bigint(rem)
+    ])
+
+
+@LargeIntegerPlugin.expose_primitive(unwrap_spec=[rbigint, rbigint, bool])
+def primDigitMultiplyNegative(interp, s_frame, self, arg, neg):
+    res = self.abs().mul(arg)
+    if neg: res.neg()
+    return interp.space.wrap_bigint(res)
+
+
 @LargeIntegerPlugin.expose_primitive(unwrap_spec=[rbigint, int])
 def primDigitBitShiftMagnitude(interp, s_frame, a, b):
     if b >= 0:
         return interp.space.wrap_bigint(a.lshift(b))
     else:
         return interp.space.wrap_bigint(a.rshift(-b))
+
 
 
 @LargeIntegerPlugin.expose_primitive(unwrap_spec=[rbigint, rbigint])
