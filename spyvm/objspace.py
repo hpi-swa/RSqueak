@@ -169,6 +169,14 @@ class ObjSpace(object):
         else:
             return model.W_LargePositiveInteger1Word(val)
 
+    def wrap_negative_32bit_int(self, val):
+        # XXX: For now, we assume that val is at most 32bit, i.e. overflows are
+        # checked for before wrapping. Also, we ignore tagging.
+        if int_between(0, val, constants.MAXINT):
+            return model.W_SmallInteger(-val)
+        else:
+            return model.W_LargeNegativeInteger1Word(val)
+
     def wrap_float(self, i):
         return model.W_Float(i)
 
@@ -213,8 +221,13 @@ class ObjSpace(object):
             if w_value.value >= 0:
                 return intmask(w_value.value)
             else:
-                raise UnwrappingError("The value is negative when interpreted as 32bit value.")
-        raise UnwrappingError("expected a W_SmallInteger or W_LargePositiveInteger1Word")
+                raise UnwrappingError("The PositiveLargeInteger value is negative when interpreted as 32bit value.")
+        elif isinstance(w_value, model.W_LargeNegativeInteger1Word):
+            if w_value.value <= 0:
+                return intmask(w_value.value)
+            else:
+                raise UnwrappingError("The NegativeLargeInteger value is positive when interpreted as 32bit value.")
+        raise UnwrappingError("expected a W_SmallInteger or a W_AbstractLargeInteger1Word")
 
     def unwrap_uint(self, w_value):
         return w_value.unwrap_uint(self)
@@ -224,6 +237,14 @@ class ObjSpace(object):
             if w_value.value >= 0:
                 return r_uint(w_value.value)
         elif isinstance(w_value, model.W_LargePositiveInteger1Word):
+            return r_uint(w_value.value)
+        raise UnwrappingError("Wrong types or negative SmallInteger.")
+
+    def unwrap_32bit_pattern(self, w_value):
+        if isinstance(w_value, model.W_SmallInteger):
+            if w_value.value >= 0:
+                return r_uint(w_value.value)
+        elif isinstance(w_value, model.W_AbstractLargeInteger1Word):
             return r_uint(w_value.value)
         raise UnwrappingError("Wrong types or negative SmallInteger.")
 

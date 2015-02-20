@@ -134,7 +134,7 @@ classes_in_special_object_table = {
     "Process" : SO_PROCESS_CLASS,
 #    "PseudoContext" : SO_PSEUDOCONTEXT_CLASS,
 #    "TranslatedMethod" : SO_TRANSLATEDMETHOD_CLASS,
-#    "LargeNegativeInteger" : SO_LARGENEGATIVEINTEGER_CLASS, # Not available in mini.image
+    "LargeNegativeInteger" : SO_LARGENEGATIVEINTEGER_CLASS
 }
 
 objects_in_special_object_table = {
