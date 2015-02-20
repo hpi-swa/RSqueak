@@ -370,10 +370,7 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
 
     def unwrap_rbigint(self, space):
         val = rbigint.fromint(self.value)
-        if val.int_lt(0):
-            return val.neg()
-        else:
-            return val
+        return val.abs()
 
     def clone(self, space):
         return W_LargePositiveInteger1Word(self.value)
@@ -875,10 +872,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
             raise error.UnwrappingError("Failed to convert bytes to rbigint")
         if self.getclass(space).is_same_object(space.w_LargePositiveInteger):
             r = rbigint.frombytes(self.bytes, constants.BYTEORDER, False)
-            if r.int_lt(0):
-                return r.neg()
-            else:
-                return r
+            return r.abs()
         elif self.getclass(space).is_same_object(space.w_LargeNegativeInteger):
             r = rbigint.frombytes(self.bytes, constants.BYTEORDER, False)
             if r.int_gt(0):

@@ -178,7 +178,7 @@ class ObjSpace(object):
             return self.wrap_positive_32bit_int(val.toint())
         else:
             sign = val.sign
-            if sign < 0: val = val.neg()
+            val = val.abs()
             pad = 0 if bitlen % 8 == 0 else 1
             bytes = val.tobytes(bitlen / 8 + pad, constants.BYTEORDER, False)
             w_class = self.w_LargePositiveInteger if sign >= 0 else self.w_LargeNegativeInteger
