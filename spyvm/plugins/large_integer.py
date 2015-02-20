@@ -32,7 +32,7 @@ def primDigitBitShiftMagnitude(interp, s_frame, a, b):
     if b >= 0:
         return interp.space.wrap_bigint(a.lshift(b))
     else:
-        return interp.space.wrap_bigint(a.rshift(b))
+        return interp.space.wrap_bigint(a.rshift(-b))
 
 
 @LargeIntegerPlugin.expose_primitive(unwrap_spec=[rbigint, rbigint])

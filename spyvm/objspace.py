@@ -172,11 +172,12 @@ class ObjSpace(object):
     @jit.unroll_safe
     def wrap_bigint(self, val):
         bitlen = val.bit_length()
-        if bitlen < constants.LONG_BIT:
-            return self.wrap_int(val.toint())
-        elif bitlen == constants.LONG_BIT and val.sign > 0:
-            return self.wrap_positive_32bit_int(val.toint())
-        else:
+        try:
+            if bitlen < constants.LONG_BIT:
+                return self.wrap_int(val.toint())
+            else:
+                return self.wrap_positive_32bit_int(val.toint())
+        except OverflowError:
             sign = val.sign
             val = val.abs()
             pad = 0 if bitlen % 8 == 0 else 1
