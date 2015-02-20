@@ -56,7 +56,6 @@ prim_table_implemented_only = []
 index1_0 = object()
 char = object()
 pos_32bit_int = object()
-pattern_32bit = object()
 
 def expose_primitive(code, unwrap_spec=None, no_result=False,
                     result_is_new_frame=False, may_context_switch=True,
@@ -129,8 +128,6 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                         args += (interp.space.unwrap_int(w_arg), )
                     elif spec is pos_32bit_int:
                         args += (interp.space.unwrap_positive_32bit_int(w_arg),)
-                    elif spec is pattern_32bit:
-                        args += (interp.space.unwrap_32bit_pattern(w_arg),)
                     elif spec is index1_0:
                         args += (interp.space.unwrap_int(w_arg)-1, )
                     elif spec is float:
@@ -212,7 +209,7 @@ bitwise_binary_ops = {
     }
 for (code,op) in bitwise_binary_ops.items():
     def make_func(op):
-        @expose_primitive(code, unwrap_spec=[pattern_32bit, pattern_32bit])
+        @expose_primitive(code, unwrap_spec=[pos_32bit_int, pos_32bit_int])
         def func(interp, s_frame, receiver, argument):
             res = op(receiver, argument)
             return interp.space.wrap_positive_32bit_int(rarithmetic.intmask(res))
@@ -1101,8 +1098,7 @@ def func(interp, s_frame, w_receiver, n0, w_value):
         raise PrimitiveFailedError
     return w_receiver.short_atput0(interp.space, n0, w_value)
 
-@expose_primitive(FILL, unwrap_spec=[object, pattern_32bit])
-@jit.look_inside_iff(lambda interp, s_frame, w_arg, new_value: w_arg.size() < 128)
+@expose_primitive(FILL, unwrap_spec=[object, pos_32bit_int])
 def func(interp, s_frame, w_arg, new_value):
     space = interp.space
     if isinstance(w_arg, model.W_BytesObject):

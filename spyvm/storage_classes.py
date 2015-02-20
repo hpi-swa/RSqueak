@@ -11,7 +11,6 @@ WEAK_POINTERS = 3
 COMPILED_METHOD = 4
 FLOAT = 5
 LARGE_POSITIVE_INTEGER = 6
-LARGE_NEGATIVE_INTEGER = 7
 
 class ClassShadowError(error.SmalltalkException):
     exception_type = "ClassShadowError"
@@ -75,8 +74,6 @@ class ClassShadow(AbstractCachingShadow):
             elif 8 <= format <= 11:
                 if self.space.w_LargePositiveInteger.is_same_object(self.w_self()):
                     self.instance_kind = LARGE_POSITIVE_INTEGER
-                elif self.space.w_LargeNegativeInteger.is_same_object(self.w_self()):
-                    self.instance_kind = LARGE_NEGATIVE_INTEGER
                 else:
                     self.instance_kind = BYTES
                 if self.instsize() != 0:
@@ -170,11 +167,6 @@ class ClassShadow(AbstractCachingShadow):
         elif self.instance_kind == LARGE_POSITIVE_INTEGER:
             if extrasize <= 4:
                 w_new = model.W_LargePositiveInteger1Word(0, extrasize)
-            else:
-                w_new = model.W_BytesObject(self.space, w_cls, extrasize)
-        elif self.instance_kind == LARGE_NEGATIVE_INTEGER:
-            if extrasize <= 4:
-                w_new = model.W_LargeNegativeInteger1Word(0, extrasize)
             else:
                 w_new = model.W_BytesObject(self.space, w_cls, extrasize)
         elif self.instance_kind == WEAK_POINTERS:
