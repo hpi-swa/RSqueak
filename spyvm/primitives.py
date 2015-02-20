@@ -7,6 +7,8 @@ from spyvm.error import PrimitiveFailedError, PrimitiveNotYetWrittenError
 from spyvm import wrapper
 
 from rpython.rlib import rarithmetic, rfloat, unroll, jit, objectmodel
+from rpython.rlib.rbigint import rbigint
+
 
 def assert_class(interp, w_obj, w_class):
     if not w_obj.getclass(interp.space).is_same_object(w_class):
@@ -56,6 +58,7 @@ prim_table_implemented_only = []
 index1_0 = object()
 char = object()
 pos_32bit_int = object()
+
 
 def expose_primitive(code, unwrap_spec=None, no_result=False,
                     result_is_new_frame=False, may_context_switch=True,
@@ -128,6 +131,8 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                         args += (interp.space.unwrap_int(w_arg), )
                     elif spec is pos_32bit_int:
                         args += (interp.space.unwrap_positive_32bit_int(w_arg),)
+                    elif spec is rbigint:
+                        args += (interp.space.unwrap_rbigint(w_arg),)
                     elif spec is index1_0:
                         args += (interp.space.unwrap_int(w_arg)-1, )
                     elif spec is float:
@@ -261,6 +266,58 @@ def func(interp, s_frame, receiver, argument):
             return receiver.rshift(interp.space, -argument)
     else:
         raise PrimitiveFailedError()
+
+# ___________________________________________________________________________
+# Large Integer Primitives
+LARGE_REM = 20
+LARGE_ADD = 21
+LARGE_SUBSTRACT = 22
+LARGE_LESS = 23
+LARGE_GREATER = 24
+LARGE_LEQ = 25
+LARGE_GEQ = 26
+LARGE_MULTIPLY = 29
+LARGE_DIVIDE = 30
+LARGE_MOD = 31
+LARGE_DIV = 32
+LARGE_QUO = 33
+
+def rbigint_wholediv(a, b):
+    from rpython.rlib.rbigint import _divrem
+    z, rem = _divrem(a, b)
+    if not rem.int_eq(0):
+        raise PrimitiveFailedError
+    else:
+        return z
+
+bigint_ops = {
+    LARGE_ADD: (rbigint.add, rbigint.int_add),
+    LARGE_SUBSTRACT: (rbigint.sub, rbigint.int_sub),
+    LARGE_MULTIPLY: (rbigint.mul, rbigint.int_mul),
+    LARGE_DIVIDE: (rbigint_wholediv, None),
+    LARGE_MOD: (rbigint.mod, rbigint.int_mod),
+    LARGE_DIV: (rbigint.floordiv, None)
+}
+for (code, (bigop, intop)) in bigint_ops.items():
+    def make_func(bigop, intop):
+        @expose_primitive(code, unwrap_spec=[rbigint, rbigint])
+        def func(interp, s_frame, v1, v2):
+            return interp.space.wrap_bigint(bigop(v1, v2))
+    make_func(bigop, intop)
+
+bigint_comps = {
+    LARGE_LESS: (rbigint.lt, rbigint.int_lt),
+    LARGE_GREATER: (rbigint.gt, rbigint.int_gt),
+    LARGE_LEQ: (rbigint.le, rbigint.int_le),
+    LARGE_GEQ: (rbigint.ge, rbigint.int_ge),
+}
+for (code, (bigop, intop)) in bigint_comps.items():
+    def make_func(bigop, intop):
+        @expose_primitive(code, unwrap_spec=[rbigint, rbigint])
+        def func(interp, s_frame, v1, v2):
+            return interp.space.wrap_bool(bigop(v1, v2))
+    make_func(bigop, intop)
+
 
 # ___________________________________________________________________________
 # Float Primitives
@@ -879,6 +936,9 @@ def func(interp, s_frame, argcount, w_method):
     if signature[0] == 'BitBltPlugin':
         from spyvm.plugins.bitblt import BitBltPlugin
         return BitBltPlugin.call(signature[1], interp, s_frame, argcount, w_method)
+    elif signature[0] == 'LargeIntegers':
+        from spyvm.plugins.large_integer import LargeIntegerPlugin
+        return LargeIntegerPlugin.call(signature[1], interp, s_frame, argcount, w_method)
     elif signature[0] == "SocketPlugin":
         from spyvm.plugins.socket import SocketPlugin
         return SocketPlugin.call(signature[1], interp, s_frame, argcount, w_method)

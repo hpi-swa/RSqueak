@@ -134,7 +134,7 @@ classes_in_special_object_table = {
     "Process" : SO_PROCESS_CLASS,
 #    "PseudoContext" : SO_PSEUDOCONTEXT_CLASS,
 #    "TranslatedMethod" : SO_TRANSLATEDMETHOD_CLASS,
-#    "LargeNegativeInteger" : SO_LARGENEGATIVEINTEGER_CLASS, # Not available in mini.image
+    "LargeNegativeInteger" : SO_LARGENEGATIVEINTEGER_CLASS, # Not available in mini.image
 }
 
 objects_in_special_object_table = {
@@ -156,6 +156,7 @@ objects_in_special_object_table = {
 LONG_BIT = 32
 TAGGED_MAXINT = 2 ** (LONG_BIT - 2) - 1
 TAGGED_MININT = -2 ** (LONG_BIT - 2)
+BYTEORDER = sys.byteorder
 
 TAGGED_MASK = int(2 ** (LONG_BIT - 1) - 1)
 

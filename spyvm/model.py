@@ -16,13 +16,15 @@ from spyvm import constants, error
 from spyvm.util.version import constant_for_version, constant_for_version_arg, VersionMixin
 
 from rpython.rlib import rrandom, objectmodel, jit, signature
-from rpython.rlib.rarithmetic import intmask, r_uint, r_int
+from rpython.rlib.rarithmetic import intmask, r_uint, r_int, ovfcheck
+from rpython.rlib.rbigint import rbigint
 from rpython.rlib.debug import make_sure_not_resized
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib.objectmodel import instantiate, compute_hash, import_from_mixin, we_are_translated
 from rpython.rtyper.lltypesystem import lltype, rffi
 from rsdl import RSDL, RSDL_helper
 import rstrategies as rstrat
+
 
 class W_Object(object):
     """Root of Squeak model, abstract."""
@@ -163,6 +165,9 @@ class W_Object(object):
     def unwrap_uint(self, space):
         raise error.UnwrappingError("Got unexpected class in unwrap_uint")
 
+    def unwrap_rbigint(self, space):
+        raise error.UnwrappingError("Got unexpected class in unwrap_rbigint")
+
     def is_array_object(self):
         return False
 
@@ -217,7 +222,6 @@ class W_SmallInteger(W_Object):
         return isinstance(self.value, int) and self.value < 0x8000
 
     def lshift(self, space, shift):
-        from rpython.rlib.rarithmetic import ovfcheck, intmask, r_uint
         # shift > 0, therefore the highest bit of upperbound is not set,
         # i.e. upperbound is positive
         upperbound = intmask(r_uint(-1) >> shift)
@@ -236,10 +240,12 @@ class W_SmallInteger(W_Object):
         return space.wrap_int(self.value >> shift)
 
     def unwrap_uint(self, space):
-        from rpython.rlib.rarithmetic import r_uint
         val = self.value
         # Assume the caller knows what he does, even if int is negative
         return r_uint(val)
+
+    def unwrap_rbigint(self, space):
+        return rbigint.fromint(self.value)
 
     def guess_classname(self):
         return "SmallInteger"
@@ -360,8 +366,14 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
         return space.wrap_int((self.value >> shift) & mask)
 
     def unwrap_uint(self, space):
-        from rpython.rlib.rarithmetic import r_uint
         return r_uint(self.value)
+
+    def unwrap_rbigint(self, space):
+        val = rbigint.fromint(self.value)
+        if val.int_lt(0):
+            return val.neg()
+        else:
+            return val
 
     def clone(self, space):
         return W_LargePositiveInteger1Word(self.value)
@@ -491,6 +503,7 @@ class W_Float(W_AbstractObjectWithIdentityHash):
 
     def size(self):
         return constants.WORDS_IN_FLOAT
+
 
 @signature.finishsigs
 class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
@@ -856,6 +869,24 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         for i in range(self.size()):
             word += r_uint(ord(self.getchar(i))) << 8*i
         return word
+
+    def unwrap_rbigint(self, space):
+        if self.bytes is None:
+            raise error.UnwrappingError("Failed to convert bytes to rbigint")
+        if self.getclass(space).is_same_object(space.w_LargePositiveInteger):
+            r = rbigint.frombytes(self.bytes, constants.BYTEORDER, False)
+            if r.int_lt(0):
+                return r.neg()
+            else:
+                return r
+        elif self.getclass(space).is_same_object(space.w_LargeNegativeInteger):
+            r = rbigint.frombytes(self.bytes, constants.BYTEORDER, False)
+            if r.int_gt(0):
+                return r.neg()
+            else:
+                return r
+        else:
+            raise error.UnwrappingError("Failed to convert bytes to rbigint")
 
     def is_array_object(self):
         return True
