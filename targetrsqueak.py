@@ -105,6 +105,7 @@ def safe_entry_point(argv):
         prebuilt_space.strategy_factory.logger.print_aggregated_log()
 
 def entry_point(argv):
+    jit.set_param(None, "trace_limit", 1000000)
     # == Main execution parameters
     path = None
     selector = None
