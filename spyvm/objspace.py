@@ -170,7 +170,12 @@ class ObjSpace(object):
             return model.W_LargePositiveInteger1Word(val)
 
     @jit.unroll_safe
+    @specialize.argtype(1)
     def wrap_bigint(self, val):
+        from rpython.rlib.rbigint import rbigint
+        if not isinstance(val, rbigint):
+            assert isinstance(val, int)
+            return self.wrap_int(intmask(val))
         try:
             return self.wrap_int(val.toint())
         except OverflowError:

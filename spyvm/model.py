@@ -177,7 +177,7 @@ class W_Object(object):
         except error.UnwrappingError:
             bigI = self.unwrap_rbigint(space)
             hasBigI = True
-        return (hasI, i, hasBigI, bigI)
+        return (jit.promote(hasI), i, jit.promote(hasBigI), bigI)
 
     def unwrap_rbigint(self, space):
         raise error.UnwrappingError("Got unexpected class in unwrap_rbigint")

@@ -297,7 +297,7 @@ def rbigint_wholediv(a, b):
         return z
 
 def rbigint_int_wholediv(a, b):
-    if a.int_mod(b) == 0:
+    if a.int_mod(b).int_eq(0):
         return a.floordiv(rbigint.fromint(b))
     else:
         raise PrimitiveFailedError
@@ -316,7 +316,6 @@ bigint_ops = {
 for (code, (intop, bigandintop, bigop)) in bigint_ops.items():
     def make_func(intop, bigandintop, bigop):
         @expose_primitive(code, unwrap_spec=[int_rbigint, int_rbigint])
-        @objectmodel.specialize.argtype(2,3)
         def func(interp, s_frame, v1, v2):
             v1isint, v1int, v1isBig, v1big = v1
             v2isint, v2int, v2isBig, v2big = v2
