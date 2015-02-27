@@ -179,15 +179,7 @@ class ObjSpace(object):
         try:
             return self.wrap_int(val.toint())
         except OverflowError:
-            bitlen = val.bit_length()
-            sign = val.sign
-            val = val.abs()
-            pad = 0 if bitlen % 8 == 0 else 1
-            bytes = val.tobytes(bitlen / 8 + pad, constants.BYTEORDER, False)
-            w_class = self.w_LargePositiveInteger if sign >= 0 else self.w_LargeNegativeInteger
-            w_val = model.W_BytesObject(self, w_class, len(bytes))
-            w_val.bytes = [c for c in bytes]
-            return w_val
+            return model.W_BigIntBytesObject(self, val)
 
     def wrap_float(self, i):
         return model.W_Float(i)
