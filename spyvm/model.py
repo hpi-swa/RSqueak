@@ -1022,6 +1022,18 @@ class W_BigIntBytesObject(W_BytesObject):
     def size(self):
         return len(self.getbytes())
 
+    def lshift(self, space, shift):
+        if self.rbigint:
+            return space.wrap_bigint(self.rbigint.lshift(shift))
+        else:
+            return W_BytesObject.lshift(self, space, shift)
+
+    def rshift(self, space, shift):
+        if self.rbigint:
+            return space.wrap_bigint(self.rbigint.rshift(shift))
+        else:
+            return W_BytesObject.rshift(self, space, shift)
+
     def unwrap_int(self, space):
         if self.rbigint:
             try:
