@@ -818,16 +818,10 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
     bytes_per_slot = 1
     _immutable_fields_ = ['bytes?', '_size?', 'c_bytes?']
 
-    def getbytes(self):
-        return self.bytes
-
-    def setbytes(self, v):
-        self.bytes = v
-
     def __init__(self, space, w_class, size):
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
         assert isinstance(size, int)
-        self.setbytes(['\x00'] * size)
+        self.bytes = ['\x00'] * size
         self._size = size
 
     def fillin(self, space, g_self):
@@ -842,19 +836,19 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         self.setchar(index0, chr(space.unwrap_int(w_value)))
 
     def getchar(self, n0):
-        if self.getbytes() is None:
+        if self.bytes is None:
             if n0 >= self._size:
                 raise IndexError
             return self.c_bytes[n0]
         else:
-            return self.getbytes()[n0]
+            return self.bytes[n0]
 
     def setchar(self, n0, character):
         assert len(character) == 1
-        if self.getbytes() is None:
+        if self.bytes is None:
             self.c_bytes[n0] = character
         else:
-            self.getbytes()[n0] = character
+            self.bytes[n0] = character
 
     def short_at0(self, space, index0):
         byte_index0 = index0 * 2
@@ -886,10 +880,10 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
 
     @jit.look_inside_iff(lambda self: jit.isconstant(self._size))
     def as_string(self):
-        if self.getbytes() is None:
+        if self.bytes is None:
             return "".join([self.c_bytes[i] for i in range(self.size())])
         else:
-            return "".join(self.getbytes())
+            return "".join(self.bytes)
 
     def selector_string(self):
         return "#" + self.as_string()
@@ -897,7 +891,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
     def invariant(self):
         if not W_AbstractObjectWithClassReference.invariant(self):
             return False
-        for c in self.getbytes():
+        for c in self.bytes:
             if not isinstance(c, str) or len(c) != 1:
                 return False
         return True
@@ -911,8 +905,8 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         size = self.size()
         if size != other.size():
             return False
-        elif size > 256 and self.getbytes() is not None and other.getbytes() is not None:
-            return self.getbytes() == other.getbytes()
+        elif size > 256 and self.bytes is not None and other.bytes is not None:
+            return self.bytes == other.bytes
         else:
             return self.has_same_chars(other, size)
 
@@ -926,10 +920,10 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
     def clone(self, space):
         size = self.size()
         w_result = W_BytesObject(space, self.getclass(space), size)
-        if self.getbytes() is None:
-            w_result.setbytes([self.c_bytes[i] for i in range(size)])
+        if self.bytes is None:
+            w_result.bytes = [self.c_bytes[i] for i in range(size)]
         else:
-            w_result.setbytes(list(self.getbytes()))
+            w_result.bytes = list(self.bytes)
         return w_result
 
     @jit.unroll_safe
@@ -944,13 +938,13 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         return word
 
     def unwrap_rbigint(self, space):
-        if self.getbytes() is None:
+        if self.bytes is None:
             raise error.UnwrappingError("Failed to convert bytes to rbigint")
         if self.getclass(space).is_same_object(space.w_LargePositiveInteger):
-            r = rbigint.frombytes(self.getbytes(), constants.BYTEORDER, False)
+            r = rbigint.frombytes(self.bytes, constants.BYTEORDER, False)
             return r.abs()
         elif self.getclass(space).is_same_object(space.w_LargeNegativeInteger):
-            r = rbigint.frombytes(self.getbytes(), constants.BYTEORDER, False)
+            r = rbigint.frombytes(self.bytes, constants.BYTEORDER, False)
             if r.int_gt(0):
                 return r.neg()
             else:
@@ -963,129 +957,23 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
 
     def _become(self, w_other):
         assert isinstance(w_other, W_BytesObject)
-        selfbytes, w_otherbytes = w_other.getbytes(), self.getbytes()
-        self.setbytes(selfbytes); w_other.setbytes(w_otherbytes)
+        self.bytes, w_other.bytes = w_other.bytes, self.bytes
         self.c_bytes, w_other.c_bytes = w_other.c_bytes, self.c_bytes
         self._size, w_other._size = w_other._size, self._size
         W_AbstractObjectWithClassReference._become(self, w_other)
 
     def convert_to_c_layout(self):
-        if self.getbytes() is None:
+        if self.bytes is None:
             return self.c_bytes
         else:
             size = self.size()
             c_bytes = self.c_bytes = rffi.str2charp(self.as_string())
-            self.setbytes(None)
+            self.bytes = None
             return c_bytes
 
     def __del__(self):
         if self.bytes is None:
             rffi.free_charp(self.c_bytes)
-
-
-class W_BigIntBytesObject(W_BytesObject):
-    _attrs_ = ['rbigint', 'sign']
-    repr_classname = 'W_BigIntBytesObject'
-    bytes_per_slot = 1
-    _immutable_fields_ = ['rbigint?', 'sign']
-
-    @jit.unroll_safe
-    def getbytes(self):
-        if not self.bytes:
-            bitlen = self.rbigint.bit_length()
-            val = self.rbigint.abs()
-            pad = 0 if bitlen % 8 == 0 else 1
-            self.bytes = [c for c in val.tobytes(bitlen / 8 + pad, constants.BYTEORDER, False)]
-            self.rbigint = None
-        return self.bytes
-
-    def __init__(self, space, rbigint):
-        W_AbstractObjectWithClassReference.__init__(
-            self,
-            space,
-            space.w_LargePositiveInteger if rbigint.sign >= 0 else space.w_LargeNegativeInteger
-        )
-        self.setbytes([])
-        self._size = 0
-        self.rbigint = rbigint
-        self.sign = rbigint.sign
-
-    def getclass(self, space):
-        if self.rbigint and self.sign >= 0:
-            return space.w_LargePositiveInteger
-        else:
-            return space.w_LargeNegativeInteger
-
-    def is_same_object(self, other):
-        return self is other
-
-    def size(self):
-        return len(self.getbytes())
-
-    def lshift(self, space, shift):
-        if self.rbigint:
-            return space.wrap_bigint(self.rbigint.lshift(shift))
-        else:
-            return W_BytesObject.lshift(self, space, shift)
-
-    def rshift(self, space, shift):
-        if self.rbigint:
-            return space.wrap_bigint(self.rbigint.rshift(shift))
-        else:
-            return W_BytesObject.rshift(self, space, shift)
-
-    def unwrap_int(self, space):
-        if self.rbigint:
-            try:
-                return self.rbigint.toint()
-            except ValueError:
-                raise error.UnwrappingError
-            except OverflowError:
-                raise error.UnwrappingError
-        else:
-            return W_BytesObject.unwrap_int(self, space)
-
-    def unwrap_uint(self, space):
-        if self.rbigint:
-            try:
-                return self.rbigint.touint()
-            except ValueError:
-                raise error.UnwrappingError
-            except OverflowError:
-                raise error.UnwrappingError
-        else:
-            return W_BytesObject.unwrap_uint(self, space)
-
-    def unwrap_rbigint(self, space):
-        if self.rbigint:
-            return self.rbigint
-        else:
-            return W_BytesObject.unwrap_rbigint(self, space)
-
-    def unwrap_positive_32bit_int(self, space):
-        if self.rbigint:
-            try:
-                return self.rbigint._touint_helper()
-            except OverflowError:
-                raise error.UnwrappingError
-        else:
-            return W_BytesObject.unwrap_positive_32bit_int(self, space)
-
-    def unwrap_float(self, space):
-        if self.rbigint:
-            return self.rbigint.tofloat()
-        else:
-            return W_BytesObject.unwrap_float(self, space)
-
-    def _become(self, w_other):
-        if isinstance(w_other, W_BigIntBytesObject):
-            if self.sign == w_other.sign:
-                self.rbigint, w_other.rbigint = w_other.rbigint, self.rbigint
-            else:
-                self.rbigint, w_other.rbigint = None, None
-        else:
-            self.rbigint = None
-        W_BytesObject._become(self, w_other)
 
 
 class W_WordsObject(W_AbstractObjectWithClassReference):
