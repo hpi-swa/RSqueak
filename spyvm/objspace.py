@@ -4,7 +4,7 @@ from spyvm import constants, model, wrapper, display, storage
 from spyvm.error import UnwrappingError, WrappingError
 from rpython.rlib import jit, rpath
 from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin
-from rpython.rlib.rarithmetic import intmask, r_uint, int_between
+from rpython.rlib.rarithmetic import intmask, r_uint, int_between, r_longlong, is_valid_int
 
 class ConstantMixin(object):
     """Mixin for constant values that can be edited, but will be promoted
@@ -147,11 +147,16 @@ class ObjSpace(object):
 
     # ============= Methods for wrapping and unwrapping stuff =============
 
+    @specialize.argtype(1)
     def wrap_int(self, val):
-        from spyvm import constants
-        assert isinstance(val, int)
+        if isinstance(val, r_longlong) and not is_valid_int(val):
+            raise WrappingError
+        elif isinstance(val, r_uint):
+            return self.wrap_positive_32bit_int(intmask(val))
+        else:
+            assert isinstance(val, int)
         # we don't do tagging
-        return model.W_SmallInteger(val)
+        return model.W_SmallInteger(intmask(val))
 
     def wrap_uint(self, val):
         from rpython.rlib.objectmodel import we_are_translated
@@ -214,6 +219,9 @@ class ObjSpace(object):
 
     def unwrap_positive_32bit_int(self, w_value):
         return w_value.unwrap_positive_32bit_int(self)
+
+    def unwrap_longlong(self, w_value):
+        return w_value.unwrap_longlong(self)
 
     def unwrap_char(self, w_char):
         return w_char.unwrap_char(self)

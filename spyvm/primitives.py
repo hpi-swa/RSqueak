@@ -7,7 +7,7 @@ from spyvm.error import PrimitiveFailedError, PrimitiveNotYetWrittenError, Unwra
 from spyvm import wrapper
 
 from rpython.rlib import rfloat, unroll, jit, objectmodel
-from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int
+from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int, r_longlong
 
 
 def assert_class(interp, w_obj, w_class):
@@ -80,7 +80,7 @@ def unwrap_alternatives(unwrap_specs=None):
             for func in functions:
                 try:
                     return func(interp, s_frame, argument_count, w_method=w_method)
-                except UnwrappingError:
+                except PrimitiveFailedError:
                     pass
             raise PrimitiveFailedError
         wrapped.func_name = "wrapped_alternatives_%s" % func.func_name
@@ -131,6 +131,8 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                         args += (interp.space.unwrap_positive_32bit_int(w_arg),)
                     elif spec is r_uint:
                         args += (interp.space.unwrap_uint(w_arg),)
+                    elif spec is r_longlong:
+                        args += (interp.space.unwrap_longlong(w_arg),)
                     elif spec is index1_0:
                         args += (interp.space.unwrap_int(w_arg)-1, )
                     elif spec is float:
@@ -174,7 +176,7 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
         return wrapped
     return decorator
 
-def expose_primitive(code, wrap_func=wrap_primitive, **kwargs):
+def expose_primitive(code, wrap_func=None, **kwargs):
     # heuristics to give it a nice name
     name = None
     for key, value in globals().iteritems():
@@ -184,7 +186,11 @@ def expose_primitive(code, wrap_func=wrap_primitive, **kwargs):
                 name = "unknown"
             else:
                 name = key
-
+    if not wrap_func:
+        if kwargs.get('unwrap_specs', None):
+            wrap_func = unwrap_alternatives
+        else:
+            wrap_func = wrap_primitive
     def decorator(func):
         assert code not in prim_table
         func.func_name = "prim_" + name
@@ -235,8 +241,7 @@ bitwise_binary_ops = {
     }
 for (code,op) in bitwise_binary_ops.items():
     def make_func(op):
-        @expose_primitive(code, wrap_func=unwrap_alternatives,
-                          unwrap_specs=[[int,int], [r_uint, r_uint]])
+        @expose_primitive(code, unwrap_specs=[[int,int], [r_uint, r_uint]])
         def func(interp, s_frame, receiver, argument):
             res = op(intmask(receiver), intmask(argument))
             if isinstance(receiver, r_uint):
@@ -245,8 +250,9 @@ for (code,op) in bitwise_binary_ops.items():
                 return interp.space.wrap_int(intmask(res))
     make_func(op)
 
+combination_specs = [[int, int], [pos_32bit_int, pos_32bit_int], [r_longlong, r_longlong]]
 # #/ -- return the result of a division, only succeed if the division is exact
-@expose_primitive(DIVIDE, unwrap_spec=[int, int])
+@expose_primitive(DIVIDE, unwrap_specs=combination_specs)
 def func(interp, s_frame, receiver, argument):
     if argument == 0:
         raise PrimitiveFailedError()
@@ -255,21 +261,21 @@ def func(interp, s_frame, receiver, argument):
     return interp.space.wrap_int(receiver // argument)
 
 # #\\ -- return the remainder of a division
-@expose_primitive(MOD, unwrap_spec=[int, int])
+@expose_primitive(MOD, unwrap_specs=combination_specs)
 def func(interp, s_frame, receiver, argument):
     if argument == 0:
         raise PrimitiveFailedError()
     return interp.space.wrap_int(receiver % argument)
 
 # #// -- return the result of a division, rounded towards negative infinity
-@expose_primitive(DIV, unwrap_spec=[int, int])
+@expose_primitive(DIV, unwrap_specs=combination_specs)
 def func(interp, s_frame, receiver, argument):
     if argument == 0:
         raise PrimitiveFailedError()
     return interp.space.wrap_int(receiver // argument)
 
 # #// -- return the result of a division, rounded towards negative infinite
-@expose_primitive(QUO, unwrap_spec=[int, int])
+@expose_primitive(QUO, unwrap_specs=combination_specs)
 def func(interp, s_frame, receiver, argument):
     if argument == 0:
         raise PrimitiveFailedError()
@@ -320,7 +326,7 @@ bool_ops = {
     }
 for (code,op) in bool_ops.items():
     def make_func(op):
-        @expose_primitive(code, unwrap_spec=[int, int])
+        @expose_primitive(code, unwrap_specs=combination_specs)
         def func(interp, s_frame, v1, v2):
             res = op(v1, v2)
             w_res = interp.space.wrap_bool(res)
