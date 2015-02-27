@@ -7,7 +7,6 @@ from spyvm.error import PrimitiveFailedError, PrimitiveNotYetWrittenError
 from spyvm import wrapper
 
 from rpython.rlib import rfloat, unroll, jit, objectmodel
-from rpython.rlib.rbigint import rbigint
 from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int
 
 
@@ -59,7 +58,6 @@ prim_table_implemented_only = []
 index1_0 = object()
 char = object()
 pos_32bit_int = object()
-int_rbigint = object()
 
 
 def expose_primitive(code, unwrap_spec=None, no_result=False,
@@ -135,10 +133,6 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                         args += (interp.space.unwrap_positive_32bit_int(w_arg),)
                     elif spec is r_uint:
                         args += (interp.space.unwrap_uint(w_arg),)
-                    elif spec is int_rbigint:
-                        args += (interp.space.unwrap_int_bigint(w_arg),)
-                    elif spec is rbigint:
-                        args += (interp.space.unwrap_rbigint(w_arg),)
                     elif spec is index1_0:
                         args += (interp.space.unwrap_int(w_arg)-1, )
                     elif spec is float:
@@ -277,74 +271,36 @@ def func(interp, s_frame, receiver, argument):
 # Large Integer Primitives
 LARGE_REM = 20
 LARGE_ADD = 21
-LARGE_SUBSTRACT = 22
-LARGE_LESS = 23
-LARGE_GREATER = 24
-LARGE_LEQ = 25
-LARGE_GEQ = 26
+LARGE_SUBTRACT = 22
+LARGE_LESSTHAN = 23
+LARGE_GREATERTHAN = 24
+LARGE_LESSOREQUAL = 25
+LARGE_GREATEROREQUAL = 26
 LARGE_MULTIPLY = 29
 LARGE_DIVIDE = 30
 LARGE_MOD = 31
 LARGE_DIV = 32
 LARGE_QUO = 33
 
-def rbigint_wholediv(a, b):
-    from rpython.rlib.rbigint import _divrem
-    z, rem = _divrem(a, b)
-    if not rem.int_eq(0):
-        raise PrimitiveFailedError
-    else:
-        return z
-
-def rbigint_int_wholediv(a, b):
-    if a.int_mod(b).int_eq(0):
-        return a.floordiv(rbigint.fromint(b))
-    else:
-        raise PrimitiveFailedError
-
-def rbigint_int_floordiv(a, b):
-    return a.floordiv(rbigint.fromint(b))
-
-bigint_ops = {
-    LARGE_ADD: (operator.add, rbigint.int_add, rbigint.add),
-    LARGE_SUBSTRACT: (operator.sub, rbigint.int_sub, rbigint.sub),
-    LARGE_MULTIPLY: (operator.mul, rbigint.int_mul, rbigint.mul),
-    LARGE_DIVIDE: (operator.div, rbigint_int_wholediv, rbigint_wholediv),
-    LARGE_MOD: (operator.mod, rbigint.int_mod, rbigint.mod),
-    LARGE_DIV: (operator.floordiv, rbigint_int_floordiv, rbigint.floordiv)
+large_ops = {
+    LARGE_ADD: ADD,
+    LARGE_SUBTRACT: SUBTRACT,
+    LARGE_MULTIPLY: MULTIPLY,
+    LARGE_DIVIDE: DIVIDE,
+    LARGE_MOD: MOD,
+    LARGE_DIV: DIV,
+    LARGE_QUO: QUO,
+    LARGE_LESSTHAN: LESSTHAN,
+    LARGE_GREATERTHAN: GREATERTHAN,
+    LARGE_LESSOREQUAL: LESSOREQUAL,
+    LARGE_GREATEROREQUAL: GREATEROREQUAL
 }
-for (code, (intop, bigandintop, bigop)) in bigint_ops.items():
-    def make_func(intop, bigandintop, bigop):
-        @expose_primitive(code, unwrap_spec=[int_rbigint, int_rbigint])
-        def func(interp, s_frame, v1, v2):
-            v1isint, v1int, v1isBig, v1big = v1
-            v2isint, v2int, v2isBig, v2big = v2
-            if v1isint:
-                if v2isint:
-                    return interp.space.wrap_bigint(intop(v1int, v2int))
-                elif v2isBig:
-                    return interp.space.wrap_bigint(bigop(rbigint.fromint(v1int), v2big))
-            elif v1isBig:
-                if v2isint:
-                    return interp.space.wrap_bigint(bigandintop(v1big, v2int))
-                elif v2isBig:
-                    return interp.space.wrap_bigint(bigop(v1big, v2big))
-            raise PrimitiveFailedError
-    make_func(intop, bigandintop, bigop)
-
-bigint_comps = {
-    LARGE_LESS: (rbigint.lt, rbigint.int_lt),
-    LARGE_GREATER: (rbigint.gt, rbigint.int_gt),
-    LARGE_LEQ: (rbigint.le, rbigint.int_le),
-    LARGE_GEQ: (rbigint.ge, rbigint.int_ge),
-}
-for (code, (bigop, intop)) in bigint_comps.items():
-    def make_func(bigop, intop):
-        @expose_primitive(code, unwrap_spec=[rbigint, rbigint])
-        def func(interp, s_frame, v1, v2):
-            return interp.space.wrap_bool(bigop(v1, v2))
-    make_func(bigop, intop)
-
+for (code, primitive) in large_ops.items():
+    def make_func(primfunc):
+        @expose_primitive(code, clean_stack=False, no_result=True)
+        def func(interp, s_frame, argcount):
+            return primfunc(interp, s_frame, argcount)
+    make_func(prim_table[primitive])
 
 # ___________________________________________________________________________
 # Float Primitives

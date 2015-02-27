@@ -17,7 +17,6 @@ from spyvm.util.version import constant_for_version, constant_for_version_arg, V
 
 from rpython.rlib import rrandom, objectmodel, jit, signature
 from rpython.rlib.rarithmetic import intmask, r_uint, r_int, ovfcheck
-from rpython.rlib.rbigint import rbigint, NULLRBIGINT
 from rpython.rlib.debug import make_sure_not_resized
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib.objectmodel import instantiate, compute_hash, import_from_mixin, we_are_translated
@@ -168,20 +167,6 @@ class W_Object(object):
     def unwrap_uint(self, space):
         raise error.UnwrappingError("Got unexpected class in unwrap_uint")
 
-    def unwrap_int_bigint(self, space):
-        i, bigI = 0, NULLRBIGINT
-        hasI, hasBigI = False, False
-        try:
-            i = self.unwrap_int(space)
-            hasI = True
-        except error.UnwrappingError:
-            bigI = self.unwrap_rbigint(space)
-            hasBigI = True
-        return (jit.promote(hasI), i, jit.promote(hasBigI), bigI)
-
-    def unwrap_rbigint(self, space):
-        raise error.UnwrappingError("Got unexpected class in unwrap_rbigint")
-
     def unwrap_positive_32bit_int(self, space):
         raise error.UnwrappingError("Got unexpected class unwrap_positive_32bit_int")
 
@@ -272,9 +257,6 @@ class W_SmallInteger(W_Object):
         val = self.value
         # Assume the caller knows what he does, even if int is negative
         return r_uint(val)
-
-    def unwrap_rbigint(self, space):
-        return rbigint.fromint(self.value)
 
     def unwrap_positive_32bit_int(self, space):
         if self.value >= 0:
@@ -411,10 +393,6 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
 
     def unwrap_uint(self, space):
         return r_uint(self.value)
-
-    def unwrap_rbigint(self, space):
-        val = rbigint.fromint(self.value)
-        return val.abs()
 
     def unwrap_positive_32bit_int(self, space):
         return r_uint(self.value)
@@ -936,21 +914,6 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         for i in range(self.size()):
             word += r_uint(ord(self.getchar(i))) << 8*i
         return word
-
-    def unwrap_rbigint(self, space):
-        if self.bytes is None:
-            raise error.UnwrappingError("Failed to convert bytes to rbigint")
-        if self.getclass(space).is_same_object(space.w_LargePositiveInteger):
-            r = rbigint.frombytes(self.bytes, constants.BYTEORDER, False)
-            return r.abs()
-        elif self.getclass(space).is_same_object(space.w_LargeNegativeInteger):
-            r = rbigint.frombytes(self.bytes, constants.BYTEORDER, False)
-            if r.int_gt(0):
-                return r.neg()
-            else:
-                return r
-        else:
-            raise error.UnwrappingError("Failed to convert bytes to rbigint")
 
     def is_array_object(self):
         return True

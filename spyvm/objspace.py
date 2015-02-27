@@ -169,26 +169,6 @@ class ObjSpace(object):
         else:
             return model.W_LargePositiveInteger1Word(val)
 
-    @jit.unroll_safe
-    @specialize.argtype(1)
-    def wrap_bigint(self, val):
-        from rpython.rlib.rbigint import rbigint
-        if not isinstance(val, rbigint):
-            assert isinstance(val, int)
-            return self.wrap_int(intmask(val))
-        try:
-            return self.wrap_int(val.toint())
-        except OverflowError:
-            bitlen = val.bit_length()
-            sign = val.sign
-            val = val.abs()
-            pad = 0 if bitlen % 8 == 0 else 1
-            bytes = val.tobytes(bitlen / 8 + pad, constants.BYTEORDER, False)
-            w_class = self.w_LargePositiveInteger if sign >= 0 else self.w_LargeNegativeInteger
-            w_val = model.W_BytesObject(self, w_class, len(bytes))
-            w_val.bytes = [c for c in bytes]
-            return w_val
-
     def wrap_float(self, i):
         return model.W_Float(i)
 
@@ -231,12 +211,6 @@ class ObjSpace(object):
 
     def unwrap_uint(self, w_value):
         return w_value.unwrap_uint(self)
-
-    def unwrap_int_bigint(self, w_value):
-        return w_value.unwrap_int_bigint(self)
-
-    def unwrap_rbigint(self, w_value):
-        return w_value.unwrap_rbigint(self)
 
     def unwrap_positive_32bit_int(self, w_value):
         return w_value.unwrap_positive_32bit_int(self)
