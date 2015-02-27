@@ -182,6 +182,18 @@ class W_Object(object):
     def unwrap_rbigint(self, space):
         raise error.UnwrappingError("Got unexpected class in unwrap_rbigint")
 
+    def unwrap_positive_32bit_int(self, space):
+        raise error.UnwrappingError("Got unexpected class unwrap_positive_32bit_int")
+
+    def unwrap_char(self, space):
+        raise error.UnwrappingError
+
+    def unwrap_array(self, space):
+        raise error.UnwrappingError
+
+    def unwrap_float(self, space):
+        raise error.UnwrappingError
+
     def is_array_object(self):
         return False
 
@@ -253,6 +265,9 @@ class W_SmallInteger(W_Object):
     def rshift(self, space, shift):
         return space.wrap_int(self.value >> shift)
 
+    def unwrap_int(self, space):
+        return intmask(self.value)
+
     def unwrap_uint(self, space):
         val = self.value
         # Assume the caller knows what he does, even if int is negative
@@ -260,6 +275,15 @@ class W_SmallInteger(W_Object):
 
     def unwrap_rbigint(self, space):
         return rbigint.fromint(self.value)
+
+    def unwrap_positive_32bit_int(self, space):
+        if self.value >= 0:
+            return r_uint(self.value)
+        else:
+            raise error.UnwrappingError
+
+    def unwrap_float(self, space):
+        return float(self.value)
 
     def guess_classname(self):
         return "SmallInteger"
@@ -379,12 +403,24 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
         # and only in this case we do need such a mask
         return space.wrap_int((self.value >> shift) & mask)
 
+    def unwrap_int(self, space):
+        if self.value >= 0:
+            return intmask(self.value)
+        else:
+            raise error.UnwrappingError("The value is negative when interpreted as 32bit value.")
+
     def unwrap_uint(self, space):
         return r_uint(self.value)
 
     def unwrap_rbigint(self, space):
         val = rbigint.fromint(self.value)
         return val.abs()
+
+    def unwrap_positive_32bit_int(self, space):
+        return r_uint(self.value)
+
+    def unwrap_float(self, space):
+        return float(self.value)
 
     def clone(self, space):
         return W_LargePositiveInteger1Word(self.value)
@@ -482,6 +518,9 @@ class W_Float(W_AbstractObjectWithIdentityHash):
 
     def clone(self, space):
         return self
+
+    def unwrap_float(self, space):
+        return self.value
 
     def at0(self, space, index0):
         return self.fetch(space, index0)
@@ -653,7 +692,23 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
                 name = " [%s]" % self._get_strategy().getname()
         return '(%s) len=%d%s' % (strategy_info, self.size(), name)
 
-    @jit.look_inside_iff(lambda self, space: self.size() < 64)
+    def unwrap_char(self, space):
+        w_class = self.getclass(space)
+        if not w_class.is_same_object(space.w_Character):
+            raise error.UnwrappingError("expected Character")
+        w_ord = self.fetch(space, constants.CHARACTER_VALUE_INDEX)
+        if not isinstance(w_ord, W_SmallInteger):
+            raise error.UnwrappingError("expected SmallInteger from Character")
+        return chr(w_ord.value)
+
+    @jit.look_inside_iff(lambda self, w_array: jit.isconstant(self.size()))
+    def unwrap_array(self, space):
+        # Check that our argument has pointers format and the class:
+        if not self.getclass(space).is_same_object(space.w_Array):
+            raise error.UnwrappingError
+        return [self.at0(space, i) for i in range(self.size())]
+
+    @jit.look_inside_iff(lambda self, space: jit.isconstant(self.size()))
     def fetch_all(self, space):
         return [self.fetch(space, i) for i in range(self.size())]
 
@@ -823,7 +878,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
                 return "<omitted>"
         return "'%s'" % self.as_string().replace('\r', '\n')
 
-    @jit.look_inside_iff(lambda self: self._size < 256)
+    @jit.look_inside_iff(lambda self: jit.isconstant(self._size))
     def as_string(self):
         if self.bytes is None:
             return "".join([self.c_bytes[i] for i in range(self.size())])
@@ -855,7 +910,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         else:
             return self.has_same_chars(other, size)
 
-    @jit.look_inside_iff(lambda self, other, size: size < 256)
+    @jit.look_inside_iff(lambda self, other, size: jit.isconstant(size))
     def has_same_chars(self, other, size):
         for i in range(size):
             if self.getchar(i) != other.getchar(i):

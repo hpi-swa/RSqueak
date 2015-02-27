@@ -813,7 +813,7 @@ def func(interp, s_frame, w_rcvr):
     return w_rcvr
 
 @expose_primitive(STRING_REPLACE, unwrap_spec=[object, index1_0, index1_0, object, index1_0])
-@jit.look_inside_iff(lambda interp, s_frame, w_rcvr, start, stop, w_replacement, repStart: stop - start < 32)
+@jit.look_inside_iff(lambda interp, s_frame, w_rcvr, start, stop, w_replacement, repStart: jit.isconstant(stop) and jit.isconstant(start))
 def func(interp, s_frame, w_rcvr, start, stop, w_replacement, repStart):
     """replaceFrom: start to: stop with: replacement startingAt: repStart
     Primitive. This destructively replaces elements from start to stop in the

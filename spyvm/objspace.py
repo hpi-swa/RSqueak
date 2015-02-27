@@ -222,14 +222,7 @@ class ObjSpace(object):
         return res
 
     def unwrap_int(self, w_value):
-        if isinstance(w_value, model.W_SmallInteger):
-            return intmask(w_value.value)
-        elif isinstance(w_value, model.W_LargePositiveInteger1Word):
-            if w_value.value >= 0:
-                return intmask(w_value.value)
-            else:
-                raise UnwrappingError("The value is negative when interpreted as 32bit value.")
-        raise UnwrappingError("expected a W_SmallInteger or W_LargePositiveInteger1Word")
+        return w_value.unwrap_int(self)
 
     def unwrap_uint(self, w_value):
         return w_value.unwrap_uint(self)
@@ -241,40 +234,16 @@ class ObjSpace(object):
         return w_value.unwrap_rbigint(self)
 
     def unwrap_positive_32bit_int(self, w_value):
-        if isinstance(w_value, model.W_SmallInteger):
-            if w_value.value >= 0:
-                return r_uint(w_value.value)
-        elif isinstance(w_value, model.W_LargePositiveInteger1Word):
-            return r_uint(w_value.value)
-        raise UnwrappingError("Wrong types or negative SmallInteger.")
+        return w_value.unwrap_positive_32bit_int(self)
 
     def unwrap_char(self, w_char):
-        from spyvm import constants
-        w_class = w_char.getclass(self)
-        if not w_class.is_same_object(self.w_Character):
-            raise UnwrappingError("expected Character")
-        w_ord = w_char.fetch(self, constants.CHARACTER_VALUE_INDEX)
-        w_class = w_ord.getclass(self)
-        if not w_class.is_same_object(self.w_SmallInteger):
-            raise UnwrappingError("expected SmallInteger from Character")
-
-        assert isinstance(w_ord, model.W_SmallInteger)
-        return chr(w_ord.value)
+        return w_char.unwrap_char(self)
 
     def unwrap_float(self, w_v):
-        from spyvm import model
-        if isinstance(w_v, model.W_Float): return w_v.value
-        elif isinstance(w_v, model.W_SmallInteger): return float(w_v.value)
-        raise UnwrappingError
+        return w_v.unwrap_float(self)
 
-    @jit.look_inside_iff(lambda self, w_array: jit.isconstant(w_array.size()))
     def unwrap_array(self, w_array):
-        # Check that our argument has pointers format and the class:
-        if not w_array.getclass(self).is_same_object(self.w_Array):
-            raise UnwrappingError
-        assert isinstance(w_array, model.W_PointersObject)
-
-        return [w_array.at0(self, i) for i in range(w_array.size())]
+        return w_array.unwrap_array(self)
 
     # ============= Access to static information =============
 
