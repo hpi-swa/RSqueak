@@ -77,7 +77,7 @@ def unwrap_alternatives(unwrap_specs=None):
             functions.append(primfunc)
         unrolling_funcs = unrolling_iterable(functions)
         def wrapped(interp, s_frame, argument_count, w_method=None):
-            for func in functions:
+            for func in unrolling_funcs:
                 try:
                     return func(interp, s_frame, argument_count, w_method=w_method)
                 except PrimitiveFailedError:
