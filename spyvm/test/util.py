@@ -29,15 +29,17 @@ def open_reader(space, imagefilename):
 
 image_cache = {}
 
-def read_image(image_filename, cached=True):
+def read_image(image_filename, space=None, cached=True):
     if cached and image_filename in image_cache:
         space, reader, image = image_cache.get(image_filename)
     else:
-        space = create_space()
+        if space is None:
+            space = create_space()
         reader = open_reader(space, image_filename)
         image = reader.create_image()
         image_cache[image_filename] = (space, reader, image)
     interp = TestInterpreter(space, image)
+    interp.populate_remaining_special_objects()
     return space, interp, image, reader
 
 def create_space(bootstrap = bootstrap_by_default):
