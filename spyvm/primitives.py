@@ -3,7 +3,7 @@ import inspect
 import math
 import operator
 from spyvm import model, model_display, storage_contexts, error, constants, display
-from spyvm.error import PrimitiveFailedError, PrimitiveNotYetWrittenError
+from spyvm.error import PrimitiveFailedError, PrimitiveNotYetWrittenError, UnwrappingError
 from spyvm import wrapper
 
 from rpython.rlib import rfloat, unroll, jit, objectmodel
@@ -60,34 +60,32 @@ char = object()
 pos_32bit_int = object()
 
 
-def expose_primitive(code, unwrap_spec=None, no_result=False,
-                    result_is_new_frame=False, may_context_switch=True,
-                    clean_stack=True, compiled_method=False):
-    # heuristics to give it a nice name
-    name = None
-    for key, value in globals().iteritems():
-        if isinstance(value, int) and value == code and key == key.upper():
-            if name is not None:
-                # refusing to guess
-                name = "unknown"
-            else:
-                name = key
-
+def unwrap_alternatives(unwrap_specs=None):
+    assert unwrap_specs
+    length = len(unwrap_specs[0])
+    for spec in unwrap_specs:
+        assert length == len(spec)
+    positions = range(2, length+2)[:]
+    from rpython.rlib.unroll import unrolling_iterable
     def decorator(func):
-        assert code not in prim_table
-        func.func_name = "prim_" + name
-
-        wrapped = wrap_primitive(
-            unwrap_spec=unwrap_spec, no_result=no_result,
-            result_is_new_frame=result_is_new_frame, may_context_switch=may_context_switch,
-            clean_stack=clean_stack, compiled_method=compiled_method
-        )(func)
-        wrapped.func_name = "wrap_prim_" + name
-        prim_table[code] = wrapped
-        prim_table_implemented_only.append((code, wrapped))
-        return func
+        func = objectmodel.specialize.argtype(*positions)(func)
+        functions = []
+        for spec in unwrap_specs:
+            primfunc = wrap_primitive(unwrap_spec=spec)(func)
+            if not objectmodel.we_are_translated():
+                primfunc.func_name = "%s_%s" % (primfunc.func_name, str(spec))
+            functions.append(primfunc)
+        unrolling_funcs = unrolling_iterable(functions)
+        def wrapped(interp, s_frame, argument_count, w_method=None):
+            for func in functions:
+                try:
+                    return func(interp, s_frame, argument_count, w_method=w_method)
+                except UnwrappingError:
+                    pass
+            raise PrimitiveFailedError
+        wrapped.func_name = "wrapped_alternatives_%s" % func.func_name
+        return wrapped
     return decorator
-
 
 def wrap_primitive(unwrap_spec=None, no_result=False,
                    result_is_new_frame=False, may_context_switch=True,
@@ -172,8 +170,31 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                         assert w_result is not None
                         assert isinstance(w_result, model.W_Object)
                         s_frame.push(w_result)
+        wrapped.func_name = "wrapped_%s" % func.func_name
         return wrapped
     return decorator
+
+def expose_primitive(code, wrap_func=wrap_primitive, **kwargs):
+    # heuristics to give it a nice name
+    name = None
+    for key, value in globals().iteritems():
+        if isinstance(value, int) and value == code and key == key.upper():
+            if name is not None:
+                # refusing to guess
+                name = "unknown"
+            else:
+                name = key
+
+    def decorator(func):
+        assert code not in prim_table
+        func.func_name = "prim_" + name
+        wrapped = wrap_func(**kwargs)(func)
+        wrapped.func_name = "wrap_prim_" + name
+        prim_table[code] = wrapped
+        prim_table_implemented_only.append((code, wrapped))
+        return func
+    return decorator
+
 
 # ___________________________________________________________________________
 # SmallInteger Primitives
@@ -214,10 +235,14 @@ bitwise_binary_ops = {
     }
 for (code,op) in bitwise_binary_ops.items():
     def make_func(op):
-        @expose_primitive(code, unwrap_spec=[r_uint, r_uint])
+        @expose_primitive(code, wrap_func=unwrap_alternatives,
+                          unwrap_specs=[[int,int], [r_uint, r_uint]])
         def func(interp, s_frame, receiver, argument):
             res = op(intmask(receiver), intmask(argument))
-            return interp.space.wrap_positive_32bit_int(intmask(res))
+            if isinstance(receiver, r_uint):
+                return interp.space.wrap_positive_32bit_int(intmask(res))
+            else:
+                return interp.space.wrap_int(intmask(res))
     make_func(op)
 
 # #/ -- return the result of a division, only succeed if the division is exact
@@ -268,6 +293,50 @@ def func(interp, s_frame, receiver, argument):
         raise PrimitiveFailedError()
 
 # ___________________________________________________________________________
+# Boolean Primitives
+
+LESSTHAN = 3
+GREATERTHAN = 4
+LESSOREQUAL = 5
+GREATEROREQUAL = 6
+EQUAL = 7
+NOTEQUAL = 8
+
+_FLOAT_OFFSET = 40
+FLOAT_LESSTHAN = 43
+FLOAT_GREATERTHAN = 44
+FLOAT_LESSOREQUAL = 45
+FLOAT_GREATEROREQUAL = 46
+FLOAT_EQUAL = 47
+FLOAT_NOTEQUAL = 48
+
+bool_ops = {
+    LESSTHAN: operator.lt,
+    GREATERTHAN: operator.gt,
+    LESSOREQUAL: operator.le,
+    GREATEROREQUAL:operator.ge,
+    EQUAL: operator.eq,
+    NOTEQUAL: operator.ne
+    }
+for (code,op) in bool_ops.items():
+    def make_func(op):
+        @expose_primitive(code, unwrap_spec=[int, int])
+        def func(interp, s_frame, v1, v2):
+            res = op(v1, v2)
+            w_res = interp.space.wrap_bool(res)
+            return w_res
+    make_func(op)
+
+for (code,op) in bool_ops.items():
+    def make_func(op):
+        @expose_primitive(code+_FLOAT_OFFSET, unwrap_spec=[float, float])
+        def func(interp, s_frame, v1, v2):
+            res = op(v1, v2)
+            w_res = interp.space.wrap_bool(res)
+            return w_res
+    make_func(op)
+
+# ___________________________________________________________________________
 # Large Integer Primitives
 LARGE_REM = 20
 LARGE_ADD = 21
@@ -305,7 +374,6 @@ for (code, primitive) in large_ops.items():
 # ___________________________________________________________________________
 # Float Primitives
 
-_FLOAT_OFFSET = 40
 SMALLINT_AS_FLOAT = 40
 FLOAT_ADD = 41
 FLOAT_SUBTRACT = 42
@@ -1215,49 +1283,6 @@ def func(interp, s_frame, w_rcvr, fd, src, start, count):
 def func(interp, s_frame, _):
     return interp.space.wrap_char(os.path.sep)
 
-
-# ___________________________________________________________________________
-# Boolean Primitives
-
-LESSTHAN = 3
-GREATERTHAN = 4
-LESSOREQUAL = 5
-GREATEROREQUAL = 6
-EQUAL = 7
-NOTEQUAL = 8
-
-FLOAT_LESSTHAN = 43
-FLOAT_GREATERTHAN = 44
-FLOAT_LESSOREQUAL = 45
-FLOAT_GREATEROREQUAL = 46
-FLOAT_EQUAL = 47
-FLOAT_NOTEQUAL = 48
-
-bool_ops = {
-    LESSTHAN: operator.lt,
-    GREATERTHAN: operator.gt,
-    LESSOREQUAL: operator.le,
-    GREATEROREQUAL:operator.ge,
-    EQUAL: operator.eq,
-    NOTEQUAL: operator.ne
-    }
-for (code,op) in bool_ops.items():
-    def make_func(op):
-        @expose_primitive(code, unwrap_spec=[int, int])
-        def func(interp, s_frame, v1, v2):
-            res = op(v1, v2)
-            w_res = interp.space.wrap_bool(res)
-            return w_res
-    make_func(op)
-
-for (code,op) in bool_ops.items():
-    def make_func(op):
-        @expose_primitive(code+_FLOAT_OFFSET, unwrap_spec=[float, float])
-        def func(interp, s_frame, v1, v2):
-            res = op(v1, v2)
-            w_res = interp.space.wrap_bool(res)
-            return w_res
-    make_func(op)
 
 # ___________________________________________________________________________
 # Quick Push Const Primitives
