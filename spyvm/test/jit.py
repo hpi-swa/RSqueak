@@ -129,8 +129,8 @@ def main():
     # code = "10000 timesRepeat: [ 0 makeStackDepth: 10 ]"
     # code = """ 1 to: 100000 do: [:i | (2147483647 bitXor: i) + 10 ]    """
     # code = "10000 timesRepeat: [ (2147483647 bitXor: 12) + 10 ]"
-    code = "1 to: 10000 do: [:i | (2147483647 bitXor: i) + 10 ]"
-    
+    code = "1 to: 10000 do: [:i | (2147483647 bitXorLarge: i) + 10 ]"
+
     # ===== These entry-points pre-load the image and directly execute a single frame.
     # func = preload_perform(imagename, model.W_SmallInteger(1000), 'loopTest2')
     # func = preload_perform(imagename, model.W_SmallInteger(777), 'name')

@@ -427,3 +427,21 @@ class TestBasic(BaseJITTest):
         i146 = arraylen_gc(p114, descr=<ArrayU 1>),
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, i141, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, p62, p84, i142, p114, descr=TargetToken(154312720))]
         """)
+
+    def test_large_integer_add(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | li block |
+        li := 2 raisedTo: 32 - 1.
+        1 to: 10000 do: [:i | li + i].
+        """)
+        self.assert_matches(traces[0].loop, """
+        """)
+
+    def test_large_integer_xor(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | li block |
+        li := 2 raisedTo: 32 - 1.
+        1 to: 10000 do: [:i | li bitXorLarge: i].
+        """)
+        self.assert_matches(traces[0].loop, """
+        """)
