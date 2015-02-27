@@ -234,6 +234,9 @@ class ObjSpace(object):
     def unwrap_uint(self, w_value):
         return w_value.unwrap_uint(self)
 
+    def unwrap_int_bigint(self, w_value):
+        return w_value.unwrap_int_bigint(self)
+
     def unwrap_rbigint(self, w_value):
         return w_value.unwrap_rbigint(self)
 

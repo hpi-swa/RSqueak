@@ -17,7 +17,7 @@ from spyvm.util.version import constant_for_version, constant_for_version_arg, V
 
 from rpython.rlib import rrandom, objectmodel, jit, signature
 from rpython.rlib.rarithmetic import intmask, r_uint, r_int, ovfcheck
-from rpython.rlib.rbigint import rbigint
+from rpython.rlib.rbigint import rbigint, NULLRBIGINT
 from rpython.rlib.debug import make_sure_not_resized
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib.objectmodel import instantiate, compute_hash, import_from_mixin, we_are_translated
@@ -162,8 +162,22 @@ class W_Object(object):
     def rshift(self, space, shift):
         raise error.PrimitiveFailedError()
 
+    def unwrap_int(self, space):
+        raise error.UnwrappingError("Got unexpected class in unwrap_int")
+
     def unwrap_uint(self, space):
         raise error.UnwrappingError("Got unexpected class in unwrap_uint")
+
+    def unwrap_int_bigint(self, space):
+        i, bigI = 0, NULLRBIGINT
+        hasI, hasBigI = False, False
+        try:
+            i = self.unwrap_int(space)
+            hasI = True
+        except error.UnwrappingError:
+            bigI = self.unwrap_rbigint(space)
+            hasBigI = True
+        return (hasI, i, hasBigI, bigI)
 
     def unwrap_rbigint(self, space):
         raise error.UnwrappingError("Got unexpected class in unwrap_rbigint")
@@ -857,6 +871,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
             w_result.bytes = list(self.bytes)
         return w_result
 
+    @jit.unroll_safe
     def unwrap_uint(self, space):
         # TODO: Completely untested! This failed translation bigtime...
         # XXX Probably we want to allow all subclasses

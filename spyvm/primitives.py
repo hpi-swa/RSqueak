@@ -6,8 +6,9 @@ from spyvm import model, model_display, storage_contexts, error, constants, disp
 from spyvm.error import PrimitiveFailedError, PrimitiveNotYetWrittenError
 from spyvm import wrapper
 
-from rpython.rlib import rarithmetic, rfloat, unroll, jit, objectmodel
+from rpython.rlib import rfloat, unroll, jit, objectmodel
 from rpython.rlib.rbigint import rbigint
+from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int
 
 
 def assert_class(interp, w_obj, w_class):
@@ -58,6 +59,7 @@ prim_table_implemented_only = []
 index1_0 = object()
 char = object()
 pos_32bit_int = object()
+int_rbigint = object()
 
 
 def expose_primitive(code, unwrap_spec=None, no_result=False,
@@ -131,6 +133,10 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                         args += (interp.space.unwrap_int(w_arg), )
                     elif spec is pos_32bit_int:
                         args += (interp.space.unwrap_positive_32bit_int(w_arg),)
+                    elif spec is r_uint:
+                        args += (interp.space.unwrap_uint(w_arg),)
+                    elif spec is int_rbigint:
+                        args += (interp.space.unwrap_int_bigint(w_arg),)
                     elif spec is rbigint:
                         args += (interp.space.unwrap_rbigint(w_arg),)
                     elif spec is index1_0:
@@ -201,7 +207,7 @@ for (code,op) in math_ops.items():
         @expose_primitive(code, unwrap_spec=[int, int])
         def func(interp, s_frame, receiver, argument):
             try:
-                res = rarithmetic.ovfcheck(op(receiver, argument))
+                res = ovfcheck(op(receiver, argument))
             except OverflowError:
                 raise PrimitiveFailedError()
             return interp.space.wrap_int(res)
@@ -214,10 +220,10 @@ bitwise_binary_ops = {
     }
 for (code,op) in bitwise_binary_ops.items():
     def make_func(op):
-        @expose_primitive(code, unwrap_spec=[pos_32bit_int, pos_32bit_int])
+        @expose_primitive(code, unwrap_spec=[r_uint, r_uint])
         def func(interp, s_frame, receiver, argument):
-            res = op(receiver, argument)
-            return interp.space.wrap_positive_32bit_int(rarithmetic.intmask(res))
+            res = op(intmask(receiver), intmask(argument))
+            return interp.space.wrap_positive_32bit_int(intmask(res))
     make_func(op)
 
 # #/ -- return the result of a division, only succeed if the division is exact
@@ -290,20 +296,42 @@ def rbigint_wholediv(a, b):
     else:
         return z
 
+def rbigint_int_wholediv(a, b):
+    if a.int_mod(b) == 0:
+        return a.floordiv(rbigint.fromint(b))
+    else:
+        raise PrimitiveFailedError
+
+def rbigint_int_floordiv(a, b):
+    return a.floordiv(rbigint.fromint(b))
+
 bigint_ops = {
-    LARGE_ADD: (rbigint.add, rbigint.int_add),
-    LARGE_SUBSTRACT: (rbigint.sub, rbigint.int_sub),
-    LARGE_MULTIPLY: (rbigint.mul, rbigint.int_mul),
-    LARGE_DIVIDE: (rbigint_wholediv, None),
-    LARGE_MOD: (rbigint.mod, rbigint.int_mod),
-    LARGE_DIV: (rbigint.floordiv, None)
+    LARGE_ADD: (operator.add, rbigint.int_add, rbigint.add),
+    LARGE_SUBSTRACT: (operator.sub, rbigint.int_sub, rbigint.sub),
+    LARGE_MULTIPLY: (operator.mul, rbigint.int_mul, rbigint.mul),
+    LARGE_DIVIDE: (operator.div, rbigint_int_wholediv, rbigint_wholediv),
+    LARGE_MOD: (operator.mod, rbigint.int_mod, rbigint.mod),
+    LARGE_DIV: (operator.floordiv, rbigint_int_floordiv, rbigint.floordiv)
 }
-for (code, (bigop, intop)) in bigint_ops.items():
-    def make_func(bigop, intop):
-        @expose_primitive(code, unwrap_spec=[rbigint, rbigint])
+for (code, (intop, bigandintop, bigop)) in bigint_ops.items():
+    def make_func(intop, bigandintop, bigop):
+        @expose_primitive(code, unwrap_spec=[int_rbigint, int_rbigint])
+        @objectmodel.specialize.argtype(2,3)
         def func(interp, s_frame, v1, v2):
-            return interp.space.wrap_bigint(bigop(v1, v2))
-    make_func(bigop, intop)
+            v1isint, v1int, v1isBig, v1big = v1
+            v2isint, v2int, v2isBig, v2big = v2
+            if v1isint:
+                if v2isint:
+                    return interp.space.wrap_bigint(intop(v1int, v2int))
+                elif v2isBig:
+                    return interp.space.wrap_bigint(bigop(rbigint.fromint(v1int), v2big))
+            elif v1isBig:
+                if v2isint:
+                    return interp.space.wrap_bigint(bigandintop(v1big, v2int))
+                elif v2isBig:
+                    return interp.space.wrap_bigint(bigop(v1big, v2big))
+            raise PrimitiveFailedError
+    make_func(intop, bigandintop, bigop)
 
 bigint_comps = {
     LARGE_LESS: (rbigint.lt, rbigint.int_lt),
@@ -359,7 +387,7 @@ for (code,op) in math_ops.items():
 @expose_primitive(FLOAT_TRUNCATED, unwrap_spec=[float])
 def func(interp, s_frame, f):
     try:
-        return interp.space.wrap_int(rarithmetic.ovfcheck_float_to_int(f))
+        return interp.space.wrap_int(ovfcheck_float_to_int(f))
     except OverflowError:
         raise PrimitiveFailedError
 
@@ -1116,12 +1144,12 @@ def func(interp, s_frame, w_delay, w_semaphore, timestamp):
 
 
 
-secs_between_1901_and_1970 = rarithmetic.r_uint((69 * 365 + 17) * 24 * 3600)
+secs_between_1901_and_1970 = r_uint((69 * 365 + 17) * 24 * 3600)
 
 @expose_primitive(SECONDS_CLOCK, unwrap_spec=[object])
 def func(interp, s_frame, w_arg):
     import time
-    sec_since_epoch = rarithmetic.r_uint(time.time())
+    sec_since_epoch = r_uint(time.time())
     # XXX: overflow check necessary?
     sec_since_1901 = sec_since_epoch + secs_between_1901_and_1970
     return interp.space.wrap_uint(sec_since_1901)
