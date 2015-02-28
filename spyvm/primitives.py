@@ -931,8 +931,8 @@ def func(interp, s_frame, argcount, w_method):
     w_description = w_method.literalat0(space, 1)
     if not isinstance(w_description, model.W_PointersObject) or w_description.size() < 2:
         raise PrimitiveFailedError
-    w_modulename = w_description.at0(space, 0)
-    w_functionname = w_description.at0(space, 1)
+    w_modulename = jit.promote(w_description.at0(space, 0))
+    w_functionname = jit.promote(w_description.at0(space, 1))
     if not (isinstance(w_modulename, model.W_BytesObject) and
             isinstance(w_functionname, model.W_BytesObject)):
         raise PrimitiveFailedError

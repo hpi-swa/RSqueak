@@ -13,7 +13,7 @@ Squeak model.
 """
 import sys
 from spyvm import constants, error
-from spyvm.util.version import constant_for_version, constant_for_version_arg, VersionMixin
+from spyvm.util.version import constant_for_version, constant_for_version_arg, VersionMixin, Version
 
 from rpython.rlib import rrandom, objectmodel, jit, signature
 from rpython.rlib.rarithmetic import intmask, r_uint, r_int, ovfcheck, r_longlong
@@ -800,19 +800,24 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         return w_result
 
 class W_BytesObject(W_AbstractObjectWithClassReference):
-    _attrs_ = ['bytes', '_size', 'c_bytes']
+    _attrs_ = ['version', 'bytes', '_size', 'c_bytes']
     repr_classname = 'W_BytesObject'
     bytes_per_slot = 1
-    _immutable_fields_ = ['bytes?', '_size?', 'c_bytes?']
+    _immutable_fields_ = ['version?', 'bytes?', '_size?', 'c_bytes?']
 
     def __init__(self, space, w_class, size):
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
         assert isinstance(size, int)
+        self.mutate()
         self.bytes = ['\x00'] * size
         self._size = size
 
+    def mutate(self):
+        self.version = Version()
+
     def fillin(self, space, g_self):
         W_AbstractObjectWithClassReference.fillin(self, space, g_self)
+        self.mutate()
         self.bytes = g_self.get_bytes()
         self._size = len(self.bytes)
 
@@ -836,6 +841,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
             self.c_bytes[n0] = character
         else:
             self.bytes[n0] = character
+        self.mutate()
 
     def short_at0(self, space, index0):
         byte_index0 = index0 * 2
@@ -865,8 +871,11 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
                 return "<omitted>"
         return "'%s'" % self.as_string().replace('\r', '\n')
 
-    @jit.look_inside_iff(lambda self: jit.isconstant(self._size))
     def as_string(self):
+        return self._pure_as_string(self.version)
+
+    @jit.elidable
+    def _pure_as_string(self, version):
         if self.bytes is None:
             return "".join([self.c_bytes[i] for i in range(self.size())])
         else:
@@ -947,6 +956,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         self.bytes, w_other.bytes = w_other.bytes, self.bytes
         self.c_bytes, w_other.c_bytes = w_other.c_bytes, self.c_bytes
         self._size, w_other._size = w_other._size, self._size
+        self.mutate()
         W_AbstractObjectWithClassReference._become(self, w_other)
 
     def convert_to_c_layout(self):
@@ -956,6 +966,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
             size = self.size()
             c_bytes = self.c_bytes = rffi.str2charp(self.as_string())
             self.bytes = None
+            self.mutate()
             return c_bytes
 
     def __del__(self):
