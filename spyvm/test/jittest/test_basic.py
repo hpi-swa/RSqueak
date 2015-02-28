@@ -432,16 +432,110 @@ class TestBasic(BaseJITTest):
         traces = self.run(spy, tmpdir, """
         | li block |
         li := 2 raisedTo: 32 - 1.
-        1 to: 10000 do: [:i | li + i].
+        1 to: 1000000 do: [:i | li + i].
         """)
         self.assert_matches(traces[0].loop, """
+        """)
+
+    def test_large_integer_long_div(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | li block |
+        li := 2 raisedTo: 45 - 1.
+        1 to: 10000 do: [:i | li // i].
+        """)
+        self.assert_matches(traces[0].loop, """
+        """)
+
+    def test_large_integer_div(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | li block |
+        li := 2 raisedTo: 32 - 1.
+        1 to: 100000 do: [:i | li // i].
+        """)
+        self.assert_matches(traces[0].loop, """
+        guard_not_invalidated(descr=<Guard0x9fbad00>),
+        i75 = int_le(i68, 100000),
+        guard_true(i75, descr=<Guard0x9fbacd0>),
+        i76 = uint_floordiv(i58, i68),
+        i77 = uint_lt(i76, 2147483647),
+        guard_true(i77, descr=<Guard0x9fbaca0>),
+        i78 = int_add(i68, 1),
+        i79 = int_sub(i72, 1),
+        setfield_gc(ConstPtr(ptr69), i79, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 20>),
+        i80 = int_le(i79, 0),
+        guard_false(i80, descr=<Guard0x9fbac70>),
+        jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, p18, i78, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, i58, i79, descr=TargetToken(167641264))
         """)
 
     def test_large_integer_xor(self, spy, tmpdir):
         traces = self.run(spy, tmpdir, """
         | li block |
         li := 2 raisedTo: 32 - 1.
-        1 to: 10000 do: [:i | li bitXorLarge: i].
+        1 to: 100000 do: [:i | li bitXorLarge: i].
         """)
         self.assert_matches(traces[0].loop, """
+        guard_not_invalidated(descr=<Guard0x90e1ee0>),
+        i115 = int_le(i108, 100000),
+        guard_true(i115, descr=<Guard0x90e1eb0>),
+        i126 = int_xor(i101, i108),
+        i127 = uint_lt(i126, 2147483647),
+        guard_false(i127, descr=<Guard0x90e1cd0>),
+        i128 = int_add(i108, 1),
+        i129 = int_sub(i112, 1),
+        setfield_gc(ConstPtr(ptr109), i129, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 20>),
+        i130 = int_le(i129, 0),
+        guard_false(i130, descr=<Guard0x90e1ca0>),
+        i131 = arraylen_gc(p85, descr=<ArrayU 1>),
+        jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, p18, i128, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, p65, i101, i129, p85, descr=TargetToken(152064136))
+        """)
+
+    def test_large_integer_bitshift(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | li block |
+        li := 2 raisedTo: 32 - 1.
+        1 to: 100000 do: [:i | li bitShift: i].
+        """)
+        self.assert_matches(traces[0].loop, """
+        """)
+
+    def test_large_integer_and(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | li block |
+        li := 2 raisedTo: 32 - 1.
+        1 to: 100000 do: [:i | li bitAnd: i].
+        """)
+        self.assert_matches(traces[0].loop, """
+        guard_not_invalidated(descr=<Guard0xa11ad30>),
+        i72 = int_le(i65, 100000),
+        guard_true(i72, descr=<Guard0xa11ad00>),
+        i73 = int_and(i58, i65),
+        i74 = uint_lt(i73, 2147483647),
+        guard_true(i74, descr=<Guard0xa11acd0>),
+        i75 = int_add(i65, 1),
+        i76 = int_sub(i69, 1),
+        setfield_gc(ConstPtr(ptr66), i76, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 20>),
+        i77 = int_le(i76, 0),
+        guard_false(i77, descr=<Guard0xa11aca0>),
+        jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, p18, i75, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, i58, i76, descr=TargetToken(169079000))
+        """)
+
+    def test_large_integer_or(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | li block |
+        li := 2 raisedTo: 32 - 1.
+        1 to: 100000 do: [:i | li bitOr: i].
+        """)
+        self.assert_matches(traces[0].loop, """
+        guard_not_invalidated(descr=<Guard0xa11ad30>),
+        i72 = int_le(i65, 100000),
+        guard_true(i72, descr=<Guard0xa11ad00>),
+        i73 = int_or(i58, i65),
+        i74 = uint_lt(i73, 2147483647),
+        guard_false(i74, descr=<Guard0xa11acd0>),
+        i75 = int_add(i65, 1),
+        i76 = int_sub(i69, 1),
+        setfield_gc(ConstPtr(ptr66), i76, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 20>),
+        i77 = int_le(i76, 0),
+        guard_false(i77, descr=<Guard0xa11aca0>),
+        jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, p18, i75, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, i58, i76, descr=TargetToken(169079000))
         """)

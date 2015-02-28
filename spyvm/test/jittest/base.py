@@ -10,6 +10,7 @@ TestImage = image_path("jittest.image")
 class BaseJITTest(object):
     def run(self, spy, tmpdir, code):
         logfile = str(tmpdir.join("x.pypylog"))
+        print logfile
         proc = subprocess.Popen(
             [str(spy), TestImage, "-r", code.replace("\n", "\r\n")],
             cwd=str(tmpdir),
