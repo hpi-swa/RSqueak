@@ -404,7 +404,7 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
         return r_uint(self.value)
 
     def unwrap_longlong(self, space):
-        return r_longlong(self.value)
+        return r_longlong(r_uint(self.value))
 
     def unwrap_float(self, space):
         return float(self.value)
