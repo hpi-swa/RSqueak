@@ -295,12 +295,21 @@ class BootstrappedObjSpace(objspace.ObjSpace):
                 return self.wrap_char(any)
             else:
                 return self.wrap_string(any)
+        if isinstance(any, long): return self.wrap_long(any)
         if isinstance(any, bool): return self.wrap_bool(any)
         if isinstance(any, int): return self.wrap_int(any)
         if isinstance(any, float): return self.wrap_float(any)
         if isinstance(any, list): return self.wrap_list(any)
         raise Exception("Cannot wrap %r" % any)
     
+    def wrap_long(self, any):
+        assert any >= 0
+        import struct
+        bytes = struct.pack('L', any)
+        w_b = model.W_BytesObject(self, self.w_LargePositiveInteger, len(bytes))
+        w_b.bytes = [c for c in bytes]
+        return w_b
+
     def initialize_class(self, w_class, interp):
         initialize_symbol = self.find_symbol_in_methoddict("initialize", 
                             w_class.class_shadow(self))

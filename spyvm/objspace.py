@@ -156,6 +156,8 @@ class ObjSpace(object):
                 raise WrappingError
         elif isinstance(val, r_uint):
             return self.wrap_positive_32bit_int(intmask(val))
+        elif not is_valid_int(val):
+            raise WrappingError
         # we don't do tagging
         return model.W_SmallInteger(intmask(val))
 

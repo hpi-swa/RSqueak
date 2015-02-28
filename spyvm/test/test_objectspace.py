@@ -1,5 +1,5 @@
 import py, sys
-from spyvm import objspace, model
+from spyvm import objspace, model, error
 from rpython.rlib.rarithmetic import r_uint
 from .util import create_space, copy_to_module, cleanup_module
 
@@ -62,6 +62,6 @@ def test_wrap_int():
     for num in [-10, 1, 15, 0x3fffffff]:
         assert space.wrap_int(num).value == num
 
-    for num in [2L, -5L]:
-        with py.test.raises(AssertionError):
+    for num in [2**31, -(2**31 + 1)]:
+        with py.test.raises(error.WrappingError):
             space.wrap_int(num)
