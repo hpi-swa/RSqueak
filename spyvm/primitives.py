@@ -207,11 +207,12 @@ def expose_primitive(code, wrap_func=None, **kwargs):
 
 def expose_also_as(code):
     name = _find_name_for_code(code)
-    def decorator(func):
+    def decorator(wrapped):
         assert code not in prim_table
-        prim_table[code] = func
+        prim_table[code] = wrapped
         prim_table_implemented_only.append((code, wrapped))
-        return func
+        return wrapped
+    return decorator
 
 # ___________________________________________________________________________
 # SmallInteger Primitives
@@ -319,14 +320,14 @@ def func(interp, s_frame, receiver, argument):
 # #bitShift: -- return the shifted value
 @expose_also_as(LARGE_BIT_SHIFT)
 @expose_primitive(BIT_SHIFT, unwrap_spec=[object, int])
-def func(interp, s_frame, receiver, argument):
+def func(interp, s_frame, w_receiver, argument):
     from rpython.rlib.rarithmetic import LONG_BIT
     if -LONG_BIT < argument < LONG_BIT:
         # overflow-checking done in lshift implementations
         if argument > 0:
-            return receiver.lshift(interp.space, argument)
+            return w_receiver.lshift(interp.space, argument)
         else:
-            return receiver.rshift(interp.space, -argument)
+            return w_receiver.rshift(interp.space, -argument)
     else:
         raise PrimitiveFailedError()
 
