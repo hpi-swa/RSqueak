@@ -3,7 +3,7 @@ import inspect
 import math
 import operator
 from spyvm import model, model_display, storage_contexts, error, constants, display
-from spyvm.error import PrimitiveFailedError, PrimitiveNotYetWrittenError, UnwrappingError
+from spyvm.error import PrimitiveFailedError, PrimitiveNotYetWrittenError
 from spyvm import wrapper
 
 from rpython.rlib import rfloat, unroll, jit, objectmodel
@@ -176,8 +176,7 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
         return wrapped
     return decorator
 
-def expose_primitive(code, wrap_func=None, **kwargs):
-    # heuristics to give it a nice name
+def _find_name_for_code(code):
     name = None
     for key, value in globals().iteritems():
         if isinstance(value, int) and value == code and key == key.upper():
@@ -186,6 +185,11 @@ def expose_primitive(code, wrap_func=None, **kwargs):
                 name = "unknown"
             else:
                 name = key
+    return name
+
+def expose_primitive(code, wrap_func=None, **kwargs):
+    # heuristics to give it a nice name
+    name = _find_name_for_code(code)
     if not wrap_func:
         if kwargs.get('unwrap_specs', None):
             wrap_func = unwrap_alternatives
@@ -201,6 +205,13 @@ def expose_primitive(code, wrap_func=None, **kwargs):
         return func
     return decorator
 
+def expose_also_as(code):
+    name = _find_name_for_code(code)
+    def decorator(func):
+        assert code not in prim_table
+        prim_table[code] = func
+        prim_table_implemented_only.append((code, wrapped))
+        return func
 
 # ___________________________________________________________________________
 # SmallInteger Primitives
@@ -218,6 +229,20 @@ BIT_OR      = 15
 BIT_XOR     = 16
 BIT_SHIFT   = 17
 
+_LARGE_OFFSET = 20
+LARGE_REM = 20
+LARGE_ADD = 21
+LARGE_SUBTRACT = 22
+LARGE_MULTIPLY = 29
+LARGE_DIVIDE = 30
+LARGE_MOD = 31
+LARGE_DIV = 32
+LARGE_QUO = 33
+LARGE_BIT_AND = 34
+LARGE_BIT_OR = 35
+LARGE_BIT_XOR = 36
+LARGE_BIT_SHIFT = 37
+
 math_ops = {
     ADD: operator.add,
     SUBTRACT: operator.sub,
@@ -225,6 +250,7 @@ math_ops = {
     }
 for (code,op) in math_ops.items():
     def make_func(op):
+        @expose_also_as(code + _LARGE_OFFSET)
         @expose_primitive(code, unwrap_spec=[int, int])
         def func(interp, s_frame, receiver, argument):
             try:
@@ -241,6 +267,7 @@ bitwise_binary_ops = {
     }
 for (code,op) in bitwise_binary_ops.items():
     def make_func(op):
+        @expose_also_as(code + _LARGE_OFFSET)
         @expose_primitive(code, unwrap_specs=[[int,int], [r_uint, r_uint]])
         def func(interp, s_frame, receiver, argument):
             res = op(intmask(receiver), intmask(argument))
@@ -252,6 +279,7 @@ for (code,op) in bitwise_binary_ops.items():
 
 combination_specs = [[int, int], [pos_32bit_int, pos_32bit_int], [r_longlong, r_longlong]]
 # #/ -- return the result of a division, only succeed if the division is exact
+@expose_also_as(LARGE_DIVIDE)
 @expose_primitive(DIVIDE, unwrap_specs=combination_specs)
 def func(interp, s_frame, receiver, argument):
     if argument == 0:
@@ -261,6 +289,7 @@ def func(interp, s_frame, receiver, argument):
     return interp.space.wrap_int(receiver // argument)
 
 # #\\ -- return the remainder of a division
+@expose_also_as(LARGE_MOD)
 @expose_primitive(MOD, unwrap_specs=combination_specs)
 def func(interp, s_frame, receiver, argument):
     if argument == 0:
@@ -268,6 +297,7 @@ def func(interp, s_frame, receiver, argument):
     return interp.space.wrap_int(receiver % argument)
 
 # #// -- return the result of a division, rounded towards negative infinity
+@expose_also_as(LARGE_DIV)
 @expose_primitive(DIV, unwrap_specs=combination_specs)
 def func(interp, s_frame, receiver, argument):
     if argument == 0:
@@ -275,6 +305,7 @@ def func(interp, s_frame, receiver, argument):
     return interp.space.wrap_int(receiver // argument)
 
 # #// -- return the result of a division, rounded towards negative infinite
+@expose_also_as(LARGE_QUO)
 @expose_primitive(QUO, unwrap_specs=combination_specs)
 def func(interp, s_frame, receiver, argument):
     if argument == 0:
@@ -286,6 +317,7 @@ def func(interp, s_frame, receiver, argument):
     return interp.space.wrap_int(res)
 
 # #bitShift: -- return the shifted value
+@expose_also_as(LARGE_BIT_SHIFT)
 @expose_primitive(BIT_SHIFT, unwrap_spec=[object, int])
 def func(interp, s_frame, receiver, argument):
     from rpython.rlib.rarithmetic import LONG_BIT
@@ -299,87 +331,9 @@ def func(interp, s_frame, receiver, argument):
         raise PrimitiveFailedError()
 
 # ___________________________________________________________________________
-# Boolean Primitives
-
-LESSTHAN = 3
-GREATERTHAN = 4
-LESSOREQUAL = 5
-GREATEROREQUAL = 6
-EQUAL = 7
-NOTEQUAL = 8
-
-_FLOAT_OFFSET = 40
-FLOAT_LESSTHAN = 43
-FLOAT_GREATERTHAN = 44
-FLOAT_LESSOREQUAL = 45
-FLOAT_GREATEROREQUAL = 46
-FLOAT_EQUAL = 47
-FLOAT_NOTEQUAL = 48
-
-bool_ops = {
-    LESSTHAN: operator.lt,
-    GREATERTHAN: operator.gt,
-    LESSOREQUAL: operator.le,
-    GREATEROREQUAL:operator.ge,
-    EQUAL: operator.eq,
-    NOTEQUAL: operator.ne
-    }
-for (code,op) in bool_ops.items():
-    def make_func(op):
-        @expose_primitive(code, unwrap_specs=combination_specs)
-        def func(interp, s_frame, v1, v2):
-            res = op(v1, v2)
-            w_res = interp.space.wrap_bool(res)
-            return w_res
-    make_func(op)
-
-for (code,op) in bool_ops.items():
-    def make_func(op):
-        @expose_primitive(code+_FLOAT_OFFSET, unwrap_spec=[float, float])
-        def func(interp, s_frame, v1, v2):
-            res = op(v1, v2)
-            w_res = interp.space.wrap_bool(res)
-            return w_res
-    make_func(op)
-
-# ___________________________________________________________________________
-# Large Integer Primitives
-LARGE_REM = 20
-LARGE_ADD = 21
-LARGE_SUBTRACT = 22
-LARGE_LESSTHAN = 23
-LARGE_GREATERTHAN = 24
-LARGE_LESSOREQUAL = 25
-LARGE_GREATEROREQUAL = 26
-LARGE_MULTIPLY = 29
-LARGE_DIVIDE = 30
-LARGE_MOD = 31
-LARGE_DIV = 32
-LARGE_QUO = 33
-
-large_ops = {
-    LARGE_ADD: ADD,
-    LARGE_SUBTRACT: SUBTRACT,
-    LARGE_MULTIPLY: MULTIPLY,
-    LARGE_DIVIDE: DIVIDE,
-    LARGE_MOD: MOD,
-    LARGE_DIV: DIV,
-    LARGE_QUO: QUO,
-    LARGE_LESSTHAN: LESSTHAN,
-    LARGE_GREATERTHAN: GREATERTHAN,
-    LARGE_LESSOREQUAL: LESSOREQUAL,
-    LARGE_GREATEROREQUAL: GREATEROREQUAL
-}
-for (code, primitive) in large_ops.items():
-    def make_func(primfunc):
-        @expose_primitive(code, clean_stack=False, no_result=True)
-        def func(interp, s_frame, argcount):
-            return primfunc(interp, s_frame, argcount)
-    make_func(prim_table[primitive])
-
-# ___________________________________________________________________________
 # Float Primitives
 
+_FLOAT_OFFSET = 40
 SMALLINT_AS_FLOAT = 40
 FLOAT_ADD = 41
 FLOAT_SUBTRACT = 42
@@ -1289,6 +1243,56 @@ def func(interp, s_frame, w_rcvr, fd, src, start, count):
 def func(interp, s_frame, _):
     return interp.space.wrap_char(os.path.sep)
 
+# ___________________________________________________________________________
+# Boolean Primitives
+
+LESSTHAN = 3
+GREATERTHAN = 4
+LESSOREQUAL = 5
+GREATEROREQUAL = 6
+EQUAL = 7
+NOTEQUAL = 8
+
+LARGE_LESSTHAN = 23
+LARGE_GREATERTHAN = 24
+LARGE_LESSOREQUAL = 25
+LARGE_GREATEROREQUAL = 26
+LARGE_EQUAL = 27
+LARGE_NOTEQUAL = 28
+
+FLOAT_LESSTHAN = 43
+FLOAT_GREATERTHAN = 44
+FLOAT_LESSOREQUAL = 45
+FLOAT_GREATEROREQUAL = 46
+FLOAT_EQUAL = 47
+FLOAT_NOTEQUAL = 48
+
+bool_ops = {
+    LESSTHAN: operator.lt,
+    GREATERTHAN: operator.gt,
+    LESSOREQUAL: operator.le,
+    GREATEROREQUAL:operator.ge,
+    EQUAL: operator.eq,
+    NOTEQUAL: operator.ne
+    }
+for (code,op) in bool_ops.items():
+    def make_func(op):
+        @expose_also_as(code + _LARGE_OFFSET)
+        @expose_primitive(code, unwrap_specs=combination_specs)
+        def func(interp, s_frame, v1, v2):
+            res = op(v1, v2)
+            w_res = interp.space.wrap_bool(res)
+            return w_res
+    make_func(op)
+
+for (code,op) in bool_ops.items():
+    def make_func(op):
+        @expose_primitive(code+_FLOAT_OFFSET, unwrap_spec=[float, float])
+        def func(interp, s_frame, v1, v2):
+            res = op(v1, v2)
+            w_res = interp.space.wrap_bool(res)
+            return w_res
+    make_func(op)
 
 # ___________________________________________________________________________
 # Quick Push Const Primitives
