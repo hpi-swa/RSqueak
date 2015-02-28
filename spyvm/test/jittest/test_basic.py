@@ -458,10 +458,37 @@ class TestBasic(BaseJITTest):
     def test_large_integer_long_div(self, spy, tmpdir):
         traces = self.run(spy, tmpdir, """
         | li block |
-        li := 2 raisedTo: 45 - 1.
+        li := 8589934592.
         1 to: 10000 do: [:i | li // i].
         """)
         self.assert_matches(traces[0].loop, """
+        guard_not_invalidated(descr=<Guard0x9449df0>),
+        i141 = int_le(i134, 10000),
+        guard_true(i141, descr=<Guard0x9449dc0>),
+        f142 = call(ConstClass(_ll_1_llong_from_int__Signed), i134, descr=<CallL 8 i EF=0 OS=84>),
+        i143 = call(ConstClass(_ll_2_llong_eq__SignedLongLong_SignedLongLong), f142, 0.000000, descr=<Calli 1 LL EF=0 OS=75>),
+        guard_false(i143, descr=<Guard0x9449d90>),
+        f144 = call(ConstClass(_ll_2_llong_floordiv__SignedLongLong_SignedLongLong), f103, f142, descr=<CallL 8 LL EF=2>),
+        f145 = call(ConstClass(_ll_2_llong_mul__SignedLongLong_SignedLongLong), f144, f142, descr=<CallL 8 LL EF=0 OS=72>),
+        i146 = call(ConstClass(_ll_2_llong_lt__SignedLongLong_SignedLongLong), f142, 0.000000, descr=<Calli 1 LL EF=0 OS=73>),
+        guard_false(i146, descr=<Guard0x9449d60>),
+        f147 = call(ConstClass(_ll_2_llong_sub__SignedLongLong_SignedLongLong), f103, f145, descr=<CallL 8 LL EF=0 OS=71>),
+        f148 = call(ConstClass(_ll_2_llong_rshift__SignedLongLong_Signed), f147, 63, descr=<CallL 8 Li EF=0 OS=82>),
+        f149 = call(ConstClass(_ll_2_llong_add__SignedLongLong_SignedLongLong), f144, f148, descr=<CallL 8 LL EF=0 OS=70>),
+        i150 = call(ConstClass(_ll_2_llong_gt__SignedLongLong_SignedLongLong), f149, 0.000000, descr=<Calli 1 LL EF=0 OS=77>),
+        guard_true(i150, descr=<Guard0x9449d30>),
+        i151 = call(ConstClass(_ll_2_ullong_ult__UnsignedLongLong_UnsignedLongLong), f149, 0.000000, descr=<Calli 1 LL EF=0 OS=88>),
+        guard_true(i151, descr=<Guard0x9449d00>),
+        i152 = call(ConstClass(_ll_1_llong_to_int__SignedLongLong), f149, descr=<Calli 4 L EF=0 OS=85>),
+        i153 = uint_lt(i152, 2147483647),
+        guard_true(i153, descr=<Guard0x9449cd0>),
+        i154 = int_add(i134, 1),
+        i155 = int_sub(i138, 1),
+        setfield_gc(ConstPtr(ptr135), i155, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 20>),
+        i156 = int_le(i155, 0),
+        guard_false(i156, descr=<Guard0x9449ca0>),
+        i158 = arraylen_gc(p66, descr=<ArrayU 1>),
+        jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, p18, i154, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, f103, i155, p66, descr=TargetToken(155615448))
         """)
 
     def test_large_integer_div(self, spy, tmpdir):
@@ -488,38 +515,33 @@ class TestBasic(BaseJITTest):
     def test_large_integer_xor(self, spy, tmpdir):
         traces = self.run(spy, tmpdir, """
         | li block |
-        li := 2 raisedTo: 32 - 1.
+        li := 2147483648.
         1 to: 100000 do: [:i | li bitXorLarge: i].
         """)
         self.assert_matches(traces[0].loop, """
-        guard_not_invalidated(descr=<Guard0x90e1ee0>),
-        i115 = int_le(i108, 100000),
-        guard_true(i115, descr=<Guard0x90e1eb0>),
-        i126 = int_xor(i101, i108),
-        i127 = uint_lt(i126, 2147483647),
-        guard_false(i127, descr=<Guard0x90e1cd0>),
-        i128 = int_add(i108, 1),
-        i129 = int_sub(i112, 1),
-        setfield_gc(ConstPtr(ptr109), i129, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 20>),
-        i130 = int_le(i129, 0),
-        guard_false(i130, descr=<Guard0x90e1ca0>),
-        i131 = arraylen_gc(p85, descr=<ArrayU 1>),
-        jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, p18, i128, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, p65, i101, i129, p85, descr=TargetToken(152064136))
-        """)
-
-    def test_large_integer_bitshift(self, spy, tmpdir):
-        traces = self.run(spy, tmpdir, """
-        | li block |
-        li := 2 raisedTo: 32 - 1.
-        1 to: 100000 do: [:i | li bitShift: i].
-        """)
-        self.assert_matches(traces[0].loop, """
+        guard_not_invalidated(descr=<Guard0xac75cd0>),
+        i97 = int_le(i90, 100000),
+        guard_true(i97, descr=<Guard0xac75ca0>),
+        p98 = getarrayitem_gc(p65, 0, descr=<ArrayP 4>),
+        guard_value(p98, ConstPtr(ptr74), descr=<Guard0xac75c70>),
+        p99 = getarrayitem_gc(p65, 1, descr=<ArrayP 4>),
+        guard_value(p99, ConstPtr(ptr77), descr=<Guard0xac75c40>),
+        i100 = int_xor(i83, i90),
+        i101 = uint_lt(i100, 2147483647),
+        guard_false(i101, descr=<Guard0xac75c10>),
+        i102 = int_add(i90, 1),
+        i103 = int_sub(i94, 1),
+        setfield_gc(ConstPtr(ptr91), i103, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 20>),
+        i104 = int_le(i103, 0),
+        guard_false(i104, descr=<Guard0xac75be0>),
+        i106 = arraylen_gc(p79, descr=<ArrayU 1>),
+        jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, p18, i102, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, p65, i83, i103, p79, descr=TargetToken(181116944))
         """)
 
     def test_large_integer_and(self, spy, tmpdir):
         traces = self.run(spy, tmpdir, """
         | li block |
-        li := 2 raisedTo: 32 - 1.
+        li := 2147483648.
         1 to: 100000 do: [:i | li bitAnd: i].
         """)
         self.assert_matches(traces[0].loop, """
@@ -540,7 +562,7 @@ class TestBasic(BaseJITTest):
     def test_large_integer_or(self, spy, tmpdir):
         traces = self.run(spy, tmpdir, """
         | li block |
-        li := 2 raisedTo: 32 - 1.
+        li := 2147483648.
         1 to: 100000 do: [:i | li bitOr: i].
         """)
         self.assert_matches(traces[0].loop, """
