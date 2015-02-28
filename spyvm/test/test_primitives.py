@@ -90,11 +90,11 @@ def test_small_int_minus_fail():
 
 def test_small_int_multiply():
     assert prim(primitives.MULTIPLY, [6,3]).value == 18
+    w_result = prim(primitives.MULTIPLY, [constants.MAXINT, 2])
+    assert isinstance(w_result, model.W_LargePositiveInteger1Word)
+    assert r_uint(w_result.value) == constants.MAXINT * 2
 
 def test_small_int_multiply_overflow():
-    w_result = prim_fails(primitives.MULTIPLY, [constants.MAXINT, 2])
-    #assert isinstance(w_result, model.W_LargePositiveInteger1Word)
-    #assert w_result.value == constants.TAGGED_MAXINT * 2
     prim_fails(primitives.MULTIPLY, [constants.MAXINT, constants.MAXINT])
     prim_fails(primitives.MULTIPLY, [constants.MAXINT, -4])
     prim_fails(primitives.MULTIPLY, [constants.MININT, constants.MAXINT])
