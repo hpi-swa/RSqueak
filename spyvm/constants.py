@@ -156,7 +156,6 @@ objects_in_special_object_table = {
 LONG_BIT = 32
 TAGGED_MAXINT = 2 ** (LONG_BIT - 2) - 1
 TAGGED_MININT = -2 ** (LONG_BIT - 2)
-BYTEORDER = sys.byteorder
 
 TAGGED_MASK = int(2 ** (LONG_BIT - 1) - 1)
 
