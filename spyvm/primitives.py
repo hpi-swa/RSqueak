@@ -725,7 +725,7 @@ def func(interp, s_frame, w_rcvr, w_into):
             interp.image.lastWindowSize = ((ary[4] & 0xffff) << 16) | (ary[5] & 0xffff)
     return w_rcvr
 
-@expose_primitive(BITBLT_COPY_BITS, clean_stack=False, no_result=False, compiled_method=True)
+@expose_primitive(BITBLT_COPY_BITS, clean_stack=False, no_result=True, compiled_method=True)
 def func(interp, s_frame, argcount, w_method):
     from spyvm.plugins.bitblt import BitBltPlugin
     return BitBltPlugin.call("primitiveCopyBits", interp, s_frame, argcount, w_method)
