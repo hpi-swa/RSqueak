@@ -176,7 +176,8 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
         return wrapped
     return decorator
 
-def _find_name_for_code(code):
+def expose_primitive(code, wrap_func=None, **kwargs):
+    # heuristics to give it a nice name
     name = None
     for key, value in globals().iteritems():
         if isinstance(value, int) and value == code and key == key.upper():
@@ -185,11 +186,6 @@ def _find_name_for_code(code):
                 name = "unknown"
             else:
                 name = key
-    return name
-
-def expose_primitive(code, wrap_func=None, **kwargs):
-    # heuristics to give it a nice name
-    name = _find_name_for_code(code)
     if not wrap_func:
         if kwargs.get('unwrap_specs', None):
             wrap_func = unwrap_alternatives
@@ -206,8 +202,8 @@ def expose_primitive(code, wrap_func=None, **kwargs):
     return decorator
 
 def expose_also_as(code):
-    name = _find_name_for_code(code)
-    def decorator(wrapped):
+    def decorator(func):
+        wrapped = prim_table[globals()[func.func_name.replace('prim_', '')]]
         assert code not in prim_table
         prim_table[code] = wrapped
         prim_table_implemented_only.append((code, wrapped))
