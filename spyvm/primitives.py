@@ -248,10 +248,14 @@ math_ops = {
 for (code,op) in math_ops.items():
     def make_func(op):
         @expose_also_as(code + _LARGE_OFFSET)
-        @expose_primitive(code, unwrap_spec=[int, int])
+        @expose_primitive(code, unwrap_specs=[[int, int], [r_longlong, r_longlong]])
         def func(interp, s_frame, receiver, argument):
             try:
-                res = ovfcheck(op(receiver, argument))
+                if isinstance(receiver, r_longlong) and isinstance(argument, r_longlong):
+                    res = op(receiver, argument)
+                else:
+                    assert isinstance(receiver, int) and isinstance(argument, int)
+                    res = ovfcheck(op(receiver, argument))
             except OverflowError:
                 raise PrimitiveFailedError()
             return interp.space.wrap_int(res)
