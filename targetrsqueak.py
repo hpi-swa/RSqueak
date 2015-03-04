@@ -98,8 +98,7 @@ def safe_entry_point(argv):
     except BaseException, e:
         print_error("Exception: %s" % str(e))
         if not objectmodel.we_are_translated():
-            import traceback
-            traceback.print_exc()
+            raise
         return -1
     finally:
         prebuilt_space.strategy_factory.logger.print_aggregated_log()
@@ -297,5 +296,21 @@ def target(driver, *args):
 def jitpolicy(self):
     return JitPolicy()
 
-if __name__ == "__main__":
-    safe_entry_point(sys.argv)
+if __name__ == '__main__':
+    assert not objectmodel.we_are_translated()
+    from rpython.translator.driver import TranslationDriver
+    f, _ = target(TranslationDriver(), sys.argv)
+    try:
+        sys.exit(f(sys.argv))
+    except SystemExit:
+        pass
+    except:
+        if hasattr(sys, 'ps1') or not sys.stderr.isatty():
+            # we are in interactive mode or we don't have a tty-like
+            # device, so we call the default hook
+            sys.__excepthook__(type, value, tb)
+        else:
+            import pdb, traceback
+            _type, value, tb = sys.exc_info()
+            traceback.print_exception(_type, value, tb)
+            pdb.post_mortem(tb)
