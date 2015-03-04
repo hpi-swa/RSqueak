@@ -175,6 +175,8 @@ class ContextPartShadow(AbstractStrategy):
             assert isinstance(w_value, model.W_PointersObject)
             if w_value.is_nil(self.space):
                 self.store_s_sender(None)
+                if self.state is ActiveContext:
+                    self.state = DirtyContext
             else:
                 self.store_s_sender(w_value.as_context_get_shadow(self.space))
             return
