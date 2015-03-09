@@ -3,7 +3,7 @@ from spyvm import model, model_display, storage_contexts, constants, primitives,
 from spyvm.primitives import prim_table, PrimitiveFailedError
 from spyvm.plugins import bitblt
 from rpython.rlib.rfloat import isinf, isnan
-from rpython.rlib.rarithmetic import intmask
+from rpython.rlib.rarithmetic import intmask, r_uint
 from rpython.rtyper.lltypesystem import lltype, rffi
 from .util import create_space, copy_to_module, cleanup_module, TestInterpreter, very_slow_test
 
@@ -70,9 +70,12 @@ def prim_fails(code, stack):
 def test_small_int_add():
     assert prim(primitives.ADD, [1,2]).value == 3
     assert prim(primitives.ADD, [3,4]).value == 7
+    assert prim(primitives.ADD, [constants.TAGGED_MAXINT, 2]).value == constants.TAGGED_MAXINT + 2
+    assert r_uint(prim(primitives.ADD, [constants.MAXINT, 2]).value) == constants.MAXINT + 2
+    assert r_uint(prim(primitives.ADD, [2 * constants.MAXINT - 2, 2]).value) == 2 * constants.MAXINT
 
 def test_small_int_add_fail():
-    w_result = prim_fails(primitives.ADD, [constants.MAXINT, 2])
+    w_result = prim_fails(primitives.ADD, [2 * constants.MAXINT - 1, 2])
     # assert isinstance(w_result, model.W_LargePositiveInteger1Word)
     # assert w_result.value == constants.TAGGED_MAXINT + 2
     # prim_fails(primitives.ADD, [constants.TAGGED_MAXINT, constants.TAGGED_MAXINT * 2])
@@ -87,11 +90,11 @@ def test_small_int_minus_fail():
 
 def test_small_int_multiply():
     assert prim(primitives.MULTIPLY, [6,3]).value == 18
+    w_result = prim(primitives.MULTIPLY, [constants.MAXINT, 2])
+    assert isinstance(w_result, model.W_LargePositiveInteger1Word)
+    assert r_uint(w_result.value) == constants.MAXINT * 2
 
 def test_small_int_multiply_overflow():
-    w_result = prim_fails(primitives.MULTIPLY, [constants.MAXINT, 2])
-    #assert isinstance(w_result, model.W_LargePositiveInteger1Word)
-    #assert w_result.value == constants.TAGGED_MAXINT * 2
     prim_fails(primitives.MULTIPLY, [constants.MAXINT, constants.MAXINT])
     prim_fails(primitives.MULTIPLY, [constants.MAXINT, -4])
     prim_fails(primitives.MULTIPLY, [constants.MININT, constants.MAXINT])

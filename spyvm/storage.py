@@ -9,15 +9,15 @@ import rstrategies as rstrat
 """
 A note on terminology:
 A normal smalltalk objects contains references to other objects. These pointers
-are the *storage* of the object. In RSqueak, each W_PointersObject passes 
+are the *storage* of the object. In RSqueak, each W_PointersObject passes
 handling of its storage to a *strategy* object (subclass of AbstractStrategy).
 Most objects are handled by a subclass of SingletonStorageStrategy. These classes
 implement the actual "storage strategy" concept ("Storage Strategies for Collections
-in Dynamically Typed Languages", Bolcz et al., 2013). To support these singleton 
+in Dynamically Typed Languages", Bolcz et al., 2013). To support these singleton
 strategies, W_PointersObject have a _storage field for arbitrary usage by their
 strategy.
 Strategies including the "ShadowMixin" are called *shadows*. Shadows are not
-singletons and are bound to a single W_PointersObject and store additional state 
+singletons and are bound to a single W_PointersObject and store additional state
 required to implement the language semantics. ShadowMixin is used by ContextPartShadow
 (storage_context.py) and AbstractGenericStrategy, which is extended by various classes
 in storage_classes.py.
@@ -37,7 +37,7 @@ class AbstractStrategy(object):
     repr_classname = "AbstractStrategy"
     __metaclass__ = rstrat.StrategyMetaclass
     import_from_mixin(rstrat.AbstractStrategy)
-    
+
     def __init__(self, space, w_self, size):
         self.space = space
     def getname(self):
@@ -79,7 +79,7 @@ class AbstractStrategy(AbstractStrategy):
     repr_classname = "AbstractStrategy"
     _attrs_ = []
     import_from_mixin(rstrat.UnsafeIndexingMixin)
-    
+
     def default_value(self):
         return self.space.w_nil
 
@@ -130,10 +130,10 @@ class StrategyFactory(rstrat.StrategyFactory):
         self.space = space
         self.no_specialized_storage = objspace.ConstantFlag()
         rstrat.StrategyFactory.__init__(self, AbstractStrategy)
-    
+
     def instantiate_strategy(self, strategy_type, w_self=None, initial_size=0):
         return strategy_type(self.space, w_self, initial_size)
-    
+
     def strategy_type_for(self, objects, weak=False):
         if weak:
             return WeakListStrategy
@@ -147,7 +147,7 @@ class StrategyFactory(rstrat.StrategyFactory):
         if self.no_specialized_storage.is_set():
             return ListStrategy
         return AllNilStrategy
-    
+
     def log(self, w_self, new_strategy, old_strategy=None, new_element=None):
         if not self.logger.active: return
         # Gather information to be logged
@@ -208,7 +208,7 @@ class AbstractGenericShadow(ListStrategy):
 
 class AbstractCachingShadow(AbstractGenericShadow):
     """
-    Abstract shadow maintaining an empty version object for the 
+    Abstract shadow maintaining an empty version object for the
     underlying Smalltalk object. The version object allows jit-related optimizations.
     """
     _immutable_fields_ = ['version?']

@@ -6,7 +6,9 @@ from spyvm import model, model_display, storage_contexts, error, constants, disp
 from spyvm.error import PrimitiveFailedError, PrimitiveNotYetWrittenError
 from spyvm import wrapper
 
-from rpython.rlib import rarithmetic, rfloat, unroll, jit, objectmodel
+from rpython.rlib import rfloat, unroll, jit, objectmodel
+from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int, r_longlong
+
 
 def assert_class(interp, w_obj, w_class):
     if not w_obj.getclass(interp.space).is_same_object(w_class):
@@ -57,34 +59,33 @@ index1_0 = object()
 char = object()
 pos_32bit_int = object()
 
-def expose_primitive(code, unwrap_spec=None, no_result=False,
-                    result_is_new_frame=False, may_context_switch=True,
-                    clean_stack=True, compiled_method=False):
-    # heuristics to give it a nice name
-    name = None
-    for key, value in globals().iteritems():
-        if isinstance(value, int) and value == code and key == key.upper():
-            if name is not None:
-                # refusing to guess
-                name = "unknown"
-            else:
-                name = key
 
+def unwrap_alternatives(unwrap_specs=None):
+    assert unwrap_specs
+    length = len(unwrap_specs[0])
+    for spec in unwrap_specs:
+        assert length == len(spec)
+    positions = range(2, length+2)[:]
+    from rpython.rlib.unroll import unrolling_iterable
     def decorator(func):
-        assert code not in prim_table
-        func.func_name = "prim_" + name
-
-        wrapped = wrap_primitive(
-            unwrap_spec=unwrap_spec, no_result=no_result,
-            result_is_new_frame=result_is_new_frame, may_context_switch=may_context_switch,
-            clean_stack=clean_stack, compiled_method=compiled_method
-        )(func)
-        wrapped.func_name = "wrap_prim_" + name
-        prim_table[code] = wrapped
-        prim_table_implemented_only.append((code, wrapped))
-        return func
+        func = objectmodel.specialize.argtype(*positions)(func)
+        functions = []
+        for spec in unwrap_specs:
+            primfunc = wrap_primitive(unwrap_spec=spec)(func)
+            if not objectmodel.we_are_translated():
+                primfunc.func_name = "%s_%s" % (primfunc.func_name, str(spec))
+            functions.append(primfunc)
+        unrolling_funcs = unrolling_iterable(functions)
+        def wrapped(interp, s_frame, argument_count, w_method=None):
+            for func in unrolling_funcs:
+                try:
+                    return func(interp, s_frame, argument_count, w_method=w_method)
+                except PrimitiveFailedError:
+                    pass
+            raise PrimitiveFailedError
+        wrapped.func_name = "wrapped_alternatives_%s" % func.func_name
+        return wrapped
     return decorator
-
 
 def wrap_primitive(unwrap_spec=None, no_result=False,
                    result_is_new_frame=False, may_context_switch=True,
@@ -128,6 +129,10 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                         args += (interp.space.unwrap_int(w_arg), )
                     elif spec is pos_32bit_int:
                         args += (interp.space.unwrap_positive_32bit_int(w_arg),)
+                    elif spec is r_uint:
+                        args += (interp.space.unwrap_uint(w_arg),)
+                    elif spec is r_longlong:
+                        args += (interp.space.unwrap_longlong(w_arg),)
                     elif spec is index1_0:
                         args += (interp.space.unwrap_int(w_arg)-1, )
                     elif spec is float:
@@ -167,6 +172,41 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                         assert w_result is not None
                         assert isinstance(w_result, model.W_Object)
                         s_frame.push(w_result)
+        wrapped.func_name = "wrapped_%s" % func.func_name
+        return wrapped
+    return decorator
+
+def expose_primitive(code, wrap_func=None, **kwargs):
+    # heuristics to give it a nice name
+    name = None
+    for key, value in globals().iteritems():
+        if isinstance(value, int) and value == code and key == key.upper():
+            if name is not None:
+                # refusing to guess
+                name = "unknown"
+            else:
+                name = key
+    if not wrap_func:
+        if kwargs.get('unwrap_specs', None):
+            wrap_func = unwrap_alternatives
+        else:
+            wrap_func = wrap_primitive
+    def decorator(func):
+        assert code not in prim_table
+        func.func_name = "prim_" + name
+        wrapped = wrap_func(**kwargs)(func)
+        wrapped.func_name = "wrap_prim_" + name
+        prim_table[code] = wrapped
+        prim_table_implemented_only.append((code, wrapped))
+        return func
+    return decorator
+
+def expose_also_as(code):
+    def decorator(func):
+        wrapped = prim_table[globals()[func.func_name.replace('prim_', '')]]
+        assert code not in prim_table
+        prim_table[code] = wrapped
+        prim_table_implemented_only.append((code, wrapped))
         return wrapped
     return decorator
 
@@ -186,6 +226,20 @@ BIT_OR      = 15
 BIT_XOR     = 16
 BIT_SHIFT   = 17
 
+_LARGE_OFFSET = 20
+LARGE_REM = 20
+LARGE_ADD = 21
+LARGE_SUBTRACT = 22
+LARGE_MULTIPLY = 29
+LARGE_DIVIDE = 30
+LARGE_MOD = 31
+LARGE_DIV = 32
+LARGE_QUO = 33
+LARGE_BIT_AND = 34
+LARGE_BIT_OR = 35
+LARGE_BIT_XOR = 36
+LARGE_BIT_SHIFT = 37
+
 math_ops = {
     ADD: operator.add,
     SUBTRACT: operator.sub,
@@ -193,10 +247,15 @@ math_ops = {
     }
 for (code,op) in math_ops.items():
     def make_func(op):
-        @expose_primitive(code, unwrap_spec=[int, int])
+        @expose_also_as(code + _LARGE_OFFSET)
+        @expose_primitive(code, unwrap_specs=[[int, int], [r_longlong, r_longlong]])
         def func(interp, s_frame, receiver, argument):
             try:
-                res = rarithmetic.ovfcheck(op(receiver, argument))
+                if isinstance(receiver, r_longlong) and isinstance(argument, r_longlong):
+                    res = op(receiver, argument)
+                else:
+                    assert isinstance(receiver, int) and isinstance(argument, int)
+                    res = ovfcheck(op(receiver, argument))
             except OverflowError:
                 raise PrimitiveFailedError()
             return interp.space.wrap_int(res)
@@ -209,14 +268,20 @@ bitwise_binary_ops = {
     }
 for (code,op) in bitwise_binary_ops.items():
     def make_func(op):
-        @expose_primitive(code, unwrap_spec=[pos_32bit_int, pos_32bit_int])
+        @expose_also_as(code + _LARGE_OFFSET)
+        @expose_primitive(code, unwrap_specs=[[int,int], [r_uint, r_uint]])
         def func(interp, s_frame, receiver, argument):
-            res = op(receiver, argument)
-            return interp.space.wrap_positive_32bit_int(rarithmetic.intmask(res))
+            res = op(intmask(receiver), intmask(argument))
+            if isinstance(receiver, r_uint):
+                return interp.space.wrap_positive_32bit_int(intmask(res))
+            else:
+                return interp.space.wrap_int(intmask(res))
     make_func(op)
 
+combination_specs = [[int, int], [pos_32bit_int, pos_32bit_int], [r_longlong, r_longlong]]
 # #/ -- return the result of a division, only succeed if the division is exact
-@expose_primitive(DIVIDE, unwrap_spec=[int, int])
+@expose_also_as(LARGE_DIVIDE)
+@expose_primitive(DIVIDE, unwrap_specs=combination_specs)
 def func(interp, s_frame, receiver, argument):
     if argument == 0:
         raise PrimitiveFailedError()
@@ -225,21 +290,24 @@ def func(interp, s_frame, receiver, argument):
     return interp.space.wrap_int(receiver // argument)
 
 # #\\ -- return the remainder of a division
-@expose_primitive(MOD, unwrap_spec=[int, int])
+@expose_also_as(LARGE_MOD)
+@expose_primitive(MOD, unwrap_specs=combination_specs)
 def func(interp, s_frame, receiver, argument):
     if argument == 0:
         raise PrimitiveFailedError()
     return interp.space.wrap_int(receiver % argument)
 
 # #// -- return the result of a division, rounded towards negative infinity
-@expose_primitive(DIV, unwrap_spec=[int, int])
+@expose_also_as(LARGE_DIV)
+@expose_primitive(DIV, unwrap_specs=combination_specs)
 def func(interp, s_frame, receiver, argument):
     if argument == 0:
         raise PrimitiveFailedError()
     return interp.space.wrap_int(receiver // argument)
 
 # #// -- return the result of a division, rounded towards negative infinite
-@expose_primitive(QUO, unwrap_spec=[int, int])
+@expose_also_as(LARGE_QUO)
+@expose_primitive(QUO, unwrap_specs=combination_specs)
 def func(interp, s_frame, receiver, argument):
     if argument == 0:
         raise PrimitiveFailedError()
@@ -250,15 +318,16 @@ def func(interp, s_frame, receiver, argument):
     return interp.space.wrap_int(res)
 
 # #bitShift: -- return the shifted value
+@expose_also_as(LARGE_BIT_SHIFT)
 @expose_primitive(BIT_SHIFT, unwrap_spec=[object, int])
-def func(interp, s_frame, receiver, argument):
+def func(interp, s_frame, w_receiver, argument):
     from rpython.rlib.rarithmetic import LONG_BIT
     if -LONG_BIT < argument < LONG_BIT:
         # overflow-checking done in lshift implementations
         if argument > 0:
-            return receiver.lshift(interp.space, argument)
+            return w_receiver.lshift(interp.space, argument)
         else:
-            return receiver.rshift(interp.space, -argument)
+            return w_receiver.rshift(interp.space, -argument)
     else:
         raise PrimitiveFailedError()
 
@@ -302,7 +371,7 @@ for (code,op) in math_ops.items():
 @expose_primitive(FLOAT_TRUNCATED, unwrap_spec=[float])
 def func(interp, s_frame, f):
     try:
-        return interp.space.wrap_int(rarithmetic.ovfcheck_float_to_int(f))
+        return interp.space.wrap_int(ovfcheck_float_to_int(f))
     except OverflowError:
         raise PrimitiveFailedError
 
@@ -656,7 +725,7 @@ def func(interp, s_frame, w_rcvr, w_into):
             interp.image.lastWindowSize = ((ary[4] & 0xffff) << 16) | (ary[5] & 0xffff)
     return w_rcvr
 
-@expose_primitive(BITBLT_COPY_BITS, clean_stack=False, no_result=False, compiled_method=True)
+@expose_primitive(BITBLT_COPY_BITS, clean_stack=False, no_result=True, compiled_method=True)
 def func(interp, s_frame, argcount, w_method):
     from spyvm.plugins.bitblt import BitBltPlugin
     return BitBltPlugin.call("primitiveCopyBits", interp, s_frame, argcount, w_method)
@@ -728,7 +797,7 @@ def func(interp, s_frame, w_rcvr):
     return w_rcvr
 
 @expose_primitive(STRING_REPLACE, unwrap_spec=[object, index1_0, index1_0, object, index1_0])
-@jit.look_inside_iff(lambda interp, s_frame, w_rcvr, start, stop, w_replacement, repStart: stop - start < 32)
+@jit.look_inside_iff(lambda interp, s_frame, w_rcvr, start, stop, w_replacement, repStart: jit.isconstant(stop) and jit.isconstant(start))
 def func(interp, s_frame, w_rcvr, start, stop, w_replacement, repStart):
     """replaceFrom: start to: stop with: replacement startingAt: repStart
     Primitive. This destructively replaces elements from start to stop in the
@@ -862,8 +931,8 @@ def func(interp, s_frame, argcount, w_method):
     w_description = w_method.literalat0(space, 1)
     if not isinstance(w_description, model.W_PointersObject) or w_description.size() < 2:
         raise PrimitiveFailedError
-    w_modulename = w_description.at0(space, 0)
-    w_functionname = w_description.at0(space, 1)
+    w_modulename = jit.promote(w_description.at0(space, 0))
+    w_functionname = jit.promote(w_description.at0(space, 1))
     if not (isinstance(w_modulename, model.W_BytesObject) and
             isinstance(w_functionname, model.W_BytesObject)):
         raise PrimitiveFailedError
@@ -879,6 +948,9 @@ def func(interp, s_frame, argcount, w_method):
     if signature[0] == 'BitBltPlugin':
         from spyvm.plugins.bitblt import BitBltPlugin
         return BitBltPlugin.call(signature[1], interp, s_frame, argcount, w_method)
+    elif signature[0] == 'LargeIntegers':
+        from spyvm.plugins.large_integer import LargeIntegerPlugin
+        return LargeIntegerPlugin.call(signature[1], interp, s_frame, argcount, w_method)
     elif signature[0] == "SocketPlugin":
         from spyvm.plugins.socket import SocketPlugin
         return SocketPlugin.call(signature[1], interp, s_frame, argcount, w_method)
@@ -1056,12 +1128,12 @@ def func(interp, s_frame, w_delay, w_semaphore, timestamp):
 
 
 
-secs_between_1901_and_1970 = rarithmetic.r_uint((69 * 365 + 17) * 24 * 3600)
+secs_between_1901_and_1970 = r_uint((69 * 365 + 17) * 24 * 3600)
 
 @expose_primitive(SECONDS_CLOCK, unwrap_spec=[object])
 def func(interp, s_frame, w_arg):
     import time
-    sec_since_epoch = rarithmetic.r_uint(time.time())
+    sec_since_epoch = r_uint(time.time())
     # XXX: overflow check necessary?
     sec_since_1901 = sec_since_epoch + secs_between_1901_and_1970
     return interp.space.wrap_uint(sec_since_1901)
@@ -1172,7 +1244,6 @@ def func(interp, s_frame, w_rcvr, fd, src, start, count):
 def func(interp, s_frame, _):
     return interp.space.wrap_char(os.path.sep)
 
-
 # ___________________________________________________________________________
 # Boolean Primitives
 
@@ -1182,6 +1253,13 @@ LESSOREQUAL = 5
 GREATEROREQUAL = 6
 EQUAL = 7
 NOTEQUAL = 8
+
+LARGE_LESSTHAN = 23
+LARGE_GREATERTHAN = 24
+LARGE_LESSOREQUAL = 25
+LARGE_GREATEROREQUAL = 26
+LARGE_EQUAL = 27
+LARGE_NOTEQUAL = 28
 
 FLOAT_LESSTHAN = 43
 FLOAT_GREATERTHAN = 44
@@ -1200,7 +1278,8 @@ bool_ops = {
     }
 for (code,op) in bool_ops.items():
     def make_func(op):
-        @expose_primitive(code, unwrap_spec=[int, int])
+        @expose_also_as(code + _LARGE_OFFSET)
+        @expose_primitive(code, unwrap_specs=combination_specs)
         def func(interp, s_frame, v1, v2):
             res = op(v1, v2)
             w_res = interp.space.wrap_bool(res)

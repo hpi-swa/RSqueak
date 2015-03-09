@@ -427,3 +427,155 @@ class TestBasic(BaseJITTest):
         i146 = arraylen_gc(p114, descr=<ArrayU 1>),
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, i141, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, p62, p84, i142, p114, descr=TargetToken(154312720))]
         """)
+
+    def test_large_integer_add(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | li block |
+        li := 2 raisedTo: 32 - 1.
+        1 to: 1000000 do: [:i | li + i].
+        """)
+        self.assert_matches(traces[0].loop, """
+        guard_not_invalidated(descr=<Guard0x9c34d90>),
+        i85 = int_le(i78, 1000000),
+        guard_true(i85, descr=<Guard0x9c34d60>),
+        f86 = call(ConstClass(_ll_1_llong_from_int__Signed), i78, descr=<CallL 8 i EF=0 OS=84>),
+        f87 = call(ConstClass(_ll_2_llong_add__SignedLongLong_SignedLongLong), f62, f86, descr=<CallL 8 LL EF=0 OS=70>),
+        i88 = call(ConstClass(_ll_2_llong_gt__SignedLongLong_SignedLongLong), f87, 0.000000, descr=<Calli 1 LL EF=0 OS=77>),
+        guard_true(i88, descr=<Guard0x9c34d30>),
+        i89 = call(ConstClass(_ll_2_ullong_ult__UnsignedLongLong_UnsignedLongLong), f87, 0.000000, descr=<Calli 1 LL EF=0 OS=88>),
+        guard_true(i89, descr=<Guard0x9c34d00>),
+        i90 = call(ConstClass(_ll_1_llong_to_int__SignedLongLong), f87, descr=<Calli 4 L EF=0 OS=85>),
+        i91 = uint_lt(i90, 2147483647),
+        guard_false(i91, descr=<Guard0x9c34cd0>),
+        i92 = int_add(i78, 1),
+        i93 = int_sub(i82, 1),
+        setfield_gc(ConstPtr(ptr79), i93, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 20>),
+        i94 = int_le(i93, 0),
+        guard_false(i94, descr=<Guard0x9c34ca0>),
+        jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, p18, i92, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, f62, i93, descr=TargetToken(163946672))
+        """)
+
+    def test_large_integer_long_div(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | li block |
+        li := 8589934592.
+        1 to: 10000 do: [:i | li // i].
+        """)
+        self.assert_matches(traces[0].loop, """
+        guard_not_invalidated(descr=<Guard0x9449df0>),
+        i141 = int_le(i134, 10000),
+        guard_true(i141, descr=<Guard0x9449dc0>),
+        f142 = call(ConstClass(_ll_1_llong_from_int__Signed), i134, descr=<CallL 8 i EF=0 OS=84>),
+        i143 = call(ConstClass(_ll_2_llong_eq__SignedLongLong_SignedLongLong), f142, 0.000000, descr=<Calli 1 LL EF=0 OS=75>),
+        guard_false(i143, descr=<Guard0x9449d90>),
+        f144 = call(ConstClass(_ll_2_llong_floordiv__SignedLongLong_SignedLongLong), f103, f142, descr=<CallL 8 LL EF=2>),
+        f145 = call(ConstClass(_ll_2_llong_mul__SignedLongLong_SignedLongLong), f144, f142, descr=<CallL 8 LL EF=0 OS=72>),
+        i146 = call(ConstClass(_ll_2_llong_lt__SignedLongLong_SignedLongLong), f142, 0.000000, descr=<Calli 1 LL EF=0 OS=73>),
+        guard_false(i146, descr=<Guard0x9449d60>),
+        f147 = call(ConstClass(_ll_2_llong_sub__SignedLongLong_SignedLongLong), f103, f145, descr=<CallL 8 LL EF=0 OS=71>),
+        f148 = call(ConstClass(_ll_2_llong_rshift__SignedLongLong_Signed), f147, 63, descr=<CallL 8 Li EF=0 OS=82>),
+        f149 = call(ConstClass(_ll_2_llong_add__SignedLongLong_SignedLongLong), f144, f148, descr=<CallL 8 LL EF=0 OS=70>),
+        i150 = call(ConstClass(_ll_2_llong_gt__SignedLongLong_SignedLongLong), f149, 0.000000, descr=<Calli 1 LL EF=0 OS=77>),
+        guard_true(i150, descr=<Guard0x9449d30>),
+        i151 = call(ConstClass(_ll_2_ullong_ult__UnsignedLongLong_UnsignedLongLong), f149, 0.000000, descr=<Calli 1 LL EF=0 OS=88>),
+        guard_true(i151, descr=<Guard0x9449d00>),
+        i152 = call(ConstClass(_ll_1_llong_to_int__SignedLongLong), f149, descr=<Calli 4 L EF=0 OS=85>),
+        i153 = uint_lt(i152, 2147483647),
+        guard_true(i153, descr=<Guard0x9449cd0>),
+        i154 = int_add(i134, 1),
+        i155 = int_sub(i138, 1),
+        setfield_gc(ConstPtr(ptr135), i155, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 20>),
+        i156 = int_le(i155, 0),
+        guard_false(i156, descr=<Guard0x9449ca0>),
+        i158 = arraylen_gc(p66, descr=<ArrayU 1>),
+        jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, p18, i154, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, f103, i155, p66, descr=TargetToken(155615448))
+        """)
+
+    def test_large_integer_div(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | li block |
+        li := 2 raisedTo: 32 - 1.
+        1 to: 100000 do: [:i | li // i].
+        """)
+        self.assert_matches(traces[0].loop, """
+        guard_not_invalidated(descr=<Guard0x9fbad00>),
+        i75 = int_le(i68, 100000),
+        guard_true(i75, descr=<Guard0x9fbacd0>),
+        i76 = uint_floordiv(i58, i68),
+        i77 = uint_lt(i76, 2147483647),
+        guard_true(i77, descr=<Guard0x9fbaca0>),
+        i78 = int_add(i68, 1),
+        i79 = int_sub(i72, 1),
+        setfield_gc(ConstPtr(ptr69), i79, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 20>),
+        i80 = int_le(i79, 0),
+        guard_false(i80, descr=<Guard0x9fbac70>),
+        jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, p18, i78, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, i58, i79, descr=TargetToken(167641264))
+        """)
+
+    def test_large_integer_xor(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | li block |
+        li := 2147483648.
+        1 to: 100000 do: [:i | li bitXorLarge: i].
+        """)
+        self.assert_matches(traces[0].loop, """
+        guard_not_invalidated(descr=<Guard0xac75cd0>),
+        i97 = int_le(i90, 100000),
+        guard_true(i97, descr=<Guard0xac75ca0>),
+        p98 = getarrayitem_gc(p65, 0, descr=<ArrayP 4>),
+        guard_value(p98, ConstPtr(ptr74), descr=<Guard0xac75c70>),
+        p99 = getarrayitem_gc(p65, 1, descr=<ArrayP 4>),
+        guard_value(p99, ConstPtr(ptr77), descr=<Guard0xac75c40>),
+        i100 = int_xor(i83, i90),
+        i101 = uint_lt(i100, 2147483647),
+        guard_false(i101, descr=<Guard0xac75c10>),
+        i102 = int_add(i90, 1),
+        i103 = int_sub(i94, 1),
+        setfield_gc(ConstPtr(ptr91), i103, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 20>),
+        i104 = int_le(i103, 0),
+        guard_false(i104, descr=<Guard0xac75be0>),
+        i106 = arraylen_gc(p79, descr=<ArrayU 1>),
+        jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, p18, i102, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, p65, i83, i103, p79, descr=TargetToken(181116944))
+        """)
+
+    def test_large_integer_and(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | li block |
+        li := 2147483648.
+        1 to: 100000 do: [:i | li bitAnd: i].
+        """)
+        self.assert_matches(traces[0].loop, """
+        guard_not_invalidated(descr=<Guard0xa11ad30>),
+        i72 = int_le(i65, 100000),
+        guard_true(i72, descr=<Guard0xa11ad00>),
+        i73 = int_and(i58, i65),
+        i74 = uint_lt(i73, 2147483647),
+        guard_true(i74, descr=<Guard0xa11acd0>),
+        i75 = int_add(i65, 1),
+        i76 = int_sub(i69, 1),
+        setfield_gc(ConstPtr(ptr66), i76, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 20>),
+        i77 = int_le(i76, 0),
+        guard_false(i77, descr=<Guard0xa11aca0>),
+        jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, p18, i75, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, i58, i76, descr=TargetToken(169079000))
+        """)
+
+    def test_large_integer_or(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | li block |
+        li := 2147483648.
+        1 to: 100000 do: [:i | li bitOr: i].
+        """)
+        self.assert_matches(traces[0].loop, """
+        guard_not_invalidated(descr=<Guard0xa11ad30>),
+        i72 = int_le(i65, 100000),
+        guard_true(i72, descr=<Guard0xa11ad00>),
+        i73 = int_or(i58, i65),
+        i74 = uint_lt(i73, 2147483647),
+        guard_false(i74, descr=<Guard0xa11acd0>),
+        i75 = int_add(i65, 1),
+        i76 = int_sub(i69, 1),
+        setfield_gc(ConstPtr(ptr66), i76, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 20>),
+        i77 = int_le(i76, 0),
+        guard_false(i77, descr=<Guard0xa11aca0>),
+        jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, p18, i75, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, i58, i76, descr=TargetToken(169079000))
+        """)
