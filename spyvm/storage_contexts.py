@@ -436,6 +436,11 @@ class ContextPartShadow(AbstractStrategy):
         return self.stack_get(ptr)
 
     @jit.unroll_safe
+    def peek_n(self, n):
+        result = [self.peek(i) for i in range(n - 1, -1, -1)]
+        return result
+
+    @jit.unroll_safe
     def pop_n(self, n):
         #assert n == 0 or self._stack_ptr - n >= self.tempsize()
         jit.promote(self._stack_ptr)

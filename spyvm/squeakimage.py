@@ -263,6 +263,7 @@ class SqueakImage(object):
         self.w_simulateCopyBits = self.find_symbol(space, reader, "simulateCopyBits")
         self.w_copyBitsSimulated = self.find_symbol(space, reader, "copyBitsSimulated")
         self.w_warpBitsSimulated = self.find_symbol(space, reader, "warpBitsSimulated:sourceMap:")
+        self.w_simulateBalloonPrimitive = self.find_symbol(space, reader, "simulateBalloonPrimitive:args:")
         self.lastWindowSize = reader.lastWindowSize
         self.version = reader.version
         self.run_spy_hacks(space)
