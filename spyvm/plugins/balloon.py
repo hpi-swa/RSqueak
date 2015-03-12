@@ -34,9 +34,8 @@ class BalloonPluginClass(Plugin):
             s_frame.pop_n(argcount + 1)
             s_frame.push(ret.value)
             return
-        except Exception:
-            pass
-        raise PrimitiveFailedError
+        else:
+            raise PrimitiveFailedError
 
 
 BalloonPlugin = BalloonPluginClass()
