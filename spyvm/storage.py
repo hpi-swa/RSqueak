@@ -64,19 +64,19 @@ class AbstractStrategy(object):
     def become(self, w_other):
         raise NotImplementedError("This strategy doesn't handle become.")
     def onesided_become(self, w_other):
-        # This is only needed in ShadowProxy, but has to be pulled up here because
+        # This is only needed in ShadowMixin, but has to be pulled up here because
         # both AbstractGenericShadow and ContextPartShadow use it.
         raise NotImplementedError("This strategy doesn't handle become.")
 
 # ========== Storage classes implementing storage strategies ==========
 
-class AbstractStrategy(AbstractStrategy):
+class SingletonStorageStrategy(AbstractStrategy):
     """
     Singleton strategies handle 'simple' object storage in normal objects, without
     additional VM-internal information.
     Depending on the data inside an object, different optimizing strategies are used.
     """
-    repr_classname = "AbstractStrategy"
+    repr_classname = "SingletonStorageStrategy"
     _attrs_ = []
     import_from_mixin(rstrat.UnsafeIndexingMixin)
 
@@ -84,17 +84,17 @@ class AbstractStrategy(AbstractStrategy):
         return self.space.w_nil
 
 @rstrat.strategy()
-class ListStrategy(AbstractStrategy):
+class ListStrategy(SingletonStorageStrategy):
     _attrs_ = []
     repr_classname = "ListStrategy"
     import_from_mixin(rstrat.GenericStrategy)
 
-class WeakListStrategy(AbstractStrategy):
+class WeakListStrategy(SingletonStorageStrategy):
     repr_classname = "WeakListStrategy"
     import_from_mixin(rstrat.WeakGenericStrategy)
 
 @rstrat.strategy(generalize=[ListStrategy])
-class SmallIntegerOrNilStrategy(AbstractStrategy):
+class SmallIntegerOrNilStrategy(SingletonStorageStrategy):
     repr_classname = "SmallIntegerOrNilStrategy"
     import_from_mixin(rstrat.TaggingStrategy)
     contained_type = model.W_SmallInteger
@@ -104,7 +104,7 @@ class SmallIntegerOrNilStrategy(AbstractStrategy):
     def unwrapped_tagged_value(self): return constants.MAXINT
 
 @rstrat.strategy(generalize=[ListStrategy])
-class FloatOrNilStrategy(AbstractStrategy):
+class FloatOrNilStrategy(SingletonStorageStrategy):
     repr_classname = "FloatOrNilStrategy"
     import_from_mixin(rstrat.TaggingStrategy)
     contained_type = model.W_Float
@@ -118,7 +118,7 @@ class FloatOrNilStrategy(AbstractStrategy):
     SmallIntegerOrNilStrategy,
     FloatOrNilStrategy,
     ListStrategy])
-class AllNilStrategy(AbstractStrategy):
+class AllNilStrategy(SingletonStorageStrategy):
     repr_classname = "AllNilStrategy"
     import_from_mixin(rstrat.SingleValueStrategy)
     def value(self): return self.space.w_nil
