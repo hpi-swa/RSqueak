@@ -1,4 +1,3 @@
-
 import pdb
 from spyvm.storage_contexts import ContextPartShadow
 from spyvm import model, constants, primitives
@@ -32,9 +31,9 @@ def activate_debugging():
     Interpreter.step_returns = False
     Interpreter.step_primitives = False
     Interpreter.step_failed_primitives = False
-    
+
     _break = pdb.set_trace
-    
+
     def patch(obj):
         def do_patch(meth):
             name = meth.__name__
@@ -44,16 +43,16 @@ def activate_debugging():
             setattr(obj, name, replacement)
             return meth
         return do_patch
-    
+
     patch_context = patch(ContextPartShadow)
-    
+
     @patch_context
     def debug_bytecode(original):
         def meth(self, interp):
             if interp.step_bytecodes:
                 _break() # Continue stepping from here to get to the current bytecode execution
         return meth
-    
+
     @patch_context
     def _sendSelector(original):
         def meth(self, w_selector, argcount, interp, receiver, receiverclassshadow, w_arguments=None):
@@ -61,7 +60,7 @@ def activate_debugging():
                 _break() # Continue stepping from here to get to the current message send
             return original(self, w_selector, argcount, interp, receiver, receiverclassshadow, w_arguments=w_arguments)
         return meth
-    
+
     @patch_context
     def _return(original):
         def meth(self, return_value, interp, local_return=False):
@@ -69,7 +68,7 @@ def activate_debugging():
                 _break() # Continue stepping from here to get to the current return
             return original(self, return_value, interp, local_return=local_return)
         return meth
-    
+
     @patch_context
     def _call_primitive(original):
         def meth(self, code, interp, argcount, w_method, w_selector):
@@ -80,11 +79,11 @@ def activate_debugging():
             except error.PrimitiveFailedError, e:
                 if interp.step_failed_primitives:
                     _break() # Continue stepping from here to get to the current failed primitive.
-                    
+
                     # Should fail again.
                     original(self, code, interp, argcount, w_method, w_selector)
         return meth
-    
+
     def failed_named_primitive(original):
         def meth(interp, s_frame, argcount, w_method=None):
             try:
@@ -92,18 +91,17 @@ def activate_debugging():
             except error.PrimitiveFailedError, e:
                 if interp.step_failed_named_primitives:
                     _break() # Continue from here to get to the current failed named primitive.
-                    
+
                     space = interp.space
                     w_description = w_method.literalat0(space, 1)
                     if isinstance(w_description, model.W_PointersObject) and w_description.size() >= 2:
                         w_modulename = w_description.at0(space, 0)
                         w_functionname = w_description.at0(space, 1)
                         print "Failed named primitive. Module: %s, Function: %s" % (w_modulename, w_functionname)
-                    
+
                     # Should fail again.
                     original(interp, s_frame, argcount, w_method=w_method)
                 raise e
         return meth
-    
+
     primitives.prim_table[primitives.EXTERNAL_CALL] = failed_named_primitive(primitives.prim_table[primitives.EXTERNAL_CALL])
-    
