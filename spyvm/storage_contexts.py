@@ -407,7 +407,15 @@ class ContextPartShadow(AbstractStrategy):
         #assert self._stack_ptr > self.tempsize()
         ptr = jit.promote(self._stack_ptr) - 1
         ret = self.stack_get(ptr)   # you get OverflowError if the stack is empty
-        self.stack_put(ptr, self.space.w_nil)
+        #
+        # HACK HACK HACK HACK HACK (5 times)
+        # We really would like to nil out the popp'ed value, but there are
+        # methods (yes, ContextPart>>contextOn:do:, I am looking at you!) that
+        # do a pop and access the stack afterwards. Or better said, do a pop on
+        # the empty stack and would hence nil out a temp. We cannot let this
+        # happen.
+        # Problem: how do we tell the GC to collect outside self._stack_ptr?
+        #  self.stack_put(ptr, self.space.w_nil)
         assert ptr >= 0
         self._stack_ptr = ptr
         return ret

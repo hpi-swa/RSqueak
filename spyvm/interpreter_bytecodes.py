@@ -1,5 +1,4 @@
-
-from spyvm.storage_contexts import ContextPartShadow
+from spyvm.storage_contexts import ContextPartShadow, DirtyContext
 from spyvm.storage_classes import ClassShadow
 from spyvm import model, primitives, wrapper, error
 from spyvm.util.bitmanipulation import splitter
@@ -420,10 +419,13 @@ class __extend__(ContextPartShadow):
         if interp.is_tracing():
             interp.print_padded('<- ' + return_value.as_repr_string())
 
-        if self.home_is_self() or local_return:
-            # a local return just needs to go up the stack once. there
-            # it will find the sender as a local, and we don't have to
-            # force the reference
+
+        # a local return just needs to go up the stack once. there
+        # it will find the sender as a local, and we don't have to
+        # force the reference
+        # EXECPT someone fiddled with our context chain!
+        if (self.home_is_self() or local_return) \
+            and not(self.state == DirtyContext):
             s_return_to = None
         else:
             s_return_to = self.s_home().s_sender()
