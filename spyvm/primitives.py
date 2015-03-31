@@ -960,6 +960,9 @@ def func(interp, s_frame, argcount, w_method):
     elif signature[0] == "VMDebugging":
         from spyvm.plugins.vmdebugging import DebuggingPlugin
         return DebuggingPlugin.call(signature[1], interp, s_frame, argcount, w_method)
+    elif signature[0] == "B2DPlugin":
+        from spyvm.plugins.balloon import BalloonPlugin
+        return BalloonPlugin.simulate(w_functionname, signature[1], interp, s_frame, argcount, w_method)
     else:
         raise PrimitiveFailedError
 
