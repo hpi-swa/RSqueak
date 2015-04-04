@@ -727,8 +727,11 @@ def func(interp, s_frame, w_rcvr, w_into):
 
 @expose_primitive(BITBLT_COPY_BITS, clean_stack=False, no_result=True, compiled_method=True)
 def func(interp, s_frame, argcount, w_method):
-    from spyvm.plugins.bitblt import BitBltPlugin
-    return BitBltPlugin.call("primitiveCopyBits", interp, s_frame, argcount, w_method)
+    if interp.space.use_plugins.is_set():
+        from spyvm.plugins.squeak_plugin_proxy import IProxy
+        return IProxy.call(("BitBltPlugin", "primitiveCopyBits"), interp, s_frame, argcount, w_method)
+    else:
+        raise PrimitiveFailedError
 
 @expose_primitive(BE_CURSOR)
 def func(interp, s_frame, argcount):
@@ -936,33 +939,33 @@ def func(interp, s_frame, argcount, w_method):
     if not (isinstance(w_modulename, model.W_BytesObject) and
             isinstance(w_functionname, model.W_BytesObject)):
         raise PrimitiveFailedError
-    signature = (w_modulename.as_string(), w_functionname.as_string())
+    modulename = w_modulename.as_string()
 
     if interp.space.use_plugins.is_set():
         from spyvm.plugins.squeak_plugin_proxy import IProxy, MissingPlugin
         try:
-            return IProxy.call(signature, interp, s_frame, argcount, w_method)
+            return IProxy.call((modulename, w_functionname.as_string()), interp, s_frame, argcount, w_method)
         except MissingPlugin:
             pass
 
-    if signature[0] == 'BitBltPlugin':
+    if modulename == 'BitBltPlugin':
         from spyvm.plugins.bitblt import BitBltPlugin
-        return BitBltPlugin.call(signature[1], interp, s_frame, argcount, w_method)
-    elif signature[0] == 'LargeIntegers':
+        return BitBltPlugin.call(w_functionname, interp, s_frame, argcount, w_method)
+    elif modulename == 'LargeIntegers':
         from spyvm.plugins.large_integer import LargeIntegerPlugin
-        return LargeIntegerPlugin.call(signature[1], interp, s_frame, argcount, w_method)
-    elif signature[0] == "SocketPlugin":
+        return LargeIntegerPlugin.call(w_functionname, interp, s_frame, argcount, w_method)
+    elif modulename == "SocketPlugin":
         from spyvm.plugins.socket import SocketPlugin
-        return SocketPlugin.call(signature[1], interp, s_frame, argcount, w_method)
-    elif signature[0] == "FilePlugin":
+        return SocketPlugin.call(w_functionname, interp, s_frame, argcount, w_method)
+    elif modulename == "FilePlugin":
         from spyvm.plugins.fileplugin import FilePlugin
-        return FilePlugin.call(signature[1], interp, s_frame, argcount, w_method)
-    elif signature[0] == "VMDebugging":
+        return FilePlugin.call(w_functionname, interp, s_frame, argcount, w_method)
+    elif modulename == "VMDebugging":
         from spyvm.plugins.vmdebugging import DebuggingPlugin
-        return DebuggingPlugin.call(signature[1], interp, s_frame, argcount, w_method)
-    elif signature[0] == "B2DPlugin":
+        return DebuggingPlugin.call(w_functionname, interp, s_frame, argcount, w_method)
+    elif modulename == "B2DPlugin":
         from spyvm.plugins.balloon import BalloonPlugin
-        return BalloonPlugin.simulate(w_functionname, signature[1], interp, s_frame, argcount, w_method)
+        return BalloonPlugin.call(w_functionname, interp, s_frame, argcount, w_method)
     else:
         raise PrimitiveFailedError
 
