@@ -249,25 +249,30 @@ class ImageReader(object):
 class SqueakImage(object):
     _immutable_fields_ = [
         "w_asSymbol",
-        "w_simulateCopyBits",
-        "w_copyBitsSimulated",
-        "w_warpBitsSimulated",
         "version",
         "startup_time"
     ]
+    code = ["def set_simlation_selectors(self, symbols_w):"]
+    for idx, attr in enumerate(constants.SIMULATION_SELECTORS.values()):
+        _immutable_fields_.append(attr)
+        code.append("    self." + attr + " = symbols_w[" + str(idx) + "]")
+    exec "\n".join(code)
 
     def __init__(self, reader):
         space = reader.space
         self.special_objects = reader.special_w_objects
         self.w_asSymbol = self.find_symbol(space, reader, "asSymbol")
-        self.w_simulateCopyBits = self.find_symbol(space, reader, "simulateCopyBits")
-        self.w_copyBitsSimulated = self.find_symbol(space, reader, "copyBitsSimulated")
-        self.w_warpBitsSimulated = self.find_symbol(space, reader, "warpBitsSimulated:sourceMap:")
-        self.w_simulateBalloonPrimitive = self.find_symbol(space, reader, "simulateBalloonPrimitive:args:")
         self.lastWindowSize = reader.lastWindowSize
         self.version = reader.version
         self.run_spy_hacks(space)
         self.startup_time = time.time()
+        self.find_simulation_selectors(space, reader)
+
+    def find_simulation_selectors(self, space, reader):
+        symbols_w = []
+        for selector in constants.SIMULATION_SELECTORS.keys():
+            symbols_w.append(self.find_symbol(space, reader, selector))
+        self.set_simlation_selectors(symbols_w)
 
     def run_spy_hacks(self, space):
         if not space.run_spy_hacks.is_set():

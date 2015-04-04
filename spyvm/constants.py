@@ -200,3 +200,13 @@ def decode_compiled_method_header(header):
 
 INTERRUPT_COUNTER_SIZE = 10000
 CompileTime = time.time()
+
+#___________________________________________________________________________
+# Primitive Simulation Selectors
+
+SIMULATION_SELECTORS = {
+    'simulateCopyBits': 'w_simulateCopyBits',
+    'copyBitsSimulated': 'w_copyBitsSimulated',
+    'warpBitsSimulated:sourceMap:': 'w_warpBitsSimulated',
+    'simulateBalloonPrimitive:args:': 'w_simulateBalloonPrimitive'
+}
