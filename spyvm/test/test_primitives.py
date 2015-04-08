@@ -575,19 +575,19 @@ def test_primitive_closure_copyClosure():
     assert w_w_block.at0(1) == wrap(2)
     assert w_w_block.numArgs() is 2
 
-def test_primitive_string_copy():
-    w_r = prim(primitives.STRING_REPLACE, ["aaaaa", 1, 5, "ababab", 1])
-    assert w_r.as_string() == "ababa"
-    w_r = prim(primitives.STRING_REPLACE, ["aaaaa", 1, 5, "ababab", 2])
-    assert w_r.as_string() == "babab"
-    w_r = prim(primitives.STRING_REPLACE, ["aaaaa", 2, 5, "ccccc", 1])
-    assert w_r.as_string() == "acccc"
-    w_r = prim(primitives.STRING_REPLACE, ["aaaaa", 2, 4, "ccccc", 1])
-    assert w_r.as_string() == "accca"
-    prim_fails(primitives.STRING_REPLACE, ["aaaaa", 0, 4, "ccccc", 1])
-    prim_fails(primitives.STRING_REPLACE, ["aaaaa", 1, 6, "ccccc", 2])
-    prim_fails(primitives.STRING_REPLACE, ["aaaaa", 2, 6, "ccccc", 1])
-    prim_fails(primitives.STRING_REPLACE, [['a', 'b'], 1, 4, "ccccc", 1])
+# def test_primitive_string_copy():
+#     w_r = prim(primitives.STRING_REPLACE, ["aaaaa", 1, 5, "ababab", 1])
+#     assert w_r.as_string() == "ababa"
+#     w_r = prim(primitives.STRING_REPLACE, ["aaaaa", 1, 5, "ababab", 2])
+#     assert w_r.as_string() == "babab"
+#     w_r = prim(primitives.STRING_REPLACE, ["aaaaa", 2, 5, "ccccc", 1])
+#     assert w_r.as_string() == "acccc"
+#     w_r = prim(primitives.STRING_REPLACE, ["aaaaa", 2, 4, "ccccc", 1])
+#     assert w_r.as_string() == "accca"
+#     prim_fails(primitives.STRING_REPLACE, ["aaaaa", 0, 4, "ccccc", 1])
+#     prim_fails(primitives.STRING_REPLACE, ["aaaaa", 1, 6, "ccccc", 2])
+#     prim_fails(primitives.STRING_REPLACE, ["aaaaa", 2, 6, "ccccc", 1])
+#     prim_fails(primitives.STRING_REPLACE, [['a', 'b'], 1, 4, "ccccc", 1])
 
 def build_up_closure_environment(args, copiedValues=[]):
     w_frame, s_initial_context = new_frame("<never called, but used for method generation>")
