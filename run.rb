@@ -16,9 +16,13 @@ STDIN.readchar
 class VM < Struct.new(:path)
   def go
     BENCHMARKS.each do |b|
-      run(b).sub(/.*#\(([0-9 ]+)\).*/m, '\\1').split[-21..-1].each do |value|
-        puts "#{b};#{self.class.name};#{value}"
-      end
+      format(run(b), b)
+    end
+  end
+
+  def format(s, b)
+    s.sub(/.*#\(([0-9 ]+)\).*/m, '\\1').split[-21..-1].each do |value|
+      puts "#{b};#{self.class.name};#{value}"
     end
   end
 end
@@ -49,8 +53,9 @@ end
 VMS = [Cog.new(ARGV[0] || cog), Stack.new(ARGV[1] || stack), RSqueak.new(ARGV[2] || rsqueak)]
 
 if ARGV[3] && ARGV[4]
-  puts VMS.detect {|vm| vm.class.name =~ /#{ARGV[3]}/i}.
-    run(ARGV[4]).sub(/.*#\(([\d ]+)\).*/m, '\\1')
+  vm = VMS.detect {|vm| vm.class.name =~ /#{ARGV[3]}/i}
+  r = vm.run(ARGV[4])#.sub(/.*#\(([\d ]+)\).*/m, '\\1')
+  vm.format(r, ARGV[4])
   exit
 end
 
