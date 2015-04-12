@@ -11,7 +11,8 @@ environment:
 
 matrix:
   fast_finish: true
-
+  allow_failures:
+    - OPTLVL: -Ojit
 shallow_clone: true
 platform: x86
 configuration: Build
