@@ -1,4 +1,7 @@
 skip_tags: true
+branches:
+  only:
+    - master
 shallow_clone: true
 platform: x86
 configuration: Build
