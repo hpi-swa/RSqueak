@@ -24,5 +24,5 @@ script:
   - if [ "$BUILD_TYPE" == test ]; then .travis/test.sh; fi
   - if [ "$BUILD_TYPE" == build ]; then .travis/build.sh; fi
 after_success:
-  - gem install travis
-  - travis restart -t $TRAVIS_TOKEN -r timfel/RSqueak-MacOSXBuild
+  - if [ "$BUILD_TYPE" == build ]; gem install travis; fi
+  - if [ "$BUILD_TYPE" == build ]; travis restart -t $TRAVIS_TOKEN -r timfel/RSqueak-MacOSXBuild; fi
