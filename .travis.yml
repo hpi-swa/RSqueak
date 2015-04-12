@@ -2,8 +2,8 @@ language: python
 python:
   - 2.7
 env:
-  secure: "f3+bJthcOf3YPc2w+s0d3dEMGvIfeutu6zAjpTT8Nb/Q/YjieUVHxdtaf+TgcauHgfzzOZ+26klXz0G9cKiKjwMxv/916fZofLn/Bh4kOUnHXYHYyTqkmLyUWlYMktdVu3/pMjY1waYQjNtqlo6q4opsiqBA5rLJ5CAF6NkZBLg="
   global:
+    - secure: "f3+bJthcOf3YPc2w+s0d3dEMGvIfeutu6zAjpTT8Nb/Q/YjieUVHxdtaf+TgcauHgfzzOZ+26klXz0G9cKiKjwMxv/916fZofLn/Bh4kOUnHXYHYyTqkmLyUWlYMktdVu3/pMjY1waYQjNtqlo6q4opsiqBA5rLJ5CAF6NkZBLg="
     - TEST_TYPE=default 
     - EXECUTE_JITTESTS=yes
   matrix:
