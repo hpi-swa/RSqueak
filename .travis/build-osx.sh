@@ -29,8 +29,10 @@ exitcode=$?
 # after_success
 if [ $exitcode -eq 0 ]; then
     cd RSqueakGit
-    export RSQUEAKCOMMIT="$(git log --pretty=%h HEAD^..HEAD)"
+    export RSQUEAKCOMMIT="$(git show -s --pretty=format:%H)"
     cd ..
     cp rsqueak rsqueak-x86-darwin-jit-$RSQUEAKCOMMIT
     curl -T rsqueak-x86* http://www.lively-kernel.org/babelsberg/RSqueak/
+    cp rsqueak rsqueak-darwin-latest
+    curl -T rsqueak-darwin-latest http://www.lively-kernel.org/babelsberg/RSqueak/
 fi
