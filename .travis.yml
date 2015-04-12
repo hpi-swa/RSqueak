@@ -2,6 +2,7 @@ language: python
 python:
   - 2.7
 env:
+  secure: "HrufNrK8W5R6/zabDitBG4KgsSSIPVoo2/eS7++JDeoen6fKHrbcMEXcvX1SU3P1sfxkW8nezwKecK37WVehJMx6wooVJVY4pkCqsOcd1NFGoTHZIFDNlcspz67IBDAGVTP7yLCNdigi+ocu6ZaS1EYO+N+gnKnWONsFQLriOMA="
   global:
     - TEST_TYPE=default 
     - EXECUTE_JITTESTS=yes
@@ -23,9 +24,5 @@ script:
   - if [ "$BUILD_TYPE" == test ]; then .travis/test.sh; fi
   - if [ "$BUILD_TYPE" == build ]; then .travis/build.sh; fi
 after_success:
-  - git config --global user.email "travis-ci@travis.org"
-  - git config --global user.name "Travis CI"
-  - git clone "https://${GH_TOKEN}@github.com/HPI-SWA-Lab/RSqueak-MacOSXBuild.git"
-  - cd RSqueak-MacOSXBuild
-  - git commit --allow-empty -m "Triggered by ${$TRAVIS_COMMIT}"
-  - git push origin master:$TRAVIS_BRANCH
+  - gem install travis
+  - travis restart -t $TRAVIS_TOKEN -r timfel/RSqueak-MacOSXBuild
