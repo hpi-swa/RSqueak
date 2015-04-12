@@ -21,21 +21,16 @@ function DownloadFile-Rel($url, $destination) {
     Write-Host " . done"
 }
 
-DownloadFile-Rel "https://bitbucket.org/pypy/pypy/get/default.zip" "pypy.zip"
-DownloadFile-Rel "https://bitbucket.org/pypy/rsdl/get/default.zip" "rsdl.zip"
-DownloadFile-Rel "https://bitbucket.org/pypy/pypy/downloads/pypy-2.5.1-win32.zip" "pypy-win32.zip"
-DownloadFile-Rel "http://libsdl.org/release/SDL-devel-1.2.15-VC.zip" "SDL.zip"
+function EnsureDep($url, $zip, $folder, $subDir) {
+   if (!(Test-Path $folder)) {
+      DownloadFile-Rel $url $zip
+      Expand-ZIPFile-Rel $zip $folder
+      mv $folder/$subdir/* $folder/
+      rm $zip
+   }
+}
 
-Expand-ZIPFile-Rel "pypy.zip" "pypy"
-mv pypy/pypy-pypy*/* pypy/
-Expand-ZIPFile-Rel "rsdl.zip" "rsdl"
-mv rsdl/pypy-rsdl*/* rsdl/
-Expand-ZIPFile-Rel "pypy-win32.zip" "pypy-win32"
-mv pypy-win32/pypy*win32/* pypy-win32/
-Expand-ZIPFile-Rel "SDL.zip" "SDL"
-mv SDL/SDL-*/* SDL/
-
-rm pypy.zip
-rm rsdl.zip
-rm pypy-win32.zip
-rm SDL.zip
+EnsureDep "https://bitbucket.org/pypy/pypy/get/default.zip" "pypy.zip" "pypy" "pypy-pypy*"
+EnsureDep "https://bitbucket.org/pypy/rsdl/get/default.zip" "rsdl.zip" "rsdl" "pypy-rsdl*"
+EnsureDep "https://bitbucket.org/pypy/pypy/downloads/pypy-2.5.1-win32.zip" "pypy-win32.zip" "pypy-win32" "pypy*win32"
+EnsureDep "http://libsdl.org/release/SDL-devel-1.2.15-VC.zip" "SDL.zip" "SDL" "SDL-*"

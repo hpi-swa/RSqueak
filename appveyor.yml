@@ -21,3 +21,9 @@ build:
   project: rsqueak.msbuild
 on_success:
   - cmd: "%WINDIR%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NonInteractive -executionpolicy Unrestricted -command \"& { .\\rsqueak-upload.ps1 }\""
+
+cache:
+  - pypy -> .appveyor/cache_tag
+  - rsdl -> .appveyor/cache_tag
+  - pypy-win32 -> .appveyor/cache_tag
+  - SDL -> .appveyor/cache_tag
