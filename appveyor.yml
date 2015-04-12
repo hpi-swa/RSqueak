@@ -2,6 +2,16 @@ skip_tags: true
 branches:
   only:
     - master
+    - windows-build
+
+environment:
+  matrix:
+    - OPTLVL: -O2
+    - OPTLVL: -Ojit
+
+matrix:
+  fast_finish: true
+
 shallow_clone: true
 platform: x86
 configuration: Build
