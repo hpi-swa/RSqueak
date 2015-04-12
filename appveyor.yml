@@ -1,0 +1,29 @@
+skip_tags: true
+branches:
+  only:
+    - master
+
+environment:
+  matrix:
+    - OPTLVL: -O2
+    # - OPTLVL: -Ojit
+
+matrix:
+  fast_finish: true
+  # allow_failures:
+  #   - OPTLVL: -Ojit
+shallow_clone: true
+platform: x86
+configuration: Build
+before_build:
+  - ps: "cp .appveyor/* ."
+build:
+  project: rsqueak.msbuild
+on_success:
+  - cmd: "%WINDIR%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NonInteractive -executionpolicy Unrestricted -command \"& { .\\rsqueak-upload.ps1 }\""
+
+cache:
+  - pypy -> .appveyor/cache_tag
+  - rsdl -> .appveyor/cache_tag
+  - pypy-win32 -> .appveyor/cache_tag
+  - SDL -> .appveyor/cache_tag
