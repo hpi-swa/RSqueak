@@ -3,7 +3,7 @@ set -ex
 
 function doIt {
     gem install travis --no-ri --no-rdoc
-    travis login -g $GH_TOKEN
+    travis login --no-interactive -g $GH_TOKEN
     travis restart --no-interactive -r timfel/RSqueak-MacOSXBuild
 }
 
