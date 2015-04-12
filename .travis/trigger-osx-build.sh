@@ -7,7 +7,7 @@ if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
 	    if [ "$TRAVIS_BRANCH" == "master" ]; then
 		gem install travis --no-ri --no-rdoc
 		travis login --no-interactive -g $GH_TOKEN
-		travis restart --no-interactive -r timfel/RSqueak-MacOSXBuild
+		travis restart --no-interactive -r $OSXREPO
 	    fi
 	fi
     fi
