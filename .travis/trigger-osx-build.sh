@@ -2,8 +2,9 @@
 set -ex
 
 function doIt {
-    gem install travis
-    travis restart --no-interactive -t "$TRAVIS_TOKEN" -r timfel/RSqueak-MacOSXBuild
+    gem install travis --no-ri --no-rdoc
+    travis login -g $GH_TOKEN
+    travis restart --no-interactive -r timfel/RSqueak-MacOSXBuild
 }
 
 if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then

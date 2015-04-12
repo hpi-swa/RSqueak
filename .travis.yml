@@ -2,7 +2,7 @@ language: python
 python:
   - 2.7
 env:
-  secure: "HrufNrK8W5R6/zabDitBG4KgsSSIPVoo2/eS7++JDeoen6fKHrbcMEXcvX1SU3P1sfxkW8nezwKecK37WVehJMx6wooVJVY4pkCqsOcd1NFGoTHZIFDNlcspz67IBDAGVTP7yLCNdigi+ocu6ZaS1EYO+N+gnKnWONsFQLriOMA="
+  secure: "f3+bJthcOf3YPc2w+s0d3dEMGvIfeutu6zAjpTT8Nb/Q/YjieUVHxdtaf+TgcauHgfzzOZ+26klXz0G9cKiKjwMxv/916fZofLn/Bh4kOUnHXYHYyTqkmLyUWlYMktdVu3/pMjY1waYQjNtqlo6q4opsiqBA5rLJ5CAF6NkZBLg="
   global:
     - TEST_TYPE=default 
     - EXECUTE_JITTESTS=yes
