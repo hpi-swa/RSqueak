@@ -29,6 +29,8 @@ if [ $exitcode -eq 0 ]; then
     if [ "$TRAVIS_BRANCH" == "master" ]; then
         if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
             curl -T rsqueak-x86* http://www.lively-kernel.org/babelsberg/RSqueak/
+            cp rsqueak-x86* rsqueak-linux-latest
+            curl -T rsqueak-linux-latest http://www.lively-kernel.org/babelsberg/RSqueak/
 	fi
     fi
     sudo rm -rf pypy-pypy/rpython/_cache
