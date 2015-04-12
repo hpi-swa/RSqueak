@@ -22,3 +22,10 @@ install:
 script:
   - if [ "$BUILD_TYPE" == test ]; then .travis/test.sh; fi
   - if [ "$BUILD_TYPE" == build ]; then .travis/build.sh; fi
+after_success:
+  - git config --global user.email "travis-ci@travis.org"
+  - git config --global user.name "Travis CI"
+  - git clone "https://${GH_TOKEN}@github.com/HPI-SWA-Lab/RSqueak-MacOSXBuild.git"
+  - cd RSqueak-MacOSXBuild
+  - git commit --allow-empty -m "Triggered by ${$TRAVIS_COMMIT}"
+  - git push origin master:$TRAVIS_BRANCH
