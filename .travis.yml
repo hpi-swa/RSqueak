@@ -3,6 +3,8 @@ python:
   - 2.7
 env:
   global:
+    - secure: "f3+bJthcOf3YPc2w+s0d3dEMGvIfeutu6zAjpTT8Nb/Q/YjieUVHxdtaf+TgcauHgfzzOZ+26klXz0G9cKiKjwMxv/916fZofLn/Bh4kOUnHXYHYyTqkmLyUWlYMktdVu3/pMjY1waYQjNtqlo6q4opsiqBA5rLJ5CAF6NkZBLg="
+    - OSXREPO=timfel/RSqueak-MacOSXBuild
     - TEST_TYPE=default 
     - EXECUTE_JITTESTS=yes
   matrix:
@@ -16,6 +18,7 @@ matrix:
     - env: BUILD_ARCH=64bit BUILD_TYPE=test
     - env: BUILD_ARCH=64bit BUILD_TYPE=build
 install:
+  - .travis/trigger-osx-build.sh
   - .travis/install_requirements.sh
   - export chroot="$PWD"/buildroot.i386
   - if [ "$BUILD_ARCH" == 32bit ]; then .travis/setup_chroot.sh; fi
