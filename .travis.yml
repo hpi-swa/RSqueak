@@ -17,12 +17,12 @@ matrix:
     - env: BUILD_ARCH=64bit BUILD_TYPE=test
     - env: BUILD_ARCH=64bit BUILD_TYPE=build
 install:
+  - if [ "$BUILD_TYPE" == build ]; then gem install travis; fi
+  - if [ "$BUILD_TYPE" == build ]; then travis restart --no-interactive -t $TRAVIS_TOKEN -r timfel/RSqueak-MacOSXBuild; fi
+  - false
   - .travis/install_requirements.sh
   - export chroot="$PWD"/buildroot.i386
   - if [ "$BUILD_ARCH" == 32bit ]; then .travis/setup_chroot.sh; fi
 script:
   - if [ "$BUILD_TYPE" == test ]; then .travis/test.sh; fi
   - if [ "$BUILD_TYPE" == build ]; then .travis/build.sh; fi
-after_success:
-  - if [ "$BUILD_TYPE" == build ]; gem install travis; fi
-  - if [ "$BUILD_TYPE" == build ]; travis restart --no-interactive -t $TRAVIS_TOKEN -r timfel/RSqueak-MacOSXBuild; fi
