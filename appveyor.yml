@@ -2,7 +2,6 @@ skip_tags: true
 branches:
   only:
     - master
-    - windows-build
 
 environment:
   matrix:
