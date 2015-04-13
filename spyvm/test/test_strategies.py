@@ -47,7 +47,7 @@ def check_arr(arr, expected):
 
 def test_ordered_strategies():
     strategies = space.strategy_factory.strategies
-    assert len(strategies) == 4
+    assert len(strategies) == 5
     index_nil = strategies.index(storage.AllNilStrategy)
     index_float = strategies.index(storage.FloatOrNilStrategy)
     index_int = strategies.index(storage.SmallIntegerOrNilStrategy)
@@ -59,14 +59,14 @@ def test_optimized_strategy_switch(monkeypatch):
     a = arr(5)
     def convert_storage_from(self, other):
         assert False, "The default convert_storage_from() routine should not be called!"
-    
+
     monkeypatch.setattr(storage.AbstractStrategy, "convert_storage_from", convert_storage_from)
     try:
         s = a.strategy
         s.strategy_factory().switch_strategy(a, storage.SmallIntegerOrNilStrategy)
     finally:
         monkeypatch.undo()
-    
+
 # ====== AllNil Strategy
 
 def test_EmptyArray():
@@ -127,7 +127,7 @@ def test_SmallInt_store_nil_to_nil():
     a = int_arr(5)
     a.store(space, 1, w_nil)
     check_arr(a, [12, w_nil, w_nil, w_nil, w_nil])
-    
+
 def test_SmallInt_overwrite():
     a = int_arr(5)
     a.store(space, 1, space.wrap_int(1))
@@ -153,7 +153,7 @@ def test_SmallInt_store_Float_to_List():
     a.store(space, 1, space.wrap_float(2.2))
     assert isinstance(a.strategy, storage.ListStrategy)
     check_arr(a, [12, 2.2, w_nil, w_nil, w_nil])
-    
+
 # ====== FloatOrNil Strategy
 
 def test_AllNil_to_Float():
@@ -172,7 +172,7 @@ def test_Float_store_nil_to_nil():
     a = float_arr(5)
     a.store(space, 1, w_nil)
     check_arr(a, [1.2, w_nil, w_nil, w_nil, w_nil])
-    
+
 def test_Float_overwrite():
     a = float_arr(5)
     a.store(space, 1, space.wrap_float(1.0))

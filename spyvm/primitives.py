@@ -26,7 +26,7 @@ def assert_valid_index(space, n0, w_obj):
     return n0
 
 def assert_pointers(w_obj):
-    if not isinstance(w_obj, model.W_PointersObject):
+    if not (isinstance(w_obj, model.W_PointersObject) or isinstance(w_obj, model.W_Character)):
         raise PrimitiveFailedError
     return w_obj
 
