@@ -26,4 +26,4 @@ script:
   - if [ "$BUILD_TYPE" == build ]; then .travis/build.sh; fi
 cache:
   directories:
-    - $PWD/buildroot.i386
+    - buildroot.i386
