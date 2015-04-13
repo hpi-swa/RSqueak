@@ -108,8 +108,8 @@ class CharacterOrNilStrategy(SingletonStorageStrategy):
     repr_classname = "CharacterOrNilStrategy"
     import_from_mixin(rstrat.TaggingStrategy)
     contained_type = model.W_Character
-    def wrap(self, val): return self.space.wrap_char(chr(val))
-    def unwrap(self, w_val): return ord(self.space.unwrap_char(w_val))
+    def wrap(self, val): return model.W_Character(val)
+    def unwrap(self, w_val): return w_val.value
     def wrapped_tagged_value(self): return self.space.w_nil
     def unwrapped_tagged_value(self): return constants.MAXINT
 
