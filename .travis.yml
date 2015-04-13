@@ -18,7 +18,7 @@ matrix:
     - env: BUILD_ARCH=64bit BUILD_TYPE=test
     - env: BUILD_ARCH=64bit BUILD_TYPE=build
 install:
-  - .travis/trigger-osx-build.sh || 0
+  - .travis/trigger-osx-build.sh || echo 0
   - .travis/install_requirements.sh
   - export chroot="$PWD"/buildroot.i386
   - if [ "$BUILD_ARCH" == 32bit ]; then .travis/setup_chroot.sh; fi
