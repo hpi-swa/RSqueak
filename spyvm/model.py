@@ -601,7 +601,7 @@ class W_Character(W_AbstractObjectWithIdentityHash):
         return chr(self.value)
 
     def at0(self, space, index0):
-        return self.fetch(space, index0, w_value)
+        return self.fetch(space, index0)
 
     def atput0(self, space, index0, w_value):
         self.store(space, index0, w_value)
