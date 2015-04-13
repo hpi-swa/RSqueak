@@ -19,11 +19,11 @@ ls /Volumes/*SDL*/
 sudo cp -R /Volumes/*SDL*/SDL.framework /Library/Frameworks/
 
 # env
-export PY32="arch -32 /System/Library/Frameworks/Python.framework/Versions/2.7/bin/python"
+export VERSIONER_PYTHON_PREFER_32_BIT=yes
 export PYTHONPATH="$PYTHONPATH:pypy/:rsdl/:."
 
 # script
-$PY32 pypy/rpython/bin/rpython --batch -Ojit targetrsqueak.py
+python pypy/rpython/bin/rpython --batch -Ojit targetrsqueak.py
 exitcode=$?
 
 # after_success
