@@ -24,6 +24,8 @@ install:
 script:
   - if [ "$BUILD_TYPE" == test ]; then .travis/test.sh; fi
   - if [ "$BUILD_TYPE" == build ]; then .travis/build.sh; fi
+before_cache:
+  - .travis/cleanup_chroot.sh
 cache:
   directories:
-    - buildroot.i386
+    - $chroot
