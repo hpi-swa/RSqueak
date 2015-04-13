@@ -614,8 +614,8 @@ class W_Character(W_AbstractObjectWithIdentityHash):
     def store(self, space, n0, w_obj):
         if n0 != 0:
             raise IndexError
-        if isinstance(w_value, SmallInteger):
-            self.value = w_value.value
+        if isinstance(w_obj, W_SmallInteger):
+            self.value = w_obj.value
         else:
             raise IndexError
 
