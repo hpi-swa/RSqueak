@@ -1,5 +1,5 @@
 #!/bin/bash
-set -ex
+# set -ex
 
 if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
     if [ "$BUILD_TYPE" == "build" ]; then
