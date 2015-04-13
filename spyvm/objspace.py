@@ -187,7 +187,8 @@ class ObjSpace(object):
         return w_inst
 
     def wrap_char(self, c):
-        return self.w_charactertable.fetch(self, ord(c))
+        # return self.w_charactertable.fetch(self, ord(c))
+        return model.W_Character(ord(c))
 
     def wrap_bool(self, b):
         if b:
