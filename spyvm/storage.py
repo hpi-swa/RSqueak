@@ -104,6 +104,16 @@ class SmallIntegerOrNilStrategy(SingletonStorageStrategy):
     def unwrapped_tagged_value(self): return constants.MAXINT
 
 @rstrat.strategy(generalize=[ListStrategy])
+class CharacterOrNilStrategy(SingletonStorageStrategy):
+    repr_classname = "CharacterOrNilStrategy"
+    import_from_mixin(rstrat.TaggingStrategy)
+    contained_type = model.W_Character
+    def wrap(self, val): return self.space.wrap_char(chr(val))
+    def unwrap(self, w_val): return ord(self.space.unwrap_char(w_val))
+    def wrapped_tagged_value(self): return self.space.w_nil
+    def unwrapped_tagged_value(self): return constants.MAXINT
+
+@rstrat.strategy(generalize=[ListStrategy])
 class FloatOrNilStrategy(SingletonStorageStrategy):
     repr_classname = "FloatOrNilStrategy"
     import_from_mixin(rstrat.TaggingStrategy)
