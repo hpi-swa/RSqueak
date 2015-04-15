@@ -24,6 +24,7 @@ dos2unix inst.sh
 ./inst.sh
 chown -R vagrant /home/vagrant/deps
 
+cd /home/vagrant
 APP_PYTHONPATH='export PYTHONPATH=$PYTHONPATH:~/deps/pypy-pypy:~/deps/pypy-rsdl'
 if ! grep "$APP_PYTHONPATH" .bashrc >/dev/null 2>/dev/null; then
 	echo $APP_PYTHONPATH >> .bashrc
@@ -32,7 +33,7 @@ SCRIPT
 
   # provision graphical UI and convenience tools
   config.vm.provision :shell, inline: <<SCRIPT
-apt-get install -y python-pygame graphviz fluxbox nodm xinit vim-athena xclip
+apt-get install -y python-pygame graphviz fluxbox nodm xinit vim-athena xclip xterm
 
 # set up nodm to login the vagrant user
 sed -i s/NODM_ENABLED=false/NODM_ENABLED=true/ /etc/default/nodm
