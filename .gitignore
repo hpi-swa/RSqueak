@@ -16,3 +16,4 @@ coglinux
 SDL.dll
 
 /pypy/
+.vagrant/
