@@ -234,9 +234,9 @@ class Interpreter(object):
             return
         # Normally, the tick counter is decremented by 1 for every message send.
         # Since we don't know how many messages are called during this trace, we
-        # just decrement by 100th of the trace length (num of bytecodes).
+        # just decrement by 200th of the trace length (num of bytecodes).
         trace_length = jit.current_trace_length()
-        decr_by = int(trace_length // 100)
+        decr_by = int(trace_length // 200)
         if decr_by > 0:
             self.quick_check_for_interrupt(s_frame, decr_by)
 
