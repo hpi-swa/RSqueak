@@ -237,8 +237,8 @@ class Interpreter(object):
         # just decrement by 100th of the trace length (num of bytecodes).
         trace_length = jit.current_trace_length()
         decr_by = int(trace_length // 100)
-        decr_by = max(decr_by, 1)
-        self.quick_check_for_interrupt(s_frame, decr_by)
+        if decr_by > 0:
+            self.quick_check_for_interrupt(s_frame, decr_by)
 
     def quick_check_for_interrupt(self, s_frame, dec=1):
         if not self.interrupts:
