@@ -7,7 +7,7 @@ from spyvm.error import PrimitiveFailedError, PrimitiveNotYetWrittenError
 from spyvm import wrapper
 
 from rpython.rlib import rfloat, unroll, jit, objectmodel
-from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int, r_longlong
+from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int, r_longlong, int_between
 
 
 def assert_class(interp, w_obj, w_class):
@@ -15,7 +15,7 @@ def assert_class(interp, w_obj, w_class):
         raise PrimitiveFailedError()
 
 def assert_valid_index(space, n0, w_obj):
-    if not 0 <= n0 < w_obj.varsize():
+    if not int_between(0, n0, w_obj.varsize()):
         raise PrimitiveFailedError()
     # return the index, since from here on the annotator knows that
     # n0 cannot be negative
