@@ -24,9 +24,24 @@ def pytest_addoption(parser):
         help="Path to a compiled rsqueak binary. Enables jit tests."
     )
 
+    group.addoption(
+        "--squeak",
+        dest="squeakbinary",
+        action="store",
+        default=None,
+        help="Path to a compiled rsqueak binary. Enables jit tests."
+    )
+
 # The 'jit' parameter is used in tests under jittest/
 def pytest_funcarg__spy(request):
     val = request.config.getvalue("rsqueak-binary")
     if not val:
         py.test.skip("Provide --jit parameter to execute jit tests")
+    return str(py.path.local(val))
+
+
+def pytest_funcarg__squeak(request):
+    val = request.config.getvalue("squeakbinary")
+    if not val:
+        py.test.skip("Provide --squeak parameter to execute modern jit tests")
     return str(py.path.local(val))
