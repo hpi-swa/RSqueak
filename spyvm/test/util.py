@@ -90,11 +90,11 @@ def import_bytecodes(module_name):
 # by manually stepping through the bytecodes, if _loop is set to False.
 class TestInterpreter(interpreter.Interpreter):
     _loop = False
-    
+
     def loop(self, w_active_context):
         self._loop = True
         return interpreter.Interpreter.loop(self, w_active_context)
-    
+
     def stack_frame(self, s_new_frame, s_sender, may_context_switch=True):
         if not self._loop:
             # this test is done to not loop in test, but rather step just once where wanted
@@ -102,14 +102,14 @@ class TestInterpreter(interpreter.Interpreter):
             s_new_frame.store_s_sender(s_sender)
             return s_new_frame
         return interpreter.Interpreter.stack_frame(self, s_new_frame, s_sender, may_context_switch)
-    
+
     # ============ Helpers for executing ============
-    
+
     def interpret_bc(self, bcodes, literals=None, receiver=None):
         w_frame, s_frame = self.space.make_frame(bcodes, literals=literals, receiver=receiver)
         self.space.wrap_frame(s_frame)
         return self.interpret_toplevel(w_frame)
-        
+
     def execute_method(self, w_method):
         s_frame = w_method.create_frame(self.space, self.space.w(0))
         self.space.wrap_frame(s_frame)
@@ -120,13 +120,13 @@ class TestInterpreter(interpreter.Interpreter):
         assert False, "Frame did not return correctly."
 
 class BootstrappedObjSpace(objspace.ObjSpace):
-    
+
     def bootstrap(self):
         # Fill this ObjSpace up with class complete core hierarchies and patch core objects.
         self.create_core_classes()
         self.patch_bootstrap_classes()
         self.patch_bootstrap_objects()
-    
+
     def create_core_classes(self):
         def define_core_cls(name, w_superclass, w_metaclass):
             assert name.startswith('w_')
@@ -174,7 +174,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         for nm, w_cls_obj in self.classtable.items():
             if w_cls_obj.w_class is None:
                 w_cls_obj.w_class = self.w_Metaclass
-    
+
     def patch_bootstrap_classes(self):
         # Create all classes in the class hierarchies of the classes in the special objects array.
         def create_metaclass(cls_nm, supercls_nm):
@@ -207,18 +207,18 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         define_cls("w_ContextPart", "w_Object")
         define_cls("w_Link", "w_Object")
         define_cls("w_LinkedList", "w_SequenceableCollection")
-        
+
         # Also create classes for the objects in the special objects array
         define_cls("w_UndefinedObject", "w_Object")
         define_cls("w_Boolean", "w_Object")
         define_cls("w_True", "w_Boolean")
         define_cls("w_False", "w_Boolean")
-        
+
         # Now patch up the already created special classes
         def patch_special_cls(cls_nm, supercls_nm, instvarsize=0, format=storage_classes.POINTERS, varsized=False):
             assert cls_nm.startswith("w_")
             w_meta_cls = create_metaclass(cls_nm, supercls_nm)
-            
+
             # Now patch up the existing class object
             w_cls = self.classtable[cls_nm]
             assert w_cls, "This class should have been created in ObjSpace!"
@@ -229,7 +229,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
                         format=format,
                         varsized=varsized,
                         name=cls_nm[2:])
-        patch_special_cls("w_Bitmap", "w_ArrayedCollection", varsized=True, format=storage_classes.WORDS) 
+        patch_special_cls("w_Bitmap", "w_ArrayedCollection", varsized=True, format=storage_classes.WORDS)
         patch_special_cls("w_SmallInteger", "w_Integer")
         patch_special_cls("w_String", "w_ArrayedCollection", format=storage_classes.BYTES)
         patch_special_cls("w_Array", "w_ArrayedCollection", varsized=True)
@@ -245,23 +245,23 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         patch_special_cls("w_Semaphore", "w_LinkedList")
         patch_special_cls("w_Character", "w_Magnitude", instvarsize=1)
         patch_special_cls("w_Process", "w_Link")
-        
+
     def patch_bootstrap_objects(self):
         def patch_bootstrap_object(obj, cls, size):
             obj.w_class = cls
-            obj.initialize_storage(self, size)
+            obj._initialize_storage(self, size)
         patch_bootstrap_object(self.w_nil, self.w_UndefinedObject, 0)
         patch_bootstrap_object(self.w_true, self.w_True, 0)
         patch_bootstrap_object(self.w_false, self.w_False, 0)
         patch_bootstrap_object(self.w_special_selectors, self.w_Array, len(constants.SPECIAL_SELECTORS) * 2)
         patch_bootstrap_object(self.w_charactertable, self.w_Array, 256)
-        
+
         # Bootstrap character table
         for i in range(256):
             w_cinst = model.W_PointersObject(self, self.w_Character, 1)
             w_cinst.store(self, constants.CHARACTER_VALUE_INDEX, model.W_SmallInteger(i))
             self.w_charactertable.store(self, i, w_cinst)
-    
+
     def patch_class(self, w_class, instsize, w_superclass=None, w_metaclass=None,
                         name='?', format=storage_classes.POINTERS, varsized=False):
         s = instantiate(storage_classes.ClassShadow)
@@ -277,9 +277,9 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         s._s_methoddict = None
         s.instance_varsized = varsized or format != storage_classes.POINTERS
         w_class.store_strategy(s)
-        s.initialize_storage(w_class, 0)
+        s._initialize_storage(w_class, 0)
         w_class.w_class = w_metaclass
-        
+
     def bootstrap_class(self, instsize, w_superclass=None, w_metaclass=None,
                         name='?', format=storage_classes.POINTERS, varsized=False):
         w_class = model.W_PointersObject(self, w_metaclass, 0)
@@ -301,7 +301,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         if isinstance(any, float): return self.wrap_float(any)
         if isinstance(any, list): return self.wrap_list(any)
         raise Exception("Cannot wrap %r" % any)
-    
+
     def wrap_long(self, any):
         assert any >= 0
         import struct
@@ -311,10 +311,10 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         return w_b
 
     def initialize_class(self, w_class, interp):
-        initialize_symbol = self.find_symbol_in_methoddict("initialize", 
+        initialize_symbol = self.find_symbol_in_methoddict("initialize",
                             w_class.class_shadow(self))
         interp.perform(w_class, w_selector=initialize_symbol)
-    
+
     def find_symbol_in_methoddict(self, string, cls):
         if isinstance(cls, model.W_PointersObject):
             cls = cls.as_class_get_shadow(self)
@@ -327,12 +327,12 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         assert False, 'Using image without %s method in class %s.' % (string, cls.name)
 
     # ============ Helpers for executing ============
-    
+
     def wrap_frame(self, s_frame):
         # Add a toplevel frame around s_frame to properly return.
         toplevel_frame = self.make_method([0x7c]).create_frame(self, self.w(0), [])
         s_frame.store_s_sender(toplevel_frame)
-        
+
     def make_method(self, bytes, literals=None, numargs=0):
         if not isinstance(bytes, str):
             bytes = "".join([chr(x) for x in bytes])
@@ -345,11 +345,10 @@ class BootstrappedObjSpace(objspace.ObjSpace):
             literals = [model.W_PointersObject(self, None, 2)]
         w_method.setliterals(literals)
         return w_method
-    
+
     def make_frame(self, bytes, literals=None, receiver=None, args=[]):
         w_method = self.make_method(bytes, literals, len(args))
         if receiver is None:
             receiver = self.w_nil
         s_frame = w_method.create_frame(self, receiver, args)
         return s_frame.w_self(), s_frame
-        

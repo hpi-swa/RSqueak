@@ -22,7 +22,7 @@ from rpython.tool.pairtype import extendabletype
 from rpython.rlib.objectmodel import instantiate, compute_hash, import_from_mixin, we_are_translated
 from rpython.rtyper.lltypesystem import lltype, rffi
 from rsdl import RSDL, RSDL_helper
-import rstrategies as rstrat
+from rpython.rlib.rstrategies import rstrategies as rstrat
 
 
 class W_Object(object):
@@ -627,9 +627,9 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     def __init__(self, space, w_class, size, weak=False):
         """Create new object with size = fixed + variable size."""
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
-        self.initialize_storage(space, size, weak)
+        self._initialize_storage(space, size, weak)
 
-    def initialize_storage(self, space, size, weak=False):
+    def _initialize_storage(self, space, size, weak=False):
         storage_type = space.strategy_factory.empty_storage_type(self, size, weak)
         space.strategy_factory.set_initial_strategy(self, storage_type, size)
 
