@@ -1495,7 +1495,8 @@ def activateClosure(interp, w_block, args_w):
     space = interp.space
     assert_class(interp, w_block, space.w_BlockClosure)
     block = wrapper.BlockClosureWrapper(space, w_block)
-    if not block.numArgs() == len(args_w):
+    blockNumArgs = jit.promote(block.numArgs())
+    if not blockNumArgs == len(args_w):
         raise PrimitiveFailedError()
     outer_ctxt_class = block.outerContext().getclass(space)
     if not (outer_ctxt_class is space.w_MethodContext

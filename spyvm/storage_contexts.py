@@ -670,6 +670,7 @@ class __extend__(ContextPartShadow):
 
     @staticmethod
     def build_method_context(space, w_method, w_receiver, arguments=[], closure=None):
+        w_method = jit.promote(w_method)
         s_MethodContext = space.w_MethodContext.as_class_get_shadow(space)
         size = w_method.compute_frame_size() + s_MethodContext.instsize()
 
