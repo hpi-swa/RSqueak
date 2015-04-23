@@ -57,6 +57,14 @@ if ARGV[3] && ARGV[4]
   r = vm.run(ARGV[4])#.sub(/.*#\(([\d ]+)\).*/m, '\\1')
   vm.format(r, ARGV[4])
   exit
+elsif ARGV[3]
+  vm = VMS.detect {|vm| vm.class.name =~ /#{ARGV[3]}/i}
+  if vm
+    vm.go
+  else
+    VMS.each {|vm| vm.run(ARGV[3]).tap {|r| vm.format(r, ARGV[3]) } }
+  end
+  exit
 end
 
 VMS.each(&:go)
