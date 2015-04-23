@@ -690,7 +690,8 @@ class __extend__(ContextPartShadow):
             self.settemp(i0, arguments[i0])
         closure = self.closure
         if closure:
-            pc = closure.startpc() - self.w_method().bytecodeoffset() - 1
+            startpc = jit.promote(closure.startpc())
+            pc = startpc - self.w_method().bytecodeoffset() - 1
             self.store_pc(pc)
             for i0 in range(closure.size()):
                 self.settemp(i0+argc, closure.at0(i0))
