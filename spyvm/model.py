@@ -413,8 +413,6 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
         return W_LargePositiveInteger1Word(self.value)
 
     def at0(self, space, index0):
-        if index0 >= self.size():
-            raise IndexError()
         shift = index0 * 8
         result = (self.value >> shift) & 0xff
         return space.wrap_int(intmask(result))

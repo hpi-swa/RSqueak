@@ -9,4 +9,4 @@ tar -xf `pwd`/../rsdl.tar.bz2 -C `pwd`
 mv pypy-rsdl* pypy-rsdl
 
 # This is actually only needed if "$BUILD_ARCH" == 64bit
-sudo apt-get install -y build-essential libsdl1.2-dev libffi-dev python2.7
+sudo apt-get install -y build-essential libsdl1.2-dev libffi-dev python2.7 squeak-vm
