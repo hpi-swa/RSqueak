@@ -64,7 +64,7 @@ class ModernJITTest(BaseJITTest):
         curdir = os.getcwd()
         os.chdir(str(tmpdir))
         try:
-            os.system("%s  %s %s" % (str(squeak), self.image_name, str(infile)))
+            os.system("%s %s %s" % (str(squeak), self.image_name, str(infile)))
         finally:
             os.chdir(curdir)
 
