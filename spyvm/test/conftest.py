@@ -29,7 +29,7 @@ def pytest_addoption(parser):
         dest="squeakbinary",
         action="store",
         default=None,
-        help="Path to a compiled rsqueak binary. Enables jit tests."
+        help="Path to a Squeak binary (Cog or interpreter). Enables jit tests."
     )
 
 # The 'jit' parameter is used in tests under jittest/
