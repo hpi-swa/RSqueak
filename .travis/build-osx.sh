@@ -2,7 +2,7 @@
 set -ex
 
 git clone --depth=1 https://github.com/HPI-SWA-Lab/RSqueak.git
-mv RSqueak/* .
+mv RSqueak/{*,.*} .
 mv RSqueak RSqueakGit
 
 curl -L -O http://www.libsdl.org/release/SDL-1.2.15.dmg
