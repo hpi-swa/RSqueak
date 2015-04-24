@@ -1,29 +1,23 @@
 #!/bin/bash
 set -ex
 
-# install
-curl -L -O https://bitbucket.org/pypy/pypy/get/default.tar.bz2
-tar xjvf default.tar.bz2
-mv pypy-pypy* pypy
-rm default.tar.bz2
-curl -L -O https://bitbucket.org/pypy/rsdl/get/default.tar.bz2
-tar xjvf default.tar.bz2
-mv pypy-rsdl* rsdl
-rm default.tar.bz2
 git clone --depth=1 https://github.com/HPI-SWA-Lab/RSqueak.git
 mv RSqueak/* .
 mv RSqueak RSqueakGit
+
 curl -L -O http://www.libsdl.org/release/SDL-1.2.15.dmg
 hdiutil mount SDL-1.2.15.dmg
 ls /Volumes/*SDL*/
 sudo cp -R /Volumes/*SDL*/SDL.framework /Library/Frameworks/
 
-# env
+# install
+python .build/download_dependencies
+
+# use 32bit python
 export VERSIONER_PYTHON_PREFER_32_BIT=yes
-export PYTHONPATH="$PYTHONPATH:pypy/:rsdl/:."
 
 # script
-python pypy/rpython/bin/rpython --batch -Ojit targetrsqueak.py
+python .build/build.py
 exitcode=$?
 
 # after_success

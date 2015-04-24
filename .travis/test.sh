@@ -11,19 +11,13 @@ esac
 
 case "$BUILD_ARCH" in
 64bit)
-    echo $(pwd)
-    ls
-    PYTHONPATH="$PYTHONPATH:pypy-pypy/:pypy-rsdl/:."\
-            python2.7 pypy-pypy/pytest.py -s $testflag spyvm/test/
+    python2.7 .build/unittests.py -s $testflag
     exit $?
     ;;
 32bit)
     sudo i386 chroot "$chroot" sh -c "
         cd $PWD &&
-        echo \$(pwd) &&
-        ls &&
-        PYTHONPATH=\"$PYTHONPATH:pypy-pypy/:pypy-rsdl/:.\"\
-            python2.7 pypy-pypy/pytest.py -s $testflag spyvm/test/"
+        python2.7 .build/unittests.py -s $testflag"
     ;;
 *) exit 0 ;;
 esac
