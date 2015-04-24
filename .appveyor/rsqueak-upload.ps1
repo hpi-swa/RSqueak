@@ -14,7 +14,7 @@ function uploadRsqueak {
   Write-Host "Uploading $fullpath to $url"
   Invoke-WebRequest -Method PUT -Uri $url -InFile $fullpath
 }
-cd .appveyor
+
 uploadRsqueak "rsqueak-win32-*.exe"
 cp rsqueak.exe rsqueak-win32-latest.exe
 uploadRsqueak rsqueak-win32-latest.exe
