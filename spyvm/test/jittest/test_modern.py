@@ -81,7 +81,7 @@ class TestModern(ModernJITTest):
         | a |
         a := 0.
         (1 to: 10000) do: [:i|
-          a := ((1 to: 10000) do: [:j| j + i]) bitOr: a
+          a := ((1 to: 10000) do: [:j| j + i]) last bitOr: a
         ].
         """)
         self.assert_matches(traces[0].loop, """
