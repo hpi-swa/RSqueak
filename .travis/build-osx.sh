@@ -12,7 +12,7 @@ ls /Volumes/*SDL*/
 sudo cp -R /Volumes/*SDL*/SDL.framework /Library/Frameworks/
 
 # install
-python .build/download_dependencies
+python .build/download_dependencies.py
 
 # use 32bit python
 export VERSIONER_PYTHON_PREFER_32_BIT=yes
