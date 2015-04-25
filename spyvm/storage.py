@@ -4,7 +4,7 @@ from spyvm import model, constants
 from spyvm.util.version import VersionMixin
 from rpython.rlib import objectmodel, jit
 from rpython.rlib.objectmodel import import_from_mixin
-import rstrategies as rstrat
+from rpython.rlib.rstrategies import rstrategies as rstrat
 
 """
 A note on terminology:
@@ -49,9 +49,9 @@ class AbstractStrategy(object):
             return "<%s>" % self.repr_classname
     def strategy_factory(self):
         return self.space.strategy_factory
-    def convert_storage_from_AllNilStrategy(self, w_self, all_nil_storage):
+    def _convert_storage_from_AllNilStrategy(self, w_self, all_nil_storage):
         # Fields are initialized to nil
-        self.initialize_storage(w_self, all_nil_storage.size(w_self))
+        self._initialize_storage(w_self, all_nil_storage.size(w_self))
     def insert(self, w_self, index0, list_w):
         raise NotImplementedError("Smalltalk objects are fixed size")
     def delete(self, w_self, start, end):
@@ -201,10 +201,10 @@ class AbstractGenericShadow(ListStrategy):
         ListStrategy.__init__(self, space, w_self, size)
         assert w_self is None or isinstance(w_self, model.W_PointersObject)
         self._w_self = w_self
-    def convert_storage_from(self, w_self, previous_strategy):
+    def _convert_storage_from(self, w_self, previous_strategy):
         # Subclasses need a store() invokation for every field.
         # This 'naive' implementation is available in AbstractStrategy.
-        AbstractStrategy.convert_storage_from(self, w_self, previous_strategy)
+        AbstractStrategy._convert_storage_from(self, w_self, previous_strategy)
 
 class AbstractCachingShadow(AbstractGenericShadow):
     """

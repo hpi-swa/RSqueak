@@ -4,7 +4,7 @@ from spyvm.storage import AbstractStrategy, ShadowMixin, AbstractGenericShadow
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib import jit, objectmodel
 from rpython.rlib.objectmodel import import_from_mixin
-import rstrategies as rstrat
+from rpython.rlib.rstrategies import rstrategies as rstrat
 
 @objectmodel.specialize.call_location()
 def fresh_virtualizable(x):
@@ -106,18 +106,18 @@ class ContextPartShadow(AbstractStrategy):
         self._w_receiver = None
         self._is_BlockClosure_ensure = False
 
-    def initialize_storage(self, w_self, initial_size):
+    def _initialize_storage(self, w_self, initial_size):
         # The context object holds all of its storage itself.
         self.set_storage(w_self, None)
 
     @jit.unroll_safe
-    def convert_storage_from(self, w_self, previous_strategy):
+    def _convert_storage_from(self, w_self, previous_strategy):
         # Some fields have to be initialized before the rest,
         # to ensure correct initialization.
         size = previous_strategy.size(w_self)
         privileged_fields = self.fields_to_convert_first()
         storage = previous_strategy.fetch_all(w_self)
-        self.initialize_storage(w_self, size)
+        self._initialize_storage(w_self, size)
         for n0 in privileged_fields:
             self.store(w_self, n0, storage[n0])
 
