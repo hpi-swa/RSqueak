@@ -14,16 +14,17 @@ env:
     - BUILD_ARCH=32bit BUILD_TYPE=build
     - BUILD_ARCH=64bit BUILD_TYPE=test
     - BUILD_ARCH=64bit BUILD_TYPE=build
+    - BUILD_ARCH=arm BUILD_TYPE=build
 matrix:
   fast_finish: true
   allow_failures:
     - env: BUILD_ARCH=64bit BUILD_TYPE=test
     - env: BUILD_ARCH=64bit BUILD_TYPE=build
+    - env: BUILD_ARCH=arm BUILD_TYPE=build
 install:
   - .travis/trigger-osx-build.sh || echo 0
-  - .travis/install_requirements.sh
   - export chroot="$PWD"/buildroot.i386
-  - if [ "$BUILD_ARCH" == 32bit ]; then .travis/setup_chroot.sh; fi
+  - .travis/install_requirements.sh
 script:
   - if [ "$BUILD_TYPE" == test ]; then .travis/test.sh; fi
   - if [ "$BUILD_TYPE" == build ]; then .travis/build.sh; fi

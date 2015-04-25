@@ -2,5 +2,16 @@
 
 python .build/download_dependencies.py
 
-# This is actually only needed if "$BUILD_ARCH" == 64bit
-sudo apt-get install -y build-essential libsdl1.2-dev libffi-dev python2.7
+sudo apt-get update
+sudo apt-get install -y build-essential libsdl1.2-dev libffi-dev
+
+case "$BUILD_ARCH" in
+    32bit)
+	.travis/setup_chroot.sh
+	;;
+    64bit)
+	;;
+    arm)
+	.travis/setup_arm.sh
+	;;
+esac
