@@ -4,7 +4,17 @@
 # view jit.
 #
 
-import sys
+import sys, os
+import environment
+try:
+    import pygame
+except ImportError:
+    print "You need PyGame installed"
+    exit(1)
+if os.system("dot -V") != 0:
+    print "You need the dot binary (from Graphviz) installed and in the PATH"
+    exit(1)
+
 from rpython import conftest
 class o:
     view = False
@@ -129,8 +139,8 @@ def main():
     # code = "10000 timesRepeat: [ 0 makeStackDepth: 10 ]"
     # code = """ 1 to: 100000 do: [:i | (2147483647 bitXor: i) + 10 ]    """
     # code = "10000 timesRepeat: [ (2147483647 bitXor: 12) + 10 ]"
-    code = "1 to: 10000 do: [:i | (2147483647 bitXorLarge: i) + 10 ]"
-
+    # code = "1 to: 10000 do: [:i | (2147483647 bitXorLarge: i) + 10 ]"
+    code = "1 to: 10000 do: [:i | i ]"
     # ===== These entry-points pre-load the image and directly execute a single frame.
     # func = preload_perform(imagename, model.W_SmallInteger(1000), 'loopTest2')
     # func = preload_perform(imagename, model.W_SmallInteger(777), 'name')

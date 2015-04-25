@@ -13,6 +13,7 @@
     <RootNamespace>RSqueak</RootNamespace>
     <LaunchProvider>Standard Python launcher</LaunchProvider>
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
+    <IsWindowsApplication>False</IsWindowsApplication>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -72,7 +73,7 @@
     <Compile Include="spyvm\storage_classes.py" />
     <Compile Include="spyvm\storage_contexts.py" />
     <Compile Include="spyvm\test\conftest.py" />
-    <Compile Include="spyvm\test\jit.py" />
+    <Compile Include=".build\jit.py" />
     <Compile Include="spyvm\test\jittest\base.py" />
     <Compile Include="spyvm\test\jittest\test_basic.py" />
     <Compile Include="spyvm\test\jittest\test_strategies.py" />
@@ -108,6 +109,8 @@
     <Compile Include="targetrsqueak.py" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="appveyor.yml" />
+    <Content Include="README.md" />
     <Content Include="spyvm\todo.txt" />
   </ItemGroup>
   <Import Condition="Exists($(PtvsTargetsFile))" Project="$(PtvsTargetsFile)" />

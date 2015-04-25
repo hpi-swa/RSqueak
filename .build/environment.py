@@ -16,12 +16,18 @@ if not os.path.exists(config):
         cp.set("Windows", "SDL", pathjoin(dirname(__file__), "SDL"))
         cp.set("Windows", "WindowsSDK7", "C:\\Program Files (x86)\\Microsoft SDKs\\Windows\\v7.1A")
         cp.set("Windows", "VisualStudio9", "C:\\Program Files (x86)\\Microsoft Visual Studio 9.0")
+        cp.set("Windows", "Graphviz", pathjoin(dirname(__file__), "Graphviz"))
         cp.write(f)
 else:
     cp.read(config)
 
 sys.path.insert(0, cp.get("General", "pypy"))
 sys.path.insert(0, cp.get("General", "rsdl"))
+
+try:
+    import targetrsqueak as rsqueak
+except ImportError:
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 if os.name == "nt":
     vs = cp.get("Windows", "VisualStudio9")
@@ -33,6 +39,7 @@ if os.name == "nt":
     os.environ['Path'] = ";".join([pathjoin(vs, "VC", "bin"),
                                    pathjoin(vs, "Common7", "IDE"),
                                    pathjoin(sdk, "Bin"),
+                                   pathjoin(cp.get("Windows", "Graphviz"), "bin"),
                                    os.environ["Path"]])
     os.environ["SDL_PREFIX"] = cp.get("Windows", "SDL")
 elif "linux" in sys.platform:
