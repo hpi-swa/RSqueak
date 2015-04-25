@@ -6,14 +6,14 @@ case "$BUILD_ARCH" in
     binary=rsqueak
     sudo i386 chroot "$chroot" sh -c "
     cd $PWD &&
-    python2.7 .build/build.py"
+    pypy .build/build.py"
     cp rsqueak* rsqueak-x86-Linux-jit-$TRAVIS_COMMIT || true
     exitcode=$?
     ;;
 64bit)
     binary=rsqueak-64
-    python2.7 .build/build.py
-	cp rsqueak* rsqueak-x86_64-Linux-jit-$TRAVIS_COMMIT || true
+    python .build/build.py
+    cp rsqueak* rsqueak-x86_64-Linux-jit-$TRAVIS_COMMIT || true
     exitcode=$?
     ;;
 *) exit 0 ;;
@@ -27,10 +27,25 @@ if [ $exitcode -eq 0 ]; then
             curl -T rsqueak-linux-latest http://www.lively-kernel.org/babelsberg/RSqueak/
 	fi
     fi
-    sudo rm -rf pypy-pypy/rpython/_cache
+    sudo rm -rf .build/pypy/rpython/_cache
     if [ yes == "$EXECUTE_JITTESTS" ]; then
-	python2.7 .build/jittests.py
-	exit $?
+       case "$BUILD_ARCH" in
+           32bit)
+               sudo i386 chroot "$chroot" sh -c "
+                cd $PWD &&
+                echo \$(pwd) &&
+                ls &&
+                python .build/jittests.py"
+               exitcode=$?
+               ;;
+           64bit)
+	       pypy .build/jittests.py
+               exitcode=$?
+               ;;
+           *)
+               exitcode=0
+               ;;
+       esac
     fi
 else
     exit $exitcode

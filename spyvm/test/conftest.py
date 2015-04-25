@@ -1,4 +1,4 @@
-import py
+import py, os
 
 def pytest_addoption(parser):
     group = parser.getgroup("RSqueak test options")
@@ -47,10 +47,8 @@ class _Executor_(object):
     def all_arguments(self, args):
         return map(str, [self.executable] + self.args + args)
     def system(self, *args):
-        import os
         return os.system(" ".join(self.all_arguments(list(args))))
     def popen(self, *args, **kwargs):
-        import subprocess
         return subprocess.Popen(self.all_arguments(list(args)), **kwargs)
 
 # The 'jit' parameter is used in tests under jittest/
@@ -68,4 +66,4 @@ def pytest_funcarg__squeak(request):
     val = request.config.getvalue("squeakbinary")
     if not val:
         py.test.skip("Provide --squeak parameter to execute modern jit tests")
-    return _Executor_(py.path.local(val))
+    return _Executor_(py.path.local(val), "-nodisplay")

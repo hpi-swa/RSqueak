@@ -13,4 +13,4 @@ if __name__ == "__main__":
         sys.argv.append(path.join(path.dirname(__file__), "..", "spyvm", "test", "jittest"))
 
     import pytest
-    pytest.main(args=sys.argv)
+    exit(pytest.main(args=sys.argv))
