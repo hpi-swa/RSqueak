@@ -5,13 +5,14 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>aac99eaf-3048-438f-b048-92cecaa520ec</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>
-    </StartupFile>
+    <StartupFile>.build\build.py</StartupFile>
     <SearchPath>.build\pypy\;.build\rsdl\</SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>RSqueak</Name>
     <RootNamespace>RSqueak</RootNamespace>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -26,6 +27,8 @@
     <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
   </PropertyGroup>
   <ItemGroup>
+    <Folder Include=".build\" />
+    <Folder Include=".appveyor\" />
     <Folder Include="spyvm\" />
     <Folder Include="spyvm\plugins\" />
     <Folder Include="spyvm\test\" />
@@ -34,6 +37,16 @@
     <Folder Include="spyvm\util\" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include=".build\build.py" />
+    <Compile Include=".build\download_dependencies.py" />
+    <Compile Include=".build\environment.py" />
+    <Compile Include=".build\jittests.py" />
+    <Compile Include=".build\run.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include=".build\unittests.py" />
+    <Compile Include=".appveyor\rsqueak-build.bat" />
+    <Compile Include=".appveyor\rsqueak-upload.ps1" />
     <Compile Include="spyvm\constants.py" />
     <Compile Include="spyvm\display.py" />
     <Compile Include="spyvm\error.py" />
@@ -88,7 +101,7 @@
     <Compile Include="spyvm\util\stream.py" />
     <Compile Include="spyvm\util\system.py" />
     <Compile Include="spyvm\util\version.py" />
-    <Compile Include="spyvm\util\__init__.py" />
+    <Compile Include="spyvm\util\__init__." />
     <Compile Include="spyvm\wrapper.py" />
     <Compile Include="spyvm\__init__.py" />
     <Compile Include="targetrsqueak-embedded.py" />
