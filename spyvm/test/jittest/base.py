@@ -1,4 +1,4 @@
-import subprocess, os, shutil
+import os, shutil
 from rpython.tool.jitlogparser.parser import Op
 from rpython.jit.metainterp.resoperation import opname
 from rpython.jit.tool import oparser
@@ -11,8 +11,8 @@ class BaseJITTest(object):
     def run(self, spy, tmpdir, code):
         logfile = str(tmpdir.join("x.pypylog"))
         print logfile
-        proc = subprocess.Popen(
-            [str(spy), self.test_image, "-r", code.replace("\n", "\r\n")],
+        proc = spy.popen(
+            self.test_image, "-r", code.replace("\n", "\r\n"),
             cwd=str(tmpdir),
             env={"PYPYLOG": "jit-log-opt:%s" % logfile,
                  "SDL_VIDEODRIVER": "dummy"}
@@ -64,14 +64,14 @@ class ModernJITTest(BaseJITTest):
         curdir = os.getcwd()
         os.chdir(str(tmpdir))
         try:
-            os.system("%s %s %s" % (str(squeak), self.image_name, str(infile)))
+            squeak.system(self.image_name, infile)
         finally:
             os.chdir(curdir)
 
         logfile = str(tmpdir.join("x.pypylog"))
         print logfile
-        proc = subprocess.Popen(
-            [str(spy), self.image_name, "-n", "0", "-m", "jittestNow"],
+        proc = spy.popen(
+            self.image_name, "-n", "0", "-m", "jittestNow",
             cwd=str(tmpdir),
             env={"PYPYLOG": "jit-log-opt:%s" % logfile,
                  "SDL_VIDEODRIVER": "dummy"}
