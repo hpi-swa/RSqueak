@@ -3,6 +3,11 @@
 *.swp
 *.orig
 
+.build/pypy
+.build/rsdl
+.build/SDL
+.build/pypy-win32
+
 pypy-c-jit-*
 images/resources*
 *package-cache/
@@ -178,7 +183,6 @@ AppPackages/
 ClientBin/
 [Ss]tyle[Cc]op.*
 ~$*
-*~
 *.dbmdl
 *.dbproj.schemaview
 *.pfx
@@ -221,3 +225,41 @@ FakesAssemblies/
 /pypy/
 .vagrant/
 /.build/buildconfig.ini
+
+# Enable "build/" folder in the NuGet Packages folder since NuGet packages use it for MSBuild targets
+!packages/*/build/
+*.ncrunch*
+*.Publish.xml
+
+# NuGet Packages Directory
+## TODO: If you have NuGet Package Restore enabled, uncomment the next line
+#packages/
+csx
+sql/
+*.Cache
+
+# Backup & report files from converting an old project file to a newer
+# Visual Studio version. Backup files are not needed, because we have git ;-)
+App_Data/*.mdf
+App_Data/*.ldf
+
+#LightSwitch generated files
+GeneratedArtifacts/
+_Pvt_Extensions/
+ModelManifest.xml
+
+# =========================
+# Windows detritus
+
+# Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# Folder config file
+Desktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Mac desktop service store files
+.DS_Store

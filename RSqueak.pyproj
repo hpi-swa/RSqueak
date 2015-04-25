@@ -1,0 +1,110 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>aac99eaf-3048-438f-b048-92cecaa520ec</ProjectGuid>
+    <ProjectHome>.</ProjectHome>
+    <StartupFile>
+    </StartupFile>
+    <SearchPath>.build\pypy\;.build\rsdl\</SearchPath>
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <Name>RSqueak</Name>
+    <RootNamespace>RSqueak</RootNamespace>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DebugSymbols>true</DebugSymbols>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <DebugSymbols>true</DebugSymbols>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+  </PropertyGroup>
+  <PropertyGroup>
+    <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
+    <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Folder Include="spyvm\" />
+    <Folder Include="spyvm\plugins\" />
+    <Folder Include="spyvm\test\" />
+    <Folder Include="spyvm\test\jittest\" />
+    <Folder Include="spyvm\tools\" />
+    <Folder Include="spyvm\util\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="spyvm\constants.py" />
+    <Compile Include="spyvm\display.py" />
+    <Compile Include="spyvm\error.py" />
+    <Compile Include="spyvm\interpreter.py" />
+    <Compile Include="spyvm\interpreter_bytecodes.py" />
+    <Compile Include="spyvm\interpreter_debugging.py" />
+    <Compile Include="spyvm\key_constants.py" />
+    <Compile Include="spyvm\model.py" />
+    <Compile Include="spyvm\model_display.py" />
+    <Compile Include="spyvm\objspace.py" />
+    <Compile Include="spyvm\plugins\balloon.py" />
+    <Compile Include="spyvm\plugins\bitblt.py" />
+    <Compile Include="spyvm\plugins\fileplugin.py" />
+    <Compile Include="spyvm\plugins\large_integer.py" />
+    <Compile Include="spyvm\plugins\plugin.py" />
+    <Compile Include="spyvm\plugins\socket.py" />
+    <Compile Include="spyvm\plugins\squeak_plugin_proxy.py" />
+    <Compile Include="spyvm\plugins\vmdebugging.py" />
+    <Compile Include="spyvm\plugins\__init__.py" />
+    <Compile Include="spyvm\primitives.py" />
+    <Compile Include="spyvm\squeakimage.py" />
+    <Compile Include="spyvm\storage.py" />
+    <Compile Include="spyvm\storage_classes.py" />
+    <Compile Include="spyvm\storage_contexts.py" />
+    <Compile Include="spyvm\test\conftest.py" />
+    <Compile Include="spyvm\test\jit.py" />
+    <Compile Include="spyvm\test\jittest\base.py" />
+    <Compile Include="spyvm\test\jittest\test_basic.py" />
+    <Compile Include="spyvm\test\jittest\test_strategies.py" />
+    <Compile Include="spyvm\test\jittest\__init__.py" />
+    <Compile Include="spyvm\test\test_bitmanipulation.py" />
+    <Compile Include="spyvm\test\test_bootstrappedimage.py" />
+    <Compile Include="spyvm\test\test_display.py" />
+    <Compile Include="spyvm\test\test_interpreter.py" />
+    <Compile Include="spyvm\test\test_largeinteger.py" />
+    <Compile Include="spyvm\test\test_miniimage.py" />
+    <Compile Include="spyvm\test\test_miniimage_compiling.py" />
+    <Compile Include="spyvm\test\test_model.py" />
+    <Compile Include="spyvm\test\test_objectspace.py" />
+    <Compile Include="spyvm\test\test_primitives.py" />
+    <Compile Include="spyvm\test\test_shadow.py" />
+    <Compile Include="spyvm\test\test_squeakimage.py" />
+    <Compile Include="spyvm\test\test_strategies.py" />
+    <Compile Include="spyvm\test\test_wrapper.py" />
+    <Compile Include="spyvm\test\test_zin_squeak_4_5_image.py" />
+    <Compile Include="spyvm\test\util.py" />
+    <Compile Include="spyvm\test\__init__.py" />
+    <Compile Include="spyvm\tools\benchmarks.py" />
+    <Compile Include="spyvm\tools\extract_loops.py" />
+    <Compile Include="spyvm\util\bitmanipulation.py" />
+    <Compile Include="spyvm\util\logparser.py" />
+    <Compile Include="spyvm\util\stream.py" />
+    <Compile Include="spyvm\util\system.py" />
+    <Compile Include="spyvm\util\version.py" />
+    <Compile Include="spyvm\util\__init__.py" />
+    <Compile Include="spyvm\wrapper.py" />
+    <Compile Include="spyvm\__init__.py" />
+    <Compile Include="targetrsqueak-embedded.py" />
+    <Compile Include="targetrsqueak.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="spyvm\todo.txt" />
+  </ItemGroup>
+  <Import Condition="Exists($(PtvsTargetsFile))" Project="$(PtvsTargetsFile)" />
+  <Import Condition="!Exists($(PtvsTargetsFile))" Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
+  <!-- Uncomment the CoreCompile target to enable the Build command in
+       Visual Studio and specify your pre- and post-build commands in
+       the BeforeBuild and AfterBuild targets below. -->
+  <!--<Target Name="CoreCompile" />-->
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+</Project>
