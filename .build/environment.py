@@ -11,7 +11,7 @@ if not os.path.exists(config):
         cp.add_section("General")
         cp.set("General", "pypy", pathjoin(dirname(__file__), "pypy"))
         cp.set("General", "rsdl", pathjoin(dirname(__file__), "rsdl"))
-        cp.set("General", "squeak", "squeak")
+        cp.set("General", "squeak", pathjoin(dirname(__file__), "squeak"))
         cp.add_section("Windows")
         cp.set("Windows", "SDL", pathjoin(dirname(__file__), "SDL"))
         cp.set("Windows", "WindowsSDK7", "C:\\Program Files (x86)\\Microsoft SDKs\\Windows\\v7.1A")
