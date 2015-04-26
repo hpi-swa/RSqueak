@@ -12,29 +12,7 @@ class TestBasic(BaseJITTest):
          i59 = int_le(i51, 1000000000),
          guard_true(i59, descr=<Guard0x3336290>),
          i60 = int_add(i51, 1),
-         i61 = int_sub(i55, 1),
-         setfield_gc(ConstPtr(ptr52), i61, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 24>),
-         i62 = int_le(i61, 0),
-         guard_false(i62, descr=<Guard0x3336250>),
          jump(p0, p3, i60, p12, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, i61, descr=TargetToken(53667152))
-        """)
-        self.assert_matches(traces[0].bridges[0], """
-        f26 = call(ConstClass(ll_time.ll_time_time), descr=<Callf 8 EF=4>),
-        setfield_gc(ConstPtr(ptr27), 10000, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 20>),
-        guard_no_exception(descr=<Guard0x9161a60>),
-        f30 = float_sub(f26, 1424262084.583439),
-        f32 = float_mul(f30, 1000.000000),
-        i33 = cast_float_to_int(f32),
-        i35 = int_and(i33, 2147483647),
-        i36 = getfield_gc(ConstPtr(ptr27), descr=<FieldS spyvm.interpreter.Interpreter.inst_next_wakeup_tick 28>),
-        i37 = int_is_zero(i36),
-        guard_true(i37, descr=<Guard0x9161bb0>),
-        guard_nonnull(p0, descr=<Guard0x9161b80>),
-        i39 = int_le(i24, 1000000001),
-        guard_true(i39, descr=<Guard0x9161b50>),
-        i40 = getfield_gc_pure(p0, descr=<FieldU spyvm.storage_contexts.ContextPartShadow.inst_is_block_context 69>),
-        guard_value(i40, 0, descr=<Guard0x9161b20>),
-        jump(p0, p1, p2, i3, i4, p5, i6, i7, p8, p9, p10, i24, p11, p12, p13, p14, p15, p16, p17, p18, p19, p20, p21, p22, p23, 10000, descr=TargetToken(152597176))
         """)
 
     def test_constant_string(self, spy, tmpdir):
@@ -51,10 +29,6 @@ class TestBasic(BaseJITTest):
         p84 = getarrayitem_gc(p61, 36, descr=<ArrayP 4>),
         guard_value(p84, ConstPtr(ptr69), descr=<Guard0x8e3dbc8>),
         i85 = int_add(i77, 1),
-        i86 = int_sub(i80, 1),
-        setfield_gc(ConstPtr(ptr73), i86, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 20>),
-        i87 = int_le(i86, 0),
-        guard_false(i87, descr=<Guard0x8e3db8c>),
         i89 = arraylen_gc(p61, descr=<ArrayP 4>),
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, i85, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, p61, i86, descr=TargetToken(149146648))]
         """)
@@ -76,10 +50,6 @@ class TestBasic(BaseJITTest):
         i71 = int_le(i64, 100000),
         guard_true(i71, descr=<Guard0x9730790>),
         i72 = int_add(i64, 1),
-        i73 = int_sub(i68, 1),
-        setfield_gc(ConstPtr(ptr65), i73, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 20>),
-        i74 = int_le(i73, 0),
-        guard_false(i74, descr=<Guard0x9730730>),
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, i72, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, i73, descr=TargetToken(158683952))
         """)
 
@@ -104,10 +74,6 @@ class TestBasic(BaseJITTest):
          i72 = int_le(i64, 100000),
          guard_true(i72, descr=<Guard0x2e98590>),
          i73 = int_add(i64, 1),
-         i74 = int_sub(i68, 1),
-         setfield_gc(ConstPtr(ptr65), i74, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 24>),
-         i75 = int_le(i74, 0),
-         guard_false(i75, descr=<Guard0x2e98510>),
          jump(p0, p3, i73, p8, p10, p12, p14, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, i74, descr=TargetToken(48821968))
         """)
 
@@ -380,10 +346,6 @@ class TestBasic(BaseJITTest):
         i68 = int_le(i61, 10000),
         guard_true(i68, descr=<Guard0x916d700>),
         i69 = int_add(i61, 1),
-        i70 = int_sub(i65, 1),
-        setfield_gc(ConstPtr(ptr62), i70, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 20>),
-        i71 = int_le(i70, 0),
-        guard_false(i71, descr=<Guard0x916d6d0>),
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, i69, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, i70, descr=TargetToken(152642232))
         """)
 
@@ -399,6 +361,7 @@ class TestBasic(BaseJITTest):
         guard_true(i129, descr=<Guard0x9316934>),
         p130 = getarrayitem_gc(p62, 0, descr=<ArrayP 4>),
         guard_value(p130, ConstPtr(ptr69), descr=<Guard0x93168bc>),
+        enter_portal_frame(0, 0)
         i131 = getarrayitem_gc(p84, 0, descr=<ArrayS 4>),
         i132 = int_eq(i131, 2147483647),
         guard_false(i132, descr=<Guard0x9316880>),
@@ -417,11 +380,8 @@ class TestBasic(BaseJITTest):
         guard_true(i139, descr=<Guard0x9316718>),
         i140 = int_ne(i138, 2147483647),
         guard_true(i140, descr=<Guard0x93166dc>),
+        leave_portal_frame(0),
         i141 = int_add(i123, 1),
-        i142 = int_sub(i126, 3),
-        setfield_gc(ConstPtr(ptr76), i142, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 20>),
-        i143 = int_le(i142, 0),
-        guard_false(i143, descr=<Guard0x93166a0>),
         i144 = arraylen_gc(p62, descr=<ArrayP 4>),
         i145 = arraylen_gc(p84, descr=<ArrayS 4>),
         i146 = arraylen_gc(p114, descr=<ArrayU 1>),
@@ -448,10 +408,6 @@ class TestBasic(BaseJITTest):
         i91 = uint_lt(i90, 2147483647),
         guard_false(i91, descr=<Guard0x9c34cd0>),
         i92 = int_add(i78, 1),
-        i93 = int_sub(i82, 1),
-        setfield_gc(ConstPtr(ptr79), i93, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 20>),
-        i94 = int_le(i93, 0),
-        guard_false(i94, descr=<Guard0x9c34ca0>),
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, p18, i92, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, f62, i93, descr=TargetToken(163946672))
         """)
 
@@ -483,10 +439,6 @@ class TestBasic(BaseJITTest):
         i153 = uint_lt(i152, 2147483647),
         guard_true(i153, descr=<Guard0x9449cd0>),
         i154 = int_add(i134, 1),
-        i155 = int_sub(i138, 1),
-        setfield_gc(ConstPtr(ptr135), i155, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 20>),
-        i156 = int_le(i155, 0),
-        guard_false(i156, descr=<Guard0x9449ca0>),
         i158 = arraylen_gc(p66, descr=<ArrayU 1>),
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, p18, i154, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, f103, i155, p66, descr=TargetToken(155615448))
         """)
@@ -505,10 +457,6 @@ class TestBasic(BaseJITTest):
         i77 = uint_lt(i76, 2147483647),
         guard_true(i77, descr=<Guard0x9fbaca0>),
         i78 = int_add(i68, 1),
-        i79 = int_sub(i72, 1),
-        setfield_gc(ConstPtr(ptr69), i79, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 20>),
-        i80 = int_le(i79, 0),
-        guard_false(i80, descr=<Guard0x9fbac70>),
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, p18, i78, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, i58, i79, descr=TargetToken(167641264))
         """)
 
@@ -530,10 +478,6 @@ class TestBasic(BaseJITTest):
         i101 = uint_lt(i100, 2147483647),
         guard_false(i101, descr=<Guard0xac75c10>),
         i102 = int_add(i90, 1),
-        i103 = int_sub(i94, 1),
-        setfield_gc(ConstPtr(ptr91), i103, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 20>),
-        i104 = int_le(i103, 0),
-        guard_false(i104, descr=<Guard0xac75be0>),
         i106 = arraylen_gc(p79, descr=<ArrayU 1>),
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, p18, i102, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, p65, i83, i103, p79, descr=TargetToken(181116944))
         """)
@@ -552,10 +496,6 @@ class TestBasic(BaseJITTest):
         i74 = uint_lt(i73, 2147483647),
         guard_true(i74, descr=<Guard0xa11acd0>),
         i75 = int_add(i65, 1),
-        i76 = int_sub(i69, 1),
-        setfield_gc(ConstPtr(ptr66), i76, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 20>),
-        i77 = int_le(i76, 0),
-        guard_false(i77, descr=<Guard0xa11aca0>),
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, p18, i75, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, i58, i76, descr=TargetToken(169079000))
         """)
 
@@ -573,9 +513,5 @@ class TestBasic(BaseJITTest):
         i74 = uint_lt(i73, 2147483647),
         guard_false(i74, descr=<Guard0xa11acd0>),
         i75 = int_add(i65, 1),
-        i76 = int_sub(i69, 1),
-        setfield_gc(ConstPtr(ptr66), i76, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 20>),
-        i77 = int_le(i76, 0),
-        guard_false(i77, descr=<Guard0xa11aca0>),
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, p18, i75, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, i58, i76, descr=TargetToken(169079000))
         """)
