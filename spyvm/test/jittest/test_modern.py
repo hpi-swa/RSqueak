@@ -11,6 +11,8 @@ class TestModern(ModernJITTest):
         guard_not_invalidated(descr=<Guard0x12a02f10>)
         i91 = int_le(i84, 100000)
         guard_true(i91, descr=<Guard0x12a02ee0>)
+        enter_portal_frame(0, 0)
+        leave_portal_frame(0)
         i92 = int_add(i84, 100)
         i93 = int_add(i84, 1)
         i97 = arraylen_gc(p68, descr=<ArrayU 1>)
@@ -43,7 +45,11 @@ class TestModern(ModernJITTest):
         guard_not_invalidated(descr=<Guard0x12a02f10>)
         i91 = int_le(i84, 100000)
         guard_true(i91, descr=<Guard0x12a02ee0>)
+        enter_portal_frame(0, 0)
+        enter_portal_frame(0, 0)
         i92 = int_add(i84, 100)
+        leave_portal_frame(0)
+        leave_portal_frame(0)
         i93 = int_add(i84, 1)
         i97 = arraylen_gc(p68, descr=<ArrayU 1>)
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, i93, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, i94, p68, descr=TargetToken(312516328))
@@ -139,10 +145,12 @@ class TestModern(ModernJITTest):
         i153 = getfield_gc_pure(p152, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>),
         guard_value(i153, 52, descr=<Guard0x158d4f40>),
         p154 = getarrayitem_gc(p86, 3, descr=<ArrayP 4>),
+        enter_portal_frame(0, 0)
         guard_class(p154, ConstClass(W_SmallInteger), descr=<Guard0x158d4f10>),
         i155 = getfield_gc_pure(p154, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8>),
         i156 = int_add_ovf(i139, i155),
         guard_no_overflow(descr=<Guard0x158d4ee0>),
+        leave_portal_frame(0)
         i157 = arraylen_gc(p64, descr=<ArrayS 4>),
         jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p16, i139, i140, p22, i156, p30, p32, p34, p36, p38, p40, p42, p44, p46, p48, i58, p64, p86, descr=TargetToken(361602712))
         """)

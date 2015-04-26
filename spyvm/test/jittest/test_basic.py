@@ -361,6 +361,7 @@ class TestBasic(BaseJITTest):
         guard_true(i129, descr=<Guard0x9316934>),
         p130 = getarrayitem_gc(p62, 0, descr=<ArrayP 4>),
         guard_value(p130, ConstPtr(ptr69), descr=<Guard0x93168bc>),
+        enter_portal_frame(0, 0)
         i131 = getarrayitem_gc(p84, 0, descr=<ArrayS 4>),
         i132 = int_eq(i131, 2147483647),
         guard_false(i132, descr=<Guard0x9316880>),
@@ -379,6 +380,7 @@ class TestBasic(BaseJITTest):
         guard_true(i139, descr=<Guard0x9316718>),
         i140 = int_ne(i138, 2147483647),
         guard_true(i140, descr=<Guard0x93166dc>),
+        leave_portal_frame(0),
         i141 = int_add(i123, 1),
         i144 = arraylen_gc(p62, descr=<ArrayP 4>),
         i145 = arraylen_gc(p84, descr=<ArrayS 4>),
