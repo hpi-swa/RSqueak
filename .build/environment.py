@@ -24,7 +24,7 @@ def load_config():
         print "I've just added a config file at %s. Please review the values and run `install_dependencies` (if needed)." % config
     else:
         cp.read(config)
-    return cp
+    return cp, config
 
 
 def ensure_32bit_environment():
@@ -83,6 +83,6 @@ def prepare_environment_variables():
         raise AssertionError("Unsupported platform")
 
 
-cp = load_config()
+cp, config = load_config()
 ensure_32bit_environment()
 prepare_environment_variables()
