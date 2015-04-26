@@ -1,4 +1,4 @@
-import py, os
+import py, os, subprocess
 
 def pytest_addoption(parser):
     group = parser.getgroup("RSqueak test options")
