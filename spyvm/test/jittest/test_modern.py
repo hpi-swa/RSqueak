@@ -55,6 +55,7 @@ class TestModern(ModernJITTest):
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, i93, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, i94, p68, descr=TargetToken(312516328))
         """)
 
+    @py.test.mark.skipif("'Not ready'")
     def test_collection_at(self, spy, squeak, tmpdir):
         traces = self.run(spy, squeak, tmpdir, """
         | o |
@@ -64,6 +65,7 @@ class TestModern(ModernJITTest):
         self.assert_matches(traces[0].loop, """
         """)
 
+    @py.test.mark.skipif("'Not ready'")
     def test_collect(self, spy, squeak, tmpdir):
         traces = self.run(spy, squeak, tmpdir, """
         | o |
@@ -73,6 +75,7 @@ class TestModern(ModernJITTest):
         self.assert_matches(traces[0].loop, """
         """)
 
+    @py.test.mark.skipif("'Not ready'")
     def test_inject(self, spy, squeak, tmpdir):
         traces = self.run(spy, squeak, tmpdir, """
         | o |
@@ -90,7 +93,7 @@ class TestModern(ModernJITTest):
           a := ((1 to: 10000) do: [:j| j + i]) last bitOr: a
         ].
         """)
-        self.assert_matches(traces[0].loop, 
+        self.assert_matches(traces[0].loop,
         # """
         # guard_not_invalidated(descr=<Guard0xa11ad30>),
         # i72 = int_le(i65, 100000),
