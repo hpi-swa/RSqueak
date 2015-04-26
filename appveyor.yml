@@ -20,5 +20,6 @@ on_success:
 cache:
   - .build/pypy -> .appveyor/cache_tag
   - .build/rsdl -> .appveyor/cache_tag
-  - .build/pypy-win32 -> .appveyor/cache_tag
-  - .build/SDL -> .appveyor/cache_tag
+  - .build/Graphviz -> .appveyor/binary_cache_tag
+  - .build/pypy-win32 -> .appveyor/binary_cache_tag
+  - .build/SDL -> .appveyor/binary_cache_tag

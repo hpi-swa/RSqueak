@@ -42,7 +42,7 @@ can be achieved by running
 
 ###### Mac OS X
 
-RSqueak/VM currently needs to be compile using a 32-bit python and
+RSqueak/VM currently needs to be compiled using a 32-bit python and
 32-bit clang. To do so, run
 
     export VERSIONER_PYTHON_PREFER_32_BIT=yes
@@ -50,3 +50,48 @@ RSqueak/VM currently needs to be compile using a 32-bit python and
 before you run any of the python scripts in the `.build`
 directory. You also need to download SDL-1.2 as a framework. Check the
 `.travis/build-osx.sh` if you get stuck anywhere.
+
+### Developing
+
+The `.build` directory includes several scripts that make development
+easier. Once you've setup your system for building, you can use these
+to work on the RSqueak/VM.
+
+###### run.py
+
+This script executes RSqueak/VM in *hosted* mode, that is, it runs on
+top of a Python interpreter. This is very slow (we recommend using PyPy),
+but it can be useful to debug specific aspects of the VM quickly. Ideally,
+you set up an image so that it executes the code that you are interested in
+early during startup (`DisplayScreen class>>startUp` is a good candidate)
+and then you add your breakpoints to the source. You can also pass commandline
+arguments to the script or tweak the default arguments in the script itself.
+
+###### unittests.py
+
+The second script that is useful for working on issues regarding the
+interpreter is `unittests.py`. By default it runs all tests under the
+`spyvm/test` directory (but not those in `spyvm/test/jittest/`). This
+is a standalone pytest script, so you can pass arguments or select single
+test files as you would for pytest.
+
+###### jittests.py
+
+This script requires that you have already built an `rsqueak` binary and
+that you have the C Squeak VM installed. It executes the tests in
+`spyvm/test/jittest/` and checks for the JIT output. We use these tests to
+ensure that development on the VM does not break JIT optimizations.
+
+###### jit.py
+
+This script is useful to figure out what the JIT is doing. Like `run.py`,
+it executes the RSqueak/VM in hosted mode, but this time it also simulates
+the JIT. This is even slower, but allows us to test small code snippets
+without having to retranslate the entire VM. The code snippets are configured
+directly in the file. When you run it, it does part of the translation process
+(but only enough to execute your specific code) and then runs the code. When
+the JIT kicks in, the compiled loop is shown in a PyGame window. You can then
+inspect it at your leisure and when you quit the window, the code continues
+executing. In order for this to work, you need to have `pygame` and `graphviz`
+installed and in your PATH.
+

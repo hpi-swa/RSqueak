@@ -20,6 +20,7 @@ def load_config():
             cp.set("Windows", "SDL", pathjoin(dirname(__file__), "SDL"))
             cp.set("Windows", "WindowsSDK7", "C:\\Program Files (x86)\\Microsoft SDKs\\Windows\\v7.1A")
             cp.set("Windows", "VisualStudio9", "C:\\Program Files (x86)\\Microsoft Visual Studio 9.0")
+            cp.set("Windows", "Graphviz", pathjoin(dirname(__file__), "Graphviz"))
             cp.write(f)
         print "I've just added a config file at %s. Please review the values and run `install_dependencies` (if needed)." % config
     else:
@@ -63,6 +64,10 @@ def ensure_32bit_environment():
 def prepare_environment_variables():
     sys.path.insert(0, cp.get("General", "pypy"))
     sys.path.insert(0, cp.get("General", "rsdl"))
+    try:
+        import targetrsqueak as rsqueak
+    except ImportError:
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
     if "nt" == os.name:
         vs = cp.get("Windows", "VisualStudio9")
         sdk = cp.get("Windows", "WindowsSDK7")
@@ -73,6 +78,7 @@ def prepare_environment_variables():
         os.environ['Path'] = ";".join([pathjoin(vs, "VC", "bin"),
                                        pathjoin(vs, "Common7", "IDE"),
                                        pathjoin(sdk, "Bin"),
+                                       pathjoin(cp.get("Windows", "Graphviz"), "bin"),
                                        os.environ["Path"]])
         os.environ["SDL_PREFIX"] = cp.get("Windows", "SDL")
     elif "linux" in sys.platform:
