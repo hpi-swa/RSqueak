@@ -11,8 +11,7 @@ env:
   matrix:
     - BUILD_ARCH=32bit BUILD_TYPE=test
     - BUILD_ARCH=32bit BUILD_TYPE=build
-matrix:
-  fast_finish: true
+    - BUILD_ARCH=arm BUILD_TYPE=build
 install:
   - .travis/trigger-osx-build.sh || echo 0
   - .travis/install_requirements.sh
