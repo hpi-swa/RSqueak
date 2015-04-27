@@ -22,7 +22,7 @@ sudo apt-key add raspbian.public.key
 
 sudo qemu-debootstrap --no-check-gpg --variant=buildd --arch=armhf wheezy raspbian_arm/ http://archive.raspbian.org/raspbian/
 schroot -c raspbian_arm -- uname -m
-sudo su -c 'echo "deb http://archive.raspbian.org/raspbian/ wheezy main universe restricted" > raspbian_arm/etc/apt/sources.list'
+sudo su -c 'echo "deb http://archive.raspbian.org/raspbian/ wheezy main contrib" > raspbian_arm/etc/apt/sources.list'
 schroot -c raspbian_arm -u root -- apt-get update
 schroot -c raspbian_arm -u root -- apt-get install -y libffi-dev build-essential libsdl1.2-dev # python-dev 
 cd raspbian_arm/
