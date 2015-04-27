@@ -3,6 +3,7 @@ import sys, time, os
 from rpython.jit.codewriter.policy import JitPolicy
 from rpython.rlib import jit, rpath, objectmodel
 from spyvm import model, interpreter, squeakimage, objspace, wrapper, error
+from spyvm.util import system
 
 sys.setrecursionlimit(15000)
 
@@ -172,7 +173,11 @@ def entry_point(argv):
                 return -1
 
         if path is None:
-            path = "Squeak.image"
+            if not system.IS_WINDOWS:
+                path = "Squeak.image"
+            else:
+                from spyvm.util import win32_dialog
+                path = win32_dialog.get_file()
         if code and selector:
             raise error.Exit("Cannot handle both -r and -m.")
     except error.Exit as e:
