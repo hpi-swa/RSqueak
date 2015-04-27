@@ -20,8 +20,7 @@ sudo chown root /etc/schroot/schroot.conf
 wget http://archive.raspbian.org/raspbian.public.key
 sudo apt-key add raspbian.public.key
 
-sudo qemu-debootstrap --variant=buildd --keyring /etc/apt/trusted.gpg --arch armhf --foreign wheezy\
-   raspbian_arm/ http://archive.raspbian.org/raspbian/
+sudo qemu-debootstrap --no-check-gpg --variant=buildd --arch=armhf wheezy raspbian_arm/ http://archive.raspbian.org/raspbian/
 schroot -c raspbian_arm -- uname -m
 sudo su -c 'echo "deb http://archive.raspbian.org/raspbian/ wheezy main universe restricted" > raspbian_arm/etc/apt/sources.list'
 schroot -c raspbian_arm -u root -- apt-get update
