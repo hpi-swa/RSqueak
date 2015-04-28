@@ -12,10 +12,7 @@ CHROOT_ARCH=armhf
 HOST_DEPENDENCIES="debootstrap qemu-user-static binfmt-support sbuild scratchbox2 gcc-arm-linux-gnueabihf libsdl1.2-dev libffi-dev"
 
 # Debian package dependencies for the chrooted environment
-GUEST_DEPENDENCIES="build-essential git m4 sudo python libffi-dev libsdl1.2-dev"
-
-# Command used to run the tests
-TEST_COMMAND="python .build/build.py"
+GUEST_DEPENDENCIES="build-essential sudo python libffi-dev libsdl1.2-dev"
 
 function setup_arm_chroot {
     # Host dependencies
@@ -35,15 +32,8 @@ function setup_arm_chroot {
     sudo chroot ${CHROOT_DIR} apt-get --allow-unauthenticated install \
         -qq -y ${GUEST_DEPENDENCIES}
 
-    # Create build dir and copy travis build files to our chroot environment
-    sudo mkdir -p ${CHROOT_DIR}/${TRAVIS_BUILD_DIR}
-    sudo rsync -av ${TRAVIS_BUILD_DIR}/ ${CHROOT_DIR}/${TRAVIS_BUILD_DIR}/
-
     # Indicate chroot environment has been set up
     sudo touch ${CHROOT_DIR}/.chroot_is_done
-
-    # Call ourselves again which will cause tests to run
-    sudo chroot ${CHROOT_DIR} bash -c "cd ${TRAVIS_BUILD_DIR} && ./.travis-ci.sh"
 }
 
 # ARM test run, need to set up chrooted environment first
