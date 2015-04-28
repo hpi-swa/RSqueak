@@ -15,7 +15,7 @@ case "$BUILD_ARCH" in
     arm)
 	binary=rsqueak-arm
 	armv=armv6raspbian
-	export SB2OPT='-t $SB2NAME'
+	export SB2OPT="-t ${SB2NAME}"
 	export CFLAGS="-march=armv6 -mfpu=vfp -mfloat-abi=hard -marm\
                -I${SB2}/usr/include/arm-linux-gnueabihf/"
 	export LDFLAGS="-L${SB2}/usr/lib/arm-linux-gnueabihf/pulseaudio\
