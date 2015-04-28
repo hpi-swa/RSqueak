@@ -55,4 +55,4 @@ type=directory
     cd precise_arm/
     sb2-init -c `which qemu-arm` ARM `which arm-linux-gnueabi-gcc`
     cd ..
-fi
+fi fi
