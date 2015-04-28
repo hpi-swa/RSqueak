@@ -13,7 +13,7 @@ CHROOT_ARCH=armhf
 HOST_DEPENDENCIES="debootstrap qemu-user-static binfmt-support sbuild scratchbox2 gcc-arm-linux-gnueabihf libsdl1.2-dev libffi-dev"
 
 # Debian package dependencies for the chrooted environment
-GUEST_DEPENDENCIES="build-essential sudo python libffi-dev libsdl1.2-dev"
+GUEST_DEPENDENCIES="build-essential sudo python libffi-dev libsdl1.2-dev libpulse-dev"
 
 # Host dependencies
 sudo apt-get install -qq -y ${HOST_DEPENDENCIES}
@@ -48,4 +48,4 @@ sudo chown root /etc/schroot/schroot.conf
 schroot -c $CHROOT_NAME -- uname -m
 
 cd $CHROOT_DIR
-sb2-init -c `which qemu-arm` ARM `which arm-linux-gnueabihf-gcc`
+sb2-init -c `which qemu-arm` Raspi `which arm-linux-gnueabihf-gcc`
