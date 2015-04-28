@@ -14,7 +14,7 @@ case "$BUILD_ARCH" in
 	;;
     arm)
 	binary=rsqueak-arm
-	armv=$(schroot -c precise_arm -- uname -m)
+	armv=$(schroot -c raspbian_arm -- uname -m)
 	export SB2=$PWD/raspbian_arm
 	export SB2OPT='-t ARM'
 	# uses the 32-bit pypy from download_dependencies.py
