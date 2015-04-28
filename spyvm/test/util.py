@@ -19,7 +19,11 @@ bootstrap_by_default = False
 image_dir = py.path.local(__file__).dirpath('images')
 
 def image_path(imagefilename):
-    return image_dir.join(imagefilename).strpath
+    import os
+    if os.path.isabs(imagefilename):
+        return imagefilename
+    else:
+        return image_dir.join(imagefilename).strpath
 
 def image_stream(imagefilename):
     return squeakimage.Stream(filename=image_path(imagefilename))
