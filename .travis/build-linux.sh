@@ -14,9 +14,8 @@ case "$BUILD_ARCH" in
 	;;
     arm)
 	binary=rsqueak-arm
-	armv=$(schroot -c raspbian_arm -- uname -m)
-	export SB2=$PWD/raspbian_arm
-	export SB2OPT='-t ARM'
+	armv=armv6raspbian
+	export SB2OPT='-t $SB2NAME'
 	# uses the 32-bit pypy from download_dependencies.py
 	.build/pypy-linux32/bin/pypy .build/build.py --gc=incminimark --gcrootfinder=shadowstack --jit-backend=arm -Ojit --platform=arm
 	cp rsqueak* rsqueak-$armv-Linux-jit-$TRAVIS_COMMIT

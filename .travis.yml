@@ -11,7 +11,7 @@ env:
   matrix:
     - BUILD_ARCH=32bit BUILD_TYPE=test
     - BUILD_ARCH=32bit BUILD_TYPE=build
-    - BUILD_ARCH=arm BUILD_TYPE=build
+    - BUILD_ARCH=arm BUILD_TYPE=build SB2="$PWD/raspbian_arm" SB2NAME="rasp" CFLAGS="-march=armv6 -mfpu=vfp -mfloat-abi=hard -marm" LDFLAGS="-L${CHROOT_DIR}/usr/lib/arm-linux-gnueabihf/pulseaudio -Wl,-rpath=${CHROOT_DIR}/usr/lib/arm-linux-gnueabihf/pulseaudio\ -L${CHROOT_DIR}/usr/lib/arm-linux-gnueabihf/ -Wl,-rpath=${CHROOT_DIR}/usr/lib/arm-linux-gnueabihf/ -L${CHROOT_DIR}/lib/arm-linux-gnueabihf/ -Wl,-rpath=${CHROOT_DIR}/lib/arm-linux-gnueabihf/"
 install:
   - .travis/trigger-osx-build.sh || echo 0
   - .travis/install_requirements.sh
