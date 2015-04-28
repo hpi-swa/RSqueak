@@ -5,7 +5,7 @@ CHROOT_DIR=$SB2
 MIRROR=http://archive.raspbian.org/raspbian
 VERSION=wheezy
 CHROOT_ARCH=armhf
-HOST_DEPENDENCIES="debootstrap qemu-user-static binfmt-support sbuild scratchbox2 gcc-arm-linux-gnueabihf libsdl1.2-dev libffi-dev"
+HOST_DEPENDENCIES="debootstrap qemu-user-static binfmt-support sbuild scratchbox2 gcc-arm-linux-gnueabihf libsdl1.2-dev libffi-dev libstdc++6:i386"
 GUEST_DEPENDENCIES="build-essential python libffi-dev libsdl1.2-dev libpulse-dev"
 
 # host deps
