@@ -3,7 +3,7 @@
 set -ex
 sudo apt-get update
 
-CHROOT_DIR=/tmp/arm-chroot
+CHROOT_DIR=$PWD/raspbian_arm
 MIRROR=http://archive.raspbian.org/raspbian
 VERSION=wheezy
 CHROOT_ARCH=armhf
@@ -55,5 +55,21 @@ if [ -e "/.chroot_is_done" ]; then
   echo "Chrooted environment ready"
 fi
 
-cd raspbian_arm/
+sudo chown $USER /etc/schroot/schroot.conf
+echo "
+[raspbian_arm]
+directory=$CHROOT_DIR
+users=$USER
+root-users=$USER
+groups=$USER
+aliases=default
+type=directory
+" >>  /etc/schroot/schroot.conf
+cat /etc/schroot/schroot.conf
+sudo chown root /etc/schroot/schroot.conf
+
+schroot -c $CHROOT_DIR -- uname -m
+
+pushd $CHROOT_DIR
 sb2-init -c `which qemu-arm` ARM `which arm-linux-gnueabihf-gcc`
+popd
