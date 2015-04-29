@@ -28,6 +28,4 @@ tar xzvf Squeak-4.10*.tar.gz
 rm Squeak-4.10*.tar.gz
 ln -s $PWD/Squeak-4.10*/bin/squeak .build/squeak
 
-if [ "$BUILD_ARCH" == "arm" ]; then
-    .travis/setup_arm.sh
-fi
+.travis/setup_arm.sh
