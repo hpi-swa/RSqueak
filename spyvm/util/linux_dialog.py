@@ -64,6 +64,6 @@ def get_file():
         if status == 127:
             return fltk_get_file()
         elif status == 0:
-            return os.read(r, 512).replace("\n", "")
+            return os.read(r, 512).strip()
         else:
             return _Default
