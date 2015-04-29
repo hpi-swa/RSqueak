@@ -12,11 +12,13 @@ Packages="build-essential libffi-dev python-dev libffi6:i386 \
 if [ "$BUILD_ARCH" == "32bit" ]; then
     # These are insane, i just want sdl1.2-dev:i386, but that multilib
     # package is broken
-    Packages="$Packages g++-multilib libsdl1.2-dev:i386 libasound2-dev:i386 \
+    Packages="$Packages libsdl1.2-dev:i386 libasound2-dev:i386 \
 	libxt-dev:i386 libxext-dev:i386 \
 	libglu1-mesa-dev:i386 libglu1-mesa:i386 \
 	libgl1-mesa-dev:i386 libgl1-mesa-dri:i386 libgl1-mesa-glx:i386 \
-	libglapi-mesa:i386 libfltk1.3-dev:i386"
+	libglapi-mesa:i386"
+    # FLTK compilation still fails
+    # Packages="$Packages g++-multilib libfltk1.3-dev:i386"
 fi
 
 sudo apt-get install -y --force-yes $Packages
