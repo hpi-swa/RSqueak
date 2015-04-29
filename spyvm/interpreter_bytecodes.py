@@ -324,9 +324,7 @@ class __extend__(ContextPartShadow):
                 pass # ignore this error and fall back to the Smalltalk version
         if not w_arguments:
             w_arguments = self.pop_and_return_n(argcount)
-        s_frame = w_method.create_frame(interp.space, receiver, w_arguments)
-        if s_fallback:
-            s_frame._s_fallback = s_fallback
+        s_frame = w_method.create_frame(interp.space, receiver, w_arguments, s_fallback=s_fallback)
         self.pop() # receiver
 
         # ######################################################################

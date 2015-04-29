@@ -70,7 +70,7 @@ class ContextPartShadow(AbstractStrategy):
         '_s_fallback'
     ]
 
-    _immutable_fields_ = ['is_block_context']
+    _immutable_fields_ = ['is_block_context', '_s_fallback']
 
     # ______________________________________________________________________
     # Initialization
@@ -674,13 +674,14 @@ class __extend__(ContextPartShadow):
     # === Initialization ===
 
     @staticmethod
-    def build_method_context(space, w_method, w_receiver, arguments=[], closure=None):
+    def build_method_context(space, w_method, w_receiver, arguments=[], closure=None, s_fallback=None):
         w_method = jit.promote(w_method)
         s_MethodContext = space.w_MethodContext.as_class_get_shadow(space)
         size = w_method.compute_frame_size() + s_MethodContext.instsize()
 
         ctx = ContextPartShadow(space, None, size)
         ctx.is_block_context = False
+        ctx._s_fallback = s_fallback
         ctx.store_w_receiver(w_receiver)
         ctx.store_w_method(w_method)
         ctx.closure = closure

@@ -863,7 +863,7 @@ EQUIVALENT = 110
 CLASS = 111
 BYTES_LEFT = 112
 QUIT = 113
-META_PRIM_FAILED = 114  # used to be EXIT_TO_DEBUGGER, but unused
+EXIT_TO_DEBUGGER = 114
 CHANGE_CLASS = 115      # Blue Book: primitiveOopsLeft
 COMPILED_METHOD_FLUSH_CACHE = 116
 EXTERNAL_CALL = 117
@@ -890,9 +890,11 @@ def func(interp, s_frame, w_rcvr):
     from spyvm.error import Exit
     raise Exit('Quit-Primitive called')
 
-@expose_primitive(META_PRIM_FAILED, unwrap_spec=[object])
+@expose_primitive(EXIT_TO_DEBUGGER, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    raise MetaPrimFailed(s_frame)
+    if interp.space.headless.is_set():
+        exitFromHeadlessExecution(s_frame, "EXIT_TO_DEBUGGER")
+    raise PrimitiveNotYetWrittenError()
 
 @expose_primitive(CHANGE_CLASS, unwrap_spec=[object, object], no_result=True)
 def func(interp, s_frame, w_arg, w_rcvr):
@@ -1584,7 +1586,11 @@ VM_CONTROL_PROFILING = 251
 VM_PROFILE_SAMPLES_INTO = 252
 VM_PROFILE_INFO_INTO = 253
 VM_PARAMETERS = 254
-INST_VARS_PUT_FROM_STACK = 255 # Never used except in Disney tests.  Remove after 2.3 release.
+META_PRIM_FAILED = 255 # Used to be INST_VARS_PUT_FROM_STACK. Never used except in Disney tests.  Remove after 2.3 release.
+
+@expose_primitive(META_PRIM_FAILED, unwrap_spec=[object])
+def func(interp, s_frame, w_rcvr):
+    raise MetaPrimFailed(s_frame)
 
 @expose_primitive(VM_PARAMETERS)
 def func(interp, s_frame, argcount):
