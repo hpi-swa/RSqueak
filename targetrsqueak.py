@@ -173,11 +173,14 @@ def entry_point(argv):
                 return -1
 
         if path is None:
-            if not system.IS_WINDOWS:
-                path = "Squeak.image"
-            else:
+            if system.IS_WINDOWS:
                 from spyvm.util import win32_dialog
                 path = win32_dialog.get_file()
+            elif system.IS_DARWIN:
+                from spyvm.util import macosx_dialog
+                path = macosx_dialog.get_file()
+            else:
+                path = "Squeak.image"
         if code and selector:
             raise error.Exit("Cannot handle both -r and -m.")
     except error.Exit as e:
