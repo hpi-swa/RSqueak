@@ -184,6 +184,11 @@ def entry_point(argv):
             elif system.IS_LINUX:
                 from spyvm.util import linux_dialog
                 path = linux_dialog.get_file()
+            elif system.IS_DARWIN:
+                from spyvm.util import macosx_dialog
+                path = macosx_dialog.get_file()
+            else:
+                path = "Squeak.image"
         if code and selector:
             raise error.Exit("Cannot handle both -r and -m.")
     except error.Exit as e:
