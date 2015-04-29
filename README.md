@@ -7,6 +7,11 @@ Prebuilt binaries
 * [Mac OS X](http://www.lively-kernel.org/babelsberg/RSqueak/rsqueak-darwin-latest) [![Max OS X Build Status](https://travis-ci.org/timfel/RSqueak-MacOSXBuild.svg?branch=master)](https://travis-ci.org/timfel/RSqueak-MacOSXBuild)
 * [Windows](http://www.lively-kernel.org/babelsberg/RSqueak/rsqueak-win32-latest.exe) [![Windows Build Status](https://ci.appveyor.com/api/projects/status/e37a79tt5irr7sx1/branch/master?svg=true)](https://ci.appveyor.com/project/timfel/rsqueak)
 
+We also built for Armv7 (Raspberry Pi2, Beagleboard, ...) and Armv6 on the Raspberry Pi 1:
+* [ARMv6](http://www.lively-kernel.org/babelsberg/RSqueak/rsqueak-armv6raspbian-latest)
+* [ARMv7](http://www.lively-kernel.org/babelsberg/RSqueak/rsqueak-armv7l-latest)
+
+
 ### Building from Source
 
 ###### Common to all systems
