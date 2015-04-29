@@ -40,6 +40,11 @@ can be achieved by running
 
     apt-get install libsdl1.2-dev
 
+Optionally you can also install FLTK-1.3 if you want to compile a
+fallback file chooser when the VM is launched without image argument:
+
+    apt-get install libfltk1.3-dev
+
 ###### Mac OS X
 
 RSqueak/VM currently needs to be compiled using a 32-bit python and
