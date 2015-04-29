@@ -7,19 +7,15 @@ from spyvm.error import PrimitiveFailedError, PrimitiveNotYetWrittenError, MetaP
 from spyvm import wrapper
 
 from rpython.rlib import rfloat, unroll, jit, objectmodel
-from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int, r_longlong
+from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int, r_longlong, int_between
 
 
 def assert_class(interp, w_obj, w_class):
     if not w_obj.getclass(interp.space).is_same_object(w_class):
         raise PrimitiveFailedError()
 
-def assert_bounds(n0, minimum, maximum):
-    if not minimum <= n0 < maximum:
-        raise PrimitiveFailedError()
-
 def assert_valid_index(space, n0, w_obj):
-    if not 0 <= n0 < w_obj.varsize():
+    if not int_between(0, n0, w_obj.varsize()):
         raise PrimitiveFailedError()
     # return the index, since from here on the annotator knows that
     # n0 cannot be negative
@@ -552,7 +548,6 @@ def func(interp, s_frame, w_rcvr, n0):
 def func(interp, s_frame, w_rcvr, n0, w_value):
     if not isinstance(w_rcvr, model.W_CompiledMethod):
         raise PrimitiveFailedError()
-    #assert_bounds(n0, 0, len(w_rcvr.literals))
     w_rcvr.literalatput0(interp.space, n0, w_value)
     return w_value
 
@@ -583,18 +578,22 @@ def func(interp, s_frame, w_obj1, w_obj2):
 def func(interp, s_frame, w_rcvr, n0):
     "Fetches a fixed field from the object, and fails otherwise"
     s_class = w_rcvr.class_shadow(interp.space)
-    assert_bounds(n0, 0, s_class.instsize())
     w_cls = assert_pointers(w_rcvr)
-    return w_rcvr.fetch(interp.space, n0)
+    try:
+        return w_rcvr.fetch(interp.space, n0)
+    except IndexError:
+        raise PrimitiveFailedError
 
 @expose_primitive(INST_VAR_AT_PUT, unwrap_spec=[object, index1_0, object])
 def func(interp, s_frame, w_rcvr, n0, w_value):
     "Stores a value into a fixed field from the object, and fails otherwise"
     s_class = w_rcvr.class_shadow(interp.space)
-    assert_bounds(n0, 0, s_class.instsize())
     w_rcvr = assert_pointers(w_rcvr)
-    w_rcvr.store(interp.space, n0, w_value)
-    return w_value
+    try:
+        w_rcvr.store(interp.space, n0, w_value)
+        return w_value
+    except IndexError:
+        raise PrimitiveFailedError
 
 @expose_primitive(AS_OOP, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
@@ -1493,16 +1492,19 @@ def activateClosure(interp, w_block, args_w):
     space = interp.space
     assert_class(interp, w_block, space.w_BlockClosure)
     block = wrapper.BlockClosureWrapper(space, w_block)
-    if not block.numArgs() == len(args_w):
+    blockNumArgs = jit.promote(block.numArgs())
+    if not blockNumArgs == len(args_w):
         raise PrimitiveFailedError()
-    outer_ctxt_class = block.outerContext().getclass(space)
+    outer_ctxt = block.outerContext()
+    outer_ctxt_class = jit.promote(outer_ctxt.getclass(space))
     if not (outer_ctxt_class is space.w_MethodContext
                 or outer_ctxt_class is space.w_BlockContext):
         raise PrimitiveFailedError()
+    assert isinstance(outer_ctxt, model.W_PointersObject)
 
     # additionally to the smalltalk implementation, this also pushes
     # args and copiedValues
-    s_new_frame = block.create_frame(args_w)
+    s_new_frame = block.create_frame(outer_ctxt, args_w)
     w_closureMethod = s_new_frame.w_method()
 
     assert isinstance(w_closureMethod, model.W_CompiledMethod)

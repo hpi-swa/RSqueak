@@ -1,18 +1,18 @@
-import subprocess, os
+import os, shutil
 from rpython.tool.jitlogparser.parser import Op
 from rpython.jit.metainterp.resoperation import opname
 from rpython.jit.tool import oparser
 from spyvm.util import logparser
 from spyvm.test.util import image_path
 
-TestImage = image_path("jittest.image")
-
 class BaseJITTest(object):
+    test_image = image_path("jittest.image")
+
     def run(self, spy, tmpdir, code):
         logfile = str(tmpdir.join("x.pypylog"))
         print logfile
-        proc = subprocess.Popen(
-            [str(spy), TestImage, "-r", code.replace("\n", "\r\n")],
+        proc = spy.popen(
+            self.test_image, "-r", code.replace("\n", "\r\n"),
             cwd=str(tmpdir),
             env={"PYPYLOG": "jit-log-opt:%s" % logfile,
                  "SDL_VIDEODRIVER": "dummy"}
@@ -42,6 +42,43 @@ class BaseJITTest(object):
         #     elif arg != expected_arg and expected_arg not in aliases.viewvalues():
         #         aliases[arg] = arg = expected_arg
         #     assert arg == expected_arg
+
+
+class ModernJITTest(BaseJITTest):
+    image_name = "Squeak4.5-12568.image"
+    changes_name = image_name.replace(".image", ".changes")
+    source_name = "SqueakV41.sources"
+    test_image = image_path(image_name)
+    test_changes = test_image.replace(".image", ".changes")
+    test_sources = image_path(source_name)
+
+    def run(self, spy, squeak, tmpdir, code):
+        shutil.copyfile(self.test_image, str(tmpdir.join(self.image_name)))
+        shutil.copyfile(self.test_changes, str(tmpdir.join(self.changes_name)))
+        shutil.copyfile(self.test_sources, str(tmpdir.join(self.source_name)))
+
+        infile = tmpdir.join("input.st")
+        f = open(str(infile), 'w')
+        f.write("Utilities setAuthorInitials: 'foo'. SmallInteger compile: 'jittestNow\r\n%s'.\r\nSmalltalk snapshot: true andQuit: true." % code.replace("'", "''"))
+        f.close()
+        curdir = os.getcwd()
+        os.chdir(str(tmpdir))
+        try:
+            squeak.system(self.image_name, infile)
+        finally:
+            os.chdir(curdir)
+
+        logfile = str(tmpdir.join("x.pypylog"))
+        print logfile
+        proc = spy.popen(
+            self.image_name, "-n", "0", "-m", "jittestNow",
+            cwd=str(tmpdir),
+            env={"PYPYLOG": "jit-log-opt:%s" % logfile,
+                 "SDL_VIDEODRIVER": "dummy"}
+        )
+        proc.wait()
+        return logparser.extract_traces(logfile)
+
 
 class Parser(oparser.OpParser):
     def get_descr(self, poss_descr, allow_invent):

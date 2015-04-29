@@ -240,12 +240,10 @@ class BlockClosureWrapper(VarsizedWrapper):
     startpc, store_startpc = make_int_getter_setter(constants.BLKCLSR_STARTPC)
     numArgs, store_numArgs = make_int_getter_setter(constants.BLKCLSR_NUMARGS)
 
-    def create_frame(self, arguments=[]):
+    def create_frame(self, w_outerContext, arguments=[]):
         from spyvm import storage_contexts
-        w_outerContext = self.outerContext()
-        if not isinstance(w_outerContext, model.W_PointersObject):
-            raise PrimitiveFailedError
         s_outerContext = w_outerContext.as_context_get_shadow(self.space)
+        assert not s_outerContext.is_block_context
         w_method = s_outerContext.w_method()
         w_receiver = s_outerContext.w_receiver()
         return storage_contexts.ContextPartShadow.build_method_context(self.space, w_method, w_receiver, arguments, self)
