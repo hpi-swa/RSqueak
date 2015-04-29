@@ -284,7 +284,6 @@ class __extend__(ContextPartShadow):
         self._jump(blockSize)
 
     # ====== Helpers for send/return bytecodes ======
-
     def _sendSelfSelector(self, w_selector, argcount, interp):
         receiver = self.peek(argcount)
         return self._sendSelector(w_selector, argcount, interp,
@@ -297,8 +296,9 @@ class __extend__(ContextPartShadow):
         return self._sendSelector(w_selector, argcount, interp, self.w_receiver(),
                                   s_compiledin.s_superclass())
 
+    @objectmodel.specialize.argtype(7)
     def _sendSelector(self, w_selector, argcount, interp,
-                      receiver, receiverclassshadow, w_arguments=None):
+                      receiver, receiverclassshadow, w_arguments=None, s_fallback=None):
         assert argcount >= 0
         try:
             w_method = receiverclassshadow.lookup(w_selector)
@@ -325,6 +325,8 @@ class __extend__(ContextPartShadow):
         if not w_arguments:
             w_arguments = self.pop_and_return_n(argcount)
         s_frame = w_method.create_frame(interp.space, receiver, w_arguments)
+        if s_fallback:
+            s_frame._s_fallback = s_fallback
         self.pop() # receiver
 
         # ######################################################################

@@ -47,7 +47,9 @@ class ContextPartShadow(AbstractStrategy):
                # BlockContext data
                '_w_home', '_initialip', '_eargc',
                # MethodContext data
-               'closure', '_w_receiver', '_w_method', '_is_BlockClosure_ensure'
+               'closure', '_w_receiver', '_w_method', '_is_BlockClosure_ensure',
+               # Fallback for failed primitives
+               '_s_fallback'
                ]
 
     _virtualizable_ = [
@@ -64,7 +66,8 @@ class ContextPartShadow(AbstractStrategy):
         'closure',
         '_w_receiver',
         '_w_method',
-        '_is_BlockClosure_ensure'
+        '_is_BlockClosure_ensure',
+        '_s_fallback'
     ]
 
     _immutable_fields_ = ['is_block_context']
@@ -95,6 +98,8 @@ class ContextPartShadow(AbstractStrategy):
         self.instances_w = {}
         self.state = InactiveContext
         self.store_pc(0)
+
+        self._s_fallback = None
 
         # From BlockContext
         self._w_home = None

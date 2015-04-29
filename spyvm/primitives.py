@@ -3,7 +3,7 @@ import inspect
 import math
 import operator
 from spyvm import model, model_display, storage_contexts, error, constants, display
-from spyvm.error import PrimitiveFailedError, PrimitiveNotYetWrittenError
+from spyvm.error import PrimitiveFailedError, PrimitiveNotYetWrittenError, MetaPrimFailed
 from spyvm import wrapper
 
 from rpython.rlib import rfloat, unroll, jit, objectmodel
@@ -864,7 +864,7 @@ EQUIVALENT = 110
 CLASS = 111
 BYTES_LEFT = 112
 QUIT = 113
-EXIT_TO_DEBUGGER = 114
+META_PRIM_FAILED = 114  # used to be EXIT_TO_DEBUGGER, but unused
 CHANGE_CLASS = 115      # Blue Book: primitiveOopsLeft
 COMPILED_METHOD_FLUSH_CACHE = 116
 EXTERNAL_CALL = 117
@@ -891,11 +891,9 @@ def func(interp, s_frame, w_rcvr):
     from spyvm.error import Exit
     raise Exit('Quit-Primitive called')
 
-@expose_primitive(EXIT_TO_DEBUGGER, unwrap_spec=[object])
+@expose_primitive(META_PRIM_FAILED, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    if interp.space.headless.is_set():
-        exitFromHeadlessExecution(s_frame, "EXIT_TO_DEBUGGER")
-    raise PrimitiveNotYetWrittenError()
+    raise MetaPrimFailed(s_frame)
 
 @expose_primitive(CHANGE_CLASS, unwrap_spec=[object, object], no_result=True)
 def func(interp, s_frame, w_arg, w_rcvr):
