@@ -173,11 +173,17 @@ def entry_point(argv):
                 return -1
 
         if path is None:
-            if not system.IS_WINDOWS:
-                path = "Squeak.image"
-            else:
+            for filename in os.listdir(os.getcwd()):
+                if filename.startswith("Squeak") and filename.endswith(".image"):
+                    path = filename
+                    break
+        if path is None:
+            if system.IS_WINDOWS:
                 from spyvm.util import win32_dialog
                 path = win32_dialog.get_file()
+            elif system.IS_LINUX:
+                from spyvm.util import linux_dialog
+                path = linux_dialog.get_file()
         if code and selector:
             raise error.Exit("Cannot handle both -r and -m.")
     except error.Exit as e:
