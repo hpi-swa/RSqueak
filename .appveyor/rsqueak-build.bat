@@ -8,6 +8,8 @@ if not defined APPVEYOR goto :else1
   :else2
     echo "Running on appveyor, but there is no drive D. The list of drives is:"
     fsutil fsinfo drives
+    echo "Maybe you want to put the tempdir where the pagefile is (assuming that is the fastest drive)"
+    powershell -NonInteractive -command "& { gwmi -computer . Win32_PageFileUsage }"
   :endif2
   goto :endif1
 :else1
