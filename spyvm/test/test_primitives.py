@@ -762,6 +762,24 @@ def test_primitive_force_display_update(monkeypatch):
     finally:
         monkeypatch.undo()
 
+def test_screen_size_queries_sdl_window_size(monkeypatch):
+    class MockDisplay:
+        width = 3
+        height = 2
+    mock_display = MockDisplay()
+    monkeypatch.setattr(space, 'display', lambda: mock_display)
+    mock_displayScreen_class = bootstrap_class(0)
+    def assert_screen_size():
+        w_screen_size = prim(primitives.SCREEN_SIZE, [mock_displayScreen_class])
+        assert w_screen_size.getclass(space) is space.w_Point
+        screen_size_point = wrapper.PointWrapper(space, w_screen_size)
+        assert screen_size_point.x() == mock_display.width
+        assert screen_size_point.y() == mock_display.height
+    assert_screen_size()
+    mock_display.width = 4
+    mock_display.height = 3
+    assert_screen_size()
+
 # Note:
 #   primitives.NEXT is unimplemented as it is a performance optimization
 #   primitives.NEXT_PUT is unimplemented as it is a performance optimization

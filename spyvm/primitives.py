@@ -824,14 +824,10 @@ def func(interp, s_frame, w_rcvr):
 
 @expose_primitive(SCREEN_SIZE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    # We need to have the indirection via interp.image, because when the image
-    # is saved, the display form size is always reduced to 240@120.
-    if not interp.image:
-        raise PrimitiveFailedError
     w_res = interp.space.w_Point.as_class_get_shadow(interp.space).new(2)
     point = wrapper.PointWrapper(interp.space, w_res)
-    point.store_x((interp.image.lastWindowSize >> 16) & 0xffff)
-    point.store_y(interp.image.lastWindowSize & 0xffff)
+    point.store_x(interp.space.display().width)
+    point.store_y(interp.space.display().height)
     return w_res
 
 @expose_primitive(MOUSE_BUTTONS, unwrap_spec=[object])
