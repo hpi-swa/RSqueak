@@ -55,6 +55,9 @@ class SDLDisplay(object):
         self.interrupt_key = 15 << 8 # pushing all four meta keys, of which we support three...
         self.button = 0
         self.key = 0
+        self.width = 0
+        self.height = 0
+        self.depth = 32
         self._deferred_events = []
         self._defer_updates = False
 
@@ -178,6 +181,12 @@ class SDLDisplay(object):
         if (interrupt & 0xFF == self.key and interrupt >> 8 == self.get_modifier_mask(0)):
             raise KeyboardInterrupt
 
+    def handle_videoresize(self, c_type, p_event):
+        p_resize_event = rffi.cast(RSDL.ResizeEventPtr, p_event)
+        self.set_video_mode(rffi.getintfield(p_resize_event, 'c_w'),
+                rffi.getintfield(p_resize_event, 'c_h'),
+                self.depth)
+
     def get_next_mouse_event(self, time):
         mods = self.get_modifier_mask(3)
         btn = self.button
@@ -258,7 +267,8 @@ class SDLDisplay(object):
                 elif c_type == RSDL.KEYUP:
                     self.handle_keypress(c_type, event)
                     return self.get_next_key_event(EventKeyUp, time)
-                # elif c_type == RSDL.VIDEORESIZE:
+                elif c_type == RSDL.VIDEORESIZE:
+                    self.handle_videoresize(c_type, event)
                 #     self.screen = RSDL.GetVideoSurface()
                 #     self._deferred_events.append([EventTypeWindow, time, WindowEventPaint,
                 #                             0, 0, int(self.screen.c_w), int(self.screen.c_h), 0])

@@ -14,20 +14,37 @@ def stub_sdl(monkeypatch):
     monkeypatch.setattr(RSDL, "Quit", lambda: 0)
 
 @pytest.fixture
-def stub_key_event(request, monkeypatch):
+def stub_event(request):
     p_testevent = lltype.malloc(RSDL.Event, flavor='raw')
-    p_testkeyevent = rffi.cast(RSDL.KeyboardEventPtr, p_testevent)
     def free_testevent():
         lltype.free(p_testevent, flavor='raw')
     request.addfinalizer(free_testevent)
+    return p_testevent
+
+@pytest.fixture
+def stub_key_event(stub_event, monkeypatch):
+    p_testkeyevent = rffi.cast(RSDL.KeyboardEventPtr, stub_event)
     def PollEvent_stub(p_event):
-        p_event.c_type = p_testevent.c_type
+        p_event.c_type = p_testkeyevent.c_type
         p_keyevent = rffi.cast(RSDL.KeyboardEventPtr, p_event)
         p_keyevent.c_keysym.c_sym = p_testkeyevent.c_keysym.c_sym
         p_keyevent.c_keysym.c_unicode = p_testkeyevent.c_keysym.c_unicode
         return 1
     monkeypatch.setattr(RSDL, "PollEvent", PollEvent_stub)
     return p_testkeyevent
+
+@pytest.fixture
+def stub_videoresize_event(stub_event, monkeypatch):
+    p_test_resize_event = rffi.cast(RSDL.ResizeEventPtr, stub_event)
+    rffi.setintfield(p_test_resize_event, 'c_type', RSDL.VIDEORESIZE)
+    def PollEvent_stub(p_event):
+        p_event.c_type = p_test_resize_event.c_type
+        p_resizeevent = rffi.cast(RSDL.ResizeEventPtr, p_event)
+        p_resizeevent.c_w = p_test_resize_event.c_w
+        p_resizeevent.c_h = p_test_resize_event.c_h
+        return 1
+    monkeypatch.setattr(RSDL, "PollEvent", PollEvent_stub)
+    return p_test_resize_event
 
 class ModHolder(object):
     def __init__(self):
@@ -190,3 +207,43 @@ def test_keyboard_chords(sut, stub_key_event, stub_mod_state):
     stub_mod_state.set(RSDL.KMOD_NONE)
     result = sut.get_next_event()
     assert_keyevent_array(result, key_constants.CTRL, display.EventKeyUp, 0)
+    
+@pytest.fixture
+def stub_setVideoMode_call(request, monkeypatch):
+    p_stub_screen = lltype.malloc(RSDL.Surface, flavor='raw')
+    rffi.setintfield(p_stub_screen, 'c_pitch', 0)
+    p_stub_format = lltype.malloc(RSDL.PixelFormat, flavor='raw')
+    rffi.setintfield(p_stub_format, 'c_BytesPerPixel', 4)
+    p_stub_screen.c_format = p_stub_format
+    def free_screen_etc():
+        lltype.free(p_stub_format, flavor='raw')
+        lltype.free(p_stub_screen, flavor='raw')
+    request.addfinalizer(free_screen_etc)
+    setVideoMode_called_with_args = [None] * 4
+    def setVideoMode_stub(w, h, d, flags):
+        setVideoMode_called_with_args[:] = [w, h, d, flags]
+        return p_stub_screen
+    monkeypatch.setattr(RSDL, 'SetVideoMode', setVideoMode_stub)
+    return setVideoMode_called_with_args
+
+def test_window_resize_events(sut, stub_videoresize_event, stub_setVideoMode_call):
+    def assert_updated_metrics(width, height):
+        rffi.setintfield(stub_videoresize_event, 'c_w', width)
+        rffi.setintfield(stub_videoresize_event, 'c_h', height)
+        result = sut.get_next_event()
+        # TODO: decide whether no events or windowmetric events should be raised
+        assert sut.width == width
+        assert sut.height == height
+    assert_updated_metrics(300, 200)
+    assert_updated_metrics(1024, 768)
+
+def test_display_resize_on_resize_events(sut, stub_videoresize_event,
+        stub_setVideoMode_call, monkeypatch):
+    def assert_updated_metrics(width, height):
+        rffi.setintfield(stub_videoresize_event, 'c_w', width)
+        rffi.setintfield(stub_videoresize_event, 'c_h', height)
+        result = sut.get_next_event()
+        assert stub_setVideoMode_call[0] == width
+        assert stub_setVideoMode_call[1] == height
+    assert_updated_metrics(300, 200)
+    assert_updated_metrics(1024, 768)
