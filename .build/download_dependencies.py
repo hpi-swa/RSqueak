@@ -48,8 +48,10 @@ DEPS = [("https://bitbucket.org/pypy/pypy/get/default.zip", cp.get("General", "p
         ("https://bitbucket.org/pypy/rsdl/get/default.zip", cp.get("General", "rsdl"))]
 if os.name == "nt":
     DEPS.extend([("https://bitbucket.org/pypy/pypy/downloads/pypy-2.5.1-win32.zip", "pypy-win32"),
-                 ("http://libsdl.org/release/SDL-devel-1.2.15-VC.zip", cp.get("Windows", "SDL")),
-                 ("http://www.graphviz.org/pub/graphviz/stable/windows/graphviz-2.38.zip", cp.get("Windows", "Graphviz"))])
+                 ("http://libsdl.org/release/SDL-devel-1.2.15-VC.zip", cp.get("Windows", "SDL"))])
+    if os.getenv("APPVEYOR") is None:
+        # Don't download this on appveyor, saves time and memory
+        DEPS.append(("http://www.graphviz.org/pub/graphviz/stable/windows/graphviz-2.38.zip", cp.get("Windows", "Graphviz")))
 elif "64bit" in platform.architecture()[0] and "linux" in sys.platform:
     DEPS.extend([
         ("https://bitbucket.org/pypy/pypy/downloads/pypy-2.5.1-linux.tar.bz2", "pypy-linux32"),

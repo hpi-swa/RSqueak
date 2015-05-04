@@ -65,12 +65,6 @@ def ensure_32bit_environment():
 
 
 def prepare_environment_variables():
-    sys.path.insert(0, cp.get("General", "pypy"))
-    sys.path.insert(0, cp.get("General", "rsdl"))
-    try:
-        import targetrsqueak as rsqueak
-    except ImportError:
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
     if "nt" == os.name:
         vs = cp.get("Windows", "VisualStudio9")
         sdk = cp.get("Windows", "WindowsSDK7")
@@ -90,6 +84,12 @@ def prepare_environment_variables():
         pass
     else:
         raise AssertionError("Unsupported platform")
+    sys.path.insert(0, cp.get("General", "pypy"))
+    sys.path.insert(0, cp.get("General", "rsdl"))
+    try:
+        import targetrsqueak as rsqueak
+    except ImportError:
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
 cp, config = load_config()

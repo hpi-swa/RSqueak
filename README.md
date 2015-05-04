@@ -11,6 +11,17 @@ We also built for Armv7 (Raspberry Pi2, Beagleboard, ...) and Armv6 on the Raspb
 * [ARMv6](http://www.lively-kernel.org/babelsberg/RSqueak/rsqueak-armv6raspbian-latest)
 * [ARMv7](http://www.lively-kernel.org/babelsberg/RSqueak/rsqueak-armv7l-latest)
 
+### Finding a working image
+
+Although RSqueak can load images starting with Squeak 2, many
+primitives are not implemented and instead rely on in-image fallback
+code to be available and correct. This is why only a Trunk image of
+Squeak with the latest version of the main VMMaker branch fully works.
+
+If you do not wish to prepare your own image, we regularily upload
+development images
+[here](http://www.lively-kernel.org/babelsberg/RSqueak/images/). Be
+sure to grab also the relevant changes and sources files.
 
 ### Building from Source
 

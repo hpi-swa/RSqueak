@@ -25,7 +25,13 @@ case "$BUILD_ARCH" in
                -L${SB2}/lib/arm-linux-gnueabihf/\
                -Wl,-rpath=${SB2}/lib/arm-linux-gnueabihf/"
 	# uses the 32-bit pypy from download_dependencies.py
-	.build/pypy-linux32/bin/pypy .build/build.py --gc=incminimark --gcrootfinder=shadowstack --jit-backend=arm -Ojit --platform=arm
+	.build/pypy-linux32/bin/pypy .build/build.py --gc=incminimark --gcrootfinder=shadowstack --jit-backend=arm -Ojit --platform=arm || true
+	# sometimes the translation fails because "make got killed", make sure
+	oldpwd=$(pwd)
+	cd /tmp/usession-default-0/testing_1/
+	sb2 -t rasp make -j 5
+	cp rsqueak $oldpwd/rsqueak
+	cd $oldpwd
 	cp rsqueak* rsqueak-$armv-Linux-jit-$TRAVIS_COMMIT
 	buildcode=$?
 	exitcode=$buildcode
