@@ -784,7 +784,6 @@ def func(interp, s_frame, w_rcvr):
         old_display.relinquish_display()
     interp.space.objtable['w_display'] = w_rcvr
 
-    # TODO: figure out whether we should decide the width an report it in the SCREEN_SIZE primitive
     form = wrapper.FormWrapper(interp.space, w_rcvr)
     form.take_over_display()
     if interp.space.display().width == 0:
@@ -793,7 +792,6 @@ def func(interp, s_frame, w_rcvr):
         display = interp.space.display()
         width = (interp.image.lastWindowSize >> 16) & 0xffff
         height = interp.image.lastWindowSize & 0xffff
-        print "hack",
         display.set_video_mode(width, height, display.depth)
     w_display_bitmap = form.get_display_bitmap()
     w_display_bitmap.take_over_display()
