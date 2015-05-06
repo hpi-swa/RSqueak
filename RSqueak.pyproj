@@ -102,7 +102,10 @@
     <Compile Include="spyvm\util\stream.py" />
     <Compile Include="spyvm\util\system.py" />
     <Compile Include="spyvm\util\version.py" />
-    <Compile Include="spyvm\util\__init__." />
+    <Compile Include="spyvm\util\win32_dialog.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="spyvm\util\__init__.py" />
     <Compile Include="spyvm\wrapper.py" />
     <Compile Include="spyvm\__init__.py" />
     <Compile Include="targetrsqueak-embedded.py" />

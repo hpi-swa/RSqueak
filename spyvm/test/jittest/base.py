@@ -45,17 +45,11 @@ class BaseJITTest(object):
 
 
 class ModernJITTest(BaseJITTest):
-    image_name = "Squeak4.5-12568.image"
-    changes_name = image_name.replace(".image", ".changes")
-    source_name = "SqueakV41.sources"
+    image_name = "Squeak4.3.image"
     test_image = image_path(image_name)
-    test_changes = test_image.replace(".image", ".changes")
-    test_sources = image_path(source_name)
 
     def run(self, spy, squeak, tmpdir, code):
         shutil.copyfile(self.test_image, str(tmpdir.join(self.image_name)))
-        shutil.copyfile(self.test_changes, str(tmpdir.join(self.changes_name)))
-        shutil.copyfile(self.test_sources, str(tmpdir.join(self.source_name)))
 
         infile = tmpdir.join("input.st")
         f = open(str(infile), 'w')

@@ -17,6 +17,8 @@ if [ "$BUILD_ARCH" == "32bit" ]; then
 	libglu1-mesa-dev:i386 libglu1-mesa:i386 \
 	libgl1-mesa-dev:i386 libgl1-mesa-dri:i386 libgl1-mesa-glx:i386 \
 	libglapi-mesa:i386"
+    # FLTK compilation still fails
+    # Packages="$Packages g++-multilib libfltk1.3-dev:i386"
 fi
 
 sudo apt-get install -y --force-yes $Packages

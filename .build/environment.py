@@ -15,6 +15,7 @@ def load_config():
             cp.set("General", "squeak", pathjoin(dirname(__file__), "squeak"))
             cp.add_section("Linux")
             cp.set("Linux", "Python32Bit", pathjoin(dirname(__file__), "pypy-linux32", "bin", "pypy"))
+            cp.set("Linux", "pygame_cffi", pathjoin(dirname(__file__), "pygame_cffi"))
             cp.add_section("Windows")
             cp.set("Windows", "Python32Bit", pathjoin(dirname(__file__), "pypy-win32", "pypy.exe"))
             cp.set("Windows", "SDL", pathjoin(dirname(__file__), "SDL"))
@@ -43,6 +44,8 @@ def ensure_32bit_environment():
             print "\tlibffi6:i386 libffi-dev:i386 libffi-dev libc6:i386 libc6-dev-i386 libbz2-1.0:i386 libexpat1:i386 zlib1g:i386 libssl1.0.0:i386 libgcrypt11:i386 libtinfo5:i386 libsdl1.2-dev:i386 gcc-multilib"
             print "If you cannot install these, consider setting up a 32-bit chroot."
             os.environ["CC"] = os.getenv("CC", "cc") + " -m32"
+            os.environ["CFLAGS"] = os.getenv("CFLAGS", "") + " -m32"
+            os.environ["PYTHONPATH"] = os.getenv("PYTHONPATH", "") + ":" + cp.get("Linux", "pygame_cffi")
             child = subprocess.Popen([py] + sys.argv)
         elif "darwin" == sys.platform and "64bit" in platform.architecture()[0]:
             print "Trying to switch to 32-bit Python by setting VERSIONER_PYTHON_PREFER_32_BIT. You have to run witht the system Python for this to work."
@@ -62,12 +65,6 @@ def ensure_32bit_environment():
 
 
 def prepare_environment_variables():
-    sys.path.insert(0, cp.get("General", "pypy"))
-    sys.path.insert(0, cp.get("General", "rsdl"))
-    try:
-        import targetrsqueak as rsqueak
-    except ImportError:
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
     if "nt" == os.name:
         vs = cp.get("Windows", "VisualStudio9")
         sdk = cp.get("Windows", "WindowsSDK7")
@@ -87,6 +84,12 @@ def prepare_environment_variables():
         pass
     else:
         raise AssertionError("Unsupported platform")
+    sys.path.insert(0, cp.get("General", "pypy"))
+    sys.path.insert(0, cp.get("General", "rsdl"))
+    try:
+        import targetrsqueak as rsqueak
+    except ImportError:
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
 cp, config = load_config()

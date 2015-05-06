@@ -25,10 +25,17 @@ case "$BUILD_ARCH" in
                -L${SB2}/lib/arm-linux-gnueabihf/\
                -Wl,-rpath=${SB2}/lib/arm-linux-gnueabihf/"
 	# uses the 32-bit pypy from download_dependencies.py
-	.build/pypy-linux32/bin/pypy .build/build.py --gc=incminimark --gcrootfinder=shadowstack --jit-backend=arm -Ojit --platform=arm
+	.build/pypy-linux32/bin/pypy .build/build.py --gc=incminimark --gcrootfinder=shadowstack --jit-backend=arm -Ojit --platform=arm || true
+	# sometimes the translation fails because "make got killed", make sure
+	oldpwd=$(pwd)
+	cd /tmp/usession-default-0/testing_1/
+	sb2 -t rasp make -j 5
+	cp rsqueak $oldpwd/rsqueak
+	cd $oldpwd
 	cp rsqueak* rsqueak-$armv-Linux-jit-$TRAVIS_COMMIT
 	buildcode=$?
 	exitcode=$buildcode
+	latest=true
 	;;
     armv7)
 	binary=rsqueak-arm
@@ -40,6 +47,7 @@ case "$BUILD_ARCH" in
 	cp rsqueak* rsqueak-$armv-Linux-jit-$TRAVIS_COMMIT
 	buildcode=$?
 	exitcode=$buildcode
+	latest=true
 	;;
     *) exit 0 ;;
 esac
@@ -50,9 +58,14 @@ if [ $buildcode -eq 0 ]; then
             curl -T rsqueak-x86* http://www.lively-kernel.org/babelsberg/RSqueak/ || true
             curl -T rsqueak-$armv* http://www.lively-kernel.org/babelsberg/RSqueak/ || true
 	    if [ "$latest" == "true" ]; then
-		# only builds that pass the jittests are 'latest'
-		cp rsqueak-x86* rsqueak-linux-latest
-		curl -T rsqueak-linux-latest http://www.lively-kernel.org/babelsberg/RSqueak/
+	    	if [ "$BUILD_ARCH" == "32bit" ]; then
+		    # only builds that pass the jittests are 'latest'
+		    cp rsqueak-x86* rsqueak-linux-latest
+		    curl -T rsqueak-linux-latest http://www.lively-kernel.org/babelsberg/RSqueak/
+		else
+		    cp rsqueak-$armv* rsqueak-linux-$armv-latest
+		    curl -T rsqueak-linux-$armv-latest http://www.lively-kernel.org/babelsberg/RSqueak/
+		fi
 	    fi
 	fi
     fi
