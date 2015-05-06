@@ -7,10 +7,10 @@ from rpython.rlib import jit, objectmodel
 from rpython.rlib.rarithmetic import r_uint, intmask
 
 
-class BalloonPluginClass(Plugin):
+class SimulationPluginClass(Plugin):
     def simulate(self, w_name, name, interp, s_frame, argcount, w_method):
-        if not interp.image.w_simulateBalloonPrimitive:
-            raise PrimitiveFailedError("No BalloonSimulation found")
+        if not interp.image.w_simulatePrimitive:
+            raise PrimitiveFailedError("No Simulation found")
 
         from spyvm.interpreter import Return
         from spyvm.error import MethodNotFound
@@ -20,15 +20,15 @@ class BalloonPluginClass(Plugin):
 
         s_class = w_rcvr.class_shadow(interp.space)
         try:
-            s_class.lookup(interp.image.w_simulateBalloonPrimitive)
+            s_class.lookup(interp.image.w_simulatePrimitive)
         except MethodNotFound:
-            raise PrimitiveFailedError
+            raise PrimitiveFailedError("%s doesn't implement %s" % (s_class.getname(), "simulatePrimitive:args:"))
 
         s_frame.push(w_rcvr)
         s_frame.push(w_name)
         s_frame.push(interp.space.wrap_list_unroll_safe(args_w))
         try:
-            s_frame._sendSelfSelector(interp.image.w_simulateBalloonPrimitive, 2, interp)
+            s_frame._sendSelfSelector(interp.image.w_simulatePrimitive, 2, interp)
         except Return, ret:
             # must clean the stack, including the rcvr
             s_frame.pop_n(argcount + 1)
@@ -38,4 +38,4 @@ class BalloonPluginClass(Plugin):
             raise PrimitiveFailedError
 
 
-BalloonPlugin = BalloonPluginClass()
+SimulationPlugin = SimulationPluginClass()

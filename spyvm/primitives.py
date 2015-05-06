@@ -959,11 +959,14 @@ def func(interp, s_frame, argcount, w_method):
     elif signature[0] == "VMDebugging":
         from spyvm.plugins.vmdebugging import DebuggingPlugin
         return DebuggingPlugin.call(signature[1], interp, s_frame, argcount, w_method)
-    elif signature[0] == "B2DPlugin":
-        from spyvm.plugins.balloon import BalloonPlugin
-        return BalloonPlugin.simulate(w_functionname, signature[1], interp, s_frame, argcount, w_method)
     else:
-        raise PrimitiveFailedError
+        from spyvm.plugins.simulation import SimulationPlugin
+        result = SimulationPlugin.simulate(w_functionname, signature, interp, s_frame, argcount, w_method)
+        # print "EXTERNAL_CALL SIMULATED: %s>>%s" % signature
+        return result
+    #except PrimitiveFailedError, e:
+    #    print "EXTERNAL_CALL FAILED: %s>>%s: %s" % (signature[0], signature[1], e.msg)
+    #    raise e
 
 @expose_primitive(COMPILED_METHOD_FLUSH_CACHE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
