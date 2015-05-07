@@ -17,9 +17,21 @@ try:
 except ValueError:
     std_fds = [0, 1, 2]
 
+#primitiveDirectoryEntry ?
+#primitiveHasFileAccess ?
+#primitiveFileDelete
+
 @FilePlugin.expose_primitive(unwrap_spec=[object])
 def primitiveDirectoryDelimitor(interp, s_frame, w_rcvr):
     return interp.space.wrap_char(os.path.sep)
+
+@FilePlugin.expose_primitive(unwrap_spec=[object, str])
+def primitiveDirectoryCreate(interp, s_frame, w_rcvr, dir_path):
+    try:
+        os.mkdir(dir_path, 0777)
+    except OSError:
+        raise PrimitiveFailedError
+    return w_rcvr
 
 @FilePlugin.expose_primitive(unwrap_spec=[object, str, index1_0])
 def primitiveDirectoryLookup(interp, s_frame, w_file_directory, full_path, index):
