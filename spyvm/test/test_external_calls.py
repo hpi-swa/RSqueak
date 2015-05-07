@@ -46,6 +46,29 @@ def setup_module():
 def teardown_module():
     cleanup_module(__name__)
 
+def test_fileplugin_filedelete(monkeypatch):
+    def remove(file_path):
+        assert file_path == 'myFile'
+        return 0
+    monkeypatch.setattr(os, "remove", remove)
+    try:
+        stack = [space.w(1), space.wrap_string("myFile")]
+        w_c = external_call('FilePlugin', 'primitiveFileDelete', stack)
+    finally:
+        monkeypatch.undo()
+
+def test_fileplugin_filedelete_raises(monkeypatch):
+    def remove(file_path):
+        raise OSError()
+    monkeypatch.setattr(os, "remove", remove)
+
+    try:
+        with py.test.raises(PrimitiveFailedError):
+            stack = [space.w(1), space.wrap_string("myFile")]
+            w_c = external_call('FilePlugin', 'primitiveFileDelete', stack)
+    finally:
+        monkeypatch.undo()
+
 def test_fileplugin_dircreate(monkeypatch):
     def mkdir(dir_path, mode):
         assert dir_path == 'myPrimDir'
