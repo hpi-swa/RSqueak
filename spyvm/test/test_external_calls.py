@@ -69,3 +69,27 @@ def test_fileplugin_dircreate_raises(monkeypatch):
             w_c = external_call('FilePlugin', 'primitiveDirectoryCreate', stack)
     finally:
         monkeypatch.undo()
+
+
+def test_fileplugin_dirdelete(monkeypatch):
+    def rmdir(dir_path):
+        assert dir_path == 'myPrimDir'
+        return 0
+    monkeypatch.setattr(os, "rmdir", rmdir)
+    try:
+        stack = [space.w(1), space.wrap_string("myPrimDir")]
+        w_c = external_call('FilePlugin', 'primitiveDirectoryDelete', stack)
+    finally:
+        monkeypatch.undo()
+
+def test_fileplugin_dirdelete_raises(monkeypatch):
+    def rmdir(dir_path):
+        raise OSError()
+    monkeypatch.setattr(os, "rmdir", rmdir)
+
+    try:
+        with py.test.raises(PrimitiveFailedError):
+            stack = [space.w(1), space.wrap_string("myPrimDir")]
+            w_c = external_call('FilePlugin', 'primitiveDirectoryDelete', stack)
+    finally:
+        monkeypatch.undo()

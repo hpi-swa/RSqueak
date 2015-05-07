@@ -33,6 +33,15 @@ def primitiveDirectoryCreate(interp, s_frame, w_rcvr, dir_path):
         raise PrimitiveFailedError
     return w_rcvr
 
+
+@FilePlugin.expose_primitive(unwrap_spec=[object, str])
+def primitiveDirectoryDelete(interp, s_frame, w_rcvr, dir_path):
+    try:
+        os.rmdir(dir_path)
+    except OSError:
+        raise PrimitiveFailedError
+    return w_rcvr
+
 @FilePlugin.expose_primitive(unwrap_spec=[object, str, index1_0])
 def primitiveDirectoryLookup(interp, s_frame, w_file_directory, full_path, index):
     if full_path == '':
