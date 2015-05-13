@@ -21,13 +21,14 @@ POSSIBLE_IMAGE_OFFSET = 512
 
 class ImageVersion(object):
 
-    def __init__(self, magic, is_big_endian, is_64bit, has_closures, has_floats_reversed):
+    def __init__(self, magic, is_big_endian, is_64bit, has_closures, has_floats_reversed, is_spur=False):
         self.magic = magic
         self.is_big_endian = is_big_endian
         self.is_64bit = is_64bit
         self.has_closures = has_closures
         self.has_floats_reversed = has_floats_reversed
         self.is_modern = magic > 6502
+        self.is_spur = is_spur
 
     def configure_stream(self, stream):
         stream.big_endian = self.is_big_endian
@@ -45,6 +46,8 @@ image_versions = {
     0x68190000:         ImageVersion(6504,  False, False, True,  False),
     0x00001969:         ImageVersion(6505,  True,  False, True,  True ),
     0x69190000:         ImageVersion(6505,  False, False, True,  True ),
+    0x00001979:         ImageVersion(6521,  True,  False, True,  True , is_spur=True),
+    0x79190000:         ImageVersion(6521,  False, False, True,  True , is_spur=True),
 }
 
 image_versions_64bit = {
@@ -55,6 +58,7 @@ image_versions_64bit = {
     (-0x5df6ff00, 0x00000000): ImageVersion(68002, False, True,  True,  False), # 0xA209010000000000
     (0x00000000,  0x000109A3): ImageVersion(68003, True,  True,  True,  True ),
     (-0x5cf6ff00, 0x00000000): ImageVersion(68003, False, True,  True,  True ), # 0xA309010000000000
+    # TODO: add 64bit Spur once supported
 }
 
 # ____________________________________________________________

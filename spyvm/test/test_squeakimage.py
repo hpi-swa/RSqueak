@@ -33,6 +33,7 @@ def imagereader_mock(string):
 
 SIMPLE_VERSION_HEADER = pack(">i", 6502)
 SIMPLE_VERSION_HEADER_LE = pack("<i", 6502)
+SPUR_VERSION_HEADER = pack(">i", 6521)
 
 # ----- tests ------------------------------------------------
 
