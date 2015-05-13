@@ -1,5 +1,5 @@
 from spyvm import model_display, model
-from spyvm.error import PrimitiveFailedError
+from spyvm.error import PrimitiveFailedError, MetaPrimFailed
 from spyvm.storage import AbstractCachingShadow
 from spyvm.plugins.plugin import Plugin
 
@@ -15,7 +15,7 @@ class SimulationPluginClass(Plugin):
         from spyvm.interpreter import Return
         from spyvm.error import MethodNotFound
 
-        args_w = s_frame.peek_n(argcount)
+        w_arguments = s_frame.peek_n(argcount)
         w_rcvr = s_frame.peek(argcount)
 
         s_class = w_rcvr.class_shadow(interp.space)
@@ -26,14 +26,21 @@ class SimulationPluginClass(Plugin):
 
         s_frame.push(w_rcvr)
         s_frame.push(w_name)
-        s_frame.push(interp.space.wrap_list_unroll_safe(args_w))
+        s_frame.push(interp.space.wrap_list_unroll_safe(w_arguments))
+
+        s_fallback = w_method.create_frame(interp.space, w_rcvr, w_arguments)
+        s_fallback._s_sender = s_frame
+
         try:
-            s_frame._sendSelfSelector(interp.image.w_simulatePrimitive, 2, interp)
+            s_frame._sendSelector(interp.image.w_simulatePrimitive, 2, interp, w_rcvr, w_rcvr.class_shadow(interp.space), s_fallback=s_fallback)
         except Return, ret:
             # must clean the stack, including the rcvr
             s_frame.pop_n(argcount + 1)
             s_frame.push(ret.value)
-            return
+            return True
+        except MetaPrimFailed, e:
+            interp.stack_frame(s_fallback, None)
+            return False
         else:
             raise PrimitiveFailedError
 

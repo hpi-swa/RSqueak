@@ -946,10 +946,7 @@ def func(interp, s_frame, argcount, w_method):
         except MissingPlugin:
             pass
 
-    if signature[0] == 'BitBltPlugin':
-        from spyvm.plugins.bitblt import BitBltPlugin
-        return BitBltPlugin.call(signature[1], interp, s_frame, argcount, w_method)
-    elif signature[0] == 'LargeIntegers':
+    if signature[0] == 'LargeIntegers':
         from spyvm.plugins.large_integer import LargeIntegerPlugin
         return LargeIntegerPlugin.call(signature[1], interp, s_frame, argcount, w_method)
     elif signature[0] == "SocketPlugin":
@@ -963,12 +960,7 @@ def func(interp, s_frame, argcount, w_method):
         return DebuggingPlugin.call(signature[1], interp, s_frame, argcount, w_method)
     else:
         from spyvm.plugins.simulation import SimulationPlugin
-        result = SimulationPlugin.simulate(w_functionname, signature, interp, s_frame, argcount, w_method)
-        # print "EXTERNAL_CALL SIMULATED: %s>>%s" % signature
-        return result
-    #except PrimitiveFailedError, e:
-    #    print "EXTERNAL_CALL FAILED: %s>>%s: %s" % (signature[0], signature[1], e.msg)
-    #    raise e
+        return SimulationPlugin.simulate(w_functionname, signature, interp, s_frame, argcount, w_method)
 
 @expose_primitive(COMPILED_METHOD_FLUSH_CACHE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
