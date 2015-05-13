@@ -255,7 +255,39 @@ class ImageReader(object):
         self.filledin_objects = self.filledin_objects + 1
         self.log_progress(self.filledin_objects, '%')
 
+class SpurImageReader(ImageReader):
 
+    def read_header(self):
+        self.read_version()
+        # 1 word headersize
+        headersize = self.stream.next()
+        # 1 word size of the full image
+        self.endofmemory = self.stream.next() # endofmemory = bodysize
+        # 1 word old base address
+        self.oldbaseaddress = self.stream.next()
+        # 1 word pointer to special objects array
+        self.specialobjectspointer = self.stream.next()
+        # 1 word last used hash
+        lasthash = self.stream.next()
+        self.lastWindowSize = self.stream.next()
+        fullscreenflag = self.stream.next()
+        extravmmemory = self.stream.next()
+        self.hdrNumStackPages = self.stream.next_short()
+        self.hdrCogCodeSize = self.stream.next_short()
+        self.hdrEdenBytes = self.stream.next() # nextWord32
+        self.hdrMaxExtSemTabSize = self.stream.next_short()
+        self.stream.skipbytes(2) # unused, realign to word boundary
+        self.firstSegSize = self.stream.next()
+        self.freeOldSpaceInImage = self.stream.next()
+        self.stream.skipbytes(headersize - self.stream.pos)
+
+    def read_body(self):
+        # respect segments and bridges
+        pass
+
+    def read_object(self):
+        # respect new header format
+        pass
 # ____________________________________________________________
 
 class SqueakImage(object):
