@@ -48,9 +48,9 @@ def ensure_32bit_environment():
             os.environ["PYTHONPATH"] = os.getenv("PYTHONPATH", "") + ":" + cp.get("Linux", "pygame_cffi")
             child = subprocess.Popen([py] + sys.argv)
         elif "darwin" == sys.platform and "64bit" in platform.architecture()[0]:
-            print "Trying to switch to 32-bit Python by setting VERSIONER_PYTHON_PREFER_32_BIT. You have to run witht the system Python for this to work."
+            print "Trying to switch to 32-bit Python by setting VERSIONER_PYTHON_PREFER_32_BIT. You have to run with the system Python for this to work."
             os.environ["VERSIONER_PYTHON_PREFER_32_BIT"] = "yes"
-            child = subprocess.Popen([sys.executable] + sys.argv, shell=True)
+            child = subprocess.Popen([sys.executable] + sys.argv)
         else:
             raise AssertionError("Unsupported platform")
 
