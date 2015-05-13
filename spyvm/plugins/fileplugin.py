@@ -17,9 +17,39 @@ try:
 except ValueError:
     std_fds = [0, 1, 2]
 
+#should we implement primitiveDirectoryEntry ?
+#should we implement primitiveHasFileAccess ?
+
+@FilePlugin.expose_primitive(unwrap_spec=[object, str])
+def primitiveFileDelete(interp, s_frame, w_rcvr, file_path):
+    # we actually should ask the security plugin function sCDFfn for permissions
+    try:
+        os.remove(file_path)
+    except OSError:
+        raise PrimitiveFailedError
+    return w_rcvr
+
 @FilePlugin.expose_primitive(unwrap_spec=[object])
 def primitiveDirectoryDelimitor(interp, s_frame, w_rcvr):
     return interp.space.wrap_char(os.path.sep)
+
+@FilePlugin.expose_primitive(unwrap_spec=[object, str])
+def primitiveDirectoryCreate(interp, s_frame, w_rcvr, dir_path):
+    # we actually should ask the security plugin function sCCPfn for permissions
+    try:
+        os.mkdir(dir_path, 0777)
+    except OSError:
+        raise PrimitiveFailedError
+    return w_rcvr
+
+@FilePlugin.expose_primitive(unwrap_spec=[object, str])
+def primitiveDirectoryDelete(interp, s_frame, w_rcvr, dir_path):
+    # we actually should ask the security plugin function sCDPfn for permissions
+    try:
+        os.rmdir(dir_path)
+    except OSError:
+        raise PrimitiveFailedError
+    return w_rcvr
 
 @FilePlugin.expose_primitive(unwrap_spec=[object, str, index1_0])
 def primitiveDirectoryLookup(interp, s_frame, w_file_directory, full_path, index):
