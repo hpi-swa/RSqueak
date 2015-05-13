@@ -133,6 +133,14 @@ class ImageReader(object):
         self.lastWindowSize = self.stream.next()
         fullscreenflag = self.stream.next()
         extravmmemory = self.stream.next()
+        if self.version.is_spur:
+            self.hdrNumStackPages = self.stream.next_short()
+            self.hdrCogCodeSize = self.stream.next_short()
+            self.hdrEdenBytes = self.stream.next() # nextWord32
+            self.hdrMaxExtSemTabSize = self.stream.next_short()
+            self.stream.skipbytes(2) # unused, realign to word boundary
+            self.firstSegSize = self.stream.next()
+            self.freeOldSpaceInImage = self.stream.next()
         self.stream.skipbytes(headersize - self.stream.pos)
 
     def read_body(self):

@@ -75,6 +75,12 @@ class Stream(object):
         self.count += self.word_size
         return integer
 
+    def next_short(self):
+        short = self.peek() >> (self.word_size * 8 - 16)
+        self.pos += 2
+        self.count += 2
+        return short
+
     def reset(self):
         self.big_endian = True
         self.pos = 0

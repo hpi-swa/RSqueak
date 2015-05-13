@@ -88,6 +88,20 @@ def test_stream_count():
     assert stream.count == 4
     stream.next()        
     assert stream.count == 8
+
+def test_stream_next_short():
+    s = imagestream_mock('\x01\x02\x03\x04\x05\x06\x07\x08')
+    s.be_32bit()
+    assert s.next_short() == 0x0102
+    assert s.next_short() == 0x0304
+    assert s.next() == 0x05060708
+
+def test_stream_next_short_64b():
+    s = imagestream_mock('\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c')
+    s.be_64bit()
+    assert s.next_short() == 0x0102
+    assert s.next_short() == 0x0304
+    assert s.next() == 0x05060708090a0b0c
     
    
 def test_simple_joinbits():
