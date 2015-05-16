@@ -127,30 +127,30 @@ def test_1wordobjectheader():
     r = imagereader_mock(SIMPLE_VERSION_HEADER + s)
     r.read_version()
     l = len(SIMPLE_VERSION_HEADER)
-    assert (squeakimage.ImageChunk(space, 1, 2, 3, 4), 0 + l) == r.readerStrategy.read_1wordobjectheader()
+    assert (squeakimage.ImageChunk(1, 2, 3, 4), 0 + l) == r.readerStrategy.read_1wordobjectheader()
 
 def test_1wordobjectheader2():
     s = ints2str(joinbits([3, 1, 2, 3, 4], [2,6,4,5,12]))
     r = imagereader_mock(SIMPLE_VERSION_HEADER + (s * 3))
     r.read_version()
     l = len(SIMPLE_VERSION_HEADER)
-    assert (squeakimage.ImageChunk(space, 1, 2, 3, 4), 0 + l) == r.readerStrategy.read_1wordobjectheader()
-    assert (squeakimage.ImageChunk(space, 1, 2, 3, 4), 4 + l) == r.readerStrategy.read_1wordobjectheader()
-    assert (squeakimage.ImageChunk(space, 1, 2, 3, 4), 8 + l) == r.readerStrategy.read_1wordobjectheader()
+    assert (squeakimage.ImageChunk(1, 2, 3, 4), 0 + l) == r.readerStrategy.read_1wordobjectheader()
+    assert (squeakimage.ImageChunk(1, 2, 3, 4), 4 + l) == r.readerStrategy.read_1wordobjectheader()
+    assert (squeakimage.ImageChunk(1, 2, 3, 4), 8 + l) == r.readerStrategy.read_1wordobjectheader()
 
 def test_2wordobjectheader():
     s = ints2str(4200 + 1, joinbits([1, 1, 2, 3, 4], [2,6,4,5,12]))
     r = imagereader_mock(SIMPLE_VERSION_HEADER + s)
     r.read_version()
     l = len(SIMPLE_VERSION_HEADER)
-    assert (squeakimage.ImageChunk(space, 1, 2, 4200, 4), 4 + l) == r.readerStrategy.read_2wordobjectheader()
+    assert (squeakimage.ImageChunk(1, 2, 4200, 4), 4 + l) == r.readerStrategy.read_2wordobjectheader()
 
 def test_3wordobjectheader():
     s = ints2str(1701 << 2, 4200 + 0, joinbits([0, 1, 2, 3, 4], [2,6,4,5,12]))
     r = imagereader_mock(SIMPLE_VERSION_HEADER + s)
     r.read_version()
     l = len(SIMPLE_VERSION_HEADER)
-    assert (squeakimage.ImageChunk(space, 1701, 2, 4200, 4), 8 + l) == r.readerStrategy.read_3wordobjectheader()
+    assert (squeakimage.ImageChunk(1701, 2, 4200, 4), 8 + l) == r.readerStrategy.read_3wordobjectheader()
     
 def test_read3wordheaderobject():
     size = 42
@@ -159,7 +159,7 @@ def test_read3wordheaderobject():
     r.read_version()
     l = len(SIMPLE_VERSION_HEADER)
     chunk, pos = r.readerStrategy.read_object()
-    chunk0 = squeakimage.ImageChunk(space, size, 2, 4200, 4)
+    chunk0 = squeakimage.ImageChunk(size, 2, 4200, 4)
     chunk0.data = [6502] * (size - 1)
     assert pos == 8 + l
     assert chunk0 == chunk

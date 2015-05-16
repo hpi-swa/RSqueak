@@ -220,7 +220,7 @@ class BaseReaderStrategy(object):
 
     def init_g_objects(self):
         for chunk in self.chunks.itervalues():
-            chunk.as_g_object(self.imageReader) # initialize g_object
+            chunk.as_g_object(self.imageReader, self.space) # initialize g_object
         self.special_g_objects = self.chunks[self.specialobjectspointer].g_object.pointers
 
     def assign_prebuilt_constants(self):
@@ -255,7 +255,7 @@ class BaseReaderStrategy(object):
 
     def init_w_objects(self):
         for chunk in self.chunks.itervalues():
-            chunk.g_object.init_w_object()
+            chunk.g_object.init_w_object(self.space)
         self.special_w_objects = [g.w_object for g in self.special_g_objects]
 
     def populate_special_objects(self):
@@ -301,14 +301,14 @@ class NonSpurReader(BaseReaderStrategy):
         kind, size, format, classid, idhash = (
             splitter[2,6,4,5,12](self.stream.next()))
         assert kind == 3
-        return ImageChunk(self.space, size, format, classid, idhash), self.stream.count - 4
+        return ImageChunk(size, format, classid, idhash), self.stream.count - 4
 
     def read_2wordobjectheader(self):
         assert self.stream.peek() & 3 == 1 #kind
         classid = self.stream.next() - 01 # remove headertype to get pointer
         kind, size, format, _, idhash = splitter[2,6,4,5,12](self.stream.next())
         assert kind == 1
-        return ImageChunk(self.space, size, format, classid, idhash), self.stream.count - 4
+        return ImageChunk(size, format, classid, idhash), self.stream.count - 4
 
     def read_3wordobjectheader(self):
         kind, size = splitter[2,30](self.stream.next())
@@ -317,7 +317,7 @@ class NonSpurReader(BaseReaderStrategy):
         classid = self.stream.next() - 00 # remove headertype to get pointer
         kind, _, format, _, idhash = splitter[2,6,4,5,12](self.stream.next())
         assert kind == 0
-        return ImageChunk(self.space, size, format, classid, idhash), self.stream.count - 4
+        return ImageChunk(size, format, classid, idhash), self.stream.count - 4
 
     def init_compactclassesarray(self):
         """ from the blue book (CompiledMethod Symbol Array PseudoContext LargePositiveInteger nil MethodDictionary Association Point Rectangle nil TranslatedMethod BlockContext MethodContext nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil ) """
@@ -438,57 +438,56 @@ class GenericObject(object):
         point for the actual create of spyvm.model classes.
         """
 
-    def __init__(self, space):
-        self.space = space
+    def __init__(self):
         self.reader = None
         self.filled_in = False
 
     def isinitialized(self):
         return self.reader is not None
 
-    def initialize_int(self, value, reader):
+    def initialize_int(self, value, reader, space):
         self.reader = reader
         self.value = value
         self.size = -1
         if value in reader.intcache:
             w_int = reader.intcache[value]
         else:
-            w_int = self.space.wrap_int(value)
+            w_int = space.wrap_int(value)
             reader.intcache[value] = w_int
         self.w_object = w_int
         self.filled_in = True
 
-    def initialize(self, chunk, reader):
+    def initialize(self, chunk, reader, space):
         self.reader = reader
         self.size = chunk.size
         self.hash12 = chunk.hash12
         self.format = chunk.format
         self.chunk = chunk # for bytes, words and compiledmethod
         self.init_class()
-        self.init_data() # for pointers
+        self.init_data(space) # for pointers
         self.w_object = None
 
     def init_class(self):
         self.g_class = self.reader.g_class_of(self.chunk)
 
-    def init_data(self):
+    def init_data(self, space):
         if self.ispointers():
-            self.pointers = self.decode_pointers()
+            self.pointers = self.decode_pointers(space)
             assert None not in self.pointers
         elif self.iscompiledmethod():
             header = self.chunk.data[0] >> 1 # untag tagged int
             _, literalsize, _, _, _ = constants.decode_compiled_method_header(header)
-            self.pointers = self.decode_pointers(literalsize + 1) # adjust +1 for the header
+            self.pointers = self.decode_pointers(space, literalsize + 1) # adjust +1 for the header
 
-    def decode_pointers(self, end=-1):
+    def decode_pointers(self, space, end=-1):
         if end == -1:
             end = len(self.chunk.data)
         pointers = []
         for i in range(end):
             pointer = self.chunk.data[i]
             if (pointer & 1) == 1:
-                small_int = GenericObject(self.space)
-                small_int.initialize_int(pointer >> 1, self.reader)
+                small_int = GenericObject()
+                small_int.initialize_int(pointer >> 1, self.reader, space)
                 pointers.append(small_int)
             else:
                 pointers.append(self.reader.chunk(pointer).g_object)
@@ -497,16 +496,16 @@ class GenericObject(object):
     def isbytes(self):
         return 8 <= self.format <= 11
 
-    def is32bitlargepositiveinteger(self):
+    def is32bitlargepositiveinteger(self, space):
         return (self.format == 8 and
-                self.space.w_LargePositiveInteger.is_same_object(self.g_class.w_object) and
+                space.w_LargePositiveInteger.is_same_object(self.g_class.w_object) and
                 len(self.get_bytes()) <= 4)
 
     def iswords(self):
         return self.format == 6
 
-    def isfloat(self):
-        return self.iswords() and self.space.w_Float.is_same_object(self.g_class.w_object)
+    def isfloat(self, space):
+        return self.iswords() and space.w_Float.is_same_object(self.g_class.w_object)
 
     def ispointers(self):
         return self.format < 5
@@ -517,7 +516,7 @@ class GenericObject(object):
     def iscompiledmethod(self):
         return 12 <= self.format <= 15
 
-    def init_w_object(self):
+    def init_w_object(self, space):
         """ 0      no fields
             1      fixed fields only (all containing pointers)
             2      indexable fields only (all containing pointers)
@@ -540,9 +539,9 @@ class GenericObject(object):
                 self.w_object = objectmodel.instantiate(model.W_PointersObject)
             elif self.format == 5:
                 raise error.CorruptImageError("Unknown format 5")
-            elif self.isfloat():
+            elif self.isfloat(space):
                 self.w_object = objectmodel.instantiate(model.W_Float)
-            elif self.is32bitlargepositiveinteger():
+            elif self.is32bitlargepositiveinteger(space):
                 self.w_object = objectmodel.instantiate(model.W_LargePositiveInteger1Word)
             elif self.iswords():
                 self.w_object = objectmodel.instantiate(model.W_WordsObject)
@@ -594,14 +593,14 @@ class GenericObject(object):
 class ImageChunk(object):
     """ A chunk knows the information from the header, but the body of the
     object is not decoded yet."""
-    def __init__(self, space, size, format, classid, hash12):
+    def __init__(self, size, format, classid, hash12):
         self.size = size
         self.format = format
         self.classid = classid
         self.hash12 = hash12
         # list of integers forming the body of the object
         self.data = None
-        self.g_object = GenericObject(space)
+        self.g_object = GenericObject()
 
     def __eq__(self, other):
         "(for testing)"
@@ -615,9 +614,9 @@ class ImageChunk(object):
         "(for testing)"
         return not self == other
 
-    def as_g_object(self, reader):
+    def as_g_object(self, reader, space):
         if not self.g_object.isinitialized():
-            self.g_object.initialize(self, reader)
+            self.g_object.initialize(self, reader, space)
         return self.g_object
 
     def iscompact(self):
