@@ -207,6 +207,8 @@ CompileTime = time.time()
 SIMULATION_SELECTORS = {
     'simulateCopyBits': 'w_simulateCopyBits',
     'copyBitsSimulated': 'w_copyBitsSimulated',
-    'warpBitsSimulated:sourceMap:': 'w_warpBitsSimulated',
-    'simulatePrimitive:args:': 'w_simulatePrimitive'
+    'warpBitsSimulated:sourceMap:': 'w_warpBitsSimulated'
 }
+
+SIMULATE_PRIMITIVE_SELECTOR = 'simulatePrimitive:args:'
+SIMULATION_SELECTORS[SIMULATE_PRIMITIVE_SELECTOR] = 'w_simulatePrimitive'

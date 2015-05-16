@@ -1,5 +1,5 @@
 from spyvm import model_display, model
-from spyvm.error import PrimitiveFailedError, MetaPrimFailed
+from spyvm.error import PrimitiveFailedError, MetaPrimFailed, MethodNotFound
 from spyvm.storage import AbstractCachingShadow
 from spyvm.plugins.plugin import Plugin
 
@@ -22,22 +22,23 @@ from rpython.rlib.rarithmetic import r_uint, intmask
 #     aFunctionName = 'primitiveWarpBits' ifTrue: [ ^self warpBitsSimulated: (args at: 1) sourceMap: (args at: 2) ].
 #     ^InterpreterProxy new primitiveFailFor: 255.
 
-class SimulationPluginClass(Plugin):
-    def simulate(self, w_name, name, interp, s_frame, argcount, w_method):
-        if not interp.image.w_simulatePrimitive:
-            raise PrimitiveFailedError("No Simulation found")
+from spyvm.constants import SIMULATE_PRIMITIVE_SELECTOR
 
-        from spyvm.interpreter import Return
-        from spyvm.error import MethodNotFound
+class SimulationPluginClass(Plugin):
+    def _simulate(self, w_name, interp, s_frame, argcount, w_method):
 
         w_arguments = s_frame.peek_n(argcount)
         w_rcvr = s_frame.peek(argcount)
 
         s_class = w_rcvr.class_shadow(interp.space)
+
+        if not interp.image.w_simulatePrimitive:
+            raise PrimitiveFailedError("Primitive %s has failed and no %s>>%s was found" % (w_name, s_class.getname(), SIMULATE_PRIMITIVE_SELECTOR))
+
         try:
             s_class.lookup(interp.image.w_simulatePrimitive)
         except MethodNotFound:
-            raise PrimitiveFailedError("%s doesn't implement %s" % (s_class.getname(), "simulatePrimitive:args:"))
+            raise PrimitiveFailedError("Primitive %s has failed and no %s>>%s was found" % (w_name, s_class.getname(), SIMULATE_PRIMITIVE_SELECTOR))
 
         s_frame.push(w_rcvr)
         s_frame.push(w_name)
@@ -45,6 +46,8 @@ class SimulationPluginClass(Plugin):
 
         s_fallback = w_method.create_frame(interp.space, w_rcvr, w_arguments)
         s_fallback._s_sender = s_frame
+
+        from spyvm.interpreter import Return
 
         try:
             s_frame._sendSelector(interp.image.w_simulatePrimitive, 2, interp, w_rcvr, w_rcvr.class_shadow(interp.space), s_fallback=s_fallback)
@@ -59,5 +62,10 @@ class SimulationPluginClass(Plugin):
         else:
             raise PrimitiveFailedError
 
+    def simulate(self, w_name, signature, interp, s_frame, argcount, w_method):
+        self._simulate(w_name, interp, s_frame, argcount, w_method)
+
+    def simulateNumeric(self, code, interp, s_frame, argcount, w_method):
+        self._simulate(interp.space.wrap_int(code), interp, s_frame, argcount, w_method)
 
 SimulationPlugin = SimulationPluginClass()
