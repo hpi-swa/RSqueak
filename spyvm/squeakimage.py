@@ -71,6 +71,7 @@ class ImageReader(object):
         self.space = space
         self.stream = stream
         self.version = None
+        self.readerStrategy = None
         self.chunks = {} # Dictionary mapping old address to chunk object
         self.chunklist = [] # Flat list of all read chunks
         self.intcache = {} # Cached instances of SmallInteger
@@ -80,20 +81,16 @@ class ImageReader(object):
         self.read_all()
         return SqueakImage(self)
 
-    def log_progress(self, progress, char):
-        if progress % 1000 == 0:
-            os.write(2, char)
-
     def read_all(self):
         self.read_header()
-        self.read_body()
-        self.init_compactclassesarray()
+        self.readerStrategy.read_body()
+        self.readerStrategy.init_compactclassesarray()
         # All chunks are read, now convert them to real objects.
-        self.init_g_objects()
-        self.assign_prebuilt_constants()
-        self.init_w_objects()
-        self.fillin_w_objects()
-        self.populate_special_objects()
+        self.readerStrategy.init_g_objects()
+        self.readerStrategy.assign_prebuilt_constants()
+        self.readerStrategy.init_w_objects()
+        self.readerStrategy.fillin_w_objects()
+        self.readerStrategy.populate_special_objects()
 
     def try_read_version(self):
         magic1 = self.stream.next()
@@ -117,11 +114,67 @@ class ImageReader(object):
             raise error.CorruptImageError("Illegal version magic.")
         version.configure_stream(self.stream)
         self.version = version
+        self.readerStrategy = self.choose_reader_strategy()
 
     def read_header(self):
         self.read_version()
+        self.readerStrategy.continue_read_header()
+        self.readerStrategy.skip_to_body()
+
+    def choose_reader_strategy(self):
+        if self.version.is_spur:
+            return SpurReader(self, self.stream, self.space, self.chunks, self.chunklist, self.intcache)
+        if self.version.is_modern:
+            return NonSpurReader(self, self.stream, self.space, self.chunks, self.chunklist, self.intcache)
+        return AncientReader(self, self.stream, self.space, self.chunks, self.chunklist, self.intcache)
+
+    def g_class_of(self, chunk):
+        return self.readerStrategy.g_class_of(chunk)
+
+    def get_bytes_of(self, chunk):
+        bytes = []
+        if self.version.is_big_endian:
+            for each in chunk.data:
+                bytes.append(chr((each >> 24) & 0xff))
+                bytes.append(chr((each >> 16) & 0xff))
+                bytes.append(chr((each >> 8) & 0xff))
+                bytes.append(chr((each >> 0) & 0xff))
+        else:
+            for each in chunk.data:
+                bytes.append(chr((each >> 0) & 0xff))
+                bytes.append(chr((each >> 8) & 0xff))
+                bytes.append(chr((each >> 16) & 0xff))
+                bytes.append(chr((each >> 24) & 0xff))
+        return bytes
+
+    def log_object_filledin(self):
+        return self.readerStrategy.log_object_filledin()
+
+    @property
+    def special_w_objects(self):
+        return self.readerStrategy.special_w_objects
+
+    @property
+    def compactclasses(self):
+        return self.readerStrategy.compactclasses
+
+class BaseReaderStrategy(object):
+
+    def __init__(self, imageReader, stream, space, chunks, chunklist, intcache):
+        self.imageReader = imageReader
+        self.stream = stream
+        self.space = space
+        self.chunks = chunks
+        self.chunklist = chunklist
+        self.intcache = intcache
+
+    def log_progress(self, progress, char):
+        if progress % 1000 == 0:
+            os.write(2, char)
+
+    def continue_read_header(self):
         # 1 word headersize
-        headersize = self.stream.next()
+        self.headersize = self.stream.next()
         # 1 word size of the full image
         self.endofmemory = self.stream.next() # endofmemory = bodysize
         # 1 word old base address
@@ -133,15 +186,75 @@ class ImageReader(object):
         self.lastWindowSize = self.stream.next()
         fullscreenflag = self.stream.next()
         extravmmemory = self.stream.next()
-        if self.version.is_spur:
-            self.hdrNumStackPages = self.stream.next_short()
-            self.hdrCogCodeSize = self.stream.next_short()
-            self.hdrEdenBytes = self.stream.next() # nextWord32
-            self.hdrMaxExtSemTabSize = self.stream.next_short()
-            self.stream.skipbytes(2) # unused, realign to word boundary
-            self.firstSegSize = self.stream.next()
-            self.freeOldSpaceInImage = self.stream.next()
-        self.stream.skipbytes(headersize - self.stream.pos)
+
+    def skip_to_body(self):
+        self.stream.skipbytes(self.headersize - self.stream.pos)
+
+    def read_body(self):
+        raise NotImplementedError("subclass must override this")
+
+    def read_object(self):
+        raise NotImplementedError("subclass must override this")
+
+    def init_compactclassesarray(self):
+        raise NotImplementedError("subclass must override this")
+
+    def g_class_of(self, chunk):
+        raise NotImplementedError("subclass must override this")
+
+    def init_g_objects(self):
+        for chunk in self.chunks.itervalues():
+            chunk.as_g_object(self.imageReader) # initialize g_object
+        self.special_g_objects = self.chunks[self.specialobjectspointer].g_object.pointers
+
+    def assign_prebuilt_constants(self):
+        # Assign classes and objects that in special objects array that are already created.
+        self._assign_prebuilt_constants(constants.objects_in_special_object_table, self.space.objtable)
+        self._assign_prebuilt_constants(constants.classes_in_special_object_table, self.classtable())
+
+    def classtable(self):
+        return self.space.classtable
+
+    def _assign_prebuilt_constants(self, names_and_indices, prebuilt_objects):
+        for name, so_index in names_and_indices.items():
+            name = "w_" + name
+            if name in prebuilt_objects:
+                try:
+                    w_object = prebuilt_objects[name]
+                    g_object = self.special_object(so_index)
+                    if g_object.w_object is None:
+                        g_object.w_object = w_object
+                    else:
+                        if not g_object.w_object.is_nil(self.space):
+                           raise Warning('Object found in multiple places in the special objects array')
+                except IndexError:
+                    # certain special objects might not yet be in the image's table
+                    pass
+
+    def special_object(self, index):
+        # while python would raise an IndexError, after translation a nonexisting key results in a segfault...
+        if index >= len(self.special_g_objects):
+            raise IndexError
+        return self.special_g_objects[index]
+
+    def init_w_objects(self):
+        for chunk in self.chunks.itervalues():
+            chunk.g_object.init_w_object()
+        self.special_w_objects = [g.w_object for g in self.special_g_objects]
+
+    def populate_special_objects(self):
+        self.space.populate_special_objects(self.special_w_objects)
+
+    def fillin_w_objects(self):
+        self.filledin_objects = 0
+        for chunk in self.chunks.itervalues():
+            chunk.g_object.fillin(self.space)
+
+    def log_object_filledin(self):
+        self.filledin_objects = self.filledin_objects + 1
+        self.log_progress(self.filledin_objects, '%')
+
+class NonSpurReader(BaseReaderStrategy):
 
     def read_body(self):
         self.stream.reset_count()
@@ -201,77 +314,27 @@ class ImageReader(object):
         assert chunk.format == 2
         self.compactclasses = [self.chunks[pointer] for pointer in chunk.data]
 
-    def init_g_objects(self):
-        for chunk in self.chunks.itervalues():
-            chunk.as_g_object(self) # initialize g_object
-        self.special_g_objects = self.chunks[self.specialobjectspointer].g_object.pointers
+    def g_class_of(self, chunk):
+        if chunk.iscompact():
+            return self.compactclasses[chunk.classid
+                - 1].g_object # Smalltalk is 1-based indexed
+        else:
+            return self.chunks[chunk.classid].g_object
 
-    def assign_prebuilt_constants(self):
-        # Assign classes and objects that in special objects array that are already created.
-        self._assign_prebuilt_constants(constants.objects_in_special_object_table, self.space.objtable)
-        classtable = self.space.classtable
-        if not self.version.is_modern:
-            classtable = classtable.copy()
-            # In non-modern images (pre 4.0), there was no BlockClosure class.
-            del classtable["w_BlockClosure"]
-        self._assign_prebuilt_constants(constants.classes_in_special_object_table, classtable)
+class AncientReader(NonSpurReader):
+    """Reader strategy for pre-4.0 images"""
 
-    def _assign_prebuilt_constants(self, names_and_indices, prebuilt_objects):
-        for name, so_index in names_and_indices.items():
-            name = "w_" + name
-            if name in prebuilt_objects:
-                try:
-                    w_object = prebuilt_objects[name]
-                    g_object = self.special_object(so_index)
-                    if g_object.w_object is None:
-                        g_object.w_object = w_object
-                    else:
-                        if not g_object.w_object.is_nil(self.space):
-                           raise Warning('Object found in multiple places in the special objects array')
-                except IndexError:
-                    # certain special objects might not yet be in the image's table
-                    pass
+    def classtable(self):
+        classtable = NonSpurReader.classtable(self)
+        classtable = classtable.copy()
+        # In non-modern images (pre 4.0), there was no BlockClosure class.
+        del classtable["w_BlockClosure"]
+        return classtable
 
-    def special_object(self, index):
-        # while python would raise an IndexError, after translation a nonexisting key results in a segfault...
-        if index >= len(self.special_g_objects):
-            raise IndexError
-        return self.special_g_objects[index]
+class SpurReader(BaseReaderStrategy):
 
-    def init_w_objects(self):
-        for chunk in self.chunks.itervalues():
-            chunk.g_object.init_w_object()
-        self.special_w_objects = [g.w_object for g in self.special_g_objects]
-
-    def populate_special_objects(self):
-        self.space.populate_special_objects(self.special_w_objects)
-
-    def fillin_w_objects(self):
-        self.filledin_objects = 0
-        for chunk in self.chunks.itervalues():
-            chunk.g_object.fillin(self.space)
-
-    def log_object_filledin(self):
-        self.filledin_objects = self.filledin_objects + 1
-        self.log_progress(self.filledin_objects, '%')
-
-class SpurImageReader(ImageReader):
-
-    def read_header(self):
-        self.read_version()
-        # 1 word headersize
-        headersize = self.stream.next()
-        # 1 word size of the full image
-        self.endofmemory = self.stream.next() # endofmemory = bodysize
-        # 1 word old base address
-        self.oldbaseaddress = self.stream.next()
-        # 1 word pointer to special objects array
-        self.specialobjectspointer = self.stream.next()
-        # 1 word last used hash
-        lasthash = self.stream.next()
-        self.lastWindowSize = self.stream.next()
-        fullscreenflag = self.stream.next()
-        extravmmemory = self.stream.next()
+    def continue_read_header(self):
+        BaseReaderStrategy.continue_read_header(self)
         self.hdrNumStackPages = self.stream.next_short()
         self.hdrCogCodeSize = self.stream.next_short()
         self.hdrEdenBytes = self.stream.next() # nextWord32
@@ -279,7 +342,6 @@ class SpurImageReader(ImageReader):
         self.stream.skipbytes(2) # unused, realign to word boundary
         self.firstSegSize = self.stream.next()
         self.freeOldSpaceInImage = self.stream.next()
-        self.stream.skipbytes(headersize - self.stream.pos)
 
     def read_body(self):
         # respect segments and bridges
@@ -388,11 +450,7 @@ class GenericObject(object):
         self.w_object = None
 
     def init_class(self):
-        if self.chunk.iscompact():
-            self.g_class = self.reader.compactclasses[self.chunk.classid
-                - 1].g_object # Smalltalk is 1-based indexed
-        else:
-            self.g_class = self.reader.chunks[self.chunk.classid].g_object
+        self.g_class = self.reader.g_class_of(self.chunk)
 
     def init_data(self):
         if self.ispointers():
@@ -480,19 +538,7 @@ class GenericObject(object):
         return self.w_object
 
     def get_bytes(self):
-        bytes = []
-        if self.reader.version.is_big_endian:
-            for each in self.chunk.data:
-                bytes.append(chr((each >> 24) & 0xff))
-                bytes.append(chr((each >> 16) & 0xff))
-                bytes.append(chr((each >> 8) & 0xff))
-                bytes.append(chr((each >> 0) & 0xff))
-        else:
-            for each in self.chunk.data:
-                bytes.append(chr((each >> 0) & 0xff))
-                bytes.append(chr((each >> 8) & 0xff))
-                bytes.append(chr((each >> 16) & 0xff))
-                bytes.append(chr((each >> 24) & 0xff))
+        bytes = self.reader.get_bytes_of(self.chunk)
         stop = len(bytes) - (self.format & 3)
         assert stop >= 0
         return bytes[:stop] # omit odd bytes
@@ -556,4 +602,5 @@ class ImageChunk(object):
         return self.g_object
 
     def iscompact(self):
+        # pre-Spur
         return 0 < self.classid < 32
