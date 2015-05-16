@@ -72,10 +72,6 @@ class ImageReader(object):
         self.stream = stream
         self.version = None
         self.readerStrategy = None
-        self.chunks = {} # Dictionary mapping old address to chunk object
-        self.chunklist = [] # Flat list of all read chunks
-        self.intcache = {} # Cached instances of SmallInteger
-        self.lastWindowSize = 0
 
     def create_image(self):
         self.read_all()
@@ -123,10 +119,10 @@ class ImageReader(object):
 
     def choose_reader_strategy(self):
         if self.version.is_spur:
-            return SpurReader(self, self.stream, self.space, self.chunks, self.chunklist, self.intcache)
+            return SpurReader(self, self.stream, self.space)
         if self.version.is_modern:
-            return NonSpurReader(self, self.stream, self.space, self.chunks, self.chunklist, self.intcache)
-        return AncientReader(self, self.stream, self.space, self.chunks, self.chunklist, self.intcache)
+            return NonSpurReader(self, self.stream, self.space)
+        return AncientReader(self, self.stream, self.space)
 
     def g_class_of(self, chunk):
         return self.readerStrategy.g_class_of(chunk)
@@ -158,15 +154,35 @@ class ImageReader(object):
     def compactclasses(self):
         return self.readerStrategy.compactclasses
 
+    @property
+    def intcache(self):
+        return self.readerStrategy.intcache
+
+    @property
+    def chunklist(self):
+        return self.readerStrategy.chunklist
+
+    @property
+    def lastWindowSize(self):
+        return self.readerStrategy.lastWindowSize
+
+    @property
+    def chunks(self):
+        return self.readerStrategy.chunks
+
+    def chunk(self, pointer):
+        return self.readerStrategy.chunk(pointer)
+
 class BaseReaderStrategy(object):
 
-    def __init__(self, imageReader, stream, space, chunks, chunklist, intcache):
+    def __init__(self, imageReader, stream, space):
         self.imageReader = imageReader
         self.stream = stream
         self.space = space
-        self.chunks = chunks
-        self.chunklist = chunklist
-        self.intcache = intcache
+        self.chunks = {} # Dictionary mapping old address to chunk object
+        self.chunklist = [] # Flat list of all read chunks
+        self.intcache = {} # Cached instances of SmallInteger
+        self.lastWindowSize = 0
 
     def log_progress(self, progress, char):
         if progress % 1000 == 0:
@@ -321,6 +337,9 @@ class NonSpurReader(BaseReaderStrategy):
         else:
             return self.chunks[chunk.classid].g_object
 
+    def chunk(self, pointer):
+        return self.chunks[pointer]
+
 class AncientReader(NonSpurReader):
     """Reader strategy for pre-4.0 images"""
 
@@ -472,7 +491,7 @@ class GenericObject(object):
                 small_int.initialize_int(pointer >> 1, self.reader)
                 pointers.append(small_int)
             else:
-                pointers.append(self.reader.chunks[pointer].g_object)
+                pointers.append(self.reader.chunk(pointer).g_object)
         return pointers
 
     def isbytes(self):
