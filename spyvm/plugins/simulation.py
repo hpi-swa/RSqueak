@@ -26,14 +26,13 @@ from spyvm.constants import SIMULATE_PRIMITIVE_SELECTOR
 
 class SimulationPluginClass(Plugin):
     def _simulate(self, w_name, interp, s_frame, argcount, w_method):
-
         w_arguments = s_frame.peek_n(argcount)
         w_rcvr = s_frame.peek(argcount)
 
         s_class = w_rcvr.class_shadow(interp.space)
 
-        if not interp.image.w_simulatePrimitive:
-            raise PrimitiveFailedError("Primitive %s has failed and no %s>>%s was found" % (w_name, s_class.getname(), SIMULATE_PRIMITIVE_SELECTOR))
+        if not interp.image.w_simulatePrimitive or interp.image.w_simulatePrimitive.is_nil(interp.space):
+            raise PrimitiveFailedError("Primitive %s has failed and no %s>>%s was found (Selector not in image)" % (w_name, s_class.getname(), SIMULATE_PRIMITIVE_SELECTOR))
 
         try:
             s_class.lookup(interp.image.w_simulatePrimitive)
