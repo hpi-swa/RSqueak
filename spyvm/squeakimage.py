@@ -393,8 +393,7 @@ class SpurReader(BaseReaderStrategy):
         currentAddressSwizzle = self.oldbaseaddress
         while self.stream.count < segmentEnd:
             while self.stream.count < segmentEnd - 8:
-                pos = self.stream.count
-                chunk = self.read_object()
+                chunk, pos = self.read_object()
                 self.log_progress(len(self.chunklist), '#')
                 self.chunklist.append(chunk)
                 self.chunks[pos + currentAddressSwizzle] = chunk
@@ -410,12 +409,20 @@ class SpurReader(BaseReaderStrategy):
 
     def read_object(self):
         # respect new header format
+        pos = self.stream.count
         firstWord = self.stream.next()
         hash, _, size = splitter[22,2,8](firstWord)
+        OVERFLOW_SLOTS = 255
+        if size == OVERFLOW_SLOTS:
+            size = firstWord & 0x00FfFfFf
+            size <<= 32
+            size += self.stream.next()
+            pos = self.stream.count
+            hash, _, _ = splitter[22,2,8](self.stream.next())
         classid, _, format, _ = splitter[22,2,5,3](self.stream.next())
         chunk = ImageChunk(size, format, classid, hash)
         chunk.data = [self.stream.next() for _ in range(size)]
-        return chunk
+        return chunk, pos
 
     def g_class_of(self, chunk):
         # TODO: implement class table access
@@ -686,14 +693,19 @@ class GenericObject(object):
 class ImageChunk(object):
     """ A chunk knows the information from the header, but the body of the
     object is not decoded yet."""
-    def __init__(self, size, format, classid, hash):
+    def __init__(self, size, format, classid, hash, data=None):
         self.size = size
         self.format = format
         self.classid = classid
         self.hash = hash
         # list of integers forming the body of the object
-        self.data = None
+        self.data = data
         self.g_object = GenericObject()
+
+    def __repr__(self):
+        return "ImageChunk(size=%(size)d, format=%(format)d, " \
+                "classid=%(classid)d, hash=%(hash)d, data=%(data)r)" \
+                % self.__dict__
 
     def __eq__(self, other):
         "(for testing)"

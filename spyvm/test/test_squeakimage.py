@@ -7,7 +7,10 @@ from .util import create_space, copy_to_module, cleanup_module
 # ----- helpers ----------------------------------------------
 
 def ints2str(*ints):
-    return pack(">" + "i" * len(ints), *ints)
+    return pack(">" + "I" * len(ints), *ints)
+
+def longs2str(*longs):
+    return pack(">" + "Q" * len(longs), *longs)
 
 def joinbits(values, lengths):
     result = 0
@@ -156,6 +159,32 @@ def test_read3wordheaderobject():
     chunk0.data = [6502] * (size - 1)
     assert pos == 8 + l
     assert chunk0 == chunk
+
+def test_read_normal_spur_header():
+    # Array of pointers
+    n_slots = 42
+    objbytes = ints2str(joinbits([48, 0, n_slots], [22, 2, 8]),
+            joinbits([10, 0, 2, 0], [22, 2, 5, 3])) + ints2str(0) * n_slots
+    r = imagereader_mock(SPUR_VERSION_HEADER + objbytes)
+    r.read_version()
+    actualChunk, pos = r.readerStrategy.read_object()
+    expectedChunk = squeakimage.ImageChunk(size=n_slots, format=2, classid=10,
+            hash=48, data=[0] * n_slots)
+    assert expectedChunk == actualChunk
+    assert pos == len(SPUR_VERSION_HEADER)
+
+def test_read_long_spur_header():
+    n_slots = 3000
+    objbytes = longs2str(joinbits([n_slots, 255], [56, 8])) + ints2str(
+            joinbits([55, 0, 255], [22, 2, 8]),
+            joinbits([10, 0, 2, 0], [22, 2, 5, 3])) + ints2str(0) * n_slots
+    r = imagereader_mock(SPUR_VERSION_HEADER + objbytes)
+    r.read_version()
+    actualChunk, pos = r.readerStrategy.read_object()
+    expectedChunk = squeakimage.ImageChunk(size=n_slots, format=2, classid=10,
+            hash=55, data=[0] * n_slots)
+    assert expectedChunk == actualChunk
+    assert pos == len(SPUR_VERSION_HEADER) + 8
     
 def test_simple_image():
     word_size = 4
