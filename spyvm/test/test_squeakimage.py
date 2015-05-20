@@ -255,7 +255,7 @@ def test_simple_spur_image():
                      + spur_hdr(1, 0, 4, 0) #  32 hiddenRoots
                      + pack(">i", 44)       #  40 ptr to 1st class table page
                      + spur_hdr(4, 0, 4, 0) #  44 1st class table page
-                     + pack(">i", 100)       #  52 ptr to first class (here SmallInteger)
+                     + pack(">i", 100)      #  52 ptr to first class (here SmallInteger)
                      + pack(">i", 108)      #  56 ptr to SmallInteger class
                      + pack(">i", 116)      #  60 ptr to Metaclass
                      + pack(">i", 124)      #  64 ptr to Metaclass class
