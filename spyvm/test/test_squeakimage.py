@@ -243,3 +243,61 @@ def test_simple_image64(monkeypatch):
         assert r.stream.pos == len(image_2)
     finally:
         monkeypatch.undo()
+
+def test_simple_spur_image():
+    word_size = 4
+
+    # first segment
+    def spur_hdr(n_slots, hash, format, classid):
+        return ints2str(joinbits([n_slots, 0, hash], [8, 2, 22]),
+                        joinbits([0, format, 0, classid], [3, 5, 2, 22]))
+    first_segment = (spur_hdr(0, 0, 0, 0)   #   0 nil
+                     + spur_hdr(0, 0, 0, 0) #   8 false
+                     + spur_hdr(0, 0, 0, 0) #  16 true
+                     + spur_hdr(0, 0, 0, 0) #  24 freeList
+                     + spur_hdr(1, 0, 4, 0) #  32 hiddenRoots
+                     + pack(">i", 44)       #  40 ptr to 1st class table page
+                     + spur_hdr(4, 0, 4, 0) #  44 1st class table page
+                     + pack(">i", 100)       #  52 ptr to first class (here SmallInteger)
+                     + pack(">i", 108)      #  56 ptr to SmallInteger class
+                     + pack(">i", 116)      #  60 ptr to Metaclass
+                     + pack(">i", 124)      #  64 ptr to Metaclass class
+                     + spur_hdr(6, 0, 4, 0) #  68 special objects array
+                     + pack(">i", 0)        #  76 ptr to nil
+                     + pack(">i", 8)        #  80 ... false
+                     + pack(">i", 16)       #  84 ... true
+                     + pack(">i", 0)        #  88 ... schedulerassocptr
+                     + pack(">i", 0)        #  92 ... Bitmap
+                     + pack(">i", 100)      #  96 ... SmallInteger
+                     # "arbitrary" objects from here on
+                     + spur_hdr(0, 0, 0, 1) # 100 SmallInteger (class instance)
+                     + spur_hdr(0, 1, 0, 2) # 108 SmallInteger class
+                     + spur_hdr(0, 2, 0, 3) # 116 Metaclass (class instance)
+                     + spur_hdr(0, 3, 0, 2) # 124 Metaclass class
+                     + ints2str(0, 0))      # 128 final bridge = stop at 136
+    body = first_segment
+
+    header_size = 16 * word_size
+    image_1 = (SPUR_VERSION_HEADER       # 1
+               + pack(">i", header_size) # 2 64 byte header
+               + pack(">i", len(body))   # 3 body length
+               + pack(">i", 0)           # 4 old base addresss unset
+               + pack(">i", 68)          # 5 ptr to special objects array
+               + "\x12\x34\x56\x78"      # 6 last hash
+               + pack(">h", 480)         # 7 window 480 height
+               +     pack(">h", 640)     #   window 640 width
+               + pack(">i", 0)           # 8 not fullscreen
+               + pack(">i", 0)           # 9 no extra memory
+               + pack(">h", 0)           # 10 #stack pages
+               + pack(">h", 0)           #    cog code size
+               + pack(">i", 0)           # 11 eden bytes
+               + pack(">h", 0)           # 12 max ext sem tab size (?)
+               + pack(">h", 0)           #    unused
+               + pack(">i", len(first_segment))  # 13 first segment size
+               + pack(">i", 0)           # 14 free old space in image
+               + ("\x00" * (header_size - (14 * word_size)))
+               + body)
+    r = imagereader_mock(image_1)
+    # does not raise
+    r.read_all()
+    assert r.stream.pos == len(image_1)
