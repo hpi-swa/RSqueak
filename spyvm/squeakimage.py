@@ -79,14 +79,7 @@ class ImageReader(object):
 
     def read_all(self):
         self.read_header()
-        self.readerStrategy.read_body()
-        self.readerStrategy.init_compactclassesarray()
-        # All chunks are read, now convert them to real objects.
-        self.readerStrategy.init_g_objects()
-        self.readerStrategy.assign_prebuilt_constants()
-        self.readerStrategy.init_w_objects()
-        self.readerStrategy.fillin_w_objects()
-        self.readerStrategy.populate_special_objects()
+        self.readerStrategy.read_and_initialize()
 
     def try_read_version(self):
         magic1 = self.stream.next()
@@ -209,10 +202,16 @@ class BaseReaderStrategy(object):
     def skip_to_body(self):
         self.stream.skipbytes(self.headersize - self.stream.pos)
 
-    def read_body(self):
-        raise NotImplementedError("subclass must override this")
+    def read_and_initialize(self):
+        self.read_body()
+        # All chunks are read, now convert them to real objects.
+        self.init_g_objects()
+        self.assign_prebuilt_constants()
+        self.init_w_objects()
+        self.fillin_w_objects()
+        self.populate_special_objects()
 
-    def read_object(self):
+    def read_body(self):
         raise NotImplementedError("subclass must override this")
 
     def init_compactclassesarray(self):
@@ -232,6 +231,7 @@ class BaseReaderStrategy(object):
         self._assign_prebuilt_constants(constants.classes_in_special_object_table, self.classtable())
 
     def classtable(self):
+        # this is overridden by AncientReader
         return self.space.classtable
 
     def _assign_prebuilt_constants(self, names_and_indices, prebuilt_objects):
@@ -240,7 +240,7 @@ class BaseReaderStrategy(object):
             if name in prebuilt_objects:
                 try:
                     w_object = prebuilt_objects[name]
-                    g_object = self.special_object(so_index)
+                    g_object = self.special_g_object(so_index)
                     if g_object.w_object is None:
                         g_object.w_object = w_object
                     else:
@@ -250,7 +250,7 @@ class BaseReaderStrategy(object):
                     # certain special objects might not yet be in the image's table
                     pass
 
-    def special_object(self, index):
+    def special_g_object(self, index):
         # while python would raise an IndexError, after translation a nonexisting key results in a segfault...
         if index >= len(self.special_g_objects):
             raise IndexError
@@ -284,6 +284,10 @@ class NonSpurReader(BaseReaderStrategy):
             self.chunks[pos + self.oldbaseaddress] = chunk
         self.stream.close()
         return self.chunklist # return for testing
+
+    def init_g_objects(self):
+        self.init_compactclassesarray()
+        BaseReaderStrategy.init_g_objects(self)
 
     def read_object(self):
         kind = self.stream.peek() & 3 # 2 bits
@@ -382,13 +386,54 @@ class SpurReader(BaseReaderStrategy):
         self.firstSegSize = self.stream.next()
         self.freeOldSpaceInImage = self.stream.next()
 
+
     def read_body(self):
-        # respect segments and bridges
-        pass
+        self.stream.reset_count()
+        segmentEnd = self.firstSegSize
+        currentAddressSwizzle = self.oldbaseaddress
+        while self.stream.count < segmentEnd:
+            while self.stream.count < segmentEnd - 8:
+                pos = self.stream.count
+                chunk = self.read_object()
+                self.log_progress(len(self.chunklist), '#')
+                self.chunklist.append(chunk)
+                self.chunks[pos + currentAddressSwizzle] = chunk
+            # read bridge
+            bridgeSpan = self.stream.next()
+            nextSegmentSize = self.stream.next()
+            assert self.stream.count == segmentEnd
+            segmentEnd = segmentEnd + nextSegmentSize
+            currentAddressSwizzle += bridgeSpan
+            # if nextSegmentSize is zero, the end of the image has been reached
+        self.stream.close()
+        return self.chunklist # return for testing
 
     def read_object(self):
         # respect new header format
-        pass
+        size, _, hash = splitter[8,2,22](self.stream.next())
+        _, format, _, classid = splitter[3,5,2,22](self.stream.next())
+        chunk = ImageChunk(size, format, classid, hash)
+        chunk.data = [self.stream.next() for _ in range(size)]
+        return chunk
+
+    def g_class_of(self, chunk):
+        # TODO: implement class table access
+        major_class_index = self.major_class_index_of(chunk.classid)
+        minor_class_index = self.minor_class_index_of(chunk.classid)
+        HIDDEN_ROOTS_CHUNK = 4 # after nil, true, false, freeList
+        hiddenRoots = self.chunklist[HIDDEN_ROOTS_CHUNK]
+        classTablePage = self.chunks[hiddenRoots.data[major_class_index]]
+        return self.chunks[classTablePage.data[minor_class_index]].g_object
+
+    def major_class_index_of(self, classid):
+        return classid >> 10
+
+    def minor_class_index_of(self, classid):
+        return classid & ((1 << 10) - 1)
+
+    def chunk(self, pointer):
+        # TODO: account for segment swizzling
+        return self.chunks[pointer]
 
     def decode_pointers(self, g_object, space, end=-1):
         if end == -1:
@@ -511,12 +556,16 @@ class GenericObject(object):
     def initialize(self, chunk, reader, space):
         self.reader = reader
         self.size = chunk.size
-        self.hash12 = chunk.hash12
+        self.hash = chunk.hash
         self.format = chunk.format
         self.chunk = chunk # for bytes, words and compiledmethod
         self.init_class()
         self.init_data(space) # for pointers
         self.w_object = None
+
+    def __repr__(self):
+        return "<GenericObject %s>" % ("uninitialized" if not self.isinitialized()
+                else "size=%d hash=%d format=%d" % (self.size, self.hash, self.format))
 
     def init_class(self):
         self.g_class = self.reader.g_class_of(self.chunk)
@@ -630,17 +679,17 @@ class GenericObject(object):
         return w_class
 
     def get_hash(self):
-        return self.chunk.hash12
+        return self.chunk.hash
 
 
 class ImageChunk(object):
     """ A chunk knows the information from the header, but the body of the
     object is not decoded yet."""
-    def __init__(self, size, format, classid, hash12):
+    def __init__(self, size, format, classid, hash):
         self.size = size
         self.format = format
         self.classid = classid
-        self.hash12 = hash12
+        self.hash = hash
         # list of integers forming the body of the object
         self.data = None
         self.g_object = GenericObject()
@@ -650,7 +699,7 @@ class ImageChunk(object):
         return (self.__class__ is other.__class__ and
                 self.format == other.format and
                 self.classid == other.classid and
-                self.hash12 == other.hash12 and
+                self.hash == other.hash and
                 self.data == other.data)
 
     def __ne__(self, other):
