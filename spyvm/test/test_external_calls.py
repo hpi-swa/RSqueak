@@ -1,7 +1,6 @@
 import py, os, math, time
 from spyvm import model, model_display, storage_contexts, constants, primitives, wrapper, display
 from spyvm.primitives import prim_table, PrimitiveFailedError
-from spyvm.plugins import bitblt
 from rpython.rlib.rfloat import isinf, isnan
 from rpython.rlib.rarithmetic import intmask, r_uint
 from rpython.rtyper.lltypesystem import lltype, rffi

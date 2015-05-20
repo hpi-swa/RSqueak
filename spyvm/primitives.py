@@ -729,8 +729,10 @@ def func(interp, s_frame, w_rcvr, w_into):
 
 @expose_primitive(BITBLT_COPY_BITS, clean_stack=False, no_result=True, compiled_method=True)
 def func(interp, s_frame, argcount, w_method):
-    from spyvm.plugins.bitblt import BitBltPlugin
-    return BitBltPlugin.call("primitiveCopyBits", interp, s_frame, argcount, w_method)
+    w_name = interp.space.wrap_string("primitiveCopyBits")
+    signature = ("BitBltPlugin", "primitiveCopyBits")
+    from spyvm.plugins.simulation import SimulationPlugin
+    return SimulationPlugin.simulate(w_name, signature, interp, s_frame, argcount, w_method)
 
 @expose_primitive(BE_CURSOR)
 def func(interp, s_frame, argcount):

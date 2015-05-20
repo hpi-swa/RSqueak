@@ -1,7 +1,6 @@
 import py, os, math, time
 from spyvm import model, model_display, storage_contexts, constants, primitives, wrapper, display
 from spyvm.primitives import prim_table, PrimitiveFailedError
-from spyvm.plugins import bitblt
 from rpython.rlib.rfloat import isinf, isnan
 from rpython.rlib.rarithmetic import intmask, r_uint
 from rpython.rtyper.lltypesystem import lltype, rffi
@@ -780,6 +779,22 @@ def test_screen_size_queries_sdl_window_size(monkeypatch):
     mock_display.height = 3
     assert_screen_size()
 
+def test_numericbitblt(monkeypatch):
+    # XXX this does not test, that it gets called
+    def simulate(w_name, signature, interp, s_frame, argcount, w_method):
+        #assert w_name.getclass(space) is space.w_String
+        assert w_name.as_string() == "primitiveCopyBits"
+        assert signature[0] == "BitBltPlugin"
+        assert signature[1] == "primitiveCopyBits"
+        return "ok"
+
+    from spyvm.plugins.simulation import SimulationPlugin
+    monkeypatch.setattr(SimulationPlugin, "simulate", simulate)
+
+    try:
+        assert prim(primitives.BITBLT_COPY_BITS, ["myReceiver"]).as_string() == "myReceiver"
+    finally:
+        monkeypatch.undo()
 # Note:
 #   primitives.NEXT is unimplemented as it is a performance optimization
 #   primitives.NEXT_PUT is unimplemented as it is a performance optimization
