@@ -363,7 +363,7 @@ def test_const_primitives():
         ]:
         assert prim(code, [space.w_nil]).is_same_object(const)
     assert prim(primitives.PUSH_SELF, [space.w_nil]).is_nil(space)
-    assert prim(primitives.PUSH_SELF, ["a"]) is wrap("a")
+    assert prim(primitives.PUSH_SELF, ["a"]).is_same_object(wrap("a"))
 
 def test_boolean():
     assert prim(primitives.LESSTHAN, [1,2]).is_same_object(space.w_true)
