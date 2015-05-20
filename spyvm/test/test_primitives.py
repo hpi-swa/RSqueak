@@ -21,7 +21,7 @@ class MockFrame(model.W_PointersObject):
     def __init__(self, space, stack):
         self.w_class = space.w_BlockContext
         size = 6 + len(stack) + 6
-        self.initialize_storage(space, size)
+        self._initialize_storage(space, size)
         self.store_all(space, [None] * 6 + stack + [space.w_nil] * 6)
         s_self = self.as_context_get_shadow(space)
         s_self.reset_stack()
@@ -761,6 +761,24 @@ def test_primitive_force_display_update(monkeypatch):
             prim(primitives.FORCE_DISPLAY_UPDATE, [mock_display])
     finally:
         monkeypatch.undo()
+
+def test_screen_size_queries_sdl_window_size(monkeypatch):
+    class MockDisplay:
+        width = 3
+        height = 2
+    mock_display = MockDisplay()
+    monkeypatch.setattr(space, 'display', lambda: mock_display)
+    mock_displayScreen_class = bootstrap_class(0)
+    def assert_screen_size():
+        w_screen_size = prim(primitives.SCREEN_SIZE, [mock_displayScreen_class])
+        assert w_screen_size.getclass(space) is space.w_Point
+        screen_size_point = wrapper.PointWrapper(space, w_screen_size)
+        assert screen_size_point.x() == mock_display.width
+        assert screen_size_point.y() == mock_display.height
+    assert_screen_size()
+    mock_display.width = 4
+    mock_display.height = 3
+    assert_screen_size()
 
 # Note:
 #   primitives.NEXT is unimplemented as it is a performance optimization

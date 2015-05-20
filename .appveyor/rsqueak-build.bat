@@ -1,7 +1,45 @@
-%WINDIR%\System32\WindowsPowerShell\v1.0\powershell.exe -NonInteractive -executionpolicy Unrestricted -command "& { .\rsqueak-build.ps1 }"
-set SDL_PREFIX=%~dp0\SDL
-set PYTHONPATH=%~dp0\;%~dp0\pypy;%~dp0\rsdl
-echo %SDL_PREFIX%
-echo %PYTHONPATH%
-%~dp0\pypy-win32\pypy.exe %~dp0\pypy\rpython\bin\rpython --batch %OPTLVL% %~dp0\targetrsqueak.py
-copy %~dp0\rsqueak.exe %~dp0\rsqueak-win32%OPTLVL%-%APPVEYOR_REPO_COMMIT%.exe
+@echo off
+if not defined APPVEYOR goto :else1
+  if not exist D:\ goto :else2
+    set PYTHONDONTWRITEBYTECODE=1
+    set PYPY_USESSION_DIR=D:\
+    set TEMP=D:\
+    set TMP=D:\
+    goto :endif2
+  :else2
+    echo "Running on appveyor, but there is no drive D."
+    fsutil fsinfo drives
+    echo "Maybe you want to put the tempdir where the pagefile is (assuming that is the fastest drive)"
+    powershell -NonInteractive -command "& { gwmi -computer . Win32_PageFileUsage }"
+  :endif2
+  goto :endif1
+:else1
+  echo "Not running this on appveyor? You should use .build\build.py"
+:endif1
+
+if not defined buildscript (
+  echo You need to set the buildscript var
+  set errorlevel=1
+  goto :endofscript
+)
+
+set BINURL=http://www.lively-kernel.org/babelsberg/RSqueak/rsqueak-win32-%APPVEYOR_REPO_COMMIT%.exe
+if %buildscript%==jittests.py (
+  echo Downloding %BINURL% for jittests
+  appveyor DownloadFile -Url %BINURL% -FileName $~dp0\..\rsqueak.exe
+  if errorlevel 1 (
+    echo Download failed, cannot run jittests
+    set errorlevel=1
+    goto :endofscript
+  )
+)
+
+@echo on
+C:\Python27\python %~dp0\..\.build\%buildscript%
+
+if %buildscript%==build.py (
+  copy %~dp0\..\rsqueak.exe %~dp0\..\rsqueak-win32-%APPVEYOR_REPO_COMMIT%.exe
+  powershell -NonInteractive -executionpolicy Unrestricted -command "& { %~dp0\rsqueak-upload.ps1 }"
+)
+
+:endofscript

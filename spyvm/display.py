@@ -4,6 +4,7 @@ from rpython.rlib.runicode import unicode_encode_utf_8
 from rpython.rlib import jit
 
 from rsdl import RSDL, RSDL_helper
+import key_constants
 
 
 # EventSensorConstants
@@ -47,12 +48,16 @@ class SDLDisplay(object):
         assert RSDL.Init(RSDL.INIT_VIDEO) >= 0
         RSDL.WM_SetCaption(title, "RSqueakVM")
         RSDL.EnableUNICODE(1)
+        RSDL.EnableKeyRepeatWithDefaults()
         SDLCursor.has_display = True
         self.has_surface = False
         self.mouse_position = [0, 0]
         self.interrupt_key = 15 << 8 # pushing all four meta keys, of which we support three...
         self.button = 0
         self.key = 0
+        self.width = 0
+        self.height = 0
+        self.depth = 32
         self._deferred_events = []
         self._defer_updates = False
 
@@ -133,13 +138,37 @@ class SDLDisplay(object):
         sym = rffi.getintfield(p.c_keysym, 'c_sym')
         char = rffi.getintfield(p.c_keysym, 'c_unicode')
         if sym == RSDL.K_DOWN:
-            self.key = 31
+            self.key = key_constants.DOWN
         elif sym == RSDL.K_LEFT:
-            self.key = 28
+            self.key = key_constants.LEFT
         elif sym == RSDL.K_RIGHT:
-            self.key = 29
+            self.key = key_constants.RIGHT
         elif sym == RSDL.K_UP:
-            self.key = 30
+            self.key = key_constants.UP
+        elif sym == RSDL.K_HOME:
+            self.key = key_constants.HOME
+        elif sym == RSDL.K_END:
+            self.key = key_constants.END
+        elif sym == RSDL.K_INSERT:
+            self.key = key_constants.INSERT
+        elif sym == RSDL.K_PAGEUP:
+            self.key = key_constants.PAGEUP
+        elif sym == RSDL.K_PAGEDOWN:
+            self.key = key_constants.PAGEDOWN
+        elif sym == RSDL.K_LSHIFT or sym == RSDL.K_RSHIFT:
+            self.key = key_constants.SHIFT
+        elif sym == RSDL.K_LCTRL or sym == RSDL.K_RCTRL:
+            self.key = key_constants.CTRL
+        elif sym == RSDL.K_LALT or sym == RSDL.K_RALT:
+            self.key = key_constants.COMMAND
+        elif sym == RSDL.K_BREAK:
+            self.key = key_constants.BREAK
+        elif sym == RSDL.K_CAPSLOCK:
+            self.key = key_constants.CAPSLOCK
+        elif sym == RSDL.K_NUMLOCK:
+            self.key = key_constants.NUMLOCK
+        elif sym == RSDL.K_SCROLLOCK:
+            self.key = key_constants.SCROLLOCK
         elif char != 0:
             chars = unicode_encode_utf_8(unichr(char), 1, "ignore")
             if len(chars) == 1:
@@ -151,6 +180,12 @@ class SDLDisplay(object):
         interrupt = self.interrupt_key
         if (interrupt & 0xFF == self.key and interrupt >> 8 == self.get_modifier_mask(0)):
             raise KeyboardInterrupt
+
+    def handle_videoresize(self, c_type, p_event):
+        p_resize_event = rffi.cast(RSDL.ResizeEventPtr, p_event)
+        self.set_video_mode(rffi.getintfield(p_resize_event, 'c_w'),
+                rffi.getintfield(p_resize_event, 'c_h'),
+                self.depth)
 
     def get_next_mouse_event(self, time):
         mods = self.get_modifier_mask(3)
@@ -170,7 +205,7 @@ class SDLDisplay(object):
                 0]
 
     def get_next_key_event(self, t, time):
-        mods = self.get_modifier_mask(3)
+        mods = self.get_modifier_mask(0)
         btn = self.button
         return [EventTypeKeyboard,
                 time,
@@ -180,6 +215,34 @@ class SDLDisplay(object):
                 self.key,
                 0,
                 0]
+
+    def is_modifier_key(self, p_event):
+        p = rffi.cast(RSDL.KeyboardEventPtr, p_event)
+        keycode = rffi.getintfield(p.c_keysym, 'c_sym')
+        return keycode in [RSDL.K_LSHIFT, RSDL.K_RSHIFT,
+                RSDL.K_LCTRL, RSDL.K_RCTRL,
+                RSDL.K_LALT, RSDL.K_RALT,
+                RSDL.K_LMETA, RSDL.K_RMETA, 
+                RSDL.K_LSUPER, RSDL.K_RSUPER]
+
+    def is_character_key(self, p_event):
+        """Tells whether the keycode in the KeyboardEvent is either a printable
+        or a control character (such as backspace), i. e. this will return False
+        for movement and modifier keys.
+        The implementation is coupled to SDL's implementation of virtual keycodes."""
+        p = rffi.cast(RSDL.KeyboardEventPtr, p_event)
+        keycode = rffi.getintfield(p.c_keysym, 'c_sym')
+        return RSDL.K_BACKSPACE <= keycode <= RSDL.K_z \
+            or RSDL.K_WORLD_0 <= keycode <= RSDL.K_KP_EQUALS \
+            or keycode == RSDL.K_EURO # whoever came up with this being beyond the modifier keys etc...
+	
+    # once RSDL goes with SDL 2.0 the following could be put to use:
+    # def is_character_key(self, p_event):
+    #    p = rffi.cast(RSDL.KeyboardEventPtr, p_event)
+    #    keycode = rffi.getintfield(p.c_keysym, 'c_sym')
+    #    # SDL 2.0 marks non-printable characters with the 31th bit
+    #    # see SDL_SCANCODE_TO_KEYCODE macro
+    #    return keycode != RSDL.K_UNKNOWN and (keycode & (1 << 30)) == 0
 
     def get_next_event(self, time=0):
         if len(self._deferred_events) > 0:
@@ -198,11 +261,14 @@ class SDLDisplay(object):
                     return self.get_next_mouse_event(time)
                 elif c_type == RSDL.KEYDOWN:
                     self.handle_keypress(c_type, event)
+                    if not self.is_modifier_key(event):
+                        self._deferred_events.append(self.get_next_key_event(EventKeyChar, time))
                     return self.get_next_key_event(EventKeyDown, time)
                 elif c_type == RSDL.KEYUP:
-                    self._deferred_events.append(self.get_next_key_event(EventKeyUp, time))
-                    return self.get_next_key_event(EventKeyChar, time)
-                # elif c_type == RSDL.VIDEORESIZE:
+                    self.handle_keypress(c_type, event)
+                    return self.get_next_key_event(EventKeyUp, time)
+                elif c_type == RSDL.VIDEORESIZE:
+                    self.handle_videoresize(c_type, event)
                 #     self.screen = RSDL.GetVideoSurface()
                 #     self._deferred_events.append([EventTypeWindow, time, WindowEventPaint,
                 #                             0, 0, int(self.screen.c_w), int(self.screen.c_h), 0])
@@ -247,7 +313,7 @@ class SDLDisplay(object):
         if mod & RSDL.KMOD_SHIFT != 0:
             modifier |= ShiftKeyBit
         if mod & RSDL.KMOD_ALT != 0:
-            modifier |= (OptionKeyBit | CommandKeyBit)
+            modifier |= CommandKeyBit
         return modifier << shift
 
     def mouse_point(self):

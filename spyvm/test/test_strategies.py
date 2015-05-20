@@ -57,10 +57,10 @@ def test_ordered_strategies():
 
 def test_optimized_strategy_switch(monkeypatch):
     a = arr(5)
-    def convert_storage_from(self, other):
-        assert False, "The default convert_storage_from() routine should not be called!"
+    def _convert_storage_from(self, other):
+        assert False, "The default _convert_storage_from() routine should not be called!"
 
-    monkeypatch.setattr(storage.AbstractStrategy, "convert_storage_from", convert_storage_from)
+    monkeypatch.setattr(storage.AbstractStrategy, "_convert_storage_from", _convert_storage_from)
     try:
         s = a.strategy
         s.strategy_factory().switch_strategy(a, storage.SmallIntegerOrNilStrategy)
