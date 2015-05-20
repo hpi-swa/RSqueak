@@ -313,7 +313,7 @@ def test_simple_spur_image_with_segments():
                      + pack(">i", 0)        #  80 ptr to nil
                      + pack(">i", 8)        #  84 ... false
                      + pack(">i", 16)       #  84 ... true
-                     + pack(">i", 1000)     #  92 ... alienated for this test
+                     + pack(">i", 1000)     #  92 ... alienated scheduler association for this test
                      + pack(">i", 0)        #  96 ... Bitmap
                      + pack(">i", 104)      # 100 ... SmallInteger
                      # "arbitrary" objects from here on
@@ -324,10 +324,11 @@ def test_simple_spur_image_with_segments():
                      + spur_hdr(0, 4, 0, 0))# 136 Array (class instance)
                      # bridge will be added later
     # second segment shall start at oop 1000 here
-    second_segment = (spur_hdr(3, 4000, 2, 4)  # 1000 an Array
+    second_segment = (spur_hdr(4, 4000, 2, 4)  # 1000 an Array
                      + pack(">i", 0)        # 1008 -> nil
                      + pack(">i", 8)        # 1012 -> false
                      + pack(">i", 16)       # 1016 -> true
+                     + pack(">i", (42 << 1) | 1) # SmallInteger 42
                      + ints2str(0, 0))      # final bridge = stop
     first_segment = first_segment + \
             ints2str(1000 - len(first_segment) - 8, # bridge span
@@ -357,3 +358,12 @@ def test_simple_spur_image_with_segments():
     # does not raise
     r.read_all()
     assert r.stream.pos == len(image_1)
+    theArray = r.space.objtable["w_schedulerassociationpointer"]
+    assert theArray.gethash() == 4000
+    assert theArray.size() == 4
+    assert theArray.fetch(r.space, 0).is_same_object(r.space.w_nil)
+    assert theArray.fetch(r.space, 1).is_same_object(r.space.w_false)
+    assert theArray.fetch(r.space, 2).is_same_object(r.space.w_true)
+    from spyvm import model
+    assert isinstance(theArray.fetch(r.space, 3), model.W_SmallInteger)
+    assert r.space.unwrap_int(theArray.fetch(r.space, 3)) == 42
