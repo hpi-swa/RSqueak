@@ -410,8 +410,9 @@ class SpurReader(BaseReaderStrategy):
 
     def read_object(self):
         # respect new header format
-        size, _, hash = splitter[8,2,22](self.stream.next())
-        _, format, _, classid = splitter[3,5,2,22](self.stream.next())
+        firstWord = self.stream.next()
+        hash, _, size = splitter[22,2,8](firstWord)
+        classid, _, format, _ = splitter[22,2,5,3](self.stream.next())
         chunk = ImageChunk(size, format, classid, hash)
         chunk.data = [self.stream.next() for _ in range(size)]
         return chunk

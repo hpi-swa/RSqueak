@@ -234,12 +234,13 @@ def test_simple_image64(monkeypatch):
     r.read_header()
     assert r.stream.pos == len(image_2)
 
+def spur_hdr(n_slots, hash, format, classid):
+    return ints2str(joinbits([hash, 0, n_slots], [22, 2, 8]),
+                    joinbits([classid, 0, format], [22, 2, 5, 3]))
+
 def test_simple_spur_image():
     word_size = 4
     # first segment
-    def spur_hdr(n_slots, hash, format, classid):
-        return ints2str(joinbits([n_slots, 0, hash], [8, 2, 22]),
-                        joinbits([0, format, 0, classid], [3, 5, 2, 22]))
     first_segment = (spur_hdr(0, 0, 0, 0)   #   0 nil
                      + spur_hdr(0, 0, 0, 0) #   8 false
                      + spur_hdr(0, 0, 0, 0) #  16 true
@@ -293,9 +294,6 @@ def test_simple_spur_image():
 def test_simple_spur_image_with_segments():
     word_size = 4
     # first segment
-    def spur_hdr(n_slots, hash, format, classid):
-        return ints2str(joinbits([n_slots, 0, hash], [8, 2, 22]),
-                        joinbits([0, format, 0, classid], [3, 5, 2, 22]))
     # use 3000 + x as hash for debugging purposes (easier to identify g_objects)
     first_segment = (spur_hdr(0, 3000, 0, 0)   #   0 nil
                      + spur_hdr(0, 3008, 0, 0) #   8 false
