@@ -173,6 +173,9 @@ class ImageReader(object):
     def chunk(self, pointer):
         return self.readerStrategy.chunk(pointer)
 
+    def decode_pointers(self, g_object, space, end=-1):
+        return self.readerStrategy.decode_pointers(self, g_object, space, end=-1)
+
 class BaseReaderStrategy(object):
 
     def __init__(self, imageReader, stream, space):
@@ -340,6 +343,23 @@ class NonSpurReader(BaseReaderStrategy):
     def chunk(self, pointer):
         return self.chunks[pointer]
 
+    def decode_pointers(self, g_object, space, end=-1):
+        if end == -1:
+            end = len(g_object.chunk.data)
+        pointers = []
+        for i in range(end):
+            pointer = g_object.chunk.data[i]
+            if (pointer & 1) == 1:
+                # pointer = ...1
+                # tagged integer
+                small_int = GenericObject()
+                small_int.initialize_int(pointer >> 1, self, space)
+                pointers.append(small_int)
+            else:
+                # pointer = ...0
+                pointers.append(self.chunk(pointer).g_object)
+        return pointers
+
 class AncientReader(NonSpurReader):
     """Reader strategy for pre-4.0 images"""
 
@@ -369,6 +389,30 @@ class SpurReader(BaseReaderStrategy):
     def read_object(self):
         # respect new header format
         pass
+
+    def decode_pointers(self, g_object, space, end=-1):
+        if end == -1:
+            end = len(g_object.chunk.data)
+        pointers = []
+        for i in range(end):
+            pointer = g_object.chunk.data[i]
+            if (pointer & 3) == 1:
+                # pointer = ...01
+                # tagged integer
+                small_int = GenericObject()
+                small_int.initialize_int(pointer >> 2, self, space)
+                pointers.append(small_int)
+            if (pointer & 3) == 2:
+                # pointer = ...10
+                # immediate character
+                character = GenericObject()
+                character.initialize_char(pointer >> 2, self, space)
+                pointers.append(character)
+            else:
+                # pointer = ...00
+                assert (pointer & 3) == 0
+                pointers.append(self.chunk(pointer).g_object)
+        return pointers
 # ____________________________________________________________
 
 class SqueakImage(object):
@@ -457,6 +501,13 @@ class GenericObject(object):
         self.w_object = w_int
         self.filled_in = True
 
+    def initialize_char(self, value, reader, space):
+        self.reader = reader
+        self.value = value
+        self.size = -1
+        self.w_object = space.wrap_char(value)
+        self.filled_in = True
+
     def initialize(self, chunk, reader, space):
         self.reader = reader
         self.size = chunk.size
@@ -472,26 +523,12 @@ class GenericObject(object):
 
     def init_data(self, space):
         if self.ispointers():
-            self.pointers = self.decode_pointers(space)
+            self.pointers = self.reader.decode_pointers(self, space)
             assert None not in self.pointers
         elif self.iscompiledmethod():
             header = self.chunk.data[0] >> 1 # untag tagged int
             _, literalsize, _, _, _ = constants.decode_compiled_method_header(header)
-            self.pointers = self.decode_pointers(space, literalsize + 1) # adjust +1 for the header
-
-    def decode_pointers(self, space, end=-1):
-        if end == -1:
-            end = len(self.chunk.data)
-        pointers = []
-        for i in range(end):
-            pointer = self.chunk.data[i]
-            if (pointer & 1) == 1:
-                small_int = GenericObject()
-                small_int.initialize_int(pointer >> 1, self.reader, space)
-                pointers.append(small_int)
-            else:
-                pointers.append(self.reader.chunk(pointer).g_object)
-        return pointers
+            self.pointers = self.reader.decode_pointers(self, space, literalsize + 1) # adjust +1 for the header
 
     def isbytes(self):
         return 8 <= self.format <= 11
