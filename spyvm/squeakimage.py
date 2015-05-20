@@ -368,16 +368,23 @@ class SpurReader(BaseReaderStrategy):
 
 
     def read_body(self):
-        # TODO: respect segments and bridges
         self.stream.reset_count()
         segmentEnd = self.firstSegSize
         currentAddressSwizzle = self.oldbaseaddress
         while self.stream.count < segmentEnd:
-            pos = self.stream.count
-            chunk = self.read_object()
-            self.log_progress(len(self.chunklist), '#')
-            self.chunklist.append(chunk)
-            self.chunks[pos + currentAddressSwizzle] = chunk
+            while self.stream.count < segmentEnd - 8:
+                pos = self.stream.count
+                chunk = self.read_object()
+                self.log_progress(len(self.chunklist), '#')
+                self.chunklist.append(chunk)
+                self.chunks[pos + currentAddressSwizzle] = chunk
+            # read bridge
+            bridgeSpan = self.stream.next()
+            nextSegmentSize = self.stream.next()
+            assert self.stream.count == segmentEnd
+            segmentEnd = segmentEnd + nextSegmentSize
+            currentAddressSwizzle += bridgeSpan
+            # if nextSegmentSize is zero, the end of the image has been reached
         self.stream.close()
         return self.chunklist # return for testing
 
@@ -505,6 +512,10 @@ class GenericObject(object):
         self.init_class()
         self.init_data(space) # for pointers
         self.w_object = None
+
+    def __repr__(self):
+        return "<GenericObject %s>" % ("uninitialized" if not self.isinitialized()
+                else "size=%d hash=%d format=%d" % (self.size, self.hash, self.format))
 
     def init_class(self):
         self.g_class = self.reader.g_class_of(self.chunk)

@@ -4,13 +4,6 @@ from spyvm import squeakimage, error
 from spyvm.util.stream import chrs2int, chrs2long, swapped_chrs2long
 from .util import create_space, copy_to_module, cleanup_module
 
-def setup_module():
-    space = create_space()
-    copy_to_module(locals(), __name__)
-
-def teardown_module():
-    cleanup_module(__name__)
-
 # ----- helpers ----------------------------------------------
 
 def ints2str(*ints):
@@ -29,7 +22,7 @@ def imagestream_mock(string):
 
 def imagereader_mock(string):
     stream = imagestream_mock(string)
-    return squeakimage.ImageReader(space, stream)
+    return squeakimage.ImageReader(create_space(), stream)
 
 SIMPLE_VERSION_HEADER = pack(">i", 6502)
 SIMPLE_VERSION_HEADER_LE = pack("<i", 6502)
@@ -243,7 +236,6 @@ def test_simple_image64(monkeypatch):
 
 def test_simple_spur_image():
     word_size = 4
-
     # first segment
     def spur_hdr(n_slots, hash, format, classid):
         return ints2str(joinbits([n_slots, 0, hash], [8, 2, 22]),
@@ -273,13 +265,80 @@ def test_simple_spur_image():
                      + spur_hdr(0, 3, 0, 2) # 124 Metaclass class
                      + ints2str(0, 0))      # 128 final bridge = stop at 136
     body = first_segment
-
     header_size = 16 * word_size
     image_1 = (SPUR_VERSION_HEADER       # 1
                + pack(">i", header_size) # 2 64 byte header
                + pack(">i", len(body))   # 3 body length
                + pack(">i", 0)           # 4 old base addresss unset
                + pack(">i", 68)          # 5 ptr to special objects array
+               + "\x12\x34\x56\x78"      # 6 last hash
+               + pack(">h", 480)         # 7 window 480 height
+               +     pack(">h", 640)     #   window 640 width
+               + pack(">i", 0)           # 8 not fullscreen
+               + pack(">i", 0)           # 9 no extra memory
+               + pack(">h", 0)           # 10 #stack pages
+               + pack(">h", 0)           #    cog code size
+               + pack(">i", 0)           # 11 eden bytes
+               + pack(">h", 0)           # 12 max ext sem tab size (?)
+               + pack(">h", 0)           #    unused
+               + pack(">i", len(first_segment))  # 13 first segment size
+               + pack(">i", 0)           # 14 free old space in image
+               + ("\x00" * (header_size - (14 * word_size)))
+               + body)
+    r = imagereader_mock(image_1)
+    # does not raise
+    r.read_all()
+    assert r.stream.pos == len(image_1)
+
+def test_simple_spur_image_with_segments():
+    word_size = 4
+    # first segment
+    def spur_hdr(n_slots, hash, format, classid):
+        return ints2str(joinbits([n_slots, 0, hash], [8, 2, 22]),
+                        joinbits([0, format, 0, classid], [3, 5, 2, 22]))
+    # use 3000 + x as hash for debugging purposes (easier to identify g_objects)
+    first_segment = (spur_hdr(0, 3000, 0, 0)   #   0 nil
+                     + spur_hdr(0, 3008, 0, 0) #   8 false
+                     + spur_hdr(0, 3016, 0, 0) #  16 true
+                     + spur_hdr(0, 3024, 0, 0) #  24 freeList
+                     + spur_hdr(1, 3032, 4, 0) #  32 hiddenRoots
+                     + pack(">i", 44)       #  40 ptr to 1st class table page
+                     + spur_hdr(5, 3044, 4, 0) #  44 1st class table page
+                     + pack(">i", 104)      #  52 ptr to first class (here SmallInteger)
+                     + pack(">i", 112)      #  56 ptr to SmallInteger class
+                     + pack(">i", 120)      #  60 ptr to Metaclass
+                     + pack(">i", 128)      #  64 ptr to Metaclass class
+                     + pack(">i", 136)      #  68 ptr to Array
+                     + spur_hdr(6, 3072, 4, 0) #  72 special objects array
+                     + pack(">i", 0)        #  80 ptr to nil
+                     + pack(">i", 8)        #  84 ... false
+                     + pack(">i", 16)       #  84 ... true
+                     + pack(">i", 1000)     #  92 ... alienated for this test
+                     + pack(">i", 0)        #  96 ... Bitmap
+                     + pack(">i", 104)      # 100 ... SmallInteger
+                     # "arbitrary" objects from here on
+                     + spur_hdr(0, 0, 0, 1) # 104 SmallInteger (class instance)
+                     + spur_hdr(0, 1, 0, 2) # 112 SmallInteger class
+                     + spur_hdr(0, 2, 0, 3) # 120 Metaclass (class instance)
+                     + spur_hdr(0, 3, 0, 2) # 128 Metaclass class
+                     + spur_hdr(0, 4, 0, 0))# 136 Array (class instance)
+                     # bridge will be added later
+    # second segment shall start at oop 1000 here
+    second_segment = (spur_hdr(3, 4000, 2, 4)  # 1000 an Array
+                     + pack(">i", 0)        # 1008 -> nil
+                     + pack(">i", 8)        # 1012 -> false
+                     + pack(">i", 16)       # 1016 -> true
+                     + ints2str(0, 0))      # final bridge = stop
+    first_segment = first_segment + \
+            ints2str(1000 - len(first_segment) - 8, # bridge span
+                     len(second_segment))           # next segment size
+    body = first_segment + second_segment
+    header_size = 16 * word_size
+    image_1 = (SPUR_VERSION_HEADER       # 1
+               + pack(">i", header_size) # 2 64 byte header
+               + pack(">i", len(body))   # 3 body length
+               + pack(">i", 0)           # 4 old base addresss unset
+               + pack(">i", 72)          # 5 ptr to special objects array
                + "\x12\x34\x56\x78"      # 6 last hash
                + pack(">h", 480)         # 7 window 480 height
                +     pack(">h", 640)     #   window 640 width
