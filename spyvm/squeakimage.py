@@ -167,7 +167,7 @@ class ImageReader(object):
         return self.readerStrategy.chunk(pointer)
 
     def decode_pointers(self, g_object, space, end=-1):
-        return self.readerStrategy.decode_pointers(self, g_object, space, end=-1)
+        return self.readerStrategy.decode_pointers(g_object, space, end=-1)
 
 class BaseReaderStrategy(object):
 
