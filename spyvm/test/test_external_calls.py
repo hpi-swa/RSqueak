@@ -105,14 +105,30 @@ def test_fileplugin_dirdelete(monkeypatch):
     finally:
         monkeypatch.undo()
 
-def test_fileplugin_dirdelete_raises(monkeypatch):
-    def rmdir(dir_path):
-        raise OSError()
-    monkeypatch.setattr(os, "rmdir", rmdir)
+def test_fileplugin_filewrite_bytes(monkeypatch):
+    def write(fd, data):
+        assert len(data) == 4
+        assert data == 'abcd'
+    monkeypatch.setattr(os, "write", write)
 
+    content = model.W_BytesObject(space, space.w_String, 4)
+    content.bytes = ["a", "b", "c", "d"]
     try:
-        with py.test.raises(PrimitiveFailedError):
-            stack = [space.w(1), space.wrap_string("myPrimDir")]
-            w_c = external_call('FilePlugin', 'primitiveDirectoryDelete', stack)
+        stack = [space.w(1), space.w(1), content, space.w(0), space.w(4)]
+        w_c = external_call('FilePlugin', 'primitiveFileWrite', stack)
+    finally:
+        monkeypatch.undo()
+
+def test_fileplugin_filewrite_words(monkeypatch):
+    def write(fd, data):
+        assert len(data) == 4
+        assert data == 'dcba'
+    monkeypatch.setattr(os, "write", write)
+
+    content = model.W_WordsObject(space, space.w_String, 1)
+    content.words = [rffi.r_uint(1633837924)]
+    try:
+        stack = [space.w(1), space.w(1), content, space.w(0), space.w(1)]
+        w_c = external_call('FilePlugin', 'primitiveFileWrite', stack)
     finally:
         monkeypatch.undo()
