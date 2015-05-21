@@ -595,9 +595,9 @@ class GenericObject(object):
                 space.w_LargePositiveInteger.is_same_object(self.g_class.w_object) and
                 len(self.get_bytes()) <= 4)
 
-    def ischar(self):
+    def ischar(self, space):
         return (self.ispointers() and
-                self.space.w_Character.is_same_object(self.g_class.w_object))
+                space.w_Character.is_same_object(self.g_class.w_object))
 
     def iswords(self):
         return self.format == 6
@@ -633,7 +633,7 @@ class GenericObject(object):
         if self.w_object is None:
             # the instantiate call circumvents the constructors
             # and makes empty objects
-            if self.ischar():
+            if self.ischar(space):
                 self.w_object = objectmodel.instantiate(model.W_Character)
             elif self.ispointers():
                 self.w_object = objectmodel.instantiate(model.W_PointersObject)
