@@ -635,6 +635,27 @@ def test_primitive_some_instance():
     w_r = prim(primitives.SOME_INSTANCE, [space.w_Array])
     assert w_r.getclass(space) is space.w_Array
 
+def test_primitive_some_object():
+    import gc; gc.collect()
+    w_r = prim(primitives.SOME_OBJECT, [space.w_nil])
+    assert isinstance(w_r, model.W_Object)
+
+def test_primitive_next_object():
+    someInstances = map(space.wrap_list, [[2], [3]])
+    w_frame, s_context = new_frame("<never called, but needed for method generation>")
+
+    s_context.push(space.w_nil)
+    interp = TestInterpreter(space)
+    prim_table[primitives.SOME_OBJECT](interp, s_context, 0)
+    w_1 = s_context.pop()
+    assert isinstance(w_1, model.W_Object)
+
+    s_context.push(w_1)
+    prim_table[primitives.NEXT_OBJECT](interp, s_context, 0)
+    w_2 = s_context.pop()
+    assert isinstance(w_2, model.W_Object)
+    assert w_1 is not w_2
+
 def test_primitive_next_instance():
     someInstances = map(space.wrap_list, [[2], [3]])
     w_frame, s_context = new_frame("<never called, but needed for method generation>")

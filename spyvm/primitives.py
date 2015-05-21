@@ -625,9 +625,11 @@ def get_instances_array(space, s_frame, w_class=None):
             if not rgc.get_gcflag_extra(gcref):
                 rgc.toggle_gcflag_extra(gcref)
                 w_obj = rgc.try_cast_gcref_to_instance(model.W_Object, gcref)
-                if (w_obj is not None and w_obj.has_class()
-                    and (w_class is None or w_obj.getclass(space) is w_class)):
-                    match_w.append(w_obj)
+                if w_obj is not None and w_obj.has_class():
+                    # when calling NEXT_OBJECT, we should not return SmallInteger instances
+                    next_object_and_not_int = (w_class is None) and (w_obj.getclass(space) is not space.w_SmallInteger)
+                    if next_object_and_not_int or w_obj.getclass(space) is w_class:
+                        match_w.append(w_obj)
                 pending.extend(rgc.get_rpy_referents(gcref))
 
         while roots:
@@ -1172,7 +1174,7 @@ def next_object(space, list_of_objects, w_obj):
     try:
         retval = list_of_objects[idx + 1]
     except IndexError:
-        raise PrimitiveFailedError()
+        return space.wrap_int(0)
     return retval
 
 @expose_primitive(NEXT_OBJECT, unwrap_spec=[object])
