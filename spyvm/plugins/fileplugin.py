@@ -20,6 +20,14 @@ except ValueError:
 #should we implement primitiveDirectoryEntry ?
 #should we implement primitiveHasFileAccess ?
 
+@FilePlugin.expose_primitive(unwrap_spec=[object])
+def primitiveFileStdioHandles(interp, s_frame, w_rcvr):
+    return interp.space.wrap_list(
+        interp.space.wrap_int(0),
+        interp.space.wrap_int(1),
+        interp.space.wrap_int(2)
+    )
+
 @FilePlugin.expose_primitive(unwrap_spec=[object, str])
 def primitiveFileDelete(interp, s_frame, w_rcvr, file_path):
     # we actually should ask the security plugin function sCDFfn for permissions
