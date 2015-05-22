@@ -449,13 +449,13 @@ class SpurReader(BaseReaderStrategy):
         pointers = []
         for i in range(end):
             pointer = g_object.chunk.data[i]
-            if (pointer & 3) == 1:
-                # pointer = ...01
+            if (pointer & 1) == 1:
+                # pointer = ....1
                 # tagged integer
                 small_int = GenericObject()
-                small_int.initialize_int(pointer >> 2, self, space)
+                small_int.initialize_int(pointer >> 1, self, space)
                 pointers.append(small_int)
-            if (pointer & 3) == 2:
+            elif (pointer & 3) == 2:
                 # pointer = ...10
                 # immediate character
                 character = GenericObject()
