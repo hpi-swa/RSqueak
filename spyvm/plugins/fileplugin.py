@@ -6,6 +6,7 @@ from rpython.rlib.listsort import TimSort
 from spyvm import model, error
 from spyvm.plugins.plugin import Plugin
 from spyvm.primitives import PrimitiveFailedError, index1_0
+from spyvm.util.system import IS_WINDOWS
 
 FilePlugin = Plugin()
 os.stat_float_times(False)
@@ -16,6 +17,24 @@ try:
            sys.stderr.fileno()]
 except ValueError:
     std_fds = [0, 1, 2]
+
+if IS_WINDOWS:
+    from rpython.rtyper.lltypesystem import rffi
+    from rpython.rtyper.tool import rffi_platform as platform
+    from rpython.translator.tool.cbuild import ExternalCompilationInfo
+
+    eci = ExternalCompilationInfo(includes=["windows.h"])
+
+    class CConfig:
+        _compilation_info_ = eci
+    config = platform.configure(CConfig)
+
+    _chsize = rffi.llexternal("_chsize",
+        [rffi.INT, rffi.LONG], rffi.INT,
+        compilation_info=eci,
+    )
+
+    os.ftruncate = _chsize
 
 #should we implement primitiveDirectoryEntry ?
 #should we implement primitiveHasFileAccess ?
