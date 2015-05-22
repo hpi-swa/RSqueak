@@ -1,0 +1,168 @@
+import py, os, math, time
+from spyvm import model, model_display, storage_contexts, constants, primitives, wrapper, display
+from spyvm.primitives import prim_table, PrimitiveFailedError
+import spyvm.plugins.socket as socket
+from spyvm.plugins import bitblt
+from rpython.rlib.rfloat import isinf, isnan
+from rpython.rlib.rarithmetic import intmask, r_uint
+from rpython.rtyper.lltypesystem import lltype, rffi
+from .util import create_space, copy_to_module, cleanup_module, TestInterpreter, very_slow_test
+from .test_interpreter import run_with_faked_primitive_methods
+
+def setup_module():
+    space = create_space(bootstrap = True)
+    wrap = space.w
+    bootstrap_class = space.bootstrap_class
+    new_frame = space.make_frame
+    copy_to_module(locals(), __name__)
+
+def teardown_module():
+    cleanup_module(__name__)
+
+class MockFrame(model.W_PointersObject):
+    def __init__(self, space, stack):
+        self.w_class = space.w_BlockContext
+        size = 6 + len(stack) + 6
+        self._initialize_storage(space, size)
+        self.store_all(space, [None] * 6 + stack + [space.w_nil] * 6)
+        s_self = self.as_context_get_shadow(space)
+        s_self.reset_stack()
+        s_self.push_all(stack)
+        s_self.store_expected_argument_count(0)
+
+    def as_context_get_shadow(self, space):
+        if not isinstance(self.strategy, storage_contexts.ContextPartShadow):
+            self.strategy = storage_contexts.ContextPartShadow(space, self, self.size())
+            self.strategy.init_temps_and_stack()
+        return self.strategy
+
+IMAGENAME = "anImage.image"
+
+def mock(space, stack, context = None):
+    mapped_stack = [space.w(x) for x in stack]
+    if context is None:
+        frame = MockFrame(space, mapped_stack)
+    else:
+        frame = context
+        for i in range(len(stack)):
+            frame.as_context_get_shadow(space).push(stack[i])
+    interp = TestInterpreter(space)
+    interp.space._image_name.set(IMAGENAME)
+    return interp, frame, len(stack)
+
+
+def _prim(space, name, module, stack, context = None):
+    interp, w_frame, argument_count = mock(space, stack, context)
+    orig_stack = list(w_frame.as_context_get_shadow(space).stack())
+    prim_meth = model.W_CompiledMethod(space, 0, header=17045052)
+    prim_meth._primitive = primitives.EXTERNAL_CALL
+    prim_meth.argsize = argument_count - 1
+    descr = space.wrap_list([space.wrap_string(module), space.wrap_string(name)])
+    prim_meth.literalatput0(space, 1, descr)
+    def call():
+        prim_table[primitives.EXTERNAL_CALL](interp, w_frame.as_context_get_shadow(space), argument_count-1, prim_meth)
+    return w_frame, orig_stack, call
+
+def prim(name, module, stack = None, context = None):
+    if stack is None: stack = [space.w_nil]
+    w_frame, orig_stack, call = _prim(space, name, module, stack, context)
+    call()
+    res = w_frame.as_context_get_shadow(space).pop()
+    s_frame = w_frame.as_context_get_shadow(space)
+    assert not s_frame.stackdepth() - s_frame.tempsize() # check args are consumed
+    return res
+
+def prim_fails(name, module, stack):
+    w_frame, orig_stack, call = _prim(name, module, stack)
+    with py.test.raises(PrimitiveFailedError):
+        call()
+    assert w_frame.as_context_get_shadow(space).stack() == orig_stack
+
+
+def test_vmdebugging():
+    assert prim("isRSqueak", "VMDebugging") is space.w_true
+
+
+def test_resolver_start_lookup():
+    assert prim("primitiveResolverStartNameLookup", "SocketPlugin",
+                [space.w_nil, space.wrap_string("google.com")]) == space.w_nil
+
+def test_resolver_lookup_result():
+    assert prim("primitiveResolverStartNameLookup", "SocketPlugin",
+                [space.w_nil, space.wrap_string("google.com")]) == space.w_nil
+    w_res = prim("primitiveResolverNameLookupResult", "SocketPlugin")
+    assert isinstance(w_res, model.W_BytesObject)
+
+
+def test_socket_create():
+    assert isinstance(prim("primitiveSocketCreate3Semaphores", "SocketPlugin",
+                           [space.w_nil, 2, 0, 8000, 8000, 13, 14, 15]), socket.W_SocketHandle)
+    assert isinstance(prim("primitiveSocketCreate3Semaphores", "SocketPlugin",
+                           [space.w_nil, 0, 0, 8000, 8000, 13, 14, 15]), socket.W_SocketHandle)
+
+def test_socket_status():
+    handle = prim("primitiveSocketCreate3Semaphores", "SocketPlugin",
+                  [space.w_nil, 2, 0, 8000, 8000, 13, 14, 15])
+    assert prim("primitiveSocketConnectionStatus", "SocketPlugin",
+                [space.w_nil, handle]).value == 0
+    assert prim("primitiveSocketConnectionStatus", "SocketPlugin",
+                [space.w_nil, 3200]).value == -1
+
+def test_socket_connect():
+    handle = prim("primitiveSocketCreate3Semaphores", "SocketPlugin",
+                  [space.w_nil, 2, 0, 8000, 8000, 13, 14, 15])
+    prim("primitiveResolverStartNameLookup", "SocketPlugin",
+         [space.w_nil, space.wrap_string("google.com")])
+    w_host = prim("primitiveResolverNameLookupResult", "SocketPlugin")
+    assert prim("primitiveSocketConnectToPort", "SocketPlugin",
+                [space.w_nil, handle, w_host, space.wrap_int(80)])
+    assert prim("primitiveSocketConnectionStatus", "SocketPlugin",
+                [space.w_nil, handle]).value == 2
+
+def test_socket_ready():
+    handle = prim("primitiveSocketCreate3Semaphores", "SocketPlugin",
+                  [space.w_nil, 2, 0, 8000, 8000, 13, 14, 15])
+    prim("primitiveResolverStartNameLookup", "SocketPlugin",
+         [space.w_nil, space.wrap_string("google.com")])
+    w_host = prim("primitiveResolverNameLookupResult", "SocketPlugin")
+    assert prim("primitiveSocketConnectToPort", "SocketPlugin",
+                [space.w_nil, handle, w_host, space.wrap_int(80)])
+    assert prim("primitiveSocketConnectionStatus", "SocketPlugin",
+                [space.w_nil, handle]).value == 2
+    time.sleep(0.5)
+    assert prim("primitiveSocketReceiveDataAvailable", "SocketPlugin",
+                [space.w_nil, handle]) == space.w_false
+
+_http_get = """
+GET / HTTP/1.1
+User-Agent: curl/7.37.1
+Host: www.google.de
+Accept: */*
+
+"""
+def test_socket_send_and_read_into():
+    handle = prim("primitiveSocketCreate3Semaphores", "SocketPlugin",
+                  [space.w_nil, 2, 0, 8000, 8000, 13, 14, 15])
+    prim("primitiveResolverStartNameLookup", "SocketPlugin",
+         [space.w_nil, space.wrap_string("google.com")])
+    w_host = prim("primitiveResolverNameLookupResult", "SocketPlugin")
+    assert prim("primitiveSocketConnectToPort", "SocketPlugin",
+                [space.w_nil, handle, w_host, space.wrap_int(80)])
+    assert prim("primitiveSocketConnectionStatus", "SocketPlugin",
+                [space.w_nil, handle]).value == 2
+    assert prim("primitiveSocketSendDataBufCount", "SocketPlugin",
+                [space.w_nil, handle, space.wrap_string(_http_get),
+                 space.wrap_int(1), space.wrap_int(len(_http_get))]).value == len(_http_get)
+    time.sleep(0.5)
+    assert prim("primitiveSocketReceiveDataAvailable", "SocketPlugin",
+                [space.w_nil, handle]) == space.w_true
+    w_str = space.wrap_string("_hello")
+    assert prim("primitiveSocketReceiveDataBufCount", "SocketPlugin",
+                [space.w_nil, handle, w_str, space.wrap_int(2), space.wrap_int(5)]).value == 5
+    assert w_str.as_string() == "_HTTP/"
+
+def test_socket_destroy():
+    handle = prim("primitiveSocketCreate3Semaphores", "SocketPlugin",
+                  [space.w_nil, 2, 0, 8000, 8000, 13, 14, 15])
+    assert prim("primitiveSocketDestroy", "SocketPlugin",
+                [space.w_nil, handle]) == space.w_nil
