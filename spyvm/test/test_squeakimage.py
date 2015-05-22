@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import py, StringIO, sys
 from struct import pack
 from spyvm import squeakimage, error
@@ -351,11 +352,13 @@ def test_simple_spur_image_with_segments():
                      + spur_hdr(0, 4, 0, 0))# 136 Array (class instance)
                      # bridge will be added later
     # second segment shall start at oop 1000 here
-    second_segment = (spur_hdr(4, 4000, 2, 4)  # 1000 an Array
+    second_segment = (spur_hdr(6, 4000, 2, 4)  # 1000 an Array
                      + pack(">i", 0)        # 1008 -> nil
                      + pack(">i", 8)        # 1012 -> false
                      + pack(">i", 16)       # 1016 -> true
                      + pack(">i", (42 << 1) | 1) # SmallInteger 42
+                     + pack(">I", (ord(u'p') << 2) | 2) # Character p
+                     + pack(">I", (ord(u'ü') << 2) | 2) # Character ü
                      + ints2str(0, 0))      # final bridge = stop
     first_segment = first_segment + \
             ints2str(1000 - len(first_segment) - 8, # bridge span
@@ -387,10 +390,15 @@ def test_simple_spur_image_with_segments():
     assert r.stream.pos == len(image_1)
     theArray = r.space.objtable["w_schedulerassociationpointer"]
     assert theArray.gethash() == 4000
-    assert theArray.size() == 4
+    assert theArray.size() == 6
     assert theArray.fetch(r.space, 0).is_same_object(r.space.w_nil)
     assert theArray.fetch(r.space, 1).is_same_object(r.space.w_false)
     assert theArray.fetch(r.space, 2).is_same_object(r.space.w_true)
     from spyvm import model
     assert isinstance(theArray.fetch(r.space, 3), model.W_SmallInteger)
     assert r.space.unwrap_int(theArray.fetch(r.space, 3)) == 42
+    assert isinstance(theArray.fetch(r.space, 4), model.W_Character)
+    assert r.space.unwrap_char(theArray.fetch(r.space, 4)) == 'p'
+    assert isinstance(theArray.fetch(r.space, 5), model.W_Character)
+    # we do not support unicode yet
+    #assert r.space.unwrap_char(theArray.fetch(r.space, 5)) == u'ü'

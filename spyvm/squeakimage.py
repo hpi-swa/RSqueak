@@ -449,22 +449,22 @@ class SpurReader(BaseReaderStrategy):
         pointers = []
         for i in range(end):
             pointer = g_object.chunk.data[i]
-            if (pointer & 1) == 1:
+            if (pointer & 3) == 0:
+                # pointer = ...00
+                pointers.append(self.chunk(pointer).g_object)
+            elif (pointer & 1) == 1:
                 # pointer = ....1
                 # tagged integer
                 small_int = GenericObject()
                 small_int.initialize_int(pointer >> 1, self, space)
                 pointers.append(small_int)
-            elif (pointer & 3) == 2:
+            else:
+                #assert (pointer & 3) == 2
                 # pointer = ...10
                 # immediate character
                 character = GenericObject()
-                character.initialize_char(pointer >> 2, self, space)
+                character.initialize_char(unichr(pointer >> 2), self, space)
                 pointers.append(character)
-            else:
-                # pointer = ...00
-                assert (pointer & 3) == 0
-                pointers.append(self.chunk(pointer).g_object)
         return pointers
 # ____________________________________________________________
 
