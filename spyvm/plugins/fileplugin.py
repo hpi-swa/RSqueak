@@ -214,7 +214,6 @@ def primitiveFileWrite(interp, s_frame, w_rcvr, fd, content, start, count):
 @FilePlugin.expose_primitive(unwrap_spec=[object, int, int])
 def primitiveFileTruncate(interp, s_frame, w_rcvr, fd, position):
     try:
-        # TODO: ftruncate might not be available on Windows
         os.ftruncate(fd, position)
     except OSError:
         raise PrimitiveFailedError
