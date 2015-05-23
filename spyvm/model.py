@@ -1035,6 +1035,7 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
     def size(self):
         return self._size
 
+    @jit.look_inside_iff(lambda self: jit.isconstant(self.size()))
     def as_string(self):
         # OH GOD! TODO: Make this sane!
         res = []
