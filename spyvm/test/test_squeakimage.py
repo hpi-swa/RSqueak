@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-import py, StringIO, sys
+import py, StringIO
 from struct import pack
 from spyvm import squeakimage, error
+from spyvm import model
 from spyvm.util.stream import chrs2int, chrs2long, swapped_chrs2long
-from .util import create_space, copy_to_module, cleanup_module
+from .util import create_space
 
 # ----- helpers ----------------------------------------------
 
@@ -394,7 +395,6 @@ def test_simple_spur_image_with_segments():
     assert theArray.fetch(r.space, 0).is_same_object(r.space.w_nil)
     assert theArray.fetch(r.space, 1).is_same_object(r.space.w_false)
     assert theArray.fetch(r.space, 2).is_same_object(r.space.w_true)
-    from spyvm import model
     assert isinstance(theArray.fetch(r.space, 3), model.W_SmallInteger)
     assert r.space.unwrap_int(theArray.fetch(r.space, 3)) == 42
     assert isinstance(theArray.fetch(r.space, 4), model.W_Character)
