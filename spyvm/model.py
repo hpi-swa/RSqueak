@@ -1035,6 +1035,14 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
     def size(self):
         return self._size
 
+    @jit.look_inside_iff(lambda self: jit.isconstant(self.size()))
+    def as_string(self):
+        # OH GOD! TODO: Make this sane!
+        res = []
+        for word in self.words:
+            res += [chr(word & r_uint(0x000000ff)), chr((word & r_uint(0x0000ff00)) >> 8), chr((word & r_uint(0x00ff0000)) >> 16), chr((word & r_uint(0xff000000)) >> 24)]
+        return "".join(res)
+
     def invariant(self):
         return (W_AbstractObjectWithClassReference.invariant(self) and
                 isinstance(self.words, list))
