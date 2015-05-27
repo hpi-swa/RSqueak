@@ -38,8 +38,7 @@ def entry_point(argv):
         interp.loop(s_frame.w_self())
     except interpreter.ReturnFromTopLevel, e:
         w_result = e.object
-        assert isinstance(w_result, model.W_BytesObject)
-        print w_result.as_string()
+        print interp.space.unwrap_string(w_result)
     return 0
 
 
