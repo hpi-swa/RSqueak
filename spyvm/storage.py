@@ -109,7 +109,10 @@ class CharacterOrNilStrategy(SingletonStorageStrategy):
     import_from_mixin(rstrat.TaggingStrategy)
     contained_type = model.W_Character
     def wrap(self, val): return model.W_Character(val)
-    def unwrap(self, w_val): return w_val.value
+    def unwrap(self, w_val):
+        # XXX why would you think, this could be a W_Object?
+        assert isinstance(w_val, model.W_Character)
+        return w_val.value
     def wrapped_tagged_value(self): return self.space.w_nil
     def unwrapped_tagged_value(self): return constants.MAXINT
 
