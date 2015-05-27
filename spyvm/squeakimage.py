@@ -112,29 +112,13 @@ class ImageReader(object):
 
     def choose_reader_strategy(self):
         if self.version.is_spur:
-            return SpurReader(self, self.stream, self.space)
+            return SpurReader(self, self.version, self.stream, self.space)
         if self.version.is_modern:
-            return NonSpurReader(self, self.stream, self.space)
-        return AncientReader(self, self.stream, self.space)
+            return NonSpurReader(self, self.version, self.stream, self.space)
+        return AncientReader(self, self.version, self.stream, self.space)
 
     def g_class_of(self, chunk):
         return self.readerStrategy.g_class_of(chunk)
-
-    def get_bytes_of(self, chunk):
-        bytes = []
-        if self.version.is_big_endian:
-            for each in chunk.data:
-                bytes.append(chr((each >> 24) & 0xff))
-                bytes.append(chr((each >> 16) & 0xff))
-                bytes.append(chr((each >> 8) & 0xff))
-                bytes.append(chr((each >> 0) & 0xff))
-        else:
-            for each in chunk.data:
-                bytes.append(chr((each >> 0) & 0xff))
-                bytes.append(chr((each >> 8) & 0xff))
-                bytes.append(chr((each >> 16) & 0xff))
-                bytes.append(chr((each >> 24) & 0xff))
-        return bytes
 
     def log_object_filledin(self):
         return self.readerStrategy.log_object_filledin()
@@ -171,8 +155,9 @@ class ImageReader(object):
 
 class BaseReaderStrategy(object):
 
-    def __init__(self, imageReader, stream, space):
+    def __init__(self, imageReader, version, stream, space):
         self.imageReader = imageReader
+        self.version = version
         self.stream = stream
         self.space = space
         self.chunks = {} # Dictionary mapping old address to chunk object
@@ -222,7 +207,7 @@ class BaseReaderStrategy(object):
 
     def init_g_objects(self):
         for chunk in self.chunks.itervalues():
-            chunk.as_g_object(self.imageReader, self.space) # initialize g_object
+            chunk.as_g_object(self, self.space) # initialize g_object
         self.special_g_objects = self.chunks[self.specialobjectspointer].g_object.pointers
 
     def assign_prebuilt_constants(self):
@@ -272,6 +257,22 @@ class BaseReaderStrategy(object):
     def log_object_filledin(self):
         self.filledin_objects = self.filledin_objects + 1
         self.log_progress(self.filledin_objects, '%')
+
+    def get_bytes_of(self, chunk):
+        bytes = []
+        if self.version.is_big_endian:
+            for each in chunk.data:
+                bytes.append(chr((each >> 24) & 0xff))
+                bytes.append(chr((each >> 16) & 0xff))
+                bytes.append(chr((each >> 8) & 0xff))
+                bytes.append(chr((each >> 0) & 0xff))
+        else:
+            for each in chunk.data:
+                bytes.append(chr((each >> 0) & 0xff))
+                bytes.append(chr((each >> 8) & 0xff))
+                bytes.append(chr((each >> 16) & 0xff))
+                bytes.append(chr((each >> 24) & 0xff))
+        return bytes
 
 class NonSpurReader(BaseReaderStrategy):
 
@@ -544,7 +545,6 @@ class GenericObject(object):
 
     def initialize_int(self, value, reader, space):
         self.reader = reader
-        self.value = value
         self.size = -1
         if value in reader.intcache:
             w_int = reader.intcache[value]
@@ -556,7 +556,6 @@ class GenericObject(object):
 
     def initialize_char(self, value, reader, space):
         self.reader = reader
-        self.value = value
         self.size = -1
         self.w_object = space.wrap_char(value)
         self.filled_in = True
