@@ -608,8 +608,9 @@ def func(interp, s_frame, w_frame, stackp):
     w_frame.store(interp.space, constants.CTXPART_STACKP_INDEX, interp.space.wrap_int(stackp))
     return w_frame
 
-def get_instances_array(space, s_frame, w_class):
+def get_instances_array(space, s_frame, w_class=None):
     # This primitive returns some instance of the class on the stack.
+    # If no class is given, it returns some object.
     # Not sure quite how to do this; maintain a weak list of all
     # existing instances or something?
     match_w = s_frame.instances_array(w_class)
@@ -624,9 +625,11 @@ def get_instances_array(space, s_frame, w_class):
             if not rgc.get_gcflag_extra(gcref):
                 rgc.toggle_gcflag_extra(gcref)
                 w_obj = rgc.try_cast_gcref_to_instance(model.W_Object, gcref)
-                if (w_obj is not None and w_obj.has_class()
-                    and w_obj.getclass(space) is w_class):
-                    match_w.append(w_obj)
+                if w_obj is not None and w_obj.has_class():
+                    # when calling NEXT_OBJECT, we should not return SmallInteger instances
+                    next_object_and_not_int = (w_class is None) and (w_obj.getclass(space) is not space.w_SmallInteger)
+                    if next_object_and_not_int or w_obj.getclass(space) is w_class:
+                        match_w.append(w_obj)
                 pending.extend(rgc.get_rpy_referents(gcref))
 
         while roots:
@@ -639,7 +642,7 @@ def get_instances_array(space, s_frame, w_class):
 
 @expose_primitive(SOME_INSTANCE, unwrap_spec=[object])
 def func(interp, s_frame, w_class):
-    match_w = get_instances_array(interp.space, s_frame, w_class)
+    match_w = get_instances_array(interp.space, s_frame, w_class=w_class)
     try:
         return match_w[0]
     except IndexError:
@@ -668,7 +671,7 @@ def func(interp, s_frame, w_obj):
     # it returns the "next" instance after w_obj.
     return next_instance(
         interp.space,
-        get_instances_array(interp.space, s_frame, w_obj.getclass(interp.space)),
+        get_instances_array(interp.space, s_frame, w_class=w_obj.getclass(interp.space)),
         w_obj
     )
 
@@ -1145,12 +1148,40 @@ def func(interp, s_frame, w_arg):
 
 #____________________________________________________________________________
 # Misc Primitives (138 - 149)
+SOME_OBJECT = 138
+NEXT_OBJECT = 139
 BEEP = 140
 VM_PATH = 142
 SHORT_AT = 143
 SHORT_AT_PUT = 144
 FILL = 145
 CLONE = 148
+
+@expose_primitive(SOME_OBJECT, unwrap_spec=[object])
+def func(interp, s_frame, w_class):
+    match_w = get_instances_array(interp.space, s_frame)
+    try:
+        return match_w[0]
+    except IndexError:
+        raise PrimitiveFailedError()
+
+def next_object(space, list_of_objects, w_obj):
+    retval = None
+    try:
+        idx = list_of_objects.index(w_obj)
+    except ValueError:
+        idx = -1
+    try:
+        retval = list_of_objects[idx + 1]
+    except IndexError:
+        return space.wrap_int(0)
+    return retval
+
+@expose_primitive(NEXT_OBJECT, unwrap_spec=[object])
+def func(interp, s_frame, w_obj):
+    # This primitive is used to iterate through all objects:
+    # it returns the "next" instance after w_obj.
+    return next_object(interp.space, get_instances_array(interp.space, s_frame), w_obj)
 
 @expose_primitive(BEEP, unwrap_spec=[object])
 def func(interp, s_frame, w_receiver):
