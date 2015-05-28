@@ -45,9 +45,9 @@ case "$BUILD_ARCH" in
 esac
 
 if [ $buildcode -eq 0 ]; then
+    curl -T rsqueak-x86* http://www.lively-kernel.org/babelsberg/RSqueak/ || true
     if [ "$TRAVIS_BRANCH" == "master" ]; then
         if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
-            curl -T rsqueak-x86* http://www.lively-kernel.org/babelsberg/RSqueak/ || true
             curl -T rsqueak-$armv* http://www.lively-kernel.org/babelsberg/RSqueak/ || true
 	    if [ "$latest" == "true" ]; then
 		# only builds that pass the jittests are 'latest'
