@@ -20,6 +20,11 @@ class SocketPluginClass(Plugin):
         Plugin.__init__(self)
         self.last_lookup = Cell(None)
 
+    def call(self, name, interp, s_frame, argcount, w_method):
+        args_w = s_frame.peek_n(argcount)
+        Plugin.call(self, name, interp, s_frame, argcount, w_method)
+        print name, args_w, s_frame.peek(0)
+
     def set_last_lookup(self, v):
         self.last_lookup.set(v)
 
@@ -65,19 +70,14 @@ class W_SocketHandle(model.W_AbstractObjectWithIdentityHash):
     def can_read(self):
         if self.state == Connected:
             try:
-                self.socket.settimeout(5.0)
-                try:
-                    r = self.socket.recv(1, _rsocket_rffi.MSG_PEEK # | _rsocket_rffi.MSG_DONTWAIT
-                    )
-                except rsocket.CSocketError:
-                    return False
-                if len(r) == 0:
-                    self.state = OtherEndClosed
-                    return False
-                else:
-                    return True
-            finally:
-                self.socket.settimeout(-1)
+                r = self.socket.recv(1, _rsocket_rffi.MSG_PEEK | _rsocket_rffi.MSG_DONTWAIT)
+            except rsocket.CSocketError:
+                return False
+            if len(r) == 0:
+                self.state = OtherEndClosed
+                return False
+            else:
+                return True
         return False
 
     def recv(self, count):
@@ -93,9 +93,13 @@ class W_SocketHandle(model.W_AbstractObjectWithIdentityHash):
         return self.socket.send(data)
 
     def close(self):
-        if not self.state == ThisEndClosed:
+        if self.state == Connected:
             self.socket.close()
-            self.state = ThisEndClosed
+            self.state = Unconnected
+
+    def destroy(self):
+        if self.state != InvalidSocket:
+            self.state = InvalidSocket
 
     def __del__(self):
         self.close()
@@ -433,13 +437,14 @@ def primitiveSocketListenOnPortBacklogInterface(interp, s_frame, argcount):
         print "Missing primitive primitiveSocketListenOnPortBacklogInterface"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveSocketCloseConnection(interp, s_frame, argcount):
-    if not objectmodel.we_are_translated():
-        import pdb; pdb.set_trace()
-    else:
-        print "Missing primitive primitiveSocketCloseConnection"
+@SocketPlugin.expose_primitive(unwrap_spec=[object, object])
+def primitiveSocketCloseConnection(interp, s_frame, w_rcvr, w_handle):
+    w_socket = ensure_socket(w_handle)
+    try:
+        w_socket.close()
+    except rsocket.SocketError:
         raise error.PrimitiveFailedError
+    return interp.space.w_nil
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
 def primitiveSocketRemotePort(interp, s_frame, argcount):
@@ -519,10 +524,10 @@ def primitiveSocketReceiveDataBufCount(interp, s_frame, w_rcvr, w_handle, w_targ
 def primitiveSocketDestroy(interp, s_frame, w_rcvr, w_handle):
     w_socket = ensure_socket(w_handle)
     try:
-        w_socket.close()
+        w_socket.destroy()
     except rsocket.SocketError:
         raise error.PrimitiveFailedError
-    return interp.space.w_nil
+    return interp.space.wrap_int(w_socket.state)
 
 @SocketPlugin.expose_primitive(unwrap_spec=[object, object])
 def primitiveInitializeNetwork(interp, s_frame, w_rcvr, w_semaphore):
