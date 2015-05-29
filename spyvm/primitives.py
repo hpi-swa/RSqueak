@@ -789,13 +789,6 @@ def func(interp, s_frame, w_rcvr):
 
     form = wrapper.FormWrapper(interp.space, w_rcvr)
     form.take_over_display()
-    if interp.space.display().width == 0:
-        if not interp.image:
-            raise PrimitiveFailedError
-        display = interp.space.display()
-        width = (interp.image.lastWindowSize >> 16) & 0xffff
-        height = interp.image.lastWindowSize & 0xffff
-        display.set_video_mode(width, height, display.depth)
     w_display_bitmap = form.get_display_bitmap()
     w_display_bitmap.take_over_display()
     w_display_bitmap.flush_to_screen()
@@ -835,8 +828,16 @@ def func(interp, s_frame, w_rcvr):
 def func(interp, s_frame, w_rcvr):
     w_res = interp.space.w_Point.as_class_get_shadow(interp.space).new(2)
     point = wrapper.PointWrapper(interp.space, w_res)
-    point.store_x(interp.space.display().width)
-    point.store_y(interp.space.display().height)
+    display = interp.space.display()
+    if display.width == 0:
+        # We need to have the indirection via interp.image, because when the image
+        # is saved, the display form size is always reduced to 240@120.
+        if not interp.image:
+            raise PrimitiveFailedError
+        display.width = (interp.image.lastWindowSize >> 16) & 0xffff
+        display.height = interp.image.lastWindowSize & 0xffff
+    point.store_x(display.width)
+    point.store_y(display.height)
     return w_res
 
 @expose_primitive(MOUSE_BUTTONS, unwrap_spec=[object])
