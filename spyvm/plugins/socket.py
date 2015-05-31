@@ -82,7 +82,7 @@ class W_SocketHandle(model.W_AbstractObjectWithIdentityHash):
 
     def recv(self, count):
         try:
-            data = self.socket.recv(count)
+            data = self.socket.recv(count, _rsocket_rffi.MSG_DONTWAIT)
         except rsocket.CSocketError:
             raise error.PrimitiveFailedError
         if len(data) == 0:
