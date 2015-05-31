@@ -26,25 +26,25 @@ def test_all_pointers_are_valid():
 def test_lookup_abs_in_integer():
     from test_miniimage import _test_lookup_abs_in_integer
     _test_lookup_abs_in_integer(interp)
-    
+
 def test_ensure():
     #ensure
     #    [^'b1'] ensure: [^'b2']
-    
+
     ensure_ = find_symbol("ensure:", space.w_BlockClosure)
     bytes = [0x8F, 0, 0, 2, 0x21, 0x7c,
                0x8F, 0, 0, 2, 0x22, 0x7c,
                0xe0, 0x87, 0x78]
-    
+
     w_method = space.make_method(bytes, [ensure_, w('b1'), w('b2'),
                                             w('ensure'), space.w_BlockClosure])
     result = interp.execute_method(w_method)
-    assert result.as_string() == 'b2'
+    assert result.unwrap_string(None) == 'b2'
 
 def test_ensure_save_original_nlr():
     #ensure
     #    [^'b1'] ensure: ['b2']
-    
+
     ensure_ = find_symbol("ensure:", space.w_BlockClosure)
     bytes = [0x8F, 0, 0, 2, 0x21, 0x7c,
                0x8F, 0, 0, 2, 0x22, 0x7d,
@@ -53,7 +53,7 @@ def test_ensure_save_original_nlr():
     w_method = space.make_method(bytes, [ensure_, w('b1'), w('b2'),
                                             w('ensure'), space.w_BlockClosure])
     result = interp.execute_method(w_method)
-    assert result.as_string() == 'b1'
+    assert result.unwrap_string(None) == 'b1'
 
 def test_ContextPart_jump():
     """
@@ -68,7 +68,7 @@ def test_ContextPart_jump():
     push = find_symbol("push:", ContextPart)
     sender = find_symbol("sender", ContextPart)
     jump = find_symbol("jump", ContextPart)
-    
+
     bytes = [0x21, 0x82, 0xc0, # Set a
            0x8f, 0x00, 0x00, 0x0b, # Push block
                 0x89, 0xd3, # Send sender
@@ -76,7 +76,7 @@ def test_ContextPart_jump():
                 0x87, 0x89, 0xd3, 0xd4, # Send jump
                 0x87, 0x25, 0x7d, # Block rest (not executed)
            0xc9, 0x82, 0xc0, 0x40, 0x7c] # Send value and return
-    
+
     Association = space.classtable["w_Point"] # Wrong class, doesn't matter.
     assoc = model.W_PointersObject(space, Association, 2)
     assoc.store(space, 0, w('a'))
@@ -98,7 +98,7 @@ def test_ContextPart_jump_nonlocal():
     ContextPart = space.w_MethodContext.as_class_get_shadow(space).s_superclass().w_self()
     push = find_symbol("push:", ContextPart)
     jump = find_symbol("jump", ContextPart)
-    
+
     bytes = [0x21, 0x82, 0xc0, # Set a
                0x89, 0x82, 0xc2, # Set outer
                0x8f, 0x00, 0x00, 0x15, # Push block
@@ -110,7 +110,7 @@ def test_ContextPart_jump_nonlocal():
                         0xc9, 0x7d, # Send value and return
                     0xc9, 0x7d, # Send value and return
                0xc9, 0x82, 0xc0, 0x40, 0x7c] # Send value and return
-    
+
     Association = space.classtable["w_Point"] # Wrong class, doesn't matter.
     assoc = model.W_PointersObject(space, Association, 2)
     assoc.store(space, 0, w('a'))
@@ -134,14 +134,14 @@ def test_contextOn_do_():
     ContextPart = space.w_MethodContext.as_class_get_shadow(space).s_superclass().w_self()
     ContextPartClass = ContextPart.getclass(space).as_class_get_shadow(space).w_self()
     contextOnDo = find_symbol("contextOn:do:", ContextPartClass)
-    
+
     bytes = [
         0x42, 0x43, # Push the classes
         0x8f, 0x00, 0x00, 0x02, # Push block,
             0x24, 0x7d, # in the block
         0xf1, 0x81, 0xc0, 0x7c # Send contextOn:do:
     ]
-    
+
     Association = space.classtable["w_Point"] # Wrong class, doesn't matter.
     ctxAssoc = model.W_PointersObject(space, Association, 2)
     ctxAssoc.store(space, 0, w('ctx'))
@@ -153,11 +153,10 @@ def test_contextOn_do_():
     errorAssoc.store(space, 0, w('Point'))
     errorAssoc.store(space, 1, Association)
     w_method = space.make_method(bytes, [ctxAssoc, contextOnDo, contextPartAssoc, errorAssoc, w('nothing')])
-    
+
     result = interp.execute_method(w_method)
     assert isinstance(result, model.W_PointersObject)
     s = result.as_context_get_shadow(space)
     assert s.w_method().lookup_selector == "on:do:"
     assert s.w_method().primitive() == 199
     assert s.s_sender() == None
-    

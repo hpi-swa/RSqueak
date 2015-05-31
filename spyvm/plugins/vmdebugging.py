@@ -57,7 +57,7 @@ def isVMTranslated(interp, s_frame, w_rcvr):
 def debugPrint(interp, s_frame, w_rcvr, w_string):
     if not isinstance(w_string, model.W_BytesObject):
         raise error.PrimitiveFailedError()
-    print w_string.as_string().replace('\r', '\n')
+    print interp.space.unwrap_string(w_string).replace('\r', '\n')
     return w_rcvr
 
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object])
