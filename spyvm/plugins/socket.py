@@ -20,10 +20,10 @@ class SocketPluginClass(Plugin):
         Plugin.__init__(self)
         self.last_lookup = Cell(None)
 
-    def call(self, name, interp, s_frame, argcount, w_method):
-        args_w = s_frame.peek_n(argcount)
-        Plugin.call(self, name, interp, s_frame, argcount, w_method)
-        print name, args_w, s_frame.peek(0)
+    # def call(self, name, interp, s_frame, argcount, w_method):
+    #     args_w = s_frame.peek_n(argcount)
+    #     Plugin.call(self, name, interp, s_frame, argcount, w_method)
+    #     print name, args_w, s_frame.peek(0)
 
     def set_last_lookup(self, v):
         self.last_lookup.set(v)
