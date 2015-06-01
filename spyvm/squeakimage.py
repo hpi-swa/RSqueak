@@ -120,9 +120,6 @@ class ImageReader(object):
     def g_class_of(self, chunk):
         return self.readerStrategy.g_class_of(chunk)
 
-    def log_object_filledin(self):
-        return self.readerStrategy.log_object_filledin()
-
     @property
     def special_w_objects(self):
         return self.readerStrategy.special_w_objects
@@ -164,6 +161,7 @@ class BaseReaderStrategy(object):
         self.chunklist = [] # Flat list of all read chunks
         self.intcache = {} # Cached instances of SmallInteger
         self.lastWindowSize = 0
+        self.filledin_objects = 0
 
     def log_progress(self, progress, char):
         if progress % 1000 == 0:
@@ -250,7 +248,6 @@ class BaseReaderStrategy(object):
         self.space.populate_special_objects(self.special_w_objects)
 
     def fillin_w_objects(self):
-        self.filledin_objects = 0
         for chunk in self.chunks.itervalues():
             chunk.g_object.fillin(self.space)
 
@@ -273,6 +270,9 @@ class BaseReaderStrategy(object):
                 bytes.append(chr((each >> 16) & 0xff))
                 bytes.append(chr((each >> 24) & 0xff))
         return bytes
+
+    def isfloat(self, g_object):
+        return self.iswords(g_object) and self.space.w_Float.is_same_object(g_object.g_class.w_object)
 
 class NonSpurReader(BaseReaderStrategy):
 
@@ -364,6 +364,69 @@ class NonSpurReader(BaseReaderStrategy):
                 # pointer = ...0
                 pointers.append(self.chunk(pointer).g_object)
         return pointers
+    
+    def instantiate(self, g_object):
+        """ 0      no fields
+            1      fixed fields only (all containing pointers)
+            2      indexable fields only (all containing pointers)
+            3      both fixed and indexable fields (all containing pointers)
+            4      both fixed and indexable weak fields (all containing pointers).
+
+            5      unused
+            6      indexable word fields only (no pointers)
+            7      indexable long (64-bit) fields (only in 64-bit images)
+
+         8-11      indexable byte fields only (no pointers) (low 2 bits are low 2 bits of size)
+        12-15     compiled methods:
+                       # of literal oops specified in method header,
+                       followed by indexable bytes (same interpretation of low 2 bits as above)
+        """
+        # the instantiate call circumvents the constructors
+        # and makes empty objects
+        if self.ischar(g_object):
+            return objectmodel.instantiate(model.W_Character)
+        elif self.ispointers(g_object):
+            return objectmodel.instantiate(model.W_PointersObject)
+        elif g_object.format == 5:
+            raise error.CorruptImageError("Unknown format 5")
+        elif self.isfloat(g_object):
+            return objectmodel.instantiate(model.W_Float)
+        elif self.is32bitlargepositiveinteger(g_object):
+            return objectmodel.instantiate(model.W_LargePositiveInteger1Word)
+        elif self.iswords(g_object):
+            return objectmodel.instantiate(model.W_WordsObject)
+        elif g_object.format == 7:
+            raise error.CorruptImageError("Unknown format 7, no 64-bit support yet :-)")
+        elif self.isbytes(g_object):
+            return objectmodel.instantiate(model.W_BytesObject)
+        elif self.iscompiledmethod(g_object):
+            return objectmodel.instantiate(model.W_CompiledMethod)
+        else:
+            assert 0, "not reachable"
+
+    def isbytes(self, g_object):
+        return 8 <= g_object.format <= 11
+
+    def is32bitlargepositiveinteger(self, g_object):
+        return (g_object.format == 8 and
+                self.space.w_LargePositiveInteger.is_same_object(g_object.g_class.w_object) and
+                len(g_object.get_bytes()) <= 4)
+
+    def ischar(self, g_object):
+        return (self.ispointers(g_object) and
+                self.space.w_Character.is_same_object(g_object.g_class.w_object))
+
+    def iswords(self, g_object):
+        return g_object.format == 6
+
+    def ispointers(self, g_object):
+        return g_object.format < 5
+
+    def isweak(self, g_object):
+        return g_object.format == 4
+
+    def iscompiledmethod(self, g_object):
+        return 12 <= g_object.format <= 15
 
 class AncientReader(NonSpurReader):
     """Reader strategy for pre-4.0 images"""
@@ -393,14 +456,17 @@ class SpurReader(BaseReaderStrategy):
         segmentEnd = self.firstSegSize
         currentAddressSwizzle = self.oldbaseaddress
         while self.stream.count < segmentEnd:
-            while self.stream.count < segmentEnd - 8:
+            while self.stream.count < segmentEnd - 16:
                 chunk, pos = self.read_object()
                 self.log_progress(len(self.chunklist), '#')
                 self.chunklist.append(chunk)
                 self.chunks[pos + currentAddressSwizzle] = chunk
             # read bridge
-            bridgeSpan = self.stream.next()
-            nextSegmentSize = self.stream.next()
+            # XXX add a next_qword or next_longlong method to stream
+            bridgeSpan = self.stream.next() << 32
+            bridgeSpan += self.stream.next()
+            nextSegmentSize = self.stream.next() << 32
+            nextSegmentSize += self.stream.next()
             assert self.stream.count == segmentEnd
             segmentEnd = segmentEnd + nextSegmentSize
             currentAddressSwizzle += bridgeSpan
@@ -422,11 +488,19 @@ class SpurReader(BaseReaderStrategy):
             hash, _, _ = splitter[22,2,8](self.stream.next())
         classid, _, format, _ = splitter[22,2,5,3](self.stream.next())
         chunk = ImageChunk(size, format, classid, hash)
-        chunk.data = [self.stream.next() for _ in range(size)]
+        # the minimum object length is 16 bytes, i.e. 8 header + 8 payload
+        # (to accomodate a forwarding ptr)
+        chunk.data = [self.stream.next() for _ in range(self.words_for(size))]
         return chunk, pos
 
+    def words_for(self, size):
+        # see Spur32BitMemoryManager>>smallObjectBytesForSlots:
+        if size <= 1:
+            return 2
+        else:
+            return size + (size & 1)
+
     def g_class_of(self, chunk):
-        # TODO: implement class table access
         major_class_index = self.major_class_index_of(chunk.classid)
         minor_class_index = self.minor_class_index_of(chunk.classid)
         HIDDEN_ROOTS_CHUNK = 4 # after nil, true, false, freeList
@@ -441,7 +515,6 @@ class SpurReader(BaseReaderStrategy):
         return classid & ((1 << 10) - 1)
 
     def chunk(self, pointer):
-        # TODO: account for segment swizzling
         return self.chunks[pointer]
 
     def decode_pointers(self, g_object, space, end=-1):
@@ -467,6 +540,68 @@ class SpurReader(BaseReaderStrategy):
                 character.initialize_char(unichr(pointer >> 2), self, space)
                 pointers.append(character)
         return pointers
+    
+    def instantiate(self, g_object):
+        """ 0      no fields
+            1      fixed fields only (all containing pointers)
+            2      indexable fields only (all containing pointers)
+            3      both fixed and indexable fields (all containing pointers)
+            4      indexable weak fields (all containing pointers)
+            5      fixed weak fields (all containing pointers)
+            6-8    unused
+
+            9      indexable 64 bit fields (no pointers)
+            10-11  indexable 32 bit fields (no pointers)
+            12-15  indexable 16 bit fields (no pointers)
+            16-23  indexable byte fields (no pointers)
+                     for the above, the lower bits are the lower bits of the size
+            24-31  compiled methods:
+                     # of literal oops specified in method header,
+                     followed by indexable bytes (same interpretation of low bits as above)
+        """
+        # the instantiate call circumvents the constructors
+        # and makes empty objects
+        if self.ischar(g_object):
+            return objectmodel.instantiate(model.W_Character)
+        elif self.ispointers(g_object):
+            return objectmodel.instantiate(model.W_PointersObject)
+        elif g_object.format in (6, 7, 8):
+            raise error.CorruptImageError("Unknown format " + str(g_object.format))
+        elif self.isfloat(g_object):
+            return objectmodel.instantiate(model.W_Float)
+        elif self.is32bitlargepositiveinteger(g_object):
+            return objectmodel.instantiate(model.W_LargePositiveInteger1Word)
+        elif self.iswords(g_object):
+            return objectmodel.instantiate(model.W_WordsObject)
+        elif self.isbytes(g_object):
+            return objectmodel.instantiate(model.W_BytesObject)
+        elif self.iscompiledmethod(g_object):
+            return objectmodel.instantiate(model.W_CompiledMethod)
+        else:
+            assert 0, "not reachable"
+
+    def ischar(self, g_object):
+        return self.space.w_Character.is_same_object(g_object.g_class.w_object)
+
+    def ispointers(self, g_object):
+        return g_object.format < 6
+    
+    def isweak(self, g_object):
+        return 4 <= g_object.format <= 5
+
+    def is32bitlargepositiveinteger(self, g_object):
+        return (g_object.format == 16 and
+                self.space.w_LargePositiveInteger.is_same_object(g_object.g_class.w_object) and
+                len(g_object.get_bytes()) <= 4)
+
+    def iswords(self, g_object):
+        return 9 <= g_object.format <= 15
+
+    def isbytes(self, g_object):
+        return 16 <= g_object.format <= 23
+
+    def iscompiledmethod(self, g_object):
+        return 24 <= g_object.format <= 31
 # ____________________________________________________________
 
 class SqueakImage(object):
@@ -578,81 +713,21 @@ class GenericObject(object):
         self.g_class = self.reader.g_class_of(self.chunk)
 
     def init_data(self, space):
-        if self.ispointers():
+        if self.reader.ispointers(self):
             self.pointers = self.reader.decode_pointers(self, space)
             assert None not in self.pointers
-        elif self.iscompiledmethod():
+        elif self.reader.iscompiledmethod(self):
             header = self.chunk.data[0] >> 1 # untag tagged int
             _, literalsize, _, _, _ = constants.decode_compiled_method_header(header)
             self.pointers = self.reader.decode_pointers(self, space, literalsize + 1) # adjust +1 for the header
 
-    def isbytes(self):
-        return 8 <= self.format <= 11
-
-    def is32bitlargepositiveinteger(self, space):
-        return (self.format == 8 and
-                space.w_LargePositiveInteger.is_same_object(self.g_class.w_object) and
-                len(self.get_bytes()) <= 4)
-
-    def ischar(self, space):
-        return (self.ispointers() and
-                space.w_Character.is_same_object(self.g_class.w_object))
-
-    def iswords(self):
-        return self.format == 6
-
-    def isfloat(self, space):
-        return self.iswords() and space.w_Float.is_same_object(self.g_class.w_object)
-
-    def ispointers(self):
-        return self.format < 5
-
-    def isweak(self):
-        return self.format == 4
-
-    def iscompiledmethod(self):
-        return 12 <= self.format <= 15
-
     def init_w_object(self, space):
-        """ 0      no fields
-            1      fixed fields only (all containing pointers)
-            2      indexable fields only (all containing pointers)
-            3      both fixed and indexable fields (all containing pointers)
-            4      both fixed and indexable weak fields (all containing pointers).
-
-            5      unused
-            6      indexable word fields only (no pointers)
-            7      indexable long (64-bit) fields (only in 64-bit images)
-
-         8-11      indexable byte fields only (no pointers) (low 2 bits are low 2 bits of size)
-        12-15     compiled methods:
-                       # of literal oops specified in method header,
-                       followed by indexable bytes (same interpretation of low 2 bits as above)
-        """
         if self.w_object is None:
-            # the instantiate call circumvents the constructors
-            # and makes empty objects
-            if self.ischar(space):
-                self.w_object = objectmodel.instantiate(model.W_Character)
-            elif self.ispointers():
-                self.w_object = objectmodel.instantiate(model.W_PointersObject)
-            elif self.format == 5:
-                raise error.CorruptImageError("Unknown format 5")
-            elif self.isfloat(space):
-                self.w_object = objectmodel.instantiate(model.W_Float)
-            elif self.is32bitlargepositiveinteger(space):
-                self.w_object = objectmodel.instantiate(model.W_LargePositiveInteger1Word)
-            elif self.iswords():
-                self.w_object = objectmodel.instantiate(model.W_WordsObject)
-            elif self.format == 7:
-                raise error.CorruptImageError("Unknown format 7, no 64-bit support yet :-)")
-            elif self.isbytes():
-                self.w_object = objectmodel.instantiate(model.W_BytesObject)
-            elif self.iscompiledmethod():
-                self.w_object = objectmodel.instantiate(model.W_CompiledMethod)
-            else:
-                assert 0, "not reachable"
+            self.w_object = self.reader.instantiate(self)
         return self.w_object
+    
+    def isweak(self):
+        return self.reader.isweak(self)
 
     def get_bytes(self):
         bytes = self.reader.get_bytes_of(self.chunk)

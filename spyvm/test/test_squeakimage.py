@@ -162,6 +162,76 @@ def test_read3wordheaderobject():
     assert pos == 8 + l
     assert chunk0 == chunk
 
+def test_object_format_v3(monkeypatch):
+    g_class_mock = squeakimage.GenericObject()
+    from rpython.rlib import objectmodel
+    w_class_mock = objectmodel.instantiate(model.W_PointersObject)
+    g_class_mock.w_object = w_class_mock
+    def assert_w_object_type(format, expected_type, length=0,
+            compact_class_index=0, body="", assert_is_weak=False):
+        objbytes = ints2str(joinbits([3, length + 1, format, compact_class_index, 0],
+                              [2,6,4,5,12])) + body
+        r = imagereader_mock(SIMPLE_VERSION_HEADER + objbytes)
+        r.read_version()
+        monkeypatch.setattr(r.readerStrategy, 'g_class_of',
+                lambda chunk: g_class_mock)
+        chunk, pos = r.readerStrategy.read_object()
+        g_object = squeakimage.GenericObject()
+        g_object.initialize(chunk, r.readerStrategy, r.space)
+        w_object = g_object.init_w_object(r.space)
+        g_object.fillin(r.space)
+        assert w_object is g_object.w_object
+        assert isinstance(w_object, expected_type)
+        if assert_is_weak:
+            assert w_object.is_weak()
+        return w_object, r.space
+    """ 0      no fields
+        1      fixed fields only (all containing pointers)
+        2      indexable fields only (all containing pointers)
+        3      both fixed and indexable fields (all containing pointers)
+        4      both fixed and indexable weak fields (all containing pointers).
+
+        5      unused
+        6      indexable word fields only (no pointers)
+        7      indexable long (64-bit) fields (only in 64-bit images)
+
+     8-11      indexable byte fields only (no pointers) (low 2 bits are low 2 bits of size)
+    12-15     compiled methods:
+                   # of literal oops specified in method header,
+                   followed by indexable bytes (same interpretation of low 2 bits as above)
+    """
+    w_obj, _ = assert_w_object_type(0, model.W_PointersObject)
+    assert w_obj.size() == 0
+    body_42_and_1 = ints2str(joinbits([1, 42], [1, 31]), joinbits([1, 1], [1, 31]))
+    w_obj, space = assert_w_object_type(1, model.W_PointersObject, length=2, body=body_42_and_1)
+    assert w_obj.size() == 2
+    assert space.unwrap_int(w_obj.fetch(space, 0)) == 42
+    assert space.unwrap_int(w_obj.fetch(space, 1)) == 1
+    w_obj, space = assert_w_object_type(2, model.W_PointersObject, length=2,
+            body=body_42_and_1)
+    assert w_obj.size() == 2
+    assert space.unwrap_int(w_obj.fetch(space, 0)) == 42
+    assert space.unwrap_int(w_obj.fetch(space, 1)) == 1
+    assert_w_object_type(3, model.W_PointersObject, length=2, body=body_42_and_1)
+    w_obj, _ = assert_w_object_type(4, model.W_PointersObject, length=2,
+            body=body_42_and_1)
+    assert w_obj.is_weak()
+    assert w_obj.size() == 2
+    assert space.unwrap_int(w_obj.fetch(space, 0)) == 42
+    assert space.unwrap_int(w_obj.fetch(space, 1)) == 1
+    w_obj, space = assert_w_object_type(6, model.W_WordsObject, length=2,
+            body=body_42_and_1)
+    assert w_obj.size() == 2
+    assert w_obj.getword(0) == 42 << 1 | 1
+    assert w_obj.getword(1) == 1 << 1 | 1
+    w_obj, space = assert_w_object_type(8, model.W_BytesObject, length=2,
+            body=body_42_and_1)
+    assert w_obj.size() == 8 # 2 * 32 bit == 8 * 8 bit
+    assert w_obj.as_string() == body_42_and_1
+    w_obj, space = assert_w_object_type(12, model.W_CompiledMethod, length=2,
+            body=body_42_and_1)
+    assert w_obj.size() == 8
+
 def test_read_normal_spur_header():
     # Array of pointers
     n_slots = 42
@@ -187,6 +257,85 @@ def test_read_long_spur_header():
             hash=55, data=[0] * n_slots)
     assert expectedChunk == actualChunk
     assert pos == len(SPUR_VERSION_HEADER) + 8
+
+def test_object_format_spur(monkeypatch):
+    g_class_mock = squeakimage.GenericObject()
+    from rpython.rlib import objectmodel
+    w_class_mock = objectmodel.instantiate(model.W_PointersObject)
+    g_class_mock.w_object = w_class_mock
+    def assert_w_object_type(format, expected_type, length=0, classid=0, body=""):
+        objbytes = ints2str(joinbits([0, 0, length], [22, 2, 8]),
+                joinbits([classid, 0, format, 0], [22, 2, 5, 3])) + body
+        r = imagereader_mock(SPUR_VERSION_HEADER + objbytes)
+        r.read_version()
+        monkeypatch.setattr(r.readerStrategy, 'g_class_of',
+                lambda chunk: g_class_mock)
+        chunk, pos = r.readerStrategy.read_object()
+        g_object = squeakimage.GenericObject()
+        g_object.initialize(chunk, r.readerStrategy, r.space)
+        w_object = g_object.init_w_object(r.space)
+        g_object.fillin(r.space)
+        assert w_object is g_object.w_object
+        assert isinstance(w_object, expected_type)
+        return w_object, r.space
+    # 0 zero sized object
+    w_obj, space = assert_w_object_type(0, model.W_PointersObject, body=("\x00"*3+"\x01")*2)
+    # 1 fixed-size object with inst-vars
+    body_1_to_9 = ints2str(*(joinbits([1, n], [1, 31]) for n in range(1, 10)))
+    w_obj, space = assert_w_object_type(1, model.W_PointersObject, length=2, body=body_1_to_9)
+    assert w_obj.size() == 2
+    assert w_obj.fetch(space, 0) == space.wrap_int(1)
+    assert w_obj.fetch(space, 1) == space.wrap_int(2)
+    # 2 variable sized object without inst vars
+    w_obj, space = assert_w_object_type(2, model.W_PointersObject, length=2, body=body_1_to_9)
+    assert w_obj.size() == 2
+    assert w_obj.fetch(space, 0) == space.wrap_int(1)
+    assert w_obj.fetch(space, 1) == space.wrap_int(2)
+    # 3 variable sized object with inst vars
+    w_obj, space = assert_w_object_type(3, model.W_PointersObject, length=2, body=body_1_to_9)
+    assert w_obj.size() == 2
+    assert w_obj.fetch(space, 0) == space.wrap_int(1)
+    assert w_obj.fetch(space, 1) == space.wrap_int(2)
+    # 4 weak variable sized object with inst vars
+    w_obj, space = assert_w_object_type(4, model.W_PointersObject, length=2, body=body_1_to_9)
+    assert w_obj.is_weak()
+    assert w_obj.size() == 2
+    assert w_obj.fetch(space, 0) == space.wrap_int(1)
+    assert w_obj.fetch(space, 1) == space.wrap_int(2)
+    # 5 weak fixed sized object with inst vars (Ephemeron)
+    w_obj, space = assert_w_object_type(5, model.W_PointersObject, length=2, body=body_1_to_9)
+    assert w_obj.is_weak()
+    assert w_obj.size() == 2
+    assert w_obj.fetch(space, 0) == space.wrap_int(1)
+    assert w_obj.fetch(space, 1) == space.wrap_int(2)
+    # 6 unused
+    # 7 forwarding object, does not occur in images
+    # 8 unused
+    # 9 64 bit indexables
+    w_obj, space = assert_w_object_type(9, model.W_WordsObject, length=2, body=body_1_to_9)
+    # 64-bit not supported yet
+    # assert w_obj.getlong(space, 0) == chrs2long(body_1_to_9[:8])
+    # 10-11 32 bit indexables (11 unused in 32 bits)
+    w_obj, space = assert_w_object_type(10, model.W_WordsObject, length=2, body=body_1_to_9)
+    assert w_obj.size() == 2
+    assert w_obj.getword(0) == chrs2int(body_1_to_9[:4])
+    assert w_obj.getword(1) == chrs2int(body_1_to_9[4:8])
+    # TODO: add tests for correct reading of 32 bit indexables with trailing slots (11)
+    # 12-15 16 bit indexables (14,15 unused in 32 bits)
+    w_obj, space = assert_w_object_type(12, model.W_WordsObject, length=2, body=body_1_to_9)
+    # XXX assert w_obj.size() == 4
+    # XXX assert w_obj.getword(0) == chrs2int("\x00\x00" + body_1_to_9[:2])
+    # XXX assert w_obj.getword(1) == chrs2int("\x00\x00" + body_1_to_9[2:4])
+    # TODO: add tests for correct reading of 16 bit indexables with trailing slots (13-15)
+    # 16-23 8 bit indexables (20-23 unused in 32 bits)
+    w_obj, space = assert_w_object_type(18, model.W_BytesObject, length=2, body=body_1_to_9)
+    assert w_obj.size() == 6
+    assert w_obj.as_string() == body_1_to_9[:6]
+    # TODO: add tests for correct reading of 8 bit indexables with trailing slots (17-23)
+    # 24-31 compiled methods (28-31 unused in 32 bits)
+    w_obj, space = assert_w_object_type(24, model.W_CompiledMethod, length=2, body=body_1_to_9)
+    # TODO: add tests for correct reading of compiled methods with trailing slots (25-31)
+
     
 def test_simple_image():
     word_size = 4
@@ -272,37 +421,46 @@ def spur_hdr(n_slots, hash, format, classid):
 def test_simple_spur_image():
     word_size = 4
     # first segment
-    first_segment = (spur_hdr(0, 0, 0, 0)   #   0 nil
-                     + spur_hdr(0, 0, 0, 0) #   8 false
-                     + spur_hdr(0, 0, 0, 0) #  16 true
-                     + spur_hdr(0, 0, 0, 0) #  24 freeList
-                     + spur_hdr(1, 0, 4, 0) #  32 hiddenRoots
-                     + pack(">i", 44)       #  40 ptr to 1st class table page
-                     + spur_hdr(4, 0, 4, 0) #  44 1st class table page
-                     + pack(">i", 100)      #  52 ptr to first class (here SmallInteger)
-                     + pack(">i", 108)      #  56 ptr to SmallInteger class
-                     + pack(">i", 116)      #  60 ptr to Metaclass
-                     + pack(">i", 124)      #  64 ptr to Metaclass class
-                     + spur_hdr(6, 0, 4, 0) #  68 special objects array
-                     + pack(">i", 0)        #  76 ptr to nil
-                     + pack(">i", 8)        #  80 ... false
-                     + pack(">i", 16)       #  84 ... true
-                     + pack(">i", 0)        #  88 ... schedulerassocptr
-                     + pack(">i", 0)        #  92 ... Bitmap
-                     + pack(">i", 100)      #  96 ... SmallInteger
+    first_segment = (spur_hdr(0, 1000, 0, 0)   #   0 nil
+                     + pack(">q", 0)           #   8 body of nil
+                     + spur_hdr(0, 1016, 0, 0) #  16 false
+                     + pack(">q", 0)           #  24 body of false
+                     + spur_hdr(0, 1032, 0, 0) #  32 true
+                     + pack(">q", 0)           #  40 body of true
+                     + spur_hdr(0, 1048, 0, 0) #  48 freeList
+                     + pack(">q", 0)           #  56 body of freeList
+                     + spur_hdr(1, 1064, 4, 0) #  64 hiddenRoots
+                     + pack(">i", 80)          #  72 ptr to 1st class table page
+                     + pack(">i", 0)           #  76 alignment
+                     + spur_hdr(4, 1080, 4, 0) #  80 1st class table page
+                     + pack(">i", 136)         #  88 ptr to first class (here SmallInteger)
+                     + pack(">i", 152)         #  92 ptr to SmallInteger class
+                     + pack(">i", 168)         #  96 ptr to Metaclass
+                     + pack(">i", 184)         # 100 ptr to Metaclass class
+                     + spur_hdr(6, 1104, 4, 0) # 104 special objects array
+                     + pack(">i", 0)           # 112 ptr to nil
+                     + pack(">i", 16)          # 116 ... false
+                     + pack(">i", 32)          # 120 ... true
+                     + pack(">i", 0)           # 124 ... schedulerassocptr
+                     + pack(">i", 0)           # 128 ... Bitmap
+                     + pack(">i", 136)         # 132 ... SmallInteger
                      # "arbitrary" objects from here on
-                     + spur_hdr(0, 0, 0, 1) # 100 SmallInteger (class instance)
-                     + spur_hdr(0, 1, 0, 2) # 108 SmallInteger class
-                     + spur_hdr(0, 2, 0, 3) # 116 Metaclass (class instance)
-                     + spur_hdr(0, 3, 0, 2) # 124 Metaclass class
-                     + ints2str(0, 0))      # 128 final bridge = stop at 136
+                     + spur_hdr(0, 0, 0, 1)    # 136 SmallInteger (class instance)
+                     + pack(">q", 0)           # 144 body of SmallInteger
+                     + spur_hdr(0, 1, 0, 2)    # 152 SmallInteger class
+                     + pack(">q", 0)           # 160 body of SmallInteger class
+                     + spur_hdr(0, 2, 0, 3)    # 168 Metaclass (class instance)
+                     + pack(">q", 0)           # 176 body of Metaclass
+                     + spur_hdr(0, 3, 0, 2)    # 184 Metaclass class
+                     + pack(">q", 0)           # 192 body of Metaclass class
+                     + longs2str(0, 0))        # 200 final bridge = stop at 136
     body = first_segment
     header_size = 16 * word_size
     image_1 = (SPUR_VERSION_HEADER       # 1
                + pack(">i", header_size) # 2 64 byte header
                + pack(">i", len(body))   # 3 body length
                + pack(">i", 0)           # 4 old base addresss unset
-               + pack(">i", 68)          # 5 ptr to special objects array
+               + pack(">i", 104)         # 5 ptr to special objects array
                + "\x12\x34\x56\x78"      # 6 last hash
                + pack(">h", 480)         # 7 window 480 height
                +     pack(">h", 640)     #   window 640 width
@@ -327,50 +485,65 @@ def test_simple_spur_image_with_segments():
     # first segment
     # use 3000 + x as hash for debugging purposes (easier to identify g_objects)
     first_segment = (spur_hdr(0, 3000, 0, 0)   #   0 nil
-                     + spur_hdr(0, 3008, 0, 0) #   8 false
-                     + spur_hdr(0, 3016, 0, 0) #  16 true
-                     + spur_hdr(0, 3024, 0, 0) #  24 freeList
-                     + spur_hdr(1, 3032, 4, 0) #  32 hiddenRoots
-                     + pack(">i", 44)       #  40 ptr to 1st class table page
-                     + spur_hdr(5, 3044, 4, 0) #  44 1st class table page
-                     + pack(">i", 104)      #  52 ptr to first class (here SmallInteger)
-                     + pack(">i", 112)      #  56 ptr to SmallInteger class
-                     + pack(">i", 120)      #  60 ptr to Metaclass
-                     + pack(">i", 128)      #  64 ptr to Metaclass class
-                     + pack(">i", 136)      #  68 ptr to Array
-                     + spur_hdr(6, 3072, 4, 0) #  72 special objects array
-                     + pack(">i", 0)        #  80 ptr to nil
-                     + pack(">i", 8)        #  84 ... false
-                     + pack(">i", 16)       #  84 ... true
-                     + pack(">i", 1000)     #  92 ... alienated scheduler association for this test
-                     + pack(">i", 0)        #  96 ... Bitmap
-                     + pack(">i", 104)      # 100 ... SmallInteger
+                     + pack(">q", 0)           #   8 body of nil
+                     + spur_hdr(0, 3016, 0, 0) #  16 false
+                     + pack(">q", 0)           #  24 body of false
+                     + spur_hdr(0, 3032, 0, 0) #  32 true
+                     + pack(">q", 0)           #  40 body of true
+                     + spur_hdr(0, 3048, 0, 0) #  48 freeList
+                     + pack(">q", 0)           #  56 body of freeList
+                     + spur_hdr(1, 3064, 4, 0) #  64 hiddenRoots
+                     + pack(">i", 80)       #  72 ptr to 1st class table page
+                     + pack(">i", 0)        #  76 8-byte alignment
+                     + spur_hdr(5, 3080, 4, 0) #  80 1st class table page
+                     # note that the following classtable does not match up with
+                     # a "real world" spur image, the order is synthetic
+                     + pack(">i", 144)      #  88 ptr to first class (here SmallInteger)
+                     + pack(">i", 160)      #  92 ptr to SmallInteger class
+                     + pack(">i", 176)      #  96 ptr to Metaclass
+                     + pack(">i", 192)      # 100 ptr to Metaclass class
+                     + pack(">i", 208)      # 104 ptr to Array
+                     + pack(">i", 0)        # 108 8-byte alignment
+                     + spur_hdr(6, 3112, 4, 0) # 112 special objects array
+                     + pack(">i", 0)        # 120 ptr to nil
+                     + pack(">i", 16)       # 124 -> false
+                     + pack(">i", 32)       # 128 -> true
+                     + pack(">i", 1000)     # 132 -> alienated scheduler association for this test
+                     + pack(">i", 0)        # 136 -> Bitmap
+                     + pack(">i", 144)      # 140 -> SmallInteger
                      # "arbitrary" objects from here on
-                     + spur_hdr(0, 0, 0, 1) # 104 SmallInteger (class instance)
-                     + spur_hdr(0, 1, 0, 2) # 112 SmallInteger class
-                     + spur_hdr(0, 2, 0, 3) # 120 Metaclass (class instance)
-                     + spur_hdr(0, 3, 0, 2) # 128 Metaclass class
-                     + spur_hdr(0, 4, 0, 0))# 136 Array (class instance)
-                     # bridge will be added later
+                     # note that the following hashes/classids do not match up
+                     # with a "real world" spur image, just like the classtable
+                     + spur_hdr(0, 0, 0, 1) # 144 SmallInteger (class instance)
+                     + pack(">q", 0)        # 152 body of SmallInteger
+                     + spur_hdr(0, 1, 0, 2) # 160 SmallInteger class
+                     + pack(">q", 0)        # 168 body of SmallInteger class
+                     + spur_hdr(0, 2, 0, 3) # 176 Metaclass (class instance)
+                     + pack(">q", 0)        # 184 body of Metaclass
+                     + spur_hdr(0, 3, 0, 2) # 192 Metaclass class
+                     + pack(">q", 0)        # 200 body of Metaclass class
+                     + spur_hdr(0, 4, 0, 0) # 208 Array (class instance)
+                     + pack(">q", 0)        # 216 body of Metaclass class
+                     ) # bridge will be added later
     # second segment shall start at oop 1000 here
     second_segment = (spur_hdr(6, 4000, 2, 4)  # 1000 an Array
                      + pack(">i", 0)        # 1008 -> nil
-                     + pack(">i", 8)        # 1012 -> false
-                     + pack(">i", 16)       # 1016 -> true
+                     + pack(">i", 16)       # 1012 -> false
+                     + pack(">i", 32)       # 1016 -> true
                      + pack(">i", (42 << 1) | 1) # SmallInteger 42
                      + pack(">I", (ord(u'p') << 2) | 2) # Character p
                      + pack(">I", (ord(u'ü') << 2) | 2) # Character ü
-                     + ints2str(0, 0))      # final bridge = stop
+                     + longs2str(0, 0))     # final bridge = stop
     first_segment = first_segment + \
-            ints2str(1000 - len(first_segment) - 8, # bridge span
-                     len(second_segment))           # next segment size
+            longs2str(1000 - len(first_segment) - 16, # bridge span
+                      len(second_segment))            # next segment size
     body = first_segment + second_segment
     header_size = 16 * word_size
     image_1 = (SPUR_VERSION_HEADER       # 1
                + pack(">i", header_size) # 2 64 byte header
                + pack(">i", len(body))   # 3 body length
                + pack(">i", 0)           # 4 old base addresss unset
-               + pack(">i", 72)          # 5 ptr to special objects array
+               + pack(">i", 112)         # 5 ptr to special objects array
                + "\x12\x34\x56\x78"      # 6 last hash
                + pack(">h", 480)         # 7 window 480 height
                +     pack(">h", 640)     #   window 640 width
