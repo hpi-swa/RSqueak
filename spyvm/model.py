@@ -375,6 +375,11 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
     def str_content(self):
         return "%d" % r_uint(self.value)
 
+    def unwrap_string(self, space):
+        # OH GOD! TODO: Make this sane!
+        res = [chr(self.value & r_uint(0x000000ff)), chr((self.value & r_uint(0x0000ff00)) >> 8), chr((self.value & r_uint(0x00ff0000)) >> 16), chr((self.value & r_uint(0xff000000)) >> 24)]
+        return "".join(res)
+
     def lshift(self, space, shift):
         # shift > 0, therefore the highest bit of upperbound is not set,
         # i.e. upperbound is positive
