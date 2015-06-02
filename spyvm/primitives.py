@@ -138,7 +138,7 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                         args += (w_arg, )
                     elif spec is str:
                         assert isinstance(w_arg, model.W_BytesObject)
-                        args += (w_arg.as_string(), )
+                        args += (interp.space.unwrap_string(w_arg), )
                     elif spec is list:
                         assert isinstance(w_arg, model.W_PointersObject)
                         args += (interp.space.unwrap_array(w_arg), )
@@ -437,7 +437,7 @@ FAIL = 19
 
 def get_string(w_obj):
     if isinstance(w_obj, model.W_BytesObject):
-        return w_obj.as_string()
+        return w_obj.unwrap_string(None)
     return w_obj.as_repr_string()
 
 def exitFromHeadlessExecution(s_frame, selector="", w_message=None):
@@ -941,7 +941,7 @@ def func(interp, s_frame, argcount, w_method):
     if not (isinstance(w_modulename, model.W_BytesObject) and
             isinstance(w_functionname, model.W_BytesObject)):
         raise PrimitiveFailedError
-    signature = (w_modulename.as_string(), w_functionname.as_string())
+    signature = (space.unwrap_string(w_modulename), space.unwrap_string(w_functionname))
 
     if interp.space.use_plugins.is_set():
         from spyvm.plugins.squeak_plugin_proxy import IProxy, MissingPlugin

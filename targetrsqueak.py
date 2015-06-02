@@ -259,7 +259,7 @@ def compile_code(interp, w_receiver, code):
         space.w_nil]
     )
     # TODO - is this expected in every image?
-    if not isinstance(w_result, model.W_BytesObject) or w_result.as_string() != selector:
+    if not isinstance(w_result, model.W_BytesObject) or space.unwrap_string(w_result) != selector:
         raise error.Exit("Unexpected compilation result (probably failed to compile): %s" % result_string(w_result))
     space.suppress_process_switch.deactivate()
 

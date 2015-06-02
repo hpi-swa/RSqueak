@@ -221,7 +221,7 @@ def test_step_forged_image():
 def test_create_new_symbol():
     w_result = perform(w("someString"), "asSymbol")
     assert w_result is not None
-    assert w_result.as_string() == "someString"
+    assert w_result.unwrap_string(None) == "someString"
 
 def test_create_new_symbol_new_with_arg0():
     w_dnu = image.special(constants.SO_DOES_NOT_UNDERSTAND)
@@ -263,12 +263,12 @@ def test_large_positive_integer_operation_times():
 def test_doesNotUnderstand():
     w_dnu = interp.space.objtable["w_doesNotUnderstand"]
     assert isinstance(w_dnu, model.W_BytesObject)
-    assert w_dnu.as_string() == "doesNotUnderstand:"
+    assert w_dnu.unwrap_string(None) == "doesNotUnderstand:"
 
 def test_mustBeBoolean():
     w_mbb = interp.space.objtable["w_mustBeBoolean"]
     assert isinstance(w_mbb, model.W_BytesObject)
-    assert w_mbb.as_string() == "mustBeBoolean"
+    assert w_mbb.unwrap_string(None) == "mustBeBoolean"
 
 def test_Message():
     w_message_cls = interp.space.w_Message
@@ -287,7 +287,7 @@ def test_primitive_perform_with_args():
     selectors_w = w_methoddict.strategy.methoddict.keys()
     w_sel = None
     for sel in selectors_w:
-        if sel.as_string() == 'size':
+        if sel.unwrap_string(None) == 'size':
             w_sel = sel
     size = _prim(space, primitives.PERFORM_WITH_ARGS, [w_o, w_sel, []])
     assert size.value == 3
@@ -313,10 +313,10 @@ def test_run_doesNotUnderstand():
     space, interp = runningSomethingImage()
     w_result = interp.perform(interp.space.wrap_int(0), "runningADNU")
     assert isinstance(w_result, model.W_BytesObject)
-    assert w_result.as_string() == "foobarThis:doesNotExist:('pypy' 'heya' )"
+    assert w_result.unwrap_string(None) == "foobarThis:doesNotExist:('pypy' 'heya' )"
 
 def test_run_mustBeBoolean():
     space, interp = runningSomethingImage()
     w_result = interp.perform(interp.space.wrap_int(0), "runningMustBeBoolean")
     assert isinstance(w_result, model.W_BytesObject)
-    assert w_result.as_string() == "mustBeBoolean has been called"
+    assert w_result.unwrap_string(None) == "mustBeBoolean has been called"

@@ -235,6 +235,9 @@ class ObjSpace(object):
     def unwrap_array(self, w_array):
         return w_array.unwrap_array(self)
 
+    def unwrap_string(self, w_object):
+        return w_object.unwrap_string(self)
+
     # ============= Access to static information =============
 
     @specialize.arg(1)
