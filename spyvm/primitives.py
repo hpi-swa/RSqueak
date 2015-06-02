@@ -1378,6 +1378,7 @@ WAIT = 86
 RESUME = 87
 SUSPEND = 88
 FLUSH_CACHE = 89
+YIELD = 167
 WITH_ARGS_EXECUTE_METHOD = 188
 
 @expose_primitive(BLOCK_COPY, unwrap_spec=[object, int])
@@ -1494,8 +1495,19 @@ def func(interp, s_frame, w_rcvr):
 def func(interp, s_frame, w_rcvr):
     assert_class(interp, w_rcvr, interp.space.w_Process)
     wrapper.ProcessWrapper(interp.space, w_rcvr).suspend(s_frame)
-
-
+    
+@expose_primitive(YIELD, unwrap_spec=[object], no_result=True, clean_stack=False)
+def func(interp, s_frame, w_rcvr):
+    space = interp.space
+    scheduler = wrapper.SchedulerWrapper(space, w_rcvr)
+    w_process = scheduler.active_process()
+    process = wrapper.ProcessWrapper(space, w_process)
+    priority = process.priority()
+    process_list = scheduler.get_process_list(priority)
+    if not process_list.is_empty_list():
+        next_process = wrapper.ProcessWrapper(space, process_list.first_link())
+        process.deactivate(s_frame, put_to_sleep=True)
+        next_process.activate()
 
 @expose_primitive(FLUSH_CACHE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):

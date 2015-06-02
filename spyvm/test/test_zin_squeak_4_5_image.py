@@ -26,16 +26,16 @@ def test_all_pointers_are_valid():
 def test_lookup_abs_in_integer():
     from test_miniimage import _test_lookup_abs_in_integer
     _test_lookup_abs_in_integer(interp)
-    
+
 def test_ensure():
     #ensure
     #    [^'b1'] ensure: [^'b2']
-    
+
     ensure_ = find_symbol("ensure:", space.w_BlockClosure)
     bytes = [0x8F, 0, 0, 2, 0x21, 0x7c,
                0x8F, 0, 0, 2, 0x22, 0x7c,
                0xe0, 0x87, 0x78]
-    
+
     w_method = space.make_method(bytes, [ensure_, w('b1'), w('b2'),
                                             w('ensure'), space.w_BlockClosure])
     result = interp.execute_method(w_method)
@@ -44,7 +44,7 @@ def test_ensure():
 def test_ensure_save_original_nlr():
     #ensure
     #    [^'b1'] ensure: ['b2']
-    
+
     ensure_ = find_symbol("ensure:", space.w_BlockClosure)
     bytes = [0x8F, 0, 0, 2, 0x21, 0x7c,
                0x8F, 0, 0, 2, 0x22, 0x7d,
@@ -68,7 +68,7 @@ def test_ContextPart_jump():
     push = find_symbol("push:", ContextPart)
     sender = find_symbol("sender", ContextPart)
     jump = find_symbol("jump", ContextPart)
-    
+
     bytes = [0x21, 0x82, 0xc0, # Set a
            0x8f, 0x00, 0x00, 0x0b, # Push block
                 0x89, 0xd3, # Send sender
@@ -76,7 +76,7 @@ def test_ContextPart_jump():
                 0x87, 0x89, 0xd3, 0xd4, # Send jump
                 0x87, 0x25, 0x7d, # Block rest (not executed)
            0xc9, 0x82, 0xc0, 0x40, 0x7c] # Send value and return
-    
+
     Association = space.classtable["w_Point"] # Wrong class, doesn't matter.
     assoc = model.W_PointersObject(space, Association, 2)
     assoc.store(space, 0, w('a'))
@@ -98,7 +98,7 @@ def test_ContextPart_jump_nonlocal():
     ContextPart = space.w_MethodContext.as_class_get_shadow(space).s_superclass().w_self()
     push = find_symbol("push:", ContextPart)
     jump = find_symbol("jump", ContextPart)
-    
+
     bytes = [0x21, 0x82, 0xc0, # Set a
                0x89, 0x82, 0xc2, # Set outer
                0x8f, 0x00, 0x00, 0x15, # Push block
@@ -110,7 +110,7 @@ def test_ContextPart_jump_nonlocal():
                         0xc9, 0x7d, # Send value and return
                     0xc9, 0x7d, # Send value and return
                0xc9, 0x82, 0xc0, 0x40, 0x7c] # Send value and return
-    
+
     Association = space.classtable["w_Point"] # Wrong class, doesn't matter.
     assoc = model.W_PointersObject(space, Association, 2)
     assoc.store(space, 0, w('a'))
@@ -134,14 +134,14 @@ def test_contextOn_do_():
     ContextPart = space.w_MethodContext.as_class_get_shadow(space).s_superclass().w_self()
     ContextPartClass = ContextPart.getclass(space).as_class_get_shadow(space).w_self()
     contextOnDo = find_symbol("contextOn:do:", ContextPartClass)
-    
+
     bytes = [
         0x42, 0x43, # Push the classes
         0x8f, 0x00, 0x00, 0x02, # Push block,
             0x24, 0x7d, # in the block
         0xf1, 0x81, 0xc0, 0x7c # Send contextOn:do:
     ]
-    
+
     Association = space.classtable["w_Point"] # Wrong class, doesn't matter.
     ctxAssoc = model.W_PointersObject(space, Association, 2)
     ctxAssoc.store(space, 0, w('ctx'))
@@ -153,11 +153,51 @@ def test_contextOn_do_():
     errorAssoc.store(space, 0, w('Point'))
     errorAssoc.store(space, 1, Association)
     w_method = space.make_method(bytes, [ctxAssoc, contextOnDo, contextPartAssoc, errorAssoc, w('nothing')])
-    
+
     result = interp.execute_method(w_method)
     assert isinstance(result, model.W_PointersObject)
     s = result.as_context_get_shadow(space)
     assert s.w_method().lookup_selector == "on:do:"
     assert s.w_method().primitive() == 199
     assert s.s_sender() == None
-    
+
+def test_semaphore():
+
+    w_semaphore_cls = space.objtable["w_timerSemaphore"].getclass(space)
+    w_sema = image.find_symbol(space, reader, "Semaphore")
+    w_fork = image.find_symbol(space, reader, "fork")
+    w_wait = image.find_symbol(space, reader, "wait")
+    w_yield = image.find_symbol(space, reader, "yield")
+    w_processor = space.objtable["w_schedulerassociationpointer"]
+    w_suspPrimOFail = image.find_symbol(space, reader, "suspendPrimitivelyOrFail")
+
+    bytes = [
+        0x40, # pushLit: Semaphore
+        0xCC, # send: new
+        0x6A, # popIntoTemp: 2
+        0x12, # pushTemp: 2
+        0x8F, 0x10, 0x00, 0x03, # closureNumCopied: 1 numArgs: 0 bytes 49 to 51
+        0x10, # pushTemp: 0
+        0xD2, # send: wait
+        0x7D, # blockReturn
+        0xD1, # send: fork
+        0x69, # popIntoTemp: 1
+        0x44, # pushLit: Processor
+        0xD3, # send: yield
+        0x87, # pop
+        0x11, # pushTemp: 1
+        0xD5, # send: suspendPrimitivelyOrFail
+        0x68, # popIntoTemp: 0
+        0x10, # pushTemp: 0
+        0x7C, # returnTop
+    ]
+
+    Association = space.classtable["w_Point"] # Wrong class, doesn't matter.
+    semaAssoc = model.W_PointersObject(space, Association, 2)
+    semaAssoc.store(space, 0, w_sema)
+    semaAssoc.store(space, 1, w_semaphore_cls)
+    w_method = space.make_method(bytes, [semaAssoc, w_fork, w_wait, w_yield, w_processor, w_suspPrimOFail, w('nothing')])
+
+    result = interp.execute_method(w_method)
+    import pdb; pdb.set_trace()
+    assert isinstance(result, model.W_PointersObject)
