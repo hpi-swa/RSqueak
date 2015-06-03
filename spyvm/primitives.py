@@ -114,7 +114,7 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                         args += (w_arg, )
                     elif spec is str:
                         assert isinstance(w_arg, model.W_BytesObject)
-                        args += (w_arg.as_string(), )
+                        args += (interp.space.unwrap_string(w_arg), )
                     elif spec is list:
                         assert isinstance(w_arg, model.W_PointersObject)
                         args += (interp.space.unwrap_array(w_arg), )
@@ -440,7 +440,7 @@ FAIL = 19
 
 def get_string(w_obj):
     if isinstance(w_obj, model.W_BytesObject):
-        return w_obj.as_string()
+        return w_obj.unwrap_string(None)
     return w_obj.as_repr_string()
 
 def exitFromHeadlessExecution(s_frame, selector="", w_message=None):
@@ -611,8 +611,9 @@ def func(interp, s_frame, w_frame, stackp):
     w_frame.store(interp.space, constants.CTXPART_STACKP_INDEX, interp.space.wrap_int(stackp))
     return w_frame
 
-def get_instances_array(space, s_frame, w_class):
+def get_instances_array(space, s_frame, w_class=None):
     # This primitive returns some instance of the class on the stack.
+    # If no class is given, it returns some object.
     # Not sure quite how to do this; maintain a weak list of all
     # existing instances or something?
     match_w = s_frame.instances_array(w_class)
@@ -627,9 +628,11 @@ def get_instances_array(space, s_frame, w_class):
             if not rgc.get_gcflag_extra(gcref):
                 rgc.toggle_gcflag_extra(gcref)
                 w_obj = rgc.try_cast_gcref_to_instance(model.W_Object, gcref)
-                if (w_obj is not None and w_obj.has_class()
-                    and w_obj.getclass(space) is w_class):
-                    match_w.append(w_obj)
+                if w_obj is not None and w_obj.has_class():
+                    # when calling NEXT_OBJECT, we should not return SmallInteger instances
+                    next_object_and_not_int = (w_class is None) and (w_obj.getclass(space) is not space.w_SmallInteger)
+                    if next_object_and_not_int or w_obj.getclass(space) is w_class:
+                        match_w.append(w_obj)
                 pending.extend(rgc.get_rpy_referents(gcref))
 
         while roots:
@@ -642,7 +645,7 @@ def get_instances_array(space, s_frame, w_class):
 
 @expose_primitive(SOME_INSTANCE, unwrap_spec=[object])
 def func(interp, s_frame, w_class):
-    match_w = get_instances_array(interp.space, s_frame, w_class)
+    match_w = get_instances_array(interp.space, s_frame, w_class=w_class)
     try:
         return match_w[0]
     except IndexError:
@@ -671,7 +674,7 @@ def func(interp, s_frame, w_obj):
     # it returns the "next" instance after w_obj.
     return next_instance(
         interp.space,
-        get_instances_array(interp.space, s_frame, w_obj.getclass(interp.space)),
+        get_instances_array(interp.space, s_frame, w_class=w_obj.getclass(interp.space)),
         w_obj
     )
 
@@ -791,13 +794,6 @@ def func(interp, s_frame, w_rcvr):
 
     form = wrapper.FormWrapper(interp.space, w_rcvr)
     form.take_over_display()
-    if interp.space.display().width == 0:
-        if not interp.image:
-            raise PrimitiveFailedError
-        display = interp.space.display()
-        width = (interp.image.lastWindowSize >> 16) & 0xffff
-        height = interp.image.lastWindowSize & 0xffff
-        display.set_video_mode(width, height, display.depth)
     w_display_bitmap = form.get_display_bitmap()
     w_display_bitmap.take_over_display()
     w_display_bitmap.flush_to_screen()
@@ -837,8 +833,16 @@ def func(interp, s_frame, w_rcvr):
 def func(interp, s_frame, w_rcvr):
     w_res = interp.space.w_Point.as_class_get_shadow(interp.space).new(2)
     point = wrapper.PointWrapper(interp.space, w_res)
-    point.store_x(interp.space.display().width)
-    point.store_y(interp.space.display().height)
+    display = interp.space.display()
+    if display.width == 0:
+        # We need to have the indirection via interp.image, because when the image
+        # is saved, the display form size is always reduced to 240@120.
+        if not interp.image:
+            raise PrimitiveFailedError
+        display.width = (interp.image.lastWindowSize >> 16) & 0xffff
+        display.height = interp.image.lastWindowSize & 0xffff
+    point.store_x(display.width)
+    point.store_y(display.height)
     return w_res
 
 @expose_primitive(MOUSE_BUTTONS, unwrap_spec=[object])
@@ -942,7 +946,7 @@ def func(interp, s_frame, argcount, w_method):
     if not (isinstance(w_modulename, model.W_BytesObject) and
             isinstance(w_functionname, model.W_BytesObject)):
         raise PrimitiveFailedError
-    signature = (w_modulename.as_string(), w_functionname.as_string())
+    signature = (space.unwrap_string(w_modulename), space.unwrap_string(w_functionname))
 
     if interp.space.use_plugins.is_set():
         from spyvm.plugins.squeak_plugin_proxy import IProxy, MissingPlugin
@@ -1145,12 +1149,40 @@ def func(interp, s_frame, w_arg):
 
 #____________________________________________________________________________
 # Misc Primitives (138 - 149)
+SOME_OBJECT = 138
+NEXT_OBJECT = 139
 BEEP = 140
 VM_PATH = 142
 SHORT_AT = 143
 SHORT_AT_PUT = 144
 FILL = 145
 CLONE = 148
+
+@expose_primitive(SOME_OBJECT, unwrap_spec=[object])
+def func(interp, s_frame, w_class):
+    match_w = get_instances_array(interp.space, s_frame)
+    try:
+        return match_w[0]
+    except IndexError:
+        raise PrimitiveFailedError()
+
+def next_object(space, list_of_objects, w_obj):
+    retval = None
+    try:
+        idx = list_of_objects.index(w_obj)
+    except ValueError:
+        idx = -1
+    try:
+        retval = list_of_objects[idx + 1]
+    except IndexError:
+        return space.wrap_int(0)
+    return retval
+
+@expose_primitive(NEXT_OBJECT, unwrap_spec=[object])
+def func(interp, s_frame, w_obj):
+    # This primitive is used to iterate through all objects:
+    # it returns the "next" instance after w_obj.
+    return next_object(interp.space, get_instances_array(interp.space, s_frame), w_obj)
 
 @expose_primitive(BEEP, unwrap_spec=[object])
 def func(interp, s_frame, w_receiver):

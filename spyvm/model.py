@@ -15,7 +15,7 @@ import sys
 from spyvm import constants, error
 from spyvm.util.version import constant_for_version, constant_for_version_arg, VersionMixin, Version
 
-from rpython.rlib import rrandom, objectmodel, jit, signature
+from rpython.rlib import rrandom, objectmodel, jit, signature, longlong2float
 from rpython.rlib.rarithmetic import intmask, r_uint, r_int, ovfcheck, r_longlong
 from rpython.rlib.debug import make_sure_not_resized
 from rpython.tool.pairtype import extendabletype
@@ -184,6 +184,9 @@ class W_Object(object):
 
     def is_array_object(self):
         return False
+
+    def unwrap_string(self, space):
+        raise error.UnwrappingError
 
     # Methods for printing this object
 
@@ -455,6 +458,17 @@ class W_Float(W_AbstractObjectWithIdentityHash):
 
     def __init__(self, value):
         self.value = value
+
+    def unwrap_string(self, space):
+        word = longlong2float.float2longlong(self.value)
+        return "".join([chr(word & 0x000000ff),
+                        chr((word >> 8) & 0x000000ff),
+                        chr((word >> 16) & 0x000000ff),
+                        chr((word >> 24) & 0x000000ff),
+                        chr((word >> 32) & 0x000000ff),
+                        chr((word >> 40) & 0x000000ff),
+                        chr((word >> 48) & 0x000000ff),
+                        chr((word >> 56) & 0x000000ff)])
 
     def fillin(self, space, g_self):
         W_AbstractObjectWithIdentityHash.fillin(self, space, g_self)
@@ -867,9 +881,9 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         if self.has_class() and self.w_class.has_space():
             if self.w_class.space().omit_printing_raw_bytes.is_set():
                 return "<omitted>"
-        return "'%s'" % self.as_string().replace('\r', '\n')
+        return "'%s'" % self.unwrap_string(None).replace('\r', '\n')
 
-    def as_string(self):
+    def unwrap_string(self, space):
         return self._pure_as_string(self.version)
 
     @jit.elidable
@@ -880,7 +894,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
             return "".join(self.bytes)
 
     def selector_string(self):
-        return "#" + self.as_string()
+        return "#" + self.unwrap_string(None)
 
     def invariant(self):
         if not W_AbstractObjectWithClassReference.invariant(self):
@@ -962,7 +976,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
             return self.c_bytes
         else:
             size = self.size()
-            c_bytes = self.c_bytes = rffi.str2charp(self.as_string())
+            c_bytes = self.c_bytes = rffi.str2charp(self.unwrap_string(None))
             self.bytes = None
             self.mutate()
             return c_bytes
@@ -1034,6 +1048,14 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
 
     def size(self):
         return self._size
+
+    @jit.look_inside_iff(lambda self, space: jit.isconstant(self.size()))
+    def unwrap_string(self, space):
+        # OH GOD! TODO: Make this sane!
+        res = []
+        for word in self.words:
+            res += [chr(word & r_uint(0x000000ff)), chr((word & r_uint(0x0000ff00)) >> 8), chr((word & r_uint(0x00ff0000)) >> 16), chr((word & r_uint(0xff000000)) >> 24)]
+        return "".join(res)
 
     def invariant(self):
         return (W_AbstractObjectWithClassReference.invariant(self) and

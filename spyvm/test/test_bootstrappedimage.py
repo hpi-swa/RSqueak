@@ -18,7 +18,7 @@ def test_symbol_asSymbol():
 def test_retrieve_symbol():
     space.initialize_class(space.w_String, interp)
     w_result = perform(w("someString"), "asSymbol")
-    assert w_result.as_string() == "someString"
+    assert w_result.unwrap_string(None) == "someString"
     w_anotherSymbol = perform(w("someString"), "asSymbol")
     assert w_result is w_anotherSymbol
 

@@ -6,6 +6,7 @@ from rpython.rlib.listsort import TimSort
 from spyvm import model, error
 from spyvm.plugins.plugin import Plugin
 from spyvm.primitives import PrimitiveFailedError, index1_0
+from spyvm.util.system import IS_WINDOWS
 
 FilePlugin = Plugin()
 os.stat_float_times(False)
@@ -17,8 +18,34 @@ try:
 except ValueError:
     std_fds = [0, 1, 2]
 
+if IS_WINDOWS:
+    from rpython.rtyper.lltypesystem import rffi
+    from rpython.rtyper.tool import rffi_platform as platform
+    from rpython.translator.tool.cbuild import ExternalCompilationInfo
+
+    eci = ExternalCompilationInfo(includes=["windows.h"])
+
+    class CConfig:
+        _compilation_info_ = eci
+    config = platform.configure(CConfig)
+
+    _chsize = rffi.llexternal("_chsize",
+        [rffi.INT, rffi.LONG], rffi.INT,
+        compilation_info=eci,
+    )
+
+    os.ftruncate = _chsize
+
 #should we implement primitiveDirectoryEntry ?
 #should we implement primitiveHasFileAccess ?
+
+@FilePlugin.expose_primitive(unwrap_spec=[object])
+def primitiveFileStdioHandles(interp, s_frame, w_rcvr):
+    return interp.space.wrap_list(
+        interp.space.wrap_int(0),
+        interp.space.wrap_int(1),
+        interp.space.wrap_int(2)
+    )
 
 @FilePlugin.expose_primitive(unwrap_spec=[object, str])
 def primitiveFileDelete(interp, s_frame, w_rcvr, file_path):
@@ -167,18 +194,49 @@ def primitiveFileStdioHandles(interp, s_frame, w_rcvr):
     space = interp.space
     return space.wrap_list([space.wrap_int(fd) for fd in std_fds])
 
-@FilePlugin.expose_primitive(unwrap_spec=[object, int, str, index1_0, int])
-def primitiveFileWrite(interp, s_frame, w_rcvr, fd, a_string, start, count):
+@FilePlugin.expose_primitive(unwrap_spec=[object, int, object, index1_0, int])
+def primitiveFileWrite(interp, s_frame, w_rcvr, fd, content, start, count):
+    byte_size = 0
+    size = 0
+    if isinstance(content, model.W_WordsObject):
+        byte_size = 4
+        size = content.size()
+    elif isinstance(content, model.W_BytesObject):
+        byte_size = 1
+        size = content.size()
+    elif isinstance(content, model.W_Float):
+        byte_size = 4
+        # TODO: is there a case where a Float is only 32 bits?
+        size = 2
+    else:
+        raise PrimitiveFailedError
+
+    string_content = interp.space.unwrap_string(content)
+    byte_start = start * byte_size
+    byte_end = min(start + 1 + count, size) * byte_size
+
     space = interp.space
-    end = min(start + 1 + count, len(a_string))
-    if not (start >= 0 and end > start):
+    if not (byte_start >= 0 and byte_end > byte_start):
         return space.wrap_int(0)
     try:
-        written = os.write(fd, a_string[start:end])
+        written = os.write(fd, string_content[byte_start:byte_end])
     except OSError:
         raise PrimitiveFailedError
     else:
         return space.wrap_positive_32bit_int(rarithmetic.intmask(written))
+
+@FilePlugin.expose_primitive(unwrap_spec=[object, int, int])
+def primitiveFileTruncate(interp, s_frame, w_rcvr, fd, position):
+    try:
+        os.ftruncate(fd, position)
+    except OSError:
+        raise PrimitiveFailedError
+    return w_rcvr
+
+@FilePlugin.expose_primitive(unwrap_spec=[object, str, str, str])
+def primitiveDirectorySetMacTypeAndCreator(interp, s_frame, w_rcvr, filename, type, creator):
+    # TODO: this is a stub. "MacOS.SetCreatorAndType" is not available in my pypy build
+    return w_rcvr
 
 @jit.elidable
 def smalltalk_timestamp(space, sec_since_epoch):

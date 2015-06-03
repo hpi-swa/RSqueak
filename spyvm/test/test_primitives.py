@@ -4,7 +4,7 @@ from spyvm.primitives import prim_table, PrimitiveFailedError
 from rpython.rlib.rfloat import isinf, isnan
 from rpython.rlib.rarithmetic import intmask, r_uint
 from rpython.rtyper.lltypesystem import lltype, rffi
-from .util import create_space, copy_to_module, cleanup_module, TestInterpreter, very_slow_test
+from .util import create_space, copy_to_module, cleanup_module, TestInterpreter
 
 def setup_module():
     space = create_space(bootstrap = True)
@@ -576,13 +576,13 @@ def test_primitive_closure_copyClosure():
 
 # def test_primitive_string_copy():
 #     w_r = prim(primitives.STRING_REPLACE, ["aaaaa", 1, 5, "ababab", 1])
-#     assert w_r.as_string() == "ababa"
+#     assert w_r.unwrap_string(None) == "ababa"
 #     w_r = prim(primitives.STRING_REPLACE, ["aaaaa", 1, 5, "ababab", 2])
-#     assert w_r.as_string() == "babab"
+#     assert w_r.unwrap_string(None) == "babab"
 #     w_r = prim(primitives.STRING_REPLACE, ["aaaaa", 2, 5, "ccccc", 1])
-#     assert w_r.as_string() == "acccc"
+#     assert w_r.unwrap_string(None) == "acccc"
 #     w_r = prim(primitives.STRING_REPLACE, ["aaaaa", 2, 4, "ccccc", 1])
-#     assert w_r.as_string() == "accca"
+#     assert w_r.unwrap_string(None) == "accca"
 #     prim_fails(primitives.STRING_REPLACE, ["aaaaa", 0, 4, "ccccc", 1])
 #     prim_fails(primitives.STRING_REPLACE, ["aaaaa", 1, 6, "ccccc", 2])
 #     prim_fails(primitives.STRING_REPLACE, ["aaaaa", 2, 6, "ccccc", 1])
@@ -613,8 +613,8 @@ def test_primitive_closure_value_value():
     assert s_new_context.closure.wrapped is closure
     assert s_new_context.s_sender() is s_initial_context
     assert s_new_context.w_receiver().is_nil(space)
-    assert s_new_context.gettemp(0).as_string() == "first arg"
-    assert s_new_context.gettemp(1).as_string() == "second arg"
+    assert s_new_context.gettemp(0).unwrap_string(None) == "first arg"
+    assert s_new_context.gettemp(1).unwrap_string(None) == "second arg"
 
 def test_primitive_closure_value_value_with_temps():
     s_initial_context, closure, s_new_context = build_up_closure_environment(
@@ -624,18 +624,37 @@ def test_primitive_closure_value_value_with_temps():
     assert s_new_context.closure.wrapped is closure
     assert s_new_context.s_sender() is s_initial_context
     assert s_new_context.w_receiver().is_nil(space)
-    assert s_new_context.gettemp(0).as_string() == "first arg"
-    assert s_new_context.gettemp(1).as_string() == "second arg"
-    assert s_new_context.gettemp(2).as_string() == "some value"
+    assert s_new_context.gettemp(0).unwrap_string(None) == "first arg"
+    assert s_new_context.gettemp(1).unwrap_string(None) == "second arg"
+    assert s_new_context.gettemp(2).unwrap_string(None) == "some value"
 
-@very_slow_test
 def test_primitive_some_instance():
     import gc; gc.collect()
     someInstance = map(space.wrap_list, [[1], [2]])
     w_r = prim(primitives.SOME_INSTANCE, [space.w_Array])
     assert w_r.getclass(space) is space.w_Array
 
-@very_slow_test
+def test_primitive_some_object():
+    import gc; gc.collect()
+    w_r = prim(primitives.SOME_OBJECT, [space.w_nil])
+    assert isinstance(w_r, model.W_Object)
+
+def test_primitive_next_object():
+    someInstances = map(space.wrap_list, [[2], [3]])
+    w_frame, s_context = new_frame("<never called, but needed for method generation>")
+
+    s_context.push(space.w_nil)
+    interp = TestInterpreter(space)
+    prim_table[primitives.SOME_OBJECT](interp, s_context, 0)
+    w_1 = s_context.pop()
+    assert isinstance(w_1, model.W_Object)
+
+    s_context.push(w_1)
+    prim_table[primitives.NEXT_OBJECT](interp, s_context, 0)
+    w_2 = s_context.pop()
+    assert isinstance(w_2, model.W_Object)
+    assert w_1 is not w_2
+
 def test_primitive_next_instance():
     someInstances = map(space.wrap_list, [[2], [3]])
     w_frame, s_context = new_frame("<never called, but needed for method generation>")
@@ -652,7 +671,6 @@ def test_primitive_next_instance():
     assert w_2.getclass(space) is space.w_Array
     assert w_1 is not w_2
 
-@very_slow_test
 def test_primitive_next_instance_wo_some_instance_in_same_frame():
     someInstances = map(space.wrap_list, [[2], [3]])
     w_frame, s_context = new_frame("<never called, but needed for method generation>")
