@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import py, StringIO
-from struct import pack
+from struct import pack, unpack
 from spyvm import squeakimage, error
 from spyvm import model
 from spyvm.util.stream import chrs2int, chrs2long, swapped_chrs2long
@@ -32,6 +32,7 @@ def imagereader_mock(string):
 SIMPLE_VERSION_HEADER = pack(">i", 6502)
 SIMPLE_VERSION_HEADER_LE = pack("<i", 6502)
 SPUR_VERSION_HEADER = pack(">i", 6521)
+SPUR_VERSION_HEADER_LE = pack("<i", 6521)
 
 # ----- tests ------------------------------------------------
 
@@ -239,11 +240,12 @@ def test_read_normal_spur_header():
             joinbits([10, 0, 2, 0], [22, 2, 5, 3])) + ints2str(0) * n_slots
     r = imagereader_mock(SPUR_VERSION_HEADER + objbytes)
     r.read_version()
+    r.stream.reset_count()
     actualChunk, pos = r.readerStrategy.read_object()
     expectedChunk = squeakimage.ImageChunk(size=n_slots, format=2, classid=10,
             hash=48, data=[0] * n_slots)
     assert expectedChunk == actualChunk
-    assert pos == len(SPUR_VERSION_HEADER)
+    assert pos == 0
 
 def test_read_long_spur_header():
     n_slots = 3000
@@ -252,11 +254,12 @@ def test_read_long_spur_header():
             joinbits([10, 0, 2, 0], [22, 2, 5, 3])) + ints2str(0) * n_slots
     r = imagereader_mock(SPUR_VERSION_HEADER + objbytes)
     r.read_version()
+    r.stream.reset_count()
     actualChunk, pos = r.readerStrategy.read_object()
     expectedChunk = squeakimage.ImageChunk(size=n_slots, format=2, classid=10,
             hash=55, data=[0] * n_slots)
     assert expectedChunk == actualChunk
-    assert pos == len(SPUR_VERSION_HEADER) + 8
+    assert pos == 8
 
 def test_object_format_spur(monkeypatch):
     g_class_mock = squeakimage.GenericObject()
@@ -270,6 +273,7 @@ def test_object_format_spur(monkeypatch):
         r.read_version()
         monkeypatch.setattr(r.readerStrategy, 'g_class_of',
                 lambda chunk: g_class_mock)
+        r.stream.reset_count()
         chunk, pos = r.readerStrategy.read_object()
         g_object = squeakimage.GenericObject()
         g_object.initialize(chunk, r.readerStrategy, r.space)
@@ -414,73 +418,104 @@ def test_simple_image64(monkeypatch):
     r.read_header()
     assert r.stream.pos == len(image_2)
 
-def spur_hdr(n_slots, hash, format, classid):
-    return ints2str(joinbits([hash, 0, n_slots], [22, 2, 8]),
-                    joinbits([classid, 0, format], [22, 2, 5, 3]))
+def spur_hdr_qword(n_slots, hash, format, classid):
+    return joinbits([classid, 0, format, 0, hash, 0, n_slots], [22,2,5,3,22,2,8])
 
-def test_simple_spur_image():
-    word_size = 4
-    # first segment
+def spur_hdr_big_endian(n_slots, hash, format, classid):
+    return pack(">Q", spur_hdr_qword(n_slots, hash, format, classid))
+
+def spur_hdr_little_endian(n_slots, hash, format, classid):
+    return pack("<Q", spur_hdr_qword(n_slots, hash, format, classid))
+
+def test_spur_hdr_big_endian():
+    assert "\x01\x02\x0a\x0b\x1f\x03\x0a\x0b" == spur_hdr_big_endian(
+            n_slots=1, hash=(2 << 16) + (10 << 8) + 11,
+            format=31, classid=(3 << 16) + (10 << 8) + 11)
+
+def test_spur_hdr_little_endian():
+    assert "\x12\x00\x00\x0A\x00\x00\x00\x20" == spur_hdr_little_endian(
+            n_slots=32, hash=0, format=10, classid=18)
+    assert "\x01\x02\x0a\x0b\x1f\x03\x0a\x0b"[::-1] == spur_hdr_little_endian(
+            n_slots=1, hash=(2 << 16) + (10 << 8) + 11,
+            format=31, classid=(3 << 16) + (10 << 8) + 11)
+
+def pack_be(fmt, *args):
+    return pack(">" + fmt, *args)
+
+def pack_le(fmt, *args):
+    return pack("<" + fmt, *args)
+
+def simple_spur_image(pack, spur_hdr, version):
     first_segment = (spur_hdr(0, 1000, 0, 0)   #   0 nil
-                     + pack(">q", 0)           #   8 body of nil
+                     + pack("q", 0)            #   8 body of nil
                      + spur_hdr(0, 1016, 0, 0) #  16 false
-                     + pack(">q", 0)           #  24 body of false
+                     + pack("q", 0)            #  24 body of false
                      + spur_hdr(0, 1032, 0, 0) #  32 true
-                     + pack(">q", 0)           #  40 body of true
+                     + pack("q", 0)            #  40 body of true
                      + spur_hdr(0, 1048, 0, 0) #  48 freeList
-                     + pack(">q", 0)           #  56 body of freeList
+                     + pack("q", 0)            #  56 body of freeList
                      + spur_hdr(1, 1064, 4, 0) #  64 hiddenRoots
-                     + pack(">i", 80)          #  72 ptr to 1st class table page
-                     + pack(">i", 0)           #  76 alignment
+                     + pack("i", 80)           #  72 ptr to 1st class table page
+                     + pack("i", 0)            #  76 alignment
                      + spur_hdr(4, 1080, 4, 0) #  80 1st class table page
-                     + pack(">i", 136)         #  88 ptr to first class (here SmallInteger)
-                     + pack(">i", 152)         #  92 ptr to SmallInteger class
-                     + pack(">i", 168)         #  96 ptr to Metaclass
-                     + pack(">i", 184)         # 100 ptr to Metaclass class
+                     + pack("i", 136)          #  88 ptr to first class (here SmallInteger)
+                     + pack("i", 152)          #  92 ptr to SmallInteger class
+                     + pack("i", 168)          #  96 ptr to Metaclass
+                     + pack("i", 184)          # 100 ptr to Metaclass class
                      + spur_hdr(6, 1104, 4, 0) # 104 special objects array
-                     + pack(">i", 0)           # 112 ptr to nil
-                     + pack(">i", 16)          # 116 ... false
-                     + pack(">i", 32)          # 120 ... true
-                     + pack(">i", 0)           # 124 ... schedulerassocptr
-                     + pack(">i", 0)           # 128 ... Bitmap
-                     + pack(">i", 136)         # 132 ... SmallInteger
+                     + pack("i", 0)            # 112 ptr to nil
+                     + pack("i", 16)           # 116 ... false
+                     + pack("i", 32)           # 120 ... true
+                     + pack("i", 0)            # 124 ... schedulerassocptr
+                     + pack("i", 0)            # 128 ... Bitmap
+                     + pack("i", 136)          # 132 ... SmallInteger
                      # "arbitrary" objects from here on
                      + spur_hdr(0, 0, 0, 1)    # 136 SmallInteger (class instance)
-                     + pack(">q", 0)           # 144 body of SmallInteger
+                     + pack("q", 0)            # 144 body of SmallInteger
                      + spur_hdr(0, 1, 0, 2)    # 152 SmallInteger class
-                     + pack(">q", 0)           # 160 body of SmallInteger class
+                     + pack("q", 0)            # 160 body of SmallInteger class
                      + spur_hdr(0, 2, 0, 3)    # 168 Metaclass (class instance)
-                     + pack(">q", 0)           # 176 body of Metaclass
+                     + pack("q", 0)            # 176 body of Metaclass
                      + spur_hdr(0, 3, 0, 2)    # 184 Metaclass class
-                     + pack(">q", 0)           # 192 body of Metaclass class
+                     + pack("q", 0)            # 192 body of Metaclass class
                      + longs2str(0, 0))        # 200 final bridge = stop at 136
     body = first_segment
+    word_size = 4
     header_size = 16 * word_size
-    image_1 = (SPUR_VERSION_HEADER       # 1
-               + pack(">i", header_size) # 2 64 byte header
-               + pack(">i", len(body))   # 3 body length
-               + pack(">i", 0)           # 4 old base addresss unset
-               + pack(">i", 104)         # 5 ptr to special objects array
-               + "\x12\x34\x56\x78"      # 6 last hash
-               + pack(">h", 480)         # 7 window 480 height
-               +     pack(">h", 640)     #   window 640 width
-               + pack(">i", 0)           # 8 not fullscreen
-               + pack(">i", 0)           # 9 no extra memory
-               + pack(">h", 0)           # 10 #stack pages
-               + pack(">h", 0)           #    cog code size
-               + pack(">i", 0)           # 11 eden bytes
-               + pack(">h", 0)           # 12 max ext sem tab size (?)
-               + pack(">h", 0)           #    unused
-               + pack(">i", len(first_segment))  # 13 first segment size
-               + pack(">i", 0)           # 14 free old space in image
-               + ("\x00" * (header_size - (14 * word_size)))
-               + body)
-    r = imagereader_mock(image_1)
-    # does not raise
-    r.read_all()
-    assert r.stream.pos == len(image_1)
+    return (version                   # 1
+            + pack("i", header_size)  # 2 64 byte header
+            + pack("i", len(body))    # 3 body length
+            + pack("i", 0)            # 4 old base addresss unset
+            + pack("i", 104)          # 5 ptr to special objects array
+            + "\x12\x34\x56\x78"      # 6 last hash
+            + pack("h", 480)          # 7 window 480 height
+            +     pack("h", 640)      #   window 640 width
+            + pack("i", 0)            # 8 not fullscreen
+            + pack("i", 0)            # 9 no extra memory
+            + pack("h", 0)            # 10 #stack pages
+            + pack("h", 0)            #    cog code size
+            + pack("i", 0)            # 11 eden bytes
+            + pack("h", 0)            # 12 max ext sem tab size (?)
+            + pack("h", 0)            #    unused
+            + pack("i", len(first_segment))  # 13 first segment size
+            + pack("i", 0)            # 14 free old space in image
+            + ("\x00" * (header_size - (14 * word_size)))
+            + body)
+
+def test_simple_spur_image():
+    image = simple_spur_image(pack_be, spur_hdr_big_endian, SPUR_VERSION_HEADER)
+    r = imagereader_mock(image)
+    r.read_all() # does not raise
+    assert r.stream.pos == len(image)
+
+def test_simple_spur_image_little_endian():
+    image_le = simple_spur_image(pack_le, spur_hdr_little_endian, SPUR_VERSION_HEADER_LE)
+    r = imagereader_mock(image_le)
+    r.read_all() # does not raise
+    assert r.stream.pos == len(image_le)
 
 def test_simple_spur_image_with_segments():
+    spur_hdr = spur_hdr_big_endian
     word_size = 4
     # first segment
     # use 3000 + x as hash for debugging purposes (easier to identify g_objects)

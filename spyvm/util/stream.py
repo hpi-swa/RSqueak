@@ -80,6 +80,15 @@ class Stream(object):
         self.pos += 2
         self.count += 2
         return short
+    
+    def next_qword(self):
+        word_size = self.word_size
+        long_read = self.use_long_read
+        self.be_64bit()
+        qword = self.next()
+        self.word_size = word_size
+        self.use_long_read = long_read
+        return qword
 
     def reset(self):
         self.big_endian = True

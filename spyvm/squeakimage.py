@@ -462,11 +462,8 @@ class SpurReader(BaseReaderStrategy):
                 self.chunklist.append(chunk)
                 self.chunks[pos + currentAddressSwizzle] = chunk
             # read bridge
-            # XXX add a next_qword or next_longlong method to stream
-            bridgeSpan = self.stream.next() << 32
-            bridgeSpan += self.stream.next()
-            nextSegmentSize = self.stream.next() << 32
-            nextSegmentSize += self.stream.next()
+            bridgeSpan = self.stream.next_qword()
+            nextSegmentSize = self.stream.next_qword()
             assert self.stream.count == segmentEnd
             segmentEnd = segmentEnd + nextSegmentSize
             currentAddressSwizzle += bridgeSpan
@@ -477,16 +474,17 @@ class SpurReader(BaseReaderStrategy):
     def read_object(self):
         # respect new header format
         pos = self.stream.count
-        firstWord = self.stream.next()
-        hash, _, size = splitter[22,2,8](firstWord)
+        assert pos % 8 == 0, "every object must be 64-bit aligned"
+        headerWord = self.stream.next_qword()
+        classid, _, format, _, hash, _, size = splitter[22,2,5,3,22,2,8](headerWord)
         OVERFLOW_SLOTS = 255
         if size == OVERFLOW_SLOTS:
-            size = firstWord & 0x00FfFfFf
-            size <<= 32
-            size += self.stream.next()
+            size = headerWord & 0x00FfFfFfFfFfFfFf
             pos = self.stream.count
-            hash, _, _ = splitter[22,2,8](self.stream.next())
-        classid, _, format, _ = splitter[22,2,5,3](self.stream.next())
+            classid, _, format, _, hash, _, overflow_size = splitter[22,2,5,3,22,2,8](self.stream.next_qword())
+            assert overflow_size == OVERFLOW_SLOTS, "objects with long header must have 255 in slot count"
+        assert 0 <= format <= 31
+        assert format != 0 or size == 0, "empty objects must not have slots"
         chunk = ImageChunk(size, format, classid, hash)
         # the minimum object length is 16 bytes, i.e. 8 header + 8 payload
         # (to accomodate a forwarding ptr)
