@@ -102,12 +102,13 @@ def test_simulate_numericprim():
 
     w_result = perform(w(10), "absentPrimitive:with:", w(3), w(4))
     assert isinstance(w_result, model.W_BytesObject)
-    assert w_result.as_string() == 'numeric simulation for 3 4'
+    assert w_result.unwrap_string(space) == 'numeric simulation for 3 4'
 
 def test_simulate_numericprim_fallback():
     sourcecode = """absentPrimitive: anInt with: anotherInt
-        <primitive: 97>
-        ^'numeric fallback for ', anInt asString, ' ', anotherInt asString"""
+        |errorCode|
+        <primitive: 97> "error: errorCode> is not implemented in the mini.image yet"
+        ^'numeric fallback for ', anInt asString, ' ', anotherInt asString, ' because of ', errorCode asString"""
     perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
 
     sourcecode = """metaPrimFailed: errorCode
@@ -123,7 +124,7 @@ def test_simulate_numericprim_fallback():
 
     w_result = perform(w(10), "absentPrimitive:with:", w(3), w(4))
     assert isinstance(w_result, model.W_BytesObject)
-    assert w_result.as_string() == 'numeric fallback for 3 4'
+    assert w_result.unwrap_string(space) == 'numeric fallback for 3 4 because of 123'
 
 def test_simulate_externalcall():
     sourcecode = """absentPrimitive: anInt with: anotherInt
@@ -142,4 +143,4 @@ def test_simulate_externalcall():
 
     w_result = perform(w(10), "absentPrimitive:with:", w(3), w(4))
     assert isinstance(w_result, model.W_BytesObject)
-    assert w_result.as_string() == 'externalcall simulation for 3 4'
+    assert w_result.unwrap_string(space) == 'externalcall simulation for 3 4'

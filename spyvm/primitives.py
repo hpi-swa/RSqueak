@@ -1625,7 +1625,7 @@ META_PRIM_FAILED = 255 # Used to be INST_VARS_PUT_FROM_STACK. Never used except 
 @expose_primitive(META_PRIM_FAILED, unwrap_spec=[object, int])
 def func(interp, s_frame, w_rcvr, primFailFlag):
     if primFailFlag != 0:
-        raise MetaPrimFailed(s_frame)
+        raise MetaPrimFailed(s_frame, primFailFlag)
     raise PrimitiveFailedError
 
 @expose_primitive(VM_PARAMETERS)

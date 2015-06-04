@@ -56,8 +56,7 @@ class SimulationPluginClass(Plugin):
             s_frame.push(ret.value)
             return w_rcvr
         except MetaPrimFailed, e:
-            interp.stack_frame(s_fallback, None)
-            return w_rcvr
+            raise e
         else:
             raise PrimitiveFailedError
 
