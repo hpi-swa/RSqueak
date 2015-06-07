@@ -429,6 +429,10 @@ class NonSpurReader(BaseReaderStrategy):
     def iscompiledmethod(self, g_object):
         return 12 <= g_object.format <= 15
 
+    def literal_count_of_method_header(self, untagged_header):
+        _, literalsize, _, _, _ = constants.decode_compiled_method_header(untagged_header)
+        return literalsize
+
 class AncientReader(NonSpurReader):
     """Reader strategy for pre-4.0 images"""
 
@@ -613,6 +617,9 @@ class SpurReader(BaseReaderStrategy):
 
     def iscompiledmethod(self, g_object):
         return 24 <= g_object.format <= 31
+
+    def literal_count_of_method_header(self, untagged_header):
+        return untagged_header & 0x7fff # AlternateHeaderNumLiteralsMask
 # ____________________________________________________________
 
 class SqueakImage(object):
@@ -729,7 +736,7 @@ class GenericObject(object):
             assert None not in self.pointers
         elif self.reader.iscompiledmethod(self):
             header = self.chunk.data[0] >> 1 # untag tagged int
-            _, literalsize, _, _, _ = constants.decode_compiled_method_header(header)
+            literalsize = self.reader.literal_count_of_method_header(header)
             self.pointers = self.reader.decode_pointers(self, space, literalsize + 1) # adjust +1 for the header
 
     def init_w_object(self, space):
