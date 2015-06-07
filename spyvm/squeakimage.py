@@ -441,6 +441,8 @@ class AncientReader(NonSpurReader):
 
 class SpurReader(BaseReaderStrategy):
 
+    FREE_OBJECT_CLASS_INDEX_PUN = 0
+
     def continue_read_header(self):
         BaseReaderStrategy.continue_read_header(self)
         self.hdrNumStackPages = self.stream.next_short()
@@ -460,6 +462,8 @@ class SpurReader(BaseReaderStrategy):
             while self.stream.count < segmentEnd - 16:
                 chunk, pos = self.read_object()
                 self.log_progress(len(self.chunklist), '#')
+                if chunk.classid == self.FREE_OBJECT_CLASS_INDEX_PUN:
+                    continue # ignore free chunks
                 self.chunklist.append(chunk)
                 self.chunks[pos + currentAddressSwizzle] = chunk
             # read bridge
@@ -487,7 +491,6 @@ class SpurReader(BaseReaderStrategy):
             classid, _, format, _, hash, _, overflow_size = splitter[22,2,5,3,22,2,8](self.stream.next_qword())
             assert overflow_size == OVERFLOW_SLOTS, "objects with long header must have 255 in slot count"
         assert 0 <= format <= 31
-        assert format != 0 or size == 0, "empty objects must not have slots"
         chunk = ImageChunk(size, format, classid, hash)
         # the minimum object length is 16 bytes, i.e. 8 header + 8 payload
         # (to accomodate a forwarding ptr)
@@ -495,6 +498,10 @@ class SpurReader(BaseReaderStrategy):
         if len(chunk.data) != size:
             # remove trailing alignment slots
             chunk.data = chunk.data[:size]
+        if format < 10 and classid != self.FREE_OBJECT_CLASS_INDEX_PUN:
+            for slot in chunk.data:
+                assert slot % 16 != 0 or slot >= self.oldbaseaddress
+        assert format != 0 or classid == 0 or size == 0, "empty objects must not have slots"
         return chunk, pos
 
     def words_for(self, size):
