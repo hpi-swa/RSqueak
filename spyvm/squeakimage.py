@@ -492,6 +492,9 @@ class SpurReader(BaseReaderStrategy):
         # the minimum object length is 16 bytes, i.e. 8 header + 8 payload
         # (to accomodate a forwarding ptr)
         chunk.data = [self.stream.next() for _ in range(self.words_for(size))]
+        if len(chunk.data) != size:
+            # remove trailing alignment slots
+            chunk.data = chunk.data[:size]
         return chunk, pos
 
     def words_for(self, size):

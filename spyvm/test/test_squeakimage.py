@@ -446,6 +446,7 @@ def pack_le(fmt, *args):
     return pack("<" + fmt, *args)
 
 def simple_spur_image(pack, spur_hdr, version):
+    invalid_ptr = 12
     first_segment = (spur_hdr(0, 1000, 0, 0)   #   0 nil
                      + pack("q", 0)            #   8 body of nil
                      + spur_hdr(0, 1016, 0, 0) #  16 false
@@ -456,7 +457,7 @@ def simple_spur_image(pack, spur_hdr, version):
                      + pack("q", 0)            #  56 body of freeList
                      + spur_hdr(1, 1064, 4, 0) #  64 hiddenRoots
                      + pack("i", 80)           #  72 ptr to 1st class table page
-                     + pack("i", 0)            #  76 alignment
+                     + pack("i", invalid_ptr)  #  76 alignment, do not resolve
                      + spur_hdr(4, 1080, 4, 0) #  80 1st class table page
                      + pack("i", 136)          #  88 ptr to first class (here SmallInteger)
                      + pack("i", 152)          #  92 ptr to SmallInteger class
