@@ -3,6 +3,7 @@ from spyvm import constants, model, util, error
 from spyvm.util import stream, system
 from spyvm.util.bitmanipulation import splitter
 from rpython.rlib import objectmodel
+from rpython.rlib.rarithmetic import r_ulonglong
 
 # Access for module users
 Stream = stream.Stream
@@ -471,6 +472,8 @@ class SpurReader(BaseReaderStrategy):
         self.stream.close()
         return self.chunklist # return for testing
 
+    SLOTS_MASK = r_ulonglong(0xFf << 56)
+
     def read_object(self):
         # respect new header format
         pos = self.stream.count
@@ -479,7 +482,7 @@ class SpurReader(BaseReaderStrategy):
         classid, _, format, _, hash, _, size = splitter[22,2,5,3,22,2,8](headerWord)
         OVERFLOW_SLOTS = 255
         if size == OVERFLOW_SLOTS:
-            size = headerWord & 0x00FfFfFfFfFfFfFf
+            size = headerWord & ~self.SLOTS_MASK
             pos = self.stream.count
             classid, _, format, _, hash, _, overflow_size = splitter[22,2,5,3,22,2,8](self.stream.next_qword())
             assert overflow_size == OVERFLOW_SLOTS, "objects with long header must have 255 in slot count"

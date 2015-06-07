@@ -436,8 +436,8 @@ def test_spur_hdr_little_endian():
     assert "\x12\x00\x00\x0A\x00\x00\x00\x20" == spur_hdr_little_endian(
             n_slots=32, hash=0, format=10, classid=18)
     assert "\x01\x02\x0a\x0b\x1f\x03\x0a\x0b"[::-1] == spur_hdr_little_endian(
-            n_slots=1, hash=(2 << 16) + (10 << 8) + 11,
-            format=31, classid=(3 << 16) + (10 << 8) + 11)
+            n_slots=1, hash=(2 << 16) + (0xa << 8) + 0xb,
+            format=0x1f, classid=(3 << 16) + (0xa << 8) + 0xb)
 
 def pack_be(fmt, *args):
     return pack(">" + fmt, *args)
