@@ -725,6 +725,7 @@ class GenericObject(object):
 
     def __repr__(self):
         return "<GenericObject %s>" % ("uninitialized" if not self.isinitialized()
+                else self.w_object if hasattr(self, "w_object") and self.w_object
                 else "size=%d hash=%d format=%d" % (self.size, self.hash, self.format))
 
     def init_class(self):
@@ -780,6 +781,16 @@ class GenericObject(object):
 
     def get_hash(self):
         return self.chunk.hash
+
+    def as_string(self):
+        """NOT RPYTHON"""
+        return "".join([chr(c) for bytes in
+            [splitter[8,8,8,8](w) for w in self.chunk.data]
+            for c in bytes if c != 0])
+
+    def classname(self):
+        """NOT RPYTHON"""
+        return self.g_class.pointers[6].as_string()
 
 
 class ImageChunk(object):
