@@ -681,7 +681,7 @@ class GenericObject(object):
 
     def initialize_int(self, value, reader, space):
         self.reader = reader
-        self.size = -1
+        self.size = 0
         if value in reader.intcache:
             w_int = reader.intcache[value]
         else:
@@ -692,7 +692,7 @@ class GenericObject(object):
 
     def initialize_char(self, value, reader, space):
         self.reader = reader
-        self.size = -1
+        self.size = 0
         self.w_object = space.wrap_char(value)
         self.filled_in = True
 
