@@ -798,6 +798,19 @@ def test_screen_size_queries_sdl_window_size(monkeypatch):
     mock_display.height = 3
     assert_screen_size()
 
+def test_primitive_context_size():
+    s_initial_context, closure, s_new_context = build_up_closure_environment([
+        wrap("first arg"), wrap("second arg")])
+
+    context_size = prim(primitives.CTXT_SIZE, [s_new_context.w_self()])
+    assert context_size.value is 2
+
+def test_primitive_context_size_smallint():
+    assert prim(primitives.CTXT_SIZE, [space.wrap_int(1)]).value is 0
+
+def test_primitive_context_nil():
+    assert prim(primitives.CTXT_SIZE, [space.w_nil]).value is 0
+
 # Note:
 #   primitives.NEXT is unimplemented as it is a performance optimization
 #   primitives.NEXT_PUT is unimplemented as it is a performance optimization

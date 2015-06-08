@@ -1588,9 +1588,15 @@ CTXT_AT = 210
 CTXT_AT_PUT = 211
 CTXT_SIZE = 212
 
+@expose_primitive(CTXT_SIZE, unwrap_spec=[object])
+def func(interp, s_frame, w_rcvr):
+    if isinstance(w_rcvr, model.W_PointersObject):
+        if w_rcvr.getclass(interp.space).is_same_object(interp.space.w_MethodContext):
+            return interp.space.wrap_int(w_rcvr.as_context_get_shadow(interp.space).stackdepth())
+    return interp.space.wrap_int(w_rcvr.varsize())
+
 prim_table[CTXT_AT] = prim_table[AT]
 prim_table[CTXT_AT_PUT] = prim_table[AT_PUT]
-prim_table[CTXT_SIZE] = prim_table[SIZE]
 # ___________________________________________________________________________
 # Drawing
 
