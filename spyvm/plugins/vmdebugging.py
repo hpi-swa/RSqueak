@@ -38,8 +38,14 @@ def halt(interp, s_frame, w_rcvr):
         import pdb; pdb.set_trace()
     else:
         print s_frame
-        raise Exit('Halt is not well defined when translated.')
+        print "Waiting for debugger to attach"
+        debugger_wait()
     return w_rcvr
+
+def debugger_wait():
+    from rpython.rlib import rsignal
+    from os import kill, getpid
+    kill(getpid(), rsignal.SIGSTOP)
 
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object])
 def isRSqueak(interp, s_frame, w_rcvr):
