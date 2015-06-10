@@ -563,7 +563,10 @@ class W_Character(W_AbstractObjectWithIdentityHash):
         return "Character"
 
     def str_content(self):
-        return "$" + chr(self.value)
+        try:
+            return "$" + unichr(self.value)
+        except ValueError:
+            return "$?"
 
     def gethash(self):
         return self.value
@@ -596,7 +599,7 @@ class W_Character(W_AbstractObjectWithIdentityHash):
         return self
 
     def unwrap_char(self, space):
-        return chr(self.value)
+        return unichr(self.value)
 
     def at0(self, space, index0):
         return self.fetch(space, index0)
@@ -906,6 +909,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
 
     def setchar(self, n0, character):
         assert len(character) == 1
+        assert ord(character) <= 0xff
         if self.bytes is None:
             self.c_bytes[n0] = character
         else:

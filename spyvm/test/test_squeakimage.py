@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import pytest
 import py, StringIO
 from struct import pack, unpack
 from spyvm import squeakimage, error
@@ -28,6 +29,10 @@ def imagestream_mock(string):
 def imagereader_mock(string):
     stream = imagestream_mock(string)
     return squeakimage.ImageReader(create_space(), stream)
+
+@pytest.fixture
+def space():
+    return create_space()
 
 SIMPLE_VERSION_HEADER = pack(">i", 6502)
 SIMPLE_VERSION_HEADER_LE = pack("<i", 6502)
@@ -348,7 +353,70 @@ def test_object_format_spur(monkeypatch):
     assert w_obj.bytes == list("\x00\x01\x02\x03")
     # TODO: add tests for correct reading of compiled methods with trailing slots (25-31)
 
-    
+@pytest.fixture
+def reader_mock(monkeypatch, space):
+    from spyvm.squeakimage import GenericObject, SpurReader
+    from spyvm.model import W_PointersObject
+    from rpython.rlib import objectmodel
+    class FakeVersion:
+        is_big_endian = True
+    reader_mock = SpurReader(imageReader=None, version=FakeVersion(), stream=None,
+            space=space)
+    fake_g_class = GenericObject()
+    fake_g_class.w_object = objectmodel.instantiate(W_PointersObject)
+    monkeypatch.setattr(reader_mock, 'g_class_of', lambda chunk: fake_g_class)
+    return reader_mock
+
+def chunk2object(chunk, space, reader):
+    from spyvm.squeakimage import GenericObject
+    g_obj = GenericObject()
+    g_obj.initialize(chunk, reader, space)
+    w_obj = g_obj.init_w_object(space)
+    g_obj.fillin(space)
+    return w_obj, g_obj
+
+def test_string_instantiation(space, reader_mock):
+    from spyvm.squeakimage import ImageChunk
+    # given
+    str_chunk = ImageChunk(size=1, format=16, classid=1, hash=0,
+            data=[chrs2int("abcd")])
+    # when
+    w_str, g_str = chunk2object(str_chunk, space, reader_mock)
+    # then
+    assert w_str.as_string() == "abcd"
+
+def tagged_chr(ord_value):
+    return joinbits([2, ord_value], [2, 30])
+
+def test_char_array_instantiation(space, reader_mock):
+    from spyvm.squeakimage import ImageChunk
+    from spyvm.model import W_Character
+    # given
+    array_chunk = ImageChunk(size=1, format=1, classid=1, hash=0,
+            data=[tagged_chr(ord('a'))])
+    # when
+    w_array, g_array = chunk2object(array_chunk, space, reader_mock)
+    # then
+    w_char = w_array.fetch(space, 0)
+    assert isinstance(w_char, W_Character)
+    assert w_char.str_content() == '$a'
+    assert space.unwrap_char(w_char) == 'a'
+ 
+def test_char_array_instantiation_with_high_chars(space, reader_mock):
+    from spyvm.squeakimage import ImageChunk
+    from spyvm.model import W_Character
+    # given
+    array_chunk = ImageChunk(size=1, format=1, classid=1, hash=0,
+            data=[tagged_chr(0x10ffff)])
+    # when
+    w_array, g_array = chunk2object(array_chunk, space, reader_mock)
+    # then
+    w_char = w_array.fetch(space, 0)
+    assert isinstance(w_char, W_Character)
+    assert w_char.str_content()[0] == '$'
+    assert w_char.value == 0x10ffff
+    # cannot unwrap this char because some pythons do not support chars >= 0xffff
+
 def test_simple_image():
     word_size = 4
     header_size = 16 * word_size

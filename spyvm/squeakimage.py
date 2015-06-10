@@ -552,7 +552,7 @@ class SpurReader(BaseReaderStrategy):
                 # pointer = ...10
                 # immediate character
                 character = GenericObject()
-                character.initialize_char(unichr(pointer >> 2), self, space)
+                character.initialize_char(pointer >> 2, self, space)
                 pointers.append(character)
         return pointers
     
@@ -707,10 +707,10 @@ class GenericObject(object):
         self.w_object = w_int
         self.filled_in = True
 
-    def initialize_char(self, value, reader, space):
+    def initialize_char(self, untagged_value, reader, space):
         self.reader = reader
         self.size = 0
-        self.w_object = space.wrap_char(value)
+        self.w_object = model.W_Character(untagged_value)
         self.filled_in = True
 
     def initialize(self, chunk, reader, space):

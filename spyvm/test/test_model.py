@@ -1,11 +1,19 @@
+# -*- coding: utf-8
+import pytest
 import py, math, socket
 from spyvm import model, model_display, storage_classes, error, display
 from rpython.rlib.rarithmetic import intmask, r_uint
 from rpython.rtyper.lltypesystem import lltype, rffi
 from .util import create_space, copy_to_module, cleanup_module
 
+def test_space():
+    return create_space(bootstrap = True)
+
+space = pytest.fixture(test_space)
+
 def setup_module():
-    space = create_space(bootstrap = True)
+    v_space = test_space()
+    space = v_space
     bootstrap_class = space.bootstrap_class
     w_foo = space.wrap_string("foo")
     w_bar = space.wrap_string("bar")
@@ -440,3 +448,26 @@ def test_weak_pointers():
     import gc; gc.collect()
     assert weak_object.fetch(space, 0).is_nil(space)
     assert weak_object.fetch(space, 1).value == 20
+
+def test_characters(space):
+    w_char = space.wrap_char('a')
+    assert w_char.unwrap_char(space) == 'a'
+    assert w_char.value == ord('a')
+    assert w_char.str_content() == '$a'
+
+def test_non_ascii_characters(space):
+    w_unichar = space.wrap_char(u'Ω') # Greek Capital Letter Omega
+    assert w_unichar.unwrap_char(space) == u'Ω'
+    assert w_unichar.value == ord(u'Ω')
+    assert w_unichar.str_content() == u'$Ω'
+
+def test_high_characters(space):
+    from spyvm.model import W_Character
+    w_nonchar = W_Character(0x10ffff) # Non-Character codepoint, present in images
+    # do not assert a specific representation because these are unlikely to be printable
+    # but str_content should not crash
+    assert w_nonchar.str_content()[0] == '$'
+    assert w_nonchar.value == 0x10ffff
+    w_mousefacechar = W_Character(0x1f42d) # http://unicode-table.com/de/1F42D/
+    assert w_mousefacechar.str_content()[0] == '$'
+    assert w_mousefacechar.value == 0x1f42d
