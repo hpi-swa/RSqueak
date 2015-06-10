@@ -447,23 +447,23 @@ def pack_le(fmt, *args):
 
 def simple_spur_image(pack, spur_hdr, version):
     invalid_ptr = 12
-    first_segment = (spur_hdr(0, 1000, 0, 0)   #   0 nil
+    first_segment = (spur_hdr(0, 1000, 0, 2)   #   0 nil
                      + pack("q", 0)            #   8 body of nil
-                     + spur_hdr(0, 1016, 0, 0) #  16 false
+                     + spur_hdr(0, 1016, 0, 2) #  16 false
                      + pack("q", 0)            #  24 body of false
-                     + spur_hdr(0, 1032, 0, 0) #  32 true
+                     + spur_hdr(0, 1032, 0, 2) #  32 true
                      + pack("q", 0)            #  40 body of true
-                     + spur_hdr(0, 1048, 0, 0) #  48 freeList
+                     + spur_hdr(0, 1048, 0, 2) #  48 freeList
                      + pack("q", 0)            #  56 body of freeList
-                     + spur_hdr(1, 1064, 4, 0) #  64 hiddenRoots
+                     + spur_hdr(1, 1064, 4, 2) #  64 hiddenRoots
                      + pack("i", 80)           #  72 ptr to 1st class table page
                      + pack("i", invalid_ptr)  #  76 alignment, do not resolve
-                     + spur_hdr(4, 1080, 4, 0) #  80 1st class table page
+                     + spur_hdr(4, 1080, 4, 2) #  80 1st class table page
                      + pack("i", 136)          #  88 ptr to first class (here SmallInteger)
                      + pack("i", 152)          #  92 ptr to SmallInteger class
                      + pack("i", 168)          #  96 ptr to Metaclass
                      + pack("i", 184)          # 100 ptr to Metaclass class
-                     + spur_hdr(6, 1104, 4, 0) # 104 special objects array
+                     + spur_hdr(6, 1104, 4, 2) # 104 special objects array
                      + pack("i", 0)            # 112 ptr to nil
                      + pack("i", 16)           # 116 ... false
                      + pack("i", 32)           # 120 ... true
@@ -520,18 +520,18 @@ def test_simple_spur_image_with_segments():
     word_size = 4
     # first segment
     # use 3000 + x as hash for debugging purposes (easier to identify g_objects)
-    first_segment = (spur_hdr(0, 3000, 0, 0)   #   0 nil
+    first_segment = (spur_hdr(0, 3000, 0, 2)   #   0 nil
                      + pack(">q", 0)           #   8 body of nil
-                     + spur_hdr(0, 3016, 0, 0) #  16 false
+                     + spur_hdr(0, 3016, 0, 2) #  16 false
                      + pack(">q", 0)           #  24 body of false
-                     + spur_hdr(0, 3032, 0, 0) #  32 true
+                     + spur_hdr(0, 3032, 0, 2) #  32 true
                      + pack(">q", 0)           #  40 body of true
-                     + spur_hdr(0, 3048, 0, 0) #  48 freeList
+                     + spur_hdr(0, 3048, 0, 4) #  48 freeList
                      + pack(">q", 0)           #  56 body of freeList
-                     + spur_hdr(1, 3064, 4, 0) #  64 hiddenRoots
+                     + spur_hdr(1, 3064, 4, 4) #  64 hiddenRoots
                      + pack(">i", 80)       #  72 ptr to 1st class table page
                      + pack(">i", 0)        #  76 8-byte alignment
-                     + spur_hdr(5, 3080, 4, 0) #  80 1st class table page
+                     + spur_hdr(5, 3080, 4, 4) #  80 1st class table page
                      # note that the following classtable does not match up with
                      # a "real world" spur image, the order is synthetic
                      + pack(">i", 144)      #  88 ptr to first class (here SmallInteger)
@@ -540,7 +540,7 @@ def test_simple_spur_image_with_segments():
                      + pack(">i", 192)      # 100 ptr to Metaclass class
                      + pack(">i", 208)      # 104 ptr to Array
                      + pack(">i", 0)        # 108 8-byte alignment
-                     + spur_hdr(6, 3112, 4, 0) # 112 special objects array
+                     + spur_hdr(6, 3112, 4, 4) # 112 special objects array
                      + pack(">i", 0)        # 120 ptr to nil
                      + pack(">i", 16)       # 124 -> false
                      + pack(">i", 32)       # 128 -> true
@@ -558,7 +558,7 @@ def test_simple_spur_image_with_segments():
                      + pack(">q", 0)        # 184 body of Metaclass
                      + spur_hdr(0, 3, 0, 2) # 192 Metaclass class
                      + pack(">q", 0)        # 200 body of Metaclass class
-                     + spur_hdr(0, 4, 0, 0) # 208 Array (class instance)
+                     + spur_hdr(0, 4, 0, 1) # 208 Array (class instance)
                      + pack(">q", 0)        # 216 body of Metaclass class
                      ) # bridge will be added later
     # second segment shall start at oop 1000 here
