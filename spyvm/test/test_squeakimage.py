@@ -413,7 +413,6 @@ def test_char_array_instantiation_with_high_chars(space, reader_mock):
     # then
     w_char = w_array.fetch(space, 0)
     assert isinstance(w_char, W_Character)
-    assert w_char.str_content()[0] == '$'
     assert w_char.value == 0x10ffff
     # cannot unwrap this char because some pythons do not support chars >= 0xffff
 

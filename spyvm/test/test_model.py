@@ -458,15 +458,15 @@ def test_characters(space):
 def test_non_ascii_characters(space):
     w_unichar = space.wrap_char(u'Ω') # Greek Capital Letter Omega
     assert w_unichar.value == ord(u'Ω')
-    assert w_unichar.str_content() == u'$Ω'
+    assert w_unichar.str_content() == 'Character value: 937'
 
 def test_high_characters(space):
     from spyvm.model import W_Character
     w_nonchar = W_Character(0x10ffff) # Non-Character codepoint, present in images
     # do not assert a specific representation because these are unlikely to be printable
     # but str_content should not crash
-    assert w_nonchar.str_content()[0] == '$'
+    assert w_nonchar.str_content() == 'Character value: ' + str(0x10ffff)
     assert w_nonchar.value == 0x10ffff
     w_mousefacechar = W_Character(0x1f42d) # http://unicode-table.com/de/1F42D/
-    assert w_mousefacechar.str_content()[0] == '$'
+    assert w_mousefacechar.str_content() == 'Character value: ' + str(0x1f42d)
     assert w_mousefacechar.value == 0x1f42d
