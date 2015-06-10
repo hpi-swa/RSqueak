@@ -451,13 +451,12 @@ def test_weak_pointers():
 
 def test_characters(space):
     w_char = space.wrap_char('a')
-    assert w_char.unwrap_char(space) == 'a'
+    assert w_char.unwrap_char_as_byte(space) == 'a'
     assert w_char.value == ord('a')
     assert w_char.str_content() == '$a'
 
 def test_non_ascii_characters(space):
     w_unichar = space.wrap_char(u'Ω') # Greek Capital Letter Omega
-    assert w_unichar.unwrap_char(space) == u'Ω'
     assert w_unichar.value == ord(u'Ω')
     assert w_unichar.str_content() == u'$Ω'
 

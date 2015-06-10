@@ -143,7 +143,7 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                         assert isinstance(w_arg, model.W_PointersObject)
                         args += (interp.space.unwrap_array(w_arg), )
                     elif spec is char:
-                        args += (unwrap_char(w_arg), )
+                        args += (interp.space.unwrap_char_as_byte(w_arg), )
                     elif spec is bool:
                         args += (interp.space.w_true is w_arg, )
                     else:
@@ -507,7 +507,7 @@ def func(interp, s_frame, w_obj, n0):
 
 @expose_primitive(STRING_AT_PUT, unwrap_spec=[object, index1_0, object])
 def func(interp, s_frame, w_obj, n0, w_val):
-    val = interp.space.unwrap_char(w_val)
+    val = interp.space.unwrap_char_as_byte(w_val)
     n0 = assert_valid_index(interp.space, n0, w_obj)
     if not (isinstance(w_obj, model.W_CompiledMethod) or
             isinstance(w_obj, model.W_BytesObject)):

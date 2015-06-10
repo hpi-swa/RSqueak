@@ -400,7 +400,7 @@ def test_char_array_instantiation(space, reader_mock):
     w_char = w_array.fetch(space, 0)
     assert isinstance(w_char, W_Character)
     assert w_char.str_content() == '$a'
-    assert space.unwrap_char(w_char) == 'a'
+    assert space.unwrap_char_as_byte(w_char) == 'a'
  
 def test_char_array_instantiation_with_high_chars(space, reader_mock):
     from spyvm.squeakimage import ImageChunk
@@ -683,7 +683,7 @@ def test_simple_spur_image_with_segments():
     assert isinstance(theArray.fetch(r.space, 3), model.W_SmallInteger)
     assert r.space.unwrap_int(theArray.fetch(r.space, 3)) == 42
     assert isinstance(theArray.fetch(r.space, 4), model.W_Character)
-    assert r.space.unwrap_char(theArray.fetch(r.space, 4)) == 'p'
+    assert r.space.unwrap_char_as_byte(theArray.fetch(r.space, 4)) == 'p'
     assert isinstance(theArray.fetch(r.space, 5), model.W_Character)
     # we do not support unicode yet
     #assert r.space.unwrap_char(theArray.fetch(r.space, 5)) == u'ü'

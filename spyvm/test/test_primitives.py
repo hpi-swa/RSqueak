@@ -561,7 +561,7 @@ def test_file_write_errors(monkeypatch):
 
 def test_directory_delimitor():
     w_c = prim(primitives.DIRECTORY_DELIMITOR, [1])
-    assert space.unwrap_char(w_c) == os.path.sep
+    assert space.unwrap_char_as_byte(w_c) == os.path.sep
 
 def test_primitive_closure_copyClosure():
     w_frame, s_frame = new_frame("<never called, but used for method generation>")

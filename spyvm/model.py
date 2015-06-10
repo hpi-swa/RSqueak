@@ -173,7 +173,7 @@ class W_Object(object):
     def unwrap_longlong(self, space):
         raise error.UnwrappingError("Got unexpected class unwrap_longlong")
 
-    def unwrap_char(self, space):
+    def unwrap_char_as_byte(self, space):
         raise error.UnwrappingError
 
     def unwrap_array(self, space):
@@ -564,9 +564,9 @@ class W_Character(W_AbstractObjectWithIdentityHash):
 
     def str_content(self):
         try:
-            return "$" + unichr(self.value)
+            return "$" + chr(self.value)
         except ValueError:
-            return "$?"
+            return "Character value: " + str(self.value)
 
     def gethash(self):
         return self.value
@@ -598,8 +598,8 @@ class W_Character(W_AbstractObjectWithIdentityHash):
     def clone(self, space):
         return self
 
-    def unwrap_char(self, space):
-        return unichr(self.value)
+    def unwrap_char_as_byte(self, space):
+        return chr(self.value)
 
     def at0(self, space, index0):
         return self.fetch(space, index0)
@@ -908,8 +908,8 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
             return self.bytes[n0]
 
     def setchar(self, n0, character):
+        assert isinstance(character, str)
         assert len(character) == 1
-        assert ord(character) <= 0xff
         if self.bytes is None:
             self.c_bytes[n0] = character
         else:

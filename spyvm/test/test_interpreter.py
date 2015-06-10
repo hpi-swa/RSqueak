@@ -791,7 +791,7 @@ def test_bc_primBytecodeAt_with_instvars():
     w_fakeinst.store(space, 0, space.wrap_char("a")) # static slot 0: instance variable
     w_fakeinst.store(space, 1, space.wrap_char("b")) # varying slot 1
     def test():
-        assert space.unwrap_char(interpret_bc(
+        assert space.unwrap_char_as_byte(interpret_bc(
             [112, 118, 192, 124],
             fakeliterals(space, ),
             receiver=w_fakeinst)) == "b"
@@ -806,12 +806,12 @@ def test_bc_primBytecodeAtPut_with_instvars():
     w_fakeinst.store(space, 0, space.wrap_char("a")) # static slot 0: instance variable
     w_fakeinst.store(space, 1, space.wrap_char("a")) # varying slot 1
     def test():
-        assert space.unwrap_char(interpret_bc(
+        assert space.unwrap_char_as_byte(interpret_bc(
             [0x70, 0x76, 0x20, 0xc1, 0x7c],
             fakeliterals(space, space.wrap_char("b")),
             receiver=w_fakeinst)) == "b"
-        assert space.unwrap_char(w_fakeinst.fetch(space, 0)) == "a"
-        assert space.unwrap_char(w_fakeinst.fetch(space, 1)) == "b"
+        assert space.unwrap_char_as_byte(w_fakeinst.fetch(space, 0)) == "a"
+        assert space.unwrap_char_as_byte(w_fakeinst.fetch(space, 1)) == "b"
     run_with_faked_primitive_methods(
         [[w_fakeclass, primitives.AT_PUT, 2, "at:put:"]],
         test)
