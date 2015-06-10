@@ -188,11 +188,27 @@ def decode_compiled_method_header(header):
     (index 28) 1 bit:  high-bit of primitive number (#primitive)
     (index 29) 1 bit:  flag bit, ignored by the VM  (#flag)
     """
+    if header < 0: # sign bit == 1 (bit index depends on 32b/64b)
+        return decode_alternate_compiled_method_header(header)
     primitive, literalsize, islarge, tempsize, numargs, highbit = (
         splitter[9,8,1,6,4,1](header))
     primitive = primitive + (highbit << 10) ##XXX todo, check this
     assert tempsize >= numargs
     return primitive, literalsize, islarge, tempsize, numargs
+
+def decode_alternate_compiled_method_header(header):
+    """Decode 30-bit method header and apply new format.
+
+	(index 0)	16 bits:	number of literals (#numLiterals)
+	(index 16)	  1 bit:	has primitive
+	(index 17)	  1 bit:	whether a large frame size is needed (#frameSize)
+	(index 18)	  6 bits:	number of temporary variables (#numTemps)
+	(index 24)	  4 bits:	number of arguments to the method (#numArgs)
+	(index 28)	  2 bits:	reserved for an access modifier (00-unused, 01-private, 10-protected, 11-public)
+    """
+    literalsize, has_primitive, islarge, tempsize, numargs, access_mod = (
+            splitter[16,1,1,6,4,2](header))
+    return bool(has_primitive), literalsize, islarge, tempsize, numargs
 
 #___________________________________________________________________________
 # Interpreter constants

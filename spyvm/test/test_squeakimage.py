@@ -339,7 +339,13 @@ def test_object_format_spur(monkeypatch):
     assert w_obj.as_string() == body_1_to_9[:6]
     # TODO: add tests for correct reading of 8 bit indexables with trailing slots (17-23)
     # 24-31 compiled methods (28-31 unused in 32 bits)
-    w_obj, space = assert_w_object_type(24, model.W_CompiledMethod, length=2, body=body_1_to_9)
+    literals = [chrs2int(body_1_to_9[:4])]
+    bytecodes = "\x00\x01\x02\x03" + "\x04\x05\x06\x07"
+    w_obj, space = assert_w_object_type(24, model.W_CompiledMethod, length=1+1+1,
+            body=ints2str(joinbits([1, 0, 0, 3, 2, 0, 1], [16,1,1,6,4,2,1]) << 1 | 1,
+                *literals) + bytecodes)
+    assert w_obj.literals[0] == space.wrap_int(1)
+    assert w_obj.bytes == list("\x00\x01\x02\x03")
     # TODO: add tests for correct reading of compiled methods with trailing slots (25-31)
 
     

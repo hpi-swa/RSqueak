@@ -1178,7 +1178,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         self.setheader(space, header, initializing=True)
 
     def fillin(self, space, g_self):
-        # Implicitely sets the header, including self.literalsize
+        # Implicitly sets the header, including self.literalsize
         for i, w_object in enumerate(g_self.get_pointers()):
             self.literalatput0(space, i, w_object, initializing=True)
         self.setbytes(g_self.get_bytes()[self.bytecodeoffset():])
