@@ -240,6 +240,7 @@ def test_read_normal_spur_header():
             joinbits([10, 0, 2, 0], [22, 2, 5, 3])) + ints2str(0) * n_slots
     r = imagereader_mock(SPUR_VERSION_HEADER + objbytes)
     r.read_version()
+    r.readerStrategy.oldbaseaddress = 0
     r.stream.reset_count()
     actualChunk, pos = r.readerStrategy.read_object()
     expectedChunk = squeakimage.ImageChunk(size=n_slots, format=2, classid=10,
@@ -254,6 +255,7 @@ def test_read_long_spur_header():
             joinbits([10, 0, 2, 0], [22, 2, 5, 3])) + ints2str(0) * n_slots
     r = imagereader_mock(SPUR_VERSION_HEADER + objbytes)
     r.read_version()
+    r.readerStrategy.oldbaseaddress = 0
     r.stream.reset_count()
     actualChunk, pos = r.readerStrategy.read_object()
     expectedChunk = squeakimage.ImageChunk(size=n_slots, format=2, classid=10,
