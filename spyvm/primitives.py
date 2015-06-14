@@ -1622,9 +1622,11 @@ VM_PROFILE_INFO_INTO = 253
 VM_PARAMETERS = 254
 META_PRIM_FAILED = 255 # Used to be INST_VARS_PUT_FROM_STACK. Never used except in Disney tests.  Remove after 2.3 release.
 
-@expose_primitive(META_PRIM_FAILED, unwrap_spec=[object])
-def func(interp, s_frame, w_rcvr):
-    raise MetaPrimFailed(s_frame)
+@expose_primitive(META_PRIM_FAILED, unwrap_spec=[object, int])
+def func(interp, s_frame, w_rcvr, primFailFlag):
+    if primFailFlag != 0:
+        raise MetaPrimFailed(s_frame)
+    raise PrimitiveFailedError
 
 @expose_primitive(VM_PARAMETERS)
 def func(interp, s_frame, argcount):
