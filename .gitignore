@@ -7,6 +7,8 @@
 .build/rsdl
 .build/SDL
 .build/pypy-win32
+.build/pypy-linux32
+.build/Graphviz
 
 pypy-c-jit-*
 images/resources*
@@ -263,3 +265,5 @@ $RECYCLE.BIN/
 
 # Mac desktop service store files
 .DS_Store
+
+images/
