@@ -150,6 +150,20 @@ def test_fileplugin_filewrite_float(monkeypatch):
     finally:
         monkeypatch.undo()
 
+def test_fileplugin_filewrite_largeposint(monkeypatch):
+    def write(fd, data):
+        assert len(data) == 4
+        assert data == 'dcba'
+        return 4
+    monkeypatch.setattr(os, "write", write)
+
+    content = model.W_LargePositiveInteger1Word(1633837924)
+    try:
+        stack = [space.w(1), space.w(1), content, space.w(1), space.w(1)]
+        w_c = external_call('FilePlugin', 'primitiveFileWrite', stack)
+    finally:
+        monkeypatch.undo()
+
 def test_fileplugin_dirdelete_raises(monkeypatch):
     def rmdir(dir_path):
         raise OSError()

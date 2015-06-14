@@ -208,6 +208,9 @@ def primitiveFileWrite(interp, s_frame, w_rcvr, fd, content, start, count):
         byte_size = 4
         # TODO: is there a case where a Float is only 32 bits?
         size = 2
+    elif isinstance(content, model.W_LargePositiveInteger1Word):
+        byte_size = 4
+        size = 1
     else:
         raise PrimitiveFailedError
 
