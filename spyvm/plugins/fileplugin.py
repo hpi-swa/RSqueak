@@ -3,7 +3,7 @@ import os, stat, sys
 from rpython.rlib import jit, rarithmetic
 from rpython.rlib.listsort import TimSort
 
-from spyvm import model, error
+from spyvm import model, model_display, error
 from spyvm.plugins.plugin import Plugin
 from spyvm.primitives import PrimitiveFailedError, index1_0
 from spyvm.util.system import IS_WINDOWS
@@ -211,6 +211,9 @@ def primitiveFileWrite(interp, s_frame, w_rcvr, fd, content, start, count):
     elif isinstance(content, model.W_LargePositiveInteger1Word):
         byte_size = 4
         size = 1
+    elif isinstance(content, model_display.W_DisplayBitmap):
+        byte_size = 4
+        size = content.size()
     else:
         raise PrimitiveFailedError
 
