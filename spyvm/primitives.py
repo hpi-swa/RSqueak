@@ -565,6 +565,8 @@ def func(interp, s_frame, w_cls, size):
     s_class = w_cls.as_class_get_shadow(interp.space)
     if not s_class.isvariable() and size != 0:
         raise PrimitiveFailedError()
+    if size < 0:
+        raise PrimitiveFailedError()
     try:
         return s_class.new(size)
     except MemoryError:
