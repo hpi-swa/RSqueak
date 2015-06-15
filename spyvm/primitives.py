@@ -3,7 +3,7 @@ import inspect
 import math
 import operator
 from spyvm import model, model_display, storage_contexts, error, constants, display
-from spyvm.error import PrimitiveFailedError, PrimitiveNotYetWrittenError
+from spyvm.error import PrimitiveFailedError, PrimitiveNotYetWrittenError, MetaPrimFailed
 from spyvm import wrapper
 
 from rpython.rlib import rfloat, unroll, jit, objectmodel
@@ -1628,7 +1628,13 @@ VM_CONTROL_PROFILING = 251
 VM_PROFILE_SAMPLES_INTO = 252
 VM_PROFILE_INFO_INTO = 253
 VM_PARAMETERS = 254
-INST_VARS_PUT_FROM_STACK = 255 # Never used except in Disney tests.  Remove after 2.3 release.
+META_PRIM_FAILED = 255 # Used to be INST_VARS_PUT_FROM_STACK. Never used except in Disney tests.  Remove after 2.3 release.
+
+@expose_primitive(META_PRIM_FAILED, unwrap_spec=[object, int])
+def func(interp, s_frame, w_rcvr, primFailFlag):
+    if primFailFlag != 0:
+        raise MetaPrimFailed(s_frame)
+    raise PrimitiveFailedError
 
 @expose_primitive(VM_PARAMETERS)
 def func(interp, s_frame, argcount):

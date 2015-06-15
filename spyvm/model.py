@@ -1361,10 +1361,10 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def is_array_object(self):
         return True
 
-    def create_frame(self, space, receiver, arguments=[]):
+    def create_frame(self, space, receiver, arguments=[], s_fallback=None):
         from spyvm.storage_contexts import ContextPartShadow
         assert len(arguments) == self.argsize
-        return ContextPartShadow.build_method_context(space, self, receiver, arguments)
+        return ContextPartShadow.build_method_context(space, self, receiver, arguments, s_fallback=s_fallback)
 
     # === Printing ===
 
