@@ -50,7 +50,7 @@ def run_with_faked_primitive_methods(methods, func, active_context=None):
     # Install faked compiled methods that just invoke the primitive:
     for (w_class, primnum, argsize, methname) in methods:
         s_class = w_class.as_class_get_shadow(space)
-        prim_meth = model.W_CompiledMethod(space, 0)
+        prim_meth = model.W_PreSpurCompiledMethod(space, 0)
         prim_meth._primitive = primnum
         prim_meth.argsize = argsize
         symbol = fakesymbol(methname)
@@ -96,7 +96,7 @@ def fakeliterals(space, *literals):
 # ======= Test methods =======
 
 def test_create_frame():
-    w_method = model.W_CompiledMethod(space, len("hello"))
+    w_method = model.W_PreSpurCompiledMethod(space, len("hello"))
     w_method.bytes="hello"
     w_method.islarge = 1
     w_method.argsize=2
@@ -409,7 +409,7 @@ def sendBytecodesTest(w_class, w_object, bytecodes):
           (returnNilBytecode, space.w_nil),
           (returnTopFromMethodBytecode, space.w_one) ]:
         shadow = w_class.as_class_get_shadow(space)
-        w_method = model.W_CompiledMethod(space, 2)
+        w_method = model.W_PreSpurCompiledMethod(space, 2)
         w_method.bytes = pushConstantOneBytecode + bytecode
         literals = fakeliterals(space, "foo")
         w_foo = literals[0]
@@ -438,7 +438,7 @@ def test_sendLiteralSelectorBytecode():
 def test_fibWithArgument():
     bytecode = ''.join(map(chr, [ 16, 119, 178, 154, 118, 164, 11, 112, 16, 118, 177, 224, 112, 16, 119, 177, 224, 176, 124 ]))
     shadow = bootstrap_class(0).as_class_get_shadow(space)
-    method = model.W_CompiledMethod(space, len(bytecode))
+    method = model.W_PreSpurCompiledMethod(space, len(bytecode))
     method.literalsize = 1
     method.bytes = bytecode
     method.argsize = 1
@@ -578,7 +578,7 @@ def test_extendedStoreAndPopBytecode():
 def test_callPrimitiveAndPush_fallback():
     w_frame, s_frame = new_frame(bytecodePrimAdd)
     shadow = bootstrap_class(0).as_class_get_shadow(space)
-    w_method = model.W_CompiledMethod(space, 0)
+    w_method = model.W_PreSpurCompiledMethod(space, 0)
     w_method.argsize = 1
     w_method._tempsize = 1
     w_method.literalsize = 1
@@ -625,18 +625,18 @@ def test_singleExtendedSuperBytecode(bytecode=singleExtendedSuperBytecode + chr(
     # first call method installed in w_class
     bytecodes = singleExtendedSendBytecode + chr(0)
     # which does a call to its super
-    meth1 = model.W_CompiledMethod(space, 2)
+    meth1 = model.W_PreSpurCompiledMethod(space, 2)
     meth1.bytes = pushReceiverBytecode + bytecode
     literals = fakeliterals(space, "foo")
     foo = literals[0]
     meth1.setliterals(literals)
     w_class.as_class_get_shadow(space).installmethod(foo, meth1)
     # and that one again to its super
-    meth2 = model.W_CompiledMethod(space, 2)
+    meth2 = model.W_PreSpurCompiledMethod(space, 2)
     meth2.bytes = pushReceiverBytecode + bytecode
     meth2.setliterals(fakeliterals(space, foo))
     w_super.as_class_get_shadow(space).installmethod(foo, meth2)
-    meth3 = model.W_CompiledMethod(space, 0)
+    meth3 = model.W_PreSpurCompiledMethod(space, 0)
     w_supersuper.as_class_get_shadow(space).installmethod(foo, meth3)
     w_frame, s_frame = new_frame(bytecodes)
     s_frame.w_method().setliterals(literals)
@@ -821,7 +821,7 @@ def test_bc_objectAtAndAtPut():
     #   ^ self objectAt: 2.          yields the first literal (22)
     #   ^ self objectAt: 2 put: 3.   changes the first literal to 3
     #   ^ self objectAt: 2.          yields the new first literal (3)
-    prim_meth = model.W_CompiledMethod(space, header=1024)
+    prim_meth = model.W_PreSpurCompiledMethod(space, header=1024)
     prim_meth.setliterals(fakeliterals(space, 22))
     oal = fakeliterals(space, "objectAt:")
     oalp = fakeliterals(space, "objectAt:put:", 3)
@@ -992,7 +992,7 @@ def test_objectsAsMethods():
 
     w_holderclass = bootstrap_class(0)
     w_class = bootstrap_class(0)
-    w_method = model.W_CompiledMethod(space, 1)
+    w_method = model.W_PreSpurCompiledMethod(space, 1)
     w_method.setbytes(str(bytearray([0x10, 0x11, 0x12, 0x8a, 0x83, 0x7c])))
     # "^ {selector. args. receiver}" push temps, pop 3 into array, return top
     w_method.argsize = 3

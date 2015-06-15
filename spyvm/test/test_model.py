@@ -125,7 +125,7 @@ def test_compiledin_class():
     w_super = bootstrap_class(0)
     w_class = bootstrap_class(0, w_superclass=w_super)
     supershadow = w_super.as_class_get_shadow(space)
-    supershadow.installmethod(w_foo, model.W_CompiledMethod(space, 0))
+    supershadow.installmethod(w_foo, model.W_PreSpurCompiledMethod(space, 0))
     classshadow = w_class.as_class_get_shadow(space)
     classshadow.initialize_methoddict()
     assert classshadow.lookup(w_foo).compiled_in() is w_super
@@ -138,18 +138,18 @@ def test_compiledin_class_assoc():
     assoc = new_object(2)
     assoc.store(space, 0, new_object())
     assoc.store(space, 1, val)
-    meth = model.W_CompiledMethod(space, 0)
+    meth = model.W_PreSpurCompiledMethod(space, 0)
     meth.setliterals([new_object(), new_object(), assoc ])
     assert meth.compiled_in() == val
 
 def test_compiledin_class_missing():
-    meth = model.W_CompiledMethod(space, 0)
+    meth = model.W_PreSpurCompiledMethod(space, 0)
     meth.compiledin_class = None
     meth.setliterals([new_object(), new_object() ])
     assert meth.compiled_in() == None
 
 def test_compiledmethod_setchar():
-    w_method = model.W_CompiledMethod(space, 3)
+    w_method = model.W_PreSpurCompiledMethod(space, 3)
     w_method.setchar(0, "c")
     assert w_method.bytes == list("c\x00\x00")
 
@@ -165,7 +165,7 @@ def test_hashes():
     assert h1 == w_inst.hash
 
 def test_compiledmethod_at0():
-    w_method = model.W_CompiledMethod(space, )
+    w_method = model.W_PreSpurCompiledMethod(space, )
     w_method.bytes = list("abc")
     w_method.header = 100
     w_method.setliterals(['lit1', 'lit2'])
@@ -178,7 +178,7 @@ def test_compiledmethod_at0():
     assert space.unwrap_int(w_method.at0(space, 14)) == ord('c')
 
 def test_compiledmethod_atput0():
-    w_method = model.W_CompiledMethod(space, 3)
+    w_method = model.W_PreSpurCompiledMethod(space, 3)
     newheader = joinbits([0,2,0,0,0,0],[9,8,1,6,4,1])
     assert w_method.getliteralsize() == 0
     w_method.atput0(space, 0, space.wrap_int(newheader))
@@ -197,7 +197,7 @@ def test_compiledmethod_atput0():
 
 def test_compiledmethod_atput0_not_aligned():
     header = joinbits([0,2,0,0,0,0],[9,8,1,6,4,1])
-    w_method = model.W_CompiledMethod(space, 3, header)
+    w_method = model.W_PreSpurCompiledMethod(space, 3, header)
     with py.test.raises(error.PrimitiveFailedError):
         w_method.atput0(space, 7, 'lit1')
     with py.test.raises(error.PrimitiveFailedError):
@@ -470,3 +470,34 @@ def test_high_characters(space):
     w_mousefacechar = W_Character(0x1f42d) # http://unicode-table.com/de/1F42D/
     assert w_mousefacechar.str_content() == 'Character value: ' + str(0x1f42d)
     assert w_mousefacechar.value == 0x1f42d
+
+def test_v3_compiled_method_header():
+    header_word = joinbits([500,200,1,60,12,1,0], [9,8,1,6,4,1,1])
+    header = model.V3CompiledMethodHeader(header_word)
+    assert header.has_primitive is True
+    assert header.primitive_index == 1012 # 500 + (1 << 9)
+    assert header.large_frame == 1
+    assert header.number_of_literals == 200
+    assert header.number_of_temporaries == 60
+    assert header.number_of_arguments == 12
+
+def test_v3_alternate_compiled_method_header():
+    header_word = int(-2**31) | joinbits([60000,1,1,60,12,0,0], [16,1,1,6,4,2])
+    header = model.V3CompiledMethodHeader(header_word)
+    assert header.has_primitive is True
+    assert header.large_frame == 1
+    assert header.number_of_literals == 60000
+    assert header.number_of_temporaries == 60
+    assert header.number_of_arguments == 12
+
+def test_spur_compiled_method_header():
+    header_word = joinbits([30000,0,1,1,60,12,0,0], [15,1,1,1,6,4,2,1])
+    header = model.SpurCompiledMethodHeader(header_word)
+    assert header.has_primitive is True
+    assert header.large_frame == 1
+    assert header.number_of_literals == 30000
+    assert header.number_of_temporaries == 60
+    assert header.number_of_arguments == 12
+    assert model.SpurCompiledMethodHeader.has_primitive(header_word)
+    assert model.SpurCompiledMethodHeader.has_primitive(joinbits([0,0,1,0,0,0,0,0], [15,1,1,1,6,4,2,1]))
+    assert not model.SpurCompiledMethodHeader.has_primitive(joinbits([0,0,0,0,0,0,0,0], [15,1,1,1,6,4,2,1]))
