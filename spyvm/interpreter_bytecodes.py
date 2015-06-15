@@ -542,8 +542,13 @@ class __extend__(ContextPartShadow):
         raise error.MissingBytecode("unknownBytecode")
 
     @bytecode_implementation()
-    def experimentalBytecode(self, interp, current_bytecode):
-        raise error.MissingBytecode("experimentalBytecode")
+    def callPrimitiveBytecode(self, interp, current_bytecode):
+        if not interp.image.version.is_spur:
+            raise error.MissingBytecode("unknownBytecode")
+        else:
+            # skip next two bytes which belong to this bytecode
+            # then continue with the next bytecodes (fallback code)
+            self._jump(2)
 
     # ====== Jump bytecodes ======
 
@@ -670,7 +675,7 @@ BYTECODE_RANGES = [
             (136, "duplicateTopBytecode"),
             (137, "pushActiveContextBytecode"),
             (138, "pushNewArrayBytecode"),
-            (139, "experimentalBytecode"),
+            (139, "callPrimitiveBytecode"),
             (140, "pushRemoteTempLongBytecode"),
             (141, "storeRemoteTempLongBytecode"),
             (142, "storeAndPopRemoteTempLongBytecode"),

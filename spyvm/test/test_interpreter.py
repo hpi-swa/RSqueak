@@ -1,8 +1,21 @@
+import pytest
 import py, operator, sys
 from spyvm import model, interpreter, primitives, storage_classes, storage_contexts, wrapper, constants, error
 from .util import create_space_interp, copy_to_module, cleanup_module, import_bytecodes
 
 import_bytecodes(__name__)
+
+@pytest.fixture(scope='module')
+def space_and_interp():
+    return create_space_interp(bootstrap = True)
+
+@pytest.fixture
+def space(space_and_interp):
+    return space_and_interp[0]
+
+@pytest.fixture
+def interp(space_and_interp):
+    return space_and_interp[1]
 
 def setup_module():
     space, interp = create_space_interp(bootstrap = True)
@@ -1026,3 +1039,15 @@ def test_objectsAsMethods():
     assert w_runwithin_args[1].fetch(space, 0) == w_holderobject # receiver was used as argument
     assert w_runwithin_args[2] == w_holderobject
 
+class FakeSpurImage:
+    class FakeVersion:
+        is_spur = True
+    version = FakeVersion()
+
+def test_skip_callPrimitive_bytecode(space, interp):
+    interp.image = FakeSpurImage()
+    assert interp.image.version.is_spur, "test should pretend a spur image"
+    bytecodes = [139, 122, 123, 121] # callPrimitive (2 bytes args), ^true
+    # note that the primitive index bytes are the bytecodes for ^false and ^nil
+    result = interp.interpret_bc(bytecodes)
+    assert result.is_same_object(space.w_true)
