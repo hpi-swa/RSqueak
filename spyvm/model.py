@@ -1177,7 +1177,7 @@ class SpurCompiledMethodHeader(CompiledMethodHeader):
         self.has_primitive = has_primitive_bit == 1
 
     @staticmethod
-    def has_primitive(header_word):
+    def has_primitive_bit_set(header_word):
         return header_word & (1 << 16) != 0
 
 class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
@@ -1506,12 +1506,12 @@ class W_SpurCompiledMethod(W_CompiledMethod):
 
     def setbytes(self, bytes):
         W_CompiledMethod.setbytes(self, bytes)
-        if SpurCompiledMethodHeader.has_primitive(self.header):
+        if SpurCompiledMethodHeader.has_primitive_bit_set(self.header):
             self.update_primitive_index()
 
     def setchar(self, index0, character):
         W_CompiledMethod.setchar(self, index0, character)
-        if index0 in (1, 2) and SpurCompiledMethodHeader.has_primitive(self.header):
+        if index0 in (1, 2) and SpurCompiledMethodHeader.has_primitive_bit_set(self.header):
             self.update_primitive_index()
 
     def update_primitive_index(self):
