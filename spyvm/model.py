@@ -11,7 +11,7 @@ Squeak model.
                 W_WordsObject
             W_CompiledMethod
 """
-import sys
+import sys, math
 from spyvm import constants, error
 from spyvm.util.version import constant_for_version, constant_for_version_arg, VersionMixin, Version
 
@@ -506,8 +506,7 @@ class W_Float(W_AbstractObjectWithIdentityHash):
     def is_same_object(self, other):
         if not isinstance(other, W_Float):
             return False
-        # TODO is that correct in Squeak?
-        return self.value == other.value
+        return self.value == other.value or (math.isnan(self.value) and math.isnan(other.value))
 
     def __eq__(self, other):
         if not isinstance(other, W_Float):
