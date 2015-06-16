@@ -1211,6 +1211,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         self.setheader(space, header, initializing=True)
 
     def fillin(self, space, g_self):
+        self.bytes = [] # make sure the attribute is defined
         # Implicitly sets the header, including self.literalsize
         for i, w_object in enumerate(g_self.get_pointers()):
             self.literalatput0(space, i, w_object, initializing=True)
@@ -1498,7 +1499,7 @@ class W_SpurCompiledMethod(W_CompiledMethod):
         self._tempsize = decoded_header.number_of_temporaries
         self.islarge = decoded_header.large_frame
         self.compiledin_class = None
-        if decoded_header.has_primitive and hasattr(self, 'bytes') and len(self.bytes) >= 3:
+        if decoded_header.has_primitive and len(self.bytes) >= 3:
             self.update_primitive_index()
         else:
             self._primitive = 0
