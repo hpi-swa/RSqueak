@@ -1176,8 +1176,8 @@ class SpurCompiledMethodHeader(CompiledMethodHeader):
                 splitter[15,1,1,1,6,4,2,1](header_word)
         self.has_primitive = has_primitive_bit == 1
 
-    @classmethod
-    def has_primitive(cls, header_word):
+    @staticmethod
+    def has_primitive(header_word):
         return header_word & (1 << 16) != 0
 
 class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
