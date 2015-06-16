@@ -498,6 +498,6 @@ def test_spur_compiled_method_header():
     assert header.number_of_literals == 30000
     assert header.number_of_temporaries == 60
     assert header.number_of_arguments == 12
-    assert model.SpurCompiledMethodHeader.has_primitive(header_word)
-    assert model.SpurCompiledMethodHeader.has_primitive(joinbits([0,0,1,0,0,0,0,0], [15,1,1,1,6,4,2,1]))
-    assert not model.SpurCompiledMethodHeader.has_primitive(joinbits([0,0,0,0,0,0,0,0], [15,1,1,1,6,4,2,1]))
+    assert model.SpurCompiledMethodHeader.has_primitive_bit_set(header_word)
+    assert model.SpurCompiledMethodHeader.has_primitive_bit_set(joinbits([0,0,1,0,0,0,0,0], [15,1,1,1,6,4,2,1]))
+    assert not model.SpurCompiledMethodHeader.has_primitive_bit_set(joinbits([0,0,0,0,0,0,0,0], [15,1,1,1,6,4,2,1]))
