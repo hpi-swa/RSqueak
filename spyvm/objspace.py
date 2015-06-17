@@ -57,6 +57,7 @@ class ObjSpace(object):
         self.use_plugins = ConstantFlag()
         self.omit_printing_raw_bytes = ConstantFlag()
         self.image_loaded = ConstantFlag()
+        self.is_spur = ConstantFlag()
 
         self.classtable = {}
         self.objtable = {}

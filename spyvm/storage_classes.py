@@ -38,6 +38,7 @@ class ClassShadow(AbstractCachingShadow):
         elif n0 == constants.CLASS_METHODDICT_INDEX:
             self.store_w_methoddict(w_val)
         elif n0 == constants.CLASS_FORMAT_INDEX:
+            # TODO: use the Spur format in a Spur image
             # read and painfully decode the format
             assert isinstance(w_val, model.W_SmallInteger)
             classformat = self.space.unwrap_int(w_val)
@@ -161,6 +162,7 @@ class ClassShadow(AbstractCachingShadow):
         elif self.instance_kind == BYTES:
             w_new = model.W_BytesObject(self.space, w_cls, extrasize)
         elif self.instance_kind == COMPILED_METHOD:
+            # TODO: create SpurCompiledMethods in a Spur image
             w_new = model.W_PreSpurCompiledMethod(self.space, extrasize)
         elif self.instance_kind == FLOAT:
             w_new = model.W_Float(0) # Squeak gives a random piece of memory

@@ -447,6 +447,10 @@ class SpurReader(BaseReaderStrategy):
 
     FREE_OBJECT_CLASS_INDEX_PUN = 0
 
+    def __init__(self, imageReader, version, stream, space):
+        BaseReaderStrategy.__init__(self, imageReader, version, stream, space)
+        space.is_spur.activate()
+
     def continue_read_header(self):
         BaseReaderStrategy.continue_read_header(self)
         self.hdrNumStackPages = self.stream.next_short()

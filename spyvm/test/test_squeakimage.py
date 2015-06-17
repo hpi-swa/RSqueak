@@ -548,6 +548,7 @@ def test_simple_image():
     # does not raise
     r.read_header()
     assert r.stream.pos == len(image_2)
+    assert r.space.is_spur.is_set() is False
 
 def test_simple_image64(monkeypatch):
     from spyvm.util import system
@@ -589,6 +590,7 @@ def test_simple_image64(monkeypatch):
     # does not raise
     r.read_header()
     assert r.stream.pos == len(image_2)
+    assert r.space.is_spur.is_set() is False
 
 def spur_hdr_qword(n_slots, hash, format, classid):
     return joinbits([classid, 0, format, 0, hash, 0, n_slots], [22,2,5,3,22,2,8])
@@ -680,12 +682,14 @@ def test_simple_spur_image():
     r = imagereader_mock(image)
     r.read_all() # does not raise
     assert r.stream.pos == len(image)
+    assert r.space.is_spur.is_set() is True
 
 def test_simple_spur_image_little_endian():
     image_le = simple_spur_image(pack_le, spur_hdr_little_endian, SPUR_VERSION_HEADER_LE)
     r = imagereader_mock(image_le)
     r.read_all() # does not raise
     assert r.stream.pos == len(image_le)
+    assert r.space.is_spur.is_set() is True
 
 def test_simple_spur_image_with_segments():
     spur_hdr = spur_hdr_big_endian
@@ -770,6 +774,7 @@ def test_simple_spur_image_with_segments():
     # does not raise
     r.read_all()
     assert r.stream.pos == len(image_1)
+    assert r.space.is_spur.is_set() is True
     theArray = r.space.objtable["w_schedulerassociationpointer"]
     assert theArray.gethash() == 4000
     assert theArray.size() == 6
