@@ -1091,7 +1091,7 @@ def fake_bytes_left(interp):
 
 @expose_primitive(SPECIAL_OBJECTS_ARRAY, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    return interp.space.wrap_list(interp.image.special_objects)
+    return interp.image.special_objects
 
 @expose_primitive(INC_GC, unwrap_spec=[object])
 @expose_primitive(FULL_GC, unwrap_spec=[object])

@@ -229,10 +229,10 @@ class ImageReader(object):
     def init_w_objects(self):
         for chunk in self.chunks.itervalues():
             chunk.g_object.init_w_object()
-        self.special_w_objects = [g.w_object for g in self.special_g_objects]
+        self.special_objects_w = [g.w_object for g in self.special_g_objects]
 
     def populate_special_objects(self):
-        self.space.populate_special_objects(self.special_w_objects)
+        self.space.populate_special_objects(self.special_objects_w)
 
     def fillin_w_objects(self):
         self.filledin_objects = 0
@@ -250,7 +250,8 @@ class SqueakImage(object):
     _immutable_fields_ = [
         "w_asSymbol",
         "version",
-        "startup_time"
+        "startup_time",
+        "space"
     ]
     code = ["def set_simlation_selectors(self, symbols_w):"]
     for idx, attr in enumerate(constants.SIMULATION_SELECTORS.values()):
@@ -259,8 +260,8 @@ class SqueakImage(object):
     exec "\n".join(code)
 
     def __init__(self, reader):
-        space = reader.space
-        self.special_objects = reader.special_w_objects
+        space = self.space = reader.space
+        self.special_objects = space.wrap_list(reader.special_objects_w)
         self.w_asSymbol = self.find_symbol(space, reader, "asSymbol")
         self.lastWindowSize = reader.lastWindowSize
         self.version = reader.version
@@ -302,7 +303,7 @@ class SqueakImage(object):
         return w_obj
 
     def special(self, index):
-        return self.special_objects[index]
+        return self.special_objects.at0(self.space, index)
 
 # ____________________________________________________________
 
