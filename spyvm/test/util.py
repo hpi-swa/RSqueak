@@ -134,7 +134,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
     def create_core_classes(self):
         def define_core_cls(name, w_superclass, w_metaclass):
             assert name.startswith('w_')
-            w_class = self.bootstrap_class(instsize=0,    # XXX
+            w_class = self.bootstrap_class(instsize=6,    # XXX
                                       w_superclass=w_superclass,
                                       w_metaclass=w_metaclass,
                                       name=name[2:])
@@ -281,12 +281,12 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         s._s_methoddict = None
         s.instance_varsized = varsized or format != storage_classes.POINTERS
         w_class.store_strategy(s)
-        s._initialize_storage(w_class, 0)
+        s._initialize_storage(w_class, 6)
         w_class.w_class = w_metaclass
 
     def bootstrap_class(self, instsize, w_superclass=None, w_metaclass=None,
                         name='?', format=storage_classes.POINTERS, varsized=False):
-        w_class = model.W_PointersObject(self, w_metaclass, 0)
+        w_class = model.W_PointersObject(self, w_metaclass, 6)
         self.patch_class(w_class, instsize, w_superclass, w_metaclass, name, format, varsized)
         return w_class
 

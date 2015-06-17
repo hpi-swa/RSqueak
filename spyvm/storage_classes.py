@@ -11,6 +11,7 @@ WEAK_POINTERS = 3
 COMPILED_METHOD = 4
 FLOAT = 5
 LARGE_POSITIVE_INTEGER = 6
+FORWARDER_AND_INVALID = 7
 
 class ClassShadowError(error.SmalltalkException):
     exception_type = "ClassShadowError"
@@ -121,6 +122,10 @@ class ClassShadow(AbstractCachingShadow):
             self.instance_kind = POINTERS
         elif 4 <= format <= 5:
             self.instance_kind = WEAK_POINTERS
+        elif format == 7:
+            self.instance_kind = FORWARDER_AND_INVALID
+            # immediate classes like SmallInteger and Character have this
+            # to prevent instantiation
         elif 10 <= format <= 11:
             if self.space.w_Float.is_same_object(self.w_self()):
                 self.instance_kind = FLOAT

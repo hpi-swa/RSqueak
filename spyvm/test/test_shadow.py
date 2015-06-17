@@ -380,3 +380,9 @@ def test_class_new_compiledmethod_spur(space_spur):
     w_inst = w_class.as_class_get_shadow(space_spur).new(4)
     assert isinstance(w_inst, model.W_SpurCompiledMethod)
     assert w_inst.size() == 8
+
+def test_class_of_smallinteger(space_spur):
+    w_SmallInteger = space_spur.w_SmallInteger
+    w_SmallInteger.store(space_spur, constants.CLASS_FORMAT_INDEX, space_spur.wrap_int(7 << 16))
+    # SmallInteger and Character have 7 (forwarder) as their class format
+    # which is invalid and further prevents instantiation
