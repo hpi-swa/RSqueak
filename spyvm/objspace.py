@@ -227,8 +227,8 @@ class ObjSpace(object):
     def unwrap_longlong(self, w_value):
         return w_value.unwrap_longlong(self)
 
-    def unwrap_char(self, w_char):
-        return w_char.unwrap_char(self)
+    def unwrap_char_as_byte(self, w_char):
+        return w_char.unwrap_char_as_byte(self)
 
     def unwrap_float(self, w_v):
         return w_v.unwrap_float(self)
