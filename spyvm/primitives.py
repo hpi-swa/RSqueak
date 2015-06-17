@@ -1647,59 +1647,94 @@ def func(interp, s_frame, argcount):
             1 arg:  return the indicated VM parameter;
             2 args: set the VM indicated parameter.
         VM parameters are numbered as follows:
-            1   end of old-space (0-based, read-only)
-            2   end of young-space (read-only)
-            3   end of memory (read-only)
-            4   allocationCount (read-only)
-            5   allocations between GCs (read-write)
-            6   survivor count tenuring threshold (read-write)
-            7   full GCs since startup (read-only)
-            8   total milliseconds in full GCs since startup (read-only)
-            9   incremental GCs since startup (read-only)
-            10  total milliseconds in incremental GCs since startup (read-only)
-            11  tenures of surving objects since startup (read-only)
-            12-20 specific to the translating VM
-            21  root table size (read-only)
-            22  root table overflows since startup (read-only)
-            23  bytes of extra memory to reserve for VM buffers, plugins, etc.
-            24  memory threshold above which shrinking object memory (rw)
-            25  memory headroom when growing object memory (rw)
-            26  interruptChecksEveryNms - force an ioProcessEvents every N milliseconds, in case the image  is not calling getNextEvent often (rw)
-            27  number of times mark loop iterated for current IGC/FGC (read-only) includes ALL marking
-            28  number of times sweep loop iterated  for current IGC/FGC (read-only)
-            29  number of times make forward loop iterated for current IGC/FGC (read-only)
-            30  number of times compact move loop iterated for current IGC/FGC (read-only)
-            31  number of grow memory requests (read-only)
-            32  number of shrink memory requests (read-only)
-            33  number of root table entries used for current IGC/FGC (read-only)
-            34  number of allocations done before current IGC/FGC (read-only)
-            35  number of survivor objects after current IGC/FGC (read-only)
-            36  millisecond clock when current IGC/FGC completed (read-only)
-            37  number of marked objects for Roots of the world, not including Root Table entries for current IGC/FGC (read-only)
-            38  milliseconds taken by current IGC  (read-only)
-            39  Number of finalization signals for Weak Objects pending when current IGC/FGC completed (read-only)
-            40  BytesPerWord for this image
-            41  imageFormatVersion for the VM
-            42  nil (number of stack pages in use in Stack VM)
-            43  nil (desired number of stack pages in Stack VM)
-            44  nil (size of eden, in bytes in Stack VM)
-            45  nil (desired size of eden in Stack VM)
-            46-55 nil; reserved for VM parameters that persist in the image (such as eden above)
-            56  number of process switches since startup (read-only)
-            57  number of ioProcessEvents calls since startup (read-only)
-            58  number of ForceInterruptCheck calls since startup (read-only)
-            59  number of check event calls since startup (read-only)
+            1	byte size of old-space (read-only)
+            2	byte size of young-space (read-only)
+            3	byte size of object memory (read-only)
+            4	allocationCount (read-only; nil in Cog VMs)
+            5	allocations between GCs (read-write; nil in Cog VMs)
+            6	survivor count tenuring threshold (read-write)
+            7	full GCs since startup (read-only)
+            8	total milliseconds in full GCs since startup (read-only)
+            9	incremental GCs since startup (read-only; scavenging GCs on Spur)
+            10	total milliseconds in incremental/scavenging GCs since startup (read-only)
+            11	tenures of surving objects since startup (read-only)
+            12-20 specific to the translating VM (nil in Cog VMs)
+            21	root table size (read-only)
+            22	root table overflows since startup (read-only)
+            23	bytes of extra memory to reserve for VM buffers, plugins, etc.
+            24	memory threshold above which to shrink object memory (read-write)
+            25	ammount to grow by when growing object memory (read-write)
+            26	interruptChecksEveryNms - force an ioProcessEvents every N milliseconds (read-write)
+            27	number of times mark loop iterated for current IGC/FGC (read-only) includes ALL marking
+            28	number of times sweep loop iterated for current IGC/FGC (read-only)
+            29	number of times make forward loop iterated for current IGC/FGC (read-only)
+            30	number of times compact move loop iterated for current IGC/FGC (read-only)
+            31	number of grow memory requests (read-only)
+            32	number of shrink memory requests (read-only)
+            33	number of root table entries used for current IGC/FGC (read-only)
+            34	number of allocations done before current IGC/FGC (read-only)
+            35	number of survivor objects after current IGC/FGC (read-only)
+            36	millisecond clock when current IGC/FGC completed (read-only)
+            37	number of marked objects for Roots of the world, not including Root Table entries for current IGC/FGC (read-only)
+            38	milliseconds taken by current IGC (read-only)
+            39	Number of finalization signals for Weak Objects pending when current IGC/FGC completed (read-only)
+            40	BytesPerWord for this image
+            41	imageFormatVersion for the VM
+            42	number of stack pages in use (Cog Stack VM only, otherwise nil)
+            43	desired number of stack pages (stored in image file header, max 65535; Cog VMs only, otherwise nil)
+            44	size of eden, in bytes (Cog VMs only, otherwise nil)
+            45	desired size of eden, in bytes (stored in image file header; Cog VMs only, otherwise nil)
+            46	size of machine code zone, in bytes (stored in image file header; Cog JIT VM only, otherwise nil)
+            47	desired size of machine code zone, in bytes (applies at startup only, stored in image file header; Cog JIT VM only)
+            48	various properties of the Cog VM as an integer encoding an array of bit flags.
+                Bit 0: implies the image's Process class has threadId as its 3rd inst var (zero relative)
+                Bit 1: on Cog VMs asks the VM to set the flag bit in interpreted methods
+                Bit 2: if set, preempting a process puts it to the head of its run queue, not the back,
+                        i.e. preempting a process by a higher one will not cause the process to yield
+                            to others at the same priority.
+            49	the size of the external semaphore table (read-write; Cog VMs only)
+            50-53 reserved for VM parameters that persist in the image (such as eden above)
+            54	total size of free old space (Spur only, otherwise nil)
+            55	ratio of growth and image size at or above which a GC will be performed post scavenge (Spur only, otherwise nil)
+            56	number of process switches since startup (read-only)
+            57	number of ioProcessEvents calls since startup (read-only)
+            58	number of forceInterruptCheck (Cog VMs) or quickCheckInterruptCalls (non-Cog VMs) calls since startup (read-only)
+            59	number of check event calls since startup (read-only)
+            60	number of stack page overflows since startup (read-only; Cog VMs only)
+            61	number of stack page divorces since startup (read-only; Cog VMs only)
+            62	number of machine code zone compactions since startup (read-only; Cog VMs only)
+            63	milliseconds taken by machine code zone compactions since startup (read-only; Cog VMs only)
+            64	current number of machine code methods (read-only; Cog VMs only)
+            65	true if the VM supports multiple bytecode sets;  (read-only; Cog VMs only; nil in older Cog VMs)
+            66	the byte size of a stack page in the stack zone  (read-only; Cog VMs only)
+            67 - 69 reserved for more Cog-related info
+            70	the value of VM_PROXY_MAJOR (the interpreterProxy major version number)
+            71	the value of VM_PROXY_MINOR (the interpreterProxy minor version number)
 
         Note: Thanks to Ian Piumarta for this primitive."""
+
     if not 0 <= argcount <= 2:
         raise PrimitiveFailedError
 
-    s_frame.pop() # receiver
+    arg1_w = s_frame.pop() # receiver
+
+    vm_w_params = [interp.space.wrap_int(0)] * 71
+    vm_w_params[39] = interp.space.wrap_int(constants.BYTES_PER_WORD)
+    vm_w_params[40] = interp.space.wrap_int(interp.image.version.magic)
+    vm_w_params[69] = interp.space.wrap_int(constants.INTERP_PROXY_MAJOR)
+    vm_w_params[70] = interp.space.wrap_int(constants.INTERP_PROXY_MINOR)
+
     if argcount == 0:
-        return interp.space.wrap_list([interp.space.wrap_int(0)]*59)
-    s_frame.pop() # index (really the receiver, index has been removed above)
+        return interp.space.wrap_list(vm_w_params)
+
+    arg2_w = s_frame.pop() # index (really the receiver, index has been removed above)
+    if not isinstance(arg1_w, model.W_SmallInteger):
+        raise PrimitiveFailedError
     if argcount == 1:
-        return interp.space.wrap_int(0)
+        if not 0 <= arg1_w.value <= 70:
+            raise PrimitiveFailedError
+        return vm_w_params[arg1_w.value - 1]
+
     s_frame.pop() # new value
     if argcount == 2:
         # return the 'old value'
