@@ -192,7 +192,7 @@ def decode_compiled_method_header(header):
         return decode_alternate_compiled_method_header(header)
     primitive, literalsize, islarge, tempsize, numargs, highbit = (
         splitter[9,8,1,6,4,1](header))
-    primitive = primitive + (highbit << 10) ##XXX todo, check this
+    primitive = primitive + (highbit << 9)
     assert tempsize >= numargs
     return primitive, literalsize, islarge, tempsize, numargs
 

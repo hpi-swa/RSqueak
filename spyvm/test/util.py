@@ -340,7 +340,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
     def make_method(self, bytes, literals=None, numargs=0):
         if not isinstance(bytes, str):
             bytes = "".join([chr(x) for x in bytes])
-        w_method = model.W_CompiledMethod(self, len(bytes))
+        w_method = model.W_PreSpurCompiledMethod(self, len(bytes))
         w_method.islarge = 1
         w_method.bytes = bytes
         w_method.argsize=numargs

@@ -401,7 +401,7 @@ class NonSpurReader(BaseReaderStrategy):
         elif self.isbytes(g_object):
             return objectmodel.instantiate(model.W_BytesObject)
         elif self.iscompiledmethod(g_object):
-            return objectmodel.instantiate(model.W_CompiledMethod)
+            return objectmodel.instantiate(model.W_PreSpurCompiledMethod)
         else:
             assert 0, "not reachable"
 
@@ -591,7 +591,7 @@ class SpurReader(BaseReaderStrategy):
         elif self.isbytes(g_object):
             return objectmodel.instantiate(model.W_BytesObject)
         elif self.iscompiledmethod(g_object):
-            return objectmodel.instantiate(model.W_CompiledMethod)
+            return objectmodel.instantiate(model.W_SpurCompiledMethod)
         else:
             assert 0, "not reachable"
 

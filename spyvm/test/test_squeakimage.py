@@ -354,7 +354,21 @@ def test_object_format_spur(monkeypatch):
     # TODO: add tests for correct reading of compiled methods with trailing slots (25-31)
 
 @pytest.fixture
-def reader_mock(monkeypatch, space):
+def reader_mock_v3(monkeypatch, space):
+    from spyvm.squeakimage import GenericObject, NonSpurReader
+    from spyvm.model import W_PointersObject
+    from rpython.rlib import objectmodel
+    class FakeVersion:
+        is_big_endian = True
+    reader_mock = NonSpurReader(imageReader=None, version=FakeVersion(),
+            stream=None, space=space)
+    fake_g_class = GenericObject()
+    fake_g_class.w_object = objectmodel.instantiate(W_PointersObject)
+    monkeypatch.setattr(reader_mock, 'g_class_of', lambda chunk: fake_g_class)
+    return reader_mock
+
+@pytest.fixture
+def reader_mock_spur(monkeypatch, space):
     from spyvm.squeakimage import GenericObject, SpurReader
     from spyvm.model import W_PointersObject
     from rpython.rlib import objectmodel
@@ -375,46 +389,129 @@ def chunk2object(chunk, space, reader):
     g_obj.fillin(space)
     return w_obj, g_obj
 
-def test_string_instantiation(space, reader_mock):
+def test_string_instantiation(space, reader_mock_spur):
     from spyvm.squeakimage import ImageChunk
     # given
     str_chunk = ImageChunk(size=1, format=16, classid=1, hash=0,
             data=[chrs2int("abcd")])
     # when
-    w_str, g_str = chunk2object(str_chunk, space, reader_mock)
+    w_str, g_str = chunk2object(str_chunk, space, reader_mock_spur)
     # then
     assert w_str.as_string() == "abcd"
 
 def tagged_chr(ord_value):
     return joinbits([2, ord_value], [2, 30])
 
-def test_char_array_instantiation(space, reader_mock):
+def tagged_int(unwrapped_value):
+    assert -2**31 <= unwrapped_value < 2**31
+    return unwrapped_value << 1 | 1
+
+def test_tagged_int_helper():
+    assert tagged_int(42) == (42 << 1) | 1
+
+def test_char_array_instantiation(space, reader_mock_spur):
     from spyvm.squeakimage import ImageChunk
     from spyvm.model import W_Character
     # given
     array_chunk = ImageChunk(size=1, format=1, classid=1, hash=0,
             data=[tagged_chr(ord('a'))])
     # when
-    w_array, g_array = chunk2object(array_chunk, space, reader_mock)
+    w_array, g_array = chunk2object(array_chunk, space, reader_mock_spur)
     # then
     w_char = w_array.fetch(space, 0)
     assert isinstance(w_char, W_Character)
     assert w_char.str_content() == '$a'
     assert space.unwrap_char_as_byte(w_char) == 'a'
  
-def test_char_array_instantiation_with_high_chars(space, reader_mock):
+def test_char_array_instantiation_with_high_chars(space, reader_mock_spur):
     from spyvm.squeakimage import ImageChunk
     from spyvm.model import W_Character
     # given
     array_chunk = ImageChunk(size=1, format=1, classid=1, hash=0,
             data=[tagged_chr(0x10ffff)])
     # when
-    w_array, g_array = chunk2object(array_chunk, space, reader_mock)
+    w_array, g_array = chunk2object(array_chunk, space, reader_mock_spur)
     # then
     w_char = w_array.fetch(space, 0)
     assert isinstance(w_char, W_Character)
     assert w_char.value == 0x10ffff
     # cannot unwrap this char because some pythons do not support chars >= 0xffff
+
+def test_v3_compiled_method_instantiation(space, reader_mock_v3):
+    from spyvm.squeakimage import ImageChunk
+    from spyvm.model import W_CompiledMethod
+    # given
+    cm_chunk = ImageChunk(size=4, format=12, classid=1, hash=0,
+            data=[tagged_int(joinbits([0,2,0,1,1,0,0], [9,8,1,6,4,1,1])),
+                tagged_int(42), tagged_int(91), chrs2int("\x00\x01\x02\x03")])
+    # when
+    w_cm, g_cm = chunk2object(cm_chunk, space, reader_mock_v3)
+    # then
+    assert isinstance(w_cm, W_CompiledMethod)
+    assert w_cm.literalsize == 2
+    assert w_cm.argsize == 1
+    assert w_cm.tempsize() == 1
+    assert w_cm.islarge == 0
+    assert w_cm.literals == [space.wrap_int(42), space.wrap_int(91)]
+    assert w_cm.bytes == ["\x00", "\x01", "\x02", "\x03"]
+    assert w_cm.primitive() == 0
+
+def test_v3_compiled_method_with_primitive_instantiation(space, reader_mock_v3):
+    from spyvm.squeakimage import ImageChunk
+    from spyvm.model import W_CompiledMethod
+    # given
+    cm_chunk = ImageChunk(size=4, format=12, classid=1, hash=0,
+            data=[tagged_int(joinbits([500,2,0,1,1,1,0], [9,8,1,6,4,1,1])),
+                tagged_int(42), tagged_int(91), chrs2int("\x00\x01\x02\x03")])
+    # when
+    w_cm, g_cm = chunk2object(cm_chunk, space, reader_mock_v3)
+    # then
+    assert isinstance(w_cm, W_CompiledMethod)
+    assert w_cm.literalsize == 2
+    assert w_cm.argsize == 1
+    assert w_cm.tempsize() == 1
+    assert w_cm.islarge == 0
+    assert w_cm.literals == [space.wrap_int(42), space.wrap_int(91)]
+    assert w_cm.bytes == ["\x00", "\x01", "\x02", "\x03"]
+    assert w_cm.primitive() == 1012
+
+def test_spur_compiled_method_instantiation(space, reader_mock_spur):
+    from spyvm.squeakimage import ImageChunk
+    from spyvm.model import W_CompiledMethod
+    # given
+    cm_chunk = ImageChunk(size=4, format=24, classid=1, hash=0,
+            data=[tagged_int(joinbits([2,0,0,0,1,1,0,0], [15,1,1,1,6,4,2,1])),
+                tagged_int(42), tagged_int(91), chrs2int("\x01\x02\x03\x04")])
+    # when
+    w_cm, g_cm = chunk2object(cm_chunk, space, reader_mock_spur)
+    # then
+    assert isinstance(w_cm, W_CompiledMethod)
+    assert w_cm.literalsize == 2
+    assert w_cm.argsize == 1
+    assert w_cm.tempsize() == 1
+    assert w_cm.islarge == 0
+    assert w_cm.literals == [space.wrap_int(42), space.wrap_int(91)]
+    assert w_cm.bytes == ["\x01", "\x02", "\x03", "\x04"]
+    assert w_cm.primitive() == 0
+
+def test_spur_compiled_method_with_primitive_instantiation(space, reader_mock_spur):
+    from spyvm.squeakimage import ImageChunk
+    from spyvm.model import W_CompiledMethod
+    # given
+    cm_chunk = ImageChunk(size=4, format=24, classid=1, hash=0,
+            data=[tagged_int(joinbits([2,0,1,0,1,1,0,0], [15,1,1,1,6,4,2,1])),
+                tagged_int(42), tagged_int(91), chrs2int("\x8b\xf4\x03\x01")])
+    # when
+    w_cm, g_cm = chunk2object(cm_chunk, space, reader_mock_spur)
+    # then
+    assert isinstance(w_cm, W_CompiledMethod)
+    assert w_cm.literalsize == 2
+    assert w_cm.argsize == 1
+    assert w_cm.tempsize() == 1
+    assert w_cm.islarge == 0
+    assert w_cm.literals == [space.wrap_int(42), space.wrap_int(91)]
+    assert w_cm.bytes == ["\x8b", "\xf4", "\x03", "\x01"]
+    assert w_cm.primitive() == 1012
 
 def test_simple_image():
     word_size = 4

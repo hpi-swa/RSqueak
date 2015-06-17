@@ -261,7 +261,7 @@ def test_size():
 def test_size_of_compiled_method():
     literalsize = 3
     bytecount = 3
-    w_cm = model.W_CompiledMethod(space, bytecount)
+    w_cm = model.W_PreSpurCompiledMethod(space, bytecount)
     w_cm.literalsize = literalsize
     assert prim(primitives.SIZE, [w_cm]).value == (literalsize+1)*constants.BYTES_PER_WORD + bytecount
 

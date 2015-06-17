@@ -295,7 +295,7 @@ class Interpreter(object):
             else:
                 w_selector = self.perform(self.space.wrap_string(selector), "asSymbol")
 
-        w_method = model.W_CompiledMethod(self.space, header=512)
+        w_method = model.W_PreSpurCompiledMethod(self.space, header=512)
         w_method.literalatput0(self.space, 1, w_selector)
         assert len(w_arguments) <= 7
         w_method.setbytes([chr(131), chr(len(w_arguments) << 5 + 0), chr(124)]) #returnTopFromMethodBytecode

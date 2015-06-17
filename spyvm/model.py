@@ -1151,6 +1151,35 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
             lltype.free(self.c_words, flavor='raw')
 
 
+class CompiledMethodHeader(object):
+    def __init__(self, header_word):
+        self.primitive_index = 0
+        self.has_primitive = False
+        self.number_of_literals = 0
+        self.number_of_temporaries = 0
+        self.number_of_arguments = 0
+        self.large_frame = 0
+
+class V3CompiledMethodHeader(CompiledMethodHeader):
+    def __init__(self, header_word):
+        self.primitive_index, self.number_of_literals, self.large_frame, \
+                self.number_of_temporaries, self.number_of_arguments = \
+                constants.decode_compiled_method_header(header_word)
+        self.has_primitive = self.primitive_index != 0
+
+class SpurCompiledMethodHeader(CompiledMethodHeader):
+    def __init__(self, header_word):
+        from spyvm.util.bitmanipulation import splitter
+        self.number_of_literals, is_optimized_bit, has_primitive_bit, \
+                self.large_frame, self.number_of_temporaries, \
+                self.number_of_arguments, access_mod, instruction_set_bit = \
+                splitter[15,1,1,1,6,4,2,1](header_word)
+        self.has_primitive = has_primitive_bit == 1
+
+    @staticmethod
+    def has_primitive_bit_set(header_word):
+        return header_word & (1 << 16) != 0
+
 class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     """My instances are methods suitable for interpretation by the virtual machine.  This is the only class in the system whose instances intermix both indexable pointer fields and indexable integer fields.
 
@@ -1182,6 +1211,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         self.setheader(space, header, initializing=True)
 
     def fillin(self, space, g_self):
+        self.bytes = [] # make sure the attribute is defined
         # Implicitly sets the header, including self.literalsize
         for i, w_object in enumerate(g_self.get_pointers()):
             self.literalatput0(space, i, w_object, initializing=True)
@@ -1190,18 +1220,13 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     # === Setters ===
 
     def setheader(self, space, header, initializing=False):
-        _primitive, literalsize, islarge, tempsize, argsize = constants.decode_compiled_method_header(header)
-        if initializing or self.literalsize != literalsize:
-            # Keep the literals if possible.
-            self.literalsize = literalsize
-            self.literals = [space.w_nil] * self.literalsize
         self.header = header
-        self.argsize = argsize
-        self._tempsize = tempsize
-        self._primitive = _primitive
-        self.islarge = islarge
-        self.compiledin_class = None
-        self.changed()
+
+    def initialize_literals(self, number_of_literals, space, initializing=False):
+        if initializing or self.literalsize != number_of_literals:
+            # Keep the literals if possible.
+            self.literalsize = number_of_literals
+            self.literals = [space.w_nil] * self.literalsize
 
     def setliteral(self, index, w_lit):
         self.literals[index] = w_lit
@@ -1314,7 +1339,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def literalatput0(self, space, index0, w_value, initializing=False):
         if index0 == 0:
             header = space.unwrap_int(w_value)
-            self.setheader(space, header, initializing=initializing)
+            self.setheader(space, header, initializing)
         else:
             self.setliteral(index0 - 1, w_value)
 
@@ -1385,7 +1410,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         w_other.changed()
 
     def clone(self, space):
-        copy = W_CompiledMethod(space, 0, self.getheader())
+        copy = self.__class__(space, 0, self.getheader())
         copy.bytes = list(self.bytes)
         copy.literals = list(self.literals)
         copy.compiledin_class = self.compiledin_class
@@ -1461,3 +1486,49 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
             if isinstance(s_class, ClassShadow):
                 return "%s >> #%s" % (s_class.getname(), self.lookup_selector)
         return "#%s" % self.lookup_selector
+
+class W_SpurCompiledMethod(W_CompiledMethod):
+    """Handles the specialities of the method header in Spur"""
+
+    def setheader(self, space, header, initializing=False):
+        decoded_header = SpurCompiledMethodHeader(header)
+        self.header = header
+        self.initialize_literals(decoded_header.number_of_literals, space,
+                initializing)
+        self.argsize = decoded_header.number_of_arguments
+        self._tempsize = decoded_header.number_of_temporaries
+        self.islarge = decoded_header.large_frame
+        self.compiledin_class = None
+        if decoded_header.has_primitive and len(self.bytes) >= 3:
+            self.update_primitive_index()
+        else:
+            self._primitive = 0
+        self.changed()
+
+    def setbytes(self, bytes):
+        W_CompiledMethod.setbytes(self, bytes)
+        if SpurCompiledMethodHeader.has_primitive_bit_set(self.header):
+            self.update_primitive_index()
+
+    def setchar(self, index0, character):
+        W_CompiledMethod.setchar(self, index0, character)
+        if index0 in (1, 2) and SpurCompiledMethodHeader.has_primitive_bit_set(self.header):
+            self.update_primitive_index()
+
+    def update_primitive_index(self):
+        assert self.bytes[0] == chr(139)
+        self._primitive = ord(self.bytes[1]) + (ord(self.bytes[2]) << 8)
+
+class W_PreSpurCompiledMethod(W_CompiledMethod):
+
+    def setheader(self, space, header, initializing=False):
+        decoded_header = V3CompiledMethodHeader(header)
+        self.header = header
+        self.initialize_literals(decoded_header.number_of_literals, space,
+                initializing)
+        self.argsize = decoded_header.number_of_arguments
+        self._tempsize = decoded_header.number_of_temporaries
+        self._primitive = decoded_header.primitive_index
+        self.islarge = decoded_header.large_frame
+        self.compiledin_class = None
+        self.changed()

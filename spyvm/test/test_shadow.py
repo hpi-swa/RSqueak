@@ -72,8 +72,8 @@ def test_basic_shape():
     yield basicshape, "CompiledMeth", 0xE02,   storage_classes.COMPILED_METHOD, True, 0
 
 def test_methoddict():
-    methods = {'foo': model.W_CompiledMethod(space, 0),
-               'bar': model.W_CompiledMethod(space, 0)}
+    methods = {'foo': model.W_PreSpurCompiledMethod(space, 0),
+               'bar': model.W_PreSpurCompiledMethod(space, 0)}
     w_class = build_smalltalk_class("Demo", 0x90, methods=methods)
     classshadow = w_class.as_class_get_shadow(space)
     methoddict = classshadow.s_methoddict().methoddict
@@ -82,7 +82,7 @@ def test_methoddict():
         assert methods[w_key.as_string()] is value
 
 def create_method(tempsize=3,argsize=2, bytes="abcde"):
-    w_m = model.W_CompiledMethod(space, )
+    w_m = model.W_PreSpurCompiledMethod(space, )
     w_m.bytes = bytes
     w_m._tempsize = tempsize
     w_m.argsize = argsize
@@ -225,9 +225,9 @@ def test_observee_shadow():
 
 def test_cached_methoddict():
     # create a methoddict
-    foo = model.W_CompiledMethod(space, 0)
-    bar = model.W_CompiledMethod(space, 0)
-    baz = model.W_CompiledMethod(space, 0)
+    foo = model.W_PreSpurCompiledMethod(space, 0)
+    bar = model.W_PreSpurCompiledMethod(space, 0)
+    baz = model.W_PreSpurCompiledMethod(space, 0)
     methods = {'foo': foo,
                'bar': bar}
     w_class = build_smalltalk_class("Demo", 0x90, methods=methods)
@@ -252,13 +252,13 @@ def test_cached_methoddict():
 
 def test_updating_class_changes_subclasses():
     w_parent = build_smalltalk_class("Demo", 0x90,
-            methods={'bar': model.W_CompiledMethod(space, 0)})
+            methods={'bar': model.W_PreSpurCompiledMethod(space, 0)})
     w_class = build_smalltalk_class("Demo", 0x90,
-            methods={'foo': model.W_CompiledMethod(space, 0)}, w_superclass=w_parent)
+            methods={'foo': model.W_PreSpurCompiledMethod(space, 0)}, w_superclass=w_parent)
     s_class = w_class.as_class_get_shadow(space)
     version = s_class.version
 
-    w_method = model.W_CompiledMethod(space, 0)
+    w_method = model.W_PreSpurCompiledMethod(space, 0)
     key = space.wrap_string('foo')
 
     s_md = w_parent.as_class_get_shadow(space).s_methoddict()

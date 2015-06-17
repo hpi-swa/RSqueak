@@ -161,7 +161,7 @@ class ClassShadow(AbstractCachingShadow):
         elif self.instance_kind == BYTES:
             w_new = model.W_BytesObject(self.space, w_cls, extrasize)
         elif self.instance_kind == COMPILED_METHOD:
-            w_new = model.W_CompiledMethod(self.space, extrasize)
+            w_new = model.W_PreSpurCompiledMethod(self.space, extrasize)
         elif self.instance_kind == FLOAT:
             w_new = model.W_Float(0) # Squeak gives a random piece of memory
         elif self.instance_kind == LARGE_POSITIVE_INTEGER:
