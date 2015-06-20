@@ -814,7 +814,7 @@ def test_numericbitblt(monkeypatch):
     # XXX this does not test, that it gets called
     def simulate(w_name, signature, interp, s_frame, argcount, w_method):
         #assert w_name.getclass(space) is space.w_String
-        assert w_name.as_string() == "primitiveCopyBits"
+        assert w_name.str_content() == "'primitiveCopyBits'"
         assert signature[0] == "BitBltPlugin"
         assert signature[1] == "primitiveCopyBits"
         return "ok"
@@ -823,7 +823,7 @@ def test_numericbitblt(monkeypatch):
     monkeypatch.setattr(SimulationPlugin, "simulate", simulate)
 
     try:
-        assert prim(primitives.BITBLT_COPY_BITS, ["myReceiver"]).as_string() == "myReceiver"
+        assert prim(primitives.BITBLT_COPY_BITS, ["myReceiver"]).str_content() == "'myReceiver'"
     finally:
         monkeypatch.undo()
 # Note:

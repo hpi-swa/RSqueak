@@ -55,10 +55,6 @@ class SimulationPluginClass(Plugin):
             s_frame.pop_n(argcount + 1)
             s_frame.push(ret.value)
             return w_rcvr
-        except MetaPrimFailed, e:
-            raise e
-        else:
-            raise PrimitiveFailedError
 
     def simulate(self, w_name, signature, interp, s_frame, argcount, w_method):
         self._simulate(w_name, interp, s_frame, argcount, w_method)
