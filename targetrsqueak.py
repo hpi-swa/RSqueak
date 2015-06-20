@@ -207,7 +207,8 @@ def entry_point(argv):
     interp = interpreter.Interpreter(space, image,
                 trace=trace, trace_important=trace_important,
                 evented=not poll, interrupts=interrupts)
-    space.runtime_setup(argv[0], path)
+    space.runtime_setup(argv, path)
+
     interp.populate_remaining_special_objects()
     print_error("") # Line break after image-loading characters
 
