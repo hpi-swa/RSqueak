@@ -22,7 +22,7 @@ from rpython.rlib.rarithmetic import r_uint, intmask
 #     aFunctionName = 'primitiveWarpBits' ifTrue: [ ^self warpBitsSimulated: (args at: 1) sourceMap: (args at: 2) ].
 #     ^InterpreterProxy new primitiveFailFor: 255.
 
-from spyvm.constants import SIMULATE_PRIMITIVE_SELECTOR
+SIMULATE_PRIMITIVE_SELECTOR = 'simulatePrimitive:args:'
 
 class SimulationPluginClass(Plugin):
     def _simulate(self, w_name, interp, s_frame, argcount, w_method):
