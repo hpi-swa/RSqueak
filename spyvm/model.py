@@ -11,7 +11,7 @@ Squeak model.
                 W_WordsObject
             W_CompiledMethod
 """
-import sys
+import sys, math
 from spyvm import constants, error
 from spyvm.util.version import constant_for_version, constant_for_version_arg, VersionMixin, Version
 
@@ -375,6 +375,11 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
     def str_content(self):
         return "%d" % r_uint(self.value)
 
+    def unwrap_string(self, space):
+        # OH GOD! TODO: Make this sane!
+        res = [chr(self.value & r_uint(0x000000ff)), chr((self.value & r_uint(0x0000ff00)) >> 8), chr((self.value & r_uint(0x00ff0000)) >> 16), chr((self.value & r_uint(0xff000000)) >> 24)]
+        return "".join(res)
+
     def lshift(self, space, shift):
         # shift > 0, therefore the highest bit of upperbound is not set,
         # i.e. upperbound is positive
@@ -501,8 +506,7 @@ class W_Float(W_AbstractObjectWithIdentityHash):
     def is_same_object(self, other):
         if not isinstance(other, W_Float):
             return False
-        # TODO is that correct in Squeak?
-        return self.value == other.value
+        return self.value == other.value or (math.isnan(self.value) and math.isnan(other.value))
 
     def __eq__(self, other):
         if not isinstance(other, W_Float):
