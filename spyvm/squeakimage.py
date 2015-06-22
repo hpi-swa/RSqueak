@@ -90,6 +90,7 @@ class ImageReader(object):
         self.init_w_objects()
         self.fillin_w_objects()
         self.populate_special_objects()
+        self.fillin_weak_w_objects()
 
     def try_read_version(self):
         magic1 = self.stream.next()
@@ -234,6 +235,11 @@ class ImageReader(object):
     def populate_special_objects(self):
         self.space.populate_special_objects(self.special_objects_w)
 
+    def fillin_weak_w_objects(self):
+        self.filledin_weakobjects = 0
+        for chunk in self.chunks.itervalues():
+            chunk.g_object.fillin_weak(self.space)
+
     def fillin_w_objects(self):
         self.filledin_objects = 0
         for chunk in self.chunks.itervalues():
@@ -242,6 +248,10 @@ class ImageReader(object):
     def log_object_filledin(self):
         self.filledin_objects = self.filledin_objects + 1
         self.log_progress(self.filledin_objects, '%')
+
+    def log_weakobject_filledin(self):
+        self.filledin_weakobjects = self.filledin_weakobjects + 1
+        self.log_progress(self.filledin_weakobjects * 100, '*')
 
 
 # ____________________________________________________________
@@ -318,6 +328,7 @@ class GenericObject(object):
         self.space = space
         self.reader = None
         self.filled_in = False
+        self.filled_in_weak = False
 
     def isinitialized(self):
         return self.reader is not None
@@ -466,6 +477,12 @@ class GenericObject(object):
             self.filled_in = True
             self.w_object.fillin(space, self)
             self.reader.log_object_filledin()
+
+    def fillin_weak(self, space):
+        if not self.filled_in_weak and self.isweak():
+            self.filled_in_weak = True
+            self.w_object.fillin_weak(space, self)
+            self.reader.log_weakobject_filledin()
 
     def get_g_pointers(self):
         assert self.pointers is not None
