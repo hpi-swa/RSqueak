@@ -89,42 +89,62 @@ class ListStrategy(SingletonStorageStrategy):
     repr_classname = "ListStrategy"
     import_from_mixin(rstrat.GenericStrategy)
 
-class WeakListEntry(object):
+class ListEntry(object):
     _attrs_ = ['strong_content', 'weak_content']
     _immutable_fields_ = ['strong_content', 'weak_content']
-    def __init__(self, value, is_instvar):
+
+    @staticmethod
+    def build(value, is_instvar):
         # Strong references to:
         #  - instance variables
         #  - SmallIntegers (they used to be tagged in the reference implementation)
         #  - symbols (they lived forever in the reference implementation)
-        if is_instvar or isinstance(value, model.W_SmallInteger) or isinstance(value, model.W_BytesObject):
-            self.strong_content = value
-            self.weak_content = None
+        if ListEntry.is_strong_anyway(value, is_instvar):
+            return StrongListEntry(value)
         else:
-            self.strong_content = None
-            self.weak_content = weakref.ref(value)
+            return WeakListEntry(value)
+
+    @staticmethod
+    def is_strong_anyway(value, is_instvar):
+        return is_instvar or isinstance(value, model.W_SmallInteger) or isinstance(value, model.W_BytesObject)
+
+class StrongListEntry(ListEntry):
+    def __init__(self, value):
+        self.strong_content = value
+        self.weak_content = None
 
     def get(self):
-        return self.strong_content or self.weak_content()
+        return self.strong_content
 
+class WeakListEntry(ListEntry):
+    _attrs_ = ['strong_content', 'weak_content']
+    _immutable_fields_ = ['strong_content', 'weak_content']
+    def __init__(self, value):
+        self.strong_content = None
+        self.weak_content = weakref.ref(value)
+
+    def get(self):
+        return self.weak_content()
+
+@rstrat.strategy()
 class WeakListStrategy(SingletonStorageStrategy):
     repr_classname = "WeakListStrategy"
     #import_from_mixin(rstrat.WeakGenericStrategy)
     import_from_mixin(rstrat.StrategyWithStorage)
 
     def _wrap(self, value):
-        assert isinstance(value, WeakListEntry)
+        assert isinstance(value, ListEntry)
         return value.get() or self.default_value()
 
     def _unwrap(self, value, index, w_self):
         assert value is not None
-        return WeakListEntry(value, index < w_self.instsize())
+        return ListEntry.build(value, index < w_self.instsize())
 
-    def _check_can_handle(self, wrapped_value):
+    def _check_can_handle(self, value):
         return True
 
     def _initialize_storage(self, w_self, initial_size):
-        default = WeakListEntry(self.default_value(), True)
+        default = StrongListEntry(self.default_value())
         self.set_storage(w_self, [default] * initial_size)
 
     @jit.unroll_safe
