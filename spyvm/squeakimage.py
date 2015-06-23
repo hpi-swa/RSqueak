@@ -253,11 +253,6 @@ class SqueakImage(object):
         "startup_time",
         "space"
     ]
-    code = ["def set_simlation_selectors(self, symbols_w):"]
-    for idx, attr in enumerate(constants.SIMULATION_SELECTORS.values()):
-        _immutable_fields_.append(attr)
-        code.append("    self." + attr + " = symbols_w[" + str(idx) + "]")
-    exec "\n".join(code)
 
     def __init__(self, reader):
         space = self.space = reader.space
@@ -267,13 +262,8 @@ class SqueakImage(object):
         self.version = reader.version
         self.run_spy_hacks(space)
         self.startup_time = time.time()
-        self.find_simulation_selectors(space, reader)
-
-    def find_simulation_selectors(self, space, reader):
-        symbols_w = []
-        for selector in constants.SIMULATION_SELECTORS.keys():
-            symbols_w.append(self.find_symbol(space, reader, selector))
-        self.set_simlation_selectors(symbols_w)
+        from spyvm.plugins.simulation import SIMULATE_PRIMITIVE_SELECTOR
+        self.w_simulatePrimitive = self.find_symbol(space, reader, SIMULATE_PRIMITIVE_SELECTOR)
 
     def run_spy_hacks(self, space):
         if not space.run_spy_hacks.is_set():

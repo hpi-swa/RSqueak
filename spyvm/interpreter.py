@@ -137,7 +137,7 @@ class Interpreter(object):
                     ret.print_trace()
                 s_context = self.unwind_context_chain(ret.s_current_context, ret.s_target_context, ret.value)
             except MetaPrimFailed, e:
-                s_context = self.unwind_primitive_simulation(e.s_frame)
+                s_context = self.unwind_primitive_simulation(e.s_frame, e.error_code)
 
     # This is a wrapper around loop_bytecodes that cleanly enters/leaves the frame,
     # handles the stack overflow protection mechanism and handles/dispatches Returns.
@@ -196,7 +196,7 @@ class Interpreter(object):
                 else:
                     raise ret
 
-    def unwind_primitive_simulation(self, start_context):
+    def unwind_primitive_simulation(self, start_context, error_code):
         if start_context is None:
             # This is the toplevel frame. Execution ended.
             raise ReturnFromTopLevel(self.space.w_nil)
@@ -212,7 +212,12 @@ class Interpreter(object):
                         start_context.pc())
                 raise error.FatalError(msg)
 
-        return context._s_fallback
+        fallbackContext = context._s_fallback
+
+        if fallbackContext.tempsize() > len(fallbackContext.w_arguments()):
+            fallbackContext.settemp(len(fallbackContext.w_arguments()), self.space.wrap_int(error_code))
+
+        return fallbackContext
 
     def unwind_context_chain(self, start_context, target_context, return_value):
         if start_context is None:

@@ -49,7 +49,8 @@ class CorruptImageError(Exit):
 class MetaPrimFailed(SmalltalkException):
     """Indicates that the simulated primitive code failed and that the fallback code should be invoked."""
     exception_type = "MetaPrimFailed"
-    _attrs_ = ["s_frame"]
+    _attrs_ = ["s_frame", "error_code"]
 
-    def __init__(self, s_frame):
+    def __init__(self, s_frame, error_code):
         self.s_frame = s_frame
+        self.error_code = error_code

@@ -9,7 +9,6 @@ from spyvm import wrapper
 from rpython.rlib import rfloat, unroll, jit, objectmodel
 from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int, r_longlong, int_between
 
-
 def assert_class(interp, w_obj, w_class):
     if not w_obj.getclass(interp.space).is_same_object(w_class):
         raise PrimitiveFailedError()
@@ -25,29 +24,6 @@ def assert_pointers(w_obj):
     if not isinstance(w_obj, model.W_PointersObject):
         raise PrimitiveFailedError
     return w_obj
-
-# ___________________________________________________________________________
-# Primitive table: it is filled in at initialization time with the
-# primitive functions.  Each primitive function takes two
-# arguments, an interp and an argument_count
-# completes, and returns a result, or throws a PrimitiveFailedError.
-def make_failing(code):
-    def raise_failing_default(interp, s_frame, argument_count, w_method=None):
-        raise PrimitiveFailedError
-    return raise_failing_default
-
-# Squeak has primitives all the way up to 575
-# So all optional primitives will default to the bytecode implementation
-prim_table = [make_failing(i) for i in range(576)]
-
-class PrimitiveHolder(object):
-    _immutable_fields_ = ["prim_table[*]"]
-
-prim_holder = PrimitiveHolder()
-prim_holder.prim_table = prim_table
-# clean up namespace:
-del i
-prim_table_implemented_only = []
 
 # indicates that what is pushed is an index1, but it is unwrapped and
 # converted to an index0
@@ -205,6 +181,33 @@ def expose_also_as(code):
         prim_table_implemented_only.append((code, wrapped))
         return wrapped
     return decorator
+
+# ___________________________________________________________________________
+# Primitive table: it is filled in at initialization time with the
+# primitive functions.  Each primitive function takes two
+# arguments, an interp and an argument_count
+# completes, and returns a result, or throws a PrimitiveFailedError.
+def make_simulation(code):
+    p_code = jit.promote(code)
+    @wrap_primitive(clean_stack=False, no_result=True, compiled_method=True)
+    def try_simulation(interp, s_frame, argument_count, w_method=None):
+        from spyvm.plugins.simulation import SimulationPlugin
+        return SimulationPlugin.simulateNumeric(p_code, interp, s_frame, argument_count, w_method)
+    return try_simulation
+
+# Squeak has primitives all the way up to 575
+# So all optional primitives will default to the bytecode implementation
+prim_table = [make_simulation(i) for i in range(576)]
+
+class PrimitiveHolder(object):
+    _immutable_fields_ = ["prim_table[*]"]
+
+prim_holder  = PrimitiveHolder()
+prim_holder.prim_table = prim_table
+# clean up namespace:
+del i
+prim_table_implemented_only = []
+
 
 # ___________________________________________________________________________
 # SmallInteger Primitives
@@ -731,8 +734,10 @@ def func(interp, s_frame, w_rcvr, w_into):
 
 @expose_primitive(BITBLT_COPY_BITS, clean_stack=False, no_result=True, compiled_method=True)
 def func(interp, s_frame, argcount, w_method):
-    from spyvm.plugins.bitblt import BitBltPlugin
-    return BitBltPlugin.call("primitiveCopyBits", interp, s_frame, argcount, w_method)
+    w_name = interp.space.wrap_string("primitiveCopyBits")
+    signature = ("BitBltPlugin", "primitiveCopyBits")
+    from spyvm.plugins.simulation import SimulationPlugin
+    return SimulationPlugin.simulate(w_name, signature, interp, s_frame, argcount, w_method)
 
 @expose_primitive(BE_CURSOR)
 def func(interp, s_frame, argcount):
@@ -952,10 +957,7 @@ def func(interp, s_frame, argcount, w_method):
         except MissingPlugin:
             pass
 
-    if signature[0] == 'BitBltPlugin':
-        from spyvm.plugins.bitblt import BitBltPlugin
-        return BitBltPlugin.call(signature[1], interp, s_frame, argcount, w_method)
-    elif signature[0] == 'LargeIntegers':
+    if signature[0] == 'LargeIntegers':
         from spyvm.plugins.large_integer import LargeIntegerPlugin
         return LargeIntegerPlugin.call(signature[1], interp, s_frame, argcount, w_method)
     elif signature[0] == "SocketPlugin":
@@ -967,11 +969,9 @@ def func(interp, s_frame, argcount, w_method):
     elif signature[0] == "VMDebugging":
         from spyvm.plugins.vmdebugging import DebuggingPlugin
         return DebuggingPlugin.call(signature[1], interp, s_frame, argcount, w_method)
-    elif signature[0] == "B2DPlugin":
-        from spyvm.plugins.balloon import BalloonPlugin
-        return BalloonPlugin.simulate(w_functionname, signature[1], interp, s_frame, argcount, w_method)
     else:
-        raise PrimitiveFailedError
+        from spyvm.plugins.simulation import SimulationPlugin
+        return SimulationPlugin.simulate(w_functionname, signature, interp, s_frame, argcount, w_method)
 
 @expose_primitive(COMPILED_METHOD_FLUSH_CACHE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
@@ -1637,7 +1637,7 @@ META_PRIM_FAILED = 255 # Used to be INST_VARS_PUT_FROM_STACK. Never used except 
 @expose_primitive(META_PRIM_FAILED, unwrap_spec=[object, int])
 def func(interp, s_frame, w_rcvr, primFailFlag):
     if primFailFlag != 0:
-        raise MetaPrimFailed(s_frame)
+        raise MetaPrimFailed(s_frame, primFailFlag)
     raise PrimitiveFailedError
 
 @expose_primitive(VM_PARAMETERS)
