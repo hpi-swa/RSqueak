@@ -3,7 +3,7 @@ from spyvm import constants, model, util, error
 from spyvm.util import stream, system
 from spyvm.util.bitmanipulation import splitter
 from rpython.rlib import objectmodel
-from rpython.rlib.rarithmetic import r_ulonglong
+from rpython.rlib.rarithmetic import r_ulonglong, intmask
 
 # Access for module users
 Stream = stream.Stream
@@ -301,7 +301,7 @@ class NonSpurReader(BaseReaderStrategy):
             chunk, pos = self.read_1wordobjectheader()
         else: # 10 bits
             raise error.CorruptImageError("Unused block not allowed in image")
-        size = chunk.size
+        size = intmask(chunk.size)
         chunk.data = [self.stream.next()
                      for _ in range(size - 1)] #size-1, excluding header
         return chunk, pos
@@ -466,36 +466,27 @@ class SpurReader(BaseReaderStrategy):
         self.stream.reset_count()
         segmentEnd = self.firstSegSize
         currentAddressSwizzle = self.oldbaseaddress
-        import sys
         while self.stream.count < segmentEnd:
             while self.stream.count < segmentEnd - 16:
+                print "head",
                 print "reading", str(len(self.chunklist) + 1),
-                sys.stdout.flush()
                 chunk, pos = self.read_object()
                 print "done;",
-                sys.stdout.flush()
                 self.log_progress(len(self.chunklist), '#')
                 if chunk.classid == self.FREE_OBJECT_CLASS_INDEX_PUN:
                     print "free"
-                    sys.stdout.flush()
                     continue # ignore free chunks
                 print "not free;",
-                sys.stdout.flush()
                 self.chunklist.append(chunk)
                 print "appended;",
-                sys.stdout.flush()
                 self.chunks[pos + currentAddressSwizzle] = chunk
                 print "stored"
-                sys.stdout.flush()
             # read bridge
             print "reading bridge",
-            sys.stdout.flush()
             bridgeSpan = self.stream.next_qword()
             print ".",
-            sys.stdout.flush()
             nextSegmentSize = self.stream.next_qword()
             print "."
-            sys.stdout.flush()
             assert self.stream.count == segmentEnd
             segmentEnd = segmentEnd + nextSegmentSize
             currentAddressSwizzle += bridgeSpan
@@ -513,7 +504,6 @@ class SpurReader(BaseReaderStrategy):
         headerWord = self.stream.next_qword()
         classid, _, format, _, hash, _, size = splitter[22,2,5,3,22,2,8](headerWord)
         print "split header;",
-        sys.stdout.flush()
         OVERFLOW_SLOTS = 255
         if size == OVERFLOW_SLOTS:
             size = headerWord & ~self.SLOTS_MASK
@@ -523,12 +513,10 @@ class SpurReader(BaseReaderStrategy):
         assert 0 <= format <= 31
         chunk = ImageChunk(size, format, classid, hash)
         print "created ImageChunk;",
-        sys.stdout.flush()
         # the minimum object length is 16 bytes, i.e. 8 header + 8 payload
         # (to accomodate a forwarding ptr)
         chunk.data = [self.stream.next() for _ in range(self.words_for(size))]
         print "read data;",
-        sys.stdout.flush()
         if len(chunk.data) != size:
             # remove trailing alignment slots
             chunk.data = chunk.data[:size]
