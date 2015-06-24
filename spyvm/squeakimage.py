@@ -469,24 +469,15 @@ class SpurReader(BaseReaderStrategy):
         while self.stream.count < segmentEnd:
             while self.stream.count < segmentEnd - 16:
                 print "head",
-                print "reading", str(len(self.chunklist) + 1),
                 chunk, pos = self.read_object()
-                print "done;",
                 self.log_progress(len(self.chunklist), '#')
                 if chunk.classid == self.FREE_OBJECT_CLASS_INDEX_PUN:
-                    print "free"
                     continue # ignore free chunks
-                print "not free;",
                 self.chunklist.append(chunk)
-                print "appended;",
                 self.chunks[pos + currentAddressSwizzle] = chunk
-                print "stored"
             # read bridge
-            print "reading bridge",
             bridgeSpan = self.stream.next_qword()
-            print ".",
             nextSegmentSize = self.stream.next_qword()
-            print "."
             assert self.stream.count == segmentEnd
             segmentEnd = segmentEnd + nextSegmentSize
             currentAddressSwizzle += bridgeSpan
@@ -497,13 +488,11 @@ class SpurReader(BaseReaderStrategy):
     SLOTS_MASK = r_ulonglong(0xFf << 56)
 
     def read_object(self):
-        import sys
         # respect new header format
         pos = self.stream.count
         assert pos % 8 == 0, "every object must be 64-bit aligned"
         headerWord = self.stream.next_qword()
         classid, _, format, _, hash, _, size = splitter[22,2,5,3,22,2,8](headerWord)
-        print "split header;",
         OVERFLOW_SLOTS = 255
         if size == OVERFLOW_SLOTS:
             size = headerWord & ~self.SLOTS_MASK
@@ -512,13 +501,13 @@ class SpurReader(BaseReaderStrategy):
             assert overflow_size == OVERFLOW_SLOTS, "objects with long header must have 255 in slot count"
         assert 0 <= format <= 31
         chunk = ImageChunk(size, format, classid, hash)
-        print "created ImageChunk;",
         # the minimum object length is 16 bytes, i.e. 8 header + 8 payload
         # (to accomodate a forwarding ptr)
         chunk.data = [self.stream.next() for _ in range(self.words_for(size))]
-        print "read data;",
         if len(chunk.data) != size:
             # remove trailing alignment slots
+            assert size < len(chunk.data) and len(chunk.data) - size < 4
+            # BUG here
             chunk.data = chunk.data[:size]
         if format < 10 and classid != self.FREE_OBJECT_CLASS_INDEX_PUN:
             for slot in chunk.data:
