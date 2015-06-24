@@ -66,7 +66,8 @@ class SDLDisplay(object):
         RSDL.Quit()
 
     def set_video_mode(self, w, h, d):
-        assert w > 0 and h > 0
+        if not (w > 0 and h > 0):
+            return
         assert d in [1, 2, 4, 8, 16, 32]
         if d < MINIMUM_DEPTH:
             d = MINIMUM_DEPTH
