@@ -500,6 +500,14 @@ def test_clone():
     w_obj.atput0(space, 0, space.wrap_int(2))
     assert space.unwrap_int(w_v.at0(space, 0)) == 1
 
+def test_primitive_system_attribute():
+    assert prim(primitives.SYSTEM_ATTRIBUTE, [space.w_nil, 1337]) == space.w_nil
+
+    space.system_attributes[1001] = "WinuxOS"
+    w_r = prim(primitives.SYSTEM_ATTRIBUTE, [space.w_nil, 1001])
+    assert isinstance(w_r, model.W_Object)
+    assert space.unwrap_string(w_r) == "WinuxOS"
+
 def test_file_open_write(monkeypatch):
     def open_write(filename, mode, perm):
         assert filename == "nonexistant"

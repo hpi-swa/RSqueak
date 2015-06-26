@@ -1159,6 +1159,7 @@ SHORT_AT = 143
 SHORT_AT_PUT = 144
 FILL = 145
 CLONE = 148
+SYSTEM_ATTRIBUTE = 149
 
 @expose_primitive(SOME_OBJECT, unwrap_spec=[object])
 def func(interp, s_frame, w_class):
@@ -1226,6 +1227,13 @@ def func(interp, s_frame, w_arg, new_value):
 @expose_primitive(CLONE, unwrap_spec=[object])
 def func(interp, s_frame, w_arg):
     return w_arg.clone(interp.space)
+
+@expose_primitive(SYSTEM_ATTRIBUTE, unwrap_spec=[object, int])
+def func(interp, s_frame, w_receiver, attr_id):
+    try:
+        return interp.space.wrap_string("%s" % interp.space.system_attributes[attr_id])
+    except KeyError:
+        return interp.space.w_nil
 
 # ___________________________________________________________________________
 # File primitives (150-169)
