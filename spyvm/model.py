@@ -99,6 +99,9 @@ class W_Object(object):
     def fillin(self, space, g_self):
         raise NotImplementedError()
 
+    def fillin_weak(self, space, g_self):
+        raise NotImplementedError()
+
     def getword(self, n0):
         raise NotImplementedError()
 
@@ -655,8 +658,14 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         for g_obj in g_self.pointers:
             g_obj.fillin(space)
         pointers = g_self.get_pointers()
-        storage_type = space.strategy_factory.strategy_type_for(pointers, g_self.isweak())
+        storage_type = space.strategy_factory.strategy_type_for(pointers, weak=False) # do not fill in weak lists, yet
         space.strategy_factory.set_initial_strategy(self, storage_type, len(pointers), pointers)
+
+    def fillin_weak(self, space, g_self):
+        assert g_self.isweak() # when we get here, this is true
+        pointers = g_self.get_pointers()
+        storage_type = space.strategy_factory.strategy_type_for(pointers, weak=True)
+        space.strategy_factory.switch_strategy(self, storage_type)
 
     def is_weak(self):
         from storage import WeakListStrategy
