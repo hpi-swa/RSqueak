@@ -647,6 +647,9 @@ def get_instances_array(space, s_frame, w_class=None):
 
 @expose_primitive(SOME_INSTANCE, unwrap_spec=[object])
 def func(interp, s_frame, w_class):
+    if w_class.is_same_object(interp.space.w_SmallInteger):
+        raise PrimitiveFailedError()
+
     match_w = get_instances_array(interp.space, s_frame, w_class=w_class)
     try:
         return match_w[0]
