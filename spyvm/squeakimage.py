@@ -3,7 +3,7 @@ from spyvm import constants, model, util, error
 from spyvm.util import stream, system
 from spyvm.util.bitmanipulation import splitter
 from rpython.rlib import objectmodel
-from rpython.rlib.rarithmetic import r_ulonglong, intmask
+from rpython.rlib.rarithmetic import r_ulonglong, intmask, r_uint
 
 # Access for module users
 Stream = stream.Stream
@@ -492,12 +492,14 @@ class SpurReader(BaseReaderStrategy):
         pos = self.stream.count
         assert pos % 8 == 0, "every object must be 64-bit aligned"
         headerWord = self.stream.next_qword()
-        classid, _, format, _, hash, _, size = splitter[22,2,5,3,22,2,8](headerWord)
+        classid_l, _, format_l, _, hash_l, _, size_l = splitter[22,2,5,3,22,2,8](headerWord)
+        classid, format, hash, size = intmask(classid_l), intmask(format_l), intmask(hash_l), r_uint(intmask(size_l))
         OVERFLOW_SLOTS = 255
         if size == OVERFLOW_SLOTS:
-            size = headerWord & ~self.SLOTS_MASK
+            size_l = headerWord & ~self.SLOTS_MASK
             pos = self.stream.count
-            classid, _, format, _, hash, _, overflow_size = splitter[22,2,5,3,22,2,8](self.stream.next_qword())
+            classid_l, _, format_l, _, hash_l, _, overflow_size = splitter[22,2,5,3,22,2,8](self.stream.next_qword())
+            classid, format, hash = intmask(classid_l), intmask(format_l), intmask(hash_l)
             assert overflow_size == OVERFLOW_SLOTS, "objects with long header must have 255 in slot count"
         assert 0 <= format <= 31
         chunk = ImageChunk(size, format, classid, hash)
@@ -507,7 +509,8 @@ class SpurReader(BaseReaderStrategy):
         if len(chunk.data) != size:
             # remove trailing alignment slots
             assert size < len(chunk.data) and len(chunk.data) - size < 4
-            # BUG here
+            # BUG here, size at one point is waaay to big for 32bits
+            # which curiously results in a memory error
             chunk.data = chunk.data[:size]
         if format < 10 and classid != self.FREE_OBJECT_CLASS_INDEX_PUN:
             for slot in chunk.data:
