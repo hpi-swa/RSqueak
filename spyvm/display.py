@@ -5,7 +5,7 @@ from rpython.rlib import jit
 
 from rsdl import RSDL, RSDL_helper
 import key_constants
-
+from spyvm.util import system
 
 # EventSensorConstants
 RedButtonBit = 4
@@ -160,7 +160,9 @@ class SDLDisplay(object):
             self.key = key_constants.SHIFT
         elif sym == RSDL.K_LCTRL or sym == RSDL.K_RCTRL:
             self.key = key_constants.CTRL
-        elif sym == RSDL.K_LALT or sym == RSDL.K_RALT:
+        elif system.IS_WINDOWS and (sym == RSDL.K_LALT or sym == RSDL.K_RALT):
+            self.key = key_constants.COMMAND
+        elif system.IS_DARWIN and (sym == RSDL.K_LMETA or sym == RSDL.K_RMETA):
             self.key = key_constants.COMMAND
         elif sym == RSDL.K_BREAK:
             self.key = key_constants.BREAK
@@ -313,7 +315,10 @@ class SDLDisplay(object):
             modifier |= CtrlKeyBit
         if mod & RSDL.KMOD_SHIFT != 0:
             modifier |= ShiftKeyBit
-        if mod & RSDL.KMOD_ALT != 0:
+        if system.IS_WINDOWS:
+            if mod & RSDL.KMOD_ALT != 0:
+                modifier |= CommandKeyBit
+        if mod & RSDL.KMOD_META != 0:
             modifier |= CommandKeyBit
         return modifier << shift
 
