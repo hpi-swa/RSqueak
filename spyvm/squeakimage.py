@@ -493,18 +493,19 @@ class SpurReader(BaseReaderStrategy):
         assert pos % 8 == 0, "every object must be 64-bit aligned"
         headerWord = self.stream.next_qword()
         classid_l, _, format_l, _, hash_l, _, size_l = splitter[22,2,5,3,22,2,8](headerWord)
-        classid, format, hash, size = intmask(classid_l), intmask(format_l), intmask(hash_l), r_uint(intmask(size_l))
+        classid, format, hash = intmask(classid_l), intmask(format_l), intmask(hash_l)
         OVERFLOW_SLOTS = 255
-        if size == OVERFLOW_SLOTS:
+        if size_l == OVERFLOW_SLOTS:
             size_l = headerWord & ~self.SLOTS_MASK
             pos = self.stream.count
             classid_l, _, format_l, _, hash_l, _, overflow_size = splitter[22,2,5,3,22,2,8](self.stream.next_qword())
             classid, format, hash = intmask(classid_l), intmask(format_l), intmask(hash_l)
             assert overflow_size == OVERFLOW_SLOTS, "objects with long header must have 255 in slot count"
+        size = r_uint(intmask(size_l))
         assert 0 <= format <= 31
         chunk = ImageChunk(size, format, classid, hash)
         # the minimum object length is 16 bytes, i.e. 8 header + 8 payload
-        # (to accomodate a forwarding ptr)
+        # (to accommodate a forwarding ptr)
         chunk.data = [self.stream.next() for _ in range(self.words_for(size))]
         if len(chunk.data) != size:
             # remove trailing alignment slots
