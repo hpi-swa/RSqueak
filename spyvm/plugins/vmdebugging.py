@@ -43,7 +43,7 @@ def halt(interp, s_frame, w_rcvr):
     print s_frame.print_stack()
     # No, this is not a mistake. Update your pypy checkout!
     import pdb; pdb.set_trace()
-    raise PrimitiveFailedError
+    raise error.PrimitiveFailedError
 
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object])
 def isRSqueak(interp, s_frame, w_rcvr):
