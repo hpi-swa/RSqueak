@@ -1,5 +1,7 @@
+import os
 from spyvm import model, error
 from spyvm.plugins.plugin import Plugin
+from spyvm.util.system import IS_WINDOWS
 
 
 DebuggingPlugin = Plugin()
@@ -17,6 +19,14 @@ def stop_ui_process():
 # def untrace(interp, s_frame, w_rcvr):
 #     interp.trace = False
 #     return w_rcvr
+
+
+if IS_WINDOWS:
+    def fork():
+        raise NotImplementedError("fork on windows")
+else:
+    fork = os.fork
+
 
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object])
 def trace_proxy(interp, s_frame, w_rcvr):
@@ -38,7 +48,20 @@ def halt(interp, s_frame, w_rcvr):
         import pdb; pdb.set_trace()
     else:
         print s_frame
-        raise Exit('Halt is not well defined when translated.')
+        pid = os.getpid()
+        gdbpid = fork()
+        if gdbpid == 0:
+            shell = os.environ.get("SHELL") or os.environ.get("COMSPEC") or "/bin/sh"
+            sepidx = shell.rfind(os.sep) + 1
+            if sepidx > 0:
+                argv0 = shell[sepidx:]
+            else:
+                argv0 = shell
+            try:
+                os.execv(shell, [argv0, "-c", "gdb -p %d" % pid])
+            except OSError as e:
+                raise Exit('Could not start GDB: %s.' % e)
+        # raise Exit('Halt is not well defined when translated.')
     return w_rcvr
 
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object])
