@@ -40,29 +40,10 @@ def untrace_proxy(interp, s_frame, w_rcvr):
 
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object])
 def halt(interp, s_frame, w_rcvr):
-    from rpython.rlib.objectmodel import we_are_translated
-    from spyvm.error import Exit
-
     print s_frame.print_stack()
-    if not we_are_translated():
-        import pdb; pdb.set_trace()
-    else:
-        print s_frame
-        pid = os.getpid()
-        gdbpid = fork()
-        if gdbpid == 0:
-            shell = os.environ.get("SHELL") or os.environ.get("COMSPEC") or "/bin/sh"
-            sepidx = shell.rfind(os.sep) + 1
-            if sepidx > 0:
-                argv0 = shell[sepidx:]
-            else:
-                argv0 = shell
-            try:
-                os.execv(shell, [argv0, "-c", "gdb -p %d" % pid])
-            except OSError as e:
-                raise Exit('Could not start GDB: %s.' % e)
-        # raise Exit('Halt is not well defined when translated.')
-    return w_rcvr
+    # No, this is not a mistake. Update your pypy checkout!
+    import pdb; pdb.set_trace()
+    raise PrimitiveFailedError
 
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object])
 def isRSqueak(interp, s_frame, w_rcvr):
