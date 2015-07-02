@@ -647,6 +647,9 @@ def get_instances_array(space, s_frame, w_class=None):
 
 @expose_primitive(SOME_INSTANCE, unwrap_spec=[object])
 def func(interp, s_frame, w_class):
+    if w_class.is_same_object(interp.space.w_SmallInteger):
+        raise PrimitiveFailedError()
+
     match_w = get_instances_array(interp.space, s_frame, w_class=w_class)
     try:
         return match_w[0]
@@ -1602,8 +1605,8 @@ CTXT_SIZE = 212
 def func(interp, s_frame, w_rcvr):
     if isinstance(w_rcvr, model.W_PointersObject):
         if w_rcvr.getclass(interp.space).is_same_object(interp.space.w_MethodContext):
-            if w_rcvr.at0(interp.space, constants.MTHDCTX_METHOD) is interp.space.w_nil:
-                # special case: (MethodContext allInstaces at: 1) does not have a method. All fields are nil
+            if w_rcvr.fetch(interp.space, constants.MTHDCTX_METHOD) is interp.space.w_nil:
+                # special case: (MethodContext allInstances at: 1) does not have a method. All fields are nil
                 return interp.space.wrap_int(0)
             else:
                 return interp.space.wrap_int(w_rcvr.as_context_get_shadow(interp.space).stackdepth())
