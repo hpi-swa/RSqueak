@@ -41,8 +41,10 @@ def untrace_proxy(interp, s_frame, w_rcvr):
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object])
 def halt(interp, s_frame, w_rcvr):
     print s_frame.print_stack()
-    # No, this is not a mistake. Update your pypy checkout!
-    import pdb; pdb.set_trace()
+    from rpython.config.translationoption import get_translation_config
+    from rpython.rlib.objectmodel import we_are_translated
+    if not we_are_translated() or get_translation_config().translation.lldebug or get_translation_config().translation.lldebug0:
+        import pdb; pdb.set_trace()
     raise error.PrimitiveFailedError
 
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object])
