@@ -105,6 +105,8 @@ class ImageReader(object):
         version.configure_stream(self.stream)
         self.version = version
         self.readerStrategy = self.choose_reader_strategy()
+        if not version.is_modern and not version.is_spur:
+            self.space.uses_block_contexts.activate()
 
     def read_header(self):
         self.read_version()

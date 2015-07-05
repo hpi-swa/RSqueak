@@ -135,7 +135,7 @@ class ContextPartShadow(AbstractStrategy):
                 self.store(w_self, n0, storage[n0])
 
     def fields_to_convert_first(self):
-        if self.is_block_context:
+        if self.pure_is_block_context():
             return [ constants.BLKCTX_HOME_INDEX ]
         else:
             return [ constants.MTHDCTX_METHOD, constants.MTHDCTX_CLOSURE_OR_NIL ]
@@ -143,11 +143,17 @@ class ContextPartShadow(AbstractStrategy):
     # ______________________________________________________________________
     # Accessing object fields
 
+    def pure_is_block_context(self):
+        if self.space.uses_block_contexts.is_set():
+            return self.is_block_context
+        else:
+            return False
+
     def size(self, ignored_w_self):
         return self._w_self_size
 
     def fetch(self, ignored_w_self, n0):
-        if self.is_block_context:
+        if self.pure_is_block_context():
             return self.fetch_block_context(n0)
         else:
             return self.fetch_method_context(n0)
@@ -170,7 +176,7 @@ class ContextPartShadow(AbstractStrategy):
             raise error.WrapperException("Index in context out of bounds")
 
     def store(self, ignored_w_self, n0, w_value):
-        if self.is_block_context:
+        if self.pure_is_block_context():
             return self.store_block_context(n0, w_value)
         else:
             return self.store_method_context(n0, w_value)
@@ -277,49 +283,49 @@ class ContextPartShadow(AbstractStrategy):
     # version, like a manual kind of inheritance.
 
     def s_home(self):
-        if self.is_block_context:
+        if self.pure_is_block_context():
             return self.s_home_block_context()
         else:
             return self.s_home_method_context()
 
     def stackstart(self):
-        if self.is_block_context:
+        if self.pure_is_block_context():
             return self.stackstart_block_context()
         else:
             return self.stackstart_method_context()
 
     def w_receiver(self):
-        if self.is_block_context:
+        if self.pure_is_block_context():
             return self.w_receiver_block_context()
         else:
             return self.w_receiver_method_context()
 
     def w_method(self):
-        if self.is_block_context:
+        if self.pure_is_block_context():
             return self.w_method_block_context()
         else:
             return self.w_method_method_context()
 
     def tempsize(self):
-        if self.is_block_context:
+        if self.pure_is_block_context():
             return self.tempsize_block_context()
         else:
             return self.tempsize_method_context()
 
     def is_closure_context(self):
-        if self.is_block_context:
+        if self.pure_is_block_context():
             return self.is_closure_context_block_context()
         else:
             return self.is_closure_context_method_context()
 
     def is_BlockClosure_ensure(self):
-        if self.is_block_context:
+        if self.pure_is_block_context():
             return False
         else:
             return self._is_BlockClosure_ensure
 
     def home_is_self(self):
-        if self.is_block_context:
+        if self.pure_is_block_context():
             return self.home_is_self_block_context()
         else:
             return self.home_is_self_method_context()
@@ -333,13 +339,13 @@ class ContextPartShadow(AbstractStrategy):
     # this is handled by the compiler by allocating an extra Array for temps.
 
     def gettemp(self, index):
-        if self.is_block_context:
+        if self.pure_is_block_context():
             return self.gettemp_block_context(index)
         else:
             return self.gettemp_method_context(index)
 
     def settemp(self, index, w_value):
-        if self.is_block_context:
+        if self.pure_is_block_context():
             return self.settemp_block_context(index, w_value)
         else:
             return self.settemp_method_context(index, w_value)
@@ -484,13 +490,13 @@ class ContextPartShadow(AbstractStrategy):
     # Printing
 
     def w_arguments(self):
-        if self.is_block_context:
+        if self.pure_is_block_context():
             return self.w_arguments_block_context()
         else:
             return self.w_arguments_method_context()
 
     def method_str(self):
-        if self.is_block_context:
+        if self.pure_is_block_context():
             return self.method_str_block_context()
         else:
             return self.method_str_method_context()
