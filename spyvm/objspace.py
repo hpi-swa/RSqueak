@@ -11,18 +11,18 @@ from rpython.rlib.rarithmetic import intmask, r_uint, int_between, r_longlong, r
 class ConstantMixin(object):
     """Mixin for constant values that can be edited, but will be promoted
     to a constant when jitting."""
+    _immutable_fields_ = ["value?"]
 
     def __init__(self, initial_value = None):
         if initial_value is None:
             initial_value = self.default_value
-        self.value = [initial_value]
+        self.value = initial_value
 
     def set(self, value):
-        self.value[0] = value
+        self.value = value
 
     def get(self):
-        value = jit.promote(self.value[0])
-        return value
+        return self.value
 
 class ConstantFlag(object):
     import_from_mixin(ConstantMixin)
@@ -59,6 +59,7 @@ class ObjSpace(object):
         self.use_plugins = ConstantFlag()
         self.omit_printing_raw_bytes = ConstantFlag()
         self.image_loaded = ConstantFlag()
+        self.uses_block_contexts = ConstantFlag()
 
         self.classtable = {}
         self.objtable = {}

@@ -114,6 +114,8 @@ class ImageReader(object):
             raise error.CorruptImageError("Illegal version magic.")
         version.configure_stream(self.stream)
         self.version = version
+        if not version.is_modern:
+            self.space.uses_block_contexts.activate()
 
     def read_header(self):
         self.read_version()
