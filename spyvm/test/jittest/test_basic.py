@@ -384,7 +384,6 @@ class TestBasic(BaseJITTest):
         i141 = int_add(i123, 1),
         i144 = arraylen_gc(p62, descr=<ArrayP 4>),
         i145 = arraylen_gc(p84, descr=<ArrayS 4>),
-        i146 = arraylen_gc(p114, descr=<ArrayU 1>),
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, i141, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, p62, p84, i142, p114, descr=TargetToken(154312720))]
         """)
 
@@ -478,7 +477,6 @@ class TestBasic(BaseJITTest):
         i101 = uint_lt(i100, 2147483647),
         guard_false(i101, descr=<Guard0xac75c10>),
         i102 = int_add(i90, 1),
-        i106 = arraylen_gc(p79, descr=<ArrayU 1>),
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, p18, i102, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, p65, i83, i103, p79, descr=TargetToken(181116944))
         """)
 
@@ -540,8 +538,7 @@ class TestBasic(BaseJITTest):
         p108 = getarrayitem_gc(p81, i103, descr=<ArrayP 4>),
         guard_class(p108, ConstClass(W_PointersObject), descr=<Guard0x92b9820>),
         p109 = getfield_gc_pure(p108, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_w_class 12>),
-        p110 = getfield_gc(p109, descr=<FieldP spyvm.model.W_PointersObject.inst_strategy 24>),
-        guard_value(p110, ConstPtr(ptr90), descr=<Guard0x92b97f0>),
+        guard_value(p109, ConstPtr(ptr90), descr=<Guard0x95237f0>),
         p111 = getfield_gc(p108, descr=<FieldP spyvm.model.W_PointersObject.inst_strategy 24>),
         guard_nonnull_class(p111, ConstClass(ListStrategy), descr=<Guard0x92b97c0>),
         p112 = getfield_gc(p108, descr=<FieldP spyvm.model.W_PointersObject.inst__storage 20>),
