@@ -515,3 +515,41 @@ class TestBasic(BaseJITTest):
         i75 = int_add(i65, 1),
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, p18, i75, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, i58, i76, descr=TargetToken(169079000))
         """)
+
+    def test_object_access(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | o |
+        o := Array with: (Array with: 'a' with: $b) with: (Array with: 'x' with: $y).
+        1 to: 10000 do: [:i | (o at: (i \\\\ 2) + 1) at: (i \\\\ 2) + 1].
+        """)
+        self.assert_matches(traces[0].loop, """
+        guard_not_invalidated(descr=<Guard0x92b9910>),
+        i99 = int_le(i98, 10000),
+        guard_true(i99, descr=<Guard0x92b98e0>),
+        i100 = int_mod(i98, 2),
+        i101 = int_rshift(i100, 31),
+        i102 = int_and(2, i101),
+        i103 = int_add(i100, i102),
+        i104 = int_add(i103, 1),
+        p105 = getarrayitem_gc(p70, 32, descr=<ArrayP 4>),
+        guard_value(p105, ConstPtr(ptr78), descr=<Guard0x92b98b0>),
+        i106 = uint_lt(i103, i82),
+        guard_true(i106, descr=<Guard0x92b9880>),
+        i107 = int_lt(i103, 0),
+        guard_false(i107, descr=<Guard0x92b9850>),
+        p108 = getarrayitem_gc(p81, i103, descr=<ArrayP 4>),
+        guard_class(p108, ConstClass(W_PointersObject), descr=<Guard0x92b9820>),
+        p109 = getfield_gc_pure(p108, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_w_class 12>),
+        p110 = getfield_gc(p109, descr=<FieldP spyvm.model.W_PointersObject.inst_strategy 24>),
+        guard_value(p110, ConstPtr(ptr90), descr=<Guard0x92b97f0>),
+        p111 = getfield_gc(p108, descr=<FieldP spyvm.model.W_PointersObject.inst_strategy 24>),
+        guard_nonnull_class(p111, ConstClass(ListStrategy), descr=<Guard0x92b97c0>),
+        p112 = getfield_gc(p108, descr=<FieldP spyvm.model.W_PointersObject.inst__storage 20>),
+        i113 = arraylen_gc(p112, descr=<ArrayP 4>),
+        i114 = uint_lt(i103, i113),
+        guard_true(i114, descr=<Guard0x92b9790>),
+        p115 = getarrayitem_gc(p112, i103, descr=<ArrayP 4>),
+        i116 = int_add(i98, 1),
+        i117 = arraylen_gc(p70, descr=<ArrayP 4>),
+        jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, i116, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, p47, p70, i82, p81, i73, descr=TargetToken(153767216))
+        """)
