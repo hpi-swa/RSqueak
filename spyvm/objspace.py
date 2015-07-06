@@ -35,9 +35,6 @@ class ConstantFlag(object):
 class ConstantString(object):
     import_from_mixin(ConstantMixin)
     default_value = ""
-    def get(self):
-        # Promoting does not work on strings...
-        return self.value[0]
 
 class ConstantObject(object):
     import_from_mixin(ConstantMixin)
