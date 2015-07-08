@@ -501,7 +501,7 @@ class SpurReader(BaseReaderStrategy):
             classid_l, _, format_l, _, hash_l, _, overflow_size = splitter[22,2,5,3,22,2,8](self.stream.next_qword())
             classid, format, hash = intmask(classid_l), intmask(format_l), intmask(hash_l)
             assert overflow_size == OVERFLOW_SLOTS, "objects with long header must have 255 in slot count"
-        size = r_uint(intmask(size_l))
+        size = r_uint(size_l) # reading 64 bit images not supported in 32 bit build
         assert 0 <= format <= 31
         chunk = ImageChunk(size, format, classid, hash)
         # the minimum object length is 16 bytes, i.e. 8 header + 8 payload

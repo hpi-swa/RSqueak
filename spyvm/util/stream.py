@@ -1,5 +1,6 @@
 from rpython.rlib import streamio
 from rpython.rlib.rstruct.runpack import runpack
+from spyvm.util import system
 
 def chrs2int(b):
     assert len(b) == 4
@@ -41,12 +42,34 @@ class Stream(object):
             raise RuntimeError("need to supply either inputfile or data")
         
         self.reset()
+
+    def bytes2dword_with_correct_endianness(self, bytes):
+        if self.big_endian:
+            return runpack(">I", bytes)
+        else:
+            return runpack("<I", bytes)
+
+    def bytes2qword_with_correct_endianness(self, bytes):
+        if self.big_endian:
+            return runpack(">Q", bytes)
+        else:
+            return runpack("<Q", bytes)
+
+    def peek_bytes(self, n):
+        return self.data[self.pos:self.pos+n]
+
+    def next_bytes(self, n):
+        bytes = self.peek_bytes(n)
+        self.pos += n
+        self.count += n
+        return bytes
     
     def peek(self):
         if self.pos >= len(self.data):
             raise IndexError
         data_peek = self.data[self.pos:self.pos + self.word_size]
         if self.use_long_read:
+            assert system.IS_64BIT, "do not support reading 64 bit slots in 32 bit build"
             if self.big_endian:
                 return chrs2long(data_peek)
             else:
@@ -70,12 +93,8 @@ class Stream(object):
         return short
     
     def next_qword(self):
-        word_size = self.word_size
-        long_read = self.use_long_read
-        self.be_64bit()
-        qword = self.next()
-        self.word_size = word_size
-        self.use_long_read = long_read
+        bytes = self.next_bytes(8)
+        qword = self.bytes2qword_with_correct_endianness(bytes)
         return qword
 
     def reset(self):
