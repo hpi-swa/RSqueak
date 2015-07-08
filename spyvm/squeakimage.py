@@ -476,8 +476,9 @@ class SpurReader(BaseReaderStrategy):
                 self.chunklist.append(chunk)
                 self.chunks[pos + currentAddressSwizzle] = chunk
             # read bridge
-            bridgeSpan = self.stream.next_qword()
-            nextSegmentSize = self.stream.next_qword()
+            bridgeSpan = intmask(self.stream.next_qword())
+            nextSegmentSize = intmask(self.stream.next_qword())
+            # the above causes silent overflow in 32bit builds and 64bit images
             assert self.stream.count == segmentEnd
             segmentEnd = segmentEnd + nextSegmentSize
             currentAddressSwizzle += bridgeSpan
