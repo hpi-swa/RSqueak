@@ -148,6 +148,7 @@ def test_other_keys(sut, stub_key_event):
     assert_key(RSDL.K_ESCAPE, key_constants.ESCAPE)
     assert_key(RSDL.K_PRINT, key_constants.PRINT)
     assert_key(RSDL.K_DELETE, key_constants.DELETE)
+    assert_key(RSDL.K_BACKSPACE, key_constants.BACKSPACE)
     assert_key(RSDL.K_NUMLOCK, key_constants.NUMLOCK)
     assert_key(RSDL.K_SCROLLOCK, key_constants.SCROLLOCK)
 
@@ -259,7 +260,6 @@ def test_alt_is_command_on_windwos(sut, stub_key_event, stub_mod_state, monkeypa
     stub_mod_state.set(RSDL.KMOD_NONE)
     result = sut.get_next_event()
     assert_keyevent_array(result, key_constants.COMMAND, display.EventKeyUp, 0)
-
 
 @pytest.fixture
 def stub_setVideoMode_call(request, monkeypatch):

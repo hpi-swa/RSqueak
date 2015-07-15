@@ -164,6 +164,10 @@ class SDLDisplay(object):
             self.key = key_constants.COMMAND
         elif system.IS_DARWIN and (sym == RSDL.K_LMETA or sym == RSDL.K_RMETA):
             self.key = key_constants.COMMAND
+        elif sym == RSDL.K_DELETE:
+            self.key = key_constants.DELETE
+        elif sym == RSDL.K_BACKSPACE:
+            self.key = key_constants.BACKSPACE
         elif sym == RSDL.K_BREAK:
             self.key = key_constants.BREAK
         elif sym == RSDL.K_CAPSLOCK:
