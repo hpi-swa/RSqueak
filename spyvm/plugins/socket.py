@@ -58,7 +58,7 @@ class W_SocketHandle(model.W_AbstractObjectWithIdentityHash):
 
     def connect(self, w_bytes, port):
         try:
-            inet = rsocket.INETAddress(w_bytes.as_string(), port)
+            inet = rsocket.INETAddress(w_bytes.unwrap_string(None), port)
         except rsocket.GAIError:
             raise error.PrimitiveFailedError
         try:

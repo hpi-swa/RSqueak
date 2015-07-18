@@ -2,7 +2,6 @@ import py, os, math, time
 from spyvm import model, model_display, storage_contexts, constants, primitives, wrapper, display
 from spyvm.primitives import prim_table, PrimitiveFailedError
 import spyvm.plugins.socket as socket
-from spyvm.plugins import bitblt
 from rpython.rlib.rfloat import isinf, isnan
 from rpython.rlib.rarithmetic import intmask, r_uint
 from rpython.rtyper.lltypesystem import lltype, rffi
@@ -160,7 +159,7 @@ def test_socket_send_and_read_into():
     w_str = space.wrap_string("_hello")
     assert prim("primitiveSocketReceiveDataBufCount", "SocketPlugin",
                 [space.w_nil, handle, w_str, space.wrap_int(2), space.wrap_int(5)]).value == 5
-    assert w_str.as_string() == "_HTTP/"
+    assert w_str.unwrap_string(None) == "_HTTP/"
 
 def test_socket_destroy():
     handle = prim("primitiveSocketCreate3Semaphores", "SocketPlugin",
