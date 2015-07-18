@@ -173,12 +173,13 @@ def expose_primitive(code, wrap_func=None, **kwargs):
         return func
     return decorator
 
-def expose_also_as(code):
+def expose_also_as(*codes):
     def decorator(func):
         wrapped = prim_table[globals()[func.func_name.replace('prim_', '')]]
-        assert code not in prim_table
-        prim_table[code] = wrapped
-        prim_table_implemented_only.append((code, wrapped))
+        for code in codes:
+            assert code not in prim_table
+            prim_table[code] = wrapped
+            prim_table_implemented_only.append((code, wrapped))
         return wrapped
     return decorator
 
