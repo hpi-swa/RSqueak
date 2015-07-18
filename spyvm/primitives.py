@@ -523,6 +523,16 @@ NEXT = 65
 NEXT_PUT = 66
 AT_END = 67
 
+
+# Interlude:
+# ___________________________________________________________________________
+# SPUR primitives
+
+CHARACTER_VALUE = 170
+IMMEDIATE_IDENTITY_HASH = 171
+CLASS_IDENTITY_HASH = 175
+
+
 # ___________________________________________________________________________
 # Storage Management Primitives
 
@@ -596,6 +606,7 @@ def func(interp, s_frame, w_rcvr, n0, w_value):
     except IndexError:
         raise PrimitiveFailedError
 
+@expose_also_as(IMMEDIATE_IDENTITY_HASH, CLASS_IDENTITY_HASH)
 @expose_primitive(AS_OOP, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
     if isinstance(w_rcvr, model.W_SmallInteger):
@@ -1248,6 +1259,15 @@ def func(interp, s_frame, w_rcvr, fd, src, start, count):
 @expose_primitive(DIRECTORY_DELIMITOR, unwrap_spec=[object])
 def func(interp, s_frame, _):
     return interp.space.wrap_char(os.path.sep)
+
+
+# ___________________________________________________________________________
+
+@expose_primitive(CHARACTER_VALUE, unwrap_spec=[object, int])
+def func(interp, s_frame, w_rcvr, value):
+    return model.W_Character(value)
+
+
 
 # ___________________________________________________________________________
 # Boolean Primitives
