@@ -207,7 +207,8 @@ def entry_point(argv):
     interp = interpreter.Interpreter(space, image,
                 trace=trace, trace_important=trace_important,
                 evented=not poll, interrupts=interrupts)
-    space.runtime_setup(argv[0], path)
+    space.runtime_setup(argv, path)
+
     interp.populate_remaining_special_objects()
     print_error("") # Line break after image-loading characters
 
@@ -259,7 +260,7 @@ def compile_code(interp, w_receiver, code):
         space.w_nil]
     )
     # TODO - is this expected in every image?
-    if not isinstance(w_result, model.W_BytesObject) or w_result.as_string() != selector:
+    if not isinstance(w_result, model.W_BytesObject) or space.unwrap_string(w_result) != selector:
         raise error.Exit("Unexpected compilation result (probably failed to compile): %s" % result_string(w_result))
     space.suppress_process_switch.deactivate()
 

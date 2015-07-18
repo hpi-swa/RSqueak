@@ -3,7 +3,7 @@ import os, stat, sys
 from rpython.rlib import jit, rarithmetic
 from rpython.rlib.listsort import TimSort
 
-from spyvm import model, error
+from spyvm import model, model_display, error
 from spyvm.plugins.plugin import Plugin
 from spyvm.primitives import PrimitiveFailedError, index1_0
 from spyvm.util.system import IS_WINDOWS
@@ -197,19 +197,31 @@ def primitiveFileStdioHandles(interp, s_frame, w_rcvr):
 @FilePlugin.expose_primitive(unwrap_spec=[object, int, object, index1_0, int])
 def primitiveFileWrite(interp, s_frame, w_rcvr, fd, content, start, count):
     byte_size = 0
+    size = 0
     if isinstance(content, model.W_WordsObject):
         byte_size = 4
+        size = content.size()
     elif isinstance(content, model.W_BytesObject):
         byte_size = 1
+        size = content.size()
+    elif isinstance(content, model.W_Float):
+        byte_size = 4
+        # TODO: is there a case where a Float is only 32 bits?
+        size = 2
+    elif isinstance(content, model.W_LargePositiveInteger1Word):
+        byte_size = 4
+        size = 1
+    elif isinstance(content, model_display.W_DisplayBitmap):
+        byte_size = 4
+        size = content.size()
     else:
         raise PrimitiveFailedError
 
-    string_content = content.as_string()
+    string_content = interp.space.unwrap_string(content)
     byte_start = start * byte_size
-    byte_end = min(start + 1 + count, content.size()) * byte_size
+    byte_end = min(start + 1 + count, size) * byte_size
 
     space = interp.space
-
     if not (byte_start >= 0 and byte_end > byte_start):
         return space.wrap_int(0)
     try:

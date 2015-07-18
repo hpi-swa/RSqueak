@@ -40,7 +40,7 @@ def assert_list(list, expected):
     for i in range(len(list)):
         exp = expected[i]
         if isinstance(exp, str):
-            assert exp == list[i].as_string()
+            assert exp == list[i].unwrap_string(None)
         if not isinstance(exp, model.W_Object):
             exp = w(exp)
         assert list[i].is_same_object(exp)
@@ -103,12 +103,12 @@ def test_create_frame():
     w_method._tempsize=8
     s_frame = w_method.create_frame(space, w("receiver"), [w("foo"), w("bar")])
     w_frame = s_frame.w_self()
-    assert s_frame.w_receiver().as_string() == "receiver"
-    assert s_frame.gettemp(0).as_string() == "foo"
-    assert s_frame.gettemp(1).as_string() == "bar"
+    assert s_frame.w_receiver().unwrap_string(None) == "receiver"
+    assert s_frame.gettemp(0).unwrap_string(None) == "foo"
+    assert s_frame.gettemp(1).unwrap_string(None) == "bar"
     assert s_frame.gettemp(2).is_nil(space)
     s_frame.settemp(2, w("spam"))
-    assert s_frame.gettemp(2).as_string() == "spam"
+    assert s_frame.gettemp(2).unwrap_string(None) == "spam"
     assert s_frame.fetch_next_bytecode() == ord("h")
     assert s_frame.fetch_next_bytecode() == ord("e")
     assert s_frame.fetch_next_bytecode() == ord("l")
@@ -861,8 +861,8 @@ def test_bc_pushNewArrayBytecode_noPopIntoArray(bytecode=pushNewArrayBytecode):
     assert array.size() == 2
     assert array.at0(space, 0).is_nil(space)
     assert array.at0(space, 1).is_nil(space)
-    assert s_frame.pop().as_string() == "bar"
-    assert s_frame.pop().as_string() == "egg"
+    assert s_frame.pop().unwrap_string(None) == "bar"
+    assert s_frame.pop().unwrap_string(None) == "egg"
 
 def test_bc_pushNewArray(bytecode=pushNewArrayBytecode):
     w_frame, s_frame = new_frame(bytecode + chr(0x07))
@@ -923,8 +923,8 @@ def test_bc_pushClosureCopyCopied2ValuesBytecode(bytecode = pushClosureCopyCopie
     closure = wrapper.BlockClosureWrapper(space, s_frame.top())
     assert closure.startpc() == pc + 4 + 5
     assert closure.outerContext() is s_frame._w_self
-    assert closure.at0(0).as_string() == "english"
-    assert closure.at0(1).as_string() == "bar"
+    assert closure.at0(0).unwrap_string(None) == "english"
+    assert closure.at0(1).unwrap_string(None) == "bar"
 
 def test_blockclosure_valuevalue():
     #someTest
@@ -971,13 +971,13 @@ def test_frame_not_dirty_if_inactive():
     step_in_interp(s_frame)
     assert s_frame.state is storage_contexts.ActiveContext
     assert s_other_frame.state is storage_contexts.InactiveContext
-    
+
 def test_raise_NonVirtualReturn_on_dirty_frame():
     bytes = reduce(operator.add, map(chr, [0x84, 0xc0, 0x00])) + returnTopFromMethodBytecode
     w_frame, s_frame = new_frame(bytes)
     s_frame.store_w_receiver(w_frame)
     s_frame.push(w_frame)
-    
+
     interp._loop = True
     def do_test():
         interp.stack_frame(s_frame, None)
@@ -1025,4 +1025,3 @@ def test_objectsAsMethods():
     assert w_runwithin_args[1].size() == 1 # foo: has one argument
     assert w_runwithin_args[1].fetch(space, 0) == w_holderobject # receiver was used as argument
     assert w_runwithin_args[2] == w_holderobject
-

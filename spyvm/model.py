@@ -11,11 +11,11 @@ Squeak model.
                 W_WordsObject
             W_CompiledMethod
 """
-import sys
+import sys, math
 from spyvm import constants, error
 from spyvm.util.version import constant_for_version, constant_for_version_arg, VersionMixin, Version
 
-from rpython.rlib import rrandom, objectmodel, jit, signature
+from rpython.rlib import rrandom, objectmodel, jit, signature, longlong2float
 from rpython.rlib.rarithmetic import intmask, r_uint, r_int, ovfcheck, r_longlong
 from rpython.rlib.debug import make_sure_not_resized
 from rpython.tool.pairtype import extendabletype
@@ -97,6 +97,9 @@ class W_Object(object):
         raise NotImplementedError()
 
     def fillin(self, space, g_self):
+        raise NotImplementedError()
+
+    def fillin_weak(self, space, g_self):
         raise NotImplementedError()
 
     def getword(self, n0):
@@ -184,6 +187,9 @@ class W_Object(object):
 
     def is_array_object(self):
         return False
+
+    def unwrap_string(self, space):
+        raise error.UnwrappingError
 
     # Methods for printing this object
 
@@ -372,6 +378,11 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
     def str_content(self):
         return "%d" % r_uint(self.value)
 
+    def unwrap_string(self, space):
+        # OH GOD! TODO: Make this sane!
+        res = [chr(self.value & r_uint(0x000000ff)), chr((self.value & r_uint(0x0000ff00)) >> 8), chr((self.value & r_uint(0x00ff0000)) >> 16), chr((self.value & r_uint(0xff000000)) >> 24)]
+        return "".join(res)
+
     def lshift(self, space, shift):
         # shift > 0, therefore the highest bit of upperbound is not set,
         # i.e. upperbound is positive
@@ -456,6 +467,17 @@ class W_Float(W_AbstractObjectWithIdentityHash):
     def __init__(self, value):
         self.value = value
 
+    def unwrap_string(self, space):
+        word = longlong2float.float2longlong(self.value)
+        return "".join([chr(word & 0x000000ff),
+                        chr((word >> 8) & 0x000000ff),
+                        chr((word >> 16) & 0x000000ff),
+                        chr((word >> 24) & 0x000000ff),
+                        chr((word >> 32) & 0x000000ff),
+                        chr((word >> 40) & 0x000000ff),
+                        chr((word >> 48) & 0x000000ff),
+                        chr((word >> 56) & 0x000000ff)])
+
     def fillin(self, space, g_self):
         W_AbstractObjectWithIdentityHash.fillin(self, space, g_self)
         high, low = g_self.get_ruints(required_len=2)
@@ -487,8 +509,7 @@ class W_Float(W_AbstractObjectWithIdentityHash):
     def is_same_object(self, other):
         if not isinstance(other, W_Float):
             return False
-        # TODO is that correct in Squeak?
-        return self.value == other.value
+        return self.value == other.value or (math.isnan(self.value) and math.isnan(other.value))
 
     def __eq__(self, other):
         if not isinstance(other, W_Float):
@@ -637,8 +658,14 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         for g_obj in g_self.pointers:
             g_obj.fillin(space)
         pointers = g_self.get_pointers()
-        storage_type = space.strategy_factory.strategy_type_for(pointers, g_self.isweak())
+        storage_type = space.strategy_factory.strategy_type_for(pointers, weak=False) # do not fill in weak lists, yet
         space.strategy_factory.set_initial_strategy(self, storage_type, len(pointers), pointers)
+
+    def fillin_weak(self, space, g_self):
+        assert g_self.isweak() # when we get here, this is true
+        pointers = g_self.get_pointers()
+        storage_type = space.strategy_factory.strategy_type_for(pointers, weak=True)
+        space.strategy_factory.switch_strategy(self, storage_type)
 
     def is_weak(self):
         from storage import WeakListStrategy
@@ -867,9 +894,9 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         if self.has_class() and self.w_class.has_space():
             if self.w_class.space().omit_printing_raw_bytes.is_set():
                 return "<omitted>"
-        return "'%s'" % self.as_string().replace('\r', '\n')
+        return "'%s'" % self.unwrap_string(None).replace('\r', '\n')
 
-    def as_string(self):
+    def unwrap_string(self, space):
         return self._pure_as_string(self.version)
 
     @jit.elidable
@@ -880,7 +907,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
             return "".join(self.bytes)
 
     def selector_string(self):
-        return "#" + self.as_string()
+        return "#" + self.unwrap_string(None)
 
     def invariant(self):
         if not W_AbstractObjectWithClassReference.invariant(self):
@@ -962,7 +989,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
             return self.c_bytes
         else:
             size = self.size()
-            c_bytes = self.c_bytes = rffi.str2charp(self.as_string())
+            c_bytes = self.c_bytes = rffi.str2charp(self.unwrap_string(None))
             self.bytes = None
             self.mutate()
             return c_bytes
@@ -1035,8 +1062,8 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
     def size(self):
         return self._size
 
-    @jit.look_inside_iff(lambda self: jit.isconstant(self.size()))
-    def as_string(self):
+    @jit.look_inside_iff(lambda self, space: jit.isconstant(self.size()))
+    def unwrap_string(self, space):
         # OH GOD! TODO: Make this sane!
         res = []
         for word in self.words:
@@ -1342,10 +1369,10 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def is_array_object(self):
         return True
 
-    def create_frame(self, space, receiver, arguments=[]):
+    def create_frame(self, space, receiver, arguments=[], s_fallback=None):
         from spyvm.storage_contexts import ContextPartShadow
         assert len(arguments) == self.argsize
-        return ContextPartShadow.build_method_context(space, self, receiver, arguments)
+        return ContextPartShadow.build_method_context(space, self, receiver, arguments, s_fallback=s_fallback)
 
     # === Printing ===
 

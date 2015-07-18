@@ -85,3 +85,62 @@ def test_compiling_large_positive_integer():
     perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
     w_result = perform(w(10), "aLargeInteger")
     assert isinstance(w_result, model.W_LargePositiveInteger1Word)
+
+
+def test_simulate_numericprim():
+    sourcecode = """absentPrimitive: anInt with: anotherInt
+        <primitive: 97>
+        ^'numeric fallback for ', anInt asString, ' ', anotherInt asString"""
+    perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
+
+    sourcecode = """simulatePrimitive: aPrimitive args: args
+        ^'numeric simulation for ', args first asString, ' ', args second asString"""
+    w_sim = perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
+
+    # XXX the lookup for that selector is static so the simulation lookup would be failing
+    interp.image.w_simulatePrimitive = w_sim
+
+    w_result = perform(w(10), "absentPrimitive:with:", w(3), w(4))
+    assert isinstance(w_result, model.W_BytesObject)
+    assert w_result.unwrap_string(space) == 'numeric simulation for 3 4'
+
+def test_simulate_numericprim_fallback():
+    sourcecode = """absentPrimitive: anInt with: anotherInt
+        |errorCode|
+        <primitive: 97> "error: errorCode> is not implemented in the mini.image yet"
+        ^'numeric fallback for ', anInt asString, ' ', anotherInt asString, ' because of ', errorCode asString"""
+    perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
+
+    sourcecode = """metaPrimFailed: errorCode
+        <primitive: 255>"""
+    perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
+
+    sourcecode = """simulatePrimitive: aPrimitive args: args
+        ^self metaPrimFailed: 123"""
+    w_sim = perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
+
+    # XXX the lookup for that selector is static so the simulation lookup would be failing
+    interp.image.w_simulatePrimitive = w_sim
+
+    w_result = perform(w(10), "absentPrimitive:with:", w(3), w(4))
+    assert isinstance(w_result, model.W_BytesObject)
+    assert w_result.unwrap_string(space) == 'numeric fallback for 3 4 because of 123'
+
+def test_simulate_externalcall():
+    sourcecode = """absentPrimitive: anInt with: anotherInt
+        | externalCallTarget |
+        "do not use <primitive: 'primitiveSimulation' module: 'MyPlugin'> as mini.image doesn't have that yet"
+        <primitive: 117>
+        externalCallTarget := #(MyPlugin primitiveSimulation).
+        ^'externalcall fallback for ', anInt asString, ' ', anotherInt asString"""
+    perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
+    sourcecode = """simulatePrimitive: aPrimitive args: args
+        ^'externalcall simulation for ', args first asString, ' ', args second asString"""
+    w_sim = perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
+
+    # XXX the lookup for that selector is static so the simulation lookup would be failing
+    interp.image.w_simulatePrimitive = w_sim
+
+    w_result = perform(w(10), "absentPrimitive:with:", w(3), w(4))
+    assert isinstance(w_result, model.W_BytesObject)
+    assert w_result.unwrap_string(space) == 'externalcall simulation for 3 4'

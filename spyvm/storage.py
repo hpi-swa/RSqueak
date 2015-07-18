@@ -1,5 +1,5 @@
 
-import sys
+import weakref, sys
 from spyvm import model, constants
 from spyvm.util.version import VersionMixin
 from rpython.rlib import objectmodel, jit
@@ -89,9 +89,96 @@ class ListStrategy(SingletonStorageStrategy):
     repr_classname = "ListStrategy"
     import_from_mixin(rstrat.GenericStrategy)
 
+class ListEntry(object):
+    _attrs_ = ['strong_content', 'weak_content']
+    _immutable_fields_ = ['strong_content', 'weak_content']
+
+    @staticmethod
+    def build(value, is_instvar):
+        # Strong references to:
+        #  - instance variables
+        #  - SmallIntegers (they used to be tagged in the reference implementation)
+        #  - symbols (they lived forever in the reference implementation)
+        if ListEntry.is_strong_anyway(value, is_instvar):
+            return StrongListEntry(value)
+        else:
+            return WeakListEntry(value)
+
+    @staticmethod
+    def is_strong_anyway(value, is_instvar):
+        return is_instvar or isinstance(value, model.W_SmallInteger) or isinstance(value, model.W_BytesObject)
+
+class StrongListEntry(ListEntry):
+    def __init__(self, value):
+        self.strong_content = value
+        self.weak_content = None
+
+    def get(self):
+        return self.strong_content
+
+class WeakListEntry(ListEntry):
+    _attrs_ = ['strong_content', 'weak_content']
+    _immutable_fields_ = ['strong_content', 'weak_content']
+    def __init__(self, value):
+        self.strong_content = None
+        self.weak_content = weakref.ref(value)
+
+    def get(self):
+        return self.weak_content()
+
+@rstrat.strategy()
 class WeakListStrategy(SingletonStorageStrategy):
     repr_classname = "WeakListStrategy"
-    import_from_mixin(rstrat.WeakGenericStrategy)
+    #import_from_mixin(rstrat.WeakGenericStrategy)
+    import_from_mixin(rstrat.StrategyWithStorage)
+
+    def _wrap(self, value):
+        assert isinstance(value, ListEntry)
+        return value.get() or self.default_value()
+
+    def _unwrap(self, value, index, w_self):
+        assert value is not None
+        return ListEntry.build(value, index < w_self.instsize())
+
+    def _check_can_handle(self, value):
+        return True
+
+    def _initialize_storage(self, w_self, initial_size):
+        default = StrongListEntry(self.default_value())
+        self.set_storage(w_self, [default] * initial_size)
+
+    @jit.unroll_safe
+    def _convert_storage_from(self, w_self, previous_strategy):
+        size = previous_strategy.size(w_self)
+        new_storage = [ self._unwrap(previous_strategy.fetch(w_self, i), i, w_self)
+                        for i in range(size) ]
+        self.set_storage(w_self, new_storage)
+
+    def store(self, w_self, index0, wrapped_value):
+        self.check_index_store(w_self, index0)
+        if self._check_can_handle(wrapped_value):
+            unwrapped = self._unwrap(wrapped_value, index0, w_self)
+            self.get_storage(w_self)[index0] = unwrapped
+        else:
+            self._cannot_handle_store(w_self, index0, wrapped_value)
+
+    @jit.unroll_safe
+    def insert(self, w_self, start, list_w):
+        # This is following Python's behaviour - insert automatically
+        # happens at the beginning of an array, even if index is larger
+        if start > self.size(w_self):
+            start = self.size(w_self)
+        for i in range(len(list_w)):
+            if self._check_can_handle(list_w[i]):
+                self.get_storage(w_self).insert(start + i, self._unwrap(list_w[i], start + i, w_self))
+            else:
+                self._cannot_handle_insert(w_self, start + i, list_w[i:])
+                return
+
+    def delete(self, w_self, start, end):
+        self.check_index_range(w_self, start, end)
+        assert start >= 0 and end >= 0
+        del self.get_storage(w_self)[start : end]
 
 @rstrat.strategy(generalize=[ListStrategy])
 class SmallIntegerOrNilStrategy(SingletonStorageStrategy):

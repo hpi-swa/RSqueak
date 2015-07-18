@@ -1,5 +1,7 @@
+import os
 from spyvm import model, error
 from spyvm.plugins.plugin import Plugin
+from spyvm.util.system import IS_WINDOWS
 
 
 DebuggingPlugin = Plugin()
@@ -18,6 +20,14 @@ def stop_ui_process():
 #     interp.trace = False
 #     return w_rcvr
 
+
+if IS_WINDOWS:
+    def fork():
+        raise NotImplementedError("fork on windows")
+else:
+    fork = os.fork
+
+
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object])
 def trace_proxy(interp, s_frame, w_rcvr):
     interp.trace_proxy.activate()
@@ -30,16 +40,10 @@ def untrace_proxy(interp, s_frame, w_rcvr):
 
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object])
 def halt(interp, s_frame, w_rcvr):
-    from rpython.rlib.objectmodel import we_are_translated
-    from spyvm.error import Exit
-
     print s_frame.print_stack()
-    if not we_are_translated():
-        import pdb; pdb.set_trace()
-    else:
-        print s_frame
-        raise Exit('Halt is not well defined when translated.')
-    return w_rcvr
+    # No, this is not a mistake. Update your pypy checkout!
+    import pdb; pdb.set_trace()
+    raise error.PrimitiveFailedError
 
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object])
 def isRSqueak(interp, s_frame, w_rcvr):
@@ -57,7 +61,7 @@ def isVMTranslated(interp, s_frame, w_rcvr):
 def debugPrint(interp, s_frame, w_rcvr, w_string):
     if not isinstance(w_string, model.W_BytesObject):
         raise error.PrimitiveFailedError()
-    print w_string.as_string().replace('\r', '\n')
+    print interp.space.unwrap_string(w_string).replace('\r', '\n')
     return w_rcvr
 
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object])

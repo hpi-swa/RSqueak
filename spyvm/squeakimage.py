@@ -90,6 +90,7 @@ class ImageReader(object):
         self.init_w_objects()
         self.fillin_w_objects()
         self.populate_special_objects()
+        self.fillin_weak_w_objects()
 
     def try_read_version(self):
         magic1 = self.stream.next()
@@ -229,10 +230,15 @@ class ImageReader(object):
     def init_w_objects(self):
         for chunk in self.chunks.itervalues():
             chunk.g_object.init_w_object()
-        self.special_w_objects = [g.w_object for g in self.special_g_objects]
+        self.special_objects_w = [g.w_object for g in self.special_g_objects]
 
     def populate_special_objects(self):
-        self.space.populate_special_objects(self.special_w_objects)
+        self.space.populate_special_objects(self.special_objects_w)
+
+    def fillin_weak_w_objects(self):
+        self.filledin_weakobjects = 0
+        for chunk in self.chunks.itervalues():
+            chunk.g_object.fillin_weak(self.space)
 
     def fillin_w_objects(self):
         self.filledin_objects = 0
@@ -243,6 +249,10 @@ class ImageReader(object):
         self.filledin_objects = self.filledin_objects + 1
         self.log_progress(self.filledin_objects, '%')
 
+    def log_weakobject_filledin(self):
+        self.filledin_weakobjects = self.filledin_weakobjects + 1
+        self.log_progress(self.filledin_weakobjects * 100, '*')
+
 
 # ____________________________________________________________
 
@@ -250,29 +260,20 @@ class SqueakImage(object):
     _immutable_fields_ = [
         "w_asSymbol",
         "version",
-        "startup_time"
+        "startup_time",
+        "space"
     ]
-    code = ["def set_simlation_selectors(self, symbols_w):"]
-    for idx, attr in enumerate(constants.SIMULATION_SELECTORS.values()):
-        _immutable_fields_.append(attr)
-        code.append("    self." + attr + " = symbols_w[" + str(idx) + "]")
-    exec "\n".join(code)
 
     def __init__(self, reader):
-        space = reader.space
-        self.special_objects = reader.special_w_objects
+        space = self.space = reader.space
+        self.special_objects = space.wrap_list(reader.special_objects_w)
         self.w_asSymbol = self.find_symbol(space, reader, "asSymbol")
         self.lastWindowSize = reader.lastWindowSize
         self.version = reader.version
         self.run_spy_hacks(space)
         self.startup_time = time.time()
-        self.find_simulation_selectors(space, reader)
-
-    def find_simulation_selectors(self, space, reader):
-        symbols_w = []
-        for selector in constants.SIMULATION_SELECTORS.keys():
-            symbols_w.append(self.find_symbol(space, reader, selector))
-        self.set_simlation_selectors(symbols_w)
+        from spyvm.plugins.simulation import SIMULATE_PRIMITIVE_SELECTOR
+        self.w_simulatePrimitive = self.find_symbol(space, reader, SIMULATE_PRIMITIVE_SELECTOR)
 
     def run_spy_hacks(self, space):
         if not space.run_spy_hacks.is_set():
@@ -286,7 +287,7 @@ class SqueakImage(object):
     def find_symbol(self, space, reader, symbol):
         w_dnu = self.special(constants.SO_DOES_NOT_UNDERSTAND)
         assert isinstance(w_dnu, model.W_BytesObject)
-        assert w_dnu.as_string() == "doesNotUnderstand:"
+        assert space.unwrap_string(w_dnu) == "doesNotUnderstand:"
         w_Symbol = w_dnu.getclass(space)
         w_obj = None
         # bit annoying that we have to hunt through the image :-(
@@ -296,13 +297,13 @@ class SqueakImage(object):
                 continue
             if not w_obj.getclass(space).is_same_object(w_Symbol):
                 continue
-            if w_obj.as_string() == symbol:
+            if space.unwrap_string(w_obj) == symbol:
                 return w_obj
         w_obj = space.w_nil
         return w_obj
 
     def special(self, index):
-        return self.special_objects[index]
+        return self.special_objects.at0(self.space, index)
 
 # ____________________________________________________________
 
@@ -317,6 +318,7 @@ class GenericObject(object):
         self.space = space
         self.reader = None
         self.filled_in = False
+        self.filled_in_weak = False
 
     def isinitialized(self):
         return self.reader is not None
@@ -465,6 +467,12 @@ class GenericObject(object):
             self.filled_in = True
             self.w_object.fillin(space, self)
             self.reader.log_object_filledin()
+
+    def fillin_weak(self, space):
+        if not self.filled_in_weak and self.isweak():
+            self.filled_in_weak = True
+            self.w_object.fillin_weak(space, self)
+            self.reader.log_weakobject_filledin()
 
     def get_g_pointers(self):
         assert self.pointers is not None

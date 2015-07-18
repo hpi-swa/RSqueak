@@ -60,6 +60,7 @@ class ObjSpace(object):
 
         self.classtable = {}
         self.objtable = {}
+        self.system_attributes = {}
         self._executable_path = ConstantString()
         self._image_name = ConstantString()
         self._display = ConstantObject()
@@ -86,13 +87,30 @@ class ObjSpace(object):
                     break
         return rpath.rabspath(executable)
 
-    def runtime_setup(self, executable, image_name):
-        fullpath = rpath.rabspath(self.find_executable(executable))
+    def runtime_setup(self, argv, image_name):
+        fullpath = rpath.rabspath(self.find_executable(argv[0]))
         i = fullpath.rfind(os.path.sep) + 1
         assert i > 0
         self._executable_path.set(fullpath[:i])
         self._image_name.set(image_name)
         self.image_loaded.activate()
+        self.init_system_attributes(argv)
+
+    def init_system_attributes(self, argv):
+        for i in xrange(1, len(argv)):
+            self.system_attributes[-i] = argv[i]
+
+        import platform
+
+        self.system_attributes[0] = self._executable_path.get()
+        self.system_attributes[1] = self._image_name.get()
+
+        self.system_attributes[1001] = platform.system()    # operating system
+        self.system_attributes[1002] = platform.version()   # operating system version
+        self.system_attributes[1003] = platform.processor() # platform's processor type
+        self.system_attributes[1004] = "0"                  # vm version
+        self.system_attributes[1007] = "rsqueak"            # interpreter class (invented for Cog)
+
 
     def populate_special_objects(self, specials):
         for name, idx in constants.objects_in_special_object_table.items():
@@ -234,6 +252,9 @@ class ObjSpace(object):
 
     def unwrap_array(self, w_array):
         return w_array.unwrap_array(self)
+
+    def unwrap_string(self, w_object):
+        return w_object.unwrap_string(self)
 
     # ============= Access to static information =============
 

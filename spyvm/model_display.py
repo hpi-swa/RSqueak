@@ -68,6 +68,16 @@ class W_DisplayBitmap(model.W_AbstractObjectWithClassReference):
         word = space.unwrap_uint(w_value)
         self.setword(index0, word)
 
+    def unwrap_string(self, space):
+        # OH GOD! TODO: Make this sane!
+        res = []
+        for i in range(self._realsize):
+            res += [chr(self.getword(i) & r_uint(0x000000ff)),
+                    chr((self.getword(i) & r_uint(0x0000ff00)) >> 8),
+                    chr((self.getword(i) & r_uint(0x00ff0000)) >> 16),
+                    chr((self.getword(i) & r_uint(0xff000000)) >> 24)]
+        return "".join(res)
+
     def getword(self, n):
         assert self.size() > n >= 0
         return self._real_depth_buffer[n]
