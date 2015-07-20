@@ -1,7 +1,7 @@
-from rpython.rlib import rsocket, jit, rarithmetic, objectmodel, _rsocket_rffi
+from rpython.rlib import rsocket, jit, rarithmetic, objectmodel
 from spyvm import model, error
 from spyvm.plugins.plugin import Plugin
-import socket as pysocket
+import errno
 
 rsocket.rsocket_startup()
 
@@ -48,6 +48,7 @@ class W_SocketHandle(model.W_AbstractObjectWithIdentityHash):
 
     def __init__(self, socket):
         self.socket = socket
+        self.socket.setblocking(False)
         self.state = Unconnected
 
     def getclass(self, space):
@@ -61,18 +62,23 @@ class W_SocketHandle(model.W_AbstractObjectWithIdentityHash):
             inet = rsocket.INETAddress(w_bytes.unwrap_string(None), port)
         except rsocket.GAIError:
             raise error.PrimitiveFailedError
+        self.socket.setblocking(True)
         try:
             self.socket.connect(inet)
         except rsocket.SocketError:
             raise error.PrimitiveFailedError
+        finally:
+            self.socket.setblocking(False)
         self.state = Connected
 
     def can_read(self):
         if self.state == Connected:
             try:
-                r = self.socket.recv(1, _rsocket_rffi.MSG_PEEK | _rsocket_rffi.MSG_DONTWAIT)
-            except rsocket.CSocketError:
-                return False
+                r = self.socket.recv(1, rsocket.MSG_PEEK)
+            except rsocket.CSocketError, e:
+                if e.errno == errno.EAGAIN or e.errno == errno.EWOULDBLOCK:
+                    return False
+                raise
             if len(r) == 0:
                 self.state = OtherEndClosed
                 return False

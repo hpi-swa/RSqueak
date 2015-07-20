@@ -83,7 +83,7 @@ class W_DisplayBitmap(model.W_AbstractObjectWithClassReference):
         return self._real_depth_buffer[n]
 
     def setword(self, n, word):
-        self._real_depth_buffer[n] = word
+        self._real_depth_buffer[n] = rffi.cast(rffi.UINT, word)
         if self.pixelbuffer_words > 0:
             self.set_pixelbuffer_word(n, word)
 
@@ -99,7 +99,7 @@ class W_DisplayBitmap(model.W_AbstractObjectWithClassReference):
         return self.display.get_pixelbuffer_UCHAR()
 
     def set_pixelbuffer_word(self, n, word):
-        self.pixelbuffer()[n] = map_word(word)
+        self.pixelbuffer()[n] = rffi.cast(rffi.UINT, map_word(word))
 
     def take_over_display(self):
         # Make sure FrameWrapper.take_over_display() is called first for the correct Frame object.
