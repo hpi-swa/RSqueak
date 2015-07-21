@@ -1263,9 +1263,9 @@ def func(interp, s_frame, _):
 
 # ___________________________________________________________________________
 
-@expose_primitive(CHARACTER_VALUE, unwrap_spec=[object, int])
-def func(interp, s_frame, w_rcvr, value):
-    return model.W_Character(value)
+@expose_primitive(CHARACTER_VALUE, unwrap_spec=[object])
+def func(interp, s_frame, w_rcvr):
+    return model.W_Character(w_rcvr.value)
 
 
 

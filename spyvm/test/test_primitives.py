@@ -780,6 +780,25 @@ def test_screen_size_queries_sdl_window_size(monkeypatch):
     mock_display.height = 3
     assert_screen_size()
 
+def test_immediate_identity_hash():
+    w_char = space.wrap_char('x')
+    w_result = prim(primitives.IMMEDIATE_IDENTITY_HASH, [w_char])
+    assert isinstance(w_result, model.W_SmallInteger)
+    assert w_result.value == ord('x')
+    # TODO: add assertion for w_float once 64bit Spur images are supported
+
+def test_class_identity_hash():
+    w_result = prim(primitives.CLASS_IDENTITY_HASH, [space.w_nil.getclass(space)])
+    assert w_result.value == space.w_nil.getclass(space).gethash()
+    s_class = bootstrap_class(0).as_class_get_shadow(space)
+    w_result = prim(primitives.CLASS_IDENTITY_HASH, [s_class.w_self()])
+    assert isinstance(w_result, model.W_SmallInteger)
+
+def test_character_value():
+    w_result = prim(primitives.CHARACTER_VALUE, [space.wrap_int(ord('x'))])
+    assert w_result.value == ord('x')
+    assert isinstance(w_result, model.W_Character)
+
 # Note:
 #   primitives.NEXT is unimplemented as it is a performance optimization
 #   primitives.NEXT_PUT is unimplemented as it is a performance optimization
