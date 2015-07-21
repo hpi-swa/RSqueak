@@ -559,6 +559,10 @@ class SpurReader(BaseReaderStrategy):
         return classid & ((1 << 10) - 1)
 
     def chunk(self, pointer):
+        if pointer not in self.chunks:
+            # HACK: use nil by default
+            print "WARNING: bogus pointer", pointer
+            return self.chunklist[0]
         return self.chunks[pointer]
 
     def decode_pointers(self, g_object, space, end=-1):
