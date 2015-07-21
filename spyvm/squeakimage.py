@@ -462,6 +462,9 @@ class SpurReader(BaseReaderStrategy):
         self.freeOldSpaceInImage = self.stream.next()
 
 
+    _SLOTS_MASK = 0xFFL << 56
+    SLOTS_MASK = intmask(_SLOTS_MASK) if system.IS_64BIT else r_ulonglong(_SLOTS_MASK)
+
     def read_body(self):
         self.stream.reset_count()
         segmentEnd = self.firstSegSize
@@ -485,8 +488,6 @@ class SpurReader(BaseReaderStrategy):
             # if nextSegmentSize is zero, the end of the image has been reached
         self.stream.close()
         return self.chunklist # return for testing
-
-    SLOTS_MASK = r_ulonglong(0xFf << 56)
 
     def read_object(self):
         # respect new header format
