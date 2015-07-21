@@ -1263,9 +1263,12 @@ def func(interp, s_frame, _):
 
 # ___________________________________________________________________________
 
-@expose_primitive(CHARACTER_VALUE, unwrap_spec=[object])
-def func(interp, s_frame, w_rcvr):
-    return model.W_Character(w_rcvr.value)
+@expose_primitive(CHARACTER_VALUE)
+def func(interp, s_frame, argument_count):
+    w_value = s_frame.peek(0)
+    assert isinstance(w_value, model.W_SmallInteger)
+    s_frame.pop_n(argument_count + 1)
+    return model.W_Character(interp.space.unwrap_int(w_value))
 
 
 

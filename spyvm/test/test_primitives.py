@@ -795,9 +795,14 @@ def test_class_identity_hash():
     assert isinstance(w_result, model.W_SmallInteger)
 
 def test_character_value():
+    # SmallInteger>>asCharacter
     w_result = prim(primitives.CHARACTER_VALUE, [space.wrap_int(ord('x'))])
     assert w_result.value == ord('x')
     assert isinstance(w_result, model.W_Character)
+    # Character class>>value:
+    w_result = prim(primitives.CHARACTER_VALUE,
+            [space.wrap_char('x').getclass(space), ord('y')])
+    assert w_result.value == ord('y')
 
 # Note:
 #   primitives.NEXT is unimplemented as it is a performance optimization
