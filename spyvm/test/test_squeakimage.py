@@ -666,7 +666,7 @@ def simple_spur_image(pack, spur_hdr, version):
                      + pack("q", 0)            # 176 body of Metaclass
                      + spur_hdr(0, 3, 0, 2)    # 184 Metaclass class
                      + pack("q", 0)            # 192 body of Metaclass class
-                     + longs2str(0, 0))        # 200 final bridge = stop at 136
+                     + pack("qq", 1241513987, 0)) # 200 final bridge = stop
     body = first_segment
     word_size = 4
     header_size = 16 * word_size
@@ -751,16 +751,20 @@ def test_simple_spur_image_with_segments():
                      + pack(">q", 0)        # 216 body of Metaclass class
                      ) # bridge will be added later
     # second segment shall start at oop 1000 here
-    second_segment = (spur_hdr(6, 4000, 2, 4)  # 1000 an Array
-                     + pack(">i", 0)        # 1008 -> nil
-                     + pack(">i", 16)       # 1012 -> false
-                     + pack(">i", 32)       # 1016 -> true
-                     + pack(">i", (42 << 1) | 1) # SmallInteger 42
-                     + pack(">I", (ord(u'p') << 2) | 2) # Character p
-                     + pack(">I", (ord(u'ü') << 2) | 2) # Character ü
-                     + longs2str(0, 0))     # final bridge = stop
+    second_segment = (spur_hdr(7, 4000, 2, 4)  # 1000 an Array
+                     + pack(">i", 0)           # 1008 -> nil
+                     + pack(">i", 16)          # 1012 -> false
+                     + pack(">i", 32)          # 1016 -> true
+                     + pack(">i", (42 << 1) | 1) # 1020 -> SmallInteger 42
+                     + pack(">I", (ord(u'p') << 2) | 2) # 1024 -> Character p
+                     + pack(">I", (ord(u'ü') << 2) | 2) # 1028 -> Character ü
+                     + pack(">i", 1040)         # 1032 -> obj in 2nd segment
+                     + pack(">i", 0)           # 1036 8-byte alignment
+                     + spur_hdr(0, 4040, 0, 2) # 1040 some other empty object
+                     + pack(">q", 0)           # 1048 reserved for forward ptr
+                     + longs2str(1241513987, 0)) # 1056 final bridge = stop
     first_segment = first_segment + \
-            longs2str(1000 - len(first_segment) - 16, # bridge span
+            longs2str(1000 - len(first_segment) - 16 + (255 << 56), # bridge span
                       len(second_segment))            # next segment size
     body = first_segment + second_segment
     header_size = 16 * word_size
@@ -790,7 +794,7 @@ def test_simple_spur_image_with_segments():
     assert r.space.is_spur.is_set() is True
     theArray = r.space.objtable["w_schedulerassociationpointer"]
     assert theArray.gethash() == 4000
-    assert theArray.size() == 6
+    assert theArray.size() == 7
     assert theArray.fetch(r.space, 0).is_same_object(r.space.w_nil)
     assert theArray.fetch(r.space, 1).is_same_object(r.space.w_false)
     assert theArray.fetch(r.space, 2).is_same_object(r.space.w_true)
@@ -801,3 +805,4 @@ def test_simple_spur_image_with_segments():
     assert isinstance(theArray.fetch(r.space, 5), model.W_Character)
     # we do not support unicode yet
     #assert r.space.unwrap_char(theArray.fetch(r.space, 5)) == u'ü'
+    assert theArray.fetch(r.space, 6).gethash() == 4040

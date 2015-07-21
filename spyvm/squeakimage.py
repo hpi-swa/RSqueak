@@ -478,14 +478,30 @@ class SpurReader(BaseReaderStrategy):
                     continue # ignore free chunks
                 self.chunklist.append(chunk)
                 self.chunks[pos + currentAddressSwizzle] = chunk
+            print "bridge at", self.stream.count, "(", self.stream.count + currentAddressSwizzle, ")"
             # read bridge
             bridgeSpan = intmask(self.stream.next_qword())
             nextSegmentSize = intmask(self.stream.next_qword())
+            print "bridgeSpan", bridgeSpan, "nextSegmentSize", nextSegmentSize
             # the above causes silent overflow in 32bit builds and 64bit images
+            if self.version.is_64bit:
+                # subtract the overflow slots bits which are 255
+                bridgeSpan = intmask(bridgeSpan & ~self.SLOTS_MASK)
+            assert bridgeSpan >= 0
+            assert nextSegmentSize >= 0
             assert self.stream.count == segmentEnd
+            # if nextSegmentSize is zero, the end of the image has been reached
+            if nextSegmentSize == 0:
+                print "last segment end at", segmentEnd + currentAddressSwizzle
+                if self.version.is_64bit:
+                    FINAL_BRIDGE_HEADER = (1 << 30) + (9 << 24) + 3
+                    assert bridgeSpan == FINAL_BRIDGE_HEADER
+                else:
+                    FINAL_BRIDGE_HEADER = (1 << 30) + (10 << 24) + 3
+                    assert bridgeSpan == FINAL_BRIDGE_HEADER
+                break
             segmentEnd = segmentEnd + nextSegmentSize
             currentAddressSwizzle += bridgeSpan
-            # if nextSegmentSize is zero, the end of the image has been reached
         self.stream.close()
         return self.chunklist # return for testing
 
