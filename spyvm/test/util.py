@@ -50,6 +50,7 @@ def create_space(bootstrap = bootstrap_by_default):
     space = BootstrappedObjSpace()
     if bootstrap:
         space.bootstrap()
+        space.uses_block_contexts.activate()
     return space
 
 def create_space_interp(bootstrap = bootstrap_by_default):
