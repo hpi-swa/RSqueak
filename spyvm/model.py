@@ -1084,8 +1084,8 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
     def unwrap_longlong(self, space):
         # TODO: Completely untested! This failed translation bigtime...
         # XXX Probably we want to allow all subclasses
-        if not self.getclass(space).is_same_object(space.w_LargePositiveInteger):
-            raise error.UnwrappingError("Failed to convert bytes to word")
+        # if not self.getclass(space).is_same_object(space.w_LargePositiveInteger):
+        #     raise error.UnwrappingError("Failed to convert bytes to word")
         if self.size() > 8:
             raise error.UnwrappingError("Too large to convert bytes to word")
         word = r_longlong(0)
