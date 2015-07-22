@@ -12,6 +12,14 @@ case "$BUILD_ARCH" in
 	exitcode=$?
 	if [ $exitcode -eq 0 ]; then latest=true; fi
 	;;
+    lldebug)
+	binary=rsqueak
+	python .build/build.py --lldebug -Ojit
+	cp rsqueak* rsqueak-x86-Linux-dbg-$TRAVIS_COMMIT || true
+	exitcode=$?
+	buildcode=$exitcode
+	sudo rm -rf .build/pypy/rpython/_cache
+	;;
     armv6)
 	binary=rsqueak-arm
 	armv=armv6raspbian
