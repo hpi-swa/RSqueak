@@ -530,7 +530,12 @@ AT_END = 67
 
 CHARACTER_VALUE = 170
 IMMEDIATE_IDENTITY_HASH = 171
+SLOT_AT = 173
+SLOT_AT_PUT = 174
 CLASS_IDENTITY_HASH = 175
+MAX_IDENTITY_HASH = 176
+ALL_INSTANCES = 177
+ALL_OBJECTS = 178
 
 
 # ___________________________________________________________________________
