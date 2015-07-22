@@ -554,6 +554,24 @@ SOME_INSTANCE = 77
 NEXT_INSTANCE = 78
 NEW_METHOD = 79
 
+## these primitives are also called as functions from elsewhere
+## hence they have proper names
+
+@expose_primitive(SLOT_AT, unwrap_spec=[object, index1_0])
+def primitive_fetch(interp, s_frame, w_rcvr, n0):
+    try:
+        return w_rcvr.fetch(interp.space, n0)
+    except IndexError:
+        raise PrimitiveFailedError
+
+@expose_primitive(SLOT_AT_PUT, unwrap_spec=[object, index1_0, object])
+def primitive_store(interp, s_frame, w_rcvr, n0, w_value):
+    try:
+        w_rcvr.store(interp.space, n0, w_value)
+        return w_value
+    except IndexError:
+        raise PrimitiveFailedError
+
 @expose_primitive(OBJECT_AT, unwrap_spec=[object, index1_0])
 def func(interp, s_frame, w_rcvr, n0):
     if not isinstance(w_rcvr, model.W_CompiledMethod):
@@ -595,21 +613,14 @@ def func(interp, s_frame, w_rcvr, n0):
     "Fetches a fixed field from the object, and fails otherwise"
     s_class = w_rcvr.class_shadow(interp.space)
     w_cls = assert_pointers(w_rcvr)
-    try:
-        return w_rcvr.fetch(interp.space, n0)
-    except IndexError:
-        raise PrimitiveFailedError
+    return primitive_fetch(interp, s_frame, w_rcvr, n0)
 
 @expose_primitive(INST_VAR_AT_PUT, unwrap_spec=[object, index1_0, object])
 def func(interp, s_frame, w_rcvr, n0, w_value):
     "Stores a value into a fixed field from the object, and fails otherwise"
     s_class = w_rcvr.class_shadow(interp.space)
     w_rcvr = assert_pointers(w_rcvr)
-    try:
-        w_rcvr.store(interp.space, n0, w_value)
-        return w_value
-    except IndexError:
-        raise PrimitiveFailedError
+    return primitive_store(interp, s_frame, w_rcvr, n0, w_value)
 
 @expose_also_as(IMMEDIATE_IDENTITY_HASH, CLASS_IDENTITY_HASH)
 @expose_primitive(AS_OOP, unwrap_spec=[object])
