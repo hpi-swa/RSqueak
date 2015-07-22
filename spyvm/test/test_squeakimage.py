@@ -20,7 +20,7 @@ def joinbits(values, lengths):
     for each, length in reversed(zip(values, lengths)):
         result = result << length
         result += each
-    return result   
+    return result
 
 def imagestream_mock(string):
     f = StringIO.StringIO(string)
@@ -54,43 +54,43 @@ def test_chrs2long():
 def test_stream():
     stream = imagestream_mock(SIMPLE_VERSION_HEADER)
     n = stream.peek()
-    assert n == 6502 
+    assert n == 6502
     n = stream.next()
-    assert n == 6502 
+    assert n == 6502
     py.test.raises(IndexError, lambda: stream.next())
-    
+
 def test_stream_little_endian():
     stream = imagestream_mock('\x66\x19\x00\x00')
     stream.big_endian = False
     first = stream.next()
-    assert first == 6502 
+    assert first == 6502
     py.test.raises(IndexError, lambda: stream.next())
-    
+
 def test_stream_many():
     stream = imagestream_mock(SIMPLE_VERSION_HEADER * 5)
     for each in range(5):
         first = stream.peek()
-        assert first == 6502 
+        assert first == 6502
         value = stream.next()
-        assert value == 6502 
+        assert value == 6502
     py.test.raises(IndexError, lambda: stream.next())
-    
+
 def test_stream_skipbytes():
     stream = imagestream_mock('\xFF\xFF\xFF' + SIMPLE_VERSION_HEADER)
     stream.skipbytes(3)
     value = stream.next()
-    assert value == 6502 
+    assert value == 6502
     py.test.raises(IndexError, lambda: stream.next())
-        
+
 def test_stream_count():
     stream = imagestream_mock('\xFF' * 20)
     stream.next()
     stream.next()
     stream.reset_count()
     assert stream.count == 0
-    stream.next()        
+    stream.next()
     assert stream.count == 4
-    stream.next()        
+    stream.next()
     assert stream.count == 8
 
 def test_stream_next_short():
@@ -120,20 +120,20 @@ def test_stream_next_qword_is_unsigned():
     max_uint64 = s.next_qword()
     assert max_uint64 == 2**64 - 1
     assert max_uint64 > 0
-   
+
 def test_simple_joinbits():
     assert 0x01010101 == joinbits(([1] * 4), [8,8,8,8])
     assert 0xFfFfFfFf == joinbits([255] * 4, [8,8,8,8])
-    
-def test_fancy_joinbits():    
+
+def test_fancy_joinbits():
     assert 0x01020304 == joinbits([4,3,2,1], [8,8,8,8])
     assert 0x3Ff == joinbits([1,3,7,15], [1,2,3,4])
-    
-    
+
+
 def test_ints2str():
-    assert "\x00\x00\x00\x02" == ints2str(2)       
+    assert "\x00\x00\x00\x02" == ints2str(2)
     assert SIMPLE_VERSION_HEADER + '\x00\x00\x00\x02' == ints2str(6502,2)
-    
+
 def test_freeblock():
     r = imagereader_mock(SIMPLE_VERSION_HEADER + "\x00\x00\x00\x02")
     r.read_version()
@@ -168,7 +168,7 @@ def test_3wordobjectheader():
     r.read_version()
     l = len(SIMPLE_VERSION_HEADER)
     assert (squeakimage.ImageChunk(1701, 2, 4200, 4), 8 + l) == r.readerStrategy.read_3wordobjectheader()
-    
+
 def test_read3wordheaderobject():
     size = 42
     s = ints2str(size << 2, 4200 + 0, joinbits([0, 1, 2, 3, 4], [2,6,4,5,12]))
@@ -184,7 +184,10 @@ def test_read3wordheaderobject():
 def test_object_format_v3(monkeypatch):
     g_class_mock = squeakimage.GenericObject()
     from rpython.rlib import objectmodel
+    from spyvm.storage_classes import ClassShadow
     w_class_mock = objectmodel.instantiate(model.W_PointersObject)
+    w_class_mock.strategy = ClassShadow(None, w_class_mock, 3)
+    w_class_mock.strategy._instance_size = 0
     g_class_mock.w_object = w_class_mock
     def assert_w_object_type(format, expected_type, length=0,
             compact_class_index=0, body="", assert_is_weak=False):
@@ -199,6 +202,7 @@ def test_object_format_v3(monkeypatch):
         g_object.initialize(chunk, r.readerStrategy, r.space)
         w_object = g_object.init_w_object(r.space)
         g_object.fillin(r.space)
+        g_object.fillin_weak(r.space)
         assert w_object is g_object.w_object
         assert isinstance(w_object, expected_type)
         if assert_is_weak:
@@ -246,7 +250,7 @@ def test_object_format_v3(monkeypatch):
     w_obj, space = assert_w_object_type(8, model.W_BytesObject, length=2,
             body=body_42_and_1)
     assert w_obj.size() == 8 # 2 * 32 bit == 8 * 8 bit
-    assert w_obj.as_string() == body_42_and_1
+    assert space.unwrap_string(w_obj) == body_42_and_1
     w_obj, space = assert_w_object_type(12, model.W_CompiledMethod, length=2,
             body=body_42_and_1)
     assert w_obj.size() == 8
@@ -284,7 +288,10 @@ def test_read_long_spur_header():
 def test_object_format_spur(monkeypatch):
     g_class_mock = squeakimage.GenericObject()
     from rpython.rlib import objectmodel
+    from spyvm.storage_classes import ClassShadow
     w_class_mock = objectmodel.instantiate(model.W_PointersObject)
+    w_class_mock.strategy = ClassShadow(None, w_class_mock, 3)
+    w_class_mock.strategy._instance_size = 0
     g_class_mock.w_object = w_class_mock
     def assert_w_object_type(format, expected_type, length=0, classid=0, body=""):
         objbytes = ints2str(joinbits([0, 0, length], [22, 2, 8]),
@@ -299,6 +306,7 @@ def test_object_format_spur(monkeypatch):
         g_object.initialize(chunk, r.readerStrategy, r.space)
         w_object = g_object.init_w_object(r.space)
         g_object.fillin(r.space)
+        g_object.fillin_weak(r.space)
         assert w_object is g_object.w_object
         assert isinstance(w_object, expected_type)
         return w_object, r.space
@@ -354,7 +362,7 @@ def test_object_format_spur(monkeypatch):
     # 16-23 8 bit indexables (20-23 unused in 32 bits)
     w_obj, space = assert_w_object_type(18, model.W_BytesObject, length=2, body=body_1_to_9)
     assert w_obj.size() == 6
-    assert w_obj.as_string() == body_1_to_9[:6]
+    assert space.unwrap_string(w_obj) == body_1_to_9[:6]
     # TODO: add tests for correct reading of 8 bit indexables with trailing slots (17-23)
     # 24-31 compiled methods (28-31 unused in 32 bits)
     literals = [chrs2int(body_1_to_9[:4])]
@@ -400,6 +408,7 @@ def chunk2object(chunk, space, reader):
     g_obj.initialize(chunk, reader, space)
     w_obj = g_obj.init_w_object(space)
     g_obj.fillin(space)
+    g_obj.fillin_weak(space)
     return w_obj, g_obj
 
 def test_string_instantiation(space, reader_mock_spur):
@@ -410,7 +419,7 @@ def test_string_instantiation(space, reader_mock_spur):
     # when
     w_str, g_str = chunk2object(str_chunk, space, reader_mock_spur)
     # then
-    assert w_str.as_string() == "abcd"
+    assert w_str.unwrap_string(None) == "abcd"
 
 def tagged_chr(ord_value):
     return joinbits([2, ord_value], [2, 30])
@@ -435,7 +444,7 @@ def test_char_array_instantiation(space, reader_mock_spur):
     assert isinstance(w_char, W_Character)
     assert w_char.str_content() == '$a'
     assert space.unwrap_char_as_byte(w_char) == 'a'
- 
+
 def test_char_array_instantiation_with_high_chars(space, reader_mock_spur):
     from spyvm.squeakimage import ImageChunk
     from spyvm.model import W_Character
@@ -566,7 +575,7 @@ def test_simple_image():
 def test_simple_image64(monkeypatch):
     from spyvm.util import system
     monkeypatch.setattr(system, "IS_64BIT", True)
-    
+
     word_size = 8
     header_size = 16 * word_size
 
@@ -649,7 +658,7 @@ def simple_spur_image(pack, spur_hdr, version):
                      + pack("i", 136)          #  88 ptr to first class (here SmallInteger)
                      + pack("i", 152)          #  92 ptr to SmallInteger class
                      + pack("i", 168)          #  96 ptr to Metaclass
-                     + pack("i", 184)          # 100 ptr to Metaclass class
+                     + pack("i", 192)          # 100 ptr to Metaclass class
                      + spur_hdr(6, 1104, 4, 2) # 104 special objects array
                      + pack("i", 0)            # 112 ptr to nil
                      + pack("i", 16)           # 116 ... false
@@ -662,11 +671,14 @@ def simple_spur_image(pack, spur_hdr, version):
                      + pack("q", 0)            # 144 body of SmallInteger
                      + spur_hdr(0, 1, 0, 2)    # 152 SmallInteger class
                      + pack("q", 0)            # 160 body of SmallInteger class
-                     + spur_hdr(0, 2, 0, 3)    # 168 Metaclass (class instance)
-                     + pack("q", 0)            # 176 body of Metaclass
-                     + spur_hdr(0, 3, 0, 2)    # 184 Metaclass class
-                     + pack("q", 0)            # 192 body of Metaclass class
-                     + pack("qq", 1241513987, 0)) # 200 final bridge = stop
+                     + spur_hdr(3, 2, 1, 3)    # 168 Metaclass (class instance)
+                     + pack("i", 0)            # 176 body of Metaclass - superclass
+                     + pack("i", 0)            # 180 body of Metaclass - method dict
+                     + pack("i", 1)            # 184 body of Metaclass - class format
+                     + pack("i", 0)            # 188 body of Metaclass
+                     + spur_hdr(0, 3, 0, 2)    # 192 Metaclass class
+                     + pack("q", 0)            # 200 body of Metaclass class
+                     + pack("qq", 1241513987, 0)) # 208 final bridge = stop
     body = first_segment
     word_size = 4
     header_size = 16 * word_size
@@ -747,8 +759,11 @@ def test_simple_spur_image_with_segments():
                      + pack(">q", 0)        # 184 body of Metaclass
                      + spur_hdr(0, 3, 0, 2) # 192 Metaclass class
                      + pack(">q", 0)        # 200 body of Metaclass class
-                     + spur_hdr(0, 4, 0, 1) # 208 Array (class instance)
-                     + pack(">q", 0)        # 216 body of Metaclass class
+                     + spur_hdr(3, 4, 1, 1) # 208 Array (class instance)
+                     + pack(">i", 0)        # 216 body of Array - superclass
+                     + pack(">i", 0)        # 220 body of Array - method dict
+                     + pack(">i", 1)        # 224 body of Array - class format
+                     + pack(">i", 0)        # 228 alignment
                      ) # bridge will be added later
     # second segment shall start at oop 1000 here
     second_segment = (spur_hdr(7, 4000, 2, 4)  # 1000 an Array

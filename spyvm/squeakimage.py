@@ -163,6 +163,7 @@ class BaseReaderStrategy(object):
         self.intcache = {} # Cached instances of SmallInteger
         self.lastWindowSize = 0
         self.filledin_objects = 0
+        self.filledin_weakobjects = 0
 
     def log_progress(self, progress, char):
         if progress % 1000 == 0:
@@ -254,13 +255,16 @@ class BaseReaderStrategy(object):
             chunk.g_object.fillin(self.space)
 
     def fillin_weak_w_objects(self):
-        self.filledin_weakobjects = 0
         for chunk in self.chunks.itervalues():
             chunk.g_object.fillin_weak(self.space)
 
     def log_object_filledin(self):
         self.filledin_objects = self.filledin_objects + 1
         self.log_progress(self.filledin_objects, '%')
+
+    def log_weakobject_filledin(self):
+        self.filledin_weakobjects = self.filledin_weakobjects + 1
+        self.log_progress(self.filledin_weakobjects * 100, '*')
 
     def get_bytes_of(self, chunk):
         bytes = []
@@ -467,11 +471,6 @@ class SpurReader(BaseReaderStrategy):
         self.firstSegSize = self.stream.next()
         self.freeOldSpaceInImage = self.stream.next()
 
-    def log_weakobject_filledin(self):
-        self.filledin_weakobjects = self.filledin_weakobjects + 1
-        self.log_progress(self.filledin_weakobjects * 100, '*')
-
-
     _SLOTS_MASK = 0xFFL << 56
     SLOTS_MASK = intmask(_SLOTS_MASK) if system.IS_64BIT else r_ulonglong(_SLOTS_MASK)
 
@@ -675,7 +674,7 @@ class SqueakImage(object):
 
     def __init__(self, reader):
         space = self.space = reader.space
-        self.special_objects = space.wrap_list(reader.special_objects_w)
+        self.special_objects = space.wrap_list(reader.special_w_objects)
         self.w_asSymbol = self.find_symbol(space, reader, "asSymbol")
         self.lastWindowSize = reader.lastWindowSize
         self.version = reader.version

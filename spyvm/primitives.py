@@ -543,7 +543,7 @@ _maximum_identity_hash = 2**22 - 1
 def func(interp, s_frame, w_class):
     return space.wrap_int(_maximum_identity_hash)
 
-@expose_primitive(ALL_INSTANCE, unwrap_spec=[object])
+@expose_primitive(ALL_INSTANCES, unwrap_spec=[object])
 def func(interp, s_frame, w_class):
     match_w = get_instances_array(interp.space, s_frame, w_class)
     return space.wrap_list(match_w)
