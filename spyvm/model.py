@@ -316,7 +316,7 @@ class W_AbstractObjectWithIdentityHash(W_Object):
 
     def gethash(self):
         if self.hash == self.UNASSIGNED_HASH:
-            self.hash = hash = intmask(self.hash_generator.genrand32()) // 2
+            self.hash = hash = intmask(self.hash_generator.genrand32()) % 2**22
             return hash
         return self.hash
 
