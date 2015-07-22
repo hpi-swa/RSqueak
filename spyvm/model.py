@@ -140,6 +140,12 @@ class W_Object(object):
            False means swapping failed"""
         return False
 
+    def pointers_become_one_way(self, space, from_w, to_w):
+        pass
+
+    def post_become_one_way(self, w_to):
+        pass
+
     def clone(self, space):
         raise NotImplementedError
 
@@ -314,6 +320,23 @@ class W_AbstractObjectWithIdentityHash(W_Object):
     UNASSIGNED_HASH = sys.maxint
     hash = UNASSIGNED_HASH # default value
 
+    def pointers_become_one_way(self, space, from_w, to_w):
+        ptrs = self.fetch_all(space)
+        ptridx = 0
+        for i, w_from in enumerate(from_w):
+            try:
+                ptridx = ptrs.index(w_from)
+            except ValueError:
+                continue
+            w_to = to_w[i]
+            ptrs[ptridx] = w_to
+            w_from.post_become_one_way(w_to)
+        self.store_all(space, ptrs)
+
+    def post_become_one_way(self, w_to):
+        if isinstance(w_to, W_AbstractObjectWithIdentityHash):
+            w_to.hash = self.gethash()
+
     def fillin(self, space, g_self):
         self.hash = g_self.get_hash()
 
@@ -365,6 +388,9 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
             word |= ord(byte) << (idx * 8)
         self.value = intmask(word)
         self._exposed_size = len(bytes)
+
+    def has_class(self):
+        return True
 
     def getclass(self, space):
         return space.w_LargePositiveInteger
@@ -485,6 +511,9 @@ class W_Float(W_AbstractObjectWithIdentityHash):
             low, high = high, low
         self.fillin_fromwords(space, high, low)
 
+    def has_class(self):
+        return True
+
     def getclass(self, space):
         """Return Float from special objects array."""
         return space.w_Float
@@ -575,6 +604,9 @@ class W_Character(W_AbstractObjectWithIdentityHash):
         assert len(pointers_w) == 1
         pointers_w[0].fillin(space)
         self.value = space.unwrap_int(pointers_w[0].w_object)
+
+    def has_class(self):
+        return True
 
     def getclass(self, space):
         """Return Character from special objects array."""
@@ -698,6 +730,19 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
         from spyvm import storage_classes
         return (W_AbstractObjectWithIdentityHash.invariant(self) and
                 isinstance(self.w_class.strategy, storage_classes.ClassShadow))
+
+    def pointers_become_one_way(self, space, from_w, to_w):
+        W_AbstractObjectWithIdentityHash.pointers_become_one_way(self, space, from_w, to_w)
+        idx = 0
+        try:
+            idx = from_w.index(self.w_class)
+        except ValueError:
+            return
+        w_class = self.w_class
+        new_w_class = to_w[idx]
+        assert isinstance(new_w_class, W_PointersObject)
+        self.w_class = new_w_class
+        w_class.post_become_one_way(new_w_class)
 
     def _become(self, w_other):
         assert isinstance(w_other, W_AbstractObjectWithClassReference)
@@ -1240,6 +1285,33 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     lookup_selector = "<unknown>"
     lookup_class = None
     import_from_mixin(VersionMixin)
+
+    def pointers_become_one_way(self, space, from_w, to_w):
+        W_AbstractObjectWithIdentityHash.pointers_become_one_way(self, space, from_w, to_w)
+        idx = -1
+        try:
+            idx = from_w.index(self.compiledin_class)
+        except ValueError:
+            pass
+        if idx >= 0:
+            compiledin_class = self.compiledin_class
+            new_w_class = to_w[idx]
+            assert isinstance(new_w_class, W_PointersObject)
+            self.compiledin_class = new_w_class
+            compiledin_class.post_become_one_way(new_w_class)
+            self.changed()
+        idx = -1
+        try:
+            idx = from_w.index(self.lookup_class)
+        except ValueError:
+            pass
+        if idx >= 0:
+            lookup_class = self.lookup_class
+            new_w_class = to_w[idx]
+            assert isinstance(new_w_class, W_PointersObject)
+            self.lookup_class = new_w_class
+            lookup_class.post_become_one_way(new_w_class)
+            self.changed()
 
     def __init__(self, space, bytecount=0, header=0):
         self.bytes = ["\x00"] * bytecount

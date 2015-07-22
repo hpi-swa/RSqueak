@@ -624,8 +624,30 @@ def func(interp, s_frame, w_cls, size):
         raise PrimitiveFailedError
 
 @expose_primitive(ARRAY_BECOME_ONE_WAY, unwrap_spec=[object, object])
-def func(interp, s_frame, w_obj1, w_obj2):
-    raise PrimitiveNotYetWrittenError
+def func(interp, s_frame, w_from, w_to):
+    from_w = interp.space.unwrap_array(w_from)
+    to_w = interp.space.unwrap_array(w_to)
+    space = interp.space
+    if len(from_w) != len(to_w):
+        raise PrimitiveFailedError
+
+    from rpython.rlib import rgc
+    roots = [gcref for gcref in rgc.get_rpy_roots() if gcref]
+    pending = roots[:]
+    idx = -1
+    while pending:
+        gcref = pending.pop()
+        if not rgc.get_gcflag_extra(gcref):
+            rgc.toggle_gcflag_extra(gcref)
+            w_obj = rgc.try_cast_gcref_to_instance(model.W_Object, gcref)
+            if w_obj is not None and w_obj.has_class():
+                w_obj.pointers_become_one_way(space, from_w, to_w)
+            pending.extend(rgc.get_rpy_referents(gcref))
+    while roots:
+        gcref = roots.pop()
+        if rgc.get_gcflag_extra(gcref):
+            rgc.toggle_gcflag_extra(gcref)
+            roots.extend(rgc.get_rpy_referents(gcref))
 
 @expose_primitive(INST_VAR_AT, unwrap_spec=[object, index1_0])
 def func(interp, s_frame, w_rcvr, n0):
