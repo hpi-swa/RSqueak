@@ -541,12 +541,17 @@ ALL_OBJECTS = 178
 _maximum_identity_hash = 2**22 - 1
 @expose_primitive(MAX_IDENTITY_HASH, unwrap_spec=[object])
 def func(interp, s_frame, w_class):
-    return space.wrap_int(_maximum_identity_hash)
+    return interp.space.wrap_int(_maximum_identity_hash)
 
 @expose_primitive(ALL_INSTANCES, unwrap_spec=[object])
 def func(interp, s_frame, w_class):
-    match_w = get_instances_array(interp.space, s_frame, w_class)
-    return space.wrap_list(match_w)
+    match_w = get_instances_array(interp.space, s_frame, w_class=w_class, store=False)
+    return interp.space.wrap_list(match_w)
+
+@expose_primitive(ALL_OBJECTS, unwrap_spec=[object])
+def func(interp, s_frame, w_rcvr):
+    match_w = get_instances_array(interp.space, s_frame, w_class=None, store=False)
+    return interp.space.wrap_list(match_w)
 
 # ___________________________________________________________________________
 # Storage Management Primitives
