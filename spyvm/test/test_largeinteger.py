@@ -6,6 +6,7 @@ from rpython.rlib.rarithmetic import intmask, r_uint
 
 def setup_module():
     space, interp, _, _ = read_image('bootstrapped.image')
+    space.uses_block_contexts.activate()
     w = space.w
     copy_to_module(locals(), __name__)
     interp.trace = False
