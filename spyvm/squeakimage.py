@@ -194,6 +194,7 @@ class BaseReaderStrategy(object):
         self.init_w_objects()
         self.fillin_w_objects()
         self.populate_special_objects()
+        self.fillin_weak_w_objects()
 
     def read_body(self):
         raise NotImplementedError("subclass must override this")
@@ -251,6 +252,11 @@ class BaseReaderStrategy(object):
     def fillin_w_objects(self):
         for chunk in self.chunks.itervalues():
             chunk.g_object.fillin(self.space)
+
+    def fillin_weak_w_objects(self):
+        self.filledin_weakobjects = 0
+        for chunk in self.chunks.itervalues():
+            chunk.g_object.fillin_weak(self.space)
 
     def log_object_filledin(self):
         self.filledin_objects = self.filledin_objects + 1
@@ -365,7 +371,7 @@ class NonSpurReader(BaseReaderStrategy):
                 # pointer = ...0
                 pointers.append(self.chunk(pointer).g_object)
         return pointers
-    
+
     def instantiate(self, g_object):
         """ 0      no fields
             1      fixed fields only (all containing pointers)
@@ -460,6 +466,10 @@ class SpurReader(BaseReaderStrategy):
         self.stream.skipbytes(2) # unused, realign to word boundary
         self.firstSegSize = self.stream.next()
         self.freeOldSpaceInImage = self.stream.next()
+
+    def log_weakobject_filledin(self):
+        self.filledin_weakobjects = self.filledin_weakobjects + 1
+        self.log_progress(self.filledin_weakobjects * 100, '*')
 
 
     _SLOTS_MASK = 0xFFL << 56
@@ -588,7 +598,7 @@ class SpurReader(BaseReaderStrategy):
                 character.initialize_char(pointer >> 2, self, space)
                 pointers.append(character)
         return pointers
-    
+
     def instantiate(self, g_object):
         """ 0      no fields
             1      fixed fields only (all containing pointers)
@@ -633,7 +643,7 @@ class SpurReader(BaseReaderStrategy):
 
     def ispointers(self, g_object):
         return g_object.format < 6
-    
+
     def isweak(self, g_object):
         return 4 <= g_object.format <= 5
 
@@ -659,29 +669,20 @@ class SqueakImage(object):
     _immutable_fields_ = [
         "w_asSymbol",
         "version",
-        "startup_time"
+        "startup_time",
+        "space"
     ]
-    code = ["def set_simulation_selectors(self, symbols_w):"]
-    for idx, attr in enumerate(constants.SIMULATION_SELECTORS.values()):
-        _immutable_fields_.append(attr)
-        code.append("    self." + attr + " = symbols_w[" + str(idx) + "]")
-    exec "\n".join(code)
 
     def __init__(self, reader):
-        space = reader.space
-        self.special_objects = reader.special_w_objects
+        space = self.space = reader.space
+        self.special_objects = space.wrap_list(reader.special_objects_w)
         self.w_asSymbol = self.find_symbol(space, reader, "asSymbol")
         self.lastWindowSize = reader.lastWindowSize
         self.version = reader.version
         self.run_spy_hacks(space)
         self.startup_time = time.time()
-        self.find_simulation_selectors(space, reader)
-
-    def find_simulation_selectors(self, space, reader):
-        symbols_w = []
-        for selector in constants.SIMULATION_SELECTORS.keys():
-            symbols_w.append(self.find_symbol(space, reader, selector))
-        self.set_simulation_selectors(symbols_w)
+        from spyvm.plugins.simulation import SIMULATE_PRIMITIVE_SELECTOR
+        self.w_simulatePrimitive = self.find_symbol(space, reader, SIMULATE_PRIMITIVE_SELECTOR)
 
     def run_spy_hacks(self, space):
         if not space.run_spy_hacks.is_set():
@@ -695,7 +696,7 @@ class SqueakImage(object):
     def find_symbol(self, space, reader, symbol):
         w_dnu = self.special(constants.SO_DOES_NOT_UNDERSTAND)
         assert isinstance(w_dnu, model.W_BytesObject)
-        assert w_dnu.as_string() == "doesNotUnderstand:"
+        assert space.unwrap_string(w_dnu) == "doesNotUnderstand:"
         w_Symbol = w_dnu.getclass(space)
         w_obj = None
         # bit annoying that we have to hunt through the image :-(
@@ -705,13 +706,13 @@ class SqueakImage(object):
                 continue
             if not w_obj.getclass(space).is_same_object(w_Symbol):
                 continue
-            if w_obj.as_string() == symbol:
+            if space.unwrap_string(w_obj) == symbol:
                 return w_obj
         w_obj = space.w_nil
         return w_obj
 
     def special(self, index):
-        return self.special_objects[index]
+        return self.special_objects.at0(self.space, index)
 
 # ____________________________________________________________
 
@@ -725,6 +726,7 @@ class GenericObject(object):
     def __init__(self):
         self.reader = None
         self.filled_in = False
+        self.filled_in_weak = False
 
     def isinitialized(self):
         return self.reader is not None
@@ -777,7 +779,7 @@ class GenericObject(object):
         if self.w_object is None:
             self.w_object = self.reader.instantiate(self)
         return self.w_object
-    
+
     def isweak(self):
         return self.reader.isweak(self)
 
@@ -799,6 +801,12 @@ class GenericObject(object):
             self.filled_in = True
             self.w_object.fillin(space, self)
             self.reader.log_object_filledin()
+
+    def fillin_weak(self, space):
+        if not self.filled_in_weak and self.isweak():
+            self.filled_in_weak = True
+            self.w_object.fillin_weak(space, self)
+            self.reader.log_weakobject_filledin()
 
     def get_g_pointers(self):
         assert self.pointers is not None

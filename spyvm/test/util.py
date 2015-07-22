@@ -319,7 +319,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         s_methoddict.sync_method_cache()
         methoddict_w = s_methoddict.methoddict
         for each in methoddict_w.keys():
-            if each.as_string() == string:
+            if each.unwrap_string(None) == string:
                 return each
         assert False, 'Using image without %s method in class %s.' % (string, cls.name)
 

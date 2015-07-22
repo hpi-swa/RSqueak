@@ -65,6 +65,8 @@ FORM_DEPTH = 3
 LITERAL_START = 1 # index of the first literal after the method header
 BYTES_PER_WORD = 4
 WORDS_IN_FLOAT = 2 # Fixed number of word-slots in a Squeak Float object
+INTERP_PROXY_MAJOR = 1
+INTERP_PROXY_MINOR = 13
 
 # ___________________________________________________________________________
 # Special objects indices
@@ -216,13 +218,3 @@ def decode_alternate_compiled_method_header(header):
 
 INTERRUPT_COUNTER_SIZE = 10000
 CompileTime = time.time()
-
-#___________________________________________________________________________
-# Primitive Simulation Selectors
-
-SIMULATION_SELECTORS = {
-    'simulateCopyBits': 'w_simulateCopyBits',
-    'copyBitsSimulated': 'w_copyBitsSimulated',
-    'warpBitsSimulated:sourceMap:': 'w_warpBitsSimulated',
-    'simulateBalloonPrimitive:args:': 'w_simulateBalloonPrimitive'
-}

@@ -188,7 +188,7 @@ class ClassShadow(AbstractCachingShadow):
 
     def store_w_name(self, w_name):
         if isinstance(w_name, model.W_BytesObject):
-            self.name = w_name.as_string()
+            self.name = w_name.unwrap_string(None)
         else:
             self.name = None
 
@@ -370,7 +370,7 @@ class MethodDictionaryShadow(AbstractGenericShadow):
             w_selector = self.own_fetch(constants.METHODDICT_NAMES_INDEX+i)
             if not w_selector.is_nil(self.space):
                 if isinstance(w_selector, model.W_BytesObject):
-                    selector = w_selector.as_string()
+                    selector = w_selector.unwrap_string(None)
                 else:
                     selector = "? (non-byteobject selector)"
                     pass

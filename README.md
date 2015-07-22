@@ -116,3 +116,10 @@ inspect it at your leisure and when you quit the window, the code continues
 executing. In order for this to work, you need to have `pygame` and `graphviz`
 installed and in your PATH.
 
+###### shell.py
+
+This script sets all the environment variables as if for translating the VM,
+and the drops you into an interactive Python prompt. You can type `terminal()`
+to drop into a system shell (`%COMSPEC%` on Windows `$SHELL` or `/bin/sh` on
+Unices) which then has all the environment variables set up that you need to
+do manual partial translations or similar things.

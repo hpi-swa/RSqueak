@@ -5,6 +5,7 @@ sys.setrecursionlimit(1000000)
 
 from spyvm.storage_contexts import ContextPartShadow, ActiveContext, InactiveContext, DirtyContext
 from spyvm import model, constants, wrapper, objspace, interpreter_bytecodes, error
+from spyvm.error import MetaPrimFailed
 
 from rpython.rlib import jit, rstackovf, unroll
 
@@ -135,6 +136,8 @@ class Interpreter(object):
                 if self.is_tracing() or self.trace_important:
                     ret.print_trace()
                 s_context = self.unwind_context_chain(ret.s_current_context, ret.s_target_context, ret.value)
+            except MetaPrimFailed, e:
+                s_context = self.unwind_primitive_simulation(e.s_frame, e.error_code)
 
     # This is a wrapper around loop_bytecodes that cleanly enters/leaves the frame,
     # handles the stack overflow protection mechanism and handles/dispatches Returns.
@@ -192,6 +195,29 @@ class Interpreter(object):
                     s_context.push(ret.value)
                 else:
                     raise ret
+
+    def unwind_primitive_simulation(self, start_context, error_code):
+        if start_context is None:
+            # This is the toplevel frame. Execution ended.
+            raise ReturnFromTopLevel(self.space.w_nil)
+        context = start_context
+        while context._s_fallback is None:
+            s_sender = context.s_sender()
+            context._activate_unwind_context(self)
+            context = s_sender
+
+            if not context:
+                msg = "Context chain ended while trying to unwind primitive simulation\nfrom\n%s\n(pc %s)" % (
+                        start_context.short_str(),
+                        start_context.pc())
+                raise error.FatalError(msg)
+
+        fallbackContext = context._s_fallback
+
+        if fallbackContext.tempsize() > len(fallbackContext.w_arguments()):
+            fallbackContext.settemp(len(fallbackContext.w_arguments()), self.space.wrap_int(error_code))
+
+        return fallbackContext
 
     def unwind_context_chain(self, start_context, target_context, return_value):
         if start_context is None:

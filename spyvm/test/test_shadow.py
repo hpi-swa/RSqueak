@@ -92,7 +92,7 @@ def test_methoddict():
     methoddict = classshadow.s_methoddict().methoddict
     assert len(methods) == len(methoddict)
     for w_key, value in methoddict.items():
-        assert methods[w_key.as_string()] is value
+        assert methods[w_key.unwrap_string(None)] is value
 
 def create_method(tempsize=3,argsize=2, bytes="abcde"):
     w_m = model.W_PreSpurCompiledMethod(space, )
@@ -148,7 +148,7 @@ def test_context():
     assert s_object2.w_self() == w_object2
     assert s_object.s_sender() == None
     assert s_object2.s_sender() == s_object
-    assert s_object.w_receiver().as_string() == 'receiver'
+    assert s_object.w_receiver().unwrap_string(None) == 'receiver'
     s_object2.settemp(0, 'a')
     s_object2.settemp(1, 'b')
     assert s_object2.gettemp(1) == 'b'
@@ -158,14 +158,14 @@ def test_context():
     w_object.store(space, idx, space.wrap_string('f'))
     w_object.store(space, idx + 1, space.wrap_string('g'))
     w_object.store(space, idx + 2, space.wrap_string('h'))
-    assert map(lambda x: x.as_string(), s_object.stack()) == ['f', 'g', 'h' ]
-    assert s_object.top().as_string() == 'h'
+    assert map(lambda x: x.unwrap_string(None), s_object.stack()) == ['f', 'g', 'h' ]
+    assert s_object.top().unwrap_string(None) == 'h'
     s_object.push('i')
     assert s_object.top() == 'i'
-    assert s_object.peek(1).as_string() == 'h'
+    assert s_object.peek(1).unwrap_string(None) == 'h'
     assert s_object.pop() == 'i'
-    assert map(lambda x: x.as_string(), s_object.pop_and_return_n(2)) == ['g', 'h']
-    assert s_object.pop().as_string() == 'f'
+    assert map(lambda x: x.unwrap_string(None), s_object.pop_and_return_n(2)) == ['g', 'h']
+    assert s_object.pop().unwrap_string(None) == 'f'
     assert s_object.external_stackpointer() == s_object.stackstart() + s_object.tempsize()
     assert s_object.stackdepth() == s_object.tempsize()
 

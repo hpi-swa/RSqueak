@@ -3,12 +3,11 @@ import inspect
 import math
 import operator
 from spyvm import model, model_display, storage_contexts, error, constants, display
-from spyvm.error import PrimitiveFailedError, PrimitiveNotYetWrittenError
+from spyvm.error import PrimitiveFailedError, PrimitiveNotYetWrittenError, MetaPrimFailed
 from spyvm import wrapper
 
 from rpython.rlib import rfloat, unroll, jit, objectmodel
 from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int, r_longlong, int_between
-
 
 def assert_class(interp, w_obj, w_class):
     if not w_obj.getclass(interp.space).is_same_object(w_class):
@@ -25,29 +24,6 @@ def assert_pointers(w_obj):
     if not (isinstance(w_obj, model.W_PointersObject) or isinstance(w_obj, model.W_Character)):
         raise PrimitiveFailedError
     return w_obj
-
-# ___________________________________________________________________________
-# Primitive table: it is filled in at initialization time with the
-# primitive functions.  Each primitive function takes two
-# arguments, an interp and an argument_count
-# completes, and returns a result, or throws a PrimitiveFailedError.
-def make_failing(code):
-    def raise_failing_default(interp, s_frame, argument_count, w_method=None):
-        raise PrimitiveFailedError
-    return raise_failing_default
-
-# Squeak has primitives all the way up to 575
-# So all optional primitives will default to the bytecode implementation
-prim_table = [make_failing(i) for i in range(576)]
-
-class PrimitiveHolder(object):
-    _immutable_fields_ = ["prim_table[*]"]
-
-prim_holder = PrimitiveHolder()
-prim_holder.prim_table = prim_table
-# clean up namespace:
-del i
-prim_table_implemented_only = []
 
 # indicates that what is pushed is an index1, but it is unwrapped and
 # converted to an index0
@@ -138,7 +114,7 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                         args += (w_arg, )
                     elif spec is str:
                         assert isinstance(w_arg, model.W_BytesObject)
-                        args += (w_arg.as_string(), )
+                        args += (interp.space.unwrap_string(w_arg), )
                     elif spec is list:
                         assert isinstance(w_arg, model.W_PointersObject)
                         args += (interp.space.unwrap_array(w_arg), )
@@ -206,6 +182,33 @@ def expose_also_as(*codes):
             prim_table_implemented_only.append((code, wrapped))
         return wrapped
     return decorator
+
+# ___________________________________________________________________________
+# Primitive table: it is filled in at initialization time with the
+# primitive functions.  Each primitive function takes two
+# arguments, an interp and an argument_count
+# completes, and returns a result, or throws a PrimitiveFailedError.
+def make_simulation(code):
+    p_code = jit.promote(code)
+    @wrap_primitive(clean_stack=False, no_result=True, compiled_method=True)
+    def try_simulation(interp, s_frame, argument_count, w_method=None):
+        from spyvm.plugins.simulation import SimulationPlugin
+        return SimulationPlugin.simulateNumeric(p_code, interp, s_frame, argument_count, w_method)
+    return try_simulation
+
+# Squeak has primitives all the way up to 575
+# So all optional primitives will default to the bytecode implementation
+prim_table = [make_simulation(i) for i in range(576)]
+
+class PrimitiveHolder(object):
+    _immutable_fields_ = ["prim_table[*]"]
+
+prim_holder  = PrimitiveHolder()
+prim_holder.prim_table = prim_table
+# clean up namespace:
+del i
+prim_table_implemented_only = []
+
 
 # ___________________________________________________________________________
 # SmallInteger Primitives
@@ -438,7 +441,7 @@ FAIL = 19
 
 def get_string(w_obj):
     if isinstance(w_obj, model.W_BytesObject):
-        return w_obj.as_string()
+        return w_obj.unwrap_string(None)
     return w_obj.as_repr_string()
 
 def exitFromHeadlessExecution(s_frame, selector="", w_message=None):
@@ -588,6 +591,8 @@ def func(interp, s_frame, w_cls, size):
     s_class = w_cls.as_class_get_shadow(interp.space)
     if not s_class.isvariable() and size != 0:
         raise PrimitiveFailedError()
+    if size < 0:
+        raise PrimitiveFailedError()
     try:
         return s_class.new(size)
     except MemoryError:
@@ -632,8 +637,9 @@ def func(interp, s_frame, w_frame, stackp):
     w_frame.store(interp.space, constants.CTXPART_STACKP_INDEX, interp.space.wrap_int(stackp))
     return w_frame
 
-def get_instances_array(space, s_frame, w_class, store=True):
+def get_instances_array(space, s_frame, w_class=None, store=True):
     # This primitive returns some instance of the class on the stack.
+    # If no class is given, it returns some object.
     # Not sure quite how to do this; maintain a weak list of all
     # existing instances or something?
     match_w = s_frame.instances_array(w_class)
@@ -648,9 +654,11 @@ def get_instances_array(space, s_frame, w_class, store=True):
             if not rgc.get_gcflag_extra(gcref):
                 rgc.toggle_gcflag_extra(gcref)
                 w_obj = rgc.try_cast_gcref_to_instance(model.W_Object, gcref)
-                if (w_obj is not None and w_obj.has_class()
-                    and w_obj.getclass(space) is w_class):
-                    match_w.append(w_obj)
+                if w_obj is not None and w_obj.has_class():
+                    # when calling NEXT_OBJECT, we should not return SmallInteger instances
+                    next_object_and_not_int = (w_class is None) and (w_obj.getclass(space) is not space.w_SmallInteger)
+                    if next_object_and_not_int or w_obj.getclass(space) is w_class:
+                        match_w.append(w_obj)
                 pending.extend(rgc.get_rpy_referents(gcref))
 
         while roots:
@@ -664,7 +672,10 @@ def get_instances_array(space, s_frame, w_class, store=True):
 
 @expose_primitive(SOME_INSTANCE, unwrap_spec=[object])
 def func(interp, s_frame, w_class):
-    match_w = get_instances_array(interp.space, s_frame, w_class)
+    if w_class.is_same_object(interp.space.w_SmallInteger):
+        raise PrimitiveFailedError()
+
+    match_w = get_instances_array(interp.space, s_frame, w_class=w_class)
     try:
         return match_w[0]
     except IndexError:
@@ -693,7 +704,7 @@ def func(interp, s_frame, w_obj):
     # it returns the "next" instance after w_obj.
     return next_instance(
         interp.space,
-        get_instances_array(interp.space, s_frame, w_obj.getclass(interp.space)),
+        get_instances_array(interp.space, s_frame, w_class=w_obj.getclass(interp.space)),
         w_obj
     )
 
@@ -751,8 +762,10 @@ def func(interp, s_frame, w_rcvr, w_into):
 
 @expose_primitive(BITBLT_COPY_BITS, clean_stack=False, no_result=True, compiled_method=True)
 def func(interp, s_frame, argcount, w_method):
-    from spyvm.plugins.bitblt import BitBltPlugin
-    return BitBltPlugin.call("primitiveCopyBits", interp, s_frame, argcount, w_method)
+    w_name = interp.space.wrap_string("primitiveCopyBits")
+    signature = ("BitBltPlugin", "primitiveCopyBits")
+    from spyvm.plugins.simulation import SimulationPlugin
+    return SimulationPlugin.simulate(w_name, signature, interp, s_frame, argcount, w_method)
 
 @expose_primitive(BE_CURSOR)
 def func(interp, s_frame, argcount):
@@ -811,13 +824,6 @@ def func(interp, s_frame, w_rcvr):
 
     form = wrapper.FormWrapper(interp.space, w_rcvr)
     form.take_over_display()
-    if interp.space.display().width == 0:
-        if not interp.image:
-            raise PrimitiveFailedError
-        display = interp.space.display()
-        width = (interp.image.lastWindowSize >> 16) & 0xffff
-        height = interp.image.lastWindowSize & 0xffff
-        display.set_video_mode(width, height, display.depth)
     w_display_bitmap = form.get_display_bitmap()
     w_display_bitmap.take_over_display()
     w_display_bitmap.flush_to_screen()
@@ -857,8 +863,16 @@ def func(interp, s_frame, w_rcvr):
 def func(interp, s_frame, w_rcvr):
     w_res = interp.space.w_Point.as_class_get_shadow(interp.space).new(2)
     point = wrapper.PointWrapper(interp.space, w_res)
-    point.store_x(interp.space.display().width)
-    point.store_y(interp.space.display().height)
+    display = interp.space.display()
+    if display.width == 0:
+        # We need to have the indirection via interp.image, because when the image
+        # is saved, the display form size is always reduced to 240@120.
+        if not interp.image:
+            raise PrimitiveFailedError
+        display.width = (interp.image.lastWindowSize >> 16) & 0xffff
+        display.height = interp.image.lastWindowSize & 0xffff
+    point.store_x(display.width)
+    point.store_y(display.height)
     return w_res
 
 @expose_primitive(MOUSE_BUTTONS, unwrap_spec=[object])
@@ -962,7 +976,7 @@ def func(interp, s_frame, argcount, w_method):
     if not (isinstance(w_modulename, model.W_BytesObject) and
             isinstance(w_functionname, model.W_BytesObject)):
         raise PrimitiveFailedError
-    signature = (w_modulename.as_string(), w_functionname.as_string())
+    signature = (space.unwrap_string(w_modulename), space.unwrap_string(w_functionname))
 
     if interp.space.use_plugins.is_set():
         from spyvm.plugins.squeak_plugin_proxy import IProxy, MissingPlugin
@@ -971,10 +985,7 @@ def func(interp, s_frame, argcount, w_method):
         except MissingPlugin:
             pass
 
-    if signature[0] == 'BitBltPlugin':
-        from spyvm.plugins.bitblt import BitBltPlugin
-        return BitBltPlugin.call(signature[1], interp, s_frame, argcount, w_method)
-    elif signature[0] == 'LargeIntegers':
+    if signature[0] == 'LargeIntegers':
         from spyvm.plugins.large_integer import LargeIntegerPlugin
         return LargeIntegerPlugin.call(signature[1], interp, s_frame, argcount, w_method)
     elif signature[0] == "SocketPlugin":
@@ -986,11 +997,9 @@ def func(interp, s_frame, argcount, w_method):
     elif signature[0] == "VMDebugging":
         from spyvm.plugins.vmdebugging import DebuggingPlugin
         return DebuggingPlugin.call(signature[1], interp, s_frame, argcount, w_method)
-    elif signature[0] == "B2DPlugin":
-        from spyvm.plugins.balloon import BalloonPlugin
-        return BalloonPlugin.simulate(w_functionname, signature[1], interp, s_frame, argcount, w_method)
     else:
-        raise PrimitiveFailedError
+        from spyvm.plugins.simulation import SimulationPlugin
+        return SimulationPlugin.simulate(w_functionname, signature, interp, s_frame, argcount, w_method)
 
 @expose_primitive(COMPILED_METHOD_FLUSH_CACHE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
@@ -1110,7 +1119,7 @@ def fake_bytes_left(interp):
 
 @expose_primitive(SPECIAL_OBJECTS_ARRAY, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    return interp.space.wrap_list(interp.image.special_objects)
+    return interp.image.special_objects
 
 @expose_primitive(INC_GC, unwrap_spec=[object])
 @expose_primitive(FULL_GC, unwrap_spec=[object])
@@ -1170,12 +1179,41 @@ def func(interp, s_frame, w_arg):
 
 #____________________________________________________________________________
 # Misc Primitives (138 - 149)
+SOME_OBJECT = 138
+NEXT_OBJECT = 139
 BEEP = 140
 VM_PATH = 142
 SHORT_AT = 143
 SHORT_AT_PUT = 144
 FILL = 145
 CLONE = 148
+SYSTEM_ATTRIBUTE = 149
+
+@expose_primitive(SOME_OBJECT, unwrap_spec=[object])
+def func(interp, s_frame, w_class):
+    match_w = get_instances_array(interp.space, s_frame)
+    try:
+        return match_w[0]
+    except IndexError:
+        raise PrimitiveFailedError()
+
+def next_object(space, list_of_objects, w_obj):
+    retval = None
+    try:
+        idx = list_of_objects.index(w_obj)
+    except ValueError:
+        idx = -1
+    try:
+        retval = list_of_objects[idx + 1]
+    except IndexError:
+        return space.wrap_int(0)
+    return retval
+
+@expose_primitive(NEXT_OBJECT, unwrap_spec=[object])
+def func(interp, s_frame, w_obj):
+    # This primitive is used to iterate through all objects:
+    # it returns the "next" instance after w_obj.
+    return next_object(interp.space, get_instances_array(interp.space, s_frame), w_obj)
 
 @expose_primitive(BEEP, unwrap_spec=[object])
 def func(interp, s_frame, w_receiver):
@@ -1217,6 +1255,13 @@ def func(interp, s_frame, w_arg, new_value):
 @expose_primitive(CLONE, unwrap_spec=[object])
 def func(interp, s_frame, w_arg):
     return w_arg.clone(interp.space)
+
+@expose_primitive(SYSTEM_ATTRIBUTE, unwrap_spec=[object, int])
+def func(interp, s_frame, w_receiver, attr_id):
+    try:
+        return interp.space.wrap_string("%s" % interp.space.system_attributes[attr_id])
+    except KeyError:
+        return interp.space.w_nil
 
 # ___________________________________________________________________________
 # File primitives (150-169)
@@ -1593,9 +1638,19 @@ CTXT_AT = 210
 CTXT_AT_PUT = 211
 CTXT_SIZE = 212
 
+@expose_primitive(CTXT_SIZE, unwrap_spec=[object])
+def func(interp, s_frame, w_rcvr):
+    if isinstance(w_rcvr, model.W_PointersObject):
+        if w_rcvr.getclass(interp.space).is_same_object(interp.space.w_MethodContext):
+            if w_rcvr.fetch(interp.space, constants.MTHDCTX_METHOD) is interp.space.w_nil:
+                # special case: (MethodContext allInstances at: 1) does not have a method. All fields are nil
+                return interp.space.wrap_int(0)
+            else:
+                return interp.space.wrap_int(w_rcvr.as_context_get_shadow(interp.space).stackdepth())
+    return interp.space.wrap_int(w_rcvr.varsize())
+
 prim_table[CTXT_AT] = prim_table[AT]
 prim_table[CTXT_AT_PUT] = prim_table[AT_PUT]
-prim_table[CTXT_SIZE] = prim_table[SIZE]
 # ___________________________________________________________________________
 # Drawing
 
@@ -1625,7 +1680,13 @@ VM_CONTROL_PROFILING = 251
 VM_PROFILE_SAMPLES_INTO = 252
 VM_PROFILE_INFO_INTO = 253
 VM_PARAMETERS = 254
-INST_VARS_PUT_FROM_STACK = 255 # Never used except in Disney tests.  Remove after 2.3 release.
+META_PRIM_FAILED = 255 # Used to be INST_VARS_PUT_FROM_STACK. Never used except in Disney tests.  Remove after 2.3 release.
+
+@expose_primitive(META_PRIM_FAILED, unwrap_spec=[object, int])
+def func(interp, s_frame, w_rcvr, primFailFlag):
+    if primFailFlag != 0:
+        raise MetaPrimFailed(s_frame, primFailFlag)
+    raise PrimitiveFailedError
 
 @expose_primitive(VM_PARAMETERS)
 def func(interp, s_frame, argcount):
@@ -1634,26 +1695,26 @@ def func(interp, s_frame, argcount):
             1 arg:  return the indicated VM parameter;
             2 args: set the VM indicated parameter.
         VM parameters are numbered as follows:
-            1   end of old-space (0-based, read-only)
-            2   end of young-space (read-only)
-            3   end of memory (read-only)
-            4   allocationCount (read-only)
-            5   allocations between GCs (read-write)
+            1   byte size of old-space (read-only)
+            2   byte size of young-space (read-only)
+            3   byte size of object memory (read-only)
+            4   allocationCount (read-only; nil in Cog VMs)
+            5   allocations between GCs (read-write; nil in Cog VMs)
             6   survivor count tenuring threshold (read-write)
             7   full GCs since startup (read-only)
             8   total milliseconds in full GCs since startup (read-only)
-            9   incremental GCs since startup (read-only)
-            10  total milliseconds in incremental GCs since startup (read-only)
+            9   incremental GCs since startup (read-only; scavenging GCs on Spur)
+            10  total milliseconds in incremental/scavenging GCs since startup (read-only)
             11  tenures of surving objects since startup (read-only)
-            12-20 specific to the translating VM
+            12-20 specific to the translating VM (nil in Cog VMs)
             21  root table size (read-only)
             22  root table overflows since startup (read-only)
             23  bytes of extra memory to reserve for VM buffers, plugins, etc.
-            24  memory threshold above which shrinking object memory (rw)
-            25  memory headroom when growing object memory (rw)
-            26  interruptChecksEveryNms - force an ioProcessEvents every N milliseconds, in case the image  is not calling getNextEvent often (rw)
+            24  memory threshold above which to shrink object memory (read-write)
+            25  ammount to grow by when growing object memory (read-write)
+            26  interruptChecksEveryNms - force an ioProcessEvents every N milliseconds (read-write)
             27  number of times mark loop iterated for current IGC/FGC (read-only) includes ALL marking
-            28  number of times sweep loop iterated  for current IGC/FGC (read-only)
+            28  number of times sweep loop iterated for current IGC/FGC (read-only)
             29  number of times make forward loop iterated for current IGC/FGC (read-only)
             30  number of times compact move loop iterated for current IGC/FGC (read-only)
             31  number of grow memory requests (read-only)
@@ -1663,30 +1724,65 @@ def func(interp, s_frame, argcount):
             35  number of survivor objects after current IGC/FGC (read-only)
             36  millisecond clock when current IGC/FGC completed (read-only)
             37  number of marked objects for Roots of the world, not including Root Table entries for current IGC/FGC (read-only)
-            38  milliseconds taken by current IGC  (read-only)
+            38  milliseconds taken by current IGC (read-only)
             39  Number of finalization signals for Weak Objects pending when current IGC/FGC completed (read-only)
             40  BytesPerWord for this image
             41  imageFormatVersion for the VM
-            42  nil (number of stack pages in use in Stack VM)
-            43  nil (desired number of stack pages in Stack VM)
-            44  nil (size of eden, in bytes in Stack VM)
-            45  nil (desired size of eden in Stack VM)
-            46-55 nil; reserved for VM parameters that persist in the image (such as eden above)
+            42  number of stack pages in use (Cog Stack VM only, otherwise nil)
+            43  desired number of stack pages (stored in image file header, max 65535; Cog VMs only, otherwise nil)
+            44  size of eden, in bytes (Cog VMs only, otherwise nil)
+            45  desired size of eden, in bytes (stored in image file header; Cog VMs only, otherwise nil)
+            46  size of machine code zone, in bytes (stored in image file header; Cog JIT VM only, otherwise nil)
+            47  desired size of machine code zone, in bytes (applies at startup only, stored in image file header; Cog JIT VM only)
+            48  various properties of the Cog VM as an integer encoding an array of bit flags.
+                Bit 0: implies the image's Process class has threadId as its 3rd inst var (zero relative)
+                Bit 1: on Cog VMs asks the VM to set the flag bit in interpreted methods
+                Bit 2: if set, preempting a process puts it to the head of its run queue, not the back,
+                        i.e. preempting a process by a higher one will not cause the process to yield
+                            to others at the same priority.
+            49  the size of the external semaphore table (read-write; Cog VMs only)
+            50-53 reserved for VM parameters that persist in the image (such as eden above)
+            54  total size of free old space (Spur only, otherwise nil)
+            55  ratio of growth and image size at or above which a GC will be performed post scavenge (Spur only, otherwise nil)
             56  number of process switches since startup (read-only)
             57  number of ioProcessEvents calls since startup (read-only)
-            58  number of ForceInterruptCheck calls since startup (read-only)
+            58  number of forceInterruptCheck (Cog VMs) or quickCheckInterruptCalls (non-Cog VMs) calls since startup (read-only)
             59  number of check event calls since startup (read-only)
+            60  number of stack page overflows since startup (read-only; Cog VMs only)
+            61  number of stack page divorces since startup (read-only; Cog VMs only)
+            62  number of machine code zone compactions since startup (read-only; Cog VMs only)
+            63  milliseconds taken by machine code zone compactions since startup (read-only; Cog VMs only)
+            64  current number of machine code methods (read-only; Cog VMs only)
+            65  true if the VM supports multiple bytecode sets;  (read-only; Cog VMs only; nil in older Cog VMs)
+            66  the byte size of a stack page in the stack zone  (read-only; Cog VMs only)
+            67 - 69 reserved for more Cog-related info
+            70  the value of VM_PROXY_MAJOR (the interpreterProxy major version number)
+            71  the value of VM_PROXY_MINOR (the interpreterProxy minor version number)
 
         Note: Thanks to Ian Piumarta for this primitive."""
+
     if not 0 <= argcount <= 2:
         raise PrimitiveFailedError
 
-    s_frame.pop() # receiver
+    arg1_w = s_frame.pop() # receiver
+
+    vm_w_params = [interp.space.wrap_int(0)] * 71
+    vm_w_params[39] = interp.space.wrap_int(constants.BYTES_PER_WORD)
+    vm_w_params[40] = interp.space.wrap_int(interp.image.version.magic)
+    vm_w_params[69] = interp.space.wrap_int(constants.INTERP_PROXY_MAJOR)
+    vm_w_params[70] = interp.space.wrap_int(constants.INTERP_PROXY_MINOR)
+
     if argcount == 0:
-        return interp.space.wrap_list([interp.space.wrap_int(0)]*59)
-    s_frame.pop() # index (really the receiver, index has been removed above)
+        return interp.space.wrap_list(vm_w_params)
+
+    arg2_w = s_frame.pop() # index (really the receiver, index has been removed above)
+    if not isinstance(arg1_w, model.W_SmallInteger):
+        raise PrimitiveFailedError
     if argcount == 1:
-        return interp.space.wrap_int(0)
+        if not 0 <= arg1_w.value <= 70:
+            raise PrimitiveFailedError
+        return vm_w_params[arg1_w.value - 1]
+
     s_frame.pop() # new value
     if argcount == 2:
         # return the 'old value'

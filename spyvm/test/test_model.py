@@ -434,6 +434,29 @@ def test_weak_pointers():
     w_cls = bootstrap_class(2)
     s_cls = w_cls.as_class_get_shadow(space)
     s_cls.instance_kind = storage_classes.WEAK_POINTERS
+    s_cls._instance_size = 0
+
+    weak_object = s_cls.new(2)
+    referenced = s_cls.new()
+    referenced2 = s_cls.new()
+    weak_object.store(space, 0, referenced)
+    weak_object.store(space, 1, referenced2)
+
+    assert weak_object.fetch(space, 0) is referenced
+    del referenced
+    # When executed using pypy, del is not immediately executed.
+    # Thus the reference may linger until the next gc...
+    import gc; gc.collect()
+    assert weak_object.fetch(space, 0).is_nil(space)
+    assert weak_object.fetch(space, 1) is referenced2
+
+
+def test_weak_pointers_to_ints_are_strong():
+    # In the semantics of smalltalk, references to SmallIntegers are always strong.
+    # This seems to be due to SmallIntegers always being tagged in the traditional VMs
+    w_cls = bootstrap_class(2)
+    s_cls = w_cls.as_class_get_shadow(space)
+    s_cls.instance_kind = storage_classes.WEAK_POINTERS
 
     weak_object = s_cls.new()
     referenced = model.W_SmallInteger(10)
@@ -446,7 +469,8 @@ def test_weak_pointers():
     # When executed using pypy, del is not immediately executed.
     # Thus the reference may linger until the next gc...
     import gc; gc.collect()
-    assert weak_object.fetch(space, 0).is_nil(space)
+    assert not weak_object.fetch(space, 0).is_nil(space)
+    assert weak_object.fetch(space, 0).value == 10
     assert weak_object.fetch(space, 1).value == 20
 
 def test_characters(space):
@@ -501,3 +525,25 @@ def test_spur_compiled_method_header():
     assert model.SpurCompiledMethodHeader.has_primitive_bit_set(header_word)
     assert model.SpurCompiledMethodHeader.has_primitive_bit_set(joinbits([0,0,1,0,0,0,0,0], [15,1,1,1,6,4,2,1]))
     assert not model.SpurCompiledMethodHeader.has_primitive_bit_set(joinbits([0,0,0,0,0,0,0,0], [15,1,1,1,6,4,2,1]))
+
+def test_weak_pointers_to_instvars_are_strong():
+    # In the semantics of smalltalk, references to Instvariables are always strong.
+    w_cls = bootstrap_class(2)
+    s_cls = w_cls.as_class_get_shadow(space)
+    s_cls.instance_kind = storage_classes.WEAK_POINTERS
+    s_cls._instance_size = 1
+
+    weak_object = s_cls.new(1)
+    referenced = space.wrap_string("Hello")
+    referenced2 = space.wrap_string("You")
+    weak_object.store(space, 0, referenced)
+    weak_object.store(space, 1, referenced2)
+
+    assert weak_object.fetch(space, 0) is referenced
+    del referenced
+    # When executed using pypy, del is not immediately executed.
+    # Thus the reference may linger until the next gc...
+    import gc; gc.collect()
+    assert not weak_object.fetch(space, 0).is_nil(space)
+    assert weak_object.fetch(space, 0)._pure_as_string(space) == "Hello"
+    assert weak_object.fetch(space, 1)._pure_as_string(space) == "You"
