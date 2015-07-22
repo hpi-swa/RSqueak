@@ -337,6 +337,30 @@ def test_inst_var_at_put_invalid():
     prim_fails(primitives.INST_VAR_AT_PUT,
                ["q", constants.CHARACTER_VALUE_INDEX+2, "t"])
 
+def test_slot_at():
+    # n.b.: 1-based indexing!
+    w_v = prim(primitives.SLOT_AT,
+               ["q", constants.CHARACTER_VALUE_INDEX+1])
+    assert w_v.value == ord("q")
+
+def test_slot_at_invalid():
+    # n.b.: 1-based indexing! (and an invalid index)
+    prim_fails(primitives.SLOT_AT, ["q", constants.CHARACTER_VALUE_INDEX+2])
+
+def test_slot_at_put():
+    # n.b.: 1-based indexing!
+    w_q = space.w_Character.as_class_get_shadow(space).new()
+    vidx = constants.CHARACTER_VALUE_INDEX+1
+    ordq = ord("q")
+    assert prim(primitives.SLOT_AT, [w_q, vidx]).is_nil(space)
+    assert prim(primitives.SLOT_AT_PUT, [w_q, vidx, ordq]).value == ordq
+    assert prim(primitives.SLOT_AT, [w_q, vidx]).value == ordq
+
+def test_slot_at_put_invalid():
+    # n.b.: 1-based indexing! (and an invalid index)
+    prim_fails(primitives.SLOT_AT_PUT,
+               ["q", constants.CHARACTER_VALUE_INDEX+2, "t"])
+
 def test_class():
     assert prim(primitives.CLASS, ["string"]).is_same_object(space.w_String)
     assert prim(primitives.CLASS, [1]).is_same_object(space.w_SmallInteger)

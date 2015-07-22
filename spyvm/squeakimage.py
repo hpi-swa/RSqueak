@@ -482,7 +482,6 @@ class SpurReader(BaseReaderStrategy):
         currentAddressSwizzle = self.oldbaseaddress
         while self.stream.count < segmentEnd:
             while self.stream.count < segmentEnd - 16:
-                # print "head",
                 chunk, pos = self.read_object()
                 self.log_progress(len(self.chunklist), '#')
                 if chunk.classid == self.FREE_OBJECT_CLASS_INDEX_PUN:
