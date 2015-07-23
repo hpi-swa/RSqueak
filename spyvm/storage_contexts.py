@@ -409,9 +409,17 @@ class ContextPartShadow(AbstractStrategy):
         return self._temps_and_stack[self.tempsize():self._stack_ptr]
 
     def pop(self):
+        # HACK HACK HACK (3 times)
+        # Popping the empty stack is actually an error, but this sometimes
+        # happens in strange code paths. So, there's typically only the receiver
+        # at bottom, under the stack, or among the temps that could be around there,
+        # so just hard return the receiver.
         #assert self._stack_ptr > self.tempsize()
         ptr = jit.promote(self._stack_ptr) - 1
-        ret = self.stack_get(ptr)   # you get OverflowError if the stack is empty
+        if ptr < 0:
+            ret = self.w_receiver()
+        else:
+            ret = self.stack_get(ptr)
         #
         # HACK HACK HACK HACK HACK (5 times)
         # We really would like to nil out the popp'ed value, but there are
