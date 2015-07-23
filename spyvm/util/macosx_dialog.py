@@ -58,7 +58,7 @@ def _get_file_applepython():
             try:
                 return path.encode('utf_8', 'ignore')
             except ValueError:
-                poass
+                pass
     return "SqueakImage.imgae"
 
 ###############################################################################
