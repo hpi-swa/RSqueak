@@ -644,9 +644,6 @@ def get_instances_array(space, s_frame, w_class=None):
 
                 if isinstance(w_obj, model.W_AbstractObjectWithClassReference):
                     pending.extend(rgc.get_rpy_referents(gcref))
-                else:
-                    # untoggle for objects we don't follow further
-                    rgc.toggle_gcflag_extra(gcref)
 
         while roots:
             gcref = roots.pop()
