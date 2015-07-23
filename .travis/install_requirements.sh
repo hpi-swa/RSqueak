@@ -9,7 +9,7 @@ Packages="build-essential libffi-dev python-dev libffi6:i386 \
     libbz2-1.0:i386 libexpat1:i386 zlib1g:i386 libssl1.0.0:i386 \
     libgcrypt11:i386 libtinfo5:i386 gcc-multilib libfreetype6:i386"
 
-if [ "$BUILD_ARCH" == "32bit" ]; then
+if [ "$BUILD_ARCH" == "32bit" -o "$BUILD_ARCH" == "lldebug" ]; then
     # These are insane, i just want sdl1.2-dev:i386, but that multilib
     # package is broken
     Packages="$Packages libsdl1.2-dev:i386 libasound2-dev:i386 \
