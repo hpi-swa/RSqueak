@@ -682,6 +682,9 @@ def get_instances_array(space, s_frame, w_class=None, store=True):
     # If no class is given, it returns some object.
     # Not sure quite how to do this; maintain a weak list of all
     # existing instances or something?
+
+    do_next_object = w_class is None # when calling NEXT_OBJECT
+
     match_w = s_frame.instances_array(w_class)
     if match_w is None:
         match_w = []
@@ -694,12 +697,19 @@ def get_instances_array(space, s_frame, w_class=None, store=True):
             if not rgc.get_gcflag_extra(gcref):
                 rgc.toggle_gcflag_extra(gcref)
                 w_obj = rgc.try_cast_gcref_to_instance(model.W_Object, gcref)
+
                 if w_obj is not None and w_obj.has_class():
                     # when calling NEXT_OBJECT, we should not return SmallInteger instances
-                    next_object_and_not_int = (w_class is None) and (w_obj.getclass(space) is not space.w_SmallInteger)
-                    if next_object_and_not_int or w_obj.getclass(space) is w_class:
+                    # XXX: same for Character on Spur and SmallFloat64 on Spur64...
+                    is_int = w_obj.getclass(space).is_same_object(space.w_SmallInteger)
+                    if not is_int and (do_next_object or w_obj.getclass(space).is_same_object(w_class)):
                         match_w.append(w_obj)
-                pending.extend(rgc.get_rpy_referents(gcref))
+
+                if isinstance(w_obj, model.W_AbstractObjectWithClassReference):
+                    pending.extend(rgc.get_rpy_referents(gcref))
+                else:
+                    # untoggle for objects we don't follow further
+                    rgc.toggle_gcflag_extra(gcref)
 
         while roots:
             gcref = roots.pop()

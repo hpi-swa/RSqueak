@@ -4,12 +4,16 @@ Squeak model.
     W_Object
         W_SmallInteger
         W_AbstractObjectWithIdentityHash
+            W_LargePositiveInteger1Word
             W_Float
+            W_Character
             W_AbstractObjectWithClassReference
                 W_PointersObject
                 W_BytesObject
                 W_WordsObject
             W_CompiledMethod
+                W_SpurCompiledMethod
+                W_PreSpurCompiledMethod
 """
 import sys, math
 from spyvm import constants, error
