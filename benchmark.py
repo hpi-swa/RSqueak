@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from collections import deque
 
 import os
 import subprocess
@@ -9,6 +10,7 @@ import math
 import shutil
 import time
 import sys
+import fcntl
 
 from optparse import OptionParser
 
@@ -16,7 +18,8 @@ from optparse import OptionParser
 # CODESPEED_URL = 'http://172.16.64.134/'
 
 CODESPEED_URL = 'http://localhost:80/'
-benchmarks = []
+COMMIT_QUEUE = 'commit-queue'
+input_benchmarks = []
 
 
 class Project(object):
@@ -29,7 +32,7 @@ class Project(object):
     def run(self):
         print "running executables: ", self.executables
         for executable in self.executables:
-            for benchmark in benchmarks:
+            for benchmark in input_benchmarks:
                 yield executable.name, executable.run(self.arguments, benchmark, self.working_dir), benchmark
 
     def print_results(self):
@@ -169,7 +172,7 @@ def sample_standard_deviation(values):
     return math.sqrt(deviation_sum / float((len(values) - 1)))
 
 
-def get_commit_hash(required_commit):
+def get_full_hash_from_repo(required_commit):
     orig_dir = os.getcwd()
 
     repo_dir = "/home/dglaeser/RSqueakBenchmarks/RSqueak/"
@@ -180,7 +183,7 @@ def get_commit_hash(required_commit):
             subprocess.check_output("git checkout {}".format(required_commit),
                                     stderr=subprocess.STDOUT, cwd=repo_dir, shell=True)
         except subprocess.CalledProcessError:
-            print "Required commit could not be found:", required_commit
+            print "Required commit could not be found in git history:", required_commit
             if len(required_commit) != 40:
                 exit(-1)
     else:
@@ -193,16 +196,16 @@ def get_commit_hash(required_commit):
     return hash_long.strip()  # remove trailing whitespace from console output
 
 
-def get_rsqueak_executable(required_commit, commit_hash):
+def get_rsqueak_executable(options, commit_hash):
     orig_dir = os.getcwd()
     os.chdir("/home/dglaeser/RSqueakBenchmarks/RSqueak/")
     if os.path.isfile("rsqueak"):
         os.remove("rsqueak")
 
-    executable_name = get_executable_name(commit_hash, required_commit)
+    executable_name = get_executable_name(commit_hash, options)
 
     cached = False
-    if required_commit:
+    if options.required_commit or options.continue_queue:
         cached = get_executable_from_cache(executable_name)
 
     if not cached:
@@ -217,8 +220,8 @@ def get_rsqueak_executable(required_commit, commit_hash):
     os.chdir(orig_dir)
 
 
-def get_executable_name(commit_hash, required_commit):
-    if required_commit:
+def get_executable_name(commit_hash, options):
+    if options.required_commit or options.continue_queue:
         return "rsqueak-x86-Linux-jit-{}".format(commit_hash)
     else:
         return "rsqueak-linux-latest"
@@ -244,9 +247,7 @@ def get_executable_from_cache(executable_name):
     return False
 
 
-if __name__ == "__main__":
-    usage = "usage: %prog --benchmarks=Blowfist,Richards --vms=squeak,cog"
-    parser = OptionParser(usage=usage)
+def add_cmd_line_options(parser):
     parser.add_option("--benchmarks-all", action="store_true", dest="benchmark_all",
                       help="Run all benchmarks")
     parser.add_option("--vm-all", action="store_true", dest="vm_all",
@@ -261,48 +262,116 @@ if __name__ == "__main__":
                       help="Commit that will be benchmarked. At least 7 digits.")
     parser.add_option("--logfile", dest="logfile",
                       help="Write stdout to file.")
+    parser.add_option("--continue", action="store_true", dest="continue_queue",
+                      help="Continue to benchmark commits stored in queue file.")
 
-    (options, args) = parser.parse_args()
-    if options.list or (options.benchmarks is None and not options.benchmark_all) or (
-            options.vms is None and not options.vm_all):
+
+def evaluate_options(options):
+    global VMS, BENCHMARKS
+
+    if options.list or (options.benchmarks is None and not options.benchmark_all) \
+            or (options.vms is None and not options.vm_all):
         print "Available Benchmarks:"
         for b in BENCHMARKS:
             print " *", b
         print "Available VMs:"
         for vm in VMS:
             print " *", vm
-        parser.error("incorrect number of arguments")
-
-    if options.logfile:
-        sys.stdout = open("%s-%s-%s" % (options.logfile,
-                                        time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()),  # time.time()
-                                        options.required_commit), 'w')
+        option_parser.error("incorrect number of arguments")
 
     if options.benchmark_all:
-        benchmarks = BENCHMARKS.keys()
+        _benchmarks = BENCHMARKS.keys()
     else:
-        benchmarks = options.benchmarks.split(',')
-
+        _benchmarks = options.benchmarks.split(',')
     if options.vm_all:
-        vms = VMS.keys()
+        _vms = VMS.keys()
     else:
-        vms = options.vms.split(',')
+        _vms = options.vms.split(',')
 
+    return _vms, _benchmarks
+
+
+def reject_unknown_input(vms, benchmarks):
     unknown_benchmarks = set(benchmarks).difference(set(BENCHMARKS.keys()))
     if unknown_benchmarks:
         print "Unknown Benchmarks: ", ', '.join(unknown_benchmarks)
         exit()
-
     unknown_vms = set(vms).difference(set(VMS.keys()))
     if unknown_vms:
         print "Unknown VMs: ", ', '.join(unknown_vms)
         exit()
 
-    full_commit_hash = "hash-not-set"
-    full_commit_hash = get_commit_hash(options.required_commit)
 
-    get_rsqueak_executable(options.required_commit, full_commit_hash)
+def ensure_isolated_benchmark_execution():
+    filename = "bm.lock"
+    print "Test if lock file {} exists.".format(filename)
+    if os.path.isfile(filename):
+        print "Benchmarks script already running, since file '{}' exists. Exit.".format(filename)
+        sys.exit(0)
+    else:
+        open(filename, 'w').close()
+        return filename
 
-    for vm in vms:
-        VMS[vm].post_results()
+
+def wait_for_lock(fd):
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except IOError:
+        print "Wait for lock on {} ...".format(fd.name)
+        time.sleep(2)
+        wait_for_lock(fd)
+
+
+def get_next_queued_commit():
+    with open(COMMIT_QUEUE, "r+") as fd:
+        wait_for_lock(fd)
+        commits = deque(fd.readlines())
+        if len(commits) == 0:
+            return None
+
+        next_hash = commits.popleft().strip()
+        print "Next hash: ", next_hash
+        print "Remaining commits in queue: ", commits
+
+        fd.seek(0)
+        fd.truncate(0)
+
+        fd.writelines(commits)
+        return next_hash
+
+
+if __name__ == "__main__":
+    usage = "usage: %prog --benchmarks=mandala,shaLongString --vms=rsqueak"
+    option_parser = OptionParser(usage=usage)
+    add_cmd_line_options(option_parser)
+    (option_values, args) = option_parser.parse_args()
+    input_vms, input_benchmarks = evaluate_options(option_values)
+
+    reject_unknown_input(input_vms, input_benchmarks)
+
+    lock_file = ensure_isolated_benchmark_execution()
+
+    print "Starting benchmark routine for given commits."
+    commits_enqueued = True
+    while commits_enqueued:
+        full_commit_hash = "hash-not-set"
+        if option_values.continue_queue:
+            full_commit_hash = get_next_queued_commit()
+            if full_commit_hash is None:
+                break
+        else:
+            full_commit_hash = get_full_hash_from_repo(option_values.required_commit)
+            commits_enqueued = False
+
+        if option_values.logfile:
+            sys.stdout = open("%s-%s-%s" % (option_values.logfile,
+                                            time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()),
+                                            full_commit_hash), 'w')
+
+        get_rsqueak_executable(option_values, full_commit_hash)
+
+        for vm in input_vms:
+            VMS[vm].post_results()
+
+    os.remove(lock_file)
 
