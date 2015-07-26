@@ -185,7 +185,7 @@ def get_full_hash_from_repo(required_commit):
         except subprocess.CalledProcessError:
             print "Required commit could not be found in git history:", required_commit
             if len(required_commit) != 40:
-                exit(-1)
+                raise CommitNotFoundException
     else:
         os.system("git checkout master")
         os.system("git pull")
@@ -233,7 +233,7 @@ def check_executable_on_server(executable_name):
     except Exception as e:
         print e
         print "Unable to retrieve executable."
-        exit(-1)
+        raise MissingExecutableException
     return True
 
 
@@ -343,6 +343,14 @@ def get_next_queued_commit():
 def release_lock(filename):
     if os.path.isfile(filename):
         os.remove(filename)
+
+
+class MissingExecutableException(Exception):
+    pass
+
+
+class CommitNotFoundException(Exception):
+    pass
 
 
 if __name__ == "__main__":
