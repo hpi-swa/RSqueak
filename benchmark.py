@@ -340,38 +340,49 @@ def get_next_queued_commit():
         return next_hash
 
 
+def release_lock(filename):
+    if os.path.isfile(filename):
+        os.remove(filename)
+
+
 if __name__ == "__main__":
-    usage = "usage: %prog --benchmarks=mandala,shaLongString --vms=rsqueak"
-    option_parser = OptionParser(usage=usage)
-    add_cmd_line_options(option_parser)
-    (option_values, args) = option_parser.parse_args()
-    input_vms, input_benchmarks = evaluate_options(option_values)
+    try:
+        usage = "usage: %prog --benchmarks=mandala,shaLongString --vms=rsqueak"
+        option_parser = OptionParser(usage=usage)
+        add_cmd_line_options(option_parser)
+        (option_values, args) = option_parser.parse_args()
+        input_vms, input_benchmarks = evaluate_options(option_values)
 
-    reject_unknown_input(input_vms, input_benchmarks)
+        reject_unknown_input(input_vms, input_benchmarks)
 
-    lock_file = ensure_isolated_benchmark_execution()
+        lock_file = ensure_isolated_benchmark_execution()
 
-    print "Starting benchmark routine for given commits."
-    commits_enqueued = True
-    while commits_enqueued:
-        full_commit_hash = "hash-not-set"
-        if option_values.continue_queue:
-            full_commit_hash = get_next_queued_commit()
-            if full_commit_hash is None:
-                break
-        else:
-            full_commit_hash = get_full_hash_from_repo(option_values.required_commit)
-            commits_enqueued = False
+        print "Starting benchmark routine for given commits."
+        commits_enqueued = True
+        while commits_enqueued:
+            full_commit_hash = "hash-not-set"
+            if option_values.continue_queue:
+                full_commit_hash = get_next_queued_commit()
+                if full_commit_hash is None:
+                    break
+            else:
+                full_commit_hash = get_full_hash_from_repo(option_values.required_commit)
+                commits_enqueued = False
 
-        if option_values.logfile:
-            sys.stdout = open("%s-%s-%s" % (option_values.logfile,
-                                            time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()),
-                                            full_commit_hash), 'w')
+            if option_values.logfile:
+                sys.stdout = open("%s-%s-%s" % (option_values.logfile,
+                                                time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()),
+                                                full_commit_hash), 'w')
 
-        get_rsqueak_executable(option_values, full_commit_hash)
+            get_rsqueak_executable(option_values, full_commit_hash)
 
-        for vm in input_vms:
-            VMS[vm].post_results()
+            for vm in input_vms:
+                VMS[vm].post_results()
 
-    os.remove(lock_file)
+    except Exception:
+        # This does (deliberately) not cover SystemExit or KeyboardInterrupt but all unexpected exceptions
+        release_lock(lock_file)
+        raise
+
+    release_lock(lock_file)
 
