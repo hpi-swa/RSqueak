@@ -410,6 +410,12 @@ class SDLDisplay(object):
     def set_interrupt_key(self, space, encoded_key):
         self.interrupt_key = encoded_key
 
+    def get_clipboard_text(self):
+        return rffi.charp2str(RSDL.GetClipboardText())
+
+    def set_clipboard_text(self, text):
+        return RSDL.SetClipboardText(rffi.str2charp(text))
+
 
 class SDLCursorClass(object):
     """Cursor modification not yet implemented in RSDL2?"""

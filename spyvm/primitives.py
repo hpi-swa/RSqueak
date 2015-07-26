@@ -1299,6 +1299,7 @@ def func(interp, s_frame, w_delay, w_semaphore, timestamp):
 SOME_OBJECT = 138
 NEXT_OBJECT = 139
 BEEP = 140
+CLIPBOARD_TEXT = 141
 VM_PATH = 142
 SHORT_AT = 143
 SHORT_AT_PUT = 144
@@ -1335,6 +1336,16 @@ def func(interp, s_frame, w_obj):
 @expose_primitive(BEEP, unwrap_spec=[object])
 def func(interp, s_frame, w_receiver):
     return w_receiver
+
+@expose_primitive(CLIPBOARD_TEXT)
+def func(interp, s_frame, argument_count):
+    if argument_count == 0:
+        return interp.space.wrap_string(interp.space.display().get_clipboard_text())
+    elif argument_count == 1:
+        w_arg = s_frame.pop()
+        assert isinstance(w_arg, model.W_BytesObject)
+        interp.space.display().set_keyboard_text(w_arg.as_string())
+
 
 @expose_primitive(VM_PATH, unwrap_spec=[object])
 def func(interp, s_frame, w_receiver):
