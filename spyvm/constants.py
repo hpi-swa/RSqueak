@@ -202,3 +202,5 @@ def decode_compiled_method_header(header):
 
 INTERRUPT_COUNTER_SIZE = 10000
 CompileTime = time.time()
+
+SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX = 1
