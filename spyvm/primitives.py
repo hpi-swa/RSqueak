@@ -677,22 +677,12 @@ def func(interp, s_frame, w_frame, stackp):
     w_frame.store(interp.space, constants.CTXPART_STACKP_INDEX, interp.space.wrap_int(stackp))
     return w_frame
 
-def get_instances_array(space, s_frame, w_class=None, store=True):
-    # This primitive returns some instance of the class on the stack.
-    # If no class is given, it returns some object.
-    # Not sure quite how to do this; maintain a weak list of all
-    # existing instances or something?
 
-    do_all = w_class is None
 
-    match_w = s_frame.instances_array(w_class)
-    if match_w is not None:
-        return match_w
-
-    # We have no pre-cached list of instances
-    match_w = []
+def get_instances_array_gc(space, w_class=None):
     from rpython.rlib import rgc
 
+    result_w = []
     roots = [gcref for gcref in rgc.get_rpy_roots() if gcref]
     pending = roots[:]
     while pending:
@@ -702,31 +692,32 @@ def get_instances_array(space, s_frame, w_class=None, store=True):
             w_obj = rgc.try_cast_gcref_to_instance(model.W_Object, gcref)
 
             if w_obj is not None and w_obj.has_class():
-                w_obj_cls = w_obj.getclass(space)
+                w_cls = w_obj.getclass(space)
                 # when calling NEXT_OBJECT, we should not return # SmallInteger
                 # instances
                 # XXX: same for Character on Spur and SmallFloat64 on Spur64...
-                if (not w_obj_cls.is_same_object(space.w_SmallInteger) and
-                    (do_all or w_obj_cls.is_same_object(w_class))):
-                    match_w.append(w_obj)
+                if not w_cls.is_same_object(space.w_SmallInteger) and \
+                   (w_class is None or w_cls.is_same_object(w_class)):
+                    result_w.append(w_obj)
+            pending.extend(rgc.get_rpy_referents(gcref))
 
-            if (isinstance(w_obj, model.W_AbstractObjectWithClassReference) or
-                isinstance(w_obj, model.W_CompiledMethod)):
-                pending.extend(rgc.get_rpy_referents(gcref))
-
-    while roots:
-        gcref = roots.pop()
-        if rgc.get_gcflag_extra(gcref):
-            rgc.toggle_gcflag_extra(gcref)
-            roots.extend(rgc.get_rpy_referents(gcref))
-    # ensure we're done (only untranslated)
+    rgc.clear_gcflag_extra(roots)
     rgc.assert_no_more_gcflags()
-    if store:
-        s_frame.store_instances_array(w_class, match_w)
+    return result_w
+
+def get_instances_array(space, s_frame, w_class=None, store=True):
+    # check cached
+    match_w = s_frame.instances_array(w_class)
+    if match_w is None:
+        match_w = get_instances_array_gc(space, w_class)
+        if store:
+            s_frame.store_instances_array(w_class, match_w)
     return match_w
 
 @expose_primitive(SOME_INSTANCE, unwrap_spec=[object])
 def func(interp, s_frame, w_class):
+    # This primitive returns some instance of the class on the stack.
+    # If no class is given, it returns some object.
     if w_class.is_same_object(interp.space.w_SmallInteger):
         raise PrimitiveFailedError()
 
@@ -1118,7 +1109,10 @@ def func(interp, s_frame, argument_count):
         s_frame.pop()
         return interp.space.wrap_string(interp.space.image_name())
     elif argument_count == 1:
-        pass # XXX
+        w_arg = s_frame.pop()
+        assert isinstance(w_arg, model.W_BytesObject)
+        interp.space.set_image_name(interp.space.unwrap_string(w_arg))
+        return s_frame.pop()
     raise PrimitiveFailedError
 
 @expose_primitive(LOW_SPACE_SEMAPHORE, unwrap_spec=[object, object])

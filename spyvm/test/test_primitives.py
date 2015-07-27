@@ -33,8 +33,6 @@ class MockFrame(model.W_PointersObject):
             self.strategy.init_temps_and_stack()
         return self.strategy
 
-IMAGENAME = "anImage.image"
-
 def mock(space, stack, context = None):
     mapped_stack = [space.w(x) for x in stack]
     if context is None:
@@ -44,7 +42,6 @@ def mock(space, stack, context = None):
         for i in range(len(stack)):
             frame.as_context_get_shadow(space).push(stack[i])
     interp = TestInterpreter(space)
-    interp.space._image_name.set(IMAGENAME)
     return interp, frame, len(stack)
 
 def _prim(space, code, stack, context = None):
@@ -513,8 +510,19 @@ def test_new_method():
     assert w_method.bytes == ["\x00"] * len(bytecode)
 
 def test_image_name():
+    space.system_attributes[1] = "anImage.image"
     w_v = prim(primitives.IMAGE_NAME, [2])
-    assert w_v.bytes == list(IMAGENAME)
+    assert w_v.bytes == list("anImage.image")
+
+def test_set_image_name(monkeypatch):
+    oldName = space.system_attributes[1]
+    def set_image_name(new_name):
+        assert new_name == "newImageName.image"
+    monkeypatch.setattr(space, "set_image_name", set_image_name)
+    w_r = prim(primitives.IMAGE_NAME, [2, "newImageName.image"])
+    assert space.unwrap_int(w_r) == 2
+    # revert
+    space.system_attributes[1] = oldName
 
 def test_clone():
     w_obj = bootstrap_class(1, varsized=True).as_class_get_shadow(space).new(1)

@@ -2,6 +2,7 @@ import os
 
 from spyvm import constants, model, wrapper, display, storage
 from spyvm.error import UnwrappingError, WrappingError
+from spyvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX
 from rpython.rlib import jit, rpath
 from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin
 from rpython.rlib.rarithmetic import intmask, r_uint, int_between, r_longlong, r_ulonglong, is_valid_int
@@ -61,7 +62,6 @@ class ObjSpace(object):
         self.objtable = {}
         self.system_attributes = {}
         self._executable_path = ConstantString()
-        self._image_name = ConstantString()
         self._display = ConstantObject()
 
         # Create the nil object.
@@ -91,7 +91,7 @@ class ObjSpace(object):
         i = fullpath.rfind(os.path.sep) + 1
         assert i > 0
         self._executable_path.set(fullpath[:i])
-        self._image_name.set(image_name)
+        self.set_image_name(image_name)
         self.image_loaded.activate()
         self.init_system_attributes(argv)
 
@@ -102,7 +102,6 @@ class ObjSpace(object):
         import platform
 
         self.system_attributes[0] = self._executable_path.get()
-        self.system_attributes[1] = self._image_name.get()
 
         self.system_attributes[1001] = platform.system()    # operating system
         self.system_attributes[1002] = platform.version()   # operating system version
@@ -267,7 +266,10 @@ class ObjSpace(object):
         return self._executable_path.get()
 
     def image_name(self):
-        return self._image_name.get()
+        return self.system_attributes[SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX]
+
+    def set_image_name(self, new_image_name):
+        self.system_attributes[SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX] = new_image_name
 
     def display(self):
         disp = self._display.get()
