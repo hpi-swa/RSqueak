@@ -19,6 +19,7 @@ from optparse import OptionParser
 
 CODESPEED_URL = 'http://localhost:80/'
 COMMIT_QUEUE = 'commit-queue'
+SYNC_FILE = os.path.join(os.getcwd(), "bm.lock")
 input_benchmarks = []
 
 
@@ -303,14 +304,13 @@ def reject_unknown_input(vms, benchmarks):
 
 
 def ensure_isolated_benchmark_execution():
-    filename = "bm.lock"
-    print "Test if lock file {} exists.".format(filename)
-    if os.path.isfile(filename):
-        print "Benchmarks script already running, since file '{}' exists. Exit.".format(filename)
+    print "Test if lock file {} exists.".format(SYNC_FILE)
+    if os.path.isfile(SYNC_FILE):
+        print "Benchmarks script already running, since file '{}' exists. Exit.".format(SYNC_FILE)
         sys.exit(0)
     else:
-        open(filename, 'w').close()
-        return filename
+        open(SYNC_FILE, 'w').close()
+        return SYNC_FILE
 
 
 def wait_for_lock(fd):
@@ -340,9 +340,11 @@ def get_next_queued_commit():
         return next_hash
 
 
-def release_lock(filename):
+def delete_sync_file(filename):
+    print "Deleting lock file. {}".format(filename)
     if os.path.isfile(filename):
         os.remove(filename)
+        print "{} deleted.".format(filename)
 
 
 class MissingExecutableException(Exception):
@@ -363,7 +365,7 @@ if __name__ == "__main__":
 
         reject_unknown_input(input_vms, input_benchmarks)
 
-        lock_file = ensure_isolated_benchmark_execution()
+        ensure_isolated_benchmark_execution()
 
         print "Starting benchmark routine for given commits."
         commits_enqueued = True
@@ -389,8 +391,8 @@ if __name__ == "__main__":
 
     except Exception:
         # This does (deliberately) not cover SystemExit or KeyboardInterrupt but all unexpected exceptions
-        release_lock(lock_file)
-        raise
+        delete_sync_file(SYNC_FILE)
+        sys.exit(-1)
 
-    release_lock(lock_file)
+    delete_sync_file(SYNC_FILE)
 
