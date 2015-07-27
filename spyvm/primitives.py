@@ -614,7 +614,7 @@ def func(interp, s_frame, w_frame, stackp):
     w_frame.store(interp.space, constants.CTXPART_STACKP_INDEX, interp.space.wrap_int(stackp))
     return w_frame
 
-def get_instances_array(space, s_frame, w_class=None):
+def get_instances_array(space, s_frame, w_class=None, store=True):
     # This primitive returns some instance of the class on the stack.
     # If no class is given, it returns some object.
     # Not sure quite how to do this; maintain a weak list of all
@@ -650,7 +650,8 @@ def get_instances_array(space, s_frame, w_class=None):
             if rgc.get_gcflag_extra(gcref):
                 rgc.toggle_gcflag_extra(gcref)
                 roots.extend(rgc.get_rpy_referents(gcref))
-        s_frame.store_instances_array(w_class, match_w)
+        if store:
+            s_frame.store_instances_array(w_class, match_w)
     return match_w
 
 @expose_primitive(SOME_INSTANCE, unwrap_spec=[object])
