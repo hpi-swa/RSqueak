@@ -1055,7 +1055,10 @@ def func(interp, s_frame, argument_count):
         s_frame.pop()
         return interp.space.wrap_string(interp.space.image_name())
     elif argument_count == 1:
-        pass # XXX
+        w_arg = s_frame.pop()
+        assert isinstance(w_arg, model.W_BytesObject)
+        interp.space.set_image_name(interp.space.unwrap_string(w_arg))
+        return s_frame.pop()
     raise PrimitiveFailedError
 
 @expose_primitive(LOW_SPACE_SEMAPHORE, unwrap_spec=[object, object])

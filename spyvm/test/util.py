@@ -48,6 +48,7 @@ def read_image(image_filename, space=None, cached=True):
 
 def create_space(bootstrap = bootstrap_by_default):
     space = BootstrappedObjSpace()
+    space.setup()
     if bootstrap:
         space.bootstrap()
     return space
@@ -124,6 +125,11 @@ class TestInterpreter(interpreter.Interpreter):
         assert False, "Frame did not return correctly."
 
 class BootstrappedObjSpace(objspace.ObjSpace):
+
+    def setup(self):
+        self.set_image_name("BootstrappedImage")
+        self.image_loaded.activate()
+        self.init_system_attributes([])
 
     def bootstrap(self):
         # Fill this ObjSpace up with class complete core hierarchies and patch core objects.
