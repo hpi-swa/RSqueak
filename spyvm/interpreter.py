@@ -7,7 +7,7 @@ from spyvm.storage_contexts import ContextPartShadow, ActiveContext, InactiveCon
 from spyvm import model, constants, wrapper, objspace, interpreter_bytecodes, error
 from spyvm.error import MetaPrimFailed
 
-from rpython.rlib import jit, rstackovf, unroll
+from rpython.rlib import jit, rstackovf, unroll, objectmodel, rsignal
 
 
 
@@ -64,6 +64,8 @@ def get_printable_location(pc, self, method):
     name = method.safe_identifier_string()
     return '(%s) [%d]: <%s>%s' % (name, pc, hex(bc), interpreter_bytecodes.BYTECODE_NAMES[bc])
 
+USE_SIGUSR1 = hasattr(rsignal, 'SIGUSR1')
+
 class Interpreter(object):
     _immutable_fields_ = ["space",
                           "image",
@@ -104,6 +106,10 @@ class Interpreter(object):
         self.next_wakeup_tick = 0
         self.trace_proxy = objspace.ConstantFlag()
         self.stack_depth = 0
+
+        if not objectmodel.we_are_translated():
+            if USE_SIGUSR1:
+                rsignal.pypysig_setflag(rsignal.SIGUSR1)
 
     def populate_remaining_special_objects(self):
         for name, idx in constants.objects_in_special_object_table.items():
@@ -241,6 +247,10 @@ class Interpreter(object):
         return context
 
     def step(self, context):
+        if not objectmodel.we_are_translated():
+            if USE_SIGUSR1: self.check_sigusr(context)
+
+
         bytecode = context.fetch_next_bytecode()
         for entry in UNROLLING_BYTECODE_RANGES:
             if len(entry) == 2:
@@ -273,6 +283,11 @@ class Interpreter(object):
         if self.interrupt_check_counter <= 0:
             self.interrupt_check_counter = self.interrupt_counter_size
             self.check_for_interrupts(s_frame)
+
+    def check_sigusr(self, s_frame):
+        poll = rsignal.pypysig_poll()
+        if poll == rsignal.SIGUSR1:
+            print s_frame.print_stack()
 
     def check_for_interrupts(self, s_frame):
         # parallel to Interpreter>>#checkForInterrupts
