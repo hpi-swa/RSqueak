@@ -683,38 +683,46 @@ def get_instances_array(space, s_frame, w_class=None, store=True):
     # Not sure quite how to do this; maintain a weak list of all
     # existing instances or something?
 
-    do_next_object = w_class is None # when calling NEXT_OBJECT
+    do_all = w_class is None
 
     match_w = s_frame.instances_array(w_class)
-    if match_w is None:
-        match_w = []
-        from rpython.rlib import rgc
+    if match_w is not None:
+        return match_w
 
-        roots = [gcref for gcref in rgc.get_rpy_roots() if gcref]
-        pending = roots[:]
-        while pending:
-            gcref = pending.pop()
-            if not rgc.get_gcflag_extra(gcref):
-                rgc.toggle_gcflag_extra(gcref)
-                w_obj = rgc.try_cast_gcref_to_instance(model.W_Object, gcref)
+    # We have no pre-cached list of instances
+    match_w = []
+    from rpython.rlib import rgc
 
-                if w_obj is not None and w_obj.has_class():
-                    # when calling NEXT_OBJECT, we should not return SmallInteger instances
-                    # XXX: same for Character on Spur and SmallFloat64 on Spur64...
-                    is_int = w_obj.getclass(space).is_same_object(space.w_SmallInteger)
-                    if not is_int and (do_next_object or w_obj.getclass(space).is_same_object(w_class)):
-                        match_w.append(w_obj)
+    roots = [gcref for gcref in rgc.get_rpy_roots() if gcref]
+    pending = roots[:]
+    while pending:
+        gcref = pending.pop()
+        if not rgc.get_gcflag_extra(gcref):
+            rgc.toggle_gcflag_extra(gcref)
+            w_obj = rgc.try_cast_gcref_to_instance(model.W_Object, gcref)
 
-                if isinstance(w_obj, model.W_AbstractObjectWithClassReference):
-                    pending.extend(rgc.get_rpy_referents(gcref))
+            if w_obj is not None and w_obj.has_class():
+                w_obj_cls = w_obj.getclass(space)
+                # when calling NEXT_OBJECT, we should not return # SmallInteger
+                # instances
+                # XXX: same for Character on Spur and SmallFloat64 on Spur64...
+                if (not w_obj_cls.is_same_object(space.w_SmallInteger) and
+                    (do_all or w_obj_cls.is_same_object(w_class))):
+                    match_w.append(w_obj)
 
-        while roots:
-            gcref = roots.pop()
-            if rgc.get_gcflag_extra(gcref):
-                rgc.toggle_gcflag_extra(gcref)
-                roots.extend(rgc.get_rpy_referents(gcref))
-        if store:
-            s_frame.store_instances_array(w_class, match_w)
+            if (isinstance(w_obj, model.W_AbstractObjectWithClassReference) or
+                isinstance(w_obj, model.W_CompiledMethod)):
+                pending.extend(rgc.get_rpy_referents(gcref))
+
+    while roots:
+        gcref = roots.pop()
+        if rgc.get_gcflag_extra(gcref):
+            rgc.toggle_gcflag_extra(gcref)
+            roots.extend(rgc.get_rpy_referents(gcref))
+    # ensure we're done (only untranslated)
+    rgc.assert_no_more_gcflags()
+    if store:
+        s_frame.store_instances_array(w_class, match_w)
     return match_w
 
 @expose_primitive(SOME_INSTANCE, unwrap_spec=[object])
