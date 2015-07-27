@@ -392,7 +392,7 @@ if __name__ == "__main__":
     except Exception:
         # This does (deliberately) not cover SystemExit or KeyboardInterrupt but all unexpected exceptions
         delete_sync_file(SYNC_FILE)
-        sys.exit(-1)
+        raise
 
     delete_sync_file(SYNC_FILE)
 
