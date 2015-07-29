@@ -42,6 +42,10 @@ class ConstantObject(object):
     import_from_mixin(ConstantMixin)
     default_value = None
 
+class ConstantVersion(object):
+    import_from_mixin(ConstantMixin)
+    default_value = Version()
+
 def empty_object():
     return instantiate(model.W_PointersObject)
 
@@ -61,7 +65,7 @@ class ObjSpace(object):
         self.classtable = {}
         self.objtable = {}
         self.system_attributes = {}
-        self._system_attribute_version = ConstantObject(Version())
+        self._system_attribute_version = ConstantVersion()
         self._executable_path = ConstantString()
         self._display = ConstantObject()
 
