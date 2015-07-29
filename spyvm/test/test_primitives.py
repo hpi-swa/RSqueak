@@ -486,19 +486,19 @@ def test_new_method():
     assert w_method.bytes == ["\x00"] * len(bytecode)
 
 def test_image_name():
-    space.system_attributes[1] = "anImage.image"
+    space.set_system_attribute(1, "anImage.image")
     w_v = prim(primitives.IMAGE_NAME, [2])
     assert w_v.bytes == list("anImage.image")
 
 def test_set_image_name(monkeypatch):
-    oldName = space.system_attributes[1]
+    oldName = space.get_system_attribute(1)
     def set_image_name(new_name):
         assert new_name == "newImageName.image"
     monkeypatch.setattr(space, "set_image_name", set_image_name)
     w_r = prim(primitives.IMAGE_NAME, [2, "newImageName.image"])
     assert space.unwrap_int(w_r) == 2
     # revert
-    space.system_attributes[1] = oldName
+    space.set_system_attribute(1, oldName)
 
 def test_clone():
     w_obj = bootstrap_class(1, varsized=True).as_class_get_shadow(space).new(1)
@@ -511,7 +511,7 @@ def test_clone():
 def test_primitive_system_attribute():
     assert prim(primitives.SYSTEM_ATTRIBUTE, [space.w_nil, 1337]) == space.w_nil
 
-    space.system_attributes[1001] = "WinuxOS"
+    space.set_system_attribute(1001) = "WinuxOS"
     w_r = prim(primitives.SYSTEM_ATTRIBUTE, [space.w_nil, 1001])
     assert isinstance(w_r, model.W_Object)
     assert space.unwrap_string(w_r) == "WinuxOS"
