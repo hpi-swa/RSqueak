@@ -28,10 +28,8 @@ if [ $exitcode -eq 0 ]; then
     cd ..
     cp rsqueak rsqueak-x86-darwin-jit-$RSQUEAKCOMMIT
     curl -T rsqueak-x86* http://www.lively-kernel.org/babelsberg/RSqueak/
-    curl -T rsqueak-x86* -utimfel:$BINTRAY_KEY https://api.bintray.com/content/hpi-swa-lab/RSqueak/Nightlies/$RSQUEAKCOMMIT/rsqueak-darwin-x86
+    curl -T rsqueak-x86* -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/commits/
     cp rsqueak rsqueak-darwin-latest
     curl -T rsqueak-darwin-latest http://www.lively-kernel.org/babelsberg/RSqueak/
-    curl -T rsqueak-darwin-latest -utimfel:$BINTRAY_KEY https://api.bintray.com/content/hpi-swa-lab/RSqueak/Nightlies/latest/rsqueak-darwin-x86
-    curl -X POST -utimfel:$BINTRAY_KEY https://api.bintray.com/content/hpi-swa-lab/RSqueak/Nightlies/latest/publish 
-    curl -X POST -utimfel:$BINTRAY_KEY https://api.bintray.com/content/hpi-swa-lab/RSqueak/Nightlies/$RSQUEAKCOMMIT/publish 
+    curl -T rsqueak-darwin-latest -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/
 fi

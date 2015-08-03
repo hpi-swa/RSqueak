@@ -63,8 +63,8 @@ esac
 if [ $buildcode -eq 0 ]; then
 	curl -T rsqueak-x86* http://www.lively-kernel.org/babelsberg/RSqueak/ || true
 	curl -T rsqueak-$armv* http://www.lively-kernel.org/babelsberg/RSqueak/ || true
-	curl -T rsqueak-x86* -utimfel:$BINTRAY_KEY https://api.bintray.com/content/hpi-swa-lab/RSqueak/Nightlies/$TRAVIS_COMMIT/rsqueak-linux-x86 || true
-	curl -T rsqueak-$armv* -utimfel:$BINTRAY_KEY https://api.bintray.com/content/hpi-swa-lab/RSqueak/Nightlies/$TRAVIS_COMMIT/rsqueak-linux-$armv || true
+	curl -T rsqueak-x86* -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/commits/ || true
+	curl -T rsqueak-$armv* -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/commits/ || true
 	if [ "$BUILD_ARCH" == "32bit" ]; then
 		curl -v -H "commitid: $TRAVIS_COMMIT" -X POST http://lively-kernel.org/codespeed/ || true
 	fi
@@ -75,17 +75,15 @@ if [ $buildcode -eq 0 ]; then
 					# only builds that pass the jittests are 'latest'
 					cp rsqueak-x86* rsqueak-linux-latest
 					curl -T rsqueak-linux-latest http://www.lively-kernel.org/babelsberg/RSqueak/
-					curl -T rsqueak-linux-latest -utimfel:$BINTRAY_KEY https://api.bintray.com/content/hpi-swa-lab/RSqueak/Nightlies/latest/rsqueak-linux-x86 || true
+					curl -T rsqueak-linux-latest -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/ || true
 				else
 					cp rsqueak-$armv* rsqueak-linux-$armv-latest
 					curl -T rsqueak-linux-$armv-latest http://www.lively-kernel.org/babelsberg/RSqueak/
-					curl -T rsqueak-linux-$armv-latest -utimfel:$BINTRAY_KEY https://api.bintray.com/content/hpi-swa-lab/RSqueak/Nightlies/latest/rsqueak-linux-$armv || true
+					curl -T rsqueak-linux-$armv-latest -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/ || true
 				fi
 			fi
 		fi
     fi
-    curl -X POST -utimfel:$BINTRAY_KEY https://api.bintray.com/content/hpi-swa-lab/RSqueak/Nightlies/latest/publish
-    curl -X POST -utimfel:$BINTRAY_KEY https://api.bintray.com/content/hpi-swa-lab/RSqueak/Nightlies/$TRAVIS_COMMIT/publish
 fi
 exit $exitcode
 exit $exitcode
