@@ -341,12 +341,13 @@ class SDLDisplay(object):
 
 
 class SDLCursorClass(object):
+    """Cursor modification not yet implemented in RSDL2?"""
     _attrs_ = ["cursor", "has_cursor", "has_display"]
 
     instance = None
 
     def __init__(self):
-        self.cursor = lltype.nullptr(RSDL.CursorPtr.TO)
+        # self.cursor = lltype.nullptr(RSDL.CursorPtr.TO)
         self.has_cursor = False
         self.has_display = False
 
@@ -354,14 +355,15 @@ class SDLCursorClass(object):
         if not self.has_display:
             return
         if self.has_cursor:
-            RSDL.FreeCursor(self.cursor)
+            pass
+            # RSDL.FreeCursor(self.cursor)
         data = self.words_to_bytes(len(data_words) * 4, data_words)
         try:
             mask = self.words_to_bytes(len(data_words) * 4, mask_words)
             try:
-                self.cursor = RSDL.CreateCursor(data, mask, w * 2, h, x, y)
+                # self.cursor = RSDL.CreateCursor(data, mask, w * 2, h, x, y)
                 self.has_cursor = True
-                RSDL.SetCursor(self.cursor)
+                # RSDL.SetCursor(self.cursor)
             finally:
                 lltype.free(mask, flavor="raw")
         finally:
