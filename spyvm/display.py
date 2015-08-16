@@ -39,15 +39,18 @@ WindowEventStinks = 6
 MINIMUM_DEPTH = 8
 
 class SDLDisplay(object):
-    _attrs_ = ["screen", "width", "height", "depth", "surface", "has_surface",
+    _attrs_ = ["window", "renderer",
+               "width", "height", "depth", "surface", "has_surface",
                "mouse_position", "button", "key", "interrupt_key", "_defer_updates",
                "_deferred_events", "bpp", "pitch"]
     #_immutable_fields_ = ["pixelbuffer?"]
 
     def __init__(self, title):
         assert RSDL.Init(RSDL.INIT_VIDEO) >= 0
-        RSDL.WM_SetCaption(title, "RSqueakVM")
-        RSDL.EnableUNICODE(1)
+        self.window = None
+        self.renderer = None
+        self.screen_texture = None
+        self.title = title
         RSDL.EnableKeyRepeatWithDefaults()
         SDLCursor.has_display = True
         self.has_surface = False
@@ -65,6 +68,12 @@ class SDLDisplay(object):
         # Close the display.
         RSDL.Quit()
 
+    def create_window_and_renderer(self, x, y, width, height):
+        self.window = RSDL.CreateWindow(self.title, x, y, width, height,
+                RSDL.WINDOW_RESIZABLE)
+        self.renderer = RSDL.CreateRenderer(self.window, -1,
+                RSDL.RENDERER_ACCELERATED)
+
     def set_video_mode(self, w, h, d):
         if not (w > 0 and h > 0):
             return
@@ -74,15 +83,29 @@ class SDLDisplay(object):
         self.width = w
         self.height = h
         self.depth = d
-        flags = RSDL.HWPALETTE | RSDL.RESIZABLE | RSDL.ASYNCBLIT | RSDL.DOUBLEBUF
-        self.screen = RSDL.SetVideoMode(w, h, d, flags)
-        if not self.screen:
-            print "Could not open display at depth %d" % d
-            raise RuntimeError
+        if self.window is None:
+            self.create_window_and_renderer(x=RSDL.WINDOWPOS_UNDEFINED,
+                    y=RSDL.WINDOWPOS_UNDEFINED,
+                    width=w,
+                    height=h)
+        if self.screen_texture is not None:
+            RSDL.DestroyTexture(self.screen_texture)
+        SCREEN_TEXTURE_FORMAT = RSDL.PIXELFORMAT_ARGB8888
+        self.screen_texture = RSDL.CreateTexture(self.renderer,
+                SCREEN_TEXTURE_FORMAT, RSDL.TEXTUREACCESS_STREAMING,
+                w, h)
+        if not self.screen_texture:
+            print "Could not create screen texture"
+            raise RuntimeError(RSDL.GetError())
         elif d == MINIMUM_DEPTH:
             self.set_squeak_colormap(self.screen)
-        self.bpp = rffi.getintfield(self.screen.c_format, 'c_BytesPerPixel')
-        self.pitch = rffi.getintfield(self.screen, 'c_pitch')
+        pixelformat = RSDL.AllocFormat(SCREEN_TEXTURE_FORMAT)
+        assert pixelformat, RSDL.GetError()
+        try:
+            self.bpp = pixelformat.c_BytesPerPixel
+        finally:
+            RSDL.FreeFormat(pixelformat)
+        self.pitch = w * self.bpp
 
     def get_pixelbuffer(self):
         return jit.promote(rffi.cast(RSDL.Uint32P, self.screen.c_pixels))
@@ -136,8 +159,7 @@ class SDLDisplay(object):
     def handle_keypress(self, c_type, event):
         self.key = 0
         p = rffi.cast(RSDL.KeyboardEventPtr, event)
-        sym = rffi.getintfield(p.c_keysym, 'c_sym')
-        char = rffi.getintfield(p.c_keysym, 'c_unicode')
+        sym = p.c_keysym.c_sym
         if sym == RSDL.K_DOWN:
             self.key = key_constants.DOWN
         elif sym == RSDL.K_LEFT:
@@ -162,31 +184,35 @@ class SDLDisplay(object):
             self.key = key_constants.CTRL
         elif sym == RSDL.K_LALT or sym == RSDL.K_RALT:
             self.key = key_constants.COMMAND
-        elif sym == RSDL.K_BREAK:
+        elif sym == RSDL.K_PAUSE:
             self.key = key_constants.BREAK
         elif sym == RSDL.K_CAPSLOCK:
             self.key = key_constants.CAPSLOCK
-        elif sym == RSDL.K_NUMLOCK:
+        elif sym == RSDL.K_NUMLOCKCLEAR:
             self.key = key_constants.NUMLOCK
-        elif sym == RSDL.K_SCROLLOCK:
+        elif sym == RSDL.K_SCROLLLOCK:
             self.key = key_constants.SCROLLOCK
-        elif char != 0:
-            chars = unicode_encode_utf_8(unichr(char), 1, "ignore")
-            if len(chars) == 1:
-                asciivalue = ord(chars[0])
-                if asciivalue >= 32:
-                    self.key = asciivalue
+        else:
+            self.key = rffi.cast(rffi.INT, sym) # use SDL's keycode
+            # this is the lowercase ascii-value for the most common keys
+        # elif char != 0:
+        #     chars = unicode_encode_utf_8(unichr(char), 1, "ignore")
+        #     if len(chars) == 1:
+        #         asciivalue = ord(chars[0])
+        #         if asciivalue >= 32:
+        #             self.key = asciivalue
         if self.key == 0 and sym <= 255:
             self.key = sym
         interrupt = self.interrupt_key
         if (interrupt & 0xFF == self.key and interrupt >> 8 == self.get_modifier_mask(0)):
             raise KeyboardInterrupt
 
-    def handle_videoresize(self, c_type, p_event):
-        p_resize_event = rffi.cast(RSDL.ResizeEventPtr, p_event)
-        self.set_video_mode(rffi.getintfield(p_resize_event, 'c_w'),
-                rffi.getintfield(p_resize_event, 'c_h'),
-                self.depth)
+    def handle_windowevent(self, c_type, event):
+        window_event = rffi.cast(RSDL.WindowEventPtr, event)
+        if window_event.c_event == RSDL.WINDOWEVENT_RESIZED:
+            self.set_video_mode(w=window_event.c_data1,
+                    h=window_event.c_data2,
+                    d=self.depth)
 
     def get_next_mouse_event(self, time):
         mods = self.get_modifier_mask(3)
@@ -223,27 +249,18 @@ class SDLDisplay(object):
         return keycode in [RSDL.K_LSHIFT, RSDL.K_RSHIFT,
                 RSDL.K_LCTRL, RSDL.K_RCTRL,
                 RSDL.K_LALT, RSDL.K_RALT,
-                RSDL.K_LMETA, RSDL.K_RMETA, 
-                RSDL.K_LSUPER, RSDL.K_RSUPER]
-
+                RSDL.K_LGUI, RSDL.K_RGUI]
+	
     def is_character_key(self, p_event):
         """Tells whether the keycode in the KeyboardEvent is either a printable
         or a control character (such as backspace), i. e. this will return False
         for movement and modifier keys.
         The implementation is coupled to SDL's implementation of virtual keycodes."""
         p = rffi.cast(RSDL.KeyboardEventPtr, p_event)
-        keycode = rffi.getintfield(p.c_keysym, 'c_sym')
-        return RSDL.K_BACKSPACE <= keycode <= RSDL.K_z \
-            or RSDL.K_WORLD_0 <= keycode <= RSDL.K_KP_EQUALS \
-            or keycode == RSDL.K_EURO # whoever came up with this being beyond the modifier keys etc...
-	
-    # once RSDL goes with SDL 2.0 the following could be put to use:
-    # def is_character_key(self, p_event):
-    #    p = rffi.cast(RSDL.KeyboardEventPtr, p_event)
-    #    keycode = rffi.getintfield(p.c_keysym, 'c_sym')
-    #    # SDL 2.0 marks non-printable characters with the 31th bit
-    #    # see SDL_SCANCODE_TO_KEYCODE macro
-    #    return keycode != RSDL.K_UNKNOWN and (keycode & (1 << 30)) == 0
+        keycode = p.c_keysym.c_sym
+        # SDL 2.0 marks non-printable characters with the 31th bit
+        # see SDL_SCANCODE_TO_KEYCODE macro
+        return keycode != RSDL.K_UNKNOWN and (keycode & (1 << 30)) == 0
 
     def get_next_event(self, time=0):
         if len(self._deferred_events) > 0:
@@ -265,11 +282,12 @@ class SDLDisplay(object):
                     if not self.is_modifier_key(event):
                         self._deferred_events.append(self.get_next_key_event(EventKeyChar, time))
                     return self.get_next_key_event(EventKeyDown, time)
+                # XXX: handle TEXTINTPUT event
                 elif c_type == RSDL.KEYUP:
                     self.handle_keypress(c_type, event)
                     return self.get_next_key_event(EventKeyUp, time)
-                elif c_type == RSDL.VIDEORESIZE:
-                    self.handle_videoresize(c_type, event)
+                elif c_type == RSDL.WINDOWEVENT:
+                    self.handle_windowevent(c_type, event)
                 #     self.screen = RSDL.GetVideoSurface()
                 #     self._deferred_events.append([EventTypeWindow, time, WindowEventPaint,
                 #                             0, 0, int(self.screen.c_w), int(self.screen.c_h), 0])
