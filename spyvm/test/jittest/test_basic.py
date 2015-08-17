@@ -547,5 +547,7 @@ class TestBasic(BaseJITTest):
         guard_true(i114, descr=<Guard0x92b9790>),
         p115 = getarrayitem_gc(p112, i103, descr=<ArrayP 4>),
         i116 = int_add(i98, 1),
+        i117 = arraylen_gc(p70, descr=<ArrayP 4>),
+        i117 = arraylen_gc(p70, descr=<ArrayP 4>), 
         jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, i116, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, p47, p70, i82, p81, i73, descr=TargetToken(153767216))
         """)
