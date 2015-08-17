@@ -7,12 +7,16 @@ function uploadRsqueak {
   $longfiles = $pscmdlet.GetResolvedProviderPathFromPSPath($pattern, [ref] $provider)
   $longfiles | % { $file = gci $_ ; $files += $file.Name }
   foreach($item in $files) {
-    $url = "http://www.lively-kernel.org/babelsberg/RSqueak/$item"
+    $url = "https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/$item"
     $fullpath = Join-Path $pwd $item
     break
   }
   Write-Host "Uploading $fullpath to $url"
-  Invoke-WebRequest -Method PUT -Uri $url -InFile $fullpath
+  $bytes = [System.Text.Encoding]::ASCII.GetBytes($env:DeployCredentials)
+  $base64 = [System.Convert]::ToBase64String($bytes)
+  $basicAuthValue = "Basic $base64
+  $headers = @{ Authorization = $basicAuthValue }
+  Invoke-WebRequest -Method PUT -Uri $url -InFile $fullpath -Headers $headers
 }
 
 uploadRsqueak "rsqueak-win32-*.exe"
