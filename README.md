@@ -8,8 +8,8 @@ Prebuilt binaries
 * [Windows](http://www.lively-kernel.org/babelsberg/RSqueak/rsqueak-win32-latest.exe) [![Windows Build Status](https://ci.appveyor.com/api/projects/status/e37a79tt5irr7sx1/branch/master?svg=true)](https://ci.appveyor.com/project/timfel/rsqueak)
 
 We also built for Armv7 (Raspberry Pi2, Beagleboard, ...) and Armv6 on the Raspberry Pi 1:
-* [ARMv6](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-armv6raspbian-latest)
-* [ARMv7](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-armv7l-latest)
+* [ARMv6](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-armv6raspbian-latest)
+* [ARMv7](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-armv7l-latest)
 
 ### Finding a working image
 
