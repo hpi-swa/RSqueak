@@ -35,11 +35,11 @@ if %buildscript%==jittests.py (
 )
 
 @echo on
-rem C:\Python27\python %~dp0\..\.build\%buildscript%
+C:\Python27\python %~dp0\..\.build\%buildscript%
 
-rem if %buildscript%==build.py (
-rem   copy %~dp0\..\rsqueak.exe %~dp0\..\rsqueak-win32-%APPVEYOR_REPO_COMMIT%.exe
-rem   powershell -NonInteractive -executionpolicy Unrestricted -command "& { %~dp0\rsqueak-upload.ps1 }"
-rem )
+if %buildscript%==build.py (
+  copy %~dp0\..\rsqueak.exe %~dp0\..\rsqueak-win32-%APPVEYOR_REPO_COMMIT%.exe
+  powershell -NonInteractive -executionpolicy Unrestricted -command "& { %~dp0\rsqueak-upload.ps1 }"
+)
 
 :endofscript
