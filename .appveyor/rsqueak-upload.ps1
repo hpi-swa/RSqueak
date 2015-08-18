@@ -14,7 +14,7 @@ function uploadRsqueak {
   Write-Host "Uploading $fullpath to $url"
   $bytes = [System.Text.Encoding]::ASCII.GetBytes($env:DeployCredentials)
   $base64 = [System.Convert]::ToBase64String($bytes)
-  $basicAuthValue = "Basic $base64
+  $basicAuthValue = "Basic $base64"
   $headers = @{ Authorization = $basicAuthValue }
   Invoke-WebRequest -Method PUT -Uri $url -InFile $fullpath -Headers $headers
 }
@@ -35,7 +35,7 @@ function uploadRsqueakLatest {
   Write-Host "Uploading $fullpath to $url"
   $bytes = [System.Text.Encoding]::ASCII.GetBytes($env:DeployCredentials)
   $base64 = [System.Convert]::ToBase64String($bytes)
-  $basicAuthValue = "Basic $base64
+  $basicAuthValue = "Basic $base64"
   $headers = @{ Authorization = $basicAuthValue }
   Invoke-WebRequest -Method PUT -Uri $url -InFile $fullpath -Headers $headers
 }
