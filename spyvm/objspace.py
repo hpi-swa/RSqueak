@@ -1,6 +1,7 @@
 import os
 
 from spyvm import constants, model, wrapper, display, storage
+from spyvm.util.version import Version
 from spyvm.error import UnwrappingError, WrappingError
 from spyvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX
 from rpython.rlib import jit, rpath
@@ -41,6 +42,10 @@ class ConstantObject(object):
     import_from_mixin(ConstantMixin)
     default_value = None
 
+class ConstantVersion(object):
+    import_from_mixin(ConstantMixin)
+    default_value = Version()
+
 def empty_object():
     return instantiate(model.W_PointersObject)
 
@@ -61,6 +66,7 @@ class ObjSpace(object):
         self.classtable = {}
         self.objtable = {}
         self.system_attributes = {}
+        self._system_attribute_version = ConstantVersion()
         self._executable_path = ConstantString()
         self._display = ConstantObject()
 
@@ -91,24 +97,31 @@ class ObjSpace(object):
         i = fullpath.rfind(os.path.sep) + 1
         assert i > 0
         self._executable_path.set(fullpath[:i])
-        self.set_image_name(image_name)
+        self.set_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, image_name)
         self.image_loaded.activate()
         self.init_system_attributes(argv)
 
     def init_system_attributes(self, argv):
         for i in xrange(1, len(argv)):
-            self.system_attributes[-i] = argv[i]
-
+            self.set_system_attribute(-i, argv[i])
         import platform
+        self.set_system_attribute(0, self._executable_path.get())
+        self.set_system_attribute(1001, platform.system())    # operating system
+        self.set_system_attribute(1002, platform.version())   # operating system version
+        self.set_system_attribute(1003, platform.processor()) # platform's processor type
+        self.set_system_attribute(1004, "0")                  # vm version
+        self.set_system_attribute(1007, "rsqueak")            # interpreter class (invented for Cog)
 
-        self.system_attributes[0] = self._executable_path.get()
+    def get_system_attribute(self, idx):
+        return self._pure_get_system_attribute(idx, self._system_attribute_version.get())
 
-        self.system_attributes[1001] = platform.system()    # operating system
-        self.system_attributes[1002] = platform.version()   # operating system version
-        self.system_attributes[1003] = platform.processor() # platform's processor type
-        self.system_attributes[1004] = "0"                  # vm version
-        self.system_attributes[1007] = "rsqueak"            # interpreter class (invented for Cog)
+    @jit.elidable
+    def _pure_get_system_attribute(self, idx, version):
+        return self.system_attributes[idx]
 
+    def set_system_attribute(self, idx, value):
+        self.system_attributes[idx] = value
+        self._system_attribute_version.set(Version())
 
     def populate_special_objects(self, specials):
         for name, idx in constants.objects_in_special_object_table.items():
@@ -265,17 +278,11 @@ class ObjSpace(object):
     def executable_path(self):
         return self._executable_path.get()
 
-    def image_name(self):
-        return self.system_attributes[SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX]
-
-    def set_image_name(self, new_image_name):
-        self.system_attributes[SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX] = new_image_name
-
     def display(self):
         disp = self._display.get()
         if disp is None:
             # Create lazy to allow headless execution.
-            disp = display.SDLDisplay(self.image_name())
+            disp = display.SDLDisplay(self.get_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX))
             self._display.set(disp)
         return disp
 

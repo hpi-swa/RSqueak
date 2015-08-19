@@ -1105,13 +1105,14 @@ DRAW_RECTANGLE = 127
 
 @expose_primitive(IMAGE_NAME)
 def func(interp, s_frame, argument_count):
+    from spyvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX
     if argument_count == 0:
         s_frame.pop()
-        return interp.space.wrap_string(interp.space.image_name())
+        return interp.space.wrap_string(interp.space.get_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX))
     elif argument_count == 1:
         w_arg = s_frame.pop()
         assert isinstance(w_arg, model.W_BytesObject)
-        interp.space.set_image_name(interp.space.unwrap_string(w_arg))
+        interp.space.set_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, interp.space.unwrap_string(w_arg))
         return s_frame.pop()
     raise PrimitiveFailedError
 
@@ -1308,7 +1309,7 @@ def func(interp, s_frame, w_arg):
 @expose_primitive(SYSTEM_ATTRIBUTE, unwrap_spec=[object, int])
 def func(interp, s_frame, w_receiver, attr_id):
     try:
-        return interp.space.wrap_string("%s" % interp.space.system_attributes[attr_id])
+        return interp.space.wrap_string("%s" % interp.space.get_system_attribute(attr_id))
     except KeyError:
         return interp.space.w_nil
 
