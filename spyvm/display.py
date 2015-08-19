@@ -192,6 +192,8 @@ class SDLDisplay(object):
             self.key = key_constants.NUMLOCK
         elif sym == RSDL.K_SCROLLLOCK:
             self.key = key_constants.SCROLLOCK
+        elif sym == RSDL.K_PRINTSCREEN:
+            self.key = key_constants.PRINT
         else:
             self.key = rffi.cast(rffi.INT, sym) # use SDL's keycode
             # this is the lowercase ascii-value for the most common keys
