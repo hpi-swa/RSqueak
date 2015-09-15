@@ -51,7 +51,6 @@ class SDLDisplay(object):
         self.renderer = None
         self.screen_texture = None
         self.title = title
-        RSDL.EnableKeyRepeatWithDefaults()
         SDLCursor.has_display = True
         self.has_surface = False
         self.mouse_position = [0, 0]

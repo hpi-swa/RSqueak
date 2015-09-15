@@ -9,7 +9,6 @@ from spyvm import display, key_constants
 def stub_sdl(monkeypatch):
     monkeypatch.setattr(RSDL, "PollEvent", lambda *args: 0)
     monkeypatch.setattr(RSDL, "Init", lambda *args: 0)
-    monkeypatch.setattr(RSDL, "EnableKeyRepeatWithDefaults", lambda *args: 0)
     monkeypatch.setattr(RSDL, "Quit", lambda: 0)
 
 @pytest.yield_fixture
