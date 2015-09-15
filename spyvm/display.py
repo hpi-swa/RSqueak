@@ -89,19 +89,25 @@ class SDLDisplay(object):
                     height=h)
         if self.screen_texture is not None:
             RSDL.DestroyTexture(self.screen_texture)
-        SCREEN_TEXTURE_FORMAT = RSDL.PIXELFORMAT_ARGB8888
+        format_by_depth = {
+                8: RSDL.PIXELFORMAT_INDEX8,
+                16: RSDL.PIXELFORMAT_ARGB4444,
+                32: RSDL.PIXELFORMAT_ARGB8888,
+                }
+        screen_texture_format = format_by_depth[d]
         self.screen_texture = RSDL.CreateTexture(self.renderer,
-                SCREEN_TEXTURE_FORMAT, RSDL.TEXTUREACCESS_STREAMING,
+                screen_texture_format, RSDL.TEXTUREACCESS_STREAMING,
                 w, h)
         if not self.screen_texture:
             print "Could not create screen texture"
             raise RuntimeError(RSDL.GetError())
-        elif d == MINIMUM_DEPTH:
-            self.set_squeak_colormap(self.screen)
-        pixelformat = RSDL.AllocFormat(SCREEN_TEXTURE_FORMAT)
+        pixelformat = RSDL.AllocFormat(screen_texture_format)
         assert pixelformat, RSDL.GetError()
         try:
             self.bpp = pixelformat.c_BytesPerPixel
+            # TODO: apply the Squeak color table somehow
+            # if d == MINIMUM_DEPTH:
+            #    self.set_squeak_colormap(self.screen)
         finally:
             RSDL.FreeFormat(pixelformat)
         self.pitch = w * self.bpp
@@ -116,22 +122,26 @@ class SDLDisplay(object):
         if (not self._defer_updates) or force:
             RSDL.Flip(self.screen)
 
-    def set_squeak_colormap(self, screen):
+    def set_squeak_colormap(self, surface):
         # TODO: fix this up from the image
         colors = lltype.malloc(rffi.CArray(RSDL.ColorPtr.TO), 4, flavor='raw')
         colors[0].c_r = rffi.r_uchar(255)
         colors[0].c_g = rffi.r_uchar(255)
         colors[0].c_b = rffi.r_uchar(255)
+        colors[0].c_a = rffi.r_uchar(255)
         colors[1].c_r = rffi.r_uchar(0)
         colors[1].c_g = rffi.r_uchar(0)
         colors[1].c_b = rffi.r_uchar(0)
+        colors[1].c_a = rffi.r_uchar(255)
         colors[2].c_r = rffi.r_uchar(128)
         colors[2].c_g = rffi.r_uchar(128)
         colors[2].c_b = rffi.r_uchar(128)
+        colors[2].c_a = rffi.r_uchar(255)
         colors[3].c_r = rffi.r_uchar(255)
         colors[3].c_g = rffi.r_uchar(255)
         colors[3].c_b = rffi.r_uchar(255)
-        RSDL.SetColors(self.screen, rffi.cast(RSDL.ColorPtr, colors), 0, 4)
+        colors[3].c_a = rffi.r_uchar(255)
+        RSDL.SetPaletteColors(surface.c_format.c_palette, rffi.cast(RSDL.ColorPtr, colors), 0, 4)
         lltype.free(colors, flavor='raw')
 
     def handle_mouse_button(self, c_type, event):
