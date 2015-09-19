@@ -11,39 +11,54 @@ def stub_sdl(monkeypatch):
     monkeypatch.setattr(RSDL, "Init", lambda *args: 0)
     monkeypatch.setattr(RSDL, "Quit", lambda: 0)
 
-@pytest.yield_fixture
-def stub_event(request):
-    p_testevent = lltype.malloc(RSDL.Event, flavor='raw')
-    yield p_testevent
-    lltype.free(p_testevent, flavor='raw')
-
 @pytest.fixture
-def stub_key_event(stub_event, monkeypatch):
-    p_testkeyevent = rffi.cast(RSDL.KeyboardEventPtr, stub_event)
-    def PollEvent_stub(p_event):
-        p_event.c_type = p_testkeyevent.c_type
-        p_keyevent = rffi.cast(RSDL.KeyboardEventPtr, p_event)
-        p_keyevent.c_state = p_testkeyevent.c_state
-        # p_keyevent.c_repeat = p_testkeyevent.c_repeat
-        p_keyevent.c_keysym.c_scancode = p_testkeyevent.c_keysym.c_scancode
-        p_keyevent.c_keysym.c_sym = p_testkeyevent.c_keysym.c_sym
-        p_keyevent.c_keysym.c_mod = p_testkeyevent.c_keysym.c_mod
+def mocked_sdl_event_queue(monkeypatch):
+    from collections import deque
+    queue = deque()
+    def PollEvent_stub(target_event):
+        if len(queue) == 0:
+            return 0
+        next_event = queue.popleft()
+        rffi.c_memcpy(target_event, next_event, rffi.sizeof(RSDL.Event))
         return 1
     monkeypatch.setattr(RSDL, "PollEvent", PollEvent_stub)
+    return queue
+
+class EventFactory(object):
+    def __init__(self):
+        self.events = []
+
+    def malloc(self, type=RSDL.Event):
+        event = lltype.malloc(type, flavor='raw')
+        self.events.append(event)
+        return event
+
+    def free_all(self):
+        for event in self.events:
+            lltype.free(event, flavor='raw')
+
+@pytest.yield_fixture
+def stub_events():
+    factory = EventFactory()
+    try:
+        yield factory
+    finally:
+        factory.free_all()
+
+@pytest.fixture
+def stub_key_event(stub_events):
+    p_testkeyevent = rffi.cast(RSDL.KeyboardEventPtr, stub_events.malloc())
     return p_testkeyevent
 
 @pytest.fixture
-def stub_window_event(stub_event, monkeypatch):
-    p_test_window_event = rffi.cast(RSDL.WindowEventPtr, stub_event)
+def stub_textinput_event(stub_events):
+    testinputevent = rffi.cast(RSDL.TextInputEventPtr, stub_events.malloc())
+    return testinputevent
+
+@pytest.fixture
+def stub_window_event(stub_events):
+    p_test_window_event = rffi.cast(RSDL.WindowEventPtr, stub_events.malloc())
     p_test_window_event.c_type = RSDL.WINDOWEVENT
-    def PollEvent_stub(p_event):
-        p_event.c_type = p_test_window_event.c_type
-        p_windowevent = rffi.cast(RSDL.WindowEventPtr, p_event)
-        p_windowevent.c_event = p_test_window_event.c_event
-        p_windowevent.c_data1 = p_test_window_event.c_data1
-        p_windowevent.c_data2 = p_test_window_event.c_data2
-        return 1
-    monkeypatch.setattr(RSDL, "PollEvent", PollEvent_stub)
     return p_test_window_event
 
 class ModHolder(object):
@@ -63,41 +78,47 @@ def sut():
     return display.SDLDisplay("test")
 
 def assert_keyevent_array(actual, expected_char_code=None,
-        expected_press_state=None, expected_modifiers=None):
+        expected_key_event_type=None, expected_modifiers=None):
     assert len(actual) == 8
     assert actual[0] != 0, "event polled unexpectedly"
     assert actual[0] == display.EventTypeKeyboard
     if expected_char_code:
         assert actual[2] == expected_char_code
-    if expected_press_state:
-        assert actual[3] == expected_press_state
+    if expected_key_event_type:
+        assert actual[3] == expected_key_event_type
     if expected_modifiers:
         assert actual[4] == expected_modifiers
 
-def test_keypresses(sut, stub_key_event):
-    assert_keypress(sut, stub_key_event, RSDL.K_a, ord('a'))
-    assert_keypress(sut, stub_key_event, RSDL.K_b, ord('b'))
+def test_keypresses(sut, mocked_sdl_event_queue, stub_events):
+    assert_keypress(sut, mocked_sdl_event_queue, stub_events, RSDL.K_a, 'a')
+    assert_keypress(sut, mocked_sdl_event_queue, stub_events, RSDL.K_b, 'b')
 
 ## jr: Would it be more appropriate to raise a KeyDown event only once when the
 ##     user actually pushes the key down? Currently, the event is reraised
 ##     whenever the KeyChar event is reraised because of repeated keys.
 
-def assert_keypress(sut, stub_key_event, sdl_key, char_code):
-    stub_key_event.c_type = RSDL.KEYDOWN
-    stub_key_event.c_keysym.c_sym = sdl_key
-    result = sut.get_next_event()
-    assert_keyevent_array(result, char_code, display.EventKeyDown, 0)
-    stub_key_event.c_type = rffi.r_uint(0)  # don't expect this to appear
-    result = sut.get_next_event()
-    assert_keyevent_array(result, char_code, display.EventKeyChar, 0)
-    stub_key_event.c_type = RSDL.KEYUP
-    stub_key_event.c_keysym.c_sym = sdl_key
-    result = sut.get_next_event()
-    assert_keyevent_array(result, char_code, display.EventKeyUp, 0)
+def assert_keypress(sut, mocked_sdl_event_queue, stub_events, sdl_key, char):
+    # given
+    keydown = stub_events.malloc(RSDL.KeyboardEvent)
+    keydown.c_type = RSDL.KEYDOWN
+    keydown.c_keysym.c_sym = sdl_key
+    keyup = stub_events.malloc(RSDL.KeyboardEvent)
+    keyup.c_type = RSDL.KEYUP
+    keyup.c_keysym.c_sym = sdl_key
+    mocked_sdl_event_queue.append(keydown)
+    mocked_sdl_event_queue.append(keyup)
+    # when
+    first_event = sut.get_next_event()
+    second_event = sut.get_next_event()
+    third_event = sut.get_next_event()
+    # then
+    assert_keyevent_array(first_event, ord(char), display.EventKeyDown, 0)
+    assert_keyevent_array(second_event, ord(char), display.EventKeyChar, 0)
+    assert_keyevent_array(third_event, ord(char), display.EventKeyUp, 0)
 
-def test_modifiers_do_not_cause_keychar_event(sut, stub_key_event, stub_mod_state):
+def test_modifiers_do_not_cause_keychar_event(sut, mocked_sdl_event_queue, stub_key_event, stub_mod_state):
     def assert_key(key, sdl_mod, char_code, modifiers):
-        assert_does_not_generate_keychar_events(sut, stub_key_event, stub_mod_state, key, sdl_mod, char_code, modifiers)
+        assert_does_not_generate_keychar_events(sut, mocked_sdl_event_queue, stub_key_event, stub_mod_state, key, sdl_mod, char_code, modifiers)
     assert_key(RSDL.K_LSHIFT, RSDL.KMOD_LSHIFT, key_constants.SHIFT, display.ShiftKeyBit)
     assert_key(RSDL.K_RSHIFT, RSDL.KMOD_RSHIFT, key_constants.SHIFT, display.ShiftKeyBit)
     assert_key(RSDL.K_LCTRL, RSDL.KMOD_LCTRL, key_constants.CTRL, display.CtrlKeyBit)
@@ -107,23 +128,25 @@ def test_modifiers_do_not_cause_keychar_event(sut, stub_key_event, stub_mod_stat
     assert_key(RSDL.K_LGUI, RSDL.KMOD_NONE, None, None)
     assert_key(RSDL.K_RGUI, RSDL.KMOD_NONE, None, None)
 
-def assert_does_not_generate_keychar_events(sut, stub_key_event, stub_mod_state, key, sdl_modifier, expected_char_code, expected_modifiers):
+def assert_does_not_generate_keychar_events(sut, mocked_sdl_event_queue, stub_key_event, stub_mod_state, key, sdl_modifier, expected_char_code, expected_modifiers):
     rffi.setintfield(stub_key_event, 'c_type', RSDL.KEYDOWN)
     rffi.setintfield(stub_key_event.c_keysym, 'c_sym', key)
     stub_mod_state.set(sdl_modifier)
+    mocked_sdl_event_queue.append(stub_key_event)
     result = sut.get_next_event()
     assert_keyevent_array(result, expected_char_code, display.EventKeyDown, expected_modifiers)
+    mocked_sdl_event_queue.append(stub_key_event)
     result = sut.get_next_event()
     assert_keyevent_array(result, expected_char_code, display.EventKeyDown, expected_modifiers)
     rffi.setintfield(stub_key_event, 'c_type', RSDL.KEYUP)
     stub_mod_state.set(RSDL.KMOD_NONE)
+    mocked_sdl_event_queue.append(stub_key_event)
     result = sut.get_next_event()
     assert_keyevent_array(result, expected_char_code, display.EventKeyUp, 0)
 
-def test_movement_keys(sut, stub_key_event):
+def test_movement_keys(sut, mocked_sdl_event_queue, stub_events):
     def assert_key(key, expected_char_code):
-        assert_keypress(sut, stub_key_event, key, expected_char_code)
-    # no loop for test output tracability
+        assert_keypress(sut, mocked_sdl_event_queue, stub_events, key, chr(expected_char_code))
     assert_key(RSDL.K_LEFT, key_constants.LEFT)
     assert_key(RSDL.K_RIGHT, key_constants.RIGHT)
     assert_key(RSDL.K_UP, key_constants.UP)
@@ -133,10 +156,9 @@ def test_movement_keys(sut, stub_key_event):
     assert_key(RSDL.K_PAGEUP, key_constants.PAGEUP)
     assert_key(RSDL.K_PAGEDOWN, key_constants.PAGEDOWN)
 
-def test_other_keys(sut, stub_key_event):
+def test_other_keys(sut, mocked_sdl_event_queue, stub_events):
     def assert_key(key, expected_char_code):
-        assert_keypress(sut, stub_key_event, key, expected_char_code)
-    # no loop for test output tracability
+        assert_keypress(sut, mocked_sdl_event_queue, stub_events, key, chr(expected_char_code))
     assert_key(RSDL.K_INSERT, key_constants.INSERT)
     assert_key(RSDL.K_RETURN, key_constants.RETURN)
     assert_key(RSDL.K_PAUSE, key_constants.BREAK)
@@ -151,56 +173,91 @@ def test_other_keys(sut, stub_key_event):
 # and Editor class >> initializeKeystrokeActions
 # char code can be different between keyChar and keyDown events (as we know from SWA)
 
-def test_entering_captital_letters(sut, stub_key_event, stub_mod_state):
+def test_entering_captital_letters(sut, mocked_sdl_event_queue, stub_events, stub_mod_state):
+    # when
     # shift down
-    stub_key_event.c_type = RSDL.KEYDOWN
-    stub_key_event.c_keysym.c_sym = RSDL.K_LSHIFT
+    shift_down = stub_events.malloc(RSDL.KeyboardEvent)
+    shift_down.c_type = RSDL.KEYDOWN
+    shift_down.c_keysym.c_sym = RSDL.K_LSHIFT
+    mocked_sdl_event_queue.append(shift_down)
     stub_mod_state.set(RSDL.KMOD_SHIFT)
-    result = sut.get_next_event()
-    assert_keyevent_array(result, key_constants.SHIFT, display.EventKeyDown, display.ShiftKeyBit)
+    sqShiftDown = sut.get_next_event()
     # A down
-    stub_key_event.c_keysym.c_sym = RSDL.K_a
-    result = sut.get_next_event()
-    assert_keyevent_array(result, ord('A'), display.EventKeyDown, display.ShiftKeyBit)
+    a_down = stub_events.malloc(RSDL.KeyboardEvent)
+    a_down.c_type = RSDL.KEYDOWN
+    a_down.c_keysym.c_sym = RSDL.K_a
+    mocked_sdl_event_queue.append(a_down)
+    sqADown = sut.get_next_event()
     # A entered
-    result = sut.get_next_event()
-    assert_keyevent_array(result, ord('A'), display.EventKeyChar, display.ShiftKeyBit)
+    sqAStroke = sut.get_next_event()
+    # repeat A
+    mocked_sdl_event_queue.append(a_down)
+    sqADown2 = sut.get_next_event()
+    sqAStroke2 = sut.get_next_event()
     # A up
-    stub_key_event.c_type = RSDL.KEYUP
-    result = sut.get_next_event()
-    assert_keyevent_array(result, ord('A'), display.EventKeyUp, display.ShiftKeyBit)
+    a_up = stub_events.malloc(RSDL.KeyboardEvent)
+    a_up.c_type = RSDL.KEYUP
+    a_up.c_keysym.c_sym = RSDL.K_a
+    mocked_sdl_event_queue.append(a_up)
+    sqAUp = sut.get_next_event()
     # shift up
-    stub_key_event.c_keysym.c_sym = RSDL.K_LSHIFT
-    result = sut.get_next_event()
-    assert_keyevent_array(result, key_constants.SHIFT, display.EventKeyUp, 0)
-
-def test_keyboard_chords(sut, stub_key_event, stub_mod_state):
-    # CTRL down
-    stub_key_event.c_type = RSDL.KEYDOWN
-    stub_key_event.c_keysym.c_sym = RSDL.K_LCTRL
-    stub_mod_state.set(RSDL.KMOD_CTRL)
-    result = sut.get_next_event()
-    assert_keyevent_array(result, key_constants.CTRL, display.EventKeyDown, display.CtrlKeyBit)
-    # A down
-    stub_key_event.c_keysym.c_sym = RSDL.K_a
-    result = sut.get_next_event()
-    assert_keyevent_array(result, ord('a'), display.EventKeyDown, display.CtrlKeyBit)
-    result = sut.get_next_event()
-    assert_keyevent_array(result, ord('a'), display.EventKeyChar, display.CtrlKeyBit)
-    # repeat A down
-    result = sut.get_next_event()
-    assert_keyevent_array(result, ord('a'), display.EventKeyDown, display.CtrlKeyBit)
-    result = sut.get_next_event()
-    assert_keyevent_array(result, ord('a'), display.EventKeyChar, display.CtrlKeyBit)
-    # A up
-    stub_key_event.c_type = RSDL.KEYUP
-    result = sut.get_next_event()
-    assert_keyevent_array(result, ord('a'), display.EventKeyUp, display.CtrlKeyBit)
-    # CTRL up
-    stub_key_event.c_keysym.c_sym = RSDL.K_LCTRL
+    shift_up = stub_events.malloc(RSDL.KeyboardEvent)
+    shift_up.c_type = RSDL.KEYUP
+    shift_up.c_keysym.c_sym = RSDL.K_LSHIFT
+    mocked_sdl_event_queue.append(shift_up)
     stub_mod_state.set(RSDL.KMOD_NONE)
-    result = sut.get_next_event()
-    assert_keyevent_array(result, key_constants.CTRL, display.EventKeyUp, 0)
+    sqShiftUp = sut.get_next_event()
+    # then
+    assert_keyevent_array(sqShiftDown, key_constants.SHIFT, display.EventKeyDown, display.ShiftKeyBit)
+    assert_keyevent_array(sqADown, ord('A'), display.EventKeyDown, display.ShiftKeyBit)
+    assert_keyevent_array(sqAStroke, ord('A'), display.EventKeyChar, display.ShiftKeyBit)
+    assert_keyevent_array(sqADown2, ord('A'), display.EventKeyDown, display.ShiftKeyBit)
+    assert_keyevent_array(sqAStroke2, ord('A'), display.EventKeyChar, display.ShiftKeyBit)
+    assert_keyevent_array(sqAUp, ord('A'), display.EventKeyUp, display.ShiftKeyBit)
+    assert_keyevent_array(sqShiftUp, key_constants.SHIFT, display.EventKeyUp, 0)
+
+def test_keyboard_chords(sut, mocked_sdl_event_queue, stub_events, stub_mod_state):
+    # when
+    # CTRL down
+    ctrl_down = stub_events.malloc(RSDL.KeyboardEvent)
+    ctrl_down.c_type = RSDL.KEYDOWN
+    ctrl_down.c_keysym.c_sym = RSDL.K_LCTRL
+    mocked_sdl_event_queue.append(ctrl_down)
+    stub_mod_state.set(RSDL.KMOD_CTRL)
+    sqCtrlDown = sut.get_next_event()
+    # A down
+    a_down = stub_events.malloc(RSDL.KeyboardEvent)
+    a_down.c_type = RSDL.KEYDOWN
+    a_down.c_keysym.c_sym = RSDL.K_a
+    mocked_sdl_event_queue.append(a_down)
+    sqADown = sut.get_next_event()
+    # A entered
+    sqAStroke = sut.get_next_event()
+    # repeat A
+    mocked_sdl_event_queue.append(a_down)
+    sqADown2 = sut.get_next_event()
+    sqAStroke2 = sut.get_next_event()
+    # A up
+    a_up = stub_events.malloc(RSDL.KeyboardEvent)
+    a_up.c_type = RSDL.KEYUP
+    a_up.c_keysym.c_sym = RSDL.K_a
+    mocked_sdl_event_queue.append(a_up)
+    sqAUp = sut.get_next_event()
+    # CTRL up
+    ctrl_up = stub_events.malloc(RSDL.KeyboardEvent)
+    ctrl_up.c_type = RSDL.KEYUP
+    ctrl_up.c_keysym.c_sym = RSDL.K_LCTRL
+    mocked_sdl_event_queue.append(ctrl_up)
+    stub_mod_state.set(RSDL.KMOD_NONE)
+    sqCtrlUp = sut.get_next_event()
+    # then
+    assert_keyevent_array(sqCtrlDown, key_constants.CTRL, display.EventKeyDown, display.CtrlKeyBit)
+    assert_keyevent_array(sqADown, ord('a'), display.EventKeyDown, display.CtrlKeyBit)
+    assert_keyevent_array(sqAStroke, ord('a'), display.EventKeyChar, display.CtrlKeyBit)
+    assert_keyevent_array(sqADown2, ord('a'), display.EventKeyDown, display.CtrlKeyBit)
+    assert_keyevent_array(sqAStroke2, ord('a'), display.EventKeyChar, display.CtrlKeyBit)
+    assert_keyevent_array(sqAUp, ord('a'), display.EventKeyUp, display.CtrlKeyBit)
+    assert_keyevent_array(sqCtrlUp, key_constants.CTRL, display.EventKeyUp, 0)
 
 @pytest.fixture
 def stub_screen_texture_creation(monkeypatch):
@@ -225,11 +282,12 @@ def stub_screen_texture_creation(monkeypatch):
     monkeypatch.setattr(RSDL, 'DestroyTexture', capture_destroy_texture)
     return capture_buffer
 
-def test_window_resize_events(sut, stub_window_event, stub_screen_texture_creation):
+def test_window_resize_events(sut, mocked_sdl_event_queue, stub_window_event, stub_screen_texture_creation):
     def assert_updated_metrics(width, height):
         stub_window_event.c_event = RSDL.WINDOWEVENT_RESIZED
         stub_window_event.c_data1 = width
         stub_window_event.c_data2 = height
+        mocked_sdl_event_queue.append(stub_window_event)
         result = sut.get_next_event()
         # TODO: decide whether no events or windowmetric events should be raised
         assert sut.width == width
@@ -237,13 +295,14 @@ def test_window_resize_events(sut, stub_window_event, stub_screen_texture_creati
     assert_updated_metrics(300, 200)
     assert_updated_metrics(1024, 768)
 
-def test_display_resize_on_resize_events(sut, stub_window_event,
+def test_display_resize_on_resize_events(sut, mocked_sdl_event_queue, stub_window_event,
         stub_screen_texture_creation, monkeypatch):
     def assert_updated_metrics(width, height, check_destroy,
             assert_destroyed_last=True):
         stub_window_event.c_event = RSDL.WINDOWEVENT_RESIZED
         stub_window_event.c_data1 = width
         stub_window_event.c_data2 = height
+        mocked_sdl_event_queue.append(stub_window_event)
         result = sut.get_next_event()
         stub_screen_texture_creation.reverse()
         if check_destroy:
