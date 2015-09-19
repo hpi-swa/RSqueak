@@ -102,10 +102,15 @@ def assert_keypress(sut, mocked_sdl_event_queue, stub_events, sdl_key, char):
     keydown = stub_events.malloc(RSDL.KeyboardEvent)
     keydown.c_type = RSDL.KEYDOWN
     keydown.c_keysym.c_sym = sdl_key
+    textinput = stub_events.malloc(RSDL.TextInputEvent)
+    textinput.c_type = RSDL.TEXTINPUT
+    rffi.str2chararray(str(char) + '\x00', textinput.c_text,
+            RSDL.TEXTINPUTEVENT_TEXT_SIZE)
     keyup = stub_events.malloc(RSDL.KeyboardEvent)
     keyup.c_type = RSDL.KEYUP
     keyup.c_keysym.c_sym = sdl_key
     mocked_sdl_event_queue.append(keydown)
+    mocked_sdl_event_queue.append(textinput)
     mocked_sdl_event_queue.append(keyup)
     # when
     first_event = sut.get_next_event()
@@ -115,6 +120,25 @@ def assert_keypress(sut, mocked_sdl_event_queue, stub_events, sdl_key, char):
     assert_keyevent_array(first_event, ord(char), display.EventKeyDown, 0)
     assert_keyevent_array(second_event, ord(char), display.EventKeyChar, 0)
     assert_keyevent_array(third_event, ord(char), display.EventKeyUp, 0)
+
+def assert_keydownup(display_under_test, mocked_sdl_event_queue, stub_events, sdl_key, char):
+    # given
+    keydown = stub_events.malloc(RSDL.KeyboardEvent)
+    keydown.c_type = RSDL.KEYDOWN
+    keydown.c_keysym.c_sym = sdl_key
+    keyup = stub_events.malloc(RSDL.KeyboardEvent)
+    keyup.c_type = RSDL.KEYUP
+    keyup.c_keysym.c_sym = sdl_key
+    mocked_sdl_event_queue.append(keydown)
+    mocked_sdl_event_queue.append(keyup)
+    # when
+    sqKeyDown = display_under_test.get_next_event()
+    sqKeyStroke = display_under_test.get_next_event()
+    sqKeyUp = display_under_test.get_next_event()
+    # then
+    assert_keyevent_array(sqKeyDown, ord(char), display.EventKeyDown, 0)
+    assert_keyevent_array(sqKeyStroke, ord(char), display.EventKeyChar, 0)
+    assert_keyevent_array(sqKeyUp, ord(char), display.EventKeyUp, 0)
 
 def test_modifiers_do_not_cause_keychar_event(sut, mocked_sdl_event_queue, stub_key_event, stub_mod_state):
     def assert_key(key, sdl_mod, char_code, modifiers):
@@ -146,7 +170,7 @@ def assert_does_not_generate_keychar_events(sut, mocked_sdl_event_queue, stub_ke
 
 def test_movement_keys(sut, mocked_sdl_event_queue, stub_events):
     def assert_key(key, expected_char_code):
-        assert_keypress(sut, mocked_sdl_event_queue, stub_events, key, chr(expected_char_code))
+        assert_keydownup(sut, mocked_sdl_event_queue, stub_events, key, chr(expected_char_code))
     assert_key(RSDL.K_LEFT, key_constants.LEFT)
     assert_key(RSDL.K_RIGHT, key_constants.RIGHT)
     assert_key(RSDL.K_UP, key_constants.UP)
@@ -158,7 +182,7 @@ def test_movement_keys(sut, mocked_sdl_event_queue, stub_events):
 
 def test_other_keys(sut, mocked_sdl_event_queue, stub_events):
     def assert_key(key, expected_char_code):
-        assert_keypress(sut, mocked_sdl_event_queue, stub_events, key, chr(expected_char_code))
+        assert_keydownup(sut, mocked_sdl_event_queue, stub_events, key, chr(expected_char_code))
     assert_key(RSDL.K_INSERT, key_constants.INSERT)
     assert_key(RSDL.K_RETURN, key_constants.RETURN)
     assert_key(RSDL.K_PAUSE, key_constants.BREAK)
@@ -189,9 +213,14 @@ def test_entering_captital_letters(sut, mocked_sdl_event_queue, stub_events, stu
     mocked_sdl_event_queue.append(a_down)
     sqADown = sut.get_next_event()
     # A entered
+    a_textinput = stub_events.malloc(RSDL.TextInputEvent)
+    a_textinput.c_type = RSDL.TEXTINPUT
+    rffi.str2chararray('A\x00', a_textinput.c_text, RSDL.TEXTINPUTEVENT_TEXT_SIZE)
+    mocked_sdl_event_queue.append(a_textinput)
     sqAStroke = sut.get_next_event()
-    # repeat A
+    # repeat A entered
     mocked_sdl_event_queue.append(a_down)
+    mocked_sdl_event_queue.append(a_textinput)
     sqADown2 = sut.get_next_event()
     sqAStroke2 = sut.get_next_event()
     # A up

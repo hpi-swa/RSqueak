@@ -165,7 +165,7 @@ class SDLDisplay(object):
         y = rffi.getintfield(m, "c_y")
         self.mouse_position = [x, y]
 
-    def handle_keypress(self, c_type, event):
+    def handle_keyboard_event(self, c_type, event):
         self.key = 0
         p = rffi.cast(RSDL.KeyboardEventPtr, event)
         sym = p.c_keysym.c_sym
@@ -218,6 +218,13 @@ class SDLDisplay(object):
         if (interrupt & 0xFF == self.key and interrupt >> 8 == self.get_modifier_mask(0)):
             raise KeyboardInterrupt
 
+    def handle_textinput_event(self, event):
+        textinput = rffi.cast(RSDL.TextInputEventPtr, event)
+        self.key = ord(rffi.charp2str(textinput.c_text)[0])
+        # XXX: textinput.c_text could contain multiple characters
+        #      so probably multiple Squeak events must be emitted
+        #      moreover, this is UTF-8 so umlauts etc. have to be decoded
+
     def handle_windowevent(self, c_type, event):
         window_event = rffi.cast(RSDL.WindowEventPtr, event)
         if window_event.c_event == RSDL.WINDOWEVENT_RESIZED:
@@ -242,36 +249,17 @@ class SDLDisplay(object):
                 0,
                 0]
 
-    def get_next_key_event(self, t, time):
+    def get_next_key_event(self, key_event_type, time):
         mods = self.get_modifier_mask(0)
         btn = self.button
         return [EventTypeKeyboard,
                 time,
                 self.key,
-                t,
+                key_event_type,
                 mods,
                 self.key,
                 0,
                 0]
-
-    def is_modifier_key(self, p_event):
-        p = rffi.cast(RSDL.KeyboardEventPtr, p_event)
-        keycode = rffi.getintfield(p.c_keysym, 'c_sym')
-        return keycode in [RSDL.K_LSHIFT, RSDL.K_RSHIFT,
-                RSDL.K_LCTRL, RSDL.K_RCTRL,
-                RSDL.K_LALT, RSDL.K_RALT,
-                RSDL.K_LGUI, RSDL.K_RGUI]
-	
-    def is_character_key(self, p_event):
-        """Tells whether the keycode in the KeyboardEvent is either a printable
-        or a control character (such as backspace), i. e. this will return False
-        for movement and modifier keys.
-        The implementation is coupled to SDL's implementation of virtual keycodes."""
-        p = rffi.cast(RSDL.KeyboardEventPtr, p_event)
-        keycode = p.c_keysym.c_sym
-        # SDL 2.0 marks non-printable characters with the 31th bit
-        # see SDL_SCANCODE_TO_KEYCODE macro
-        return keycode != RSDL.K_UNKNOWN and (keycode & (1 << 30)) == 0
 
     def get_next_event(self, time=0):
         if len(self._deferred_events) > 0:
@@ -280,25 +268,32 @@ class SDLDisplay(object):
 
         event = lltype.malloc(RSDL.Event, flavor="raw")
         try:
-            if rffi.cast(lltype.Signed, RSDL.PollEvent(event)) == 1:
-                c_type = rffi.getintfield(event, 'c_type')
-                if c_type in [RSDL.MOUSEBUTTONDOWN, RSDL.MOUSEBUTTONUP]:
-                    self.handle_mouse_button(c_type, event)
+            if RSDL.PollEvent(event) == 1:
+                event_type = event.c_type
+                if event_type in [RSDL.MOUSEBUTTONDOWN, RSDL.MOUSEBUTTONUP]:
+                    self.handle_mouse_button(event_type, event)
                     return self.get_next_mouse_event(time)
-                elif c_type == RSDL.MOUSEMOTION:
-                    self.handle_mouse_move(c_type, event)
+                elif event_type == RSDL.MOUSEMOTION:
+                    self.handle_mouse_move(event_type, event)
                     return self.get_next_mouse_event(time)
-                elif c_type == RSDL.KEYDOWN:
-                    self.handle_keypress(c_type, event)
-                    if not self.is_modifier_key(event):
-                        self._deferred_events.append(self.get_next_key_event(EventKeyChar, time))
+                elif event_type == RSDL.KEYDOWN:
+                    self.handle_keyboard_event(event_type, event)
+                    if not self.is_modifier_key(self.key) and (
+                            self.is_control_key(self.key)
+                            or RSDL.GetModState() & ~RSDL.KMOD_SHIFT != 0):
+                        # no TEXTINPUT event for this key will follow
+                        # but Squeak needs a KeyStroke anyway
+                        self._deferred_events.append(
+                                self.get_next_key_event(EventKeyChar, time))
                     return self.get_next_key_event(EventKeyDown, time)
-                # XXX: handle TEXTINTPUT event
-                elif c_type == RSDL.KEYUP:
-                    self.handle_keypress(c_type, event)
+                elif event_type == RSDL.TEXTINPUT:
+                    self.handle_textinput_event(event)
+                    return self.get_next_key_event(EventKeyChar, time)
+                elif event_type == RSDL.KEYUP:
+                    self.handle_keyboard_event(event_type, event)
                     return self.get_next_key_event(EventKeyUp, time)
-                elif c_type == RSDL.WINDOWEVENT:
-                    self.handle_windowevent(c_type, event)
+                elif event_type == RSDL.WINDOWEVENT:
+                    self.handle_windowevent(event_type, event)
                 #     self.screen = RSDL.GetVideoSurface()
                 #     self._deferred_events.append([EventTypeWindow, time, WindowEventPaint,
                 #                             0, 0, int(self.screen.c_w), int(self.screen.c_h), 0])
@@ -308,11 +303,25 @@ class SDLDisplay(object):
                 #     self._deferred_events([EventTypeWindow, time, WindowEventPaint,
                 #                             0, 0, int(self.screen.c_w), int(self.screen.c_h), 0])
                 #     return [EventTypeWindow, time, WindowEventActivated, 0, 0, 0, 0, 0]
-                elif c_type == RSDL.QUIT:
+                elif event_type == RSDL.QUIT:
                     return [EventTypeWindow, time, WindowEventClose, 0, 0, 0, 0, 0]
         finally:
             lltype.free(event, flavor='raw')
         return [EventTypeNone, 0, 0, 0, 0, 0, 0, 0]
+
+    def is_control_key(self, key_ord):
+        return key_ord < 32 or key_ord in [
+                key_constants.DELETE,
+                key_constants.NUMLOCK,
+                key_constants.SCROLLLOCK
+                ]
+
+    def is_modifier_key(self, key_ord):
+        return key_ord in [
+                key_constants.COMMAND,
+                key_constants.CTRL,
+                key_constants.SHIFT
+                ]
 
     # Old style event handling
     def pump_events(self):
