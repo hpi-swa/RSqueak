@@ -191,7 +191,7 @@ def test_other_keys(sut, mocked_sdl_event_queue, stub_events):
     assert_key(RSDL.K_PRINTSCREEN, key_constants.PRINT)
     assert_key(RSDL.K_DELETE, key_constants.DELETE)
     assert_key(RSDL.K_NUMLOCKCLEAR, key_constants.NUMLOCK)
-    assert_key(RSDL.K_SCROLLLOCK, key_constants.SCROLLOCK)
+    assert_key(RSDL.K_SCROLLLOCK, key_constants.SCROLLLOCK)
 
 # see Character class methods (delete, end, home, ...)
 # and Editor class >> initializeKeystrokeActions

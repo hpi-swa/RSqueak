@@ -200,7 +200,7 @@ class SDLDisplay(object):
         elif sym == RSDL.K_NUMLOCKCLEAR:
             self.key = key_constants.NUMLOCK
         elif sym == RSDL.K_SCROLLLOCK:
-            self.key = key_constants.SCROLLOCK
+            self.key = key_constants.SCROLLLOCK
         elif sym == RSDL.K_PRINTSCREEN:
             self.key = key_constants.PRINT
         else:
