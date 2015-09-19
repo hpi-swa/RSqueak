@@ -188,7 +188,7 @@ def test_other_keys(sut, mocked_sdl_event_queue, stub_events):
     assert_key(RSDL.K_PAUSE, key_constants.BREAK)
     assert_key(RSDL.K_CAPSLOCK, key_constants.CAPSLOCK)
     assert_key(RSDL.K_ESCAPE, key_constants.ESCAPE)
-    assert_key(RSDL.K_PRINTSCREEN, key_constants.PRINT)
+    #assert_key(RSDL.K_PRINTSCREEN, key_constants.PRINT) # how to try it out?
     assert_key(RSDL.K_DELETE, key_constants.DELETE)
     assert_key(RSDL.K_NUMLOCKCLEAR, key_constants.NUMLOCK)
     assert_key(RSDL.K_SCROLLLOCK, key_constants.SCROLLLOCK)
