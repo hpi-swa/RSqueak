@@ -285,12 +285,14 @@ class SDLDisplay(object):
                         # but Squeak needs a KeyStroke anyway
                         self._deferred_events.append(
                                 self.get_next_key_event(EventKeyChar, time))
+                    self.fix_key_code_case()
                     return self.get_next_key_event(EventKeyDown, time)
                 elif event_type == RSDL.TEXTINPUT:
                     self.handle_textinput_event(event)
                     return self.get_next_key_event(EventKeyChar, time)
                 elif event_type == RSDL.KEYUP:
                     self.handle_keyboard_event(event_type, event)
+                    self.fix_key_code_case()
                     return self.get_next_key_event(EventKeyUp, time)
                 elif event_type == RSDL.WINDOWEVENT:
                     self.handle_windowevent(event_type, event)
@@ -322,6 +324,12 @@ class SDLDisplay(object):
                 key_constants.CTRL,
                 key_constants.SHIFT
                 ]
+
+    def fix_key_code_case(self):
+        if self.key <= 255:
+            # key could be lowercase so far but at least Cog
+            # generates uppercase key codes for KeyDown/KeyUp
+            self.key = ord(chr(self.key).upper())
 
     # Old style event handling
     def pump_events(self):

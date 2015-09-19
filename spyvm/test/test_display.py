@@ -117,11 +117,13 @@ def assert_keypress(sut, mocked_sdl_event_queue, stub_events, sdl_key, char):
     second_event = sut.get_next_event()
     third_event = sut.get_next_event()
     # then
-    assert_keyevent_array(first_event, ord(char), display.EventKeyDown, 0)
+    assert_keyevent_array(first_event, ord(char.upper()), display.EventKeyDown, 0)
     assert_keyevent_array(second_event, ord(char), display.EventKeyChar, 0)
-    assert_keyevent_array(third_event, ord(char), display.EventKeyUp, 0)
+    assert_keyevent_array(third_event, ord(char.upper()), display.EventKeyUp, 0)
 
 def assert_keydownup(display_under_test, mocked_sdl_event_queue, stub_events, sdl_key, char):
+    assert char.isupper() or not char.isalpha(), \
+            "asserted char for KeyDown and KeyUp must be uppercase"
     # given
     keydown = stub_events.malloc(RSDL.KeyboardEvent)
     keydown.c_type = RSDL.KEYDOWN
@@ -281,11 +283,11 @@ def test_keyboard_chords(sut, mocked_sdl_event_queue, stub_events, stub_mod_stat
     sqCtrlUp = sut.get_next_event()
     # then
     assert_keyevent_array(sqCtrlDown, key_constants.CTRL, display.EventKeyDown, display.CtrlKeyBit)
-    assert_keyevent_array(sqADown, ord('a'), display.EventKeyDown, display.CtrlKeyBit)
+    assert_keyevent_array(sqADown, ord('A'), display.EventKeyDown, display.CtrlKeyBit)
     assert_keyevent_array(sqAStroke, ord('a'), display.EventKeyChar, display.CtrlKeyBit)
-    assert_keyevent_array(sqADown2, ord('a'), display.EventKeyDown, display.CtrlKeyBit)
+    assert_keyevent_array(sqADown2, ord('A'), display.EventKeyDown, display.CtrlKeyBit)
     assert_keyevent_array(sqAStroke2, ord('a'), display.EventKeyChar, display.CtrlKeyBit)
-    assert_keyevent_array(sqAUp, ord('a'), display.EventKeyUp, display.CtrlKeyBit)
+    assert_keyevent_array(sqAUp, ord('A'), display.EventKeyUp, display.CtrlKeyBit)
     assert_keyevent_array(sqCtrlUp, key_constants.CTRL, display.EventKeyUp, 0)
 
 @pytest.fixture
