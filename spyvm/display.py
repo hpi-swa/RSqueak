@@ -148,7 +148,7 @@ class SDLDisplay(object):
 
     def handle_mouse_button(self, c_type, event):
         b = rffi.cast(RSDL.MouseButtonEventPtr, event)
-        btn = rffi.getintfield(b, 'c_button')
+        btn = b.c_button
         if btn == RSDL.BUTTON_RIGHT:
             btn = YellowButtonBit
         elif btn == RSDL.BUTTON_MIDDLE:
@@ -163,8 +163,8 @@ class SDLDisplay(object):
 
     def handle_mouse_move(self, c_type, event):
         m = rffi.cast(RSDL.MouseMotionEventPtr, event)
-        x = rffi.getintfield(m, "c_x")
-        y = rffi.getintfield(m, "c_y")
+        x = m.c_x
+        y = m.c_y
         self.mouse_position = [x, y]
 
     def handle_keyboard_event(self, c_type, event):
@@ -338,7 +338,7 @@ class SDLDisplay(object):
         event = lltype.malloc(RSDL.Event, flavor="raw")
         try:
             if rffi.cast(lltype.Signed, RSDL.PollEvent(event)) == 1:
-                c_type = rffi.getintfield(event, 'c_type')
+                c_type = event.c_type
                 if c_type == RSDL.MOUSEBUTTONDOWN or c_type == RSDL.MOUSEBUTTONUP:
                     self.handle_mouse_button(c_type, event)
                     return
