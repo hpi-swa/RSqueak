@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-import sys, os, subprocess
+import sys, os
 
 if __name__ == "__main__":
     import environment, code
