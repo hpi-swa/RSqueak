@@ -50,6 +50,7 @@ class SDLDisplay(object):
         self.window = None
         self.renderer = None
         self.screen_texture = None
+        self.screen_surface = None
         self.title = title
         SDLCursor.has_display = True
         self.has_surface = False
@@ -89,42 +90,43 @@ class SDLDisplay(object):
                     height=h)
         if self.screen_texture is not None:
             RSDL.DestroyTexture(self.screen_texture)
-        format_by_depth = {
-                8: RSDL.PIXELFORMAT_INDEX8,
-                16: RSDL.PIXELFORMAT_ARGB4444,
-                32: RSDL.PIXELFORMAT_ARGB8888,
-                }
-        screen_texture_format = format_by_depth[d]
+        if self.screen_surface is not None:
+            RSDL.FreeSurface(self.screen_surface)
         self.screen_texture = RSDL.CreateTexture(self.renderer,
-                screen_texture_format, RSDL.TEXTUREACCESS_STREAMING,
+                RSDL.PIXELFORMAT_ARGB8888, RSDL.TEXTUREACCESS_STREAMING,
                 w, h)
         if not self.screen_texture:
             print "Could not create screen texture"
             raise RuntimeError(RSDL.GetError())
-        pixelformat = RSDL.AllocFormat(screen_texture_format)
-        assert pixelformat, RSDL.GetError()
-        try:
-            self.bpp = pixelformat.c_BytesPerPixel
-            # TODO: apply the Squeak color table somehow
-            # if d == MINIMUM_DEPTH:
-            #    self.set_squeak_colormap(self.screen)
-        finally:
-            RSDL.FreeFormat(pixelformat)
+        self.screen_surface = RSDL.CreateRGBSurface(0, w, h, d, 0, 0, 0, 0)
+        assert self.screen_surface, RSDL.GetError()
+        self.bpp = self.screen_surface.c_format.c_BytesPerPixel
+        if d == MINIMUM_DEPTH:
+            self.set_squeak_colormap(self.screen_surface)
         self.pitch = w * self.bpp
 
     def get_pixelbuffer(self):
-        return jit.promote(rffi.cast(RSDL.Uint32P, self.screen.c_pixels))
+        return jit.promote(rffi.cast(RSDL.Uint32P, self.screen_surface.c_pixels))
+
+    def get_pixelbuffer_as_uchars(self):
+        return jit.promote(rffi.cast(RSDL.Uint8P, self.screen_surface.c_pixels))
 
     def defer_updates(self, flag):
         self._defer_updates = flag
 
     def flip(self, force=False):
-        if (not self._defer_updates) or force:
-            RSDL.Flip(self.screen)
+        if self._defer_updates and not force:
+            return
+        assert RSDL.UpdateTexture(self.screen_texture, None,
+                self.screen_surface.c_pixels, self.screen_surface.c_pitch) \
+                        == 0, RSDL.GetError()
+        assert RSDL.RenderCopy(self.renderer, self.screen_texture, None, None) \
+                == 0, RSDL.GetError()
+        RSDL.RenderPresent(self.renderer)
 
     def set_squeak_colormap(self, surface):
         # TODO: fix this up from the image
-        colors = lltype.malloc(rffi.CArray(RSDL.ColorPtr.TO), 4, flavor='raw')
+        colors = lltype.malloc(rffi.CArray(RSDL.Color), 4, flavor='raw')
         colors[0].c_r = rffi.r_uchar(255)
         colors[0].c_g = rffi.r_uchar(255)
         colors[0].c_b = rffi.r_uchar(255)
