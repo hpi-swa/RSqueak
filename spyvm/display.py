@@ -345,7 +345,7 @@ class SDLDisplay(object):
                 elif c_type == RSDL.MOUSEMOTION:
                     self.handle_mouse_move(c_type, event)
                 elif c_type == RSDL.KEYDOWN:
-                    self.handle_keypress(c_type, event)
+                    self.handle_keyboard_event(c_type, event)
                     return
                 elif c_type == RSDL.QUIT:
                     from spyvm.error import Exit
