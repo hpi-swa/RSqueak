@@ -37,8 +37,8 @@ if [ ! -d "$HOME/SDL2/lib" ]; then
 else
     echo 'Using cached SDL2 build directory.'
 fi
-C_INCLUDE_PATH+=:~/SDL2/include
-LIBRARY_PATH+=:~/SDL2/lib
+export C_INCLUDE_PATH+=:~/SDL2/include
+export LIBRARY_PATH+=:~/SDL2/lib
 
 python .build/download_dependencies.py
 
