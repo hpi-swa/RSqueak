@@ -29,10 +29,11 @@ if [ ! -d "$HOME/SDL2/lib" ]; then
     wget https://www.libsdl.org/release/SDL2-2.0.3.tar.gz -O ~/SDL2.tar.gz
     tar -xzvf ~/SDL2.tar.gz -C ~/
     mkdir ~/sdl-build
-    cd ~/sdl-build
+    pushd ~/sdl-build
     ~/SDL2-2.0.3/configure --prefix=$HOME/SDL2
     make
     make install
+    popd
 else
     echo 'Using cached SDL2 build directory.'
 fi
