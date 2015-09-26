@@ -1,4 +1,4 @@
-from rpython.rlib.rarithmetic import r_uint
+from rpython.rlib.rarithmetic import r_uint, intmask
 from rpython.rtyper.lltypesystem import lltype, rffi
 from rpython.rlib.runicode import unicode_encode_utf_8
 from rpython.rlib import jit
@@ -154,9 +154,9 @@ class SDLDisplay(object):
             btn = RedButtonBit
 
         if c_type == RSDL.MOUSEBUTTONDOWN:
-            self.button |= btn
+            self.button |= intmask(btn)
         else:
-            self.button &= ~btn
+            self.button &= ~intmask(btn)
 
     def handle_mouse_move(self, c_type, event):
         m = rffi.cast(RSDL.MouseMotionEventPtr, event)
@@ -219,14 +219,14 @@ class SDLDisplay(object):
 
     def handle_textinput_event(self, event):
         textinput = rffi.cast(RSDL.TextInputEventPtr, event)
-        self.key = ord(rffi.charp2str(textinput.c_text)[0])
+        self.key = ord(rffi.charp2str(rffi.cast(rffi.CCHARP, textinput.c_text))[0])
         # XXX: textinput.c_text could contain multiple characters
         #      so probably multiple Squeak events must be emitted
         #      moreover, this is UTF-8 so umlauts etc. have to be decoded
 
     def handle_windowevent(self, c_type, event):
         window_event = rffi.cast(RSDL.WindowEventPtr, event)
-        if window_event.c_event == RSDL.WINDOWEVENT_RESIZED:
+        if r_uint(window_event.c_event) == RSDL.WINDOWEVENT_RESIZED:
             self.set_video_mode(w=window_event.c_data1,
                     h=window_event.c_data2,
                     d=self.depth)
