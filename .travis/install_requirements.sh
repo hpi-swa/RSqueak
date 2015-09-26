@@ -23,6 +23,20 @@ fi
 
 sudo apt-get install -y --force-yes $Packages
 
+# borrowed this from https://github.com/omf2097/openomf/blob/master/.travis.yml
+# libsdl2-dev is not available yet on Ubuntu 12.04, which is employed by Travis
+if [ ! -d "$HOME/SDL2/lib" ]; then
+    wget https://www.libsdl.org/release/SDL2-2.0.3.tar.gz -O ~/SDL2.tar.gz
+    tar -xzvf ~/SDL2.tar.gz -C ~/
+    mkdir ~/sdl-build
+    cd ~/sdl-build
+    ~/SDL2-2.0.3/configure --prefix=$HOME/SDL2
+    make
+    make install
+else
+    echo 'Using cached SDL2 build directory.'
+fi
+
 python .build/download_dependencies.py
 
 wget http://squeakvm.org/unix/release/Squeak-4.10.2.2614-linux_i386.tar.gz
