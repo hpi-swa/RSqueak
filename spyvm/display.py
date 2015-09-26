@@ -39,18 +39,14 @@ WindowEventStinks = 6
 MINIMUM_DEPTH = 8
 
 class SDLDisplay(object):
-    _attrs_ = ["window", "renderer",
-               "width", "height", "depth", "surface", "has_surface",
+    _attrs_ = ["window", "title", "renderer", "screen_texture",
+               "width", "height", "depth", "screen_surface", "has_surface",
                "mouse_position", "button", "key", "interrupt_key", "_defer_updates",
                "_deferred_events", "bpp", "pitch"]
     #_immutable_fields_ = ["pixelbuffer?"]
 
     def __init__(self, title):
         assert RSDL.Init(RSDL.INIT_VIDEO) >= 0
-        self.window = None
-        self.renderer = None
-        self.screen_texture = None
-        self.screen_surface = None
         self.title = title
         SDLCursor.has_display = True
         self.has_surface = False
@@ -92,6 +88,7 @@ class SDLDisplay(object):
             RSDL.DestroyTexture(self.screen_texture)
         if self.screen_surface is not None:
             RSDL.FreeSurface(self.screen_surface)
+        self.has_surface = True
         self.screen_texture = RSDL.CreateTexture(self.renderer,
                 RSDL.PIXELFORMAT_ARGB8888, RSDL.TEXTUREACCESS_STREAMING,
                 w, h)
