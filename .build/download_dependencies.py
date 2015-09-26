@@ -45,9 +45,9 @@ def download_and_extract(url, targetdir):
 
 
 DEPS = [("https://bitbucket.org/pypy/pypy/get/default.zip", cp.get("General", "pypy")),
-        ("https://bitbucket.org/pypy/rsdl/get/default.zip", cp.get("General", "rsdl"))]
+        ("https://bitbucket.org/pypy/rsdl/get/sdl2.zip", cp.get("General", "rsdl"))]
 if os.name == "nt":
-    DEPS.append(("http://libsdl.org/release/SDL-devel-1.2.15-VC.zip", cp.get("Windows", "SDL")))
+    DEPS.append(("http://libsdl.org/release/SDL2-devel-2.0.3-VC.zip", cp.get("Windows", "SDL")))
     if os.getenv("APPVEYOR") is None:
         # Don't download this on appveyor, saves time and memory
         DEPS.extend([
