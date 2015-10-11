@@ -49,6 +49,10 @@ class SDLDisplay(object):
         assert RSDL.Init(RSDL.INIT_VIDEO) >= 0
         self.title = title
         SDLCursor.has_display = True
+        self.window = lltype.nullptr(RSDL.WindowPtr.TO)
+        self.renderer = lltype.nullptr(RSDL.RendererPtr.TO)
+        self.screen_texture = lltype.nullptr(RSDL.TexturePtr.TO)
+        self.screen_surface = lltype.nullptr(RSDL.Surface)
         self.has_surface = False
         self.mouse_position = [0, 0]
         self.interrupt_key = 15 << 8 # pushing all four meta keys, of which we support three...
@@ -79,14 +83,14 @@ class SDLDisplay(object):
         self.width = w
         self.height = h
         self.depth = d
-        if self.window is None:
+        if self.window == lltype.nullptr(RSDL.WindowPtr.TO):
             self.create_window_and_renderer(x=RSDL.WINDOWPOS_UNDEFINED,
                     y=RSDL.WINDOWPOS_UNDEFINED,
                     width=w,
                     height=h)
-        if self.screen_texture is not None:
+        if self.screen_texture != lltype.nullptr(RSDL.TexturePtr.TO):
             RSDL.DestroyTexture(self.screen_texture)
-        if self.screen_surface is not None:
+        if self.screen_surface != lltype.nullptr(RSDL.Surface):
             RSDL.FreeSurface(self.screen_surface)
         self.has_surface = True
         self.screen_texture = RSDL.CreateTexture(self.renderer,
