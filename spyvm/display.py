@@ -101,16 +101,16 @@ class SDLDisplay(object):
             raise RuntimeError(RSDL.GetError())
         self.screen_surface = RSDL.CreateRGBSurface(0, w, h, d, 0, 0, 0, 0)
         assert self.screen_surface, RSDL.GetError()
-        self.bpp = self.screen_surface.c_format.c_BytesPerPixel
+        self.bpp = r_uint(self.screen_surface.c_format.c_BytesPerPixel)
         if d == MINIMUM_DEPTH:
             self.set_squeak_colormap(self.screen_surface)
         self.pitch = w * self.bpp
 
     def get_pixelbuffer(self):
-        return jit.promote(rffi.cast(RSDL.Uint32P, self.screen_surface.c_pixels))
+        return jit.promote(rffi.cast(RSDL.Uint32P, self.get_plain_pixelbuffer()))
 
-    def get_pixelbuffer_as_uchars(self):
-        return jit.promote(rffi.cast(RSDL.Uint8P, self.screen_surface.c_pixels))
+    def get_plain_pixelbuffer(self):
+        return self.screen_surface.c_pixels
 
     def defer_updates(self, flag):
         self._defer_updates = flag
@@ -118,10 +118,10 @@ class SDLDisplay(object):
     def flip(self, force=False):
         if self._defer_updates and not force:
             return
-        assert RSDL.UpdateTexture(self.screen_texture, None,
+        assert RSDL.UpdateTexture(self.screen_texture, lltype.nullptr(RSDL.Rect),
                 self.screen_surface.c_pixels, self.screen_surface.c_pitch) \
                         == 0, RSDL.GetError()
-        assert RSDL.RenderCopy(self.renderer, self.screen_texture, None, None) \
+        assert RSDL.RenderCopy(self.renderer, self.screen_texture, lltype.nullptr(RSDL.Rect), lltype.nullptr(RSDL.Rect)) \
                 == 0, RSDL.GetError()
         RSDL.RenderPresent(self.renderer)
 

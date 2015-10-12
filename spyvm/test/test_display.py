@@ -301,7 +301,7 @@ def stub_screen_texture_creation(monkeypatch):
             'access': access,
             'width': w,
             'height': h})
-        last_returned_texture[0] = RSDL.TexturePtr._allocate(None)
+        last_returned_texture[0] = lltype.Ptr(RSDL.TexturePtr.TO, None)
         return last_returned_texture[0]
     monkeypatch.setattr(RSDL, 'CreateTexture', capture_create_texture)
     def capture_destroy_texture(texture):

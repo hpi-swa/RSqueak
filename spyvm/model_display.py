@@ -212,12 +212,12 @@ class W_MappingDisplayBitmap(W_DisplayBitmap):
 
         word = r_uint(word)
         pos = self.compute_pos(n)
-        buf = rffi.ptradd(self.display.get_pixelbuffer_as_uchars(), pos)
+        buf = rffi.ptradd(self.display.get_plain_pixelbuffer(), pos)
         depth = r_uint(self._depth)
         rshift = BITS - depth
         for i in range(bits / depth):
             pixel = word >> rshift
-            buf[i] = rffi.cast(rffi.UCHAR, pixel)
+            buf[i] = rffi.cast(rffi.CHAR, pixel)
             word <<= depth
 
     def compute_pos(self, n):
