@@ -30,7 +30,12 @@ if [ ! -d "$HOME/SDL2/lib" ]; then
     tar -xzvf ~/SDL2.tar.gz -C ~/
     mkdir ~/sdl-build
     pushd ~/sdl-build
-    ~/SDL2-2.0.3/configure --prefix=$HOME/SDL2
+    CONFIG_FLAGS=
+    if [ "$BUILD_ARCH" == "32bit" -o "$BUILD_ARCH" == "lldebug" ]; then
+        CONFIG_FLAGS=--build=i686-pc-linux-gnu \
+            "CFLAGS=-m32" "CXXFLAGS=-m32" "LDFLAGS=-m32"
+    fi
+    ~/SDL2-2.0.3/configure --prefix=$HOME/SDL2 $CONFIG_FLAGS
     make
     make install
     popd
