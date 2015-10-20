@@ -15,7 +15,6 @@ class TestModern(ModernJITTest):
         leave_portal_frame(0)
         i92 = int_add(i84, 100)
         i93 = int_add(i84, 1)
-        i97 = arraylen_gc(p68, descr=<ArrayU 1>)
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, i93, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, i94, p68, descr=TargetToken(312516328))
         """)
         # self.assert_matches(traces[0].bridges[0], """
@@ -51,7 +50,6 @@ class TestModern(ModernJITTest):
         leave_portal_frame(0)
         leave_portal_frame(0)
         i93 = int_add(i84, 1)
-        i97 = arraylen_gc(p68, descr=<ArrayU 1>)
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, i93, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, i94, p68, descr=TargetToken(312516328))
         """)
 
@@ -133,8 +131,6 @@ class TestModern(ModernJITTest):
         guard_value(p144, ConstPtr(ptr96), descr=<Guard0x158fa070>),
         p145 = getfield_gc(p143, descr=<FieldP spyvm.model.W_PointersObject.inst_strategy 24>),
         guard_nonnull_class(p145, ConstClass(ContextPartShadow), descr=<Guard0x158fa040>),
-        i146 = getfield_gc_pure(p145, descr=<FieldU spyvm.storage_contexts.ContextPartShadow.inst_is_block_context 73>),
-        guard_false(i146, descr=<Guard0x158fa010>),
         i147 = ptr_eq(p145, p0),
         guard_false(i147, descr=<Guard0x158d4fd0>),
         p148 = getfield_gc(p145, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.vable_token 12>),

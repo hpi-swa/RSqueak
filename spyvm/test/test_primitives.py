@@ -33,8 +33,6 @@ class MockFrame(model.W_PointersObject):
             self.strategy.init_temps_and_stack()
         return self.strategy
 
-IMAGENAME = "anImage.image"
-
 def mock(space, stack, context = None):
     mapped_stack = [space.w(x) for x in stack]
     if context is None:
@@ -44,7 +42,6 @@ def mock(space, stack, context = None):
         for i in range(len(stack)):
             frame.as_context_get_shadow(space).push(stack[i])
     interp = TestInterpreter(space)
-    interp.space._image_name.set(IMAGENAME)
     return interp, frame, len(stack)
 
 def _prim(space, code, stack, context = None):
@@ -513,8 +510,9 @@ def test_new_method():
     assert w_method.bytes == ["\x00"] * len(bytecode)
 
 def test_image_name():
+    space.set_system_attribute(1, "anImage.image")
     w_v = prim(primitives.IMAGE_NAME, [2])
-    assert w_v.bytes == list(IMAGENAME)
+    assert w_v.bytes == list("anImage.image")
 
 def test_clone():
     w_obj = bootstrap_class(1, varsized=True).as_class_get_shadow(space).new(1)
@@ -527,7 +525,7 @@ def test_clone():
 def test_primitive_system_attribute():
     assert prim(primitives.SYSTEM_ATTRIBUTE, [space.w_nil, 1337]) == space.w_nil
 
-    space.system_attributes[1001] = "WinuxOS"
+    space.set_system_attribute(1001, "WinuxOS")
     w_r = prim(primitives.SYSTEM_ATTRIBUTE, [space.w_nil, 1001])
     assert isinstance(w_r, model.W_Object)
     assert space.unwrap_string(w_r) == "WinuxOS"

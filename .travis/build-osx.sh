@@ -1,5 +1,5 @@
 #!/bin/bash
-set -ex
+set -e
 
 git clone --depth=1 https://github.com/HPI-SWA-Lab/RSqueak.git
 mv RSqueak/* .
@@ -28,6 +28,8 @@ if [ $exitcode -eq 0 ]; then
     cd ..
     cp rsqueak rsqueak-x86-darwin-jit-$RSQUEAKCOMMIT
     curl -T rsqueak-x86* http://www.lively-kernel.org/babelsberg/RSqueak/
+    curl -T rsqueak-x86* -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/commits/
     cp rsqueak rsqueak-darwin-latest
     curl -T rsqueak-darwin-latest http://www.lively-kernel.org/babelsberg/RSqueak/
+    curl -T rsqueak-darwin-latest -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/
 fi

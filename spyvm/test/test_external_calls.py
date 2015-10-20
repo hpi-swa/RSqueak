@@ -14,7 +14,7 @@ def mock(space, stack, context = None):
     for i in range(len(stack)):
         frame.as_context_get_shadow(space).push(stack[i])
     interp = TestInterpreter(space)
-    interp.space._image_name.set(IMAGENAME)
+    interp.space.set_system_attribute(constants.SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, IMAGENAME)
     return interp, frame, len(stack)
 
 def _prim(space, code, stack, context = None):

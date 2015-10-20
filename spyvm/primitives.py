@@ -677,48 +677,47 @@ def func(interp, s_frame, w_frame, stackp):
     w_frame.store(interp.space, constants.CTXPART_STACKP_INDEX, interp.space.wrap_int(stackp))
     return w_frame
 
+
+
+def get_instances_array_gc(space, w_class=None):
+    from rpython.rlib import rgc
+
+    result_w = []
+    roots = [gcref for gcref in rgc.get_rpy_roots() if gcref]
+    pending = roots[:]
+    while pending:
+        gcref = pending.pop()
+        if not rgc.get_gcflag_extra(gcref):
+            rgc.toggle_gcflag_extra(gcref)
+            w_obj = rgc.try_cast_gcref_to_instance(model.W_Object, gcref)
+
+            if w_obj is not None and w_obj.has_class():
+                w_cls = w_obj.getclass(space)
+                # when calling NEXT_OBJECT, we should not return # SmallInteger
+                # instances
+                # XXX: same for Character on Spur and SmallFloat64 on Spur64...
+                if not w_cls.is_same_object(space.w_SmallInteger) and \
+                   (w_class is None or w_cls.is_same_object(w_class)):
+                    result_w.append(w_obj)
+            pending.extend(rgc.get_rpy_referents(gcref))
+
+    rgc.clear_gcflag_extra(roots)
+    rgc.assert_no_more_gcflags()
+    return result_w
+
 def get_instances_array(space, s_frame, w_class=None, store=True):
-    # This primitive returns some instance of the class on the stack.
-    # If no class is given, it returns some object.
-    # Not sure quite how to do this; maintain a weak list of all
-    # existing instances or something?
-
-    do_next_object = w_class is None # when calling NEXT_OBJECT
-
+    # check cached
     match_w = s_frame.instances_array(w_class)
     if match_w is None:
-        match_w = []
-        from rpython.rlib import rgc
-
-        roots = [gcref for gcref in rgc.get_rpy_roots() if gcref]
-        pending = roots[:]
-        while pending:
-            gcref = pending.pop()
-            if not rgc.get_gcflag_extra(gcref):
-                rgc.toggle_gcflag_extra(gcref)
-                w_obj = rgc.try_cast_gcref_to_instance(model.W_Object, gcref)
-
-                if w_obj is not None and w_obj.has_class():
-                    # when calling NEXT_OBJECT, we should not return SmallInteger instances
-                    # XXX: same for Character on Spur and SmallFloat64 on Spur64...
-                    is_int = w_obj.getclass(space).is_same_object(space.w_SmallInteger)
-                    if not is_int and (do_next_object or w_obj.getclass(space).is_same_object(w_class)):
-                        match_w.append(w_obj)
-
-                if isinstance(w_obj, model.W_AbstractObjectWithClassReference):
-                    pending.extend(rgc.get_rpy_referents(gcref))
-
-        while roots:
-            gcref = roots.pop()
-            if rgc.get_gcflag_extra(gcref):
-                rgc.toggle_gcflag_extra(gcref)
-                roots.extend(rgc.get_rpy_referents(gcref))
+        match_w = get_instances_array_gc(space, w_class)
         if store:
             s_frame.store_instances_array(w_class, match_w)
     return match_w
 
 @expose_primitive(SOME_INSTANCE, unwrap_spec=[object])
 def func(interp, s_frame, w_class):
+    # This primitive returns some instance of the class on the stack.
+    # If no class is given, it returns some object.
     if w_class.is_same_object(interp.space.w_SmallInteger):
         raise PrimitiveFailedError()
 
@@ -1106,11 +1105,15 @@ DRAW_RECTANGLE = 127
 
 @expose_primitive(IMAGE_NAME)
 def func(interp, s_frame, argument_count):
+    from spyvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX
     if argument_count == 0:
         s_frame.pop()
-        return interp.space.wrap_string(interp.space.image_name())
+        return interp.space.wrap_string(interp.space.get_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX))
     elif argument_count == 1:
-        pass # XXX
+        w_arg = s_frame.pop()
+        assert isinstance(w_arg, model.W_BytesObject)
+        interp.space.set_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, interp.space.unwrap_string(w_arg))
+        return s_frame.pop()
     raise PrimitiveFailedError
 
 @expose_primitive(LOW_SPACE_SEMAPHORE, unwrap_spec=[object, object])
@@ -1306,7 +1309,7 @@ def func(interp, s_frame, w_arg):
 @expose_primitive(SYSTEM_ATTRIBUTE, unwrap_spec=[object, int])
 def func(interp, s_frame, w_receiver, attr_id):
     try:
-        return interp.space.wrap_string("%s" % interp.space.system_attributes[attr_id])
+        return interp.space.wrap_string("%s" % interp.space.get_system_attribute(attr_id))
     except KeyError:
         return interp.space.w_nil
 
