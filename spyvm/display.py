@@ -61,8 +61,7 @@ class SDLDisplay(object):
         self._deferred_events = []
         self._defer_updates = False
 
-    def __del__(self):
-        # Close the display.
+    def close(self):
         RSDL.Quit()
 
     def set_video_mode(self, w, h, d):
@@ -222,7 +221,7 @@ class SDLDisplay(object):
         return keycode in [RSDL.K_LSHIFT, RSDL.K_RSHIFT,
                 RSDL.K_LCTRL, RSDL.K_RCTRL,
                 RSDL.K_LALT, RSDL.K_RALT,
-                RSDL.K_LMETA, RSDL.K_RMETA, 
+                RSDL.K_LMETA, RSDL.K_RMETA,
                 RSDL.K_LSUPER, RSDL.K_RSUPER]
 
     def is_character_key(self, p_event):
@@ -235,7 +234,7 @@ class SDLDisplay(object):
         return RSDL.K_BACKSPACE <= keycode <= RSDL.K_z \
             or RSDL.K_WORLD_0 <= keycode <= RSDL.K_KP_EQUALS \
             or keycode == RSDL.K_EURO # whoever came up with this being beyond the modifier keys etc...
-	
+
     # once RSDL goes with SDL 2.0 the following could be put to use:
     # def is_character_key(self, p_event):
     #    p = rffi.cast(RSDL.KeyboardEventPtr, p_event)
