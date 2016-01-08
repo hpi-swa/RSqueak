@@ -1,22 +1,70 @@
-language: python
-python:
-  - 2.7
+language: cpp
+sudo: false
+os:
+  - linux
+  - osx
+addons:
+  apt:
+    packages:
+      - binfmt-support
+      - build-essential
+      - debootstrap
+      - gcc-arm-linux-gnueabi
+      - gcc-arm-linux-gnueabihf
+      - gcc-multilib
+      - libasound2-dev:i386
+      - libbz2-1.0:i386
+      - libc6-dev-i386
+      - libc6:i386
+      - libexpat1:i386
+      - libffi-dev
+      - libffi-dev:i386
+      - libffi6:i386
+      - libfreetype6:i386
+      - libgcrypt11:i386
+      - libgl1-mesa-dev:i386
+      - libgl1-mesa-dri:i386
+      - libgl1-mesa-glx:i386
+      - libglapi-mesa:i386
+      - libglu1-mesa-dev:i386
+      - libglu1-mesa:i386
+      - libsdl1.2-dev:i386
+      - libssl1.0.0:i386
+      - libstdc++6:i386
+      - libtinfo5:i386
+      - libxext-dev:i386
+      - libxt-dev:i386
+      - python-dev
+      - qemu-system
+      - qemu-user-static
+      - sbuild
+      - schroot
+      - scratchbox2
+      - zlib1g-dev
+      - zlib1g:i386
 branches:
   except:
     - windows-build
 env:
   global:
-    - OSXREPO=timfel/RSqueak-MacOSXBuild
-    - TEST_TYPE=default 
+    - TEST_TYPE=default
+    # use 32bit python on osx
+    - VERSIONER_PYTHON_PREFER_32_BIT=yes
   matrix:
     - BUILD_ARCH=32bit BUILD_TYPE=test
     - BUILD_ARCH=32bit BUILD_TYPE=build
     - BUILD_ARCH=lldebug BUILD_TYPE=build
-    - BUILD_ARCH=armv6 BUILD_TYPE=build SB2="$PWD/raspbian_arm" SB2NAME="rasp"
-    - BUILD_ARCH=armv7 BUILD_TYPE=build
+    # Arm needs sudo, for sbuild and scratchbox2 packages.
+    # - BUILD_ARCH=armv6 BUILD_TYPE=build SB2="$PWD/raspbian_arm" SB2NAME="rasp"
+    # - BUILD_ARCH=armv7 BUILD_TYPE=build
 install:
-  - .travis/trigger-osx-build.sh || echo 0
   - .travis/install_requirements.sh
+  - .travis/setup_arm.sh
+before_script:
+  - export TESTSCRIPT=true
+  - if [ "$TRAVIS_OS_NAME" == osx ]; then export CFLAGS="-arch i386"; export CC="cc -arch i386"; fi
+  - if [ "$BUILD_TYPE" == test ]; then export TESTSCRIPT=.travis/test.sh; fi
+  - if [ "$TRAVIS_OS_NAME" == linux -a "$BUILD_TYPE" == build ]; then export TESTSCRIPT=.travis/build-linux.sh; fi
+  - if [ "$TRAVIS_OS_NAME" == osx -a "$BUILD_TYPE" == build -a "$BUILD_ARCH" == 32bit ]; then export TESTSCRIPT=.travis/build-osx.sh; fi
 script:
-  - if [ "$BUILD_TYPE" == test ]; then .travis/test.sh; fi
-  - if [ "$BUILD_TYPE" == build ]; then .travis/build-linux.sh; fi
+  - $TESTSCRIPT

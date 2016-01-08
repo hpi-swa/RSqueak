@@ -42,7 +42,8 @@ def untrace_proxy(interp, s_frame, w_rcvr):
 def halt(interp, s_frame, w_rcvr):
     from rpython.rlib.debug import attach_gdb
     print s_frame.print_stack()
-    attach_gdb()
+    raise NotImplementedError
+    # attach_gdb()
 
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object])
 def isRSqueak(interp, s_frame, w_rcvr):
