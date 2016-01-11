@@ -615,6 +615,22 @@ def func(interp, s_frame, w_frame, stackp):
     return w_frame
 
 
+# HACK: MacPython will have garbage around from RSDL/Cocoa invocation during
+# tests. We know that, so the assert_no_more_gcflags is useless in this case
+# and generates spurious errors.
+def _we_are_mac_python():
+    "NOT_RPYTHON"
+    try:
+        from AppKit import NSApplication
+    except:
+        return False
+    else:
+        return True
+
+def we_are_mac_python():
+    if objectmodel.we_are_translated():
+        return False
+    return _we_are_mac_python()
 
 def get_instances_array_gc(space, w_class=None):
     from rpython.rlib import rgc
@@ -639,7 +655,8 @@ def get_instances_array_gc(space, w_class=None):
             pending.extend(rgc.get_rpy_referents(gcref))
 
     rgc.clear_gcflag_extra(roots)
-    rgc.assert_no_more_gcflags()
+    if not we_are_mac_python():
+        rgc.assert_no_more_gcflags()
     return result_w
 
 def get_instances_array(space, s_frame, w_class=None, store=True):
