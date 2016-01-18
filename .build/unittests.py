@@ -7,7 +7,7 @@ from os import path
 import environment
 
 if __name__ == "__main__":
-    sys.argv.extend(["-v", "-kprimitive_some", "-kprimitive_next"])
+    sys.argv.extend(["-v", "-k", "primitive_some or primitive_next"])
     if not any("/test" in arg or "\\test" in arg for arg in sys.argv):
         sys.argv.append(path.join(path.dirname(__file__), "..", "spyvm", "test"))
 
