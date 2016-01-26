@@ -3,6 +3,7 @@ sudo: false
 os:
   # - linux
   - osx
+osx_image: beta-xcode6.2
 addons:
   apt:
     packages:
