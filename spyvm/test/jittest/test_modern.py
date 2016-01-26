@@ -9,7 +9,84 @@ class TestModern(ModernJITTest):
         m := Morph new.
         1 to: 100000 do: [:i | m bounds ].
         """)
-        self.assert_matches(traces[3].loop, """
+        self.assert_matches(traces[0].loop, """
+        guard_not_invalidated(descr=<Guard0xdb8da34>)
+        i70 = int_le(i69, 100000)
+        guard_true(i70, descr=<Guard0xdc9c7f0>)
+        i71 = int_add(i69, 1)
+        i72 = arraylen_gc(p65, descr=<ArrayP 4>)
+        jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, i71, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, p47, p65, descr=TargetToken(231309508))
+        """)
+
+    def test_named_access_in_array(self, spy, squeak, tmpdir):
+        traces = self.run(spy, squeak, tmpdir, """
+        | o |
+        o := Array with: Morph new.
+        1 to: 100000 do: [:i | (o at: 1) bounds ].
+        """)
+        self.assert_matches(traces[0].loop, """
+        guard_not_invalidated(descr=<Guard0xdb8da34>)
+        i70 = int_le(i69, 100000)
+        guard_true(i70, descr=<Guard0xdc9c7f0>)
+        i71 = int_add(i69, 1)
+        i72 = arraylen_gc(p65, descr=<ArrayP 4>)
+        i73 = arraylen_gc(p67, descr=<ArrayP 4>)
+        jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, i71, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, p47, p65, descr=TargetToken(231309508))
+        """)
+
+    @py.test.mark.skipif("'Not ready'")
+    def test_named_access_in_do_block(self, spy, squeak, tmpdir):
+        traces = self.run(spy, squeak, tmpdir, """
+        | o |
+        o := Array with: Morph new.
+        1 to: 100000 do: [:i | o do: [:m | m bounds ] ].
+        """)
+        self.assert_matches(traces[1].loop, """
+        guard_not_invalidated(descr=<Guard0xdb8da34>)
+        i70 = int_le(i69, 100000)
+        guard_true(i70, descr=<Guard0xdc9c7f0>)
+        i71 = int_add(i69, 1)
+        i72 = arraylen_gc(p65, descr=<ArrayP 4>)
+        i73 = arraylen_gc(p67, descr=<ArrayP 4>)
+        jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, i71, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, p47, p65, descr=TargetToken(231309508))
+        """)
+
+    def test_named_access_fresh(self, spy, squeak, tmpdir):
+        traces = self.run(spy, squeak, tmpdir, """
+        1 to: 100000 do: [:i | Morph new bounds ].
+        """)
+        self.assert_matches(traces[0].loop, """
+        guard_not_invalidated(descr=<Guard0xe445c70>)
+        i169 = int_le(i162, 100000)
+        guard_true(i169, descr=<Guard0xe5ec7b8>)
+        enter_portal_frame(0, 0)
+        enter_portal_frame(0, 0)
+        enter_portal_frame(0, 0)
+        enter_portal_frame(0, 0)
+        enter_portal_frame(0, 0)
+        enter_portal_frame(0, 0)
+        leave_portal_frame(0)
+        leave_portal_frame(0)
+        leave_portal_frame(0)
+        leave_portal_frame(0)
+        enter_portal_frame(0, 0)
+        enter_portal_frame(0, 0)
+        leave_portal_frame(0)
+        leave_portal_frame(0)
+        leave_portal_frame(0)
+        leave_portal_frame(0)
+        i170 = int_add(i162, 1)
+        i171 = int_sub(i166, 1)
+        setfield_gc(ConstPtr(ptr163), i171, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 20>)
+        i172 = int_le(i171, 0)
+        guard_false(i172, descr=<Guard0xe445c9c>)
+        i174 = arraylen_gc(p61, descr=<ArrayP 4>)
+        i175 = arraylen_gc(p68, descr=<ArrayP 4>)
+        i176 = arraylen_gc(p94, descr=<ArrayP 4>)
+        i177 = arraylen_gc(p112, descr=<ArrayP 4>)
+        i178 = arraylen_gc(p140, descr=<ArrayP 4>)
+        i179 = arraylen_gc(p154, descr=<ArrayP 4>)
+        jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, i170, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, p47, p61, p68, p63, p94, p112, p114, p140, p142, p154, i171, descr=TargetToken(241143860))
         """)
 
     def test_named_access_and_send(self, spy, squeak, tmpdir):
@@ -19,6 +96,52 @@ class TestModern(ModernJITTest):
         1 to: 100000 do: [:i | m bounds outsetBy: 10 ].
         """)
         self.assert_matches(traces[3].loop, """
+        guard_not_invalidated(descr=<Guard0xdba73ac>),
+        i234 = int_le(i227, 100000)
+        guard_true(i234, descr=<Guard0xdc6f080>)
+        enter_portal_frame(0, 0)
+        enter_portal_frame(0, 0)
+        enter_portal_frame(0, 0)
+        enter_portal_frame(0, 0)
+        enter_portal_frame(0, 0)
+        leave_portal_frame(0)
+        enter_portal_frame(0, 0)
+        leave_portal_frame(0)
+        leave_portal_frame(0)
+        leave_portal_frame(0)
+        leave_portal_frame(0)
+        enter_portal_frame(0, 0)
+        enter_portal_frame(0, 0)
+        enter_portal_frame(0, 0)
+        enter_portal_frame(0, 0)
+        leave_portal_frame(0)
+        enter_portal_frame(0, 0)
+        leave_portal_frame(0)
+        leave_portal_frame(0)
+        leave_portal_frame(0)
+        leave_portal_frame(0)
+        enter_portal_frame(0, 0)
+        enter_portal_frame(0, 0)
+        leave_portal_frame(0)
+        leave_portal_frame(0)
+        leave_portal_frame(0)
+        i235 = int_add(i227, 1)
+        i236 = int_sub(i231, 3)
+        setfield_gc(ConstPtr(ptr228), i236, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 20>)
+        i237 = int_le(i236, 0)
+        guard_false(i237, descr=<Guard0xdba7380>)
+        i239 = arraylen_gc(p65, descr=<ArrayP 4>)
+        i240 = arraylen_gc(p86, descr=<ArrayP 4>)
+        i241 = arraylen_gc(p89, descr=<ArrayP 4>)
+        i242 = arraylen_gc(p97, descr=<ArrayP 4>)
+        i243 = arraylen_gc(p119, descr=<ArrayP 4>)
+        i244 = arraylen_gc(p145, descr=<ArrayS 4>)
+        i245 = int_sub_ovf(i147, 10)
+        guard_no_overflow(descr=<Guard0xdba7354>)
+        i246 = int_sub_ovf(i156, 10)
+        guard_no_overflow(descr=<Guard0xdba7328>)
+        i247 = arraylen_gc(p189, descr=<ArrayS 4>)
+        jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, i235, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, p47, p65, p67, p86, p89, p97, p91, p119, p121, p145, p169, p189, p88, i236, i147, i156, descr=TargetToken(231130940))
         """)
 
     def test_simple_loop_with_closure(self, spy, squeak, tmpdir):
