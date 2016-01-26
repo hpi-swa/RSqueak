@@ -7,8 +7,8 @@ Squeak model.
             W_LargePositiveInteger1Word
             W_Float
             W_Character
+            W_PointersObject
             W_AbstractObjectWithClassReference
-                W_PointersObject
                 W_BytesObject
                 W_WordsObject
             W_CompiledMethod
@@ -65,6 +65,9 @@ class W_Object(object):
 
     def getclass(self, space):
         """Return Squeak class."""
+        raise NotImplementedError()
+
+    def change_class(self, space, w_class):
         raise NotImplementedError()
 
     def gethash(self):
@@ -606,8 +609,8 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
 
     def guess_classname(self):
         if self.has_class():
-            if self.w_class.has_space():
-                class_shadow = self.class_shadow(self.w_class.space())
+            if self.getclass(None).has_space():
+                class_shadow = self.class_shadow(self.getclass(None).space())
                 return class_shadow.name
             else:
                 # We cannot access the class during the initialization sequence.
@@ -615,10 +618,13 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
         else:
             return "? (no class)"
 
+    def change_class(self, space, w_class):
+        self.w_class = w_class
+
     def invariant(self):
         from spyvm import storage_classes
         return (W_AbstractObjectWithIdentityHash.invariant(self) and
-                isinstance(self.w_class.strategy, storage_classes.ClassShadow))
+                isinstance(self.getclass(None).strategy, storage_classes.ClassShadow))
 
     def _become(self, w_other):
         assert isinstance(w_other, W_AbstractObjectWithClassReference)
@@ -626,17 +632,17 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
         W_AbstractObjectWithIdentityHash._become(self, w_other)
 
     def has_class(self):
-        return self.w_class is not None
+        return self.getclass(None) is not None
 
     # we would like the following, but that leads to a recursive import
     #@signature(signature.types.self(), signature.type.any(),
     #           returns=signature.types.instance(ClassShadow))
     def class_shadow(self, space):
-        w_class = self.w_class
+        w_class = self.getclass(None)
         assert w_class is not None
         return w_class.as_class_get_shadow(space)
 
-class W_PointersObject(W_AbstractObjectWithClassReference):
+class W_PointersObject(W_AbstractObjectWithIdentityHash):
     """Common object."""
     _attrs_ = ['strategy', '_storage']
     # TODO -- is it viable to have these as pseudo-immutable?
@@ -649,21 +655,21 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     @jit.unroll_safe
     def __init__(self, space, w_class, size, weak=False):
         """Create new object with size = fixed + variable size."""
-        W_AbstractObjectWithClassReference.__init__(self, space, w_class)
-        self._initialize_storage(space, size, weak)
+        W_AbstractObjectWithIdentityHash.__init__(self)
+        self._initialize_storage(space, w_class, size, weak)
 
-    def _initialize_storage(self, space, size, weak=False):
+    def _initialize_storage(self, space, w_class, size, weak=False):
         storage_type = space.strategy_factory.empty_storage_type(self, size, weak)
-        space.strategy_factory.set_initial_strategy(self, storage_type, size)
+        space.strategy_factory.set_initial_strategy(self, storage_type, w_class, size)
 
     def fillin(self, space, g_self):
-        W_AbstractObjectWithClassReference.fillin(self, space, g_self)
+        W_AbstractObjectWithIdentityHash.fillin(self, space, g_self)
         # Recursive fillin required to enable specialized storage strategies.
         for g_obj in g_self.pointers:
             g_obj.fillin(space)
         pointers = g_self.get_pointers()
         storage_type = space.strategy_factory.strategy_type_for(pointers, weak=False) # do not fill in weak lists, yet
-        space.strategy_factory.set_initial_strategy(self, storage_type, len(pointers), pointers)
+        space.strategy_factory.set_initial_strategy(self, storage_type, g_self.get_class(), len(pointers), pointers)
 
     def fillin_weak(self, space, g_self):
         assert g_self.isweak() # when we get here, this is true
@@ -675,11 +681,51 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         from storage import WeakListStrategy
         return isinstance(self.strategy, WeakListStrategy)
 
+    def getclass(self, space):
+        if self.strategy is None:
+            return None
+        else:
+            return self.strategy.getclass()
+
+    def has_class(self):
+        return self.getclass(None) is not None
+
     def is_class(self, space):
         from spyvm.storage_classes import ClassShadow
         if isinstance(self.strategy, ClassShadow):
             return True
-        return W_AbstractObjectWithClassReference.is_class(self, space)
+        # XXX: copied form W_AbstractObjectWithClassReference
+        if self.has_class():
+            w_Metaclass = space.classtable["w_Metaclass"]
+            w_class = self.getclass(space)
+            if w_Metaclass.is_same_object(w_class):
+                return True
+            if w_class.has_class():
+                return w_Metaclass.is_same_object(w_class.getclass(space))
+        return False
+
+    def change_class(self, space, w_class):
+        old_strategy = self._get_strategy()
+        new_strategy = old_strategy.instantiate(self, w_class)
+        self._set_strategy(new_strategy)
+        old_strategy._convert_storage_to(w_self, new_strategy)
+        new_strategy.strategy_switched(w_self)
+
+    def guess_classname(self):
+        if self.has_class():
+            if self.getclass(None).has_space():
+                class_shadow = self.class_shadow(self.getclass(None).space())
+                return class_shadow.name
+            else:
+                # We cannot access the class during the initialization sequence.
+                return "?? (class not initialized)"
+        else:
+            return "? (no class)"
+
+    def invariant(self):
+        from spyvm import storage_classes
+        return (W_AbstractObjectWithIdentityHash.invariant(self) and
+                isinstance(self.getclass(None).strategy, storage_classes.ClassShadow))
 
     def assert_strategy(self):
         # Failing the following assert most likely indicates a bug. The strategy can only be absent during
@@ -697,7 +743,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         if self.has_strategy() and self.strategy.provides_getname:
             return self._get_strategy().getname()
         else:
-            return W_AbstractObjectWithClassReference.__str__(self)
+            return W_AbstractObjectWithIdentityHash.__str__(self)
 
     def repr_content(self):
         strategy_info = "no strategy"
@@ -819,7 +865,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
             w_other.strategy.become(self)
         self.strategy, w_other.strategy = w_other.strategy, self.strategy
         self._storage, w_other._storage = w_other._storage, self._storage
-        W_AbstractObjectWithClassReference._become(self, w_other)
+        W_AbstractObjectWithIdentityHash._become(self, w_other)
 
     @jit.unroll_safe
     def clone(self, space):
@@ -895,8 +941,8 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         return self._size
 
     def str_content(self):
-        if self.has_class() and self.w_class.has_space():
-            if self.w_class.space().omit_printing_raw_bytes.is_set():
+        if self.has_class() and self.getclass(None).has_space():
+            if self.getclass(None).space().omit_printing_raw_bytes.is_set():
                 return "<omitted>"
         return "'%s'" % self.unwrap_string(None).replace('\r', '\n')
 

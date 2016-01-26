@@ -646,12 +646,13 @@ def get_instances_array_gc(space, w_class=None):
 
             if w_obj is not None and w_obj.has_class():
                 w_cls = w_obj.getclass(space)
-                # when calling NEXT_OBJECT, we should not return # SmallInteger
-                # instances
-                # XXX: same for Character on Spur and SmallFloat64 on Spur64...
-                if not w_cls.is_same_object(space.w_SmallInteger) and \
-                   (w_class is None or w_cls.is_same_object(w_class)):
-                    result_w.append(w_obj)
+                if w_cls is not None:
+                    # when calling NEXT_OBJECT, we should not return # SmallInteger
+                    # instances
+                    # XXX: same for Character on Spur and SmallFloat64 on Spur64...
+                    if not w_cls.is_same_object(space.w_SmallInteger) and \
+                       (w_class is None or w_cls.is_same_object(w_class)):
+                        result_w.append(w_obj)
             pending.extend(rgc.get_rpy_referents(gcref))
 
     rgc.clear_gcflag_extra(roots)
@@ -963,7 +964,7 @@ def func(interp, s_frame, w_arg, w_rcvr):
     if w_arg_class.instsize() != w_rcvr_class.instsize():
         raise PrimitiveFailedError()
 
-    w_rcvr.w_class = w_arg_class
+    w_rcvr.change_class(interp.space, w_arg_class)
 
 @expose_primitive(EXTERNAL_CALL, clean_stack=False, no_result=True, compiled_method=True)
 def func(interp, s_frame, argcount, w_method):

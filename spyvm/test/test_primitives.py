@@ -18,9 +18,8 @@ def teardown_module():
 
 class MockFrame(model.W_PointersObject):
     def __init__(self, space, stack):
-        self.w_class = space.w_BlockContext
         size = 6 + len(stack) + 6
-        self._initialize_storage(space, size)
+        self._initialize_storage(space, space.w_BlockContext, size)
         self.store_all(space, [None] * 6 + stack + [space.w_nil] * 6)
         s_self = self.as_context_get_shadow(space)
         s_self.reset_stack()
@@ -29,7 +28,7 @@ class MockFrame(model.W_PointersObject):
 
     def as_context_get_shadow(self, space):
         if not isinstance(self.strategy, storage_contexts.ContextPartShadow):
-            self.strategy = storage_contexts.ContextPartShadow(space, self, self.size())
+            self.strategy = storage_contexts.ContextPartShadow(space, self, self.size(), space.w_BlockContext)
             self.strategy.init_temps_and_stack()
         return self.strategy
 
@@ -497,6 +496,13 @@ def test_clone():
     assert space.unwrap_int(w_v.at0(space, 0)) == 1
     w_obj.atput0(space, 0, space.wrap_int(2))
     assert space.unwrap_int(w_v.at0(space, 0)) == 1
+
+@py.test.mark.skipif("True")
+def test_change_class():
+    w_obj = prim(primitives.IMAGE_NAME, [2])
+    w_v = prim(primitives.CLASS, [w_obj])
+    prim(primitives.CHANGE_CLASS, [w_obj, space.w_Array])
+    w_v = prim(primitives.CLASS, [w_obj])
 
 def test_primitive_system_attribute():
     assert prim(primitives.SYSTEM_ATTRIBUTE, [space.w_nil, 1337]) == space.w_nil

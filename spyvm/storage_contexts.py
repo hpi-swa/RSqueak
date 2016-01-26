@@ -76,15 +76,15 @@ class ContextPartShadow(AbstractStrategy):
     # Initialization
 
     @jit.unroll_safe
-    def __init__(self, space, w_self, size):
+    def __init__(self, space, w_self, size, w_class):
         self = fresh_virtualizable(self)
-        AbstractStrategy.__init__(self, space, w_self, size)
+        AbstractStrategy.__init__(self, space, w_self, size, w_class)
 
         # If w_self is not given, is_block_context must be set explicitely!
         if w_self is not None:
-            if w_self.getclass(space).is_same_object(space.w_BlockContext):
+            if w_class.is_same_object(space.w_BlockContext):
                 self.is_block_context = True
-            elif w_self.getclass(space).is_same_object(space.w_MethodContext):
+            elif w_class.is_same_object(space.w_MethodContext):
                 self.is_block_context = False
             else:
                 raise ValueError("Object %s cannot be treated like a Context object!" % w_self)
@@ -383,7 +383,7 @@ class ContextPartShadow(AbstractStrategy):
         return self.stackend() - self.stackstart()
 
     def full_stacksize(self):
-        if not self.is_block_context:
+        if not self.pure_is_block_context():
             # Magic numbers... Takes care of cases where reflective
             # code writes more than actual stack size
             method = self.w_method()
@@ -567,7 +567,7 @@ class __extend__(ContextPartShadow):
         size = s_home.own_size() - s_home.tempsize()
         w_self = model.W_PointersObject(space, space.w_BlockContext, size)
 
-        ctx = ContextPartShadow(space, w_self, size)
+        ctx = ContextPartShadow(space, w_self, size, space.w_BlockContext)
         ctx.is_block_context = True
         ctx.store_expected_argument_count(argcnt)
         ctx.store_w_home(s_home.w_self())
@@ -693,7 +693,7 @@ class __extend__(ContextPartShadow):
         s_MethodContext = space.w_MethodContext.as_class_get_shadow(space)
         size = w_method.compute_frame_size() + s_MethodContext.instsize()
 
-        ctx = ContextPartShadow(space, None, size)
+        ctx = ContextPartShadow(space, None, size, space.w_MethodContext)
         ctx.is_block_context = False
         ctx._s_fallback = s_fallback
         ctx.store_w_receiver(w_receiver)
@@ -829,3 +829,5 @@ class __extend__(ContextPartShadow):
     def method_str_method_context(self):
         block = '[] in ' if self.is_closure_context() else ''
         return '%s%s' % (block, self.w_method().get_identifier_string())
+
+ContextPartShadow.instantiate_type = ContextPartShadow

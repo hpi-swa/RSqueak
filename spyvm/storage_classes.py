@@ -27,9 +27,9 @@ class ClassShadow(AbstractCachingShadow):
     provides_getname = True
     repr_classname = "ClassShadow"
 
-    def __init__(self, space, w_self, size):
+    def __init__(self, space, w_self, size, w_class):
         self.subclass_s = {}
-        AbstractCachingShadow.__init__(self, space, w_self, size)
+        AbstractCachingShadow.__init__(self, space, w_self, size, w_class)
 
     def store(self, w_self, n0, w_val):
         AbstractCachingShadow.store(self, w_self, n0, w_val)
@@ -84,7 +84,7 @@ class ClassShadow(AbstractCachingShadow):
             else:
                 raise ClassShadowError("unknown format %d" % (format,))
         else:
-            if w_self.w_class == self.space.classtable["w_Metaclass"]:
+            if w_self.getclass(self.space).is_same_object(self.space.classtable["w_Metaclass"]):
                 # In case of Metaclasses, the "instance" class is stored in the last field.
                 if n0 == self.size(w_self) - 1 and isinstance(w_val, model.W_PointersObject):
                     cl_shadow = w_val.as_class_get_shadow(self.space)
@@ -254,16 +254,18 @@ class ClassShadow(AbstractCachingShadow):
         self.s_methoddict().methoddict[w_selector] = w_method
         if isinstance(w_method, model.W_CompiledMethod):
             w_method.compiledin_class = self.w_self()
+ClassShadow.instantiate_type = ClassShadow
+
 
 class MethodDictionaryShadow(AbstractGenericShadow):
     _immutable_fields_ = ['s_class']
     _attrs_ = ['methoddict', 's_class']
     repr_classname = "MethodDictionaryShadow"
 
-    def __init__(self, space, w_self, size):
+    def __init__(self, space, w_self, size, w_class):
         self.s_class = None
         self.methoddict = {}
-        AbstractGenericShadow.__init__(self, space, w_self, size)
+        AbstractGenericShadow.__init__(self, space, w_self, size, w_class)
 
     def become(self, w_other):
         # Force other to become a methoddict
@@ -340,3 +342,4 @@ class MethodDictionaryShadow(AbstractGenericShadow):
                         w_compiledmethod.set_lookup_class_and_name(self.s_class.w_self(), selector)
         if self.s_class:
             self.s_class.changed()
+MethodDictionaryShadow.instantiate_type = MethodDictionaryShadow

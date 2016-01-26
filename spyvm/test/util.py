@@ -183,8 +183,13 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         proto_shadow.store_w_superclass(self.w_Class)
         # at this point, all classes that still lack a w_class are themselves metaclasses
         for nm, w_cls_obj in self.classtable.items():
-            if w_cls_obj.w_class is None:
-                w_cls_obj.w_class = self.w_Metaclass
+            if w_cls_obj.getclass(None) is None:
+                if w_cls_obj.strategy is None:
+                    w_cls_obj._initialize_storage(self, self.w_Metaclass, 0)
+                elif w_cls_obj.strategy.w_class is None:
+                    w_cls_obj.strategy.w_class = self.w_Metaclass
+                else:
+                    import pdb; pdb.set_trace()
 
     def patch_bootstrap_classes(self):
         # Create all classes in the class hierarchies of the classes in the special objects array.
@@ -259,8 +264,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
 
     def patch_bootstrap_objects(self):
         def patch_bootstrap_object(obj, cls, size):
-            obj.w_class = cls
-            obj._initialize_storage(self, size)
+            obj._initialize_storage(self, cls, size)
         patch_bootstrap_object(self.w_nil, self.w_UndefinedObject, 0)
         patch_bootstrap_object(self.w_true, self.w_True, 0)
         patch_bootstrap_object(self.w_false, self.w_False, 0)
@@ -277,6 +281,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
                         name='?', format=storage_classes.POINTERS, varsized=False):
         s = instantiate(storage_classes.ClassShadow)
         s.space = self
+        s.w_class = w_metaclass
         s.version = util.version.Version()
         s._w_self = w_class
         s.subclass_s = {}
@@ -289,7 +294,6 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         s.instance_varsized = varsized or format != storage_classes.POINTERS
         w_class.store_strategy(s)
         s._initialize_storage(w_class, 0)
-        w_class.w_class = w_metaclass
 
     def bootstrap_class(self, instsize, w_superclass=None, w_metaclass=None,
                         name='?', format=storage_classes.POINTERS, varsized=False):
