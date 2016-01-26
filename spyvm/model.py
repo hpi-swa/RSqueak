@@ -123,7 +123,8 @@ class W_Object(object):
 
     def class_shadow(self, space):
         """Return internal representation of Squeak class."""
-        return self.getclass(space).as_class_get_shadow(space)
+        w_class = jit.promote(self.getclass(space))
+        return w_class.as_class_get_shadow(space)
 
     def is_same_object(self, other):
         """Compare object identity. This should be used instead of directly
@@ -634,13 +635,6 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     def has_class(self):
         return self.getclass(None) is not None
 
-    # we would like the following, but that leads to a recursive import
-    #@signature(signature.types.self(), signature.type.any(),
-    #           returns=signature.types.instance(ClassShadow))
-    def class_shadow(self, space):
-        w_class = self.getclass(None)
-        assert w_class is not None
-        return w_class.as_class_get_shadow(space)
 
 class W_PointersObject(W_AbstractObjectWithIdentityHash):
     """Common object."""

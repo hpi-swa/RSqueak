@@ -3,6 +3,24 @@ import py
 from .base import ModernJITTest
 
 class TestModern(ModernJITTest):
+    def test_named_access(self, spy, squeak, tmpdir):
+        traces = self.run(spy, squeak, tmpdir, """
+        | m |
+        m := Morph new.
+        1 to: 100000 do: [:i | m bounds ].
+        """)
+        self.assert_matches(traces[3].loop, """
+        """)
+
+    def test_named_access_and_send(self, spy, squeak, tmpdir):
+        traces = self.run(spy, squeak, tmpdir, """
+        | m |
+        m := Morph new.
+        1 to: 100000 do: [:i | m bounds outsetBy: 10 ].
+        """)
+        self.assert_matches(traces[3].loop, """
+        """)
+
     def test_simple_loop_with_closure(self, spy, squeak, tmpdir):
         traces = self.run(spy, squeak, tmpdir, """
         1 to: 100000 do: [:i | [i] value + 100].

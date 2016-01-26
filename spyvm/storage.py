@@ -279,9 +279,16 @@ class StrategyFactory(rstrat.StrategyFactory):
         self.log(w_self, strategy, None, element)
         return strategy
 
-    @jit.elidable
     def strategy_singleton_instance(self, strategy_class, w_class=None):
-        return self.singleton_nodes.setdefault((strategy_class, w_class), self.instantiate_strategy(strategy_class, w_class))
+        s = self.strategy_singleton_instance_from_cache(strategy_class, w_class)
+        if s is None:
+            s = self.instantiate_strategy(strategy_class, w_class)
+            self.singleton_nodes[(strategy_class, w_class)] = s
+        return s
+
+    @jit.elidable
+    def strategy_singleton_instance_from_cache(self, strategy_class, w_class):
+        return self.singleton_nodes.get((strategy_class, w_class), None)
 
     def instantiate_strategy(self, strategy_type, w_class, w_self=None, initial_size=0):
         return strategy_type(self.space, w_self, initial_size, w_class)

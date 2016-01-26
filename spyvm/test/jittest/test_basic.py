@@ -495,31 +495,53 @@ class TestBasic(BaseJITTest):
         1 to: 10000 do: [:i | (o at: (i \\\\ 2) + 1) at: (i \\\\ 2) + 1].
         """)
         self.assert_matches(traces[0].loop, """
-        guard_not_invalidated(descr=<Guard0xa9f0910>),
-        i99 = int_le(i98, 10000),
-        guard_true(i99, descr=<Guard0xa9f08e0>),
-        i100 = int_mod(i98, 2),
-        i101 = int_rshift(i100, 31),
-        i102 = int_and(2, i101),
-        i103 = int_add(i100, i102),
-        i104 = int_add(i103, 1),
-        i106 = uint_lt(i103, i82),
-        guard_true(i106, descr=<Guard0xa9f0880>),
-        i107 = int_lt(i103, 0),
-        guard_false(i107, descr=<Guard0xa9f0850>),
-        p108 = getarrayitem_gc_r(p81, i103, descr=<ArrayP 4>),
-        guard_class(p108, ConstClass(W_PointersObject), descr=<Guard0xa9f0820>),
-        p109 = getfield_gc_pure_r(p108, descr=<FieldP spyvm.model.W_AbstractObjectWithClassReference.inst_w_class 12>),
-        p110 = getfield_gc_r(p109, descr=<FieldP spyvm.model.W_PointersObject.inst_strategy 24>),
-        guard_value(p110, ConstPtr(ptr90), descr=<Guard0xa9f07f0>),
-        p111 = getfield_gc_r(p108, descr=<FieldP spyvm.model.W_PointersObject.inst_strategy 24>),
-        guard_nonnull_class(p111, ConstClass(ListStrategy), descr=<Guard0xa9f07c0>),
-        p112 = getfield_gc_r(p108, descr=<FieldP spyvm.model.W_PointersObject.inst__storage 20>),
-        i113 = arraylen_gc(p112, descr=<ArrayP 4>),
-        i114 = uint_lt(i103, i113),
-        guard_true(i114, descr=<Guard0xa9f0790>),
-        p115 = getarrayitem_gc_r(p112, i103, descr=<ArrayP 4>),
-        i116 = int_add(i98, 1),
-        i117 = arraylen_gc(p70, descr=<ArrayP 4>),
-        jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, i116, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, p47, p70, i82, p81, i73, descr=TargetToken(178109744))
+        guard_not_invalidated(descr=<Guard0xa935da4>)
+        i101 = int_le(i100, 10000)
+        guard_true(i101, descr=<Guard0xa9677d4>)
+        i102 = int_mod(i100, 2)
+        i103 = int_rshift(i102, 31)
+        i104 = int_and(2, i103)
+        i105 = int_add(i102, i104)
+        i106 = int_add(i105, 1)
+        i107 = uint_lt(i105, i83)
+        guard_true(i107, descr=<Guard0xa9677b8>)
+        i108 = int_lt(i105, 0)
+        guard_false(i108, descr=<Guard0xa96779c>)
+        p109 = getarrayitem_gc_r(p82, i105, descr=<ArrayP 4>)
+        guard_class(p109, ConstClass(W_PointersObject), descr=<Guard0xa967764>)
+        p110 = getfield_gc_r(p109, descr=<FieldP spyvm.model.W_PointersObject.inst_strategy 16>)
+        guard_nonnull_class(p110, ConstClass(ListStrategy), descr=<Guard0xa935dd0>)
+        p111 = getfield_gc_pure_r(p110, descr=<FieldP spyvm.storage.AbstractStrategy.inst_w_class 12>)
+        guard_value(p111, ConstPtr(ptr93), descr=<Guard0xa9676f4>)
+        p112 = getfield_gc_r(p109, descr=<FieldP spyvm.model.W_PointersObject.inst__storage 12>)
+        i113 = arraylen_gc(p112, descr=<ArrayP 4>)
+        i114 = getfield_gc_pure_i(p110, descr=<FieldU spyvm.storage.AbstractStrategy.inst_space 8>)
+        i115 = uint_lt(i105, i113)
+        guard_true(i115, descr=<Guard0xa967630>)
+        p116 = getarrayitem_gc_r(p112, i105, descr=<ArrayP 4>)
+        i117 = int_add(i100, 1)
+        i118 = arraylen_gc(p70, descr=<ArrayP 4>)
+        jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, i117, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, p47, p70, i83, p82, descr=TargetToken(177582744))
+        """)
+
+    def test_named_object_access(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | o |
+        o := (10@10 corner: 100@100).
+        1 to: 10000 do: [:i | o extent ].
+        """)
+        self.assert_matches(traces[0].loop, """
+        guard_not_invalidated(descr=<Guard0x98fe0c0>)
+        i135 = int_le(i134, 10000)
+        guard_true(i135, descr=<Guard0x9906304>)
+        enter_portal_frame(0, 0)
+        enter_portal_frame(0, 0)
+        leave_portal_frame(0)
+        leave_portal_frame(0)
+        i136 = int_add(i134, 1)
+        i137 = arraylen_gc(p71, descr=<ArrayP 4>)
+        i138 = arraylen_gc(p81, descr=<ArrayP 4>)
+        i139 = arraylen_gc(p98, descr=<ArrayS 4>)
+        i140 = arraylen_gc(p106, descr=<ArrayS 4>)
+        jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, i136, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, p47, p71, p81, p73, p75, p98, p106, descr=TargetToken(160421980))
         """)
