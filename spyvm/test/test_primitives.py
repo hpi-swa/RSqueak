@@ -634,20 +634,17 @@ def test_primitive_closure_value_value_with_temps():
     assert s_new_context.gettemp(1).unwrap_string(None) == "second arg"
     assert s_new_context.gettemp(2).unwrap_string(None) == "some value"
 
-@py.test.mark.skipif("os.environ.get('TRAVIS_OS_NAME', '') == 'osx'")
 def test_primitive_some_instance():
     import gc; gc.collect()
     someInstance = map(space.wrap_list, [[1], [2]])
     w_r = prim(primitives.SOME_INSTANCE, [space.w_Array])
     assert w_r.getclass(space) is space.w_Array
 
-@py.test.mark.skipif("os.environ.get('TRAVIS_OS_NAME', '') == 'osx'")
 def test_primitive_some_object():
     import gc; gc.collect()
     w_r = prim(primitives.SOME_OBJECT, [space.w_nil])
     assert isinstance(w_r, model.W_Object)
 
-@py.test.mark.skipif("os.environ.get('TRAVIS_OS_NAME', '') == 'osx'")
 def test_primitive_next_object():
     someInstances = map(space.wrap_list, [[2], [3]])
     w_frame, s_context = new_frame("<never called, but needed for method generation>")
