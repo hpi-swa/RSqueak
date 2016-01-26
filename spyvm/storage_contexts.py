@@ -24,6 +24,7 @@ DirtyContext = ContextState("DirtyContext")
 class ExtendableStrategyMetaclass(extendabletype, rstrat.StrategyMetaclass):
     pass
 
+
 class ExtraContextAttributes(object):
     _attrs_ = [
         # Cache for allInstances
@@ -32,6 +33,14 @@ class ExtraContextAttributes(object):
         '_s_fallback',
         # From block-context
         '_w_home', '_initialip', '_eargc']
+
+    def __init__(self):
+        self.instances_w = None
+        self._s_fallback = None
+        self._w_home = None
+        self._initialip = 0
+        self._eargc = 0
+
 
 class ContextPartShadow(AbstractStrategy):
     """
@@ -119,7 +128,6 @@ class ContextPartShadow(AbstractStrategy):
         else:
             return [ constants.MTHDCTX_METHOD, constants.MTHDCTX_CLOSURE_OR_NIL ]
 
-    @jit.elidable
     def get_extra_data(self):
         if self.extra_data is None:
             self.extra_data = ExtraContextAttributes()
