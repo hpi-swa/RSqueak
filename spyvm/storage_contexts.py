@@ -95,7 +95,7 @@ class ContextPartShadow(AbstractStrategy):
         else:
             self._w_self_size = size
         self._w_self = w_self
-        self.instances_w = {}
+        self.instances_w = None
         self.state = InactiveContext
         self.store_pc(0)
 
@@ -488,11 +488,15 @@ class ContextPartShadow(AbstractStrategy):
 
     def store_instances_array(self, w_class, match_w):
         # used for primitives 77 & 78
+        if self.instances_w is None:
+            self.instances_w = {}
         self.instances_w[w_class] = match_w
 
-    @jit.elidable
     def instances_array(self, w_class):
-        return self.instances_w.get(w_class, None)
+        if self.instances_w is None:
+            return None
+        else:
+            return self.instances_w.get(w_class, None)
 
     # ______________________________________________________________________
     # Printing

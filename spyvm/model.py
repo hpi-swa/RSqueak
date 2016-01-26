@@ -673,20 +673,20 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
 
     def is_weak(self):
         from storage import WeakListStrategy
-        return isinstance(self.strategy, WeakListStrategy)
+        return isinstance(self._get_strategy(), WeakListStrategy)
 
     def getclass(self, space):
-        if self.strategy is None:
+        if self._get_strategy() is None:
             return None
         else:
-            return self.strategy.getclass()
+            return self._get_strategy().getclass()
 
     def has_class(self):
         return self.getclass(None) is not None
 
     def is_class(self, space):
         from spyvm.storage_classes import ClassShadow
-        if isinstance(self.strategy, ClassShadow):
+        if isinstance(self._get_strategy(), ClassShadow):
             return True
         # XXX: copied form W_AbstractObjectWithClassReference
         if self.has_class():
@@ -811,7 +811,7 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
         self.strategy = strategy
 
     def _get_strategy(self):
-        return self.strategy
+        return jit.promote(self.strategy)
 
     @objectmodel.specialize.arg(2)
     def as_special_get_shadow(self, space, TheClass):
