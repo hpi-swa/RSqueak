@@ -510,8 +510,6 @@ class TestBasic(BaseJITTest):
         p109 = getarrayitem_gc_r(p82, i105, descr=<ArrayP 4>)
         guard_class(p109, ConstClass(W_PointersObject), descr=<Guard0xa967764>)
         p110 = getfield_gc_r(p109, descr=<FieldP spyvm.model.W_PointersObject.inst_strategy 16>)
-        guard_nonnull_class(p110, ConstClass(ListStrategy), descr=<Guard0xa935dd0>)
-        p111 = getfield_gc_pure_r(p110, descr=<FieldP spyvm.storage.AbstractStrategy.inst_w_class 12>)
         guard_value(p111, ConstPtr(ptr93), descr=<Guard0xa9676f4>)
         p112 = getfield_gc_r(p109, descr=<FieldP spyvm.model.W_PointersObject.inst__storage 12>)
         i113 = arraylen_gc(p112, descr=<ArrayP 4>)
