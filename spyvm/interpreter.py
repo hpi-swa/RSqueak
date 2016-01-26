@@ -207,7 +207,7 @@ class Interpreter(object):
             # This is the toplevel frame. Execution ended.
             raise ReturnFromTopLevel(self.space.w_nil)
         context = start_context
-        while context._s_fallback is None:
+        while context.get_fallback() is None:
             s_sender = context.s_sender()
             context._activate_unwind_context(self)
             context = s_sender
@@ -218,7 +218,7 @@ class Interpreter(object):
                         start_context.pc())
                 raise error.FatalError(msg)
 
-        fallbackContext = context._s_fallback
+        fallbackContext = context.get_fallback()
 
         if fallbackContext.tempsize() > len(fallbackContext.w_arguments()):
             fallbackContext.settemp(len(fallbackContext.w_arguments()), self.space.wrap_int(error_code))
