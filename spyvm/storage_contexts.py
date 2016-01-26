@@ -136,7 +136,7 @@ class ContextPartShadow(AbstractStrategy):
 
     def pure_is_block_context(self):
         if self.space.uses_block_contexts.is_set():
-            return self.space.is_same_object(self.space.w_BlockContext)
+            return self.space.w_BlockContext.is_same_object(self.w_class)
         else:
             return False
 
@@ -563,7 +563,6 @@ class __extend__(ContextPartShadow):
         w_self = model.W_PointersObject(space, space.w_BlockContext, size)
 
         ctx = ContextPartShadow(space, w_self, size, space.w_BlockContext)
-        ctx.is_block_context = True
         ctx.store_expected_argument_count(argcnt)
         ctx.store_w_home(s_home.w_self())
         ctx.store_initialip(pc)

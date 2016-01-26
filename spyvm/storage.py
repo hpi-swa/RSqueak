@@ -77,6 +77,9 @@ class AbstractStrategy(object):
             size = self.size(w_self)
             new_strategy = self.strategy_factory().instantiate_strategy(self.instantiate_type, w_class, w_self, size)
 
+    def promote_if_neccessary(self):
+        return jit.promote(self)
+
 # ========== Storage classes implementing storage strategies ==========
 
 class SimpleStorageStrategy(AbstractStrategy):
@@ -347,6 +350,8 @@ class ShadowMixin(object):
         self.store(self._w_self, i, val)
     def own_fetch(self, i):
         return self.fetch(self._w_self, i)
+    def promote_if_neccessary(self):
+        return self
 
 class AbstractGenericShadow(ListStrategy):
     """

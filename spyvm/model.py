@@ -811,7 +811,7 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
         self.strategy = strategy
 
     def _get_strategy(self):
-        return jit.promote(self.strategy)
+        return self.strategy.promote_if_neccessary() if self.strategy is not None else None
 
     @objectmodel.specialize.arg(2)
     def as_special_get_shadow(self, space, TheClass):
