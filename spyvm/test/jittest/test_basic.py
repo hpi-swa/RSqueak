@@ -513,7 +513,6 @@ class TestBasic(BaseJITTest):
         guard_value(p111, ConstPtr(ptr93), descr=<Guard0xa9676f4>)
         p112 = getfield_gc_r(p109, descr=<FieldP spyvm.model.W_PointersObject.inst__storage 12>)
         i113 = arraylen_gc(p112, descr=<ArrayP 4>)
-        i114 = getfield_gc_pure_i(p110, descr=<FieldU spyvm.storage.AbstractStrategy.inst_space 8>)
         i115 = uint_lt(i105, i113)
         guard_true(i115, descr=<Guard0xa967630>)
         p116 = getarrayitem_gc_r(p112, i105, descr=<ArrayP 4>)
