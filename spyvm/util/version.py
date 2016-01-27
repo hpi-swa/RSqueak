@@ -25,6 +25,17 @@ def constant_for_version_arg(func):
     meth.func_name = "constant_meth_" + func.func_name
     return meth
 
+# Same as constant_for_version, but allows for two additional arguments.
+def constant_for_version_arg2(func):
+    def versioned_func(self, version, arg, arg2):
+        return func(self, arg, arg2)
+    versioned_func.func_name = "constant_" + func.func_name
+    elidable_func = jit.elidable_promote()(versioned_func)
+    def meth(self, arg, arg2):
+        return elidable_func(self, self.version, arg, arg2)
+    meth.func_name = "constant_meth_" + func.func_name
+    return meth
+
 class Version(object):
     pass
 
@@ -32,8 +43,8 @@ class VersionMixin(object):
     # Concrete class must define a pseudo immutable field like the following:
     # _attrs_ = ['version']
     # _immutable_fields_ = ['version?']
-    
+
     version = Version()
-    
+
     def changed(self):
         self.version = Version()
