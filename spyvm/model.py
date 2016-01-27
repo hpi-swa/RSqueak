@@ -757,18 +757,21 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
             raise error.UnwrappingError("expected SmallInteger from Character")
         return chr(w_ord.value)
 
-    @jit.look_inside_iff(lambda self, w_array: jit.isconstant(self.size()))
+    @jit.look_inside_iff(lambda self, space: (
+        (not self.class_shadow(space).isvariable()) or jit.isconstant(self.size())))
     def unwrap_array(self, space):
         # Check that our argument has pointers format and the class:
         if not self.getclass(space).is_same_object(space.w_Array):
             raise error.UnwrappingError
         return [self.at0(space, i) for i in range(self.size())]
 
-    @jit.look_inside_iff(lambda self, space: jit.isconstant(self.size()))
+    @jit.look_inside_iff(lambda self, space: (
+        (not self.class_shadow(space).isvariable()) or jit.isconstant(self.size())))
     def fetch_all(self, space):
         return [self.fetch(space, i) for i in range(self.size())]
 
-    @jit.look_inside_iff(lambda self, space, collection: len(collection) < 64)
+    @jit.look_inside_iff(lambda self, space, collection: (
+        (not self.class_shadow(space).isvariable()) or len(collection) < 64))
     def store_all(self, space, collection):
         # Be tolerant: copy over as many elements as possible, set rest to nil.
         # The size of the object cannot be changed in any case.
@@ -861,7 +864,6 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
         self._storage, w_other._storage = w_other._storage, self._storage
         W_AbstractObjectWithIdentityHash._become(self, w_other)
 
-    @jit.unroll_safe
     def clone(self, space):
         my_pointers = self.fetch_all(space)
         w_result = W_PointersObject(space, self.getclass(space), len(my_pointers))
