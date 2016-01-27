@@ -261,6 +261,7 @@ class ImageReader(object):
 class SqueakImage(object):
     _immutable_fields_ = [
         "w_asSymbol",
+        "w_simulatePrimitive",
         "version",
         "startup_time",
         "space"

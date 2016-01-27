@@ -22,6 +22,7 @@ class ClassShadow(AbstractCachingShadow):
 
     _attrs_ = ["name", "_instance_size", "instance_varsized", "instance_kind",
                 "_s_methoddict", "_s_superclass", "subclass_s"]
+    _immutable_fields_ = ["name?"]
     name = '??? (incomplete class info)'
     _s_superclass = _s_methoddict = None
     provides_getname = True

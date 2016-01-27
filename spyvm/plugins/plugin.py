@@ -12,7 +12,7 @@ class Plugin(object):
     def call(self, name, interp, s_frame, argcount, w_method):
         func = self._find_prim(name)
         if not func:
-            raise error.PrimitiveFailedError("Not implemented: %s" % name)
+            raise error.PrimitiveFailedError("Not implemented: ", name)
         else:
             return func(interp, s_frame, argcount, w_method)
 

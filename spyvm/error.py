@@ -10,6 +10,16 @@ class SmalltalkException(Exception):
 
 class PrimitiveFailedError(SmalltalkException):
     exception_type = "PrimitiveFailedError"
+    def __init__(self, msg="", name=None):
+        self.msg = msg
+        self.name = name
+
+class SimulatedPrimitiveFailedError(PrimitiveFailedError):
+    exception_type = "SimulatedPrimitiveFailedError"
+    def __init__(self, msg, w_name, s_class):
+        self.msg = msg
+        self.w_name = w_name
+        self.s_class = s_class
 
 class PrimitiveNotYetWrittenError(PrimitiveFailedError):
     exception_type = "PrimitiveNotYetWrittenError"
@@ -27,7 +37,7 @@ class FatalError(SmalltalkException):
     exception_type = "FatalError"
 
 class BlockCannotReturnError(SmalltalkException):
-	exception_type = "BlockCannotReturnError"
+        exception_type = "BlockCannotReturnError"
 
 class MethodNotFound(SmalltalkException):
     exception_type = "MethodNotFound"
