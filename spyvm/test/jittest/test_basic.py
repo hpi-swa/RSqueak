@@ -27,7 +27,6 @@ class TestBasic(BaseJITTest):
         i83 = int_le(i77, 10000),
         guard_true(i83, descr=<Guard0x8e3dc40>),
         i85 = int_add(i77, 1),
-        i89 = arraylen_gc(p61, descr=<ArrayP 4>),
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, i85, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, p61, i86, descr=TargetToken(149146648))]
         """)
 
@@ -361,7 +360,6 @@ class TestBasic(BaseJITTest):
         leave_portal_frame(0),
         i141 = int_add(i123, 1),
         i144 = arraylen_gc(p62, descr=<ArrayP 4>),
-        i145 = arraylen_gc(p84, descr=<ArrayS 4>),
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, i141, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, p62, p84, i142, p114, descr=TargetToken(154312720))]
         """)
 
@@ -517,7 +515,6 @@ class TestBasic(BaseJITTest):
         guard_true(i115, descr=<Guard0xa967630>)
         p116 = getarrayitem_gc_r(p112, i105, descr=<ArrayP 4>)
         i117 = int_add(i100, 1)
-        i118 = arraylen_gc(p70, descr=<ArrayP 4>)
         jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, i117, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, p47, p70, i83, p82, descr=TargetToken(177582744))
         """)
 
@@ -539,6 +536,5 @@ class TestBasic(BaseJITTest):
         i137 = arraylen_gc(p71, descr=<ArrayP 4>)
         i138 = arraylen_gc(p81, descr=<ArrayP 4>)
         i139 = arraylen_gc(p98, descr=<ArrayS 4>)
-        i140 = arraylen_gc(p106, descr=<ArrayS 4>)
         jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, i136, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, p47, p71, p81, p73, p75, p98, p106, descr=TargetToken(160421980))
         """)

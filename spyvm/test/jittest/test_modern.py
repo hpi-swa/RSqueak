@@ -30,7 +30,6 @@ class TestModern(ModernJITTest):
         guard_true(i70, descr=<Guard0xdc9c7f0>)
         i71 = int_add(i69, 1)
         i72 = arraylen_gc(p65, descr=<ArrayP 4>)
-        i73 = arraylen_gc(p67, descr=<ArrayP 4>)
         jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, i71, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, p47, p65, descr=TargetToken(231309508))
         """)
 
@@ -85,7 +84,6 @@ class TestModern(ModernJITTest):
         i176 = arraylen_gc(p94, descr=<ArrayP 4>)
         i177 = arraylen_gc(p112, descr=<ArrayP 4>)
         i178 = arraylen_gc(p140, descr=<ArrayP 4>)
-        i179 = arraylen_gc(p154, descr=<ArrayP 4>)
         jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, i170, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, p47, p61, p68, p63, p94, p112, p114, p140, p142, p154, i171, descr=TargetToken(241143860))
         """)
 
@@ -135,12 +133,11 @@ class TestModern(ModernJITTest):
         i241 = arraylen_gc(p89, descr=<ArrayP 4>)
         i242 = arraylen_gc(p97, descr=<ArrayP 4>)
         i243 = arraylen_gc(p119, descr=<ArrayP 4>)
-        i244 = arraylen_gc(p145, descr=<ArrayS 4>)
         i245 = int_sub_ovf(i147, 10)
         guard_no_overflow(descr=<Guard0xdba7354>)
         i246 = int_sub_ovf(i156, 10)
         guard_no_overflow(descr=<Guard0xdba7328>)
-        i247 = arraylen_gc(p189, descr=<ArrayS 4>)
+        i244 = arraylen_gc(p145, descr=<ArrayS 4>)
         jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, i235, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, p47, p65, p67, p86, p89, p97, p91, p119, p121, p145, p169, p189, p88, i236, i147, i156, descr=TargetToken(231130940))
         """)
 
