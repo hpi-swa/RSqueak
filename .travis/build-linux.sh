@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
 
+UNAME=linux
 EX=
 #set EX to sudo if required.
 
@@ -8,8 +9,8 @@ case "$BUILD_ARCH" in
     32bit)
         binary=rsqueak
         python .build/build.py
-        cp rsqueak* rsqueak-x86-Linux-jit-$TRAVIS_COMMIT || true
         buildcode=$?
+        cp rsqueak* rsqueak-x86-${UNAME}-jit-$TRAVIS_COMMIT || true
         python .build/jittests.py
         $EX rm -rf .build/pypy/rpython/_cache
         exitcode=$?
@@ -18,7 +19,7 @@ case "$BUILD_ARCH" in
     lldebug)
         binary=rsqueak
         python .build/build.py --lldebug -Ojit
-        cp rsqueak* rsqueak-x86-Linux-dbg-$TRAVIS_COMMIT || true
+        cp rsqueak* rsqueak-x86-${UNAME}-dbg-$TRAVIS_COMMIT || true
         exitcode=$?
         buildcode=$exitcode
         $EX rm -rf .build/pypy/rpython/_cache
@@ -43,7 +44,7 @@ case "$BUILD_ARCH" in
         sb2 -t rasp make -j 5
         cp rsqueak $oldpwd/rsqueak
         cd $oldpwd
-        cp rsqueak* rsqueak-$armv-Linux-jit-$TRAVIS_COMMIT
+        cp rsqueak* rsqueak-$armv-${UNAME}-jit-$TRAVIS_COMMIT
         buildcode=$?
         exitcode=$buildcode
         latest=true
@@ -55,7 +56,7 @@ case "$BUILD_ARCH" in
         export SB2OPT='-t ARM'
         # uses the 32-bit pypy from download_dependencies.py
         .build/pypy-linux32/bin/pypy .build/build.py --gc=incminimark --gcrootfinder=shadowstack --jit-backend=arm -Ojit --platform=arm
-        cp rsqueak* rsqueak-$armv-Linux-jit-$TRAVIS_COMMIT
+        cp rsqueak* rsqueak-$armv-${UNAME}-jit-$TRAVIS_COMMIT
         buildcode=$?
         exitcode=$buildcode
         latest=true
@@ -71,22 +72,17 @@ if [ $buildcode -eq 0 ]; then
     if [ "$BUILD_ARCH" == "32bit" ]; then
         curl -v -H "commitid: $TRAVIS_COMMIT" -X POST http://lively-kernel.org/codespeed/ || true
     fi
-    if [ "$TRAVIS_BRANCH" == "master" ]; then
-        if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
-            if [ "$latest" == "true" ]; then
-                if [ "$BUILD_ARCH" == "32bit" ]; then
-                    # only builds that pass the jittests are 'latest'
-                    cp rsqueak-x86* rsqueak-linux-latest
-                    curl -T rsqueak-linux-latest http://www.lively-kernel.org/babelsberg/RSqueak/
-                    curl -T rsqueak-linux-latest -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/ || true
-                else
-                    cp rsqueak-$armv* rsqueak-linux-$armv-latest
-                    curl -T rsqueak-linux-$armv-latest http://www.lively-kernel.org/babelsberg/RSqueak/
-                    curl -T rsqueak-linux-$armv-latest -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/ || true
-                fi
-            fi
+    if [ "$TRAVIS_BRANCH" == "master" -a "$TRAVIS_PULL_REQUEST" == "false" -a "$latest" == "true" ]; then
+        if [ "$BUILD_ARCH" == "32bit" ]; then
+            # only builds that pass the jittests are 'latest'
+            cp rsqueak-x86* rsqueak-${UNAME}-latest
+            curl -T rsqueak-linux-latest http://www.lively-kernel.org/babelsberg/RSqueak/
+            curl -T rsqueak-linux-latest -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/ || true
+        else
+            cp rsqueak-$armv* rsqueak-${UNAME}-$armv-latest
+            curl -T rsqueak-${UNAME}-$armv-latest http://www.lively-kernel.org/babelsberg/RSqueak/
+            curl -T rsqueak-${UNAME}-$armv-latest -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/ || true
         fi
     fi
 fi
-exit $exitcode
 exit $exitcode

@@ -66,6 +66,6 @@ before_script:
   - if [ "$TRAVIS_OS_NAME" == osx ]; then export CFLAGS="-arch i386"; export CC="cc -arch i386"; fi
   - if [ "$BUILD_TYPE" == test ]; then export TESTSCRIPT=.travis/test.sh; fi
   - if [ "$TRAVIS_OS_NAME" == linux -a "$BUILD_TYPE" == build ]; then export TESTSCRIPT=.travis/build-linux.sh; fi
-  - if [ "$TRAVIS_OS_NAME" == osx -a "$BUILD_TYPE" == build -a "$BUILD_ARCH" == 32bit ]; then export TESTSCRIPT=.travis/build-osx.sh; fi
+  - if [ "$TRAVIS_OS_NAME" == osx -a "$BUILD_TYPE" == build ]; then export TESTSCRIPT=.travis/build-osx.sh; fi
 script:
   - $TESTSCRIPT
