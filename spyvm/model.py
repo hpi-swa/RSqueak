@@ -968,10 +968,13 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         size = self.size()
         w_result = W_BytesObject(space, self.getclass(space), size)
         if self.bytes is None:
-            w_result.bytes = [self.c_bytes[i] for i in range(size)]
+            w_result.bytes = self._copy_c_bytes(size)
         else:
             w_result.bytes = list(self.bytes)
         return w_result
+
+    def _copy_c_bytes(self, size):
+        return [self.c_bytes[i] for i in range(size)]
 
     @jit.unroll_safe
     def unwrap_uint(self, space):
