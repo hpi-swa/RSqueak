@@ -860,6 +860,7 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
             self.strategy.become(w_other)
         elif self.has_strategy() and self._get_strategy().handles_become():
             w_other.strategy.become(self)
+        # TODO: must swap selfs
         self.strategy, w_other.strategy = w_other.strategy, self.strategy
         self._storage, w_other._storage = w_other._storage, self._storage
         W_AbstractObjectWithIdentityHash._become(self, w_other)

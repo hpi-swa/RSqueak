@@ -42,7 +42,6 @@ class SDLDisplay(object):
     _attrs_ = ["screen", "width", "height", "depth", "surface", "has_surface",
                "mouse_position", "button", "key", "interrupt_key", "_defer_updates",
                "_deferred_events", "bpp", "pitch"]
-    #_immutable_fields_ = ["pixelbuffer?"]
 
     def __init__(self, title):
         assert RSDL.Init(RSDL.INIT_VIDEO) >= 0
