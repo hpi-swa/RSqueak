@@ -22,7 +22,7 @@ class ClassShadow(AbstractCachingShadow):
 
     _attrs_ = ["name", "_instance_size", "instance_varsized", "instance_kind",
                 "_s_methoddict", "_s_superclass", "subclass_s"]
-    _immutable_fields_ = ["name?"]
+
     name = '??? (incomplete class info)'
     _s_superclass = _s_methoddict = None
     provides_getname = True
@@ -90,6 +90,7 @@ class ClassShadow(AbstractCachingShadow):
                 if n0 == self.size(w_self) - 1 and isinstance(w_val, model.W_PointersObject):
                     cl_shadow = w_val.as_class_get_shadow(self.space)
                     self.name = "%s class" % cl_shadow.getname()
+                    self.changed()
                 else:
                     return
             elif n0 == constants.CLASS_NAME_INDEX:
@@ -105,6 +106,7 @@ class ClassShadow(AbstractCachingShadow):
         if w_class is None or w_class.is_nil(self.space):
             if superclass: superclass.detach_s_class(self)
             self._s_superclass = None
+            self.changed()
         else:
             assert isinstance(w_class, model.W_PointersObject)
             s_new_superclass = w_class.as_class_get_shadow(self.space)
@@ -112,6 +114,7 @@ class ClassShadow(AbstractCachingShadow):
                 return
             if superclass: superclass.detach_s_class(self)
             self._s_superclass = s_new_superclass
+            self.changed()
             s_new_superclass.attach_s_class(self)
 
     def store_w_methoddict(self, w_methoddict):
@@ -119,6 +122,7 @@ class ClassShadow(AbstractCachingShadow):
         if w_methoddict is None or w_methoddict.is_nil(self.space):
             if methoddict: methoddict.s_class = None
             self._s_methoddict = None
+            self.changed()
         else:
             assert isinstance(w_methoddict, model.W_PointersObject)
             s_new_methoddict = w_methoddict.as_methoddict_get_shadow(self.space)
@@ -132,6 +136,7 @@ class ClassShadow(AbstractCachingShadow):
         s_methoddict.s_class = self
         s_methoddict.sync_method_cache()
         self._s_methoddict = s_methoddict
+        self.changed()
 
     def attach_s_class(self, s_other):
         self.subclass_s[s_other] = None
@@ -144,6 +149,7 @@ class ClassShadow(AbstractCachingShadow):
             self.name = w_name.unwrap_string(None)
         else:
             self.name = None
+        self.changed()
 
     @jit.unroll_safe
     def flush_method_caches(self):
@@ -177,15 +183,19 @@ class ClassShadow(AbstractCachingShadow):
             raise NotImplementedError(self.instance_kind)
         return w_new
 
+    @constant_for_version
     def w_methoddict(self):
         return self._s_methoddict.w_self()
 
+    @constant_for_version
     def s_methoddict(self):
         return self._s_methoddict
 
+    @constant_for_version
     def s_superclass(self):
         return self._s_superclass
 
+    @constant_for_version
     def getname(self):
         return self.name
 
