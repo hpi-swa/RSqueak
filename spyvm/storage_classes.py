@@ -160,27 +160,28 @@ class ClassShadow(AbstractCachingShadow):
 
     def new(self, extrasize=0):
         w_cls = self.w_self()
-        if self.instance_kind == POINTERS:
+        instance_kind = self.get_instance_kind()
+        if instance_kind == POINTERS:
             size = self.instsize() + extrasize
             w_new = model.W_PointersObject(self.space, w_cls, size)
-        elif self.instance_kind == WORDS:
+        elif instance_kind == WORDS:
             w_new = model.W_WordsObject(self.space, w_cls, extrasize)
-        elif self.instance_kind == BYTES:
+        elif instance_kind == BYTES:
             w_new = model.W_BytesObject(self.space, w_cls, extrasize)
-        elif self.instance_kind == COMPILED_METHOD:
+        elif instance_kind == COMPILED_METHOD:
             w_new = model.W_CompiledMethod(self.space, extrasize)
-        elif self.instance_kind == FLOAT:
+        elif instance_kind == FLOAT:
             w_new = model.W_Float(0) # Squeak gives a random piece of memory
-        elif self.instance_kind == LARGE_POSITIVE_INTEGER:
+        elif instance_kind == LARGE_POSITIVE_INTEGER:
             if extrasize <= 4:
                 w_new = model.W_LargePositiveInteger1Word(0, extrasize)
             else:
                 w_new = model.W_BytesObject(self.space, w_cls, extrasize)
-        elif self.instance_kind == WEAK_POINTERS:
+        elif instance_kind == WEAK_POINTERS:
             size = self.instsize() + extrasize
             w_new = model.W_PointersObject(self.space, w_cls, size, weak=True)
         else:
-            raise NotImplementedError(self.get_instance_kind())
+            raise NotImplementedError(instance_kind)
         return w_new
 
     @constant_for_version
