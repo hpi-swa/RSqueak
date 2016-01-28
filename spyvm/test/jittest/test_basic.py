@@ -26,7 +26,8 @@ class TestBasic(BaseJITTest):
         guard_not_invalidated(descr=<Guard0x8e3dc04>),
         i83 = int_le(i77, 10000),
         guard_true(i83, descr=<Guard0x8e3dc40>),
-        i85 = int_add(i77, 1),
+        i85 = int_add_ovf(i77, 1),
+        guard_no_overflow(descr=<Guard0xa6db2cc>)
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, i85, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, p61, i86, descr=TargetToken(149146648))]
         """)
 
@@ -414,7 +415,6 @@ class TestBasic(BaseJITTest):
         i153 = uint_lt(i152, 2147483647),
         guard_true(i153, descr=<Guard0x9449cd0>),
         i154 = int_add(i134, 1),
-        i158 = arraylen_gc(p66, descr=<ArrayU 1>),
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, p18, i154, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, f103, i155, p66, descr=TargetToken(155615448))
         """)
 
