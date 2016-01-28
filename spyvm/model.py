@@ -875,7 +875,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
     _attrs_ = ['version', 'bytes', '_size', 'c_bytes']
     repr_classname = 'W_BytesObject'
     bytes_per_slot = 1
-    _immutable_fields_ = ['version?', 'bytes?', '_size?', 'c_bytes?']
+    _immutable_fields_ = ['version?']
 
     def __init__(self, space, w_class, size):
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
