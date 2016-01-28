@@ -20,8 +20,12 @@ def bootstrap_class(instsize, w_superclass=None, w_metaclass=None,
     return space.bootstrap_class(instsize, w_superclass, w_metaclass,
                     name, format, varsized)
 
+def new_frame_and_args(bytes, receiver=None):
+    foo, bar = w("foo"), w("bar")
+    return space.make_frame(bytes, receiver=receiver, args=[foo, bar]), (foo, bar)
+
 def new_frame(bytes, receiver=None):
-    return space.make_frame(bytes, receiver=receiver, args=[w("foo"), w("bar")])
+    return new_frame_and_args(bytes, receiver=receiver)[0]
 
 def step_in_interp(ctxt): # due to missing resets in between tests
     interp._loop = False
@@ -142,26 +146,30 @@ def test_pushReceiverVariableBytecode(bytecode = (pushReceiverVariableBytecode(0
                                                   pushReceiverVariableBytecode(1) +
                                                   pushReceiverVariableBytecode(2))):
     w_demo = bootstrap_class(3).as_class_get_shadow(space).new()
-    w_demo.store(space, 0, w("egg"))
-    w_demo.store(space, 1, w("bar"))
-    w_demo.store(space, 2, w("baz"))
+    egg, bar, baz = w("egg"), w("bar"), w("baz")
+    w_demo.store(space, 0, egg)
+    w_demo.store(space, 1, bar)
+    w_demo.store(space, 2, baz)
     w_frame, s_frame = new_frame(bytecode, receiver = w_demo)
     s_frame = w_frame.as_context_get_shadow(space)
     step_in_interp(s_frame)
     step_in_interp(s_frame)
     step_in_interp(s_frame)
-    assert_list(s_frame.stack(), ["egg", "bar", "baz"])
+    assert_list(s_frame.stack(), [egg, bar, baz])
 
 def test_pushTemporaryVariableBytecode(bytecode=(pushTemporaryVariableBytecode(0) +
                                                  pushTemporaryVariableBytecode(1) +
                                                  pushTemporaryVariableBytecode(2))):
-    w_frame, s_frame = new_frame(bytecode)
+    frames, args = new_frame_and_args(bytecode)
+    w_frame = frames[0]
+    foo, bar = args[0], args[1]
     s_frame = w_frame.as_context_get_shadow(space)
-    s_frame.settemp(2, w("temp"))
+    temp = w("temp")
+    s_frame.settemp(2, temp)
     step_in_interp(s_frame)
     step_in_interp(s_frame)
     step_in_interp(s_frame)
-    assert_list(s_frame.stack(), ["foo", "bar", "temp"])
+    assert_list(s_frame.stack(), [foo, bar, temp])
 
 def test_pushLiteralConstantBytecode(bytecode=pushLiteralConstantBytecode(0) +
                                               pushLiteralConstantBytecode(1) +
@@ -175,12 +183,13 @@ def test_pushLiteralConstantBytecode(bytecode=pushLiteralConstantBytecode(0) +
 
 def test_pushLiteralVariableBytecode(bytecode=pushLiteralVariableBytecode(0)):
     w_association = bootstrap_class(2).as_class_get_shadow(space).new()
-    w_association.store(space, 0, w("mykey"))
-    w_association.store(space, 1, w("myvalue"))
+    mykey, myvalue = w("mykey"), w("myvalue")
+    w_association.store(space, 0, mykey)
+    w_association.store(space, 1, myvalue)
     w_frame, s_frame = new_frame(bytecode)
     s_frame.w_method().setliterals( fakeliterals(space, w_association))
     step_in_interp(s_frame)
-    assert_list(s_frame.stack(), ["myvalue"])
+    assert_list(s_frame.stack(), [myvalue])
 
 def test_storeAndPopReceiverVariableBytecode(bytecode=storeAndPopReceiverVariableBytecode,
                                              popped=True):

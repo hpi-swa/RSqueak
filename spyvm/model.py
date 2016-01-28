@@ -963,27 +963,6 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
                 return False
         return True
 
-    def is_same_object(self, other):
-        if self is other:
-            return True
-        # XXX this sounds very wrong to me
-        elif not isinstance(other, W_BytesObject):
-            return False
-        size = self.size()
-        if size != other.size():
-            return False
-        elif size > 256 and self.bytes is not None and other.bytes is not None:
-            return self.bytes == other.bytes
-        else:
-            return self.has_same_chars(other, size)
-
-    @jit.look_inside_iff(lambda self, other, size: jit.isconstant(size))
-    def has_same_chars(self, other, size):
-        for i in range(size):
-            if self.getchar(i) != other.getchar(i):
-                return False
-        return True
-
     def clone(self, space):
         size = self.size()
         w_result = W_BytesObject(space, self.getclass(space), size)
