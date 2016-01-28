@@ -34,8 +34,8 @@ class SimulationPluginClass(Plugin):
         if not interp.image.w_simulatePrimitive or interp.image.w_simulatePrimitive.is_nil(interp.space):
             raise SimulatedPrimitiveFailedError("Primitive has failed and simulator selector not in image", w_name, s_class)
 
-        w_method = s_class.lookup(interp.image.w_simulatePrimitive)
-        if w_method is None:
+        w_sim_method = s_class.lookup(interp.image.w_simulatePrimitive)
+        if w_sim_method is None:
             raise SimulatedPrimitiveFailedError("Primitive has failed and no simulator method was found on this class", w_name, s_class)
 
         s_frame.push(w_rcvr)
