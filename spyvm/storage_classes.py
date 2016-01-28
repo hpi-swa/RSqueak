@@ -230,7 +230,7 @@ class ClassShadow(AbstractCachingShadow):
             if w_method is not None:
                 return w_method
             look_in_shadow = look_in_shadow._s_superclass
-        raise error.MethodNotFound()
+        return None
 
     def changed(self):
         self.superclass_changed(Version())

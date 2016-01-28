@@ -39,9 +39,6 @@ class FatalError(SmalltalkException):
 class BlockCannotReturnError(SmalltalkException):
         exception_type = "BlockCannotReturnError"
 
-class MethodNotFound(SmalltalkException):
-    exception_type = "MethodNotFound"
-
 class MissingBytecode(SmalltalkException):
     """Bytecode not implemented yet."""
     exception_type = "MissingBytecode"

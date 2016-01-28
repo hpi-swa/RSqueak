@@ -300,9 +300,8 @@ class __extend__(ContextPartShadow):
     def _sendSelector(self, w_selector, argcount, interp,
                       receiver, receiverclassshadow, w_arguments=None, s_fallback=None):
         assert argcount >= 0
-        try:
-            w_method = receiverclassshadow.lookup(w_selector)
-        except error.MethodNotFound:
+        w_method = receiverclassshadow.lookup(w_selector)
+        if w_method is None:
             if w_arguments:
                 self.push_all(w_arguments)
                 # the arguments will be popped again in doesNotUnderstand but
@@ -354,10 +353,14 @@ class __extend__(ContextPartShadow):
         w_special_selector = space.special_object("w_" + special_selector)
         s_class = receiver.class_shadow(space)
 
-        try:
-            w_method = s_class.lookup(w_special_selector)
-        except error.MethodNotFound:
-            if w_args:
+        w_method = s_class.lookup(w_special_selector)
+        if w_method is None:
+            w_method = s_class.lookup(space.special_object("w_doesNotUnderstand"))
+            if w_method is None:
+                s_class = receiver.class_shadow(self.space)
+                assert isinstance(s_class, ClassShadow)
+                raise error.Exit("Missing doesNotUnderstand in hierarchy of %s" % s_class.getname())
+            elif w_args:
                 self.push_all(w_args)
                 # the arguments will be popped again in doesNotUnderstand but
                 # jit compilation should be able to remove those operations
@@ -382,14 +385,9 @@ class __extend__(ContextPartShadow):
         w_message.store(self.space, 1, self.space.wrap_list(arguments))
         self.pop() # The receiver, already known.
 
-        try:
-            if interp.space.headless.is_set():
-                primitives.exitFromHeadlessExecution(self, "doesNotUnderstand:", w_message)
-            return self._sendSpecialSelector(interp, receiver, "doesNotUnderstand", [w_message])
-        except error.MethodNotFound:
-            s_class = receiver.class_shadow(self.space)
-            assert isinstance(s_class, ClassShadow)
-            raise error.Exit("Missing doesNotUnderstand in hierarchy of %s" % s_class.getname())
+        if interp.space.headless.is_set():
+            primitives.exitFromHeadlessExecution(self, "doesNotUnderstand:", w_message)
+        return self._sendSpecialSelector(interp, receiver, "doesNotUnderstand", [w_message])
 
     def _mustBeBoolean(self, interp, receiver):
         return self._sendSpecialSelector(interp, receiver, "mustBeBoolean")
