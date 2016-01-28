@@ -180,8 +180,12 @@ class ClassShadow(AbstractCachingShadow):
             size = self.instsize() + extrasize
             w_new = model.W_PointersObject(self.space, w_cls, size, weak=True)
         else:
-            raise NotImplementedError(self.instance_kind)
+            raise NotImplementedError(self.get_instance_kind())
         return w_new
+
+    @constant_for_version
+    def get_instance_kind(self):
+        return self.instance_kind
 
     @constant_for_version
     def w_methoddict(self):
