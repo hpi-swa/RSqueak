@@ -61,7 +61,7 @@ class ContextPartShadow(AbstractStrategy):
                # Core context data
                '_s_sender', '_pc', '_temps_and_stack', '_stack_ptr',
                # MethodContext data
-               'closure', '_w_receiver', '_w_method', '_is_BlockClosure_ensure',
+               'closure', '_w_receiver', '_w_method',
                # Extra data
                'extra_data'
                ]
@@ -70,7 +70,7 @@ class ContextPartShadow(AbstractStrategy):
         "_w_self", "_w_self_size",
         'state',
         '_s_sender', "_pc", "_temps_and_stack[*]", "_stack_ptr",
-        'closure', '_w_receiver', '_w_method', '_is_BlockClosure_ensure',
+        'closure', '_w_receiver', '_w_method',
         'extra_data'
     ]
 
@@ -95,7 +95,6 @@ class ContextPartShadow(AbstractStrategy):
         self.closure = None
         self._w_method = None
         self._w_receiver = None
-        self._is_BlockClosure_ensure = False
         # Extra data
         self.extra_data = None
 
@@ -321,7 +320,8 @@ class ContextPartShadow(AbstractStrategy):
         if self.pure_is_block_context():
             return False
         else:
-            return self._is_BlockClosure_ensure
+            # Primitive 198 is a marker used in BlockClosure >> ensure:
+            return self.w_method().primitive() == 198
 
     def home_is_self(self):
         if self.pure_is_block_context():
@@ -778,8 +778,6 @@ class __extend__(ContextPartShadow):
     def store_w_method(self, w_method):
         assert isinstance(w_method, model.W_CompiledMethod)
         self._w_method = w_method
-        # Primitive 198 is a marker used in BlockClosure >> ensure:
-        self._is_BlockClosure_ensure = (w_method.primitive() == 198)
 
     def w_receiver_method_context(self):
         return self._w_receiver
