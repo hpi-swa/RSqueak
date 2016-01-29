@@ -18,6 +18,7 @@ from optparse import OptionParser
 # CODESPEED_URL = 'http://172.16.64.134/'
 
 CODESPEED_URL = 'http://localhost:80/'
+BINARY_URL = "https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/commits/{}"
 COMMIT_QUEUE = 'commit-queue'
 SYNC_FILE = os.path.join(os.getcwd(), "bm.lock")
 input_benchmarks = []
@@ -135,7 +136,7 @@ RSqueak = Project(
     ],
     arguments=["-c",
                "SDL_VIDEODRIVER=dummy /home/dglaeser/RSqueakBenchmarks/RSqueak/rsqueak "
-               "/home/dglaeser/RSqueakBenchmarks/Benchmark-Repo/Squeak4.6-vmmaker.bench.image -n 0"],
+               "/home/dglaeser/RSqueakBenchmarks/Squeak4.6-vmmaker.bench.image -n 0"],
     working_dir="./RSqueak",
 )
 
@@ -213,7 +214,7 @@ def get_rsqueak_executable(options, commit_hash):
         if check_executable_on_server(executable_name):
             # todo: error handling for web retrieval
             print "Retrieving executable from lively-kernel.org."
-            urllib.urlretrieve("http://www.lively-kernel.org/babelsberg/RSqueak/{}".format(executable_name),
+            urllib.urlretrieve(BINARY_URL.format(executable_name),
                                filename="rsqueak_builds/{}".format(executable_name))
 
     shutil.copy("rsqueak_builds/{}".format(executable_name), "rsqueak")
@@ -223,15 +224,15 @@ def get_rsqueak_executable(options, commit_hash):
 
 def get_executable_name(commit_hash, options):
     if options.required_commit or options.continue_queue:
-        return "rsqueak-x86-Linux-jit-{}".format(commit_hash)
+        return "rsqueak-x86-linux-jit-{}".format(commit_hash)
     else:
         return "rsqueak-linux-latest"
 
-
 def check_executable_on_server(executable_name):
     try:
-        urllib2.urlopen(HeadRequest("http://www.lively-kernel.org/babelsberg/RSqueak/{}".format(executable_name)))
+        urllib2.urlopen(HeadRequest(BINARY_URL.format(executable_name)))
     except Exception as e:
+        print BINARY_URL.format(executable_name)
         print e
         print "Unable to retrieve executable."
         raise MissingExecutableException
