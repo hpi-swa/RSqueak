@@ -422,15 +422,16 @@ class __extend__(ContextPartShadow):
         # it will find the sender as a local, and we don't have to
         # force the reference
         # EXECPT someone fiddled with our context chain!
+        from spyvm.interpreter import FreshReturn
         if (self.home_is_self() or local_return) \
             and not(self.state == DirtyContext):
-            s_return_to = None
+            from spyvm.interpreter import LocalReturn
+            raise FreshReturn(LocalReturn.make(self.space, return_value))
         else:
             s_return_to = self.s_home().s_sender()
             assert s_return_to, "No sender to return to!"
-
-        from spyvm.interpreter import Return
-        raise Return(s_return_to, return_value)
+            from spyvm.interpreter import NonLocalReturn
+            raise FreshReturn(NonLocalReturn.make(self.space, s_return_to, return_value))
 
     # ====== Send/Return bytecodes ======
 
@@ -525,10 +526,12 @@ class __extend__(ContextPartShadow):
         if self.gettemp(1).is_nil(self.space):
             self.settemp(1, self.space.w_true) # mark unwound
             self.push(self.gettemp(0)) # push the first argument
-            from spyvm.interpreter import Return
+            from spyvm.interpreter import LocalReturn, NonLocalReturn
             try:
                 self.bytecodePrimValue(interp, 0)
-            except Return, ret:
+            except LocalReturn:
+                pass
+            except NonLocalReturn, ret:
                 # Local return value of ensure: block is ignored
                 if not ret.arrived_at_target:
                     raise ret

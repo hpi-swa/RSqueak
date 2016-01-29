@@ -52,7 +52,7 @@ class SimulationPluginClass(Plugin):
         except Return, ret:
             # must clean the stack, including the rcvr
             s_frame.pop_n(argcount + 1)
-            s_frame.push(ret.value)
+            s_frame.push(ret.value(interp.space))
             return w_rcvr
 
     def simulate(self, w_name, signature, interp, s_frame, argcount, w_method):

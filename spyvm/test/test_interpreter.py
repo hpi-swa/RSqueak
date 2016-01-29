@@ -30,14 +30,19 @@ def new_frame(bytes, receiver=None):
 def step_in_interp(ctxt): # due to missing resets in between tests
     interp._loop = False
     try:
-        retval = interp.step(ctxt)
-        if retval is not None:
-            return retval.w_self()
-    except interpreter.Return, nlr:
+        try:
+            retval = interp.step(ctxt)
+            if retval is not None:
+                return retval.w_self()
+        except interpreter.FreshReturn, ret:
+            raise ret.exception
+    except interpreter.LocalReturn, ret:
+        new_context = ctxt.s_sender()
+        new_context.push(ret.value(interp.space))
+        return new_context.w_self()
+    except interpreter.NonLocalReturn, nlr:
         new_context = nlr.s_target_context
-        if new_context is None:
-            new_context = ctxt.s_sender()
-        new_context.push(nlr.value)
+        new_context.push(nlr.value(interp.space))
         return new_context.w_self()
 
 def assert_list(list, expected):
