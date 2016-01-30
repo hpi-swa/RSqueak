@@ -17,6 +17,7 @@ from optparse import OptionParser
 
 # CODESPEED_URL = 'http://172.16.64.134/'
 
+THIS_DIR = os.path.abspath(os.path.dirname(__file__))
 CODESPEED_URL = 'http://localhost:80/'
 BINARY_URL = "https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/commits/{}"
 COMMIT_QUEUE = 'commit-queue'
@@ -66,6 +67,9 @@ class Project(object):
             print str(e)
             print e.read()
             return
+        except urllib2.URLError as e:
+            print str(e)
+            return
         response = f.read()
         f.close()
         print "Server (%s) response: %s\n" % (CODESPEED_URL, response)
@@ -87,11 +91,11 @@ class Project(object):
 
     @staticmethod
     def parse_rsqueak_result(result_string):
-        regex = ".*#\(([0-9 ]+)\).*"
+        regex = ".*#\((.*)\).*"
         trimmed_results = re.sub(regex, "\\1", result_string)
         results_list = trimmed_results.split(" ")
 
-        results_list = [int(i) for i in results_list]
+        results_list = [float(i) for i in results_list]
         relevant_results = results_list[-20:]
 
         return relevant_results
@@ -108,8 +112,10 @@ class Executable(object):
         print 'Calling %s (%s) ...' % (self.name, " ".join([self.path] + args))
 
         pipe = subprocess.Popen(
-            ["%s" % self.path] + args,
+            " ".join([self.path] + args),
+            shell=True,
             stdout=subprocess.PIPE,
+            env={"SDL_VIDEODRIVER": "dummy"},
             cwd=working_dir
         )
         print "subprocess opened"
@@ -125,18 +131,15 @@ class HeadRequest(urllib2.Request):
     def get_method(self):
         return "HEAD"
 
-
 RSqueak = Project(
     "rsqueakvm",
     executables=[
         Executable(
             "rsqueakvm",
-            "bash",
+            "%s/RSqueak/rsqueak" % THIS_DIR,
         ),
     ],
-    arguments=["-c",
-               "SDL_VIDEODRIVER=dummy /home/dglaeser/RSqueakBenchmarks/RSqueak/rsqueak "
-               "/home/dglaeser/RSqueakBenchmarks/Squeak4.6-vmmaker.bench.image -n 0"],
+    arguments=["%s/Squeak4.6-vmmaker.bench.image -n 0" % THIS_DIR],
     working_dir="./RSqueak",
 )
 
@@ -144,10 +147,57 @@ BENCHMARKS = {
     "mandala": {"rsqueak": "-m mandala"},
     "dsaGen": {"rsqueak": "-m dsaGen"},
     "shaLongString": {"rsqueak": "-m shaLongString"},
-    # "renderFont": {"rsqueak": "-m renderFont"}, # does not work in headless mode
+    # NOT WORKING: "renderFont": {"rsqueak": "-P -u -m renderFont"},
     "arrayFillArray": {"rsqueak": "-m arrayFillArray"},
     "arrayFillString": {"rsqueak": "-m arrayFillString"},
 }
+
+for b in [
+          'SMarkAStarBenchmarkbenchAStar',
+          'SMarkBinaryTreeBenchmarkbenchBinaryTree',
+          'SMarkBlowfishBenchmarkbenchBlowfish',
+          'SMarkCompilerbenchCompiler',
+          'SMarkFannkuchbenchFannkuch',
+          'SMarkFannkuchbenchmark',
+          'SMarkJSJsonbenchJson',
+          'SMarkLoopsbenchArrayAccess',
+          'SMarkLoopsbenchSendWithManyArguments',
+          'SMarkLoopsbenchFloatLoop',
+          'SMarkLoopsbenchSend',
+          'SMarkLoopsbenchClassVarBinding',
+          'SMarkLoopsbenchIntLoop', 'SMarkLoopsbenchInstVarAccess',
+          'SMarkMailinglistMicroBenchmarksbenchByteStringHash',
+          'SMarkMailinglistMicroBenchmarksbenchOrderedCollectionRandomInsert',
+          'SMarkMailinglistMicroBenchmarksbenchOrderedCollectionInsertFirst',
+          'SMarkMailinglistMicroBenchmarksbenchWideStringHash',
+          'SMarkMandelbrotbenchmark',
+          'SMarkNBodybenchmark',
+          'SMarkRichardsbenchRichards',
+          'SMarkSlopstonebenchStone',
+          'SMarkSmopstonebenchStone',
+          'SMarkSplayTreeBenchmarkbenchSplayTree',
+          'SMarkSqueakJSbenchmarkIntegerBench',
+          'SMarkSqueakJSbenchmarkBitBltExampleOne',
+          'SMarkSqueakJSbenchmarkFillByteArray',
+          'SMarkSqueakJSbenchmarkFib']:
+    BENCHMARKS[b] = {"rsqueak": "-m " + b}
+
+for b in [# 'SMarkMailinglistMicroBenchmarksbenchLRUCachePrintString',
+          # 'SMarkGSGraphSearchbenchGraphSearch',
+          # 'SMarkDeltaBluebenchDeltaBlue',
+          'SMarkChameneosBenchmarkbenchChameneos',
+          'SMarkMandelbrotBenchmarkbenchMandelbrotRecursive2Thread',
+          'SMarkMandelbrotBenchmarkbenchMandelbrotRecursive8Thread',
+          'SMarkMandelbrotBenchmarkbenchMandelbrotIterative2Thread',
+          'SMarkMandelbrotBenchmarkbenchMandelbrotIterative4Thread',
+          'SMarkMandelbrotBenchmarkbenchMandelbrotRecursive4Thread',
+          'SMarkMandelbrotBenchmarkbenchMandelbrotIterative1Thread',
+          'SMarkMandelbrotBenchmarkbenchMandelbrotRecursive1Thread',
+          'SMarkMandelbrotBenchmarkbenchMandelbrotIterative8Thread',
+          # 'SMarkPolymorphyBenchmarkbenchPolymorphy',
+          'SMarkRSqueakbenchBitBlt']:
+    BENCHMARKS[b] = {"rsqueak": "-P -m " + b}
+
 
 VMS = {
     "rsqueak": RSqueak
@@ -177,7 +227,7 @@ def sample_standard_deviation(values):
 def get_full_hash_from_repo(required_commit):
     orig_dir = os.getcwd()
 
-    repo_dir = "/home/dglaeser/RSqueakBenchmarks/RSqueak/"
+    repo_dir = "%s/RSqueak/" % THIS_DIR
     os.chdir(repo_dir)
     os.system("git fetch origin")
     if required_commit:
@@ -200,24 +250,23 @@ def get_full_hash_from_repo(required_commit):
 
 def get_rsqueak_executable(options, commit_hash):
     orig_dir = os.getcwd()
-    os.chdir("/home/dglaeser/RSqueakBenchmarks/RSqueak/")
+    os.chdir("%s/RSqueak/" % THIS_DIR)
     if os.path.isfile("rsqueak"):
         os.remove("rsqueak")
-
     executable_name = get_executable_name(commit_hash, options)
 
     cached = False
-    if options.required_commit or options.continue_queue:
-        cached = get_executable_from_cache(executable_name)
+    # if options.required_commit or options.continue_queue:
+    cached = get_executable_from_cache(executable_name)
 
     if not cached:
         if check_executable_on_server(executable_name):
             # todo: error handling for web retrieval
             print "Retrieving executable from lively-kernel.org."
             urllib.urlretrieve(BINARY_URL.format(executable_name),
-                               filename="rsqueak_builds/{}".format(executable_name))
+                               filename=("%s/rsqueak_builds/%s" % (THIS_DIR, executable_name)))
 
-    shutil.copy("rsqueak_builds/{}".format(executable_name), "rsqueak")
+    shutil.copy("%s/rsqueak_builds/%s" % (THIS_DIR, executable_name), "rsqueak")
     os.chmod("rsqueak", 0755)  # executable by owner
     os.chdir(orig_dir)
 
@@ -240,7 +289,7 @@ def check_executable_on_server(executable_name):
 
 
 def get_executable_from_cache(executable_name):
-    if os.path.isfile("rsqueak_builds/{}".format(executable_name)):
+    if os.path.isfile("%s/rsqueak_builds/%s" % (THIS_DIR, executable_name)):
         print "Cached executable found: {}".format(executable_name)
         return True
     else:
@@ -396,4 +445,3 @@ if __name__ == "__main__":
         raise
 
     delete_sync_file(SYNC_FILE)
-
