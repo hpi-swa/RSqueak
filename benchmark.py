@@ -23,7 +23,7 @@ BINARY_URL = "https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/commit
 COMMIT_QUEUE = 'commit-queue'
 SYNC_FILE = os.path.join(os.getcwd(), "bm.lock")
 input_benchmarks = []
-
+commit_date = time.strftime("%Y-%m-%d %H:%M", time.localtime())
 
 class Project(object):
     def __init__(self, name, executables=list(), arguments=list(), working_dir=""):
@@ -49,7 +49,11 @@ class Project(object):
             print "output: ", output
             print "current bm: ", benchmark
 
-            results = self.parse_rsqueak_result(output)
+            try:
+                results = self.parse_rsqueak_result(output)
+            except ValueError, e:
+                print(e)
+                return
 
             self.add(executable, benchmark, median(results), min(results), max(results),
                      sample_standard_deviation(results))
@@ -77,7 +81,7 @@ class Project(object):
     def build_data(self, executable, benchmark, result, min, max, stdev):
         return {
             'commitid': full_commit_hash[0:10],
-            'result_date': time.strftime("%Y-%m-%d %H:%M", time.localtime()),   # CodeSpeed doesn't really care ...
+            'result_date': commit_date,
             'branch': 'default',
             'project': self.name,
             'executable': executable,
@@ -91,9 +95,9 @@ class Project(object):
 
     @staticmethod
     def parse_rsqueak_result(result_string):
-        regex = ".*#\((.*)\).*"
-        trimmed_results = re.sub(regex, "\\1", result_string)
-        results_list = trimmed_results.split(" ")
+        regex = r"<W_BytesObject.*'#\(([0-9eE\.\-\+ ]+)\)'>"
+        trimmed_results = re.findall(regex, result_string)[0]
+        results_list = trimmed_results.strip().split(" ")
 
         results_list = [float(i) for i in results_list]
         relevant_results = results_list[-20:]
@@ -180,7 +184,21 @@ for b in [
           'SMarkSqueakJSbenchmarkBitBltExampleOne',
           'SMarkSqueakJSbenchmarkFillByteArray',
           'SMarkSqueakJSbenchmarkFib']:
-    BENCHMARKS[b] = {"rsqueak": "-m " + b}
+    name = re.sub(r"(...+?)\1+",
+                  "\\1",
+                  re.sub(r"bench(.)",
+                         "\\1",
+                         re.sub("smark|squeakjs|benchmark|mailinglistmicrobenchmarks",
+                                "",
+                                b,
+                                flags=re.I
+                         )
+                        ),
+                  flags=re.I
+           )
+    while BENCHMARKS.get(name, None) is not None:
+        name += "_i"
+    BENCHMARKS[name] = {"rsqueak": "-m " + b}
 
 for b in [# 'SMarkMailinglistMicroBenchmarksbenchLRUCachePrintString',
           # 'SMarkGSGraphSearchbenchGraphSearch',
@@ -196,7 +214,21 @@ for b in [# 'SMarkMailinglistMicroBenchmarksbenchLRUCachePrintString',
           'SMarkMandelbrotBenchmarkbenchMandelbrotIterative8Thread',
           # 'SMarkPolymorphyBenchmarkbenchPolymorphy',
           'SMarkRSqueakbenchBitBlt']:
-    BENCHMARKS[b] = {"rsqueak": "-P -m " + b}
+    name = re.sub(r"(...+?)\1+",
+                  "\\1",
+                  re.sub(r"bench(.)",
+                         "\\1",
+                         re.sub("smark|squeakjs|benchmark|mailinglistmicrobenchmarks",
+                                "",
+                                b,
+                                flags=re.I
+                         )
+                        ),
+                  flags=re.I
+           )
+    while BENCHMARKS.get(name, None) is not None:
+        name += "_i"
+    BENCHMARKS[name] = {"rsqueak": "-P -m " + b}
 
 
 VMS = {
@@ -242,6 +274,10 @@ def get_full_hash_from_repo(required_commit):
         os.system("git checkout master")
         os.system("git pull")
 
+    global commit_date
+    commit_date = subprocess.check_output("git log -n 1 --pretty=format:%ct",
+                                 stderr=subprocess.STDOUT, cwd=repo_dir, shell=True)
+    commit_date = time.strftime("%Y-%m-%d %H:%M", time.gmtime(int(commit_date.strip())))
     hash_long = subprocess.check_output("git rev-parse HEAD",
                                         stderr=subprocess.STDOUT, cwd=repo_dir, shell=True)
     os.chdir(orig_dir)
