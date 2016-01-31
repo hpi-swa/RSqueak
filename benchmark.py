@@ -129,6 +129,31 @@ class Executable(object):
 
         return out
 
+class CogExecutable(Executable):
+    def run(self, args, benchmark, working_dir):
+        with open(working_dir + "/startupscript.st", "w") as f:
+            f.write("""
+              | o |
+              o := 0 %s.
+              FileStream stdout nextPutAll: 'running benchmark'; crlf; flush;
+                                nextPutAll: '<W_BytesObject ''';
+                                nextPutAll: o asString;
+                                nextPutAll: '''>'; cr; cr;
+                                flush.
+              Smalltalk snapshot: false andQuit: true.
+            """ % BENCHMARKS[benchmark]["rsqueak"].split(" ")[-1])
+        print 'Calling %s (%s) ...' % (self.name, " ".join([self.path] + args))
+        pipe = subprocess.Popen(
+            " ".join([self.path] + args),
+            shell=True,
+            stdout=subprocess.PIPE,
+            cwd=working_dir
+        )
+        print "subprocess opened"
+        out, err = pipe.communicate()
+        errcode = pipe.wait()
+        print "errcode: ", errcode
+        return out
 
 class HeadRequest(urllib2.Request):
     """Helper class to allow HEAD request before downloading executable."""
@@ -147,6 +172,17 @@ RSqueak = Project(
     working_dir="./RSqueak",
 )
 
+Cog = Project(
+    "cog",
+    executables=[
+        CogExecutable(
+            "squeak",
+            "%s/coglinux/bin/squeak" % THIS_DIR
+        ),
+    ],
+    arguments=["-headless %s/Squeak4.6-vmmaker.bench.image startupscript.st" % THIS_DIR],
+    working_dir=".",
+)
 BENCHMARKS = {
     "mandala": {"rsqueak": "-m mandala"},
     "dsaGen": {"rsqueak": "-m dsaGen"},
@@ -232,7 +268,8 @@ for b in [# 'SMarkMailinglistMicroBenchmarksbenchLRUCachePrintString',
 
 
 VMS = {
-    "rsqueak": RSqueak
+    "rsqueak": RSqueak,
+    "cog": Cog 
 }
 
 
