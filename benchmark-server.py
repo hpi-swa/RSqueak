@@ -53,7 +53,7 @@ class BenchmarkServer(BaseHTTPServer.BaseHTTPRequestHandler):
 
         subprocess.Popen(["python",
                           os.path.join(os.path.dirname(__file__), "benchmark.py"),
-                          "--vms=rsqueak", "--logfile=travis",
+                          "--vms=rsqueak,cog", "--logfile=travis",
                           "--benchmarks-all", "--continue"])
 
 if __name__ == "__main__":

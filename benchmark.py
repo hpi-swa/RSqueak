@@ -176,7 +176,7 @@ Cog = Project(
     "cog",
     executables=[
         CogExecutable(
-            "squeak",
+            "cog",
             "%s/coglinux/bin/squeak" % THIS_DIR
         ),
     ],
