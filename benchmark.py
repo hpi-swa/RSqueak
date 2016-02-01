@@ -21,6 +21,7 @@ THIS_DIR = os.path.abspath(os.path.dirname(__file__))
 CODESPEED_URL = 'http://localhost:80/'
 BINARY_URL = "https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/commits/{}"
 COMMIT_QUEUE = 'commit-queue'
+COG_URL = "http://www.mirandabanda.org/files/Cog/VM/"
 SYNC_FILE = os.path.join(os.getcwd(), "bm.lock")
 input_benchmarks = []
 commit_date = time.strftime("%Y-%m-%d %H:%M", time.localtime())
@@ -269,7 +270,7 @@ for b in [# 'SMarkMailinglistMicroBenchmarksbenchLRUCachePrintString',
 
 VMS = {
     "rsqueak": RSqueak,
-    "cog": Cog 
+    "cog": Cog
 }
 
 
@@ -319,6 +320,30 @@ def get_full_hash_from_repo(required_commit):
                                         stderr=subprocess.STDOUT, cwd=repo_dir, shell=True)
     os.chdir(orig_dir)
     return hash_long.strip()  # remove trailing whitespace from console output
+
+
+def update_cog():
+    folder, archive = "", ""
+    f = urllib.urlopen(COG_URL)
+    regex = r"href=\"(VM.r[0-9]+)"
+    links = re.findall(regex, f.read())
+    links.sort()
+    folder = links[-1]
+    f.close()
+    f = urllib.urlopen("%s/%s/" % (COG_URL, folder))
+    regex = r"href=\"(coglinux[0-9\.\-]+tgz)"
+    links = re.findall(regex, f.read())
+    links.sort()
+    archive = links[-1]
+    f.close()
+    filename, headers = urllib.urlretrieve("%s/%s/%s" % (COG_URL, folder, archive))
+    import tarfile, shutil
+    shutil.rmtree("%s/coglinux" % THIS_DIR, ignore_errors=True)
+    with tarfile.open(filename) as tar:
+        tar.extractall()
+        topdir = tar.getnames()[0]
+        print "Found cog at %s, moving to %s" % (topdir, "%s/coglinux" % THIS_DIR)
+        shutil.move(topdir, "%s/coglinux" % THIS_DIR)
 
 
 def get_rsqueak_executable(options, commit_hash):
@@ -508,6 +533,7 @@ if __name__ == "__main__":
                                                 full_commit_hash), 'w')
 
             get_rsqueak_executable(option_values, full_commit_hash)
+            update_cog()
 
             for vm in input_vms:
                 VMS[vm].post_results()
