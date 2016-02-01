@@ -678,6 +678,22 @@ def func(interp, s_frame, w_frame, stackp):
     return w_frame
 
 
+# HACK: MacPython will have garbage around from RSDL/Cocoa invocation during
+# tests. We know that, so the assert_no_more_gcflags is useless in this case
+# and generates spurious errors.
+def _we_are_mac_python():
+    "NOT_RPYTHON"
+    try:
+        from AppKit import NSApplication
+    except:
+        return False
+    else:
+        return True
+
+def we_are_mac_python():
+    if objectmodel.we_are_translated():
+        return False
+    return _we_are_mac_python()
 
 def get_instances_array_gc(space, w_class=None):
     from rpython.rlib import rgc
@@ -693,16 +709,18 @@ def get_instances_array_gc(space, w_class=None):
 
             if w_obj is not None and w_obj.has_class():
                 w_cls = w_obj.getclass(space)
-                # when calling NEXT_OBJECT, we should not return # SmallInteger
-                # instances
-                # XXX: same for Character on Spur and SmallFloat64 on Spur64...
-                if not w_cls.is_same_object(space.w_SmallInteger) and \
-                   (w_class is None or w_cls.is_same_object(w_class)):
-                    result_w.append(w_obj)
+                if w_cls is not None:
+                    # when calling NEXT_OBJECT, we should not return # SmallInteger
+                    # instances
+                    # XXX: same for Character on Spur and SmallFloat64 on Spur64...
+                    if not w_cls.is_same_object(space.w_SmallInteger) and \
+                       (w_class is None or w_cls.is_same_object(w_class)):
+                        result_w.append(w_obj)
             pending.extend(rgc.get_rpy_referents(gcref))
 
     rgc.clear_gcflag_extra(roots)
-    rgc.assert_no_more_gcflags()
+    if not we_are_mac_python():
+        rgc.assert_no_more_gcflags()
     return result_w
 
 def get_instances_array(space, s_frame, w_class=None, store=True):
@@ -1009,7 +1027,7 @@ def func(interp, s_frame, w_arg, w_rcvr):
     if w_arg_class.instsize() != w_rcvr_class.instsize():
         raise PrimitiveFailedError()
 
-    w_rcvr.w_class = w_arg_class
+    w_rcvr.change_class(interp.space, w_arg_class)
 
 @expose_primitive(EXTERNAL_CALL, clean_stack=False, no_result=True, compiled_method=True)
 def func(interp, s_frame, argcount, w_method):
@@ -1105,13 +1123,14 @@ DRAW_RECTANGLE = 127
 
 @expose_primitive(IMAGE_NAME)
 def func(interp, s_frame, argument_count):
+    from spyvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX
     if argument_count == 0:
         s_frame.pop()
-        return interp.space.wrap_string(interp.space.image_name())
+        return interp.space.wrap_string(interp.space.get_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX))
     elif argument_count == 1:
         w_arg = s_frame.pop()
         assert isinstance(w_arg, model.W_BytesObject)
-        interp.space.set_image_name(interp.space.unwrap_string(w_arg))
+        interp.space.set_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, interp.space.unwrap_string(w_arg))
         return s_frame.pop()
     raise PrimitiveFailedError
 
@@ -1308,7 +1327,7 @@ def func(interp, s_frame, w_arg):
 @expose_primitive(SYSTEM_ATTRIBUTE, unwrap_spec=[object, int])
 def func(interp, s_frame, w_receiver, attr_id):
     try:
-        return interp.space.wrap_string("%s" % interp.space.system_attributes[attr_id])
+        return interp.space.wrap_string("%s" % interp.space.get_system_attribute(attr_id))
     except KeyError:
         return interp.space.w_nil
 

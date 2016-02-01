@@ -13,7 +13,7 @@
 #   plugin perform: primitiveName asSymbol.
 import inspect
 
-from rpython.rlib.entrypoint import entrypoint
+from rpython.rlib.entrypoint import entrypoint_highlevel
 from rpython.rtyper.annlowlevel import llhelper
 from rpython.rlib.exports import export_struct
 from rpython.rtyper.lltypesystem.lltype import FuncType, Ptr
@@ -965,7 +965,7 @@ VMPtr = Ptr(VirtualMachine)
 
 proxy_functions = unrolling_iterable(functions)
 
-@entrypoint('main', [], c_name='sqGetInterpreterProxy')
+@entrypoint_highlevel('main', [], c_name='sqGetInterpreterProxy')
 def sqGetInterpreterProxy():
     return getInterpreterProxy()
 

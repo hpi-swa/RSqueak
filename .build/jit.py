@@ -120,10 +120,15 @@ def main():
     # code = "^6+7"
     # code = "10000 timesRepeat: [ 0 makeStackDepth: 10 ]"
     # code = """ 1 to: 100000 do: [:i | (2147483647 bitXor: i) + 10 ]    """
-    code = "10000 timesRepeat: [ (2147483647 bitXor: 12) + 10 ]"
+    # code = "10000 timesRepeat: [ (2147483647 bitXor: 12) + 10 ]"
+    code = """
+        | o |
+        o := Array with: (Array with: 'a' with: $b) with: (Array with: 'x' with: $y).
+        1 to: 10000 do: [:i | (o at: (i \\\\ 2) + 1) at: (i \\\\ 2) + 1].
+    """
     # code = "1 to: 10000 do: [:i | (2147483647 bitXorLarge: i) + 10 ]"
     # code = "1 to: 10000 do: [:i | i ]"
-    
+
     # ===== These entry-points pre-load the image and directly execute a single frame.
     # func = preload_perform(imagename, model.W_SmallInteger(1000), 'loopTest2')
     # func = preload_perform(imagename, model.W_SmallInteger(777), 'name')

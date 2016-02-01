@@ -23,14 +23,15 @@ class ClassShadow(AbstractCachingShadow):
 
     _attrs_ = ["name", "_instance_size", "instance_varsized", "instance_kind",
                 "_s_methoddict", "_s_superclass", "subclass_s"]
+
     name = '??? (incomplete class info)'
     _s_superclass = _s_methoddict = None
     provides_getname = True
     repr_classname = "ClassShadow"
 
-    def __init__(self, space, w_self, size):
+    def __init__(self, space, w_self, size, w_class):
         self.subclass_s = {}
-        AbstractCachingShadow.__init__(self, space, w_self, size)
+        AbstractCachingShadow.__init__(self, space, w_self, size, w_class)
 
     def store(self, w_self, n0, w_val):
         AbstractCachingShadow.store(self, w_self, n0, w_val)
@@ -44,11 +45,12 @@ class ClassShadow(AbstractCachingShadow):
             else:
                 self.store_pre_spur_classformat(w_self, n0, w_val)
         else:
-            if w_self.w_class == self.space.classtable["w_Metaclass"]:
+            if w_self.getclass(self.space).is_same_object(self.space.classtable["w_Metaclass"]):
                 # In case of Metaclasses, the "instance" class is stored in the last field.
                 if n0 == self.size(w_self) - 1 and isinstance(w_val, model.W_PointersObject):
                     cl_shadow = w_val.as_class_get_shadow(self.space)
                     self.name = "%s class" % cl_shadow.getname()
+                    self.changed()
                 else:
                     return
             elif n0 == constants.CLASS_NAME_INDEX:
@@ -152,6 +154,7 @@ class ClassShadow(AbstractCachingShadow):
         if w_class is None or w_class.is_nil(self.space):
             if superclass: superclass.detach_s_class(self)
             self._s_superclass = None
+            self.changed()
         else:
             assert isinstance(w_class, model.W_PointersObject)
             s_new_superclass = w_class.as_class_get_shadow(self.space)
@@ -159,6 +162,7 @@ class ClassShadow(AbstractCachingShadow):
                 return
             if superclass: superclass.detach_s_class(self)
             self._s_superclass = s_new_superclass
+            self.changed()
             s_new_superclass.attach_s_class(self)
 
     def store_w_methoddict(self, w_methoddict):
@@ -166,6 +170,7 @@ class ClassShadow(AbstractCachingShadow):
         if w_methoddict is None or w_methoddict.is_nil(self.space):
             if methoddict: methoddict.s_class = None
             self._s_methoddict = None
+            self.changed()
         else:
             assert isinstance(w_methoddict, model.W_PointersObject)
             s_new_methoddict = w_methoddict.as_methoddict_get_shadow(self.space)
@@ -179,6 +184,7 @@ class ClassShadow(AbstractCachingShadow):
         s_methoddict.s_class = self
         s_methoddict.sync_method_cache()
         self._s_methoddict = s_methoddict
+        self.changed()
 
     def attach_s_class(self, s_other):
         self.subclass_s[s_other] = None
@@ -191,6 +197,7 @@ class ClassShadow(AbstractCachingShadow):
             self.name = w_name.unwrap_string(None)
         else:
             self.name = None
+        self.changed()
 
     @jit.unroll_safe
     def flush_method_caches(self):
@@ -201,41 +208,52 @@ class ClassShadow(AbstractCachingShadow):
 
     def new(self, extrasize=0):
         w_cls = self.w_self()
-        if self.instance_kind == POINTERS:
+        instance_kind = self.get_instance_kind()
+        if instance_kind == POINTERS:
             size = self.instsize() + extrasize
             w_new = model.W_PointersObject(self.space, w_cls, size)
-        elif self.instance_kind == WORDS:
+        elif instance_kind == WORDS:
             w_new = model.W_WordsObject(self.space, w_cls, extrasize)
-        elif self.instance_kind == BYTES:
+        elif instance_kind == BYTES:
             w_new = model.W_BytesObject(self.space, w_cls, extrasize)
-        elif self.instance_kind == COMPILED_METHOD:
+        elif instance_kind == COMPILED_METHOD:
             if self.space.is_spur.is_set():
                 w_new = model.W_SpurCompiledMethod(self.space, extrasize)
             else:
                 w_new = model.W_PreSpurCompiledMethod(self.space, extrasize)
-        elif self.instance_kind == FLOAT:
+        elif instance_kind == COMPILED_METHOD:
+            w_new = model.W_CompiledMethod(self.space, extrasize)
+        elif instance_kind == FLOAT:
             w_new = model.W_Float(0) # Squeak gives a random piece of memory
-        elif self.instance_kind == LARGE_POSITIVE_INTEGER:
+        elif instance_kind == LARGE_POSITIVE_INTEGER:
             if extrasize <= 4:
                 w_new = model.W_LargePositiveInteger1Word(0, extrasize)
             else:
                 w_new = model.W_BytesObject(self.space, w_cls, extrasize)
-        elif self.instance_kind == WEAK_POINTERS:
+        elif instance_kind == WEAK_POINTERS:
             size = self.instsize() + extrasize
             w_new = model.W_PointersObject(self.space, w_cls, size, weak=True)
         else:
-            raise NotImplementedError(self.instance_kind)
+            raise NotImplementedError(instance_kind)
         return w_new
 
+    @constant_for_version
+    def get_instance_kind(self):
+        return self.instance_kind
+
+    @constant_for_version
     def w_methoddict(self):
         return self._s_methoddict.w_self()
 
+    @constant_for_version
     def s_methoddict(self):
         return self._s_methoddict
 
+    @constant_for_version
     def s_superclass(self):
         return self._s_superclass
 
+    @constant_for_version
     def getname(self):
         return self.name
 
@@ -266,7 +284,7 @@ class ClassShadow(AbstractCachingShadow):
             if w_method is not None:
                 return w_method
             look_in_shadow = look_in_shadow._s_superclass
-        raise error.MethodNotFound()
+        return None
 
     def changed(self):
         self.superclass_changed(Version())
@@ -305,16 +323,18 @@ class ClassShadow(AbstractCachingShadow):
         self.s_methoddict().methoddict[w_selector] = w_method
         if isinstance(w_method, model.W_CompiledMethod):
             w_method.compiledin_class = self.w_self()
+ClassShadow.instantiate_type = ClassShadow
+
 
 class MethodDictionaryShadow(AbstractGenericShadow):
     _immutable_fields_ = ['s_class']
     _attrs_ = ['methoddict', 's_class']
     repr_classname = "MethodDictionaryShadow"
 
-    def __init__(self, space, w_self, size):
+    def __init__(self, space, w_self, size, w_class):
         self.s_class = None
         self.methoddict = {}
-        AbstractGenericShadow.__init__(self, space, w_self, size)
+        AbstractGenericShadow.__init__(self, space, w_self, size, w_class)
 
     def become(self, w_other):
         # Force other to become a methoddict
@@ -391,3 +411,4 @@ class MethodDictionaryShadow(AbstractGenericShadow):
                         w_compiledmethod.set_lookup_class_and_name(self.s_class.w_self(), selector)
         if self.s_class:
             self.s_class.changed()
+MethodDictionaryShadow.instantiate_type = MethodDictionaryShadow

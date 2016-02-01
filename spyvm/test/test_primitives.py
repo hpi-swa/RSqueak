@@ -18,9 +18,8 @@ def teardown_module():
 
 class MockFrame(model.W_PointersObject):
     def __init__(self, space, stack):
-        self.w_class = space.w_BlockContext
         size = 6 + len(stack) + 6
-        self._initialize_storage(space, size)
+        self._initialize_storage(space, space.w_BlockContext, size)
         self.store_all(space, [None] * 6 + stack + [space.w_nil] * 6)
         s_self = self.as_context_get_shadow(space)
         s_self.reset_stack()
@@ -29,7 +28,7 @@ class MockFrame(model.W_PointersObject):
 
     def as_context_get_shadow(self, space):
         if not isinstance(self.strategy, storage_contexts.ContextPartShadow):
-            self.strategy = storage_contexts.ContextPartShadow(space, self, self.size())
+            self.strategy = storage_contexts.ContextPartShadow(space, self, self.size(), space.w_BlockContext)
             self.strategy.init_temps_and_stack()
         return self.strategy
 
@@ -510,19 +509,9 @@ def test_new_method():
     assert w_method.bytes == ["\x00"] * len(bytecode)
 
 def test_image_name():
-    space.system_attributes[1] = "anImage.image"
+    space.set_system_attribute(1, "anImage.image")
     w_v = prim(primitives.IMAGE_NAME, [2])
     assert w_v.bytes == list("anImage.image")
-
-def test_set_image_name(monkeypatch):
-    oldName = space.system_attributes[1]
-    def set_image_name(new_name):
-        assert new_name == "newImageName.image"
-    monkeypatch.setattr(space, "set_image_name", set_image_name)
-    w_r = prim(primitives.IMAGE_NAME, [2, "newImageName.image"])
-    assert space.unwrap_int(w_r) == 2
-    # revert
-    space.system_attributes[1] = oldName
 
 def test_clone():
     w_obj = bootstrap_class(1, varsized=True).as_class_get_shadow(space).new(1)
@@ -532,10 +521,17 @@ def test_clone():
     w_obj.atput0(space, 0, space.wrap_int(2))
     assert space.unwrap_int(w_v.at0(space, 0)) == 1
 
+@py.test.mark.skipif("True")
+def test_change_class():
+    w_obj = prim(primitives.IMAGE_NAME, [2])
+    w_v = prim(primitives.CLASS, [w_obj])
+    prim(primitives.CHANGE_CLASS, [w_obj, space.w_Array])
+    w_v = prim(primitives.CLASS, [w_obj])
+
 def test_primitive_system_attribute():
     assert prim(primitives.SYSTEM_ATTRIBUTE, [space.w_nil, 1337]) == space.w_nil
 
-    space.system_attributes[1001] = "WinuxOS"
+    space.set_system_attribute(1001, "WinuxOS")
     w_r = prim(primitives.SYSTEM_ATTRIBUTE, [space.w_nil, 1001])
     assert isinstance(w_r, model.W_Object)
     assert space.unwrap_string(w_r) == "WinuxOS"
@@ -695,6 +691,7 @@ def test_primitive_next_object():
     assert isinstance(w_2, model.W_Object)
     assert w_1 is not w_2
 
+@py.test.mark.skipif("os.environ.get('TRAVIS_OS_NAME', '') == 'osx'")
 def test_primitive_next_instance():
     someInstances = map(space.wrap_list, [[2], [3]])
     w_frame, s_context = new_frame("<never called, but needed for method generation>")
@@ -711,6 +708,7 @@ def test_primitive_next_instance():
     assert w_2.getclass(space) is space.w_Array
     assert w_1 is not w_2
 
+@py.test.mark.skipif("os.environ.get('TRAVIS_OS_NAME', '') == 'osx'")
 def test_primitive_next_instance_wo_some_instance_in_same_frame():
     someInstances = map(space.wrap_list, [[2], [3]])
     w_frame, s_context = new_frame("<never called, but needed for method generation>")
