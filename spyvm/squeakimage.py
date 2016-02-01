@@ -538,8 +538,6 @@ class SpurReader(BaseReaderStrategy):
         if len(chunk.data) != size:
             # remove trailing alignment slots
             assert size < len(chunk.data) and len(chunk.data) - size < 4
-            # BUG here, size at one point is waaay to big for 32bits
-            # which curiously results in a memory error
             chunk.data = chunk.data[:size]
         if format < 10 and classid != self.FREE_OBJECT_CLASS_INDEX_PUN:
             for slot in chunk.data:
