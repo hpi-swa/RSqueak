@@ -1,5 +1,5 @@
 from spyvm import model_display, model
-from spyvm.error import PrimitiveFailedError, MetaPrimFailed, MethodNotFound
+from spyvm.error import PrimitiveFailedError, SimulatedPrimitiveFailedError, MetaPrimFailed
 from spyvm.storage import AbstractCachingShadow
 from spyvm.plugins.plugin import Plugin
 
@@ -32,12 +32,11 @@ class SimulationPluginClass(Plugin):
         s_class = w_rcvr.class_shadow(interp.space)
 
         if not interp.image.w_simulatePrimitive or interp.image.w_simulatePrimitive.is_nil(interp.space):
-            raise PrimitiveFailedError("Primitive %s has failed and no %s>>%s was found (Selector not in image)" % (w_name, s_class.getname(), SIMULATE_PRIMITIVE_SELECTOR))
+            raise SimulatedPrimitiveFailedError("Primitive has failed and simulator selector not in image", w_name, s_class)
 
-        try:
-            s_class.lookup(interp.image.w_simulatePrimitive)
-        except MethodNotFound:
-            raise PrimitiveFailedError("Primitive %s has failed and no %s>>%s was found" % (w_name, s_class.getname(), SIMULATE_PRIMITIVE_SELECTOR))
+        w_sim_method = s_class.lookup(interp.image.w_simulatePrimitive)
+        if w_sim_method is None:
+            raise SimulatedPrimitiveFailedError("Primitive has failed and no simulator method was found on this class", w_name, s_class)
 
         s_frame.push(w_rcvr)
         s_frame.push(w_name)
@@ -53,7 +52,7 @@ class SimulationPluginClass(Plugin):
         except Return, ret:
             # must clean the stack, including the rcvr
             s_frame.pop_n(argcount + 1)
-            s_frame.push(ret.value)
+            s_frame.push(ret.value(interp.space))
             return w_rcvr
 
     def simulate(self, w_name, signature, interp, s_frame, argcount, w_method):

@@ -7,8 +7,8 @@ Squeak model.
             W_LargePositiveInteger1Word
             W_Float
             W_Character
+            W_PointersObject
             W_AbstractObjectWithClassReference
-                W_PointersObject
                 W_BytesObject
                 W_WordsObject
             W_CompiledMethod
@@ -67,6 +67,9 @@ class W_Object(object):
         """Return Squeak class."""
         raise NotImplementedError()
 
+    def change_class(self, space, w_class):
+        raise NotImplementedError()
+
     def gethash(self):
         """Return 31-bit hash value."""
         raise NotImplementedError()
@@ -120,7 +123,8 @@ class W_Object(object):
 
     def class_shadow(self, space):
         """Return internal representation of Squeak class."""
-        return self.getclass(space).as_class_get_shadow(space)
+        w_class = jit.promote(self.getclass(space))
+        return w_class.as_class_get_shadow(space)
 
     def is_same_object(self, other):
         """Compare object identity. This should be used instead of directly
@@ -721,8 +725,8 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
 
     def guess_classname(self):
         if self.has_class():
-            if self.w_class.has_space():
-                class_shadow = self.class_shadow(self.w_class.space())
+            if self.getclass(None).has_space():
+                class_shadow = self.class_shadow(self.getclass(None).space())
                 return class_shadow.name
             else:
                 # We cannot access the class during the initialization sequence.
@@ -730,10 +734,13 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
         else:
             return "? (no class)"
 
+    def change_class(self, space, w_class):
+        self.w_class = w_class
+
     def invariant(self):
         from spyvm import storage_classes
         return (W_AbstractObjectWithIdentityHash.invariant(self) and
-                isinstance(self.w_class.strategy, storage_classes.ClassShadow))
+                isinstance(self.getclass(None).strategy, storage_classes.ClassShadow))
 
     def pointers_become_one_way(self, space, from_w, to_w):
         W_AbstractObjectWithIdentityHash.pointers_become_one_way(self, space, from_w, to_w)
@@ -754,17 +761,10 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
         W_AbstractObjectWithIdentityHash._become(self, w_other)
 
     def has_class(self):
-        return self.w_class is not None
+        return self.getclass(None) is not None
 
-    # we would like the following, but that leads to a recursive import
-    #@signature(signature.types.self(), signature.type.any(),
-    #           returns=signature.types.instance(ClassShadow))
-    def class_shadow(self, space):
-        w_class = self.w_class
-        assert w_class is not None
-        return w_class.as_class_get_shadow(space)
 
-class W_PointersObject(W_AbstractObjectWithClassReference):
+class W_PointersObject(W_AbstractObjectWithIdentityHash):
     """Common object."""
     _attrs_ = ['strategy', '_storage']
     # TODO -- is it viable to have these as pseudo-immutable?
@@ -777,21 +777,21 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
     @jit.unroll_safe
     def __init__(self, space, w_class, size, weak=False):
         """Create new object with size = fixed + variable size."""
-        W_AbstractObjectWithClassReference.__init__(self, space, w_class)
-        self._initialize_storage(space, size, weak)
+        W_AbstractObjectWithIdentityHash.__init__(self)
+        self._initialize_storage(space, w_class, size, weak)
 
-    def _initialize_storage(self, space, size, weak=False):
+    def _initialize_storage(self, space, w_class, size, weak=False):
         storage_type = space.strategy_factory.empty_storage_type(self, size, weak)
-        space.strategy_factory.set_initial_strategy(self, storage_type, size)
+        space.strategy_factory.set_initial_strategy(self, storage_type, w_class, size)
 
     def fillin(self, space, g_self):
-        W_AbstractObjectWithClassReference.fillin(self, space, g_self)
+        W_AbstractObjectWithIdentityHash.fillin(self, space, g_self)
         # Recursive fillin required to enable specialized storage strategies.
         for g_obj in g_self.pointers:
             g_obj.fillin(space)
         pointers = g_self.get_pointers()
         storage_type = space.strategy_factory.strategy_type_for(pointers, weak=False) # do not fill in weak lists, yet
-        space.strategy_factory.set_initial_strategy(self, storage_type, len(pointers), pointers)
+        space.strategy_factory.set_initial_strategy(self, storage_type, g_self.get_class(), len(pointers), pointers)
 
     def fillin_weak(self, space, g_self):
         assert g_self.isweak() # when we get here, this is true
@@ -801,13 +801,53 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
 
     def is_weak(self):
         from storage import WeakListStrategy
-        return isinstance(self.strategy, WeakListStrategy)
+        return isinstance(self._get_strategy(), WeakListStrategy)
+
+    def getclass(self, space):
+        if self._get_strategy() is None:
+            return None
+        else:
+            return self._get_strategy().getclass()
+
+    def has_class(self):
+        return self.getclass(None) is not None
 
     def is_class(self, space):
         from spyvm.storage_classes import ClassShadow
-        if isinstance(self.strategy, ClassShadow):
+        if isinstance(self._get_strategy(), ClassShadow):
             return True
-        return W_AbstractObjectWithClassReference.is_class(self, space)
+        # XXX: copied form W_AbstractObjectWithClassReference
+        if self.has_class():
+            w_Metaclass = space.classtable["w_Metaclass"]
+            w_class = self.getclass(space)
+            if w_Metaclass.is_same_object(w_class):
+                return True
+            if w_class.has_class():
+                return w_Metaclass.is_same_object(w_class.getclass(space))
+        return False
+
+    def change_class(self, space, w_class):
+        old_strategy = self._get_strategy()
+        new_strategy = old_strategy.instantiate(self, w_class)
+        self._set_strategy(new_strategy)
+        old_strategy._convert_storage_to(w_self, new_strategy)
+        new_strategy.strategy_switched(w_self)
+
+    def guess_classname(self):
+        if self.has_class():
+            if self.getclass(None).has_space():
+                class_shadow = self.class_shadow(self.getclass(None).space())
+                return class_shadow.name
+            else:
+                # We cannot access the class during the initialization sequence.
+                return "?? (class not initialized)"
+        else:
+            return "? (no class)"
+
+    def invariant(self):
+        from spyvm import storage_classes
+        return (W_AbstractObjectWithIdentityHash.invariant(self) and
+                isinstance(self.getclass(None).strategy, storage_classes.ClassShadow))
 
     def assert_strategy(self):
         # Failing the following assert most likely indicates a bug. The strategy can only be absent during
@@ -825,7 +865,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         if self.has_strategy() and self.strategy.provides_getname:
             return self._get_strategy().getname()
         else:
-            return W_AbstractObjectWithClassReference.__str__(self)
+            return W_AbstractObjectWithIdentityHash.__str__(self)
 
     def repr_content(self):
         strategy_info = "no strategy"
@@ -836,18 +876,30 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
                 name = " [%s]" % self._get_strategy().getname()
         return '(%s) len=%d%s' % (strategy_info, self.size(), name)
 
-    @jit.look_inside_iff(lambda self, w_array: jit.isconstant(self.size()))
+    def unwrap_char(self, space):
+        w_class = self.getclass(space)
+        if not w_class.is_same_object(space.w_Character):
+            raise error.UnwrappingError("expected Character")
+        w_ord = self.fetch(space, constants.CHARACTER_VALUE_INDEX)
+        if not isinstance(w_ord, W_SmallInteger):
+            raise error.UnwrappingError("expected SmallInteger from Character")
+        return chr(w_ord.value)
+
+    @jit.look_inside_iff(lambda self, space: (
+        (not self.class_shadow(space).isvariable()) or jit.isconstant(self.size())))
     def unwrap_array(self, space):
         # Check that our argument has pointers format and the class:
         if not self.getclass(space).is_same_object(space.w_Array):
             raise error.UnwrappingError
         return [self.at0(space, i) for i in range(self.size())]
 
-    @jit.look_inside_iff(lambda self, space: jit.isconstant(self.size()))
+    @jit.look_inside_iff(lambda self, space: (
+        (not self.class_shadow(space).isvariable()) or jit.isconstant(self.size())))
     def fetch_all(self, space):
         return [self.fetch(space, i) for i in range(self.size())]
 
-    @jit.look_inside_iff(lambda self, space, collection: len(collection) < 64)
+    @jit.look_inside_iff(lambda self, space, collection: (
+        (not self.class_shadow(space).isvariable()) or len(collection) < 64))
     def store_all(self, space, collection):
         # Be tolerant: copy over as many elements as possible, set rest to nil.
         # The size of the object cannot be changed in any case.
@@ -890,7 +942,7 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         self.strategy = strategy
 
     def _get_strategy(self):
-        return self.strategy
+        return self.strategy.promote_if_neccessary() if self.strategy is not None else None
 
     @objectmodel.specialize.arg(2)
     def as_special_get_shadow(self, space, TheClass):
@@ -936,11 +988,11 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
             self.strategy.become(w_other)
         elif self.has_strategy() and self._get_strategy().handles_become():
             w_other.strategy.become(self)
+        # TODO: must swap selfs
         self.strategy, w_other.strategy = w_other.strategy, self.strategy
         self._storage, w_other._storage = w_other._storage, self._storage
-        W_AbstractObjectWithClassReference._become(self, w_other)
+        W_AbstractObjectWithIdentityHash._become(self, w_other)
 
-    @jit.unroll_safe
     def clone(self, space):
         my_pointers = self.fetch_all(space)
         w_result = W_PointersObject(space, self.getclass(space), len(my_pointers))
@@ -948,17 +1000,17 @@ class W_PointersObject(W_AbstractObjectWithClassReference):
         return w_result
 
 class W_BytesObject(W_AbstractObjectWithClassReference):
-    _attrs_ = ['version', 'bytes', '_size', 'c_bytes']
+    _attrs_ = ['version', 'bytes', 'native_bytes']
     repr_classname = 'W_BytesObject'
     bytes_per_slot = 1
-    _immutable_fields_ = ['version?', 'bytes?', '_size?', 'c_bytes?']
+    _immutable_fields_ = ['version?']
 
     def __init__(self, space, w_class, size):
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
         assert isinstance(size, int)
         self.mutate()
         self.bytes = ['\x00'] * size
-        self._size = size
+        self.native_bytes = None
 
     def mutate(self):
         self.version = Version()
@@ -967,7 +1019,6 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         W_AbstractObjectWithClassReference.fillin(self, space, g_self)
         self.mutate()
         self.bytes = g_self.get_bytes()
-        self._size = len(self.bytes)
 
     def at0(self, space, index0):
         return space.wrap_int(ord(self.getchar(index0)))
@@ -977,9 +1028,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
 
     def getchar(self, n0):
         if self.bytes is None:
-            if n0 >= self._size:
-                raise IndexError
-            return self.c_bytes[n0]
+            return self.native_bytes.getchar(n0)
         else:
             return self.bytes[n0]
 
@@ -987,7 +1036,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         assert isinstance(character, str)
         assert len(character) == 1
         if self.bytes is None:
-            self.c_bytes[n0] = character
+            self.native_bytes.setchar(n0, character)
         else:
             self.bytes[n0] = character
         self.mutate()
@@ -1012,11 +1061,14 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         self.setchar(byte_index0 + 1, chr(byte1))
 
     def size(self):
-        return self._size
+        if self.bytes is not None:
+            return len(self.bytes)
+        else:
+            return self.native_bytes.size
 
     def str_content(self):
-        if self.has_class() and self.w_class.has_space():
-            if self.w_class.space().omit_printing_raw_bytes.is_set():
+        if self.has_class() and self.getclass(None).has_space():
+            if self.getclass(None).space().omit_printing_raw_bytes.is_set():
                 return "<omitted>"
         return "'%s'" % self.unwrap_string(None).replace('\r', '\n')
 
@@ -1026,7 +1078,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
     @jit.elidable
     def _pure_as_string(self, version):
         if self.bytes is None:
-            return "".join([self.c_bytes[i] for i in range(self.size())])
+            return self.native_bytes.as_string()
         else:
             return "".join(self.bytes)
 
@@ -1041,32 +1093,11 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
                 return False
         return True
 
-    def is_same_object(self, other):
-        if self is other:
-            return True
-        # XXX this sounds very wrong to me
-        elif not isinstance(other, W_BytesObject):
-            return False
-        size = self.size()
-        if size != other.size():
-            return False
-        elif size > 256 and self.bytes is not None and other.bytes is not None:
-            return self.bytes == other.bytes
-        else:
-            return self.has_same_chars(other, size)
-
-    @jit.look_inside_iff(lambda self, other, size: jit.isconstant(size))
-    def has_same_chars(self, other, size):
-        for i in range(size):
-            if self.getchar(i) != other.getchar(i):
-                return False
-        return True
-
     def clone(self, space):
         size = self.size()
         w_result = W_BytesObject(space, self.getclass(space), size)
         if self.bytes is None:
-            w_result.bytes = [self.c_bytes[i] for i in range(size)]
+            w_result.bytes = self.native_bytes.copy_bytes()
         else:
             w_result.bytes = list(self.bytes)
         return w_result
@@ -1103,40 +1134,57 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
     def _become(self, w_other):
         assert isinstance(w_other, W_BytesObject)
         self.bytes, w_other.bytes = w_other.bytes, self.bytes
-        self.c_bytes, w_other.c_bytes = w_other.c_bytes, self.c_bytes
-        self._size, w_other._size = w_other._size, self._size
+        self.native_bytes, w_other.native_bytes = w_other.native_bytes, self.native_bytes
         self.mutate()
         W_AbstractObjectWithClassReference._become(self, w_other)
 
     def convert_to_c_layout(self):
-        if self.bytes is None:
-            return self.c_bytes
-        else:
-            size = self.size()
-            c_bytes = self.c_bytes = rffi.str2charp(self.unwrap_string(None))
+        if self.bytes is not None:
+            self.native_bytes = NativeBytesWrapper(self.unwrap_string(None))
             self.bytes = None
             self.mutate()
-            return c_bytes
+        return self.native_bytes.c_bytes
+
+
+# This indirection avoids a call for alloc_with_del in Jitted code
+class NativeBytesWrapper(object):
+    _attrs_ = ["c_bytes", "size"]
+    _immutable_fields_ = ["c_bytes", "size"]
+    def __init__(self, string):
+        self.size = len(string)
+        self.c_bytes = rffi.str2charp(string)
+
+    def setchar(self, n0, char):
+        self.c_bytes[n0] = char
+
+    def getchar(self, n0):
+        if n0 >= self.size:
+            raise IndexError
+        return self.c_bytes[n0]
+
+    def as_string(self):
+        return "".join([self.c_bytes[i] for i in range(self.size)])
+
+    def copy_bytes(self):
+        return [self.c_bytes[i] for i in range(self.size)]
 
     def __del__(self):
-        if self.bytes is None:
-            rffi.free_charp(self.c_bytes)
+        rffi.free_charp(self.c_bytes)
 
 
 class W_WordsObject(W_AbstractObjectWithClassReference):
-    _attrs_ = ['words', '_size', 'c_words']
+    _attrs_ = ['words', 'native_words']
     repr_classname = "W_WordsObject"
-    _immutable_fields_ = ['words?', 'size?', 'c_words?']
+    _immutable_fields_ = ['words?']
 
     def __init__(self, space, w_class, size):
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
         self.words = [r_uint(0)] * size
-        self._size = size
+        self.native_words = None
 
     def fillin(self, space, g_self):
         W_AbstractObjectWithClassReference.fillin(self, space, g_self)
         self.words = g_self.get_ruints()
-        self._size = len(self.words)
 
     def at0(self, space, index0):
         val = self.getword(index0)
@@ -1149,13 +1197,13 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
     def getword(self, n):
         assert self.size() > n >= 0
         if self.words is None:
-            return r_uint(self.c_words[n])
+            return r_uint(self.native_words.getword(n))
         else:
             return self.words[n]
 
     def setword(self, n, word):
         if self.words is None:
-            self.c_words[n] = intmask(word)
+            self.native_words.setword(n, intmask(word))
         else:
             self.words[n] = r_uint(word)
 
@@ -1184,7 +1232,10 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         self.setword(word_index0, value)
 
     def size(self):
-        return self._size
+        if self.words is not None:
+            return len(self.words)
+        else:
+            return self.native_words.size
 
     @jit.look_inside_iff(lambda self, space: jit.isconstant(self.size()))
     def unwrap_string(self, space):
@@ -1202,7 +1253,7 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         size = self.size()
         w_result = W_WordsObject(space, self.getclass(space), size)
         if self.words is None:
-            w_result.words = [r_uint(self.c_words[i]) for i in range(size)]
+            w_result.words = self.native_words.copy_words()
         else:
             w_result.words = list(self.words)
         return w_result
@@ -1213,26 +1264,40 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
     def _become(self, w_other):
         assert isinstance(w_other, W_WordsObject)
         self.words, w_other.words = w_other.words, self.words
-        self.c_words, w_other.c_words = w_other.c_words, self.c_words
-        self._size, w_other._size = w_other._size, self._size
+        self.native_words, w_other.native_words = w_other.native_words, self.native_words
         W_AbstractObjectWithClassReference._become(self, w_other)
 
     def convert_to_c_layout(self):
-        if self.words is None:
-            return self.c_words
-        else:
-            size = self.size()
-            old_words = self.words
-            from spyvm.plugins.squeak_plugin_proxy import sqIntArrayPtr
-            c_words = self.c_words = lltype.malloc(sqIntArrayPtr.TO, size, flavor='raw')
-            for i in range(size):
-                c_words[i] = intmask(old_words[i])
+        if self.words is not None:
+            self.native_words = NativeWordsWrapper(self.words)
             self.words = None
-            return c_words
+        return self.native_words.c_words
+
+
+class NativeWordsWrapper(object):
+    _attrs_ = ["c_words", "size"]
+    _immutable_fields_ = ["c_words", "size"]
+
+    def __init__(self, words):
+        self.size = len(words)
+        from spyvm.plugins.squeak_plugin_proxy import sqIntArrayPtr
+        self.c_words = lltype.malloc(sqIntArrayPtr.TO, self.size, flavor='raw')
+        for i in range(self.size):
+            self.c_words[i] = intmask(words[i])
+
+    def setword(self, n0, word):
+        self.c_words[n0] = word
+
+    def getword(self, n0):
+        if n0 >= self.size:
+            raise IndexError
+        return self.c_words[n0]
+
+    def copy_words(self):
+        return [r_uint(self.c_words[i]) for i in range(self.size)]
 
     def __del__(self):
-        if self.words is None:
-            lltype.free(self.c_words, flavor='raw')
+        lltype.free(self.c_words, flavor='raw')
 
 
 class CompiledMethodHeader(object):

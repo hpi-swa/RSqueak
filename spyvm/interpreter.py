@@ -17,18 +17,73 @@ class ReturnFromTopLevel(Exception):
         self.object = object
 
 class Return(Exception):
-    _attrs_ = ["value", "s_target_context", "is_local", "arrived_at_target"]
-    _immutable_fields_ = ["value", "s_target_context", "is_local"]
-    def __init__(self, s_target_context, w_result):
-        self.value = w_result
+    _attrs_ = []
+    def value(self, space): raise NotImplementedError
+
+class FreshReturn(Exception):
+    _attrs_ = ["exception"]
+    _immutable_fields_ = ["exception"]
+    def __init__(self, exception):
+        self.exception = exception
+
+class LocalReturn(Return):
+    _attrs_ = []
+    @staticmethod
+    def make(space, w_value):
+        if isinstance(w_value, model.W_SmallInteger):
+            return IntLocalReturn(space.unwrap_int(w_value))
+        else:
+            return WrappedLocalReturn(w_value)
+
+class NonLocalReturn(Return):
+    _attrs_ = ["s_target_context", "arrived_at_target"]
+    _immutable_fields_ = ["s_target_context"]
+
+    @staticmethod
+    def make(space, s_target_context, w_value):
+        if isinstance(w_value, model.W_SmallInteger):
+            return IntNonLocalReturn(s_target_context, space.unwrap_int(w_value))
+        else:
+            return WrappedNonLocalReturn(s_target_context, w_value)
+
+    def __init__(self, s_target_context):
         self.s_target_context = s_target_context
         self.arrived_at_target = False
-        self.is_local = s_target_context is None
+
+class WrappedLocalReturn(LocalReturn):
+    _attrs_ = ["w_value"]
+    _immutable_fields_ = ["w_value"]
+    def __init__(self, w_result):
+        self.w_value = w_result
+    def value(self, space): return self.w_value
+
+class IntLocalReturn(LocalReturn):
+    _attrs_ = ["_value"]
+    _immutable_fields_ = ["_value"]
+    def __init__(self, intresult):
+        self._value = intresult
+    def value(self, space): return space.wrap_int(self._value)
+
+class WrappedNonLocalReturn(NonLocalReturn):
+    _attrs_ = ["w_value"]
+    _immutable_fields_ = ["w_value"]
+    def __init__(self, s_target_context, w_value):
+        NonLocalReturn.__init__(self, s_target_context)
+        self.w_value = w_value
+    def value(self, space): return self.w_value
+
+class IntNonLocalReturn(NonLocalReturn):
+    _attrs_ = ["_value"]
+    _immutable_fields_ = ["_value"]
+    def __init__(self, s_target_context, intvalue):
+        NonLocalReturn.__init__(self, s_target_context)
+        self._value = intvalue
+    def value(self, space): return space.wrap_int(self._value)
 
 class NonVirtualReturn(Exception):
-    _attrs_ = ["s_target_context", "s_current_context", "value"]
+    _attrs_ = ["s_target_context", "s_current_context", "w_value"]
     def __init__(self, s_target_context, s_current_context, w_result):
-        self.value = w_result
+        self.w_value = w_result
         self.s_target_context = s_target_context
         self.s_current_context = s_current_context
 
@@ -135,13 +190,16 @@ class Interpreter(object):
                 if self.is_tracing() or self.trace_important:
                     e.print_trace()
                 s_context = e.s_new_context
-            except Return, ret:
+            except LocalReturn, ret:
+                target = s_sender
+                s_context = self.unwind_context_chain(s_sender, target, ret.value(self.space))
+            except NonLocalReturn, ret:
                 target = s_sender if ret.arrived_at_target else ret.s_target_context
-                s_context = self.unwind_context_chain(s_sender, target, ret.value)
+                s_context = self.unwind_context_chain(s_sender, target, ret.value(self.space))
             except NonVirtualReturn, ret:
                 if self.is_tracing() or self.trace_important:
                     ret.print_trace()
-                s_context = self.unwind_context_chain(ret.s_current_context, ret.s_target_context, ret.value)
+                s_context = self.unwind_context_chain(ret.s_current_context, ret.s_target_context, ret.w_value)
             except MetaPrimFailed, e:
                 s_context = self.unwind_primitive_simulation(e.s_frame, e.error_code)
 
@@ -160,15 +218,22 @@ class Interpreter(object):
         except rstackovf.StackOverflow:
             rstackovf.check_stack_overflow()
             raise StackOverflow(s_frame)
-        except Return, ret:
+        except LocalReturn, ret:
             if s_frame.state is DirtyContext:
                 s_sender = s_frame.s_sender() # The sender has changed!
                 s_frame._activate_unwind_context(self)
-                target_context = s_sender if ret.is_local else ret.s_target_context
-                raise NonVirtualReturn(target_context, s_sender, ret.value)
+                raise NonVirtualReturn(s_sender, s_sender, ret.value(self.space))
             else:
                 s_frame._activate_unwind_context(self)
-                if ret.is_local or ret.s_target_context is s_sender:
+                raise ret
+        except NonLocalReturn, ret:
+            if s_frame.state is DirtyContext:
+                s_sender = s_frame.s_sender() # The sender has changed!
+                s_frame._activate_unwind_context(self)
+                raise NonVirtualReturn(ret.s_target_context, s_sender, ret.value(self.space))
+            else:
+                s_frame._activate_unwind_context(self)
+                if ret.s_target_context is s_sender:
                     ret.arrived_at_target = True
                 raise ret
         finally:
@@ -196,9 +261,13 @@ class Interpreter(object):
                 s_context=s_context)
             try:
                 self.step(s_context)
-            except Return, ret:
+            except FreshReturn, ret:
+                raise ret.exception
+            except LocalReturn, ret:
+                s_context.push(ret.value(self.space))
+            except NonLocalReturn, ret:
                 if ret.arrived_at_target:
-                    s_context.push(ret.value)
+                    s_context.push(ret.value(self.space))
                 else:
                     raise ret
 
@@ -207,7 +276,7 @@ class Interpreter(object):
             # This is the toplevel frame. Execution ended.
             raise ReturnFromTopLevel(self.space.w_nil)
         context = start_context
-        while context._s_fallback is None:
+        while context.get_fallback() is None:
             s_sender = context.s_sender()
             context._activate_unwind_context(self)
             context = s_sender
@@ -218,7 +287,7 @@ class Interpreter(object):
                         start_context.pc())
                 raise error.FatalError(msg)
 
-        fallbackContext = context._s_fallback
+        fallbackContext = context.get_fallback()
 
         if fallbackContext.tempsize() > len(fallbackContext.w_arguments()):
             fallbackContext.settemp(len(fallbackContext.w_arguments()), self.space.wrap_int(error_code))

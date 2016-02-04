@@ -43,7 +43,6 @@ class SDLDisplay(object):
                "width", "height", "depth", "screen_surface", "has_surface",
                "mouse_position", "button", "key", "interrupt_key", "_defer_updates",
                "_deferred_events", "bpp", "pitch"]
-    #_immutable_fields_ = ["pixelbuffer?"]
 
     def __init__(self, title):
         assert RSDL.Init(RSDL.INIT_VIDEO) >= 0
@@ -64,8 +63,7 @@ class SDLDisplay(object):
         self._deferred_events = []
         self._defer_updates = False
 
-    def __del__(self):
-        # Close the display.
+    def close(self):
         RSDL.Quit()
 
     def create_window_and_renderer(self, x, y, width, height):

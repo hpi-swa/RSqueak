@@ -51,12 +51,12 @@ if os.name == "nt":
     if os.getenv("APPVEYOR") is None:
         # Don't download this on appveyor, saves time and memory
         DEPS.extend([
-            ("https://bitbucket.org/pypy/pypy/downloads/pypy-2.5.1-win32.zip", "pypy-win32"),
+            ("https://bitbucket.org/pypy/pypy/downloads/pypy-4.0.1-win32.zip", "pypy-win32"),
             ("http://www.graphviz.org/pub/graphviz/stable/windows/graphviz-2.38.zip", cp.get("Windows", "Graphviz"))
         ])
 elif "64bit" in platform.architecture()[0] and "linux" in sys.platform:
     DEPS.extend([
-        ("https://bitbucket.org/pypy/pypy/downloads/pypy-2.5.1-linux.tar.bz2", "pypy-linux32"),
+        ("https://bitbucket.org/pypy/pypy/downloads/pypy-4.0.1-linux.tar.bz2", "pypy-linux32"),
         ("https://github.com/CTPUG/pygame_cffi/archive/master.zip", "pygame_cffi")
     ])
 else:

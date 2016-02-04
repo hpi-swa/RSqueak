@@ -26,7 +26,7 @@ class BaseJITTest(object):
             for line in expected.splitlines()
             if line and not line.isspace()
         ]
-        parser = Parser(None, None, {}, "lltype", None, invent_fail_descr=None, nonstrict=True)
+        parser = Parser(None, None, {}, "lltype", invent_fail_descr=None, nonstrict=True)
         expected_ops = [parser.parse_next_op(l) for l in expected_lines]
         aliases = {}
         assert len(trace) == len(expected_ops)
@@ -82,6 +82,9 @@ class Parser(oparser.OpParser):
 
     def getvar(self, arg):
         return arg
+
+    def update_vector(self, resop, res):
+        return res
 
     def create_op(self, opnum, args, res, descr, fail_args):
         return Op(opname[opnum].lower(), args, res, descr)

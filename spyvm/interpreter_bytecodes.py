@@ -300,9 +300,8 @@ class __extend__(ContextPartShadow):
     def _sendSelector(self, w_selector, argcount, interp,
                       receiver, receiverclassshadow, w_arguments=None, s_fallback=None):
         assert argcount >= 0
-        try:
-            w_method = receiverclassshadow.lookup(w_selector)
-        except error.MethodNotFound:
+        w_method = receiverclassshadow.lookup(w_selector)
+        if w_method is None:
             if w_arguments:
                 self.push_all(w_arguments)
                 # the arguments will be popped again in doesNotUnderstand but
@@ -354,10 +353,14 @@ class __extend__(ContextPartShadow):
         w_special_selector = space.special_object("w_" + special_selector)
         s_class = receiver.class_shadow(space)
 
-        try:
-            w_method = s_class.lookup(w_special_selector)
-        except error.MethodNotFound:
-            if w_args:
+        w_method = s_class.lookup(w_special_selector)
+        if w_method is None:
+            w_method = s_class.lookup(space.special_object("w_doesNotUnderstand"))
+            if w_method is None:
+                s_class = receiver.class_shadow(self.space)
+                assert isinstance(s_class, ClassShadow)
+                raise error.Exit("Missing doesNotUnderstand in hierarchy of %s" % s_class.getname())
+            elif w_args:
                 self.push_all(w_args)
                 # the arguments will be popped again in doesNotUnderstand but
                 # jit compilation should be able to remove those operations
@@ -382,14 +385,9 @@ class __extend__(ContextPartShadow):
         w_message.store(self.space, 1, self.space.wrap_list(arguments))
         self.pop() # The receiver, already known.
 
-        try:
-            if interp.space.headless.is_set():
-                primitives.exitFromHeadlessExecution(self, "doesNotUnderstand:", w_message)
-            return self._sendSpecialSelector(interp, receiver, "doesNotUnderstand", [w_message])
-        except error.MethodNotFound:
-            s_class = receiver.class_shadow(self.space)
-            assert isinstance(s_class, ClassShadow)
-            raise error.Exit("Missing doesNotUnderstand in hierarchy of %s" % s_class.getname())
+        if interp.space.headless.is_set():
+            primitives.exitFromHeadlessExecution(self, "doesNotUnderstand:", w_message)
+        return self._sendSpecialSelector(interp, receiver, "doesNotUnderstand", [w_message])
 
     def _mustBeBoolean(self, interp, receiver):
         return self._sendSpecialSelector(interp, receiver, "mustBeBoolean")
@@ -424,15 +422,16 @@ class __extend__(ContextPartShadow):
         # it will find the sender as a local, and we don't have to
         # force the reference
         # EXECPT someone fiddled with our context chain!
+        from spyvm.interpreter import FreshReturn
         if (self.home_is_self() or local_return) \
             and not(self.state == DirtyContext):
-            s_return_to = None
+            from spyvm.interpreter import LocalReturn
+            raise FreshReturn(LocalReturn.make(self.space, return_value))
         else:
             s_return_to = self.s_home().s_sender()
             assert s_return_to, "No sender to return to!"
-
-        from spyvm.interpreter import Return
-        raise Return(s_return_to, return_value)
+            from spyvm.interpreter import NonLocalReturn
+            raise FreshReturn(NonLocalReturn.make(self.space, s_return_to, return_value))
 
     # ====== Send/Return bytecodes ======
 
@@ -527,10 +526,12 @@ class __extend__(ContextPartShadow):
         if self.gettemp(1).is_nil(self.space):
             self.settemp(1, self.space.w_true) # mark unwound
             self.push(self.gettemp(0)) # push the first argument
-            from spyvm.interpreter import Return
+            from spyvm.interpreter import LocalReturn, NonLocalReturn
             try:
                 self.bytecodePrimValue(interp, 0)
-            except Return, ret:
+            except LocalReturn:
+                pass
+            except NonLocalReturn, ret:
                 # Local return value of ensure: block is ignored
                 if not ret.arrived_at_target:
                     raise ret

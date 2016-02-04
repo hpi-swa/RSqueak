@@ -73,7 +73,6 @@ class ObjSpace(object):
         # Create the nil object.
         # Circumvent the constructor because nil is already referenced there.
         w_nil = empty_object()
-        w_nil.w_class = None
         self.add_bootstrap_object("w_nil", w_nil)
 
         self.strategy_factory = storage.StrategyFactory(self)
@@ -133,7 +132,7 @@ class ObjSpace(object):
                     # if it's not yet in the table, the interpreter has to fill the gap later in populate_remaining_special_objects
                     self.objtable[name] = None
         # XXX this is kind of hacky, but I don't know where else to get Metaclass
-        self.classtable["w_Metaclass"] = self.w_SmallInteger.w_class.w_class
+        self.classtable["w_Metaclass"] = self.w_SmallInteger.getclass(self).getclass(self)
 
     def add_bootstrap_class(self, name, cls):
         self.classtable[name] = cls

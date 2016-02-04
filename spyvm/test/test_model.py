@@ -116,10 +116,10 @@ def test_method_lookup():
     subshadow.initialize_methoddict()
     assert shadow.lookup(w_foo).val == 1
     assert shadow.lookup(w_bar).val == 2
-    py.test.raises(error.MethodNotFound, shadow.lookup, "zork")
+    assert shadow.lookup("zork") is None
     assert subshadow.lookup(w_foo).val == 3
     assert subshadow.lookup(w_bar).val == 2
-    py.test.raises(error.MethodNotFound, subshadow.lookup, "zork")
+    assert subshadow.lookup("zork") is None
 
 def test_compiledin_class():
     w_super = bootstrap_class(0)

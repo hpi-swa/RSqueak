@@ -24,6 +24,24 @@ DirtyContext = ContextState("DirtyContext")
 class ExtendableStrategyMetaclass(extendabletype, rstrat.StrategyMetaclass):
     pass
 
+
+class ExtraContextAttributes(object):
+    _attrs_ = [
+        # Cache for allInstances
+        'instances_w',
+        # Fallback for failed primitives
+        '_s_fallback',
+        # From block-context
+        '_w_home', '_initialip', '_eargc']
+
+    def __init__(self):
+        self.instances_w = None
+        self._s_fallback = None
+        self._w_home = None
+        self._initialip = 0
+        self._eargc = 0
+
+
 class ContextPartShadow(AbstractStrategy):
     """
     This Shadow handles the entire object storage on its own, ignoring the _storage
@@ -39,55 +57,30 @@ class ContextPartShadow(AbstractStrategy):
     import_from_mixin(ShadowMixin)
 
     _attrs_ = ['_w_self', '_w_self_size',
-               'instances_w', 'state',
-               'is_block_context',
-
+               'state',
                # Core context data
                '_s_sender', '_pc', '_temps_and_stack', '_stack_ptr',
-               # BlockContext data
-               '_w_home', '_initialip', '_eargc',
                # MethodContext data
-               'closure', '_w_receiver', '_w_method', '_is_BlockClosure_ensure',
-               # Fallback for failed primitives
-               '_s_fallback'
+               'closure', '_w_receiver', '_w_method',
+               # Extra data
+               'extra_data'
                ]
 
     _virtualizable_ = [
-        "_w_self",
-        "_w_self_size",
-        '_s_sender',
-        "_pc",
-        "_temps_and_stack[*]",
-        "_stack_ptr",
+        "_w_self", "_w_self_size",
         'state',
-        '_w_home',
-        '_initialip',
-        '_eargc',
-        'closure',
-        '_w_receiver',
-        '_w_method',
-        '_is_BlockClosure_ensure',
-        '_s_fallback'
+        '_s_sender', "_pc", "_temps_and_stack[*]", "_stack_ptr",
+        'closure', '_w_receiver', '_w_method',
+        'extra_data'
     ]
-
-    _immutable_fields_ = ['is_block_context', '_s_fallback']
 
     # ______________________________________________________________________
     # Initialization
 
     @jit.unroll_safe
-    def __init__(self, space, w_self, size):
+    def __init__(self, space, w_self, size, w_class):
         self = fresh_virtualizable(self)
-        AbstractStrategy.__init__(self, space, w_self, size)
-
-        # If w_self is not given, is_block_context must be set explicitely!
-        if w_self is not None:
-            if w_self.getclass(space).is_same_object(space.w_BlockContext):
-                self.is_block_context = True
-            elif w_self.getclass(space).is_same_object(space.w_MethodContext):
-                self.is_block_context = False
-            else:
-                raise ValueError("Object %s cannot be treated like a Context object!" % w_self)
+        AbstractStrategy.__init__(self, space, w_self, size, w_class)
 
         self._s_sender = None
         if w_self is not None:
@@ -95,21 +88,15 @@ class ContextPartShadow(AbstractStrategy):
         else:
             self._w_self_size = size
         self._w_self = w_self
-        self.instances_w = {}
         self.state = InactiveContext
         self.store_pc(0)
 
-        self._s_fallback = None
-
-        # From BlockContext
-        self._w_home = None
-        self._initialip = 0
-        self._eargc = 0
         # From MethodContext
         self.closure = None
         self._w_method = None
         self._w_receiver = None
-        self._is_BlockClosure_ensure = False
+        # Extra data
+        self.extra_data = None
 
     def _initialize_storage(self, w_self, initial_size):
         # The context object holds all of its storage itself.
@@ -140,12 +127,23 @@ class ContextPartShadow(AbstractStrategy):
         else:
             return [ constants.MTHDCTX_METHOD, constants.MTHDCTX_CLOSURE_OR_NIL ]
 
+    def get_extra_data(self):
+        if self.extra_data is None:
+            self.extra_data = ExtraContextAttributes()
+        return self.extra_data
+
+    def get_fallback(self):
+        if self.extra_data is None:
+            return None
+        else:
+            return self.extra_data._s_fallback
+
     # ______________________________________________________________________
     # Accessing object fields
 
     def pure_is_block_context(self):
         if self.space.uses_block_contexts.is_set():
-            return self.is_block_context
+            return self.space.w_BlockContext.is_same_object(self.w_class)
         else:
             return False
 
@@ -322,7 +320,8 @@ class ContextPartShadow(AbstractStrategy):
         if self.pure_is_block_context():
             return False
         else:
-            return self._is_BlockClosure_ensure
+            # Primitive 198 is a marker used in BlockClosure >> ensure:
+            return self.w_method().primitive() == 198
 
     def home_is_self(self):
         if self.pure_is_block_context():
@@ -383,7 +382,7 @@ class ContextPartShadow(AbstractStrategy):
         return self.stackend() - self.stackstart()
 
     def full_stacksize(self):
-        if not self.is_block_context:
+        if not self.pure_is_block_context():
             # Magic numbers... Takes care of cases where reflective
             # code writes more than actual stack size
             method = self.w_method()
@@ -488,11 +487,15 @@ class ContextPartShadow(AbstractStrategy):
 
     def store_instances_array(self, w_class, match_w):
         # used for primitives 77 & 78
-        self.instances_w[w_class] = match_w
+        if self.get_extra_data().instances_w is None:
+            self.get_extra_data().instances_w = {}
+        self.get_extra_data().instances_w[w_class] = match_w
 
-    @jit.elidable
     def instances_array(self, w_class):
-        return self.instances_w.get(w_class, None)
+        if self.get_extra_data().instances_w is None:
+            return None
+        else:
+            return self.get_extra_data().instances_w.get(w_class, None)
 
     # ______________________________________________________________________
     # Printing
@@ -567,8 +570,7 @@ class __extend__(ContextPartShadow):
         size = s_home.own_size() - s_home.tempsize()
         w_self = model.W_PointersObject(space, space.w_BlockContext, size)
 
-        ctx = ContextPartShadow(space, w_self, size)
-        ctx.is_block_context = True
+        ctx = ContextPartShadow(space, w_self, size, space.w_BlockContext)
         ctx.store_expected_argument_count(argcnt)
         ctx.store_w_home(s_home.w_self())
         ctx.store_initialip(pc)
@@ -580,7 +582,7 @@ class __extend__(ContextPartShadow):
     # === Implemented accessors ===
 
     def s_home_block_context(self):
-        return self._w_home.as_context_get_shadow(self.space)
+        return self.get_extra_data()._w_home.as_context_get_shadow(self.space)
 
     def stackstart_block_context(self):
         return constants.BLKCTX_STACK_START
@@ -615,7 +617,7 @@ class __extend__(ContextPartShadow):
 
     def fetch_block_context(self, n0):
         if n0 == constants.BLKCTX_HOME_INDEX:
-            return self._w_home
+            return self.get_extra_data()._w_home
         if n0 == constants.BLKCTX_INITIAL_IP_INDEX:
             return self.wrap_initialip()
         if n0 == constants.BLKCTX_BLOCK_ARGUMENT_COUNT_INDEX:
@@ -635,7 +637,7 @@ class __extend__(ContextPartShadow):
 
     def store_w_home(self, w_home):
         assert isinstance(w_home, model.W_PointersObject)
-        self._w_home = w_home
+        self.get_extra_data()._w_home = w_home
 
     def unwrap_store_initialip(self, w_value):
         initialip = self.space.unwrap_int(w_value)
@@ -643,7 +645,7 @@ class __extend__(ContextPartShadow):
         self.store_initialip(initialip)
 
     def store_initialip(self, initialip):
-        self._initialip = initialip
+        self.get_extra_data()._initialip = initialip
 
     def wrap_initialip(self):
         initialip = self.initialip()
@@ -654,7 +656,7 @@ class __extend__(ContextPartShadow):
         self.store_pc(self.initialip())
 
     def initialip(self):
-        return self._initialip
+        return self.get_extra_data()._initialip
 
     def unwrap_store_eargc(self, w_value):
         self.store_expected_argument_count(self.space.unwrap_int(w_value))
@@ -663,10 +665,10 @@ class __extend__(ContextPartShadow):
         return self.space.wrap_int(self.expected_argument_count())
 
     def expected_argument_count(self):
-        return self._eargc
+        return self.get_extra_data()._eargc
 
     def store_expected_argument_count(self, argc):
-        self._eargc = argc
+        self.get_extra_data()._eargc = argc
 
     # === Stack Manipulation ===
 
@@ -693,9 +695,9 @@ class __extend__(ContextPartShadow):
         s_MethodContext = space.w_MethodContext.as_class_get_shadow(space)
         size = w_method.compute_frame_size() + s_MethodContext.instsize()
 
-        ctx = ContextPartShadow(space, None, size)
-        ctx.is_block_context = False
-        ctx._s_fallback = s_fallback
+        ctx = ContextPartShadow(space, None, size, space.w_MethodContext)
+        if s_fallback is not None:
+            ctx.get_extra_data()._s_fallback = s_fallback
         ctx.store_w_receiver(w_receiver)
         ctx.store_w_method(w_method)
         ctx.closure = closure
@@ -776,8 +778,6 @@ class __extend__(ContextPartShadow):
     def store_w_method(self, w_method):
         assert isinstance(w_method, model.W_CompiledMethod)
         self._w_method = w_method
-        # Primitive 198 is a marker used in BlockClosure >> ensure:
-        self._is_BlockClosure_ensure = (w_method.primitive() == 198)
 
     def w_receiver_method_context(self):
         return self._w_receiver
@@ -829,3 +829,5 @@ class __extend__(ContextPartShadow):
     def method_str_method_context(self):
         block = '[] in ' if self.is_closure_context() else ''
         return '%s%s' % (block, self.w_method().get_identifier_string())
+
+ContextPartShadow.instantiate_type = ContextPartShadow
