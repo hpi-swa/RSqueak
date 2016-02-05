@@ -1,29 +1,59 @@
-from rpython.rlib import streamio
+from rpython.rlib import streamio, objectmodel
 from rpython.rlib.rstruct.runpack import runpack
 from spyvm.util import system
 
-def chrs2int(b):
-    assert len(b) == 4
-    return runpack('>i', b)
+if not objectmodel.we_are_translated():
+    def chrs2int(b):
+        assert len(b) == 4
+        first = ord(b[0]) # big endian
+        if first & 0x80 != 0:
+            first = first - 0x100
+        return (first << 24 | ord(b[1]) << 16 | ord(b[2]) << 8 | ord(b[3]))
 
-def swapped_chrs2int(b):
-    assert len(b) == 4
-    return runpack('<i', b)
+    def swapped_chrs2int(b):
+        assert len(b) == 4
+        first = ord(b[3]) # little endian
+        if first & 0x80 != 0:
+            first = first - 0x100
+        return (first << 24 | ord(b[2]) << 16 | ord(b[1]) << 8 | ord(b[0]))
 
-def chrs2long(b):
-    assert len(b) == 8
-    return runpack('>q', b)
+    def chrs2long(b):
+        assert len(b) == 8
+        first = ord(b[0]) # big endian
+        if first & 0x80 != 0:
+            first = first - 0x100
+        return (      first << 56 | ord(b[1]) << 48 | ord(b[2]) << 40 | ord(b[3]) << 32
+                      | ord(b[4]) << 24 | ord(b[5]) << 16 | ord(b[6]) <<  8 | ord(b[7])      )
 
+    def swapped_chrs2long(b):
+        assert len(b) == 8
+        first = ord(b[7]) # little endian
+        if first & 0x80 != 0:
+            first = first - 0x100
+        return (      first << 56 | ord(b[6]) << 48 | ord(b[5]) << 40 | ord(b[4]) << 32
+                      | ord(b[3]) << 24 | ord(b[2]) << 16 | ord(b[1]) <<  8 | ord(b[0])      )
+else:
+    def chrs2int(b):
+        assert len(b) == 4
+        return runpack('>i', b)
 
-def swapped_chrs2long(b):
-    assert len(b) == 8
-    return runpack('<q', b)
+    def swapped_chrs2int(b):
+        assert len(b) == 4
+        return runpack('<i', b)
+
+    def chrs2long(b):
+        assert len(b) == 8
+        return runpack('>q', b)
+
+    def swapped_chrs2long(b):
+        assert len(b) == 8
+        return runpack('<q', b)
 
 class Stream(object):
     """ Simple input stream.
     Data is completely read into memory.
     Constructor can raise OSError. """
-    
+
     def __init__(self, filename=None, inputfile=None, data=None):
         if filename:
             f = streamio.open_file_as_stream(filename, mode="rb", buffering=0)
@@ -40,7 +70,7 @@ class Stream(object):
             self.data = data
         else:
             raise RuntimeError("need to supply either inputfile or data")
-        
+
         self.reset()
 
     def bytes2dword_with_correct_endianness(self, bytes):
@@ -63,7 +93,7 @@ class Stream(object):
         self.pos += n
         self.count += n
         return bytes
-    
+
     def peek(self):
         if self.pos >= len(self.data):
             raise IndexError
@@ -91,7 +121,7 @@ class Stream(object):
         self.pos += 2
         self.count += 2
         return short
-    
+
     def next_qword(self):
         bytes = self.next_bytes(8)
         qword = self.bytes2qword_with_correct_endianness(bytes)
