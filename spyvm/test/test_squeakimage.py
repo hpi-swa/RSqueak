@@ -186,7 +186,7 @@ def test_object_format_v3(monkeypatch):
     from rpython.rlib import objectmodel
     from spyvm.storage_classes import ClassShadow
     w_class_mock = objectmodel.instantiate(model.W_PointersObject)
-    w_class_mock.strategy = ClassShadow(None, w_class_mock, 3)
+    w_class_mock.strategy = ClassShadow(None, w_class_mock, 3, None)
     w_class_mock.strategy._instance_size = 0
     g_class_mock.w_object = w_class_mock
     def assert_w_object_type(format, expected_type, length=0,
@@ -290,7 +290,7 @@ def test_object_format_spur(monkeypatch):
     from rpython.rlib import objectmodel
     from spyvm.storage_classes import ClassShadow
     w_class_mock = objectmodel.instantiate(model.W_PointersObject)
-    w_class_mock.strategy = ClassShadow(None, w_class_mock, 3)
+    w_class_mock.strategy = ClassShadow(None, w_class_mock, 3, None)
     w_class_mock.strategy._instance_size = 0
     g_class_mock.w_object = w_class_mock
     def assert_w_object_type(format, expected_type, length=0, classid=0, body=""):
