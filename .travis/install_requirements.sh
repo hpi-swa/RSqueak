@@ -3,7 +3,7 @@ set -ex
 
 
 setup_osx() {
-    SDL_DMG=SDL2-2.0.4.dmg
+    SDL_DMG=SDL2-2.0.3.dmg
     curl -L -O http://www.libsdl.org/release/${SDL_DMG}
     hdiutil mount ${SDL_DMG}
     ls /Volumes/*SDL*/
