@@ -255,6 +255,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         patch_special_cls("w_BlockClosure", "w_Object", instvarsize=constants.BLKCLSR_SIZE, varsized=True)
         patch_special_cls("w_Point", "w_Object")
         patch_special_cls("w_LargePositiveInteger", "w_Integer", format=storage_classes.BYTES)
+        patch_special_cls("w_LargeNegativeInteger", "w_LargePositiveInteger", format=storage_classes.BYTES)
         patch_special_cls("w_Message", "w_Object")
         patch_special_cls("w_ByteArray", "w_ArrayedCollection", format=storage_classes.BYTES)
         patch_special_cls("w_CompiledMethod", "w_ByteArray", format=storage_classes.COMPILED_METHOD)

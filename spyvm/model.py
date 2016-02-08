@@ -1126,7 +1126,11 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         word = r_longlong(0)
         for i in range(self.size()):
             word += r_longlong(ord(self.getchar(i))) << 8*i
-        return word
+        if (space.w_LargeNegativeInteger is not None and
+            self.getclass(space).is_same_object(space.w_LargeNegativeInteger)):
+            return -word
+        else:
+            return word
 
     def is_array_object(self):
         return True

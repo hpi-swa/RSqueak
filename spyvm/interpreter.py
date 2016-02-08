@@ -176,7 +176,7 @@ class Interpreter(object):
                     assert self.space.objtable[name]
                     pass;
                 else:
-                    raise Exception("don't know how to populate " + name + " which was not in special objects table")
+                    raise Warning("don't know how to populate " + name + " which was not in special objects table")
 
     def loop(self, w_active_context):
         # This is the top-level loop and is not invoked recursively.
