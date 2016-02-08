@@ -755,8 +755,11 @@ def func(interp, s_frame, w_obj):
 
 @expose_primitive(NEW_METHOD, unwrap_spec=[object, int, int])
 def func(interp, s_frame, w_class, bytecount, header):
-    # We ignore w_class because W_CompiledMethod is special
-    return model.W_PreSpurCompiledMethod(interp.space, bytecount, header)
+    # We ignore w_class because W_CompiledMethod subclasses are special
+    if interp.space.is_spur.is_set():
+        return model.W_SpurCompiledMethod(interp.space, bytecount, header)
+    else:
+        return model.W_PreSpurCompiledMethod(interp.space, bytecount, header)
 
 # ___________________________________________________________________________
 # I/O Primitives
