@@ -1504,6 +1504,11 @@ WAIT = 86
 RESUME = 87
 SUSPEND = 88
 FLUSH_CACHE = 89
+
+EXIT_CRITICAL_SECTION = 185 # similar to SIGNAL, hence SIGNAL + 100
+ENTER_CRITICAL_SECTION = 186 # similar to WAIT, hence WAIT + 100
+TEST_AND_SET_OWNERSHIP_OF_CRITICAL_SECTION = 187
+
 WITH_ARGS_EXECUTE_METHOD = 188
 
 @expose_primitive(BLOCK_COPY, unwrap_spec=[object, int])
@@ -1622,6 +1627,17 @@ def func(interp, s_frame, w_rcvr):
     wrapper.ProcessWrapper(interp.space, w_rcvr).suspend(s_frame)
 
 
+@expose_primitive(EXIT_CRITICAL_SECTION, unwrap_spec=[object], clean_stack=False, no_result=True)
+def func(interp, s_frame, w_rcvr):
+    wrapper.CriticalSectionWrapper(interp.space, w_rcvr).exit(s_frame)
+
+@expose_primitive(ENTER_CRITICAL_SECTION, unwrap_spec=[object], clean_stack=False, no_result=False)
+def func(interp, s_frame, w_rcvr):
+    return wrapper.CriticalSectionWrapper(interp.space, w_rcvr).enter(s_frame)
+
+@expose_primitive(TEST_AND_SET_OWNERSHIP_OF_CRITICAL_SECTION, unwrap_spec=[object], clean_stack=False, no_result=False)
+def func(interp, s_frame, w_rcvr):
+    return wrapper.CriticalSectionWrapper(interp.space, w_rcvr).test_and_set_owner(s_frame)
 
 @expose_primitive(FLUSH_CACHE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
