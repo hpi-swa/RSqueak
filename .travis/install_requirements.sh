@@ -35,9 +35,7 @@ setup_linux() {
     tar xzvf Squeak-4.10*.tar.gz
     rm Squeak-4.10*.tar.gz
     ln -s $PWD/Squeak-4.10*/bin/squeak .build/squeak
-    # start xvfb for display
-    sh -e /etc/init.d/xvfb start
-    sleep 2
+
 }
 
 setup_$TRAVIS_OS_NAME

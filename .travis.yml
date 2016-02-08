@@ -41,7 +41,6 @@ addons:
       - sbuild
       - schroot
       - scratchbox2
-      - xvfb
       - zlib1g-dev
       - zlib1g:i386
 branches:
