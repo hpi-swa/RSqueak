@@ -117,6 +117,12 @@ class SDLDisplay(object):
             self.set_squeak_colormap(self.screen_surface)
         self.pitch = w * self.bpp
 
+    def set_full_screen(self, flag):
+        if flag:
+            RSDL.SetWindowFullscreen(self.window, RSDL.WINDOW_FULLSCREEN_DESKTOP)
+        else:
+            RSDL.SetWindowFullscreen(self.window, 0)
+
     def get_pixelbuffer(self):
         return jit.promote(rffi.cast(RSDL.Uint32P, self.get_plain_pixelbuffer()))
 

@@ -1761,6 +1761,7 @@ prim_table[CTXT_AT_PUT] = prim_table[AT_PUT]
 
 IDLE_FOR_MICROSECONDS = 230
 FORCE_DISPLAY_UPDATE = 231
+SET_FULL_SCREEN = 233
 
 @expose_primitive(IDLE_FOR_MICROSECONDS, unwrap_spec=[object, int], no_result=True, clean_stack=False)
 def func(interp, s_frame, w_rcvr, time_mu_s):
@@ -1776,6 +1777,11 @@ def func(interp, s_frame, w_rcvr, time_mu_s):
 @expose_primitive(FORCE_DISPLAY_UPDATE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
     interp.space.display().flip(force=True)
+    return w_rcvr
+
+@expose_primitive(SET_FULL_SCREEN, unwrap_spec=[object, bool])
+def func(interp, s_frame, w_rcvr, flag):
+    interp.space.display().set_full_screen(flag)
     return w_rcvr
 
 # ___________________________________________________________________________
