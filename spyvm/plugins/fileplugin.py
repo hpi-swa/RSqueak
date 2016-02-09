@@ -247,7 +247,8 @@ def primitiveDirectorySetMacTypeAndCreator(interp, s_frame, w_rcvr, filename, ty
 @jit.elidable
 def smalltalk_timestamp(space, sec_since_epoch):
     import time
-    from spyvm.primitives import secs_between_1901_and_1970
+    from spyvm.constants import SQUEAK_EPOCH_DELTA_MICROSECONDS
     from rpython.rlib.rarithmetic import r_uint
+    secs_between_1901_and_1970 = SQUEAK_EPOCH_DELTA_MICROSECONDS / 1000000
     sec_since_1901 = r_uint(sec_since_epoch + secs_between_1901_and_1970)
     return space.wrap_uint(sec_since_1901)

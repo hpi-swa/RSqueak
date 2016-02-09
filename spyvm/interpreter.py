@@ -364,7 +364,7 @@ class Interpreter(object):
         # Profiling is skipped
         # We don't adjust the check counter size
 
-        # use the same time value as the primitive MILLISECOND_CLOCK
+        # use the same time value as the primitive UTC_MICROSECOND_CLOCK
         now = self.time_now()
 
         # XXX the low space semaphore may be signaled here
@@ -380,6 +380,21 @@ class Interpreter(object):
         # In cog, the method to add such a semaphore is only called in GC.
 
     def time_now(self):
+        """
+        Answer the UTC microseconds since the Smalltalk epoch. The value is
+        derived from the Posix epoch with a constant offset corresponding to
+        elapsed microseconds between the two epochs according to RFC 868
+        """
+        import time
+        from rpython.rlib.rarithmetic import r_longlong
+        secs_to_usecs = 1000 * 1000
+        return r_longlong(time.time() * secs_to_usecs) + constants.SQUEAK_EPOCH_DELTA_MICROSECONDS
+
+    def event_time_now(self):
+        """
+        Answer the number of milliseconds since the millisecond clock was last
+        reset or rolled over.
+        """
         import time
         from rpython.rlib.rarithmetic import intmask
         return intmask(int((time.time() - self.startup_time) * 1000) & constants.TAGGED_MASK)

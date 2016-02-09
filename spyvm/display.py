@@ -45,7 +45,7 @@ class SDLDisplay(object):
                "_deferred_events", "bpp", "pitch"]
 
     def __init__(self, title):
-        assert RSDL.Init(RSDL.INIT_VIDEO) >= 0
+        self._init_sdl()
         self.title = title
         SDLCursor.has_display = True
         self.window = lltype.nullptr(RSDL.WindowPtr.TO)
@@ -62,6 +62,15 @@ class SDLDisplay(object):
         self.depth = 32
         self._deferred_events = []
         self._defer_updates = False
+
+    def _init_sdl(self):
+        from rpython.rlib.objectmodel import we_are_translated
+        if we_are_translated():
+            assert RSDL.Init(RSDL.INIT_VIDEO) >= 0
+        else:
+            if RSDL.Init(RSDL.INIT_VIDEO) < 0:
+                print RSDL.GetError()
+                assert False
 
     def close(self):
         RSDL.Quit()

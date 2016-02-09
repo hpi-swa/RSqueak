@@ -209,7 +209,6 @@ prim_holder.prim_table = prim_table
 del i
 prim_table_implemented_only = []
 
-
 # ___________________________________________________________________________
 # SmallInteger Primitives
 
@@ -799,7 +798,7 @@ def func(interp, s_frame, w_rcvr):
 def func(interp, s_frame, w_rcvr, w_into):
     if not interp.evented:
         raise PrimitiveFailedError()
-    ary = interp.space.display().get_next_event(time=interp.time_now())
+    ary = interp.space.display().get_next_event(time=interp.event_time_now())
     for i in range(8):
         w_into.store(interp.space, i, interp.space.wrap_int(ary[i]))
     # XXX - hack
@@ -1206,16 +1205,47 @@ def func(interp, s_frame, w_rcvr, w_semaphore):
     return w_rcvr
 
 #____________________________________________________________________________
-# Time Primitives (135 - 137)
+# Time Primitives (135 - 137, 240 - 242)
 MILLISECOND_CLOCK = 135
 SIGNAL_AT_MILLISECONDS = 136
 SECONDS_CLOCK = 137
 
+UTC_MICROSECOND_CLOCK = 240
+LOCAL_MICROSECOND_CLOCK = 241
+SIGNAL_AT_UTC_MICROSECONDS = 242
+UPDATE_TIMEZONE = 243
+
 @expose_primitive(MILLISECOND_CLOCK, unwrap_spec=[object])
 def func(interp, s_frame, w_arg):
-    return interp.space.wrap_int(interp.time_now())
+    return interp.space.wrap_int(interp.event_time_now())
 
 @expose_primitive(SIGNAL_AT_MILLISECONDS, unwrap_spec=[object, object, int])
+def func(interp, s_frame, w_delay, w_semaphore, timestamp):
+    if not w_semaphore.getclass(interp.space).is_same_object(
+            interp.space.w_Semaphore):
+        interp.space.objtable["w_timerSemaphore"] = interp.space.w_nil
+        interp.next_wakeup_tick = r_longlong(timestamp * 1000)
+    else:
+        interp.space.objtable["w_timerSemaphore"] = w_semaphore
+        interp.next_wakeup_tick = r_longlong(timestamp * 1000)
+    return w_delay
+
+
+@expose_primitive(SECONDS_CLOCK, unwrap_spec=[object])
+def func(interp, s_frame, w_arg):
+    secs_since_1901 = r_uint(interp.time_now() / 1000000)
+    return interp.space.wrap_uint(secs_since_1901)
+
+
+@expose_primitive(UTC_MICROSECOND_CLOCK, unwrap_spec=[object])
+def func(interp, s_frame, w_arg):
+    return interp.space.wrap_longlong(interp.time_now())
+
+# @expose_primitive(LOCAL_MICROSECOND_CLOCK, unwrap_spec=[object])
+# def func(interp, s_frame, w_arg):
+#     return interp.space.wrap_longlong(interp.time_now())
+
+@expose_primitive(SIGNAL_AT_UTC_MICROSECONDS, unwrap_spec=[object, object, r_longlong])
 def func(interp, s_frame, w_delay, w_semaphore, timestamp):
     if not w_semaphore.getclass(interp.space).is_same_object(
             interp.space.w_Semaphore):
@@ -1225,19 +1255,6 @@ def func(interp, s_frame, w_delay, w_semaphore, timestamp):
         interp.space.objtable["w_timerSemaphore"] = w_semaphore
         interp.next_wakeup_tick = timestamp
     return w_delay
-
-
-
-secs_between_1901_and_1970 = r_uint((69 * 365 + 17) * 24 * 3600)
-
-@expose_primitive(SECONDS_CLOCK, unwrap_spec=[object])
-def func(interp, s_frame, w_arg):
-    import time
-    sec_since_epoch = r_uint(time.time())
-    # XXX: overflow check necessary?
-    sec_since_1901 = sec_since_epoch + secs_between_1901_and_1970
-    return interp.space.wrap_uint(sec_since_1901)
-
 
 #____________________________________________________________________________
 # Misc Primitives (138 - 149)
@@ -1490,6 +1507,11 @@ WAIT = 86
 RESUME = 87
 SUSPEND = 88
 FLUSH_CACHE = 89
+
+EXIT_CRITICAL_SECTION = 185 # similar to SIGNAL, hence SIGNAL + 100
+ENTER_CRITICAL_SECTION = 186 # similar to WAIT, hence WAIT + 100
+TEST_AND_SET_OWNERSHIP_OF_CRITICAL_SECTION = 187
+
 WITH_ARGS_EXECUTE_METHOD = 188
 
 @expose_primitive(BLOCK_COPY, unwrap_spec=[object, int])
@@ -1608,6 +1630,17 @@ def func(interp, s_frame, w_rcvr):
     wrapper.ProcessWrapper(interp.space, w_rcvr).suspend(s_frame)
 
 
+@expose_primitive(EXIT_CRITICAL_SECTION, unwrap_spec=[object], clean_stack=False, no_result=True)
+def func(interp, s_frame, w_rcvr):
+    wrapper.CriticalSectionWrapper(interp.space, w_rcvr).exit(s_frame)
+
+@expose_primitive(ENTER_CRITICAL_SECTION, unwrap_spec=[object], clean_stack=False, no_result=False)
+def func(interp, s_frame, w_rcvr):
+    return wrapper.CriticalSectionWrapper(interp.space, w_rcvr).enter(s_frame)
+
+@expose_primitive(TEST_AND_SET_OWNERSHIP_OF_CRITICAL_SECTION, unwrap_spec=[object], clean_stack=False, no_result=False)
+def func(interp, s_frame, w_rcvr):
+    return wrapper.CriticalSectionWrapper(interp.space, w_rcvr).test_and_set_owner(s_frame)
 
 @expose_primitive(FLUSH_CACHE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):

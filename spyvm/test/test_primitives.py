@@ -2,7 +2,7 @@ import py, os, math, time
 from spyvm import model, model_display, storage_contexts, constants, primitives, wrapper, display
 from spyvm.primitives import prim_table, PrimitiveFailedError
 from rpython.rlib.rfloat import isinf, isnan
-from rpython.rlib.rarithmetic import intmask, r_uint
+from rpython.rlib.rarithmetic import intmask, r_uint, r_longlong
 from rpython.rtyper.lltypesystem import lltype, rffi
 from .util import create_space, copy_to_module, cleanup_module, TestInterpreter
 
@@ -461,6 +461,33 @@ def test_signal_at_milliseconds():
     prim(primitives.SIGNAL_AT_MILLISECONDS, [space.w_nil, sema, future])
     assert space.objtable["w_timerSemaphore"] is sema
 
+
+def test_primitive_utc_microseconds_clock():
+    start = space.unwrap_longlong(prim(primitives.UTC_MICROSECOND_CLOCK, [0]))
+    time.sleep(0.3)
+    stop = space.unwrap_longlong(prim(primitives.UTC_MICROSECOND_CLOCK, [0]))
+    assert start + r_longlong(250 * 1000) <= stop
+
+def test_signal_at_utc_microseconds():
+    start = space.unwrap_longlong(prim(primitives.UTC_MICROSECOND_CLOCK, [0]))
+    future = start + r_longlong(400 * 1000)
+    sema = space.w_Semaphore.as_class_get_shadow(space).new()
+    prim(primitives.SIGNAL_AT_UTC_MICROSECONDS, [space.w_nil, sema, future])
+    assert space.objtable["w_timerSemaphore"] is sema
+
+def test_seconds_clock():
+    now = int(time.time())
+    w_smalltalk_now1 = prim(primitives.SECONDS_CLOCK, [42])
+    w_smalltalk_now2 = prim(primitives.SECONDS_CLOCK, [42])
+    # the test now is flaky, because we assume both have the same type
+    if isinstance(w_smalltalk_now1, model.W_BytesObject):
+        assert (now % 256 - ord(w_smalltalk_now1.bytes[0])) % 256 <= 2
+        # the high-order byte should only change by one (and even that is
+        # extreeemely unlikely)
+        assert (ord(w_smalltalk_now2.bytes[-1]) - ord(w_smalltalk_now1.bytes[-1])) <= 1
+    else:
+        assert w_smalltalk_now2.value - w_smalltalk_now1.value <= 1
+
 def test_inc_gc():
     # Should not fail :-)
     prim(primitives.INC_GC, [42]) # Dummy arg
@@ -479,19 +506,6 @@ def test_interrupt_semaphore():
     w_semaphore = SemaphoreInst()
     prim(primitives.INTERRUPT_SEMAPHORE, [1, w_semaphore])
     assert space.objtable["w_interrupt_semaphore"] is w_semaphore
-
-def test_seconds_clock():
-    now = int(time.time())
-    w_smalltalk_now1 = prim(primitives.SECONDS_CLOCK, [42])
-    w_smalltalk_now2 = prim(primitives.SECONDS_CLOCK, [42])
-    # the test now is flaky, because we assume both have the same type
-    if isinstance(w_smalltalk_now1, model.W_BytesObject):
-        assert (now % 256 - ord(w_smalltalk_now1.bytes[0])) % 256 <= 2
-        # the high-order byte should only change by one (and even that is
-        # extreeemely unlikely)
-        assert (ord(w_smalltalk_now2.bytes[-1]) - ord(w_smalltalk_now1.bytes[-1])) <= 1
-    else:
-        assert w_smalltalk_now2.value - w_smalltalk_now1.value <= 1
 
 def test_load_inst_var():
     " try to test the LoadInstVar primitives a little "
