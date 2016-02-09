@@ -38,6 +38,10 @@ WindowEventStinks = 6
 
 MINIMUM_DEPTH = 8
 
+class SqueakInterrupt(Exception):
+    pass
+
+
 class SDLDisplay(object):
     _attrs_ = ["window", "title", "renderer", "screen_texture",
                "width", "height", "depth", "screen_surface", "has_surface",
@@ -226,7 +230,12 @@ class SDLDisplay(object):
             self.key = sym
         interrupt = self.interrupt_key
         if (interrupt & 0xFF == self.key and interrupt >> 8 == self.get_modifier_mask(0)):
-            raise KeyboardInterrupt
+            raise SqueakInterrupt
+        # Cmd+, ... this quits the image hard
+        # To get this value, see EventSensor>>initialize ($, asciiValue bitOr: 16r0800)
+        interrupt = 2092
+        if (interrupt & 0xFF == self.key and interrupt >> 8 == self.get_modifier_mask(0)):
+            raise Exception
 
     def handle_textinput_event(self, event):
         textinput = rffi.cast(RSDL.TextInputEventPtr, event)

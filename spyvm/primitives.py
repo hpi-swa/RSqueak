@@ -798,13 +798,22 @@ def func(interp, s_frame, w_rcvr):
 def func(interp, s_frame, w_rcvr, w_into):
     if not interp.evented:
         raise PrimitiveFailedError()
-    ary = interp.space.display().get_next_event(time=interp.event_time_now())
-    for i in range(8):
-        w_into.store(interp.space, i, interp.space.wrap_int(ary[i]))
-    # XXX - hack
-    if ary[0] == display.WindowEventMetricChange and ary[4] > 0 and ary[5] > 0:
-        if interp.image:
-            interp.image.lastWindowSize = ((ary[4] & 0xffff) << 16) | (ary[5] & 0xffff)
+    try:
+        ary = interp.space.display().get_next_event(time=interp.event_time_now())
+    except display.SqueakInterrupt, e:
+        w_interrupt_sema = interp.space.objtable['w_interrupt_semaphore']
+        if w_interrupt_sema is not interp.space.w_nil:
+            assert_class(interp, w_interrupt_sema, interp.space.w_Semaphore)
+            wrapper.SemaphoreWrapper(interp.space, w_interrupt_sema).signal(s_frame)
+        else:
+            raise e
+    else:
+        for i in range(8):
+            w_into.store(interp.space, i, interp.space.wrap_int(ary[i]))
+        # XXX - hack
+        if ary[0] == display.WindowEventMetricChange and ary[4] > 0 and ary[5] > 0:
+            if interp.image:
+                interp.image.lastWindowSize = ((ary[4] & 0xffff) << 16) | (ary[5] & 0xffff)
     return w_rcvr
 
 @expose_primitive(BITBLT_COPY_BITS, clean_stack=False, no_result=True, compiled_method=True)
@@ -938,6 +947,7 @@ def func(interp, s_frame, w_rcvr):
 @expose_primitive(KBD_PEEK, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
     code = interp.space.display().peek_keycode()
+    # TODO: how do old images handle CmdDot? See INTERRUPT_SEMAPHORE?
     if code & 0xFF == 0:
         return interp.space.w_nil
     else:
