@@ -705,7 +705,6 @@ def test_primitive_next_object():
     assert isinstance(w_2, model.W_Object)
     assert w_1 is not w_2
 
-@py.test.mark.skipif("os.environ.get('TRAVIS_OS_NAME', '') == 'osx'")
 def test_primitive_next_instance():
     someInstances = map(space.wrap_list, [[2], [3]])
     w_frame, s_context = new_frame("<never called, but needed for method generation>")
@@ -722,7 +721,6 @@ def test_primitive_next_instance():
     assert w_2.getclass(space) is space.w_Array
     assert w_1 is not w_2
 
-@py.test.mark.skipif("os.environ.get('TRAVIS_OS_NAME', '') == 'osx'")
 def test_primitive_next_instance_wo_some_instance_in_same_frame():
     someInstances = map(space.wrap_list, [[2], [3]])
     w_frame, s_context = new_frame("<never called, but needed for method generation>")
