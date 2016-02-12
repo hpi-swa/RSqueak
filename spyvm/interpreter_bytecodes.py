@@ -423,13 +423,11 @@ class __extend__(ContextPartShadow):
         # force the reference
         # EXECPT someone fiddled with our context chain!
         from spyvm.interpreter import FreshReturn
-        if (self.home_is_self() or local_return) \
-            and not(self.state == DirtyContext):
+        if (self.home_is_self() or local_return) and (self.state is not DirtyContext):
             from spyvm.interpreter import LocalReturn
             raise FreshReturn(LocalReturn.make(self.space, return_value))
         else:
             s_return_to = self.s_home().s_sender()
-            assert s_return_to, "No sender to return to!"
             from spyvm.interpreter import NonLocalReturn
             raise FreshReturn(NonLocalReturn.make(self.space, s_return_to, return_value))
 

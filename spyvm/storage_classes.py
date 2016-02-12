@@ -62,6 +62,8 @@ class ClassShadow(AbstractCachingShadow):
         self.changed()
 
     def store_pre_spur_classformat(self, w_self, n0, w_val):
+        if w_val.is_same_object(self.space.w_nil):
+            return
         # read and painfully decode the format
         assert isinstance(w_val, model.W_SmallInteger)
         classformat = self.space.unwrap_int(w_val)

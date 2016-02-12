@@ -328,19 +328,6 @@ class W_AbstractObjectWithIdentityHash(W_Object):
     UNASSIGNED_HASH = sys.maxint
     hash = UNASSIGNED_HASH # default value
 
-    def pointers_become_one_way(self, space, from_w, to_w):
-        ptrs = self.fetch_all(space)
-        ptridx = 0
-        for i, w_from in enumerate(from_w):
-            try:
-                ptridx = ptrs.index(w_from)
-            except ValueError:
-                continue
-            w_to = to_w[i]
-            ptrs[ptridx] = w_to
-            w_from.post_become_one_way(w_to)
-        self.store_all(space, ptrs)
-
     def post_become_one_way(self, w_to):
         if isinstance(w_to, W_AbstractObjectWithIdentityHash):
             w_to.hash = self.gethash()
@@ -988,10 +975,22 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
             self.strategy.become(w_other)
         elif self.has_strategy() and self._get_strategy().handles_become():
             w_other.strategy.become(self)
-        # TODO: must swap selfs
         self.strategy, w_other.strategy = w_other.strategy, self.strategy
         self._storage, w_other._storage = w_other._storage, self._storage
         W_AbstractObjectWithIdentityHash._become(self, w_other)
+
+    def pointers_become_one_way(self, space, from_w, to_w):
+        ptrs = self.fetch_all(space)
+        ptridx = 0
+        for i, w_from in enumerate(from_w):
+            try:
+                ptridx = ptrs.index(w_from)
+            except ValueError:
+                continue
+            w_to = to_w[i]
+            ptrs[ptridx] = w_to
+            w_from.post_become_one_way(w_to)
+        self.store_all(space, ptrs)
 
     def clone(self, space):
         my_pointers = self.fetch_all(space)
