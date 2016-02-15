@@ -1470,15 +1470,6 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def primitive(self):
         return self._primitive
 
-    @constant_for_version_arg
-    def named_primitive_names(self, space):
-        w_description = self.literalat0(space, 1)
-        if not isinstance(w_description, W_PointersObject) or w_description.size() < 2:
-            raise error.PrimitiveFailedError
-        w_modulename = jit.promote(w_description.at0(space, 0))
-        w_functionname = jit.promote(w_description.at0(space, 1))
-        return w_modulename, w_functionname
-
     @constant_for_version
     def compute_frame_size(self):
         # From blue book: normal mc have place for 12 temps+maxstack
