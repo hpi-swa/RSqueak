@@ -1220,19 +1220,34 @@ LOCAL_MICROSECOND_CLOCK = 241
 SIGNAL_AT_UTC_MICROSECONDS = 242
 UPDATE_TIMEZONE = 243
 
+@jit.elidable
+def event_time_to_microseconds(interp, ev_time):
+    """
+    The microsecond-based time primitives are relative to a roll-over (we use
+    startup time). The millisecond-based ones are based on the Squeak-Epoch
+    (1901).
+
+    This function converts the former to the latter by: scaling up, adding
+    image startup timestamp, and finally adding the Epoch constant.
+    """
+    secs_to_usecs = 1000 * 1000
+    return r_longlong(ev_time * 1000 + interp.startup_time * secs_to_usecs) + \
+        constants.SQUEAK_EPOCH_DELTA_MICROSECONDS
+
 @expose_primitive(MILLISECOND_CLOCK, unwrap_spec=[object])
 def func(interp, s_frame, w_arg):
-    return interp.space.wrap_int(interp.event_time_now())
+    x = interp.event_time_now()
+    y = event_time_to_microseconds(interp, x)
+    return interp.space.wrap_int(x)
 
 @expose_primitive(SIGNAL_AT_MILLISECONDS, unwrap_spec=[object, object, int])
-def func(interp, s_frame, w_delay, w_semaphore, timestamp):
+def func(interp, s_frame, w_delay, w_semaphore, ev_timestamp):
     if not w_semaphore.getclass(interp.space).is_same_object(
             interp.space.w_Semaphore):
         interp.space.objtable["w_timerSemaphore"] = interp.space.w_nil
-        interp.next_wakeup_tick = r_longlong(timestamp * 1000)
     else:
         interp.space.objtable["w_timerSemaphore"] = w_semaphore
-        interp.next_wakeup_tick = r_longlong(timestamp * 1000)
+    interp.next_wakeup_tick = event_time_to_microseconds(interp, ev_timestamp)
     return w_delay
 
 
@@ -1246,19 +1261,20 @@ def func(interp, s_frame, w_arg):
 def func(interp, s_frame, w_arg):
     return interp.space.wrap_longlong(interp.time_now())
 
-# @expose_primitive(LOCAL_MICROSECOND_CLOCK, unwrap_spec=[object])
-# def func(interp, s_frame, w_arg):
-#     return interp.space.wrap_longlong(interp.time_now())
+@expose_primitive(LOCAL_MICROSECOND_CLOCK, unwrap_spec=[object])
+def func(interp, s_frame, w_arg):
+    # XXX: For now, pretend we are UTC. More later...
+    x = interp.time_now()
+    return interp.space.wrap_longlong(x)
 
 @expose_primitive(SIGNAL_AT_UTC_MICROSECONDS, unwrap_spec=[object, object, r_longlong])
 def func(interp, s_frame, w_delay, w_semaphore, timestamp):
     if not w_semaphore.getclass(interp.space).is_same_object(
             interp.space.w_Semaphore):
         interp.space.objtable["w_timerSemaphore"] = interp.space.w_nil
-        interp.next_wakeup_tick = timestamp
     else:
         interp.space.objtable["w_timerSemaphore"] = w_semaphore
-        interp.next_wakeup_tick = timestamp
+    interp.next_wakeup_tick = timestamp
     return w_delay
 
 #____________________________________________________________________________

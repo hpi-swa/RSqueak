@@ -174,7 +174,6 @@ class Interpreter(object):
                     w_string = self.space.wrap_string("run:with:in:")
                     self.space.objtable[name] = self.perform(w_string, selector="asSymbol")
                     assert self.space.objtable[name]
-                    pass;
                 else:
                     raise Warning("don't know how to populate " + name + " which was not in special objects table")
 
