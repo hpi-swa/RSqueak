@@ -1255,7 +1255,6 @@ def event_time_to_microseconds(interp, ev_time):
 @expose_primitive(MILLISECOND_CLOCK, unwrap_spec=[object])
 def func(interp, s_frame, w_arg):
     x = interp.event_time_now()
-    y = event_time_to_microseconds(interp, x)
     return interp.space.wrap_int(x)
 
 @expose_primitive(SIGNAL_AT_MILLISECONDS, unwrap_spec=[object, object, int])
