@@ -1033,20 +1033,7 @@ def func(interp, s_frame, w_arg, w_rcvr):
 @expose_primitive(EXTERNAL_CALL, clean_stack=False, no_result=True, compiled_method=True)
 def func(interp, s_frame, argcount, w_method):
     space = interp.space
-    w_description = w_method.literalat0(space, 1)
-    if not isinstance(w_description, model.W_PointersObject) or w_description.size() < 2:
-        raise PrimitiveFailedError
-    w_modulename = jit.promote(w_description.at0(space, 0))
-    w_functionname = jit.promote(w_description.at0(space, 1))
-    if w_modulename is space.w_nil:
-        """
-        CompiledMethod allInstances select: [:cm | cm primitive = 117 and: [cm literals first first isNil]].
-        There are no interesting named module-less primitives among those 28
-        found in Squeak 5. They either have proper fallback or just don't work on
-        Cog either.
-        """
-        raise  PrimitiveFailedError
-
+    w_modulename, w_functionname = w_method.named_primitive_names(interp.space)
     if not (isinstance(w_modulename, model.W_BytesObject) and
             isinstance(w_functionname, model.W_BytesObject)):
         raise PrimitiveFailedError
