@@ -21,6 +21,9 @@ COMPACT_CLASSES_ARRAY = 28
 POSSIBLE_IMAGE_OFFSET = 512
 
 class ImageVersion(object):
+    _immutable_fields_ = [
+        "magic", "is_big_endian", "is_64bit", "has_closures",
+        "has_floats_reversed", "is_spur"]
 
     def __init__(self, magic, is_big_endian, is_64bit, has_closures, has_floats_reversed, is_spur=False):
         self.magic = magic
