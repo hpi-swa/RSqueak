@@ -1340,12 +1340,14 @@ def func(interp, s_frame, w_receiver):
 @expose_primitive(CLIPBOARD_TEXT)
 def func(interp, s_frame, argument_count):
     if argument_count == 0:
-        return interp.space.wrap_string(interp.space.display().get_clipboard_text())
+        if interp.space.display().has_clipboard_text():
+            return interp.space.wrap_string(interp.space.display().get_clipboard_text())
+        else:
+            return interp.space.wrap_string("")
     elif argument_count == 1:
         w_arg = s_frame.pop()
         assert isinstance(w_arg, model.W_BytesObject)
-        interp.space.display().set_keyboard_text(w_arg.as_string())
-
+        interp.space.display().set_keyboard_text(space.unwrap_string(w_arg))
 
 @expose_primitive(VM_PATH, unwrap_spec=[object])
 def func(interp, s_frame, w_receiver):
