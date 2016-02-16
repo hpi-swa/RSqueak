@@ -504,7 +504,8 @@ def func(interp, s_frame, w_obj, n0):
     n0 = assert_valid_index(interp.space, n0, w_obj)
     # XXX I am not sure this is correct, but it un-breaks translation:
     # make sure that getbyte is only performed on W_BytesObjects
-    if not isinstance(w_obj, model.W_BytesObject):
+    if not (isinstance(w_obj, model.W_BytesObject) or
+            isinstance(w_obj, model.W_WordsObject)):
         raise PrimitiveFailedError
     return interp.space.wrap_char(w_obj.getchar(n0))
 
@@ -513,7 +514,8 @@ def func(interp, s_frame, w_obj, n0, w_val):
     val = interp.space.unwrap_char_as_byte(w_val)
     n0 = assert_valid_index(interp.space, n0, w_obj)
     if not (isinstance(w_obj, model.W_CompiledMethod) or
-            isinstance(w_obj, model.W_BytesObject)):
+            isinstance(w_obj, model.W_BytesObject) or
+            isinstance(w_obj, model.W_WordsObject)):
         raise PrimitiveFailedError()
     w_obj.setchar(n0, val)
     return w_val

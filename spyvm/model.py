@@ -1211,6 +1211,14 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         else:
             self.words[n] = r_uint(word)
 
+    def getchar(self, n0):
+        return chr(self.getword(n0))
+
+    def setchar(self, n0, character):
+        assert isinstance(character, str)
+        assert len(character) == 1
+        self.setword(n0, ord(character))
+
     def short_at0(self, space, index0):
         word = intmask(self.getword(index0 / 2))
         if index0 % 2 == 0:
