@@ -416,7 +416,7 @@ class SDLDisplay(object):
     def set_clipboard_text(self, text):
         return RSDL.SetClipboardText(rffi.str2charp(text))
 
-    def has_clipboard_text(self, text):
+    def has_clipboard_text(self):
         return RSDL.HasClipboardText() == RSDL.TRUE
 
 

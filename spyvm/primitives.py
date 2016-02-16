@@ -1346,8 +1346,7 @@ def func(interp, s_frame, argument_count):
             return interp.space.wrap_string("")
     elif argument_count == 1:
         w_arg = s_frame.pop()
-        assert isinstance(w_arg, model.W_BytesObject)
-        interp.space.display().set_keyboard_text(space.unwrap_string(w_arg))
+        interp.space.display().set_clipboard_text(interp.space.unwrap_string(w_arg))
 
 @expose_primitive(VM_PATH, unwrap_spec=[object])
 def func(interp, s_frame, w_receiver):
