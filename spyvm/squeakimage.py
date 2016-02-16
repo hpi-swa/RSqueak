@@ -409,6 +409,8 @@ class NonSpurReader(BaseReaderStrategy):
             return objectmodel.instantiate(model.W_Float)
         elif self.is32bitlargepositiveinteger(g_object):
             return objectmodel.instantiate(model.W_LargePositiveInteger1Word)
+        elif self.is64bitlargepositiveinteger(g_object):
+            return objectmodel.instantiate(model.W_LargePositiveInteger2Word)
         elif self.iswords(g_object):
             return objectmodel.instantiate(model.W_WordsObject)
         elif g_object.format == 7:
@@ -427,6 +429,11 @@ class NonSpurReader(BaseReaderStrategy):
         return (g_object.format == 8 and
                 self.space.w_LargePositiveInteger.is_same_object(g_object.g_class.w_object) and
                 len(g_object.get_bytes()) <= 4)
+
+    def is64bitlargepositiveinteger(self, g_object):
+        return (g_object.format == 8 and
+                self.space.w_LargePositiveInteger.is_same_object(g_object.g_class.w_object) and
+                len(g_object.get_bytes()) <= 8)
 
     def ischar(self, g_object):
         return (self.ispointers(g_object) and
@@ -630,6 +637,8 @@ class SpurReader(BaseReaderStrategy):
             return objectmodel.instantiate(model.W_Float)
         elif self.is32bitlargepositiveinteger(g_object):
             return objectmodel.instantiate(model.W_LargePositiveInteger1Word)
+        elif self.is64bitlargepositiveinteger(g_object):
+            return objectmodel.instantiate(model.W_LargePositiveInteger2Word)
         elif self.iswords(g_object):
             return objectmodel.instantiate(model.W_WordsObject)
         elif self.isbytes(g_object):
@@ -652,6 +661,11 @@ class SpurReader(BaseReaderStrategy):
         return (g_object.format == 16 and
                 self.space.w_LargePositiveInteger.is_same_object(g_object.g_class.w_object) and
                 len(g_object.get_bytes()) <= 4)
+
+    def is64bitlargepositiveinteger(self, g_object):
+        return (g_object.format == 16 and
+                self.space.w_LargePositiveInteger.is_same_object(g_object.g_class.w_object) and
+                len(g_object.get_bytes()) <= 8)
 
     def iswords(self, g_object):
         return 9 <= g_object.format <= 15

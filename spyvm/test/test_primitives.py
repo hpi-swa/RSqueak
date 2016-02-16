@@ -2,7 +2,7 @@ import py, os, math, time
 from spyvm import model, model_display, storage_contexts, constants, primitives, wrapper, display
 from spyvm.primitives import prim_table, PrimitiveFailedError
 from rpython.rlib.rfloat import isinf, isnan
-from rpython.rlib.rarithmetic import intmask, r_uint, r_longlong
+from rpython.rlib.rarithmetic import intmask, r_uint, r_longlong, UINT_MAX, r_ulonglong
 from rpython.rtyper.lltypesystem import lltype, rffi
 from .util import create_space, copy_to_module, cleanup_module, TestInterpreter
 
@@ -68,12 +68,15 @@ def test_small_int_add():
     assert prim(primitives.ADD, [constants.TAGGED_MAXINT, 2]).value == constants.TAGGED_MAXINT + 2
     assert r_uint(prim(primitives.ADD, [constants.MAXINT, 2]).value) == constants.MAXINT + 2
     assert r_uint(prim(primitives.ADD, [2 * constants.MAXINT - 2, 2]).value) == 2 * constants.MAXINT
+    w_result = prim(primitives.ADD, [2 * constants.MAXINT - 1, 2])
+    assert isinstance(w_result, model.W_LargePositiveInteger1Word)
+    assert r_uint(w_result.value) == 2 * constants.MAXINT + 1
+    w_result = prim(primitives.ADD, [UINT_MAX, 2])
+    assert isinstance(w_result, model.W_LargePositiveInteger2Word)
+    assert w_result.value == r_ulonglong(UINT_MAX) + 2
 
 def test_small_int_add_fail():
-    w_result = prim_fails(primitives.ADD, [2 * constants.MAXINT - 1, 2])
-    # assert isinstance(w_result, model.W_LargePositiveInteger1Word)
-    # assert w_result.value == constants.TAGGED_MAXINT + 2
-    # prim_fails(primitives.ADD, [constants.TAGGED_MAXINT, constants.TAGGED_MAXINT * 2])
+    prim_fails(primitives.ADD, [2 ** 64 - 1, 2])
 
 def test_small_int_minus():
     assert prim(primitives.SUBTRACT, [5,9]).value == -4
@@ -88,9 +91,12 @@ def test_small_int_multiply():
     w_result = prim(primitives.MULTIPLY, [constants.MAXINT, 2])
     assert isinstance(w_result, model.W_LargePositiveInteger1Word)
     assert r_uint(w_result.value) == constants.MAXINT * 2
+    w_result = prim(primitives.MULTIPLY, [constants.MAXINT, constants.MAXINT])
+    assert isinstance(w_result, model.W_LargePositiveInteger2Word)
+    assert w_result.value == constants.MAXINT * constants.MAXINT
 
 def test_small_int_multiply_overflow():
-    prim_fails(primitives.MULTIPLY, [constants.MAXINT, constants.MAXINT])
+    prim_fails(primitives.MULTIPLY, [constants.MAXINT * constants.MAXINT, -4])
     prim_fails(primitives.MULTIPLY, [constants.MAXINT, -4])
     prim_fails(primitives.MULTIPLY, [constants.MININT, constants.MAXINT])
     prim_fails(primitives.MULTIPLY, [constants.MININT, 2])

@@ -211,6 +211,9 @@ def primitiveFileWrite(interp, s_frame, w_rcvr, fd, content, start, count):
     elif isinstance(content, model.W_LargePositiveInteger1Word):
         byte_size = 4
         size = 1
+    elif isinstance(content, model.W_LargePositiveInteger2Word):
+        byte_size = 8
+        size = 1
     elif isinstance(content, model_display.W_DisplayBitmap):
         byte_size = 4
         size = content.size()

@@ -143,6 +143,12 @@ def test_compiling_large_positive_integer():
     w_result = perform(w(10), "aLargeInteger")
     assert isinstance(w_result, model.W_LargePositiveInteger1Word)
 
+def test_compiling_64bit_large_positive_integer():
+    sourcecode = """aLargeInteger
+                        ^ 16rFFFFFFFFFFFFFFFF"""
+    perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
+    w_result = perform(w(10), "aLargeInteger")
+    assert isinstance(w_result, model.W_LargePositiveInteger2Word)
 
 def test_simulate_numericprim():
     sourcecode = """absentPrimitive: anInt with: anotherInt

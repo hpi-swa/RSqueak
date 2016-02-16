@@ -230,6 +230,8 @@ class ClassShadow(AbstractCachingShadow):
         elif instance_kind == LARGE_POSITIVE_INTEGER:
             if extrasize <= 4:
                 w_new = model.W_LargePositiveInteger1Word(0, extrasize)
+            elif extrasize <= 8:
+                w_new = model.W_LargePositiveInteger2Word(0, extrasize)
             else:
                 w_new = model.W_BytesObject(self.space, w_cls, extrasize)
         elif instance_kind == WEAK_POINTERS:

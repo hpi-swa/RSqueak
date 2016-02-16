@@ -163,6 +163,20 @@ def test_fileplugin_filewrite_largeposint(monkeypatch):
     finally:
         monkeypatch.undo()
 
+def test_fileplugin_filewrite_largeposint64(monkeypatch):
+    def write(fd, data):
+        assert len(data) == 8
+        assert data == 'hgfedcba'
+        return 8
+    monkeypatch.setattr(os, "write", write)
+
+    content = model.W_LargePositiveInteger2Word(0x6162636465666768)
+    try:
+        stack = [space.w(1), space.w(1), content, space.w(1), space.w(1)]
+        w_c = external_call('FilePlugin', 'primitiveFileWrite', stack)
+    finally:
+        monkeypatch.undo()
+
 def test_fileplugin_filewrite_bitmap(monkeypatch):
     def write(fd, data):
         assert len(data) == 4

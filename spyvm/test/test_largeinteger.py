@@ -2,7 +2,7 @@ import operator
 from spyvm import model, constants, primitives
 from spyvm.test.test_primitives import MockFrame
 from .util import read_image, copy_to_module, cleanup_module
-from rpython.rlib.rarithmetic import intmask, r_uint
+from rpython.rlib.rarithmetic import intmask, r_uint, UINT_MAX, r_ulonglong
 
 def setup_module():
     space, interp, _, _ = read_image('bootstrapped.image')
@@ -25,8 +25,10 @@ def perform_primitive(rcvr, w_selector, *args):
 def w_l(largeInteger):
     if largeInteger >= 0 and largeInteger <= constants.TAGGED_MAXINT:
         return space.wrap_int(intmask(largeInteger))
-    elif largeInteger >= 0:
+    elif largeInteger >= 0 and largeInteger <= UINT_MAX:
         return model.W_LargePositiveInteger1Word(intmask(largeInteger))
+    elif largeInteger >= 0:
+        return model.W_LargePositiveInteger2Word(r_ulonglong(largeInteger))
     else:
         assert largeInteger < 0
         assert space.w_LargeNegativeInteger is not None
@@ -79,6 +81,7 @@ def test_bitShift():
         else:
             return a << b
     do_primitive("bitShift:", shift, i=[9470032], j=[6])
+    do_primitive("bitShift:", shift, i=[94700329470032], j=[6])
 
 def test_lessThan():
     w_selector = space.get_special_selector("<")
@@ -91,3 +94,13 @@ def test_lessThan():
     assert perform_primitive(w_l(-0xFFFFFFFF), w_selector, w_l(-3)) is space.w_true
     assert perform_primitive(w_l(-0x0F0F0F0F), w_selector, w_l(0)) is space.w_true
     assert perform_primitive(w_l(-0xFFFFFF), w_selector, w_l(12)) is space.w_true
+
+    assert perform_primitive(w_l(0xFFFFFFFFFFFFFFFF), w_selector, w_l(0xF0F0F0F0F0F0F0F0)) is space.w_false
+    assert perform_primitive(w_l(0x0F0F0F0F0F0F0F0F), w_selector, w_l(0xFFFEFCF8FFFEFCF8)) is space.w_true
+    assert perform_primitive(w_l(0xFFFFFFFFFFFF), w_selector, w_l(4294967295)) is space.w_true
+    assert perform_primitive(w_l(-0xFFFFFFFFFFFFFFFF), w_selector, w_l(-0xF0F0F0F0F0F0F0F0)) is space.w_true
+    assert perform_primitive(w_l(-0x0F0F0F0F0F0F0F0F), w_selector, w_l(-0xFFFEFCF8FFFEFCF8)) is space.w_false
+    assert perform_primitive(w_l(-0xFFFFFFFFFFFF), w_selector, w_l(-4294967295)) is space.w_false
+    assert perform_primitive(w_l(-0xFFFFFFFFFFFFFFFF), w_selector, w_l(-3)) is space.w_true
+    assert perform_primitive(w_l(-0x0F0F0F0F0F0F0F0F), w_selector, w_l(0)) is space.w_true
+    assert perform_primitive(w_l(-0xFFFFFFFFFFFF), w_selector, w_l(12)) is space.w_true

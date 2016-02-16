@@ -5,6 +5,7 @@ Squeak model.
         W_SmallInteger
         W_AbstractObjectWithIdentityHash
             W_LargePositiveInteger1Word
+            W_LargePositiveInteger2Word
             W_Float
             W_Character
             W_PointersObject
@@ -20,7 +21,7 @@ from spyvm import constants, error
 from spyvm.util.version import constant_for_version, constant_for_version_arg, VersionMixin, Version
 
 from rpython.rlib import rrandom, objectmodel, jit, signature, longlong2float
-from rpython.rlib.rarithmetic import intmask, r_uint, r_int, ovfcheck, r_longlong
+from rpython.rlib.rarithmetic import intmask, r_uint, r_int, ovfcheck, r_longlong, r_ulonglong
 from rpython.rlib.debug import make_sure_not_resized
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib.objectmodel import instantiate, compute_hash, import_from_mixin, we_are_translated
@@ -187,6 +188,9 @@ class W_Object(object):
     def unwrap_positive_32bit_int(self, space):
         raise error.UnwrappingError("Got unexpected class unwrap_positive_32bit_int")
 
+    def unwrap_positive_64bit_int(self, space):
+        raise error.UnwrappingError("Got unexpected class unwrap_positive_64bit_int")
+
     def unwrap_longlong(self, space):
         raise error.UnwrappingError("Got unexpected class unwrap_longlong")
 
@@ -287,6 +291,9 @@ class W_SmallInteger(W_Object):
         else:
             raise error.UnwrappingError
 
+    def unwrap_positive_64bit_int(self, space):
+        return r_ulonglong(self.unwrap_positive_32bit_int(space))
+
     def unwrap_longlong(self, space):
         return r_longlong(self.value)
 
@@ -365,6 +372,7 @@ class W_AbstractObjectWithIdentityHash(W_Object):
         assert isinstance(w_other, W_AbstractObjectWithIdentityHash)
         self.hash, w_other.hash = w_other.hash, self.hash
 
+
 class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
     """Large positive integer for exactly 1 word"""
     _attrs_ = ["value", "_exposed_size"]
@@ -436,6 +444,9 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
     def unwrap_positive_32bit_int(self, space):
         return r_uint(self.value)
 
+    def unwrap_positive_64bit_int(self, space):
+        return r_ulonglong(self.value)
+
     def unwrap_longlong(self, space):
         return r_longlong(r_uint(self.value))
 
@@ -445,20 +456,32 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
     def clone(self, space):
         return W_LargePositiveInteger1Word(self.value)
 
-    def at0(self, space, index0):
+    def _at0(self, index0):
         shift = index0 * 8
-        result = (self.value >> shift) & 0xff
-        return space.wrap_int(intmask(result))
+        return intmask((self.value >> shift) & 0xff)
 
-    def atput0(self, space, index0, w_byte):
+    def at0(self, space, index0):
+        return space.wrap_int(self._at0(index0))
+
+    def getchar(self, index0):
+        return chr(self._at0(index0))
+
+    def _atput0(self, index0, byte):
         if index0 >= self.size():
             raise IndexError()
         skew = index0 * 8
-        byte = space.unwrap_int(w_byte)
         assert byte <= 0xff
         new_value = self.value & r_uint(~(0xff << skew))
         new_value |= r_uint(byte << skew)
         self.value = intmask(new_value)
+
+    def atput0(self, space, index0, w_byte):
+        self._atput0(index0, space.unwrap_int(w_byte))
+
+    def setchar(self, index0, character):
+        assert isinstance(character, str)
+        assert len(character) == 1
+        self._atput0(index0, ord(character))
 
     def size(self):
         return self._exposed_size
@@ -471,6 +494,135 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
 
     def _become(self, w_other):
         assert isinstance(w_other, W_LargePositiveInteger1Word)
+        self.value, w_other.value = w_other.value, self.value
+        self._exposed_size, w_other._exposed_size = w_other._exposed_size, self._exposed_size
+        W_AbstractObjectWithIdentityHash._become(self, w_other)
+
+class W_LargePositiveInteger2Word(W_AbstractObjectWithIdentityHash):
+    """Large positive integer for exactly 2 words"""
+    _attrs_ = ["value", "_exposed_size"]
+    repr_classname = "W_LargePositiveInteger2Word"
+    bytes_per_slot = 1
+
+    def __init__(self, value, size=8):
+        self.value = r_ulonglong(value)
+        self._exposed_size = size
+
+    def fillin(self, space, g_self):
+        W_AbstractObjectWithIdentityHash.fillin(self, space, g_self)
+        word = 0
+        bytes = g_self.get_bytes()
+        for idx, byte in enumerate(bytes):
+            assert idx < 8
+            word |= ord(byte) << (idx * 8)
+        self.value = r_ulonglong(word)
+        self._exposed_size = len(bytes)
+
+    def has_class(self):
+        return True
+
+    def getclass(self, space):
+        return space.w_LargePositiveInteger
+
+    def guess_classname(self):
+        return "LargePositiveInteger"
+
+    def invariant(self):
+        return isinstance(self.value, r_ulonglong)
+
+    def str_content(self):
+        return "%d" % self.value
+
+    def unwrap_string(self, space):
+        # OH GOD! TODO: Make this sane!
+        res = [chr((self.value >> 0 ) & 0xff),
+               chr((self.value >> 8 ) & 0xff),
+               chr((self.value >> 16) & 0xff),
+               chr((self.value >> 24) & 0xff),
+               chr((self.value >> 32) & 0xff),
+               chr((self.value >> 40) & 0xff),
+               chr((self.value >> 48) & 0xff),
+               chr((self.value >> 56) & 0xff)]
+        return "".join(res)
+
+    def lshift(self, space, shift):
+        # shift > 0, therefore the highest bit of upperbound is not set,
+        # i.e. upperbound is positive
+        upperbound = r_ulonglong(r_ulonglong(-1) >> shift)
+        if 0 <= self.value <= upperbound:
+            shifted = r_ulonglong(self.value << shift)
+            return space.wrap_positive_64bit_int(shifted)
+        else:
+            raise error.PrimitiveFailedError()
+
+    def rshift(self, space, shift):
+        if shift == 0:
+            return self
+        # a problem might arrise, because we may shift in ones from left
+        mask = r_ulonglong((1 << (64 - shift))- 1)
+        # the mask is only valid if the highest bit of self.value is set
+        # and only in this case we do need such a mask
+        return space.wrap_int((self.value >> shift) & mask)
+
+    def unwrap_int(self, space):
+        raise error.UnwrappingError("The value is 64 bits.")
+
+    def unwrap_uint(self, space):
+        raise error.UnwrappingError("The 64bit value is larger than uint.")
+
+    def unwrap_positive_32bit_int(self, space):
+        raise error.UnwrappingError("The 64bit value is larger than uint.")
+
+    def unwrap_positive_64bit_int(self, space):
+        return r_ulonglong(self.value)
+
+    def unwrap_longlong(self, space):
+        try:
+            return r_longlong(self.value)
+        except OverflowError:
+            raise error.UnwrappingError("The value is negative when interpreted as 64-bit.")
+
+    def unwrap_float(self, space):
+        return float(self.value)
+
+    def clone(self, space):
+        return W_LargePositiveInteger2Word(self.value)
+
+    def _at0(self, index0):
+        shift = index0 * 8
+        return intmask((self.value >> shift) & 0xff)
+
+    def at0(self, space, index0):
+        return space.wrap_int(self._at0(index0))
+
+    def getchar(self, index0):
+        return chr(self._at0(index0))
+
+    def _atput0(self, index0, byte):
+        if index0 >= self.size():
+            raise IndexError()
+        skew = index0 * 8
+        assert byte <= 0xff
+        new_value = self.value & r_ulonglong(~(0xff << skew))
+        new_value |= r_ulonglong(byte << skew)
+        self.value = r_ulonglong(new_value)
+
+    def atput0(self, space, index0, w_byte):
+        self._atput0(index0, space.unwrap_int(w_byte))
+
+    def setchar(self, index0, character):
+        assert isinstance(character, str)
+        assert len(character) == 1
+        self._atput0(index0, ord(character))
+
+    def size(self):
+        return self._exposed_size
+
+    def is_array_object(self):
+        return True
+
+    def _become(self, w_other):
+        assert isinstance(w_other, W_LargePositiveInteger2Word)
         self.value, w_other.value = w_other.value, self.value
         self._exposed_size, w_other._exposed_size = w_other._exposed_size, self._exposed_size
         W_AbstractObjectWithIdentityHash._become(self, w_other)

@@ -30,6 +30,7 @@ def assert_pointers(w_obj):
 index1_0 = object()
 char = object()
 pos_32bit_int = object()
+pos_64bit_int = object()
 
 
 def unwrap_alternatives(unwrap_specs=None):
@@ -101,6 +102,8 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                         args += (interp.space.unwrap_int(w_arg), )
                     elif spec is pos_32bit_int:
                         args += (interp.space.unwrap_positive_32bit_int(w_arg),)
+                    elif spec is pos_64bit_int:
+                        args += (interp.space.unwrap_positive_64bit_int(w_arg),)
                     elif spec is r_uint:
                         args += (interp.space.unwrap_uint(w_arg),)
                     elif spec is r_longlong:
@@ -280,7 +283,7 @@ for (code,op) in bitwise_binary_ops.items():
                 return interp.space.wrap_int(intmask(res))
     make_func(op)
 
-combination_specs = [[int, int], [pos_32bit_int, pos_32bit_int], [r_longlong, r_longlong]]
+combination_specs = [[int, int], [pos_32bit_int, pos_32bit_int], [r_longlong, r_longlong], [pos_64bit_int, pos_64bit_int]]
 # #/ -- return the result of a division, only succeed if the division is exact
 @expose_also_as(LARGE_DIVIDE)
 @expose_primitive(DIVIDE, unwrap_specs=combination_specs)

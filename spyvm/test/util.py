@@ -296,7 +296,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         return w_class
 
     def w(self, any):
-        from rpython.rlib.rarithmetic import r_longlong
+        from rpython.rlib.rarithmetic import r_longlong, r_ulonglong
 
         if any is None: return self.w_nil
         if isinstance(any, model.W_Object): return any
@@ -306,7 +306,11 @@ class BootstrappedObjSpace(objspace.ObjSpace):
                 return self.wrap_char(any)
             else:
                 return self.wrap_string(any)
-        if isinstance(any, long): return self.wrap_longlong(r_longlong(any))
+        if isinstance(any, long):
+            try:
+                return self.wrap_longlong(r_longlong(any))
+            except OverflowError:
+                return self.wrap_positive_64bit_int(r_ulonglong(any))
         if isinstance(any, bool): return self.wrap_bool(any)
         if isinstance(any, int): return self.wrap_int(any)
         if isinstance(any, float): return self.wrap_float(any)
