@@ -3,6 +3,7 @@ import sys, time, os
 from rpython.jit.codewriter.policy import JitPolicy
 from rpython.rlib import jit, rpath, objectmodel
 from spyvm import model, interpreter, squeakimage, objspace, wrapper, error
+from spyvm.plugins.simulation import SIMULATE_PRIMITIVE_SELECTOR
 from spyvm.util import system
 
 sys.setrecursionlimit(15000)
@@ -43,6 +44,15 @@ def _usage(argv):
                              synthetic high-prio Process.
             -u             - Only with -m or -r. Try to stop UI-process at
                              startup. Can help benchmarking.
+            --simulate-numeric-primitives
+                           - This flag determines if an attempt is made to run
+                             Slang Simulation code for _unimplemented_ numeric
+                             primitives. This means that, if an unimplemented
+                             numeric primitive is encountered, rather than just
+                             failing, we see if the receiver understands
+                             """ + SIMULATE_PRIMITIVE_SELECTOR + """.
+                             If so, this method is called instead of the fallback
+                             code.
 
           Other parameters:
             -j|--jit <jitargs> - jitargs will be passed to the jit config.
@@ -166,6 +176,8 @@ def entry_point(argv):
                 space.strategy_factory.logger.activate()
             elif arg in ["-L"]:
                 space.strategy_factory.logger.activate(aggregate=True)
+            elif arg in ["--simulate-numeric-primitives"]:
+                space.simulate_numeric_primitives.activate()
             elif path is None:
                 path = arg
             else:

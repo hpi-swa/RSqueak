@@ -192,8 +192,11 @@ def make_simulation(code):
     p_code = jit.promote(code)
     @wrap_primitive(clean_stack=False, no_result=True, compiled_method=True)
     def try_simulation(interp, s_frame, argument_count, w_method=None):
-        from spyvm.plugins.simulation import SimulationPlugin
-        return SimulationPlugin.simulateNumeric(p_code, interp, s_frame, argument_count, w_method)
+        if interp.space.simulate_numeric_primitives.is_set():
+            from spyvm.plugins.simulation import SimulationPlugin
+            return SimulationPlugin.simulateNumeric(p_code, interp, s_frame, argument_count, w_method)
+        else:
+            raise PrimitiveFailedError
     return try_simulation
 
 # Squeak has primitives all the way up to 575

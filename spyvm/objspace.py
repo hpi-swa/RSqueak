@@ -62,6 +62,7 @@ class ObjSpace(object):
         self.image_loaded = ConstantFlag()
         self.is_spur = ConstantFlag()
         self.uses_block_contexts = ConstantFlag()
+        self.simulate_numeric_primitives = ConstantFlag()
 
         self.classtable = {}
         self.objtable = {}
