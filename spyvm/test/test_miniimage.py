@@ -258,12 +258,6 @@ def test_large_positive_integer_operation_times():
     w_result = perform(interp.space.w_SmallInteger, "maxVal")
     w_result = perform(w_result, "*", w_result)
     assert w_result is not None
-    assert isinstance(w_result, model.W_LargePositiveInteger2Word)
-
-def test_large_positive_integer_operation_times_times():
-    w_result = perform(interp.space.w_SmallInteger, "maxVal")
-    w_result = perform(perform(w_result, "*", w_result), "*", perform(w_result, "*", w_result))
-    assert w_result is not None
     assert isinstance(w_result, model.W_BytesObject)
 
 def test_doesNotUnderstand():

@@ -6,7 +6,7 @@ from spyvm.error import UnwrappingError, WrappingError
 from spyvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX
 from rpython.rlib import jit, rpath
 from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin
-from rpython.rlib.rarithmetic import intmask, r_uint, int_between, r_longlong, r_ulonglong, is_valid_int, UINT_MAX
+from rpython.rlib.rarithmetic import intmask, r_uint, int_between, r_longlong, r_ulonglong, is_valid_int
 
 class ConstantMixin(object):
     """Mixin for constant values that can be edited, but will be promoted
@@ -180,14 +180,10 @@ class ObjSpace(object):
         if isinstance(val, r_longlong) and not is_valid_int(val):
             if val > 0 and r_ulonglong(val) < r_uint(constants.U_MAXINT):
                 return self.wrap_positive_32bit_int(intmask(val))
-            elif val > 0:
-                return self.wrap_positive_64bit_int(r_ulonglong(val))
             else:
                 raise WrappingError
         elif isinstance(val, r_uint):
             return self.wrap_positive_32bit_int(intmask(val))
-        elif isinstance(val, r_ulonglong):
-            return self.wrap_positive_64bit_int(val)
         elif not is_valid_int(val):
             raise WrappingError
         # we don't do tagging
@@ -209,17 +205,16 @@ class ObjSpace(object):
         else:
             return model.W_LargePositiveInteger1Word(val)
 
-    def wrap_positive_64bit_int(self, val):
-        # This will always return a positive value.
-        # XXX: For now, we assume that val is at most 64bit, i.e. overflows are
-        # checked for before wrapping. Also, we ignore tagging.
-        assert isinstance(val, r_ulonglong)
-        if val <= constants.MAXINT and val >= 0:
-            return model.W_SmallInteger(intmask(val))
-        elif val <= UINT_MAX and val >= constants.MAXINT:
-            return model.W_LargePositiveInteger1Word(intmask(val))
-        else:
-            return model.W_LargePositiveInteger2Word(val)
+    @jit.unroll_safe
+    def wrap_ulonglong(self, val):
+        assert isinstance(val, r_ulonglong) and not is_valid_int(val)
+        w_class = self.w_LargePositiveInteger
+        inst_size = self._ulonglong_bytesize(val)
+        w_result = w_class.as_class_get_shadow(self).new(inst_size)
+        for i in range(inst_size):
+            byte_value = (val >> (i * 8)) & 255
+            w_result.setchar(i, chr(byte_value))
+        return w_result
 
     def wrap_nlonglong(self, val):
         # Alas, we don't have the class ready
@@ -240,12 +235,12 @@ class ObjSpace(object):
     @specialize.argtype(1)
     def wrap_longlong(self, val):
         if is_valid_int(val):
-            return self.wrap_int(val)
+            return self.wap_int(val)
         elif isinstance(val, r_ulonglong):
-            return self.wrap_positive_64bit_int(val)
+            return self.wrap_ulonglong(val)
         elif isinstance(val, r_longlong):
             if val > 0:
-                return self.wrap_positive_64bit_int(r_ulonglong(val))
+                return self.wrap_ulonglong(r_ulonglong(val))
             elif  val < 0:
                 return self.wrap_nlonglong(val)
         raise WrappingError
@@ -299,9 +294,6 @@ class ObjSpace(object):
 
     def unwrap_longlong(self, w_value):
         return w_value.unwrap_longlong(self)
-
-    def unwrap_positive_64bit_int(self, w_value):
-        return w_value.unwrap_positive_64bit_int(self)
 
     def unwrap_char_as_byte(self, w_char):
         return w_char.unwrap_char_as_byte(self)
