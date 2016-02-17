@@ -25,12 +25,12 @@ def test_load_image():
 
 def test_make_new_class():
     sourcecode = """makeNewClass
-	^ Object
-		subclass: #MySubForm
-		instanceVariableNames: 'clippingBox '
-		classVariableNames: 'ScreenSave '
-		poolDictionaries: ''
-		category: 'Graphics-Display Objects'"""
+        ^ Object
+                subclass: #MySubForm
+                instanceVariableNames: 'clippingBox '
+                classVariableNames: 'ScreenSave '
+                poolDictionaries: ''
+                category: 'Graphics-Display Objects'"""
     perform(w(0).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
     w_res = perform(w(0), "makeNewClass")
     assert isinstance(w_res.strategy, storage_classes.ClassShadow)
@@ -40,10 +40,10 @@ def test_make_new_class():
 def test_change_class_layout():
     sourcecode = """makeChangedClass
 ^ MessageSet subclass: #ChangedMessageSet
-	instanceVariableNames: 'changeSet uselessVar'
-	classVariableNames: ''
-	poolDictionaries: ''
-	category: 'Interface-Browser'
+        instanceVariableNames: 'changeSet uselessVar'
+        classVariableNames: ''
+        poolDictionaries: ''
+        category: 'Interface-Browser'
 """
     perform(w(0).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
     w_res = perform(w(0), "makeChangedClass")
