@@ -12,6 +12,8 @@ def setup_module():
         return interp.perform(receiver, selector, w_selector, list(args))
     perform = perform_wrapper
     copy_to_module(locals(), __name__)
+    space.simulate_numeric_primitives.activate()
+
 
 def teardown_module():
     cleanup_module(__name__)
