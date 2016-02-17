@@ -32,30 +32,6 @@ if not objectmodel.we_are_translated():
             first = first - 0x100
         return (      first << 56 | ord(b[6]) << 48 | ord(b[5]) << 40 | ord(b[4]) << 32
                       | ord(b[3]) << 24 | ord(b[2]) << 16 | ord(b[1]) <<  8 | ord(b[0])      )
-
-    def bytes2dword(b): # same as chrs2long, but unsigned
-        assert len(b) == 8
-        return (ord(b[0]) << 56 | ord(b[1]) << 48 | ord(b[2]) << 40 | ord(b[3]) << 32
-                | ord(b[4]) << 24 | ord(b[5]) << 16 | ord(b[6]) <<  8 | ord(b[7]))
-
-    def swapped_bytes2dword(b):
-        assert len(b) == 8
-        return (ord(b[7]) << 56 | ord(b[6]) << 48 | ord(b[5]) << 40 | ord(b[4]) << 32
-                | ord(b[3]) << 24 | ord(b[2]) << 16 | ord(b[1]) <<  8 | ord(b[0])      )
-
-    def bytes2qword(b):
-        assert len(b) == 16
-        return (ord(b[0]) << 120 | ord(b[1]) << 112 | ord(b[2]) << 104 | ord(b[3]) << 96
-                | ord(b[4]) << 88 | ord(b[5]) << 80 | ord(b[6]) << 72 | ord(b[7]) << 64
-                | ord(b[8]) << 56 | ord(b[9]) << 48 | ord(b[10]) << 40 | ord(b[11]) << 32
-                | ord(b[12]) << 24 | ord(b[13]) << 16 | ord(b[14]) <<  8 | ord(b[15]))
-
-    def swapped_bytes2qword(b):
-        assert len(b) == 16
-        return (ord(b[15]) << 120 | ord(b[14]) << 112 | ord(b[13]) << 104 | ord(b[12]) << 96
-                | ord(b[11]) << 88 | ord(b[10]) << 80 | ord(b[9]) << 72 | ord(b[8]) << 64
-                | ord(b[7]) << 56 | ord(b[6]) << 48 | ord(b[5]) << 40 | ord(b[4]) << 32
-                | ord(b[3]) << 24 | ord(b[2]) << 16 | ord(b[1]) <<  8 | ord(b[0]))
 else:
     def chrs2int(b):
         assert len(b) == 4
@@ -72,19 +48,6 @@ else:
     def swapped_chrs2long(b):
         assert len(b) == 8
         return runpack('<q', b)
-
-    def bytes2dword(b):
-        return runpack(">I", b)
-
-    def swapped_bytes2dword(b):
-        return runpack("<I", b)
-
-    def bytes2qword(b):
-        return runpack(">Q", b)
-
-    def swapped_bytes2qword(b):
-        return runpack("<Q", b)
-
 
 class Stream(object):
     """ Simple input stream.
@@ -112,15 +75,15 @@ class Stream(object):
 
     def bytes2dword_with_correct_endianness(self, bytes):
         if self.big_endian:
-            return bytes2dword(bytes)
+            return runpack(">I", bytes)
         else:
-            return swapped_bytes2dword(bytes)
+            return runpack("<I", bytes)
 
     def bytes2qword_with_correct_endianness(self, bytes):
         if self.big_endian:
-            return bytes2qword(bytes)
+            return runpack(">Q", bytes)
         else:
-            return swapped_bytes2qword(bytes)
+            return runpack("<Q", bytes)
 
     def peek_bytes(self, n):
         return self.data[self.pos:self.pos+n]
