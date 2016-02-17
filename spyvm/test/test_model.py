@@ -1,11 +1,19 @@
+# -*- coding: utf-8
+import pytest
 import py, math, socket
 from spyvm import model, model_display, storage_classes, error, display
 from rpython.rlib.rarithmetic import intmask, r_uint
 from rpython.rtyper.lltypesystem import lltype, rffi
 from .util import create_space, copy_to_module, cleanup_module
 
+def test_space():
+    return create_space(bootstrap = True)
+
+space = pytest.fixture(test_space)
+
 def setup_module():
-    space = create_space(bootstrap = True)
+    v_space = test_space()
+    space = v_space
     bootstrap_class = space.bootstrap_class
     w_foo = space.wrap_string("foo")
     w_bar = space.wrap_string("bar")
@@ -108,16 +116,16 @@ def test_method_lookup():
     subshadow.initialize_methoddict()
     assert shadow.lookup(w_foo).val == 1
     assert shadow.lookup(w_bar).val == 2
-    py.test.raises(error.MethodNotFound, shadow.lookup, "zork")
+    assert shadow.lookup("zork") is None
     assert subshadow.lookup(w_foo).val == 3
     assert subshadow.lookup(w_bar).val == 2
-    py.test.raises(error.MethodNotFound, subshadow.lookup, "zork")
+    assert subshadow.lookup("zork") is None
 
 def test_compiledin_class():
     w_super = bootstrap_class(0)
     w_class = bootstrap_class(0, w_superclass=w_super)
     supershadow = w_super.as_class_get_shadow(space)
-    supershadow.installmethod(w_foo, model.W_CompiledMethod(space, 0))
+    supershadow.installmethod(w_foo, model.W_PreSpurCompiledMethod(space, 0))
     classshadow = w_class.as_class_get_shadow(space)
     classshadow.initialize_methoddict()
     assert classshadow.lookup(w_foo).compiled_in() is w_super
@@ -130,18 +138,18 @@ def test_compiledin_class_assoc():
     assoc = new_object(2)
     assoc.store(space, 0, new_object())
     assoc.store(space, 1, val)
-    meth = model.W_CompiledMethod(space, 0)
+    meth = model.W_PreSpurCompiledMethod(space, 0)
     meth.setliterals([new_object(), new_object(), assoc ])
     assert meth.compiled_in() == val
 
 def test_compiledin_class_missing():
-    meth = model.W_CompiledMethod(space, 0)
+    meth = model.W_PreSpurCompiledMethod(space, 0)
     meth.compiledin_class = None
     meth.setliterals([new_object(), new_object() ])
     assert meth.compiled_in() == None
 
 def test_compiledmethod_setchar():
-    w_method = model.W_CompiledMethod(space, 3)
+    w_method = model.W_PreSpurCompiledMethod(space, 3)
     w_method.setchar(0, "c")
     assert w_method.bytes == list("c\x00\x00")
 
@@ -157,7 +165,7 @@ def test_hashes():
     assert h1 == w_inst.hash
 
 def test_compiledmethod_at0():
-    w_method = model.W_CompiledMethod(space, )
+    w_method = model.W_PreSpurCompiledMethod(space, )
     w_method.bytes = list("abc")
     w_method.header = 100
     w_method.setliterals(['lit1', 'lit2'])
@@ -170,7 +178,7 @@ def test_compiledmethod_at0():
     assert space.unwrap_int(w_method.at0(space, 14)) == ord('c')
 
 def test_compiledmethod_atput0():
-    w_method = model.W_CompiledMethod(space, 3)
+    w_method = model.W_PreSpurCompiledMethod(space, 3)
     newheader = joinbits([0,2,0,0,0,0],[9,8,1,6,4,1])
     assert w_method.getliteralsize() == 0
     w_method.atput0(space, 0, space.wrap_int(newheader))
@@ -189,7 +197,7 @@ def test_compiledmethod_atput0():
 
 def test_compiledmethod_atput0_not_aligned():
     header = joinbits([0,2,0,0,0,0],[9,8,1,6,4,1])
-    w_method = model.W_CompiledMethod(space, 3, header)
+    w_method = model.W_PreSpurCompiledMethod(space, 3, header)
     with py.test.raises(error.PrimitiveFailedError):
         w_method.atput0(space, 7, 'lit1')
     with py.test.raises(error.PrimitiveFailedError):
@@ -464,6 +472,59 @@ def test_weak_pointers_to_ints_are_strong():
     assert not weak_object.fetch(space, 0).is_nil(space)
     assert weak_object.fetch(space, 0).value == 10
     assert weak_object.fetch(space, 1).value == 20
+
+def test_characters(space):
+    w_char = space.wrap_char('a')
+    assert w_char.unwrap_char_as_byte(space) == 'a'
+    assert w_char.value == ord('a')
+    assert w_char.str_content() == '$a'
+
+def test_non_ascii_characters(space):
+    w_unichar = space.wrap_char(u'Ω') # Greek Capital Letter Omega
+    assert w_unichar.value == ord(u'Ω')
+    assert w_unichar.str_content() == 'Character value: 937'
+
+def test_high_characters(space):
+    from spyvm.model import W_Character
+    w_nonchar = W_Character(0x10ffff) # Non-Character codepoint, present in images
+    # do not assert a specific representation because these are unlikely to be printable
+    # but str_content should not crash
+    assert w_nonchar.str_content() == 'Character value: ' + str(0x10ffff)
+    assert w_nonchar.value == 0x10ffff
+    w_mousefacechar = W_Character(0x1f42d) # http://unicode-table.com/de/1F42D/
+    assert w_mousefacechar.str_content() == 'Character value: ' + str(0x1f42d)
+    assert w_mousefacechar.value == 0x1f42d
+
+def test_v3_compiled_method_header():
+    header_word = joinbits([500,200,1,60,12,1,0], [9,8,1,6,4,1,1])
+    header = model.V3CompiledMethodHeader(header_word)
+    assert header.has_primitive is True
+    assert header.primitive_index == 1012 # 500 + (1 << 9)
+    assert header.large_frame == 1
+    assert header.number_of_literals == 200
+    assert header.number_of_temporaries == 60
+    assert header.number_of_arguments == 12
+
+def test_v3_alternate_compiled_method_header():
+    header_word = int(-2**31) | joinbits([60000,1,1,60,12,0,0], [16,1,1,6,4,2])
+    header = model.V3CompiledMethodHeader(header_word)
+    assert header.has_primitive is True
+    assert header.large_frame == 1
+    assert header.number_of_literals == 60000
+    assert header.number_of_temporaries == 60
+    assert header.number_of_arguments == 12
+
+def test_spur_compiled_method_header():
+    header_word = joinbits([30000,0,1,1,60,12,0,0], [15,1,1,1,6,4,2,1])
+    header = model.SpurCompiledMethodHeader(header_word)
+    assert header.has_primitive is True
+    assert header.large_frame == 1
+    assert header.number_of_literals == 30000
+    assert header.number_of_temporaries == 60
+    assert header.number_of_arguments == 12
+    assert model.SpurCompiledMethodHeader.has_primitive_bit_set(header_word)
+    assert model.SpurCompiledMethodHeader.has_primitive_bit_set(joinbits([0,0,1,0,0,0,0,0], [15,1,1,1,6,4,2,1]))
+    assert not model.SpurCompiledMethodHeader.has_primitive_bit_set(joinbits([0,0,0,0,0,0,0,0], [15,1,1,1,6,4,2,1]))
 
 def test_weak_pointers_to_instvars_are_strong():
     # In the semantics of smalltalk, references to Instvariables are always strong.

@@ -230,6 +230,67 @@ class SemaphoreWrapper(LinkedListWrapper):
             self.add_last_link(w_process)
             ProcessWrapper(self.space, w_process).suspend(s_current_frame)
 
+
+class CriticalSectionWrapper(LinkedListWrapper):
+
+    owner, store_owner = make_getter_setter(2)
+
+    def exit(self, s_current_frame):
+        """
+        Monitor/Mutex>>primitiveExitCriticalSection
+            "..."
+            "In the spirit of the following"
+            "[owner := nil.
+              self isEmpty ifFalse:
+                  [process := self removeFirst.
+                   process resume]] valueUnpreemptively"
+        """
+        self.store_owner(self.space.w_nil)
+        if not self.is_empty_list():
+            process = self.remove_first_link_of_list()
+            ProcessWrapper(self.space, process).resume(s_current_frame)
+
+    def enter(self, s_current_frame):
+        """
+        Monitor/Mutex>>primitiveEnterCriticalSection
+            "..."
+                "In the spirit of the following"
+                "[owner ifNil:
+                        [owner := Processor activeProcess.
+                         ^false].
+                  owner = Processor activeProcess ifTrue:
+                        [^true].
+                  self addLast: Processor activeProcess.
+                  Processor activeProcess suspend] valueUnpreemptively"
+        """
+        w_active_process = scheduler(self.space).active_process()
+        w_test_and_set_ok = self.test_and_set_owner(s_current_frame)
+        if w_test_and_set_ok.is_nil(self.space):
+            self.add_last_link(w_active_process)
+            ProcessWrapper(self.space, w_active_process).suspend(s_current_frame)
+            # should not be reached
+        return w_test_and_set_ok
+
+    def test_and_set_owner(self, s_current_frame):
+        """
+        Monitor/Mutex>>primitiveExitCriticalSection
+            "..."
+            "In the spirit of the following"
+            "[owner ifNil:
+                    [owningProcess := Processor activeProcess.
+                     ^false].
+              owner = Processor activeProcess ifTrue: [^true].
+              ^nil] valueUnpreemptively"
+        """
+        w_owner = self.owner()
+        w_active_process = scheduler(self.space).active_process()
+        if w_owner.is_nil(self.space):
+            self.store_owner(w_active_process)
+            return self.space.w_false
+        if w_owner.is_same_object(w_active_process):
+            return self.space.w_true
+        return self.space.w_nil
+
 class PointWrapper(Wrapper):
     x, store_x = make_int_getter_setter(0)
     y, store_y = make_int_getter_setter(1)
@@ -243,7 +304,7 @@ class BlockClosureWrapper(VarsizedWrapper):
     def create_frame(self, w_outerContext, arguments=[]):
         from spyvm import storage_contexts
         s_outerContext = w_outerContext.as_context_get_shadow(self.space)
-        assert not s_outerContext.is_block_context
+        assert not s_outerContext.pure_is_block_context()
         w_method = s_outerContext.w_method()
         w_receiver = s_outerContext.w_receiver()
         return storage_contexts.ContextPartShadow.build_method_context(self.space, w_method, w_receiver, arguments, self)

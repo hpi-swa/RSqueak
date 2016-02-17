@@ -48,8 +48,10 @@ def read_image(image_filename, space=None, cached=True):
 
 def create_space(bootstrap = bootstrap_by_default):
     space = BootstrappedObjSpace()
+    space.setup()
     if bootstrap:
         space.bootstrap()
+        space.uses_block_contexts.activate()
     return space
 
 def create_space_interp(bootstrap = bootstrap_by_default):
@@ -125,6 +127,11 @@ class TestInterpreter(interpreter.Interpreter):
 
 class BootstrappedObjSpace(objspace.ObjSpace):
 
+    def setup(self):
+        self.set_system_attribute(constants.SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, "BootstrappedImage")
+        self.image_loaded.activate()
+        self.init_system_attributes([])
+
     def bootstrap(self):
         # Fill this ObjSpace up with class complete core hierarchies and patch core objects.
         self.create_core_classes()
@@ -134,7 +141,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
     def create_core_classes(self):
         def define_core_cls(name, w_superclass, w_metaclass):
             assert name.startswith('w_')
-            w_class = self.bootstrap_class(instsize=0,    # XXX
+            w_class = self.bootstrap_class(instsize=6,    # XXX
                                       w_superclass=w_superclass,
                                       w_metaclass=w_metaclass,
                                       name=name[2:])
@@ -176,8 +183,13 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         proto_shadow.store_w_superclass(self.w_Class)
         # at this point, all classes that still lack a w_class are themselves metaclasses
         for nm, w_cls_obj in self.classtable.items():
-            if w_cls_obj.w_class is None:
-                w_cls_obj.w_class = self.w_Metaclass
+            if w_cls_obj.getclass(None) is None:
+                if w_cls_obj.strategy is None:
+                    w_cls_obj._initialize_storage(self, self.w_Metaclass, 0)
+                elif w_cls_obj.strategy.w_class is None:
+                    w_cls_obj.strategy.w_class = self.w_Metaclass
+                else:
+                    import pdb; pdb.set_trace()
 
     def patch_bootstrap_classes(self):
         # Create all classes in the class hierarchies of the classes in the special objects array.
@@ -243,6 +255,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         patch_special_cls("w_BlockClosure", "w_Object", instvarsize=constants.BLKCLSR_SIZE, varsized=True)
         patch_special_cls("w_Point", "w_Object")
         patch_special_cls("w_LargePositiveInteger", "w_Integer", format=storage_classes.BYTES)
+        patch_special_cls("w_LargeNegativeInteger", "w_LargePositiveInteger", format=storage_classes.BYTES)
         patch_special_cls("w_Message", "w_Object")
         patch_special_cls("w_ByteArray", "w_ArrayedCollection", format=storage_classes.BYTES)
         patch_special_cls("w_CompiledMethod", "w_ByteArray", format=storage_classes.COMPILED_METHOD)
@@ -252,24 +265,17 @@ class BootstrappedObjSpace(objspace.ObjSpace):
 
     def patch_bootstrap_objects(self):
         def patch_bootstrap_object(obj, cls, size):
-            obj.w_class = cls
-            obj._initialize_storage(self, size)
+            obj._initialize_storage(self, cls, size)
         patch_bootstrap_object(self.w_nil, self.w_UndefinedObject, 0)
         patch_bootstrap_object(self.w_true, self.w_True, 0)
         patch_bootstrap_object(self.w_false, self.w_False, 0)
         patch_bootstrap_object(self.w_special_selectors, self.w_Array, len(constants.SPECIAL_SELECTORS) * 2)
-        patch_bootstrap_object(self.w_charactertable, self.w_Array, 256)
-
-        # Bootstrap character table
-        for i in range(256):
-            w_cinst = model.W_PointersObject(self, self.w_Character, 1)
-            w_cinst.store(self, constants.CHARACTER_VALUE_INDEX, model.W_SmallInteger(i))
-            self.w_charactertable.store(self, i, w_cinst)
 
     def patch_class(self, w_class, instsize, w_superclass=None, w_metaclass=None,
                         name='?', format=storage_classes.POINTERS, varsized=False):
         s = instantiate(storage_classes.ClassShadow)
         s.space = self
+        s.w_class = w_metaclass
         s.version = util.version.Version()
         s._w_self = w_class
         s.subclass_s = {}
@@ -281,16 +287,17 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         s._s_methoddict = None
         s.instance_varsized = varsized or format != storage_classes.POINTERS
         w_class.store_strategy(s)
-        s._initialize_storage(w_class, 0)
-        w_class.w_class = w_metaclass
+        s._initialize_storage(w_class, 6)
 
     def bootstrap_class(self, instsize, w_superclass=None, w_metaclass=None,
                         name='?', format=storage_classes.POINTERS, varsized=False):
-        w_class = model.W_PointersObject(self, w_metaclass, 0)
+        w_class = model.W_PointersObject(self, w_metaclass, 6)
         self.patch_class(w_class, instsize, w_superclass, w_metaclass, name, format, varsized)
         return w_class
 
     def w(self, any):
+        from rpython.rlib.rarithmetic import r_longlong
+
         if any is None: return self.w_nil
         if isinstance(any, model.W_Object): return any
         if isinstance(any, str):
@@ -299,20 +306,12 @@ class BootstrappedObjSpace(objspace.ObjSpace):
                 return self.wrap_char(any)
             else:
                 return self.wrap_string(any)
-        if isinstance(any, long): return self.wrap_long(any)
+        if isinstance(any, long): return self.wrap_longlong(r_longlong(any))
         if isinstance(any, bool): return self.wrap_bool(any)
         if isinstance(any, int): return self.wrap_int(any)
         if isinstance(any, float): return self.wrap_float(any)
         if isinstance(any, list): return self.wrap_list(any)
         raise Exception("Cannot wrap %r" % any)
-
-    def wrap_long(self, any):
-        assert any >= 0
-        import struct
-        bytes = struct.pack('L', any)
-        w_b = model.W_BytesObject(self, self.w_LargePositiveInteger, len(bytes))
-        w_b.bytes = [c for c in bytes]
-        return w_b
 
     def initialize_class(self, w_class, interp):
         initialize_symbol = self.find_symbol_in_methoddict("initialize",
@@ -340,7 +339,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
     def make_method(self, bytes, literals=None, numargs=0):
         if not isinstance(bytes, str):
             bytes = "".join([chr(x) for x in bytes])
-        w_method = model.W_CompiledMethod(self, len(bytes))
+        w_method = model.W_PreSpurCompiledMethod(self, len(bytes))
         w_method.islarge = 1
         w_method.bytes = bytes
         w_method.argsize=numargs

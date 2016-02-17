@@ -2,7 +2,7 @@ import py, os, math, time
 from spyvm import model, model_display, storage_contexts, constants, primitives, wrapper, display
 from spyvm.primitives import prim_table, PrimitiveFailedError
 from rpython.rlib.rfloat import isinf, isnan
-from rpython.rlib.rarithmetic import intmask, r_uint
+from rpython.rlib.rarithmetic import intmask, r_uint, r_longlong
 from rpython.rtyper.lltypesystem import lltype, rffi
 from .util import create_space, copy_to_module, cleanup_module, TestInterpreter
 
@@ -18,9 +18,8 @@ def teardown_module():
 
 class MockFrame(model.W_PointersObject):
     def __init__(self, space, stack):
-        self.w_class = space.w_BlockContext
         size = 6 + len(stack) + 6
-        self._initialize_storage(space, size)
+        self._initialize_storage(space, space.w_BlockContext, size)
         self.store_all(space, [None] * 6 + stack + [space.w_nil] * 6)
         s_self = self.as_context_get_shadow(space)
         s_self.reset_stack()
@@ -29,11 +28,9 @@ class MockFrame(model.W_PointersObject):
 
     def as_context_get_shadow(self, space):
         if not isinstance(self.strategy, storage_contexts.ContextPartShadow):
-            self.strategy = storage_contexts.ContextPartShadow(space, self, self.size())
+            self.strategy = storage_contexts.ContextPartShadow(space, self, self.size(), space.w_BlockContext)
             self.strategy.init_temps_and_stack()
         return self.strategy
-
-IMAGENAME = "anImage.image"
 
 def mock(space, stack, context = None):
     mapped_stack = [space.w(x) for x in stack]
@@ -44,7 +41,6 @@ def mock(space, stack, context = None):
         for i in range(len(stack)):
             frame.as_context_get_shadow(space).push(stack[i])
     interp = TestInterpreter(space)
-    interp.space._image_name.set(IMAGENAME)
     return interp, frame, len(stack)
 
 def _prim(space, code, stack, context = None):
@@ -260,7 +256,7 @@ def test_size():
 def test_size_of_compiled_method():
     literalsize = 3
     bytecount = 3
-    w_cm = model.W_CompiledMethod(space, bytecount)
+    w_cm = model.W_PreSpurCompiledMethod(space, bytecount)
     w_cm.literalsize = literalsize
     assert prim(primitives.SIZE, [w_cm]).value == (literalsize+1)*constants.BYTES_PER_WORD + bytecount
 
@@ -337,6 +333,30 @@ def test_inst_var_at_put_invalid():
     prim_fails(primitives.INST_VAR_AT_PUT,
                ["q", constants.CHARACTER_VALUE_INDEX+2, "t"])
 
+def test_slot_at():
+    # n.b.: 1-based indexing!
+    w_v = prim(primitives.SLOT_AT,
+               ["q", constants.CHARACTER_VALUE_INDEX+1])
+    assert w_v.value == ord("q")
+
+def test_slot_at_invalid():
+    # n.b.: 1-based indexing! (and an invalid index)
+    prim_fails(primitives.SLOT_AT, ["q", constants.CHARACTER_VALUE_INDEX+2])
+
+def test_slot_at_put():
+    # n.b.: 1-based indexing!
+    w_q = space.w_Character.as_class_get_shadow(space).new()
+    vidx = constants.CHARACTER_VALUE_INDEX+1
+    ordq = ord("q")
+    assert prim(primitives.SLOT_AT, [w_q, vidx]).is_nil(space)
+    assert prim(primitives.SLOT_AT_PUT, [w_q, vidx, ordq]).value == ordq
+    assert prim(primitives.SLOT_AT, [w_q, vidx]).value == ordq
+
+def test_slot_at_put_invalid():
+    # n.b.: 1-based indexing! (and an invalid index)
+    prim_fails(primitives.SLOT_AT_PUT,
+               ["q", constants.CHARACTER_VALUE_INDEX+2, "t"])
+
 def test_class():
     assert prim(primitives.CLASS, ["string"]).is_same_object(space.w_String)
     assert prim(primitives.CLASS, [1]).is_same_object(space.w_SmallInteger)
@@ -362,7 +382,7 @@ def test_const_primitives():
         ]:
         assert prim(code, [space.w_nil]).is_same_object(const)
     assert prim(primitives.PUSH_SELF, [space.w_nil]).is_nil(space)
-    assert prim(primitives.PUSH_SELF, ["a"]) is wrap("a")
+    assert prim(primitives.PUSH_SELF, ["a"]).is_same_object(wrap("a"))
 
 def test_boolean():
     assert prim(primitives.LESSTHAN, [1,2]).is_same_object(space.w_true)
@@ -441,6 +461,33 @@ def test_signal_at_milliseconds():
     prim(primitives.SIGNAL_AT_MILLISECONDS, [space.w_nil, sema, future])
     assert space.objtable["w_timerSemaphore"] is sema
 
+
+def test_primitive_utc_microseconds_clock():
+    start = space.unwrap_longlong(prim(primitives.UTC_MICROSECOND_CLOCK, [0]))
+    time.sleep(0.3)
+    stop = space.unwrap_longlong(prim(primitives.UTC_MICROSECOND_CLOCK, [0]))
+    assert start + r_longlong(250 * 1000) <= stop
+
+def test_signal_at_utc_microseconds():
+    start = space.unwrap_longlong(prim(primitives.UTC_MICROSECOND_CLOCK, [0]))
+    future = start + r_longlong(400 * 1000)
+    sema = space.w_Semaphore.as_class_get_shadow(space).new()
+    prim(primitives.SIGNAL_AT_UTC_MICROSECONDS, [space.w_nil, sema, future])
+    assert space.objtable["w_timerSemaphore"] is sema
+
+def test_seconds_clock():
+    now = int(time.time())
+    w_smalltalk_now1 = prim(primitives.SECONDS_CLOCK, [42])
+    w_smalltalk_now2 = prim(primitives.SECONDS_CLOCK, [42])
+    # the test now is flaky, because we assume both have the same type
+    if isinstance(w_smalltalk_now1, model.W_BytesObject):
+        assert (now % 256 - ord(w_smalltalk_now1.bytes[0])) % 256 <= 2
+        # the high-order byte should only change by one (and even that is
+        # extreeemely unlikely)
+        assert (ord(w_smalltalk_now2.bytes[-1]) - ord(w_smalltalk_now1.bytes[-1])) <= 1
+    else:
+        assert w_smalltalk_now2.value - w_smalltalk_now1.value <= 1
+
 def test_inc_gc():
     # Should not fail :-)
     prim(primitives.INC_GC, [42]) # Dummy arg
@@ -460,19 +507,6 @@ def test_interrupt_semaphore():
     prim(primitives.INTERRUPT_SEMAPHORE, [1, w_semaphore])
     assert space.objtable["w_interrupt_semaphore"] is w_semaphore
 
-def test_seconds_clock():
-    now = int(time.time())
-    w_smalltalk_now1 = prim(primitives.SECONDS_CLOCK, [42])
-    w_smalltalk_now2 = prim(primitives.SECONDS_CLOCK, [42])
-    # the test now is flaky, because we assume both have the same type
-    if isinstance(w_smalltalk_now1, model.W_BytesObject):
-        assert (now % 256 - ord(w_smalltalk_now1.bytes[0])) % 256 <= 2
-        # the high-order byte should only change by one (and even that is
-        # extreeemely unlikely)
-        assert (ord(w_smalltalk_now2.bytes[-1]) - ord(w_smalltalk_now1.bytes[-1])) <= 1
-    else:
-        assert w_smalltalk_now2.value - w_smalltalk_now1.value <= 1
-
 def test_load_inst_var():
     " try to test the LoadInstVar primitives a little "
     w_v = prim(primitives.INST_VAR_AT_0, ["q"])
@@ -489,8 +523,9 @@ def test_new_method():
     assert w_method.bytes == ["\x00"] * len(bytecode)
 
 def test_image_name():
+    space.set_system_attribute(1, "anImage.image")
     w_v = prim(primitives.IMAGE_NAME, [2])
-    assert w_v.bytes == list(IMAGENAME)
+    assert w_v.bytes == list("anImage.image")
 
 def test_clone():
     w_obj = bootstrap_class(1, varsized=True).as_class_get_shadow(space).new(1)
@@ -500,10 +535,17 @@ def test_clone():
     w_obj.atput0(space, 0, space.wrap_int(2))
     assert space.unwrap_int(w_v.at0(space, 0)) == 1
 
+@py.test.mark.skipif("True")
+def test_change_class():
+    w_obj = prim(primitives.IMAGE_NAME, [2])
+    w_v = prim(primitives.CLASS, [w_obj])
+    prim(primitives.CHANGE_CLASS, [w_obj, space.w_Array])
+    w_v = prim(primitives.CLASS, [w_obj])
+
 def test_primitive_system_attribute():
     assert prim(primitives.SYSTEM_ATTRIBUTE, [space.w_nil, 1337]) == space.w_nil
 
-    space.system_attributes[1001] = "WinuxOS"
+    space.set_system_attribute(1001, "WinuxOS")
     w_r = prim(primitives.SYSTEM_ATTRIBUTE, [space.w_nil, 1001])
     assert isinstance(w_r, model.W_Object)
     assert space.unwrap_string(w_r) == "WinuxOS"
@@ -568,7 +610,7 @@ def test_file_write_errors(monkeypatch):
 
 def test_directory_delimitor():
     w_c = prim(primitives.DIRECTORY_DELIMITOR, [1])
-    assert space.unwrap_char(w_c) == os.path.sep
+    assert space.unwrap_char_as_byte(w_c) == os.path.sep
 
 def test_primitive_closure_copyClosure():
     w_frame, s_frame = new_frame("<never called, but used for method generation>")
@@ -804,6 +846,30 @@ def test_screen_size_queries_sdl_window_size(monkeypatch):
     mock_display.width = 4
     mock_display.height = 3
     assert_screen_size()
+
+def test_immediate_identity_hash():
+    w_char = space.wrap_char('x')
+    w_result = prim(primitives.IMMEDIATE_IDENTITY_HASH, [w_char])
+    assert isinstance(w_result, model.W_SmallInteger)
+    assert w_result.value == ord('x')
+    # TODO: add assertion for w_float once 64bit Spur images are supported
+
+def test_class_identity_hash():
+    w_result = prim(primitives.CLASS_IDENTITY_HASH, [space.w_nil.getclass(space)])
+    assert w_result.value == space.w_nil.getclass(space).gethash()
+    s_class = bootstrap_class(0).as_class_get_shadow(space)
+    w_result = prim(primitives.CLASS_IDENTITY_HASH, [s_class.w_self()])
+    assert isinstance(w_result, model.W_SmallInteger)
+
+def test_character_value():
+    # SmallInteger>>asCharacter
+    w_result = prim(primitives.CHARACTER_VALUE, [space.wrap_int(ord('x'))])
+    assert w_result.value == ord('x')
+    assert isinstance(w_result, model.W_Character)
+    # Character class>>value:
+    w_result = prim(primitives.CHARACTER_VALUE,
+            [space.wrap_char('x').getclass(space), ord('y')])
+    assert w_result.value == ord('y')
 
 def test_primitive_context_size():
     s_initial_context, closure, s_new_context = build_up_closure_environment([

@@ -1,5 +1,5 @@
 import py, math
-from spyvm import model, constants, storage_contexts, wrapper, primitives, interpreter, error
+from spyvm import model, constants, storage_contexts, wrapper, primitives, interpreter, error, storage_classes
 from .util import read_image, open_reader, copy_to_module, cleanup_module, TestInterpreter, slow_test, very_slow_test
 
 pytestmark = slow_test
@@ -12,6 +12,8 @@ def setup_module():
         return interp.perform(receiver, selector, w_selector, list(args))
     perform = perform_wrapper
     copy_to_module(locals(), __name__)
+    space.simulate_numeric_primitives.activate()
+
 
 def teardown_module():
     cleanup_module(__name__)
@@ -21,7 +23,65 @@ def teardown_module():
 def test_load_image():
     pass
 
-@very_slow_test
+def test_make_new_class():
+    sourcecode = """makeNewClass
+	^ Object
+		subclass: #MySubForm
+		instanceVariableNames: 'clippingBox '
+		classVariableNames: 'ScreenSave '
+		poolDictionaries: ''
+		category: 'Graphics-Display Objects'"""
+    perform(w(0).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
+    w_res = perform(w(0), "makeNewClass")
+    assert isinstance(w_res.strategy, storage_classes.ClassShadow)
+    assert w_res.strategy.name == "MySubForm"
+    assert w_res.strategy._instance_size == 1
+
+def test_change_class_layout():
+    sourcecode = """makeChangedClass
+^ MessageSet subclass: #ChangedMessageSet
+	instanceVariableNames: 'changeSet uselessVar'
+	classVariableNames: ''
+	poolDictionaries: ''
+	category: 'Interface-Browser'
+"""
+    perform(w(0).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
+    w_res = perform(w(0), "makeChangedClass")
+    assert w_res.strategy.name == "ChangedMessageSet"
+    assert w_res.strategy._instance_size == 15
+
+def test_become_one_way():
+    sourcecode = """objectsForwardIdentityTo: to
+        <primitive: 72>"""
+    perform(space.w_Array, "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
+    sourcecode = """doIt
+        | from to oldthing newthing |
+        Object subclass: #OldThing
+               instanceVariableNames: ''
+               classVariableNames: ' '
+               poolDictionaries: ''
+               category: 'Pypy'.
+        Object subclass: #NewThing
+               instanceVariableNames: 'otherThing'
+               classVariableNames: ''
+               poolDictionaries: ''
+               category: 'Pypy'.
+        oldthing := (Smalltalk at: #OldThing) new.
+        newthing := (Smalltalk at: #NewThing) new.
+        newthing instVarAt: 1 put: oldthing.
+        from := Array with: oldthing.
+        to := Array with: newthing.
+        from objectsForwardIdentityTo: to.
+        ^ Array with: (from at: 1) with: (to at: 1) with: oldthing with: newthing
+    """
+    perform(w(0).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
+    res_w = space.unwrap_array(perform(w(0), "doIt"))
+    assert res_w[0].class_shadow(space).name == "NewThing"
+    assert res_w[0].fetch(space, 0) is res_w[0]
+    assert res_w[0] is res_w[1]
+    assert res_w[0] is res_w[2]
+    assert res_w[0] is res_w[3]
+
 def test_compile_method():
     sourcecode = """fib
                         ^self < 2
@@ -30,7 +90,6 @@ def test_compile_method():
     perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
     assert perform(w(10), "fib").is_same_object(w(89))
 
-@very_slow_test
 def test_become():
     sourcecode = """
     testBecome

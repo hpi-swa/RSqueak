@@ -23,7 +23,7 @@ if not defined buildscript (
   goto :endofscript
 )
 
-set BINURL=http://www.lively-kernel.org/babelsberg/RSqueak/rsqueak-win32-%APPVEYOR_REPO_COMMIT%.exe
+set BINURL=https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-win32-%APPVEYOR_REPO_COMMIT%.exe
 if %buildscript%==jittests.py (
   echo Downloding %BINURL% for jittests
   appveyor DownloadFile -Url %BINURL% -FileName $~dp0\..\rsqueak.exe

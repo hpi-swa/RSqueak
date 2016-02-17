@@ -26,10 +26,8 @@ class TestBasic(BaseJITTest):
         guard_not_invalidated(descr=<Guard0x8e3dc04>),
         i83 = int_le(i77, 10000),
         guard_true(i83, descr=<Guard0x8e3dc40>),
-        p84 = getarrayitem_gc(p61, 36, descr=<ArrayP 4>),
-        guard_value(p84, ConstPtr(ptr69), descr=<Guard0x8e3dbc8>),
-        i85 = int_add(i77, 1),
-        i89 = arraylen_gc(p61, descr=<ArrayP 4>),
+        i85 = int_add_ovf(i77, 1),
+        guard_no_overflow(descr=<Guard0xa6db2cc>)
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, i85, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, p61, i86, descr=TargetToken(149146648))]
         """)
 
@@ -359,32 +357,10 @@ class TestBasic(BaseJITTest):
         guard_not_invalidated(descr=<Guard0x93168f8>),
         i129 = int_le(i123, 10000),
         guard_true(i129, descr=<Guard0x9316934>),
-        p130 = getarrayitem_gc(p62, 0, descr=<ArrayP 4>),
-        guard_value(p130, ConstPtr(ptr69), descr=<Guard0x93168bc>),
         enter_portal_frame(0, 0)
-        i131 = getarrayitem_gc(p84, 0, descr=<ArrayS 4>),
-        i132 = int_eq(i131, 2147483647),
-        guard_false(i132, descr=<Guard0x9316880>),
-        p133 = getarrayitem_gc(p62, 60, descr=<ArrayP 4>),
-        guard_value(p133, ConstPtr(ptr91), descr=<Guard0x9316844>),
-        i134 = int_add_ovf(i131, i131),
-        guard_no_overflow(descr=<Guard0x9316808>),
-        i135 = getarrayitem_gc(p84, 1, descr=<ArrayS 4>),
-        i136 = int_eq(i135, 2147483647),
-        guard_false(i136, descr=<Guard0x93167cc>),
-        p137 = getarrayitem_gc(p62, 62, descr=<ArrayP 4>),
-        guard_value(p137, ConstPtr(ptr103), descr=<Guard0x9316790>),
-        i138 = int_add_ovf(i135, i135),
-        guard_no_overflow(descr=<Guard0x9316754>),
-        i139 = int_ne(i134, 2147483647),
-        guard_true(i139, descr=<Guard0x9316718>),
-        i140 = int_ne(i138, 2147483647),
-        guard_true(i140, descr=<Guard0x93166dc>),
         leave_portal_frame(0),
         i141 = int_add(i123, 1),
         i144 = arraylen_gc(p62, descr=<ArrayP 4>),
-        i145 = arraylen_gc(p84, descr=<ArrayS 4>),
-        i146 = arraylen_gc(p114, descr=<ArrayU 1>),
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, i141, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, p62, p84, i142, p114, descr=TargetToken(154312720))]
         """)
 
@@ -398,13 +374,13 @@ class TestBasic(BaseJITTest):
         guard_not_invalidated(descr=<Guard0x9c34d90>),
         i85 = int_le(i78, 1000000),
         guard_true(i85, descr=<Guard0x9c34d60>),
-        f86 = call(ConstClass(_ll_1_llong_from_int__Signed), i78, descr=<CallL 8 i EF=0 OS=84>),
-        f87 = call(ConstClass(_ll_2_llong_add__SignedLongLong_SignedLongLong), f62, f86, descr=<CallL 8 LL EF=0 OS=70>),
-        i88 = call(ConstClass(_ll_2_llong_gt__SignedLongLong_SignedLongLong), f87, 0.000000, descr=<Calli 1 LL EF=0 OS=77>),
+        f86 = call_f(ConstClass(_ll_1_llong_from_int__Signed), i78, descr=<CallL 8 i EF=0 OS=84>),
+        f87 = call_f(ConstClass(_ll_2_llong_add__SignedLongLong_SignedLongLong), f62, f86, descr=<CallL 8 LL EF=0 OS=70>),
+        i88 = call_i(ConstClass(_ll_2_llong_gt__SignedLongLong_SignedLongLong), f87, 0.000000, descr=<Calli 1 LL EF=0 OS=77>),
         guard_true(i88, descr=<Guard0x9c34d30>),
-        i89 = call(ConstClass(_ll_2_ullong_ult__UnsignedLongLong_UnsignedLongLong), f87, 0.000000, descr=<Calli 1 LL EF=0 OS=88>),
+        i89 = call_i(ConstClass(_ll_2_ullong_ult__UnsignedLongLong_UnsignedLongLong), f87, 0.000000, descr=<Calli 1 LL EF=0 OS=88>),
         guard_true(i89, descr=<Guard0x9c34d00>),
-        i90 = call(ConstClass(_ll_1_llong_to_int__SignedLongLong), f87, descr=<Calli 4 L EF=0 OS=85>),
+        i90 = call_i(ConstClass(_ll_1_llong_to_int__SignedLongLong), f87, descr=<Calli 4 L EF=0 OS=85>),
         i91 = uint_lt(i90, 2147483647),
         guard_false(i91, descr=<Guard0x9c34cd0>),
         i92 = int_add(i78, 1),
@@ -421,25 +397,24 @@ class TestBasic(BaseJITTest):
         guard_not_invalidated(descr=<Guard0x9449df0>),
         i141 = int_le(i134, 10000),
         guard_true(i141, descr=<Guard0x9449dc0>),
-        f142 = call(ConstClass(_ll_1_llong_from_int__Signed), i134, descr=<CallL 8 i EF=0 OS=84>),
-        i143 = call(ConstClass(_ll_2_llong_eq__SignedLongLong_SignedLongLong), f142, 0.000000, descr=<Calli 1 LL EF=0 OS=75>),
+        f142 = call_f(ConstClass(_ll_1_llong_from_int__Signed), i134, descr=<CallL 8 i EF=0 OS=84>),
+        i143 = call_i(ConstClass(_ll_2_llong_eq__SignedLongLong_SignedLongLong), f142, 0.000000, descr=<Calli 1 LL EF=0 OS=75>),
         guard_false(i143, descr=<Guard0x9449d90>),
-        f144 = call(ConstClass(_ll_2_llong_floordiv__SignedLongLong_SignedLongLong), f103, f142, descr=<CallL 8 LL EF=2>),
-        f145 = call(ConstClass(_ll_2_llong_mul__SignedLongLong_SignedLongLong), f144, f142, descr=<CallL 8 LL EF=0 OS=72>),
-        i146 = call(ConstClass(_ll_2_llong_lt__SignedLongLong_SignedLongLong), f142, 0.000000, descr=<Calli 1 LL EF=0 OS=73>),
+        f144 = call_f(ConstClass(_ll_2_llong_floordiv__SignedLongLong_SignedLongLong), f103, f142, descr=<CallL 8 LL EF=2>),
+        f145 = call_f(ConstClass(_ll_2_llong_mul__SignedLongLong_SignedLongLong), f144, f142, descr=<CallL 8 LL EF=0 OS=72>),
+        i146 = call_i(ConstClass(_ll_2_llong_lt__SignedLongLong_SignedLongLong), f142, 0.000000, descr=<Calli 1 LL EF=0 OS=73>),
         guard_false(i146, descr=<Guard0x9449d60>),
-        f147 = call(ConstClass(_ll_2_llong_sub__SignedLongLong_SignedLongLong), f103, f145, descr=<CallL 8 LL EF=0 OS=71>),
-        f148 = call(ConstClass(_ll_2_llong_rshift__SignedLongLong_Signed), f147, 63, descr=<CallL 8 Li EF=0 OS=82>),
-        f149 = call(ConstClass(_ll_2_llong_add__SignedLongLong_SignedLongLong), f144, f148, descr=<CallL 8 LL EF=0 OS=70>),
-        i150 = call(ConstClass(_ll_2_llong_gt__SignedLongLong_SignedLongLong), f149, 0.000000, descr=<Calli 1 LL EF=0 OS=77>),
+        f147 = call_f(ConstClass(_ll_2_llong_sub__SignedLongLong_SignedLongLong), f103, f145, descr=<CallL 8 LL EF=0 OS=71>),
+        f148 = call_f(ConstClass(_ll_2_llong_rshift__SignedLongLong_Signed), f147, 63, descr=<CallL 8 Li EF=0 OS=82>),
+        f149 = call_f(ConstClass(_ll_2_llong_add__SignedLongLong_SignedLongLong), f144, f148, descr=<CallL 8 LL EF=0 OS=70>),
+        i150 = call_i(ConstClass(_ll_2_llong_gt__SignedLongLong_SignedLongLong), f149, 0.000000, descr=<Calli 1 LL EF=0 OS=77>),
         guard_true(i150, descr=<Guard0x9449d30>),
-        i151 = call(ConstClass(_ll_2_ullong_ult__UnsignedLongLong_UnsignedLongLong), f149, 0.000000, descr=<Calli 1 LL EF=0 OS=88>),
+        i151 = call_i(ConstClass(_ll_2_ullong_ult__UnsignedLongLong_UnsignedLongLong), f149, 0.000000, descr=<Calli 1 LL EF=0 OS=88>),
         guard_true(i151, descr=<Guard0x9449d00>),
-        i152 = call(ConstClass(_ll_1_llong_to_int__SignedLongLong), f149, descr=<Calli 4 L EF=0 OS=85>),
+        i152 = call_i(ConstClass(_ll_1_llong_to_int__SignedLongLong), f149, descr=<Calli 4 L EF=0 OS=85>),
         i153 = uint_lt(i152, 2147483647),
         guard_true(i153, descr=<Guard0x9449cd0>),
         i154 = int_add(i134, 1),
-        i158 = arraylen_gc(p66, descr=<ArrayU 1>),
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, p18, i154, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, f103, i155, p66, descr=TargetToken(155615448))
         """)
 
@@ -470,15 +445,10 @@ class TestBasic(BaseJITTest):
         guard_not_invalidated(descr=<Guard0xac75cd0>),
         i97 = int_le(i90, 100000),
         guard_true(i97, descr=<Guard0xac75ca0>),
-        p98 = getarrayitem_gc(p65, 0, descr=<ArrayP 4>),
-        guard_value(p98, ConstPtr(ptr74), descr=<Guard0xac75c70>),
-        p99 = getarrayitem_gc(p65, 1, descr=<ArrayP 4>),
-        guard_value(p99, ConstPtr(ptr77), descr=<Guard0xac75c40>),
         i100 = int_xor(i83, i90),
         i101 = uint_lt(i100, 2147483647),
         guard_false(i101, descr=<Guard0xac75c10>),
         i102 = int_add(i90, 1),
-        i106 = arraylen_gc(p79, descr=<ArrayU 1>),
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, p18, i102, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, p65, i83, i103, p79, descr=TargetToken(181116944))
         """)
 
@@ -514,4 +484,57 @@ class TestBasic(BaseJITTest):
         guard_false(i74, descr=<Guard0xa11acd0>),
         i75 = int_add(i65, 1),
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, p18, i75, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, i58, i76, descr=TargetToken(169079000))
+        """)
+
+    def test_object_access(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | o |
+        o := Array with: (Array with: 'a' with: $b) with: (Array with: 'x' with: $y).
+        1 to: 10000 do: [:i | (o at: (i \\\\ 2) + 1) at: (i \\\\ 2) + 1].
+        """)
+        self.assert_matches(traces[0].loop, """
+        guard_not_invalidated(descr=<Guard0xa935da4>)
+        i101 = int_le(i100, 10000)
+        guard_true(i101, descr=<Guard0xa9677d4>)
+        i102 = int_mod(i100, 2)
+        i103 = int_rshift(i102, 31)
+        i104 = int_and(2, i103)
+        i105 = int_add(i102, i104)
+        i106 = int_add(i105, 1)
+        i107 = uint_lt(i105, i83)
+        guard_true(i107, descr=<Guard0xa9677b8>)
+        i108 = int_lt(i105, 0)
+        guard_false(i108, descr=<Guard0xa96779c>)
+        p109 = getarrayitem_gc_r(p82, i105, descr=<ArrayP 4>)
+        guard_class(p109, ConstClass(W_PointersObject), descr=<Guard0xa967764>)
+        p110 = getfield_gc_r(p109, descr=<FieldP spyvm.model.W_PointersObject.inst_strategy 16>)
+        guard_value(p111, ConstPtr(ptr93), descr=<Guard0xa9676f4>)
+        p112 = getfield_gc_r(p109, descr=<FieldP spyvm.model.W_PointersObject.inst__storage 12>)
+        i113 = arraylen_gc(p112, descr=<ArrayP 4>)
+        i115 = uint_lt(i105, i113)
+        guard_true(i115, descr=<Guard0xa967630>)
+        p116 = getarrayitem_gc_r(p112, i105, descr=<ArrayP 4>)
+        i117 = int_add(i100, 1)
+        jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, i117, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, p47, p70, i83, p82, descr=TargetToken(177582744))
+        """)
+
+    def test_named_object_access(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | o |
+        o := (10@10 corner: 100@100).
+        1 to: 10000 do: [:i | o extent ].
+        """)
+        self.assert_matches(traces[0].loop, """
+        guard_not_invalidated(descr=<Guard0x98fe0c0>)
+        i135 = int_le(i134, 10000)
+        guard_true(i135, descr=<Guard0x9906304>)
+        enter_portal_frame(0, 0)
+        enter_portal_frame(0, 0)
+        leave_portal_frame(0)
+        leave_portal_frame(0)
+        i136 = int_add(i134, 1)
+        i137 = arraylen_gc(p71, descr=<ArrayP 4>)
+        i138 = arraylen_gc(p81, descr=<ArrayP 4>)
+        i139 = arraylen_gc(p98, descr=<ArrayS 4>)
+        jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, i136, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, p47, p71, p81, p73, p75, p98, p106, descr=TargetToken(160421980))
         """)

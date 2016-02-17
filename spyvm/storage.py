@@ -1,7 +1,7 @@
 
 import weakref, sys
 from spyvm import model, constants
-from spyvm.util.version import VersionMixin
+from spyvm.util.version import VersionMixin, constant_for_version_arg2
 from rpython.rlib import objectmodel, jit
 from rpython.rlib.objectmodel import import_from_mixin
 from rpython.rlib.rstrategies import rstrategies as rstrat
@@ -11,11 +11,11 @@ A note on terminology:
 A normal smalltalk objects contains references to other objects. These pointers
 are the *storage* of the object. In RSqueak, each W_PointersObject passes
 handling of its storage to a *strategy* object (subclass of AbstractStrategy).
-Most objects are handled by a subclass of SingletonStorageStrategy. These classes
+Most objects are handled by a subclass of SimpleStorageStrategy. These classes
 implement the actual "storage strategy" concept ("Storage Strategies for Collections
-in Dynamically Typed Languages", Bolcz et al., 2013). To support these singleton
+in Dynamically Typed Languages", Bolcz et al., 2013). To support these simple
 strategies, W_PointersObject have a _storage field for arbitrary usage by their
-strategy.
+strategy. These strategies are singleton for their class.
 Strategies including the "ShadowMixin" are called *shadows*. Shadows are not
 singletons and are bound to a single W_PointersObject and store additional state
 required to implement the language semantics. ShadowMixin is used by ContextPartShadow
@@ -31,15 +31,16 @@ class AbstractStrategy(object):
     required by the VM. These 'shadows' not only manage the memory of their Smalltalk objects,
     but are also the VM-internal representation of these objects.
     """
-    _attrs_ = ['space']
-    _immutable_fields_ = ['space']
+    _attrs_ = ['space', 'w_class']
+    _immutable_fields_ = ['space', 'w_class']
     provides_getname = False
     repr_classname = "AbstractStrategy"
     __metaclass__ = rstrat.StrategyMetaclass
     import_from_mixin(rstrat.AbstractStrategy)
 
-    def __init__(self, space, w_self, size):
+    def __init__(self, space, w_self, size, w_class):
         self.space = space
+        self.w_class = w_class
     def getname(self):
         raise NotImplementedError("Abstract class")
     def __repr__(self):
@@ -67,16 +68,27 @@ class AbstractStrategy(object):
         # This is only needed in ShadowMixin, but has to be pulled up here because
         # both AbstractGenericShadow and ContextPartShadow use it.
         raise NotImplementedError("This strategy doesn't handle become.")
+    def getclass(self):
+        return self.w_class
+    def instantiate(self, w_self, w_class):
+        if self._is_singleton:
+            new_strategy = self.strategy_factory().strategy_singleton_instance(self.instantiate_type, w_class)
+        else:
+            size = self.size(w_self)
+            new_strategy = self.strategy_factory().instantiate_strategy(self.instantiate_type, w_class, w_self, size)
+
+    def promote_if_neccessary(self):
+        return jit.promote(self)
 
 # ========== Storage classes implementing storage strategies ==========
 
-class SingletonStorageStrategy(AbstractStrategy):
+class SimpleStorageStrategy(AbstractStrategy):
     """
     Singleton strategies handle 'simple' object storage in normal objects, without
     additional VM-internal information.
     Depending on the data inside an object, different optimizing strategies are used.
     """
-    repr_classname = "SingletonStorageStrategy"
+    repr_classname = "SimpleStorageStrategy"
     _attrs_ = []
     import_from_mixin(rstrat.UnsafeIndexingMixin)
 
@@ -84,10 +96,12 @@ class SingletonStorageStrategy(AbstractStrategy):
         return self.space.w_nil
 
 @rstrat.strategy()
-class ListStrategy(SingletonStorageStrategy):
+class ListStrategy(SimpleStorageStrategy):
     _attrs_ = []
     repr_classname = "ListStrategy"
+
     import_from_mixin(rstrat.GenericStrategy)
+ListStrategy.instantiate_type = ListStrategy
 
 class ListEntry(object):
     _attrs_ = ['strong_content', 'weak_content']
@@ -127,7 +141,7 @@ class WeakListEntry(ListEntry):
         return self.weak_content()
 
 @rstrat.strategy()
-class WeakListStrategy(SingletonStorageStrategy):
+class WeakListStrategy(SimpleStorageStrategy):
     repr_classname = "WeakListStrategy"
     #import_from_mixin(rstrat.WeakGenericStrategy)
     import_from_mixin(rstrat.StrategyWithStorage)
@@ -179,9 +193,10 @@ class WeakListStrategy(SingletonStorageStrategy):
         self.check_index_range(w_self, start, end)
         assert start >= 0 and end >= 0
         del self.get_storage(w_self)[start : end]
+WeakListStrategy.instantiate_type = WeakListStrategy
 
 @rstrat.strategy(generalize=[ListStrategy])
-class SmallIntegerOrNilStrategy(SingletonStorageStrategy):
+class SmallIntegerOrNilStrategy(SimpleStorageStrategy):
     repr_classname = "SmallIntegerOrNilStrategy"
     import_from_mixin(rstrat.TaggingStrategy)
     contained_type = model.W_SmallInteger
@@ -189,9 +204,24 @@ class SmallIntegerOrNilStrategy(SingletonStorageStrategy):
     def unwrap(self, w_val): return self.space.unwrap_int(w_val)
     def wrapped_tagged_value(self): return self.space.w_nil
     def unwrapped_tagged_value(self): return constants.MAXINT
+SmallIntegerOrNilStrategy.instantiate_type = SmallIntegerOrNilStrategy
 
 @rstrat.strategy(generalize=[ListStrategy])
-class FloatOrNilStrategy(SingletonStorageStrategy):
+class CharacterOrNilStrategy(SimpleStorageStrategy):
+    repr_classname = "CharacterOrNilStrategy"
+    import_from_mixin(rstrat.TaggingStrategy)
+    contained_type = model.W_Character
+    def wrap(self, val): return model.W_Character(val)
+    def unwrap(self, w_val):
+        # XXX why would you think, this could be a W_Object?
+        assert isinstance(w_val, model.W_Character)
+        return w_val.value
+    def wrapped_tagged_value(self): return self.space.w_nil
+    def unwrapped_tagged_value(self): return constants.MAXINT
+CharacterOrNilStrategy.instantiate_type = CharacterOrNilStrategy
+
+@rstrat.strategy(generalize=[ListStrategy])
+class FloatOrNilStrategy(SimpleStorageStrategy):
     repr_classname = "FloatOrNilStrategy"
     import_from_mixin(rstrat.TaggingStrategy)
     contained_type = model.W_Float
@@ -200,15 +230,17 @@ class FloatOrNilStrategy(SingletonStorageStrategy):
     def unwrap(self, w_val): return self.space.unwrap_float(w_val)
     def wrapped_tagged_value(self): return self.space.w_nil
     def unwrapped_tagged_value(self): return self.tag_float
+FloatOrNilStrategy.instantiate_type = FloatOrNilStrategy
 
 @rstrat.strategy(generalize=[
     SmallIntegerOrNilStrategy,
     FloatOrNilStrategy,
     ListStrategy])
-class AllNilStrategy(SingletonStorageStrategy):
+class AllNilStrategy(SimpleStorageStrategy):
     repr_classname = "AllNilStrategy"
     import_from_mixin(rstrat.SingleValueStrategy)
     def value(self): return self.space.w_nil
+AllNilStrategy.instantiate_type = AllNilStrategy
 
 class StrategyFactory(rstrat.StrategyFactory):
     _immutable_fields_ = ["space", "no_specialized_storage"]
@@ -216,10 +248,67 @@ class StrategyFactory(rstrat.StrategyFactory):
         from spyvm import objspace
         self.space = space
         self.no_specialized_storage = objspace.ConstantFlag()
+        self.singleton_nodes = {}
         rstrat.StrategyFactory.__init__(self, AbstractStrategy)
 
-    def instantiate_strategy(self, strategy_type, w_self=None, initial_size=0):
-        return strategy_type(self.space, w_self, initial_size)
+    # XXX: copied and slightly modified to not set a singleton field on the strategy class
+    def _create_strategy_instances(self, root_class, all_strategy_classes):
+        for strategy_class in all_strategy_classes:
+            if strategy_class._is_strategy:
+                self.strategies.append(strategy_class)
+            self._patch_strategy_class(strategy_class, root_class)
+        self._order_strategies()
+
+    # XXX: copied and slightly modified to include w_class for instantiation from rstrategies
+    def switch_strategy(self, w_self, new_strategy_type, new_element=None):
+        """
+        Switch the strategy of w_self to the new type.
+        new_element can be given as as hint, purely for logging purposes.
+        It should be the object that was added to w_self, causing the strategy switch.
+        """
+        old_strategy = self.get_strategy(w_self)
+        w_class = old_strategy.getclass()
+        if new_strategy_type._is_singleton:
+            new_strategy = self.strategy_singleton_instance(new_strategy_type, w_class)
+        else:
+            size = old_strategy.size(w_self)
+            new_strategy = self.instantiate_strategy(new_strategy_type, w_class, w_self, size)
+        self.set_strategy(w_self, new_strategy)
+        old_strategy._convert_storage_to(w_self, new_strategy)
+        new_strategy.strategy_switched(w_self)
+        self.log(w_self, new_strategy, old_strategy, new_element)
+        return new_strategy
+
+    # XXX: copied and slightly modified to include w_class for instantiation from rstrategies
+    def set_initial_strategy(self, w_self, strategy_type, w_class, size, elements=None):
+        assert self.get_strategy(w_self) is None, "Strategy should not be initialized yet!"
+        if strategy_type._is_singleton:
+            strategy = self.strategy_singleton_instance(strategy_type, w_class)
+        else:
+            strategy = self.instantiate_strategy(strategy_type, w_class, w_self, size)
+        self.set_strategy(w_self, strategy)
+        strategy._initialize_storage(w_self, size)
+        element = None
+        if elements:
+            strategy.store_all(w_self, elements)
+            if len(elements) > 0: element = elements[0]
+        strategy.strategy_switched(w_self)
+        self.log(w_self, strategy, None, element)
+        return strategy
+
+    def strategy_singleton_instance(self, strategy_class, w_class=None):
+        s = self.strategy_singleton_instance_from_cache(strategy_class, w_class)
+        if s is None:
+            s = self.instantiate_strategy(strategy_class, w_class)
+            self.singleton_nodes[(strategy_class, w_class)] = s
+        return s
+
+    @jit.elidable
+    def strategy_singleton_instance_from_cache(self, strategy_class, w_class):
+        return self.singleton_nodes.get((strategy_class, w_class), None)
+
+    def instantiate_strategy(self, strategy_type, w_class, w_self=None, initial_size=0):
+        return strategy_type(self.space, w_self, initial_size, w_class)
 
     def strategy_type_for(self, objects, weak=False):
         if weak:
@@ -275,6 +364,8 @@ class ShadowMixin(object):
         self.store(self._w_self, i, val)
     def own_fetch(self, i):
         return self.fetch(self._w_self, i)
+    def promote_if_neccessary(self):
+        return self
 
 class AbstractGenericShadow(ListStrategy):
     """
@@ -284,8 +375,8 @@ class AbstractGenericShadow(ListStrategy):
     _attrs_ = ['_w_self']
     _immutable_fields_ = ['_w_self?']
     import_from_mixin(ShadowMixin)
-    def __init__(self, space, w_self, size):
-        ListStrategy.__init__(self, space, w_self, size)
+    def __init__(self, space, w_self, size, w_class):
+        ListStrategy.__init__(self, space, w_self, size, w_class)
         assert w_self is None or isinstance(w_self, model.W_PointersObject)
         self._w_self = w_self
     def _convert_storage_from(self, w_self, previous_strategy):
@@ -304,8 +395,8 @@ class AbstractCachingShadow(AbstractGenericShadow):
     import_from_mixin(VersionMixin)
     version = None
 
-    def __init__(self, space, w_self, size):
-        AbstractGenericShadow.__init__(self, space, w_self, size)
+    def __init__(self, space, w_self, size, w_class):
+        AbstractGenericShadow.__init__(self, space, w_self, size, w_class)
         self.changed()
 
 class CachedObjectShadow(AbstractCachingShadow):
@@ -314,9 +405,15 @@ class CachedObjectShadow(AbstractCachingShadow):
     """
     repr_classname = "CachedObjectShadow"
 
+    @constant_for_version_arg2
+    def fetch(self, w_self, n0):
+        return AbstractCachingShadow.fetch(self, w_self, n0)
+
     def store(self, w_self, n0, w_value):
         AbstractCachingShadow.store(self, w_self, n0, w_value)
         self.changed()
+CachedObjectShadow.instantiate_type = CachedObjectShadow
+
 
 class ObserveeShadow(AbstractGenericShadow):
     """
@@ -324,8 +421,8 @@ class ObserveeShadow(AbstractGenericShadow):
     """
     _attrs_ = ['observer']
     repr_classname = "ObserveeShadow"
-    def __init__(self, space, w_self, size):
-        AbstractGenericShadow.__init__(self, space, w_self, size)
+    def __init__(self, space, w_self, size, w_class):
+        AbstractGenericShadow.__init__(self, space, w_self, size, w_class)
         self.observer = None
 
     def store(self, w_self, n0, w_value):
@@ -337,3 +434,4 @@ class ObserveeShadow(AbstractGenericShadow):
         if self.observer is not None and observer is not self.observer:
             raise RuntimeError('Meant to be observed by only one observer, so far')
         self.observer = observer
+ObserveeShadow.instantiate_type = ObserveeShadow

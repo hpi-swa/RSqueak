@@ -3,13 +3,13 @@
 A Squeak VM written in RPython.
 
 Prebuilt binaries
-* [Linux](http://www.lively-kernel.org/babelsberg/RSqueak/rsqueak-linux-latest) [![Linux Build Status](https://travis-ci.org/HPI-SWA-Lab/RSqueak.svg?branch=master)](https://travis-ci.org/HPI-SWA-Lab/RSqueak)
-* [Mac OS X](http://www.lively-kernel.org/babelsberg/RSqueak/rsqueak-darwin-latest) [![Max OS X Build Status](https://travis-ci.org/timfel/RSqueak-MacOSXBuild.svg?branch=master)](https://travis-ci.org/timfel/RSqueak-MacOSXBuild)
-* [Windows](http://www.lively-kernel.org/babelsberg/RSqueak/rsqueak-win32-latest.exe) [![Windows Build Status](https://ci.appveyor.com/api/projects/status/e37a79tt5irr7sx1/branch/master?svg=true)](https://ci.appveyor.com/project/timfel/rsqueak)
+* [Linux](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-latest) [![Linux Build Status](https://travis-ci.org/HPI-SWA-Lab/RSqueak.svg?branch=master)](https://travis-ci.org/HPI-SWA-Lab/RSqueak)
+* [Mac OS X](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-darwin-latest) [![Max OS X Build Status](https://travis-ci.org/timfel/RSqueak-MacOSXBuild.svg?branch=master)](https://travis-ci.org/HPI-SWA-Lab/RSqueak)
+* [Windows](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-win32-latest.exe) [![Windows Build Status](https://ci.appveyor.com/api/projects/status/e37a79tt5irr7sx1/branch/master?svg=true)](https://ci.appveyor.com/project/timfel/rsqueak)
 
 We also built for Armv7 (Raspberry Pi2, Beagleboard, ...) and Armv6 on the Raspberry Pi 1:
-* [ARMv6](http://www.lively-kernel.org/babelsberg/RSqueak/rsqueak-armv6raspbian-latest)
-* [ARMv7](http://www.lively-kernel.org/babelsberg/RSqueak/rsqueak-armv7l-latest)
+* [ARMv6](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-armv6raspbian-latest)
+* [ARMv7](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-armv7l-latest)
 
 ### Finding a working image
 
@@ -33,7 +33,7 @@ need the `PyPy` source tree, and the `rsdl` source tree. If you
 already have all these, run `.build/build.py`. It will generate a
 config file `.build/buildconfig.ini` where you can set your paths. You
 can also run `.build/download_dependencies.py` to download the
-dependencies automatically. You will also need a python and a C
+dependencies automatically. You will also need a Python and a C
 compiler for 32-bit compilation.
 
 ###### Windows
@@ -41,20 +41,24 @@ compiler for 32-bit compilation.
 On Windows, you will have to use the C compiler that comes with Visual
 Studio 2008, because newer ones crash the JIT. It suffices to just
 install the [Microsoft C compiler V90 plus Windows SDK
-7](https://dl.dropboxusercontent.com/u/26242153/vc%2B%2B90/vc_stdx86.zip). The
+7](https://github.com/HPI-SWA-Lab/RSqueak/releases/download/Dependencies/vc_stdx86.zip). The
 packages provided in the link install it to the default paths. If you
 already have the compiler and SDK, you can also just update the paths
 in `.build/buildconfig.ini`.
 
 ###### Linux
 
-RSqueak/VM currently needs to be compiled using a 32-bit python and
-32-bit libraries for everything. The easiest way to ensure that is to
-use a chroot (check the file `.travis/setup_chroot.sh` for
-pointers). In any case, you'll need to install SDL 1.2. In debian this
-can be achieved by running
+RSqueak/VM currently needs to be compiled using a 32-bit python and 32-bit
+libraries for everything. The easiest way to ensure that is to use a chroot, but
+you can also install the `:i386` version of SDL 1.2 for your distro. In any
+case, you'll need to install SDL 1.2. On 32-bit Debian-derivatives, this can be
+achieved by running
 
     apt-get install libsdl1.2-dev
+
+If you're on a 64-bit Debian-derivative, this might work:
+
+    apt-get install libsdl1.2-dev:i386 binfmt-support
 
 Optionally you can also install FLTK-1.3 if you want to compile a
 fallback file chooser when the VM is launched without image argument:
@@ -68,9 +72,9 @@ RSqueak/VM currently needs to be compiled using a 32-bit python and
 
     export VERSIONER_PYTHON_PREFER_32_BIT=yes
 
-before you run any of the python scripts in the `.build`
-directory. You also need to download SDL-1.2 as a framework. Check the
-`.travis/build-osx.sh` if you get stuck anywhere.
+before you run any of the python scripts in the `.build` directory. You also
+need to download SDL-1.2 as a framework (homebrew version is not tested). Check
+the `.travis/build-osx.sh` if you get stuck anywhere.
 
 ### Developing
 

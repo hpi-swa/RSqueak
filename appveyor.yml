@@ -5,6 +5,8 @@ branches:
     - windows-build
 
 environment:
+  DeployCredentials:
+    secure: jRxEUfeTDZh8Ju6y08aXrnCz6vemvPOwBef3qBC4ep0=
   VisualStudioVersion: 9.0
 
   matrix:

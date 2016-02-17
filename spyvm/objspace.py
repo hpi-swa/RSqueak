@@ -1,7 +1,9 @@
 import os
 
 from spyvm import constants, model, wrapper, display, storage
+from spyvm.util.version import Version
 from spyvm.error import UnwrappingError, WrappingError
+from spyvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX
 from rpython.rlib import jit, rpath
 from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin
 from rpython.rlib.rarithmetic import intmask, r_uint, int_between, r_longlong, r_ulonglong, is_valid_int
@@ -9,18 +11,18 @@ from rpython.rlib.rarithmetic import intmask, r_uint, int_between, r_longlong, r
 class ConstantMixin(object):
     """Mixin for constant values that can be edited, but will be promoted
     to a constant when jitting."""
+    _immutable_fields_ = ["value?"]
 
     def __init__(self, initial_value = None):
         if initial_value is None:
             initial_value = self.default_value
-        self.value = [initial_value]
+        self.value = initial_value
 
     def set(self, value):
-        self.value[0] = value
+        self.value = value
 
     def get(self):
-        value = jit.promote(self.value[0])
-        return value
+        return self.value
 
 class ConstantFlag(object):
     import_from_mixin(ConstantMixin)
@@ -35,13 +37,14 @@ class ConstantFlag(object):
 class ConstantString(object):
     import_from_mixin(ConstantMixin)
     default_value = ""
-    def get(self):
-        # Promoting does not work on strings...
-        return self.value[0]
 
 class ConstantObject(object):
     import_from_mixin(ConstantMixin)
     default_value = None
+
+class ConstantVersion(object):
+    import_from_mixin(ConstantMixin)
+    default_value = Version()
 
 def empty_object():
     return instantiate(model.W_PointersObject)
@@ -57,18 +60,20 @@ class ObjSpace(object):
         self.use_plugins = ConstantFlag()
         self.omit_printing_raw_bytes = ConstantFlag()
         self.image_loaded = ConstantFlag()
+        self.is_spur = ConstantFlag()
+        self.uses_block_contexts = ConstantFlag()
+        self.simulate_numeric_primitives = ConstantFlag()
 
         self.classtable = {}
         self.objtable = {}
         self.system_attributes = {}
+        self._system_attribute_version = ConstantVersion()
         self._executable_path = ConstantString()
-        self._image_name = ConstantString()
         self._display = ConstantObject()
 
         # Create the nil object.
         # Circumvent the constructor because nil is already referenced there.
         w_nil = empty_object()
-        w_nil.w_class = None
         self.add_bootstrap_object("w_nil", w_nil)
 
         self.strategy_factory = storage.StrategyFactory(self)
@@ -92,25 +97,31 @@ class ObjSpace(object):
         i = fullpath.rfind(os.path.sep) + 1
         assert i > 0
         self._executable_path.set(fullpath[:i])
-        self._image_name.set(image_name)
+        self.set_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, image_name)
         self.image_loaded.activate()
         self.init_system_attributes(argv)
 
     def init_system_attributes(self, argv):
         for i in xrange(1, len(argv)):
-            self.system_attributes[-i] = argv[i]
-
+            self.set_system_attribute(-i, argv[i])
         import platform
+        self.set_system_attribute(0, self._executable_path.get())
+        self.set_system_attribute(1001, platform.system())    # operating system
+        self.set_system_attribute(1002, platform.version())   # operating system version
+        self.set_system_attribute(1003, platform.processor()) # platform's processor type
+        self.set_system_attribute(1004, "0")                  # vm version
+        self.set_system_attribute(1007, "rsqueak")            # interpreter class (invented for Cog)
 
-        self.system_attributes[0] = self._executable_path.get()
-        self.system_attributes[1] = self._image_name.get()
+    def get_system_attribute(self, idx):
+        return self._pure_get_system_attribute(idx, self._system_attribute_version.get())
 
-        self.system_attributes[1001] = platform.system()    # operating system
-        self.system_attributes[1002] = platform.version()   # operating system version
-        self.system_attributes[1003] = platform.processor() # platform's processor type
-        self.system_attributes[1004] = "0"                  # vm version
-        self.system_attributes[1007] = "rsqueak"            # interpreter class (invented for Cog)
+    @jit.elidable
+    def _pure_get_system_attribute(self, idx, version):
+        return self.system_attributes[idx]
 
+    def set_system_attribute(self, idx, value):
+        self.system_attributes[idx] = value
+        self._system_attribute_version.set(Version())
 
     def populate_special_objects(self, specials):
         for name, idx in constants.objects_in_special_object_table.items():
@@ -122,7 +133,7 @@ class ObjSpace(object):
                     # if it's not yet in the table, the interpreter has to fill the gap later in populate_remaining_special_objects
                     self.objtable[name] = None
         # XXX this is kind of hacky, but I don't know where else to get Metaclass
-        self.classtable["w_Metaclass"] = self.w_SmallInteger.w_class.w_class
+        self.classtable["w_Metaclass"] = self.w_SmallInteger.getclass(self).getclass(self)
 
     def add_bootstrap_class(self, name, cls):
         self.classtable[name] = cls
@@ -143,7 +154,6 @@ class ObjSpace(object):
         self.add_bootstrap_object(name, obj)
 
     def make_bootstrap_objects(self):
-        self.make_bootstrap_object("w_charactertable")
         self.make_bootstrap_object("w_true")
         self.make_bootstrap_object("w_false")
         self.make_bootstrap_object("w_special_selectors")
@@ -195,6 +205,54 @@ class ObjSpace(object):
         else:
             return model.W_LargePositiveInteger1Word(val)
 
+    @jit.unroll_safe
+    @specialize.argtype(1)
+    def wrap_xlonglong(self, val, w_class):
+        inst_size = self._ulonglong_bytesize(val)
+        w_result = w_class.as_class_get_shadow(self).new(inst_size)
+        for i in range(inst_size):
+            byte_value = (val >> (i * 8)) & 255
+            w_result.setchar(i, chr(byte_value))
+        return w_result
+
+    @specialize.argtype(1)
+    def wrap_ulonglong(self, val):
+        assert isinstance(val, r_ulonglong) and not is_valid_int(val)
+        w_class = self.w_LargePositiveInteger
+        return self.wrap_xlonglong(val, w_class)
+
+    @specialize.argtype(1)
+    def wrap_nlonglong(self, val):
+        if self.w_LargeNegativeInteger is None:
+            raise WrappingError
+        assert isinstance(val, r_longlong) and not is_valid_int(val)
+        assert val < 0 # or else we would be in wrap_ulonglong
+        val = r_ulonglong(-val)
+        w_class = self.w_LargeNegativeInteger
+        return self.wrap_xlonglong(val, w_class)
+
+    @jit.unroll_safe
+    def _ulonglong_bytesize(self, val):
+        assert val != 0
+        sz = 0
+        while val != 0:
+            sz += 1
+            val = val >> 8
+        return sz
+
+    @specialize.argtype(1)
+    def wrap_longlong(self, val):
+        if is_valid_int(val):
+            return self.wrap_int(val)
+        elif isinstance(val, r_ulonglong):
+            return self.wrap_ulonglong(val)
+        elif isinstance(val, r_longlong):
+            if val > 0:
+                return self.wrap_ulonglong(r_ulonglong(val))
+            elif  val < 0:
+                return self.wrap_nlonglong(val)
+        raise WrappingError
+
     def wrap_float(self, i):
         return model.W_Float(i)
 
@@ -205,7 +263,8 @@ class ObjSpace(object):
         return w_inst
 
     def wrap_char(self, c):
-        return self.w_charactertable.fetch(self, ord(c))
+        # return self.w_charactertable.fetch(self, ord(c))
+        return model.W_Character(ord(c))
 
     def wrap_bool(self, b):
         if b:
@@ -244,8 +303,8 @@ class ObjSpace(object):
     def unwrap_longlong(self, w_value):
         return w_value.unwrap_longlong(self)
 
-    def unwrap_char(self, w_char):
-        return w_char.unwrap_char(self)
+    def unwrap_char_as_byte(self, w_char):
+        return w_char.unwrap_char_as_byte(self)
 
     def unwrap_float(self, w_v):
         return w_v.unwrap_float(self)
@@ -267,14 +326,11 @@ class ObjSpace(object):
     def executable_path(self):
         return self._executable_path.get()
 
-    def image_name(self):
-        return self._image_name.get()
-
     def display(self):
         disp = self._display.get()
         if disp is None:
             # Create lazy to allow headless execution.
-            disp = display.SDLDisplay(self.image_name())
+            disp = display.SDLDisplay(self.get_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX))
             self._display.set(disp)
         return disp
 

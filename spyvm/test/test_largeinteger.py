@@ -6,6 +6,7 @@ from rpython.rlib.rarithmetic import intmask, r_uint
 
 def setup_module():
     space, interp, _, _ = read_image('bootstrapped.image')
+    space.uses_block_contexts.activate()
     w = space.w
     copy_to_module(locals(), __name__)
     interp.trace = False
@@ -24,8 +25,15 @@ def perform_primitive(rcvr, w_selector, *args):
 def w_l(largeInteger):
     if largeInteger >= 0 and largeInteger <= constants.TAGGED_MAXINT:
         return space.wrap_int(intmask(largeInteger))
-    else:
+    elif largeInteger >= 0:
         return model.W_LargePositiveInteger1Word(intmask(largeInteger))
+    else:
+        assert largeInteger < 0
+        assert space.w_LargeNegativeInteger is not None
+        w_o = model.W_BytesObject(space, space.w_LargeNegativeInteger, 4)
+        w_li = model.W_LargePositiveInteger1Word(intmask(-largeInteger))
+        w_o.bytes = list(w_li.unwrap_string(space))
+        return w_o
 
 # test that using W_LargePositiveInteger1Word yields the correct results.
 # we use this way of testing to have multiple different test which may fail
@@ -36,7 +44,7 @@ def do_primitive(selector, operation, i=None, j=None, trace=False):
         w_selector = space.get_special_selector(selector)
     except Exception:
         w_selector = space.find_symbol_in_methoddict(selector, w(intmask(candidates[0])).getclass(space))
-    
+
     interp.trace = trace
     for i, v in enumerate(candidates):
         x = w_l(v)
@@ -61,7 +69,7 @@ def test_bitOr():
 
 def test_bitXor():
     do_primitive("bitXor:", operator.xor)
-    do_primitive("bitXor:", operator.xor, i=[0xFFFFFFFF, 0x0F0F0F0F, 0xFFFFFF], 
+    do_primitive("bitXor:", operator.xor, i=[0xFFFFFFFF, 0x0F0F0F0F, 0xFFFFFF],
                                           j=[0xF0F0F0F0, 0xFFFEFCF8, 4294967295])
 
 def test_bitShift():
@@ -71,3 +79,15 @@ def test_bitShift():
         else:
             return a << b
     do_primitive("bitShift:", shift, i=[9470032], j=[6])
+
+def test_lessThan():
+    w_selector = space.get_special_selector("<")
+    assert perform_primitive(w_l(0xFFFFFFFF), w_selector, w_l(0xF0F0F0F0)) is space.w_false
+    assert perform_primitive(w_l(0x0F0F0F0F), w_selector, w_l(0xFFFEFCF8)) is space.w_true
+    assert perform_primitive(w_l(0xFFFFFF), w_selector, w_l(4294967295)) is space.w_true
+    assert perform_primitive(w_l(-0xFFFFFFFF), w_selector, w_l(-0xF0F0F0F0)) is space.w_true
+    assert perform_primitive(w_l(-0x0F0F0F0F), w_selector, w_l(-0xFFFEFCF8)) is space.w_false
+    assert perform_primitive(w_l(-0xFFFFFF), w_selector, w_l(-4294967295)) is space.w_false
+    assert perform_primitive(w_l(-0xFFFFFFFF), w_selector, w_l(-3)) is space.w_true
+    assert perform_primitive(w_l(-0x0F0F0F0F), w_selector, w_l(0)) is space.w_true
+    assert perform_primitive(w_l(-0xFFFFFF), w_selector, w_l(12)) is space.w_true

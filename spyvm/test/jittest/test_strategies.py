@@ -89,7 +89,6 @@ class TestBasic(BaseJITTest):
              jump(p0, p3, p6, i225, p14, p16, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p54, i76, p68, i106, p92, p108, p80, i89, i91, i136, i85, i226, descr=TargetToken(48645456))
         """)
 
-    @py.test.mark.skipif("'not working'")
     def test_indexOf(self, spy, tmpdir):
         traces = self.run(spy, tmpdir,
         """
@@ -97,32 +96,28 @@ class TestBasic(BaseJITTest):
         """)
         # First loop: asOrderedCollection, second loop: makeRoomAtLast
         self.assert_matches(traces[2].loop, """
-             i144 = int_le(i137, i63),
-             guard_true(i144, descr=<Guard0x3228ad0>),
-             guard_not_invalidated(descr=<Guard0x3228850>),
-             setfield_gc(ConstPtr(ptr85), i92, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>),
-             i145 = int_add_ovf(i137, i101),
-             guard_no_overflow(descr=<Guard0x32283d0>),
-             i146 = int_sub(i145, 1),
-             i147 = int_gt(i146, i109),
-             guard_false(i147, descr=<Guard0x32282d0>),
-             i148 = int_sub(i146, 1),
-             i149 = int_ge(i148, 0),
-             guard_true(i149, descr=<Guard0x3319dd0>),
-             i150 = int_lt(i148, i127),
-             guard_true(i150, descr=<Guard0x3319cd0>),
-             i151 = getarrayitem_gc(p126, i148, descr=<ArrayS 4>),
-             i152 = int_eq(i151, 2147483647),
-             guard_false(i152, descr=<Guard0x3217a50>),
-             setfield_gc(ConstPtr(ptr85), i88, descr=<FieldS spyvm.interpreter.Interpreter.inst_remaining_stack_depth 40>),
-             i153 = int_eq(i151, i134),
-             guard_false(i153, descr=<Guard0x3217b10>),
-             i154 = int_add_ovf(i137, 1),
-             guard_no_overflow(descr=<Guard0x3217ad0>),
-             i155 = int_sub(i140, 3),
-             setfield_gc(ConstPtr(ptr85), i155, descr=<FieldS spyvm.interpreter.Interpreter.inst_interrupt_check_counter 24>),
-             i156 = int_le(i155, 0),
-             guard_false(i156, descr=<Guard0x3217a90>),
-             i157 = arraylen_gc(p97, descr=<ArrayP 4>),
-             jump(p0, p3, p6, p8, p10, i154, p14, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, p48, p50, p52, i63, p65, i92, i101, p99, i109, p106, p112, i127, p126, i88, i134, i155, p97, descr=TargetToken(53728496))
+        guard_not_invalidated(descr=<Guard0xf65da5bc>)
+        i124 = int_le(i123, i63)
+        guard_true(i124, descr=<Guard0x9399668>)
+        enter_portal_frame(0, 0)
+        i125 = int_add_ovf(i123, i91)
+        guard_no_overflow(descr=<Guard0x939964c>)
+        i126 = int_sub(i125, 1)
+        i127 = int_gt(i126, i98)
+        guard_false(i127, descr=<Guard0x9399614>)
+        i128 = int_sub(i126, 1)
+        i129 = uint_lt(i128, i111)
+        guard_true(i129, descr=<Guard0x93995f8>)
+        i130 = int_lt(i128, 0)
+        guard_false(i130, descr=<Guard0x93995dc>)
+        i131 = getarrayitem_gc_i(p110, i128, descr=<ArrayS 4>)
+        i132 = int_eq(i131, 2147483647)
+        guard_false(i132, descr=<Guard0x93995a4>)
+        leave_portal_frame(0)
+        i133 = int_eq(i131, i120)
+        guard_false(i133, descr=<Guard0x939956c>)
+        i134 = int_add_ovf(i123, 1)
+        guard_no_overflow(descr=<Guard0x9399550>)
+        i135 = arraylen_gc(p69, descr=<ArrayP 4>)
+        jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, p19, p21, i134, p25, p31, p33, p35, p37, p39, p41, p43, p45, p47, p49, p51, p53, i63, p69, p74, p87, i91, i98, p103, p101, i111, p110, i120, descr=TargetToken(154592580))
         """)

@@ -40,12 +40,10 @@ def untrace_proxy(interp, s_frame, w_rcvr):
 
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object])
 def halt(interp, s_frame, w_rcvr):
+    from rpython.rlib.debug import attach_gdb
     print s_frame.print_stack()
-    from rpython.config.translationoption import get_translation_config
-    from rpython.rlib.objectmodel import we_are_translated
-    if not we_are_translated() or get_translation_config().translation.lldebug or get_translation_config().translation.lldebug0:
-        import pdb; pdb.set_trace()
-    raise error.PrimitiveFailedError
+    raise NotImplementedError
+    # attach_gdb()
 
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object])
 def isRSqueak(interp, s_frame, w_rcvr):

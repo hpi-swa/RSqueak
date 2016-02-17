@@ -1,33 +1,41 @@
 #!/bin/bash
-set -ex
+set -e
 
-git clone --depth=1 https://github.com/HPI-SWA-Lab/RSqueak.git
-mv RSqueak/* .
-mv RSqueak/.build .
-mv RSqueak RSqueakGit
+UNAME=darwin
+EX=
+#set EX to sudo if required.
 
-curl -L -O http://www.libsdl.org/release/SDL-1.2.15.dmg
-hdiutil mount SDL-1.2.15.dmg
-ls /Volumes/*SDL*/
-sudo cp -R /Volumes/*SDL*/SDL.framework /Library/Frameworks/
+case "$BUILD_ARCH" in
+    32bit)
+        binary=rsqueak
+        python .build/build.py
+        buildcode=$?  ;   exitcode=$buildcode
+        cp rsqueak rsqueak-x86-${UNAME}-jit-$TRAVIS_COMMIT || true
+        # python .build/jittests.py
+        # $EX rm -rf .build/pypy/rpython/_cache
+        # exitcode=$?
+        # if [ $exitcode -eq 0 ]; then latest=true; fi
+        ;;
+    lldebug)
+        binary=rsqueak
+        python .build/build.py --lldebug -Ojit
+        cp rsqueak* rsqueak-x86-${UNAME}-dbg-$TRAVIS_COMMIT || true
+        exitcode=$?
+        buildcode=$exitcode
+        # $EX rm -rf .build/pypy/rpython/_cache
+        ;;
+    *) exit 0 ;;
+esac
 
-# install
-python .build/download_dependencies.py
-
-# use 32bit python
-export VERSIONER_PYTHON_PREFER_32_BIT=yes
-
-# script
-python .build/build.py
-exitcode=$?
-
-# after_success
-if [ $exitcode -eq 0 ]; then
-    cd RSqueakGit
-    export RSQUEAKCOMMIT="$(git show -s --pretty=format:%H)"
-    cd ..
-    cp rsqueak rsqueak-x86-darwin-jit-$RSQUEAKCOMMIT
+if [ $buildcode -eq 0 ]; then
     curl -T rsqueak-x86* http://www.lively-kernel.org/babelsberg/RSqueak/
-    cp rsqueak rsqueak-darwin-latest
-    curl -T rsqueak-darwin-latest http://www.lively-kernel.org/babelsberg/RSqueak/
+    curl -T rsqueak-x86* -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/commits/
+
+    if [ "$TRAVIS_BRANCH" == "master" -a "$TRAVIS_PULL_REQUEST" == "false" ]; then
+        cp rsqueak rsqueak-${UNAME}-latest
+        curl -T rsqueak-${UNAME}-latest http://www.lively-kernel.org/babelsberg/RSqueak/
+        curl -T rsqueak-${UNAME}-latest -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/
+    fi
 fi
+
+exit $buildcode

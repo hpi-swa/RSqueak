@@ -7,7 +7,7 @@ from spyvm.storage_contexts import ContextPartShadow, ActiveContext, InactiveCon
 from spyvm import model, constants, wrapper, objspace, interpreter_bytecodes, error
 from spyvm.error import MetaPrimFailed
 
-from rpython.rlib import jit, rstackovf, unroll
+from rpython.rlib import jit, rstackovf, unroll, objectmodel, rsignal
 
 
 
@@ -17,18 +17,73 @@ class ReturnFromTopLevel(Exception):
         self.object = object
 
 class Return(Exception):
-    _attrs_ = ["value", "s_target_context", "is_local", "arrived_at_target"]
-    _immutable_fields_ = ["value", "s_target_context", "is_local"]
-    def __init__(self, s_target_context, w_result):
-        self.value = w_result
+    _attrs_ = []
+    def value(self, space): raise NotImplementedError
+
+class FreshReturn(Exception):
+    _attrs_ = ["exception"]
+    _immutable_fields_ = ["exception"]
+    def __init__(self, exception):
+        self.exception = exception
+
+class LocalReturn(Return):
+    _attrs_ = []
+    @staticmethod
+    def make(space, w_value):
+        if isinstance(w_value, model.W_SmallInteger):
+            return IntLocalReturn(space.unwrap_int(w_value))
+        else:
+            return WrappedLocalReturn(w_value)
+
+class NonLocalReturn(Return):
+    _attrs_ = ["s_target_context", "arrived_at_target"]
+    _immutable_fields_ = ["s_target_context"]
+
+    @staticmethod
+    def make(space, s_target_context, w_value):
+        if isinstance(w_value, model.W_SmallInteger):
+            return IntNonLocalReturn(s_target_context, space.unwrap_int(w_value))
+        else:
+            return WrappedNonLocalReturn(s_target_context, w_value)
+
+    def __init__(self, s_target_context):
         self.s_target_context = s_target_context
         self.arrived_at_target = False
-        self.is_local = s_target_context is None
+
+class WrappedLocalReturn(LocalReturn):
+    _attrs_ = ["w_value"]
+    _immutable_fields_ = ["w_value"]
+    def __init__(self, w_result):
+        self.w_value = w_result
+    def value(self, space): return self.w_value
+
+class IntLocalReturn(LocalReturn):
+    _attrs_ = ["_value"]
+    _immutable_fields_ = ["_value"]
+    def __init__(self, intresult):
+        self._value = intresult
+    def value(self, space): return space.wrap_int(self._value)
+
+class WrappedNonLocalReturn(NonLocalReturn):
+    _attrs_ = ["w_value"]
+    _immutable_fields_ = ["w_value"]
+    def __init__(self, s_target_context, w_value):
+        NonLocalReturn.__init__(self, s_target_context)
+        self.w_value = w_value
+    def value(self, space): return self.w_value
+
+class IntNonLocalReturn(NonLocalReturn):
+    _attrs_ = ["_value"]
+    _immutable_fields_ = ["_value"]
+    def __init__(self, s_target_context, intvalue):
+        NonLocalReturn.__init__(self, s_target_context)
+        self._value = intvalue
+    def value(self, space): return space.wrap_int(self._value)
 
 class NonVirtualReturn(Exception):
-    _attrs_ = ["s_target_context", "s_current_context", "value"]
+    _attrs_ = ["s_target_context", "s_current_context", "w_value"]
     def __init__(self, s_target_context, s_current_context, w_result):
-        self.value = w_result
+        self.w_value = w_result
         self.s_target_context = s_target_context
         self.s_current_context = s_current_context
 
@@ -63,6 +118,8 @@ def get_printable_location(pc, self, method):
     bc = ord(method.bytes[pc])
     name = method.safe_identifier_string()
     return '(%s) [%d]: <%s>%s' % (name, pc, hex(bc), interpreter_bytecodes.BYTECODE_NAMES[bc])
+
+USE_SIGUSR1 = hasattr(rsignal, 'SIGUSR1')
 
 class Interpreter(object):
     _immutable_fields_ = ["space",
@@ -105,6 +162,10 @@ class Interpreter(object):
         self.trace_proxy = objspace.ConstantFlag()
         self.stack_depth = 0
 
+        if not objectmodel.we_are_translated():
+            if USE_SIGUSR1:
+                rsignal.pypysig_setflag(rsignal.SIGUSR1)
+
     def populate_remaining_special_objects(self):
         for name, idx in constants.objects_in_special_object_table.items():
             name = "w_" + name
@@ -113,9 +174,8 @@ class Interpreter(object):
                     w_string = self.space.wrap_string("run:with:in:")
                     self.space.objtable[name] = self.perform(w_string, selector="asSymbol")
                     assert self.space.objtable[name]
-                    pass;
                 else:
-                    raise Exception("don't know how to populate " + name + " which was not in special objects table")
+                    raise Warning("don't know how to populate " + name + " which was not in special objects table")
 
     def loop(self, w_active_context):
         # This is the top-level loop and is not invoked recursively.
@@ -129,13 +189,16 @@ class Interpreter(object):
                 if self.is_tracing() or self.trace_important:
                     e.print_trace()
                 s_context = e.s_new_context
-            except Return, ret:
+            except LocalReturn, ret:
+                target = s_sender
+                s_context = self.unwind_context_chain(s_sender, target, ret.value(self.space))
+            except NonLocalReturn, ret:
                 target = s_sender if ret.arrived_at_target else ret.s_target_context
-                s_context = self.unwind_context_chain(s_sender, target, ret.value)
+                s_context = self.unwind_context_chain(s_sender, target, ret.value(self.space))
             except NonVirtualReturn, ret:
                 if self.is_tracing() or self.trace_important:
                     ret.print_trace()
-                s_context = self.unwind_context_chain(ret.s_current_context, ret.s_target_context, ret.value)
+                s_context = self.unwind_context_chain(ret.s_current_context, ret.s_target_context, ret.w_value)
             except MetaPrimFailed, e:
                 s_context = self.unwind_primitive_simulation(e.s_frame, e.error_code)
 
@@ -154,15 +217,22 @@ class Interpreter(object):
         except rstackovf.StackOverflow:
             rstackovf.check_stack_overflow()
             raise StackOverflow(s_frame)
-        except Return, ret:
+        except LocalReturn, ret:
             if s_frame.state is DirtyContext:
                 s_sender = s_frame.s_sender() # The sender has changed!
                 s_frame._activate_unwind_context(self)
-                target_context = s_sender if ret.is_local else ret.s_target_context
-                raise NonVirtualReturn(target_context, s_sender, ret.value)
+                raise NonVirtualReturn(s_sender, s_sender, ret.value(self.space))
             else:
                 s_frame._activate_unwind_context(self)
-                if ret.is_local or ret.s_target_context is s_sender:
+                raise ret
+        except NonLocalReturn, ret:
+            if s_frame.state is DirtyContext:
+                s_sender = s_frame.s_sender() # The sender has changed!
+                s_frame._activate_unwind_context(self)
+                raise NonVirtualReturn(ret.s_target_context, s_sender, ret.value(self.space))
+            else:
+                s_frame._activate_unwind_context(self)
+                if ret.s_target_context is s_sender:
                     ret.arrived_at_target = True
                 raise ret
         finally:
@@ -190,9 +260,13 @@ class Interpreter(object):
                 s_context=s_context)
             try:
                 self.step(s_context)
-            except Return, ret:
+            except FreshReturn, ret:
+                raise ret.exception
+            except LocalReturn, ret:
+                s_context.push(ret.value(self.space))
+            except NonLocalReturn, ret:
                 if ret.arrived_at_target:
-                    s_context.push(ret.value)
+                    s_context.push(ret.value(self.space))
                 else:
                     raise ret
 
@@ -201,7 +275,7 @@ class Interpreter(object):
             # This is the toplevel frame. Execution ended.
             raise ReturnFromTopLevel(self.space.w_nil)
         context = start_context
-        while context._s_fallback is None:
+        while context.get_fallback() is None:
             s_sender = context.s_sender()
             context._activate_unwind_context(self)
             context = s_sender
@@ -212,7 +286,7 @@ class Interpreter(object):
                         start_context.pc())
                 raise error.FatalError(msg)
 
-        fallbackContext = context._s_fallback
+        fallbackContext = context.get_fallback()
 
         if fallbackContext.tempsize() > len(fallbackContext.w_arguments()):
             fallbackContext.settemp(len(fallbackContext.w_arguments()), self.space.wrap_int(error_code))
@@ -241,6 +315,10 @@ class Interpreter(object):
         return context
 
     def step(self, context):
+        if not objectmodel.we_are_translated():
+            if USE_SIGUSR1: self.check_sigusr(context)
+
+
         bytecode = context.fetch_next_bytecode()
         for entry in UNROLLING_BYTECODE_RANGES:
             if len(entry) == 2:
@@ -273,13 +351,18 @@ class Interpreter(object):
             self.interrupt_check_counter = self.interrupt_counter_size
             self.check_for_interrupts(s_frame)
 
+    def check_sigusr(self, s_frame):
+        poll = rsignal.pypysig_poll()
+        if poll == rsignal.SIGUSR1:
+            print s_frame.print_stack()
+
     def check_for_interrupts(self, s_frame):
         # parallel to Interpreter>>#checkForInterrupts
 
         # Profiling is skipped
         # We don't adjust the check counter size
 
-        # use the same time value as the primitive MILLISECOND_CLOCK
+        # use the same time value as the primitive UTC_MICROSECOND_CLOCK
         now = self.time_now()
 
         # XXX the low space semaphore may be signaled here
@@ -295,6 +378,21 @@ class Interpreter(object):
         # In cog, the method to add such a semaphore is only called in GC.
 
     def time_now(self):
+        """
+        Answer the UTC microseconds since the Smalltalk epoch. The value is
+        derived from the Posix epoch with a constant offset corresponding to
+        elapsed microseconds between the two epochs according to RFC 868
+        """
+        import time
+        from rpython.rlib.rarithmetic import r_longlong
+        secs_to_usecs = 1000 * 1000
+        return r_longlong(time.time() * secs_to_usecs) + constants.SQUEAK_EPOCH_DELTA_MICROSECONDS
+
+    def event_time_now(self):
+        """
+        Answer the number of milliseconds since the millisecond clock was last
+        reset or rolled over.
+        """
         import time
         from rpython.rlib.rarithmetic import intmask
         return intmask(int((time.time() - self.startup_time) * 1000) & constants.TAGGED_MASK)
@@ -320,7 +418,10 @@ class Interpreter(object):
             else:
                 w_selector = self.perform(self.space.wrap_string(selector), "asSymbol")
 
-        w_method = model.W_CompiledMethod(self.space, header=512)
+        if self.space.is_spur.is_set():
+            w_method = model.W_SpurCompiledMethod(self.space, header=512)
+        else:
+            w_method = model.W_PreSpurCompiledMethod(self.space, header=512)
         w_method.literalatput0(self.space, 1, w_selector)
         assert len(w_arguments) <= 7
         w_method.setbytes([chr(131), chr(len(w_arguments) << 5 + 0), chr(124)]) #returnTopFromMethodBytecode

@@ -1,8 +1,21 @@
+import pytest
 import py, operator, sys
 from spyvm import model, interpreter, primitives, storage_classes, storage_contexts, wrapper, constants, error
 from .util import create_space_interp, copy_to_module, cleanup_module, import_bytecodes
 
 import_bytecodes(__name__)
+
+@pytest.fixture(scope='module')
+def space_and_interp():
+    return create_space_interp(bootstrap = True)
+
+@pytest.fixture
+def space(space_and_interp):
+    return space_and_interp[0]
+
+@pytest.fixture
+def interp(space_and_interp):
+    return space_and_interp[1]
 
 def setup_module():
     space, interp = create_space_interp(bootstrap = True)
@@ -20,20 +33,29 @@ def bootstrap_class(instsize, w_superclass=None, w_metaclass=None,
     return space.bootstrap_class(instsize, w_superclass, w_metaclass,
                     name, format, varsized)
 
+def new_frame_and_args(bytes, receiver=None):
+    foo, bar = w("foo"), w("bar")
+    return space.make_frame(bytes, receiver=receiver, args=[foo, bar]), (foo, bar)
+
 def new_frame(bytes, receiver=None):
-    return space.make_frame(bytes, receiver=receiver, args=[w("foo"), w("bar")])
+    return new_frame_and_args(bytes, receiver=receiver)[0]
 
 def step_in_interp(ctxt): # due to missing resets in between tests
     interp._loop = False
     try:
-        retval = interp.step(ctxt)
-        if retval is not None:
-            return retval.w_self()
-    except interpreter.Return, nlr:
+        try:
+            retval = interp.step(ctxt)
+            if retval is not None:
+                return retval.w_self()
+        except interpreter.FreshReturn, ret:
+            raise ret.exception
+    except interpreter.LocalReturn, ret:
+        new_context = ctxt.s_sender()
+        new_context.push(ret.value(interp.space))
+        return new_context.w_self()
+    except interpreter.NonLocalReturn, nlr:
         new_context = nlr.s_target_context
-        if new_context is None:
-            new_context = ctxt.s_sender()
-        new_context.push(nlr.value)
+        new_context.push(nlr.value(interp.space))
         return new_context.w_self()
 
 def assert_list(list, expected):
@@ -50,7 +72,7 @@ def run_with_faked_primitive_methods(methods, func, active_context=None):
     # Install faked compiled methods that just invoke the primitive:
     for (w_class, primnum, argsize, methname) in methods:
         s_class = w_class.as_class_get_shadow(space)
-        prim_meth = model.W_CompiledMethod(space, 0)
+        prim_meth = model.W_PreSpurCompiledMethod(space, 0)
         prim_meth._primitive = primnum
         prim_meth.argsize = argsize
         symbol = fakesymbol(methname)
@@ -96,7 +118,7 @@ def fakeliterals(space, *literals):
 # ======= Test methods =======
 
 def test_create_frame():
-    w_method = model.W_CompiledMethod(space, len("hello"))
+    w_method = model.W_PreSpurCompiledMethod(space, len("hello"))
     w_method.bytes="hello"
     w_method.islarge = 1
     w_method.argsize=2
@@ -142,26 +164,30 @@ def test_pushReceiverVariableBytecode(bytecode = (pushReceiverVariableBytecode(0
                                                   pushReceiverVariableBytecode(1) +
                                                   pushReceiverVariableBytecode(2))):
     w_demo = bootstrap_class(3).as_class_get_shadow(space).new()
-    w_demo.store(space, 0, w("egg"))
-    w_demo.store(space, 1, w("bar"))
-    w_demo.store(space, 2, w("baz"))
+    egg, bar, baz = w("egg"), w("bar"), w("baz")
+    w_demo.store(space, 0, egg)
+    w_demo.store(space, 1, bar)
+    w_demo.store(space, 2, baz)
     w_frame, s_frame = new_frame(bytecode, receiver = w_demo)
     s_frame = w_frame.as_context_get_shadow(space)
     step_in_interp(s_frame)
     step_in_interp(s_frame)
     step_in_interp(s_frame)
-    assert_list(s_frame.stack(), ["egg", "bar", "baz"])
+    assert_list(s_frame.stack(), [egg, bar, baz])
 
 def test_pushTemporaryVariableBytecode(bytecode=(pushTemporaryVariableBytecode(0) +
                                                  pushTemporaryVariableBytecode(1) +
                                                  pushTemporaryVariableBytecode(2))):
-    w_frame, s_frame = new_frame(bytecode)
+    frames, args = new_frame_and_args(bytecode)
+    w_frame = frames[0]
+    foo, bar = args[0], args[1]
     s_frame = w_frame.as_context_get_shadow(space)
-    s_frame.settemp(2, w("temp"))
+    temp = w("temp")
+    s_frame.settemp(2, temp)
     step_in_interp(s_frame)
     step_in_interp(s_frame)
     step_in_interp(s_frame)
-    assert_list(s_frame.stack(), ["foo", "bar", "temp"])
+    assert_list(s_frame.stack(), [foo, bar, temp])
 
 def test_pushLiteralConstantBytecode(bytecode=pushLiteralConstantBytecode(0) +
                                               pushLiteralConstantBytecode(1) +
@@ -175,12 +201,13 @@ def test_pushLiteralConstantBytecode(bytecode=pushLiteralConstantBytecode(0) +
 
 def test_pushLiteralVariableBytecode(bytecode=pushLiteralVariableBytecode(0)):
     w_association = bootstrap_class(2).as_class_get_shadow(space).new()
-    w_association.store(space, 0, w("mykey"))
-    w_association.store(space, 1, w("myvalue"))
+    mykey, myvalue = w("mykey"), w("myvalue")
+    w_association.store(space, 0, mykey)
+    w_association.store(space, 1, myvalue)
     w_frame, s_frame = new_frame(bytecode)
     s_frame.w_method().setliterals( fakeliterals(space, w_association))
     step_in_interp(s_frame)
-    assert_list(s_frame.stack(), ["myvalue"])
+    assert_list(s_frame.stack(), [myvalue])
 
 def test_storeAndPopReceiverVariableBytecode(bytecode=storeAndPopReceiverVariableBytecode,
                                              popped=True):
@@ -409,7 +436,7 @@ def sendBytecodesTest(w_class, w_object, bytecodes):
           (returnNilBytecode, space.w_nil),
           (returnTopFromMethodBytecode, space.w_one) ]:
         shadow = w_class.as_class_get_shadow(space)
-        w_method = model.W_CompiledMethod(space, 2)
+        w_method = model.W_PreSpurCompiledMethod(space, 2)
         w_method.bytes = pushConstantOneBytecode + bytecode
         literals = fakeliterals(space, "foo")
         w_foo = literals[0]
@@ -438,7 +465,7 @@ def test_sendLiteralSelectorBytecode():
 def test_fibWithArgument():
     bytecode = ''.join(map(chr, [ 16, 119, 178, 154, 118, 164, 11, 112, 16, 118, 177, 224, 112, 16, 119, 177, 224, 176, 124 ]))
     shadow = bootstrap_class(0).as_class_get_shadow(space)
-    method = model.W_CompiledMethod(space, len(bytecode))
+    method = model.W_PreSpurCompiledMethod(space, len(bytecode))
     method.literalsize = 1
     method.bytes = bytecode
     method.argsize = 1
@@ -578,7 +605,7 @@ def test_extendedStoreAndPopBytecode():
 def test_callPrimitiveAndPush_fallback():
     w_frame, s_frame = new_frame(bytecodePrimAdd)
     shadow = bootstrap_class(0).as_class_get_shadow(space)
-    w_method = model.W_CompiledMethod(space, 0)
+    w_method = model.W_PreSpurCompiledMethod(space, 0)
     w_method.argsize = 1
     w_method._tempsize = 1
     w_method.literalsize = 1
@@ -625,18 +652,18 @@ def test_singleExtendedSuperBytecode(bytecode=singleExtendedSuperBytecode + chr(
     # first call method installed in w_class
     bytecodes = singleExtendedSendBytecode + chr(0)
     # which does a call to its super
-    meth1 = model.W_CompiledMethod(space, 2)
+    meth1 = model.W_PreSpurCompiledMethod(space, 2)
     meth1.bytes = pushReceiverBytecode + bytecode
     literals = fakeliterals(space, "foo")
     foo = literals[0]
     meth1.setliterals(literals)
     w_class.as_class_get_shadow(space).installmethod(foo, meth1)
     # and that one again to its super
-    meth2 = model.W_CompiledMethod(space, 2)
+    meth2 = model.W_PreSpurCompiledMethod(space, 2)
     meth2.bytes = pushReceiverBytecode + bytecode
     meth2.setliterals(fakeliterals(space, foo))
     w_super.as_class_get_shadow(space).installmethod(foo, meth2)
-    meth3 = model.W_CompiledMethod(space, 0)
+    meth3 = model.W_PreSpurCompiledMethod(space, 0)
     w_supersuper.as_class_get_shadow(space).installmethod(foo, meth3)
     w_frame, s_frame = new_frame(bytecodes)
     s_frame.w_method().setliterals(literals)
@@ -791,7 +818,7 @@ def test_bc_primBytecodeAt_with_instvars():
     w_fakeinst.store(space, 0, space.wrap_char("a")) # static slot 0: instance variable
     w_fakeinst.store(space, 1, space.wrap_char("b")) # varying slot 1
     def test():
-        assert space.unwrap_char(interpret_bc(
+        assert space.unwrap_char_as_byte(interpret_bc(
             [112, 118, 192, 124],
             fakeliterals(space, ),
             receiver=w_fakeinst)) == "b"
@@ -806,12 +833,12 @@ def test_bc_primBytecodeAtPut_with_instvars():
     w_fakeinst.store(space, 0, space.wrap_char("a")) # static slot 0: instance variable
     w_fakeinst.store(space, 1, space.wrap_char("a")) # varying slot 1
     def test():
-        assert space.unwrap_char(interpret_bc(
+        assert space.unwrap_char_as_byte(interpret_bc(
             [0x70, 0x76, 0x20, 0xc1, 0x7c],
             fakeliterals(space, space.wrap_char("b")),
             receiver=w_fakeinst)) == "b"
-        assert space.unwrap_char(w_fakeinst.fetch(space, 0)) == "a"
-        assert space.unwrap_char(w_fakeinst.fetch(space, 1)) == "b"
+        assert space.unwrap_char_as_byte(w_fakeinst.fetch(space, 0)) == "a"
+        assert space.unwrap_char_as_byte(w_fakeinst.fetch(space, 1)) == "b"
     run_with_faked_primitive_methods(
         [[w_fakeclass, primitives.AT_PUT, 2, "at:put:"]],
         test)
@@ -821,7 +848,7 @@ def test_bc_objectAtAndAtPut():
     #   ^ self objectAt: 2.          yields the first literal (22)
     #   ^ self objectAt: 2 put: 3.   changes the first literal to 3
     #   ^ self objectAt: 2.          yields the new first literal (3)
-    prim_meth = model.W_CompiledMethod(space, header=1024)
+    prim_meth = model.W_PreSpurCompiledMethod(space, header=1024)
     prim_meth.setliterals(fakeliterals(space, 22))
     oal = fakeliterals(space, "objectAt:")
     oalp = fakeliterals(space, "objectAt:put:", 3)
@@ -992,7 +1019,7 @@ def test_objectsAsMethods():
 
     w_holderclass = bootstrap_class(0)
     w_class = bootstrap_class(0)
-    w_method = model.W_CompiledMethod(space, 1)
+    w_method = model.W_PreSpurCompiledMethod(space, 1)
     w_method.setbytes(str(bytearray([0x10, 0x11, 0x12, 0x8a, 0x83, 0x7c])))
     # "^ {selector. args. receiver}" push temps, pop 3 into array, return top
     w_method.argsize = 3
@@ -1025,3 +1052,16 @@ def test_objectsAsMethods():
     assert w_runwithin_args[1].size() == 1 # foo: has one argument
     assert w_runwithin_args[1].fetch(space, 0) == w_holderobject # receiver was used as argument
     assert w_runwithin_args[2] == w_holderobject
+
+class FakeSpurImage:
+    class FakeVersion:
+        is_spur = True
+    version = FakeVersion()
+
+def test_skip_callPrimitive_bytecode(space, interp):
+    interp.image = FakeSpurImage()
+    assert interp.image.version.is_spur, "test should pretend a spur image"
+    bytecodes = [139, 122, 123, 121] # callPrimitive (2 bytes args), ^true
+    # note that the primitive index bytes are the bytecodes for ^false and ^nil
+    result = interp.interpret_bc(bytecodes)
+    assert result.is_same_object(space.w_true)
