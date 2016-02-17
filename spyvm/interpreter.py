@@ -340,8 +340,9 @@ class Interpreter(object):
         # Since we don't know how many messages are called during this trace, we
         # just decrement by 1000th of the trace length (num of bytecodes).
         trace_length = jit.current_trace_length()
-        decr_by = max(int(trace_length // 1000), 1)
-        self.quick_check_for_interrupt(s_frame, decr_by)
+        decr_by = int(trace_length // 1000)
+        if decr_by > 0:
+            self.quick_check_for_interrupt(s_frame, decr_by)
 
     def quick_check_for_interrupt(self, s_frame, dec=1):
         if not self.interrupts:

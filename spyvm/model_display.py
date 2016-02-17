@@ -64,7 +64,7 @@ class W_DisplayBitmap(model.W_AbstractObjectWithClassReference):
         return self._real_depth_buffer[n]
 
     def setword(self, n, word):
-        self._real_depth_buffer[n] = rffi.cast(rffi.UINT, word)
+        self._real_depth_buffer[n] = word
         if self.pixelbuffer_words > 0:
             self.set_pixelbuffer_word(n, word)
 
