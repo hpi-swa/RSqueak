@@ -1,4 +1,4 @@
-from rpython.rlib import rsocket, jit, rarithmetic, objectmodel
+from rpython.rlib import rsocket, _rsocket_rffi, jit, rarithmetic, objectmodel
 from spyvm import model, error
 from spyvm.plugins.plugin import Plugin
 import errno
@@ -20,10 +20,11 @@ class SocketPluginClass(Plugin):
         Plugin.__init__(self)
         self.last_lookup = Cell(None)
 
-    # def call(self, name, interp, s_frame, argcount, w_method):
-    #     args_w = s_frame.peek_n(argcount)
-    #     Plugin.call(self, name, interp, s_frame, argcount, w_method)
-    #     print name, args_w, s_frame.peek(0)
+    def call(self, name, interp, s_frame, argcount, w_method):
+        args_w = s_frame.peek_n(argcount)
+        print ">>> Called >>%s(%s)" % (name, str(args_w))
+        Plugin.call(self, name, interp, s_frame, argcount, w_method)
+        print "<<< Return >>%s(%s) = %s" % (name, str(args_w), str(s_frame.peek(0)))
 
     def set_last_lookup(self, v):
         self.last_lookup.set(v)
@@ -122,6 +123,7 @@ def ensure_socket(w_socket):
 def primitiveResolverGetNameInfoHostResult(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveResolverGetNameInfoHostResult"
         raise error.PrimitiveFailedError
@@ -130,6 +132,7 @@ def primitiveResolverGetNameInfoHostResult(interp, s_frame, argcount):
 def primitiveResolverGetNameInfoServiceSize(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveResolverGetNameInfoServiceSize"
         raise error.PrimitiveFailedError
@@ -138,6 +141,7 @@ def primitiveResolverGetNameInfoServiceSize(interp, s_frame, argcount):
 def primitiveResolverGetNameInfoServiceResult(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveResolverGetNameInfoServiceResult"
         raise error.PrimitiveFailedError
@@ -146,6 +150,7 @@ def primitiveResolverGetNameInfoServiceResult(interp, s_frame, argcount):
 def primitiveResolverStartAddressLookup(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveResolverStartAddressLookup"
         raise error.PrimitiveFailedError
@@ -154,6 +159,7 @@ def primitiveResolverStartAddressLookup(interp, s_frame, argcount):
 def primitiveResolverGetAddressInfo(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveResolverGetAddressInfo"
         raise error.PrimitiveFailedError
@@ -162,6 +168,7 @@ def primitiveResolverGetAddressInfo(interp, s_frame, argcount):
 def primitiveResolverError(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveResolverError"
         raise error.PrimitiveFailedError
@@ -170,6 +177,7 @@ def primitiveResolverError(interp, s_frame, argcount):
 def primitiveResolverGetAddressInfoSize(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveResolverGetAddressInfoSize"
         raise error.PrimitiveFailedError
@@ -178,6 +186,7 @@ def primitiveResolverGetAddressInfoSize(interp, s_frame, argcount):
 def primitiveResolverHostNameSize(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveResolverHostNameSize"
         raise error.PrimitiveFailedError
@@ -186,6 +195,7 @@ def primitiveResolverHostNameSize(interp, s_frame, argcount):
 def primitiveResolverAbortLookup(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveResolverAbortLookup"
         raise error.PrimitiveFailedError
@@ -194,6 +204,7 @@ def primitiveResolverAbortLookup(interp, s_frame, argcount):
 def primitiveResolverGetAddressInfoType(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveResolverGetAddressInfoType"
         raise error.PrimitiveFailedError
@@ -202,6 +213,7 @@ def primitiveResolverGetAddressInfoType(interp, s_frame, argcount):
 def primitiveResolverAddressLookupResult(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveResolverAddressLookupResult"
         raise error.PrimitiveFailedError
@@ -210,6 +222,7 @@ def primitiveResolverAddressLookupResult(interp, s_frame, argcount):
 def primitiveResolverGetAddressInfoFamily(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveResolverGetAddressInfoFamily"
         raise error.PrimitiveFailedError
@@ -218,6 +231,7 @@ def primitiveResolverGetAddressInfoFamily(interp, s_frame, argcount):
 def primitiveResolverGetAddressInfoNext(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveResolverGetAddressInfoNext"
         raise error.PrimitiveFailedError
@@ -226,6 +240,7 @@ def primitiveResolverGetAddressInfoNext(interp, s_frame, argcount):
 def primitiveResolverGetNameInfo(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveResolverGetNameInfo"
         raise error.PrimitiveFailedError
@@ -234,6 +249,7 @@ def primitiveResolverGetNameInfo(interp, s_frame, argcount):
 def primitiveResolverGetNameInfoHostSize(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveResolverGetNameInfoHostSize"
         raise error.PrimitiveFailedError
@@ -242,6 +258,7 @@ def primitiveResolverGetNameInfoHostSize(interp, s_frame, argcount):
 def primitiveResolverHostNameResult(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveResolverHostNameResult"
         raise error.PrimitiveFailedError
@@ -250,6 +267,7 @@ def primitiveResolverHostNameResult(interp, s_frame, argcount):
 def primitiveResolverGetAddressInfoResult(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveResolverGetAddressInfoResult"
         raise error.PrimitiveFailedError
@@ -258,6 +276,7 @@ def primitiveResolverGetAddressInfoResult(interp, s_frame, argcount):
 def primitiveResolverLocalAddress(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveResolverLocalAddress"
         raise error.PrimitiveFailedError
@@ -266,6 +285,7 @@ def primitiveResolverLocalAddress(interp, s_frame, argcount):
 def primitiveResolverGetAddressInfoProtocol(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveResolverGetAddressInfoProtocol"
         raise error.PrimitiveFailedError
@@ -279,6 +299,7 @@ def primitiveHasSocketAccess(interp, s_frame, w_rcvr):
 def primitiveSocketAddressSetPort(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveSocketAddressSetPort"
         raise error.PrimitiveFailedError
@@ -287,6 +308,7 @@ def primitiveSocketAddressSetPort(interp, s_frame, argcount):
 def primitiveSocketAddressGetPort(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveSocketAddressGetPort"
         raise error.PrimitiveFailedError
@@ -295,6 +317,7 @@ def primitiveSocketAddressGetPort(interp, s_frame, argcount):
 def primitiveSocketReceiveUDPDataBufCount(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveSocketReceiveUDPDataBufCount"
         raise error.PrimitiveFailedError
@@ -303,6 +326,7 @@ def primitiveSocketReceiveUDPDataBufCount(interp, s_frame, argcount):
 def primitiveSocketSetOptions(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveSocketSetOptions"
         raise error.PrimitiveFailedError
@@ -311,6 +335,7 @@ def primitiveSocketSetOptions(interp, s_frame, argcount):
 def primitiveSocketRemoteAddressSize(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveSocketRemoteAddressSize"
         raise error.PrimitiveFailedError
@@ -319,6 +344,7 @@ def primitiveSocketRemoteAddressSize(interp, s_frame, argcount):
 def primitiveSocketConnectTo(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveSocketConnectTo"
         raise error.PrimitiveFailedError
@@ -327,6 +353,7 @@ def primitiveSocketConnectTo(interp, s_frame, argcount):
 def primitiveSocketLocalAddressSize(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveSocketLocalAddressSize"
         raise error.PrimitiveFailedError
@@ -335,6 +362,7 @@ def primitiveSocketLocalAddressSize(interp, s_frame, argcount):
 def primitiveSocketRemoteAddress(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveSocketRemoteAddress"
         raise error.PrimitiveFailedError
@@ -343,6 +371,7 @@ def primitiveSocketRemoteAddress(interp, s_frame, argcount):
 def primitiveSocketLocalPort(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveSocketLocalPort"
         raise error.PrimitiveFailedError
@@ -351,6 +380,7 @@ def primitiveSocketLocalPort(interp, s_frame, argcount):
 def primitiveSocketError(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveSocketError"
         raise error.PrimitiveFailedError
@@ -359,6 +389,7 @@ def primitiveSocketError(interp, s_frame, argcount):
 def primitiveSocketBindTo(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveSocketBindTo"
         raise error.PrimitiveFailedError
@@ -367,6 +398,7 @@ def primitiveSocketBindTo(interp, s_frame, argcount):
 def primitiveSocketAbortConnection(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveSocketAbortConnection"
         raise error.PrimitiveFailedError
@@ -375,6 +407,7 @@ def primitiveSocketAbortConnection(interp, s_frame, argcount):
 def primitiveSocketListenWithBacklog(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveSocketListenWithBacklog"
         raise error.PrimitiveFailedError
@@ -383,6 +416,7 @@ def primitiveSocketListenWithBacklog(interp, s_frame, argcount):
 def primitiveSocketGetOptions(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveSocketGetOptions"
         raise error.PrimitiveFailedError
@@ -391,6 +425,7 @@ def primitiveSocketGetOptions(interp, s_frame, argcount):
 def primitiveSocketSendUDPDataBufCount(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveSocketSendUDPDataBufCount"
         raise error.PrimitiveFailedError
@@ -399,6 +434,7 @@ def primitiveSocketSendUDPDataBufCount(interp, s_frame, argcount):
 def primitiveSocketLocalAddressResult(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveSocketLocalAddressResult"
         raise error.PrimitiveFailedError
@@ -407,6 +443,7 @@ def primitiveSocketLocalAddressResult(interp, s_frame, argcount):
 def primitiveSocketLocalAddress(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveSocketLocalAddress"
         raise error.PrimitiveFailedError
@@ -415,6 +452,7 @@ def primitiveSocketLocalAddress(interp, s_frame, argcount):
 def primitiveSocketListenWithOrWithoutBacklog(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveSocketListenWithOrWithoutBacklog"
         raise error.PrimitiveFailedError
@@ -423,6 +461,7 @@ def primitiveSocketListenWithOrWithoutBacklog(interp, s_frame, argcount):
 def primitiveSocketAccept3Semaphores(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveSocketAccept3Semaphores"
         raise error.PrimitiveFailedError
@@ -431,6 +470,7 @@ def primitiveSocketAccept3Semaphores(interp, s_frame, argcount):
 def primitiveSocketRemoteAddressResult(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveSocketRemoteAddressResult"
         raise error.PrimitiveFailedError
@@ -439,6 +479,7 @@ def primitiveSocketRemoteAddressResult(interp, s_frame, argcount):
 def primitiveSocketListenOnPortBacklogInterface(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveSocketListenOnPortBacklogInterface"
         raise error.PrimitiveFailedError
@@ -456,6 +497,7 @@ def primitiveSocketCloseConnection(interp, s_frame, w_rcvr, w_handle):
 def primitiveSocketRemotePort(interp, s_frame, argcount):
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
+        raise error.PrimitiveFailedError
     else:
         print "Missing primitive primitiveSocketRemotePort"
         raise error.PrimitiveFailedError

@@ -7,9 +7,11 @@ from rpython.rlib.rarithmetic import intmask, r_uint
 from rpython.rtyper.lltypesystem import lltype, rffi
 from .util import create_space, copy_to_module, cleanup_module, TestInterpreter, very_slow_test
 from .test_interpreter import run_with_faked_primitive_methods
+from .test_primitives import MockFrame, mock
 
 def setup_module():
     space = create_space(bootstrap = True)
+    space.set_system_attribute(constants.SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, "IMAGENAME")
     wrap = space.w
     bootstrap_class = space.bootstrap_class
     new_frame = space.make_frame
@@ -18,42 +20,12 @@ def setup_module():
 def teardown_module():
     cleanup_module(__name__)
 
-class MockFrame(model.W_PointersObject):
-    def __init__(self, space, stack):
-        self.w_class = space.w_BlockContext
-        size = 6 + len(stack) + 6
-        self._initialize_storage(space, size)
-        self.store_all(space, [None] * 6 + stack + [space.w_nil] * 6)
-        s_self = self.as_context_get_shadow(space)
-        s_self.reset_stack()
-        s_self.push_all(stack)
-        s_self.store_expected_argument_count(0)
-
-    def as_context_get_shadow(self, space):
-        if not isinstance(self.strategy, storage_contexts.ContextPartShadow):
-            self.strategy = storage_contexts.ContextPartShadow(space, self, self.size())
-            self.strategy.init_temps_and_stack()
-        return self.strategy
-
 IMAGENAME = "anImage.image"
-
-def mock(space, stack, context = None):
-    mapped_stack = [space.w(x) for x in stack]
-    if context is None:
-        frame = MockFrame(space, mapped_stack)
-    else:
-        frame = context
-        for i in range(len(stack)):
-            frame.as_context_get_shadow(space).push(stack[i])
-    interp = TestInterpreter(space)
-    interp.space._image_name.set(IMAGENAME)
-    return interp, frame, len(stack)
-
 
 def _prim(space, name, module, stack, context = None):
     interp, w_frame, argument_count = mock(space, stack, context)
     orig_stack = list(w_frame.as_context_get_shadow(space).stack())
-    prim_meth = model.W_CompiledMethod(space, 0, header=17045052)
+    prim_meth = model.W_PreSpurCompiledMethod(space, 0, header=17045052)
     prim_meth._primitive = primitives.EXTERNAL_CALL
     prim_meth.argsize = argument_count - 1
     descr = space.wrap_list([space.wrap_string(module), space.wrap_string(name)])
