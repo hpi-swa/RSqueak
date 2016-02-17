@@ -235,7 +235,7 @@ class ObjSpace(object):
     @specialize.argtype(1)
     def wrap_longlong(self, val):
         if is_valid_int(val):
-            return self.wap_int(val)
+            return self.wrap_int(val)
         elif isinstance(val, r_ulonglong):
             return self.wrap_ulonglong(val)
         elif isinstance(val, r_longlong):
