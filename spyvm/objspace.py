@@ -206,9 +206,8 @@ class ObjSpace(object):
             return model.W_LargePositiveInteger1Word(val)
 
     @jit.unroll_safe
-    def wrap_ulonglong(self, val):
-        assert isinstance(val, r_ulonglong) and not is_valid_int(val)
-        w_class = self.w_LargePositiveInteger
+    @specialize.argtype(1)
+    def wrap_xlonglong(self, val, w_class):
         inst_size = self._ulonglong_bytesize(val)
         w_result = w_class.as_class_get_shadow(self).new(inst_size)
         for i in range(inst_size):
@@ -216,12 +215,21 @@ class ObjSpace(object):
             w_result.setchar(i, chr(byte_value))
         return w_result
 
+    @specialize.argtype(1)
+    def wrap_ulonglong(self, val):
+        assert isinstance(val, r_ulonglong) and not is_valid_int(val)
+        w_class = self.w_LargePositiveInteger
+        return self.wrap_xlonglong(val, w_class)
+
+    @specialize.argtype(1)
     def wrap_nlonglong(self, val):
-        # Alas, we don't have the class ready
-        raise WrappingError
-        # assert isinstance(val, r_longlong) and not is_valid_int(val)
-        # assert val < 0 # or else we would be in wrap_ulonglong
-        # w_class = self.w_LargeNegativeInteger # not there
+        if self.w_LargeNegativeInteger is None:
+            raise WrappingError
+        assert isinstance(val, r_longlong) and not is_valid_int(val)
+        assert val < 0 # or else we would be in wrap_ulonglong
+        val = r_ulonglong(-val)
+        w_class = self.w_LargeNegativeInteger
+        return self.wrap_xlonglong(val, w_class)
 
     @jit.unroll_safe
     def _ulonglong_bytesize(self, val):
