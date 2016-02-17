@@ -1068,6 +1068,9 @@ def func(interp, s_frame, argcount, w_method):
     elif signature[0] == 'LargeIntegers':
         from spyvm.plugins.large_integer import LargeIntegerPlugin
         return LargeIntegerPlugin.call(signature[1], interp, s_frame, argcount, w_method)
+    elif signature[0] == 'MiscPrimitivePlugin':
+        from spyvm.plugins.misc import MiscPrimitivePlugin
+        return MiscPrimitivePlugin.call(signature[1], interp, s_frame, argcount, w_method)
     elif signature[0] == "SocketPlugin":
         from spyvm.plugins.socket import SocketPlugin
         return SocketPlugin.call(signature[1], interp, s_frame, argcount, w_method)
