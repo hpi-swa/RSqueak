@@ -1082,6 +1082,12 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         else:
             return "".join(self.bytes)
 
+    def getbytes(self):
+        if self.bytes is None:
+            return self.native_bytes.copy_bytes()
+        else:
+            return self.bytes
+
     def selector_string(self):
         return "#" + self.unwrap_string(None)
 
