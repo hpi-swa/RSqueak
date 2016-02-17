@@ -234,7 +234,7 @@ class ObjSpace(object):
     @jit.unroll_safe
     def _ulonglong_bytesize(self, val):
         assert val != 0
-        sz = 1
+        sz = 0
         while val != 0:
             sz += 1
             val = val >> 8
