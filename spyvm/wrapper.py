@@ -102,18 +102,25 @@ class ProcessWrapper(LinkWrapper):
     def is_active_process(self):
         return self.wrapped.is_same_object(scheduler(self.space).active_process())
 
-    def suspend(self, s_current_frame):
+    def suspend(self, s_current_frame, waiting_on=None):
         if self.is_active_process():
             if not self.space.suppress_process_switch.is_set():
+                # we cannot already be waiting for something when we're active
                 assert self.my_list().is_nil(self.space)
+                if waiting_on:
+                    self.store_my_list(waiting_on)
                 w_process = scheduler(self.space).pop_highest_priority_process()
                 self.deactivate(s_current_frame, put_to_sleep=False)
                 ProcessWrapper(self.space, w_process).activate()
         else:
+            if waiting_on:
+                self.store_my_list(waiting_on)
             if not self.my_list().is_nil(self.space):
                 process_list = ProcessListWrapper(self.space, self.my_list())
                 process_list.remove(self.wrapped)
                 self.store_my_list(self.space.w_nil)
+            else:
+                raise PrimitiveFailedError
 
 class LinkedListWrapper(Wrapper):
     first_link, store_first_link = make_getter_setter(0)
@@ -228,7 +235,7 @@ class SemaphoreWrapper(LinkedListWrapper):
             self.store_excess_signals(excess - 1)
         else:
             self.add_last_link(w_process)
-            ProcessWrapper(self.space, w_process).suspend(s_current_frame)
+            ProcessWrapper(self.space, w_process).suspend(s_current_frame, waiting_on=self.wrapped)
 
 
 class CriticalSectionWrapper(LinkedListWrapper):
@@ -267,7 +274,7 @@ class CriticalSectionWrapper(LinkedListWrapper):
         w_test_and_set_ok = self.test_and_set_owner(s_current_frame)
         if w_test_and_set_ok.is_nil(self.space):
             self.add_last_link(w_active_process)
-            ProcessWrapper(self.space, w_active_process).suspend(s_current_frame)
+            ProcessWrapper(self.space, w_active_process).suspend(s_current_frame, waiting_on=self.wrapped)
             # should not be reached
         return w_test_and_set_ok
 
