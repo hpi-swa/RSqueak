@@ -293,6 +293,18 @@ class W_SmallInteger(W_Object):
     def unwrap_float(self, space):
         return float(self.value)
 
+    def unwrap_char_as_byte(self, space):
+        # We do not implement the STRING_REPLACE primitive, but some code paths
+        # in Squeak rely on that primitive's munging of ByteArrays and
+        # ByteStrings. We are forgiving, so we also allow bytes extraced from
+        # ByteArrays to be unwrapped as characters and put into strings
+        from rpython.rlib.rarithmetic import int_between
+        value = self.value
+        if not int_between(0, value, 255):
+            raise error.UnwrappingError
+        else:
+            return chr(self.value)
+
     def guess_classname(self):
         return "SmallInteger"
 
