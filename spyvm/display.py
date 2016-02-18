@@ -1,7 +1,6 @@
 from rpython.rlib.rarithmetic import r_uint, intmask
 from rpython.rtyper.lltypesystem import lltype, rffi
 from rpython.rlib.runicode import unicode_encode_utf_8
-from rpython.rlib.rthread import start_new_thread
 from rpython.rlib import jit
 
 from rsdl import RSDL, RSDL_helper
@@ -43,21 +42,11 @@ class SqueakInterrupt(Exception):
     pass
 
 
-GlobalDisplay = [None]
-def periodic_display_update():
-    import time
-    display = GlobalDisplay[0]
-    while display is not None:
-        time.sleep(100)
-        display.flip()
-        display = GlobalDisplay[0]
-
-
 class SDLDisplay(object):
     _attrs_ = ["window", "title", "renderer", "screen_texture",
                "width", "height", "depth", "screen_surface", "has_surface",
                "mouse_position", "button", "key", "interrupt_key", "_defer_updates",
-               "_deferred_events", "bpp", "pitch", "_display_update_thread"]
+               "_deferred_events", "bpp", "pitch"]
 
     def __init__(self, title):
         self._init_sdl()
@@ -75,8 +64,6 @@ class SDLDisplay(object):
         self.width = 0
         self.height = 0
         self.depth = 32
-        GlobalDisplay[0] = self
-        self._display_update_thread = start_new_thread(periodic_display_update, ())
         self._deferred_events = []
         self._defer_updates = False
 
@@ -90,7 +77,6 @@ class SDLDisplay(object):
                 assert False
 
     def close(self):
-        GlobalDisplay[0] = None
         RSDL.Quit()
 
     def create_window_and_renderer(self, x, y, width, height):
@@ -386,7 +372,6 @@ class SDLDisplay(object):
                     return
                 elif c_type == RSDL.QUIT:
                     from spyvm.error import Exit
-                    self.close()
                     raise Exit("Window closed")
         finally:
             lltype.free(event, flavor='raw')

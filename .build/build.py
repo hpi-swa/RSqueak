@@ -5,7 +5,6 @@ import sys, os
 if __name__ == "__main__":
     if not any(arg.startswith("-O") for arg in sys.argv):
         sys.argv.append("--batch")
-        sys.argv.append("--thread")
         sys.argv.append("-Ojit")
     if not any(arg.startswith("--gcrootfinder") for arg in sys.argv):
         # default to shadowstack, so all platforms are created equal
