@@ -20,12 +20,6 @@ class SocketPluginClass(Plugin):
         Plugin.__init__(self)
         self.last_lookup = Cell(None)
 
-    def call(self, name, interp, s_frame, argcount, w_method):
-        args_w = s_frame.peek_n(argcount)
-        print ">>> Called >>%s(%s)" % (name, str(args_w))
-        Plugin.call(self, name, interp, s_frame, argcount, w_method)
-        print "<<< Return >>%s(%s) = %s" % (name, str(args_w), str(s_frame.peek(0)))
-
     def set_last_lookup(self, v):
         self.last_lookup.set(v)
 
@@ -125,7 +119,7 @@ def primitiveResolverGetNameInfoHostResult(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveResolverGetNameInfoHostResult"
+        print "Missing Socket primitive primitiveResolverGetNameInfoHostResult"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -134,7 +128,7 @@ def primitiveResolverGetNameInfoServiceSize(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveResolverGetNameInfoServiceSize"
+        print "Missing Socket primitive primitiveResolverGetNameInfoServiceSize"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -143,7 +137,7 @@ def primitiveResolverGetNameInfoServiceResult(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveResolverGetNameInfoServiceResult"
+        print "Missing Socket primitive primitiveResolverGetNameInfoServiceResult"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -152,7 +146,7 @@ def primitiveResolverStartAddressLookup(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveResolverStartAddressLookup"
+        print "Missing Socket primitive primitiveResolverStartAddressLookup"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -161,7 +155,7 @@ def primitiveResolverGetAddressInfo(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveResolverGetAddressInfo"
+        print "Missing Socket primitive primitiveResolverGetAddressInfo"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -170,7 +164,7 @@ def primitiveResolverError(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveResolverError"
+        print "Missing Socket primitive primitiveResolverError"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -179,7 +173,7 @@ def primitiveResolverGetAddressInfoSize(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveResolverGetAddressInfoSize"
+        print "Missing Socket primitive primitiveResolverGetAddressInfoSize"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -188,7 +182,7 @@ def primitiveResolverHostNameSize(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveResolverHostNameSize"
+        print "Missing Socket primitive primitiveResolverHostNameSize"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -197,7 +191,7 @@ def primitiveResolverAbortLookup(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveResolverAbortLookup"
+        print "Missing Socket primitive primitiveResolverAbortLookup"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -206,7 +200,7 @@ def primitiveResolverGetAddressInfoType(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveResolverGetAddressInfoType"
+        print "Missing Socket primitive primitiveResolverGetAddressInfoType"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -215,7 +209,7 @@ def primitiveResolverAddressLookupResult(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveResolverAddressLookupResult"
+        print "Missing Socket primitive primitiveResolverAddressLookupResult"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -224,7 +218,7 @@ def primitiveResolverGetAddressInfoFamily(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveResolverGetAddressInfoFamily"
+        print "Missing Socket primitive primitiveResolverGetAddressInfoFamily"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -233,7 +227,7 @@ def primitiveResolverGetAddressInfoNext(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveResolverGetAddressInfoNext"
+        print "Missing Socket primitive primitiveResolverGetAddressInfoNext"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -242,7 +236,7 @@ def primitiveResolverGetNameInfo(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveResolverGetNameInfo"
+        print "Missing Socket primitive primitiveResolverGetNameInfo"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -251,7 +245,7 @@ def primitiveResolverGetNameInfoHostSize(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveResolverGetNameInfoHostSize"
+        print "Missing Socket primitive primitiveResolverGetNameInfoHostSize"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -260,7 +254,7 @@ def primitiveResolverHostNameResult(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveResolverHostNameResult"
+        print "Missing Socket primitive primitiveResolverHostNameResult"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -269,7 +263,7 @@ def primitiveResolverGetAddressInfoResult(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveResolverGetAddressInfoResult"
+        print "Missing Socket primitive primitiveResolverGetAddressInfoResult"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -278,7 +272,7 @@ def primitiveResolverLocalAddress(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveResolverLocalAddress"
+        print "Missing Socket primitive primitiveResolverLocalAddress"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -287,7 +281,7 @@ def primitiveResolverGetAddressInfoProtocol(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveResolverGetAddressInfoProtocol"
+        print "Missing Socket primitive primitiveResolverGetAddressInfoProtocol"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=[object])
@@ -301,7 +295,7 @@ def primitiveSocketAddressSetPort(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveSocketAddressSetPort"
+        print "Missing Socket primitive primitiveSocketAddressSetPort"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -310,7 +304,7 @@ def primitiveSocketAddressGetPort(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveSocketAddressGetPort"
+        print "Missing Socket primitive primitiveSocketAddressGetPort"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -319,7 +313,7 @@ def primitiveSocketReceiveUDPDataBufCount(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveSocketReceiveUDPDataBufCount"
+        print "Missing Socket primitive primitiveSocketReceiveUDPDataBufCount"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -328,7 +322,7 @@ def primitiveSocketSetOptions(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveSocketSetOptions"
+        print "Missing Socket primitive primitiveSocketSetOptions"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -337,7 +331,7 @@ def primitiveSocketRemoteAddressSize(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveSocketRemoteAddressSize"
+        print "Missing Socket primitive primitiveSocketRemoteAddressSize"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -346,7 +340,7 @@ def primitiveSocketConnectTo(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveSocketConnectTo"
+        print "Missing Socket primitive primitiveSocketConnectTo"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -355,7 +349,7 @@ def primitiveSocketLocalAddressSize(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveSocketLocalAddressSize"
+        print "Missing Socket primitive primitiveSocketLocalAddressSize"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -364,7 +358,7 @@ def primitiveSocketRemoteAddress(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveSocketRemoteAddress"
+        print "Missing Socket primitive primitiveSocketRemoteAddress"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -373,7 +367,7 @@ def primitiveSocketLocalPort(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveSocketLocalPort"
+        print "Missing Socket primitive primitiveSocketLocalPort"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -382,7 +376,7 @@ def primitiveSocketError(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveSocketError"
+        print "Missing Socket primitive primitiveSocketError"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -391,7 +385,7 @@ def primitiveSocketBindTo(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveSocketBindTo"
+        print "Missing Socket primitive primitiveSocketBindTo"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -400,7 +394,7 @@ def primitiveSocketAbortConnection(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveSocketAbortConnection"
+        print "Missing Socket primitive primitiveSocketAbortConnection"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -409,7 +403,7 @@ def primitiveSocketListenWithBacklog(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveSocketListenWithBacklog"
+        print "Missing Socket primitive primitiveSocketListenWithBacklog"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -418,7 +412,7 @@ def primitiveSocketGetOptions(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveSocketGetOptions"
+        print "Missing Socket primitive primitiveSocketGetOptions"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -427,7 +421,7 @@ def primitiveSocketSendUDPDataBufCount(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveSocketSendUDPDataBufCount"
+        print "Missing Socket primitive primitiveSocketSendUDPDataBufCount"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -436,7 +430,7 @@ def primitiveSocketLocalAddressResult(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveSocketLocalAddressResult"
+        print "Missing Socket primitive primitiveSocketLocalAddressResult"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -445,7 +439,7 @@ def primitiveSocketLocalAddress(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveSocketLocalAddress"
+        print "Missing Socket primitive primitiveSocketLocalAddress"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -454,7 +448,7 @@ def primitiveSocketListenWithOrWithoutBacklog(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveSocketListenWithOrWithoutBacklog"
+        print "Missing Socket primitive primitiveSocketListenWithOrWithoutBacklog"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -463,7 +457,7 @@ def primitiveSocketAccept3Semaphores(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveSocketAccept3Semaphores"
+        print "Missing Socket primitive primitiveSocketAccept3Semaphores"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -472,7 +466,7 @@ def primitiveSocketRemoteAddressResult(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveSocketRemoteAddressResult"
+        print "Missing Socket primitive primitiveSocketRemoteAddressResult"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
@@ -481,7 +475,7 @@ def primitiveSocketListenOnPortBacklogInterface(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveSocketListenOnPortBacklogInterface"
+        print "Missing Socket primitive primitiveSocketListenOnPortBacklogInterface"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=[object, object])
@@ -499,7 +493,7 @@ def primitiveSocketRemotePort(interp, s_frame, argcount):
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
     else:
-        print "Missing primitive primitiveSocketRemotePort"
+        print "Missing Socket primitive primitiveSocketRemotePort"
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=[object, int, int, int, int, int, int, int])
