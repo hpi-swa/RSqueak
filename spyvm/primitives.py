@@ -999,6 +999,7 @@ def func(interp, s_frame, w_rcvr):
 @expose_primitive(QUIT, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
     from spyvm.error import Exit
+    interp.space.display().close()
     raise Exit('Quit-Primitive called')
 
 @expose_primitive(EXIT_TO_DEBUGGER, unwrap_spec=[object])
