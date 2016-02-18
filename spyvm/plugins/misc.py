@@ -16,10 +16,10 @@ def _bytesHashLoop(bytes, start):
                   & 16383) * 16384)) & r_uint(0x0FFFFFFF)
     return hash
 
-@MiscPrimitivePlugin.expose_primitive(unwrap_spec=[object, r_uint])
-def primitiveStringHash(interp, s_frame, w_rcvr, initialHash):
-    if not isinstance(w_rcvr, model.W_BytesObject):
+@MiscPrimitivePlugin.expose_primitive(unwrap_spec=[object, object, r_uint])
+def primitiveStringHash(interp, s_frame, w_rcvr, thestring, initialHash):
+    if not isinstance(thestring, model.W_BytesObject):
         raise PrimitiveFailedError
     hash = r_uint(initialHash) & r_uint(0xFFFFFFF)
-    bytes = w_rcvr.getbytes()
+    bytes = thestring.getbytes()
     return interp.space.wrap_int(_bytesHashLoop(bytes, hash))
