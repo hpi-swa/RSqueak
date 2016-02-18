@@ -111,6 +111,8 @@ class ClassShadow(AbstractCachingShadow):
             raise ClassShadowError("unknown format %d" % (format,))
 
     def store_spur_classformat(self, w_self, n0, w_val):
+        if w_val.is_same_object(self.space.w_nil):
+            return
         assert isinstance(w_val, model.W_SmallInteger)
         classformat = self.space.unwrap_int(w_val)
         # The classformat in Spur, as an integer value, is:
