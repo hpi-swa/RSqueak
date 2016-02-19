@@ -1681,7 +1681,10 @@ def func(interp, s_frame, w_rcvr):
 @expose_primitive(SUSPEND, unwrap_spec=[object], no_result=True, clean_stack=False)
 def func(interp, s_frame, w_rcvr):
     assert_class(interp, w_rcvr, interp.space.w_Process)
-    wrapper.ProcessWrapper(interp.space, w_rcvr).suspend(s_frame)
+    proc = wrapper.ProcessWrapper(interp.space, w_rcvr)
+    s_frame.pop() # remove receiver
+    s_frame.push(proc.my_list()) # leave my_list on stack as return value
+    proc.suspend(s_frame)
 
 @expose_primitive(YIELD, unwrap_spec=[object], no_result=True, clean_stack=False)
 def func(interp, s_frame, w_rcvr):
