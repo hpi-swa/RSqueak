@@ -3,6 +3,7 @@ from .util import read_image, copy_to_module, cleanup_module, very_slow_test
 
 def setup_module():
     space, interp, image, reader = read_image("bootstrapped.image")
+    space.headless.activate()
     w = space.w
     perform = interp.perform
     copy_to_module(locals(), __name__)
