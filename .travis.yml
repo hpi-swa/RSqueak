@@ -7,7 +7,7 @@ osx_image: xcode7.3
 notifications:
   irc:
     channels:
-      - 'ircs://chat.freenode.net/#rsqueak'
+      - chat.freenode.net/#rsqueak
     use_notice: true
     skip_join: true
 addons:
@@ -61,12 +61,14 @@ env:
     - LIBRARY_PATH=$LIBRARY_PATH:$HOME/SDL2/lib
     - C_INCLUDE_PATH=$C_INCLUDE_PATH:$HOME/SDL2/include
   matrix:
-    - BUILD_ARCH=32bit BUILD_TYPE=test
-    - BUILD_ARCH=32bit BUILD_TYPE=build
-    - BUILD_ARCH=lldebug BUILD_TYPE=build
-    # Arm needs sudo, for sbuild and scratchbox2 packages.
-    # - BUILD_ARCH=armv6 BUILD_TYPE=build SB2="$PWD/raspbian_arm" SB2NAME="rasp"
-    # - BUILD_ARCH=armv7 BUILD_TYPE=build
+    fast_finish: true
+    env:
+      - BUILD_ARCH=32bit BUILD_TYPE=test
+      - BUILD_ARCH=32bit BUILD_TYPE=build
+      - BUILD_ARCH=lldebug BUILD_TYPE=build
+      # Arm needs sudo, for sbuild and scratchbox2 packages.
+      # - BUILD_ARCH=armv6 BUILD_TYPE=build SB2="$PWD/raspbian_arm" SB2NAME="rasp"
+      # - BUILD_ARCH=armv7 BUILD_TYPE=build
 install:
   - .travis/install_requirements.sh
   - .travis/setup_arm.sh
