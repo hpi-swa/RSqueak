@@ -408,11 +408,12 @@ class Interpreter(object):
         except ReturnFromTopLevel, e:
             if not self.space.headless.is_set():
                 w_cannotReturn = self.space.special_object("w_cannotReturn")
-                s_context = self.create_toplevel_context(
-                    e.s_current_frame.w_self(),
-                    w_selector=w_cannotReturn,
-                    w_arguments=[e.object])
-                return self.loop(s_context.w_self())
+                if w_cannotReturn is not None:
+                    s_context = self.create_toplevel_context(
+                        e.s_current_frame.w_self(),
+                        w_selector=w_cannotReturn,
+                        w_arguments=[e.object])
+                    return self.loop(s_context.w_self())
             return e.object
 
     def perform(self, w_receiver, selector="", w_selector=None, w_arguments=[]):

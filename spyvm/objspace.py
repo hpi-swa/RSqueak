@@ -5,7 +5,7 @@ from spyvm.util.version import Version
 from spyvm.error import UnwrappingError, WrappingError
 from spyvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX
 from rpython.rlib import jit, rpath
-from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin
+from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin, we_are_translated
 from rpython.rlib.rarithmetic import intmask, r_uint, int_between, r_longlong, r_ulonglong, is_valid_int
 
 class ConstantMixin(object):
@@ -178,7 +178,7 @@ class ObjSpace(object):
     @specialize.argtype(1)
     def wrap_int(self, val):
         if isinstance(val, r_longlong) and not is_valid_int(val):
-            if val > 0 and r_ulonglong(val) < r_uint(constants.U_MAXINT):
+            if val > 0 and val <= r_longlong(constants.U_MAXINT):
                 return self.wrap_positive_32bit_int(intmask(val))
             else:
                 raise WrappingError
@@ -206,33 +206,19 @@ class ObjSpace(object):
             return model.W_LargePositiveInteger1Word(val)
 
     @jit.unroll_safe
-    @specialize.argtype(1)
-    def wrap_xlonglong(self, val, w_class):
-        inst_size = self._ulonglong_bytesize(val)
+    @specialize.arg(2)
+    def wrap_large_number(self, val, w_class):
+        # import pdb; pdb.set_trace()
+        assert isinstance(val, r_ulonglong)
+        inst_size = self._number_bytesize(val)
         w_result = w_class.as_class_get_shadow(self).new(inst_size)
         for i in range(inst_size):
             byte_value = (val >> (i * 8)) & 255
             w_result.setchar(i, chr(byte_value))
         return w_result
 
-    @specialize.argtype(1)
-    def wrap_ulonglong(self, val):
-        assert isinstance(val, r_ulonglong) and not is_valid_int(val)
-        w_class = self.w_LargePositiveInteger
-        return self.wrap_xlonglong(val, w_class)
-
-    @specialize.argtype(1)
-    def wrap_nlonglong(self, val):
-        if self.w_LargeNegativeInteger is None:
-            raise WrappingError
-        assert isinstance(val, r_longlong) and not is_valid_int(val)
-        assert val < 0 # or else we would be in wrap_ulonglong
-        val = r_ulonglong(-val)
-        w_class = self.w_LargeNegativeInteger
-        return self.wrap_xlonglong(val, w_class)
-
     @jit.unroll_safe
-    def _ulonglong_bytesize(self, val):
+    def _number_bytesize(self, val):
         assert val != 0
         sz = 0
         while val != 0:
@@ -241,17 +227,58 @@ class ObjSpace(object):
         return sz
 
     @specialize.argtype(1)
+    def wrap_ulonglong(self, val):
+        assert val > 0 and not is_valid_int(val)
+        r_val = r_ulonglong(val)
+        w_class = self.w_LargePositiveInteger
+        return self.wrap_large_number(r_val, w_class)
+
+    @specialize.argtype(1)
+    def wrap_nlonglong(self, val):
+        if self.w_LargeNegativeInteger is None:
+            raise WrappingError
+        assert val < 0 and not is_valid_int(val)
+        try:
+            r_val = r_ulonglong(-val)
+        except OverflowError:
+            # this is a negative max-bit r_longlong, mask by simple coercion
+            r_val = r_ulonglong(val)
+        w_class = self.w_LargeNegativeInteger
+        return self.wrap_large_number(r_val, w_class)
+
+    def wrap_long_untranslated(self, val):
+        "NOT_RPYTHON"
+        if val > 0:
+            w_class = self.w_LargePositiveInteger
+        elif  val < 0:
+            w_class = self.w_LargeNegativeInteger
+            val = -val
+        else:
+            raise WrappingError
+        inst_size = self._number_bytesize(val)
+        w_result = w_class.as_class_get_shadow(self).new(inst_size)
+        for i in range(inst_size):
+            byte_value = (val >> (i * 8)) & 255
+            w_result.setchar(i, chr(byte_value))
+        return w_result
+
+    @specialize.argtype(1)
     def wrap_longlong(self, val):
-        if is_valid_int(val):
-            return self.wrap_int(val)
-        elif isinstance(val, r_ulonglong):
-            return self.wrap_ulonglong(val)
-        elif isinstance(val, r_longlong):
-            if val > 0:
-                return self.wrap_ulonglong(r_ulonglong(val))
-            elif  val < 0:
-                return self.wrap_nlonglong(val)
-        raise WrappingError
+        if not we_are_translated():
+            "Tests only"
+            if isinstance(val, long) and not isinstance(val, r_longlong):
+                return self.wrap_long_untranslated(val)
+
+        if not is_valid_int(val):
+            if isinstance(val, r_ulonglong):
+                return self.wrap_ulonglong(val)
+            elif isinstance(val, r_longlong):
+                if val > 0 and not val <= r_longlong(constants.U_MAXINT):
+                    return self.wrap_ulonglong(val)
+                elif  val < 0:
+                    return self.wrap_nlonglong(val)
+        # handles the rest and raises if necessary
+        return self.wrap_int(val)
 
     def wrap_float(self, i):
         return model.W_Float(i)

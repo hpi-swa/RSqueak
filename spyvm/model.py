@@ -190,6 +190,10 @@ class W_Object(object):
     def unwrap_longlong(self, space):
         raise error.UnwrappingError("Got unexpected class unwrap_longlong")
 
+    def unwrap_long_untranslated(self, space):
+        return self.unwrap_longlong(space)
+
+
     def unwrap_char_as_byte(self, space):
         raise error.UnwrappingError
 
@@ -1082,7 +1086,9 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         if self.has_class() and self.getclass(None).has_space():
             if self.getclass(None).space().omit_printing_raw_bytes.is_set():
                 return "<omitted>"
-        return "'%s'" % self.unwrap_string(None).replace('\r', '\n')
+        return "'%s'" % ''.join([\
+            char if ord(char) < 128 else (r'\x%s' % hex(ord(char))[2:]) for char in \
+            (self.unwrap_string(None).replace('\r', '\n'))])
 
     def unwrap_string(self, space):
         return self._pure_as_string(self.version)
@@ -1135,20 +1141,33 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
 
     @jit.unroll_safe
     def unwrap_longlong(self, space):
-        # TODO: Completely untested! This failed translation bigtime...
-        # XXX Probably we want to allow all subclasses
-        # if not self.getclass(space).is_same_object(space.w_LargePositiveInteger):
-        #     raise error.UnwrappingError("Failed to convert bytes to word")
         if self.size() > 8:
             raise error.UnwrappingError("Too large to convert bytes to word")
         word = r_longlong(0)
         for i in range(self.size()):
-            word += r_longlong(ord(self.getchar(i))) << 8*i
+            try:
+                word += r_longlong(ord(self.getchar(i))) << 8*i
+            except OverflowError:
+                raise error.UnwrappingError("Too large to convert bytes to word")
         if (space.w_LargeNegativeInteger is not None and
             self.getclass(space).is_same_object(space.w_LargeNegativeInteger)):
             return -word
         else:
             return word
+
+    def unwrap_long_untranslated(self, space):
+        "NOT_RPYTHON"
+        if not we_are_translated():
+            if self.size >= 8:
+                word = 0
+                for i in range(self.size()):
+                    word += ord(self.getchar(i)) << 8*i
+                if (space.w_LargeNegativeInteger is not None and
+                    self.getclass(space).is_same_object(space.w_LargeNegativeInteger)):
+                    return -word
+                else:
+                    return word
+        return self.unwrap_longlong(space)
 
     def is_array_object(self):
         return True

@@ -7,7 +7,7 @@ osx_image: xcode7.3
 notifications:
   irc:
     channels:
-      - 'ircs://chat.freenode.net/#rsqueak'
+      - chat.freenode.net/#rsqueak
     use_notice: true
     skip_join: true
 addons:
@@ -67,6 +67,8 @@ env:
     # Arm needs sudo, for sbuild and scratchbox2 packages.
     # - BUILD_ARCH=armv6 BUILD_TYPE=build SB2="$PWD/raspbian_arm" SB2NAME="rasp"
     # - BUILD_ARCH=armv7 BUILD_TYPE=build
+matrix:
+  fast_finish: true
 install:
   - .travis/install_requirements.sh
   - .travis/setup_arm.sh
