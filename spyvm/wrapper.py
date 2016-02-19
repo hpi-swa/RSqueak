@@ -157,6 +157,8 @@ class LinkedListWrapper(Wrapper):
         # fine.
         if self.first_link().is_same_object(w_link):
             self.remove_first_link_of_list()
+        elif self.first_link().is_nil(self.space):
+            return
         else:
             current = LinkWrapper(self.space, self.first_link())
             w_next = current.next_link()
