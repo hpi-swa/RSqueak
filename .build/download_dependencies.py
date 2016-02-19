@@ -73,7 +73,7 @@ elif "64bit" in platform.architecture()[0] and "linux" in sys.platform:
             os.environ[f] = "-m32"
         try:
             os.chdir(directory)
-            prefix = os.path.abspath(cp.get("Windows", "SDL"))
+            prefix = os.path.abspath(cp.get("Linux", "SDL32bit"))
             retval = os.system("./configure --prefix=%s --build=i686-pc-linux-gnu >../sdl2build.log 2>&1" % prefix)
             retval |= os.system("make >> ../sdl2build.log 2>&1")
             retval |= os.system("make install >> ../sdl2build.log 2>&1")
