@@ -127,6 +127,10 @@ class TestInterpreter(interpreter.Interpreter):
 
 class BootstrappedObjSpace(objspace.ObjSpace):
 
+    def __init__(self):
+        objspace.ObjSpace.__init__(self)
+        self.headless.activate()
+
     def setup(self):
         self.set_system_attribute(constants.SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, "BootstrappedImage")
         self.image_loaded.activate()
