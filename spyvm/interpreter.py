@@ -201,6 +201,15 @@ class Interpreter(object):
                 s_context = self.unwind_context_chain(ret.s_current_context, ret.s_target_context, ret.w_value)
             except MetaPrimFailed, e:
                 s_context = self.unwind_primitive_simulation(e.s_frame, e.error_code)
+            except ReturnFromTopLevel, e:
+                if not self.space.headless.is_set():
+                    w_cannotReturn = self.space.special_object("w_cannotReturn")
+                    s_context = self.create_toplevel_context(
+                        s_context.w_self(),
+                        w_selector=w_cannotReturn,
+                        w_arguments=[e.object])
+                else:
+                    raise e
 
     # This is a wrapper around loop_bytecodes that cleanly enters/leaves the frame,
     # handles the stack overflow protection mechanism and handles/dispatches Returns.

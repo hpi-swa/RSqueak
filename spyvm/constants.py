@@ -157,6 +157,7 @@ objects_in_special_object_table = {
     "interrupt_semaphore" : SO_USER_INTERRUPT_SEMAPHORE,
     "timerSemaphore" : SO_TIMER_SEMAPHORE,
     "runWithIn" : SO_RUN_WITH_IN,
+    "cannotReturn" : SO_CANNOT_RETURN,
 }
 
 LONG_BIT = 32
