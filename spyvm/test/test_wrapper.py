@@ -61,8 +61,9 @@ def test_linked_list():
     linkedlist.add_last_link(w_last)
     assert linkedlist.first_link() is w_first
     assert linkedlist.last_link() is w_last
-    py.test.raises(WrapperException, linkedlist.remove, space.w_nil)
+    assert linkedlist.remove(space.w_nil) is None
     linkedlist.remove(w_first)
+    assert linkedlist.remove(w_first) is None
     assert linkedlist.first_link() is w_last
     linkedlist.store_first_link(w_first)
     wrapper.LinkWrapper(space, w_first).store_next_link(w_last)
