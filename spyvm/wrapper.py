@@ -151,9 +151,12 @@ class LinkedListWrapper(Wrapper):
         return w_first
 
     def remove(self, w_link):
+        # It is perfectly fine that this does not fail if the w_link is not in
+        # the list. That just means we ran suspend more than once, for example,
+        # or we are waiting on something and called suspend. Both things are
+        # fine.
         if self.first_link().is_same_object(w_link):
             self.remove_first_link_of_list()
-            return
         else:
             current = LinkWrapper(self.space, self.first_link())
             w_next = current.next_link()
@@ -167,7 +170,6 @@ class LinkedListWrapper(Wrapper):
                     return
                 current = LinkWrapper(self.space, w_next)
                 w_next = current.next_link()
-        raise WrapperException("Could not find link")
 
 class AssociationWrapper(Wrapper):
     key = make_getter(0)
