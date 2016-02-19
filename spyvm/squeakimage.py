@@ -171,7 +171,7 @@ class BaseReaderStrategy(object):
         self.filledin_weakobjects = 0
 
     def log_progress(self, progress, char):
-        if progress % 1000 == 0:
+        if progress % 5000 == 0:
             os.write(2, char)
 
     def continue_read_header(self):

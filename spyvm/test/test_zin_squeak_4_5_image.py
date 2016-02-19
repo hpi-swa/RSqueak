@@ -1,6 +1,6 @@
 import operator, sys
 from spyvm import model
-from .util import read_image, copy_to_module, cleanup_module, slow_test, very_slow_test
+from .util import read_image, copy_to_module, cleanup_module, slow_test, very_slow_test, skip
 
 # The tests are quick, but loading the big image takes time.
 pytestmark = slow_test
@@ -161,6 +161,7 @@ def test_contextOn_do_():
     assert s.w_method().primitive() == 199
     assert s.s_sender() == None
 
+@skip('Hangs')
 def test_semaphore():
     w_semaphore_cls = space.objtable["w_timerSemaphore"].getclass(space)
     w_sema = image.find_symbol(space, reader, "Semaphore")

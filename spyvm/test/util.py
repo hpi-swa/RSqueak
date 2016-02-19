@@ -12,6 +12,10 @@ slow_test = py.test.mark.skipif('not config.getvalue("execute-quick-tests")',
 very_slow_test = py.test.mark.skipif('not config.getvalue("execute-slow-tests")',
                         reason="Very slow tests are being skipped. Add -S|--slow to execute all tests.")
 
+# Skip unconditionally
+def skip(reason=""):
+    return py.test.mark.skipif('True', reason=reason)
+
 # Most tests don't need a bootstrapped objspace. Those that do, indicate so explicitely.
 # This way, as many tests as possible use the real, not-bootstrapped ObjSpace.
 bootstrap_by_default = False
@@ -302,28 +306,37 @@ class BootstrappedObjSpace(objspace.ObjSpace):
 
     def w(self, any):
         from rpython.rlib.rarithmetic import r_longlong
+        from rpython.rlib.rbigint import rbigint
 
-        if any is None: return self.w_nil
-        if isinstance(any, model.W_Object): return any
-        if isinstance(any, str):
+        def looooong(val):
+            try:
+                return r_longlong(val)
+            except OverflowError:
+                return val
+        if False: pass
+        elif any is None: return self.w_nil
+        elif isinstance(any, model.W_Object): return any
+        elif isinstance(any, long): return self.wrap_longlong(looooong(any))
+        elif isinstance(any, bool): return self.wrap_bool(any)
+        # elif isinstance(any, int): return self.wrap_int(any)
+        elif isinstance(any, int): return self.wrap_longlong(any)
+        elif isinstance(any, float): return self.wrap_float(any)
+        elif isinstance(any, list): return self.wrap_list(any)
+        elif isinstance(any, str):
             # assume never have strings of length 1
             if len(any) == 1:
                 return self.wrap_char(any)
             else:
                 return self.wrap_string(any)
-        if isinstance(any, long): return self.wrap_longlong(r_longlong(any))
-        if isinstance(any, bool): return self.wrap_bool(any)
-        if isinstance(any, int): return self.wrap_int(any)
-        if isinstance(any, float): return self.wrap_float(any)
-        if isinstance(any, list): return self.wrap_list(any)
-        raise Exception("Cannot wrap %r" % any)
+        else:
+            raise Exception("Cannot wrap %r" % any)
 
     def initialize_class(self, w_class, interp):
         initialize_symbol = self.find_symbol_in_methoddict("initialize",
                             w_class.class_shadow(self))
         interp.perform(w_class, w_selector=initialize_symbol)
 
-    def find_symbol_in_methoddict(self, string, cls):
+    def find_symbol_in_methoddict(self, string, cls, fail=True):
         if isinstance(cls, model.W_PointersObject):
             cls = cls.as_class_get_shadow(self)
         s_methoddict = cls.s_methoddict()
@@ -332,7 +345,10 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         for each in methoddict_w.keys():
             if each.unwrap_string(None) == string:
                 return each
-        assert False, 'Using image without %s method in class %s.' % (string, cls.name)
+        if fail:
+            assert False, 'Using image without %s method in class %s.' % (string, cls.name)
+        else:
+            return None
 
     # ============ Helpers for executing ============
 
