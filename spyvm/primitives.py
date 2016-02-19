@@ -1685,26 +1685,26 @@ def func(interp, s_frame, w_rcvr):
 
 @expose_primitive(YIELD, unwrap_spec=[object], no_result=True, clean_stack=False)
 def func(interp, s_frame, w_rcvr):
-    space = interp.space
-    scheduler = wrapper.SchedulerWrapper(space, w_rcvr)
-    w_process = scheduler.active_process()
-    process = wrapper.ProcessWrapper(space, w_process)
-    priority = process.priority()
-    process_list = scheduler.get_process_list(priority)
-    if not process_list.is_empty_list():
-        next_process = wrapper.ProcessWrapper(space, process_list.first_link())
-        process.deactivate(s_frame, put_to_sleep=True)
-        next_process.activate()
+    # we leave the rcvr on the stack, so it is there even if we resume another
+    # process when yielding
+    w_process = wrapper.SchedulerWrapper(interp.space, w_rcvr).active_process()
+    wrapper.ProcessWrapper(interp.space, w_process).yield_(s_frame)
 
 @expose_primitive(EXIT_CRITICAL_SECTION, unwrap_spec=[object], clean_stack=False, no_result=True)
 def func(interp, s_frame, w_rcvr):
+    # we leave the rcvr on the stack, so it is there even if we resume another
+    # process immediately when exiting the critical section
     wrapper.CriticalSectionWrapper(interp.space, w_rcvr).exit(s_frame)
 
-@expose_primitive(ENTER_CRITICAL_SECTION, unwrap_spec=[object], clean_stack=False, no_result=False)
+@expose_primitive(ENTER_CRITICAL_SECTION, unwrap_spec=[object], clean_stack=False, no_result=True)
 def func(interp, s_frame, w_rcvr):
+    assert s_frame.pop() is w_rcvr
+    # we take pop the receiver and push the return value of this primitive
+    # inside the wrapper code, so it is there regardless of if we have to wait
+    # or not
     return wrapper.CriticalSectionWrapper(interp.space, w_rcvr).enter(s_frame)
 
-@expose_primitive(TEST_AND_SET_OWNERSHIP_OF_CRITICAL_SECTION, unwrap_spec=[object], clean_stack=False, no_result=False)
+@expose_primitive(TEST_AND_SET_OWNERSHIP_OF_CRITICAL_SECTION, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
     return wrapper.CriticalSectionWrapper(interp.space, w_rcvr).test_and_set_owner(s_frame)
 

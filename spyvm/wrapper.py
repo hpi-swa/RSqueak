@@ -69,23 +69,21 @@ class ProcessWrapper(LinkWrapper):
         sched = scheduler(self.space)
         priority = self.priority()
         process_list = sched.get_process_list(priority)
-        process_list.add_process(self.wrapped)
+        process_list.add_last_link(self.wrapped)
 
-    def activate(self):
+    def transfer_to_self_from(self, s_old_frame):
         from spyvm.interpreter import ProcessSwitch
         assert not self.is_active_process()
+        new_proc = self.wrapped
         sched = scheduler(self.space)
-        sched.store_active_process(self.wrapped)
-        w_frame = self.suspended_context()
-        self.store_suspended_context(self.space.w_nil)
+        old_proc = ProcessWrapper(self.space, sched.active_process())
+        sched.store_active_process(new_proc)
         self.store_my_list(self.space.w_nil)
-        assert isinstance(w_frame, model.W_PointersObject)
-        raise ProcessSwitch(w_frame.as_context_get_shadow(self.space))
-
-    def deactivate(self, s_current_frame, put_to_sleep=True):
-        if put_to_sleep:
-            self.put_to_sleep()
-        self.store_suspended_context(s_current_frame.w_self())
+        old_proc.store_suspended_context(s_old_frame.w_self())
+        w_new_active_context = self.suspended_context()
+        self.store_suspended_context(self.space.w_nil)
+        assert isinstance(w_new_active_context, model.W_PointersObject)
+        raise ProcessSwitch(w_new_active_context.as_context_get_shadow(self.space))
 
     def resume(self, s_current_frame):
         sched = scheduler(self.space)
@@ -94,33 +92,35 @@ class ProcessWrapper(LinkWrapper):
         priority = self.priority()
         if priority > active_priority:
             if not self.space.suppress_process_switch.is_set():
-                active_process.deactivate(s_current_frame)
-                self.activate()
+                active_process.put_to_sleep()
+                self.transfer_to_self_from(s_current_frame)
         else:
             self.put_to_sleep()
 
     def is_active_process(self):
         return self.wrapped.is_same_object(scheduler(self.space).active_process())
 
-    def suspend(self, s_current_frame, waiting_on=None):
+    def suspend(self, s_current_frame):
         if self.is_active_process():
             if not self.space.suppress_process_switch.is_set():
-                # we cannot already be waiting for something when we're active
-                assert self.my_list().is_nil(self.space)
-                if waiting_on:
-                    self.store_my_list(waiting_on)
-                w_process = scheduler(self.space).pop_highest_priority_process()
-                self.deactivate(s_current_frame, put_to_sleep=False)
-                ProcessWrapper(self.space, w_process).activate()
+                new_proc = scheduler(self.space).wake_highest_priority_process()
+                new_proc.transfer_to_self_from(s_current_frame)
         else:
-            if waiting_on:
-                self.store_my_list(waiting_on)
-            if not self.my_list().is_nil(self.space):
-                process_list = ProcessListWrapper(self.space, self.my_list())
-                process_list.remove(self.wrapped)
-                self.store_my_list(self.space.w_nil)
-            else:
+            w_my_list = self.my_list()
+            if self.my_list().is_nil(self.space):
                 raise PrimitiveFailedError
+            process_list = LinkedListWrapper(self.space, self.my_list())
+            process_list.remove(self.wrapped)
+            self.store_my_list(self.space.w_nil)
+
+    def yield_(self, s_current_frame):
+        sched = scheduler(self.space)
+        w_active_proc = sched.active_process()
+        priority = ProcessWrapper(self.space, w_active_proc).priority()
+        process_list = sched.get_process_list(priority)
+        if not process_list.is_empty_list():
+            process_list.add_last_link(w_active_proc)
+            sched.wake_highest_priority_process().transfer_to_self_from(s_current_frame)
 
 class LinkedListWrapper(Wrapper):
     first_link, store_first_link = make_getter_setter(0)
@@ -129,12 +129,14 @@ class LinkedListWrapper(Wrapper):
     def is_empty_list(self):
         return self.first_link().is_nil(self.space)
 
-    def add_last_link(self, w_object):
+    def add_last_link(self, w_process):
         if self.is_empty_list():
-            self.store_first_link(w_object)
+            self.store_first_link(w_process)
         else:
-            LinkWrapper(self.space, self.last_link()).store_next_link(w_object)
-        self.store_last_link(w_object)
+            last_link = LinkWrapper(self.space, self.last_link())
+            last_link.store_next_link(w_process)
+        self.store_last_link(w_process)
+        ProcessWrapper(self.space, w_process).store_my_list(self.wrapped)
 
     def remove_first_link_of_list(self):
         w_first = self.first_link()
@@ -167,11 +169,6 @@ class LinkedListWrapper(Wrapper):
                 w_next = current.next_link()
         raise WrapperException("Could not find link")
 
-class ProcessListWrapper(LinkedListWrapper):
-    def add_process(self, w_process):
-        self.add_last_link(w_process)
-        ProcessWrapper(self.space, w_process).store_my_list(self.wrapped)
-
 class AssociationWrapper(Wrapper):
     key = make_getter(0)
     value, store_value = make_getter_setter(1)
@@ -182,31 +179,15 @@ class SchedulerWrapper(Wrapper):
 
     def get_process_list(self, priority):
         lists = Wrapper(self.space, self.priority_list())
+        return LinkedListWrapper(self.space, lists.read(priority))
 
-        return ProcessListWrapper(self.space, lists.read(priority))
-
-    def pop_highest_priority_process(self):
+    def wake_highest_priority_process(self):
         w_lists = self.priority_list()
-        # Asserts as W_PointersObjectonion in the varnish.
         lists = Wrapper(self.space, w_lists)
-
         for i in range(w_lists.size() - 1, -1, -1):
-            process_list = ProcessListWrapper(self.space, lists.read(i))
+            process_list = LinkedListWrapper(self.space, lists.read(i))
             if not process_list.is_empty_list():
-                return process_list.remove_first_link_of_list()
-
-        raise FatalError("Scheduler could not find a runnable process")
-
-    def highest_priority_process(self):
-        w_lists = self.priority_list()
-        # Asserts as W_PointersObjectonion in the varnish.
-        lists = Wrapper(self.space, w_lists)
-
-        for i in range(w_lists.size() - 1, -1, -1):
-            process_list = ProcessListWrapper(self.space, lists.read(i))
-            if not process_list.is_empty_list():
-                return process_list.first_link()
-
+                return ProcessWrapper(self.space, process_list.remove_first_link_of_list())
         raise FatalError("Scheduler could not find a runnable process")
 
 def scheduler(space):
@@ -222,20 +203,20 @@ class SemaphoreWrapper(LinkedListWrapper):
 
     def signal(self, s_current_frame):
         if self.is_empty_list():
-            value = self.excess_signals()
-            self.store_excess_signals(value + 1)
+            excess_signals = self.excess_signals()
+            self.store_excess_signals(excess_signals + 1)
         else:
-            process = self.remove_first_link_of_list()
-            ProcessWrapper(self.space, process).resume(s_current_frame)
+            w_process = self.remove_first_link_of_list()
+            ProcessWrapper(self.space, w_process).resume(s_current_frame)
 
     def wait(self, s_current_frame):
         excess = self.excess_signals()
-        w_process = scheduler(self.space).active_process()
         if excess > 0:
             self.store_excess_signals(excess - 1)
         else:
-            self.add_last_link(w_process)
-            ProcessWrapper(self.space, w_process).suspend(s_current_frame, waiting_on=self.wrapped)
+            self.add_last_link(scheduler(self.space).active_process())
+            new_proc = scheduler(self.space).wake_highest_priority_process()
+            new_proc.transfer_to_self_from(s_current_frame)
 
 
 class CriticalSectionWrapper(LinkedListWrapper):
@@ -243,52 +224,27 @@ class CriticalSectionWrapper(LinkedListWrapper):
     owner, store_owner = make_getter_setter(2)
 
     def exit(self, s_current_frame):
-        """
-        Monitor/Mutex>>primitiveExitCriticalSection
-            "..."
-            "In the spirit of the following"
-            "[owner := nil.
-              self isEmpty ifFalse:
-                  [process := self removeFirst.
-                   process resume]] valueUnpreemptively"
-        """
-        self.store_owner(self.space.w_nil)
-        if not self.is_empty_list():
-            process = self.remove_first_link_of_list()
-            ProcessWrapper(self.space, process).resume(s_current_frame)
+        if self.is_empty_list():
+            self.store_owner(self.space.w_nil)
+        else:
+            w_process = self.remove_first_link_of_list()
+            self.store_owner(w_process)
+            ProcessWrapper(self.space, w_process).resume(s_current_frame)
 
-    def enter(self, s_current_frame):
-        """
-        Monitor/Mutex>>primitiveEnterCriticalSection
-            "..."
-                "In the spirit of the following"
-                "[owner ifNil:
-                        [owner := Processor activeProcess.
-                         ^false].
-                  owner = Processor activeProcess ifTrue:
-                        [^true].
-                  self addLast: Processor activeProcess.
-                  Processor activeProcess suspend] valueUnpreemptively"
-        """
+    def enter(self, s_frame):
         w_active_process = scheduler(self.space).active_process()
-        w_test_and_set_ok = self.test_and_set_owner(s_current_frame)
-        if w_test_and_set_ok.is_nil(self.space):
+        if self.owner().is_nil(self.space):
+            self.store_owner(w_active_process)
+            s_frame.push(self.space.w_false)
+        elif self.owner().is_same_object(w_active_process):
+            s_frame.push(self.space.w_true)
+        else:
+            # arrange to answer false when the process is resumed
+            s_frame.push(self.space.w_false)
             self.add_last_link(w_active_process)
-            ProcessWrapper(self.space, w_active_process).suspend(s_current_frame, waiting_on=self.wrapped)
-            # should not be reached
-        return w_test_and_set_ok
+            scheduler(self.space).wake_highest_priority_process().transfer_to_self_from(s_frame)
 
     def test_and_set_owner(self, s_current_frame):
-        """
-        Monitor/Mutex>>primitiveExitCriticalSection
-            "..."
-            "In the spirit of the following"
-            "[owner ifNil:
-                    [owningProcess := Processor activeProcess.
-                     ^false].
-              owner = Processor activeProcess ifTrue: [^true].
-              ^nil] valueUnpreemptively"
-        """
         w_owner = self.owner()
         w_active_process = scheduler(self.space).active_process()
         if w_owner.is_nil(self.space):
