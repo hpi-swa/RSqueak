@@ -4,6 +4,12 @@ os:
   - linux
   - osx
 osx_image: xcode7.3
+notifications:
+  irc:
+    channels:
+      - 'ircs://chat.freenode.net/#rsqueak'
+    use_notice: true
+    skip_join: true
 addons:
   apt:
     packages:
