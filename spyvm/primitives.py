@@ -448,6 +448,8 @@ def get_string(w_obj):
 
 def exitFromHeadlessExecution(s_frame, selector="", w_message=None):
     if not objectmodel.we_are_translated():
+        if getattr(s_frame.space, "testing", False):
+            return # During Testing
         import pdb; pdb.set_trace()
     print "== Receiver: %s" % s_frame.w_receiver().as_repr_string()
     if isinstance(w_message, model.W_PointersObject):
