@@ -1082,7 +1082,9 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         if self.has_class() and self.getclass(None).has_space():
             if self.getclass(None).space().omit_printing_raw_bytes.is_set():
                 return "<omitted>"
-        return "'%s'" % self.unwrap_string(None).replace('\r', '\n')
+        return "'%s'" % ''.join([\
+            char if ord(char) < 128 else (r'\x%s' % hex(ord(char))[2:]) for char in \
+            (self.unwrap_string(None).replace('\r', '\n'))])
 
     def unwrap_string(self, space):
         return self._pure_as_string(self.version)
