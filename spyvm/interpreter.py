@@ -12,9 +12,10 @@ from rpython.rlib import jit, rstackovf, unroll, objectmodel, rsignal
 
 
 class ReturnFromTopLevel(Exception):
-    _attrs_ = ["object"]
-    def __init__(self, object):
+    _attrs_ = ["object", "s_current_frame"]
+    def __init__(self, object, s_current_frame):
         self.object = object
+        self.s_current_frame = s_current_frame
 
 class Return(Exception):
     _attrs_ = []
@@ -191,25 +192,16 @@ class Interpreter(object):
                 s_context = e.s_new_context
             except LocalReturn, ret:
                 target = s_sender
-                s_context = self.unwind_context_chain(s_sender, target, ret.value(self.space))
+                s_context = self.unwind_context_chain(s_sender, target, ret.value(self.space), s_context)
             except NonLocalReturn, ret:
                 target = s_sender if ret.arrived_at_target else ret.s_target_context
-                s_context = self.unwind_context_chain(s_sender, target, ret.value(self.space))
+                s_context = self.unwind_context_chain(s_sender, target, ret.value(self.space), s_context)
             except NonVirtualReturn, ret:
                 if self.is_tracing() or self.trace_important:
                     ret.print_trace()
-                s_context = self.unwind_context_chain(ret.s_current_context, ret.s_target_context, ret.w_value)
+                s_context = self.unwind_context_chain(ret.s_current_context, ret.s_target_context, ret.w_value, s_context)
             except MetaPrimFailed, e:
-                s_context = self.unwind_primitive_simulation(e.s_frame, e.error_code)
-            except ReturnFromTopLevel, e:
-                if not self.space.headless.is_set():
-                    w_cannotReturn = self.space.special_object("w_cannotReturn")
-                    s_context = self.create_toplevel_context(
-                        s_context.w_self(),
-                        w_selector=w_cannotReturn,
-                        w_arguments=[e.object])
-                else:
-                    raise e
+                s_context = self.unwind_primitive_simulation(e.s_frame, e.error_code, s_context)
 
     # This is a wrapper around loop_bytecodes that cleanly enters/leaves the frame,
     # handles the stack overflow protection mechanism and handles/dispatches Returns.
@@ -279,10 +271,10 @@ class Interpreter(object):
                 else:
                     raise ret
 
-    def unwind_primitive_simulation(self, start_context, error_code):
+    def unwind_primitive_simulation(self, start_context, error_code, s_current_context):
         if start_context is None:
             # This is the toplevel frame. Execution ended.
-            raise ReturnFromTopLevel(self.space.w_nil)
+            raise ReturnFromTopLevel(self.space.w_nil, s_current_context)
         context = start_context
         while context.get_fallback() is None:
             s_sender = context.s_sender()
@@ -302,10 +294,10 @@ class Interpreter(object):
 
         return fallbackContext
 
-    def unwind_context_chain(self, start_context, target_context, return_value):
+    def unwind_context_chain(self, start_context, target_context, return_value, s_current_context):
         if start_context is None:
             # This is the toplevel frame. Execution ended.
-            raise ReturnFromTopLevel(return_value)
+            raise ReturnFromTopLevel(return_value, s_current_context)
         assert target_context
         context = start_context
         while context is not target_context:
@@ -414,6 +406,13 @@ class Interpreter(object):
             self.interrupt_check_counter = self.interrupt_counter_size
             self.loop(w_frame)
         except ReturnFromTopLevel, e:
+            if not self.space.headless.is_set():
+                w_cannotReturn = self.space.special_object("w_cannotReturn")
+                s_context = self.create_toplevel_context(
+                    e.s_current_frame.w_self(),
+                    w_selector=w_cannotReturn,
+                    w_arguments=[e.object])
+                return self.loop(s_context.w_self())
             return e.object
 
     def perform(self, w_receiver, selector="", w_selector=None, w_arguments=[]):
