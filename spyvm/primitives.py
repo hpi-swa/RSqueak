@@ -691,7 +691,7 @@ def func(interp, s_frame, w_frame, stackp):
     w_frame.store(interp.space, constants.CTXPART_STACKP_INDEX, interp.space.wrap_int(stackp))
     return w_frame
 
-def is_enumerable_w_object(gcref, w_class):
+def is_enumerable_w_object(gcref):
     from rpython.rlib.rgc import try_cast_gcref_to_instance
     w_obj = try_cast_gcref_to_instance(model.W_Object, gcref)
     if w_obj is not None and w_obj.has_class():
