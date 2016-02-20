@@ -1,7 +1,14 @@
 from rpython.rlib import rsocket, _rsocket_rffi, jit, rarithmetic, objectmodel
-from spyvm import model, error
+from spyvm import model, error, constants
 from spyvm.plugins.plugin import Plugin
 import errno
+
+from spyvm.util.system import IS_WINDOWS
+
+if IS_WINDOWS:
+    DONTWAIT = 0
+else:
+    DONTWAIT = _rsocket_rffi.MSG_DONTWAIT
 
 rsocket.rsocket_startup()
 
@@ -83,7 +90,7 @@ class W_SocketHandle(model.W_AbstractObjectWithIdentityHash):
 
     def recv(self, count):
         try:
-            data = self.socket.recv(count, _rsocket_rffi.MSG_DONTWAIT)
+            data = self.socket.recv(count, DONTWAIT)
         except rsocket.CSocketError:
             raise error.PrimitiveFailedError
         if len(data) == 0:
