@@ -187,6 +187,8 @@ class Interpreter(object):
                 self.stack_frame(s_context, None)
                 raise Exception("loop_bytecodes left without raising...")
             except ContextSwitchException, e:
+                if not self.space.headless.is_set():
+                    self.space.display().flip(force=False)
                 if self.is_tracing() or self.trace_important:
                     e.print_trace()
                 s_context = e.s_new_context
