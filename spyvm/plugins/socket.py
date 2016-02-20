@@ -6,9 +6,16 @@ import errno
 from spyvm.util.system import IS_WINDOWS
 
 if IS_WINDOWS:
-    DONTWAIT = 0
+    def non_blocking_recv(count):
+        self.socket._setblocking(False)
+        try:
+            return self.socket.recv(count)
+        finally:
+            self.socket._setblocking(True)
 else:
-    DONTWAIT = _rsocket_rffi.MSG_DONTWAIT
+    # on unix, we just use the flag, avoiding the extra fcntl calls
+    def non_blocking_recv(count):
+        return self.socket.recv(count, _rsocket_rffi.MSG_DONTWAIT)
 
 rsocket.rsocket_startup()
 
@@ -90,7 +97,7 @@ class W_SocketHandle(model.W_AbstractObjectWithIdentityHash):
 
     def recv(self, count):
         try:
-            data = self.socket.recv(count, DONTWAIT)
+            data = non_blocking_recv(count)
         except rsocket.CSocketError:
             raise error.PrimitiveFailedError
         if len(data) == 0:
