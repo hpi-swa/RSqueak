@@ -171,8 +171,9 @@ Host: squeak.org
                 stack=[space.w_nil, w_handle]).value == 2
     assert prim("primitiveSocketReceiveDataAvailable",
                 stack=[space.w_nil, w_handle]) is space.w_true
-    assert prim("primitiveSocketReceiveDataBufCount",
-                stack=[space.w_nil, w_handle, space.wrap_string("".join([" "] * 4096)), space.wrap_int(1), space.wrap_int(4096)]).value == 368
+    assert isinstance(prim("primitiveSocketReceiveDataBufCount",
+                           stack=[space.w_nil, w_handle, space.wrap_string("".join([" "] * 4096)), space.wrap_int(1), space.wrap_int(4096)]),
+                      model.W_SmallInteger)
     assert prim("primitiveSocketReceiveDataAvailable",
                 stack=[space.w_nil, w_handle]) is space.w_false
     assert prim("primitiveSocketConnectionStatus",
