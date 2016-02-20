@@ -691,28 +691,32 @@ def func(interp, s_frame, w_frame, stackp):
     w_frame.store(interp.space, constants.CTXPART_STACKP_INDEX, interp.space.wrap_int(stackp))
     return w_frame
 
-def is_enumerable_w_object(gcref):
-    from rpython.rlib.rgc import try_cast_gcref_to_instance
-    w_obj = try_cast_gcref_to_instance(model.W_Object, gcref)
-    if w_obj is not None and w_obj.has_class():
-        w_cls = w_obj.getclass(space)
-        if w_cls is not None:
-            # when calling NEXT_OBJECT, we should not return # SmallInteger
-            # instances
-            # XXX: same for Character on Spur and SmallFloat64 on Spur64...
-            if not w_cls.is_same_object(space.w_SmallInteger):
-                return w_obj
-    return None
-
 def get_instances_array_gc(space, w_class=None):
-    from rpython.rlib.rgc import do_get_objects
-    results_w = do_get_objects(is_enumerable_w_object)
-    if w_class is None:
-        return results_w
-    else:
-        return [w_obj
-                for w_obj in results_w
-                if w_obj.getclass(space).is_same_object(w_class)]
+    from rpython.rlib import rgc
+
+    result_w = []
+    roots = [gcref for gcref in rgc.get_rpy_roots() if gcref]
+    pending = roots[:]
+    while pending:
+        gcref = pending.pop()
+        if not rgc.get_gcflag_extra(gcref):
+            rgc.toggle_gcflag_extra(gcref)
+            w_obj = rgc.try_cast_gcref_to_instance(model.W_Object, gcref)
+
+            if w_obj is not None and w_obj.has_class():
+                w_cls = w_obj.getclass(space)
+                if w_cls is not None:
+                    # when calling NEXT_OBJECT, we should not return # SmallInteger
+                    # instances
+                    # XXX: same for Character on Spur and SmallFloat64 on Spur64...
+                    if not w_cls.is_same_object(space.w_SmallInteger) and \
+                       (w_class is None or w_cls.is_same_object(w_class)):
+                        result_w.append(w_obj)
+            pending.extend(rgc.get_rpy_referents(gcref))
+
+    rgc.clear_gcflag_extra(roots)
+    rgc.assert_no_more_gcflags()
+    return result_w
 
 def get_instances_array(space, s_frame, w_class=None, store=True):
     # check cached
@@ -1092,8 +1096,39 @@ def func(interp, s_frame, w_rcvr):
         w_class.as_class_get_shadow(interp.space).flush_method_caches()
     return w_rcvr
 
+@objectmodel.specialize.arg(0)
+def walk_gc_references(func, gcrefs):
+    from rpython.rlib import rgc
+    for gcref in gcrefs:
+        if gcref and not rgc.get_gcflag_extra(gcref):
+            try:
+                rgc.toggle_gcflag_extra(gcref)
+                func(gcref)
+                walk_gc_references(func, rgc.get_rpy_referents(gcref))
+            finally:
+                rgc.toggle_gcflag_extra(gcref)
+
+@objectmodel.specialize.arg(0)
+def walk_gc_objects(func):
+    from rpython.rlib import rgc
+    walk_gc_references(func, rgc.get_rpy_roots())
+
+@objectmodel.specialize.arg(0, 1)
+def walk_gc_objects_of_type(type, func):
+    from rpython.rlib import rgc
+    def check_type(gcref):
+        w_obj = rgc.try_cast_gcref_to_instance(type, gcref)
+        if w_obj:
+            func(w_obj)
+    walk_gc_objects(check_type)
+
+# XXX: We don't have a global symbol cache. Instead, we walk all
+# MethodDictionaryShadow objects and flush them.
 @expose_primitive(SYMBOL_FLUSH_CACHE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
+    # This takes a long time (at least in interpreted mode), and is not really necessary.
+    # We are monitoring changes to MethodDictionaries, so there is no need for the image to tell us.
+    #walk_gc_objects_of_type(storage_contexts.MethodDictionaryShadow, lambda s_dict: s_dict.flush_method_cache())
     return w_rcvr
 
 # ___________________________________________________________________________
