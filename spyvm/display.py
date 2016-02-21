@@ -427,37 +427,41 @@ class SDLCursorClass(object):
     instance = None
 
     def __init__(self):
-        # self.cursor = lltype.nullptr(RSDL.CursorPtr.TO)
+        self.cursor = lltype.nullptr(RSDL.CursorPtr.TO)
         self.has_cursor = False
         self.has_display = False
 
     def set(self, data_words, w, h, x, y, mask_words=None):
         if not self.has_display:
-            return
+            return True
         if self.has_cursor:
-            pass
-            # RSDL.FreeCursor(self.cursor)
-        data = self.words_to_bytes(len(data_words) * 4, data_words)
+            RSDL.FreeCursor(self.cursor)
+        bytenum = len(data_words) * 2
+        data = self.cursor_words_to_bytes(bytenum, data_words)
         try:
-            mask = self.words_to_bytes(len(data_words) * 4, mask_words)
+            mask = self.cursor_words_to_bytes(bytenum, mask_words)
             try:
-                # self.cursor = RSDL.CreateCursor(data, mask, w * 2, h, x, y)
+                self.cursor = RSDL.CreateCursor(data, mask, w, h, x, y)
+                if self.cursor == lltype.nullptr(RSDL.CursorPtr.TO):
+                    print RSDL.GetError()
+                    return False
                 self.has_cursor = True
-                # RSDL.SetCursor(self.cursor)
+                RSDL.SetCursor(self.cursor)
             finally:
                 lltype.free(mask, flavor="raw")
         finally:
             lltype.free(data, flavor="raw")
+        return True
 
-    def words_to_bytes(self, bytenum, words):
+    def cursor_words_to_bytes(self, bytenum, words):
+        """In Squeak, only the upper 16bits of the cursor form seem to count (I'm
+        guessing because the code was ported over from 16-bit machines), so this
+        ignores the lower 16-bits of each word."""
         bytes = lltype.malloc(RSDL.Uint8P.TO, bytenum, flavor="raw")
         if words:
-            for pos in range(bytenum / 4):
-                word = words[pos]
-                bytes[pos * 4] = rffi.r_uchar((word >> 24) & 0xff)
-                bytes[pos * 4 + 1] = rffi.r_uchar((word >> 16) & 0xff)
-                bytes[pos * 4 + 2] = rffi.r_uchar((word >> 8) & 0xff)
-                bytes[pos * 4 + 3] = rffi.r_uchar(word & 0xff)
+            for idx, word in enumerate(words):
+                bytes[idx * 2] = rffi.r_uchar((word >> 24) & 0xff)
+                bytes[idx * 2 + 1] = rffi.r_uchar((word >> 16) & 0xff)
         else:
             for idx in range(bytenum):
                 bytes[idx] = rffi.r_uchar(0)

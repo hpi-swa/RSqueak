@@ -845,7 +845,6 @@ def func(interp, s_frame, argcount):
     w_rcvr = s_frame.peek(argcount)
     mask_words = None
     if argcount == 1:
-        # TODO: use mask
         w_mask = s_frame.peek(0)
         if isinstance(w_mask, model.W_WordsObject):
             mask_words = w_mask.words
@@ -865,19 +864,17 @@ def func(interp, s_frame, argcount):
     height = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 2))
     depth = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 3))
     hotpt = wrapper.PointWrapper(interp.space, w_rcvr.fetch(interp.space, 4))
-    if not interp.image.version.is_modern:
-        display.SDLCursor.set(
-            w_bitmap.words,
-            width,
-            height,
-            hotpt.x(),
-            hotpt.y(),
-            mask_words=mask_words
-        )
-    else:
-        # TODO: Implement
-        pass
+    offx = hotpt.x()
+    offy = hotpt.y()
+    if not (width == 16 and height == 16 and depth == 1 and
+            offx >= -16 and offy >= -16 and
+            offx <= 0 and offy <= 0):
+        raise PrimitiveFailedError
+    offx = -offx
+    offy = -offy
 
+    if not display.SDLCursor.set(w_bitmap.words, width, height, offx, offy, mask_words=mask_words):
+        raise PrimitiveFailedError
     interp.space.objtable['w_cursor'] = w_rcvr
     return w_rcvr
 
