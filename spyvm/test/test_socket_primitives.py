@@ -171,13 +171,19 @@ Host: squeak.org
                 stack=[space.w_nil, w_handle]).value == 2
     assert prim("primitiveSocketReceiveDataAvailable",
                 stack=[space.w_nil, w_handle]) is space.w_true
-    assert isinstance(prim("primitiveSocketReceiveDataBufCount",
-                           stack=[space.w_nil, w_handle, space.wrap_string("".join([" "] * 4096)), space.wrap_int(1), space.wrap_int(4096)]),
-                      model.W_SmallInteger)
+    w_data = space.wrap_string("".join([" "] * 4096))
+    w_result = prim("primitiveSocketReceiveDataBufCount",
+                           stack=[space.w_nil, w_handle, w_data, space.wrap_int(1), space.wrap_int(4096)])
+    assert isinstance(w_result, model.W_SmallInteger)
+    while w_result.value == 4096:
+        w_result = prim("primitiveSocketReceiveDataBufCount",
+                        stack=[space.w_nil, w_handle, w_data, space.wrap_int(1), space.wrap_int(4096)])
     assert prim("primitiveSocketReceiveDataAvailable",
                 stack=[space.w_nil, w_handle]) is space.w_false
-    assert prim("primitiveSocketConnectionStatus",
-                stack=[space.w_nil, w_handle]).value == 2
+    w_state = prim("primitiveSocketConnectionStatus",
+                   stack=[space.w_nil, w_handle])
+    # either still connected or OtherEndClosed
+    assert w_state.value == 2 or w_state.value == 3
     prim("primitiveSocketCloseConnection",
                 stack=[space.w_nil, w_handle])
     assert prim("primitiveSocketConnectionStatus",

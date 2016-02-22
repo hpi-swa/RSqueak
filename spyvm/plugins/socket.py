@@ -17,8 +17,6 @@ else:
     def non_blocking_recv(self, count):
         return self.socket.recv(count, _rsocket_rffi.MSG_DONTWAIT)
 
-rsocket.rsocket_startup()
-
 
 class Cell(object):
     _attrs_ = ["value"]
@@ -52,13 +50,28 @@ OtherEndClosed = 3
 ThisEndClosed = 4
 
 class W_SocketHandle(model.W_AbstractObjectWithIdentityHash):
-    _attrs_ = ["socket", "state"]
+    _attrs_ = ["socket", "state", "family", "socketType"]
     repr_classname = "W_SocketHandle"
 
-    def __init__(self, socket):
-        self.socket = socket
-        self.socket.setblocking(False)
+    def __init__(self, family, socketType):
+        self.socket = None
         self.state = Unconnected
+        self.family = family
+        self.socketType = socketType
+        self.make_socket()
+
+    def make_socket(self):
+        try:
+            self.socket = rsocket.RSocket(family=self.family, proto=self.socketType)
+        except rsocket.CSocketError:
+            raise error.PrimitiveFailedError
+        self.socket.setblocking(False)
+
+    def isipv4(self):
+        return self.family == rsocket.AF_INET
+
+    def isipv6(self):
+        return self.family == rsocket.AF_INET6
 
     def getclass(self, space):
         return space.w_SmallInteger
@@ -69,6 +82,10 @@ class W_SocketHandle(model.W_AbstractObjectWithIdentityHash):
     def connect(self, w_bytes, port):
         try:
             inet = rsocket.INETAddress(w_bytes.unwrap_string(None), port)
+        except rsocket.GAIError:
+            inet = rsocket.INET6Address(w_bytes.unwrap_string(None), port)
+            self.family = rsocket.AF_INET6
+            self.make_socket()
         except rsocket.GAIError:
             raise error.PrimitiveFailedError
         self.socket.setblocking(True)
@@ -108,7 +125,9 @@ class W_SocketHandle(model.W_AbstractObjectWithIdentityHash):
         return self.socket.send(data)
 
     def close(self):
-        if self.state == Connected:
+        if (self.state == Connected or
+            self.state == OtherEndClosed or
+            self.state == WaitingForConnection):
             self.socket.close()
             self.state = Unconnected
 
@@ -514,11 +533,7 @@ def primitiveSocketRemotePort(interp, s_frame, argcount):
 def primitiveSocketCreate3Semaphores(interp, s_frame, w_rcvr, netType, socketType, rcvBufSize, sendBufSize, sema, readSema, writeSema):
     if netType == 0: # undefined
         netType = rsocket.AF_INET
-    try:
-        s = rsocket.RSocket(family=netType, proto=socketType)
-    except rsocket.CSocketError:
-        raise error.PrimitiveFailedError
-    return W_SocketHandle(s)
+    return W_SocketHandle(netType, socketType)
 
 @SocketPlugin.expose_primitive(unwrap_spec=[object, object])
 def primitiveSocketConnectionStatus(interp, s_frame, w_rcvr, w_socket):
@@ -587,6 +602,7 @@ def primitiveSocketDestroy(interp, s_frame, w_rcvr, w_handle):
 
 @SocketPlugin.expose_primitive(unwrap_spec=[object, object])
 def primitiveInitializeNetwork(interp, s_frame, w_rcvr, w_semaphore):
+    rsocket.rsocket_startup()
     return w_rcvr
 
 @SocketPlugin.expose_primitive(unwrap_spec=[object])
@@ -597,7 +613,7 @@ def primitiveResolverStatus(interp, s_frame, w_rcvr):
 @SocketPlugin.expose_primitive(unwrap_spec=[object, str])
 def primitiveResolverStartNameLookup(interp, s_frame, w_rcvr, hostname):
     try:
-        host = rsocket.makeipaddr(hostname).get_host()
+        host = rsocket.INETAddress(hostname, 80).get_host()
         SocketPlugin.set_last_lookup(host)
     except rsocket.GAIError:
         SocketPlugin.set_last_lookup(None)
