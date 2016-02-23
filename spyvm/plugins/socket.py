@@ -24,20 +24,17 @@ class Cell(object):
     def set(self, v): self.value = v
     def get(self): return self.value
 
-from spyvm.objspace import ConstantFlag
-
 ResolverUninitialized = 0
 ResolverReady = 1
 ResolverBusy = 2
 ResolverError = 3
 
 class SocketPluginClass(Plugin):
-    _attrs_ = ["fds", "sockets", "last_lookup", "is_ready"]
+    _attrs_ = ["fds", "sockets", "last_lookup"]
 
     def __init__(self):
         Plugin.__init__(self)
         self.last_lookup = Cell(None)
-        self.is_ready = ConstantFlag(False)
 
     def set_last_lookup(self, v):
         self.last_lookup.set(v)
@@ -609,16 +606,11 @@ def primitiveSocketDestroy(interp, s_frame, w_rcvr, w_handle):
 
 @SocketPlugin.expose_primitive(unwrap_spec=[object, object])
 def primitiveInitializeNetwork(interp, s_frame, w_rcvr, w_semaphore):
-    rsocket.rsocket_startup()
-    SocketPlugin.is_ready.activate()
     return w_rcvr
 
 @SocketPlugin.expose_primitive(unwrap_spec=[object])
 def primitiveResolverStatus(interp, s_frame, w_rcvr):
-    if SocketPlugin.is_ready.is_set():
-        return interp.space.wrap_int(ResolverReady)
-    else:
-        return interp.space.wrap_int(ResolverUninitialized)
+    return interp.space.wrap_int(ResolverReady)
 
 @SocketPlugin.expose_primitive(unwrap_spec=[object, str])
 def primitiveResolverStartNameLookup(interp, s_frame, w_rcvr, hostname):
