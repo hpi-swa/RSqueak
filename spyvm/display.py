@@ -81,7 +81,7 @@ class SDLDisplay(object):
 
     def create_window_and_renderer(self, x, y, width, height):
         self.window = RSDL.CreateWindow(self.title, x, y, width, height,
-                RSDL.WINDOW_RESIZABLE)
+                RSDL.WINDOW_RESIZABLE | RSDL.WINDOW_ALLOW_HIGHDPI)
         self.renderer = RSDL.CreateRenderer(self.window, -1,
                 RSDL.RENDERER_ACCELERATED)
 
