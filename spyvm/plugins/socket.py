@@ -615,7 +615,8 @@ def primitiveResolverStartNameLookup(interp, s_frame, w_rcvr, hostname):
     try:
         host = rsocket.INETAddress(hostname, 80).get_host()
         SocketPlugin.set_last_lookup(host)
-    except rsocket.GAIError:
+    except rsocket.GAIError, e:
+        print "SocketError: %s" % e.get_msg()
         SocketPlugin.set_last_lookup(None)
     return interp.space.w_nil
 
