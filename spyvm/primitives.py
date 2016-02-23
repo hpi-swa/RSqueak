@@ -1170,7 +1170,9 @@ def func(interp, s_frame, w_receiver, flag):
 
 @expose_primitive(DRAW_RECTANGLE, unwrap_spec=[object, int, int, int, int])
 def func(interp, s_frame, w_rcvr, left, right, top, bottom):
-    raise PrimitiveNotYetWrittenError()
+    sdldisplay = interp.space.display()
+    sdldisplay.flip()
+    return w_rcvr
 
 
 # ___________________________________________________________________________
