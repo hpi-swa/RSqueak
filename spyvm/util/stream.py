@@ -1,11 +1,15 @@
 from rpython.rlib import streamio, objectmodel
-from rpython.rlib.rstruct.runpack import runpack
+from rpython.rlib.rstruct.runpack import runpack as rlib_runpack
 from spyvm.util import system
 
-if not objectmodel.we_are_translated():
-    def runpack(fmt, arg):
+def runpack(fmt, arg):
+    if objectmodel.we_are_translated():
+        return rlib_runpack(fmt, arg)
+    else:
         from struct import unpack
         return unpack(fmt, arg)[0]
+runpack._annspecialcase_ = 'specialize:arg(0)'
+
 def chrs2int(b):
     assert len(b) == 4
     return runpack('>i', b)
