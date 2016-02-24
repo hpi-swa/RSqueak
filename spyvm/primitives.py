@@ -260,7 +260,7 @@ for (code,op) in math_ops.items():
                     res = ovfcheck(op(receiver, argument))
             except OverflowError:
                 raise PrimitiveFailedError()
-            return interp.space.wrap_int(res)
+            return interp.space.wrap_longlong(res)
     make_func(op)
 
 bitwise_binary_ops = {
