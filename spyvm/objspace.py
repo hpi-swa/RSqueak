@@ -49,6 +49,17 @@ class ConstantVersion(object):
 def empty_object():
     return instantiate(model.W_PointersObject)
 
+class ForceHeadless(object):
+    def __init__(self, space):
+        self.space = space
+        self.was_headfull = not space.headless.is_set()
+    def __enter__(self):
+        if self.was_headfull:
+            self.space.headless.activate()
+    def __exit__(self, type, value, traceback):
+        if self.was_headfull:
+            self.space.headless.deactivate()
+
 class ObjSpace(object):
     _immutable_fields_ = ['objtable']
 

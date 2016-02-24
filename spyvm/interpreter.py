@@ -122,6 +122,7 @@ def get_printable_location(pc, self, method):
 
 USE_SIGUSR1 = hasattr(rsignal, 'SIGUSR1')
 
+
 class Interpreter(object):
     _immutable_fields_ = ["space",
                           "image",
@@ -168,9 +169,7 @@ class Interpreter(object):
                 rsignal.pypysig_setflag(rsignal.SIGUSR1)
 
     def populate_remaining_special_objects(self):
-        was_headless = self.space.headless.is_set()
-        self.space.headless.activate()
-        try:
+        with objspace.ForceHeadless(self.space):
             for name, idx in constants.objects_in_special_object_table.items():
                 name = "w_" + name
                 if name not in self.space.objtable or not self.space.objtable[name]:
@@ -180,9 +179,6 @@ class Interpreter(object):
                         assert self.space.objtable[name]
                     else:
                         raise Warning("don't know how to populate " + name + " which was not in special objects table")
-        finally:
-            if not was_headless:
-                self.space.headless.deactivate()
 
     def loop(self, w_active_context):
         # This is the top-level loop and is not invoked recursively.
@@ -432,12 +428,8 @@ class Interpreter(object):
             if selector == "asSymbol":
                 w_selector = self.image.w_asSymbol
             else:
-                was_headless = self.space.headless.is_set()
-                self.space.headless.activate()
-                try:
+                with objspace.ForceHeadless(self.space):
                     w_selector = self.perform(self.space.wrap_string(selector), "asSymbol")
-                finally:
-                    if not was_headless: self.space.headless.deactivate()
 
         if self.space.is_spur.is_set():
             w_method = model.W_SpurCompiledMethod(self.space, header=512)

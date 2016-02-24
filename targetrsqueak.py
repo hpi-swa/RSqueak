@@ -271,20 +271,18 @@ def compile_code(interp, w_receiver, code):
     # TODO - Find a way to cleanly initialize the image, without executing the active_context of the image.
     # Instead, we want to execute our own context. Then remove this flag (and all references to it)
     space.suppress_process_switch.activate()
-    space.headless.activate()
-
-    w_result = interp.perform(
-        w_receiver_class,
-        "compile:classified:notifying:",
-        w_arguments = [space.wrap_string("%s\r\n%s" % (selector, code)),
-        space.wrap_string("spy-run-code"),
-        space.w_nil]
-    )
-    # TODO - is this expected in every image?
-    if not isinstance(w_result, model.W_BytesObject) or space.unwrap_string(w_result) != selector:
-        raise error.Exit("Unexpected compilation result (probably failed to compile): %s" % result_string(w_result))
+    with objspace.ForceHeadless(space):
+        w_result = interp.perform(
+            w_receiver_class,
+            "compile:classified:notifying:",
+            w_arguments = [space.wrap_string("%s\r\n%s" % (selector, code)),
+            space.wrap_string("spy-run-code"),
+            space.w_nil]
+        )
+        # TODO - is this expected in every image?
+        if not isinstance(w_result, model.W_BytesObject) or space.unwrap_string(w_result) != selector:
+            raise error.Exit("Unexpected compilation result (probably failed to compile): %s" % result_string(w_result))
     space.suppress_process_switch.deactivate()
-    space.headless.deactivate()
 
     w_receiver_class.as_class_get_shadow(space).s_methoddict().sync_method_cache()
     return selector
