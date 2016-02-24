@@ -843,6 +843,11 @@ def func(interp, s_frame, argcount):
     if not (0 <= argcount <= 1):
         raise PrimitiveFailedError()
     w_rcvr = s_frame.peek(argcount)
+
+    if interp.space.headless.is_set():
+        # we don't do any cursoration if we're headless
+        return w_rcvr
+
     mask_words = None
     if argcount == 1:
         w_mask = s_frame.peek(0)
@@ -873,9 +878,10 @@ def func(interp, s_frame, argcount):
     offx = -offx
     offy = -offy
 
-    if not display.SDLCursor.set(w_bitmap.words, width, height, offx, offy, mask_words=mask_words):
-        raise PrimitiveFailedError
-    interp.space.objtable['w_cursor'] = w_rcvr
+    if display.SDLCursor.set(w_bitmap.words, width, height, offx, offy, mask_words=mask_words):
+        interp.space.objtable['w_cursor'] = w_rcvr
+    # Don't fail if the Cursor could not be set.
+    # It is surely annoying but no reason to not continue.
     return w_rcvr
 
 @expose_primitive(BE_DISPLAY, unwrap_spec=[object])
