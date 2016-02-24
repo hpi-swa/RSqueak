@@ -467,8 +467,8 @@ def exitFromHeadlessExecution(s_frame, selector="", w_message=None):
         selector = s_frame.w_method().lookup_selector
     raise error.Exit("Unhandled %s in headless mode." % selector)
 
-@expose_primitive(FAIL)
-def func(interp, s_frame, argcount):
+@expose_primitive(FAIL, unwrap_spec=[object])
+def func(interp, s_frame, w_rcvr):
     if interp.space.headless.is_set():
         w_message = None
         if s_frame.w_method().lookup_selector == 'doesNotUnderstand:':
@@ -882,6 +882,7 @@ def func(interp, s_frame, argcount):
         interp.space.objtable['w_cursor'] = w_rcvr
     # Don't fail if the Cursor could not be set.
     # It is surely annoying but no reason to not continue.
+    s_frame.pop_n(argcount + 1)
     return w_rcvr
 
 @expose_primitive(BE_DISPLAY, unwrap_spec=[object])
@@ -1029,16 +1030,17 @@ def func(interp, s_frame, w_arg, w_rcvr):
     # or vice versa XXX we don't have to fail here, but for squeak it's a problem
 
     # 3. Format of rcvr is different from format of argument
-    raise PrimitiveNotYetWrittenError()     # XXX needs to work in the shadows
-    if w_arg_class.format != w_rcvr_class.format:
-        raise PrimitiveFailedError()
 
-    # Fail when argument class is fixed and rcvr's size differs from the
-    # size of an instance of the arg
-    if w_arg_class.instsize() != w_rcvr_class.instsize():
-        raise PrimitiveFailedError()
-
-    w_rcvr.change_class(interp.space, w_arg_class)
+    if ((isinstance(w_arg, model.W_PointersObject) and
+         isinstance(w_rcvr, model.W_PointersObject)) or
+        (isinstance(w_arg, model.W_BytesObject) and
+         isinstance(w_rcvr, model.W_BytesObject)) or
+        (isinstance(w_arg, model.W_WordsObject) and
+         isinstance(w_rcvr, model.W_WordsObject))):
+        w_rcvr.change_class(interp.space, w_arg_class)
+        return w_rcvr
+    else:
+        raise PrimitiveNotYetWrittenError
 
 @expose_primitive(EXTERNAL_CALL, clean_stack=False, no_result=True, compiled_method=True)
 def func(interp, s_frame, argcount, w_method):
@@ -1760,10 +1762,12 @@ def func(interp, s_frame, argcount):
     # This does not count shadows and the memory required for storage or any of
     # that "meta-info", but only the size of the types struct and the requested
     # fields.
-    w_rcvr = s_frame.peek(argcount)
-    size = 0
     if argcount == 1:
-        size = interp.space.unwrap_int(s_frame.top())
+        size = interp.space.unwrap_int(s_frame.pop())
+    else:
+        size = 0
+    w_rcvr = s_frame.pop()
+
     if argcount > 1:
         raise PrimitiveFailedError
 
