@@ -239,8 +239,8 @@ def entry_point(argv):
         else:
             w_receiver = space.wrap_int(number)
         if code:
-            w_selector = compile_code(interp, w_receiver, code)
-        s_frame = create_context(interp, w_receiver, w_selector, stringarg)
+            selector = compile_code(interp, w_receiver, code)
+        s_frame = create_context(interp, w_receiver, selector, stringarg)
         if headless:
             space.headless.activate()
             context = s_frame
@@ -287,13 +287,13 @@ def compile_code(interp, w_receiver, code):
     space.headless.deactivate()
 
     w_receiver_class.as_class_get_shadow(space).s_methoddict().sync_method_cache()
-    return w_result
+    return selector
 
-def create_context(interp, w_receiver, w_selector, stringarg):
+def create_context(interp, w_receiver, selector, stringarg):
     args = []
     if stringarg:
         args.append(interp.space.wrap_string(stringarg))
-    return interp.create_toplevel_context(w_receiver, w_selector=w_selector, w_arguments=args)
+    return interp.create_toplevel_context(w_receiver, selector=selector, w_arguments=args)
 
 def create_process(interp, s_frame):
     space = interp.space
