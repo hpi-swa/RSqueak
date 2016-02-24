@@ -57,6 +57,7 @@ class ObjSpace(object):
         self.suppress_process_switch = ConstantFlag()
         self.run_spy_hacks = ConstantFlag()
         self.headless = ConstantFlag()
+        self.highdpi = ConstantFlag(True)
         self.use_plugins = ConstantFlag()
         self.omit_printing_raw_bytes = ConstantFlag()
         self.image_loaded = ConstantFlag()
@@ -359,7 +360,10 @@ class ObjSpace(object):
         disp = self._display.get()
         if disp is None:
             # Create lazy to allow headless execution.
-            disp = display.SDLDisplay(self.get_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX))
+            disp = display.SDLDisplay(
+                self.get_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX),
+                self.highdpi.is_set()
+            )
             self._display.set(disp)
         return disp
 

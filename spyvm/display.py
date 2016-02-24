@@ -46,11 +46,12 @@ class SDLDisplay(object):
     _attrs_ = ["window", "title", "renderer", "screen_texture",
                "width", "height", "depth", "screen_surface", "has_surface",
                "mouse_position", "button", "key", "interrupt_key", "_defer_updates",
-               "_deferred_events", "bpp", "pitch"]
+               "_deferred_events", "bpp", "pitch", "highdpi"]
 
-    def __init__(self, title):
+    def __init__(self, title, highdpi):
         self._init_sdl()
         self.title = title
+        self.highdpi = highdpi
         SDLCursor.has_display = True
         self.window = lltype.nullptr(RSDL.WindowPtr.TO)
         self.renderer = lltype.nullptr(RSDL.RendererPtr.TO)
@@ -80,8 +81,10 @@ class SDLDisplay(object):
         RSDL.Quit()
 
     def create_window_and_renderer(self, x, y, width, height):
-        self.window = RSDL.CreateWindow(self.title, x, y, width, height,
-                RSDL.WINDOW_RESIZABLE | RSDL.WINDOW_ALLOW_HIGHDPI)
+        flags = RSDL.WINDOW_RESIZABLE
+        if self.highdpi:
+            flags |= RSDL.WINDOW_ALLOW_HIGHDPI
+        self.window = RSDL.CreateWindow(self.title, x, y, width, height, flags)
         self.renderer = RSDL.CreateRenderer(self.window, -1,
                 RSDL.RENDERER_ACCELERATED)
 

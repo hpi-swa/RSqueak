@@ -14,6 +14,10 @@ def _usage(argv):
     Usage: %s <path> [-r|-m|-h] [-naPu] [-jpiS] [-tTslL]
             <path> - image path (default: Squeak.image)
 
+          VM options:
+            --[no-]highdpi         - Enable or disable High-DPI support.
+                                     (Default: on)
+
           Execution mode:
             (no flags)             - Image will be normally opened.
             -r|--run <code>        - Code will be compiled and executed in
@@ -139,6 +143,10 @@ def entry_point(argv):
             if arg in ["-h", "--help"]:
                 _usage(argv)
                 return 0
+            elif arg == "--no-highdpi":
+                space.highdpi.deactivate()
+            elif arg == "--highdpi":
+                space.highdpi.activate()
             elif arg in ["-j", "--jit"]:
                 jitarg, idx = get_parameter(argv, idx, arg)
                 jit.set_user_param(interpreter.Interpreter.jit_driver, jitarg)
