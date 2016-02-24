@@ -3,51 +3,24 @@ from rpython.rlib.rstruct.runpack import runpack
 from spyvm.util import system
 
 if not objectmodel.we_are_translated():
-    def chrs2int(b):
-        assert len(b) == 4
-        first = ord(b[0]) # big endian
-        if first & 0x80 != 0:
-            first = first - 0x100
-        return (first << 24 | ord(b[1]) << 16 | ord(b[2]) << 8 | ord(b[3]))
+    def runpack(fmt, arg):
+        from struct import unpack
+        return unpack(fmt, arg)[0]
+def chrs2int(b):
+    assert len(b) == 4
+    return runpack('>i', b)
 
-    def swapped_chrs2int(b):
-        assert len(b) == 4
-        first = ord(b[3]) # little endian
-        if first & 0x80 != 0:
-            first = first - 0x100
-        return (first << 24 | ord(b[2]) << 16 | ord(b[1]) << 8 | ord(b[0]))
+def swapped_chrs2int(b):
+    assert len(b) == 4
+    return runpack('<i', b)
 
-    def chrs2long(b):
-        assert len(b) == 8
-        first = ord(b[0]) # big endian
-        if first & 0x80 != 0:
-            first = first - 0x100
-        return (      first << 56 | ord(b[1]) << 48 | ord(b[2]) << 40 | ord(b[3]) << 32
-                      | ord(b[4]) << 24 | ord(b[5]) << 16 | ord(b[6]) <<  8 | ord(b[7])      )
+def chrs2long(b):
+    assert len(b) == 8
+    return runpack('>q', b)
 
-    def swapped_chrs2long(b):
-        assert len(b) == 8
-        first = ord(b[7]) # little endian
-        if first & 0x80 != 0:
-            first = first - 0x100
-        return (      first << 56 | ord(b[6]) << 48 | ord(b[5]) << 40 | ord(b[4]) << 32
-                      | ord(b[3]) << 24 | ord(b[2]) << 16 | ord(b[1]) <<  8 | ord(b[0])      )
-else:
-    def chrs2int(b):
-        assert len(b) == 4
-        return runpack('>i', b)
-
-    def swapped_chrs2int(b):
-        assert len(b) == 4
-        return runpack('<i', b)
-
-    def chrs2long(b):
-        assert len(b) == 8
-        return runpack('>q', b)
-
-    def swapped_chrs2long(b):
-        assert len(b) == 8
-        return runpack('<q', b)
+def swapped_chrs2long(b):
+    assert len(b) == 8
+    return runpack('<q', b)
 
 class Stream(object):
     """ Simple input stream.
