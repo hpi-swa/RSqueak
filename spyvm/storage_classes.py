@@ -225,8 +225,6 @@ class ClassShadow(AbstractCachingShadow):
                 w_new = model.W_SpurCompiledMethod(self.space, extrasize)
             else:
                 w_new = model.W_PreSpurCompiledMethod(self.space, extrasize)
-        elif instance_kind == COMPILED_METHOD:
-            w_new = model.W_CompiledMethod(self.space, extrasize)
         elif instance_kind == FLOAT:
             w_new = model.W_Float(0) # Squeak gives a random piece of memory
         elif instance_kind == LARGE_POSITIVE_INTEGER:
