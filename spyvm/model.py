@@ -1158,7 +1158,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
     def unwrap_long_untranslated(self, space):
         "NOT_RPYTHON"
         if not we_are_translated():
-            if self.size >= 8:
+            if self.size() >= 8:
                 word = 0
                 for i in range(self.size()):
                     word += ord(self.getchar(i)) << 8*i
