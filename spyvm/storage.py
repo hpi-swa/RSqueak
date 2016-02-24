@@ -76,6 +76,7 @@ class AbstractStrategy(object):
         else:
             size = self.size(w_self)
             new_strategy = self.strategy_factory().instantiate_strategy(self.instantiate_type, w_class, w_self, size)
+        return new_strategy
 
     def promote_if_neccessary(self):
         return jit.promote(self)

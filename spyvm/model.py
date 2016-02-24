@@ -834,8 +834,8 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
         old_strategy = self._get_strategy()
         new_strategy = old_strategy.instantiate(self, w_class)
         self._set_strategy(new_strategy)
-        old_strategy._convert_storage_to(w_self, new_strategy)
-        new_strategy.strategy_switched(w_self)
+        old_strategy._convert_storage_to(self, new_strategy)
+        new_strategy.strategy_switched(self)
 
     def guess_classname(self):
         if self.has_class():
