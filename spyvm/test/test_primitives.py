@@ -69,12 +69,6 @@ def test_small_int_add():
     assert r_uint(prim(primitives.ADD, [constants.MAXINT, 2]).value) == constants.MAXINT + 2
     assert r_uint(prim(primitives.ADD, [2 * constants.MAXINT - 2, 2]).value) == 2 * constants.MAXINT
 
-def test_small_int_add_fail():
-    w_result = prim_fails(primitives.ADD, [2 * constants.MAXINT - 1, 2])
-    # assert isinstance(w_result, model.W_LargePositiveInteger1Word)
-    # assert w_result.value == constants.TAGGED_MAXINT + 2
-    # prim_fails(primitives.ADD, [constants.TAGGED_MAXINT, constants.TAGGED_MAXINT * 2])
-
 def test_small_int_minus():
     assert prim(primitives.SUBTRACT, [5,9]).value == -4
 
