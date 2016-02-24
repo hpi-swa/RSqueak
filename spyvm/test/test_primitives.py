@@ -894,6 +894,18 @@ def test_numericbitblt(monkeypatch):
         assert prim(primitives.BITBLT_COPY_BITS, ["myReceiver"]).str_content() == "'myReceiver'"
     finally:
         monkeypatch.undo()
+
+# The next cannot be tested untranslated :(
+# def test_primitive_byte_size_of_object():
+#     assert prim(primitives.BYTE_SIZE_OF_INSTANCE, [space.w_SmallInteger]).value is 0
+#     assert prim(primitives.BYTE_SIZE_OF_INSTANCE, [space.w_LargePositiveInteger]).value is 0
+#     assert prim(primitives.BYTE_SIZE_OF_INSTANCE, [space.w_LargePositiveInteger, space.wrap_int(8)]).value is 0
+#     assert prim(primitives.BYTE_SIZE_OF_INSTANCE, [space.w_Float]).value is 0
+#     assert prim(primitives.BYTE_SIZE_OF_INSTANCE, [space.w_CompiledMethod]).value is 0
+#     assert prim(primitives.BYTE_SIZE_OF_INSTANCE, [space.w_ByteArray]).value is 0
+#     assert prim(primitives.BYTE_SIZE_OF_INSTANCE, [space.w_Point]).value is 0
+#     assert prim(primitives.BYTE_SIZE_OF_INSTANCE, [space.w_Bitmap]).value is 0
+
 # Note:
 #   primitives.NEXT is unimplemented as it is a performance optimization
 #   primitives.NEXT_PUT is unimplemented as it is a performance optimization

@@ -1569,6 +1569,8 @@ SUSPEND = 88
 FLUSH_CACHE = 89
 YIELD = 167
 
+BYTE_SIZE_OF_INSTANCE = 181
+
 EXIT_CRITICAL_SECTION = 185 # similar to SIGNAL, hence SIGNAL + 100
 ENTER_CRITICAL_SECTION = 186 # similar to WAIT, hence WAIT + 100
 TEST_AND_SET_OWNERSHIP_OF_CRITICAL_SECTION = 187
@@ -1724,6 +1726,67 @@ def func(interp, s_frame, w_rcvr):
     s_class = w_rcvr.as_class_get_shadow(interp.space)
     s_class.flush_method_caches()
     return w_rcvr
+
+def model_sizeof(model):
+    return 4 # constant for interpretation
+
+from rpython.rtyper.extregistry import ExtRegistryEntry
+class Entry(ExtRegistryEntry):
+    _about_ = model_sizeof
+
+    def compute_result_annotation(self, s_model):
+        from rpython.annotator.model import SomeInteger
+        return SomeInteger(nonneg=True, knowntype=int)
+
+    def specialize_call(self, hop):
+        from rpython.rtyper.lltypesystem import lltype
+        from rpython.memory.lltypelayout import sizeof
+        modelrepr = hop.rtyper.getrepr(hop.args_s[0])
+        hop.exception_cannot_occur()
+        sz = 0
+        curtype = modelrepr.lowleveltype.TO
+        while curtype._flds.has_key("super"):
+            sz += sizeof(curtype, 1)
+            curtype = curtype._flds["super"]
+        sz += sizeof(curtype, 1)
+        return hop.inputconst(lltype.Signed, sz)
+
+@expose_primitive(BYTE_SIZE_OF_INSTANCE)
+def func(interp, s_frame, argcount):
+    from rpython.memory.lltypelayout import sizeof
+    from spyvm.storage_classes import POINTERS,\
+        WEAK_POINTERS, WORDS, BYTES, COMPILED_METHOD,\
+        FLOAT, LARGE_POSITIVE_INTEGER
+    # This does not count shadows and the memory required for storage or any of
+    # that "meta-info", but only the size of the types struct and the requested
+    # fields.
+    w_rcvr = s_frame.peek(argcount)
+    size = 0
+    if argcount == 1:
+        size = interp.space.unwrap_int(s_frame.top())
+    if argcount > 1:
+        raise PrimitiveFailedError
+
+    s_class = w_rcvr.as_class_get_shadow(interp.space)
+    instance_kind = s_class.get_instance_kind()
+    if instance_kind in [POINTERS, WEAK_POINTERS]:
+        r = model_sizeof(objectmodel.instantiate(model.W_PointersObject)) + (s_class.instsize() + size) * constants.BYTES_PER_WORD
+    elif instance_kind == WORDS:
+        r = model_sizeof(objectmodel.instantiate(model.W_WordsObject)) + size * constants.BYTES_PER_WORD
+    elif instance_kind == BYTES:
+        r = model_sizeof(objectmodel.instantiate(model.W_BytesObject)) + size
+    elif instance_kind == COMPILED_METHOD:
+        r = model_sizeof(objectmodel.instantiate(model.W_CompiledMethod))
+    elif instance_kind == FLOAT:
+        r = model_sizeof(objectmodel.instantiate(model.W_Float))
+    elif instance_kind == LARGE_POSITIVE_INTEGER:
+        if size <= 4:
+            r = model_sizeof(objectmodel.instantiate(model.W_LargePositiveInteger1Word))
+        else:
+            r = model_sizeof(objectmodel.instantiate(model.W_BytesObject)) + size
+    else:
+        raise PrimitiveFailedError
+    return interp.space.wrap_int(r)
 
 # ___________________________________________________________________________
 # BlockClosure Primitives
