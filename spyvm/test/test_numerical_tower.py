@@ -7,14 +7,10 @@ from .util import read_image, copy_to_module, cleanup_module, create_space
 
 def setup_module():
     space, interp, _, _ = read_image('Squeak4.3.image')
-    space.uses_block_contexts.deactivate()
     w = space.w
     perform = interp.perform
     copy_to_module(locals(), __name__)
-    # HACK to actually obtain the LargeNegativeInteger class
     interp.trace = False
-    w_LNI = perform(w(2748779069440000000), 'negated').getclass(space)
-    space.w_LargeNegativeInteger = w_LNI
 
 def teardown_module():
     cleanup_module(__name__)
