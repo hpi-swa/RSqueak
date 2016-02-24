@@ -239,8 +239,8 @@ def entry_point(argv):
         else:
             w_receiver = space.wrap_int(number)
         if code:
-            selector = compile_code(interp, w_receiver, code)
-        s_frame = create_context(interp, w_receiver, selector, stringarg)
+            w_selector = compile_code(interp, w_receiver, code)
+        s_frame = create_context(interp, w_receiver, w_selector, stringarg)
         if headless:
             space.headless.activate()
             context = s_frame
@@ -271,6 +271,7 @@ def compile_code(interp, w_receiver, code):
     # TODO - Find a way to cleanly initialize the image, without executing the active_context of the image.
     # Instead, we want to execute our own context. Then remove this flag (and all references to it)
     space.suppress_process_switch.activate()
+    space.headless.activate()
 
     w_result = interp.perform(
         w_receiver_class,
@@ -283,15 +284,16 @@ def compile_code(interp, w_receiver, code):
     if not isinstance(w_result, model.W_BytesObject) or space.unwrap_string(w_result) != selector:
         raise error.Exit("Unexpected compilation result (probably failed to compile): %s" % result_string(w_result))
     space.suppress_process_switch.deactivate()
+    space.headless.deactivate()
 
     w_receiver_class.as_class_get_shadow(space).s_methoddict().sync_method_cache()
-    return selector
+    return w_result
 
-def create_context(interp, w_receiver, selector, stringarg):
+def create_context(interp, w_receiver, w_selector, stringarg):
     args = []
     if stringarg:
         args.append(interp.space.wrap_string(stringarg))
-    return interp.create_toplevel_context(w_receiver, selector, w_arguments = args)
+    return interp.create_toplevel_context(w_receiver, w_selector=w_selector, w_arguments=args)
 
 def create_process(interp, s_frame):
     space = interp.space
