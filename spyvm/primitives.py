@@ -1745,6 +1745,24 @@ class Entry(ExtRegistryEntry):
         modelrepr = hop.rtyper.getrepr(hop.args_s[0])
         hop.exception_cannot_occur()
         sz = sizeof(modelrepr.lowleveltype.TO, 1)
+        # Also add the instance-specific helper structs that all instances have
+        if modelrepr.rclass.classdef.classdesc.pyobj is model.W_PointersObject:
+            sz += sizeof(modelrepr.lowleveltype.TO._flds["inst__storage"].TO, 0)
+            # not adding shadows, because these are often shared
+        elif modelrepr.rclass.classdef.classdesc.pyobj is model.W_WordsObject:
+            sz += sizeof(modelrepr.lowleveltype.TO._flds["mutate_words"].TO)
+            sz += sizeof(modelrepr.lowleveltype.TO._flds["inst_words"].TO, 0)
+        elif modelrepr.rclass.classdef.classdesc.pyobj is model.W_BytesObject:
+            sz += sizeof(modelrepr.lowleveltype.TO._flds["mutate_version"].TO)
+        elif modelrepr.rclass.classdef.classdesc.pyobj is model.W_CompiledMethod:
+            sz += sizeof(modelrepr.lowleveltype.TO._flds["mutate_version"].TO)
+            sz += sizeof(modelrepr.lowleveltype.TO._flds["inst_literals"].TO, 0)
+            sz += sizeof(modelrepr.lowleveltype.TO._flds["inst_version"].TO)
+            sz += sizeof(modelrepr.lowleveltype.TO._flds["inst_lookup_selector"].TO, 0)
+        elif modelrepr.rclass.classdef.classdesc.pyobj is model.W_Float
+            pass
+        elif modelrepr.rclass.classdef.classdesc.pyobj is model.W_LargePositiveInteger1Word:
+            pass
         return hop.inputconst(lltype.Signed, sz)
 
 @expose_primitive(BYTE_SIZE_OF_INSTANCE)
