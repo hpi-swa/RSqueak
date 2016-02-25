@@ -85,8 +85,10 @@ class SDLDisplay(object):
         if self.highdpi:
             flags |= RSDL.WINDOW_ALLOW_HIGHDPI
         self.window = RSDL.CreateWindow(self.title, x, y, width, height, flags)
-        self.renderer = RSDL.CreateRenderer(self.window, -1,
-                RSDL.RENDERER_ACCELERATED)
+        # https://wiki.libsdl.org/SDL_CreateRenderer#flags: "Note that providing
+        # no flags gives priority to available SDL_RENDERER_ACCELERATED
+        # renderers."
+        self.renderer = RSDL.CreateRenderer(self.window, -1, 0)
 
     def set_video_mode(self, w, h, d):
         if not (w > 0 and h > 0):
