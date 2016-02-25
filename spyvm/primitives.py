@@ -1759,7 +1759,7 @@ class Entry(ExtRegistryEntry):
             sz += sizeof(modelrepr.lowleveltype.TO._flds["inst_literals"].TO, 0)
             sz += sizeof(modelrepr.lowleveltype.TO._flds["inst_version"].TO)
             sz += sizeof(modelrepr.lowleveltype.TO._flds["inst_lookup_selector"].TO, 0)
-        elif modelrepr.rclass.classdef.classdesc.pyobj is model.W_Float
+        elif modelrepr.rclass.classdef.classdesc.pyobj is model.W_Float:
             pass
         elif modelrepr.rclass.classdef.classdesc.pyobj is model.W_LargePositiveInteger1Word:
             pass
