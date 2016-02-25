@@ -706,11 +706,10 @@ def get_instances_array_gc(space, w_class=None):
             if w_obj is not None and w_obj.has_class():
                 w_cls = w_obj.getclass(space)
                 if w_cls is not None:
-                    # when calling NEXT_OBJECT, we should not return # SmallInteger
-                    # instances
-                    # XXX: same for Character on Spur and SmallFloat64 on Spur64...
-                    if not w_cls.is_same_object(space.w_SmallInteger) and \
-                       (w_class is None or w_cls.is_same_object(w_class)):
+                    # XXX: should not return SmallFloat64 on Spur64...
+                    if ((not w_cls.is_same_object(space.w_SmallInteger)) and
+                        (not (space.is_spur.is_set() and w_cls.is_same_object(space.w_Character))) and
+                        (w_class is None or w_cls.is_same_object(w_class))):
                         result_w.append(w_obj)
             pending.extend(rgc.get_rpy_referents(gcref))
 
