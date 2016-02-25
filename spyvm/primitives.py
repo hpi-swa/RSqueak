@@ -1744,12 +1744,7 @@ class Entry(ExtRegistryEntry):
         from rpython.memory.lltypelayout import sizeof
         modelrepr = hop.rtyper.getrepr(hop.args_s[0])
         hop.exception_cannot_occur()
-        sz = 0
-        curtype = modelrepr.lowleveltype.TO
-        while curtype._flds.has_key("super"):
-            sz += sizeof(curtype, 1)
-            curtype = curtype._flds["super"]
-        sz += sizeof(curtype, 1)
+        sz = sizeof(modelrepr.lowleveltype.TO, 1)
         return hop.inputconst(lltype.Signed, sz)
 
 @expose_primitive(BYTE_SIZE_OF_INSTANCE)
