@@ -30,12 +30,12 @@ def test_accessor_generators():
     assert w.next_link() == "boe"
 
 def link(w_next='foo'):
-    w_object = model.W_PointersObject(space, None, 1)
+    w_object = model.W_PointersObject(space, None, 4)
     wrapper.LinkWrapper(space, w_object).store_next_link(w_next)
     return w_object
 
 def test_linked_list():
-    w_object = model.W_PointersObject(space, None,2)
+    w_object = model.W_PointersObject(space, None, 4)
     w_last = link(space.w_nil)
     w_lb1 = link(w_last)
     w_lb2 = link(w_lb1)
@@ -61,8 +61,9 @@ def test_linked_list():
     linkedlist.add_last_link(w_last)
     assert linkedlist.first_link() is w_first
     assert linkedlist.last_link() is w_last
-    py.test.raises(WrapperException, linkedlist.remove, space.w_nil)
+    assert linkedlist.remove(space.w_nil) is None
     linkedlist.remove(w_first)
+    assert linkedlist.remove(w_first) is None
     assert linkedlist.first_link() is w_last
     linkedlist.store_first_link(w_first)
     wrapper.LinkWrapper(space, w_first).store_next_link(w_last)
@@ -96,7 +97,7 @@ def new_processlist(processes_w=[]):
         w_first = newprocess(w_first, w_processlist).wrapped
         if w_last.is_nil(space):
             w_last = w_first
-    pl = wrapper.ProcessListWrapper(space, w_processlist)
+    pl = wrapper.LinkedListWrapper(space, w_processlist)
     pl.store_first_link(w_first)
     pl.store_last_link(w_last)
     return pl
@@ -194,14 +195,15 @@ class TestScheduler(object):
 
         return sleeping, running
 
-
-    def test_activate(self):
+    def test_transfer_to_self_from(self):
         sleepingcontext = new_frame()
+        activecontext = new_frame()
         process, old_process = self.make_processes(4, 2, sleepingcontext)
         try:
-            process.activate()
+            process.transfer_to_self_from(activecontext)
         except interpreter.ProcessSwitch, e:
             w_frame = e.s_new_context._w_self
+        assert old_process.suspended_context() is activecontext.w_self()
         self.new_process_consistency(process, old_process, w_frame)
 
     def test_resume(self):
@@ -227,15 +229,15 @@ class TestScheduler(object):
         assert semaphore.excess_signals() == 1
 
     def test_highest_priority(self):
-        py.test.raises(FatalError, wrapper.scheduler(space).pop_highest_priority_process)
+        py.test.raises(FatalError, wrapper.scheduler(space).wake_highest_priority_process)
         process, old_process = self.make_processes(4, 2, space.w_false)
         process.put_to_sleep()
         old_process.put_to_sleep()
-        highest = wrapper.scheduler(space).pop_highest_priority_process()
-        assert highest is process.wrapped
-        highest = wrapper.scheduler(space).pop_highest_priority_process()
-        assert highest is old_process.wrapped
-        py.test.raises(FatalError, wrapper.scheduler(space).pop_highest_priority_process)
+        highest = wrapper.scheduler(space).wake_highest_priority_process()
+        assert highest.wrapped is process.wrapped
+        highest = wrapper.scheduler(space).wake_highest_priority_process()
+        assert highest.wrapped is old_process.wrapped
+        py.test.raises(FatalError, wrapper.scheduler(space).wake_highest_priority_process)
 
     def test_semaphore_wait(self):
         semaphore = new_semaphore()

@@ -6,25 +6,6 @@ from rpython.rtyper.lltypesystem import lltype, rffi
 from rpython.rlib.rarithmetic import r_uint
 
 
-
-def map_word_argb(word):
-    return word
-def map_word_bgra(word):
-    """
-    Maps Squeak color words: 0x AA RR GG BB
-    to OS X SDL color words: 0x BB GG RR AA
-    """
-    return (
-        (word & r_uint(0x000000FF)) << 24 |
-        (word & r_uint(0x0000FF00)) <<  8 |
-        (word & r_uint(0x00FF0000)) >>  8 |
-        (word & r_uint(0xFF000000)) >> 24
-    )
-map_word = map_word_argb
-if system.IS_DARWIN:
-    map_word = map_word_bgra
-
-
 def from_words_object(w_obj, form):
     depth = form.depth()
     space = form.space
@@ -99,7 +80,7 @@ class W_DisplayBitmap(model.W_AbstractObjectWithClassReference):
         return self.display.get_pixelbuffer_UCHAR()
 
     def set_pixelbuffer_word(self, n, word):
-        self.pixelbuffer()[n] = map_word(word)
+        self.pixelbuffer()[n] = word
 
     def take_over_display(self):
         # Make sure FrameWrapper.take_over_display() is called first for the correct Frame object.
@@ -212,12 +193,12 @@ class W_MappingDisplayBitmap(W_DisplayBitmap):
 
         word = r_uint(word)
         pos = self.compute_pos(n)
-        buf = rffi.ptradd(self.display.screen.c_pixels, pos)
+        buf = rffi.ptradd(self.display.get_plain_pixelbuffer(), pos)
         depth = r_uint(self._depth)
         rshift = BITS - depth
         for i in range(bits / depth):
             pixel = word >> rshift
-            buf[i] = rffi.cast(rffi.UCHAR, pixel)
+            buf[i] = rffi.cast(rffi.CHAR, pixel)
             word <<= depth
 
     def compute_pos(self, n):

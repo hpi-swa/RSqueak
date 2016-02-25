@@ -5,7 +5,7 @@ from spyvm.util.version import Version
 from spyvm.error import UnwrappingError, WrappingError
 from spyvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX
 from rpython.rlib import jit, rpath
-from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin
+from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin, we_are_translated
 from rpython.rlib.rarithmetic import intmask, r_uint, int_between, r_longlong, r_ulonglong, is_valid_int
 
 class ConstantMixin(object):
@@ -49,6 +49,17 @@ class ConstantVersion(object):
 def empty_object():
     return instantiate(model.W_PointersObject)
 
+class ForceHeadless(object):
+    def __init__(self, space):
+        self.space = space
+        self.was_headfull = not space.headless.is_set()
+    def __enter__(self):
+        if self.was_headfull:
+            self.space.headless.activate()
+    def __exit__(self, type, value, traceback):
+        if self.was_headfull:
+            self.space.headless.deactivate()
+
 class ObjSpace(object):
     _immutable_fields_ = ['objtable']
 
@@ -57,10 +68,13 @@ class ObjSpace(object):
         self.suppress_process_switch = ConstantFlag()
         self.run_spy_hacks = ConstantFlag()
         self.headless = ConstantFlag()
+        self.highdpi = ConstantFlag(True)
         self.use_plugins = ConstantFlag()
         self.omit_printing_raw_bytes = ConstantFlag()
         self.image_loaded = ConstantFlag()
+        self.is_spur = ConstantFlag()
         self.uses_block_contexts = ConstantFlag()
+        self.simulate_numeric_primitives = ConstantFlag()
 
         self.classtable = {}
         self.objtable = {}
@@ -98,6 +112,8 @@ class ObjSpace(object):
         self.set_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, image_name)
         self.image_loaded.activate()
         self.init_system_attributes(argv)
+        from rpython.rlib.rsocket import rsocket_startup
+        rsocket_startup()
 
     def init_system_attributes(self, argv):
         for i in xrange(1, len(argv)):
@@ -152,7 +168,6 @@ class ObjSpace(object):
         self.add_bootstrap_object(name, obj)
 
     def make_bootstrap_objects(self):
-        self.make_bootstrap_object("w_charactertable")
         self.make_bootstrap_object("w_true")
         self.make_bootstrap_object("w_false")
         self.make_bootstrap_object("w_special_selectors")
@@ -177,7 +192,7 @@ class ObjSpace(object):
     @specialize.argtype(1)
     def wrap_int(self, val):
         if isinstance(val, r_longlong) and not is_valid_int(val):
-            if val > 0 and r_ulonglong(val) < r_uint(constants.U_MAXINT):
+            if val > 0 and val <= r_longlong(constants.U_MAXINT):
                 return self.wrap_positive_32bit_int(intmask(val))
             else:
                 raise WrappingError
@@ -204,6 +219,81 @@ class ObjSpace(object):
         else:
             return model.W_LargePositiveInteger1Word(val)
 
+    @jit.unroll_safe
+    @specialize.arg(2)
+    def wrap_large_number(self, val, w_class):
+        # import pdb; pdb.set_trace()
+        assert isinstance(val, r_ulonglong)
+        inst_size = self._number_bytesize(val)
+        w_result = w_class.as_class_get_shadow(self).new(inst_size)
+        for i in range(inst_size):
+            byte_value = (val >> (i * 8)) & 255
+            w_result.setchar(i, chr(byte_value))
+        return w_result
+
+    @jit.unroll_safe
+    def _number_bytesize(self, val):
+        assert val != 0
+        sz = 0
+        while val != 0:
+            sz += 1
+            val = val >> 8
+        return sz
+
+    @specialize.argtype(1)
+    def wrap_ulonglong(self, val):
+        assert val > 0 and not is_valid_int(val)
+        r_val = r_ulonglong(val)
+        w_class = self.w_LargePositiveInteger
+        return self.wrap_large_number(r_val, w_class)
+
+    @specialize.argtype(1)
+    def wrap_nlonglong(self, val):
+        if self.w_LargeNegativeInteger is None:
+            raise WrappingError
+        assert val < 0 and not is_valid_int(val)
+        try:
+            r_val = r_ulonglong(-val)
+        except OverflowError:
+            # this is a negative max-bit r_longlong, mask by simple coercion
+            r_val = r_ulonglong(val)
+        w_class = self.w_LargeNegativeInteger
+        return self.wrap_large_number(r_val, w_class)
+
+    def wrap_long_untranslated(self, val):
+        "NOT_RPYTHON"
+        if val > 0:
+            w_class = self.w_LargePositiveInteger
+        elif  val < 0:
+            w_class = self.w_LargeNegativeInteger
+            val = -val
+        else:
+            raise WrappingError
+        inst_size = self._number_bytesize(val)
+        w_result = w_class.as_class_get_shadow(self).new(inst_size)
+        for i in range(inst_size):
+            byte_value = (val >> (i * 8)) & 255
+            w_result.setchar(i, chr(byte_value))
+        return w_result
+
+    @specialize.argtype(1)
+    def wrap_longlong(self, val):
+        if not we_are_translated():
+            "Tests only"
+            if isinstance(val, long) and not isinstance(val, r_longlong):
+                return self.wrap_long_untranslated(val)
+
+        if not is_valid_int(val):
+            if isinstance(val, r_ulonglong):
+                return self.wrap_ulonglong(val)
+            elif isinstance(val, r_longlong):
+                if val > 0 and not val <= r_longlong(constants.U_MAXINT):
+                    return self.wrap_ulonglong(val)
+                elif  val < 0:
+                    return self.wrap_nlonglong(val)
+        # handles the rest and raises if necessary
+        return self.wrap_int(val)
+
     def wrap_float(self, i):
         return model.W_Float(i)
 
@@ -214,7 +304,8 @@ class ObjSpace(object):
         return w_inst
 
     def wrap_char(self, c):
-        return self.w_charactertable.fetch(self, ord(c))
+        # return self.w_charactertable.fetch(self, ord(c))
+        return model.W_Character(ord(c))
 
     def wrap_bool(self, b):
         if b:
@@ -253,8 +344,8 @@ class ObjSpace(object):
     def unwrap_longlong(self, w_value):
         return w_value.unwrap_longlong(self)
 
-    def unwrap_char(self, w_char):
-        return w_char.unwrap_char(self)
+    def unwrap_char_as_byte(self, w_char):
+        return w_char.unwrap_char_as_byte(self)
 
     def unwrap_float(self, w_v):
         return w_v.unwrap_float(self)
@@ -280,7 +371,10 @@ class ObjSpace(object):
         disp = self._display.get()
         if disp is None:
             # Create lazy to allow headless execution.
-            disp = display.SDLDisplay(self.get_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX))
+            disp = display.SDLDisplay(
+                self.get_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX),
+                self.highdpi.is_set()
+            )
             self._display.set(disp)
         return disp
 

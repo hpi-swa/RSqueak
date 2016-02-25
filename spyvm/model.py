@@ -148,6 +148,12 @@ class W_Object(object):
            False means swapping failed"""
         return False
 
+    def pointers_become_one_way(self, space, from_w, to_w):
+        pass
+
+    def post_become_one_way(self, w_to):
+        pass
+
     def clone(self, space):
         raise NotImplementedError
 
@@ -184,7 +190,11 @@ class W_Object(object):
     def unwrap_longlong(self, space):
         raise error.UnwrappingError("Got unexpected class unwrap_longlong")
 
-    def unwrap_char(self, space):
+    def unwrap_long_untranslated(self, space):
+        return self.unwrap_longlong(space)
+
+
+    def unwrap_char_as_byte(self, space):
         raise error.UnwrappingError
 
     def unwrap_array(self, space):
@@ -287,6 +297,18 @@ class W_SmallInteger(W_Object):
     def unwrap_float(self, space):
         return float(self.value)
 
+    def unwrap_char_as_byte(self, space):
+        # We do not implement the STRING_REPLACE primitive, but some code paths
+        # in Squeak rely on that primitive's munging of ByteArrays and
+        # ByteStrings. We are forgiving, so we also allow bytes extraced from
+        # ByteArrays to be unwrapped as characters and put into strings
+        from rpython.rlib.rarithmetic import int_between
+        value = self.value
+        if not int_between(0, value, 255):
+            raise error.UnwrappingError
+        else:
+            return chr(self.value)
+
     def guess_classname(self):
         return "SmallInteger"
 
@@ -316,11 +338,16 @@ class W_AbstractObjectWithIdentityHash(W_Object):
     """Object with explicit hash (ie all except small
     ints and floats)."""
     _attrs_ = ['hash']
+    _immutable_fields_ = ['hash?']
     repr_classname = "W_AbstractObjectWithIdentityHash"
 
     hash_generator = rrandom.Random()
     UNASSIGNED_HASH = sys.maxint
     hash = UNASSIGNED_HASH # default value
+
+    def post_become_one_way(self, w_to):
+        if isinstance(w_to, W_AbstractObjectWithIdentityHash):
+            w_to.hash = self.gethash()
 
     def fillin(self, space, g_self):
         self.hash = g_self.get_hash()
@@ -330,7 +357,7 @@ class W_AbstractObjectWithIdentityHash(W_Object):
 
     def gethash(self):
         if self.hash == self.UNASSIGNED_HASH:
-            self.hash = hash = intmask(self.hash_generator.genrand32()) // 2
+            self.hash = hash = intmask(self.hash_generator.genrand32()) % 2**22
             return hash
         return self.hash
 
@@ -373,6 +400,9 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
             word |= ord(byte) << (idx * 8)
         self.value = intmask(word)
         self._exposed_size = len(bytes)
+
+    def has_class(self):
+        return True
 
     def getclass(self, space):
         return space.w_LargePositiveInteger
@@ -493,6 +523,9 @@ class W_Float(W_AbstractObjectWithIdentityHash):
             low, high = high, low
         self.fillin_fromwords(space, high, low)
 
+    def has_class(self):
+        return True
+
     def getclass(self, space):
         """Return Float from special objects array."""
         return space.w_Float
@@ -568,6 +601,92 @@ class W_Float(W_AbstractObjectWithIdentityHash):
     def size(self):
         return constants.WORDS_IN_FLOAT
 
+class W_Character(W_AbstractObjectWithIdentityHash):
+    """Boxed char value."""
+    _attrs_ = ['value']
+    repr_classname = "W_Character"
+
+    def __init__(self, value):
+        self.value = value
+
+    def fillin(self, space, g_self):
+        W_AbstractObjectWithIdentityHash.fillin(self, space, g_self)
+        # Recursive fillin required to enable specialized storage strategies.
+        pointers_w = g_self.pointers
+        assert len(pointers_w) == 1
+        pointers_w[0].fillin(space)
+        self.value = space.unwrap_int(pointers_w[0].w_object)
+
+    def has_class(self):
+        return True
+
+    def getclass(self, space):
+        """Return Character from special objects array."""
+        return space.w_Character
+
+    def guess_classname(self):
+        return "Character"
+
+    def str_content(self):
+        try:
+            return "$" + chr(self.value)
+        except ValueError:
+            return "Character value: " + str(self.value)
+
+    def gethash(self):
+        return self.value
+
+    def invariant(self):
+        return isinstance(self.value, int)
+
+    def _become(self, w_other):
+        assert isinstance(w_other, W_Character)
+        self.value, w_other.value = w_other.value, self.value
+        W_AbstractObjectWithIdentityHash._become(self, w_other)
+
+    def is_same_object(self, other):
+        if not isinstance(other, W_Character):
+            return False
+        return self.value == other.value
+
+    def __eq__(self, other):
+        if not isinstance(other, W_Character):
+            return False
+        return self.value == other.value
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __hash__(self):
+        return hash(self.value)
+
+    def clone(self, space):
+        return self
+
+    def unwrap_char_as_byte(self, space):
+        return chr(self.value)
+
+    def at0(self, space, index0):
+        return self.fetch(space, index0)
+
+    def atput0(self, space, index0, w_value):
+        self.store(space, index0, w_value)
+
+    def fetch(self, space, n0):
+        if n0 != 0:
+            raise IndexError
+        return space.wrap_int(self.value)
+
+    def store(self, space, n0, w_obj):
+        if n0 != 0:
+            raise IndexError
+        if isinstance(w_obj, W_SmallInteger):
+            self.value = w_obj.value
+        else:
+            raise IndexError
+
+    def size(self):
+        return 1
 
 @signature.finishsigs
 class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
@@ -626,6 +745,19 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
         from spyvm import storage_classes
         return (W_AbstractObjectWithIdentityHash.invariant(self) and
                 isinstance(self.getclass(None).strategy, storage_classes.ClassShadow))
+
+    def pointers_become_one_way(self, space, from_w, to_w):
+        W_AbstractObjectWithIdentityHash.pointers_become_one_way(self, space, from_w, to_w)
+        idx = 0
+        try:
+            idx = from_w.index(self.w_class)
+        except ValueError:
+            return
+        w_class = self.w_class
+        new_w_class = to_w[idx]
+        assert isinstance(new_w_class, W_PointersObject)
+        self.w_class = new_w_class
+        w_class.post_become_one_way(new_w_class)
 
     def _become(self, w_other):
         assert isinstance(w_other, W_AbstractObjectWithClassReference)
@@ -702,8 +834,8 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
         old_strategy = self._get_strategy()
         new_strategy = old_strategy.instantiate(self, w_class)
         self._set_strategy(new_strategy)
-        old_strategy._convert_storage_to(w_self, new_strategy)
-        new_strategy.strategy_switched(w_self)
+        old_strategy._convert_storage_to(self, new_strategy)
+        new_strategy.strategy_switched(self)
 
     def guess_classname(self):
         if self.has_class():
@@ -860,10 +992,22 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
             self.strategy.become(w_other)
         elif self.has_strategy() and self._get_strategy().handles_become():
             w_other.strategy.become(self)
-        # TODO: must swap selfs
         self.strategy, w_other.strategy = w_other.strategy, self.strategy
         self._storage, w_other._storage = w_other._storage, self._storage
         W_AbstractObjectWithIdentityHash._become(self, w_other)
+
+    def pointers_become_one_way(self, space, from_w, to_w):
+        ptrs = self.fetch_all(space)
+        ptridx = 0
+        for i, w_from in enumerate(from_w):
+            try:
+                ptridx = ptrs.index(w_from)
+            except ValueError:
+                continue
+            w_to = to_w[i]
+            ptrs[ptridx] = w_to
+            w_from.post_become_one_way(w_to)
+        self.store_all(space, ptrs)
 
     def clone(self, space):
         my_pointers = self.fetch_all(space)
@@ -905,6 +1049,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
             return self.bytes[n0]
 
     def setchar(self, n0, character):
+        assert isinstance(character, str)
         assert len(character) == 1
         if self.bytes is None:
             self.native_bytes.setchar(n0, character)
@@ -941,7 +1086,9 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         if self.has_class() and self.getclass(None).has_space():
             if self.getclass(None).space().omit_printing_raw_bytes.is_set():
                 return "<omitted>"
-        return "'%s'" % self.unwrap_string(None).replace('\r', '\n')
+        return "'%s'" % ''.join([\
+            char if ord(char) < 128 else (r'\x%s' % hex(ord(char))[2:]) for char in \
+            (self.unwrap_string(None).replace('\r', '\n'))])
 
     def unwrap_string(self, space):
         return self._pure_as_string(self.version)
@@ -952,6 +1099,12 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
             return self.native_bytes.as_string()
         else:
             return "".join(self.bytes)
+
+    def getbytes(self):
+        if self.bytes is None:
+            return self.native_bytes.copy_bytes()
+        else:
+            return self.bytes
 
     def selector_string(self):
         return "#" + self.unwrap_string(None)
@@ -988,16 +1141,33 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
 
     @jit.unroll_safe
     def unwrap_longlong(self, space):
-        # TODO: Completely untested! This failed translation bigtime...
-        # XXX Probably we want to allow all subclasses
-        if not self.getclass(space).is_same_object(space.w_LargePositiveInteger):
-            raise error.UnwrappingError("Failed to convert bytes to word")
         if self.size() > 8:
             raise error.UnwrappingError("Too large to convert bytes to word")
         word = r_longlong(0)
         for i in range(self.size()):
-            word += r_longlong(ord(self.getchar(i))) << 8*i
-        return word
+            try:
+                word += r_longlong(ord(self.getchar(i))) << 8*i
+            except OverflowError:
+                raise error.UnwrappingError("Too large to convert bytes to word")
+        if (space.w_LargeNegativeInteger is not None and
+            self.getclass(space).is_same_object(space.w_LargeNegativeInteger)):
+            return -word
+        else:
+            return word
+
+    def unwrap_long_untranslated(self, space):
+        "NOT_RPYTHON"
+        if not we_are_translated():
+            if self.size() >= 8:
+                word = 0
+                for i in range(self.size()):
+                    word += ord(self.getchar(i)) << 8*i
+                if (space.w_LargeNegativeInteger is not None and
+                    self.getclass(space).is_same_object(space.w_LargeNegativeInteger)):
+                    return -word
+                else:
+                    return word
+        return self.unwrap_longlong(space)
 
     def is_array_object(self):
         return True
@@ -1077,6 +1247,14 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
             self.native_words.setword(n, intmask(word))
         else:
             self.words[n] = r_uint(word)
+
+    def getchar(self, n0):
+        return chr(self.getword(n0))
+
+    def setchar(self, n0, character):
+        assert isinstance(character, str)
+        assert len(character) == 1
+        self.setword(n0, ord(character))
 
     def short_at0(self, space, index0):
         word = intmask(self.getword(index0 / 2))
@@ -1171,6 +1349,35 @@ class NativeWordsWrapper(object):
         lltype.free(self.c_words, flavor='raw')
 
 
+class CompiledMethodHeader(object):
+    def __init__(self, header_word):
+        self.primitive_index = 0
+        self.has_primitive = False
+        self.number_of_literals = 0
+        self.number_of_temporaries = 0
+        self.number_of_arguments = 0
+        self.large_frame = 0
+
+class V3CompiledMethodHeader(CompiledMethodHeader):
+    def __init__(self, header_word):
+        self.primitive_index, self.number_of_literals, self.large_frame, \
+                self.number_of_temporaries, self.number_of_arguments = \
+                constants.decode_compiled_method_header(header_word)
+        self.has_primitive = self.primitive_index != 0
+
+class SpurCompiledMethodHeader(CompiledMethodHeader):
+    def __init__(self, header_word):
+        from spyvm.util.bitmanipulation import splitter
+        self.number_of_literals, is_optimized_bit, has_primitive_bit, \
+                self.large_frame, self.number_of_temporaries, \
+                self.number_of_arguments, access_mod, instruction_set_bit = \
+                splitter[15,1,1,1,6,4,2,1](header_word)
+        self.has_primitive = has_primitive_bit == 1
+
+    @staticmethod
+    def has_primitive_bit_set(header_word):
+        return header_word & (1 << 16) != 0
+
 class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     """My instances are methods suitable for interpretation by the virtual machine.  This is the only class in the system whose instances intermix both indexable pointer fields and indexable integer fields.
 
@@ -1197,12 +1404,40 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     lookup_class = None
     import_from_mixin(VersionMixin)
 
+    def pointers_become_one_way(self, space, from_w, to_w):
+        W_AbstractObjectWithIdentityHash.pointers_become_one_way(self, space, from_w, to_w)
+        idx = -1
+        try:
+            idx = from_w.index(self.compiledin_class)
+        except ValueError:
+            pass
+        if idx >= 0:
+            compiledin_class = self.compiledin_class
+            new_w_class = to_w[idx]
+            assert isinstance(new_w_class, W_PointersObject)
+            self.compiledin_class = new_w_class
+            compiledin_class.post_become_one_way(new_w_class)
+            self.changed()
+        idx = -1
+        try:
+            idx = from_w.index(self.lookup_class)
+        except ValueError:
+            pass
+        if idx >= 0:
+            lookup_class = self.lookup_class
+            new_w_class = to_w[idx]
+            assert isinstance(new_w_class, W_PointersObject)
+            self.lookup_class = new_w_class
+            lookup_class.post_become_one_way(new_w_class)
+            self.changed()
+
     def __init__(self, space, bytecount=0, header=0):
         self.bytes = ["\x00"] * bytecount
         self.setheader(space, header, initializing=True)
 
     def fillin(self, space, g_self):
-        # Implicitely sets the header, including self.literalsize
+        self.bytes = [] # make sure the attribute is defined
+        # Implicitly sets the header, including self.literalsize
         for i, w_object in enumerate(g_self.get_pointers()):
             self.literalatput0(space, i, w_object, initializing=True)
         self.setbytes(g_self.get_bytes()[self.bytecodeoffset():])
@@ -1210,18 +1445,13 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     # === Setters ===
 
     def setheader(self, space, header, initializing=False):
-        _primitive, literalsize, islarge, tempsize, argsize = constants.decode_compiled_method_header(header)
-        if initializing or self.literalsize != literalsize:
-            # Keep the literals if possible.
-            self.literalsize = literalsize
-            self.literals = [space.w_nil] * self.literalsize
         self.header = header
-        self.argsize = argsize
-        self._tempsize = tempsize
-        self._primitive = _primitive
-        self.islarge = islarge
-        self.compiledin_class = None
-        self.changed()
+
+    def initialize_literals(self, number_of_literals, space, initializing=False):
+        if initializing or self.literalsize != number_of_literals:
+            # Keep the literals if possible.
+            self.literalsize = number_of_literals
+            self.literals = [space.w_nil] * self.literalsize
 
     def setliteral(self, index, w_lit):
         self.literals[index] = w_lit
@@ -1334,7 +1564,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def literalatput0(self, space, index0, w_value, initializing=False):
         if index0 == 0:
             header = space.unwrap_int(w_value)
-            self.setheader(space, header, initializing=initializing)
+            self.setheader(space, header, initializing)
         else:
             self.setliteral(index0 - 1, w_value)
 
@@ -1405,7 +1635,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         w_other.changed()
 
     def clone(self, space):
-        copy = W_CompiledMethod(space, 0, self.getheader())
+        copy = self.__class__(space, 0, self.getheader())
         copy.bytes = list(self.bytes)
         copy.literals = list(self.literals)
         copy.compiledin_class = self.compiledin_class
@@ -1481,3 +1711,49 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
             if isinstance(s_class, ClassShadow):
                 return "%s >> #%s" % (s_class.getname(), self.lookup_selector)
         return "#%s" % self.lookup_selector
+
+class W_SpurCompiledMethod(W_CompiledMethod):
+    """Handles the specialities of the method header in Spur"""
+
+    def setheader(self, space, header, initializing=False):
+        decoded_header = SpurCompiledMethodHeader(header)
+        self.header = header
+        self.initialize_literals(decoded_header.number_of_literals, space,
+                initializing)
+        self.argsize = decoded_header.number_of_arguments
+        self._tempsize = decoded_header.number_of_temporaries
+        self.islarge = decoded_header.large_frame
+        self.compiledin_class = None
+        if decoded_header.has_primitive and len(self.bytes) >= 3:
+            self.update_primitive_index()
+        else:
+            self._primitive = 0
+        self.changed()
+
+    def setbytes(self, bytes):
+        W_CompiledMethod.setbytes(self, bytes)
+        if SpurCompiledMethodHeader.has_primitive_bit_set(self.header):
+            self.update_primitive_index()
+
+    def setchar(self, index0, character):
+        W_CompiledMethod.setchar(self, index0, character)
+        if index0 in (1, 2) and SpurCompiledMethodHeader.has_primitive_bit_set(self.header):
+            self.update_primitive_index()
+
+    def update_primitive_index(self):
+        assert self.bytes[0] == chr(139)
+        self._primitive = ord(self.bytes[1]) + (ord(self.bytes[2]) << 8)
+
+class W_PreSpurCompiledMethod(W_CompiledMethod):
+
+    def setheader(self, space, header, initializing=False):
+        decoded_header = V3CompiledMethodHeader(header)
+        self.header = header
+        self.initialize_literals(decoded_header.number_of_literals, space,
+                initializing)
+        self.argsize = decoded_header.number_of_arguments
+        self._tempsize = decoded_header.number_of_temporaries
+        self._primitive = decoded_header.primitive_index
+        self.islarge = decoded_header.large_frame
+        self.compiledin_class = None
+        self.changed()

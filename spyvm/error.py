@@ -30,7 +30,7 @@ class UnwrappingError(PrimitiveFailedError):
 class WrappingError(PrimitiveFailedError):
     exception_type = "WrappingError"
 
-class WrapperException(SmalltalkException):
+class WrapperException(PrimitiveFailedError):
     exception_type = "WrapperException"
 
 class FatalError(SmalltalkException):

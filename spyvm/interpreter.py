@@ -12,9 +12,10 @@ from rpython.rlib import jit, rstackovf, unroll, objectmodel, rsignal
 
 
 class ReturnFromTopLevel(Exception):
-    _attrs_ = ["object"]
-    def __init__(self, object):
+    _attrs_ = ["object", "s_current_frame"]
+    def __init__(self, object, s_current_frame):
         self.object = object
+        self.s_current_frame = s_current_frame
 
 class Return(Exception):
     _attrs_ = []
@@ -121,6 +122,7 @@ def get_printable_location(pc, self, method):
 
 USE_SIGUSR1 = hasattr(rsignal, 'SIGUSR1')
 
+
 class Interpreter(object):
     _immutable_fields_ = ["space",
                           "image",
@@ -167,16 +169,16 @@ class Interpreter(object):
                 rsignal.pypysig_setflag(rsignal.SIGUSR1)
 
     def populate_remaining_special_objects(self):
-        for name, idx in constants.objects_in_special_object_table.items():
-            name = "w_" + name
-            if name not in self.space.objtable or not self.space.objtable[name]:
-                if name == "w_runWithIn":
-                    w_string = self.space.wrap_string("run:with:in:")
-                    self.space.objtable[name] = self.perform(w_string, selector="asSymbol")
-                    assert self.space.objtable[name]
-                    pass;
-                else:
-                    raise Exception("don't know how to populate " + name + " which was not in special objects table")
+        with objspace.ForceHeadless(self.space):
+            for name, idx in constants.objects_in_special_object_table.items():
+                name = "w_" + name
+                if name not in self.space.objtable or not self.space.objtable[name]:
+                    if name == "w_runWithIn":
+                        w_string = self.space.wrap_string("run:with:in:")
+                        self.space.objtable[name] = self.perform(w_string, selector="asSymbol")
+                        assert self.space.objtable[name]
+                    else:
+                        raise Warning("don't know how to populate " + name + " which was not in special objects table")
 
     def loop(self, w_active_context):
         # This is the top-level loop and is not invoked recursively.
@@ -192,16 +194,16 @@ class Interpreter(object):
                 s_context = e.s_new_context
             except LocalReturn, ret:
                 target = s_sender
-                s_context = self.unwind_context_chain(s_sender, target, ret.value(self.space))
+                s_context = self.unwind_context_chain(s_sender, target, ret.value(self.space), s_context)
             except NonLocalReturn, ret:
                 target = s_sender if ret.arrived_at_target else ret.s_target_context
-                s_context = self.unwind_context_chain(s_sender, target, ret.value(self.space))
+                s_context = self.unwind_context_chain(s_sender, target, ret.value(self.space), s_context)
             except NonVirtualReturn, ret:
                 if self.is_tracing() or self.trace_important:
                     ret.print_trace()
-                s_context = self.unwind_context_chain(ret.s_current_context, ret.s_target_context, ret.w_value)
+                s_context = self.unwind_context_chain(ret.s_current_context, ret.s_target_context, ret.w_value, s_context)
             except MetaPrimFailed, e:
-                s_context = self.unwind_primitive_simulation(e.s_frame, e.error_code)
+                s_context = self.unwind_primitive_simulation(e.s_frame, e.error_code, s_context)
 
     # This is a wrapper around loop_bytecodes that cleanly enters/leaves the frame,
     # handles the stack overflow protection mechanism and handles/dispatches Returns.
@@ -271,10 +273,10 @@ class Interpreter(object):
                 else:
                     raise ret
 
-    def unwind_primitive_simulation(self, start_context, error_code):
+    def unwind_primitive_simulation(self, start_context, error_code, s_current_context):
         if start_context is None:
             # This is the toplevel frame. Execution ended.
-            raise ReturnFromTopLevel(self.space.w_nil)
+            raise ReturnFromTopLevel(self.space.w_nil, s_current_context)
         context = start_context
         while context.get_fallback() is None:
             s_sender = context.s_sender()
@@ -294,10 +296,10 @@ class Interpreter(object):
 
         return fallbackContext
 
-    def unwind_context_chain(self, start_context, target_context, return_value):
+    def unwind_context_chain(self, start_context, target_context, return_value, s_current_context):
         if start_context is None:
             # This is the toplevel frame. Execution ended.
-            raise ReturnFromTopLevel(return_value)
+            raise ReturnFromTopLevel(return_value, s_current_context)
         assert target_context
         context = start_context
         while context is not target_context:
@@ -364,7 +366,7 @@ class Interpreter(object):
         # Profiling is skipped
         # We don't adjust the check counter size
 
-        # use the same time value as the primitive MILLISECOND_CLOCK
+        # use the same time value as the primitive UTC_MICROSECOND_CLOCK
         now = self.time_now()
 
         # XXX the low space semaphore may be signaled here
@@ -380,6 +382,21 @@ class Interpreter(object):
         # In cog, the method to add such a semaphore is only called in GC.
 
     def time_now(self):
+        """
+        Answer the UTC microseconds since the Smalltalk epoch. The value is
+        derived from the Posix epoch with a constant offset corresponding to
+        elapsed microseconds between the two epochs according to RFC 868
+        """
+        import time
+        from rpython.rlib.rarithmetic import r_longlong
+        secs_to_usecs = 1000 * 1000
+        return r_longlong(time.time() * secs_to_usecs) + constants.SQUEAK_EPOCH_DELTA_MICROSECONDS
+
+    def event_time_now(self):
+        """
+        Answer the number of milliseconds since the millisecond clock was last
+        reset or rolled over.
+        """
         import time
         from rpython.rlib.rarithmetic import intmask
         return intmask(int((time.time() - self.startup_time) * 1000) & constants.TAGGED_MASK)
@@ -391,6 +408,14 @@ class Interpreter(object):
             self.interrupt_check_counter = self.interrupt_counter_size
             self.loop(w_frame)
         except ReturnFromTopLevel, e:
+            if not self.space.headless.is_set():
+                w_cannotReturn = self.space.special_object("w_cannotReturn")
+                if w_cannotReturn is not None:
+                    s_context = self.create_toplevel_context(
+                        e.s_current_frame.w_self(),
+                        w_selector=w_cannotReturn,
+                        w_arguments=[e.object])
+                    return self.loop(s_context.w_self())
             return e.object
 
     def perform(self, w_receiver, selector="", w_selector=None, w_arguments=[]):
@@ -403,9 +428,13 @@ class Interpreter(object):
             if selector == "asSymbol":
                 w_selector = self.image.w_asSymbol
             else:
-                w_selector = self.perform(self.space.wrap_string(selector), "asSymbol")
+                with objspace.ForceHeadless(self.space):
+                    w_selector = self.perform(self.space.wrap_string(selector), "asSymbol")
 
-        w_method = model.W_CompiledMethod(self.space, header=512)
+        if self.space.is_spur.is_set():
+            w_method = model.W_SpurCompiledMethod(self.space, header=512)
+        else:
+            w_method = model.W_PreSpurCompiledMethod(self.space, header=512)
         w_method.literalatput0(self.space, 1, w_selector)
         assert len(w_arguments) <= 7
         w_method.setbytes([chr(131), chr(len(w_arguments) << 5 + 0), chr(124)]) #returnTopFromMethodBytecode

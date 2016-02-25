@@ -2,7 +2,7 @@ import py, os, math, time
 from spyvm import model, model_display, storage_contexts, constants, primitives, wrapper, display
 from spyvm.primitives import prim_table, PrimitiveFailedError
 from rpython.rlib.rfloat import isinf, isnan
-from rpython.rlib.rarithmetic import intmask, r_uint
+from rpython.rlib.rarithmetic import intmask, r_uint, r_longlong
 from rpython.rtyper.lltypesystem import lltype, rffi
 from .util import create_space, copy_to_module, cleanup_module, TestInterpreter
 
@@ -69,31 +69,14 @@ def test_small_int_add():
     assert r_uint(prim(primitives.ADD, [constants.MAXINT, 2]).value) == constants.MAXINT + 2
     assert r_uint(prim(primitives.ADD, [2 * constants.MAXINT - 2, 2]).value) == 2 * constants.MAXINT
 
-def test_small_int_add_fail():
-    w_result = prim_fails(primitives.ADD, [2 * constants.MAXINT - 1, 2])
-    # assert isinstance(w_result, model.W_LargePositiveInteger1Word)
-    # assert w_result.value == constants.TAGGED_MAXINT + 2
-    # prim_fails(primitives.ADD, [constants.TAGGED_MAXINT, constants.TAGGED_MAXINT * 2])
-
 def test_small_int_minus():
     assert prim(primitives.SUBTRACT, [5,9]).value == -4
-
-def test_small_int_minus_fail():
-    prim_fails(primitives.SUBTRACT, [constants.MININT,1])
-    prim_fails(primitives.SUBTRACT,
-               [constants.MININT, constants.MAXINT])
 
 def test_small_int_multiply():
     assert prim(primitives.MULTIPLY, [6,3]).value == 18
     w_result = prim(primitives.MULTIPLY, [constants.MAXINT, 2])
     assert isinstance(w_result, model.W_LargePositiveInteger1Word)
     assert r_uint(w_result.value) == constants.MAXINT * 2
-
-def test_small_int_multiply_overflow():
-    prim_fails(primitives.MULTIPLY, [constants.MAXINT, constants.MAXINT])
-    prim_fails(primitives.MULTIPLY, [constants.MAXINT, -4])
-    prim_fails(primitives.MULTIPLY, [constants.MININT, constants.MAXINT])
-    prim_fails(primitives.MULTIPLY, [constants.MININT, 2])
 
 def test_small_int_divide():
     assert prim(primitives.DIVIDE, [6,3]).value == 2
@@ -256,7 +239,7 @@ def test_size():
 def test_size_of_compiled_method():
     literalsize = 3
     bytecount = 3
-    w_cm = model.W_CompiledMethod(space, bytecount)
+    w_cm = model.W_PreSpurCompiledMethod(space, bytecount)
     w_cm.literalsize = literalsize
     assert prim(primitives.SIZE, [w_cm]).value == (literalsize+1)*constants.BYTES_PER_WORD + bytecount
 
@@ -333,6 +316,30 @@ def test_inst_var_at_put_invalid():
     prim_fails(primitives.INST_VAR_AT_PUT,
                ["q", constants.CHARACTER_VALUE_INDEX+2, "t"])
 
+def test_slot_at():
+    # n.b.: 1-based indexing!
+    w_v = prim(primitives.SLOT_AT,
+               ["q", constants.CHARACTER_VALUE_INDEX+1])
+    assert w_v.value == ord("q")
+
+def test_slot_at_invalid():
+    # n.b.: 1-based indexing! (and an invalid index)
+    prim_fails(primitives.SLOT_AT, ["q", constants.CHARACTER_VALUE_INDEX+2])
+
+def test_slot_at_put():
+    # n.b.: 1-based indexing!
+    w_q = space.w_Character.as_class_get_shadow(space).new()
+    vidx = constants.CHARACTER_VALUE_INDEX+1
+    ordq = ord("q")
+    assert prim(primitives.SLOT_AT, [w_q, vidx]).is_nil(space)
+    assert prim(primitives.SLOT_AT_PUT, [w_q, vidx, ordq]).value == ordq
+    assert prim(primitives.SLOT_AT, [w_q, vidx]).value == ordq
+
+def test_slot_at_put_invalid():
+    # n.b.: 1-based indexing! (and an invalid index)
+    prim_fails(primitives.SLOT_AT_PUT,
+               ["q", constants.CHARACTER_VALUE_INDEX+2, "t"])
+
 def test_class():
     assert prim(primitives.CLASS, ["string"]).is_same_object(space.w_String)
     assert prim(primitives.CLASS, [1]).is_same_object(space.w_SmallInteger)
@@ -358,7 +365,7 @@ def test_const_primitives():
         ]:
         assert prim(code, [space.w_nil]).is_same_object(const)
     assert prim(primitives.PUSH_SELF, [space.w_nil]).is_nil(space)
-    assert prim(primitives.PUSH_SELF, ["a"]) is wrap("a")
+    assert prim(primitives.PUSH_SELF, ["a"]).is_same_object(wrap("a"))
 
 def test_boolean():
     assert prim(primitives.LESSTHAN, [1,2]).is_same_object(space.w_true)
@@ -437,6 +444,33 @@ def test_signal_at_milliseconds():
     prim(primitives.SIGNAL_AT_MILLISECONDS, [space.w_nil, sema, future])
     assert space.objtable["w_timerSemaphore"] is sema
 
+
+def test_primitive_utc_microseconds_clock():
+    start = space.unwrap_longlong(prim(primitives.UTC_MICROSECOND_CLOCK, [0]))
+    time.sleep(0.3)
+    stop = space.unwrap_longlong(prim(primitives.UTC_MICROSECOND_CLOCK, [0]))
+    assert start + r_longlong(250 * 1000) <= stop
+
+def test_signal_at_utc_microseconds():
+    start = space.unwrap_longlong(prim(primitives.UTC_MICROSECOND_CLOCK, [0]))
+    future = start + r_longlong(400 * 1000)
+    sema = space.w_Semaphore.as_class_get_shadow(space).new()
+    prim(primitives.SIGNAL_AT_UTC_MICROSECONDS, [space.w_nil, sema, future])
+    assert space.objtable["w_timerSemaphore"] is sema
+
+def test_seconds_clock():
+    now = int(time.time())
+    w_smalltalk_now1 = prim(primitives.SECONDS_CLOCK, [42])
+    w_smalltalk_now2 = prim(primitives.SECONDS_CLOCK, [42])
+    # the test now is flaky, because we assume both have the same type
+    if isinstance(w_smalltalk_now1, model.W_BytesObject):
+        assert (now % 256 - ord(w_smalltalk_now1.bytes[0])) % 256 <= 2
+        # the high-order byte should only change by one (and even that is
+        # extreeemely unlikely)
+        assert (ord(w_smalltalk_now2.bytes[-1]) - ord(w_smalltalk_now1.bytes[-1])) <= 1
+    else:
+        assert w_smalltalk_now2.value - w_smalltalk_now1.value <= 1
+
 def test_inc_gc():
     # Should not fail :-)
     prim(primitives.INC_GC, [42]) # Dummy arg
@@ -455,19 +489,6 @@ def test_interrupt_semaphore():
     w_semaphore = SemaphoreInst()
     prim(primitives.INTERRUPT_SEMAPHORE, [1, w_semaphore])
     assert space.objtable["w_interrupt_semaphore"] is w_semaphore
-
-def test_seconds_clock():
-    now = int(time.time())
-    w_smalltalk_now1 = prim(primitives.SECONDS_CLOCK, [42])
-    w_smalltalk_now2 = prim(primitives.SECONDS_CLOCK, [42])
-    # the test now is flaky, because we assume both have the same type
-    if isinstance(w_smalltalk_now1, model.W_BytesObject):
-        assert (now % 256 - ord(w_smalltalk_now1.bytes[0])) % 256 <= 2
-        # the high-order byte should only change by one (and even that is
-        # extreeemely unlikely)
-        assert (ord(w_smalltalk_now2.bytes[-1]) - ord(w_smalltalk_now1.bytes[-1])) <= 1
-    else:
-        assert w_smalltalk_now2.value - w_smalltalk_now1.value <= 1
 
 def test_load_inst_var():
     " try to test the LoadInstVar primitives a little "
@@ -572,7 +593,7 @@ def test_file_write_errors(monkeypatch):
 
 def test_directory_delimitor():
     w_c = prim(primitives.DIRECTORY_DELIMITOR, [1])
-    assert space.unwrap_char(w_c) == os.path.sep
+    assert space.unwrap_char_as_byte(w_c) == os.path.sep
 
 def test_primitive_closure_copyClosure():
     w_frame, s_frame = new_frame("<never called, but used for method generation>")
@@ -667,7 +688,6 @@ def test_primitive_next_object():
     assert isinstance(w_2, model.W_Object)
     assert w_1 is not w_2
 
-@py.test.mark.skipif("os.environ.get('TRAVIS_OS_NAME', '') == 'osx'")
 def test_primitive_next_instance():
     someInstances = map(space.wrap_list, [[2], [3]])
     w_frame, s_context = new_frame("<never called, but needed for method generation>")
@@ -684,7 +704,6 @@ def test_primitive_next_instance():
     assert w_2.getclass(space) is space.w_Array
     assert w_1 is not w_2
 
-@py.test.mark.skipif("os.environ.get('TRAVIS_OS_NAME', '') == 'osx'")
 def test_primitive_next_instance_wo_some_instance_in_same_frame():
     someInstances = map(space.wrap_list, [[2], [3]])
     w_frame, s_context = new_frame("<never called, but needed for method generation>")
@@ -811,6 +830,30 @@ def test_screen_size_queries_sdl_window_size(monkeypatch):
     mock_display.height = 3
     assert_screen_size()
 
+def test_immediate_identity_hash():
+    w_char = space.wrap_char('x')
+    w_result = prim(primitives.IMMEDIATE_IDENTITY_HASH, [w_char])
+    assert isinstance(w_result, model.W_SmallInteger)
+    assert w_result.value == ord('x')
+    # TODO: add assertion for w_float once 64bit Spur images are supported
+
+def test_class_identity_hash():
+    w_result = prim(primitives.CLASS_IDENTITY_HASH, [space.w_nil.getclass(space)])
+    assert w_result.value == space.w_nil.getclass(space).gethash()
+    s_class = bootstrap_class(0).as_class_get_shadow(space)
+    w_result = prim(primitives.CLASS_IDENTITY_HASH, [s_class.w_self()])
+    assert isinstance(w_result, model.W_SmallInteger)
+
+def test_character_value():
+    # SmallInteger>>asCharacter
+    w_result = prim(primitives.CHARACTER_VALUE, [space.wrap_int(ord('x'))])
+    assert w_result.value == ord('x')
+    assert isinstance(w_result, model.W_Character)
+    # Character class>>value:
+    w_result = prim(primitives.CHARACTER_VALUE,
+            [space.wrap_char('x').getclass(space), ord('y')])
+    assert w_result.value == ord('y')
+
 def test_primitive_context_size():
     s_initial_context, closure, s_new_context = build_up_closure_environment([
         wrap("first arg"), wrap("second arg")])
@@ -840,6 +883,18 @@ def test_numericbitblt(monkeypatch):
         assert prim(primitives.BITBLT_COPY_BITS, ["myReceiver"]).str_content() == "'myReceiver'"
     finally:
         monkeypatch.undo()
+
+# The next cannot be tested untranslated :(
+# def test_primitive_byte_size_of_object():
+#     assert prim(primitives.BYTE_SIZE_OF_INSTANCE, [space.w_SmallInteger]).value is 0
+#     assert prim(primitives.BYTE_SIZE_OF_INSTANCE, [space.w_LargePositiveInteger]).value is 0
+#     assert prim(primitives.BYTE_SIZE_OF_INSTANCE, [space.w_LargePositiveInteger, space.wrap_int(8)]).value is 0
+#     assert prim(primitives.BYTE_SIZE_OF_INSTANCE, [space.w_Float]).value is 0
+#     assert prim(primitives.BYTE_SIZE_OF_INSTANCE, [space.w_CompiledMethod]).value is 0
+#     assert prim(primitives.BYTE_SIZE_OF_INSTANCE, [space.w_ByteArray]).value is 0
+#     assert prim(primitives.BYTE_SIZE_OF_INSTANCE, [space.w_Point]).value is 0
+#     assert prim(primitives.BYTE_SIZE_OF_INSTANCE, [space.w_Bitmap]).value is 0
+
 # Note:
 #   primitives.NEXT is unimplemented as it is a performance optimization
 #   primitives.NEXT_PUT is unimplemented as it is a performance optimization

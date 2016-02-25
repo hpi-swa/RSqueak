@@ -76,6 +76,7 @@ class AbstractStrategy(object):
         else:
             size = self.size(w_self)
             new_strategy = self.strategy_factory().instantiate_strategy(self.instantiate_type, w_class, w_self, size)
+        return new_strategy
 
     def promote_if_neccessary(self):
         return jit.promote(self)
@@ -205,6 +206,20 @@ class SmallIntegerOrNilStrategy(SimpleStorageStrategy):
     def wrapped_tagged_value(self): return self.space.w_nil
     def unwrapped_tagged_value(self): return constants.MAXINT
 SmallIntegerOrNilStrategy.instantiate_type = SmallIntegerOrNilStrategy
+
+@rstrat.strategy(generalize=[ListStrategy])
+class CharacterOrNilStrategy(SimpleStorageStrategy):
+    repr_classname = "CharacterOrNilStrategy"
+    import_from_mixin(rstrat.TaggingStrategy)
+    contained_type = model.W_Character
+    def wrap(self, val): return model.W_Character(val)
+    def unwrap(self, w_val):
+        # XXX why would you think, this could be a W_Object?
+        assert isinstance(w_val, model.W_Character)
+        return w_val.value
+    def wrapped_tagged_value(self): return self.space.w_nil
+    def unwrapped_tagged_value(self): return constants.MAXINT
+CharacterOrNilStrategy.instantiate_type = CharacterOrNilStrategy
 
 @rstrat.strategy(generalize=[ListStrategy])
 class FloatOrNilStrategy(SimpleStorageStrategy):

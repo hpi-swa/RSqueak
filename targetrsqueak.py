@@ -3,6 +3,7 @@ import sys, time, os
 from rpython.jit.codewriter.policy import JitPolicy
 from rpython.rlib import jit, rpath, objectmodel
 from spyvm import model, interpreter, squeakimage, objspace, wrapper, error
+from spyvm.plugins.simulation import SIMULATE_PRIMITIVE_SELECTOR
 from spyvm.util import system
 
 sys.setrecursionlimit(15000)
@@ -12,6 +13,10 @@ def _usage(argv):
     print """
     Usage: %s <path> [-r|-m|-h] [-naPu] [-jpiS] [-tTslL]
             <path> - image path (default: Squeak.image)
+
+          VM options:
+            --[no-]highdpi         - Enable or disable High-DPI support.
+                                     (Default: on)
 
           Execution mode:
             (no flags)             - Image will be normally opened.
@@ -43,6 +48,15 @@ def _usage(argv):
                              synthetic high-prio Process.
             -u             - Only with -m or -r. Try to stop UI-process at
                              startup. Can help benchmarking.
+            --simulate-numeric-primitives
+                           - This flag determines if an attempt is made to run
+                             Slang Simulation code for _unimplemented_ numeric
+                             primitives. This means that, if an unimplemented
+                             numeric primitive is encountered, rather than just
+                             failing, we see if the receiver understands
+                             """ + SIMULATE_PRIMITIVE_SELECTOR + """.
+                             If so, this method is called instead of the fallback
+                             code.
 
           Other parameters:
             -j|--jit <jitargs> - jitargs will be passed to the jit config.
@@ -129,6 +143,10 @@ def entry_point(argv):
             if arg in ["-h", "--help"]:
                 _usage(argv)
                 return 0
+            elif arg == "--no-highdpi":
+                space.highdpi.deactivate()
+            elif arg == "--highdpi":
+                space.highdpi.activate()
             elif arg in ["-j", "--jit"]:
                 jitarg, idx = get_parameter(argv, idx, arg)
                 jit.set_user_param(interpreter.Interpreter.jit_driver, jitarg)
@@ -166,6 +184,8 @@ def entry_point(argv):
                 space.strategy_factory.logger.activate()
             elif arg in ["-L"]:
                 space.strategy_factory.logger.activate(aggregate=True)
+            elif arg in ["--simulate-numeric-primitives"]:
+                space.simulate_numeric_primitives.activate()
             elif path is None:
                 path = arg
             else:
@@ -251,17 +271,17 @@ def compile_code(interp, w_receiver, code):
     # TODO - Find a way to cleanly initialize the image, without executing the active_context of the image.
     # Instead, we want to execute our own context. Then remove this flag (and all references to it)
     space.suppress_process_switch.activate()
-
-    w_result = interp.perform(
-        w_receiver_class,
-        "compile:classified:notifying:",
-        w_arguments = [space.wrap_string("%s\r\n%s" % (selector, code)),
-        space.wrap_string("spy-run-code"),
-        space.w_nil]
-    )
-    # TODO - is this expected in every image?
-    if not isinstance(w_result, model.W_BytesObject) or space.unwrap_string(w_result) != selector:
-        raise error.Exit("Unexpected compilation result (probably failed to compile): %s" % result_string(w_result))
+    with objspace.ForceHeadless(space):
+        w_result = interp.perform(
+            w_receiver_class,
+            "compile:classified:notifying:",
+            w_arguments = [space.wrap_string("%s\r\n%s" % (selector, code)),
+            space.wrap_string("spy-run-code"),
+            space.w_nil]
+        )
+        # TODO - is this expected in every image?
+        if not isinstance(w_result, model.W_BytesObject) or space.unwrap_string(w_result) != selector:
+            raise error.Exit("Unexpected compilation result (probably failed to compile): %s" % result_string(w_result))
     space.suppress_process_switch.deactivate()
 
     w_receiver_class.as_class_get_shadow(space).s_methoddict().sync_method_cache()
@@ -271,7 +291,7 @@ def create_context(interp, w_receiver, selector, stringarg):
     args = []
     if stringarg:
         args.append(interp.space.wrap_string(stringarg))
-    return interp.create_toplevel_context(w_receiver, selector, w_arguments = args)
+    return interp.create_toplevel_context(w_receiver, selector=selector, w_arguments=args)
 
 def create_process(interp, s_frame):
     space = interp.space

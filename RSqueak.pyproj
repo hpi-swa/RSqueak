@@ -86,6 +86,7 @@
     <Compile Include="spyvm\test\test_miniimage.py" />
     <Compile Include="spyvm\test\test_miniimage_compiling.py" />
     <Compile Include="spyvm\test\test_model.py" />
+    <Compile Include="spyvm\test\test_socket_primitives.py" />
     <Compile Include="spyvm\test\test_objectspace.py" />
     <Compile Include="spyvm\test\test_primitives.py" />
     <Compile Include="spyvm\test\test_shadow.py" />

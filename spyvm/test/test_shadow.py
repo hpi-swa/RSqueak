@@ -1,9 +1,20 @@
+import pytest
 import random
 from spyvm import model, storage_classes, constants, wrapper
 from .util import create_space, copy_to_module, cleanup_module
 
-def setup_module():
+@pytest.fixture
+def space_v3():
+    return create_space(bootstrap = True)
+
+@pytest.fixture
+def space_spur():
     space = create_space(bootstrap = True)
+    space.is_spur.activate()
+    return space
+
+def setup_module():
+    space = space_v3()
     w_Object     = space.classtable['w_Object']
     w_Metaclass  = space.classtable['w_Metaclass']
     w_MethodDict = space.classtable['w_MethodDict']
@@ -33,7 +44,9 @@ def build_methoddict(methods):
     return w_methoddict
 
 def build_smalltalk_class(name, format, w_superclass=None,
-                          w_classofclass=None, methods={}):
+                          w_classofclass=None, methods={}, space=None):
+    if space is None:
+        space = globals()["space"]
     if w_superclass is None:
         w_superclass = w_Object
     if w_classofclass is None:
@@ -72,8 +85,8 @@ def test_basic_shape():
     yield basicshape, "CompiledMeth", 0xE02,   storage_classes.COMPILED_METHOD, True, 0
 
 def test_methoddict():
-    methods = {'foo': model.W_CompiledMethod(space, 0),
-               'bar': model.W_CompiledMethod(space, 0)}
+    methods = {'foo': model.W_PreSpurCompiledMethod(space, 0),
+               'bar': model.W_PreSpurCompiledMethod(space, 0)}
     w_class = build_smalltalk_class("Demo", 0x90, methods=methods)
     classshadow = w_class.as_class_get_shadow(space)
     methoddict = classshadow.s_methoddict().methoddict
@@ -82,7 +95,7 @@ def test_methoddict():
         assert methods[w_key.unwrap_string(None)] is value
 
 def create_method(tempsize=3,argsize=2, bytes="abcde"):
-    w_m = model.W_CompiledMethod(space, )
+    w_m = model.W_PreSpurCompiledMethod(space, )
     w_m.bytes = bytes
     w_m._tempsize = tempsize
     w_m.argsize = argsize
@@ -225,9 +238,9 @@ def test_observee_shadow():
 
 def test_cached_methoddict():
     # create a methoddict
-    foo = model.W_CompiledMethod(space, 0)
-    bar = model.W_CompiledMethod(space, 0)
-    baz = model.W_CompiledMethod(space, 0)
+    foo = model.W_PreSpurCompiledMethod(space, 0)
+    bar = model.W_PreSpurCompiledMethod(space, 0)
+    baz = model.W_PreSpurCompiledMethod(space, 0)
     methods = {'foo': foo,
                'bar': bar}
     w_class = build_smalltalk_class("Demo", 0x90, methods=methods)
@@ -252,13 +265,13 @@ def test_cached_methoddict():
 
 def test_updating_class_changes_subclasses():
     w_parent = build_smalltalk_class("Demo", 0x90,
-            methods={'bar': model.W_CompiledMethod(space, 0)})
+            methods={'bar': model.W_PreSpurCompiledMethod(space, 0)})
     w_class = build_smalltalk_class("Demo", 0x90,
-            methods={'foo': model.W_CompiledMethod(space, 0)}, w_superclass=w_parent)
+            methods={'foo': model.W_PreSpurCompiledMethod(space, 0)}, w_superclass=w_parent)
     s_class = w_class.as_class_get_shadow(space)
     version = s_class.version
 
-    w_method = model.W_CompiledMethod(space, 0)
+    w_method = model.W_PreSpurCompiledMethod(space, 0)
     key = space.wrap_string('foo')
 
     s_md = w_parent.as_class_get_shadow(space).s_methoddict()
@@ -286,3 +299,90 @@ def test_methodcontext_s_home():
     block = wrapper.BlockClosureWrapper(space, w_closure)
     s_closure_context = block.create_frame(block.outerContext())
     assert s_closure_context.s_home() is s_context
+
+def test_class_format_v3(space_v3):
+    """
+    <2 bits=instSize//64><5 bits=cClass><4 bits=instSpec><6 bits=instSize\\64><1 bit=0>
+    """
+    from spyvm.test.test_model import joinbits
+    instsize_low = 3
+    instsize_high = 2
+    inst_spec = 2 # array format
+    compact_class_index = 0 # ignored
+    def assert_shadow_properties(instsize, is_variable):
+        format = joinbits([0, instsize_low, inst_spec, compact_class_index, instsize_high],
+                [1,6,4,5,2])
+        w_class = build_smalltalk_class('TestClass', format)
+        s_class = w_class.as_class_get_shadow(space_v3)
+        assert s_class.instsize() == instsize
+        assert s_class.isvariable() == is_variable
+    assert_shadow_properties(instsize = 3 + 2*64 - 1, is_variable = True)
+    inst_spec = 1 # fixed fields only
+    instsize_low = 6
+    instsize_high = 0
+    assert_shadow_properties(instsize = 6 - 1, is_variable = False)
+
+def test_class_format_spur(space_spur):
+    """
+    <5 bits inst spec><16 bits inst size>
+    """
+    assert space_spur.is_spur.is_set()
+    from spyvm.test.test_model import joinbits
+    instsize = 3
+    inst_spec = 2 # array format
+    def assert_shadow_properties(expected_instsize, is_variable):
+        format = joinbits([instsize, inst_spec], [16, 5])
+        w_class = build_smalltalk_class('TestClass', format, space=space_spur)
+        s_class = w_class.as_class_get_shadow(space_spur)
+        assert s_class.instsize() == expected_instsize
+        assert s_class.isvariable() == is_variable
+    assert_shadow_properties(expected_instsize = 3, is_variable = True)
+    inst_spec = 1 # fixed fields only
+    instsize = 560
+    assert_shadow_properties(expected_instsize = 560, is_variable = False)
+
+def test_class_new_fixed_v3(space_v3):
+    w_class = build_smalltalk_class('TestClass', (4 << 1) | (1 << 7)) # fixed format
+    w_inst = w_class.as_class_get_shadow(space_v3).new()
+    assert isinstance(w_inst, model.W_PointersObject)
+    assert w_inst.size() == 3
+def test_class_new_array_v3(space_v3):
+    w_class = build_smalltalk_class('TestClass', 2 << 7) # array format
+    w_inst = w_class.as_class_get_shadow(space_v3).new()
+    assert isinstance(w_inst, model.W_PointersObject)
+def test_class_new_bytes_v3(space_v3):
+    w_class = build_smalltalk_class('TestClass', (1 << 1) | (8 << 7)) # indexable bytes
+    w_inst = w_class.as_class_get_shadow(space_v3).new(5)
+    assert isinstance(w_inst, model.W_BytesObject)
+    assert w_inst.size() == 5
+def test_class_new_compiledmethod_v3(space_v3):
+    w_class = build_smalltalk_class('TestClass', (1 << 1) | (12 << 7))
+    w_inst = w_class.as_class_get_shadow(space_v3).new(4)
+    assert isinstance(w_inst, model.W_PreSpurCompiledMethod)
+    assert w_inst.size() == 8
+
+def test_class_new_fixed_spur(space_spur):
+    w_class = build_smalltalk_class('TestClass', 4 | (1 << 16), space=space_spur)
+    w_inst = w_class.as_class_get_shadow(space_spur).new()
+    assert isinstance(w_inst, model.W_PointersObject)
+    assert w_inst.size() == 4
+def test_class_new_array_spur(space_spur):
+    w_class = build_smalltalk_class('TestClass', 2 << 16, space=space_spur)
+    w_inst = w_class.as_class_get_shadow(space_spur).new()
+    assert isinstance(w_inst, model.W_PointersObject)
+def test_class_new_bytes_spur(space_spur):
+    w_class = build_smalltalk_class('TestClass', 16 << 16, space=space_spur)
+    w_inst = w_class.as_class_get_shadow(space_spur).new(5)
+    assert isinstance(w_inst, model.W_BytesObject)
+    assert w_inst.size() == 5
+def test_class_new_compiledmethod_spur(space_spur):
+    w_class = build_smalltalk_class('TestClass', 24 << 16, space=space_spur)
+    w_inst = w_class.as_class_get_shadow(space_spur).new(4)
+    assert isinstance(w_inst, model.W_SpurCompiledMethod)
+    assert w_inst.size() == 8
+
+def test_class_of_smallinteger(space_spur):
+    w_SmallInteger = space_spur.w_SmallInteger
+    w_SmallInteger.store(space_spur, constants.CLASS_FORMAT_INDEX, space_spur.wrap_int(7 << 16))
+    # SmallInteger and Character have 7 (forwarder) as their class format
+    # which is invalid and further prevents instantiation

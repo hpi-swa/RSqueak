@@ -1,7 +1,6 @@
 from rpython.rlib import jit
 
 from spyvm import error
-from spyvm.primitives import wrap_primitive
 
 
 class Plugin(object):
@@ -20,15 +19,15 @@ class Plugin(object):
     def _find_prim(self, name):
         return self.prims.get(name, None)
 
-    def expose_primitive(self, unwrap_spec=None, no_result=False,
-                         result_is_new_frame=False, clean_stack=True,
-                         compiled_method=False):
+    def expose_primitive(self,  wrap_func=None, **kwargs):
+        from spyvm.primitives import wrap_primitive, unwrap_alternatives
+        if not wrap_func:
+            if kwargs.get('unwrap_specs', None):
+                wrap_func = unwrap_alternatives
+            else:
+                wrap_func = wrap_primitive
         def decorator(func):
-            wrapped = wrap_primitive(
-                unwrap_spec=unwrap_spec, no_result=no_result,
-                result_is_new_frame=result_is_new_frame,
-                clean_stack=clean_stack, compiled_method=compiled_method
-            )(func)
+            wrapped = wrap_func(**kwargs)(func)
             wrapped.func_name = "wrap_prim_" + func.func_name
             self.prims[func.func_name] = wrapped
             return func

@@ -11,6 +11,7 @@ WEAK_POINTERS = 3
 COMPILED_METHOD = 4
 FLOAT = 5
 LARGE_POSITIVE_INTEGER = 6
+FORWARDER_AND_INVALID = 7
 
 class ClassShadowError(error.SmalltalkException):
     exception_type = "ClassShadowError"
@@ -39,51 +40,10 @@ class ClassShadow(AbstractCachingShadow):
         elif n0 == constants.CLASS_METHODDICT_INDEX:
             self.store_w_methoddict(w_val)
         elif n0 == constants.CLASS_FORMAT_INDEX:
-            # read and painfully decode the format
-            assert isinstance(w_val, model.W_SmallInteger)
-            classformat = self.space.unwrap_int(w_val)
-            # The classformat in Squeak, as an integer value, is:
-            #    <2 bits=instSize//64><5 bits=cClass><4 bits=instSpec>
-            #                                    <6 bits=instSize\\64><1 bit=0>
-            # In Slang the value is read directly as a boxed integer, so that
-            # the code gets a "pointer" whose bits are set as above, but
-            # shifted one bit to the left and with the lowest bit set to 1.
-
-            # Compute the instance size (really the size, not the number of bytes)
-            instsize_lo = (classformat >> 1) & 0x3F
-            instsize_hi = (classformat >> (9 + 1)) & 0xC0
-            self._instance_size = (instsize_lo | instsize_hi) - 1  # subtract hdr
-            # decode the instSpec
-            format = (classformat >> 7) & 15
-            self.instance_varsized = format >= 2
-
-            # In case of raised exception below.
-            self.changed()
-
-            if format < 4:
-                self.instance_kind = POINTERS
-            elif format == 4:
-                self.instance_kind = WEAK_POINTERS
-            elif format == 6:
-                if self.space.w_Float.is_same_object(self.w_self()):
-                    self.instance_kind = FLOAT
-                else:
-                    self.instance_kind = WORDS
-                if self.instsize() != 0:
-                    raise ClassShadowError("can't have both words and a non-zero "
-                                           "base instance size")
-            elif 8 <= format <= 11:
-                if self.space.w_LargePositiveInteger.is_same_object(self.w_self()):
-                    self.instance_kind = LARGE_POSITIVE_INTEGER
-                else:
-                    self.instance_kind = BYTES
-                if self.instsize() != 0:
-                    raise ClassShadowError("can't have both bytes and a non-zero "
-                                           "base instance size")
-            elif 12 <= format <= 15:
-                self.instance_kind = COMPILED_METHOD
+            if self.space.is_spur.is_set():
+                self.store_spur_classformat(w_self, n0, w_val)
             else:
-                raise ClassShadowError("unknown format %d" % (format,))
+                self.store_pre_spur_classformat(w_self, n0, w_val)
         else:
             if w_self.getclass(self.space).is_same_object(self.space.classtable["w_Metaclass"]):
                 # In case of Metaclasses, the "instance" class is stored in the last field.
@@ -100,6 +60,98 @@ class ClassShadow(AbstractCachingShadow):
                 return
         # Some of the special info has changed -> Switch version.
         self.changed()
+
+    def store_pre_spur_classformat(self, w_self, n0, w_val):
+        if w_val.is_same_object(self.space.w_nil):
+            return
+        # read and painfully decode the format
+        assert isinstance(w_val, model.W_SmallInteger)
+        classformat = self.space.unwrap_int(w_val)
+        # The classformat in Squeak, as an integer value, is:
+        #    <2 bits=instSize//64><5 bits=cClass><4 bits=instSpec>
+        #                                    <6 bits=instSize\\64><1 bit=0>
+        # In Slang the value is read directly as a boxed integer, so that
+        # the code gets a "pointer" whose bits are set as above, but
+        # shifted one bit to the left and with the lowest bit set to 1.
+
+        # Compute the instance size (really the size, not the number of bytes)
+        instsize_lo = (classformat >> 1) & 0x3F
+        instsize_hi = (classformat >> (9 + 1)) & 0xC0
+        self._instance_size = (instsize_lo | instsize_hi) - 1  # subtract hdr
+        # decode the instSpec
+        format = (classformat >> 7) & 15
+        self.instance_varsized = format >= 2
+
+        # In case of raised exception below.
+        self.changed()
+
+        if format < 4:
+            self.instance_kind = POINTERS
+        elif format == 4:
+            self.instance_kind = WEAK_POINTERS
+        elif format == 6:
+            if self.space.w_Float.is_same_object(self.w_self()):
+                self.instance_kind = FLOAT
+            else:
+                self.instance_kind = WORDS
+            if self.instsize() != 0:
+                raise ClassShadowError("can't have both words and a non-zero "
+                                       "base instance size")
+        elif 8 <= format <= 11:
+            if self.space.w_LargePositiveInteger.is_same_object(self.w_self()):
+                self.instance_kind = LARGE_POSITIVE_INTEGER
+            else:
+                self.instance_kind = BYTES
+            if self.instsize() != 0:
+                raise ClassShadowError("can't have both bytes and a non-zero "
+                                       "base instance size")
+        elif 12 <= format <= 15:
+            self.instance_kind = COMPILED_METHOD
+        else:
+            raise ClassShadowError("unknown format %d" % (format,))
+
+    def store_spur_classformat(self, w_self, n0, w_val):
+        if w_val.is_same_object(self.space.w_nil):
+            return
+        assert isinstance(w_val, model.W_SmallInteger)
+        classformat = self.space.unwrap_int(w_val)
+        # The classformat in Spur, as an integer value, is:
+        #     <5 bits inst spec><16 bits inst size>
+        self._instance_size = classformat & 0xFFFF
+        inst_spec = (classformat >> 16) & 0x1F
+        # see Behavior>>isVariable in a Spur image
+        self.instance_varsized = inst_spec >= 2 and (inst_spec <= 4 or inst_spec >= 9)
+        format = (classformat >> 16) & 0x1F
+        # In case of raised exception below.
+        self.changed()
+        if format < 4:
+            self.instance_kind = POINTERS
+        elif 4 <= format <= 5:
+            self.instance_kind = WEAK_POINTERS
+        elif format == 7:
+            self.instance_kind = FORWARDER_AND_INVALID
+            # immediate classes like SmallInteger and Character have this
+            # to prevent instantiation
+        elif 10 <= format <= 11:
+            if self.space.w_Float.is_same_object(self.w_self()):
+                self.instance_kind = FLOAT
+            else:
+                self.instance_kind = WORDS
+            if self.instsize() != 0:
+                raise ClassShadowError("can't have both words and a non-zero "
+                                       "base instance size")
+        elif 16 <= format <= 23:
+            if self.space.w_LargePositiveInteger.is_same_object(self.w_self()):
+                self.instance_kind = LARGE_POSITIVE_INTEGER
+            else:
+                self.instance_kind = BYTES
+            if self.instsize() != 0:
+                raise ClassShadowError("can't have both bytes and a non-zero "
+                                       "base instance size")
+        elif 24 <= format <= 31:
+            self.instance_kind = COMPILED_METHOD
+        else:
+            raise ClassShadowError("unknown format %d" % (format,))
 
     def store_w_superclass(self, w_class):
         superclass = self._s_superclass
@@ -169,7 +221,10 @@ class ClassShadow(AbstractCachingShadow):
         elif instance_kind == BYTES:
             w_new = model.W_BytesObject(self.space, w_cls, extrasize)
         elif instance_kind == COMPILED_METHOD:
-            w_new = model.W_CompiledMethod(self.space, extrasize)
+            if self.space.is_spur.is_set():
+                w_new = model.W_SpurCompiledMethod(self.space, extrasize)
+            else:
+                w_new = model.W_PreSpurCompiledMethod(self.space, extrasize)
         elif instance_kind == FLOAT:
             w_new = model.W_Float(0) # Squeak gives a random piece of memory
         elif instance_kind == LARGE_POSITIVE_INTEGER:

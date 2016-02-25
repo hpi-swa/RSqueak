@@ -8,6 +8,7 @@ environment:
   DeployCredentials:
     secure: jRxEUfeTDZh8Ju6y08aXrnCz6vemvPOwBef3qBC4ep0=
   VisualStudioVersion: 9.0
+  SDL_VIDEODRIVER: dummy
 
   matrix:
     - buildscript: unittests.py

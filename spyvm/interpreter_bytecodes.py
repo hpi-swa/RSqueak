@@ -423,13 +423,11 @@ class __extend__(ContextPartShadow):
         # force the reference
         # EXECPT someone fiddled with our context chain!
         from spyvm.interpreter import FreshReturn
-        if (self.home_is_self() or local_return) \
-            and not(self.state == DirtyContext):
+        if (self.home_is_self() or local_return) and (self.state is not DirtyContext):
             from spyvm.interpreter import LocalReturn
             raise FreshReturn(LocalReturn.make(self.space, return_value))
         else:
             s_return_to = self.s_home().s_sender()
-            assert s_return_to, "No sender to return to!"
             from spyvm.interpreter import NonLocalReturn
             raise FreshReturn(NonLocalReturn.make(self.space, s_return_to, return_value))
 
@@ -543,8 +541,13 @@ class __extend__(ContextPartShadow):
         raise error.MissingBytecode("unknownBytecode")
 
     @bytecode_implementation()
-    def experimentalBytecode(self, interp, current_bytecode):
-        raise error.MissingBytecode("experimentalBytecode")
+    def callPrimitiveBytecode(self, interp, current_bytecode):
+        if not interp.image.version.is_spur:
+            raise error.MissingBytecode("unknownBytecode")
+        else:
+            # skip next two bytes which belong to this bytecode
+            # then continue with the next bytecodes (fallback code)
+            self._jump(2)
 
     # ====== Jump bytecodes ======
 
@@ -671,7 +674,7 @@ BYTECODE_RANGES = [
             (136, "duplicateTopBytecode"),
             (137, "pushActiveContextBytecode"),
             (138, "pushNewArrayBytecode"),
-            (139, "experimentalBytecode"),
+            (139, "callPrimitiveBytecode"),
             (140, "pushRemoteTempLongBytecode"),
             (141, "storeRemoteTempLongBytecode"),
             (142, "storeAndPopRemoteTempLongBytecode"),

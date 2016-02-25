@@ -371,20 +371,22 @@ class TestBasic(BaseJITTest):
         1 to: 1000000 do: [:i | li + i].
         """)
         self.assert_matches(traces[0].loop, """
-        guard_not_invalidated(descr=<Guard0x9c34d90>),
-        i85 = int_le(i78, 1000000),
-        guard_true(i85, descr=<Guard0x9c34d60>),
-        f86 = call_f(ConstClass(_ll_1_llong_from_int__Signed), i78, descr=<CallL 8 i EF=0 OS=84>),
-        f87 = call_f(ConstClass(_ll_2_llong_add__SignedLongLong_SignedLongLong), f62, f86, descr=<CallL 8 LL EF=0 OS=70>),
-        i88 = call_i(ConstClass(_ll_2_llong_gt__SignedLongLong_SignedLongLong), f87, 0.000000, descr=<Calli 1 LL EF=0 OS=77>),
-        guard_true(i88, descr=<Guard0x9c34d30>),
-        i89 = call_i(ConstClass(_ll_2_ullong_ult__UnsignedLongLong_UnsignedLongLong), f87, 0.000000, descr=<Calli 1 LL EF=0 OS=88>),
-        guard_true(i89, descr=<Guard0x9c34d00>),
-        i90 = call_i(ConstClass(_ll_1_llong_to_int__SignedLongLong), f87, descr=<Calli 4 L EF=0 OS=85>),
-        i91 = uint_lt(i90, 2147483647),
-        guard_false(i91, descr=<Guard0x9c34cd0>),
-        i92 = int_add(i78, 1),
-        jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, p18, i92, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, f62, i93, descr=TargetToken(163946672))
+        guard_not_invalidated(descr=<Guard0x324f430>),
+        i78 = int_le(i77, 1000000),
+        guard_true(i78, descr=<Guard0x325c240>),
+        f79 = call_f(ConstClass(_ll_1_llong_from_int__Signed), i77, descr=<CallL 8 i EF=0 OS=84>),
+        f80 = call_f(ConstClass(_ll_2_llong_add__SignedLongLong_SignedLongLong), f59, f79, descr=<CallL 8 LL EF=0 OS=70>),
+        i81 = call_i(ConstClass(_ll_2_llong_gt__SignedLongLong_SignedLongLong), f80, 0.000000, descr=<Calli 1 LL EF=0 OS=77>),
+        guard_true(i81, descr=<Guard0x324f404>),
+        i82 = call_i(ConstClass(_ll_2_llong_le__SignedLongLong_SignedLongLong), f80, 0.000000, descr=<Calli 1 LL EF=0 OS=74>),
+        guard_true(i82, descr=<Guard0x324f3d8>),
+        i83 = call_i(ConstClass(_ll_2_llong_lt__SignedLongLong_SignedLongLong), f80, 0.000000, descr=<Calli 1 LL EF=0 OS=73>),
+        guard_false(i83, descr=<Guard0x324f3ac>),
+        i84 = call_i(ConstClass(_ll_1_llong_to_int__SignedLongLong), f80, descr=<Calli 4 L EF=0 OS=85>),
+        i85 = uint_lt(i84, 2147483647),
+        guard_false(i85, descr=<Guard0x324f380>),
+        i86 = int_add(i77, 1),
+        jump(p0, p1, i2, p3, p4, p7, p8, p10, p13, p15, i86, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, i55, f59, descr=TargetToken(52749852))
         """)
 
     def test_large_integer_long_div(self, spy, tmpdir):

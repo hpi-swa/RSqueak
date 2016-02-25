@@ -16,6 +16,7 @@ def load_config():
             cp.add_section("Linux")
             cp.set("Linux", "Python32Bit", pathjoin(dirname(__file__), "pypy-linux32", "bin", "pypy"))
             cp.set("Linux", "pygame_cffi", pathjoin(dirname(__file__), "pygame_cffi"))
+            cp.set("Linux", "SDL32bit", pathjoin(dirname(__file__), "SDL32bit"))
             cp.add_section("Windows")
             cp.set("Windows", "Python32Bit", pathjoin(dirname(__file__), "pypy-win32", "pypy.exe"))
             cp.set("Windows", "SDL", pathjoin(dirname(__file__), "SDL"))
@@ -46,6 +47,8 @@ def ensure_32bit_environment():
             os.environ["CC"] = os.getenv("CC", "cc") + " -m32"
             os.environ["CFLAGS"] = os.getenv("CFLAGS", "") + " -m32"
             os.environ["PYTHONPATH"] = os.getenv("PYTHONPATH", "") + ":" + cp.get("Linux", "pygame_cffi")
+            if cp.get("Linux", "SDL32bit"):
+                os.environ["SDL_PREFIX"] = cp.get("Linux", "SDL32bit")
             child = subprocess.Popen([py] + sys.argv)
         elif "darwin" == sys.platform and "64bit" in platform.architecture()[0]:
             print "Trying to switch to 32-bit Python by setting VERSIONER_PYTHON_PREFER_32_BIT. You have to run with the system Python for this to work."

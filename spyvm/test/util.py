@@ -12,6 +12,10 @@ slow_test = py.test.mark.skipif('not config.getvalue("execute-quick-tests")',
 very_slow_test = py.test.mark.skipif('not config.getvalue("execute-slow-tests")',
                         reason="Very slow tests are being skipped. Add -S|--slow to execute all tests.")
 
+# Skip unconditionally
+def skip(reason=""):
+    return py.test.mark.skipif('True', reason=reason)
+
 # Most tests don't need a bootstrapped objspace. Those that do, indicate so explicitely.
 # This way, as many tests as possible use the real, not-bootstrapped ObjSpace.
 bootstrap_by_default = False
@@ -127,6 +131,11 @@ class TestInterpreter(interpreter.Interpreter):
 
 class BootstrappedObjSpace(objspace.ObjSpace):
 
+    def __init__(self):
+        objspace.ObjSpace.__init__(self)
+        self.headless.activate()
+        self.testing = True
+
     def setup(self):
         self.set_system_attribute(constants.SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, "BootstrappedImage")
         self.image_loaded.activate()
@@ -141,7 +150,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
     def create_core_classes(self):
         def define_core_cls(name, w_superclass, w_metaclass):
             assert name.startswith('w_')
-            w_class = self.bootstrap_class(instsize=0,    # XXX
+            w_class = self.bootstrap_class(instsize=6,    # XXX
                                       w_superclass=w_superclass,
                                       w_metaclass=w_metaclass,
                                       name=name[2:])
@@ -255,6 +264,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         patch_special_cls("w_BlockClosure", "w_Object", instvarsize=constants.BLKCLSR_SIZE, varsized=True)
         patch_special_cls("w_Point", "w_Object")
         patch_special_cls("w_LargePositiveInteger", "w_Integer", format=storage_classes.BYTES)
+        patch_special_cls("w_LargeNegativeInteger", "w_LargePositiveInteger", format=storage_classes.BYTES)
         patch_special_cls("w_Message", "w_Object")
         patch_special_cls("w_ByteArray", "w_ArrayedCollection", format=storage_classes.BYTES)
         patch_special_cls("w_CompiledMethod", "w_ByteArray", format=storage_classes.COMPILED_METHOD)
@@ -269,13 +279,6 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         patch_bootstrap_object(self.w_true, self.w_True, 0)
         patch_bootstrap_object(self.w_false, self.w_False, 0)
         patch_bootstrap_object(self.w_special_selectors, self.w_Array, len(constants.SPECIAL_SELECTORS) * 2)
-        patch_bootstrap_object(self.w_charactertable, self.w_Array, 256)
-
-        # Bootstrap character table
-        for i in range(256):
-            w_cinst = model.W_PointersObject(self, self.w_Character, 1)
-            w_cinst.store(self, constants.CHARACTER_VALUE_INDEX, model.W_SmallInteger(i))
-            self.w_charactertable.store(self, i, w_cinst)
 
     def patch_class(self, w_class, instsize, w_superclass=None, w_metaclass=None,
                         name='?', format=storage_classes.POINTERS, varsized=False):
@@ -293,44 +296,47 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         s._s_methoddict = None
         s.instance_varsized = varsized or format != storage_classes.POINTERS
         w_class.store_strategy(s)
-        s._initialize_storage(w_class, 0)
+        s._initialize_storage(w_class, 6)
 
     def bootstrap_class(self, instsize, w_superclass=None, w_metaclass=None,
                         name='?', format=storage_classes.POINTERS, varsized=False):
-        w_class = model.W_PointersObject(self, w_metaclass, 0)
+        w_class = model.W_PointersObject(self, w_metaclass, 6)
         self.patch_class(w_class, instsize, w_superclass, w_metaclass, name, format, varsized)
         return w_class
 
     def w(self, any):
-        if any is None: return self.w_nil
-        if isinstance(any, model.W_Object): return any
-        if isinstance(any, str):
+        from rpython.rlib.rarithmetic import r_longlong
+        from rpython.rlib.rbigint import rbigint
+
+        def looooong(val):
+            try:
+                return r_longlong(val)
+            except OverflowError:
+                return val
+        if False: pass
+        elif any is None: return self.w_nil
+        elif isinstance(any, model.W_Object): return any
+        elif isinstance(any, long): return self.wrap_longlong(looooong(any))
+        elif isinstance(any, bool): return self.wrap_bool(any)
+        # elif isinstance(any, int): return self.wrap_int(any)
+        elif isinstance(any, int): return self.wrap_longlong(any)
+        elif isinstance(any, float): return self.wrap_float(any)
+        elif isinstance(any, list): return self.wrap_list(any)
+        elif isinstance(any, str):
             # assume never have strings of length 1
             if len(any) == 1:
                 return self.wrap_char(any)
             else:
                 return self.wrap_string(any)
-        if isinstance(any, long): return self.wrap_long(any)
-        if isinstance(any, bool): return self.wrap_bool(any)
-        if isinstance(any, int): return self.wrap_int(any)
-        if isinstance(any, float): return self.wrap_float(any)
-        if isinstance(any, list): return self.wrap_list(any)
-        raise Exception("Cannot wrap %r" % any)
-
-    def wrap_long(self, any):
-        assert any >= 0
-        import struct
-        bytes = struct.pack('L', any)
-        w_b = model.W_BytesObject(self, self.w_LargePositiveInteger, len(bytes))
-        w_b.bytes = [c for c in bytes]
-        return w_b
+        else:
+            raise Exception("Cannot wrap %r" % any)
 
     def initialize_class(self, w_class, interp):
         initialize_symbol = self.find_symbol_in_methoddict("initialize",
                             w_class.class_shadow(self))
         interp.perform(w_class, w_selector=initialize_symbol)
 
-    def find_symbol_in_methoddict(self, string, cls):
+    def find_symbol_in_methoddict(self, string, cls, fail=True):
         if isinstance(cls, model.W_PointersObject):
             cls = cls.as_class_get_shadow(self)
         s_methoddict = cls.s_methoddict()
@@ -339,7 +345,10 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         for each in methoddict_w.keys():
             if each.unwrap_string(None) == string:
                 return each
-        assert False, 'Using image without %s method in class %s.' % (string, cls.name)
+        if fail:
+            assert False, 'Using image without %s method in class %s.' % (string, cls.name)
+        else:
+            return None
 
     # ============ Helpers for executing ============
 
@@ -351,7 +360,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
     def make_method(self, bytes, literals=None, numargs=0):
         if not isinstance(bytes, str):
             bytes = "".join([chr(x) for x in bytes])
-        w_method = model.W_CompiledMethod(self, len(bytes))
+        w_method = model.W_PreSpurCompiledMethod(self, len(bytes))
         w_method.islarge = 1
         w_method.bytes = bytes
         w_method.argsize=numargs

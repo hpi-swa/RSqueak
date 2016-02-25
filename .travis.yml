@@ -4,14 +4,20 @@ os:
   - linux
   - osx
 osx_image: xcode7.3
+notifications:
+  irc:
+    channels:
+      - chat.freenode.net/#rsqueak
+    use_notice: true
+    skip_join: true
 addons:
   apt:
     packages:
       - binfmt-support
       - build-essential
       - debootstrap
-      - gcc-arm-linux-gnueabi
-      - gcc-arm-linux-gnueabihf
+      # - gcc-arm-linux-gnueabi
+      # - gcc-arm-linux-gnueabihf
       - gcc-multilib
       - libasound2-dev:i386
       - libbz2-1.0:i386
@@ -36,11 +42,11 @@ addons:
       - libxext-dev:i386
       - libxt-dev:i386
       - python-dev
-      - qemu-system
-      - qemu-user-static
-      - sbuild
-      - schroot
-      - scratchbox2
+      # - qemu-system
+      # - qemu-user-static
+      # - sbuild
+      # - schroot
+      # - scratchbox2
       - zlib1g-dev
       - zlib1g:i386
 branches:
@@ -51,6 +57,9 @@ env:
     - TEST_TYPE=default
     # use 32bit python on osx
     - VERSIONER_PYTHON_PREFER_32_BIT=yes
+    - PATH=$PATH:$HOME/SDL2/bin
+    - LIBRARY_PATH=$LIBRARY_PATH:$HOME/SDL2/lib
+    - C_INCLUDE_PATH=$C_INCLUDE_PATH:$HOME/SDL2/include
   matrix:
     - BUILD_ARCH=32bit BUILD_TYPE=test
     - BUILD_ARCH=32bit BUILD_TYPE=build
@@ -58,12 +67,15 @@ env:
     # Arm needs sudo, for sbuild and scratchbox2 packages.
     # - BUILD_ARCH=armv6 BUILD_TYPE=build SB2="$PWD/raspbian_arm" SB2NAME="rasp"
     # - BUILD_ARCH=armv7 BUILD_TYPE=build
+matrix:
+  fast_finish: true
 install:
   - .travis/install_requirements.sh
   - .travis/setup_arm.sh
 before_script:
   - export TESTSCRIPT=true
   - if [ "$TRAVIS_OS_NAME" == osx ]; then export CFLAGS="-arch i386"; export CC="cc -arch i386"; fi
+  - if [ "$TRAVIS_OS_NAME" == linux ]; then export SDL_VIDEODRIVER=dummy; fi
   - if [ "$BUILD_TYPE" == test ]; then export TESTSCRIPT=.travis/test.sh; fi
   - if [ "$TRAVIS_OS_NAME" == linux -a "$BUILD_TYPE" == build ]; then export TESTSCRIPT=.travis/build-linux.sh; fi
   - if [ "$TRAVIS_OS_NAME" == osx -a "$BUILD_TYPE" == build ]; then export TESTSCRIPT=.travis/build-osx.sh; fi

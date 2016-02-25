@@ -21,7 +21,7 @@ def assert_valid_index(space, n0, w_obj):
     return n0
 
 def assert_pointers(w_obj):
-    if not isinstance(w_obj, model.W_PointersObject):
+    if not (isinstance(w_obj, model.W_PointersObject) or isinstance(w_obj, model.W_Character)):
         raise PrimitiveFailedError
     return w_obj
 
@@ -119,7 +119,7 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                         assert isinstance(w_arg, model.W_PointersObject)
                         args += (interp.space.unwrap_array(w_arg), )
                     elif spec is char:
-                        args += (unwrap_char(w_arg), )
+                        args += (interp.space.unwrap_char_as_byte(w_arg), )
                     elif spec is bool:
                         args += (interp.space.w_true is w_arg, )
                     else:
@@ -192,8 +192,11 @@ def make_simulation(code):
     p_code = jit.promote(code)
     @wrap_primitive(clean_stack=False, no_result=True, compiled_method=True)
     def try_simulation(interp, s_frame, argument_count, w_method=None):
-        from spyvm.plugins.simulation import SimulationPlugin
-        return SimulationPlugin.simulateNumeric(p_code, interp, s_frame, argument_count, w_method)
+        if interp.space.simulate_numeric_primitives.is_set():
+            from spyvm.plugins.simulation import SimulationPlugin
+            return SimulationPlugin.simulateNumeric(p_code, interp, s_frame, argument_count, w_method)
+        else:
+            raise PrimitiveFailedError
     return try_simulation
 
 # Squeak has primitives all the way up to 575
@@ -208,7 +211,6 @@ prim_holder.prim_table = prim_table
 # clean up namespace:
 del i
 prim_table_implemented_only = []
-
 
 # ___________________________________________________________________________
 # SmallInteger Primitives
@@ -258,7 +260,7 @@ for (code,op) in math_ops.items():
                     res = ovfcheck(op(receiver, argument))
             except OverflowError:
                 raise PrimitiveFailedError()
-            return interp.space.wrap_int(res)
+            return interp.space.wrap_longlong(res)
     make_func(op)
 
 bitwise_binary_ops = {
@@ -446,6 +448,8 @@ def get_string(w_obj):
 
 def exitFromHeadlessExecution(s_frame, selector="", w_message=None):
     if not objectmodel.we_are_translated():
+        if getattr(s_frame.space, "testing", False):
+            return # During Testing
         import pdb; pdb.set_trace()
     print "== Receiver: %s" % s_frame.w_receiver().as_repr_string()
     if isinstance(w_message, model.W_PointersObject):
@@ -463,8 +467,8 @@ def exitFromHeadlessExecution(s_frame, selector="", w_message=None):
         selector = s_frame.w_method().lookup_selector
     raise error.Exit("Unhandled %s in headless mode." % selector)
 
-@expose_primitive(FAIL)
-def func(interp, s_frame, argcount):
+@expose_primitive(FAIL, unwrap_spec=[object])
+def func(interp, s_frame, w_rcvr):
     if interp.space.headless.is_set():
         w_message = None
         if s_frame.w_method().lookup_selector == 'doesNotUnderstand:':
@@ -505,16 +509,18 @@ def func(interp, s_frame, w_obj, n0):
     n0 = assert_valid_index(interp.space, n0, w_obj)
     # XXX I am not sure this is correct, but it un-breaks translation:
     # make sure that getbyte is only performed on W_BytesObjects
-    if not isinstance(w_obj, model.W_BytesObject):
+    if not (isinstance(w_obj, model.W_BytesObject) or
+            isinstance(w_obj, model.W_WordsObject)):
         raise PrimitiveFailedError
     return interp.space.wrap_char(w_obj.getchar(n0))
 
 @expose_primitive(STRING_AT_PUT, unwrap_spec=[object, index1_0, object])
 def func(interp, s_frame, w_obj, n0, w_val):
-    val = interp.space.unwrap_char(w_val)
+    val = interp.space.unwrap_char_as_byte(w_val)
     n0 = assert_valid_index(interp.space, n0, w_obj)
     if not (isinstance(w_obj, model.W_CompiledMethod) or
-            isinstance(w_obj, model.W_BytesObject)):
+            isinstance(w_obj, model.W_BytesObject) or
+            isinstance(w_obj, model.W_WordsObject)):
         raise PrimitiveFailedError()
     w_obj.setchar(n0, val)
     return w_val
@@ -525,6 +531,35 @@ def func(interp, s_frame, w_obj, n0, w_val):
 NEXT = 65
 NEXT_PUT = 66
 AT_END = 67
+
+
+# Interlude:
+# ___________________________________________________________________________
+# SPUR primitives
+
+CHARACTER_VALUE = 170
+IMMEDIATE_IDENTITY_HASH = 171
+SLOT_AT = 173
+SLOT_AT_PUT = 174
+CLASS_IDENTITY_HASH = 175
+MAX_IDENTITY_HASH = 176
+ALL_INSTANCES = 177
+ALL_OBJECTS = 178
+
+_maximum_identity_hash = 2**22 - 1
+@expose_primitive(MAX_IDENTITY_HASH, unwrap_spec=[object])
+def func(interp, s_frame, w_class):
+    return interp.space.wrap_int(_maximum_identity_hash)
+
+@expose_primitive(ALL_INSTANCES, unwrap_spec=[object])
+def func(interp, s_frame, w_class):
+    match_w = get_instances_array(interp.space, s_frame, w_class=w_class, store=False)
+    return interp.space.wrap_list(match_w)
+
+@expose_primitive(ALL_OBJECTS, unwrap_spec=[object])
+def func(interp, s_frame, w_rcvr):
+    match_w = get_instances_array(interp.space, s_frame, w_class=None, store=False)
+    return interp.space.wrap_list(match_w)
 
 # ___________________________________________________________________________
 # Storage Management Primitives
@@ -541,6 +576,24 @@ STORE_STACKP = 76             # Blue Book: primitiveAsObject
 SOME_INSTANCE = 77
 NEXT_INSTANCE = 78
 NEW_METHOD = 79
+
+## these primitives are also called as functions from elsewhere
+## hence they have proper names
+
+@expose_primitive(SLOT_AT, unwrap_spec=[object, index1_0])
+def primitive_fetch(interp, s_frame, w_rcvr, n0):
+    try:
+        return w_rcvr.fetch(interp.space, n0)
+    except IndexError:
+        raise PrimitiveFailedError
+
+@expose_primitive(SLOT_AT_PUT, unwrap_spec=[object, index1_0, object])
+def primitive_store(interp, s_frame, w_rcvr, n0, w_value):
+    try:
+        w_rcvr.store(interp.space, n0, w_value)
+        return w_value
+    except IndexError:
+        raise PrimitiveFailedError
 
 @expose_primitive(OBJECT_AT, unwrap_spec=[object, index1_0])
 def func(interp, s_frame, w_rcvr, n0):
@@ -577,30 +630,54 @@ def func(interp, s_frame, w_cls, size):
         raise PrimitiveFailedError
 
 @expose_primitive(ARRAY_BECOME_ONE_WAY, unwrap_spec=[object, object])
-def func(interp, s_frame, w_obj1, w_obj2):
-    raise PrimitiveNotYetWrittenError
+def func(interp, s_frame, w_from, w_to):
+    from_w = interp.space.unwrap_array(w_from)
+    to_w = interp.space.unwrap_array(w_to)
+    space = interp.space
+    if len(from_w) != len(to_w):
+        raise PrimitiveFailedError
+
+    # TODO: make this fast (context-switch and stack-rebuilding?)
+    s_current = s_frame
+    while s_current.s_sender() is not None:
+        s_current.w_self() # just for the side effect of creating the
+                           # ContextPart object
+        s_current = s_current.s_sender()
+
+    from rpython.rlib import rgc
+    roots = [gcref for gcref in rgc.get_rpy_roots() if gcref]
+    pending = roots[:]
+    idx = -1
+    while pending:
+        gcref = pending.pop()
+        if not rgc.get_gcflag_extra(gcref):
+            rgc.toggle_gcflag_extra(gcref)
+            w_obj = rgc.try_cast_gcref_to_instance(model.W_Object, gcref)
+            if w_obj is not None and w_obj.has_class():
+                w_obj.pointers_become_one_way(space, from_w, to_w)
+            pending.extend(rgc.get_rpy_referents(gcref))
+    while roots:
+        gcref = roots.pop()
+        if rgc.get_gcflag_extra(gcref):
+            rgc.toggle_gcflag_extra(gcref)
+            roots.extend(rgc.get_rpy_referents(gcref))
+    return w_from
 
 @expose_primitive(INST_VAR_AT, unwrap_spec=[object, index1_0])
 def func(interp, s_frame, w_rcvr, n0):
     "Fetches a fixed field from the object, and fails otherwise"
     s_class = w_rcvr.class_shadow(interp.space)
     w_cls = assert_pointers(w_rcvr)
-    try:
-        return w_rcvr.fetch(interp.space, n0)
-    except IndexError:
-        raise PrimitiveFailedError
+    return primitive_fetch(interp, s_frame, w_rcvr, n0)
 
 @expose_primitive(INST_VAR_AT_PUT, unwrap_spec=[object, index1_0, object])
 def func(interp, s_frame, w_rcvr, n0, w_value):
     "Stores a value into a fixed field from the object, and fails otherwise"
     s_class = w_rcvr.class_shadow(interp.space)
     w_rcvr = assert_pointers(w_rcvr)
-    try:
-        w_rcvr.store(interp.space, n0, w_value)
-        return w_value
-    except IndexError:
-        raise PrimitiveFailedError
+    return primitive_store(interp, s_frame, w_rcvr, n0, w_value)
 
+@expose_also_as(IMMEDIATE_IDENTITY_HASH, CLASS_IDENTITY_HASH)
 @expose_primitive(AS_OOP, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
     if isinstance(w_rcvr, model.W_SmallInteger):
@@ -613,24 +690,6 @@ def func(interp, s_frame, w_frame, stackp):
     w_frame = assert_pointers(w_frame)
     w_frame.store(interp.space, constants.CTXPART_STACKP_INDEX, interp.space.wrap_int(stackp))
     return w_frame
-
-
-# HACK: MacPython will have garbage around from RSDL/Cocoa invocation during
-# tests. We know that, so the assert_no_more_gcflags is useless in this case
-# and generates spurious errors.
-def _we_are_mac_python():
-    "NOT_RPYTHON"
-    try:
-        from AppKit import NSApplication
-    except:
-        return False
-    else:
-        return True
-
-def we_are_mac_python():
-    if objectmodel.we_are_translated():
-        return False
-    return _we_are_mac_python()
 
 def get_instances_array_gc(space, w_class=None):
     from rpython.rlib import rgc
@@ -647,17 +706,15 @@ def get_instances_array_gc(space, w_class=None):
             if w_obj is not None and w_obj.has_class():
                 w_cls = w_obj.getclass(space)
                 if w_cls is not None:
-                    # when calling NEXT_OBJECT, we should not return # SmallInteger
-                    # instances
-                    # XXX: same for Character on Spur and SmallFloat64 on Spur64...
-                    if not w_cls.is_same_object(space.w_SmallInteger) and \
-                       (w_class is None or w_cls.is_same_object(w_class)):
+                    # XXX: should not return SmallFloat64 on Spur64...
+                    if ((not w_cls.is_same_object(space.w_SmallInteger)) and
+                        (not (space.is_spur.is_set() and w_cls.is_same_object(space.w_Character))) and
+                        (w_class is None or w_cls.is_same_object(w_class))):
                         result_w.append(w_obj)
             pending.extend(rgc.get_rpy_referents(gcref))
 
     rgc.clear_gcflag_extra(roots)
-    if not we_are_mac_python():
-        rgc.assert_no_more_gcflags()
+    rgc.assert_no_more_gcflags()
     return result_w
 
 def get_instances_array(space, s_frame, w_class=None, store=True):
@@ -711,8 +768,11 @@ def func(interp, s_frame, w_obj):
 
 @expose_primitive(NEW_METHOD, unwrap_spec=[object, int, int])
 def func(interp, s_frame, w_class, bytecount, header):
-    # We ignore w_class because W_CompiledMethod is special
-    return model.W_CompiledMethod(interp.space, bytecount, header)
+    # We ignore w_class because W_CompiledMethod subclasses are special
+    if interp.space.is_spur.is_set():
+        return model.W_SpurCompiledMethod(interp.space, bytecount, header)
+    else:
+        return model.W_PreSpurCompiledMethod(interp.space, bytecount, header)
 
 # ___________________________________________________________________________
 # I/O Primitives
@@ -752,13 +812,22 @@ def func(interp, s_frame, w_rcvr):
 def func(interp, s_frame, w_rcvr, w_into):
     if not interp.evented:
         raise PrimitiveFailedError()
-    ary = interp.space.display().get_next_event(time=interp.time_now())
-    for i in range(8):
-        w_into.store(interp.space, i, interp.space.wrap_int(ary[i]))
-    # XXX - hack
-    if ary[0] == display.WindowEventMetricChange and ary[4] > 0 and ary[5] > 0:
-        if interp.image:
-            interp.image.lastWindowSize = ((ary[4] & 0xffff) << 16) | (ary[5] & 0xffff)
+    try:
+        ary = interp.space.display().get_next_event(time=interp.event_time_now())
+    except display.SqueakInterrupt, e:
+        w_interrupt_sema = interp.space.objtable['w_interrupt_semaphore']
+        if w_interrupt_sema is not interp.space.w_nil:
+            assert_class(interp, w_interrupt_sema, interp.space.w_Semaphore)
+            wrapper.SemaphoreWrapper(interp.space, w_interrupt_sema).signal(s_frame)
+        else:
+            raise e
+    else:
+        for i in range(8):
+            w_into.store(interp.space, i, interp.space.wrap_int(ary[i]))
+        # XXX - hack
+        if ary[0] == display.WindowEventMetricChange and ary[4] > 0 and ary[5] > 0:
+            if interp.image:
+                interp.image.lastWindowSize = ((ary[4] & 0xffff) << 16) | (ary[5] & 0xffff)
     return w_rcvr
 
 @expose_primitive(BITBLT_COPY_BITS, clean_stack=False, no_result=True, compiled_method=True)
@@ -773,9 +842,13 @@ def func(interp, s_frame, argcount):
     if not (0 <= argcount <= 1):
         raise PrimitiveFailedError()
     w_rcvr = s_frame.peek(argcount)
+
+    if interp.space.headless.is_set():
+        # we don't do any cursoration if we're headless
+        return w_rcvr
+
     mask_words = None
     if argcount == 1:
-        # TODO: use mask
         w_mask = s_frame.peek(0)
         if isinstance(w_mask, model.W_WordsObject):
             mask_words = w_mask.words
@@ -795,20 +868,20 @@ def func(interp, s_frame, argcount):
     height = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 2))
     depth = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 3))
     hotpt = wrapper.PointWrapper(interp.space, w_rcvr.fetch(interp.space, 4))
-    if not interp.image.version.is_modern:
-        display.SDLCursor.set(
-            w_bitmap.words,
-            width,
-            height,
-            hotpt.x(),
-            hotpt.y(),
-            mask_words=mask_words
-        )
-    else:
-        # TODO: Implement
-        pass
+    offx = hotpt.x()
+    offy = hotpt.y()
+    if not (width == 16 and height == 16 and depth == 1 and
+            offx >= -16 and offy >= -16 and
+            offx <= 0 and offy <= 0):
+        raise PrimitiveFailedError
+    offx = -offx
+    offy = -offy
 
-    interp.space.objtable['w_cursor'] = w_rcvr
+    if display.SDLCursor.set(w_bitmap.words, width, height, offx, offy, mask_words=mask_words):
+        interp.space.objtable['w_cursor'] = w_rcvr
+    # Don't fail if the Cursor could not be set.
+    # It is surely annoying but no reason to not continue.
+    s_frame.pop_n(argcount + 1)
     return w_rcvr
 
 @expose_primitive(BE_DISPLAY, unwrap_spec=[object])
@@ -892,6 +965,7 @@ def func(interp, s_frame, w_rcvr):
 @expose_primitive(KBD_PEEK, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
     code = interp.space.display().peek_keycode()
+    # TODO: how do old images handle CmdDot? See INTERRUPT_SEMAPHORE?
     if code & 0xFF == 0:
         return interp.space.w_nil
     else:
@@ -955,16 +1029,17 @@ def func(interp, s_frame, w_arg, w_rcvr):
     # or vice versa XXX we don't have to fail here, but for squeak it's a problem
 
     # 3. Format of rcvr is different from format of argument
-    raise PrimitiveNotYetWrittenError()     # XXX needs to work in the shadows
-    if w_arg_class.format != w_rcvr_class.format:
-        raise PrimitiveFailedError()
 
-    # Fail when argument class is fixed and rcvr's size differs from the
-    # size of an instance of the arg
-    if w_arg_class.instsize() != w_rcvr_class.instsize():
-        raise PrimitiveFailedError()
-
-    w_rcvr.change_class(interp.space, w_arg_class)
+    if ((isinstance(w_arg, model.W_PointersObject) and
+         isinstance(w_rcvr, model.W_PointersObject)) or
+        (isinstance(w_arg, model.W_BytesObject) and
+         isinstance(w_rcvr, model.W_BytesObject)) or
+        (isinstance(w_arg, model.W_WordsObject) and
+         isinstance(w_rcvr, model.W_WordsObject))):
+        w_rcvr.change_class(interp.space, w_arg_class)
+        return w_rcvr
+    else:
+        raise PrimitiveNotYetWrittenError
 
 @expose_primitive(EXTERNAL_CALL, clean_stack=False, no_result=True, compiled_method=True)
 def func(interp, s_frame, argcount, w_method):
@@ -974,6 +1049,15 @@ def func(interp, s_frame, argcount, w_method):
         raise PrimitiveFailedError
     w_modulename = jit.promote(w_description.at0(space, 0))
     w_functionname = jit.promote(w_description.at0(space, 1))
+    if w_modulename is space.w_nil:
+        """
+        CompiledMethod allInstances select: [:cm | cm primitive = 117 and: [cm literals first first isNil]].
+        There are no interesting named module-less primitives among those 28
+        found in Squeak 5. They either have proper fallback or just don't work on
+        Cog either.
+        """
+        raise  PrimitiveFailedError
+
     if not (isinstance(w_modulename, model.W_BytesObject) and
             isinstance(w_functionname, model.W_BytesObject)):
         raise PrimitiveFailedError
@@ -986,9 +1070,13 @@ def func(interp, s_frame, argcount, w_method):
         except MissingPlugin:
             pass
 
-    if signature[0] == 'LargeIntegers':
+    if False: pass # just elifs
+    elif signature[0] == 'LargeIntegers':
         from spyvm.plugins.large_integer import LargeIntegerPlugin
         return LargeIntegerPlugin.call(signature[1], interp, s_frame, argcount, w_method)
+    elif signature[0] == 'MiscPrimitivePlugin':
+        from spyvm.plugins.misc import MiscPrimitivePlugin
+        return MiscPrimitivePlugin.call(signature[1], interp, s_frame, argcount, w_method)
     elif signature[0] == "SocketPlugin":
         from spyvm.plugins.socket import SocketPlugin
         return SocketPlugin.call(signature[1], interp, s_frame, argcount, w_method)
@@ -1089,7 +1177,9 @@ def func(interp, s_frame, w_receiver, flag):
 
 @expose_primitive(DRAW_RECTANGLE, unwrap_spec=[object, int, int, int, int])
 def func(interp, s_frame, w_rcvr, left, right, top, bottom):
-    raise PrimitiveNotYetWrittenError()
+    sdldisplay = interp.space.display()
+    sdldisplay.flip()
+    return w_rcvr
 
 
 # ___________________________________________________________________________
@@ -1149,44 +1239,78 @@ def func(interp, s_frame, w_rcvr, w_semaphore):
     return w_rcvr
 
 #____________________________________________________________________________
-# Time Primitives (135 - 137)
+# Time Primitives (135 - 137, 240 - 242)
 MILLISECOND_CLOCK = 135
 SIGNAL_AT_MILLISECONDS = 136
 SECONDS_CLOCK = 137
 
+UTC_MICROSECOND_CLOCK = 240
+LOCAL_MICROSECOND_CLOCK = 241
+SIGNAL_AT_UTC_MICROSECONDS = 242
+UPDATE_TIMEZONE = 243
+
+@jit.elidable
+def event_time_to_microseconds(interp, ev_time):
+    """
+    The microsecond-based time primitives are relative to a roll-over (we use
+    startup time). The millisecond-based ones are based on the Squeak-Epoch
+    (1901).
+
+    This function converts the former to the latter by: scaling up, adding
+    image startup timestamp, and finally adding the Epoch constant.
+    """
+    secs_to_usecs = 1000 * 1000
+    return r_longlong(ev_time * 1000 + interp.startup_time * secs_to_usecs) + \
+        constants.SQUEAK_EPOCH_DELTA_MICROSECONDS
+
 @expose_primitive(MILLISECOND_CLOCK, unwrap_spec=[object])
 def func(interp, s_frame, w_arg):
-    return interp.space.wrap_int(interp.time_now())
+    x = interp.event_time_now()
+    return interp.space.wrap_int(x)
 
 @expose_primitive(SIGNAL_AT_MILLISECONDS, unwrap_spec=[object, object, int])
+def func(interp, s_frame, w_delay, w_semaphore, ev_timestamp):
+    if not w_semaphore.getclass(interp.space).is_same_object(
+            interp.space.w_Semaphore):
+        interp.space.objtable["w_timerSemaphore"] = interp.space.w_nil
+    else:
+        interp.space.objtable["w_timerSemaphore"] = w_semaphore
+    interp.next_wakeup_tick = event_time_to_microseconds(interp, ev_timestamp)
+    return w_delay
+
+
+@expose_primitive(SECONDS_CLOCK, unwrap_spec=[object])
+def func(interp, s_frame, w_arg):
+    secs_since_1901 = r_uint(interp.time_now() / 1000000)
+    return interp.space.wrap_uint(secs_since_1901)
+
+
+@expose_primitive(UTC_MICROSECOND_CLOCK, unwrap_spec=[object])
+def func(interp, s_frame, w_arg):
+    return interp.space.wrap_longlong(interp.time_now())
+
+@expose_primitive(LOCAL_MICROSECOND_CLOCK, unwrap_spec=[object])
+def func(interp, s_frame, w_arg):
+    # XXX: For now, pretend we are UTC. More later...
+    x = interp.time_now()
+    return interp.space.wrap_longlong(x)
+
+@expose_primitive(SIGNAL_AT_UTC_MICROSECONDS, unwrap_spec=[object, object, r_longlong])
 def func(interp, s_frame, w_delay, w_semaphore, timestamp):
     if not w_semaphore.getclass(interp.space).is_same_object(
             interp.space.w_Semaphore):
         interp.space.objtable["w_timerSemaphore"] = interp.space.w_nil
-        interp.next_wakeup_tick = timestamp
     else:
         interp.space.objtable["w_timerSemaphore"] = w_semaphore
-        interp.next_wakeup_tick = timestamp
+    interp.next_wakeup_tick = timestamp
     return w_delay
-
-
-
-secs_between_1901_and_1970 = r_uint((69 * 365 + 17) * 24 * 3600)
-
-@expose_primitive(SECONDS_CLOCK, unwrap_spec=[object])
-def func(interp, s_frame, w_arg):
-    import time
-    sec_since_epoch = r_uint(time.time())
-    # XXX: overflow check necessary?
-    sec_since_1901 = sec_since_epoch + secs_between_1901_and_1970
-    return interp.space.wrap_uint(sec_since_1901)
-
 
 #____________________________________________________________________________
 # Misc Primitives (138 - 149)
 SOME_OBJECT = 138
 NEXT_OBJECT = 139
 BEEP = 140
+CLIPBOARD_TEXT = 141
 VM_PATH = 142
 SHORT_AT = 143
 SHORT_AT_PUT = 144
@@ -1223,6 +1347,17 @@ def func(interp, s_frame, w_obj):
 @expose_primitive(BEEP, unwrap_spec=[object])
 def func(interp, s_frame, w_receiver):
     return w_receiver
+
+@expose_primitive(CLIPBOARD_TEXT)
+def func(interp, s_frame, argument_count):
+    if argument_count == 0:
+        if interp.space.display().has_clipboard_text():
+            return interp.space.wrap_string(interp.space.display().get_clipboard_text())
+        else:
+            return interp.space.wrap_string("")
+    elif argument_count == 1:
+        w_arg = s_frame.pop()
+        interp.space.display().set_clipboard_text(interp.space.unwrap_string(w_arg))
 
 @expose_primitive(VM_PATH, unwrap_spec=[object])
 def func(interp, s_frame, w_receiver):
@@ -1323,6 +1458,18 @@ def func(interp, s_frame, w_rcvr, fd, src, start, count):
 def func(interp, s_frame, _):
     return interp.space.wrap_char(os.path.sep)
 
+
+# ___________________________________________________________________________
+
+@expose_primitive(CHARACTER_VALUE)
+def func(interp, s_frame, argument_count):
+    w_value = s_frame.peek(0)
+    assert isinstance(w_value, model.W_SmallInteger)
+    s_frame.pop_n(argument_count + 1)
+    return model.W_Character(interp.space.unwrap_int(w_value))
+
+
+
 # ___________________________________________________________________________
 # Boolean Primitives
 
@@ -1421,6 +1568,14 @@ WAIT = 86
 RESUME = 87
 SUSPEND = 88
 FLUSH_CACHE = 89
+YIELD = 167
+
+BYTE_SIZE_OF_INSTANCE = 181
+
+EXIT_CRITICAL_SECTION = 185 # similar to SIGNAL, hence SIGNAL + 100
+ENTER_CRITICAL_SECTION = 186 # similar to WAIT, hence WAIT + 100
+TEST_AND_SET_OWNERSHIP_OF_CRITICAL_SECTION = 187
+
 WITH_ARGS_EXECUTE_METHOD = 188
 
 @expose_primitive(BLOCK_COPY, unwrap_spec=[object, int])
@@ -1536,9 +1691,35 @@ def func(interp, s_frame, w_rcvr):
 @expose_primitive(SUSPEND, unwrap_spec=[object], no_result=True, clean_stack=False)
 def func(interp, s_frame, w_rcvr):
     assert_class(interp, w_rcvr, interp.space.w_Process)
-    wrapper.ProcessWrapper(interp.space, w_rcvr).suspend(s_frame)
+    proc = wrapper.ProcessWrapper(interp.space, w_rcvr)
+    s_frame.pop() # remove receiver
+    s_frame.push(proc.my_list()) # leave my_list on stack as return value
+    proc.suspend(s_frame)
 
+@expose_primitive(YIELD, unwrap_spec=[object], no_result=True, clean_stack=False)
+def func(interp, s_frame, w_rcvr):
+    # we leave the rcvr on the stack, so it is there even if we resume another
+    # process when yielding
+    w_process = wrapper.SchedulerWrapper(interp.space, w_rcvr).active_process()
+    wrapper.ProcessWrapper(interp.space, w_process).yield_(s_frame)
 
+@expose_primitive(EXIT_CRITICAL_SECTION, unwrap_spec=[object], clean_stack=False, no_result=True)
+def func(interp, s_frame, w_rcvr):
+    # we leave the rcvr on the stack, so it is there even if we resume another
+    # process immediately when exiting the critical section
+    wrapper.CriticalSectionWrapper(interp.space, w_rcvr).exit(s_frame)
+
+@expose_primitive(ENTER_CRITICAL_SECTION, unwrap_spec=[object], clean_stack=False, no_result=True)
+def func(interp, s_frame, w_rcvr):
+    assert s_frame.pop() is w_rcvr
+    # we take pop the receiver and push the return value of this primitive
+    # inside the wrapper code, so it is there regardless of if we have to wait
+    # or not
+    return wrapper.CriticalSectionWrapper(interp.space, w_rcvr).enter(s_frame)
+
+@expose_primitive(TEST_AND_SET_OWNERSHIP_OF_CRITICAL_SECTION, unwrap_spec=[object])
+def func(interp, s_frame, w_rcvr):
+    return wrapper.CriticalSectionWrapper(interp.space, w_rcvr).test_and_set_owner(s_frame)
 
 @expose_primitive(FLUSH_CACHE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
@@ -1546,6 +1727,82 @@ def func(interp, s_frame, w_rcvr):
     s_class = w_rcvr.as_class_get_shadow(interp.space)
     s_class.flush_method_caches()
     return w_rcvr
+
+def model_sizeof(model):
+    return 4 # constant for interpretation
+
+from rpython.rtyper.extregistry import ExtRegistryEntry
+class Entry(ExtRegistryEntry):
+    _about_ = model_sizeof
+
+    def compute_result_annotation(self, s_model):
+        from rpython.annotator.model import SomeInteger
+        return SomeInteger(nonneg=True, knowntype=int)
+
+    def specialize_call(self, hop):
+        from rpython.rtyper.lltypesystem import lltype
+        from rpython.memory.lltypelayout import sizeof
+        modelrepr = hop.rtyper.getrepr(hop.args_s[0])
+        hop.exception_cannot_occur()
+        sz = sizeof(modelrepr.lowleveltype.TO, 1)
+        # Also add the instance-specific helper structs that all instances have
+        if modelrepr.rclass.classdef.classdesc.pyobj is model.W_PointersObject:
+            sz += sizeof(modelrepr.lowleveltype.TO._flds["inst__storage"].TO, 0)
+            # not adding shadows, because these are often shared
+        elif modelrepr.rclass.classdef.classdesc.pyobj is model.W_WordsObject:
+            sz += sizeof(modelrepr.lowleveltype.TO._flds["mutate_words"].TO)
+            sz += sizeof(modelrepr.lowleveltype.TO._flds["inst_words"].TO, 0)
+        elif modelrepr.rclass.classdef.classdesc.pyobj is model.W_BytesObject:
+            sz += sizeof(modelrepr.lowleveltype.TO._flds["mutate_version"].TO)
+        elif modelrepr.rclass.classdef.classdesc.pyobj is model.W_CompiledMethod:
+            sz += sizeof(modelrepr.lowleveltype.TO._flds["mutate_version"].TO)
+            sz += sizeof(modelrepr.lowleveltype.TO._flds["inst_literals"].TO, 0)
+            sz += sizeof(modelrepr.lowleveltype.TO._flds["inst_version"].TO)
+            sz += sizeof(modelrepr.lowleveltype.TO._flds["inst_lookup_selector"].TO, 0)
+        elif modelrepr.rclass.classdef.classdesc.pyobj is model.W_Float:
+            pass
+        elif modelrepr.rclass.classdef.classdesc.pyobj is model.W_LargePositiveInteger1Word:
+            pass
+        return hop.inputconst(lltype.Signed, sz)
+
+@expose_primitive(BYTE_SIZE_OF_INSTANCE)
+def func(interp, s_frame, argcount):
+    from rpython.memory.lltypelayout import sizeof
+    from spyvm.storage_classes import POINTERS,\
+        WEAK_POINTERS, WORDS, BYTES, COMPILED_METHOD,\
+        FLOAT, LARGE_POSITIVE_INTEGER
+    # This does not count shadows and the memory required for storage or any of
+    # that "meta-info", but only the size of the types struct and the requested
+    # fields.
+    if argcount == 1:
+        size = interp.space.unwrap_int(s_frame.pop())
+    else:
+        size = 0
+    w_rcvr = s_frame.pop()
+
+    if argcount > 1:
+        raise PrimitiveFailedError
+
+    s_class = w_rcvr.as_class_get_shadow(interp.space)
+    instance_kind = s_class.get_instance_kind()
+    if instance_kind in [POINTERS, WEAK_POINTERS]:
+        r = model_sizeof(objectmodel.instantiate(model.W_PointersObject)) + (s_class.instsize() + size) * constants.BYTES_PER_WORD
+    elif instance_kind == WORDS:
+        r = model_sizeof(objectmodel.instantiate(model.W_WordsObject)) + size * constants.BYTES_PER_WORD
+    elif instance_kind == BYTES:
+        r = model_sizeof(objectmodel.instantiate(model.W_BytesObject)) + size
+    elif instance_kind == COMPILED_METHOD:
+        r = model_sizeof(objectmodel.instantiate(model.W_CompiledMethod))
+    elif instance_kind == FLOAT:
+        r = model_sizeof(objectmodel.instantiate(model.W_Float))
+    elif instance_kind == LARGE_POSITIVE_INTEGER:
+        if size <= 4:
+            r = model_sizeof(objectmodel.instantiate(model.W_LargePositiveInteger1Word))
+        else:
+            r = model_sizeof(objectmodel.instantiate(model.W_BytesObject)) + size
+    else:
+        raise PrimitiveFailedError
+    return interp.space.wrap_int(r)
 
 # ___________________________________________________________________________
 # BlockClosure Primitives
@@ -1649,6 +1906,7 @@ prim_table[CTXT_AT_PUT] = prim_table[AT_PUT]
 
 IDLE_FOR_MICROSECONDS = 230
 FORCE_DISPLAY_UPDATE = 231
+SET_FULL_SCREEN = 233
 
 @expose_primitive(IDLE_FOR_MICROSECONDS, unwrap_spec=[object, int], no_result=True, clean_stack=False)
 def func(interp, s_frame, w_rcvr, time_mu_s):
@@ -1664,6 +1922,11 @@ def func(interp, s_frame, w_rcvr, time_mu_s):
 @expose_primitive(FORCE_DISPLAY_UPDATE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
     interp.space.display().flip(force=True)
+    return w_rcvr
+
+@expose_primitive(SET_FULL_SCREEN, unwrap_spec=[object, bool])
+def func(interp, s_frame, w_rcvr, flag):
+    interp.space.display().set_full_screen(flag)
     return w_rcvr
 
 # ___________________________________________________________________________

@@ -47,7 +47,7 @@ def check_arr(arr, expected):
 
 def test_ordered_strategies():
     strategies = space.strategy_factory.strategies
-    assert len(strategies) == 5
+    assert len(strategies) == 6
     index_nil = strategies.index(storage.AllNilStrategy)
     index_float = strategies.index(storage.FloatOrNilStrategy)
     index_int = strategies.index(storage.SmallIntegerOrNilStrategy)

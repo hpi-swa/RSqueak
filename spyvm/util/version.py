@@ -10,6 +10,7 @@ def constant_for_version(func):
     versioned_func.func_name = "constant_" + func.func_name
     elidable_func = jit.elidable_promote()(versioned_func)
     def meth(self):
+        jit.promote(self)
         return elidable_func(self, self.version)
     meth.func_name = "constant_meth_" + func.func_name
     return meth
@@ -21,6 +22,7 @@ def constant_for_version_arg(func):
     versioned_func.func_name = "constant_" + func.func_name
     elidable_func = jit.elidable_promote()(versioned_func)
     def meth(self, arg):
+        jit.promote(self)
         return elidable_func(self, self.version, arg)
     meth.func_name = "constant_meth_" + func.func_name
     return meth

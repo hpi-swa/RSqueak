@@ -36,9 +36,9 @@ def get_float_class():
 # ------ tests ------------------------------------------
 
 def test_read_header():
-    assert reader.endofmemory == 726592
-    assert reader.oldbaseaddress == -1221464064
-    assert reader.specialobjectspointer == -1221336216
+    assert reader.readerStrategy.endofmemory == 726592
+    assert reader.readerStrategy.oldbaseaddress == -1221464064
+    assert reader.readerStrategy.specialobjectspointer == -1221336216
 
 def test_read_all_header():
     reader = open_reader(space, "mini.image")

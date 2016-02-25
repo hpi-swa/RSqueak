@@ -1,6 +1,6 @@
 import pdb
 from spyvm.storage_contexts import ContextPartShadow
-from spyvm import model, constants, primitives
+from spyvm import model, constants, primitives, error
 
 # This module patches up the interpreter and adds breakpoints at certain execution points.
 # Only usable in interpreted mode due to pdb.
@@ -19,9 +19,9 @@ from spyvm import model, constants, primitives
 # interp.step_failed_named_primitives
 
 def activating_init(original):
-    def meth(*args):
+    def meth(*args, **kwargs):
         activate_debugging()
-        return original(*args)
+        return original(*args, **kwargs)
     return meth
 
 def activate_debugging():
@@ -31,6 +31,7 @@ def activate_debugging():
     Interpreter.step_returns = False
     Interpreter.step_primitives = False
     Interpreter.step_failed_primitives = False
+    Interpreter.step_failed_named_primitives = False
 
     _break = pdb.set_trace
 

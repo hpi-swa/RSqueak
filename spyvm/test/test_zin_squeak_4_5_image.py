@@ -1,6 +1,6 @@
 import operator, sys
 from spyvm import model
-from .util import read_image, copy_to_module, cleanup_module, slow_test, very_slow_test
+from .util import read_image, copy_to_module, cleanup_module, slow_test, very_slow_test, skip
 
 # The tests are quick, but loading the big image takes time.
 pytestmark = slow_test
@@ -160,3 +160,44 @@ def test_contextOn_do_():
     assert s.w_method().lookup_selector == "on:do:"
     assert s.w_method().primitive() == 199
     assert s.s_sender() == None
+
+@skip('Hangs')
+def test_semaphore():
+    w_semaphore_cls = space.objtable["w_timerSemaphore"].getclass(space)
+    w_sema = image.find_symbol(space, reader, "Semaphore")
+    w_fork = image.find_symbol(space, reader, "fork")
+    w_wait = image.find_symbol(space, reader, "wait")
+    w_yield = image.find_symbol(space, reader, "yield")
+    w_processor = space.objtable["w_schedulerassociationpointer"]
+    w_suspPrimOFail = image.find_symbol(space, reader, "suspendPrimitivelyOrFail")
+
+    bytes = [
+        0x40, # pushLit: Semaphore
+        0xCC, # send: new
+        0x6A, # popIntoTemp: 2
+        0x12, # pushTemp: 2
+        0x8F, 0x10, 0x00, 0x03, # closureNumCopied: 1 numArgs: 0 bytes 49 to 51
+        0x10, # pushTemp: 0
+        0xD2, # send: wait
+        0x7D, # blockReturn
+        0xD1, # send: fork
+        0x69, # popIntoTemp: 1
+        0x44, # pushLit: Processor
+        0xD3, # send: yield
+        0x87, # pop
+        0x11, # pushTemp: 1
+        0xD5, # send: suspendPrimitivelyOrFail
+        0x68, # popIntoTemp: 0
+        0x10, # pushTemp: 0
+        0x7C, # returnTop
+    ]
+
+    Association = space.classtable["w_Point"] # Wrong class, doesn't matter.
+    semaAssoc = model.W_PointersObject(space, Association, 2)
+    semaAssoc.store(space, 0, w_sema)
+    semaAssoc.store(space, 1, w_semaphore_cls)
+    w_method = space.make_method(bytes, [semaAssoc, w_fork, w_wait, w_yield, w_processor, w_suspPrimOFail, w('nothing')])
+
+    result = interp.execute_method(w_method)
+    import pdb; pdb.set_trace()
+    assert isinstance(result, model.W_PointersObject)

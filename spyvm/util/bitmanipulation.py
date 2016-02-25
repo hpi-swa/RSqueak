@@ -16,7 +16,6 @@ class BitSplitter(dict):
                 assert n >= 0
                 result += (n, )
                 integer = integer >> length
-            assert sum <= 32
             return result
         splitbits.func_name += "_" + "_".join([str(i) for i in lengths])
         self[lengths] = splitbits
