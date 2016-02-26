@@ -1143,11 +1143,14 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
     def unwrap_longlong(self, space):
         if self.size() > 8:
             raise error.UnwrappingError("Too large to convert bytes to word")
+        elif self.size() == 8 and ord(self.getchar(7)) >= 0x80:
+            # Sign-bit is set, this will overflow
+            raise error.UnwrappingError("Too large to convert bytes to word")
         word = r_longlong(0)
         for i in range(self.size()):
             try:
                 word += r_longlong(ord(self.getchar(i))) << 8*i
-            except OverflowError:
+            except OverflowError: # never raised after translation :(
                 raise error.UnwrappingError("Too large to convert bytes to word")
         if (space.w_LargeNegativeInteger is not None and
             self.getclass(space).is_same_object(space.w_LargeNegativeInteger)):

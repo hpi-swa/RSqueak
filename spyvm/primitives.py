@@ -255,6 +255,9 @@ for (code,op) in math_ops.items():
             try:
                 if isinstance(receiver, r_longlong) and isinstance(argument, r_longlong):
                     res = op(receiver, argument)
+                    if ((receiver ^ argument >= 0) and (receiver ^ res < 0)):
+                        # manual ovfcheck as in Squeak VM
+                        raise OverflowError
                 else:
                     assert isinstance(receiver, int) and isinstance(argument, int)
                     res = ovfcheck(op(receiver, argument))
