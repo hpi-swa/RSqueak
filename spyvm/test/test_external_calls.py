@@ -158,7 +158,7 @@ def test_fileplugin_filewrite_largeposint(monkeypatch):
 
     content = model.W_LargePositiveInteger1Word(1633837924)
     try:
-        stack = [space.w(1), space.w(1), content, space.w(1), space.w(1)]
+        stack = [space.w(1), space.w(1), content, space.w(1), space.w(4)]
         w_c = external_call('FilePlugin', 'primitiveFileWrite', stack)
     finally:
         monkeypatch.undo()
