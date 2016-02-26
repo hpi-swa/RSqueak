@@ -200,30 +200,23 @@ def primitiveFileStdioHandles(interp, s_frame, w_rcvr):
 
 @FilePlugin.expose_primitive(unwrap_spec=[object, int, object, index1_0, int])
 def primitiveFileWrite(interp, s_frame, w_rcvr, fd, content, start, count):
-    byte_size = 0
-    size = 0
+    size = content.size()
     if isinstance(content, model.W_WordsObject):
-        byte_size = 4
-        size = content.size()
-    elif isinstance(content, model.W_BytesObject):
-        byte_size = 1
-        size = content.size()
+        element_size = 4
     elif isinstance(content, model.W_Float):
-        byte_size = 4
-        # TODO: is there a case where a Float is only 32 bits?
-        size = 2
-    elif isinstance(content, model.W_LargePositiveInteger1Word):
-        byte_size = 4
-        size = 1
+        element_size = 4
     elif isinstance(content, model_display.W_DisplayBitmap):
-        byte_size = 4
-        size = content.size()
+        element_size = 4
+    elif isinstance(content, model.W_BytesObject):
+        element_size = 1
+    elif isinstance(content, model.W_LargePositiveInteger1Word):
+        element_size = 1
     else:
         raise PrimitiveFailedError
 
     string_content = interp.space.unwrap_string(content)
-    byte_start = start * byte_size
-    byte_end = min(start + 1 + count, size) * byte_size
+    byte_start = start * element_size
+    byte_end = min(start + 1 + count, size) * element_size
 
     space = interp.space
     if not (byte_start >= 0 and byte_end > byte_start):
@@ -233,7 +226,7 @@ def primitiveFileWrite(interp, s_frame, w_rcvr, fd, content, start, count):
     except OSError:
         raise PrimitiveFailedError
     else:
-        return space.wrap_positive_32bit_int(rarithmetic.intmask(written))
+        return space.wrap_positive_32bit_int(rarithmetic.intmask(written / element_size))
 
 @FilePlugin.expose_primitive(unwrap_spec=[object, int, int])
 def primitiveFileTruncate(interp, s_frame, w_rcvr, fd, position):
