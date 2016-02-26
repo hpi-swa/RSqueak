@@ -537,7 +537,7 @@ class W_Float(W_AbstractObjectWithIdentityHash):
         return "%f" % self.value
 
     def gethash(self):
-        return intmask(compute_hash(self.value)) // 2
+        return intmask(compute_hash(self.value)) % 2**22
 
     def invariant(self):
         return isinstance(self.value, float)
