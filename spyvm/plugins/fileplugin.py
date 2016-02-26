@@ -35,6 +35,9 @@ if IS_WINDOWS:
     )
 
     os.ftruncate = _chsize
+else:
+    # O_BINARY is only available on Windows
+    os.O_BINARY = 0
 
 #should we implement primitiveDirectoryEntry ?
 #should we implement primitiveHasFileAccess ?
@@ -124,6 +127,7 @@ def primitiveFileOpen(interp, s_frame, w_rcvr, file_path, w_writeable_flag):
         mode = os.O_RDONLY
         if file_missing:
             return space.w_nil
+    mode |= os.O_BINARY
     try:
         file_descriptor = os.open(file_path, mode, 0666)
     except OSError:
