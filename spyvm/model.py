@@ -357,7 +357,7 @@ class W_AbstractObjectWithIdentityHash(W_Object):
 
     def gethash(self):
         if self.hash == self.UNASSIGNED_HASH:
-            self.hash = hash = intmask(self.hash_generator.genrand32()) % 2**22
+            self.hash = hash = (intmask(self.hash_generator.genrand32()) % 2**22) + 1
             return hash
         return self.hash
 
@@ -537,7 +537,7 @@ class W_Float(W_AbstractObjectWithIdentityHash):
         return "%f" % self.value
 
     def gethash(self):
-        return intmask(compute_hash(self.value)) % 2**22
+        return (intmask(compute_hash(self.value)) % 2**22) + 1
 
     def invariant(self):
         return isinstance(self.value, float)
