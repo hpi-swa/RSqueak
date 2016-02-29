@@ -1052,7 +1052,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         self.setchar(index0, chr(space.unwrap_int(w_value)))
 
     def getchar(self, n0):
-        if self.bytes is None:
+        if self.native_bytes is not None:
             return self.native_bytes.getchar(n0)
         else:
             return self.bytes[n0]
@@ -1060,7 +1060,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
     def setchar(self, n0, character):
         assert isinstance(character, str)
         assert len(character) == 1
-        if self.bytes is None:
+        if self.native_bytes is not None:
             self.native_bytes.setchar(n0, character)
         else:
             self.bytes[n0] = character
@@ -1086,10 +1086,10 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         self.setchar(byte_index0 + 1, chr(byte1))
 
     def size(self):
-        if self.bytes is not None:
-            return len(self.bytes)
-        else:
+        if self.native_bytes is not None:
             return self.native_bytes.size
+        else:
+            return len(self.bytes)
 
     def str_content(self):
         if self.has_class() and self.getclass(None).has_space():
@@ -1104,13 +1104,13 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
 
     @jit.elidable
     def _pure_as_string(self, version):
-        if self.bytes is None:
+        if self.native_bytes is not None:
             return self.native_bytes.as_string()
         else:
             return "".join(self.bytes)
 
     def getbytes(self):
-        if self.bytes is None:
+        if self.native_bytes is not None:
             return self.native_bytes.copy_bytes()
         else:
             return self.bytes
@@ -1129,7 +1129,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
     def clone(self, space):
         size = self.size()
         w_result = W_BytesObject(space, self.getclass(space), size)
-        if self.bytes is None:
+        if self.native_bytes is not None:
             w_result.bytes = self.native_bytes.copy_bytes()
         else:
             w_result.bytes = list(self.bytes)
@@ -1251,13 +1251,13 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
 
     def getword(self, n):
         assert self.size() > n >= 0
-        if self.words is None:
+        if self.native_words is not None:
             return r_uint(self.native_words.getword(n))
         else:
             return self.words[n]
 
     def setword(self, n, word):
-        if self.words is None:
+        if self.native_words is not None:
             self.native_words.setword(n, intmask(word))
         else:
             self.words[n] = r_uint(word)
@@ -1302,10 +1302,10 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         self.setword(word_index0, value)
 
     def size(self):
-        if self.words is not None:
-            return len(self.words)
-        else:
+        if self.native_words is not None:
             return self.native_words.size
+        else:
+            return len(self.words)
 
     @jit.look_inside_iff(lambda self, space: jit.isconstant(self.size()))
     def unwrap_string(self, space):
@@ -1325,7 +1325,7 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
     def clone(self, space):
         size = self.size()
         w_result = W_WordsObject(space, self.getclass(space), size)
-        if self.words is None:
+        if self.native_words is not None:
             w_result.words = self.native_words.copy_words()
         else:
             w_result.words = list(self.words)

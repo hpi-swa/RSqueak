@@ -1066,7 +1066,7 @@ def func(interp, s_frame, argcount, w_method):
         raise PrimitiveFailedError
     signature = (space.unwrap_string(w_modulename), space.unwrap_string(w_functionname))
 
-    if interp.space.use_plugins.is_set():
+    if (not constants.IS_64BIT) and interp.space.use_plugins.is_set():
         from spyvm.plugins.squeak_plugin_proxy import IProxy, MissingPlugin
         try:
             return IProxy.call(signature, interp, s_frame, argcount, w_method)

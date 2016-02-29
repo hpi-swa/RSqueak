@@ -147,7 +147,7 @@ class W_16BitDisplayBitmap(W_DisplayBitmap):
                 (((msb >> 5) & mask) << 6) |
                 ((msb & mask) << 11)
             )
-        self.pixelbuffer()[n] = r_uint(lsb | (msb << 16))
+        self.pixelbuffer()[n] = rffi.r_uint(lsb | (msb << 16))
 
 class W_8BitDisplayBitmap(W_DisplayBitmap):
 
@@ -155,7 +155,7 @@ class W_8BitDisplayBitmap(W_DisplayBitmap):
 
     def set_pixelbuffer_word(self, n, word):
         # Invert the byte-order.
-        self.pixelbuffer()[n] = r_uint(
+        self.pixelbuffer()[n] = rffi.r_uint(
             (word >> 24) |
             ((word >> 8) & 0x0000ff00) |
             ((word << 8) & 0x00ff0000) |
