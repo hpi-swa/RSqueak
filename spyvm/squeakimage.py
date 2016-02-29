@@ -407,7 +407,7 @@ class NonSpurReader(BaseReaderStrategy):
             raise error.CorruptImageError("Unknown format 5")
         elif self.isfloat(g_object):
             return objectmodel.instantiate(model.W_Float)
-        elif self.is32bitlargepositiveinteger(g_object):
+        elif self.iswordsizedlargepositiveinteger(g_object):
             return objectmodel.instantiate(model.W_LargePositiveInteger1Word)
         elif self.iswords(g_object):
             return objectmodel.instantiate(model.W_WordsObject)
@@ -423,10 +423,10 @@ class NonSpurReader(BaseReaderStrategy):
     def isbytes(self, g_object):
         return 8 <= g_object.format <= 11
 
-    def is32bitlargepositiveinteger(self, g_object):
+    def iswordsizedlargepositiveinteger(self, g_object):
         return (g_object.format == 8 and
                 self.space.w_LargePositiveInteger.is_same_object(g_object.g_class.w_object) and
-                len(g_object.get_bytes()) <= 4)
+                len(g_object.get_bytes()) <= constants.BYTES_PER_MACHINE_INT)
 
     def ischar(self, g_object):
         return (self.ispointers(g_object) and
@@ -628,7 +628,7 @@ class SpurReader(BaseReaderStrategy):
             raise error.CorruptImageError("Unknown format " + str(g_object.format))
         elif self.isfloat(g_object):
             return objectmodel.instantiate(model.W_Float)
-        elif self.is32bitlargepositiveinteger(g_object):
+        elif self.iswordsizedlargepositiveinteger(g_object):
             return objectmodel.instantiate(model.W_LargePositiveInteger1Word)
         elif self.iswords(g_object):
             return objectmodel.instantiate(model.W_WordsObject)
@@ -648,10 +648,10 @@ class SpurReader(BaseReaderStrategy):
     def isweak(self, g_object):
         return 4 <= g_object.format <= 5
 
-    def is32bitlargepositiveinteger(self, g_object):
+    def iswordsizedlargepositiveinteger(self, g_object):
         return (g_object.format == 16 and
                 self.space.w_LargePositiveInteger.is_same_object(g_object.g_class.w_object) and
-                len(g_object.get_bytes()) <= 4)
+                len(g_object.get_bytes()) <= constants.BYTES_PER_MACHINE_INT)
 
     def iswords(self, g_object):
         return 9 <= g_object.format <= 15

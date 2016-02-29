@@ -173,7 +173,7 @@ def primitiveFileGetPosition(interp, s_frame, w_rcvr, fd):
     except OSError:
         raise PrimitiveFailedError
     else:
-        return interp.space.wrap_positive_32bit_int(rarithmetic.intmask(pos))
+        return interp.space.wrap_positive_wordsize_int(rarithmetic.intmask(pos))
 
 @FilePlugin.expose_primitive(unwrap_spec=[object, int, int])
 def primitiveFileSetPosition(interp, s_frame, w_rcvr, fd, position):
@@ -189,7 +189,7 @@ def primitiveFileSize(interp, s_frame, w_rcvr, fd):
         file_info = os.fstat(fd)
     except OSError:
         raise PrimitiveFailedError
-    return interp.space.wrap_positive_32bit_int(rarithmetic.intmask(file_info.st_size))
+    return interp.space.wrap_positive_wordsize_int(rarithmetic.intmask(file_info.st_size))
 
 @FilePlugin.expose_primitive(unwrap_spec=[object])
 def primitiveFileStdioHandles(interp, s_frame, w_rcvr):
@@ -226,7 +226,7 @@ def primitiveFileWrite(interp, s_frame, w_rcvr, fd, content, start, count):
     except OSError:
         raise PrimitiveFailedError
     else:
-        return space.wrap_positive_32bit_int(rarithmetic.intmask(written / element_size))
+        return space.wrap_positive_wordsize_int(rarithmetic.intmask(written / element_size))
 
 @FilePlugin.expose_primitive(unwrap_spec=[object, int, int])
 def primitiveFileTruncate(interp, s_frame, w_rcvr, fd, position):

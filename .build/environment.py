@@ -31,6 +31,8 @@ def load_config():
 
 
 def ensure_32bit_environment():
+    return
+
     if "64bit" in platform.architecture()[0] and "download_dependencies" not in sys.argv[0]:
         import signal
         if os.name == "nt":

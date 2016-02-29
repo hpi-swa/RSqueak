@@ -193,11 +193,11 @@ class ObjSpace(object):
     def wrap_int(self, val):
         if isinstance(val, r_longlong) and not is_valid_int(val):
             if val > 0 and val <= r_longlong(constants.U_MAXINT):
-                return self.wrap_positive_32bit_int(intmask(val))
+                return self.wrap_positive_wordsize_int(intmask(val))
             else:
                 raise WrappingError
         elif isinstance(val, r_uint):
-            return self.wrap_positive_32bit_int(intmask(val))
+            return self.wrap_positive_wordsize_int(intmask(val))
         elif not is_valid_int(val):
             raise WrappingError
         # we don't do tagging
@@ -208,9 +208,9 @@ class ObjSpace(object):
         if val < 0:
             raise WrappingError("negative integer")
         else:
-            return self.wrap_positive_32bit_int(intmask(val))
+            return self.wrap_positive_wordsize_int(intmask(val))
 
-    def wrap_positive_32bit_int(self, val):
+    def wrap_positive_wordsize_int(self, val):
         # This will always return a positive value.
         # XXX: For now, we assume that val is at most 32bit, i.e. overflows are
         # checked for before wrapping. Also, we ignore tagging.
@@ -287,7 +287,7 @@ class ObjSpace(object):
             if isinstance(val, r_ulonglong):
                 return self.wrap_ulonglong(val)
             elif isinstance(val, r_longlong):
-                if val > 0 and not val <= r_longlong(constants.U_MAXINT):
+                if val > 0 and not val <= r_ulonglong(constants.U_MAXINT):
                     return self.wrap_ulonglong(val)
                 elif  val < 0:
                     return self.wrap_nlonglong(val)
@@ -338,8 +338,8 @@ class ObjSpace(object):
     def unwrap_uint(self, w_value):
         return w_value.unwrap_uint(self)
 
-    def unwrap_positive_32bit_int(self, w_value):
-        return w_value.unwrap_positive_32bit_int(self)
+    def unwrap_positive_wordsize_int(self, w_value):
+        return w_value.unwrap_positive_wordsize_int(self)
 
     def unwrap_longlong(self, w_value):
         return w_value.unwrap_longlong(self)

@@ -120,7 +120,7 @@ class SDLDisplay(object):
         self.bpp = r_uint(self.screen_surface.c_format.c_BytesPerPixel)
         if d == MINIMUM_DEPTH:
             self.set_squeak_colormap(self.screen_surface)
-        self.pitch = w * self.bpp
+        self.pitch = r_uint(w) * r_uint(self.bpp)
 
     def set_full_screen(self, flag):
         if flag:

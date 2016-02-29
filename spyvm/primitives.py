@@ -100,7 +100,7 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                     if spec is int:
                         args += (interp.space.unwrap_int(w_arg), )
                     elif spec is pos_32bit_int:
-                        args += (interp.space.unwrap_positive_32bit_int(w_arg),)
+                        args += (interp.space.unwrap_positive_wordsize_int(w_arg),)
                     elif spec is r_uint:
                         args += (interp.space.unwrap_uint(w_arg),)
                     elif spec is r_longlong:
@@ -253,17 +253,18 @@ for (code,op) in math_ops.items():
         @expose_primitive(code, unwrap_specs=[[int, int], [r_longlong, r_longlong]])
         def func(interp, s_frame, receiver, argument):
             try:
-                if isinstance(receiver, r_longlong) and isinstance(argument, r_longlong):
+                if isinstance(receiver, int) and isinstance(argument, int):
+                    res = ovfcheck(op(receiver, argument))
+                elif isinstance(receiver, r_longlong) and isinstance(argument, r_longlong):
                     res = op(receiver, argument)
                     if ((receiver ^ argument >= 0) and (receiver ^ res < 0)):
                         # manual ovfcheck as in Squeak VM
                         raise OverflowError
                 else:
-                    assert isinstance(receiver, int) and isinstance(argument, int)
-                    res = ovfcheck(op(receiver, argument))
+                    assert False
             except OverflowError:
                 raise PrimitiveFailedError()
-            return interp.space.wrap_longlong(res)
+            return interp.space.wrap_int(res)
     make_func(op)
 
 bitwise_binary_ops = {
@@ -278,7 +279,7 @@ for (code,op) in bitwise_binary_ops.items():
         def func(interp, s_frame, receiver, argument):
             res = op(intmask(receiver), intmask(argument))
             if isinstance(receiver, r_uint):
-                return interp.space.wrap_positive_32bit_int(intmask(res))
+                return interp.space.wrap_positive_wordsize_int(intmask(res))
             else:
                 return interp.space.wrap_int(intmask(res))
     make_func(op)
@@ -326,8 +327,7 @@ def func(interp, s_frame, receiver, argument):
 @expose_also_as(LARGE_BIT_SHIFT)
 @expose_primitive(BIT_SHIFT, unwrap_spec=[object, int])
 def func(interp, s_frame, w_receiver, argument):
-    from rpython.rlib.rarithmetic import LONG_BIT
-    if -LONG_BIT < argument < LONG_BIT:
+    if -constants.LONG_BIT < argument < constants.LONG_BIT:
         # overflow-checking done in lshift implementations
         if argument > 0:
             return w_receiver.lshift(interp.space, argument)

@@ -252,13 +252,19 @@ def test_large_positive_integer_operation_add():
     w_result = perform(interp.space.w_SmallInteger, "maxVal")
     w_result = perform(w_result, "+", interp.space.wrap_int(2 * interp.space.unwrap_int(w_result)))
     assert w_result is not None
-    assert isinstance(w_result, model.W_LargePositiveInteger1Word)
+    if not constants.IS_64BIT:
+        assert isinstance(w_result, model.W_LargePositiveInteger1Word)
+    else:
+        assert isinstance(w_result, model.W_SmallInteger)
 
 def test_large_positive_integer_operation_times():
     w_result = perform(interp.space.w_SmallInteger, "maxVal")
     w_result = perform(w_result, "*", w_result)
     assert w_result is not None
-    assert isinstance(w_result, model.W_BytesObject)
+    if not constants.IS_64BIT:
+        assert isinstance(w_result, model.W_BytesObject)
+    else:
+        assert isinstance(w_result, model.W_SmallInteger)
 
 def test_doesNotUnderstand():
     w_dnu = interp.space.objtable["w_doesNotUnderstand"]
