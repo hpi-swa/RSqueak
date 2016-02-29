@@ -61,7 +61,7 @@ class W_DisplayBitmap(model.W_AbstractObjectWithClassReference):
 
     def getword(self, n):
         assert self.size() > n >= 0
-        return self._real_depth_buffer[n]
+        return r_uint(self._real_depth_buffer[n])
 
     def setword(self, n, word):
         self._real_depth_buffer[n] = rffi.r_uint(word)

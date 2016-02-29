@@ -1364,7 +1364,7 @@ class NativeWordsWrapper(object):
     def getword(self, n0):
         if n0 >= self.size:
             raise IndexError
-        return self.c_words[n0]
+        return r_uint(self.c_words[n0])
 
     def copy_words(self):
         return [r_uint(self.c_words[i]) for i in range(self.size)]
