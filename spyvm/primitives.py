@@ -1180,6 +1180,10 @@ def func(interp, s_frame, w_receiver, flag):
 
 @expose_primitive(DRAW_RECTANGLE, unwrap_spec=[object, int, int, int, int])
 def func(interp, s_frame, w_rcvr, left, right, top, bottom):
+    if not interp.space.objtable['w_display'].is_same_object(w_rcvr):
+        return interp.space.w_nil
+    if not ((left <= right) and (top <= bottom)):
+        return interp.space.w_nil
     interp.space.display().flip(force=True)
     return w_rcvr
 
