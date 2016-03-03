@@ -1180,8 +1180,7 @@ def func(interp, s_frame, w_receiver, flag):
 
 @expose_primitive(DRAW_RECTANGLE, unwrap_spec=[object, int, int, int, int])
 def func(interp, s_frame, w_rcvr, left, right, top, bottom):
-    sdldisplay = interp.space.display()
-    sdldisplay.flip()
+    interp.space.display().flip(force=True)
     return w_rcvr
 
 
@@ -1922,10 +1921,10 @@ def func(interp, s_frame, w_rcvr, time_mu_s):
     interp.interrupt_check_counter = 0
     interp.quick_check_for_interrupt(s_frame, dec=0)
 
-@expose_primitive(FORCE_DISPLAY_UPDATE, unwrap_spec=[object])
-def func(interp, s_frame, w_rcvr):
-    interp.space.display().flip(force=True)
-    return w_rcvr
+# @expose_primitive(FORCE_DISPLAY_UPDATE, unwrap_spec=[object])
+# def func(interp, s_frame, w_rcvr):
+#     interp.space.display().flip(force=True)
+#     return w_rcvr
 
 @expose_primitive(SET_FULL_SCREEN, unwrap_spec=[object, bool])
 def func(interp, s_frame, w_rcvr, flag):
