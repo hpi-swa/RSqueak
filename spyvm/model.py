@@ -1487,6 +1487,9 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def getclass(self, space):
         return space.w_CompiledMethod
 
+    def getbytes(self):
+        return self.bytes
+
     @constant_for_version
     def size(self):
         return self.headersize() + self.getliteralsize() + len(self.bytes)

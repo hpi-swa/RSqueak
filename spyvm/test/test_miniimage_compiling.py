@@ -203,3 +203,8 @@ def test_simulate_externalcall():
     w_result = perform(w(10), "absentPrimitive:with:", w(3), w(4))
     assert isinstance(w_result, model.W_BytesObject)
     assert w_result.unwrap_string(space) == 'externalcall simulation for 3 4'
+
+def test_snapshotPrimitive():
+    space.set_system_attribute(constants.SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, "test_snapshot.image")
+    w_result = perform(space.special_object("w_smalltalkdict"), "snapshotPrimitive")
+    assert w_result is space.w_false

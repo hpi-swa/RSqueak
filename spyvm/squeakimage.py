@@ -1,5 +1,5 @@
 import os, time
-from spyvm import constants, model, util, error
+from spyvm import constants, model, util, error, storage_contexts, model_display, wrapper
 from spyvm.util import stream, system
 from spyvm.util.bitmanipulation import splitter
 from rpython.rlib import objectmodel
@@ -873,3 +873,252 @@ class ImageChunk(object):
     def iscompact(self):
         # pre-Spur
         return 0 < self.classid < 32
+
+class SpurImageWriter(object):
+    image_header_size = 64
+    word_size = 4
+
+    def __init__(self, interp, filename):
+        from rpython.rlib import streamio, objectmodel
+        self.space = interp.space
+        self.image = interp.image
+        self.f = streamio.open_file_as_stream(filename, mode="wb")
+        self.next_chunk = self.image_header_size
+        self.oop_map = {}
+        self.trace_queue = []
+        self.hidden_roots = None
+
+    def len_and_header(self, obj):
+        import math
+        n = self.fixed_and_indexable_size_for(obj)
+        if isinstance(obj, model.W_BytesObject) or isinstance(obj, model.W_LargePositiveInteger1Word):
+            size = int(math.ceil(n / float(self.word_size)))
+        else:
+            size = n
+        if size < 255:
+            return size + 2, 2
+        else:
+            return size + 2, 4
+
+    def frame_size_for(self, obj):
+        w_method = None
+        if obj.getclass(self.space).is_same_object(self.space.w_MethodContext):
+            w_method = obj.fetch(self.space, constants.MTHDCTX_METHOD)
+            if not w_method.is_nil(self.space):
+                w_method.compute_frame_size()
+        elif obj.getclass(self.space).is_same_object(self.space.w_BlockContext):
+            w_home = obj.fetch(self.space, constants.BLKCTX_HOME_INDEX)
+            return self.frame_size_for(w_home)
+        return constants.COMPILED_METHOD_FULL_FRAME_SIZE
+
+    def fixed_and_indexable_size_for(self, obj):
+        if (isinstance(obj, model.W_PointersObject) and
+            (obj.getclass(self.space).is_same_object(self.space.w_MethodContext) or
+             obj.getclass(self.space).is_same_object(self.space.w_BlockContext))):
+            return obj.instsize() + self.frame_size_for(obj)
+        elif isinstance(obj, model.W_CompiledMethod):
+            return obj.varsize()
+        else:
+            return obj.instsize() + obj.varsize()
+
+    def padding_for(self, length):
+        if length - 2 == 0:
+            return 8
+        elif (length % 2 != 0 and self.word_size == 4):
+            return 4
+        else:
+            return 0
+
+    def trace_image(self, s_frame):
+        w_active_process = wrapper.scheduler(self.space).active_process()
+        active_process = wrapper.ProcessWrapper(self.space, w_active_process)
+        active_process.store_suspended_context(s_frame.w_self())
+        try:
+            self.reserve(self.space.w_nil)
+            self.reserve(self.space.w_false)
+            self.reserve(self.space.w_true)
+            # free list object
+            self.reserve(model.W_WordsObject(self.space, self.space.w_Float, self.word_size * 8))
+            # hidden roots
+            self.hidden_roots = model.W_PointersObject(self.space, self.space.w_Array, 2**12 + 8)
+            first_class_table = model.W_PointersObject(self.space, self.space.w_Array, 2**10)
+            self.hidden_roots.store(self.space, 0, first_class_table)
+            self.reserve(self.hidden_roots)
+            self.reserve(first_class_table)
+            self.trace_queue.pop() # remove the hidden from the queue
+            self.trace_queue.pop() # remove the first classtable from the queue
+            self.reserve(self.image.special_objects)
+            while len(self.trace_queue) > 0:
+                self.write_and_trace(self.trace_queue.pop())
+            # tracing through the image will have populated the hidden roots and
+            # its classtables. write the hidden roots object, and than its
+            # classtables
+            self.write_and_trace(self.hidden_roots)
+            while len(self.trace_queue) > 0:
+                self.write_and_trace(self.trace_queue.pop())
+            self.write_last_bridge()
+            self.write_file_header()
+        finally:
+            self.f.close()
+            active_process.store_suspended_context(self.space.w_nil)
+
+    def write_file_header(self):
+        sp_obj_oop = self.oop_map[self.image.special_objects]
+        image_header_size = 64 if self.word_size == 4 else 128
+        displaysize = self.image.lastWindowSize
+        hdrflags = (0 + # 0/1 fullscreen or not
+                    0b10 + # 0/2 imageFloatsLittleEndian or not
+                    0x10 + # preemption does not yield
+                    0) # old finalization
+        self.f.seek(0, 0)
+        self.write_word(6521) # version
+        self.write_word(image_header_size) # hdr size
+        self.write_word(self.next_chunk - image_header_size) # memory size
+        self.write_word(image_header_size) # start of memory
+        self.write_word(sp_obj_oop)
+        self.write_word(sp_obj_oop.gethash())
+        self.write_word(displaysize)
+        self.write_word(hdrflags)
+        self.write_word(0) # extra VM memory
+        self.write_word(0) # (num stack pages << 16) | cog code size
+        self.write_word(0) # eden bytes
+        self.write_word(0) # max ext semaphore size << 16
+        self.write_word(self.next_chunk - image_header_size) # first segment size
+        self.write_word(0) # free old space in image
+        self.write_word(0) # padding
+        self.write_word(0) # padding
+
+    def write_last_bridge(self):
+        self.next_chunk = self.next_chunk + 16
+        # put the magic FINAL BRIDGE header
+        # FIXME: 64bit??
+        self.write_word((1 << 30) + (10 << 24) + 3)
+        self.write_word(0)
+        self.write_word(0)
+        self.write_word(0)
+
+    def write_and_trace(self, obj):
+        if obj.is_class(self.space):
+            classhash = obj.gethash()
+            majoridx = classhash >> 10
+            minoridx = classhash & ((1 << 10) - 1)
+            page = self.hidden_roots.fetch(self.space, majoridx)
+            if page.is_nil(self.space):
+                page = model.W_PointersObject(self.space, self.space.w_Array, 2**10)
+                self.hidden_roots.store(self.space, majoridx, page)
+            page.store(self.space, minoridx, obj)
+
+        length, hdrsize = self.len_and_header(obj)
+        oop = self.oop_map[obj]
+        self.write_header(hdrsize, obj, oop)
+
+        assert self.f.tell() == (oop + (2 * self.word_size))
+
+        if isinstance(obj, model.W_BytesObject) or isinstance(obj, model.W_LargePositiveInteger1Word):
+            self.write_bytes_object(obj)
+        elif isinstance(obj, model.W_WordsObject) or isinstance(obj, model_display.W_DisplayBitmap) or isinstance(obj, model.W_Float):
+            self.write_words_object(obj)
+        elif isinstance(obj, model.W_CompiledMethod):
+            self.write_compiled_method(obj)
+        else:
+            self.write_pointers_object(obj)
+
+        padding = self.padding_for(length)
+        self.f.write("\0" * padding)
+
+        assert self.f.tell() == oop + length * self.word_size + padding
+
+    def reserve(self, obj):
+        if isinstance(obj, model.W_SmallInteger):
+            if obj.value < 0 and obj.value > constants.TAGGED_MININT:
+                return ((0x80000000 + obj.value) << 1) + 1
+            elif obj.value < constants.TAGGED_MAXINT:
+                return (obj.value << 1) + 1
+            elif obj.value > 0:
+                # need to turn full 32-bit integers back into LPIs
+                return self.reserve(self.space.wrap_large_number(obj.value, self.space.w_LargePositiveInteger))
+            else:
+                return self.reserve(self.space.wrap_large_number(obj.value, self.space.w_LargeNegativeInteger))
+        elif isinstance(obj, model.W_Character):
+            assert obj.value < constants.TAGGED_MAXINT
+            return (obj.value << 2) + 0b10
+        else:
+            oop = self.oop_map.get(obj, 0)
+            if oop > 0:
+                return oop
+            else:
+                length, hdrsize = self.len_and_header(obj)
+                oop = self.next_chunk + (hdrsize - 2) * self.word_size
+                self.next_chunk = oop + length * self.word_size + self.padding_for(length)
+                self.oop_map[obj] = oop
+                self.trace_queue.append(obj)
+                return oop
+
+    def write_bytes_object(self, obj):
+        self.f.write(self.space.unwrap_string(obj))
+        paddingbytes = self.word_size - (obj.size() % self.word_size)
+        if paddingbytes != self.word_size:
+            self.f.write("\0" * paddingbytes)
+
+    def write_words_object(self, obj):
+        self.f.write(self.space.unwrap_string(obj))
+        if self.word_size == 8 and (obj.size() % 2 == 1):
+            self.f.write("\0" * 4)
+
+    def write_compiled_method(self, obj):
+        for i in range(obj.getliteralsize() / constants.BYTES_PER_WORD):
+            self.write_word(self.reserve(obj.getliteral(i)))
+        cmbytes = obj.getbytes()
+        paddingbytes = self.word_size - (len(cmbytes) % self.word_size)
+        self.f.write("".join(cmbytes))
+        if paddingbytes != self.word_size:
+            self.f.write("\0" * paddingbytes)
+
+    def write_pointers_object(self, obj):
+        for i in range(obj.size()):
+            self.write_word(self.reserve(obj.fetch(self.space, i)))
+        if (obj.getclass(self.space).is_same_object(self.space.w_MethodContext) or
+            obj.getclass(self.space).is_same_object(self.space.w_BlockContext)):
+            # fill out nils beyond the knowable end of stack
+            for i in range(self.frame_size_for(obj) - obj.varsize()):
+                self.write_word(self.reserve(self.space.w_nil))
+
+    def write_word(self, word):
+        # FIXME: 64bit??
+        self.f.write("".join(
+            [chr(word & r_uint(0x000000ff)),
+             chr((word & r_uint(0x0000ff00)) >> 8),
+             chr((word & r_uint(0x00ff0000)) >> 16),
+             chr((word & r_uint(0xff000000)) >> 24)]))
+
+    def write_header(self, hdrsize, obj, oop):
+        self.f.seek(oop - ((hdrsize - 2) * self.word_size), 0)
+        self.f.write(self.headers_for_hash_numfields(
+            obj.getclass(self.space),
+            obj.gethash(),
+            self.fixed_and_indexable_size_for(obj)))
+
+    def headers_for_hash_numfields(self, Class, Hash, size):
+        import math
+        from rpython.rlib.rbigint import rbigint, NULLRBIGINT
+        from spyvm.storage_classes import BYTES
+        classshadow = Class.as_class_get_shadow(self.space)
+        length = rbigint.fromint(size)
+        wordlen = size
+        fmt = Class.fetch(self.space, constants.CLASS_FORMAT_INDEX).value
+        if classshadow.instance_kind == BYTES:
+            wordlen = int(math.ceil(size / 4.0))
+            length = rbigint.fromint(wordlen)
+            fmt = fmt | ((wordlen * 4) - size)
+        header = NULLRBIGINT
+        if wordlen >= 255:
+            header = length.or_(rbigint.fromint(0xff).lshift(56)).lshift(64)
+            length = rbigint.fromint(0xff)
+        header = header.or_(length.lshift(56).
+                            or_(rbigint.fromint(Hash).lshift(32)).
+                            int_or_(fmt << 24).
+                            int_or_(Class.gethash()))
+        if wordlen >= 255:
+            return header.tobytes(16, "little", False)
+        else:
+            return header.tobytes(8, "little", False)

@@ -840,6 +840,18 @@ def func(interp, s_frame, argcount, w_method):
     from spyvm.plugins.simulation import SimulationPlugin
     return SimulationPlugin.simulate(w_name, signature, interp, s_frame, argcount, w_method)
 
+@expose_primitive(SNAPSHOT, clean_stack=False, no_result=True)
+def func(interp, s_frame, argcount):
+    s_frame.pop_n(argcount)
+    s_frame.push(interp.space.w_true)
+    # leaving true on the frame as return value for resuming image
+    from spyvm.squeakimage import SpurImageWriter
+    from spyvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX
+    filename = interp.space.get_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX)
+    SpurImageWriter(interp, filename).trace_image(s_frame)
+    s_frame.pop()
+    s_frame.push(interp.space.w_false) # the non-resuming image gets false
+
 @expose_primitive(BE_CURSOR)
 def func(interp, s_frame, argcount):
     if not (0 <= argcount <= 1):
