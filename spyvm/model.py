@@ -467,10 +467,15 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
         return space.wrap_int(intmask(result))
 
     def atput0(self, space, index0, w_byte):
+        self.setbyte(index0, space.unwrap_int(w_byte))
+
+    def setchar(self, index0, char):
+        self.setbyte(index0, ord(char))
+
+    def setbyte(self, index0, byte):
         if index0 >= self.size():
             raise IndexError()
         skew = index0 * 8
-        byte = space.unwrap_int(w_byte)
         assert byte <= 0xff
         new_value = self.value & r_uint(~(0xff << skew))
         new_value |= r_uint(byte << skew)

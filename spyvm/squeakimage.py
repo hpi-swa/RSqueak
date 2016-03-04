@@ -4,6 +4,7 @@ from spyvm.util import stream, system
 from spyvm.util.bitmanipulation import splitter
 from rpython.rlib import objectmodel
 from rpython.rlib.rarithmetic import r_ulonglong, intmask, r_uint
+from rpython.rlib import jit
 
 # Access for module users
 Stream = stream.Stream
@@ -891,7 +892,7 @@ class SpurImageWriter(object):
     def len_and_header(self, obj):
         import math
         n = self.fixed_and_indexable_size_for(obj)
-        if isinstance(obj, model.W_BytesObject) or isinstance(obj, model.W_LargePositiveInteger1Word):
+        if isinstance(obj, model.W_BytesObject) or isinstance(obj, model.W_LargePositiveInteger1Word) or isinstance(obj, model.W_CompiledMethod):
             size = int(math.ceil(n / float(self.word_size)))
         else:
             size = n
@@ -937,8 +938,8 @@ class SpurImageWriter(object):
             self.reserve(self.space.w_nil)
             self.reserve(self.space.w_false)
             self.reserve(self.space.w_true)
-            # free list object
-            self.reserve(model.W_WordsObject(self.space, self.space.w_Float, self.word_size * 8))
+            # free list object. we need a word array kind of thing. Bitmaps are like that
+            self.reserve(model.W_WordsObject(self.space, self.space.w_Bitmap, self.word_size * 8))
             # hidden roots
             self.hidden_roots = model.W_PointersObject(self.space, self.space.w_Array, 2**12 + 8)
             first_class_table = model.W_PointersObject(self.space, self.space.w_Array, 2**10)
@@ -949,13 +950,13 @@ class SpurImageWriter(object):
             self.trace_queue.pop() # remove the first classtable from the queue
             self.reserve(self.image.special_objects)
             while len(self.trace_queue) > 0:
-                self.write_and_trace(self.trace_queue.pop())
+                self.write_and_trace(self.trace_queue.pop(0))
             # tracing through the image will have populated the hidden roots and
             # its classtables. write the hidden roots object, and than its
             # classtables
             self.write_and_trace(self.hidden_roots)
             while len(self.trace_queue) > 0:
-                self.write_and_trace(self.trace_queue.pop())
+                self.write_and_trace(self.trace_queue.pop(0))
             self.write_last_bridge()
             self.write_file_header()
         finally:
@@ -976,7 +977,7 @@ class SpurImageWriter(object):
         self.write_word(self.next_chunk - image_header_size) # memory size
         self.write_word(image_header_size) # start of memory
         self.write_word(sp_obj_oop)
-        self.write_word(sp_obj_oop.gethash())
+        self.write_word(0xffee) # last hash
         self.write_word(displaysize)
         self.write_word(hdrflags)
         self.write_word(0) # extra VM memory
@@ -1036,9 +1037,9 @@ class SpurImageWriter(object):
                 return (obj.value << 1) + 1
             elif obj.value > 0:
                 # need to turn full 32-bit integers back into LPIs
-                return self.reserve(self.space.wrap_large_number(obj.value, self.space.w_LargePositiveInteger))
+                return self.reserve(self.space.wrap_large_number(r_ulonglong(obj.value), self.space.w_LargePositiveInteger))
             else:
-                return self.reserve(self.space.wrap_large_number(obj.value, self.space.w_LargeNegativeInteger))
+                return self.reserve(self.space.wrap_large_number(r_ulonglong(obj.value), self.space.w_LargeNegativeInteger))
         elif isinstance(obj, model.W_Character):
             assert obj.value < constants.TAGGED_MAXINT
             return (obj.value << 2) + 0b10
@@ -1066,6 +1067,7 @@ class SpurImageWriter(object):
             self.f.write("\0" * 4)
 
     def write_compiled_method(self, obj):
+        self.write_word(obj.getheader())
         for i in range(obj.getliteralsize() / constants.BYTES_PER_WORD):
             self.write_word(self.reserve(obj.getliteral(i)))
         cmbytes = obj.getbytes()
@@ -1101,12 +1103,14 @@ class SpurImageWriter(object):
     def headers_for_hash_numfields(self, Class, Hash, size):
         import math
         from rpython.rlib.rbigint import rbigint, NULLRBIGINT
-        from spyvm.storage_classes import BYTES
+        from spyvm.storage_classes import BYTES, COMPILED_METHOD, LARGE_POSITIVE_INTEGER
         classshadow = Class.as_class_get_shadow(self.space)
         length = rbigint.fromint(size)
         wordlen = size
-        fmt = Class.fetch(self.space, constants.CLASS_FORMAT_INDEX).value
-        if classshadow.instance_kind == BYTES:
+        fmt = (Class.fetch(self.space, constants.CLASS_FORMAT_INDEX).value >> 16) & 0x1f
+        if (classshadow.instance_kind == BYTES or
+            classshadow.instance_kind == COMPILED_METHOD or
+            classshadow.instance_kind == LARGE_POSITIVE_INTEGER):
             wordlen = int(math.ceil(size / 4.0))
             length = rbigint.fromint(wordlen)
             fmt = fmt | ((wordlen * 4) - size)
