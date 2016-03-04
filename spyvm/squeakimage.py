@@ -3,7 +3,7 @@ from spyvm import constants, model, util, error, storage_contexts, model_display
 from spyvm.util import stream, system
 from spyvm.util.bitmanipulation import splitter
 from rpython.rlib import objectmodel
-from rpython.rlib.rarithmetic import r_ulonglong, intmask, r_uint
+from rpython.rlib.rarithmetic import r_ulonglong, intmask, r_uint, r_longlong
 from rpython.rlib import jit
 
 # Access for module users
@@ -71,6 +71,10 @@ image_versions_64bit = {
 # Parser classes for Squeak image format.
 
 class ImageReader(object):
+    jit_driver = jit.JitDriver(
+        greens=['self'],
+        reds=['chunk']
+    )
 
     def __init__(self, space, stream):
         self.space = space
@@ -214,7 +218,9 @@ class BaseReaderStrategy(object):
 
     def init_g_objects(self):
         for chunk in self.chunks.itervalues():
+            self.imageReader.jit_driver.can_enter_jit(self=self, chunk=chunk)
             chunk.as_g_object(self, self.space) # initialize g_object
+            self.imageReader.jit_driver.jit_merge_point(self=self, chunk=chunk)
         self.special_g_objects = self.chunks[self.specialobjectspointer].g_object.pointers
 
     def assign_prebuilt_constants(self):
@@ -250,7 +256,9 @@ class BaseReaderStrategy(object):
 
     def init_w_objects(self):
         for chunk in self.chunks.itervalues():
+            self.imageReader.jit_driver.can_enter_jit(self=self, chunk=chunk)
             chunk.g_object.init_w_object(self.space)
+            self.imageReader.jit_driver.jit_merge_point(self=self, chunk=chunk)
         self.special_w_objects = [g.w_object for g in self.special_g_objects]
 
     def populate_special_objects(self):
@@ -258,11 +266,15 @@ class BaseReaderStrategy(object):
 
     def fillin_w_objects(self):
         for chunk in self.chunks.itervalues():
+            self.imageReader.jit_driver.can_enter_jit(self=self, chunk=chunk)
             chunk.g_object.fillin(self.space)
+            self.imageReader.jit_driver.jit_merge_point(self=self, chunk=chunk)
 
     def fillin_weak_w_objects(self):
         for chunk in self.chunks.itervalues():
+            self.imageReader.jit_driver.can_enter_jit(self=self, chunk=chunk)
             chunk.g_object.fillin_weak(self.space)
+            self.imageReader.jit_driver.jit_merge_point(self=self, chunk=chunk)
 
     def log_object_filledin(self):
         self.filledin_objects = self.filledin_objects + 1
@@ -878,6 +890,10 @@ class ImageChunk(object):
 class SpurImageWriter(object):
     image_header_size = 64
     word_size = 4
+    jit_driver = jit.JitDriver(
+        greens=['self'],
+        reds=['obj']
+    )
 
     def __init__(self, interp, filename):
         from rpython.rlib import streamio, objectmodel
@@ -950,13 +966,19 @@ class SpurImageWriter(object):
             self.trace_queue.pop() # remove the first classtable from the queue
             self.reserve(self.image.special_objects)
             while len(self.trace_queue) > 0:
-                self.write_and_trace(self.trace_queue.pop(0))
+                obj = self.trace_queue.pop(0)
+                self.jit_driver.can_enter_jit(self=self, obj=obj)
+                self.write_and_trace(obj)
+                self.jit_driver.jit_merge_point(self=self, obj=obj)
             # tracing through the image will have populated the hidden roots and
             # its classtables. write the hidden roots object, and than its
             # classtables
             self.write_and_trace(self.hidden_roots)
             while len(self.trace_queue) > 0:
-                self.write_and_trace(self.trace_queue.pop(0))
+                obj = self.trace_queue.pop(0)
+                self.jit_driver.can_enter_jit(self=self, obj=obj)
+                self.write_and_trace(obj)
+                self.jit_driver.jit_merge_point(self=self, obj=obj)
             self.write_last_bridge()
             self.write_file_header()
         finally:
@@ -1032,7 +1054,7 @@ class SpurImageWriter(object):
     def reserve(self, obj):
         if isinstance(obj, model.W_SmallInteger):
             if obj.value < 0 and obj.value > constants.TAGGED_MININT:
-                return ((0x80000000 + obj.value) << 1) + 1
+                return intmask((((r_longlong(1) << 31) + obj.value) << 1) + 1)
             elif obj.value < constants.TAGGED_MAXINT:
                 return (obj.value << 1) + 1
             elif obj.value > 0:
@@ -1107,7 +1129,9 @@ class SpurImageWriter(object):
         classshadow = Class.as_class_get_shadow(self.space)
         length = rbigint.fromint(size)
         wordlen = size
-        fmt = (Class.fetch(self.space, constants.CLASS_FORMAT_INDEX).value >> 16) & 0x1f
+        w_fmt = Class.fetch(self.space, constants.CLASS_FORMAT_INDEX)
+        assert isinstance(w_fmt, model.W_SmallInteger)
+        fmt = (w_fmt.value >> 16) & 0x1f
         if (classshadow.instance_kind == BYTES or
             classshadow.instance_kind == COMPILED_METHOD or
             classshadow.instance_kind == LARGE_POSITIVE_INTEGER):
