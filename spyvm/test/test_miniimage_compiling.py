@@ -148,7 +148,7 @@ def test_compiling_large_positive_integer():
 
 def test_simulate_numericprim():
     sourcecode = """absentPrimitive: anInt with: anotherInt
-        <primitive: 97>
+        <primitive: 98>
         ^'numeric fallback for ', anInt asString, ' ', anotherInt asString"""
     perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
 
@@ -166,7 +166,7 @@ def test_simulate_numericprim():
 def test_simulate_numericprim_fallback():
     sourcecode = """absentPrimitive: anInt with: anotherInt
         |errorCode|
-        <primitive: 97> "error: errorCode> is not implemented in the mini.image yet"
+        <primitive: 98> "error: errorCode> is not implemented in the mini.image yet"
         ^'numeric fallback for ', anInt asString, ' ', anotherInt asString, ' because of ', errorCode asString"""
     perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
 
