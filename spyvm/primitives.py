@@ -1196,6 +1196,8 @@ def func(interp, s_frame, w_rcvr, left, right, top, bottom):
         return interp.space.w_nil
     if not ((left <= right) and (top <= bottom)):
         return interp.space.w_nil
+    form = wrapper.FormWrapper(interp.space, w_rcvr)
+    form.get_display_bitmap().force_rectange_to_screen(left, right, top, bottom)
     interp.space.display().flip(force=True)
     return w_rcvr
 

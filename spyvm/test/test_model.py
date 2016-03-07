@@ -404,6 +404,12 @@ def test_display_bitmap():
     assert bin(target.getword(0)) == bin(0xFF00FF00)
 
     buf = target.pixelbuffer()
+    for i in xrange(2, 8):
+        assert buf[i] == 0x0
+
+    target.force_rectange_to_screen(0, 31, 0, 9)
+
+    buf = target.pixelbuffer()
     for i in xrange(2):
         assert buf[i] == 0x01010101
     for i in xrange(2, 4):

@@ -376,7 +376,7 @@ class ObjSpace(object):
                 self.highdpi.is_set()
             )
             self._display.set(disp)
-        return disp
+        return jit.promote(disp)
 
     # ============= Other Methods =============
 
