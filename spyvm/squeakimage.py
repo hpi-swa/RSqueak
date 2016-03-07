@@ -71,11 +71,6 @@ image_versions_64bit = {
 # Parser classes for Squeak image format.
 
 class ImageReader(object):
-    jit_driver = jit.JitDriver(
-        greens=['self'],
-        reds=['chunk']
-    )
-
     def __init__(self, space, stream):
         self.space = space
         self.stream = stream
@@ -218,9 +213,7 @@ class BaseReaderStrategy(object):
 
     def init_g_objects(self):
         for chunk in self.chunks.itervalues():
-            self.imageReader.jit_driver.can_enter_jit(self=self, chunk=chunk)
             chunk.as_g_object(self, self.space) # initialize g_object
-            self.imageReader.jit_driver.jit_merge_point(self=self, chunk=chunk)
         self.special_g_objects = self.chunks[self.specialobjectspointer].g_object.pointers
 
     def assign_prebuilt_constants(self):
@@ -256,9 +249,7 @@ class BaseReaderStrategy(object):
 
     def init_w_objects(self):
         for chunk in self.chunks.itervalues():
-            self.imageReader.jit_driver.can_enter_jit(self=self, chunk=chunk)
             chunk.g_object.init_w_object(self.space)
-            self.imageReader.jit_driver.jit_merge_point(self=self, chunk=chunk)
         self.special_w_objects = [g.w_object for g in self.special_g_objects]
 
     def populate_special_objects(self):
@@ -266,15 +257,11 @@ class BaseReaderStrategy(object):
 
     def fillin_w_objects(self):
         for chunk in self.chunks.itervalues():
-            self.imageReader.jit_driver.can_enter_jit(self=self, chunk=chunk)
             chunk.g_object.fillin(self.space)
-            self.imageReader.jit_driver.jit_merge_point(self=self, chunk=chunk)
 
     def fillin_weak_w_objects(self):
         for chunk in self.chunks.itervalues():
-            self.imageReader.jit_driver.can_enter_jit(self=self, chunk=chunk)
             chunk.g_object.fillin_weak(self.space)
-            self.imageReader.jit_driver.jit_merge_point(self=self, chunk=chunk)
 
     def log_object_filledin(self):
         self.filledin_objects = self.filledin_objects + 1
@@ -887,13 +874,11 @@ class ImageChunk(object):
         # pre-Spur
         return 0 < self.classid < 32
 
+writerdriver = jit.JitDriver(reds=['obj'], greens=['self'])
+
 class SpurImageWriter(object):
     image_header_size = 64
     word_size = 4
-    jit_driver = jit.JitDriver(
-        greens=['self'],
-        reds=['obj']
-    )
 
     def __init__(self, interp, filename):
         from rpython.rlib import streamio, objectmodel
@@ -965,20 +950,23 @@ class SpurImageWriter(object):
             self.trace_queue.pop() # remove the hidden from the queue
             self.trace_queue.pop() # remove the first classtable from the queue
             self.reserve(self.image.special_objects)
-            while len(self.trace_queue) > 0:
+            while True:
                 obj = self.trace_queue.pop(0)
-                self.jit_driver.can_enter_jit(self=self, obj=obj)
+                if not len(self.trace_queue) == 0:
+                    writerdriver.can_enter_jit(obj=obj, self=self)
+                writerdriver.jit_merge_point(obj=obj, self=self)
                 self.write_and_trace(obj)
-                self.jit_driver.jit_merge_point(self=self, obj=obj)
+                if len(self.trace_queue) == 0:
+                    break
             # tracing through the image will have populated the hidden roots and
             # its classtables. write the hidden roots object, and than its
             # classtables
             self.write_and_trace(self.hidden_roots)
-            while len(self.trace_queue) > 0:
+            while True:
+                if len(self.trace_queue) == 0:
+                    break
                 obj = self.trace_queue.pop(0)
-                self.jit_driver.can_enter_jit(self=self, obj=obj)
                 self.write_and_trace(obj)
-                self.jit_driver.jit_merge_point(self=self, obj=obj)
             self.write_last_bridge()
             self.write_file_header()
         finally:
