@@ -950,28 +950,29 @@ class SpurImageWriter(object):
             self.trace_queue.pop() # remove the hidden from the queue
             self.trace_queue.pop() # remove the first classtable from the queue
             self.reserve(self.image.special_objects)
-            while True:
-                obj = self.trace_queue.pop(0)
-                if not len(self.trace_queue) == 0:
-                    writerdriver.can_enter_jit(obj=obj, self=self)
-                writerdriver.jit_merge_point(obj=obj, self=self)
-                self.write_and_trace(obj)
-                if len(self.trace_queue) == 0:
-                    break
+            self.trace_until_finish()
             # tracing through the image will have populated the hidden roots and
-            # its classtables. write the hidden roots object, and than its
-            # classtables
-            self.write_and_trace(self.hidden_roots)
-            while True:
-                if len(self.trace_queue) == 0:
-                    break
-                obj = self.trace_queue.pop(0)
-                self.write_and_trace(obj)
+            # its classtables. write the hidden roots object, which triggers
+            # writing its classtables
+            assert len(self.trace_queue) == 0
+            self.trace_queue.append(self.hidden_roots)
+            self.trace_until_finish()
             self.write_last_bridge()
             self.write_file_header()
         finally:
             self.f.close()
             active_process.store_suspended_context(self.space.w_nil)
+
+    def trace_until_finish(self):
+        assert len(self.trace_queue) > 0
+        while True:
+            obj = self.trace_queue.pop(0)
+            if not len(self.trace_queue) == 0:
+                writerdriver.can_enter_jit(obj=obj, self=self)
+            writerdriver.jit_merge_point(obj=obj, self=self)
+            self.write_and_trace(obj)
+            if len(self.trace_queue) == 0:
+                break
 
     def write_file_header(self):
         sp_obj_oop = self.oop_map[self.image.special_objects]
