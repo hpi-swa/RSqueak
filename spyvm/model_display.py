@@ -28,8 +28,8 @@ def from_words_object(w_obj, form):
     return w_display_bitmap
 
 class W_DisplayBitmap(model.W_AbstractObjectWithClassReference):
-    _attrs_ = ['pixelbuffer_words', '_real_depth_buffer', '_realsize', 'display', '_depth']
-    _immutable_fields_ = ['pixelbuffer_words?', '_real_depth_buffer', '_realsize', 'space', '_depth']
+    _attrs_ = ['pixelbuffer_words', '_real_depth_buffer', '_realsize', '_display', '_depth']
+    _immutable_fields_ = ['pixelbuffer_words?', '_real_depth_buffer', '_realsize', '_display', '_depth']
     repr_classname = "W_DisplayBitmap"
 
     def __init__(self, space, w_class, size, depth):
@@ -37,7 +37,7 @@ class W_DisplayBitmap(model.W_AbstractObjectWithClassReference):
         self._real_depth_buffer = lltype.malloc(rffi.CArray(rffi.UINT), size, flavor='raw')
         self._realsize = size
         self._depth = depth
-        self.space = space
+        self._display = space.display()
         self.relinquish_display()
 
     # === Object access
@@ -74,9 +74,8 @@ class W_DisplayBitmap(model.W_AbstractObjectWithClassReference):
 
     # === Graphics
 
-    @jit.elidable
     def display(self):
-        return self.space.display()
+        return jit.promote(self._display)
 
     def pixelbuffer(self):
         return self.display().get_pixelbuffer()
@@ -153,8 +152,13 @@ class W_32BitDisplayBitmap(W_DisplayBitmap):
     repr_classname = "W_32BitDisplayBitmap"
 
     def force_words(self, start, stop):
-        assert start > 0 and stop > 0 and len(self._real_depth_buffer) >= stop and self.pixelbuffer_words >= stop
-        self.pixelbuffer()[start:stop] = self._real_depth_buffer[start:stop]
+        assert start > 0 and stop > 0 and self.size() >= stop and self.pixelbuffer_words >= stop and stop >= start
+        pixbuf = rffi.ptradd(self.display().get_pixelbuffer(), start)
+        realbuf = rffi.ptradd(self._real_depth_buffer, start)
+        rffi.c_memcpy(
+            rffi.cast(rffi.VOIDP, pixbuf),
+            rffi.cast(rffi.VOIDP, realbuf),
+            stop - start)
 
 
 class W_16BitDisplayBitmap(W_DisplayBitmap):
