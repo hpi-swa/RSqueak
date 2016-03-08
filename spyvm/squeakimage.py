@@ -53,6 +53,9 @@ image_versions = {
     0x69190000:         ImageVersion(6505,  False, False, True,  True ),
     0x00001979:         ImageVersion(6521,  True,  False, True,  True , is_spur=True),
     0x79190000:         ImageVersion(6521,  False, False, True,  True , is_spur=True),
+    # CUSTOM VERSION MAGIC: These are for a Spur-format image that we have
+    # written from an old image with block-contexts
+    0x34120000:         ImageVersion(6521,  False,  False, False,  True , is_spur=True)
 }
 
 image_versions_64bit = {
@@ -125,7 +128,7 @@ class ImageReader(object):
         version.configure_stream(self.stream)
         self.version = version
         self.readerStrategy = self.choose_reader_strategy()
-        if not version.is_modern and not version.is_spur:
+        if not version.has_closures:
             self.space.uses_block_contexts.activate()
 
     def read_header(self):
@@ -927,6 +930,7 @@ jit.set_user_param(
 )
 
 class SpurImageWriter(object):
+    _immutable_fields_ = ["space", "image", "trace_queue", "oop_map"]
     # XXX: Writes forcibly little-endian 32-bit Spur-format images
     image_header_size = 64
     word_size = 4
@@ -969,8 +973,14 @@ class SpurImageWriter(object):
             (obj.getclass(self.space).is_same_object(self.space.w_MethodContext) or
              obj.getclass(self.space).is_same_object(self.space.w_BlockContext))):
             return obj.instsize() + self.frame_size_for(obj)
-        elif isinstance(obj, model.W_CompiledMethod):
+        elif isinstance(obj, model.W_SpurCompiledMethod):
             return obj.varsize()
+        elif isinstance(obj, model.W_PreSpurCompiledMethod):
+            if obj.primitive() != 0:
+                return obj.varsize() + 3 # account for three extra bytes with
+                                         # primitive idx
+            else:
+                return obj.varsize()
         else:
             return obj.instsize() + obj.varsize()
 
@@ -994,17 +1004,12 @@ class SpurImageWriter(object):
             self.reserve(model.W_WordsObject(self.space, self.space.w_Bitmap, self.word_size * 8))
             # hidden roots
             self.hidden_roots = model.W_PointersObject(self.space, self.space.w_Array, 2**12 + 8)
-            first_class_table = model.W_PointersObject(self.space, self.space.w_Array, 2**10)
-            self.hidden_roots.store(self.space, 0, first_class_table)
             self.reserve(self.hidden_roots)
-            self.reserve(first_class_table)
-            self.trace_queue.pop() # remove the hidden from the queue
-            self.trace_queue.pop() # remove the first classtable from the queue
             self.reserve(self.image.special_objects)
             self.trace_until_finish()
             # tracing through the image will have populated the hidden roots and
-            # its classtables. write the hidden roots object, which triggers
-            # writing its classtables
+            # its classtables. write the hidden roots object again, which
+            # triggers writing its classtables
             assert len(self.trace_queue) == 0
             self.trace_queue.append(self.hidden_roots)
             self.trace_until_finish()
@@ -1031,7 +1036,10 @@ class SpurImageWriter(object):
                     0x10 + # preemption does not yield
                     0) # old finalization
         self.f.seek(0, 0)
-        self.write_word(6521) # version
+        version = 6521
+        if self.space.uses_block_contexts.is_set():
+            version = 0x1234 # our custom version magic
+        self.write_word(version)
         self.write_word(image_header_size) # hdr size
         self.write_word(self.next_chunk - image_header_size) # memory size
         self.write_word(image_header_size) # start of memory
@@ -1057,16 +1065,24 @@ class SpurImageWriter(object):
         self.write_word(0)
         self.write_word(0)
 
+    def insert_class_into_classtable(self, obj):
+        classhash = obj.gethash()
+        majoridx = classhash >> 10
+        minoridx = classhash & ((1 << 10) - 1)
+        page = self.hidden_roots.fetch(self.space, majoridx)
+        if page.is_nil(self.space):
+            page = model.W_PointersObject(self.space, self.space.w_Array, 2**10)
+            self.hidden_roots.store(self.space, majoridx, page)
+        assert page.fetch(self.space, minoridx).is_nil(self.space)
+        page.store(self.space, minoridx, obj)
+
     def write_and_trace(self, obj):
         if obj.is_class(self.space):
-            classhash = obj.gethash()
-            majoridx = classhash >> 10
-            minoridx = classhash & ((1 << 10) - 1)
-            page = self.hidden_roots.fetch(self.space, majoridx)
-            if page.is_nil(self.space):
-                page = model.W_PointersObject(self.space, self.space.w_Array, 2**10)
-                self.hidden_roots.store(self.space, majoridx, page)
-            page.store(self.space, minoridx, obj)
+            self.insert_class_into_classtable(obj)
+        # always make sure we're tracing our own class, too this is really
+        # important for metaclasses and old images, where a compact class might
+        # not otherwise be traced, because it would be in the header.
+        self.reserve(obj.getclass(self.space))
 
         length, hdrsize = self.len_and_header(obj)
         oop = self.oop_map[obj]
@@ -1112,6 +1128,10 @@ class SpurImageWriter(object):
                 self.next_chunk = oop + length * self.word_size + self.padding_for(length)
                 self.oop_map[obj] = oop
                 self.trace_queue.append(obj)
+                if (not self.space.is_spur.is_set()) and obj.is_class(self.space):
+                    # rehash all classes in non-spur images, so we don't get
+                    # collisions
+                    obj.rehash()
                 return oop
 
     def write_bytes_object(self, obj):
@@ -1126,18 +1146,56 @@ class SpurImageWriter(object):
             self.f.write("\0" * 4)
 
     def write_compiled_method(self, obj):
-        self.write_word(obj.getheader())
+        cmbytes = obj.getbytes()
+        if self.space.is_spur.is_set():
+            self.write_word(obj.getheader())
+        else:
+            newheader = (obj.literalsize # 15 bits
+                         | (0 << 15) # is optimized, 1 bit
+                         | ((1 if (obj.primitive() != 0) else 0) << 16) # 1 bit
+                         | ((1 if obj.islarge else 0) << 17) # 1 bit
+                         | (obj.tempsize() << 18) # 6 bits
+                         | (obj.argsize << 24) # 4 bits
+                         | (0 << 28) # access mod, 2 bits
+                         | (0 << 30)) # instruction set bit, 1 bit
+            self.write_word((newheader << 1) + 1) # header is saved as tagged int
         for i in range(obj.getliteralsize() / constants.BYTES_PER_WORD):
             self.write_word(self.reserve(obj.getliteral(i)))
-        cmbytes = obj.getbytes()
-        paddingbytes = self.word_size - (len(cmbytes) % self.word_size)
+        paddingbytes = 0
+        if (not self.space.is_spur.is_set()) and obj.primitive() != 0:
+            # we must insert the primitive bytecode and index into the first
+            # three bytes
+            self.f.write(chr(139)) # call prim bytecode
+            self.f.write(chr(obj.primitive() & 255)) # lower bits
+            self.f.write(chr((obj.primitive() >> 8) & 255)) # higher bits
+            paddingbytes = self.word_size - ((len(cmbytes) + 3) % self.word_size)
+        else:
+            paddingbytes = self.word_size - (len(cmbytes) % self.word_size)
         self.f.write("".join(cmbytes))
         if paddingbytes != self.word_size:
             self.f.write("\0" * paddingbytes)
 
     def write_pointers_object(self, obj):
-        for i in range(obj.size()):
-            self.write_word(self.reserve(obj.fetch(self.space, i)))
+        if (not self.space.is_spur.is_set()) and obj.is_class(self.space):
+            # we must retrofit the new class format
+            # The classformat in Spur, as an integer value, is:
+            # <5 bits inst spec><16 bits inst size>
+            w_oldfmt = obj.fetch(self.space, constants.CLASS_FORMAT_INDEX)
+            oldfmt = self.space.unwrap_int(w_oldfmt)
+            instsize_lo = (oldfmt >> 1) & 0x3F
+            instsize_hi = (oldfmt >> (9 + 1)) & 0xC0
+            oldinstsize = (instsize_lo | instsize_hi) - 1  # subtract hdr
+            instspec = self.convert_instspec_to_spur((oldfmt >> 7) & 15)
+            newfmt = ((instspec & 0x1f) << 16) | (oldinstsize & 0xffff)
+            w_newfmt = self.space.wrap_int(newfmt)
+            for i in range(obj.size()):
+                if i != constants.CLASS_FORMAT_INDEX:
+                    self.write_word(self.reserve(obj.fetch(self.space, i)))
+                else:
+                    self.write_word(self.reserve(w_newfmt))
+        else:
+            for i in range(obj.size()):
+                self.write_word(self.reserve(obj.fetch(self.space, i)))
         if (obj.getclass(self.space).is_same_object(self.space.w_MethodContext) or
             obj.getclass(self.space).is_same_object(self.space.w_BlockContext)):
             # fill out nils beyond the knowable end of stack
@@ -1159,6 +1217,15 @@ class SpurImageWriter(object):
             obj.gethash(),
             self.fixed_and_indexable_size_for(obj)))
 
+    # conversion map from old formats to new formats
+    old_to_spur_specs = [0,1,2,3,4,-1,10,9,16,16,16,16,24,24,24,24]
+    def convert_instspec_to_spur(self, spec):
+        fmt = self.old_to_spur_specs[spec]
+        assert fmt >= 0
+        if fmt == 4 and not Class.isvariable():
+            fmt = 5 # weak objects now split in fixed and indexable types
+        return fmt
+
     def headers_for_hash_numfields(self, Class, Hash, size):
         import math
         from rpython.rlib.rbigint import rbigint, NULLRBIGINT
@@ -1166,9 +1233,13 @@ class SpurImageWriter(object):
         classshadow = Class.as_class_get_shadow(self.space)
         length = rbigint.fromint(size)
         wordlen = size
+        fmt = 0
         w_fmt = Class.fetch(self.space, constants.CLASS_FORMAT_INDEX)
         assert isinstance(w_fmt, model.W_SmallInteger)
-        fmt = (w_fmt.value >> 16) & 0x1f
+        if self.space.is_spur.is_set():
+            fmt = (w_fmt.value >> 16) & 0x1f
+        else:
+            fmt = self.convert_instspec_to_spur((w_fmt.value >> 7) & 15)
         if (classshadow.instance_kind == BYTES or
             classshadow.instance_kind == COMPILED_METHOD or
             classshadow.instance_kind == LARGE_POSITIVE_INTEGER):

@@ -361,6 +361,10 @@ class W_AbstractObjectWithIdentityHash(W_Object):
             return hash
         return self.hash
 
+    def rehash(self):
+        self.hash = self.UNASSIGNED_HASH
+        self.gethash()
+
     def invariant(self):
         return isinstance(self.hash, int)
 
