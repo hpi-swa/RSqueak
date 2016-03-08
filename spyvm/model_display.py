@@ -158,7 +158,7 @@ class W_32BitDisplayBitmap(W_DisplayBitmap):
         rffi.c_memcpy(
             rffi.cast(rffi.VOIDP, pixbuf),
             rffi.cast(rffi.VOIDP, realbuf),
-            stop - start)
+            (stop - start) * constants.BYTES_PER_WORD) # VOIDP is char*, we want to copy word*
 
 
 class W_16BitDisplayBitmap(W_DisplayBitmap):
