@@ -70,7 +70,23 @@ image_versions_64bit = {
 #
 # Parser classes for Squeak image format.
 
+init_g_objects_driver = jit.JitDriver(reds=['chunk'], greens=['self'])
+init_w_objects_driver = jit.JitDriver(reds=['chunk'], greens=['self'])
+fillin_w_objects_driver = jit.JitDriver(reds=['chunk'], greens=['self'])
+fillin_weak_w_objects_driver = jit.JitDriver(reds=['chunk'], greens=['self'])
+
+def set_reader_user_param(arg):
+    for driver in [init_g_objects_driver, init_w_objects_driver,
+                   fillin_w_objects_driver, fillin_weak_w_objects_driver]:
+        jit.set_user_param(driver, arg)
+
+# Defaults for reading JIT
+set_reader_user_param("threshold=2,function_threshold=2,trace_eagerness=2,loop_longevity=100")
+
+
 class ImageReader(object):
+    _immutable_fields_ = ["space", "stream", "readerStrategy"]
+
     def __init__(self, space, stream):
         self.space = space
         self.stream = stream
@@ -157,6 +173,7 @@ class ImageReader(object):
         return self.readerStrategy.decode_pointers(g_object, space, end)
 
 class BaseReaderStrategy(object):
+    _immutable_fields_ = ["imageReader", "version", "stream", "space", "chunks", "chunklist"]
 
     def __init__(self, imageReader, version, stream, space):
         self.imageReader = imageReader
@@ -213,8 +230,12 @@ class BaseReaderStrategy(object):
 
     def init_g_objects(self):
         for chunk in self.chunks.itervalues():
-            chunk.as_g_object(self, self.space) # initialize g_object
+            self.init_g_object(chunk)
         self.special_g_objects = self.chunks[self.specialobjectspointer].g_object.pointers
+
+    def init_g_object(self, chunk):
+        init_g_objects_driver.jit_merge_point(self=self, chunk=chunk)
+        chunk.as_g_object(jit.promote(self), self.space) # initialize g_object
 
     def assign_prebuilt_constants(self):
         # Assign classes and objects that in special objects array that are already created.
@@ -249,19 +270,31 @@ class BaseReaderStrategy(object):
 
     def init_w_objects(self):
         for chunk in self.chunks.itervalues():
-            chunk.g_object.init_w_object(self.space)
+            self.init_w_object(chunk)
         self.special_w_objects = [g.w_object for g in self.special_g_objects]
+
+    def init_w_object(self, chunk):
+        init_w_objects_driver.jit_merge_point(self=self, chunk=chunk)
+        chunk.g_object.init_w_object(self.space)
 
     def populate_special_objects(self):
         self.space.populate_special_objects(self.special_w_objects)
 
     def fillin_w_objects(self):
         for chunk in self.chunks.itervalues():
-            chunk.g_object.fillin(self.space)
+            self.fillin_w_object(chunk)
+
+    def fillin_w_object(self, chunk):
+        fillin_w_objects_driver.jit_merge_point(self=self, chunk=chunk)
+        chunk.g_object.fillin(self.space)
 
     def fillin_weak_w_objects(self):
         for chunk in self.chunks.itervalues():
-            chunk.g_object.fillin_weak(self.space)
+            self.fillin_weak_w_object(chunk)
+
+    def fillin_weak_w_object(self, chunk):
+        fillin_weak_w_objects_driver.jit_merge_point(self=self, chunk=chunk)
+        chunk.g_object.fillin_weak(self.space)
 
     def log_object_filledin(self):
         self.filledin_objects = self.filledin_objects + 1
@@ -270,6 +303,9 @@ class BaseReaderStrategy(object):
     def log_weakobject_filledin(self):
         self.filledin_weakobjects = self.filledin_weakobjects + 1
         self.log_progress(self.filledin_weakobjects * 100, '*')
+
+    def len_bytes_of(self, chunk):
+        return len(chunk.data) * 4
 
     def get_bytes_of(self, chunk):
         bytes = []
@@ -426,7 +462,7 @@ class NonSpurReader(BaseReaderStrategy):
     def is32bitlargepositiveinteger(self, g_object):
         return (g_object.format == 8 and
                 self.space.w_LargePositiveInteger.is_same_object(g_object.g_class.w_object) and
-                len(g_object.get_bytes()) <= 4)
+                g_object.len_bytes() <= 4)
 
     def ischar(self, g_object):
         return (self.ispointers(g_object) and
@@ -620,12 +656,11 @@ class SpurReader(BaseReaderStrategy):
         """
         # the instantiate call circumvents the constructors
         # and makes empty objects
+        # timfel: sorted by likelyhood so the JIT can generate better checks
         if self.ischar(g_object):
             return objectmodel.instantiate(model.W_Character)
         elif self.ispointers(g_object):
             return objectmodel.instantiate(model.W_PointersObject)
-        elif g_object.format in (6, 7, 8):
-            raise error.CorruptImageError("Unknown format " + str(g_object.format))
         elif self.isfloat(g_object):
             return objectmodel.instantiate(model.W_Float)
         elif self.is32bitlargepositiveinteger(g_object):
@@ -636,6 +671,8 @@ class SpurReader(BaseReaderStrategy):
             return objectmodel.instantiate(model.W_BytesObject)
         elif self.iscompiledmethod(g_object):
             return objectmodel.instantiate(model.W_SpurCompiledMethod)
+        elif g_object.format in (6, 7, 8):
+            raise error.CorruptImageError("Unknown format " + str(g_object.format))
         else:
             assert 0, "not reachable"
 
@@ -754,11 +791,15 @@ class GenericObject(object):
         self.reader = reader
         self.size = chunk.size
         self.hash = chunk.hash
-        self.format = chunk.format
+        self._format = chunk.format
         self.chunk = chunk # for bytes, words and compiledmethod
         self.init_class()
         self.init_data(space) # for pointers
         self.w_object = None
+
+    @property
+    def format(self):
+        return jit.promote(self._format)
 
     def __repr__(self):
         return "<GenericObject %s>" % ("uninitialized" if not self.isinitialized()
@@ -784,6 +825,10 @@ class GenericObject(object):
 
     def isweak(self):
         return self.reader.isweak(self)
+
+    def len_bytes(self):
+        sz = self.reader.len_bytes_of(self.chunk)
+        return sz - (self.format & 3)
 
     def get_bytes(self):
         bytes = self.reader.get_bytes_of(self.chunk)
@@ -964,15 +1009,12 @@ class SpurImageWriter(object):
             active_process.store_suspended_context(self.space.w_nil)
 
     def trace_until_finish(self):
-        assert len(self.trace_queue) > 0
         while True:
-            obj = self.trace_queue.pop(0)
-            if not len(self.trace_queue) == 0:
-                writerdriver.can_enter_jit(obj=obj, self=self)
-            writerdriver.jit_merge_point(obj=obj, self=self)
-            self.write_and_trace(obj)
             if len(self.trace_queue) == 0:
                 break
+            obj = self.trace_queue.pop(0)
+            writerdriver.jit_merge_point(obj=obj, self=self)
+            self.write_and_trace(obj)
 
     def write_file_header(self):
         sp_obj_oop = self.oop_map[self.image.special_objects]

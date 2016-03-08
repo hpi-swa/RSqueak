@@ -12,7 +12,7 @@ class BaseJITTest(object):
         logfile = str(tmpdir.join("x.pypylog"))
         print logfile
         proc = spy.popen(
-            self.test_image, "-r", code.replace("\n", "\r\n"),
+            self.test_image, "--reader-jit-args", "off", "-r", code.replace("\n", "\r\n"),
             cwd=str(tmpdir),
             env={"PYPYLOG": "jit-log-opt:%s" % logfile,
                  "SDL_VIDEODRIVER": "dummy"}
@@ -65,7 +65,7 @@ class ModernJITTest(BaseJITTest):
         logfile = str(tmpdir.join("x.pypylog"))
         print logfile
         proc = spy.popen(
-            self.image_name, "-n", "0", "-m", "jittestNow",
+            self.image_name, "--reader-jit-args", "off", "-n", "0", "-m", "jittestNow",
             cwd=str(tmpdir),
             env={"PYPYLOG": "jit-log-opt:%s" % logfile,
                  "SDL_VIDEODRIVER": "dummy"}

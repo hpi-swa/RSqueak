@@ -137,7 +137,8 @@ class Interpreter(object):
         greens=['pc', 'self', 'method'],
         reds=['s_context'],
         virtualizables=['s_context'],
-        get_printable_location=get_printable_location
+        get_printable_location=get_printable_location,
+        is_recursive=True
     )
 
     def __init__(self, space, image=None, trace_important=False,
