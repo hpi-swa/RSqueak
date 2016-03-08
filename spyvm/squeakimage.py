@@ -927,6 +927,7 @@ jit.set_user_param(
 )
 
 class SpurImageWriter(object):
+    # XXX: Writes forcibly little-endian 32-bit Spur-format images
     image_header_size = 64
     word_size = 4
 
@@ -1175,14 +1176,17 @@ class SpurImageWriter(object):
             length = rbigint.fromint(wordlen)
             fmt = fmt | ((wordlen * 4) - size)
         header = NULLRBIGINT
+        length_header = NULLRBIGINT
         if wordlen >= 255:
-            header = length.or_(rbigint.fromint(0xff).lshift(56)).lshift(64)
+            length_header = length.or_(rbigint.fromint(0xff).lshift(56))
             length = rbigint.fromint(0xff)
         header = header.or_(length.lshift(56).
                             or_(rbigint.fromint(Hash).lshift(32)).
                             int_or_(fmt << 24).
                             int_or_(Class.gethash()))
+
         if wordlen >= 255:
+            header = header.lshift(64).or_(length_header)
             return header.tobytes(16, "little", False)
         else:
             return header.tobytes(8, "little", False)
