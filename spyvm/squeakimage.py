@@ -920,6 +920,10 @@ class ImageChunk(object):
         return 0 < self.classid < 32
 
 writerdriver = jit.JitDriver(reds=['obj'], greens=['self'])
+jit.set_user_param(
+    writerdriver,
+    "threshold=2,function_threshold=2,trace_eagerness=2"
+)
 
 class SpurImageWriter(object):
     image_header_size = 64
