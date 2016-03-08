@@ -76,9 +76,10 @@ fillin_w_objects_driver = jit.JitDriver(reds=['chunk'], greens=['self'])
 fillin_weak_w_objects_driver = jit.JitDriver(reds=['chunk'], greens=['self'])
 
 def set_reader_user_param(arg):
-    for driver in [init_g_objects_driver, init_w_objects_driver,
-                   fillin_w_objects_driver, fillin_weak_w_objects_driver]:
-        jit.set_user_param(driver, arg)
+    jit.set_user_param(init_g_objects_driver, arg)
+    jit.set_user_param(init_w_objects_driver, arg)
+    jit.set_user_param(fillin_w_objects_driver, arg)
+    jit.set_user_param(fillin_weak_w_objects_driver, arg)
 
 # Defaults for reading JIT
 set_reader_user_param("threshold=2,function_threshold=2,trace_eagerness=2,loop_longevity=100")
