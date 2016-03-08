@@ -70,10 +70,10 @@ image_versions_64bit = {
 #
 # Parser classes for Squeak image format.
 
-init_g_objects_driver = jit.JitDriver(reds=['chunk'], greens=['self'])
-init_w_objects_driver = jit.JitDriver(reds=['chunk'], greens=['self'])
-fillin_w_objects_driver = jit.JitDriver(reds=['chunk'], greens=['self'])
-fillin_weak_w_objects_driver = jit.JitDriver(reds=['chunk'], greens=['self'])
+init_g_objects_driver = jit.JitDriver(name="init_g_objects", reds=['chunk'], greens=['self'])
+init_w_objects_driver = jit.JitDriver(name="init_w_objects", reds=['chunk'], greens=['self'])
+fillin_w_objects_driver = jit.JitDriver(name="fillin_w_objects", reds=['chunk'], greens=['self'])
+fillin_weak_w_objects_driver = jit.JitDriver(name="fillin_weak_w_objects", reds=['chunk'], greens=['self'])
 
 def set_reader_user_param(arg):
     jit.set_user_param(init_g_objects_driver, arg)
@@ -689,7 +689,7 @@ class SpurReader(BaseReaderStrategy):
     def is32bitlargepositiveinteger(self, g_object):
         return (g_object.format == 16 and
                 self.space.w_LargePositiveInteger.is_same_object(g_object.g_class.w_object) and
-                len(g_object.get_bytes()) <= 4)
+                g_object.len_bytes() <= 4)
 
     def iswords(self, g_object):
         return 9 <= g_object.format <= 15
@@ -920,7 +920,7 @@ class ImageChunk(object):
         # pre-Spur
         return 0 < self.classid < 32
 
-writerdriver = jit.JitDriver(reds=['obj'], greens=['self'])
+writerdriver = jit.JitDriver(name="write_image", reds=['obj'], greens=['self'])
 jit.set_user_param(
     writerdriver,
     "threshold=2,function_threshold=2,trace_eagerness=2"
