@@ -11,34 +11,44 @@ def from_words_object(w_obj, form):
     space = form.space
     size = w_obj.size()
     w_class = w_obj.getclass(space)
+    if not w_class.is_same_object(space.w_Bitmap):
+        raise PrimitiveFailedError
 
     if depth < 8:
-        w_display_bitmap = W_MappingDisplayBitmap(space, w_class, size, depth)
+        w_display_bitmap = W_MappingDisplayBitmap(space, size, depth)
     elif depth == 8:
-        w_display_bitmap = W_8BitDisplayBitmap(space, w_class, size, depth)
+        w_display_bitmap = W_8BitDisplayBitmap(space, size, depth)
     elif depth == 16:
-        w_display_bitmap = W_16BitDisplayBitmap(space, w_class, size, depth)
+        w_display_bitmap = W_16BitDisplayBitmap(space, size, depth)
     else:
         assert depth == 32
-        w_display_bitmap = W_32BitDisplayBitmap(space, w_class, size, depth)
+        w_display_bitmap = W_32BitDisplayBitmap(space, size, depth)
 
     for idx in range(size):
         w_display_bitmap.setword(idx, w_obj.getword(idx))
 
     return w_display_bitmap
 
-class W_DisplayBitmap(model.W_AbstractObjectWithClassReference):
+class W_DisplayBitmap(model.W_AbstractObjectWithIdentityHash):
     _attrs_ = ['pixelbuffer_words', '_real_depth_buffer', '_realsize', '_display', '_depth']
     _immutable_fields_ = ['pixelbuffer_words?', '_real_depth_buffer', '_realsize', '_display', '_depth']
     repr_classname = "W_DisplayBitmap"
 
-    def __init__(self, space, w_class, size, depth):
-        model.W_AbstractObjectWithClassReference.__init__(self, space, w_class)
+    def __init__(self, space, size, depth):
         self._real_depth_buffer = lltype.malloc(rffi.CArray(rffi.UINT), size, flavor='raw')
         self._realsize = size
         self._depth = depth
         self._display = space.display()
         self.relinquish_display()
+
+    def has_class(self):
+        return True
+
+    def getclass(self, space):
+        return space.w_Bitmap
+
+    def guess_classname(self):
+        return "Bitmap"
 
     # === Object access
 
@@ -204,9 +214,9 @@ class W_MappingDisplayBitmap(W_DisplayBitmap):
     _attrs_ = ['words_per_line', 'bits_in_last_word', 'pitch']
     _immutable_fields_ = ['words_per_line?', 'bits_in_last_word?', 'pitch?']
 
-    def __init__(self, space, w_class, size, depth):
+    def __init__(self, space, size, depth):
         assert depth in [1, 2, 4]
-        W_DisplayBitmap.__init__(self, space, w_class, size, depth)
+        W_DisplayBitmap.__init__(self, space, size, depth)
 
     def word_from_pixel(self, x, y):
         word = W_DisplayBitmap.word_from_pixel(self, x, y)
