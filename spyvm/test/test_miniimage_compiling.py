@@ -205,6 +205,11 @@ def test_simulate_externalcall():
     assert w_result.unwrap_string(space) == 'externalcall simulation for 3 4'
 
 def test_snapshotPrimitive():
+    space, interp, _, _ = read_image("mini.image")
+    def perform(receiver, selector, *args):
+        w_selector = None if isinstance(selector, str) else selector
+        return interp.perform(receiver, selector, w_selector, list(args))
+    space.simulate_numeric_primitives.activate()
     space.set_system_attribute(constants.SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, "test_snapshot.image")
     w_result = perform(space.special_object("w_smalltalkdict"), "snapshotPrimitive")
     assert w_result is space.w_false

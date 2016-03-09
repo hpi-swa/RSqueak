@@ -1222,8 +1222,8 @@ class SpurImageWriter(object):
     def convert_instspec_to_spur(self, spec):
         fmt = self.old_to_spur_specs[spec]
         assert fmt >= 0
-        if fmt == 4 and not Class.isvariable():
-            fmt = 5 # weak objects now split in fixed and indexable types
+        # if fmt == 4 and not Class.isvariable():
+        #     fmt = 5 # weak objects now split in fixed and indexable types
         return fmt
 
     def headers_for_hash_numfields(self, Class, Hash, size):
