@@ -1241,7 +1241,7 @@ def func(interp, s_frame, w_rcvr):
     # Squeak pops the arg and ignores it ... go figure
     from rpython.rlib import rgc
     rgc.collect()
-    return fake_bytes_left(interp)
+    return interp.space.wrap_int(fake_bytes_left(interp))
 
 @expose_primitive(SET_INTERRUPT_KEY, unwrap_spec=[object, int])
 def func(interp, s_frame, w_rcvr, encoded_key):
