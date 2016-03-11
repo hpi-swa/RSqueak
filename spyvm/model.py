@@ -405,9 +405,6 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
         self.value = intmask(word)
         self._exposed_size = len(bytes)
 
-    def has_class(self):
-        return True
-
     def getclass(self, space):
         return space.w_LargePositiveInteger
 
@@ -532,9 +529,6 @@ class W_Float(W_AbstractObjectWithIdentityHash):
             low, high = high, low
         self.fillin_fromwords(space, high, low)
 
-    def has_class(self):
-        return True
-
     def getclass(self, space):
         """Return Float from special objects array."""
         return space.w_Float
@@ -625,9 +619,6 @@ class W_Character(W_AbstractObjectWithIdentityHash):
         assert len(pointers_w) == 1
         pointers_w[0].fillin(space)
         self.value = space.unwrap_int(pointers_w[0].w_object)
-
-    def has_class(self):
-        return True
 
     def getclass(self, space):
         """Return Character from special objects array."""
@@ -726,15 +717,12 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
         return self.w_class
 
     def guess_classname(self):
-        if self.has_class():
-            if self.getclass(None).has_space():
-                class_shadow = self.class_shadow(self.getclass(None).space())
-                return class_shadow.name
-            else:
-                # We cannot access the class during the initialization sequence.
-                return "?? (class not initialized)"
+        if self.getclass(None).has_space():
+            class_shadow = self.class_shadow(self.getclass(None).space())
+            return class_shadow.name
         else:
-            return "? (no class)"
+            # We cannot access the class during the initialization sequence.
+            return "?? (class not initialized)"
 
     def change_class(self, space, w_class):
         self.w_class = w_class
@@ -761,9 +749,6 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
         assert isinstance(w_other, W_AbstractObjectWithClassReference)
         self.w_class, w_other.w_class = w_other.w_class, self.w_class
         W_AbstractObjectWithIdentityHash._become(self, w_other)
-
-    def has_class(self):
-        return self.getclass(None) is not None
 
 
 class W_PointersObject(W_AbstractObjectWithIdentityHash):
@@ -825,8 +810,7 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
                 return True
             elif w_class.has_class():
                 return w_Metaclass.is_same_object(w_class.getclass(space))
-        else:
-            return False
+        return False
 
     def change_class(self, space, w_class):
         old_strategy = self._get_strategy()
@@ -1081,7 +1065,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
             return self.native_bytes.size
 
     def str_content(self):
-        if self.has_class() and self.getclass(None).has_space():
+        if self.getclass(None).has_space():
             if self.getclass(None).space().omit_printing_raw_bytes.is_set():
                 return "<omitted>"
         return "'%s'" % ''.join([\

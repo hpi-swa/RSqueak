@@ -41,9 +41,6 @@ class W_DisplayBitmap(model.W_AbstractObjectWithIdentityHash):
         self._display = space.display()
         self.relinquish_display()
 
-    def has_class(self):
-        return True
-
     def getclass(self, space):
         return space.w_Bitmap
 
