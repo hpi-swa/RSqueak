@@ -805,6 +805,9 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
         from storage import WeakListStrategy
         return isinstance(self._get_strategy(), WeakListStrategy)
 
+    def has_class(self):
+        return self.getclass(None) is not None
+
     def getclass(self, space):
         if self._get_strategy() is None:
             return None
@@ -833,9 +836,8 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
         new_strategy.strategy_switched(self)
 
     def guess_classname(self):
-        w_cls = self.getclass(None)
-        if w_cls is not None:
-            if w_cls.has_space():
+        if self.has_class():
+            if self.getclass(None).has_space():
                 class_shadow = self.class_shadow(self.getclass(None).space())
                 return class_shadow.name
             else:

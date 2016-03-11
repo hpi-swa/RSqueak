@@ -1011,7 +1011,7 @@ def func(interp, s_frame, argcount):
 
 @expose_primitive(BYTES_LEFT, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    raise PrimitiveNotYetWrittenError()
+    return fake_bytes_left(interp)
 
 @expose_primitive(QUIT, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
@@ -1226,9 +1226,9 @@ def fake_bytes_left(interp):
     usage = get_memory_usage()
     if usage < 0:
         # there was an error getting the result
-        return 2**29
+        return interp.space.wrap_int(2**29)
     else:
-        return constants.MAXINT - usage
+        return interp.space.wrap_int(constants.MAXINT - usage)
 
 @expose_primitive(SPECIAL_OBJECTS_ARRAY, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
@@ -1241,7 +1241,7 @@ def func(interp, s_frame, w_rcvr):
     # Squeak pops the arg and ignores it ... go figure
     from rpython.rlib import rgc
     rgc.collect()
-    return interp.space.wrap_int(fake_bytes_left(interp))
+    return fake_bytes_left(interp)
 
 @expose_primitive(SET_INTERRUPT_KEY, unwrap_spec=[object, int])
 def func(interp, s_frame, w_rcvr, encoded_key):
@@ -1955,6 +1955,7 @@ VM_PROFILE_SAMPLES_INTO = 252
 VM_PROFILE_INFO_INTO = 253
 VM_PARAMETERS = 254
 META_PRIM_FAILED = 255 # Used to be INST_VARS_PUT_FROM_STACK. Never used except in Disney tests.  Remove after 2.3 release.
+VM_LOADED_MODULES = 573
 
 @expose_primitive(META_PRIM_FAILED, unwrap_spec=[object, int])
 def func(interp, s_frame, w_rcvr, primFailFlag):
@@ -2041,8 +2042,15 @@ def func(interp, s_frame, argcount):
     arg1_w = s_frame.pop() # receiver
 
     vm_w_params = [interp.space.wrap_int(0)] * 71
+
+    vm_w_params[3] = interp.space.wrap_int(1) # must be 1 for VM Stats view to work
+    vm_w_params[9] = interp.space.wrap_int(1) # must be 1 for VM Stats view to work
+
     vm_w_params[39] = interp.space.wrap_int(constants.BYTES_PER_WORD)
     vm_w_params[40] = interp.space.wrap_int(interp.image.version.magic)
+    vm_w_params[56] = interp.space.wrap_int(interp.process_switch_count)
+    vm_w_params[58] = interp.space.wrap_int(interp.forced_interrupt_checks_count)
+    vm_w_params[60] = interp.space.wrap_int(interp.stack_overflow_count)
     vm_w_params[69] = interp.space.wrap_int(constants.INTERP_PROXY_MAJOR)
     vm_w_params[70] = interp.space.wrap_int(constants.INTERP_PROXY_MINOR)
 
@@ -2061,6 +2069,18 @@ def func(interp, s_frame, argcount):
     if argcount == 2:
         # return the 'old value'
         return interp.space.wrap_int(0)
+
+# list the n-th loaded module
+@expose_primitive(VM_LOADED_MODULES, unwrap_spec=[int])
+def func(interp, s_frame, index):
+    if interp.space.use_plugins.is_set():
+        from spyvm.plugins.squeak_plugin_proxy import IProxy
+        modulenames = IProxy.loaded_module_names()
+        try:
+            return interp.space.wrap_string(modulenames[index])
+        except IndexError:
+            return interp.space.w_nil
+    return interp.space.w_nil
 
 # ___________________________________________________________________________
 # PrimitiveLoadInstVar

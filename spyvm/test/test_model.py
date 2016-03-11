@@ -391,7 +391,7 @@ def test_WordsObject_short_atput():
 def test_display_bitmap():
     size = 10
     space.display().set_video_mode(32, size, 1)
-    target = model_display.W_MappingDisplayBitmap(space, space.w_Array, size, 1)
+    target = model_display.W_MappingDisplayBitmap(space, size, 1)
     for idx in range(size):
         target.setword(idx, r_uint(0))
     target.take_over_display()
@@ -420,7 +420,7 @@ def test_display_bitmap():
         assert buf[i] == 0x0
 
 def test_display_offset_computation_even():
-    dbitmap = model_display.W_MappingDisplayBitmap(space, space.w_Array, 200, 1)
+    dbitmap = model_display.W_MappingDisplayBitmap(space, 200, 1)
     dbitmap.pitch = 64
     dbitmap.words_per_line = 2
     assert dbitmap.compute_pos(0) == 0
@@ -428,7 +428,7 @@ def test_display_offset_computation_even():
     assert dbitmap.compute_pos(2) == 64
 
 def test_display_offset_computation_uneven():
-    dbitmap = model_display.W_MappingDisplayBitmap(space, space.w_Array, 200, 1)
+    dbitmap = model_display.W_MappingDisplayBitmap(space, 200, 1)
     dbitmap.pitch = 67
     dbitmap.words_per_line = 2
     assert dbitmap.compute_pos(0) == 0

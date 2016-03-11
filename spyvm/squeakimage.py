@@ -1176,7 +1176,7 @@ class SpurImageWriter(object):
             self.f.write("\0" * paddingbytes)
 
     def write_pointers_object(self, obj):
-        if (not self.space.is_spur.is_set()) and obj.is_class(self.space):
+        if (not self.space.is_spur.is_set()) and obj.is_class(self.space) and (obj.size() > constants.CLASS_FORMAT_INDEX):
             # we must retrofit the new class format
             # The classformat in Spur, as an integer value, is:
             # <5 bits inst spec><16 bits inst size>

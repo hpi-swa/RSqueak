@@ -8,6 +8,12 @@ from spyvm.util import system
 
 sys.setrecursionlimit(15000)
 
+def _compile_time_version():
+    import subprocess
+    return subprocess.check_output(
+        ["git", "log", "--format=format:\"%ai %h%d\"", "-n", "1"])
+VERSION = _compile_time_version()
+BUILD_DATE = "%s +0000" % time.asctime(time.gmtime())
 
 def _usage(argv):
     print """

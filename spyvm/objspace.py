@@ -106,9 +106,7 @@ class ObjSpace(object):
 
     def runtime_setup(self, argv, image_name):
         fullpath = rpath.rabspath(self.find_executable(argv[0]))
-        i = fullpath.rfind(os.path.sep) + 1
-        assert i > 0
-        self._executable_path.set(fullpath[:i])
+        self._executable_path.set(fullpath)
         self.set_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, image_name)
         self.image_loaded.activate()
         self.init_system_attributes(argv)
@@ -119,11 +117,13 @@ class ObjSpace(object):
         for i in xrange(1, len(argv)):
             self.set_system_attribute(-i, argv[i])
         import platform
+        from targetrsqueak import VERSION, BUILD_DATE
         self.set_system_attribute(0, self._executable_path.get())
         self.set_system_attribute(1001, platform.system())    # operating system
         self.set_system_attribute(1002, platform.version())   # operating system version
         self.set_system_attribute(1003, platform.processor()) # platform's processor type
-        self.set_system_attribute(1004, "0")                  # vm version
+        self.set_system_attribute(1004, VERSION)
+        self.set_system_attribute(1006, BUILD_DATE)
         self.set_system_attribute(1007, "rsqueak")            # interpreter class (invented for Cog)
 
     def get_system_attribute(self, idx):

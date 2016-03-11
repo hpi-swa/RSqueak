@@ -19,7 +19,7 @@ eci = ExternalCompilationInfo(
 #ifndef __platform_h
 #define __platform_h
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <windows.h>
 #include <psapi.h>
 #define DLLEXPORT __declspec(dllexport)
@@ -46,7 +46,7 @@ extern "C" {
 IRRELEVANT_CALLER(i1, RSqueakGetMemoryUsage())
 
 int RSqueakGetMemoryUsage() {
-#ifdef WIN32
+#ifdef _WIN32
         PROCESS_MEMORY_COUNTERS_EX memCountr;
         if (GetProcessMemoryInfo(GetCurrentProcess(), &memCountr, sizeof(memCountr))) {
             return (int)(memCountr.PrivateUsage);
