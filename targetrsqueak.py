@@ -31,6 +31,7 @@ def _usage(argv):
             -m|--method <selector> - Selector will be sent to a SmallInteger in
                                      headless mode, result printed.
             -h|--help              - Output this message and exit.
+            -v|--version           - Print version info and exit.
 
           Headless mode:
             When starting the image without -r or -m, the last running Process
@@ -148,6 +149,9 @@ def entry_point(argv):
             idx += 1
             if arg in ["-h", "--help"]:
                 _usage(argv)
+                return 0
+            elif arg in ["-v", "--version"]:
+                print "RSqueakVM %s, built on %s" % (VERSION, BUILD_DATE)
                 return 0
             elif arg == "--no-highdpi":
                 space.highdpi.deactivate()
