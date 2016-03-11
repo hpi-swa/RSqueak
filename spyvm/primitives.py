@@ -1222,7 +1222,13 @@ def func(interp, s_frame, w_rcvr, w_new):
     return w_rcvr
 
 def fake_bytes_left(interp):
-    return interp.space.wrap_int(2**29) # XXX we don't know how to do this :-(
+    from spyvm.util.platform_calls import get_memory_usage
+    usage = get_memory_usage()
+    if usage < 0:
+        # there was an error getting the result
+        return 2**29
+    else:
+        return constants.MAXINT - usage
 
 @expose_primitive(SPECIAL_OBJECTS_ARRAY, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
