@@ -545,11 +545,13 @@ def fullDisplayUpdate():
 
 @expose_on_virtual_machine_proxy([], int)
 def fullGC():
-    # XXX: how to invoke gc?
+    from rpython.rlib import rgc
+    rgc.collect()
     return 0
 @expose_on_virtual_machine_proxy([], int)
 def incrementalGC():
-    # XXX: how to invoke gc?
+    from rpython.rlib import rgc
+    rgc.collect()
     return 0
 
 @expose_on_virtual_machine_proxy([], int)

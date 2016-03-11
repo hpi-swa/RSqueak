@@ -722,17 +722,6 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
         # Don't construct the ClassShadow here, yet!
         self.w_class = g_self.get_class()
 
-    def is_class(self, space):
-        # This is a class if it's a Metaclass or an instance of a Metaclass.
-        if self.has_class():
-            w_Metaclass = space.classtable["w_Metaclass"]
-            w_class = self.getclass(space)
-            if w_Metaclass.is_same_object(w_class):
-                return True
-            if w_class.has_class():
-                return w_Metaclass.is_same_object(w_class.getclass(space))
-        return False
-
     def getclass(self, space):
         return self.w_class
 
@@ -822,22 +811,19 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
         else:
             return self._get_strategy().getclass()
 
-    def has_class(self):
-        return self.getclass(None) is not None
-
     def is_class(self, space):
         from spyvm.storage_classes import ClassShadow
         if isinstance(self._get_strategy(), ClassShadow):
             return True
-        # XXX: copied form W_AbstractObjectWithClassReference
-        if self.has_class():
+        elif self.has_class():
             w_Metaclass = space.classtable["w_Metaclass"]
             w_class = self.getclass(space)
             if w_Metaclass.is_same_object(w_class):
                 return True
-            if w_class.has_class():
+            elif w_class.has_class():
                 return w_Metaclass.is_same_object(w_class.getclass(space))
-        return False
+        else:
+            return False
 
     def change_class(self, space, w_class):
         old_strategy = self._get_strategy()
@@ -847,8 +833,9 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
         new_strategy.strategy_switched(self)
 
     def guess_classname(self):
-        if self.has_class():
-            if self.getclass(None).has_space():
+        w_cls = self.getclass(None)
+        if w_cls is not None:
+            if w_cls.has_space():
                 class_shadow = self.class_shadow(self.getclass(None).space())
                 return class_shadow.name
             else:
@@ -1137,8 +1124,6 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
 
     @jit.unroll_safe
     def unwrap_uint(self, space):
-        # TODO: Completely untested! This failed translation bigtime...
-        # XXX Probably we want to allow all subclasses
         if not self.getclass(space).is_same_object(space.w_LargePositiveInteger):
             raise error.UnwrappingError("Failed to convert bytes to word")
         if self.size() > 4:
@@ -1161,11 +1146,13 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
                 word += r_longlong(ord(self.getchar(i))) << 8*i
             except OverflowError: # never raised after translation :(
                 raise error.UnwrappingError("Too large to convert bytes to word")
-        if (space.w_LargeNegativeInteger is not None and
-            self.getclass(space).is_same_object(space.w_LargeNegativeInteger)):
+        if self.getclass(space).is_same_object(space.w_LargePositiveInteger):
+            return word
+        elif ((space.w_LargeNegativeInteger is not None) and
+              self.getclass(space).is_same_object(space.w_LargeNegativeInteger)):
             return -word
         else:
-            return word
+            raise error.UnwrappingError
 
     def unwrap_long_untranslated(self, space):
         "NOT_RPYTHON"
@@ -1589,6 +1576,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def at0(self, space, index0):
         if index0 < self.bytecodeoffset():
             # XXX: find out what happens if unaligned
+            # XXX: Looks like Cog raises an exception in this case
             return self.literalat0(space, index0 / constants.BYTES_PER_WORD)
         else:
             # From blue book:

@@ -91,7 +91,6 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                 argument_count = argument_count_m1 + 1 # to account for the rcvr
                 assert argument_count == len_unwrap_spec
                 if s_frame.stackdepth() < len_unwrap_spec:
-                    # XXX shouldn't this be a crash instead?
                     raise PrimitiveFailedError()
                 args = ()
                 for i, spec in unrolling_unwrap_spec:
@@ -510,8 +509,7 @@ def func(interp, s_frame, w_obj):
 @expose_primitive(STRING_AT, unwrap_spec=[object, index1_0])
 def func(interp, s_frame, w_obj, n0):
     n0 = assert_valid_index(interp.space, n0, w_obj)
-    # XXX I am not sure this is correct, but it un-breaks translation:
-    # make sure that getbyte is only performed on W_BytesObjects
+    # TODO: This can actually be called on any indexable object...
     if not (isinstance(w_obj, model.W_BytesObject) or
             isinstance(w_obj, model.W_WordsObject)):
         raise PrimitiveFailedError
@@ -1008,8 +1006,7 @@ def func(interp, s_frame, w_arg, w_rcvr):
 def func(interp, s_frame, argcount):
     w_obj = s_frame.pop()
     if argcount == 1:
-        # XXX TODO: check if this is right
-        s_frame.pop() # receiver, in ContextPart>>objectClass:
+        s_frame.pop() # receiver, e.g. ContextPart>>objectClass:
     return w_obj.getclass(interp.space)
 
 @expose_primitive(BYTES_LEFT, unwrap_spec=[object])
@@ -1035,7 +1032,6 @@ def func(interp, s_frame, w_arg, w_rcvr):
     # We should fail if:
 
     # 1. Rcvr or arg are SmallIntegers
-    # XXX this is wrong too
     if (w_arg_class.is_same_object(interp.space.w_SmallInteger) or
         w_rcvr_class.is_same_object(interp.space.w_SmallInteger)):
         raise PrimitiveFailedError()
@@ -1044,7 +1040,6 @@ def func(interp, s_frame, w_arg, w_rcvr):
     # or vice versa XXX we don't have to fail here, but for squeak it's a problem
 
     # 3. Format of rcvr is different from format of argument
-
     if ((isinstance(w_arg, model.W_PointersObject) and
          isinstance(w_rcvr, model.W_PointersObject)) or
         (isinstance(w_arg, model.W_BytesObject) and
@@ -1054,6 +1049,7 @@ def func(interp, s_frame, w_arg, w_rcvr):
         w_rcvr.change_class(interp.space, w_arg_class)
         return w_rcvr
     else:
+        # TODO: this should also work to change bytes to words and such
         raise PrimitiveNotYetWrittenError
 
 @expose_primitive(EXTERNAL_CALL, clean_stack=False, no_result=True, compiled_method=True)
@@ -1141,13 +1137,9 @@ def walk_gc_objects_of_type(type, func):
             func(w_obj)
     walk_gc_objects(check_type)
 
-# XXX: We don't have a global symbol cache. Instead, we walk all
-# MethodDictionaryShadow objects and flush them.
 @expose_primitive(SYMBOL_FLUSH_CACHE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    # This takes a long time (at least in interpreted mode), and is not really necessary.
-    # We are monitoring changes to MethodDictionaries, so there is no need for the image to tell us.
-    #walk_gc_objects_of_type(storage_contexts.MethodDictionaryShadow, lambda s_dict: s_dict.flush_method_cache())
+    # No need to do this, method dictionaries invalidate their traces as needed
     return w_rcvr
 
 # ___________________________________________________________________________
@@ -1239,8 +1231,8 @@ def func(interp, s_frame, w_rcvr):
 @expose_primitive(INC_GC, unwrap_spec=[object])
 @expose_primitive(FULL_GC, unwrap_spec=[object])
 @jit.dont_look_inside
-# def func(interp, s_frame, w_arg): # Squeak pops the arg and ignores it ... go figure
 def func(interp, s_frame, w_rcvr):
+    # Squeak pops the arg and ignores it ... go figure
     from rpython.rlib import rgc
     rgc.collect()
     return fake_bytes_left(interp)

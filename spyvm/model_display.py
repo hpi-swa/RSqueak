@@ -1,5 +1,5 @@
 
-from spyvm import model, constants, display
+from spyvm import model, constants, display, error
 from spyvm.util import system
 from rpython.rlib import jit, objectmodel
 from rpython.rtyper.lltypesystem import lltype, rffi
@@ -12,7 +12,7 @@ def from_words_object(w_obj, form):
     size = w_obj.size()
     w_class = w_obj.getclass(space)
     if not w_class.is_same_object(space.w_Bitmap):
-        raise PrimitiveFailedError
+        raise error.WrappingError
 
     if depth < 8:
         w_display_bitmap = W_MappingDisplayBitmap(space, size, depth)

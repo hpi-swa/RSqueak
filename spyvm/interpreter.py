@@ -371,8 +371,7 @@ class Interpreter(object):
         now = self.time_now()
 
         # XXX the low space semaphore may be signaled here
-        # Process inputs
-        # Process User Interrupt?
+        # TODO: Check for User Interrupt
         if not self.next_wakeup_tick == 0 and now >= self.next_wakeup_tick:
             self.next_wakeup_tick = 0
             semaphore = self.space.objtable["w_timerSemaphore"]

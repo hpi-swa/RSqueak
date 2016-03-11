@@ -146,7 +146,6 @@ class ObjSpace(object):
                 except IndexError:
                     # if it's not yet in the table, the interpreter has to fill the gap later in populate_remaining_special_objects
                     self.objtable[name] = None
-        # XXX this is kind of hacky, but I don't know where else to get Metaclass
         self.classtable["w_Metaclass"] = self.w_SmallInteger.getclass(self).getclass(self)
 
     def add_bootstrap_class(self, name, cls):
@@ -204,16 +203,15 @@ class ObjSpace(object):
         return model.W_SmallInteger(intmask(val))
 
     def wrap_uint(self, val):
-        from rpython.rlib.objectmodel import we_are_translated
         if val < 0:
             raise WrappingError("negative integer")
         else:
             return self.wrap_positive_32bit_int(intmask(val))
 
     def wrap_positive_32bit_int(self, val):
-        # This will always return a positive value.
-        # XXX: For now, we assume that val is at most 32bit, i.e. overflows are
-        # checked for before wrapping. Also, we ignore tagging.
+        from rpython.rlib.objectmodel import we_are_translated
+        if not we_are_translated() and val < 0:
+            print "WARNING: wrap_positive_32bit_int casts %d to 32bit unsigned" % val
         if int_between(0, val, constants.MAXINT):
             return model.W_SmallInteger(val)
         else:
