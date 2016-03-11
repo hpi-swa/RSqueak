@@ -1006,7 +1006,7 @@ class _InterpreterProxy(object):
         self.trace_proxy = objspace.ConstantFlag()
         self.reset()
 
-    def loaded_module_names():
+    def loaded_module_names(self):
         return self.loaded_modules.keys()
 
     def reset(self):
