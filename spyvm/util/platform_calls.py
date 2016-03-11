@@ -8,6 +8,10 @@ import sys
 import os
 from spyvm.util import system
 
+if system.IS_WINDOWS:
+    libraries = ["psapi.lib"]
+else:
+    libraries = []
 
 this_dir = os.path.dirname(__file__)
 eci = ExternalCompilationInfo(
@@ -37,7 +41,7 @@ extern "C" {
 
 #endif"""],
     include_dirs = [this_dir],
-    link_files = [],
+    link_files = libraries,
     separate_module_sources = ["""
 IRRELEVANT_CALLER(i1, RSqueakGetMemoryUsage())
 
