@@ -91,7 +91,6 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                 argument_count = argument_count_m1 + 1 # to account for the rcvr
                 assert argument_count == len_unwrap_spec
                 if s_frame.stackdepth() < len_unwrap_spec:
-                    # XXX shouldn't this be a crash instead?
                     raise PrimitiveFailedError()
                 args = ()
                 for i, spec in unrolling_unwrap_spec:
@@ -510,8 +509,7 @@ def func(interp, s_frame, w_obj):
 @expose_primitive(STRING_AT, unwrap_spec=[object, index1_0])
 def func(interp, s_frame, w_obj, n0):
     n0 = assert_valid_index(interp.space, n0, w_obj)
-    # XXX I am not sure this is correct, but it un-breaks translation:
-    # make sure that getbyte is only performed on W_BytesObjects
+    # TODO: This can actually be called on any indexable object...
     if not (isinstance(w_obj, model.W_BytesObject) or
             isinstance(w_obj, model.W_WordsObject)):
         raise PrimitiveFailedError
@@ -840,6 +838,18 @@ def func(interp, s_frame, argcount, w_method):
     from spyvm.plugins.simulation import SimulationPlugin
     return SimulationPlugin.simulate(w_name, signature, interp, s_frame, argcount, w_method)
 
+@expose_primitive(SNAPSHOT, clean_stack=False, no_result=True)
+def func(interp, s_frame, argcount):
+    s_frame.pop_n(argcount)
+    s_frame.push(interp.space.w_true)
+    # leaving true on the frame as return value for resuming image
+    from spyvm.squeakimage import SpurImageWriter
+    from spyvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX
+    filename = interp.space.get_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX)
+    SpurImageWriter(interp, filename).trace_image(s_frame)
+    s_frame.pop()
+    s_frame.push(interp.space.w_false) # the non-resuming image gets false
+
 @expose_primitive(BE_CURSOR)
 def func(interp, s_frame, argcount):
     if not (0 <= argcount <= 1):
@@ -996,13 +1006,12 @@ def func(interp, s_frame, w_arg, w_rcvr):
 def func(interp, s_frame, argcount):
     w_obj = s_frame.pop()
     if argcount == 1:
-        # XXX TODO: check if this is right
-        s_frame.pop() # receiver, in ContextPart>>objectClass:
+        s_frame.pop() # receiver, e.g. ContextPart>>objectClass:
     return w_obj.getclass(interp.space)
 
 @expose_primitive(BYTES_LEFT, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    raise PrimitiveNotYetWrittenError()
+    return fake_bytes_left(interp)
 
 @expose_primitive(QUIT, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
@@ -1023,7 +1032,6 @@ def func(interp, s_frame, w_arg, w_rcvr):
     # We should fail if:
 
     # 1. Rcvr or arg are SmallIntegers
-    # XXX this is wrong too
     if (w_arg_class.is_same_object(interp.space.w_SmallInteger) or
         w_rcvr_class.is_same_object(interp.space.w_SmallInteger)):
         raise PrimitiveFailedError()
@@ -1032,7 +1040,6 @@ def func(interp, s_frame, w_arg, w_rcvr):
     # or vice versa XXX we don't have to fail here, but for squeak it's a problem
 
     # 3. Format of rcvr is different from format of argument
-
     if ((isinstance(w_arg, model.W_PointersObject) and
          isinstance(w_rcvr, model.W_PointersObject)) or
         (isinstance(w_arg, model.W_BytesObject) and
@@ -1042,6 +1049,7 @@ def func(interp, s_frame, w_arg, w_rcvr):
         w_rcvr.change_class(interp.space, w_arg_class)
         return w_rcvr
     else:
+        # TODO: this should also work to change bytes to words and such
         raise PrimitiveNotYetWrittenError
 
 @expose_primitive(EXTERNAL_CALL, clean_stack=False, no_result=True, compiled_method=True)
@@ -1129,13 +1137,9 @@ def walk_gc_objects_of_type(type, func):
             func(w_obj)
     walk_gc_objects(check_type)
 
-# XXX: We don't have a global symbol cache. Instead, we walk all
-# MethodDictionaryShadow objects and flush them.
 @expose_primitive(SYMBOL_FLUSH_CACHE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    # This takes a long time (at least in interpreted mode), and is not really necessary.
-    # We are monitoring changes to MethodDictionaries, so there is no need for the image to tell us.
-    #walk_gc_objects_of_type(storage_contexts.MethodDictionaryShadow, lambda s_dict: s_dict.flush_method_cache())
+    # No need to do this, method dictionaries invalidate their traces as needed
     return w_rcvr
 
 # ___________________________________________________________________________
@@ -1180,8 +1184,13 @@ def func(interp, s_frame, w_receiver, flag):
 
 @expose_primitive(DRAW_RECTANGLE, unwrap_spec=[object, int, int, int, int])
 def func(interp, s_frame, w_rcvr, left, right, top, bottom):
-    sdldisplay = interp.space.display()
-    sdldisplay.flip()
+    if not interp.space.objtable['w_display'].is_same_object(w_rcvr):
+        return interp.space.w_nil
+    if not ((left <= right) and (top <= bottom)):
+        return interp.space.w_nil
+    form = wrapper.FormWrapper(interp.space, w_rcvr)
+    form.get_display_bitmap().force_rectange_to_screen(left, right, top, bottom)
+    interp.space.display().flip(force=True)
     return w_rcvr
 
 
@@ -1213,7 +1222,13 @@ def func(interp, s_frame, w_rcvr, w_new):
     return w_rcvr
 
 def fake_bytes_left(interp):
-    return interp.space.wrap_int(2**29) # XXX we don't know how to do this :-(
+    from spyvm.util.platform_calls import get_memory_usage
+    usage = get_memory_usage()
+    if usage < 0:
+        # there was an error getting the result
+        return interp.space.wrap_int(2**29)
+    else:
+        return interp.space.wrap_int(constants.MAXINT - usage)
 
 @expose_primitive(SPECIAL_OBJECTS_ARRAY, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
@@ -1222,8 +1237,8 @@ def func(interp, s_frame, w_rcvr):
 @expose_primitive(INC_GC, unwrap_spec=[object])
 @expose_primitive(FULL_GC, unwrap_spec=[object])
 @jit.dont_look_inside
-# def func(interp, s_frame, w_arg): # Squeak pops the arg and ignores it ... go figure
 def func(interp, s_frame, w_rcvr):
+    # Squeak pops the arg and ignores it ... go figure
     from rpython.rlib import rgc
     rgc.collect()
     return fake_bytes_left(interp)
@@ -1922,10 +1937,10 @@ def func(interp, s_frame, w_rcvr, time_mu_s):
     interp.interrupt_check_counter = 0
     interp.quick_check_for_interrupt(s_frame, dec=0)
 
-@expose_primitive(FORCE_DISPLAY_UPDATE, unwrap_spec=[object])
-def func(interp, s_frame, w_rcvr):
-    interp.space.display().flip(force=True)
-    return w_rcvr
+# @expose_primitive(FORCE_DISPLAY_UPDATE, unwrap_spec=[object])
+# def func(interp, s_frame, w_rcvr):
+#     interp.space.display().flip(force=True)
+#     return w_rcvr
 
 @expose_primitive(SET_FULL_SCREEN, unwrap_spec=[object, bool])
 def func(interp, s_frame, w_rcvr, flag):
@@ -1940,6 +1955,7 @@ VM_PROFILE_SAMPLES_INTO = 252
 VM_PROFILE_INFO_INTO = 253
 VM_PARAMETERS = 254
 META_PRIM_FAILED = 255 # Used to be INST_VARS_PUT_FROM_STACK. Never used except in Disney tests.  Remove after 2.3 release.
+VM_LOADED_MODULES = 573
 
 @expose_primitive(META_PRIM_FAILED, unwrap_spec=[object, int])
 def func(interp, s_frame, w_rcvr, primFailFlag):
@@ -2026,8 +2042,18 @@ def func(interp, s_frame, argcount):
     arg1_w = s_frame.pop() # receiver
 
     vm_w_params = [interp.space.wrap_int(0)] * 71
+
+    vm_w_params[2] = interp.space.wrap_int(1) # must be 1 for VM Stats view to work
+    vm_w_params[8] = interp.space.wrap_int(1) # must be 1 for VM Stats view to work
+
+    vm_w_params[41] = interp.space.wrap_int(1) # We are a "stack-like" VM - number of stack tables
+    vm_w_params[45] = interp.space.wrap_int(1) # We are a "cog-like" VM - machine code zone size
+
     vm_w_params[39] = interp.space.wrap_int(constants.BYTES_PER_WORD)
     vm_w_params[40] = interp.space.wrap_int(interp.image.version.magic)
+    vm_w_params[55] = interp.space.wrap_int(interp.process_switch_count)
+    vm_w_params[57] = interp.space.wrap_int(interp.forced_interrupt_checks_count)
+    vm_w_params[59] = interp.space.wrap_int(interp.stack_overflow_count)
     vm_w_params[69] = interp.space.wrap_int(constants.INTERP_PROXY_MAJOR)
     vm_w_params[70] = interp.space.wrap_int(constants.INTERP_PROXY_MINOR)
 
@@ -2046,6 +2072,18 @@ def func(interp, s_frame, argcount):
     if argcount == 2:
         # return the 'old value'
         return interp.space.wrap_int(0)
+
+# list the n-th loaded module
+@expose_primitive(VM_LOADED_MODULES, unwrap_spec=[int])
+def func(interp, s_frame, index):
+    if interp.space.use_plugins.is_set():
+        from spyvm.plugins.squeak_plugin_proxy import IProxy
+        modulenames = IProxy.loaded_module_names()
+        try:
+            return interp.space.wrap_string(modulenames[index])
+        except IndexError:
+            return interp.space.w_nil
+    return interp.space.w_nil
 
 # ___________________________________________________________________________
 # PrimitiveLoadInstVar

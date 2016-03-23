@@ -170,7 +170,7 @@ def test_fileplugin_filewrite_bitmap(monkeypatch):
         return 4
     monkeypatch.setattr(os, "write", write)
 
-    content = model_display.W_DisplayBitmap(space, space.w_Bitmap, 1, 32)
+    content = model_display.W_DisplayBitmap(space, 1, 32)
     content._real_depth_buffer[0] = rffi.r_uint(1633837924)
     try:
         stack = [space.w(1), space.w(1), content, space.w(1), space.w(1)]

@@ -368,8 +368,8 @@ class SDLDisplay(object):
     def pump_events(self):
         event = lltype.malloc(RSDL.Event, flavor="raw")
         try:
-            if rffi.cast(lltype.Signed, RSDL.PollEvent(event)) == 1:
-                c_type = r_uint(event.c_type)
+            if RSDL.PollEvent(event) == 1:
+                c_type = event.c_type
                 if c_type == RSDL.MOUSEBUTTONDOWN or c_type == RSDL.MOUSEBUTTONUP:
                     self.handle_mouse_button(c_type, event)
                     return

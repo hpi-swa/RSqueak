@@ -160,7 +160,7 @@ def test_compiling_large_large_positive_integer():
 
 def test_simulate_numericprim():
     sourcecode = """absentPrimitive: anInt with: anotherInt
-        <primitive: 97>
+        <primitive: 98>
         ^'numeric fallback for ', anInt asString, ' ', anotherInt asString"""
     perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
 
@@ -178,7 +178,7 @@ def test_simulate_numericprim():
 def test_simulate_numericprim_fallback():
     sourcecode = """absentPrimitive: anInt with: anotherInt
         |errorCode|
-        <primitive: 97> "error: errorCode> is not implemented in the mini.image yet"
+        <primitive: 98> "error: errorCode> is not implemented in the mini.image yet"
         ^'numeric fallback for ', anInt asString, ' ', anotherInt asString, ' because of ', errorCode asString"""
     perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
 
@@ -215,3 +215,13 @@ def test_simulate_externalcall():
     w_result = perform(w(10), "absentPrimitive:with:", w(3), w(4))
     assert isinstance(w_result, model.W_BytesObject)
     assert w_result.unwrap_string(space) == 'externalcall simulation for 3 4'
+
+def test_snapshotPrimitive():
+    space, interp, _, _ = read_image("mini.image")
+    def perform(receiver, selector, *args):
+        w_selector = None if isinstance(selector, str) else selector
+        return interp.perform(receiver, selector, w_selector, list(args))
+    space.simulate_numeric_primitives.activate()
+    space.set_system_attribute(constants.SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, "test_snapshot.image")
+    w_result = perform(space.special_object("w_smalltalkdict"), "snapshotPrimitive")
+    assert w_result is space.w_false

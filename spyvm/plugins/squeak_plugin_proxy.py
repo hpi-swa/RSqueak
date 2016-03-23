@@ -545,11 +545,13 @@ def fullDisplayUpdate():
 
 @expose_on_virtual_machine_proxy([], int)
 def fullGC():
-    # XXX: how to invoke gc?
+    from rpython.rlib import rgc
+    rgc.collect()
     return 0
 @expose_on_virtual_machine_proxy([], int)
 def incrementalGC():
-    # XXX: how to invoke gc?
+    from rpython.rlib import rgc
+    rgc.collect()
     return 0
 
 @expose_on_virtual_machine_proxy([], int)
@@ -1003,6 +1005,9 @@ class _InterpreterProxy(object):
         self.remappable_objects = []
         self.trace_proxy = objspace.ConstantFlag()
         self.reset()
+
+    def loaded_module_names(self):
+        return self.loaded_modules.keys()
 
     def reset(self):
         self.interp = None

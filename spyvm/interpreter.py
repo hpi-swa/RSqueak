@@ -137,7 +137,8 @@ class Interpreter(object):
         greens=['pc', 'self', 'method'],
         reds=['s_context'],
         virtualizables=['s_context'],
-        get_printable_location=get_printable_location
+        get_printable_location=get_printable_location,
+        is_recursive=True
     )
 
     def __init__(self, space, image=None, trace_important=False,
@@ -163,6 +164,9 @@ class Interpreter(object):
         self.next_wakeup_tick = 0
         self.trace_proxy = objspace.ConstantFlag()
         self.stack_depth = 0
+        self.process_switch_count = 0
+        self.forced_interrupt_checks_count = 0
+        self.stack_overflow_count = 0
 
         if not objectmodel.we_are_translated():
             if USE_SIGUSR1:
@@ -188,9 +192,15 @@ class Interpreter(object):
             try:
                 self.stack_frame(s_context, None)
                 raise Exception("loop_bytecodes left without raising...")
-            except ContextSwitchException, e:
+            except ProcessSwitch, e:
                 if self.is_tracing() or self.trace_important:
                     e.print_trace()
+                self.process_switch_count += 1
+                s_context = e.s_new_context
+            except StackOverflow, e:
+                if self.is_tracing() or self.trace_important:
+                    e.print_trace()
+                self.stack_overflow_count += 1
                 s_context = e.s_new_context
             except LocalReturn, ret:
                 target = s_sender
@@ -367,11 +377,11 @@ class Interpreter(object):
         # We don't adjust the check counter size
 
         # use the same time value as the primitive UTC_MICROSECOND_CLOCK
+        self.forced_interrupt_checks_count += 1
         now = self.time_now()
 
         # XXX the low space semaphore may be signaled here
-        # Process inputs
-        # Process User Interrupt?
+        # TODO: Check for User Interrupt
         if not self.next_wakeup_tick == 0 and now >= self.next_wakeup_tick:
             self.next_wakeup_tick = 0
             semaphore = self.space.objtable["w_timerSemaphore"]

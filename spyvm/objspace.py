@@ -106,9 +106,7 @@ class ObjSpace(object):
 
     def runtime_setup(self, argv, image_name):
         fullpath = rpath.rabspath(self.find_executable(argv[0]))
-        i = fullpath.rfind(os.path.sep) + 1
-        assert i > 0
-        self._executable_path.set(fullpath[:i])
+        self._executable_path.set(fullpath)
         self.set_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, image_name)
         self.image_loaded.activate()
         self.init_system_attributes(argv)
@@ -119,11 +117,13 @@ class ObjSpace(object):
         for i in xrange(1, len(argv)):
             self.set_system_attribute(-i, argv[i])
         import platform
+        from targetrsqueak import VERSION, BUILD_DATE
         self.set_system_attribute(0, self._executable_path.get())
         self.set_system_attribute(1001, platform.system())    # operating system
         self.set_system_attribute(1002, platform.version())   # operating system version
         self.set_system_attribute(1003, platform.processor()) # platform's processor type
-        self.set_system_attribute(1004, "0")                  # vm version
+        self.set_system_attribute(1004, VERSION)
+        self.set_system_attribute(1006, BUILD_DATE)
         self.set_system_attribute(1007, "rsqueak")            # interpreter class (invented for Cog)
 
     def get_system_attribute(self, idx):
@@ -146,7 +146,6 @@ class ObjSpace(object):
                 except IndexError:
                     # if it's not yet in the table, the interpreter has to fill the gap later in populate_remaining_special_objects
                     self.objtable[name] = None
-        # XXX this is kind of hacky, but I don't know where else to get Metaclass
         self.classtable["w_Metaclass"] = self.w_SmallInteger.getclass(self).getclass(self)
 
     def add_bootstrap_class(self, name, cls):
@@ -204,7 +203,6 @@ class ObjSpace(object):
         return model.W_SmallInteger(intmask(val))
 
     def wrap_uint(self, val):
-        from rpython.rlib.objectmodel import we_are_translated
         if val < 0:
             raise WrappingError("negative integer")
         else:
@@ -212,8 +210,9 @@ class ObjSpace(object):
 
     def wrap_positive_wordsize_int(self, val):
         # This will always return a positive value.
-        # XXX: For now, we assume that val is at most 32bit, i.e. overflows are
-        # checked for before wrapping. Also, we ignore tagging.
+        from rpython.rlib.objectmodel import we_are_translated
+        if not we_are_translated() and val < 0:
+            print "WARNING: wrap_positive_32bit_int casts %d to 32bit unsigned" % val
         if int_between(0, val, constants.MAXINT):
             return model.W_SmallInteger(val)
         else:
@@ -382,7 +381,7 @@ class ObjSpace(object):
                 self.highdpi.is_set()
             )
             self._display.set(disp)
-        return disp
+        return jit.promote(disp)
 
     # ============= Other Methods =============
 

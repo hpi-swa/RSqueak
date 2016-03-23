@@ -8,6 +8,12 @@ from spyvm.util import system
 
 sys.setrecursionlimit(15000)
 
+def _compile_time_version():
+    import subprocess
+    return subprocess.check_output(
+        ["git", "log", "--format=format:\"%ai %h%d\"", "-n", "1"])
+VERSION = _compile_time_version()
+BUILD_DATE = "%s +0000" % time.asctime(time.gmtime())
 
 def _usage(argv):
     print """
@@ -25,6 +31,7 @@ def _usage(argv):
             -m|--method <selector> - Selector will be sent to a SmallInteger in
                                      headless mode, result printed.
             -h|--help              - Output this message and exit.
+            -v|--version           - Print version info and exit.
 
           Headless mode:
             When starting the image without -r or -m, the last running Process
@@ -143,6 +150,9 @@ def entry_point(argv):
             if arg in ["-h", "--help"]:
                 _usage(argv)
                 return 0
+            elif arg in ["-v", "--version"]:
+                print "RSqueakVM %s, built on %s" % (VERSION, BUILD_DATE)
+                return 0
             elif arg == "--no-highdpi":
                 space.highdpi.deactivate()
             elif arg == "--highdpi":
@@ -150,6 +160,9 @@ def entry_point(argv):
             elif arg in ["-j", "--jit"]:
                 jitarg, idx = get_parameter(argv, idx, arg)
                 jit.set_user_param(interpreter.Interpreter.jit_driver, jitarg)
+            elif arg in ["--reader-jit-args"]:
+                jitarg, idx = get_parameter(argv, idx, arg)
+                squeakimage.set_reader_user_param(jitarg)
             elif arg in ["-n", "--number"]:
                 number, idx = get_int_parameter(argv, idx, arg)
                 have_number = True

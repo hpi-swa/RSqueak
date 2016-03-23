@@ -63,6 +63,8 @@ FORM_DEPTH = 3
 # ___________________________________________________________________________
 # Miscellaneous constants
 
+COMPILED_METHOD_FULL_FRAME_SIZE = 56
+COMPILED_METHOD_SMALL_FRAME_SIZE = 16
 LITERAL_START = 1 # index of the first literal after the method header
 BYTES_PER_WORD = 4
 WORDS_IN_FLOAT = 2 # Fixed number of word-slots in a Squeak Float object

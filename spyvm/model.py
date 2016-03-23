@@ -356,9 +356,13 @@ class W_AbstractObjectWithIdentityHash(W_Object):
 
     def gethash(self):
         if self.hash == self.UNASSIGNED_HASH:
-            self.hash = hash = intmask(self.hash_generator.genrand32()) % 2**22
+            self.hash = hash = (intmask(self.hash_generator.genrand32()) % 2**22) + 1
             return hash
         return self.hash
+
+    def rehash(self):
+        self.hash = self.UNASSIGNED_HASH
+        self.gethash()
 
     def invariant(self):
         return isinstance(self.hash, int)
@@ -399,9 +403,6 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
             word |= ord(byte) << (idx * 8)
         self.value = intmask(word)
         self._exposed_size = len(bytes)
-
-    def has_class(self):
-        return True
 
     def getclass(self, space):
         return space.w_LargePositiveInteger
@@ -471,10 +472,15 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
         return space.wrap_int(intmask(result))
 
     def atput0(self, space, index0, w_byte):
+        self.setbyte(index0, space.unwrap_int(w_byte))
+
+    def setchar(self, index0, char):
+        self.setbyte(index0, ord(char))
+
+    def setbyte(self, index0, byte):
         if index0 >= self.size():
             raise IndexError()
         skew = index0 * 8
-        byte = space.unwrap_int(w_byte)
         assert byte <= 0xff
         new_value = self.value & r_uint(~(0xff << skew))
         new_value |= r_uint(byte << skew)
@@ -528,9 +534,6 @@ class W_Float(W_AbstractObjectWithIdentityHash):
             low, high = high, low
         self.fillin_fromwords(space, high, low)
 
-    def has_class(self):
-        return True
-
     def getclass(self, space):
         """Return Float from special objects array."""
         return space.w_Float
@@ -542,7 +545,7 @@ class W_Float(W_AbstractObjectWithIdentityHash):
         return "%f" % self.value
 
     def gethash(self):
-        return intmask(compute_hash(self.value)) % 2**22
+        return (intmask(compute_hash(self.value)) % 2**22) + 1
 
     def invariant(self):
         return isinstance(self.value, float)
@@ -625,9 +628,6 @@ class W_Character(W_AbstractObjectWithIdentityHash):
         assert len(pointers_w) == 1
         pointers_w[0].fillin(space)
         self.value = space.unwrap_int(pointers_w[0].w_object)
-
-    def has_class(self):
-        return True
 
     def getclass(self, space):
         """Return Character from special objects array."""
@@ -722,30 +722,16 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
         # Don't construct the ClassShadow here, yet!
         self.w_class = g_self.get_class()
 
-    def is_class(self, space):
-        # This is a class if it's a Metaclass or an instance of a Metaclass.
-        if self.has_class():
-            w_Metaclass = space.classtable["w_Metaclass"]
-            w_class = self.getclass(space)
-            if w_Metaclass.is_same_object(w_class):
-                return True
-            if w_class.has_class():
-                return w_Metaclass.is_same_object(w_class.getclass(space))
-        return False
-
     def getclass(self, space):
         return self.w_class
 
     def guess_classname(self):
-        if self.has_class():
-            if self.getclass(None).has_space():
-                class_shadow = self.class_shadow(self.getclass(None).space())
-                return class_shadow.name
-            else:
-                # We cannot access the class during the initialization sequence.
-                return "?? (class not initialized)"
+        if self.getclass(None).has_space():
+            class_shadow = self.class_shadow(self.getclass(None).space())
+            return class_shadow.name
         else:
-            return "? (no class)"
+            # We cannot access the class during the initialization sequence.
+            return "?? (class not initialized)"
 
     def change_class(self, space, w_class):
         self.w_class = w_class
@@ -772,9 +758,6 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
         assert isinstance(w_other, W_AbstractObjectWithClassReference)
         self.w_class, w_other.w_class = w_other.w_class, self.w_class
         W_AbstractObjectWithIdentityHash._become(self, w_other)
-
-    def has_class(self):
-        return self.getclass(None) is not None
 
 
 class W_PointersObject(W_AbstractObjectWithIdentityHash):
@@ -816,26 +799,25 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
         from storage import WeakListStrategy
         return isinstance(self._get_strategy(), WeakListStrategy)
 
+    def has_class(self):
+        return self.getclass(None) is not None
+
     def getclass(self, space):
         if self._get_strategy() is None:
             return None
         else:
             return self._get_strategy().getclass()
 
-    def has_class(self):
-        return self.getclass(None) is not None
-
     def is_class(self, space):
         from spyvm.storage_classes import ClassShadow
         if isinstance(self._get_strategy(), ClassShadow):
             return True
-        # XXX: copied form W_AbstractObjectWithClassReference
-        if self.has_class():
+        elif self.has_class():
             w_Metaclass = space.classtable["w_Metaclass"]
             w_class = self.getclass(space)
             if w_Metaclass.is_same_object(w_class):
                 return True
-            if w_class.has_class():
+            elif w_class.has_class():
                 return w_Metaclass.is_same_object(w_class.getclass(space))
         return False
 
@@ -1092,7 +1074,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
             return len(self.bytes)
 
     def str_content(self):
-        if self.has_class() and self.getclass(None).has_space():
+        if self.getclass(None).has_space():
             if self.getclass(None).space().omit_printing_raw_bytes.is_set():
                 return "<omitted>"
         return "'%s'" % ''.join([\
@@ -1137,8 +1119,6 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
 
     @jit.unroll_safe
     def unwrap_uint(self, space):
-        # TODO: Completely untested! This failed translation bigtime...
-        # XXX Probably we want to allow all subclasses
         if not self.getclass(space).is_same_object(space.w_LargePositiveInteger):
             raise error.UnwrappingError("Failed to convert bytes to word")
         if self.size() > constants.BYTES_PER_MACHINE_INT:
@@ -1162,11 +1142,13 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
                 word += r_longlong(ord(self.getchar(i))) << 8*i
             except OverflowError: # never raised after translation :(
                 raise error.UnwrappingError("Too large to convert bytes to word")
-        if (space.w_LargeNegativeInteger is not None and
-            self.getclass(space).is_same_object(space.w_LargeNegativeInteger)):
+        if self.getclass(space).is_same_object(space.w_LargePositiveInteger):
+            return word
+        elif ((space.w_LargeNegativeInteger is not None) and
+              self.getclass(space).is_same_object(space.w_LargeNegativeInteger)):
             return -word
         else:
-            return word
+            raise error.UnwrappingError
 
     def unwrap_long_untranslated(self, space):
         "NOT_RPYTHON"
@@ -1508,6 +1490,9 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def getclass(self, space):
         return space.w_CompiledMethod
 
+    def getbytes(self):
+        return self.bytes
+
     @constant_for_version
     def size(self):
         return self.headersize() + self.getliteralsize() + len(self.bytes)
@@ -1598,6 +1583,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def at0(self, space, index0):
         if index0 < self.bytecodeoffset():
             # XXX: find out what happens if unaligned
+            # XXX: Looks like Cog raises an exception in this case
             return self.literalat0(space, index0 / constants.BYTES_PER_WORD)
         else:
             # From blue book:

@@ -1,5 +1,5 @@
 
-from spyvm import model, constants, display
+from spyvm import model, constants, display, error
 from spyvm.util import system
 from rpython.rlib import jit, objectmodel
 from rpython.rtyper.lltypesystem import lltype, rffi
@@ -11,41 +11,51 @@ def from_words_object(w_obj, form):
     space = form.space
     size = w_obj.size()
     w_class = w_obj.getclass(space)
+    if not w_class.is_same_object(space.w_Bitmap):
+        raise error.WrappingError
 
     if depth < 8:
-        w_display_bitmap = W_MappingDisplayBitmap(space, w_class, size, depth)
+        w_display_bitmap = W_MappingDisplayBitmap(space, size, depth)
     elif depth == 8:
-        w_display_bitmap = W_8BitDisplayBitmap(space, w_class, size, depth)
+        w_display_bitmap = W_8BitDisplayBitmap(space, size, depth)
     elif depth == 16:
-        w_display_bitmap = W_16BitDisplayBitmap(space, w_class, size, depth)
+        w_display_bitmap = W_16BitDisplayBitmap(space, size, depth)
     else:
-        w_display_bitmap = W_DisplayBitmap(space, w_class, size, depth)
+        assert depth == 32
+        w_display_bitmap = W_32BitDisplayBitmap(space, size, depth)
 
     for idx in range(size):
         w_display_bitmap.setword(idx, w_obj.getword(idx))
 
     return w_display_bitmap
 
-class W_DisplayBitmap(model.W_AbstractObjectWithClassReference):
-    _attrs_ = ['pixelbuffer_words', '_real_depth_buffer', '_realsize', 'display', '_depth']
-    _immutable_fields_ = ['pixelbuffer_words?', '_real_depth_buffer', '_realsize', 'display', '_depth']
+class W_DisplayBitmap(model.W_AbstractObjectWithIdentityHash):
+    _attrs_ = ['pixelbuffer_words', '_real_depth_buffer', '_realsize', '_display', '_depth']
+    _immutable_fields_ = ['pixelbuffer_words?', '_real_depth_buffer', '_realsize', '_display', '_depth']
     repr_classname = "W_DisplayBitmap"
 
-    def __init__(self, space, w_class, size, depth):
-        model.W_AbstractObjectWithClassReference.__init__(self, space, w_class)
+    def __init__(self, space, size, depth):
         self._real_depth_buffer = lltype.malloc(rffi.CArray(rffi.UINT), size, flavor='raw')
         self._realsize = size
         self._depth = depth
-        self.display = space.display()
+        self._display = space.display()
         self.relinquish_display()
+
+    def getclass(self, space):
+        return space.w_Bitmap
+
+    def guess_classname(self):
+        return "Bitmap"
 
     # === Object access
 
     def at0(self, space, index0):
+        self = jit.promote(self)
         val = self.getword(index0)
         return space.wrap_uint(val)
 
     def atput0(self, space, index0, w_value):
+        self = jit.promote(self)
         word = space.unwrap_uint(w_value)
         self.setword(index0, word)
 
@@ -64,35 +74,54 @@ class W_DisplayBitmap(model.W_AbstractObjectWithClassReference):
         return r_uint(self._real_depth_buffer[n])
 
     def setword(self, n, word):
-        self._real_depth_buffer[n] = rffi.r_uint(word)
-        if self.pixelbuffer_words > 0:
-            self.set_pixelbuffer_word(n, word)
+        self._real_depth_buffer[n] = word
 
     def size(self):
         return self._realsize
 
     # === Graphics
 
+    def display(self):
+        return jit.promote(self._display)
+
     def pixelbuffer(self):
-        return self.display.get_pixelbuffer()
+        return self.display().get_pixelbuffer()
 
     def pixelbuffer_UCHAR(self):
-        return self.display.get_pixelbuffer_UCHAR()
+        return self.display().get_pixelbuffer_UCHAR()
 
     def set_pixelbuffer_word(self, n, word):
         self.pixelbuffer()[n] = rffi.r_uint(word)
 
+    @jit.elidable
+    def pixel_per_word(self):
+        return constants.BYTES_PER_WORD / (self.display().depth / 8)
+
     def take_over_display(self):
         # Make sure FrameWrapper.take_over_display() is called first for the correct Frame object.
-        pixel_per_word = constants.BYTES_PER_WORD / (self.display.depth / 8)
-        self.pixelbuffer_words = self.display.width * self.display.height / pixel_per_word
+        self.pixelbuffer_words = self.display().width * self.display().height / self.pixel_per_word()
         self.update_from_buffer()
 
     def relinquish_display(self):
         self.pixelbuffer_words = 0
 
     def flush_to_screen(self):
-        self.display.flip()
+        self.display().flip()
+
+    def word_from_pixel(self, x, y):
+        return (x + y * self.display().width) / self.pixel_per_word()
+
+    def force_rectange_to_screen(self, left, right, top, bottom):
+        if self.pixelbuffer_words > 0:
+            start = max(self.word_from_pixel(left, top), 0)
+            stop = min(self.word_from_pixel(right, bottom), self.size() - 1)
+            if stop < start:
+                return
+            self.force_words(start, stop)
+
+    def force_words(self, start, stop):
+        for i in range(stop - start):
+            self.set_pixelbuffer_word(i + start, self.getword(i + start))
 
     def update_from_buffer(self):
         if self.pixelbuffer_words > 0:
@@ -125,6 +154,19 @@ class W_DisplayBitmap(model.W_AbstractObjectWithClassReference):
 
     def repr_content(self):
         return "len=%d depth=%d %s" % (self.size(), self._depth, self.str_content())
+
+class W_32BitDisplayBitmap(W_DisplayBitmap):
+    repr_classname = "W_32BitDisplayBitmap"
+
+    def force_words(self, start, stop):
+        assert start > 0 and stop > 0 and self.size() >= stop and self.pixelbuffer_words >= stop and stop >= start
+        pixbuf = rffi.ptradd(self.display().get_pixelbuffer(), start)
+        realbuf = rffi.ptradd(self._real_depth_buffer, start)
+        rffi.c_memcpy(
+            rffi.cast(rffi.VOIDP, pixbuf),
+            rffi.cast(rffi.VOIDP, realbuf),
+            (stop - start) * constants.BYTES_PER_WORD) # VOIDP is char*, we want to copy word*
+
 
 class W_16BitDisplayBitmap(W_DisplayBitmap):
 
@@ -169,12 +211,23 @@ class W_MappingDisplayBitmap(W_DisplayBitmap):
     _attrs_ = ['words_per_line', 'bits_in_last_word', 'pitch']
     _immutable_fields_ = ['words_per_line?', 'bits_in_last_word?', 'pitch?']
 
-    def __init__(self, space, w_class, size, depth):
+    def __init__(self, space, size, depth):
         assert depth in [1, 2, 4]
-        W_DisplayBitmap.__init__(self, space, w_class, size, depth)
+        W_DisplayBitmap.__init__(self, space, size, depth)
+
+    def word_from_pixel(self, x, y):
+        word = W_DisplayBitmap.word_from_pixel(self, x, y)
+        if self._depth == 1:
+            return word / 8
+        elif self._depth == 2:
+            return word / 4
+        elif self._depth == 4:
+            return word / 2
+        else:
+            assert False
 
     def take_over_display(self):
-        pitch = r_uint(self.display.pitch) # The pitch is different from the width input to SDL!
+        pitch = r_uint(self.display().pitch) # The pitch is different from the width input to SDL!
         self.pitch = pitch
         self.bits_in_last_word = pitch % BITS
         self.words_per_line = r_uint((pitch - self.bits_in_last_word) / BITS)
@@ -193,7 +246,7 @@ class W_MappingDisplayBitmap(W_DisplayBitmap):
 
         word = r_uint(word)
         pos = self.compute_pos(n)
-        buf = rffi.ptradd(self.display.get_plain_pixelbuffer(), pos)
+        buf = rffi.ptradd(self.display().get_plain_pixelbuffer(), pos)
         depth = r_uint(self._depth)
         rshift = BITS - depth
         for i in range(bits / depth):
