@@ -1026,6 +1026,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         W_AbstractObjectWithClassReference.fillin(self, space, g_self)
         self.mutate()
         self.bytes = g_self.get_bytes()
+        self.native_bytes = None
 
     def at0(self, space, index0):
         return space.wrap_int(ord(self.getchar(index0)))
@@ -1222,6 +1223,7 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
     def fillin(self, space, g_self):
         W_AbstractObjectWithClassReference.fillin(self, space, g_self)
         self.words = g_self.get_ruints()
+        self.native_words = None
 
     def at0(self, space, index0):
         val = self.getword(index0)
