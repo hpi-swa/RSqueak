@@ -369,16 +369,17 @@ class SDLDisplay(object):
         event = lltype.malloc(RSDL.Event, flavor="raw")
         try:
             if RSDL.PollEvent(event) == 1:
-                c_type = event.c_type
-                if c_type == RSDL.MOUSEBUTTONDOWN or c_type == RSDL.MOUSEBUTTONUP:
+                c_type = r_uint(event.c_type)
+                if (c_type == r_uint(RSDL.MOUSEBUTTONDOWN) or 
+                    c_type == r_uint(RSDL.MOUSEBUTTONUP)):
                     self.handle_mouse_button(c_type, event)
                     return
-                elif c_type == RSDL.MOUSEMOTION:
+                elif c_type == r_uint(RSDL.MOUSEMOTION):
                     self.handle_mouse_move(c_type, event)
-                elif c_type == RSDL.KEYDOWN:
+                elif c_type == r_uint(RSDL.KEYDOWN):
                     self.handle_keyboard_event(c_type, event)
                     return
-                elif c_type == RSDL.QUIT:
+                elif c_type == r_uint(RSDL.QUIT):
                     from spyvm.error import Exit
                     raise Exit("Window closed")
         finally:
