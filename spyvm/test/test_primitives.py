@@ -2,7 +2,7 @@ import py, os, math, time
 from spyvm import model, model_display, storage_contexts, constants, primitives, wrapper, display
 from spyvm.primitives import prim_table, PrimitiveFailedError
 from rpython.rlib.rfloat import isinf, isnan
-from rpython.rlib.rarithmetic import intmask, r_uint, r_longlong
+from rpython.rlib.rarithmetic import intmask, r_uint, r_int64
 from rpython.rtyper.lltypesystem import lltype, rffi
 from .util import create_space, copy_to_module, cleanup_module, TestInterpreter
 
@@ -456,11 +456,11 @@ def test_primitive_utc_microseconds_clock():
     start = space.unwrap_longlong(prim(primitives.UTC_MICROSECOND_CLOCK, [0]))
     time.sleep(0.3)
     stop = space.unwrap_longlong(prim(primitives.UTC_MICROSECOND_CLOCK, [0]))
-    assert start + r_longlong(250 * 1000) <= stop
+    assert start + r_int64(250 * 1000) <= stop
 
 def test_signal_at_utc_microseconds():
     start = space.unwrap_longlong(prim(primitives.UTC_MICROSECOND_CLOCK, [0]))
-    future = start + r_longlong(400 * 1000)
+    future = start + r_int64(400 * 1000)
     sema = space.w_Semaphore.as_class_get_shadow(space).new()
     prim(primitives.SIGNAL_AT_UTC_MICROSECONDS, [space.w_nil, sema, future])
     assert space.objtable["w_timerSemaphore"] is sema

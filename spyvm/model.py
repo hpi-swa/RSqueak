@@ -20,7 +20,7 @@ from spyvm import constants, error
 from spyvm.util.version import constant_for_version, constant_for_version_arg, VersionMixin, Version
 
 from rpython.rlib import rrandom, objectmodel, jit, signature, longlong2float
-from rpython.rlib.rarithmetic import intmask, r_uint, r_int, ovfcheck, r_longlong
+from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, r_int64
 from rpython.rlib.debug import make_sure_not_resized
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib.objectmodel import instantiate, compute_hash, import_from_mixin, we_are_translated
@@ -291,7 +291,7 @@ class W_SmallInteger(W_Object):
             raise error.UnwrappingError
 
     def unwrap_longlong(self, space):
-        return r_longlong(self.value)
+        return r_int64(self.value)
 
     def unwrap_float(self, space):
         return float(self.value)
@@ -458,7 +458,7 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
         return r_uint(self.value)
 
     def unwrap_longlong(self, space):
-        return r_longlong(r_uint(self.value))
+        return r_int64(r_uint(self.value))
 
     def unwrap_float(self, space):
         return float(self.value)
@@ -1137,10 +1137,10 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
               ord(self.getchar(constants.BYTES_PER_MACHINE_LONGLONG - 1)) >= 0x80):
             # Sign-bit is set, this will overflow
             raise error.UnwrappingError("Too large to convert bytes to word")
-        word = r_longlong(0)
+        word = r_int64(0)
         for i in range(self.size()):
             try:
-                word += r_longlong(ord(self.getchar(i))) << 8*i
+                word += r_int64(ord(self.getchar(i))) << 8*i
             except OverflowError: # never raised after translation :(
                 raise error.UnwrappingError("Too large to convert bytes to word")
         if self.getclass(space).is_same_object(space.w_LargePositiveInteger):

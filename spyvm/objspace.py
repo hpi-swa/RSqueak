@@ -6,7 +6,7 @@ from spyvm.error import UnwrappingError, WrappingError
 from spyvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX
 from rpython.rlib import jit, rpath
 from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin, we_are_translated
-from rpython.rlib.rarithmetic import intmask, r_uint, int_between, r_longlong, r_ulonglong, is_valid_int, r_longlonglong
+from rpython.rlib.rarithmetic import intmask, r_uint, int_between, r_int64, r_ulonglong, is_valid_int
 
 class ConstantMixin(object):
     """Mixin for constant values that can be edited, but will be promoted
@@ -190,8 +190,8 @@ class ObjSpace(object):
 
     @specialize.argtype(1)
     def wrap_int(self, val):
-        if isinstance(val, r_longlong) and not is_valid_int(val):
-            if val > 0 and val <= r_longlong(constants.U_MAXINT):
+        if isinstance(val, r_int64) and not is_valid_int(val):
+            if val > 0 and val <= r_int64(constants.U_MAXINT):
                 return self.wrap_positive_wordsize_int(intmask(val))
             else:
                 raise WrappingError
@@ -254,7 +254,7 @@ class ObjSpace(object):
         try:
             r_val = r_ulonglong(-val)
         except OverflowError:
-            # this is a negative max-bit r_longlong, mask by simple coercion
+            # this is a negative max-bit r_int64, mask by simple coercion
             r_val = r_ulonglong(val)
         w_class = self.w_LargeNegativeInteger
         return self.wrap_large_number(r_val, w_class)
@@ -279,20 +279,20 @@ class ObjSpace(object):
     def wrap_longlong(self, val):
         if not we_are_translated():
             "Tests only"
-            if isinstance(val, long) and not isinstance(val, r_longlong):
+            if isinstance(val, long) and not isinstance(val, r_int64):
                 return self.wrap_long_untranslated(val)
 
         if not is_valid_int(val):
             if isinstance(val, r_ulonglong):
                 return self.wrap_ulonglong(val)
-            elif isinstance(val, r_longlong):
+            elif isinstance(val, r_int64):
                 if val > 0:
                     if constants.IS_64BIT:
-                        if not val <= r_longlonglong(constants.U_MAXINT):
+                        if not val <= r_int64long(constants.U_MAXINT):
                             # on 64bit, U_MAXINT must be wrapped in an unsigned longlonglong
                             return self.wrap_ulonglong(val)
                     else:
-                        if not val <= r_longlong(constants.U_MAXINT):
+                        if not val <= r_int64(constants.U_MAXINT):
                             return self.wrap_ulonglong(val)
                 elif val < 0:
                     return self.wrap_nlonglong(val)

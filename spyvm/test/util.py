@@ -305,12 +305,12 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         return w_class
 
     def w(self, any):
-        from rpython.rlib.rarithmetic import r_longlong
+        from rpython.rlib.rarithmetic import r_int64
         from rpython.rlib.rbigint import rbigint
 
         def looooong(val):
             try:
-                return r_longlong(val)
+                return r_int64(val)
             except OverflowError:
                 return val
         if False: pass

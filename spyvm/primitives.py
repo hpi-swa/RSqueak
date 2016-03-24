@@ -7,7 +7,7 @@ from spyvm.error import PrimitiveFailedError, PrimitiveNotYetWrittenError, MetaP
 from spyvm import wrapper
 
 from rpython.rlib import rfloat, unroll, jit, objectmodel
-from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int, r_longlong, int_between
+from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int, r_int64, int_between
 
 def assert_class(interp, w_obj, w_class):
     if not w_obj.getclass(interp.space).is_same_object(w_class):
@@ -102,7 +102,7 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                         args += (interp.space.unwrap_positive_wordsize_int(w_arg),)
                     elif spec is r_uint:
                         args += (interp.space.unwrap_uint(w_arg),)
-                    elif spec is r_longlong:
+                    elif spec is r_int64:
                         args += (interp.space.unwrap_longlong(w_arg),)
                     elif spec is index1_0:
                         args += (interp.space.unwrap_int(w_arg)-1, )
@@ -249,12 +249,12 @@ math_ops = {
 for (code,op) in math_ops.items():
     def make_func(op):
         @expose_also_as(code + _LARGE_OFFSET)
-        @expose_primitive(code, unwrap_specs=[[int, int], [r_longlong, r_longlong]])
+        @expose_primitive(code, unwrap_specs=[[int, int], [r_int64, r_int64]])
         def func(interp, s_frame, receiver, argument):
             try:
                 if isinstance(receiver, int) and isinstance(argument, int):
                     res = ovfcheck(op(receiver, argument))
-                elif isinstance(receiver, r_longlong) and isinstance(argument, r_longlong):
+                elif isinstance(receiver, r_int64) and isinstance(argument, r_int64):
                     res = op(receiver, argument)
                     if ((receiver ^ argument >= 0) and (receiver ^ res < 0)):
                         # manual ovfcheck as in Squeak VM
@@ -283,7 +283,7 @@ for (code,op) in bitwise_binary_ops.items():
                 return interp.space.wrap_int(intmask(res))
     make_func(op)
 
-combination_specs = [[int, int], [pos_32bit_int, pos_32bit_int], [r_longlong, r_longlong]]
+combination_specs = [[int, int], [pos_32bit_int, pos_32bit_int], [r_int64, r_int64]]
 # #/ -- return the result of a division, only succeed if the division is exact
 @expose_also_as(LARGE_DIVIDE)
 @expose_primitive(DIVIDE, unwrap_specs=combination_specs)
@@ -1278,7 +1278,7 @@ def event_time_to_microseconds(interp, ev_time):
     image startup timestamp, and finally adding the Epoch constant.
     """
     secs_to_usecs = 1000 * 1000
-    return r_longlong(ev_time * 1000 + interp.startup_time * secs_to_usecs) + \
+    return r_int64(ev_time * 1000 + interp.startup_time * secs_to_usecs) + \
         constants.SQUEAK_EPOCH_DELTA_MICROSECONDS
 
 @expose_primitive(MILLISECOND_CLOCK, unwrap_spec=[object])
@@ -1313,7 +1313,7 @@ def func(interp, s_frame, w_arg):
     x = interp.time_now()
     return interp.space.wrap_longlong(x)
 
-@expose_primitive(SIGNAL_AT_UTC_MICROSECONDS, unwrap_spec=[object, object, r_longlong])
+@expose_primitive(SIGNAL_AT_UTC_MICROSECONDS, unwrap_spec=[object, object, r_int64])
 def func(interp, s_frame, w_delay, w_semaphore, timestamp):
     if not w_semaphore.getclass(interp.space).is_same_object(
             interp.space.w_Semaphore):

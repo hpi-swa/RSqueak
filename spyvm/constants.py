@@ -1,7 +1,7 @@
 import sys
 import time
 from rpython.rlib.jit import elidable
-from rpython.rlib.rarithmetic import r_longlong, r_uint
+from rpython.rlib.rarithmetic import r_int64, r_uint
 
 from spyvm.util.bitmanipulation import splitter
 
@@ -72,7 +72,7 @@ INTERP_PROXY_MAJOR = 1
 INTERP_PROXY_MINOR = 13
 
 # The Delta between Squeak Epoch (Jan 1st 1901) and POSIX Epoch (Jan 1st 1970)
-SQUEAK_EPOCH_DELTA_MICROSECONDS = r_longlong(2177452800000000L)
+SQUEAK_EPOCH_DELTA_MICROSECONDS = r_int64(2177452800000000L)
 
 # ___________________________________________________________________________
 # Special objects indices

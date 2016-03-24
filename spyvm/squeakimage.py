@@ -3,7 +3,7 @@ from spyvm import constants, model, util, error, storage_contexts, model_display
 from spyvm.util import stream, system
 from spyvm.util.bitmanipulation import splitter
 from rpython.rlib import objectmodel
-from rpython.rlib.rarithmetic import r_ulonglong, intmask, r_uint, r_longlong
+from rpython.rlib.rarithmetic import r_ulonglong, intmask, r_uint, r_int64
 from rpython.rlib import jit
 
 # Access for module users
@@ -1107,7 +1107,7 @@ class SpurImageWriter(object):
     def reserve(self, obj):
         if isinstance(obj, model.W_SmallInteger):
             if obj.value < 0 and obj.value > constants.TAGGED_MININT:
-                return intmask((((r_longlong(1) << 31) + obj.value) << 1) + 1)
+                return intmask((((r_int64(1) << 31) + obj.value) << 1) + 1)
             elif obj.value < constants.TAGGED_MAXINT:
                 return (obj.value << 1) + 1
             elif obj.value > 0:
