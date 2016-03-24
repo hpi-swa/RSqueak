@@ -458,7 +458,10 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
         return r_uint(self.value)
 
     def unwrap_longlong(self, space):
-        return r_int64(r_uint(self.value))
+        if not constants.IS_64BIT:
+            return r_int64(r_uint(self.value))
+        else:
+            return intmask(r_uint(self.value))
 
     def unwrap_float(self, space):
         return float(self.value)
