@@ -26,10 +26,8 @@ eci = ExternalCompilationInfo(
 #else
 #include <sys/time.h>
 #include <sys/resource.h>
-#define DLLEXPORT
+#define DLLEXPORT __attribute__((__visibility__("default")))
 #endif
-
-#define IRRELEVANT_CALLER(name, exp) static void ## name ## () { exp; }
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,8 +41,6 @@ extern "C" {
     include_dirs = [this_dir],
     link_files = libraries,
     separate_module_sources = ["""
-IRRELEVANT_CALLER(i1, RSqueakGetMemoryUsage())
-
 int RSqueakGetMemoryUsage() {
 #ifdef _WIN32
         PROCESS_MEMORY_COUNTERS_EX memCountr;
