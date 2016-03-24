@@ -20,7 +20,7 @@ from spyvm import constants, error
 from spyvm.util.version import constant_for_version, constant_for_version_arg, VersionMixin, Version
 
 from rpython.rlib import rrandom, objectmodel, jit, signature, longlong2float
-from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, r_int64
+from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32, ovfcheck, r_int64
 from rpython.rlib.debug import make_sure_not_resized
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib.objectmodel import instantiate, compute_hash, import_from_mixin, we_are_translated
@@ -590,15 +590,15 @@ class W_Float(W_AbstractObjectWithIdentityHash):
         from rpython.rlib.rstruct.ieee import float_pack
         r = float_pack(self.value, 8) # C double
         if n0 == 0:
-            return space.wrap_uint(r_uint(intmask(r >> 32)))
+            return space.wrap_uint(r_uint32(intmask(r >> 32)))
         else:
             # bounds-check for primitive access is done in the primitive
             assert n0 == 1
             if constants.IS_64BIT:
                 # mask the bits above 32
-                return space.wrap_uint(r_uint(intmask(r & 0xffffffff)))
+                return space.wrap_uint(r_uint32(intmask(r & 0xffffffff)))
             else:
-                return space.wrap_uint(r_uint(intmask(r)))
+                return space.wrap_uint(r_uint32(intmask(r)))
 
     def store(self, space, n0, w_obj):
         from rpython.rlib.rstruct.ieee import float_unpack, float_pack
@@ -1057,7 +1057,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         byte0 = ord(self.getchar(byte_index0))
         byte1 = ord(self.getchar(byte_index0 + 1)) << 8
         if byte1 & 0x8000 != 0:
-            byte1 = intmask(r_uint(0xffff0000) | r_uint(byte1))
+            byte1 = intmask(r_uint32(0xffff0000) | r_uint32(byte1))
         return space.wrap_int(byte1 | byte0)
 
     def short_atput0(self, space, index0, w_value):

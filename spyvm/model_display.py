@@ -3,7 +3,7 @@ from spyvm import model, constants, display, error
 from spyvm.util import system
 from rpython.rlib import jit, objectmodel
 from rpython.rtyper.lltypesystem import lltype, rffi
-from rpython.rlib.rarithmetic import r_uint
+from rpython.rlib.rarithmetic import r_uint, r_uint32
 
 
 def from_words_object(w_obj, form):
@@ -63,10 +63,10 @@ class W_DisplayBitmap(model.W_AbstractObjectWithIdentityHash):
         # OH GOD! TODO: Make this sane!
         res = []
         for i in range(self._realsize):
-            res += [chr(self.getword(i) & r_uint(0x000000ff)),
-                    chr((self.getword(i) & r_uint(0x0000ff00)) >> 8),
-                    chr((self.getword(i) & r_uint(0x00ff0000)) >> 16),
-                    chr((self.getword(i) & r_uint(0xff000000)) >> 24)]
+            res += [chr(self.getword(i) & r_uint32(0x000000ff)),
+                    chr((self.getword(i) & r_uint32(0x0000ff00)) >> 8),
+                    chr((self.getword(i) & r_uint32(0x00ff0000)) >> 16),
+                    chr((self.getword(i) & r_uint32(0xff000000)) >> 24)]
         return "".join(res)
 
     def getword(self, n):
@@ -174,8 +174,8 @@ class W_16BitDisplayBitmap(W_DisplayBitmap):
 
     def set_pixelbuffer_word(self, n, word):
         mask = 0b11111
-        lsb = (r_uint(word) & r_uint(0xffff0000)) >> 16
-        msb = (r_uint(word) & r_uint(0x0000ffff))
+        lsb = (r_uint32(word) & r_uint32(0xffff0000)) >> 16
+        msb = (r_uint32(word) & r_uint32(0x0000ffff))
 
         if not system.IS_DARWIN:
             # Invert order of rgb-components

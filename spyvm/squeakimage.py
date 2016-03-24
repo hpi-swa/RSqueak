@@ -3,7 +3,7 @@ from spyvm import constants, model, util, error, storage_contexts, model_display
 from spyvm.util import stream, system
 from spyvm.util.bitmanipulation import splitter
 from rpython.rlib import objectmodel
-from rpython.rlib.rarithmetic import r_ulonglong, intmask, r_uint, r_int64
+from rpython.rlib.rarithmetic import r_ulonglong, intmask, r_uint, r_uint32, r_int64
 from rpython.rlib import jit
 
 # Access for module users
@@ -572,7 +572,7 @@ class SpurReader(BaseReaderStrategy):
             classid_l, _, format_l, _, hash_l, _, overflow_size = splitter[22,2,5,3,22,2,8](self.stream.next_qword())
             classid, format, hash = intmask(classid_l), intmask(format_l), intmask(hash_l)
             assert overflow_size == OVERFLOW_SLOTS, "objects with long header must have 255 in slot count"
-        size = r_uint(size_l) # reading 64 bit images not supported in 32 bit build
+        size = r_uint32(size_l) # reading 64 bit images not supported in 32 bit build
         assert 0 <= format <= 31
         chunk = ImageChunk(size, format, classid, hash)
         # the minimum object length is 16 bytes, i.e. 8 header + 8 payload
@@ -841,8 +841,8 @@ class GenericObject(object):
         return bytes[:stop] # omit odd bytes
 
     def get_ruints(self, required_len=-1):
-        from rpython.rlib.rarithmetic import r_uint
-        words = [r_uint(x) for x in self.chunk.data]
+        from rpython.rlib.rarithmetic import r_uint32
+        words = [r_uint32(x) for x in self.chunk.data]
         if required_len != -1 and len(words) != required_len:
             raise error.CorruptImageError("Expected %d words, got %d" % (required_len, len(words)))
         return words

@@ -19,7 +19,7 @@ from rpython.rlib.exports import export_struct
 from rpython.rtyper.lltypesystem.lltype import FuncType, Ptr
 from rpython.rtyper.lltypesystem import lltype, rffi
 from rpython.rlib.unroll import unrolling_iterable
-from rpython.rlib.rarithmetic import intmask, r_uint
+from rpython.rlib.rarithmetic import intmask
 
 from spyvm import error, model, model_display, objspace, wrapper
 

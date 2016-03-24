@@ -7,7 +7,7 @@ from spyvm.error import PrimitiveFailedError, PrimitiveNotYetWrittenError, MetaP
 from spyvm import wrapper
 
 from rpython.rlib import rfloat, unroll, jit, objectmodel
-from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int, r_int64, int_between
+from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int, r_int64, int_between, r_uint32
 
 def assert_class(interp, w_obj, w_class):
     if not w_obj.getclass(interp.space).is_same_object(w_class):

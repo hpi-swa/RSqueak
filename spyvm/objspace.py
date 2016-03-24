@@ -6,7 +6,7 @@ from spyvm.error import UnwrappingError, WrappingError
 from spyvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX
 from rpython.rlib import jit, rpath
 from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin, we_are_translated
-from rpython.rlib.rarithmetic import intmask, r_uint, int_between, r_int64, r_ulonglong, is_valid_int, r_longlonglong
+from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32, int_between, r_int64, r_ulonglong, is_valid_int, r_longlonglong
 
 class ConstantMixin(object):
     """Mixin for constant values that can be edited, but will be promoted
@@ -195,7 +195,7 @@ class ObjSpace(object):
                 return self.wrap_positive_wordsize_int(intmask(val))
             else:
                 raise WrappingError
-        elif isinstance(val, r_uint):
+        elif isinstance(val, r_uint) or isinstance(val, r_uint32):
             return self.wrap_positive_wordsize_int(intmask(val))
         elif not is_valid_int(val):
             raise WrappingError
