@@ -533,13 +533,14 @@ class SpurReader(BaseReaderStrategy):
                 self.chunks[pos + currentAddressSwizzle] = chunk
             print "bridge at", self.stream.count, "(", self.stream.count + currentAddressSwizzle, ")"
             # read bridge
-            bridgeSpan = intmask(self.stream.next_qword())
-            nextSegmentSize = intmask(self.stream.next_qword())
+            # the additional cast to r_uint32 is for 64bit VMs reading 32bit images
+            bridgeSpan = intmask(r_uint32(self.stream.next_qword()))
+            nextSegmentSize = intmask(r_uint32(self.stream.next_qword()))
             print "bridgeSpan", bridgeSpan, "nextSegmentSize", nextSegmentSize
             # the above causes silent overflow in 32bit builds and 64bit images
             if self.version.is_64bit:
                 # subtract the overflow slots bits which are 255
-                bridgeSpan = intmask(bridgeSpan & ~self.SLOTS_MASK)
+                bridgeSpan = intmask(r_uint32(bridgeSpan & ~self.SLOTS_MASK))
             assert bridgeSpan >= 0
             assert nextSegmentSize >= 0
             assert self.stream.count == segmentEnd
@@ -572,7 +573,7 @@ class SpurReader(BaseReaderStrategy):
             classid_l, _, format_l, _, hash_l, _, overflow_size = splitter[22,2,5,3,22,2,8](self.stream.next_qword())
             classid, format, hash = intmask(classid_l), intmask(format_l), intmask(hash_l)
             assert overflow_size == OVERFLOW_SLOTS, "objects with long header must have 255 in slot count"
-        size = r_uint32(size_l) # reading 64 bit images not supported in 32 bit build
+        size = r_uint(r_uint32(size_l)) # reading 64 bit images not supported in 32 bit build
         assert 0 <= format <= 31
         chunk = ImageChunk(size, format, classid, hash)
         # the minimum object length is 16 bytes, i.e. 8 header + 8 payload
@@ -841,8 +842,8 @@ class GenericObject(object):
         return bytes[:stop] # omit odd bytes
 
     def get_ruints(self, required_len=-1):
-        from rpython.rlib.rarithmetic import r_uint32
-        words = [r_uint32(x) for x in self.chunk.data]
+        from rpython.rlib.rarithmetic import r_uint32, r_uint
+        words = [r_uint(r_uint32(x)) for x in self.chunk.data]
         if required_len != -1 and len(words) != required_len:
             raise error.CorruptImageError("Expected %d words, got %d" % (required_len, len(words)))
         return words
