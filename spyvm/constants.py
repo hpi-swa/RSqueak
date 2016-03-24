@@ -179,7 +179,7 @@ if LONG_BIT == 32:
 elif LONG_BIT == 64:
     IS_64BIT = True
     BYTES_PER_MACHINE_INT = 8
-    BYTES_PER_MACHINE_LONGLONG = 16
+    BYTES_PER_MACHINE_LONGLONG = 8
 else:
     assert False
 
