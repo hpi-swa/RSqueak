@@ -3,8 +3,6 @@ import os
 import shutil
 import socket
 import subprocess
-import sys
-import time
 import urllib
 import urllib2
 
@@ -31,10 +29,8 @@ class Project(object):
             for s in benchmarks:
                 if ';' in s:
                     results = s.split(';')
-                    if len(results) == 2:
+                    if len(results) in [2, 4]:
                         self.add(executable, *results)
-                    elif len(results) == 4:
-                        self.add(executble, *results)
 
     def add(self, executable, benchmark, result, min=None, max=None):
         print "Saving result %s for executable %s, benchmark %s" % (
@@ -42,7 +38,8 @@ class Project(object):
         if min is max is None:
             data = self.build_data(executable, benchmark, result)
         else:
-            data = self.build_extended_data(executable, benchmark, result, min, max)
+            data = self.build_extended_data(executable, benchmark, result, min,
+                                            max)
         params = urllib.urlencode(data)
         response = "None"
         print "Saving result for executable %s, revision %s, benchmark %s" % (
@@ -95,13 +92,14 @@ class Project(object):
         #     'max': 4001.6, # Optional. Default is blank
         #     'min': 3995.1, # Optional. Default is blank
         # }
+
     def build_data_extended(self, executable, benchmark, result, min, max):
-        return dict(self.build_data(executable, benchmark, result),
-            **{
+        return dict(self.build_data(executable, benchmark, result), **{
                 'min': str(min),
                 'max': str(max)
             }
         )
+
 
 class Archive(object):
     def __init__(self, filename, target, func):
@@ -172,7 +170,7 @@ class Executable(object):
             stdout=subprocess.PIPE
         )
         out, err = pipe.communicate()
-        errcode = pipe.wait()
+        # errcode = pipe.wait()
         print out
         return out
 
@@ -182,7 +180,8 @@ def update_image(executable):
     print "Updating image ..."
     with open('update.st', 'w') as f:
         f.write('''Smalltalk snapshot: true andQuit: true.''')
-    print executable.run(["-vm-display-X11", "-headless", "images/%s" % SqueakImage, "../update.st"])
+    print executable.run(["-vm-display-X11", "-headless",
+                          "images/%s" % SqueakImage, "../update.st"])
     os.remove('update.st')
 
 
@@ -210,11 +209,14 @@ Cog = Project(
         Executable(
             "stackvm",
             "stackvm/bin/squeak",
-            "http://squeakvm.org/unix/release/Squeak-4.10.2.2614-linux_i386.tar.gz",
-            callback=(lambda x: subprocess.Popen(["mv", "Squeak-4.10.2.2614-linux_i386", "stackvm"]).wait())
+            "http://squeakvm.org/unix/release/"
+            "Squeak-4.10.2.2614-linux_i386.tar.gz",
+            callback=(lambda x: subprocess.Popen(
+                ["mv", "Squeak-4.10.2.2614-linux_i386", "stackvm"]).wait())
         )
     ],
-    arguments=['-vm-display-null', "images/%s.image" % SqueakImage, '../benchmarks.st'],
+    arguments=["-vm-display-null",
+               "images/%s.image" % SqueakImage, '../benchmarks.st'],
     commitid=cogid
 )
 RSqueakVM = Project(
@@ -223,7 +225,8 @@ RSqueakVM = Project(
         Executable("rsqueak", "bash"),
         # Executable("rsqueak-nojit", "./rsqueak-nojit-c")
     ],
-    arguments=["-c", "./rsqueak images/%s.image -m runSPyBenchmarks > >(tee stdout.log) 2> >(tee stderr.log >&2)" % SqueakImage]
+    arguments=["-c", "./rsqueak images/%s.image -m runSPyBenchmarks > >(tee "
+               "stdout.log) 2> >(tee stderr.log >&2)" % SqueakImage]
 )
 
 
