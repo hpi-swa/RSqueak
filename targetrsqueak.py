@@ -9,9 +9,24 @@ from spyvm.util import system
 sys.setrecursionlimit(15000)
 
 def _compile_time_version():
-    import subprocess
-    return subprocess.check_output(
-        ["git", "log", "--format=format:\"%ai %h%d\"", "-n", "1"])
+    if os.environ.get("APPVEYOR", None):
+        return "%s %s (%s)" % (
+            os.environ["APPVEYOR_REPO_COMMIT_TIMESTAMP"],
+            os.environ["APPVEYOR_REPO_COMMIT"][0:6],
+            os.environ.get("APPVEYOR_REPO_TAG_NAME", None) || os.environ["APPVEYOR_REPO_BRANCH"]
+        )
+    elif os.environ.get("TRAVIS", None):
+        import subprocess
+        timestamp = subprocess.check_output(["git", "log", "--format=format:\"%ai\"", "-n", "1"])
+        return "%s %s (%s)" % (
+            timestamp,
+            os.environ["TRAVIS_COMMIT"][0:6],
+            os.environ.get("TRAVIS_TAG", None) || os.environ["TRAVIS_BRANCH"]
+        )
+    else:
+        import subprocess
+        return subprocess.check_output(
+            ["git", "log", "--format=format:\"Home-built: %ai %h%d\"", "-n", "1"])
 VERSION = _compile_time_version()
 BUILD_DATE = "%s +0000" % time.asctime(time.gmtime())
 
