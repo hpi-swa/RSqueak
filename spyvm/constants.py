@@ -1,6 +1,5 @@
 import sys
 import time
-from rpython.rlib.jit import elidable
 from rpython.rlib.rarithmetic import r_longlong, r_uint
 
 from spyvm.util.bitmanipulation import splitter
@@ -23,7 +22,7 @@ CLASS_NAME_INDEX = 6                # in the mini.image, at least
 # MethodDict
 METHODDICT_TALLY_INDEX = 0
 METHODDICT_VALUES_INDEX = 1
-METHODDICT_NAMES_INDEX  = 2
+METHODDICT_NAMES_INDEX = 2
 
 # Message
 MESSAGE_SELECTOR_INDEX = 0
@@ -65,9 +64,9 @@ FORM_DEPTH = 3
 
 COMPILED_METHOD_FULL_FRAME_SIZE = 56
 COMPILED_METHOD_SMALL_FRAME_SIZE = 16
-LITERAL_START = 1 # index of the first literal after the method header
+LITERAL_START = 1  # index of the first literal after the method header
 BYTES_PER_WORD = 4
-WORDS_IN_FLOAT = 2 # Fixed number of word-slots in a Squeak Float object
+WORDS_IN_FLOAT = 2  # Fixed number of word-slots in a Squeak Float object
 INTERP_PROXY_MAJOR = 1
 INTERP_PROXY_MINOR = 13
 
@@ -85,7 +84,7 @@ SO_BITMAP_CLASS = 4
 SO_SMALLINTEGER_CLASS = 5
 SO_STRING_CLASS = 6
 SO_ARRAY_CLASS = 7
-SO_SMALLTALK = 8 # Deprecated
+SO_SMALLTALK = 8  # Deprecated
 SO_FLOAT_CLASS = 9
 SO_METHODCONTEXT_CLASS = 10
 SO_BLOCKCONTEXT_CLASS = 11
@@ -99,7 +98,7 @@ SO_SEMAPHORE_CLASS = 18
 SO_CHARACTER_CLASS = 19
 SO_DOES_NOT_UNDERSTAND = 20
 SO_CANNOT_RETURN = 21
-SO_PROCESS_SIGNALIGN_LOW_SPACE = 22 # the process that triggered the low space semaphore. mostly nil
+SO_PROCESS_SIGNALIGN_LOW_SPACE = 22  # the process that triggered the low space semaphore. mostly nil
 SO_SPECIAL_SELECTORS_ARRAY = 23
 SO_CHARACTER_TABLE_ARRAY = 24
 SO_MUST_BE_BOOLEAN = 25
@@ -112,9 +111,9 @@ SO_FLOAT_ZERO = 31
 SO_LARGEPOSITIVEINTEGER_ZERO = 32
 SO_A_POINT = 33
 SO_CANNOT_INTERPRET = 34
-SO_A_METHODCONTEXT = 35 # deprecated in closure images
+SO_A_METHODCONTEXT = 35  # deprecated in closure images
 SO_BLOCKCLOSURE_CLASS = 36
-SO_A_BLOCKCONTEXT = 37 # deprecated in closure images
+SO_A_BLOCKCONTEXT = 37  # deprecated in closure images
 SO_EXTERNAL_OBJECTS_ARRAY = 38
 SO_PSEUDOCONTEXT_CLASS = 39
 SO_TRANSLATEDMETHOD_CLASS = 40
@@ -124,22 +123,22 @@ SO_RUN_WITH_IN = 49
 
 # XXX more missing?
 classes_in_special_object_table = {
-    "Bitmap" : SO_BITMAP_CLASS,
-    "SmallInteger" : SO_SMALLINTEGER_CLASS,
-    "String" : SO_STRING_CLASS,
-    "Array" : SO_ARRAY_CLASS,
-    "Float" : SO_FLOAT_CLASS,
-    "MethodContext" : SO_METHODCONTEXT_CLASS,
-    "BlockContext" : SO_BLOCKCONTEXT_CLASS,
-    "BlockClosure" : SO_BLOCKCLOSURE_CLASS,
-    "Point" : SO_POINT_CLASS,
-    "LargePositiveInteger" : SO_LARGEPOSITIVEINTEGER_CLASS,
-    "Message" : SO_MESSAGE_CLASS,
-    "CompiledMethod" : SO_COMPILEDMETHOD_CLASS,
-    "Semaphore" : SO_SEMAPHORE_CLASS,
-    "Character" : SO_CHARACTER_CLASS,
-    "ByteArray" : SO_BYTEARRAY_CLASS,
-    "Process" : SO_PROCESS_CLASS,
+    "Bitmap": SO_BITMAP_CLASS,
+    "SmallInteger": SO_SMALLINTEGER_CLASS,
+    "String": SO_STRING_CLASS,
+    "Array": SO_ARRAY_CLASS,
+    "Float": SO_FLOAT_CLASS,
+    "MethodContext": SO_METHODCONTEXT_CLASS,
+    "BlockContext": SO_BLOCKCONTEXT_CLASS,
+    "BlockClosure": SO_BLOCKCLOSURE_CLASS,
+    "Point": SO_POINT_CLASS,
+    "LargePositiveInteger": SO_LARGEPOSITIVEINTEGER_CLASS,
+    "Message": SO_MESSAGE_CLASS,
+    "CompiledMethod": SO_COMPILEDMETHOD_CLASS,
+    "Semaphore": SO_SEMAPHORE_CLASS,
+    "Character": SO_CHARACTER_CLASS,
+    "ByteArray": SO_BYTEARRAY_CLASS,
+    "Process": SO_PROCESS_CLASS,
 #    "PseudoContext" : SO_PSEUDOCONTEXT_CLASS,
 #    "TranslatedMethod" : SO_TRANSLATEDMETHOD_CLASS,
     "LargeNegativeInteger" : SO_LARGENEGATIVEINTEGER_CLASS,
@@ -150,16 +149,16 @@ objects_in_special_object_table = {
     "true": SO_TRUE,
     "false": SO_FALSE,
     "charactertable": SO_CHARACTER_TABLE_ARRAY,
-    "schedulerassociationpointer" : SO_SCHEDULERASSOCIATIONPOINTER,
+    "schedulerassociationpointer": SO_SCHEDULERASSOCIATIONPOINTER,
     "special_selectors": SO_SPECIAL_SELECTORS_ARRAY,
-    "smalltalkdict" : SO_SMALLTALK,
-    "display" : SO_DISPLAY_OBJECT,
-    "doesNotUnderstand" : SO_DOES_NOT_UNDERSTAND,
-    "mustBeBoolean" : SO_MUST_BE_BOOLEAN,
-    "interrupt_semaphore" : SO_USER_INTERRUPT_SEMAPHORE,
-    "timerSemaphore" : SO_TIMER_SEMAPHORE,
-    "runWithIn" : SO_RUN_WITH_IN,
-    "cannotReturn" : SO_CANNOT_RETURN,
+    "smalltalkdict": SO_SMALLTALK,
+    "display": SO_DISPLAY_OBJECT,
+    "doesNotUnderstand": SO_DOES_NOT_UNDERSTAND,
+    "mustBeBoolean": SO_MUST_BE_BOOLEAN,
+    "interrupt_semaphore": SO_USER_INTERRUPT_SEMAPHORE,
+    "timerSemaphore": SO_TIMER_SEMAPHORE,
+    "runWithIn": SO_RUN_WITH_IN,
+    "cannotReturn": SO_CANNOT_RETURN,
 }
 
 LONG_BIT = 32
@@ -208,12 +207,12 @@ def decode_compiled_method_header(header):
 def decode_alternate_compiled_method_header(header):
     """Decode 30-bit method header and apply new format.
 
-	(index 0)	16 bits:	number of literals (#numLiterals)
-	(index 16)	  1 bit:	has primitive
-	(index 17)	  1 bit:	whether a large frame size is needed (#frameSize)
-	(index 18)	  6 bits:	number of temporary variables (#numTemps)
-	(index 24)	  4 bits:	number of arguments to the method (#numArgs)
-	(index 28)	  2 bits:	reserved for an access modifier (00-unused, 01-private, 10-protected, 11-public)
+    (index 0)	16 bits:	number of literals (#numLiterals)
+    (index 16)	  1 bit:	has primitive
+    (index 17)	  1 bit:	whether a large frame size is needed (#frameSize)
+    (index 18)	  6 bits:	number of temporary variables (#numTemps)
+    (index 24)	  4 bits:	number of arguments to the method (#numArgs)
+    (index 28)	  2 bits:	reserved for an access modifier (00-unused, 01-private, 10-protected, 11-public)
     """
     literalsize, has_primitive, islarge, tempsize, numargs, access_mod = (
             splitter[16,1,1,6,4,2](header))

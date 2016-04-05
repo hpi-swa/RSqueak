@@ -39,7 +39,7 @@ def sel(selector):
             while True:
                 s_super = s_cls.s_superclass()
                 w_selector = space.find_symbol_in_methoddict(
-                    selector, s_cls, fail=s_super is None) # raises if appropriate
+                    selector, s_cls, fail=s_super is None)  # raises if appropriate
                 if w_selector:
                     return w_selector
                 s_cls = s_cls.s_superclass()

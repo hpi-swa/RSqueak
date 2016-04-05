@@ -1,9 +1,8 @@
 import os, stat, sys
 
 from rpython.rlib import jit, rarithmetic
-from rpython.rlib.listsort import TimSort
 
-from spyvm import model, model_display, error
+from spyvm import model, model_display
 from spyvm.plugins.plugin import Plugin
 from spyvm.primitives import PrimitiveFailedError, index1_0
 from spyvm.util.system import IS_WINDOWS

@@ -2,7 +2,7 @@
 import weakref, sys
 from spyvm import model, constants
 from spyvm.util.version import VersionMixin, constant_for_version_arg2
-from rpython.rlib import objectmodel, jit
+from rpython.rlib import jit
 from rpython.rlib.objectmodel import import_from_mixin
 from rpython.rlib.rstrategies import rstrategies as rstrat
 

@@ -1,9 +1,7 @@
-from rpython.translator.tool.cbuild import ExternalCompilationInfo
-from rpython.translator.platform import CompilationError
-from rpython.rtyper.lltypesystem import lltype, rffi
-from rpython.rtyper.tool import rffi_platform as platform
-import py
 import os, sys, subprocess
+import py
+from rpython.translator.tool.cbuild import ExternalCompilationInfo
+from rpython.rtyper.lltypesystem import rffi
 from spyvm.util import system
 
 assert system.IS_LINUX
@@ -18,12 +16,12 @@ if subprocess.call("fltk-config --version", shell=True) == 0:
     cflags = subprocess.check_output("fltk-config --cxxflags", shell=True).strip().split()
     ldflags = subprocess.check_output("fltk-config --ldstaticflags", shell=True).strip().split()
     eci = ExternalCompilationInfo(
-        includes = [str(this_dir.join('linux/file_chooser.h'))],
-        link_files = [str(this_dir.join('linux/file_chooser.cxx'))],
-        libraries = ["stdc++"],
-        compile_extra = cflags,
-        link_extra = ldflags,
-        separate_module_sources = ["""
+        includes=[str(this_dir.join('linux/file_chooser.h'))],
+        link_files=[str(this_dir.join('linux/file_chooser.cxx'))],
+        libraries=["stdc++"],
+        compile_extra=cflags,
+        link_extra=ldflags,
+        separate_module_sources=["""
         int irrelevant_caller_of_target_function(char* buffer, int len)
         {
             return RSqueakOpenFileDialog_linux(buffer, len);
@@ -31,7 +29,9 @@ if subprocess.call("fltk-config --version", shell=True) == 0:
         """]
     )
 
-    __llget_file = rffi.llexternal('RSqueakOpenFileDialog_linux', [rffi.CCHARP, rffi.INT], rffi.INT, compilation_info=eci)
+    __llget_file = rffi.llexternal('RSqueakOpenFileDialog_linux',
+                                   [rffi.CCHARP, rffi.INT], rffi.INT,
+                                   compilation_info=eci)
     def fltk_get_file():
         charp = rffi.str2charp("".join(["\0"] * 260))
         res = __llget_file(charp, 260)

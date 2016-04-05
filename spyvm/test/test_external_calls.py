@@ -22,7 +22,7 @@ def _prim(space, code, stack, context = None):
     prim_table[code](interp, w_frame.as_context_get_shadow(space), argument_count-1, context and context.as_context_get_shadow(space).w_method())
     res = w_frame.as_context_get_shadow(space).pop()
     s_frame = w_frame.as_context_get_shadow(space)
-    assert not s_frame.stackdepth() - s_frame.tempsize() # check args are consumed
+    assert not s_frame.stackdepth() - s_frame.tempsize()  # check args are consumed
     return res
 
 def prim(code, stack, context = None):

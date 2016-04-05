@@ -1,10 +1,5 @@
-from spyvm import model_display, model
-from spyvm.error import PrimitiveFailedError, SimulatedPrimitiveFailedError, MetaPrimFailed
-from spyvm.storage import AbstractCachingShadow
+from spyvm.error import SimulatedPrimitiveFailedError
 from spyvm.plugins.plugin import Plugin
-
-from rpython.rlib import jit, objectmodel
-from rpython.rlib.rarithmetic import r_uint, intmask
 
 # If an EXTERNAL_CALL for the given moduleName and functionName is not found,
 # the SimulationPlugin is used to enable the image simulating that primitive.

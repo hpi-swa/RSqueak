@@ -22,6 +22,6 @@ SCROLLLOCK = 212
 # unused and unsure
 WINDOWS = 91
 CONTEXT_MENU = 216
-FN = 216 # behaves like a modifier key in Windows Cog (no EventKeyChar)
-PRIOR = 11 # from Windows VM
-NEXT = 12 # from Windows VM
+FN = 216  # behaves like a modifier key in Windows Cog (no EventKeyChar)
+PRIOR = 11  # from Windows VM
+NEXT = 12  # from Windows VM
