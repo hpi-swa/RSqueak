@@ -1,6 +1,6 @@
 
 from spyvm import model, constants, error, wrapper
-from spyvm.storage import AbstractStrategy, ShadowMixin, AbstractGenericShadow
+from spyvm.storage import AbstractStrategy, ShadowMixin
 from rpython.tool.pairtype import extendabletype
 from rpython.rlib import jit, objectmodel
 from rpython.rlib.objectmodel import import_from_mixin
@@ -123,9 +123,9 @@ class ContextPartShadow(AbstractStrategy):
 
     def fields_to_convert_first(self):
         if self.pure_is_block_context():
-            return [ constants.BLKCTX_HOME_INDEX ]
+            return [constants.BLKCTX_HOME_INDEX]
         else:
-            return [ constants.MTHDCTX_METHOD, constants.MTHDCTX_CLOSURE_OR_NIL ]
+            return [constants.MTHDCTX_METHOD, constants.MTHDCTX_CLOSURE_OR_NIL]
 
     def get_extra_data(self):
         if self.extra_data is None:
@@ -193,7 +193,7 @@ class ContextPartShadow(AbstractStrategy):
             return self.store_unwrap_pc(w_value)
         if n0 == constants.CTXPART_STACKP_INDEX:
             return self.unwrap_store_stackpointer(w_value)
-        if self.stackstart() <= n0 < self.external_stackpointer(): # XXX can be simplified?
+        if self.stackstart() <= n0 < self.external_stackpointer():  # XXX can be simplified?
             temp_i = self.stackdepth() - (n0-self.stackstart()) - 1
             assert temp_i >= 0
             return self.set_top(w_value, temp_i)
@@ -390,7 +390,7 @@ class ContextPartShadow(AbstractStrategy):
             stacksize = method.compute_frame_size()
         else:
             # TODO why not use method.compute_frame_size for BlockContext too?
-            stacksize = self.stacksize() # no temps
+            stacksize = self.stacksize()  # no temps
         return stacksize
 
     def init_temps_and_stack(self):
@@ -398,7 +398,7 @@ class ContextPartShadow(AbstractStrategy):
         stacksize = self.full_stacksize()
         self._temps_and_stack = [self.space.w_nil] * stacksize
         tempsize = self.tempsize()
-        self._stack_ptr = tempsize # we point after the last element
+        self._stack_ptr = tempsize  # we point after the last element
 
     def stack_get(self, index0):
         assert index0 >= 0
@@ -513,7 +513,7 @@ class ContextPartShadow(AbstractStrategy):
             return self.method_str_method_context()
 
     def argument_strings(self):
-        return [ w_arg.as_repr_string() for w_arg in self.w_arguments() ]
+        return [w_arg.as_repr_string() for w_arg in self.w_arguments()]
 
     def __str__(self):
         retval = self.short_str()
@@ -557,7 +557,6 @@ class ContextPartShadow(AbstractStrategy):
         else:
             desc = self.short_str()
         return padding + ' ', '%s\n%s%s' % (ret_str, padding, desc)
-
 
 
 class __extend__(ContextPartShadow):
@@ -690,7 +689,8 @@ class __extend__(ContextPartShadow):
     # === Initialization ===
 
     @staticmethod
-    def build_method_context(space, w_method, w_receiver, arguments=[], closure=None, s_fallback=None):
+    def build_method_context(space, w_method, w_receiver, arguments=[],
+                             closure=None, s_fallback=None):
         w_method = jit.promote(w_method)
         s_MethodContext = space.w_MethodContext.as_class_get_shadow(space)
         size = w_method.compute_frame_size() + s_MethodContext.instsize()
@@ -749,7 +749,7 @@ class __extend__(ContextPartShadow):
             self.store_w_receiver(w_value)
             return
         temp_i = n0-constants.MTHDCTX_TEMP_FRAME_START
-        if (0 <=  temp_i < self.tempsize()):
+        if (0 <= temp_i < self.tempsize()):
             return self.settemp(temp_i, w_value)
         else:
             return self.store_context_part(n0, w_value)
@@ -824,7 +824,7 @@ class __extend__(ContextPartShadow):
 
     def w_arguments_method_context(self):
         argcount = self.w_method().argsize
-        return [ self.stack_get(i) for i in range(argcount) ]
+        return [self.stack_get(i) for i in range(argcount)]
 
     def method_str_method_context(self):
         block = '[] in ' if self.is_closure_context() else ''

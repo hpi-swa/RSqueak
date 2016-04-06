@@ -1,5 +1,5 @@
-from rpython.rlib import rsocket, _rsocket_rffi, jit, rarithmetic, objectmodel
-from spyvm import model, error, constants
+from rpython.rlib import rsocket, _rsocket_rffi, jit, objectmodel
+from spyvm import model, error
 from spyvm.plugins.plugin import Plugin
 import errno
 
@@ -131,7 +131,7 @@ class W_SocketHandle(model.W_AbstractObjectWithIdentityHash):
     def close(self):
         if (self.state == Connected or
             self.state == OtherEndClosed or
-            self.state == WaitingForConnection):
+                self.state == WaitingForConnection):
             self.socket.close()
             self.state = Unconnected
 

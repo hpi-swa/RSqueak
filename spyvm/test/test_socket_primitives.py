@@ -41,7 +41,7 @@ def prim(name, module=None, stack = None, context = None):
     call()
     res = w_frame.as_context_get_shadow(space).pop()
     s_frame = w_frame.as_context_get_shadow(space)
-    assert not s_frame.stackdepth() - s_frame.tempsize() # check args are consumed
+    assert not s_frame.stackdepth() - s_frame.tempsize()  # check args are consumed
     return res
 
 def prim_fails(name, module, stack):

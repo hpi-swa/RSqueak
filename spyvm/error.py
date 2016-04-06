@@ -43,7 +43,8 @@ class MissingBytecode(SmalltalkException):
     """Bytecode not implemented yet."""
     exception_type = "MissingBytecode"
     def __init__(self, bytecodename):
-        SmalltalkException.__init__(self, "Missing bytecode encountered: %s" % bytecodename)
+        SmalltalkException.__init__(
+                self, "Missing bytecode encountered: %s" % bytecodename)
 
 class Exit(Exception):
     _attrs_ = ["msg"]
@@ -54,7 +55,10 @@ class CorruptImageError(Exit):
     pass
 
 class MetaPrimFailed(SmalltalkException):
-    """Indicates that the simulated primitive code failed and that the fallback code should be invoked."""
+    """
+    Indicates that the simulated primitive code failed and that the fallback
+    code should be invoked.
+    """
     exception_type = "MetaPrimFailed"
     _attrs_ = ["s_frame", "error_code"]
 

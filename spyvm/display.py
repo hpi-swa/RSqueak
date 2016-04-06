@@ -1,9 +1,9 @@
 from rpython.rlib.rarithmetic import r_uint, intmask
 from rpython.rtyper.lltypesystem import lltype, rffi
-from rpython.rlib.runicode import unicode_encode_utf_8
+# from rpython.rlib.runicode import unicode_encode_utf_8
 from rpython.rlib import jit
 
-from rsdl import RSDL, RSDL_helper
+from rsdl import RSDL
 import key_constants
 
 
@@ -59,7 +59,7 @@ class SDLDisplay(object):
         self.screen_surface = lltype.nullptr(RSDL.Surface)
         self.has_surface = False
         self.mouse_position = [0, 0]
-        self.interrupt_key = 15 << 8 # pushing all four meta keys, of which we support three...
+        self.interrupt_key = 15 << 8  # pushing all four meta keys, of which we support three...
         self.button = 0
         self.key = 0
         self.width = 0
@@ -101,15 +101,16 @@ class SDLDisplay(object):
         self.depth = d
         if self.window == lltype.nullptr(RSDL.WindowPtr.TO):
             self.create_window_and_renderer(x=RSDL.WINDOWPOS_UNDEFINED,
-                    y=RSDL.WINDOWPOS_UNDEFINED,
-                    width=w,
-                    height=h)
+                                            y=RSDL.WINDOWPOS_UNDEFINED,
+                                            width=w,
+                                            height=h)
         if self.screen_texture != lltype.nullptr(RSDL.TexturePtr.TO):
             RSDL.DestroyTexture(self.screen_texture)
         if self.screen_surface != lltype.nullptr(RSDL.Surface):
             RSDL.FreeSurface(self.screen_surface)
         self.has_surface = True
-        self.screen_texture = RSDL.CreateTexture(self.renderer,
+        self.screen_texture = RSDL.CreateTexture(
+                self.renderer,
                 RSDL.PIXELFORMAT_ARGB8888, RSDL.TEXTUREACCESS_STREAMING,
                 w, h)
         if not self.screen_texture:
@@ -229,7 +230,7 @@ class SDLDisplay(object):
         elif sym == RSDL.K_PRINTSCREEN:
             self.key = key_constants.PRINT
         else:
-            self.key = rffi.cast(rffi.INT, sym) # use SDL's keycode
+            self.key = rffi.cast(rffi.INT, sym)  # use SDL's keycode
             # this is the lowercase ascii-value for the most common keys
         # elif char != 0:
         #     chars = unicode_encode_utf_8(unichr(char), 1, "ignore")
@@ -259,8 +260,8 @@ class SDLDisplay(object):
         window_event = rffi.cast(RSDL.WindowEventPtr, event)
         if r_uint(window_event.c_event) == RSDL.WINDOWEVENT_RESIZED:
             self.set_video_mode(w=window_event.c_data1,
-                    h=window_event.c_data2,
-                    d=self.depth)
+                                h=window_event.c_data2,
+                                d=self.depth)
 
     def get_next_mouse_event(self, time):
         mods = self.get_modifier_mask(3)
@@ -281,7 +282,6 @@ class SDLDisplay(object):
 
     def get_next_key_event(self, key_event_type, time):
         mods = self.get_modifier_mask(0)
-        btn = self.button
         return [EventTypeKeyboard,
                 time,
                 self.key,

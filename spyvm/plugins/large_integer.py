@@ -1,12 +1,8 @@
-from spyvm import model
 from spyvm.primitives import prim_table, \
     BIT_AND, BIT_OR, BIT_XOR, BIT_SHIFT, ADD, SUBTRACT, DIVIDE, MULTIPLY, \
     pos_32bit_int
 from spyvm.error import PrimitiveFailedError
 from spyvm.plugins.plugin import Plugin
-
-from rpython.rlib.rarithmetic import r_longlong, intmask, r_uint, ovfcheck
-import operator
 
 LargeIntegerPlugin = Plugin()
 

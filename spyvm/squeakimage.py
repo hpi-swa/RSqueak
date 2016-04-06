@@ -1,5 +1,5 @@
 import os, time
-from spyvm import constants, model, util, error, storage_contexts, model_display, wrapper
+from spyvm import constants, model, error, model_display, wrapper
 from spyvm.util import stream, system
 from spyvm.util.bitmanipulation import splitter
 from rpython.rlib import objectmodel
@@ -26,7 +26,8 @@ class ImageVersion(object):
         "magic", "is_big_endian", "is_64bit", "has_closures",
         "has_floats_reversed", "is_spur"]
 
-    def __init__(self, magic, is_big_endian, is_64bit, has_closures, has_floats_reversed, is_spur=False):
+    def __init__(self, magic, is_big_endian, is_64bit, has_closures,
+                 has_floats_reversed, is_spur=False):
         self.magic = magic
         self.is_big_endian = is_big_endian
         self.is_64bit = is_64bit
@@ -199,7 +200,7 @@ class BaseReaderStrategy(object):
         # 1 word headersize
         self.headersize = self.stream.next()
         # 1 word size of the full image
-        self.endofmemory = self.stream.next() # endofmemory = bodysize
+        self.endofmemory = self.stream.next()  # endofmemory = bodysize
         # 1 word old base address
         self.oldbaseaddress = self.stream.next()
         # 1 word pointer to special objects array
@@ -239,7 +240,7 @@ class BaseReaderStrategy(object):
 
     def init_g_object(self, chunk):
         init_g_objects_driver.jit_merge_point(self=self, chunk=chunk)
-        chunk.as_g_object(jit.promote(self), self.space) # initialize g_object
+        chunk.as_g_object(jit.promote(self), self.space)  # initialize g_object
 
     def assign_prebuilt_constants(self):
         # Assign classes and objects that in special objects array that are already created.
@@ -510,9 +511,9 @@ class SpurReader(BaseReaderStrategy):
         BaseReaderStrategy.continue_read_header(self)
         self.hdrNumStackPages = self.stream.next_short()
         self.hdrCogCodeSize = self.stream.next_short()
-        self.hdrEdenBytes = self.stream.next() # nextWord32
+        self.hdrEdenBytes = self.stream.next()  # nextWord32
         self.hdrMaxExtSemTabSize = self.stream.next_short()
-        self.stream.skipbytes(2) # unused, realign to word boundary
+        self.stream.skipbytes(2)  # unused, realign to word boundary
         self.firstSegSize = self.stream.next()
         self.freeOldSpaceInImage = self.stream.next()
 
@@ -572,7 +573,7 @@ class SpurReader(BaseReaderStrategy):
             classid_l, _, format_l, _, hash_l, _, overflow_size = splitter[22,2,5,3,22,2,8](self.stream.next_qword())
             classid, format, hash = intmask(classid_l), intmask(format_l), intmask(hash_l)
             assert overflow_size == OVERFLOW_SLOTS, "objects with long header must have 255 in slot count"
-        size = r_uint(size_l) # reading 64 bit images not supported in 32 bit build
+        size = r_uint(size_l)  # reading 64 bit images not supported in 32 bit build
         assert 0 <= format <= 31
         chunk = ImageChunk(size, format, classid, hash)
         # the minimum object length is 16 bytes, i.e. 8 header + 8 payload
@@ -798,7 +799,7 @@ class GenericObject(object):
         self._format = chunk.format
         self.chunk = chunk # for bytes, words and compiledmethod
         self.init_class()
-        self.init_data(space) # for pointers
+        self.init_data(space)  # for pointers
         self.w_object = None
 
     @property
@@ -820,7 +821,7 @@ class GenericObject(object):
         elif self.reader.iscompiledmethod(self):
             header = self.chunk.data[0] >> 1 # untag tagged int
             literalsize = self.reader.literal_count_of_method_header(header)
-            self.pointers = self.reader.decode_pointers(self, space, literalsize + 1) # adjust +1 for the header
+            self.pointers = self.reader.decode_pointers(self, space, literalsize + 1)  # adjust +1 for the header
 
     def init_w_object(self, space):
         if self.w_object is None:
@@ -977,8 +978,8 @@ class SpurImageWriter(object):
             return obj.varsize()
         elif isinstance(obj, model.W_PreSpurCompiledMethod):
             if obj.primitive() != 0:
-                return obj.varsize() + 3 # account for three extra bytes with
-                                         # primitive idx
+                return obj.varsize() + 3  # account for three extra bytes with
+                                          # primitive idx
             else:
                 return obj.varsize()
         else:
@@ -1031,30 +1032,30 @@ class SpurImageWriter(object):
         sp_obj_oop = self.oop_map[self.image.special_objects]
         image_header_size = 64 if self.word_size == 4 else 128
         displaysize = self.image.lastWindowSize
-        hdrflags = (0 + # 0/1 fullscreen or not
-                    0b10 + # 0/2 imageFloatsLittleEndian or not
-                    0x10 + # preemption does not yield
-                    0) # old finalization
+        hdrflags = (0 +  # 0/1 fullscreen or not
+                    0b10 +  # 0/2 imageFloatsLittleEndian or not
+                    0x10 +  # preemption does not yield
+                    0)  # old finalization
         self.f.seek(0, 0)
         version = 6521
         if self.space.uses_block_contexts.is_set():
-            version = 0x1234 # our custom version magic
+            version = 0x1234  # our custom version magic
         self.write_word(version)
-        self.write_word(image_header_size) # hdr size
-        self.write_word(self.next_chunk - image_header_size) # memory size
-        self.write_word(image_header_size) # start of memory
+        self.write_word(image_header_size)  # hdr size
+        self.write_word(self.next_chunk - image_header_size)  # memory size
+        self.write_word(image_header_size)  # start of memory
         self.write_word(sp_obj_oop)
-        self.write_word(0xffee) # last hash
+        self.write_word(0xffee)  # last hash
         self.write_word(displaysize)
         self.write_word(hdrflags)
-        self.write_word(0) # extra VM memory
-        self.write_word(0) # (num stack pages << 16) | cog code size
-        self.write_word(0) # eden bytes
-        self.write_word(0) # max ext semaphore size << 16
-        self.write_word(self.next_chunk - image_header_size) # first segment size
-        self.write_word(0) # free old space in image
-        self.write_word(0) # padding
-        self.write_word(0) # padding
+        self.write_word(0)  # extra VM memory
+        self.write_word(0)  # (num stack pages << 16) | cog code size
+        self.write_word(0)  # eden bytes
+        self.write_word(0)  # max ext semaphore size << 16
+        self.write_word(self.next_chunk - image_header_size)  # first segment size
+        self.write_word(0)  # free old space in image
+        self.write_word(0)  # padding
+        self.write_word(0)  # padding
 
     def write_last_bridge(self):
         self.next_chunk = self.next_chunk + 16
@@ -1151,23 +1152,23 @@ class SpurImageWriter(object):
             self.write_word(obj.getheader())
         else:
             newheader = (obj.literalsize # 15 bits
-                         | (0 << 15) # is optimized, 1 bit
-                         | ((1 if (obj.primitive() != 0) else 0) << 16) # 1 bit
-                         | ((1 if obj.islarge else 0) << 17) # 1 bit
-                         | (obj.tempsize() << 18) # 6 bits
-                         | (obj.argsize << 24) # 4 bits
-                         | (0 << 28) # access mod, 2 bits
-                         | (0 << 30)) # instruction set bit, 1 bit
-            self.write_word((newheader << 1) + 1) # header is saved as tagged int
+                         | (0 << 15)  # is optimized, 1 bit
+                         | ((1 if (obj.primitive() != 0) else 0) << 16)  # 1 bit
+                         | ((1 if obj.islarge else 0) << 17)  # 1 bit
+                         | (obj.tempsize() << 18)  # 6 bits
+                         | (obj.argsize << 24)  # 4 bits
+                         | (0 << 28)  # access mod, 2 bits
+                         | (0 << 30))  # instruction set bit, 1 bit
+            self.write_word((newheader << 1) + 1)  # header is saved as tagged int
         for i in range(obj.getliteralsize() / constants.BYTES_PER_WORD):
             self.write_word(self.reserve(obj.getliteral(i)))
         paddingbytes = 0
         if (not self.space.is_spur.is_set()) and obj.primitive() != 0:
             # we must insert the primitive bytecode and index into the first
             # three bytes
-            self.f.write(chr(139)) # call prim bytecode
-            self.f.write(chr(obj.primitive() & 255)) # lower bits
-            self.f.write(chr((obj.primitive() >> 8) & 255)) # higher bits
+            self.f.write(chr(139))  # call prim bytecode
+            self.f.write(chr(obj.primitive() & 255))  # lower bits
+            self.f.write(chr((obj.primitive() >> 8) & 255))  # higher bits
             paddingbytes = self.word_size - ((len(cmbytes) + 3) % self.word_size)
         else:
             paddingbytes = self.word_size - (len(cmbytes) % self.word_size)

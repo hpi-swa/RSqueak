@@ -1,6 +1,6 @@
 import pdb
 from spyvm.storage_contexts import ContextPartShadow
-from spyvm import model, constants, primitives, error
+from spyvm import model, primitives, error
 
 # This module patches up the interpreter and adds breakpoints at certain execution points.
 # Only usable in interpreted mode due to pdb.
@@ -51,22 +51,24 @@ def activate_debugging():
     def debug_bytecode(original):
         def meth(self, interp):
             if interp.step_bytecodes:
-                _break() # Continue stepping from here to get to the current bytecode execution
+                _break()  # Continue stepping from here to get to the current bytecode execution
         return meth
 
     @patch_context
     def _sendSelector(original):
-        def meth(self, w_selector, argcount, interp, receiver, receiverclassshadow, w_arguments=None):
+        def meth(self, w_selector, argcount, interp, receiver,
+                 receiverclassshadow, w_arguments=None):
             if interp.step_sends:
-                _break() # Continue stepping from here to get to the current message send
-            return original(self, w_selector, argcount, interp, receiver, receiverclassshadow, w_arguments=w_arguments)
+                _break()  # Continue stepping from here to get to the current message send
+            return original(self, w_selector, argcount, interp, receiver,
+                            receiverclassshadow, w_arguments=w_arguments)
         return meth
 
     @patch_context
     def _return(original):
         def meth(self, return_value, interp, local_return=False):
             if interp.step_returns:
-                _break() # Continue stepping from here to get to the current return
+                _break()  # Continue stepping from here to get to the current return
             return original(self, return_value, interp, local_return=local_return)
         return meth
 
@@ -74,12 +76,12 @@ def activate_debugging():
     def _call_primitive(original):
         def meth(self, code, interp, argcount, w_method, w_selector):
             if interp.step_primitives:
-                _break() # Continue stepping from here to get to the current primitive
+                _break()  # Continue stepping from here to get to the current primitive
             try:
                 return original(self, code, interp, argcount, w_method, w_selector)
             except error.PrimitiveFailedError, e:
                 if interp.step_failed_primitives:
-                    _break() # Continue stepping from here to get to the current failed primitive.
+                    _break()  # Continue stepping from here to get to the current failed primitive.
 
                     # Should fail again.
                     original(self, code, interp, argcount, w_method, w_selector)
@@ -91,7 +93,7 @@ def activate_debugging():
                 return original(interp, s_frame, argcount, w_method=w_method)
             except error.PrimitiveFailedError, e:
                 if interp.step_failed_named_primitives:
-                    _break() # Continue from here to get to the current failed named primitive.
+                    _break()  # Continue from here to get to the current failed named primitive.
 
                     space = interp.space
                     w_description = w_method.literalat0(space, 1)

@@ -815,8 +815,8 @@ def test_bc_primBytecodeAt_with_instvars():
     #   ^ self at: 1
     w_fakeclass = bootstrap_class(1, name='fakeclass', varsized=True)
     w_fakeinst = w_fakeclass.as_class_get_shadow(space).new(1)
-    w_fakeinst.store(space, 0, space.wrap_char("a")) # static slot 0: instance variable
-    w_fakeinst.store(space, 1, space.wrap_char("b")) # varying slot 1
+    w_fakeinst.store(space, 0, space.wrap_char("a"))  # static slot 0: instance variable
+    w_fakeinst.store(space, 1, space.wrap_char("b"))  # varying slot 1
     def test():
         assert space.unwrap_char_as_byte(interpret_bc(
             [112, 118, 192, 124],
@@ -830,8 +830,8 @@ def test_bc_primBytecodeAtPut_with_instvars():
     #   ^ self at: 1 put: #b
     w_fakeclass = bootstrap_class(1, name='fakeclass', varsized=True)
     w_fakeinst = w_fakeclass.as_class_get_shadow(space).new(1)
-    w_fakeinst.store(space, 0, space.wrap_char("a")) # static slot 0: instance variable
-    w_fakeinst.store(space, 1, space.wrap_char("a")) # varying slot 1
+    w_fakeinst.store(space, 0, space.wrap_char("a"))  # static slot 0: instance variable
+    w_fakeinst.store(space, 1, space.wrap_char("a"))  # varying slot 1
     def test():
         assert space.unwrap_char_as_byte(interpret_bc(
             [0x70, 0x76, 0x20, 0xc1, 0x7c],

@@ -1,11 +1,9 @@
-from rpython.translator.tool.cbuild import ExternalCompilationInfo
-from rpython.translator.platform import CompilationError
-from rpython.rtyper.lltypesystem import lltype, rffi
-from rpython.rlib.rarithmetic import intmask
-from rpython.rtyper.tool import rffi_platform as platform
-import py
-import sys
 import os
+
+from rpython.translator.tool.cbuild import ExternalCompilationInfo
+from rpython.rtyper.lltypesystem import rffi
+from rpython.rlib.rarithmetic import intmask
+
 from spyvm.util import system
 
 if system.IS_WINDOWS:
@@ -15,7 +13,7 @@ else:
 
 this_dir = os.path.dirname(__file__)
 eci = ExternalCompilationInfo(
-    post_include_bits = ["""
+    post_include_bits=["""
 #ifndef __platform_h
 #define __platform_h
 
@@ -38,9 +36,9 @@ extern "C" {
 #endif
 
 #endif"""],
-    include_dirs = [this_dir],
-    link_files = libraries,
-    separate_module_sources = ["""
+    include_dirs=[this_dir],
+    link_files=libraries,
+    separate_module_sources=["""
 int RSqueakGetMemoryUsage() {
 #ifdef _WIN32
         PROCESS_MEMORY_COUNTERS_EX memCountr;
@@ -60,7 +58,8 @@ int RSqueakGetMemoryUsage() {
 }"""]
 )
 
-__ll_memory_usage = rffi.llexternal('RSqueakGetMemoryUsage', [], rffi.INT, compilation_info=eci)
+__ll_memory_usage = rffi.llexternal('RSqueakGetMemoryUsage', [], rffi.INT,
+                                    compilation_info=eci)
 def get_memory_usage():
     res = __ll_memory_usage()
     return intmask(res)

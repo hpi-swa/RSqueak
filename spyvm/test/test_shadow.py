@@ -342,16 +342,16 @@ def test_class_format_spur(space_spur):
     assert_shadow_properties(expected_instsize = 560, is_variable = False)
 
 def test_class_new_fixed_v3(space_v3):
-    w_class = build_smalltalk_class('TestClass', (4 << 1) | (1 << 7)) # fixed format
+    w_class = build_smalltalk_class('TestClass', (4 << 1) | (1 << 7))  # fixed format
     w_inst = w_class.as_class_get_shadow(space_v3).new()
     assert isinstance(w_inst, model.W_PointersObject)
     assert w_inst.size() == 3
 def test_class_new_array_v3(space_v3):
-    w_class = build_smalltalk_class('TestClass', 2 << 7) # array format
+    w_class = build_smalltalk_class('TestClass', 2 << 7)  # array format
     w_inst = w_class.as_class_get_shadow(space_v3).new()
     assert isinstance(w_inst, model.W_PointersObject)
 def test_class_new_bytes_v3(space_v3):
-    w_class = build_smalltalk_class('TestClass', (1 << 1) | (8 << 7)) # indexable bytes
+    w_class = build_smalltalk_class('TestClass', (1 << 1) | (8 << 7))  # indexable bytes
     w_inst = w_class.as_class_get_shadow(space_v3).new(5)
     assert isinstance(w_inst, model.W_BytesObject)
     assert w_inst.size() == 5
