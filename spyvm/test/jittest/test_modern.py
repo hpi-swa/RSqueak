@@ -254,155 +254,151 @@ class TestModern(ModernJITTest):
         25 benchFib
         """)
         self.assert_matches(traces[0].bridges[-1], """
-        guard_value(i1, 0, descr=<Guard0xe6577a0>)
-        guard_not_invalidated(descr=<Guard0xe6b1d68>)
-        guard_value(p9, ConstPtr(ptr28), descr=<Guard0xe6b1d30>)
-        guard_value(i6, 0, descr=<Guard0xe6b1d14>)
-        guard_class(p8, ConstClass(W_SmallInteger), descr=<Guard0xe6b1cf8>)
-        i31 = getfield_gc_i(p8, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8 pure>)
-        i33 = int_lt(i31, 2)
-        guard_false(i33, descr=<Guard0xe6b1cdc>)
-        i35 = int_sub(i31, 1)
-        i36 = getfield_gc_i(p0, descr=<FieldU spyvm.storage.AbstractStrategy.inst_space 8 pure>)
-        p38 = getfield_gc_r(ConstPtr(ptr37), descr=<FieldP spyvm.model.W_PointersObject.inst_strategy 20>)
-        guard_value(p38, ConstPtr(ptr39), descr=<Guard0xe657ab8>)
-        p41 = getfield_gc_r(ConstPtr(ptr40), descr=<FieldP spyvm.model.W_PointersObject.inst_strategy 20>)
-        guard_value(p41, ConstPtr(ptr42), descr=<Guard0xe657a8c>)
-        p43 = force_token()
-        p44 = new_with_vtable(descr=<SizeDescr 64>)
-        p46 = new_array_clear(16, descr=<ArrayP 4>)
-        setarrayitem_gc(p46, 0, ConstPtr(ptr48), descr=<ArrayP 4>)
-        setarrayitem_gc(p46, 1, ConstPtr(ptr48), descr=<ArrayP 4>)
-        setarrayitem_gc(p46, 2, ConstPtr(ptr48), descr=<ArrayP 4>)
-        setarrayitem_gc(p46, 3, ConstPtr(ptr48), descr=<ArrayP 4>)
-        setarrayitem_gc(p46, 4, ConstPtr(ptr48), descr=<ArrayP 4>)
-        setarrayitem_gc(p46, 5, ConstPtr(ptr48), descr=<ArrayP 4>)
-        setarrayitem_gc(p46, 6, ConstPtr(ptr48), descr=<ArrayP 4>)
-        setarrayitem_gc(p46, 7, ConstPtr(ptr48), descr=<ArrayP 4>)
-        setarrayitem_gc(p46, 8, ConstPtr(ptr48), descr=<ArrayP 4>)
-        setarrayitem_gc(p46, 9, ConstPtr(ptr48), descr=<ArrayP 4>)
-        setarrayitem_gc(p46, 10, ConstPtr(ptr48), descr=<ArrayP 4>)
-        setarrayitem_gc(p46, 11, ConstPtr(ptr48), descr=<ArrayP 4>)
-        setarrayitem_gc(p46, 12, ConstPtr(ptr48), descr=<ArrayP 4>)
-        setarrayitem_gc(p46, 13, ConstPtr(ptr48), descr=<ArrayP 4>)
-        setarrayitem_gc(p46, 14, ConstPtr(ptr48), descr=<ArrayP 4>)
-        setarrayitem_gc(p46, 15, ConstPtr(ptr48), descr=<ArrayP 4>)
-        p64 = new_with_vtable(descr=<SizeDescr 12>)
-        setfield_gc(p64, i35, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8 pure>)
-        setfield_gc(p44, 142397672, descr=<FieldU spyvm.storage.AbstractStrategy.inst_space 8 pure>)
-        setfield_gc(p0, p43, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.vable_token 16>)
-        setfield_gc(p44, ConstPtr(ptr66), descr=<FieldP spyvm.storage.AbstractStrategy.inst_w_class 12 pure>)
-        setfield_gc(p44, 0, descr=<FieldS spyvm.storage_contexts.ContextPartShadow.inst__pc 20>)
-        setfield_gc(p44, p0, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__s_sender 24>)
-        setfield_gc(p44, 0, descr=<FieldS spyvm.storage_contexts.ContextPartShadow.inst__stack_ptr 28>)
-        setfield_gc(p44, p46, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__temps_and_stack 32>)
-        setfield_gc(p44, ConstPtr(ptr69), descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__w_method 36>)
-        setfield_gc(p44, p64, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__w_receiver 40>)
-        setfield_gc(p44, ConstPtr(null), descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__w_self 44>)
-        setfield_gc(p44, 22, descr=<FieldS spyvm.storage_contexts.ContextPartShadow.inst__w_self_size 48>)
-        setfield_gc(p44, ConstPtr(null), descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst_closure 52>)
-        setfield_gc(p44, ConstPtr(null), descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst_extra_data 56>)
-        setfield_gc(p44, ConstPtr(ptr74), descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst_state 60>)
-        call_assembler_n(p44, descr=<Loop0>)
-        guard_not_forced(descr=<Guard0xe657a60>)
-        keepalive(p44)
-        p76 = guard_exception(141100652, descr=<Guard0xe657824>)
-        i77 = ptr_eq(p44, p0)
-        guard_false(i77, descr=<Guard0xe657a34>)
-        p78 = getfield_gc_r(p44, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.vable_token 16>)
-        i80 = ptr_ne(p78, ConstPtr(null))
-        cond_call(i80, 137238640, p44, descr=<Callv 0 r EF=2 OS=121>)
-        p82 = getfield_gc_r(p44, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst_state 60>)
-        i84 = instance_ptr_eq(p82, ConstPtr(ptr83))
-        guard_false(i84, descr=<Guard0xe657a08>)
-        guard_not_invalidated(descr=<Guard0xe6b1be0>)
-        p85 = getfield_gc_r(p44, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst_closure 52>)
-        guard_isnull(p85, descr=<Guard0xe6b1b70>)
-        p86 = getfield_gc_r(p44, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__w_method 36>)
-        guard_value(p86, ConstPtr(ptr87), descr=<Guard0xe6b1b00>)
-        p88 = getfield_gc_r(p44, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__s_sender 24>)
-        setfield_gc(p44, -1, descr=<FieldS spyvm.storage_contexts.ContextPartShadow.inst__pc 20>)
-        guard_nonnull(p88, descr=<Guard0xe6579dc>)
-        setfield_gc(p44, ConstPtr(null), descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__s_sender 24>)
-        guard_class(p76, 141100652, descr=<Guard0xe6579b0>)
-        i92 = getfield_gc_i(p76, descr=<FieldS spyvm.interpreter.IntLocalReturn.inst__value 8 pure>)
-        i94 = int_sub(i31, 2)
-        p96 = getfield_gc_r(ConstPtr(ptr95), descr=<FieldP spyvm.model.W_PointersObject.inst_strategy 20>)
-        setfield_gc(p44, ConstPtr(ptr97), descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst_state 60>)
-        guard_value(p96, ConstPtr(ptr98), descr=<Guard0xe657984>)
-        p100 = getfield_gc_r(ConstPtr(ptr99), descr=<FieldP spyvm.model.W_PointersObject.inst_strategy 20>)
-        guard_value(p100, ConstPtr(ptr101), descr=<Guard0xe657958>)
-        p102 = force_token()
-        p103 = new_with_vtable(descr=<SizeDescr 64>)
-        p105 = new_array_clear(16, descr=<ArrayP 4>)
-        setarrayitem_gc(p105, 0, ConstPtr(ptr107), descr=<ArrayP 4>)
-        setarrayitem_gc(p105, 1, ConstPtr(ptr107), descr=<ArrayP 4>)
-        setarrayitem_gc(p105, 2, ConstPtr(ptr107), descr=<ArrayP 4>)
-        setarrayitem_gc(p105, 3, ConstPtr(ptr107), descr=<ArrayP 4>)
-        setarrayitem_gc(p105, 4, ConstPtr(ptr107), descr=<ArrayP 4>)
-        setarrayitem_gc(p105, 5, ConstPtr(ptr107), descr=<ArrayP 4>)
-        setarrayitem_gc(p105, 6, ConstPtr(ptr107), descr=<ArrayP 4>)
-        setarrayitem_gc(p105, 7, ConstPtr(ptr107), descr=<ArrayP 4>)
-        setarrayitem_gc(p105, 8, ConstPtr(ptr107), descr=<ArrayP 4>)
-        setarrayitem_gc(p105, 9, ConstPtr(ptr107), descr=<ArrayP 4>)
-        setarrayitem_gc(p105, 10, ConstPtr(ptr107), descr=<ArrayP 4>)
-        setarrayitem_gc(p105, 11, ConstPtr(ptr107), descr=<ArrayP 4>)
-        setarrayitem_gc(p105, 12, ConstPtr(ptr107), descr=<ArrayP 4>)
-        setarrayitem_gc(p105, 13, ConstPtr(ptr107), descr=<ArrayP 4>)
-        setarrayitem_gc(p105, 14, ConstPtr(ptr107), descr=<ArrayP 4>)
-        setarrayitem_gc(p105, 15, ConstPtr(ptr107), descr=<ArrayP 4>)
-        p123 = new_with_vtable(descr=<SizeDescr 12>)
-        setfield_gc(p123, i94, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8 pure>)
-        setfield_gc(p103, 142397672, descr=<FieldU spyvm.storage.AbstractStrategy.inst_space 8 pure>)
-        setfield_gc(p0, p102, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.vable_token 16>)
-        setfield_gc(p103, ConstPtr(ptr125), descr=<FieldP spyvm.storage.AbstractStrategy.inst_w_class 12 pure>)
-        setfield_gc(p103, 0, descr=<FieldS spyvm.storage_contexts.ContextPartShadow.inst__pc 20>)
-        setfield_gc(p103, p0, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__s_sender 24>)
-        setfield_gc(p103, 0, descr=<FieldS spyvm.storage_contexts.ContextPartShadow.inst__stack_ptr 28>)
-        setfield_gc(p103, p105, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__temps_and_stack 32>)
-        setfield_gc(p103, ConstPtr(ptr128), descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__w_method 36>)
-        setfield_gc(p103, p123, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__w_receiver 40>)
-        setfield_gc(p103, ConstPtr(null), descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__w_self 44>)
-        setfield_gc(p103, 22, descr=<FieldS spyvm.storage_contexts.ContextPartShadow.inst__w_self_size 48>)
-        setfield_gc(p103, ConstPtr(null), descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst_closure 52>)
-        setfield_gc(p103, ConstPtr(null), descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst_extra_data 56>)
-        setfield_gc(p103, ConstPtr(ptr133), descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst_state 60>)
-        call_assembler_n(p103, descr=<Loop0>)
-        guard_not_forced(descr=<Guard0xe65792c>)
-        keepalive(p103)
-        p135 = guard_exception(141100652, descr=<Guard0xe6577f8>)
-        i136 = ptr_eq(p103, p0)
-        guard_false(i136, descr=<Guard0xe657900>)
-        p137 = getfield_gc_r(p103, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.vable_token 16>)
-        i138 = ptr_ne(p137, ConstPtr(null))
-        cond_call(i138, 137238640, p103, descr=<Callv 0 r EF=2 OS=121>)
-        p140 = getfield_gc_r(p103, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst_state 60>)
-        i142 = instance_ptr_eq(p140, ConstPtr(ptr141))
-        guard_false(i142, descr=<Guard0xe6578d4>)
-        guard_not_invalidated(descr=<Guard0xe6b19cc>)
-        p143 = getfield_gc_r(p103, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst_closure 52>)
-        guard_isnull(p143, descr=<Guard0xe6b195c>)
-        p144 = getfield_gc_r(p103, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__w_method 36>)
-        guard_value(p144, ConstPtr(ptr145), descr=<Guard0xe6b18ec>)
-        p146 = getfield_gc_r(p103, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__s_sender 24>)
-        setfield_gc(p103, -1, descr=<FieldS spyvm.storage_contexts.ContextPartShadow.inst__pc 20>)
-        guard_nonnull(p146, descr=<Guard0xe6578a8>)
-        setfield_gc(p103, ConstPtr(null), descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__s_sender 24>)
-        guard_class(p135, 141100652, descr=<Guard0xe65787c>)
-        i150 = getfield_gc_i(p135, descr=<FieldS spyvm.interpreter.IntLocalReturn.inst__value 8 pure>)
-        setfield_gc(p103, ConstPtr(ptr151), descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst_state 60>)
-        i152 = int_add_ovf(i92, i150)
-        guard_no_overflow(descr=<Guard0xe657850>)
-        i155 = int_add_ovf(i152, 1)
-        guard_no_overflow(descr=<Guard0xe6b187c>)
-        guard_isnull(p7, descr=<Guard0xe6b1844>)
-        i157 = instance_ptr_eq(p4, ConstPtr(ptr156))
-        guard_false(i157, descr=<Guard0xe6b1828>)
-        leave_portal_frame(0)
-        p159 = force_token()
-        setfield_gc(p0, p159, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.vable_token 16>)
-        p160 = new_with_vtable(descr=<SizeDescr 12>)
-        setfield_gc(p160, i155, descr=<FieldS spyvm.interpreter.IntLocalReturn.inst__value 8 pure>)
-        guard_not_forced_2(descr=<Guard0xe6577cc>)
-        finish(p160, descr=<ExitFrameWithExceptionDescrRef object at 0x8742270>)
+        guard_value(i7, 0, descr=<Guard0xa655430>),
+        guard_not_invalidated(descr=<Guard0xa67d4d0>),
+        guard_value(p1, ConstPtr(ptr28), descr=<Guard0xa67d4b0>),
+        guard_value(i2, 0, descr=<Guard0xa67d470>),
+        guard_class(p8, ConstClass(W_SmallInteger), descr=<Guard0xa67d3f0>),
+        i31 = getfield_gc_i(p8, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8 pure>),
+        i33 = int_lt(i31, 2),
+        guard_false(i33, descr=<Guard0xa67d3b0>),
+        i35 = int_sub(i31, 1),
+        i36 = getfield_gc_i(p0, descr=<FieldU spyvm.storage.AbstractStrategy.inst_space 8 pure>),
+        p38 = getfield_gc_r(ConstPtr(ptr37), descr=<FieldP spyvm.model.W_PointersObject.inst_strategy 20>),
+        guard_value(p38, ConstPtr(ptr39), descr=<Guard0xa655730>),
+        p41 = getfield_gc_r(ConstPtr(ptr40), descr=<FieldP spyvm.model.W_PointersObject.inst_strategy 20>),
+        guard_value(p41, ConstPtr(ptr42), descr=<Guard0xa655700>),
+        p43 = new_with_vtable(descr=<SizeDescr 64>),
+        p45 = new_array_clear(16, descr=<ArrayP 4>),
+        setarrayitem_gc(p45, 0, ConstPtr(ptr47), descr=<ArrayP 4>),
+        setarrayitem_gc(p45, 1, ConstPtr(ptr49), descr=<ArrayP 4>),
+        setarrayitem_gc(p45, 2, ConstPtr(ptr51), descr=<ArrayP 4>),
+        setarrayitem_gc(p45, 3, ConstPtr(ptr53), descr=<ArrayP 4>),
+        setarrayitem_gc(p45, 4, ConstPtr(ptr55), descr=<ArrayP 4>),
+        setarrayitem_gc(p45, 5, ConstPtr(ptr57), descr=<ArrayP 4>),
+        setarrayitem_gc(p45, 6, ConstPtr(ptr59), descr=<ArrayP 4>),
+        setarrayitem_gc(p45, 7, ConstPtr(ptr61), descr=<ArrayP 4>),
+        setarrayitem_gc(p45, 8, ConstPtr(ptr63), descr=<ArrayP 4>),
+        setarrayitem_gc(p45, 9, ConstPtr(ptr65), descr=<ArrayP 4>),
+        setarrayitem_gc(p45, 10, ConstPtr(ptr67), descr=<ArrayP 4>),
+        setarrayitem_gc(p45, 11, ConstPtr(ptr69), descr=<ArrayP 4>),
+        setarrayitem_gc(p45, 12, ConstPtr(ptr71), descr=<ArrayP 4>),
+        setarrayitem_gc(p45, 13, ConstPtr(ptr73), descr=<ArrayP 4>),
+        setarrayitem_gc(p45, 14, ConstPtr(ptr75), descr=<ArrayP 4>),
+        setarrayitem_gc(p45, 15, ConstPtr(ptr77), descr=<ArrayP 4>),
+        p78 = new_with_vtable(descr=<SizeDescr 12>),
+        setfield_gc(p78, i35, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8 pure>),
+        setfield_gc(p43, 6371376, descr=<FieldU spyvm.storage.AbstractStrategy.inst_space 8 pure>),
+        setfield_gc(p43, ConstPtr(ptr80), descr=<FieldP spyvm.storage.AbstractStrategy.inst_w_class 12 pure>),
+        setfield_gc(p43, 0, descr=<FieldS spyvm.storage_contexts.ContextPartShadow.inst__pc 20>),
+        setfield_gc(p43, p0, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__s_sender 24>),
+        setfield_gc(p43, 0, descr=<FieldS spyvm.storage_contexts.ContextPartShadow.inst__stack_ptr 28>),
+        setfield_gc(p43, p45, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__temps_and_stack 32>),
+        setfield_gc(p43, ConstPtr(ptr83), descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__w_method 36>),
+        setfield_gc(p43, p78, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__w_receiver 40>),
+        setfield_gc(p43, ConstPtr(null), descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__w_self 44>),
+        setfield_gc(p43, 22, descr=<FieldS spyvm.storage_contexts.ContextPartShadow.inst__w_self_size 48>),
+        setfield_gc(p43, ConstPtr(null), descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst_closure 52>),
+        setfield_gc(p43, ConstPtr(null), descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst_extra_data 56>),
+        setfield_gc(p43, ConstPtr(ptr88), descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst_state 60>),
+        call_assembler_n(p43, descr=<Loop0>),
+        guard_not_forced(descr=<Guard0xa4bfcdc>),
+        keepalive(p43),
+        p90 = guard_exception(4706660, descr=<Guard0xa6554c0>),
+        i91 = ptr_eq(p43, p0),
+        guard_false(i91, descr=<Guard0xa6556d0>),
+        p92 = getfield_gc_r(p43, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.vable_token 16>),
+        i94 = ptr_ne(p92, ConstPtr(null)),
+        cond_call(i94, 1442416, p43, descr=<Callv 0 r EF=2 OS=121>),
+        p96 = getfield_gc_r(p43, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst_state 60>),
+        i98 = instance_ptr_eq(p96, ConstPtr(ptr97)),
+        guard_false(i98, descr=<Guard0xa6556a0>),
+        guard_not_invalidated(descr=<Guard0xa67d2b0>),
+        p99 = getfield_gc_r(p43, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst_closure 52>),
+        guard_isnull(p99, descr=<Guard0xa67d290>),
+        p100 = getfield_gc_r(p43, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__w_method 36>),
+        guard_value(p100, ConstPtr(ptr101), descr=<Guard0xa67d270>),
+        p102 = getfield_gc_r(p43, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__s_sender 24>),
+        setfield_gc(p43, -1, descr=<FieldS spyvm.storage_contexts.ContextPartShadow.inst__pc 20>),
+        guard_nonnull(p102, descr=<Guard0xa655670>),
+        setfield_gc(p43, ConstPtr(null), descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__s_sender 24>),
+        guard_class(p90, 4706660, descr=<Guard0xa655640>),
+        i106 = getfield_gc_i(p90, descr=<FieldS spyvm.interpreter.IntLocalReturn.inst__value 8 pure>),
+        i108 = int_sub(i31, 2),
+        p110 = getfield_gc_r(ConstPtr(ptr109), descr=<FieldP spyvm.model.W_PointersObject.inst_strategy 20>),
+        setfield_gc(p43, ConstPtr(ptr111), descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst_state 60>),
+        guard_value(p110, ConstPtr(ptr112), descr=<Guard0xa655610>),
+        p114 = getfield_gc_r(ConstPtr(ptr113), descr=<FieldP spyvm.model.W_PointersObject.inst_strategy 20>),
+        guard_value(p114, ConstPtr(ptr115), descr=<Guard0xa6555e0>),
+        p116 = new_with_vtable(descr=<SizeDescr 64>),
+        p118 = new_array_clear(16, descr=<ArrayP 4>),
+        setarrayitem_gc(p118, 0, ConstPtr(ptr120), descr=<ArrayP 4>),
+        setarrayitem_gc(p118, 1, ConstPtr(ptr122), descr=<ArrayP 4>),
+        setarrayitem_gc(p118, 2, ConstPtr(ptr124), descr=<ArrayP 4>),
+        setarrayitem_gc(p118, 3, ConstPtr(ptr126), descr=<ArrayP 4>),
+        setarrayitem_gc(p118, 4, ConstPtr(ptr128), descr=<ArrayP 4>),
+        setarrayitem_gc(p118, 5, ConstPtr(ptr130), descr=<ArrayP 4>),
+        setarrayitem_gc(p118, 6, ConstPtr(ptr132), descr=<ArrayP 4>),
+        setarrayitem_gc(p118, 7, ConstPtr(ptr134), descr=<ArrayP 4>),
+        setarrayitem_gc(p118, 8, ConstPtr(ptr136), descr=<ArrayP 4>),
+        setarrayitem_gc(p118, 9, ConstPtr(ptr138), descr=<ArrayP 4>),
+        setarrayitem_gc(p118, 10, ConstPtr(ptr140), descr=<ArrayP 4>),
+        setarrayitem_gc(p118, 11, ConstPtr(ptr142), descr=<ArrayP 4>),
+        setarrayitem_gc(p118, 12, ConstPtr(ptr144), descr=<ArrayP 4>),
+        setarrayitem_gc(p118, 13, ConstPtr(ptr146), descr=<ArrayP 4>),
+        setarrayitem_gc(p118, 14, ConstPtr(ptr148), descr=<ArrayP 4>),
+        setarrayitem_gc(p118, 15, ConstPtr(ptr150), descr=<ArrayP 4>),
+        p151 = new_with_vtable(descr=<SizeDescr 12>),
+        setfield_gc(p151, i108, descr=<FieldS spyvm.model.W_SmallInteger.inst_value 8 pure>),
+        setfield_gc(p116, 6371376, descr=<FieldU spyvm.storage.AbstractStrategy.inst_space 8 pure>),
+        setfield_gc(p116, ConstPtr(ptr153), descr=<FieldP spyvm.storage.AbstractStrategy.inst_w_class 12 pure>),
+        setfield_gc(p116, 0, descr=<FieldS spyvm.storage_contexts.ContextPartShadow.inst__pc 20>),
+        setfield_gc(p116, p0, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__s_sender 24>),
+        setfield_gc(p116, 0, descr=<FieldS spyvm.storage_contexts.ContextPartShadow.inst__stack_ptr 28>),
+        setfield_gc(p116, p118, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__temps_and_stack 32>),
+        setfield_gc(p116, ConstPtr(ptr156), descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__w_method 36>),
+        setfield_gc(p116, p151, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__w_receiver 40>),
+        setfield_gc(p116, ConstPtr(null), descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__w_self 44>),
+        setfield_gc(p116, 22, descr=<FieldS spyvm.storage_contexts.ContextPartShadow.inst__w_self_size 48>),
+        setfield_gc(p116, ConstPtr(null), descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst_closure 52>),
+        setfield_gc(p116, ConstPtr(null), descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst_extra_data 56>),
+        setfield_gc(p116, ConstPtr(ptr161), descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst_state 60>),
+        call_assembler_n(p116, descr=<Loop0>),
+        guard_not_forced(descr=<Guard0xa4bfca8>),
+        keepalive(p116),
+        p163 = guard_exception(4706660, descr=<Guard0xa655490>),
+        i164 = ptr_eq(p116, p0),
+        guard_false(i164, descr=<Guard0xa6555b0>),
+        p165 = getfield_gc_r(p116, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.vable_token 16>),
+        i167 = ptr_ne(p165, ConstPtr(null)),
+        cond_call(i167, 1442416, p116, descr=<Callv 0 r EF=2 OS=121>),
+        p169 = getfield_gc_r(p116, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst_state 60>),
+        i171 = instance_ptr_eq(p169, ConstPtr(ptr170)),
+        guard_false(i171, descr=<Guard0xa655580>),
+        guard_not_invalidated(descr=<Guard0xa67d150>),
+        p172 = getfield_gc_r(p116, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst_closure 52>),
+        guard_isnull(p172, descr=<Guard0xa67d130>),
+        p173 = getfield_gc_r(p116, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__w_method 36>),
+        guard_value(p173, ConstPtr(ptr174), descr=<Guard0xa67d110>),
+        p175 = getfield_gc_r(p116, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__s_sender 24>),
+        setfield_gc(p116, -1, descr=<FieldS spyvm.storage_contexts.ContextPartShadow.inst__pc 20>),
+        guard_nonnull(p175, descr=<Guard0xa655550>),
+        setfield_gc(p116, ConstPtr(null), descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst__s_sender 24>),
+        guard_class(p163, 4706660, descr=<Guard0xa655520>),
+        i179 = getfield_gc_i(p163, descr=<FieldS spyvm.interpreter.IntLocalReturn.inst__value 8 pure>),
+        setfield_gc(p116, ConstPtr(ptr180), descr=<FieldP spyvm.storage_contexts.ContextPartShadow.inst_state 60>),
+        i181 = int_add_ovf(i106, i179),
+        guard_no_overflow(descr=<Guard0xa6554f0>),
+        i184 = int_add_ovf(i181, 1),
+        guard_no_overflow(descr=<Guard0xa67d050>),
+        guard_isnull(p4, descr=<Guard0xa67d010>),
+        i186 = instance_ptr_eq(p6, ConstPtr(ptr185)),
+        guard_false(i186, descr=<Guard0xa665fd0>),
+        leave_portal_frame(4),
+        p188 = force_token(),
+        setfield_gc(p0, p188, descr=<FieldP spyvm.storage_contexts.ContextPartShadow.vable_token 16>),
+        p189 = new_with_vtable(descr=<SizeDescr 12>),
+        setfield_gc(p189, i184, descr=<FieldS spyvm.interpreter.IntLocalReturn.inst__value 8 pure>),
+        guard_not_forced_2(descr=<Guard0xa4bfc74>),
+        finish(p189, descr=<ExitFrameWithExceptionDescrRef object at 0x5835f8>)
         """)
