@@ -13,6 +13,7 @@ setup_osx() {
 
 setup_linux() {
     # on Linux, libsdl2 is installed through our dependencies stuff
+    gem install coveralls
     wget http://squeakvm.org/unix/release/Squeak-4.10.2.2614-linux_i386.tar.gz
     tar xzvf Squeak-4.10*.tar.gz
     rm Squeak-4.10*.tar.gz
