@@ -82,4 +82,4 @@ before_script:
 script:
   - $TESTSCRIPT
 after_success:
-  - coveralls
+  - if [ "x$TEST_TYPE" == "xcoverage" ]; coveralls; fi
