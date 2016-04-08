@@ -5,7 +5,7 @@ case "$TEST_TYPE" in
 default) testflag="" ;;
 quick) testflag="-Q" ;;
 slow) testflag="-S" ;;
-coverage) testflag="--cov=spyvm --cov-append" ;;
+coverage) testflag="-Q --cov=spyvm --cov-append" ;;
 *) echo "Wrong TEST_TYPE value ($TEST_TYPE), not executing tests"
    exit 0 ;;
 esac
