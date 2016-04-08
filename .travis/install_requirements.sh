@@ -11,7 +11,7 @@ setup_osx() {
     # todo: Squeak for jittests
     curl -L -O https://bootstrap.pypa.io/get-pip.py
     sudo python get-pip.py
-    sudo pip install coveralls
+    sudo pip install coveralls pytest-cov
 }
 
 setup_linux() {
