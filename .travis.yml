@@ -82,4 +82,4 @@ before_script:
 script:
   - $TESTSCRIPT
 after_success:
-  - if [ "x$TEST_TYPE" == "xcoverage" ]; then coveralls; fi
+  - if [ "x$TEST_TYPE" == "xcoverage" ]; then export PATH=.build/pypy-linux32/bin/:$PATH ; coveralls; fi
