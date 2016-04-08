@@ -3,6 +3,8 @@
 import sys, os, platform, subprocess, ConfigParser
 from os.path import dirname, join as pathjoin
 
+DEFAULT_OSX_SYSTEM_PYTHON = '/usr/bin/python'
+
 
 def load_config():
     config = pathjoin(dirname(__file__), "buildconfig.ini")
@@ -51,9 +53,17 @@ def ensure_32bit_environment():
                 os.environ["SDL_PREFIX"] = cp.get("Linux", "SDL32bit")
             child = subprocess.Popen([py] + sys.argv)
         elif "darwin" == sys.platform and "64bit" in platform.architecture()[0]:
-            print "Trying to switch to 32-bit Python by setting VERSIONER_PYTHON_PREFER_32_BIT. You have to run with the system Python for this to work."
-            os.environ["VERSIONER_PYTHON_PREFER_32_BIT"] = "yes"
-            child = subprocess.Popen([sys.executable] + sys.argv)
+            if not os.environ.get("VERSIONER_PYTHON_PREFER_32_BIT"):
+                print "Trying to switch to 32-bit Python by setting $VERSIONER_PYTHON_PREFER_32_BIT=true."
+                os.environ["VERSIONER_PYTHON_PREFER_32_BIT"] = "yes"
+                child = subprocess.Popen([sys.executable] + sys.argv)
+            else:
+                if os.path.isfile(DEFAULT_OSX_SYSTEM_PYTHON):
+                    print "Trying to use system Python."
+                    child = subprocess.Popen([DEFAULT_OSX_SYSTEM_PYTHON] + sys.argv)
+                else:
+                    print "Could not locate and use system Python."
+                    sys.exit(1)
         else:
             raise AssertionError("Unsupported platform")
 
