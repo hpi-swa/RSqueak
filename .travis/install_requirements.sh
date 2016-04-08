@@ -9,6 +9,8 @@ setup_osx() {
     ls /Volumes/*SDL*/
     sudo ditto /Volumes/*SDL*/SDL2.framework /Library/Frameworks/SDL2.framework
     # todo: Squeak for jittests
+    curl -L -O https://bootstrap.pypa.io/get-pip.py
+    sudo python get-pip.py
     sudo pip install coveralls
 }
 
