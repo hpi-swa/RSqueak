@@ -68,6 +68,9 @@ env:
     # - BUILD_ARCH=armv6 BUILD_TYPE=build SB2="$PWD/raspbian_arm" SB2NAME="rasp"
     # - BUILD_ARCH=armv7 BUILD_TYPE=build
 matrix:
+  exclude:
+    - os: osx
+      env: BUILD_ARCH=32bit BUILD_TYPE=test TEST_TYPE=coverage
   fast_finish: true
 install:
   - .travis/install_requirements.sh

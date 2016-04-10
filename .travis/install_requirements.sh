@@ -9,9 +9,11 @@ setup_osx() {
     ls /Volumes/*SDL*/
     sudo ditto /Volumes/*SDL*/SDL2.framework /Library/Frameworks/SDL2.framework
     # todo: Squeak for jittests
-    curl -L -O https://bootstrap.pypa.io/get-pip.py
-    sudo python get-pip.py
-    sudo pip install coveralls pytest-cov
+
+    # Don't install coveralls on OS X, because it's too slow (see #116)
+    # curl -L -O https://bootstrap.pypa.io/get-pip.py
+    # sudo python get-pip.py
+    # sudo pip install coveralls pytest-cov
 }
 
 setup_linux() {
