@@ -1,8 +1,10 @@
 #!/usr/bin/env python
-import py, operator 
+import py, operator
 from collections import OrderedDict
 from spyvm.test.test_primitives import MockFrame
-from .util import read_image, copy_to_module, cleanup_module, create_space
+from .util import read_image, copy_to_module, cleanup_module, create_space, slow_test
+
+pytestmark = slow_test
 
 
 def setup_module():

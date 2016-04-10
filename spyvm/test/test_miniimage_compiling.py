@@ -2,8 +2,6 @@ import py, math
 from spyvm import model, constants, storage_contexts, wrapper, primitives, interpreter, error, storage_classes
 from .util import read_image, open_reader, copy_to_module, cleanup_module, TestInterpreter, slow_test, very_slow_test
 
-pytestmark = slow_test
-
 def setup_module():
     space, interp, _, _ = read_image("mini.image")
     w = space.w
@@ -23,6 +21,7 @@ def teardown_module():
 def test_load_image():
     pass
 
+@very_slow_test
 def test_make_new_class():
     sourcecode = """makeNewClass
         ^ Object
@@ -37,6 +36,7 @@ def test_make_new_class():
     assert w_res.strategy.name == "MySubForm"
     assert w_res.strategy._instance_size == 1
 
+@very_slow_test
 def test_change_class_layout():
     sourcecode = """makeChangedClass
 ^ MessageSet subclass: #ChangedMessageSet
@@ -50,6 +50,7 @@ def test_change_class_layout():
     assert w_res.strategy.name == "ChangedMessageSet"
     assert w_res.strategy._instance_size == 15
 
+@very_slow_test
 def test_become_one_way():
     sourcecode = """objectsForwardIdentityTo: to
         <primitive: 72>"""
