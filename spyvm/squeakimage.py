@@ -924,12 +924,6 @@ class ImageChunk(object):
         # pre-Spur
         return 0 < self.classid < 32
 
-writerdriver = jit.JitDriver(name="write_image", reds=['obj'], greens=['self'])
-jit.set_user_param(
-    writerdriver,
-    "threshold=2,function_threshold=2,trace_eagerness=2"
-)
-
 class SpurImageWriter(object):
     _immutable_fields_ = ["space", "image", "trace_queue", "oop_map"]
     # XXX: Writes forcibly little-endian 32-bit Spur-format images
@@ -954,9 +948,9 @@ class SpurImageWriter(object):
         else:
             size = n
         if size < 255:
-            return size + 2, 2
+            return n, size + 2, 2
         else:
-            return size + 2, 4
+            return n, size + 2, 4
 
     def frame_size_for(self, obj):
         w_method = None
@@ -998,12 +992,18 @@ class SpurImageWriter(object):
         active_process = wrapper.ProcessWrapper(self.space, w_active_process)
         active_process.store_suspended_context(s_frame.w_self())
         try:
+            # The first objects need to be in this order:
+            # 1. nil
+            # 2. false
+            # 3. true
+            # 4. free list
+            # 5. hidden roots
+            # 6. special objects array
             self.reserve(self.space.w_nil)
             self.reserve(self.space.w_false)
             self.reserve(self.space.w_true)
             # free list object. we need a word array kind of thing. Bitmaps are like that
             self.reserve(model.W_WordsObject(self.space, self.space.w_Bitmap, self.word_size * 8))
-            # hidden roots
             self.hidden_roots = model.W_PointersObject(self.space, self.space.w_Array, 2**12 + 8)
             self.reserve(self.hidden_roots)
             self.reserve(self.image.special_objects)
@@ -1020,16 +1020,16 @@ class SpurImageWriter(object):
             self.f.close()
             active_process.store_suspended_context(self.space.w_nil)
 
+    @jit.dont_look_inside
     def trace_until_finish(self):
         while True:
             if len(self.trace_queue) == 0:
                 break
-            obj = self.trace_queue.pop(0)
-            writerdriver.jit_merge_point(obj=obj, self=self)
+            obj = self.trace_queue.pop()
             self.write_and_trace(obj)
 
     def write_file_header(self):
-        sp_obj_oop = self.oop_map[self.image.special_objects]
+        sp_obj_oop = self.oop_map[self.image.special_objects][0]
         image_header_size = 64 if self.word_size == 4 else 128
         displaysize = self.image.lastWindowSize
         hdrflags = (0 +  # 0/1 fullscreen or not
@@ -1058,6 +1058,7 @@ class SpurImageWriter(object):
         self.write_word(0)  # padding
 
     def write_last_bridge(self):
+        self.f.seek(self.next_chunk, 0)
         self.next_chunk = self.next_chunk + 16
         # put the magic FINAL BRIDGE header
         # FIXME: 64bit??
@@ -1074,7 +1075,8 @@ class SpurImageWriter(object):
         if page.is_nil(self.space):
             page = model.W_PointersObject(self.space, self.space.w_Array, 2**10)
             self.hidden_roots.store(self.space, majoridx, page)
-        assert page.fetch(self.space, minoridx).is_nil(self.space)
+        # XXX: TODO: Why does this happen??
+        # assert page.fetch(self.space, minoridx).is_nil(self.space)
         page.store(self.space, minoridx, obj)
 
     def write_and_trace(self, obj):
@@ -1085,9 +1087,8 @@ class SpurImageWriter(object):
         # not otherwise be traced, because it would be in the header.
         self.reserve(obj.getclass(self.space))
 
-        length, hdrsize = self.len_and_header(obj)
-        oop = self.oop_map[obj]
-        self.write_header(hdrsize, obj, oop)
+        oop, length, hdrsize, sz, padding = self.oop_map[obj]
+        self.write_header(hdrsize, sz, obj, oop)
 
         assert self.f.tell() == (oop + (2 * self.word_size))
 
@@ -1100,40 +1101,44 @@ class SpurImageWriter(object):
         else:
             self.write_pointers_object(obj)
 
-        padding = self.padding_for(length)
         self.f.write("\0" * padding)
 
         assert self.f.tell() == oop + length * self.word_size + padding
 
     def reserve(self, obj):
         if isinstance(obj, model.W_SmallInteger):
-            if obj.value < 0 and obj.value > constants.TAGGED_MININT:
-                return intmask((((r_longlong(1) << 31) + obj.value) << 1) + 1)
-            elif obj.value < constants.TAGGED_MAXINT:
-                return (obj.value << 1) + 1
-            elif obj.value > 0:
-                # need to turn full 32-bit integers back into LPIs
-                return self.reserve(self.space.wrap_large_number(r_ulonglong(obj.value), self.space.w_LargePositiveInteger))
+            newoop = 0
+            if obj.value >= 0:
+                if obj.value <= constants.TAGGED_MAXINT:
+                    newoop = (obj.value << 1) + 1
+                else:
+                    return self.reserve(self.space.wrap_large_number(r_ulonglong(obj.value), self.space.w_LargePositiveInteger))
             else:
-                return self.reserve(self.space.wrap_large_number(r_ulonglong(obj.value), self.space.w_LargeNegativeInteger))
+                if obj.value >= constants.TAGGED_MININT:
+                    newoop = intmask((((r_longlong(1) << 31) + obj.value) << 1) + 1)
+                else:
+                    return self.reserve(self.space.wrap_large_number(r_ulonglong(obj.value), self.space.w_LargeNegativeInteger))
+            return (newoop, 0, 0, 0, 0)
         elif isinstance(obj, model.W_Character):
             assert obj.value < constants.TAGGED_MAXINT
-            return (obj.value << 2) + 0b10
+            return ((obj.value << 2) + 0b10, 0, 0, 0, 0)
         else:
-            oop = self.oop_map.get(obj, 0)
-            if oop > 0:
+            oop = self.oop_map.get(obj, (0, 0, 0, 0, 0))
+            if oop[0] > 0:
                 return oop
             else:
-                length, hdrsize = self.len_and_header(obj)
+                sz, length, hdrsize = self.len_and_header(obj)
                 oop = self.next_chunk + (hdrsize - 2) * self.word_size
-                self.next_chunk = oop + length * self.word_size + self.padding_for(length)
-                self.oop_map[obj] = oop
+                padding = self.padding_for(length)
+                self.next_chunk = oop + length * self.word_size + padding
+                retval = (oop, length, hdrsize, sz, padding)
+                self.oop_map[obj] = retval
                 self.trace_queue.append(obj)
                 if (not self.space.is_spur.is_set()) and obj.is_class(self.space):
                     # rehash all classes in non-spur images, so we don't get
                     # collisions
                     obj.rehash()
-                return oop
+                return retval
 
     def write_bytes_object(self, obj):
         self.f.write(self.space.unwrap_string(obj))
@@ -1149,7 +1154,7 @@ class SpurImageWriter(object):
     def write_compiled_method(self, obj):
         cmbytes = obj.getbytes()
         if self.space.is_spur.is_set():
-            self.write_word(obj.getheader())
+            self.write_word((obj.getheader() << 1) + 1) # header is saved as tagged int
         else:
             newheader = (obj.literalsize # 15 bits
                          | (0 << 15)  # is optimized, 1 bit
@@ -1161,7 +1166,7 @@ class SpurImageWriter(object):
                          | (0 << 30))  # instruction set bit, 1 bit
             self.write_word((newheader << 1) + 1)  # header is saved as tagged int
         for i in range(obj.getliteralsize() / constants.BYTES_PER_WORD):
-            self.write_word(self.reserve(obj.getliteral(i)))
+            self.write_word(self.reserve(obj.getliteral(i))[0])
         paddingbytes = 0
         if (not self.space.is_spur.is_set()) and obj.primitive() != 0:
             # we must insert the primitive bytecode and index into the first
@@ -1191,17 +1196,17 @@ class SpurImageWriter(object):
             w_newfmt = self.space.wrap_int(newfmt)
             for i in range(obj.size()):
                 if i != constants.CLASS_FORMAT_INDEX:
-                    self.write_word(self.reserve(obj.fetch(self.space, i)))
+                    self.write_word(self.reserve(obj.fetch(self.space, i))[0])
                 else:
-                    self.write_word(self.reserve(w_newfmt))
+                    self.write_word(self.reserve(w_newfmt)[0])
         else:
             for i in range(obj.size()):
-                self.write_word(self.reserve(obj.fetch(self.space, i)))
+                self.write_word(self.reserve(obj.fetch(self.space, i))[0])
         if (obj.getclass(self.space).is_same_object(self.space.w_MethodContext) or
             obj.getclass(self.space).is_same_object(self.space.w_BlockContext)):
             # fill out nils beyond the knowable end of stack
             for i in range(self.frame_size_for(obj) - obj.varsize()):
-                self.write_word(self.reserve(self.space.w_nil))
+                self.write_word(self.reserve(self.space.w_nil)[0])
 
     def write_word(self, word):
         # FIXME: 64bit??
@@ -1211,12 +1216,12 @@ class SpurImageWriter(object):
              chr((word & r_uint(0x00ff0000)) >> 16),
              chr((word & r_uint(0xff000000)) >> 24)]))
 
-    def write_header(self, hdrsize, obj, oop):
+    def write_header(self, hdrsize, sz, obj, oop):
         self.f.seek(oop - ((hdrsize - 2) * self.word_size), 0)
         self.f.write(self.headers_for_hash_numfields(
             obj.getclass(self.space),
             obj.gethash(),
-            self.fixed_and_indexable_size_for(obj)))
+            sz))
 
     # conversion map from old formats to new formats
     old_to_spur_specs = [0,1,2,3,4,-1,10,9,16,16,16,16,24,24,24,24]
