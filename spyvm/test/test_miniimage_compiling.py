@@ -205,12 +205,23 @@ def test_simulate_externalcall():
     assert isinstance(w_result, model.W_BytesObject)
     assert w_result.unwrap_string(space) == 'externalcall simulation for 3 4'
 
-def test_snapshotPrimitive():
+def test_snapshotPrimitive(tmpdir):
+    newname = str(tmpdir.join("test_snapshot.image"))
     space, interp, _, _ = read_image("mini.image")
     def perform(receiver, selector, *args):
         w_selector = None if isinstance(selector, str) else selector
         return interp.perform(receiver, selector, w_selector, list(args))
     space.simulate_numeric_primitives.activate()
-    space.set_system_attribute(constants.SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, "test_snapshot.image")
+    space.set_system_attribute(constants.SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, newname)
     w_result = perform(space.special_object("w_smalltalkdict"), "snapshotPrimitive")
     assert w_result is space.w_false
+    space2, interp2, image2, reader2 = read_image(newname)
+    for f,n in {
+            'w_true': 'True', 'w_false': 'False', 'w_nil': 'UndefinedObject'
+    }.iteritems():
+        assert getattr(space, f).getclass(space).as_class_get_shadow(space).name == getattr(space2, f).getclass(space2).as_class_get_shadow(space).name
+    for f in [
+            'w_doesNotUnderstand',
+            'w_mustBeBoolean'
+    ]:
+        assert space.unwrap_string(space.objtable[f]) == space2.unwrap_string(space2.objtable[f])

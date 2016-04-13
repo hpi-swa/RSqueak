@@ -992,26 +992,21 @@ class SpurImageWriter(object):
         active_process = wrapper.ProcessWrapper(self.space, w_active_process)
         active_process.store_suspended_context(s_frame.w_self())
         try:
-            # we want to pop() from the back of the trace queue for performance
-            # reasons. The first objects need to be in this order:
-            #
+            # The first objects need to be in this order:
             # 1. nil
             # 2. false
             # 3. true
             # 4. free list
             # 5. hidden roots
             # 6. special objects array
-            #
-            # We just reserve those first ones in reverse.
-            self.reserve(self.image.special_objects)
-            # hidden roots
-            self.hidden_roots = model.W_PointersObject(self.space, self.space.w_Array, 2**12 + 8)
-            self.reserve(self.hidden_roots)
+            self.reserve(self.space.w_nil)
+            self.reserve(self.space.w_false)
+            self.reserve(self.space.w_true)
             # free list object. we need a word array kind of thing. Bitmaps are like that
             self.reserve(model.W_WordsObject(self.space, self.space.w_Bitmap, self.word_size * 8))
-            self.reserve(self.space.w_true)
-            self.reserve(self.space.w_false)
-            self.reserve(self.space.w_nil)
+            self.hidden_roots = model.W_PointersObject(self.space, self.space.w_Array, 2**12 + 8)
+            self.reserve(self.hidden_roots)
+            self.reserve(self.image.special_objects)
             self.trace_until_finish()
             # tracing through the image will have populated the hidden roots and
             # its classtables. write the hidden roots object again, which
@@ -1063,6 +1058,7 @@ class SpurImageWriter(object):
         self.write_word(0)  # padding
 
     def write_last_bridge(self):
+        self.f.seek(self.next_chunk, 0)
         self.next_chunk = self.next_chunk + 16
         # put the magic FINAL BRIDGE header
         # FIXME: 64bit??
