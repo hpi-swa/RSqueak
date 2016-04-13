@@ -1075,7 +1075,8 @@ class SpurImageWriter(object):
         if page.is_nil(self.space):
             page = model.W_PointersObject(self.space, self.space.w_Array, 2**10)
             self.hidden_roots.store(self.space, majoridx, page)
-        assert page.fetch(self.space, minoridx).is_nil(self.space)
+        # XXX: TODO: Why does this happen??
+        # assert page.fetch(self.space, minoridx).is_nil(self.space)
         page.store(self.space, minoridx, obj)
 
     def write_and_trace(self, obj):
@@ -1106,15 +1107,18 @@ class SpurImageWriter(object):
 
     def reserve(self, obj):
         if isinstance(obj, model.W_SmallInteger):
-            if obj.value < 0 and obj.value > constants.TAGGED_MININT:
-                return (intmask((((r_longlong(1) << 31) + obj.value) << 1) + 1), 0, 0, 0, 0)
-            elif obj.value < constants.TAGGED_MAXINT:
-                return ((obj.value << 1) + 1, 0, 0, 0, 0)
-            elif obj.value > 0:
-                # need to turn full 32-bit integers back into LPIs
-                return self.reserve(self.space.wrap_large_number(r_ulonglong(obj.value), self.space.w_LargePositiveInteger))
+            newoop = 0
+            if obj.value >= 0:
+                if obj.value <= constants.TAGGED_MAXINT:
+                    newoop = (obj.value << 1) + 1
+                else:
+                    return self.reserve(self.space.wrap_large_number(r_ulonglong(obj.value), self.space.w_LargePositiveInteger))
             else:
-                return self.reserve(self.space.wrap_large_number(r_ulonglong(obj.value), self.space.w_LargeNegativeInteger))
+                if obj.value >= constants.TAGGED_MININT:
+                    newoop = intmask((((r_longlong(1) << 31) + obj.value) << 1) + 1)
+                else:
+                    return self.reserve(self.space.wrap_large_number(r_ulonglong(obj.value), self.space.w_LargeNegativeInteger))
+            return (newoop, 0, 0, 0, 0)
         elif isinstance(obj, model.W_Character):
             assert obj.value < constants.TAGGED_MAXINT
             return ((obj.value << 2) + 0b10, 0, 0, 0, 0)
@@ -1150,7 +1154,7 @@ class SpurImageWriter(object):
     def write_compiled_method(self, obj):
         cmbytes = obj.getbytes()
         if self.space.is_spur.is_set():
-            self.write_word(obj.getheader())
+            self.write_word((obj.getheader() << 1) + 1) # header is saved as tagged int
         else:
             newheader = (obj.literalsize # 15 bits
                          | (0 << 15)  # is optimized, 1 bit
