@@ -753,17 +753,23 @@ def _trace_pointers(space, w_obj):
     return p_w
 
 def get_instances_array(interp, s_frame, w_class=None, store=True, some_instance=False):
-    # check cached
-    match_w = s_frame.instances_array(w_class)
-    if match_w is None:
-        if some_instance and interp.space.is_spur.is_set():
-            # on Spur, someInstance really means just one, it's not used to
-            # start iterating over all instances
-            return get_instances_array_trace(interp, w_class, some_instance=True)
-        match_w = get_instances_array_trace(interp, w_class)
-        if store:
-            s_frame.store_instances_array(w_class, match_w)
-    return match_w
+    # make sure we also get any objects in the currently active process
+    w_active_process = wrapper.scheduler(interp.space).active_process()
+    active_process = wrapper.ProcessWrapper(interp.space, w_active_process)
+    active_process.store_suspended_context(s_frame.w_self())
+    try:
+        match_w = s_frame.instances_array(w_class)
+        if match_w is None:
+            if some_instance and interp.space.is_spur.is_set():
+                # on Spur, someInstance really means just one, it's not used to
+                # start iterating over all instances
+                return get_instances_array_trace(interp, w_class, some_instance=True)
+            match_w = get_instances_array_trace(interp, w_class)
+            if store:
+                s_frame.store_instances_array(w_class, match_w)
+        return match_w
+    finally:
+        active_process.store_suspended_context(interp.space.w_nil)
 
 
 @expose_primitive(SOME_INSTANCE, unwrap_spec=[object])

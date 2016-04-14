@@ -91,6 +91,20 @@ def test_compile_method():
     perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
     assert perform(w(10), "fib").is_same_object(w(89))
 
+def test_allInstances_in_context():
+    sourcecode = """aFraction
+    | a |
+    a := 5 asInteger.
+    a := a / 42 asInteger.
+    ^ Fraction allInstances"""
+    perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
+    w_result = perform(w(10), "aFraction")
+    result_w = space.unwrap_array(w_result)
+    assert len(result_w) == 1
+    pointers_w = result_w[0].fetch_all(space)
+    assert pointers_w[0].value == 5
+    assert pointers_w[1].value == 42
+
 def test_become():
     sourcecode = """
     testBecome
@@ -145,7 +159,6 @@ def test_compiling_large_positive_integer():
     perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
     w_result = perform(w(10), "aLargeInteger")
     assert isinstance(w_result, model.W_LargePositiveInteger1Word)
-
 
 def test_simulate_numericprim():
     sourcecode = """absentPrimitive: anInt with: anotherInt
