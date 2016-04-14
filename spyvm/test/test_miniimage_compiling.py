@@ -2,8 +2,6 @@ import py, math
 from spyvm import model, constants, storage_contexts, wrapper, primitives, interpreter, error, storage_classes
 from .util import read_image, open_reader, copy_to_module, cleanup_module, TestInterpreter, slow_test, very_slow_test
 
-pytestmark = slow_test
-
 def setup_module():
     space, interp, _, _ = read_image("mini.image")
     w = space.w
@@ -23,6 +21,7 @@ def teardown_module():
 def test_load_image():
     pass
 
+@very_slow_test
 def test_make_new_class():
     sourcecode = """makeNewClass
         ^ Object
@@ -37,6 +36,7 @@ def test_make_new_class():
     assert w_res.strategy.name == "MySubForm"
     assert w_res.strategy._instance_size == 1
 
+@very_slow_test
 def test_change_class_layout():
     sourcecode = """makeChangedClass
 ^ MessageSet subclass: #ChangedMessageSet
@@ -50,6 +50,7 @@ def test_change_class_layout():
     assert w_res.strategy.name == "ChangedMessageSet"
     assert w_res.strategy._instance_size == 15
 
+@very_slow_test
 def test_become_one_way():
     sourcecode = """objectsForwardIdentityTo: to
         <primitive: 72>"""
@@ -204,12 +205,23 @@ def test_simulate_externalcall():
     assert isinstance(w_result, model.W_BytesObject)
     assert w_result.unwrap_string(space) == 'externalcall simulation for 3 4'
 
-def test_snapshotPrimitive():
+def test_snapshotPrimitive(tmpdir):
+    newname = str(tmpdir.join("test_snapshot.image"))
     space, interp, _, _ = read_image("mini.image")
     def perform(receiver, selector, *args):
         w_selector = None if isinstance(selector, str) else selector
         return interp.perform(receiver, selector, w_selector, list(args))
     space.simulate_numeric_primitives.activate()
-    space.set_system_attribute(constants.SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, "test_snapshot.image")
+    space.set_system_attribute(constants.SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, newname)
     w_result = perform(space.special_object("w_smalltalkdict"), "snapshotPrimitive")
     assert w_result is space.w_false
+    space2, interp2, image2, reader2 = read_image(newname)
+    for f,n in {
+            'w_true': 'True', 'w_false': 'False', 'w_nil': 'UndefinedObject'
+    }.iteritems():
+        assert getattr(space, f).getclass(space).as_class_get_shadow(space).name == getattr(space2, f).getclass(space2).as_class_get_shadow(space).name
+    for f in [
+            'w_doesNotUnderstand',
+            'w_mustBeBoolean'
+    ]:
+        assert space.unwrap_string(space.objtable[f]) == space2.unwrap_string(space2.objtable[f])

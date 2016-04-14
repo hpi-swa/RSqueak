@@ -4,7 +4,7 @@ from spyvm.primitives import prim_table, PrimitiveFailedError
 from rpython.rlib.rfloat import isinf, isnan
 from rpython.rlib.rarithmetic import intmask, r_uint, r_longlong
 from rpython.rtyper.lltypesystem import lltype, rffi
-from .util import create_space, copy_to_module, cleanup_module, TestInterpreter
+from .util import create_space, copy_to_module, cleanup_module, TestInterpreter, very_slow_test
 
 def setup_module():
     space = create_space(bootstrap = True)
@@ -661,12 +661,14 @@ def test_primitive_closure_value_value_with_temps():
     assert s_new_context.gettemp(1).unwrap_string(None) == "second arg"
     assert s_new_context.gettemp(2).unwrap_string(None) == "some value"
 
+@very_slow_test
 def test_primitive_some_instance():
     import gc; gc.collect()
     someInstance = map(space.wrap_list, [[1], [2]])
     w_r = prim(primitives.SOME_INSTANCE, [space.w_Array])
     assert w_r.getclass(space) is space.w_Array
 
+@very_slow_test
 def test_primitive_some_object():
     import gc; gc.collect()
     w_r = prim(primitives.SOME_OBJECT, [space.w_nil])

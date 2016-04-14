@@ -54,20 +54,23 @@ branches:
     - windows-build
 env:
   global:
-    - TEST_TYPE=default
     # use 32bit python on osx
     - VERSIONER_PYTHON_PREFER_32_BIT=yes
     - PATH=$PATH:$HOME/SDL2/bin
     - LIBRARY_PATH=$LIBRARY_PATH:$HOME/SDL2/lib
     - C_INCLUDE_PATH=$C_INCLUDE_PATH:$HOME/SDL2/include
   matrix:
-    - BUILD_ARCH=32bit BUILD_TYPE=test
+    - BUILD_ARCH=32bit BUILD_TYPE=test TEST_TYPE=default
+    - BUILD_ARCH=32bit BUILD_TYPE=test TEST_TYPE=coverage
     - BUILD_ARCH=32bit BUILD_TYPE=build
     - BUILD_ARCH=lldebug BUILD_TYPE=build
     # Arm needs sudo, for sbuild and scratchbox2 packages.
     # - BUILD_ARCH=armv6 BUILD_TYPE=build SB2="$PWD/raspbian_arm" SB2NAME="rasp"
     # - BUILD_ARCH=armv7 BUILD_TYPE=build
 matrix:
+  exclude:
+    - os: osx
+      env: BUILD_ARCH=32bit BUILD_TYPE=test TEST_TYPE=coverage
   fast_finish: true
 install:
   - .travis/install_requirements.sh
@@ -81,3 +84,5 @@ before_script:
   - if [ "$TRAVIS_OS_NAME" == osx -a "$BUILD_TYPE" == build ]; then export TESTSCRIPT=.travis/build-osx.sh; fi
 script:
   - $TESTSCRIPT
+after_success:
+  - if [ "x$TEST_TYPE" == "xcoverage" ]; then export PATH=.build/pypy-linux32/bin/:$PATH ; coveralls; fi

@@ -11,6 +11,8 @@ We also built for Armv7 (Raspberry Pi2, Beagleboard, ...) and Armv6 on the Raspb
 * [ARMv6](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-armv6raspbian-latest)
 * [ARMv7](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-armv7l-latest)
 
+[![Coverage Status](https://coveralls.io/repos/github/HPI-SWA-Lab/RSqueak/badge.svg?branch=master)](https://coveralls.io/github/HPI-SWA-Lab/RSqueak?branch=master)
+
 ### Finding a working image
 
 Although RSqueak can load images starting with Squeak 2, many
