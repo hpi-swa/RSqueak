@@ -18,9 +18,9 @@ def test_symbol_asSymbol():
 @very_slow_test
 def test_retrieve_symbol():
     space.initialize_class(space.w_String, interp)
-    w_result = perform(w("someString"), "asSymbol")
-    assert w_result.unwrap_string(None) == "someString"
-    w_anotherSymbol = perform(w("someString"), "asSymbol")
+    w_result = perform(w("tinyBenchmarks"), "asSymbol")
+    assert w_result.unwrap_string(None) == "tinyBenchmarks"
+    w_anotherSymbol = perform(w("tinyBenchmarks"), "asSymbol")
     assert w_result is w_anotherSymbol
 
 def test_all_pointers_are_valid():

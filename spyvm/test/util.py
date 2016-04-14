@@ -96,10 +96,20 @@ def import_bytecodes(module_name):
         else:
             make_getter(entry)
 
+class TestImage():
+    def __init__(self, space):
+        if space.w_Array.strategy:
+            self.special_objects = space.wrap_list([i for i in space.objtable.values() if i])
+
 # This interpreter allows fine grained control of the interpretation
 # by manually stepping through the bytecodes, if _loop is set to False.
 class TestInterpreter(interpreter.Interpreter):
     _loop = False
+
+    def __init__(self, *args, **kwargs):
+        interpreter.Interpreter.__init__(self, *args, **kwargs)
+        if not self.image:
+            self.image = TestImage(self.space)
 
     def loop(self, w_active_context):
         self._loop = True

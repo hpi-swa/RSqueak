@@ -555,12 +555,12 @@ def func(interp, s_frame, w_class):
 
 @expose_primitive(ALL_INSTANCES, unwrap_spec=[object])
 def func(interp, s_frame, w_class):
-    match_w = get_instances_array(interp.space, s_frame, w_class=w_class, store=False)
+    match_w = get_instances_array(interp, s_frame, w_class=w_class, store=False)
     return interp.space.wrap_list(match_w)
 
 @expose_primitive(ALL_OBJECTS, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    match_w = get_instances_array(interp.space, s_frame, w_class=None, store=False)
+    match_w = get_instances_array(interp, s_frame, w_class=None, store=False)
     return interp.space.wrap_list(match_w)
 
 # ___________________________________________________________________________
@@ -692,7 +692,8 @@ def func(interp, s_frame, w_frame, stackp):
     w_frame.store(interp.space, constants.CTXPART_STACKP_INDEX, interp.space.wrap_int(stackp))
     return w_frame
 
-def get_instances_array_gc(space, w_class=None):
+def get_instances_array_gc(interp, w_class=None):
+    space = interp.space
     from rpython.rlib import rgc
 
     result_w = []
@@ -718,14 +719,52 @@ def get_instances_array_gc(space, w_class=None):
     rgc.assert_no_more_gcflags()
     return result_w
 
-def get_instances_array(space, s_frame, w_class=None, store=True):
+@jit.dont_look_inside
+def get_instances_array_trace(interp, w_class, some_instance=False):
+    space = interp.space
+    result_w = []
+    seen_w = {}
+    roots = [interp.image.special_objects]
+    pending = roots[:]
+    while pending:
+        w_obj = pending.pop()
+        if w_obj and not seen_w.get(w_obj, False):
+            seen_w[w_obj] = True
+            if w_obj.has_class():
+                w_cls = w_obj.getclass(space)
+                if w_cls is not None:
+                    # XXX: should not return SmallFloat64 on Spur64...
+                    if ((not w_cls.is_same_object(space.w_SmallInteger)) and
+                        (not (space.is_spur.is_set() and w_cls.is_same_object(space.w_Character))) and
+                        (w_class is None or w_cls.is_same_object(w_class))):
+                        if some_instance:
+                            return [w_obj]
+                        else:
+                            result_w.append(w_obj)
+            pending.extend(_trace_pointers(interp.space, w_obj))
+    return result_w
+
+def _trace_pointers(space, w_obj):
+    p_w = [w_obj.getclass(space)]
+    if isinstance(w_obj, model.W_CompiledMethod):
+        p_w.extend(w_obj.literals)
+    elif isinstance(w_obj, model.W_PointersObject):
+        p_w.extend(w_obj.fetch_all(space))
+    return p_w
+
+def get_instances_array(interp, s_frame, w_class=None, store=True, some_instance=False):
     # check cached
     match_w = s_frame.instances_array(w_class)
     if match_w is None:
-        match_w = get_instances_array_gc(space, w_class)
+        if some_instance and interp.space.is_spur.is_set():
+            # on Spur, someInstance really means just one, it's not used to
+            # start iterating over all instances
+            return get_instances_array_trace(interp, w_class, some_instance=True)
+        match_w = get_instances_array_trace(interp, w_class)
         if store:
             s_frame.store_instances_array(w_class, match_w)
     return match_w
+
 
 @expose_primitive(SOME_INSTANCE, unwrap_spec=[object])
 def func(interp, s_frame, w_class):
@@ -734,7 +773,7 @@ def func(interp, s_frame, w_class):
     if w_class.is_same_object(interp.space.w_SmallInteger):
         raise PrimitiveFailedError()
 
-    match_w = get_instances_array(interp.space, s_frame, w_class=w_class)
+    match_w = get_instances_array(interp, s_frame, w_class=w_class, some_instance=True)
     try:
         return match_w[0]
     except IndexError:
@@ -763,7 +802,7 @@ def func(interp, s_frame, w_obj):
     # it returns the "next" instance after w_obj.
     return next_instance(
         interp.space,
-        get_instances_array(interp.space, s_frame, w_class=w_obj.getclass(interp.space)),
+        get_instances_array(interp, s_frame, w_class=w_obj.getclass(interp.space)),
         w_obj
     )
 
@@ -1341,7 +1380,7 @@ SYSTEM_ATTRIBUTE = 149
 
 @expose_primitive(SOME_OBJECT, unwrap_spec=[object])
 def func(interp, s_frame, w_class):
-    match_w = get_instances_array(interp.space, s_frame)
+    match_w = get_instances_array(interp, s_frame, some_instance=True)
     try:
         return match_w[0]
     except IndexError:
@@ -1363,7 +1402,7 @@ def next_object(space, list_of_objects, w_obj):
 def func(interp, s_frame, w_obj):
     # This primitive is used to iterate through all objects:
     # it returns the "next" instance after w_obj.
-    return next_object(interp.space, get_instances_array(interp.space, s_frame), w_obj)
+    return next_object(interp.space, get_instances_array(interp, s_frame), w_obj)
 
 @expose_primitive(BEEP, unwrap_spec=[object])
 def func(interp, s_frame, w_receiver):
