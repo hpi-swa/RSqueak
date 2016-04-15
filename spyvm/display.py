@@ -44,6 +44,7 @@ class SqueakInterrupt(Exception):
 
 class SDLDisplay(object):
     _attrs_ = ["window", "title", "renderer", "screen_texture",
+               "altf4quit",
                "width", "height", "depth", "screen_surface", "has_surface",
                "mouse_position", "button", "key", "interrupt_key", "_defer_updates",
                "_deferred_events", "bpp", "pitch", "highdpi"]

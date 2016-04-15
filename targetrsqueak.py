@@ -285,9 +285,14 @@ class Config(object):
     def init_from_ini(self):
         splitpaths = self.exepath.split(os.sep)
         exedir = ""
-        if len(splitpaths) > 2:
-            exedir = splitpaths[-2]
+        splitlen = len(splitpaths)
+        if splitlen > 2:
+            splitlen = splitlen - 1
+            assert splitlen >= 0
+            exedir = os.sep.join(splitpaths[0:splitlen])
+            print "looking for ini file in %s" % exedir
         else:
+            print "No ini file found in %s" % str(splitpaths)
             return
         inifile = rpath.rjoin(exedir, "rsqueak.ini")
         if os.path.exists(inifile):
