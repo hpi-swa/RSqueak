@@ -289,6 +289,16 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         patch_bootstrap_object(self.w_true, self.w_True, 0)
         patch_bootstrap_object(self.w_false, self.w_False, 0)
         patch_bootstrap_object(self.w_special_selectors, self.w_Array, len(constants.SPECIAL_SELECTORS) * 2)
+        self.add_bootstrap_object(
+            "w_schedulerassociationpointer",
+            self.wrap_list([ # assoc
+                self.w_nil,
+                self.wrap_list([ # scheduler
+                    self.w_nil,
+                    self.wrap_list([self.w_nil, self.w_nil]) # active proc
+                ])
+            ])
+        )
 
     def patch_class(self, w_class, instsize, w_superclass=None, w_metaclass=None,
                         name='?', format=storage_classes.POINTERS, varsized=False):

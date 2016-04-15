@@ -11,9 +11,12 @@ def setup_module():
     wrap = space.w
     bootstrap_class = space.bootstrap_class
     new_frame = space.make_frame
+    old_suspended_context = wrapper.ProcessWrapper.store_suspended_context
+    wrapper.ProcessWrapper.store_suspended_context = lambda s, x: s
     copy_to_module(locals(), __name__)
 
 def teardown_module():
+    wrapper.ProcessWrapper.store_suspended_context = old_suspended_context
     cleanup_module(__name__)
 
 class MockFrame(model.W_PointersObject):
