@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 import sys, time, os
 from rpython.jit.codewriter.policy import JitPolicy
-from rpython.rlib import jit, rpath, objectmodel
+from rpython.rlib import jit, rpath, objectmodel, streamio
 from spyvm import model, interpreter, squeakimage, objspace, wrapper, error
 from spyvm.plugins.simulation import SIMULATE_PRIMITIVE_SELECTOR
 from spyvm.util import system
@@ -35,65 +35,51 @@ def _usage(argv):
     Usage: %s <path> [-r|-m|-h] [-naPu] [-jpiS] [-tTslL]
             <path> - image path (default: Squeak.image)
 
-          VM options:
-            --[no-]highdpi         - Enable or disable High-DPI support.
-                                     (Default: on)
-
-          Execution mode:
-            (no flags)             - Image will be normally opened.
-            -r|--run <code>        - Code will be compiled and executed in
-                                     headless mode, result printed.
-            -m|--method <selector> - Selector will be sent to a SmallInteger in
-                                     headless mode, result printed.
+          General:
+            --no-highdpi           - Disable High-DPI support (default: on).
             -h|--help              - Output this message and exit.
             -v|--version           - Print version info and exit.
 
-          Headless mode:
-            When starting the image without -r or -m, the last running Process
-            in the image will be executed. This Process will open the image
-            window and initialize the environment. In headless mode, this
-            Process is ignored; instead, a new context will be created and
-            directly executed. When this context returns, the VM terminates.
-            In headless mode certain errors make the VM exit directly. This
-            should prevent the image from opening a Debugger when the world is
-            not visible. Headless mode is good for benchmarking and quick
-            experiments.
-
-          Execution parameters:
-            -n|--num <int> - Only with -m or -r. SmallInteger to be used as
-                             receiver (default: nil).
-            -a|--arg <arg> - Only with -m. Will be used as String argument.
-            -P|--process   - Only with -m or -r. Disable headless mode.
-                             A high-priority Process for the new context will
-                             be created. The last active Process in the image
-                             will be started, but then quickly switch to the
-                             synthetic high-prio Process.
-            -u             - Only with -m or -r. Try to stop UI-process at
-                             startup. Can help benchmarking.
+          Execution:
+            -r|--run <code>  - Code will be compiled and executed in
+                               headless mode, result printed.
+            -m|--method <selector>
+                             - Selector will be sent to a SmallInteger in
+                               headless mode, result printed.
+            -n|--num <int>   - Only with -m or -r. SmallInteger to be used as
+                               receiver (default: nil).
+            -a|--arg <arg>   - Only with -m. Will be used as String argument.
+            -P|--process     - Only with -m or -r. Disable headless mode.
+                               A high-priority Process for the new context will
+                               be created. The last active Process in the image
+                               will be started, but then quickly switch to the
+                               synthetic high-prio Process.
+            -u|--stop-ui     - Only with -m or -r. Try to stop UI-process at
+                               startup. Can help benchmarking.
             --simulate-numeric-primitives
-                           - This flag determines if an attempt is made to run
-                             Slang Simulation code for _unimplemented_ numeric
-                             primitives. This means that, if an unimplemented
-                             numeric primitive is encountered, rather than just
-                             failing, we see if the receiver understands
-                             """ + SIMULATE_PRIMITIVE_SELECTOR + """.
-                             If so, this method is called instead of the fallback
-                             code.
+                             - This flag determines if an attempt is made to run
+                               Slang Simulation code for _unimplemented_ numeric
+                               primitives. This means that, if an unimplemented
+                               numeric primitive is encountered, rather than just
+                               failing, we see if the receiver understands
+                               %s.
+                               If so, this method is called instead of the
+                               fallback code.
 
-          Other parameters:
+          Other:
             -j|--jit <jitargs> - jitargs will be passed to the jit config.
             -p|--poll          - Actively poll for events. Try this if the
                                  image is not responding well.
             -i|--no-interrupts - Disable timer interrupt.
                                  Disables non-cooperative scheduling.
             -S                 - Disable specialized storage strategies.
-                                 always use generic ListStrategy.
+                                 Always use generic ListStrategy. Probably slower.
             --hacks            - Enable Spy hacks. Set display color depth to 8
             --use-plugins      - Directs named primitives to go to the native
                                  Squeak plugins, which must be in the dynamic
                                  linker path.
 
-          Logging parameters:
+          Logging:
             -t|--trace       - Output a trace of each message, primitive,
                                return value and process switch.
             -T               - Trace important events: Process switch,
@@ -103,7 +89,34 @@ def _usage(argv):
             -l|--storage-log - Output a log of storage operations.
             -L               - Output an aggregated storage log at the end of
                                execution.
-    """ % argv[0]
+
+          Global: (This section is for compatibility with Squeak.ini)
+            --ImageFile <path>   - path to the image file
+            --WindowTitle <str>  - string to the image file
+            --EnableAltF4Quit    - enable Alt F4 to immediately kill the image
+
+          All options that take arguments can be set in an rsqueak.ini file
+          located next to the binary. The sections must correspond to the
+          sections given here. The options use their long form and the argument
+          after the equals sign. Options without arguments can be set to "1" or
+          "0".
+          For compatibility with Squeak, a "Global" section is also supported
+          with the following keys:
+              ImageFile (a default path to an image file)
+              WindowTitle (a string to set as the title)
+              EnableAltF4Quit (1 or 0)
+
+          About Headless mode:
+            When starting the image without -r or -m, the last running Process
+            in the image will be executed. This Process will open the image
+            window and initialize the environment. In headless mode, this
+            Process is ignored; instead, a new context will be created and
+            directly executed. When this context returns, the VM terminates.
+            In headless mode certain errors make the VM exit directly. This
+            should prevent the image from opening a Debugger when the world is
+            not visible. Headless mode is good for benchmarking and quick
+            experiments.
+    """ % (argv[0], SIMULATE_PRIMITIVE_SELECTOR)
 
 def get_parameter(argv, idx, arg):
     if len(argv) < idx + 1:
@@ -140,86 +153,99 @@ def safe_entry_point(argv):
     finally:
         prebuilt_space.strategy_factory.logger.print_aggregated_log()
 
-def entry_point(argv):
-    jit.set_param(None, "trace_limit", 1000000)
-    # == Main execution parameters
-    path = None
-    selector = None
-    code = ""
-    number = 0
-    have_number = False
-    stringarg = None
-    headless = True
-    # == Other parameters
-    poll = False
-    interrupts = True
-    trace = False
-    trace_important = False
+class Config(object):
+    def __init__(self, space, argv):
+        self.space = space
+        self.exepath = self.find_executable(argv[0])
+        self.argv = argv
+        self.path = None
+        self.selector = None
+        self.code = ""
+        self.number = 0
+        self.have_number = False
+        self.stringarg = None
+        self.headless = True
+        self.poll = False
+        self.interrupts = True
+        self.trace = False
+        self.trace_important = False
 
-    space = prebuilt_space
-    idx = 1
-    try:
+    def parse_args(self, argv, skip_bad=False):
+        idx = 1
         while idx < len(argv):
             arg = argv[idx]
             idx += 1
+            # General
             if arg in ["-h", "--help"]:
                 _usage(argv)
-                return 0
+                raise error.Exit("")
             elif arg in ["-v", "--version"]:
                 print "RSqueakVM %s, built on %s" % (VERSION, BUILD_DATE)
-                return 0
+                raise error.Exit("")
             elif arg == "--no-highdpi":
-                space.highdpi.deactivate()
-            elif arg == "--highdpi":
-                space.highdpi.activate()
+                self.space.highdpi.deactivate()
+            # Execution
+            elif arg in ["-r", "--run"]:
+                self.code, idx = get_parameter(argv, idx, arg)
+            elif arg in ["-m", "--method"]:
+                self.selector, idx = get_parameter(argv, idx, arg)
+            elif arg in ["-n", "--number"]:
+                self.number, idx = get_int_parameter(argv, idx, arg)
+                self.have_number = True
+            elif arg in ["-a", "--arg"]:
+                self.stringarg, idx = get_parameter(argv, idx, arg)
+            elif arg in ["-P", "--process"]:
+                self.headless = False
+            elif arg in ["-u", "--stop-ui"]:
+                from spyvm.plugins.vmdebugging import stop_ui_process
+                stop_ui_process()
+            elif arg in ["--simulate-numeric-primitives"]:
+                self.space.simulate_numeric_primitives.activate()
+            # Other
             elif arg in ["-j", "--jit"]:
                 jitarg, idx = get_parameter(argv, idx, arg)
                 jit.set_user_param(interpreter.Interpreter.jit_driver, jitarg)
             elif arg in ["--reader-jit-args"]:
                 jitarg, idx = get_parameter(argv, idx, arg)
                 squeakimage.set_reader_user_param(jitarg)
-            elif arg in ["-n", "--number"]:
-                number, idx = get_int_parameter(argv, idx, arg)
-                have_number = True
-            elif arg in ["-m", "--method"]:
-                selector, idx = get_parameter(argv, idx, arg)
-            elif arg in ["-t", "--trace"]:
-                trace = True
-            elif arg in ["-T"]:
-                trace_important = True
-            elif arg in ["-s", "--safe-trace"]:
-                space.omit_printing_raw_bytes.activate()
             elif arg in ["-p", "--poll"]:
-                poll = True
-            elif arg in ["-a", "--arg"]:
-                stringarg, idx = get_parameter(argv, idx, arg)
-            elif arg in ["-r", "--run"]:
-                code, idx = get_parameter(argv, idx, arg)
+                self.poll = True
             elif arg in ["-i", "--no-interrupts"]:
-                interrupts = False
-            elif arg in ["-P", "--process"]:
-                headless = False
-            elif arg in ["--hacks"]:
-                space.run_spy_hacks.activate()
-            elif arg in ["--use-plugins"]:
-                space.use_plugins.activate()
+                self.interrupts = False
             elif arg in ["-S"]:
-                space.strategy_factory.no_specialized_storage.activate()
-            elif arg in ["-u"]:
-                from spyvm.plugins.vmdebugging import stop_ui_process
-                stop_ui_process()
+                self.space.strategy_factory.no_specialized_storage.activate()
+            elif arg in ["--hacks"]:
+                self.space.run_spy_hacks.activate()
+            elif arg in ["--use-plugins"]:
+                self.space.use_plugins.activate()
+            # Logging
+            elif arg in ["-t", "--trace"]:
+                self.trace = True
+            elif arg in ["-T"]:
+                self.trace_important = True
+            elif arg in ["-s", "--safe-trace"]:
+                self.space.omit_printing_raw_bytes.activate()
             elif arg in ["-l", "--storage-log"]:
-                space.strategy_factory.logger.activate()
+                self.space.strategy_factory.logger.activate()
             elif arg in ["-L"]:
-                space.strategy_factory.logger.activate(aggregate=True)
-            elif arg in ["--simulate-numeric-primitives"]:
-                space.simulate_numeric_primitives.activate()
-            elif path is None:
-                path = arg
+                self.space.strategy_factory.logger.activate(aggregate=True)
+            # Global
+            elif arg in ["--ImageFile"]:
+                self.path, idx = get_parameter(argv, idx, arg)
+            elif arg in ["--WindowTitle"]:
+                title, idx = get_parameter(argv, idx, arg)
+                self.space.title.set(title)
+            elif arg in ["--EnableAltF4Quit"]:
+                self.space.altf4quit.activate()
+            # Default
+            elif self.path is None:
+                self.path = arg
             else:
                 _usage(argv)
-                return -1
+                raise error.Exit("Invalid argument: %s" % arg)
 
+    def ensure_path(self):
+        path = self.path
         if path is None:
             for filename in os.listdir(os.getcwd()):
                 if filename.startswith("Squeak") and filename.endswith(".image"):
@@ -237,39 +263,106 @@ def entry_point(argv):
                 path = macosx_dialog.get_file()
             else:
                 path = "Squeak.image"
-        if code and selector:
-            raise error.Exit("Cannot handle both -r and -m.")
-    except error.Exit as e:
-        print_error("Parameter error: %s" % e.msg)
-        return 1
+        self.path = rpath.rabspath(path)
 
-    path = rpath.rabspath(path)
+    def sanitize(self):
+        self.ensure_path()
+        if self.code and self.selector:
+            raise error.Exit("Cannot handle both -r and -m.")
+
+    def find_executable(self, executable):
+        if os.sep in executable or (os.name == "nt" and ":" in executable):
+            return rpath.rabspath(executable)
+        path = os.environ.get("PATH")
+        if path:
+            for dir in path.split(os.pathsep):
+                f = os.path.join(dir, executable)
+                if os.path.isfile(f):
+                    executable = f
+                    break
+        return rpath.rabspath(executable)
+
+    def init_from_ini(self):
+        splitpaths = self.exepath.split(os.sep)
+        exedir = ""
+        if len(splitpaths) > 2:
+            exedir = splitpaths[-2]
+        else:
+            return
+        inifile = rpath.rjoin(exedir, "rsqueak.ini")
+        if os.path.exists(inifile):
+            f = streamio.open_file_as_stream(inifile, mode="r", buffering=0)
+            try:
+                argini = [""]
+                line = f.readline().strip()
+                while len(line) > 0:
+                    if line.startswith("[") or line.startswith(";"):
+                        pass
+                    elif "=" in line:
+                        option, param = line.split("=", 1)
+                        option = option.strip()
+                        param = param.strip()
+                        param = param.strip("\"'")
+                        if param == "1":
+                            argini += ["--%s" % option]
+                        elif param == "0":
+                            pass
+                        else:
+                            argini += ["--%s" % option, param]
+                    else:
+                        raise error.Exit("Invalid line in INI file: %s" % line)
+                    line = f.readline().strip()
+                self.parse_args(argini)
+            finally:
+                f.close()
+
+    def init_from_arguments(self):
+        return self.parse_args(self.argv)
+
+
+def entry_point(argv):
+    jit.set_param(None, "trace_limit", 1000000)
+    # == Main execution parameters
+    space = prebuilt_space
+    cfg = Config(space, argv)
+
     try:
-        stream = squeakimage.Stream(filename=path)
+        cfg.init_from_ini()
+        cfg.init_from_arguments()
+        cfg.sanitize()
+    except error.Exit as e:
+        if e.msg == "":
+            return 0
+        else:
+            print_error(e.msg)
+            return 1
+
+    try:
+        stream = squeakimage.Stream(filename=cfg.path)
     except OSError as e:
-        print_error("%s -- %s (LoadError)" % (os.strerror(e.errno), path))
+        print_error("%s -- %s (LoadError)" % (os.strerror(e.errno), cfg.path))
         return 1
 
     # Load & prepare image and environment
     image = squeakimage.ImageReader(space, stream).create_image()
     interp = interpreter.Interpreter(space, image,
-                trace=trace, trace_important=trace_important,
-                evented=not poll, interrupts=interrupts)
-    space.runtime_setup(argv, path)
+                trace=cfg.trace, trace_important=cfg.trace_important,
+                evented=not cfg.poll, interrupts=cfg.interrupts)
+    space.runtime_setup(cfg.exepath, argv, cfg.path)
 
     interp.populate_remaining_special_objects()
     print_error("") # Line break after image-loading characters
 
     # Create context to be executed
-    if code or selector:
-        if not have_number:
+    if cfg.code or cfg.selector:
+        if not cfg.have_number:
             w_receiver = space.w_nil
         else:
-            w_receiver = space.wrap_int(number)
-        if code:
-            selector = compile_code(interp, w_receiver, code)
-        s_frame = create_context(interp, w_receiver, selector, stringarg)
-        if headless:
+            w_receiver = space.wrap_int(cfg.number)
+        if cfg.code:
+            cfg.selector = compile_code(interp, w_receiver, cfg.code)
+        s_frame = create_context(interp, w_receiver, cfg.selector, cfg.stringarg)
+        if cfg.headless:
             space.headless.activate()
             context = s_frame
         else:
@@ -278,6 +371,7 @@ def entry_point(argv):
     else:
         context = active_context(space)
 
+    cfg = None # make sure we free this
     w_result = execute_context(interp, context)
     print result_string(w_result)
     return 0

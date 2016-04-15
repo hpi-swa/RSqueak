@@ -48,10 +48,11 @@ class SDLDisplay(object):
                "mouse_position", "button", "key", "interrupt_key", "_defer_updates",
                "_deferred_events", "bpp", "pitch", "highdpi"]
 
-    def __init__(self, title, highdpi):
+    def __init__(self, title, highdpi, altf4quit):
         self._init_sdl()
         self.title = title
         self.highdpi = highdpi
+        self.altf4quit = altf4quit
         SDLCursor.has_display = True
         self.window = lltype.nullptr(RSDL.WindowPtr.TO)
         self.renderer = lltype.nullptr(RSDL.RendererPtr.TO)
@@ -243,11 +244,6 @@ class SDLDisplay(object):
         interrupt = self.interrupt_key
         if (interrupt & 0xFF == self.key and interrupt >> 8 == self.get_modifier_mask(0)):
             raise SqueakInterrupt
-        # Cmd+, ... this quits the image hard
-        # To get this value, see EventSensor>>initialize ($, asciiValue bitOr: 16r0800)
-        interrupt = 2092
-        if (interrupt & 0xFF == self.key and interrupt >> 8 == self.get_modifier_mask(0)):
-            raise Exception
 
     def handle_textinput_event(self, event):
         textinput = rffi.cast(RSDL.TextInputEventPtr, event)
@@ -336,6 +332,9 @@ class SDLDisplay(object):
                 #                             0, 0, int(self.screen.c_w), int(self.screen.c_h), 0])
                 #     return [EventTypeWindow, time, WindowEventActivated, 0, 0, 0, 0, 0]
                 elif event_type == RSDL.QUIT:
+                    if self.altf4quit: # we want to quit hard
+                        print "Alt+F4 quit option is on, exiting hard."
+                        raise Exception
                     return [EventTypeWindow, time, WindowEventClose, 0, 0, 0, 0, 0]
         finally:
             lltype.free(event, flavor='raw')

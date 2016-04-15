@@ -82,6 +82,8 @@ class ObjSpace(object):
         self.system_attributes = {}
         self._system_attribute_version = ConstantVersion()
         self._executable_path = ConstantString()
+        self.title = ConstantString()
+        self.altf4quit = ConstantFlag()
         self._display = ConstantObject()
 
         # Create the nil object.
@@ -93,20 +95,8 @@ class ObjSpace(object):
         self.make_bootstrap_classes()
         self.make_bootstrap_objects()
 
-    def find_executable(self, executable):
-        if os.sep in executable or (os.name == "nt" and ":" in executable):
-            return executable
-        path = os.environ.get("PATH")
-        if path:
-            for dir in path.split(os.pathsep):
-                f = os.path.join(dir, executable)
-                if os.path.isfile(f):
-                    executable = f
-                    break
-        return rpath.rabspath(executable)
-
-    def runtime_setup(self, argv, image_name):
-        fullpath = rpath.rabspath(self.find_executable(argv[0]))
+    def runtime_setup(self, exepath, argv, image_name):
+        fullpath = exepath
         self._executable_path.set(fullpath)
         self.set_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, image_name)
         self.image_loaded.activate()
@@ -370,9 +360,13 @@ class ObjSpace(object):
         disp = self._display.get()
         if disp is None:
             # Create lazy to allow headless execution.
+            title = self.title.get()
+            if len(title) == 0:
+                title = self.get_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX)
             disp = display.SDLDisplay(
-                self.get_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX),
-                self.highdpi.is_set()
+                title,
+                self.highdpi.is_set(),
+                self.altf4quit.is_set()
             )
             self._display.set(disp)
         return jit.promote(disp)
