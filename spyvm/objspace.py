@@ -3,7 +3,7 @@ import os
 from spyvm import constants, model, wrapper, display, storage
 from spyvm.util.version import Version
 from spyvm.error import WrappingError
-from spyvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX
+from spyvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, SYSTEM_ATTRIBUTE_IMAGE_ARGS_INDEX
 from rpython.rlib import jit, rpath
 from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin, we_are_translated
 from rpython.rlib.rarithmetic import intmask, r_uint, int_between, r_longlong, r_ulonglong, is_valid_int
