@@ -4,16 +4,19 @@ from spyvm.primitives import prim_table, PrimitiveFailedError
 from rpython.rlib.rfloat import isinf, isnan
 from rpython.rlib.rarithmetic import intmask, r_uint, r_int64
 from rpython.rtyper.lltypesystem import lltype, rffi
-from .util import create_space, copy_to_module, cleanup_module, TestInterpreter
+from .util import create_space, copy_to_module, cleanup_module, TestInterpreter, very_slow_test
 
 def setup_module():
     space = create_space(bootstrap = True)
     wrap = space.w
     bootstrap_class = space.bootstrap_class
     new_frame = space.make_frame
+    old_suspended_context = wrapper.ProcessWrapper.store_suspended_context
+    wrapper.ProcessWrapper.store_suspended_context = lambda s, x: s
     copy_to_module(locals(), __name__)
 
 def teardown_module():
+    wrapper.ProcessWrapper.store_suspended_context = old_suspended_context
     cleanup_module(__name__)
 
 class MockFrame(model.W_PointersObject):
@@ -48,7 +51,7 @@ def _prim(space, code, stack, context = None):
     prim_table[code](interp, w_frame.as_context_get_shadow(space), argument_count-1)
     res = w_frame.as_context_get_shadow(space).pop()
     s_frame = w_frame.as_context_get_shadow(space)
-    assert not s_frame.stackdepth() - s_frame.tempsize() # check args are consumed
+    assert not s_frame.stackdepth() - s_frame.tempsize()  # check args are consumed
     return res
 
 def prim(code, stack, context = None):
@@ -418,7 +421,7 @@ def test_primitive_log_n():
     assert prim(primitives.FLOAT_LOG_N, [1.0]).value == 0.0
     assert prim(primitives.FLOAT_LOG_N, [math.e]).value == 1.0
     assert float_equals(prim(primitives.FLOAT_LOG_N, [10.0]), math.log(10))
-    assert isinf(prim(primitives.FLOAT_LOG_N, [0.0]).value) # works also for negative infinity
+    assert isinf(prim(primitives.FLOAT_LOG_N, [0.0]).value)  # works also for negative infinity
     assert isnan(prim(primitives.FLOAT_LOG_N, [-1.0]).value)
 
 def test_primitive_exp():
@@ -480,11 +483,11 @@ def test_seconds_clock():
 
 def test_inc_gc():
     # Should not fail :-)
-    prim(primitives.INC_GC, [42]) # Dummy arg
+    prim(primitives.INC_GC, [42])  # Dummy arg
 
 def test_full_gc():
     # Should not fail :-)
-    prim(primitives.FULL_GC, [42]) # Dummy arg
+    prim(primitives.FULL_GC, [42])  # Dummy arg
 
 def test_interrupt_semaphore():
     prim(primitives.INTERRUPT_SEMAPHORE, [1, space.w_true])
@@ -668,12 +671,14 @@ def test_primitive_closure_value_value_with_temps():
     assert s_new_context.gettemp(1).unwrap_string(None) == "second arg"
     assert s_new_context.gettemp(2).unwrap_string(None) == "some value"
 
+@very_slow_test
 def test_primitive_some_instance():
     import gc; gc.collect()
     someInstance = map(space.wrap_list, [[1], [2]])
     w_r = prim(primitives.SOME_INSTANCE, [space.w_Array])
     assert w_r.getclass(space) is space.w_Array
 
+@very_slow_test
 def test_primitive_some_object():
     import gc; gc.collect()
     w_r = prim(primitives.SOME_OBJECT, [space.w_nil])
@@ -768,9 +773,9 @@ def test_primitive_be_display():
     assert space.objtable["w_display"] is None
     mock_display = model.W_PointersObject(space, space.w_Point, 4)
     w_wordbmp = model.W_WordsObject(space, space.w_Bitmap, 10)
-    mock_display.store(space, 0, w_wordbmp) # bitmap
-    mock_display.store(space, 1, space.wrap_int(32)) # width
-    mock_display.store(space, 2, space.wrap_int(10)) # height
+    mock_display.store(space, 0, w_wordbmp)  # bitmap
+    mock_display.store(space, 1, space.wrap_int(32))  # width
+    mock_display.store(space, 2, space.wrap_int(10))  # height
     mock_display.store(space, 3, space.wrap_int(1))  # depth
     prim(primitives.BE_DISPLAY, [mock_display])
     assert space.objtable["w_display"] is mock_display
@@ -781,9 +786,9 @@ def test_primitive_be_display():
     assert isinstance(sdldisplay, display.SDLDisplay)
 
     mock_display2 = model.W_PointersObject(space, space.w_Point, 4)
-    mock_display2.store(space, 0, model.W_WordsObject(space, space.w_Bitmap, 10)) # bitmap
-    mock_display2.store(space, 1, space.wrap_int(32)) # width
-    mock_display2.store(space, 2, space.wrap_int(10)) # height
+    mock_display2.store(space, 0, model.W_WordsObject(space, space.w_Bitmap, 10))  # bitmap
+    mock_display2.store(space, 1, space.wrap_int(32))  # width
+    mock_display2.store(space, 2, space.wrap_int(10))  # height
     mock_display2.store(space, 3, space.wrap_int(1))  # depth
     prim(primitives.BE_DISPLAY, [mock_display2])
     assert space.objtable["w_display"] is mock_display2
@@ -800,9 +805,9 @@ def test_primitive_be_display():
 # def test_primitive_force_display_update(monkeypatch):
 #     mock_display = model.W_PointersObject(space, space.w_Point, 4)
 #     w_wordbmp = model.W_WordsObject(space, space.w_Array, 10)
-#     mock_display.store(space, 0, w_wordbmp) # bitmap
-#     mock_display.store(space, 1, space.wrap_int(32)) # width
-#     mock_display.store(space, 2, space.wrap_int(10)) # height
+#     mock_display.store(space, 0, w_wordbmp)  # bitmap
+#     mock_display.store(space, 1, space.wrap_int(32))  # width
+#     mock_display.store(space, 2, space.wrap_int(10))  # height
 #     mock_display.store(space, 3, space.wrap_int(1))  # depth
 #     prim(primitives.BE_DISPLAY, [mock_display])
 

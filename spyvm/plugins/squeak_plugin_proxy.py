@@ -15,11 +15,9 @@ import inspect
 
 from rpython.rlib.entrypoint import entrypoint_highlevel
 from rpython.rtyper.annlowlevel import llhelper
-from rpython.rlib.exports import export_struct
 from rpython.rtyper.lltypesystem.lltype import FuncType, Ptr
 from rpython.rtyper.lltypesystem import lltype, rffi
 from rpython.rlib.unroll import unrolling_iterable
-from rpython.rlib.rarithmetic import intmask
 
 from spyvm import error, model, model_display, objspace, wrapper
 
@@ -964,7 +962,7 @@ def signalNoResume(n):
 # ##############################################################################
 
 VirtualMachine = lltype.Struct("VirtualMachine",
-        *map(lambda x: (x[0], x[1]), functions))
+                               *map(lambda x: (x[0], x[1]), functions))
 VMPtr = Ptr(VirtualMachine)
 
 proxy_functions = unrolling_iterable(functions)
@@ -1122,7 +1120,7 @@ class _InterpreterProxy(object):
             try:
                 _getModuleName = dlsym(module, "getModuleName")
             except KeyError:
-                pass # the method does not need to exist
+                pass  # the method does not need to exist
             else:
                 getModuleName = rffi.cast(func_str_void, _getModuleName)
                 if not rffi.charp2str(getModuleName()).startswith(module_name):
@@ -1141,7 +1139,7 @@ class _InterpreterProxy(object):
             try:
                 _initialiseModule = dlsym(module, "initialiseModule")
             except KeyError:
-                pass # the method does not need to exist
+                pass  # the method does not need to exist
             else:
                 initialiseModule = rffi.cast(func_bool_void, _initialiseModule)
                 if not initialiseModule():

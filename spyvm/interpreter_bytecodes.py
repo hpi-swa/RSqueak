@@ -184,9 +184,9 @@ class __extend__(ContextPartShadow):
         arraySize, popIntoArray = splitter[7, 1](descriptor)
         newArray = None
         if popIntoArray == 1:
-           newArray = interp.space.wrap_list(self.pop_and_return_n(arraySize))
+            newArray = interp.space.wrap_list(self.pop_and_return_n(arraySize))
         else:
-           newArray = interp.space.w_Array.as_class_get_shadow(interp.space).new(arraySize)
+            newArray = interp.space.w_Array.as_class_get_shadow(interp.space).new(arraySize)
         self.push(newArray)
 
     # ====== Extended Push/Pop bytecodes ======
@@ -237,18 +237,24 @@ class __extend__(ContextPartShadow):
         return index_in_array, w_indirectTemps
 
     @bytecode_implementation(parameter_bytes=2)
-    def pushRemoteTempLongBytecode(self, interp, current_bytecode, index_in_array, index_of_array):
-        index_in_array, w_indirectTemps = self._extract_index_and_temps(index_in_array, index_of_array)
+    def pushRemoteTempLongBytecode(self, interp, current_bytecode,
+                                   index_in_array, index_of_array):
+        index_in_array, w_indirectTemps = self._extract_index_and_temps(
+                index_in_array, index_of_array)
         self.push(w_indirectTemps.at0(self.space, index_in_array))
 
     @bytecode_implementation(parameter_bytes=2)
-    def storeRemoteTempLongBytecode(self, interp, current_bytecode, index_in_array, index_of_array):
-        index_in_array, w_indirectTemps = self._extract_index_and_temps(index_in_array, index_of_array)
+    def storeRemoteTempLongBytecode(self, interp, current_bytecode,
+                                    index_in_array, index_of_array):
+        index_in_array, w_indirectTemps = self._extract_index_and_temps(
+                index_in_array, index_of_array)
         w_indirectTemps.atput0(self.space, index_in_array, self.top())
 
     @bytecode_implementation(parameter_bytes=2)
-    def storeAndPopRemoteTempLongBytecode(self, interp, current_bytecode, index_in_array, index_of_array):
-        index_in_array, w_indirectTemps = self._extract_index_and_temps(index_in_array, index_of_array)
+    def storeAndPopRemoteTempLongBytecode(self, interp, current_bytecode,
+                                          index_in_array, index_of_array):
+        index_in_array, w_indirectTemps = self._extract_index_and_temps(
+                index_in_array, index_of_array)
         w_indirectTemps.atput0(self.space, index_in_array, self.pop())
 
     @bytecode_implementation(parameter_bytes=3)
@@ -279,7 +285,7 @@ class __extend__(ContextPartShadow):
         blockSize = (j << 8) | i
         # Create new instance of BlockClosure
         w_closure = space.newClosure(self.w_self(), self.pc(), numArgs,
-                                            self.pop_and_return_n(numCopied))
+                                     self.pop_and_return_n(numCopied))
         self.push(w_closure)
         self._jump(blockSize)
 
@@ -297,8 +303,8 @@ class __extend__(ContextPartShadow):
                                   s_compiledin.s_superclass())
 
     @objectmodel.specialize.argtype(7)
-    def _sendSelector(self, w_selector, argcount, interp,
-                      receiver, receiverclassshadow, w_arguments=None, s_fallback=None):
+    def _sendSelector(self, w_selector, argcount, interp, receiver,
+                      receiverclassshadow, w_arguments=None, s_fallback=None):
         assert argcount >= 0
         w_method = receiverclassshadow.lookup(w_selector)
         if w_method is None:
@@ -306,25 +312,29 @@ class __extend__(ContextPartShadow):
                 self.push_all(w_arguments)
                 # the arguments will be popped again in doesNotUnderstand but
                 # jit compilation should be able to remove those operations
-            return self._doesNotUnderstand(w_selector, argcount, interp, receiver)
+            return self._doesNotUnderstand(w_selector, argcount, interp,
+                                           receiver)
 
         if not isinstance(w_method, model.W_CompiledMethod):
             if w_arguments:
                 self.push_all(w_arguments)
-            return self._invokeObjectAsMethod(interp, argcount, w_method, w_selector)
+            return self._invokeObjectAsMethod(interp, argcount, w_method,
+                                              w_selector)
 
         code = w_method.primitive()
         if code:
             if w_arguments:
                 self.push_all(w_arguments)
             try:
-                return self._call_primitive(code, interp, argcount, w_method, w_selector)
+                return self._call_primitive(code, interp, argcount, w_method,
+                                            w_selector)
             except error.PrimitiveFailedError:
-                pass # ignore this error and fall back to the Smalltalk version
+                pass  # ignore this error and fall back to the Smalltalk version
         if not w_arguments:
             w_arguments = self.pop_and_return_n(argcount)
-        s_frame = w_method.create_frame(interp.space, receiver, w_arguments, s_fallback=s_fallback)
-        self.pop() # receiver
+        s_frame = w_method.create_frame(interp.space, receiver, w_arguments,
+                                        s_fallback=s_fallback)
+        self.pop()  # receiver
 
         # ######################################################################
         if interp.is_tracing():
@@ -383,7 +393,7 @@ class __extend__(ContextPartShadow):
         w_message = s_message_class.new()
         w_message.store(self.space, 0, w_selector)
         w_message.store(self.space, 1, self.space.wrap_list(arguments))
-        self.pop() # The receiver, already known.
+        self.pop()  # The receiver, already known.
 
         if interp.space.headless.is_set():
             primitives.exitFromHeadlessExecution(self, "doesNotUnderstand:", w_message)
@@ -473,7 +483,8 @@ class __extend__(ContextPartShadow):
         return self._sendSelfSelector(w_selector, argcount, interp)
 
     @bytecode_implementation(parameter_bytes=2)
-    def doubleExtendedDoAnythingBytecode(self, interp, current_bytecode, second, third):
+    def doubleExtendedDoAnythingBytecode(self, interp, current_bytecode,
+                                         second, third):
         opType = second >> 5
         if opType == 0:
             # selfsend
@@ -522,8 +533,8 @@ class __extend__(ContextPartShadow):
             return
         # The first temp is executed flag for both #ensure: and #ifCurtailed:
         if self.gettemp(1).is_nil(self.space):
-            self.settemp(1, self.space.w_true) # mark unwound
-            self.push(self.gettemp(0)) # push the first argument
+            self.settemp(1, self.space.w_true)  # mark unwound
+            self.push(self.gettemp(0))  # push the first argument
             from spyvm.interpreter import LocalReturn, NonLocalReturn
             try:
                 self.bytecodePrimValue(interp, 0)
@@ -582,10 +593,12 @@ class __extend__(ContextPartShadow):
     @bytecode_implementation()
     def shortConditionalJumpBytecode(self, interp, current_bytecode):
         # The conditional jump is "jump on false"
-        self._jumpConditional(interp, False, self._shortJumpOffset(current_bytecode))
+        self._jumpConditional(interp, False,
+                              self._shortJumpOffset(current_bytecode))
 
     @bytecode_implementation(parameter_bytes=1)
-    def longUnconditionalJumpBytecode(self, interp, current_bytecode, parameter):
+    def longUnconditionalJumpBytecode(self, interp, current_bytecode,
+                                      parameter):
         offset = (((current_bytecode & 7) - 4) << 8) + parameter
         self._jump(offset)
 

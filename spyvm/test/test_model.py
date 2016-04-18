@@ -40,7 +40,7 @@ def test_new_namedvars():
     w_mycls = bootstrap_class(3)
     w_myinstance = w_mycls.as_class_get_shadow(space).new()
 
-    w_myinstance.store(space, 0, w_myinstance) # Make sure ListStorage is used
+    w_myinstance.store(space, 0, w_myinstance)  # Make sure ListStorage is used
     w_myinstance.store(space, 0, space.w_nil)
 
     assert isinstance(w_myinstance, model.W_PointersObject)
@@ -498,18 +498,18 @@ def test_characters(space):
     assert w_char.str_content() == '$a'
 
 def test_non_ascii_characters(space):
-    w_unichar = space.wrap_char(u'Ω') # Greek Capital Letter Omega
+    w_unichar = space.wrap_char(u'Ω')  # Greek Capital Letter Omega
     assert w_unichar.value == ord(u'Ω')
     assert w_unichar.str_content() == 'Character value: 937'
 
 def test_high_characters(space):
     from spyvm.model import W_Character
-    w_nonchar = W_Character(0x10ffff) # Non-Character codepoint, present in images
+    w_nonchar = W_Character(0x10ffff)  # Non-Character codepoint, present in images
     # do not assert a specific representation because these are unlikely to be printable
     # but str_content should not crash
     assert w_nonchar.str_content() == 'Character value: ' + str(0x10ffff)
     assert w_nonchar.value == 0x10ffff
-    w_mousefacechar = W_Character(0x1f42d) # http://unicode-table.com/de/1F42D/
+    w_mousefacechar = W_Character(0x1f42d)  # http://unicode-table.com/de/1F42D/
     assert w_mousefacechar.str_content() == 'Character value: ' + str(0x1f42d)
     assert w_mousefacechar.value == 0x1f42d
 

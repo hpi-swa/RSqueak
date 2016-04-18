@@ -10,7 +10,6 @@ from spyvm.error import MetaPrimFailed
 from rpython.rlib import jit, rstackovf, unroll, objectmodel, rsignal
 
 
-
 class ReturnFromTopLevel(Exception):
     _attrs_ = ["object", "s_current_frame"]
     def __init__(self, object, s_current_frame):
@@ -43,7 +42,8 @@ class NonLocalReturn(Return):
     @staticmethod
     def make(space, s_target_context, w_value):
         if isinstance(w_value, model.W_SmallInteger):
-            return IntNonLocalReturn(s_target_context, space.unwrap_int(w_value))
+            return IntNonLocalReturn(
+                    s_target_context, space.unwrap_int(w_value))
         else:
             return WrappedNonLocalReturn(s_target_context, w_value)
 
@@ -103,9 +103,12 @@ class ContextSwitchException(Exception):
         print "\n====== %s at: %s" % (self.type, self.s_new_context.short_str())
 
 class StackOverflow(ContextSwitchException):
-    """This causes the current jit-loop to be left, dumping all virtualized objects to the heap.
-    This breaks performance, so it should rarely happen.
-    In case of severe performance problems, execute with -t and check if this occurrs."""
+    """
+    This causes the current jit-loop to be left, dumping all virtualized
+    objects to the heap. This breaks performance, so it should rarely happen.
+    In case of severe performance problems, execute with -t and check if this
+    occurrs.
+    """
     type = "Stack Overflow"
 
 class ProcessSwitch(ContextSwitchException):
@@ -142,7 +145,7 @@ class Interpreter(object):
     )
 
     def __init__(self, space, image=None, trace_important=False,
-                trace=False, evented=True, interrupts=True):
+                 trace=False, evented=True, interrupts=True):
         # === Initialize immutable variables
         self.space = space
         self.image = image
@@ -232,7 +235,7 @@ class Interpreter(object):
             raise StackOverflow(s_frame)
         except LocalReturn, ret:
             if s_frame.state is DirtyContext:
-                s_sender = s_frame.s_sender() # The sender has changed!
+                s_sender = s_frame.s_sender()  # The sender has changed!
                 s_frame._activate_unwind_context(self)
                 raise NonVirtualReturn(s_sender, s_sender, ret.value(self.space))
             else:
@@ -240,7 +243,7 @@ class Interpreter(object):
                 raise ret
         except NonLocalReturn, ret:
             if s_frame.state is DirtyContext:
-                s_sender = s_frame.s_sender() # The sender has changed!
+                s_sender = s_frame.s_sender()  # The sender has changed!
                 s_frame._activate_unwind_context(self)
                 raise NonVirtualReturn(ret.s_target_context, s_sender, ret.value(self.space))
             else:
@@ -306,7 +309,8 @@ class Interpreter(object):
 
         return fallbackContext
 
-    def unwind_context_chain(self, start_context, target_context, return_value, s_current_context):
+    def unwind_context_chain(self, start_context, target_context, return_value,
+                             s_current_context):
         if start_context is None:
             # This is the toplevel frame. Execution ended.
             raise ReturnFromTopLevel(return_value, s_current_context)
@@ -329,8 +333,8 @@ class Interpreter(object):
 
     def step(self, context):
         if not objectmodel.we_are_translated():
-            if USE_SIGUSR1: self.check_sigusr(context)
-
+            if USE_SIGUSR1:
+                self.check_sigusr(context)
 
         bytecode = context.fetch_next_bytecode()
         for entry in UNROLLING_BYTECODE_RANGES:
@@ -439,7 +443,8 @@ class Interpreter(object):
                 w_selector = self.image.w_asSymbol
             else:
                 with objspace.ForceHeadless(self.space):
-                    w_selector = self.perform(self.space.wrap_string(selector), "asSymbol")
+                    w_selector = self.perform(self.space.wrap_string(selector),
+                                              "asSymbol")
 
         if self.space.is_spur.is_set():
             w_method = model.W_SpurCompiledMethod(self.space, header=512)
@@ -447,9 +452,11 @@ class Interpreter(object):
             w_method = model.W_PreSpurCompiledMethod(self.space, header=512)
         w_method.literalatput0(self.space, 1, w_selector)
         assert len(w_arguments) <= 7
-        w_method.setbytes([chr(131), chr(len(w_arguments) << 5 + 0), chr(124)]) #returnTopFromMethodBytecode
-        w_method.set_lookup_class_and_name(w_receiver.getclass(self.space), "Interpreter.perform")
-        s_frame = ContextPartShadow.build_method_context(self.space, w_method, w_receiver)
+        w_method.setbytes([chr(131), chr(len(w_arguments) << 5 + 0), chr(124)])  #returnTopFromMethodBytecode
+        w_method.set_lookup_class_and_name(w_receiver.getclass(self.space),
+                                           "Interpreter.perform")
+        s_frame = ContextPartShadow.build_method_context(self.space, w_method,
+                                                         w_receiver)
         s_frame.push(w_receiver)
         s_frame.push_all(list(w_arguments))
         return s_frame

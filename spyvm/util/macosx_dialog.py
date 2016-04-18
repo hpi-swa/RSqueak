@@ -1,13 +1,9 @@
+import py
+
 from rpython.translator.tool.cbuild import ExternalCompilationInfo
-from rpython.translator.platform import CompilationError
-from rpython.rtyper.lltypesystem import lltype, rffi
-from rpython.rtyper.tool import rffi_platform as platform
+from rpython.rtyper.lltypesystem import rffi
 from rpython.rlib.objectmodel import we_are_translated
 
-
-import py
-import sys
-import os
 from spyvm.util import system
 
 assert system.IS_DARWIN
@@ -28,7 +24,9 @@ int irrelevant_caller_of_target_function(char* buffer, int len)
 """]
 )
 
-__llget_file = rffi.llexternal('RSqueakOpenFileDialog_osx', [rffi.CCHARP, rffi.INT], rffi.INT, compilation_info=eci)
+__llget_file = rffi.llexternal('RSqueakOpenFileDialog_osx',
+                               [rffi.CCHARP, rffi.INT], rffi.INT,
+                               compilation_info=eci)
 def _get_file_eci():
     charp = rffi.str2charp("".join(["\0"] * 260))
     res = __llget_file(charp, 260)

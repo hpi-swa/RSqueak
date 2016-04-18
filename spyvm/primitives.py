@@ -9,6 +9,7 @@ from spyvm import wrapper
 from rpython.rlib import rfloat, unroll, jit, objectmodel
 from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int, r_int64, int_between, r_uint32
 
+
 def assert_class(interp, w_obj, w_class):
     if not w_obj.getclass(interp.space).is_same_object(w_class):
         raise PrimitiveFailedError()
@@ -554,12 +555,12 @@ def func(interp, s_frame, w_class):
 
 @expose_primitive(ALL_INSTANCES, unwrap_spec=[object])
 def func(interp, s_frame, w_class):
-    match_w = get_instances_array(interp.space, s_frame, w_class=w_class, store=False)
+    match_w = get_instances_array(interp, s_frame, w_class=w_class, store=False)
     return interp.space.wrap_list(match_w)
 
 @expose_primitive(ALL_OBJECTS, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    match_w = get_instances_array(interp.space, s_frame, w_class=None, store=False)
+    match_w = get_instances_array(interp, s_frame, w_class=None, store=False)
     return interp.space.wrap_list(match_w)
 
 # ___________________________________________________________________________
@@ -641,14 +642,13 @@ def func(interp, s_frame, w_from, w_to):
     # TODO: make this fast (context-switch and stack-rebuilding?)
     s_current = s_frame
     while s_current.s_sender() is not None:
-        s_current.w_self() # just for the side effect of creating the
-                           # ContextPart object
+        s_current.w_self()  # just for the side effect of creating the
+                            # ContextPart object
         s_current = s_current.s_sender()
 
     from rpython.rlib import rgc
     roots = [gcref for gcref in rgc.get_rpy_roots() if gcref]
     pending = roots[:]
-    idx = -1
     while pending:
         gcref = pending.pop()
         if not rgc.get_gcflag_extra(gcref):
@@ -692,7 +692,8 @@ def func(interp, s_frame, w_frame, stackp):
     w_frame.store(interp.space, constants.CTXPART_STACKP_INDEX, interp.space.wrap_int(stackp))
     return w_frame
 
-def get_instances_array_gc(space, w_class=None):
+def get_instances_array_gc(interp, w_class=None):
+    space = interp.space
     from rpython.rlib import rgc
 
     result_w = []
@@ -718,14 +719,58 @@ def get_instances_array_gc(space, w_class=None):
     rgc.assert_no_more_gcflags()
     return result_w
 
-def get_instances_array(space, s_frame, w_class=None, store=True):
-    # check cached
-    match_w = s_frame.instances_array(w_class)
-    if match_w is None:
-        match_w = get_instances_array_gc(space, w_class)
-        if store:
-            s_frame.store_instances_array(w_class, match_w)
-    return match_w
+@jit.dont_look_inside
+def get_instances_array_trace(interp, w_class, some_instance=False):
+    space = interp.space
+    result_w = []
+    seen_w = {}
+    roots = [interp.image.special_objects]
+    pending = roots[:]
+    while pending:
+        w_obj = pending.pop()
+        if w_obj and not seen_w.get(w_obj, False):
+            seen_w[w_obj] = True
+            if w_obj.has_class():
+                w_cls = w_obj.getclass(space)
+                if w_cls is not None:
+                    # XXX: should not return SmallFloat64 on Spur64...
+                    if ((not w_cls.is_same_object(space.w_SmallInteger)) and
+                        (not (space.is_spur.is_set() and w_cls.is_same_object(space.w_Character))) and
+                        (w_class is None or w_cls.is_same_object(w_class))):
+                        if some_instance:
+                            return [w_obj]
+                        else:
+                            result_w.append(w_obj)
+            pending.extend(_trace_pointers(interp.space, w_obj))
+    return result_w
+
+def _trace_pointers(space, w_obj):
+    p_w = [w_obj.getclass(space)]
+    if isinstance(w_obj, model.W_CompiledMethod):
+        p_w.extend(w_obj.literals)
+    elif isinstance(w_obj, model.W_PointersObject):
+        p_w.extend(w_obj.fetch_all(space))
+    return p_w
+
+def get_instances_array(interp, s_frame, w_class=None, store=True, some_instance=False):
+    # make sure we also get any objects in the currently active process
+    w_active_process = wrapper.scheduler(interp.space).active_process()
+    active_process = wrapper.ProcessWrapper(interp.space, w_active_process)
+    active_process.store_suspended_context(s_frame.w_self())
+    try:
+        match_w = s_frame.instances_array(w_class)
+        if match_w is None:
+            if some_instance and interp.space.is_spur.is_set():
+                # on Spur, someInstance really means just one, it's not used to
+                # start iterating over all instances
+                return get_instances_array_trace(interp, w_class, some_instance=True)
+            match_w = get_instances_array_trace(interp, w_class)
+            if store:
+                s_frame.store_instances_array(w_class, match_w)
+        return match_w
+    finally:
+        active_process.store_suspended_context(interp.space.w_nil)
+
 
 @expose_primitive(SOME_INSTANCE, unwrap_spec=[object])
 def func(interp, s_frame, w_class):
@@ -734,7 +779,7 @@ def func(interp, s_frame, w_class):
     if w_class.is_same_object(interp.space.w_SmallInteger):
         raise PrimitiveFailedError()
 
-    match_w = get_instances_array(interp.space, s_frame, w_class=w_class)
+    match_w = get_instances_array(interp, s_frame, w_class=w_class, some_instance=True)
     try:
         return match_w[0]
     except IndexError:
@@ -763,7 +808,7 @@ def func(interp, s_frame, w_obj):
     # it returns the "next" instance after w_obj.
     return next_instance(
         interp.space,
-        get_instances_array(interp.space, s_frame, w_class=w_obj.getclass(interp.space)),
+        get_instances_array(interp, s_frame, w_class=w_obj.getclass(interp.space)),
         w_obj
     )
 
@@ -792,7 +837,7 @@ PERFORM_IN_SUPERCLASS = 100
 BE_CURSOR = 101
 BE_DISPLAY = 102
 SCAN_CHARACTERS = 103
-OBSOLETE_INDEXED = 104 # also 96
+OBSOLETE_INDEXED = 104  # also 96
 STRING_REPLACE = 105
 SCREEN_SIZE = 106
 MOUSE_BUTTONS = 107
@@ -831,7 +876,8 @@ def func(interp, s_frame, w_rcvr, w_into):
                 interp.image.lastWindowSize = ((ary[4] & 0xffff) << 16) | (ary[5] & 0xffff)
     return w_rcvr
 
-@expose_primitive(BITBLT_COPY_BITS, clean_stack=False, no_result=True, compiled_method=True)
+@expose_primitive(BITBLT_COPY_BITS, clean_stack=False, no_result=True,
+                  compiled_method=True)
 def func(interp, s_frame, argcount, w_method):
     w_name = interp.space.wrap_string("primitiveCopyBits")
     signature = ("BitBltPlugin", "primitiveCopyBits")
@@ -848,7 +894,7 @@ def func(interp, s_frame, argcount):
     filename = interp.space.get_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX)
     SpurImageWriter(interp, filename).trace_image(s_frame)
     s_frame.pop()
-    s_frame.push(interp.space.w_false) # the non-resuming image gets false
+    s_frame.push(interp.space.w_false)  # the non-resuming image gets false
 
 @expose_primitive(BE_CURSOR)
 def func(interp, s_frame, argcount):
@@ -890,7 +936,8 @@ def func(interp, s_frame, argcount):
     offx = -offx
     offy = -offy
 
-    if display.SDLCursor.set(w_bitmap.words, width, height, offx, offy, mask_words=mask_words):
+    if display.SDLCursor.set(w_bitmap.words, width, height, offx, offy,
+                             mask_words=mask_words):
         interp.space.objtable['w_cursor'] = w_rcvr
     # Don't fail if the Cursor could not be set.
     # It is surely annoying but no reason to not continue.
@@ -1006,7 +1053,7 @@ def func(interp, s_frame, w_arg, w_rcvr):
 def func(interp, s_frame, argcount):
     w_obj = s_frame.pop()
     if argcount == 1:
-        s_frame.pop() # receiver, e.g. ContextPart>>objectClass:
+        s_frame.pop()  # receiver, e.g. ContextPart>>objectClass:
     return w_obj.getclass(interp.space)
 
 @expose_primitive(BYTES_LEFT, unwrap_spec=[object])
@@ -1052,7 +1099,8 @@ def func(interp, s_frame, w_arg, w_rcvr):
         # TODO: this should also work to change bytes to words and such
         raise PrimitiveNotYetWrittenError
 
-@expose_primitive(EXTERNAL_CALL, clean_stack=False, no_result=True, compiled_method=True)
+@expose_primitive(EXTERNAL_CALL, clean_stack=False, no_result=True,
+                  compiled_method=True)
 def func(interp, s_frame, argcount, w_method):
     space = interp.space
     w_description = w_method.literalat0(space, 1)
@@ -1081,7 +1129,7 @@ def func(interp, s_frame, argcount, w_method):
         except MissingPlugin:
             pass
 
-    if False: pass # just elifs
+    if False: pass  # just elifs
     elif signature[0] == 'LargeIntegers':
         from spyvm.plugins.large_integer import LargeIntegerPlugin
         return LargeIntegerPlugin.call(signature[1], interp, s_frame, argcount, w_method)
@@ -1338,7 +1386,7 @@ SYSTEM_ATTRIBUTE = 149
 
 @expose_primitive(SOME_OBJECT, unwrap_spec=[object])
 def func(interp, s_frame, w_class):
-    match_w = get_instances_array(interp.space, s_frame)
+    match_w = get_instances_array(interp, s_frame, some_instance=True)
     try:
         return match_w[0]
     except IndexError:
@@ -1360,7 +1408,7 @@ def next_object(space, list_of_objects, w_obj):
 def func(interp, s_frame, w_obj):
     # This primitive is used to iterate through all objects:
     # it returns the "next" instance after w_obj.
-    return next_object(interp.space, get_instances_array(interp.space, s_frame), w_obj)
+    return next_object(interp.space, get_instances_array(interp, s_frame), w_obj)
 
 @expose_primitive(BEEP, unwrap_spec=[object])
 def func(interp, s_frame, w_receiver):
@@ -1590,8 +1638,8 @@ YIELD = 167
 
 BYTE_SIZE_OF_INSTANCE = 181
 
-EXIT_CRITICAL_SECTION = 185 # similar to SIGNAL, hence SIGNAL + 100
-ENTER_CRITICAL_SECTION = 186 # similar to WAIT, hence WAIT + 100
+EXIT_CRITICAL_SECTION = 185  # similar to SIGNAL, hence SIGNAL + 100
+ENTER_CRITICAL_SECTION = 186  # similar to WAIT, hence WAIT + 100
 TEST_AND_SET_OWNERSHIP_OF_CRITICAL_SECTION = 187
 
 WITH_ARGS_EXECUTE_METHOD = 188
@@ -1674,7 +1722,7 @@ def func(interp, s_frame, argcount):
                   unwrap_spec=[object, object, list],
                   no_result=True, clean_stack=False)
 def func(interp, s_frame, w_rcvr, w_selector, w_arguments):
-    s_frame.pop_n(2) # removing our arguments
+    s_frame.pop_n(2)  # removing our arguments
     return s_frame._sendSelector(w_selector, len(w_arguments), interp, w_rcvr,
                         w_rcvr.class_shadow(interp.space), w_arguments=w_arguments)
 
@@ -1710,8 +1758,8 @@ def func(interp, s_frame, w_rcvr):
 def func(interp, s_frame, w_rcvr):
     assert_class(interp, w_rcvr, interp.space.w_Process)
     proc = wrapper.ProcessWrapper(interp.space, w_rcvr)
-    s_frame.pop() # remove receiver
-    s_frame.push(proc.my_list()) # leave my_list on stack as return value
+    s_frame.pop()  # remove receiver
+    s_frame.push(proc.my_list())  # leave my_list on stack as return value
     proc.suspend(s_frame)
 
 @expose_primitive(YIELD, unwrap_spec=[object], no_result=True, clean_stack=False)
@@ -1831,7 +1879,7 @@ CLOSURE_VALUE_ = 202
 CLOSURE_VALUE_VALUE = 203
 CLOSURE_VALUE_VALUE_VALUE = 204
 CLOSURE_VALUE_VALUE_VALUE_VALUE = 205
-CLOSURE_VALUE_WITH_ARGS = 206 #valueWithArguments:
+CLOSURE_VALUE_WITH_ARGS = 206  #valueWithArguments:
 CLOSURE_VALUE_NO_CONTEXT_SWITCH = 221
 CLOSURE_VALUE_NO_CONTEXT_SWITCH_ = 222
 
@@ -2039,15 +2087,15 @@ def func(interp, s_frame, argcount):
     if not 0 <= argcount <= 2:
         raise PrimitiveFailedError
 
-    arg1_w = s_frame.pop() # receiver
+    arg1_w = s_frame.pop()  # receiver
 
     vm_w_params = [interp.space.wrap_int(0)] * 71
 
-    vm_w_params[2] = interp.space.wrap_int(1) # must be 1 for VM Stats view to work
-    vm_w_params[8] = interp.space.wrap_int(1) # must be 1 for VM Stats view to work
+    vm_w_params[2] = interp.space.wrap_int(1)  # must be 1 for VM Stats view to work
+    vm_w_params[8] = interp.space.wrap_int(1)  # must be 1 for VM Stats view to work
 
-    vm_w_params[41] = interp.space.wrap_int(1) # We are a "stack-like" VM - number of stack tables
-    vm_w_params[45] = interp.space.wrap_int(1) # We are a "cog-like" VM - machine code zone size
+    vm_w_params[41] = interp.space.wrap_int(1)  # We are a "stack-like" VM - number of stack tables
+    vm_w_params[45] = interp.space.wrap_int(1)  # We are a "cog-like" VM - machine code zone size
 
     vm_w_params[39] = interp.space.wrap_int(constants.BYTES_PER_WORD)
     vm_w_params[40] = interp.space.wrap_int(interp.image.version.magic)
@@ -2060,7 +2108,7 @@ def func(interp, s_frame, argcount):
     if argcount == 0:
         return interp.space.wrap_list(vm_w_params)
 
-    arg2_w = s_frame.pop() # index (really the receiver, index has been removed above)
+    arg2_w = s_frame.pop()  # index (really the receiver, index has been removed above)
     if not isinstance(arg1_w, model.W_SmallInteger):
         raise PrimitiveFailedError
     if argcount == 1:
@@ -2068,7 +2116,7 @@ def func(interp, s_frame, argcount):
             raise PrimitiveFailedError
         return vm_w_params[arg1_w.value - 1]
 
-    s_frame.pop() # new value
+    s_frame.pop()  # new value
     if argcount == 2:
         # return the 'old value'
         return interp.space.wrap_int(0)

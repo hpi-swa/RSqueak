@@ -96,10 +96,20 @@ def import_bytecodes(module_name):
         else:
             make_getter(entry)
 
+class TestImage():
+    def __init__(self, space):
+        if space.w_Array.strategy:
+            self.special_objects = space.wrap_list([i for i in space.objtable.values() if i])
+
 # This interpreter allows fine grained control of the interpretation
 # by manually stepping through the bytecodes, if _loop is set to False.
 class TestInterpreter(interpreter.Interpreter):
     _loop = False
+
+    def __init__(self, *args, **kwargs):
+        interpreter.Interpreter.__init__(self, *args, **kwargs)
+        if not self.image:
+            self.image = TestImage(self.space)
 
     def loop(self, w_active_context):
         self._loop = True
@@ -279,6 +289,16 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         patch_bootstrap_object(self.w_true, self.w_True, 0)
         patch_bootstrap_object(self.w_false, self.w_False, 0)
         patch_bootstrap_object(self.w_special_selectors, self.w_Array, len(constants.SPECIAL_SELECTORS) * 2)
+        self.add_bootstrap_object(
+            "w_schedulerassociationpointer",
+            self.wrap_list([ # assoc
+                self.w_nil,
+                self.wrap_list([ # scheduler
+                    self.w_nil,
+                    self.wrap_list([self.w_nil, self.w_nil]) # active proc
+                ])
+            ])
+        )
 
     def patch_class(self, w_class, instsize, w_superclass=None, w_metaclass=None,
                         name='?', format=storage_classes.POINTERS, varsized=False):

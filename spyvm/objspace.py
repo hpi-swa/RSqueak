@@ -2,18 +2,19 @@ import os
 
 from spyvm import constants, model, wrapper, display, storage
 from spyvm.util.version import Version
-from spyvm.error import UnwrappingError, WrappingError
+from spyvm.error import WrappingError
 from spyvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX
 from rpython.rlib import jit, rpath
 from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin, we_are_translated
 from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32, int_between, r_int64, r_ulonglong, is_valid_int, r_longlonglong
+
 
 class ConstantMixin(object):
     """Mixin for constant values that can be edited, but will be promoted
     to a constant when jitting."""
     _immutable_fields_ = ["value?"]
 
-    def __init__(self, initial_value = None):
+    def __init__(self, initial_value=None):
         if initial_value is None:
             initial_value = self.default_value
         self.value = initial_value
@@ -81,6 +82,8 @@ class ObjSpace(object):
         self.system_attributes = {}
         self._system_attribute_version = ConstantVersion()
         self._executable_path = ConstantString()
+        self.title = ConstantString()
+        self.altf4quit = ConstantFlag()
         self._display = ConstantObject()
 
         # Create the nil object.
@@ -92,20 +95,8 @@ class ObjSpace(object):
         self.make_bootstrap_classes()
         self.make_bootstrap_objects()
 
-    def find_executable(self, executable):
-        if os.sep in executable or (os.name == "nt" and ":" in executable):
-            return executable
-        path = os.environ.get("PATH")
-        if path:
-            for dir in path.split(os.pathsep):
-                f = os.path.join(dir, executable)
-                if os.path.isfile(f):
-                    executable = f
-                    break
-        return rpath.rabspath(executable)
-
-    def runtime_setup(self, argv, image_name):
-        fullpath = rpath.rabspath(self.find_executable(argv[0]))
+    def runtime_setup(self, exepath, argv, image_name):
+        fullpath = exepath
         self._executable_path.set(fullpath)
         self.set_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, image_name)
         self.image_loaded.activate()
@@ -121,7 +112,7 @@ class ObjSpace(object):
         self.set_system_attribute(0, self._executable_path.get())
         self.set_system_attribute(1001, platform.system())    # operating system
         self.set_system_attribute(1002, platform.version())   # operating system version
-        self.set_system_attribute(1003, platform.processor()) # platform's processor type
+        self.set_system_attribute(1003, platform.processor())  # platform's processor type
         self.set_system_attribute(1004, VERSION)
         self.set_system_attribute(1006, BUILD_DATE)
         self.set_system_attribute(1007, "rsqueak")            # interpreter class (invented for Cog)
@@ -376,9 +367,13 @@ class ObjSpace(object):
         disp = self._display.get()
         if disp is None:
             # Create lazy to allow headless execution.
+            title = self.title.get()
+            if len(title) == 0:
+                title = self.get_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX)
             disp = display.SDLDisplay(
-                self.get_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX),
-                self.highdpi.is_set()
+                title,
+                self.highdpi.is_set(),
+                self.altf4quit.is_set()
             )
             self._display.set(disp)
         return jit.promote(disp)

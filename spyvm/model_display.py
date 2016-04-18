@@ -1,7 +1,7 @@
 
-from spyvm import model, constants, display, error
+from spyvm import model, constants, error
 from spyvm.util import system
-from rpython.rlib import jit, objectmodel
+from rpython.rlib import jit
 from rpython.rtyper.lltypesystem import lltype, rffi
 from rpython.rlib.rarithmetic import r_uint
 
@@ -165,7 +165,7 @@ class W_32BitDisplayBitmap(W_DisplayBitmap):
         rffi.c_memcpy(
             rffi.cast(rffi.VOIDP, pixbuf),
             rffi.cast(rffi.VOIDP, realbuf),
-            (stop - start) * constants.BYTES_PER_WORD) # VOIDP is char*, we want to copy word*
+            (stop - start) * constants.BYTES_PER_WORD)  # VOIDP is char*, we want to copy word*
 
 
 class W_16BitDisplayBitmap(W_DisplayBitmap):
@@ -227,7 +227,7 @@ class W_MappingDisplayBitmap(W_DisplayBitmap):
             assert False
 
     def take_over_display(self):
-        pitch = r_uint(self.display().pitch) # The pitch is different from the width input to SDL!
+        pitch = r_uint(self.display().pitch)  # The pitch is different from the width input to SDL!
         self.pitch = pitch
         self.bits_in_last_word = pitch % BITS
         self.words_per_line = r_uint((pitch - self.bits_in_last_word) / BITS)

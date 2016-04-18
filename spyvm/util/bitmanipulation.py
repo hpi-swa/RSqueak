@@ -12,7 +12,7 @@ class BitSplitter(dict):
             sum = 0
             for length in unrolling_lenghts:
                 sum += length
-                n = integer & ((1<<length) - 1)
+                n = integer & ((1 << length) - 1)
                 assert n >= 0
                 result += (n, )
                 integer = integer >> length

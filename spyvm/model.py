@@ -21,11 +21,8 @@ from spyvm.util.version import constant_for_version, constant_for_version_arg, V
 
 from rpython.rlib import rrandom, objectmodel, jit, signature, longlong2float
 from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32, ovfcheck, r_int64
-from rpython.rlib.debug import make_sure_not_resized
-from rpython.tool.pairtype import extendabletype
-from rpython.rlib.objectmodel import instantiate, compute_hash, import_from_mixin, we_are_translated
+from rpython.rlib.objectmodel import compute_hash, import_from_mixin, we_are_translated
 from rpython.rtyper.lltypesystem import lltype, rffi
-from rsdl import RSDL, RSDL_helper
 from rpython.rlib.rstrategies import rstrategies as rstrat
 
 
@@ -118,9 +115,6 @@ class W_Object(object):
     def invariant(self):
         return True
 
-    def getclass(self, space):
-        raise NotImplementedError()
-
     def class_shadow(self, space):
         """Return internal representation of Squeak class."""
         w_class = jit.promote(self.getclass(space))
@@ -193,7 +187,6 @@ class W_Object(object):
     def unwrap_long_untranslated(self, space):
         return self.unwrap_longlong(space)
 
-
     def unwrap_char_as_byte(self, space):
         raise error.UnwrappingError
 
@@ -231,7 +224,8 @@ class W_Object(object):
         return ""
 
     def as_repr_string(self):
-        return "<%s (a %s) %s>" % (self.repr_classname, self.guess_classname(), self.repr_content())
+        return "<%s (a %s) %s>" % (self.repr_classname, self.guess_classname(),
+                                   self.repr_content())
 
     def repr_content(self):
         return self.str_content()
@@ -271,7 +265,7 @@ class W_SmallInteger(W_Object):
             except OverflowError:
                 raise error.PrimitiveFailedError()
             return space.wrap_int(shifted)
-        raise PrimitiveFailedError
+        raise error.PrimitiveFailedError()
 
     def rshift(self, space, shift):
         return space.wrap_int(self.value >> shift)
@@ -342,7 +336,7 @@ class W_AbstractObjectWithIdentityHash(W_Object):
 
     hash_generator = rrandom.Random()
     UNASSIGNED_HASH = sys.maxint
-    hash = UNASSIGNED_HASH # default value
+    hash = UNASSIGNED_HASH  # default value
 
     def post_become_one_way(self, w_to):
         if isinstance(w_to, W_AbstractObjectWithIdentityHash):
@@ -440,7 +434,7 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
         if shift == 0:
             return self
         # a problem might arrise, because we may shift in ones from left
-        mask = intmask((1 << (constants.LONG_BIT - shift))- 1)
+        mask = intmask((1 << (constants.LONG_BIT - shift)) - 1)
         # the mask is only valid if the highest bit of self.value is set
         # and only in this case we do need such a mask
         return space.wrap_int((self.value >> shift) & mask)
@@ -491,9 +485,6 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
 
     def size(self):
         return self._exposed_size
-
-    def invariant(self):
-        return isinstance(self.value, int)
 
     def is_array_object(self):
         return True
@@ -588,7 +579,7 @@ class W_Float(W_AbstractObjectWithIdentityHash):
 
     def fetch(self, space, n0):
         from rpython.rlib.rstruct.ieee import float_pack
-        r = float_pack(self.value, 8) # C double
+        r = float_pack(self.value, 8)  # C double
         if n0 == 0:
             return space.wrap_uint(r_uint32(intmask(r >> 32)))
         else:
@@ -789,11 +780,11 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
         for g_obj in g_self.pointers:
             g_obj.fillin(space)
         pointers = g_self.get_pointers()
-        storage_type = space.strategy_factory.strategy_type_for(pointers, weak=False) # do not fill in weak lists, yet
+        storage_type = space.strategy_factory.strategy_type_for(pointers, weak=False)  # do not fill in weak lists, yet
         space.strategy_factory.set_initial_strategy(self, storage_type, g_self.get_class(), len(pointers), pointers)
 
     def fillin_weak(self, space, g_self):
-        assert g_self.isweak() # when we get here, this is true
+        assert g_self.isweak()  # when we get here, this is true
         pointers = g_self.get_pointers()
         storage_type = space.strategy_factory.strategy_type_for(pointers, weak=True)
         space.strategy_factory.switch_strategy(self, storage_type)
@@ -1458,7 +1449,8 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def setheader(self, space, header, initializing=False):
         self.header = header
 
-    def initialize_literals(self, number_of_literals, space, initializing=False):
+    def initialize_literals(self, number_of_literals, space,
+                            initializing=False):
         if initializing or self.literalsize != number_of_literals:
             # Keep the literals if possible.
             self.literalsize = number_of_literals
@@ -1619,7 +1611,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         if literals and len(literals) > 0:
             w_literal = literals[-1]
             if isinstance(w_literal, W_PointersObject) and w_literal.has_space():
-                space = w_literal.space() # Not pretty to steal the space from another object.
+                space = w_literal.space()  # Not pretty to steal the space from another object.
                 compiledin_class = None
                 if w_literal.is_class(space):
                     compiledin_class = w_literal
@@ -1677,7 +1669,8 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def create_frame(self, space, receiver, arguments=[], s_fallback=None):
         from spyvm.storage_contexts import ContextPartShadow
         assert len(arguments) == self.argsize
-        return ContextPartShadow.build_method_context(space, self, receiver, arguments, s_fallback=s_fallback)
+        return ContextPartShadow.build_method_context(
+                space, self, receiver, arguments, s_fallback=s_fallback)
 
     # === Printing ===
 
@@ -1700,7 +1693,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         return retval
 
     def as_string(self, markBytecode=0):
-        retval  = "\nMethodname: " + self.get_identifier_string()
+        retval = "\nMethodname: " + self.get_identifier_string()
         retval += "\n%s" % self.bytecode_string(markBytecode)
         return retval
 
@@ -1764,8 +1757,8 @@ class W_PreSpurCompiledMethod(W_CompiledMethod):
     def setheader(self, space, header, initializing=False):
         decoded_header = V3CompiledMethodHeader(header)
         self.header = header
-        self.initialize_literals(decoded_header.number_of_literals, space,
-                initializing)
+        self.initialize_literals(
+                decoded_header.number_of_literals, space, initializing)
         self.argsize = decoded_header.number_of_arguments
         self._tempsize = decoded_header.number_of_temporaries
         self._primitive = decoded_header.primitive_index

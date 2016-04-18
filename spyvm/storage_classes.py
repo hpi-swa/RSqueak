@@ -1,5 +1,5 @@
 
-from spyvm import model, constants, error, wrapper
+from spyvm import model, constants, error
 from spyvm.storage import AbstractCachingShadow, AbstractGenericShadow
 from spyvm.util.version import constant_for_version, constant_for_version_arg, Version
 from rpython.rlib import jit
@@ -226,7 +226,7 @@ class ClassShadow(AbstractCachingShadow):
             else:
                 w_new = model.W_PreSpurCompiledMethod(self.space, extrasize)
         elif instance_kind == FLOAT:
-            w_new = model.W_Float(0) # Squeak gives a random piece of memory
+            w_new = model.W_Float(0)  # Squeak gives a random piece of memory
         elif instance_kind == LARGE_POSITIVE_INTEGER:
             if extrasize <= 4:
                 w_new = model.W_LargePositiveInteger1Word(0, extrasize)

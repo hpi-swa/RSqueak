@@ -1,9 +1,9 @@
 from rpython.rlib.rarithmetic import r_uint, intmask
 from rpython.rtyper.lltypesystem import lltype, rffi
-from rpython.rlib.runicode import unicode_encode_utf_8
+# from rpython.rlib.runicode import unicode_encode_utf_8
 from rpython.rlib import jit
 
-from rsdl import RSDL, RSDL_helper
+from rsdl import RSDL
 import key_constants
 
 
@@ -44,14 +44,16 @@ class SqueakInterrupt(Exception):
 
 class SDLDisplay(object):
     _attrs_ = ["window", "title", "renderer", "screen_texture",
+               "altf4quit",
                "width", "height", "depth", "screen_surface", "has_surface",
                "mouse_position", "button", "key", "interrupt_key", "_defer_updates",
                "_deferred_events", "bpp", "pitch", "highdpi"]
 
-    def __init__(self, title, highdpi):
+    def __init__(self, title, highdpi, altf4quit):
         self._init_sdl()
         self.title = title
         self.highdpi = highdpi
+        self.altf4quit = altf4quit
         SDLCursor.has_display = True
         self.window = lltype.nullptr(RSDL.WindowPtr.TO)
         self.renderer = lltype.nullptr(RSDL.RendererPtr.TO)
@@ -59,7 +61,7 @@ class SDLDisplay(object):
         self.screen_surface = lltype.nullptr(RSDL.Surface)
         self.has_surface = False
         self.mouse_position = [0, 0]
-        self.interrupt_key = 15 << 8 # pushing all four meta keys, of which we support three...
+        self.interrupt_key = 15 << 8  # pushing all four meta keys, of which we support three...
         self.button = 0
         self.key = 0
         self.width = 0
@@ -101,15 +103,16 @@ class SDLDisplay(object):
         self.depth = intmask(d)
         if self.window == lltype.nullptr(RSDL.WindowPtr.TO):
             self.create_window_and_renderer(x=RSDL.WINDOWPOS_UNDEFINED,
-                    y=RSDL.WINDOWPOS_UNDEFINED,
-                    width=w,
-                    height=h)
+                                            y=RSDL.WINDOWPOS_UNDEFINED,
+                                            width=w,
+                                            height=h)
         if self.screen_texture != lltype.nullptr(RSDL.TexturePtr.TO):
             RSDL.DestroyTexture(self.screen_texture)
         if self.screen_surface != lltype.nullptr(RSDL.Surface):
             RSDL.FreeSurface(self.screen_surface)
         self.has_surface = True
-        self.screen_texture = RSDL.CreateTexture(self.renderer,
+        self.screen_texture = RSDL.CreateTexture(
+                self.renderer,
                 RSDL.PIXELFORMAT_ARGB8888, RSDL.TEXTUREACCESS_STREAMING,
                 w, h)
         if not self.screen_texture:
@@ -244,11 +247,6 @@ class SDLDisplay(object):
         interrupt = self.interrupt_key
         if (interrupt & 0xFF == self.key and interrupt >> 8 == self.get_modifier_mask(0)):
             raise SqueakInterrupt
-        # Cmd+, ... this quits the image hard
-        # To get this value, see EventSensor>>initialize ($, asciiValue bitOr: 16r0800)
-        interrupt = 2092
-        if (interrupt & 0xFF == self.key and interrupt >> 8 == self.get_modifier_mask(0)):
-            raise Exception
 
     def handle_textinput_event(self, event):
         textinput = rffi.cast(RSDL.TextInputEventPtr, event)
@@ -261,8 +259,8 @@ class SDLDisplay(object):
         window_event = rffi.cast(RSDL.WindowEventPtr, event)
         if r_uint(window_event.c_event) == RSDL.WINDOWEVENT_RESIZED:
             self.set_video_mode(w=intmask(window_event.c_data1),
-                    h=intmask(window_event.c_data2),
-                    d=self.depth)
+                                h=intmask(window_event.c_data2),
+                                d=self.depth)
 
     def get_next_mouse_event(self, time):
         mods = self.get_modifier_mask(3)
@@ -283,7 +281,6 @@ class SDLDisplay(object):
 
     def get_next_key_event(self, key_event_type, time):
         mods = self.get_modifier_mask(0)
-        btn = self.button
         return [EventTypeKeyboard,
                 time,
                 self.key,
@@ -338,6 +335,9 @@ class SDLDisplay(object):
                 #                             0, 0, int(self.screen.c_w), int(self.screen.c_h), 0])
                 #     return [EventTypeWindow, time, WindowEventActivated, 0, 0, 0, 0, 0]
                 elif event_type == RSDL.QUIT:
+                    if self.altf4quit: # we want to quit hard
+                        print "Alt+F4 quit option is on, exiting hard."
+                        raise Exception
                     return [EventTypeWindow, time, WindowEventClose, 0, 0, 0, 0, 0]
         finally:
             lltype.free(event, flavor='raw')
@@ -370,7 +370,7 @@ class SDLDisplay(object):
         try:
             if RSDL.PollEvent(event) == 1:
                 c_type = r_uint(event.c_type)
-                if (c_type == r_uint(RSDL.MOUSEBUTTONDOWN) or 
+                if (c_type == r_uint(RSDL.MOUSEBUTTONDOWN) or
                     c_type == r_uint(RSDL.MOUSEBUTTONUP)):
                     self.handle_mouse_button(c_type, event)
                     return
