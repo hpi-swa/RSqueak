@@ -1,0 +1,16 @@
+SmalltalkCISpec {
+  #loading : [
+    SCIMetacelloLoadSpec {
+      #baseline : 'VMMakerOSCog',
+      #directory : 'packages',
+      #platforms : [ #squeak ]
+    }
+  ],
+  #testing : {
+    #classes : [ #IncludedMethodsTest, #StackInterpreterTests,
+                 #VMMakerIntegerTests, #MiscPrimitivePluginTest,
+                 #BitBltSimulationTest, #JPEGReadWriter2PluginTest,
+                 #HeapMapTest, #VMInterfaceConsistencyTests,
+                 #InterpreterPrimitivesTest ]
+  }
+}

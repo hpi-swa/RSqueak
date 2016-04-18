@@ -1,0 +1,14 @@
+{
+	"category" : "BaselineOfVMMakerOSCog",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "BaselineOfVMMakerOSCog",
+	"pools" : [
+		 ],
+	"super" : "BaselineOf",
+	"type" : "normal" }
