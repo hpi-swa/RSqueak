@@ -28,6 +28,8 @@ curl -f -s --retry 3 -o "${VM_LINUX_TARGET}" "${BASE_URL}/${VM_LINUX}"
 curl -f -s --retry 3 -o "${VM_OSX_TARGET}" "${BASE_URL}/${VM_OSX}"
 curl -f -s --retry 3 -o "${VM_WIN_TARGET}" "${BASE_URL}/${VM_WIN}"
 
+chmod 755 "${VM_LINUX_TARGET}" "${VM_OSX_TARGET}" "${VM_WIN_TARGET}"
+
 VERSION=$(git describe --tags --always)
 sed -i "s/%VERSION%/${VERSION}/g" "${CONTENTS_DIR}/Info.plist"
 

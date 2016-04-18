@@ -464,7 +464,7 @@
 	<key>CFBundleGetInfoString</key>
 	<string>RSqueak (%VERSION%)</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.1</string>
+	<string>%VERSION%</string>
 	<key>CFBundleIconFile</key>
 	<string>Squeak.icns</string>
 	<key>CFBundleIdentifier</key>
@@ -472,13 +472,13 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>RSqueak 1.0</string>
+	<string>RSqueak %VERSION%</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleSignature</key>
 	<string>FAST</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>%VERSION%</string>
 	<key>CGDisableCoalescedUpdates</key>
 	<true/>
 	<key>LSBackgroundOnly</key>
