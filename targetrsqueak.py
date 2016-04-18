@@ -73,7 +73,7 @@ def _usage(argv):
                                  image is not responding well.
             -i|--no-interrupts - Disable timer interrupt.
                                  Disables non-cooperative scheduling.
-            -S                 - Disable specialized storage strategies.
+            -S|--no-storage    - Disable specialized storage strategies.
                                  Always use generic ListStrategy. Probably slower.
             --hacks            - Enable Spy hacks. Set display color depth to 8
             --use-plugins      - Directs named primitives to go to the native
@@ -83,12 +83,14 @@ def _usage(argv):
           Logging:
             -t|--trace       - Output a trace of each message, primitive,
                                return value and process switch.
-            -T               - Trace important events: Process switch,
+            -T|--trace-important
+                             - Trace important events: Process switch,
                                stack overflow, sender chain manipulation
             -s|--safe-trace  - If tracing is active, omit printing contents of
                                BytesObjects
             -l|--storage-log - Output a log of storage operations.
-            -L               - Output an aggregated storage log at the end of
+            -L|--storage-log-aggregate
+                             - Output an aggregated storage log at the end of
                                execution.
 
           Global: (This section is for compatibility with Squeak.ini)
@@ -210,7 +212,7 @@ class Config(object):
                 self.poll = True
             elif arg in ["-i", "--no-interrupts"]:
                 self.interrupts = False
-            elif arg in ["-S"]:
+            elif arg in ["-S", "--no-storage"]:
                 self.space.strategy_factory.no_specialized_storage.activate()
             elif arg in ["--hacks"]:
                 self.space.run_spy_hacks.activate()
@@ -219,13 +221,13 @@ class Config(object):
             # Logging
             elif arg in ["-t", "--trace"]:
                 self.trace = True
-            elif arg in ["-T"]:
+            elif arg in ["-T", "--trace-important"]:
                 self.trace_important = True
             elif arg in ["-s", "--safe-trace"]:
                 self.space.omit_printing_raw_bytes.activate()
             elif arg in ["-l", "--storage-log"]:
                 self.space.strategy_factory.logger.activate()
-            elif arg in ["-L"]:
+            elif arg in ["-L", "--storage-log-aggregate"]:
                 self.space.strategy_factory.logger.activate(aggregate=True)
             # Global
             elif arg in ["--ImageFile"]:
@@ -295,13 +297,12 @@ class Config(object):
         splitpaths = self.exepath.split(os.sep)
         exedir = ""
         splitlen = len(splitpaths)
+        # tfel: The dance below makes translation work. os.path.dirname breaks :(
         if splitlen > 2:
             splitlen = splitlen - 1
             assert splitlen >= 0
             exedir = os.sep.join(splitpaths[0:splitlen])
-            print "looking for ini file in %s" % exedir
         else:
-            print "No ini file found in %s" % str(splitpaths)
             return
         inifile = rpath.rjoin(exedir, "rsqueak.ini")
         if os.path.exists(inifile):
