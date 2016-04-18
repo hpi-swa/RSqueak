@@ -7,7 +7,8 @@ readonly CONTENTS_DIR="${TEMPLATE_DIR}/RSqueak.app/Contents"
 readonly RESOURCES_DIR="${CONTENTS_DIR}/Resources"
 readonly IMAGE_TARGET="${RESOURCES_DIR}/RSqueak.image"
 readonly CHANGES_TARGET="${RESOURCES_DIR}/RSqueak.image"
-readonly TARGET_FILE="${TRAVIS_BUILD_DIR}/RSqueak.tar.gz"
+readonly TARGET_TARGZ="${TRAVIS_BUILD_DIR}/RSqueak.tar.gz"
+readonly TARGET_ZIP="${TRAVIS_BUILD_DIR}/RSqueak.zip"
 readonly BASE_URL="https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak"
 readonly TARGET_URL="${BASE_URL}/bundle"
 readonly VM_LINUX="rsqueak-linux-latest"
@@ -29,10 +30,12 @@ curl -f -s --retry 3 -o "${VM_WIN_TARGET}" "${BASE_URL}/${VM_WIN}"
 
 echo "Compressing bundle..."
 pushd "${TEMPLATE_DIR}" > /dev/null
-tar czvf "${TARGET_FILE}" "./RSqueak.app"
+tar czvf "${TARGET_TARGZ}" "./RSqueak.app"
+zip -r "${TARGET_ZIP}" "./RSqueak.app"
 popd > /dev/null
 
-echo "Uploading bundle..."
-curl -T "${TARGET_FILE}" -u "${DEPLOY_CREDENTIALS}" "${TARGET_URL}"
+echo "Uploading files..."
+curl -T "${TARGET_TARGZ}" -u "${DEPLOY_CREDENTIALS}" "${TARGET_URL}"
+curl -T "${TARGET_ZIP}" -u "${DEPLOY_CREDENTIALS}" "${TARGET_URL}"
 
 echo "Done!"
