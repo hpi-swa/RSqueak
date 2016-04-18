@@ -95,9 +95,11 @@ class ObjSpace(object):
         self.make_bootstrap_classes()
         self.make_bootstrap_objects()
 
-    def runtime_setup(self, exepath, argv, image_name):
+    def runtime_setup(self, exepath, argv, image_name, image_args_idx):
         fullpath = exepath
         self._executable_path.set(fullpath)
+        for i in range(image_args_idx, len(argv)):
+            self.set_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_ARGS_INDEX + i - image_args_idx, argv[i])
         self.set_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, image_name)
         self.image_loaded.activate()
         self.init_system_attributes(argv)

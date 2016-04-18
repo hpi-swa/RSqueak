@@ -32,8 +32,9 @@ BUILD_DATE = "%s +0000" % time.asctime(time.gmtime())
 
 def _usage(argv):
     print """
-    Usage: %s <path> [-r|-m|-h] [-naPu] [-jpiS] [-tTslL]
+    Usage: %s [-r|-m|-h] [-naPu] [-jpiS] [-tTslL] <path> [--] [Squeak arguments]
             <path> - image path (default: Squeak.image)
+            Squeak arguments are passed on to the Squeak image rather than being processed.
 
           General:
             --no-highdpi           - Disable High-DPI support (default: on).
@@ -98,13 +99,8 @@ def _usage(argv):
           All options that take arguments can be set in an rsqueak.ini file
           located next to the binary. The sections must correspond to the
           sections given here. The options use their long form and the argument
-          after the equals sign. Options without arguments can be set to "1" or
-          "0".
-          For compatibility with Squeak, a "Global" section is also supported
-          with the following keys:
-              ImageFile (a default path to an image file)
-              WindowTitle (a string to set as the title)
-              EnableAltF4Quit (1 or 0)
+          after the equals sign. Options without arguments can be set to "1" to
+          pass them from the INI file.
 
           About Headless mode:
             When starting the image without -r or -m, the last running Process
@@ -159,6 +155,7 @@ class Config(object):
         self.exepath = self.find_executable(argv[0])
         self.argv = argv
         self.path = None
+        self.got_lone_path = False
         self.selector = None
         self.code = ""
         self.number = 0
@@ -169,6 +166,7 @@ class Config(object):
         self.interrupts = True
         self.trace = False
         self.trace_important = False
+        self.extra_arguments_idx = len(argv)
 
     def parse_args(self, argv, skip_bad=False):
         idx = 1
@@ -238,8 +236,19 @@ class Config(object):
             elif arg in ["--EnableAltF4Quit"]:
                 self.space.altf4quit.activate()
             # Default
-            elif self.path is None:
+            elif arg in ["--"]:
+                print "Image arguments: %s" % ", ".join(argv[idx:])
+                self.extra_arguments_idx = idx
+                return
+            elif not self.got_lone_path:
                 self.path = arg
+                self.got_lone_path = True
+                # once we got an image argument, we stop processing and pass
+                # everything on to the image
+                if idx < len(argv):
+                    print "Image arguments: %s" % ", ".join(argv[idx:])
+                self.extra_arguments_idx = idx
+                return
             else:
                 _usage(argv)
                 raise error.Exit("Invalid argument: %s" % arg)
@@ -353,7 +362,7 @@ def entry_point(argv):
     interp = interpreter.Interpreter(space, image,
                 trace=cfg.trace, trace_important=cfg.trace_important,
                 evented=not cfg.poll, interrupts=cfg.interrupts)
-    space.runtime_setup(cfg.exepath, argv, cfg.path)
+    space.runtime_setup(cfg.exepath, argv, cfg.path, cfg.extra_arguments_idx)
 
     interp.populate_remaining_special_objects()
     print_error("") # Line break after image-loading characters
