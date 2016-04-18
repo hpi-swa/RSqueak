@@ -10,4 +10,9 @@ coverage) testflag="-Q --cov=spyvm --cov-append" ;;
    exit 0 ;;
 esac
 
+case "$BUILD_ARCH" in
+64bit) testflag="$testflag 64bit" ;;
+*) ;;
+esac
+
 python .build/unittests.py -s $testflag

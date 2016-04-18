@@ -16,6 +16,16 @@ case "$BUILD_ARCH" in
         # exitcode=$?
         # if [ $exitcode -eq 0 ]; then latest=true; fi
         ;;
+    64bit)
+        binary=rsqueak
+        python .build/build.py 64bit
+        buildcode=$?  ;   exitcode=$buildcode
+        cp rsqueak rsqueak-x86_64-${UNAME}-jit-$TRAVIS_COMMIT || true
+        # python .build/jittests.py
+        # $EX rm -rf .build/pypy/rpython/_cache
+        # exitcode=$?
+        # if [ $exitcode -eq 0 ]; then latest=true; fi
+        ;;
     lldebug)
         binary=rsqueak
         python .build/build.py --lldebug -Ojit
