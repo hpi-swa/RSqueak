@@ -462,7 +462,7 @@
 	<key>CFBundleExecutable</key>
 	<string>RSqueak</string>
 	<key>CFBundleGetInfoString</key>
-	<string>RSqueak</string>
+	<string>RSqueak (%VERSION%)</string>
 	<key>CFBundleShortVersionString</key>
 	<string>0.1</string>
 	<key>CFBundleIconFile</key>

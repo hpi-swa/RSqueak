@@ -10,7 +10,7 @@ readonly CHANGES_TARGET="${RESOURCES_DIR}/RSqueak.image"
 readonly TARGET_TARGZ="${TRAVIS_BUILD_DIR}/RSqueak.tar.gz"
 readonly TARGET_ZIP="${TRAVIS_BUILD_DIR}/RSqueak.zip"
 readonly BASE_URL="https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak"
-readonly TARGET_URL="${BASE_URL}/bundle"
+readonly TARGET_URL="${BASE_URL}/bundle/"
 readonly VM_LINUX="rsqueak-linux-latest"
 readonly VM_OSX="rsqueak-darwin-latest"
 readonly VM_WIN="rsqueak-win32-latest.exe"
@@ -27,6 +27,9 @@ echo "Downloading latest VMs..."
 curl -f -s --retry 3 -o "${VM_LINUX_TARGET}" "${BASE_URL}/${VM_LINUX}"
 curl -f -s --retry 3 -o "${VM_OSX_TARGET}" "${BASE_URL}/${VM_OSX}"
 curl -f -s --retry 3 -o "${VM_WIN_TARGET}" "${BASE_URL}/${VM_WIN}"
+
+VERSION=$(git describe --tags --always)
+sed -i "s/%VERSION%/${VERSION}/g" "${CONTENTS_DIR}/Info.plist"
 
 echo "Compressing bundle..."
 pushd "${TEMPLATE_DIR}" > /dev/null
