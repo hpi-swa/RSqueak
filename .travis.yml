@@ -1,0 +1,10 @@
+language: smalltalk
+sudo: false
+
+smalltalk:
+  - Squeak-latest
+
+os:
+  - osx
+
+after_success: ./prepare.sh
