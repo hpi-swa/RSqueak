@@ -55,7 +55,7 @@ install:
   - if [ "$TRAVIS_OS_NAME" == linux ]; then .travis/setup_arm.sh; fi
 before_script:
   - export TESTSCRIPT=true
-  - if [ "$TRAVIS_OS_NAME" == osx -a "$BUILD_ARCH" == 32bit -o "$BUILD_ARCH" == lldebug ]; then export CFLAGS="-arch i386"; export CC="cc -arch i386"; export VERSIONER_PYTHON_PREFER_32_BIT=yes; fi
+  - if [ "$BUILD_ARCH" == 32bit -o "$BUILD_ARCH" == lldebug -a "$TRAVIS_OS_NAME" == osx ]; then export CFLAGS="-arch i386"; export CC="cc -arch i386"; export VERSIONER_PYTHON_PREFER_32_BIT=yes; fi
   - if [ "$TRAVIS_OS_NAME" == linux ]; then export SDL_VIDEODRIVER=dummy; fi
   - if [ "$BUILD_TYPE" == test ]; then export TESTSCRIPT=.travis/test.sh; fi
   - if [ "$TRAVIS_OS_NAME" == linux -a "$BUILD_TYPE" == build ]; then export TESTSCRIPT=.travis/build-linux.sh; fi
