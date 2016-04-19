@@ -46,9 +46,9 @@ matrix:
   allow_failures:
     - env: BUILD_ARCH=64bit BUILD_TYPE=build
     - env: BUILD_ARCH=64bit BUILD_TYPE=test TEST_TYPE=default
-    - env: BUILD_ARCH=armv6 BUILD_TYPE=build
-    - env: BUILD_ARCH=armv7-a BUILD_TYPE=build
-    - env: BUILD_ARCH=armv8-a BUILD_TYPE=build
+    # - env: BUILD_ARCH=armv6 BUILD_TYPE=build
+    # - env: BUILD_ARCH=armv7-a BUILD_TYPE=build
+    # - env: BUILD_ARCH=armv8-a BUILD_TYPE=build
   fast_finish: true
 install:
   - .travis/install_requirements.sh
