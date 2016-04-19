@@ -466,7 +466,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>%VERSION%</string>
 	<key>CFBundleIconFile</key>
-	<string>Squeak.icns</string>
+	<string>RSqueak.icns</string>
 	<key>CFBundleIdentifier</key>
 	<string>de.uni-potsdam.hpi.swa.rsqueak</string>
 	<key>CFBundleInfoDictionaryVersion</key>
