@@ -71,16 +71,24 @@ if [ $buildcode -eq 0 ]; then
         curl -v -H "commitid: $TRAVIS_COMMIT" -X POST http://lively-kernel.org/codespeed/ || true
     fi
     if [ "$TRAVIS_BRANCH" == "master" -a "$TRAVIS_PULL_REQUEST" == "false" -a "$latest" == "true" ]; then
-        if [ "$BUILD_ARCH" == "32bit" ]; then
-            # only builds that pass the jittests are 'latest'
-            cp rsqueak-x86* rsqueak-${UNAME}-latest
-            curl -T rsqueak-linux-latest http://www.lively-kernel.org/babelsberg/RSqueak/
-            curl -T rsqueak-linux-latest -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/ || true
-        else
-            cp rsqueak-$armv* rsqueak-${UNAME}-$armv-latest
-            curl -T rsqueak-${UNAME}-$armv-latest http://www.lively-kernel.org/babelsberg/RSqueak/
-            curl -T rsqueak-${UNAME}-$armv-latest -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/ || true
-        fi
+	case "$BUILD_ARCH" in
+	    32bit)
+		# only builds that pass the jittests are 'latest'
+		cp rsqueak-x86* rsqueak-${UNAME}-latest
+		curl -T rsqueak-${UNAME}-latest http://www.lively-kernel.org/babelsberg/RSqueak/
+		curl -T rsqueak-${UNAME}-latest -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/ || true
+		;;
+	    64bit)
+		cp rsqueak-x86_64* rsqueak-${UNAME}-x86_64-latest
+		curl -T rsqueak-${UNAME}-x86_64-latest http://www.lively-kernel.org/babelsberg/RSqueak/
+		curl -T rsqueak-${UNAME}-x86_64-latest -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/ || true
+		;;
+	    arm*)
+		cp rsqueak-$armv* rsqueak-${UNAME}-$armv-latest
+		curl -T rsqueak-${UNAME}-$armv-latest http://www.lively-kernel.org/babelsberg/RSqueak/
+		curl -T rsqueak-${UNAME}-$armv-latest -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/ || true
+		;;
+	esac
     fi
 fi
 exit $exitcode

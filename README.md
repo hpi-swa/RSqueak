@@ -7,9 +7,19 @@ Prebuilt binaries
 * [Mac OS X](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-darwin-latest) [![Max OS X Build Status](https://travis-ci.org/timfel/RSqueak-MacOSXBuild.svg?branch=master)](https://travis-ci.org/HPI-SWA-Lab/RSqueak)
 * [Windows](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-win32-latest.exe) [![Windows Build Status](https://ci.appveyor.com/api/projects/status/e37a79tt5irr7sx1/branch/master?svg=true)](https://ci.appveyor.com/project/timfel/rsqueak)
 
-We also built for Armv7 (Raspberry Pi2, Beagleboard, ...) and Armv6 on the Raspberry Pi 1:
-* [ARMv6](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-armv6raspbian-latest)
-* [ARMv7](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-armv7l-latest)
+We also have experimental builds for Raspberry Pi:
+* [Raspberry Pi 1](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-armv6raspbian-latest)
+* [Raspberry Pi 2](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-armv7-araspbian-latest)
+* [Raspberry Pi 3](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-armv8-araspbian-latest)
+
+We do build 64-bit virtual machines, but these are not fully functional,
+yet. They can be used to open both 32-bit and 64-bit images, but bugs remain
+that can cause slowdowns or crashes. We are actively investigating 64-bit
+support and some benchmarks show promising results. Due to limitations of the
+underlying RPython toolchain, Windows binaries cannot currently be built in
+64-bit mode.
+* [Linux x86_64](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-x86_64-latest)
+* [Mac OS X x86_64](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-darwin-x86_64-latest)
 
 [![Coverage Status](https://coveralls.io/repos/github/HPI-SWA-Lab/RSqueak/badge.svg?branch=master)](https://coveralls.io/github/HPI-SWA-Lab/RSqueak?branch=master)
 
