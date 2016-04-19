@@ -386,8 +386,6 @@ class TestBasic(BaseJITTest):
         guard_true(i81, descr=<Guard0x324f404>),
         i82 = call_i(ConstClass(_ll_2_llong_le__SignedLongLong_SignedLongLong), f80, 0.000000, descr=<Calli 1 LL EF=0 OS=74>),
         guard_true(i82, descr=<Guard0x324f3d8>),
-        i83 = call_i(ConstClass(_ll_2_llong_lt__SignedLongLong_SignedLongLong), f80, 0.000000, descr=<Calli 1 LL EF=0 OS=73>),
-        guard_false(i83, descr=<Guard0x324f3ac>),
         i84 = call_i(ConstClass(_ll_1_llong_to_int__SignedLongLong), f80, descr=<Calli 4 L EF=0 OS=85>),
         i85 = uint_lt(i84, 2147483647),
         guard_false(i85, descr=<Guard0x324f380>),
