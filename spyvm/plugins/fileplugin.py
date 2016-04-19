@@ -203,7 +203,7 @@ def primitiveFileWrite(interp, s_frame, w_rcvr, fd, content, start, count):
     if isinstance(content, model.W_WordsObject):
         element_size = 4
     elif isinstance(content, model.W_Float):
-        element_size = constants.BYTES_PER_MACHINE_INT
+        element_size = 8
     elif isinstance(content, model_display.W_DisplayBitmap):
         element_size = 4
     elif isinstance(content, model.W_BytesObject):
