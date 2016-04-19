@@ -32,8 +32,9 @@ BUILD_DATE = "%s +0000" % time.asctime(time.gmtime())
 
 def _usage(argv):
     print """
-    Usage: %s <path> [-r|-m|-h] [-naPu] [-jpiS] [-tTslL]
+    Usage: %s [-r|-m|-h] [-naPu] [-jpiS] [-tTslL] <path> [--] [Squeak arguments]
             <path> - image path (default: Squeak.image)
+            Squeak arguments are passed on to the Squeak image rather than being processed.
 
           General:
             --no-highdpi           - Disable High-DPI support (default: on).
@@ -72,7 +73,7 @@ def _usage(argv):
                                  image is not responding well.
             -i|--no-interrupts - Disable timer interrupt.
                                  Disables non-cooperative scheduling.
-            -S                 - Disable specialized storage strategies.
+            -S|--no-storage    - Disable specialized storage strategies.
                                  Always use generic ListStrategy. Probably slower.
             --hacks            - Enable Spy hacks. Set display color depth to 8
             --use-plugins      - Directs named primitives to go to the native
@@ -82,12 +83,14 @@ def _usage(argv):
           Logging:
             -t|--trace       - Output a trace of each message, primitive,
                                return value and process switch.
-            -T               - Trace important events: Process switch,
+            -T|--trace-important
+                             - Trace important events: Process switch,
                                stack overflow, sender chain manipulation
             -s|--safe-trace  - If tracing is active, omit printing contents of
                                BytesObjects
             -l|--storage-log - Output a log of storage operations.
-            -L               - Output an aggregated storage log at the end of
+            -L|--storage-log-aggregate
+                             - Output an aggregated storage log at the end of
                                execution.
 
           Global: (This section is for compatibility with Squeak.ini)
@@ -98,13 +101,8 @@ def _usage(argv):
           All options that take arguments can be set in an rsqueak.ini file
           located next to the binary. The sections must correspond to the
           sections given here. The options use their long form and the argument
-          after the equals sign. Options without arguments can be set to "1" or
-          "0".
-          For compatibility with Squeak, a "Global" section is also supported
-          with the following keys:
-              ImageFile (a default path to an image file)
-              WindowTitle (a string to set as the title)
-              EnableAltF4Quit (1 or 0)
+          after the equals sign. Options without arguments can be set to "1" to
+          pass them from the INI file.
 
           About Headless mode:
             When starting the image without -r or -m, the last running Process
@@ -159,6 +157,7 @@ class Config(object):
         self.exepath = self.find_executable(argv[0])
         self.argv = argv
         self.path = None
+        self.got_lone_path = False
         self.selector = None
         self.code = ""
         self.number = 0
@@ -169,6 +168,7 @@ class Config(object):
         self.interrupts = True
         self.trace = False
         self.trace_important = False
+        self.extra_arguments_idx = len(argv)
 
     def parse_args(self, argv, skip_bad=False):
         idx = 1
@@ -212,7 +212,7 @@ class Config(object):
                 self.poll = True
             elif arg in ["-i", "--no-interrupts"]:
                 self.interrupts = False
-            elif arg in ["-S"]:
+            elif arg in ["-S", "--no-storage"]:
                 self.space.strategy_factory.no_specialized_storage.activate()
             elif arg in ["--hacks"]:
                 self.space.run_spy_hacks.activate()
@@ -221,13 +221,13 @@ class Config(object):
             # Logging
             elif arg in ["-t", "--trace"]:
                 self.trace = True
-            elif arg in ["-T"]:
+            elif arg in ["-T", "--trace-important"]:
                 self.trace_important = True
             elif arg in ["-s", "--safe-trace"]:
                 self.space.omit_printing_raw_bytes.activate()
             elif arg in ["-l", "--storage-log"]:
                 self.space.strategy_factory.logger.activate()
-            elif arg in ["-L"]:
+            elif arg in ["-L", "--storage-log-aggregate"]:
                 self.space.strategy_factory.logger.activate(aggregate=True)
             # Global
             elif arg in ["--ImageFile"]:
@@ -238,8 +238,19 @@ class Config(object):
             elif arg in ["--EnableAltF4Quit"]:
                 self.space.altf4quit.activate()
             # Default
-            elif self.path is None:
+            elif arg in ["--"]:
+                print "Image arguments: %s" % ", ".join(argv[idx:])
+                self.extra_arguments_idx = idx
+                return
+            elif not self.got_lone_path:
                 self.path = arg
+                self.got_lone_path = True
+                # once we got an image argument, we stop processing and pass
+                # everything on to the image
+                if idx < len(argv):
+                    print "Image arguments: %s" % ", ".join(argv[idx:])
+                self.extra_arguments_idx = idx
+                return
             else:
                 _usage(argv)
                 raise error.Exit("Invalid argument: %s" % arg)
@@ -286,13 +297,12 @@ class Config(object):
         splitpaths = self.exepath.split(os.sep)
         exedir = ""
         splitlen = len(splitpaths)
+        # tfel: The dance below makes translation work. os.path.dirname breaks :(
         if splitlen > 2:
             splitlen = splitlen - 1
             assert splitlen >= 0
             exedir = os.sep.join(splitpaths[0:splitlen])
-            print "looking for ini file in %s" % exedir
         else:
-            print "No ini file found in %s" % str(splitpaths)
             return
         inifile = rpath.rjoin(exedir, "rsqueak.ini")
         if os.path.exists(inifile):
@@ -353,7 +363,7 @@ def entry_point(argv):
     interp = interpreter.Interpreter(space, image,
                 trace=cfg.trace, trace_important=cfg.trace_important,
                 evented=not cfg.poll, interrupts=cfg.interrupts)
-    space.runtime_setup(cfg.exepath, argv, cfg.path)
+    space.runtime_setup(cfg.exepath, argv, cfg.path, cfg.extra_arguments_idx)
 
     interp.populate_remaining_special_objects()
     print_error("") # Line break after image-loading characters

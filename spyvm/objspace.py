@@ -3,7 +3,7 @@ import os
 from spyvm import constants, model, wrapper, display, storage
 from spyvm.util.version import Version
 from spyvm.error import WrappingError
-from spyvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX
+from spyvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, SYSTEM_ATTRIBUTE_IMAGE_ARGS_INDEX
 from rpython.rlib import jit, rpath
 from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin, we_are_translated
 from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32, int_between, r_int64, r_ulonglong, is_valid_int, r_longlonglong
@@ -95,9 +95,11 @@ class ObjSpace(object):
         self.make_bootstrap_classes()
         self.make_bootstrap_objects()
 
-    def runtime_setup(self, exepath, argv, image_name):
+    def runtime_setup(self, exepath, argv, image_name, image_args_idx):
         fullpath = exepath
         self._executable_path.set(fullpath)
+        for i in range(image_args_idx, len(argv)):
+            self.set_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_ARGS_INDEX + i - image_args_idx, argv[i])
         self.set_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, image_name)
         self.image_loaded.activate()
         self.init_system_attributes(argv)

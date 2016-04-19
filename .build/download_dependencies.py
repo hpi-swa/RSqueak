@@ -8,9 +8,20 @@ def download_and_extract(url, targetdir, callback=None):
     os.chdir(os.path.dirname(__file__))
     try:
         print "Ensuring %s is there" % os.path.abspath(targetdir)
-        if os.path.exists(targetdir): return
+        if os.path.exists(targetdir) and "update" not in sys.argv:
+            return
         import urllib
-        filename, headers = urllib.urlretrieve(url)
+        try:
+            filename, headers = urllib.urlretrieve(url)
+        except Exception, e:
+            print e
+            return
+        try:
+            if os.path.exists(targetdir):
+                os.remove(targetdir)
+        except Exception, e:
+            print e
+            return
         if filename.endswith(".zip"):
             import shutil, zipfile
             with zipfile.ZipFile(filename) as f:
