@@ -16,7 +16,7 @@ readonly VM_OSX="rsqueak-darwin-latest"
 readonly VM_WIN="rsqueak-win32-latest.exe"
 readonly VM_LINUX_TARGET="${CONTENTS_DIR}/Linux/RSqueak"
 readonly VM_OSX_TARGET="${CONTENTS_DIR}/MacOS/RSqueak"
-readonly VM_WIN_TARGET="${CONTENTS_DIR}/Win64/RSqueak.exe"
+readonly VM_WIN_TARGET="${CONTENTS_DIR}/Win32/RSqueak.exe"
 
 echo "Copying Squeak image into template..."
 cp "${SMALLTALK_CI_IMAGE}" "${IMAGE_TARGET}"

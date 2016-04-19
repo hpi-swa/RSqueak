@@ -1,1 +1,1 @@
-./Contents/Linux/RSqueak
+cd ./Contents/Linux; exec ./RSqueak
