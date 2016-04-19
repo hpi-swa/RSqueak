@@ -12,6 +12,7 @@ notifications:
       - chat.freenode.net/#rsqueak
     use_notice: true
     skip_join: true
+  slack: mp2016h:7AUemvDdkxof6Shbu514mDyX
 branches:
   except:
     - windows-build
