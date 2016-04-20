@@ -7,23 +7,34 @@ Prebuilt binaries
 * [Mac OS X](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-darwin-latest) [![Max OS X Build Status](https://travis-ci.org/timfel/RSqueak-MacOSXBuild.svg?branch=master)](https://travis-ci.org/HPI-SWA-Lab/RSqueak)
 * [Windows](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-win32-latest.exe) [![Windows Build Status](https://ci.appveyor.com/api/projects/status/e37a79tt5irr7sx1/branch/master?svg=true)](https://ci.appveyor.com/project/timfel/rsqueak)
 
-We also built for Armv7 (Raspberry Pi2, Beagleboard, ...) and Armv6 on the Raspberry Pi 1:
-* [ARMv6](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-armv6raspbian-latest)
-* [ARMv7](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-armv7l-latest)
+We also have experimental builds for Raspberry Pi:
+* [Raspberry Pi 1](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-armv6raspbian-latest)
+* [Raspberry Pi 2](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-armv7-araspbian-latest)
+* [Raspberry Pi 3](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-armv8-araspbian-latest)
+
+We do build 64-bit virtual machines, but these are not fully functional,
+yet. They can be used to open both 32-bit and 64-bit images, but bugs remain
+that can cause slowdowns or crashes. We are actively investigating 64-bit
+support and some benchmarks show promising results. Due to limitations of the
+underlying RPython toolchain, Windows binaries cannot currently be built in
+64-bit mode.
+* [Linux x86_64](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-x86_64-latest)
+* [Mac OS X x86_64](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-darwin-x86_64-latest)
 
 [![Coverage Status](https://coveralls.io/repos/github/HPI-SWA-Lab/RSqueak/badge.svg?branch=master)](https://coveralls.io/github/HPI-SWA-Lab/RSqueak?branch=master)
 
 ### Finding a working image
 
-Although RSqueak can load images starting with Squeak 2, many
-primitives are not implemented and instead rely on in-image fallback
-code to be available and correct. This is why only a Trunk image of
-Squeak with the latest version of the main VMMaker branch fully works.
+Although RSqueak can load images starting with Squeak 2, many primitives are not
+implemented and instead rely on in-image fallback code to be available and
+correct. This is why only a Trunk image of Squeak with the latest version of
+VMMaker from the VMMaker.oscog branch fully works. Try this in a recent Trunk
+image to prepare it for use with RSqueak/VM:
 
-If you do not wish to prepare your own image, we regularily upload
-development images
-[here](http://www.lively-kernel.org/babelsberg/RSqueak/images/). Be
-sure to grab also the relevant changes and sources files.
+```Smalltalk
+(Installer squeak project: 'VMMaker') install: 'VMMaker.oscog'
+MCMcmUpdater updateFromServer.
+```
 
 ### Building from Source
 
@@ -50,22 +61,13 @@ in `.build/buildconfig.ini`.
 
 ###### Linux
 
-RSqueak/VM currently needs to be compiled using a 32-bit python and 32-bit
-libraries for everything. The easiest way to ensure that is to use a chroot, but
-you can also install the `:i386` version of SDL 1.2 for your distro. In any
-case, you'll need to install SDL 1.2. On 32-bit Debian-derivatives, this can be
-achieved by running
+RSqueak/VM currently needs to be compiled using a 32-bit python and SDL2 using
+32-bit libraries for everything. The easiest way to ensure that is to use a
+chroot, but you can also install the `:i386` versions of the SDL2 dependencies
+for your distro.
 
-    apt-get install libsdl1.2-dev
-
-If you're on a 64-bit Debian-derivative, this might work:
-
-    apt-get install libsdl1.2-dev:i386 binfmt-support
-
-Optionally you can also install FLTK-1.3 if you want to compile a
-fallback file chooser when the VM is launched without image argument:
-
-    apt-get install libfltk1.3-dev
+Optionally you can also install FLTK-1.3 development files if you want to
+compile a fallback file chooser when the VM is launched without image argument.
 
 ###### Mac OS X
 
@@ -75,7 +77,7 @@ RSqueak/VM currently needs to be compiled using a 32-bit python and
     export VERSIONER_PYTHON_PREFER_32_BIT=yes
 
 before you run any of the python scripts in the `.build` directory. You also
-need to download SDL-1.2 as a framework (homebrew version is not tested). Check
+need to download SDL2 as a framework (homebrew version is not tested). Check
 the `.travis/build-osx.sh` if you get stuck anywhere.
 
 ### Developing

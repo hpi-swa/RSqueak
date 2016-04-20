@@ -2,7 +2,7 @@ import os, stat, sys
 
 from rpython.rlib import jit, rarithmetic
 
-from spyvm import model, model_display
+from spyvm import model, model_display, constants
 from spyvm.plugins.plugin import Plugin
 from spyvm.primitives import PrimitiveFailedError, index1_0
 from spyvm.util.system import IS_WINDOWS
@@ -172,7 +172,7 @@ def primitiveFileGetPosition(interp, s_frame, w_rcvr, fd):
     except OSError:
         raise PrimitiveFailedError
     else:
-        return interp.space.wrap_positive_32bit_int(rarithmetic.intmask(pos))
+        return interp.space.wrap_positive_wordsize_int(rarithmetic.intmask(pos))
 
 @FilePlugin.expose_primitive(unwrap_spec=[object, int, int])
 def primitiveFileSetPosition(interp, s_frame, w_rcvr, fd, position):
@@ -188,7 +188,7 @@ def primitiveFileSize(interp, s_frame, w_rcvr, fd):
         file_info = os.fstat(fd)
     except OSError:
         raise PrimitiveFailedError
-    return interp.space.wrap_positive_32bit_int(rarithmetic.intmask(file_info.st_size))
+    return interp.space.wrap_positive_wordsize_int(rarithmetic.intmask(file_info.st_size))
 
 @FilePlugin.expose_primitive(unwrap_spec=[object])
 def primitiveFileStdioHandles(interp, s_frame, w_rcvr):
@@ -203,7 +203,7 @@ def primitiveFileWrite(interp, s_frame, w_rcvr, fd, content, start, count):
     if isinstance(content, model.W_WordsObject):
         element_size = 4
     elif isinstance(content, model.W_Float):
-        element_size = 4
+        element_size = 8
     elif isinstance(content, model_display.W_DisplayBitmap):
         element_size = 4
     elif isinstance(content, model.W_BytesObject):
@@ -215,7 +215,7 @@ def primitiveFileWrite(interp, s_frame, w_rcvr, fd, content, start, count):
 
     string_content = interp.space.unwrap_string(content)
     byte_start = start * element_size
-    byte_end = min(start + 1 + count, size) * element_size
+    byte_end = min(start + count, size) * element_size
 
     space = interp.space
     if not (byte_start >= 0 and byte_end > byte_start):
@@ -225,7 +225,7 @@ def primitiveFileWrite(interp, s_frame, w_rcvr, fd, content, start, count):
     except OSError:
         raise PrimitiveFailedError
     else:
-        return space.wrap_positive_32bit_int(rarithmetic.intmask(written / element_size))
+        return space.wrap_positive_wordsize_int(rarithmetic.intmask(written / element_size))
 
 @FilePlugin.expose_primitive(unwrap_spec=[object, int, int])
 def primitiveFileTruncate(interp, s_frame, w_rcvr, fd, position):

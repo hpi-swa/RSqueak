@@ -98,9 +98,9 @@ class SDLDisplay(object):
         assert d in [1, 2, 4, 8, 16, 32]
         if d < MINIMUM_DEPTH:
             d = MINIMUM_DEPTH
-        self.width = w
-        self.height = h
-        self.depth = d
+        self.width = intmask(w)
+        self.height = intmask(h)
+        self.depth = intmask(d)
         if self.window == lltype.nullptr(RSDL.WindowPtr.TO):
             self.create_window_and_renderer(x=RSDL.WINDOWPOS_UNDEFINED,
                                             y=RSDL.WINDOWPOS_UNDEFINED,
@@ -120,10 +120,10 @@ class SDLDisplay(object):
             raise RuntimeError(RSDL.GetError())
         self.screen_surface = RSDL.CreateRGBSurface(0, w, h, d, 0, 0, 0, 0)
         assert self.screen_surface, RSDL.GetError()
-        self.bpp = r_uint(self.screen_surface.c_format.c_BytesPerPixel)
+        self.bpp = intmask(self.screen_surface.c_format.c_BytesPerPixel)
         if d == MINIMUM_DEPTH:
             self.set_squeak_colormap(self.screen_surface)
-        self.pitch = w * self.bpp
+        self.pitch = self.width * self.bpp
 
     def set_full_screen(self, flag):
         if flag:
@@ -174,7 +174,7 @@ class SDLDisplay(object):
 
     def handle_mouse_button(self, c_type, event):
         b = rffi.cast(RSDL.MouseButtonEventPtr, event)
-        btn = b.c_button
+        btn = r_uint(b.c_button)
         if btn == RSDL.BUTTON_RIGHT:
             btn = YellowButtonBit
         elif btn == RSDL.BUTTON_MIDDLE:
@@ -189,59 +189,61 @@ class SDLDisplay(object):
 
     def handle_mouse_move(self, c_type, event):
         m = rffi.cast(RSDL.MouseMotionEventPtr, event)
-        x = m.c_x
-        y = m.c_y
+        x = intmask(m.c_x)
+        y = intmask(m.c_y)
         self.mouse_position = [x, y]
 
     def handle_keyboard_event(self, c_type, event):
-        self.key = 0
+        key = 0
         p = rffi.cast(RSDL.KeyboardEventPtr, event)
-        sym = p.c_keysym.c_sym
+        sym = r_uint(p.c_keysym.c_sym)
         if sym == RSDL.K_DOWN:
-            self.key = key_constants.DOWN
+            key = key_constants.DOWN
         elif sym == RSDL.K_LEFT:
-            self.key = key_constants.LEFT
+            key = key_constants.LEFT
         elif sym == RSDL.K_RIGHT:
-            self.key = key_constants.RIGHT
+            key = key_constants.RIGHT
         elif sym == RSDL.K_UP:
-            self.key = key_constants.UP
+            key = key_constants.UP
         elif sym == RSDL.K_HOME:
-            self.key = key_constants.HOME
+            key = key_constants.HOME
         elif sym == RSDL.K_END:
-            self.key = key_constants.END
+            key = key_constants.END
         elif sym == RSDL.K_INSERT:
-            self.key = key_constants.INSERT
+            key = key_constants.INSERT
         elif sym == RSDL.K_PAGEUP:
-            self.key = key_constants.PAGEUP
+            key = key_constants.PAGEUP
         elif sym == RSDL.K_PAGEDOWN:
-            self.key = key_constants.PAGEDOWN
+            key = key_constants.PAGEDOWN
         elif sym == RSDL.K_LSHIFT or sym == RSDL.K_RSHIFT:
-            self.key = key_constants.SHIFT
+            key = key_constants.SHIFT
         elif sym == RSDL.K_LCTRL or sym == RSDL.K_RCTRL:
-            self.key = key_constants.CTRL
+            key = key_constants.CTRL
         elif sym == RSDL.K_LALT or sym == RSDL.K_RALT:
-            self.key = key_constants.COMMAND
+            key = key_constants.COMMAND
         elif sym == RSDL.K_PAUSE:
-            self.key = key_constants.BREAK
+            key = key_constants.BREAK
         elif sym == RSDL.K_CAPSLOCK:
-            self.key = key_constants.CAPSLOCK
+            key = key_constants.CAPSLOCK
         elif sym == RSDL.K_NUMLOCKCLEAR:
-            self.key = key_constants.NUMLOCK
+            key = key_constants.NUMLOCK
         elif sym == RSDL.K_SCROLLLOCK:
-            self.key = key_constants.SCROLLLOCK
+            key = key_constants.SCROLLLOCK
         elif sym == RSDL.K_PRINTSCREEN:
-            self.key = key_constants.PRINT
+            key = key_constants.PRINT
         else:
-            self.key = rffi.cast(rffi.INT, sym)  # use SDL's keycode
+            key = rffi.cast(rffi.INT, sym) # use SDL's keycode
             # this is the lowercase ascii-value for the most common keys
         # elif char != 0:
         #     chars = unicode_encode_utf_8(unichr(char), 1, "ignore")
         #     if len(chars) == 1:
         #         asciivalue = ord(chars[0])
         #         if asciivalue >= 32:
-        #             self.key = asciivalue
-        if self.key == 0 and sym <= 255:
-            self.key = sym
+        #             key = asciivalue
+        if intmask(key) == 0 and sym <= r_uint(255):
+            self.key = intmask(sym)
+        else:
+            self.key = intmask(key)
         interrupt = self.interrupt_key
         if (interrupt & 0xFF == self.key and interrupt >> 8 == self.get_modifier_mask(0)):
             raise SqueakInterrupt
@@ -256,8 +258,8 @@ class SDLDisplay(object):
     def handle_windowevent(self, c_type, event):
         window_event = rffi.cast(RSDL.WindowEventPtr, event)
         if r_uint(window_event.c_event) == RSDL.WINDOWEVENT_RESIZED:
-            self.set_video_mode(w=window_event.c_data1,
-                                h=window_event.c_data2,
+            self.set_video_mode(w=intmask(window_event.c_data1),
+                                h=intmask(window_event.c_data2),
                                 d=self.depth)
 
     def get_next_mouse_event(self, time):
@@ -296,7 +298,7 @@ class SDLDisplay(object):
         event = lltype.malloc(RSDL.Event, flavor="raw")
         try:
             if RSDL.PollEvent(event) == 1:
-                event_type = event.c_type
+                event_type = r_uint(event.c_type)
                 if event_type in [RSDL.MOUSEBUTTONDOWN, RSDL.MOUSEBUTTONUP]:
                     self.handle_mouse_button(event_type, event)
                     return self.get_next_mouse_event(time)
@@ -342,6 +344,7 @@ class SDLDisplay(object):
         return [EventTypeNone, 0, 0, 0, 0, 0, 0, 0]
 
     def is_control_key(self, key_ord):
+        key_ord = key_ord
         return key_ord < 32 or key_ord in [
                 key_constants.DELETE,
                 key_constants.NUMLOCK,
@@ -366,16 +369,17 @@ class SDLDisplay(object):
         event = lltype.malloc(RSDL.Event, flavor="raw")
         try:
             if RSDL.PollEvent(event) == 1:
-                c_type = event.c_type
-                if c_type == RSDL.MOUSEBUTTONDOWN or c_type == RSDL.MOUSEBUTTONUP:
+                c_type = r_uint(event.c_type)
+                if (c_type == r_uint(RSDL.MOUSEBUTTONDOWN) or
+                    c_type == r_uint(RSDL.MOUSEBUTTONUP)):
                     self.handle_mouse_button(c_type, event)
                     return
-                elif c_type == RSDL.MOUSEMOTION:
+                elif c_type == r_uint(RSDL.MOUSEMOTION):
                     self.handle_mouse_move(c_type, event)
-                elif c_type == RSDL.KEYDOWN:
+                elif c_type == r_uint(RSDL.KEYDOWN):
                     self.handle_keyboard_event(c_type, event)
                     return
-                elif c_type == RSDL.QUIT:
+                elif c_type == r_uint(RSDL.QUIT):
                     from spyvm.error import Exit
                     raise Exit("Window closed")
         finally:
@@ -391,7 +395,7 @@ class SDLDisplay(object):
             modifier |= ShiftKeyBit
         if mod & RSDL.KMOD_ALT != 0:
             modifier |= CommandKeyBit
-        return modifier << shift
+        return intmask(modifier << shift)
 
     def mouse_point(self):
         self.pump_events()

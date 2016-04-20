@@ -402,9 +402,9 @@ class Interpreter(object):
         elapsed microseconds between the two epochs according to RFC 868
         """
         import time
-        from rpython.rlib.rarithmetic import r_longlong
+        from rpython.rlib.rarithmetic import r_int64
         secs_to_usecs = 1000 * 1000
-        return r_longlong(time.time() * secs_to_usecs) + constants.SQUEAK_EPOCH_DELTA_MICROSECONDS
+        return r_int64(time.time() * secs_to_usecs) + constants.SQUEAK_EPOCH_DELTA_MICROSECONDS
 
     def event_time_now(self):
         """

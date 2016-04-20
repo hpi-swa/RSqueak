@@ -6,7 +6,7 @@ from spyvm.error import WrappingError
 from spyvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, SYSTEM_ATTRIBUTE_IMAGE_ARGS_INDEX
 from rpython.rlib import jit, rpath
 from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin, we_are_translated
-from rpython.rlib.rarithmetic import intmask, r_uint, int_between, r_longlong, r_ulonglong, is_valid_int
+from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32, int_between, r_int64, r_ulonglong, is_valid_int, r_longlonglong
 
 
 class ConstantMixin(object):
@@ -183,13 +183,13 @@ class ObjSpace(object):
 
     @specialize.argtype(1)
     def wrap_int(self, val):
-        if isinstance(val, r_longlong) and not is_valid_int(val):
-            if val > 0 and val <= r_longlong(constants.U_MAXINT):
-                return self.wrap_positive_32bit_int(intmask(val))
+        if isinstance(val, r_int64) and not is_valid_int(val):
+            if val > 0 and val <= r_int64(constants.U_MAXINT):
+                return self.wrap_positive_wordsize_int(intmask(val))
             else:
                 raise WrappingError
-        elif isinstance(val, r_uint):
-            return self.wrap_positive_32bit_int(intmask(val))
+        elif isinstance(val, r_uint) or isinstance(val, r_uint32):
+            return self.wrap_positive_wordsize_int(intmask(val))
         elif not is_valid_int(val):
             raise WrappingError
         # we don't do tagging
@@ -199,9 +199,10 @@ class ObjSpace(object):
         if val < 0:
             raise WrappingError("negative integer")
         else:
-            return self.wrap_positive_32bit_int(intmask(val))
+            return self.wrap_positive_wordsize_int(intmask(val))
 
-    def wrap_positive_32bit_int(self, val):
+    def wrap_positive_wordsize_int(self, val):
+        # This will always return a positive value.
         from rpython.rlib.objectmodel import we_are_translated
         if not we_are_translated() and val < 0:
             print "WARNING: wrap_positive_32bit_int casts %d to 32bit unsigned" % val
@@ -246,7 +247,7 @@ class ObjSpace(object):
         try:
             r_val = r_ulonglong(-val)
         except OverflowError:
-            # this is a negative max-bit r_longlong, mask by simple coercion
+            # this is a negative max-bit r_int64, mask by simple coercion
             r_val = r_ulonglong(val)
         w_class = self.w_LargeNegativeInteger
         return self.wrap_large_number(r_val, w_class)
@@ -271,16 +272,22 @@ class ObjSpace(object):
     def wrap_longlong(self, val):
         if not we_are_translated():
             "Tests only"
-            if isinstance(val, long) and not isinstance(val, r_longlong):
+            if isinstance(val, long) and not isinstance(val, r_int64):
                 return self.wrap_long_untranslated(val)
 
         if not is_valid_int(val):
             if isinstance(val, r_ulonglong):
                 return self.wrap_ulonglong(val)
-            elif isinstance(val, r_longlong):
-                if val > 0 and not val <= r_longlong(constants.U_MAXINT):
-                    return self.wrap_ulonglong(val)
-                elif  val < 0:
+            elif isinstance(val, r_int64):
+                if val > 0:
+                    if constants.IS_64BIT:
+                        if not val <= r_longlonglong(constants.U_MAXINT):
+                            # on 64bit, U_MAXINT must be wrapped in an unsigned longlonglong
+                            return self.wrap_ulonglong(val)
+                    else:
+                        if not val <= r_int64(constants.U_MAXINT):
+                            return self.wrap_ulonglong(val)
+                elif val < 0:
                     return self.wrap_nlonglong(val)
         # handles the rest and raises if necessary
         return self.wrap_int(val)
@@ -329,8 +336,8 @@ class ObjSpace(object):
     def unwrap_uint(self, w_value):
         return w_value.unwrap_uint(self)
 
-    def unwrap_positive_32bit_int(self, w_value):
-        return w_value.unwrap_positive_32bit_int(self)
+    def unwrap_positive_wordsize_int(self, w_value):
+        return w_value.unwrap_positive_wordsize_int(self)
 
     def unwrap_longlong(self, w_value):
         return w_value.unwrap_longlong(self)

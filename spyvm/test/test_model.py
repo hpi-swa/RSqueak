@@ -1,7 +1,7 @@
 # -*- coding: utf-8
 import pytest
 import py, math, socket
-from spyvm import model, model_display, storage_classes, error, display
+from spyvm import model, model_display, storage_classes, error, display, constants
 from rpython.rlib.rarithmetic import intmask, r_uint
 from rpython.rtyper.lltypesystem import lltype, rffi
 from .util import create_space, copy_to_module, cleanup_module
@@ -300,8 +300,11 @@ def test_word_at():
 
     b.setword(0, 3221225472)
     r = b.at0(space, 0)
-    assert isinstance(r, (model.W_BytesObject, model.W_LargePositiveInteger1Word))
-    assert r.size() == 4
+    if not constants.IS_64BIT:
+        assert isinstance(r, (model.W_BytesObject, model.W_LargePositiveInteger1Word))
+        assert r.size() == 4
+    else:
+        assert isinstance(r, (model.W_SmallInteger))
 
 def test_float_at():
     b = model.W_Float(64.0)
@@ -347,7 +350,7 @@ def test_large_positive_integer_1word_at():
 def test_large_positive_integer_1word_at_put():
     target = model.W_LargePositiveInteger1Word(0)
     source = model.W_LargePositiveInteger1Word(-1)
-    for i in range(4):
+    for i in range(constants.BYTES_PER_MACHINE_INT):
         target.atput0(space, i, source.at0(space, i))
         assert target.at0(space, i) == source.at0(space, i)
     assert hex(r_uint(target.value)) == hex(r_uint(source.value))
@@ -364,7 +367,11 @@ def test_BytesObject_short_at():
 def test_BytesObject_short_atput():
     target = model.W_BytesObject(space, None, 4)
     target.short_atput0(space, 0, space.wrap_int(0x0100))
-    target.short_atput0(space, 1, space.wrap_int(intmask(0xffff8110)))
+    if not constants.IS_64BIT:
+        target.short_atput0(space, 1, space.wrap_int(intmask(0xffff8110)))
+    else:
+        assert constants.IS_64BIT
+        target.short_atput0(space, 1, space.wrap_int(intmask(0xffff8110 << 32) >> 32))
     assert target.getchar(0) == chr(0x00)
     assert target.getchar(1) == chr(0x01)
     assert target.getchar(2) == chr(0x10)
@@ -382,8 +389,13 @@ def test_WordsObject_short_at():
 def test_WordsObject_short_atput():
     target = model.W_WordsObject(space, None, 2)
     target.short_atput0(space, 0, space.wrap_int(0x0100))
-    target.short_atput0(space, 1, space.wrap_int(-1))
-    target.short_atput0(space, 2, space.wrap_int(intmask(0xffff8000)))
+    if not constants.IS_64BIT:
+        target.short_atput0(space, 1, space.wrap_int(-1))
+        target.short_atput0(space, 2, space.wrap_int(intmask(0xffff8000)))
+    else:
+        assert constants.IS_64BIT
+        target.short_atput0(space, 1, space.wrap_int(intmask(-1 << 32) >> 32))
+        target.short_atput0(space, 2, space.wrap_int(intmask(0xffff8000 << 32) >> 32))
     target.short_atput0(space, 3, space.wrap_int(0x7fff))
     assert target.getword(0) == 0xffff0100
     assert target.getword(1) == 0x7fff8000

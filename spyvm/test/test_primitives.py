@@ -2,7 +2,7 @@ import py, os, math, time
 from spyvm import model, model_display, storage_contexts, constants, primitives, wrapper, display
 from spyvm.primitives import prim_table, PrimitiveFailedError
 from rpython.rlib.rfloat import isinf, isnan
-from rpython.rlib.rarithmetic import intmask, r_uint, r_longlong
+from rpython.rlib.rarithmetic import intmask, r_uint, r_int64
 from rpython.rtyper.lltypesystem import lltype, rffi
 from .util import create_space, copy_to_module, cleanup_module, TestInterpreter, very_slow_test
 
@@ -69,17 +69,24 @@ def test_small_int_add():
     assert prim(primitives.ADD, [1,2]).value == 3
     assert prim(primitives.ADD, [3,4]).value == 7
     assert prim(primitives.ADD, [constants.TAGGED_MAXINT, 2]).value == constants.TAGGED_MAXINT + 2
-    assert r_uint(prim(primitives.ADD, [constants.MAXINT, 2]).value) == constants.MAXINT + 2
-    assert r_uint(prim(primitives.ADD, [2 * constants.MAXINT - 2, 2]).value) == 2 * constants.MAXINT
+    if constants.LONG_BIT == 32:
+        assert r_uint(prim(primitives.ADD, [constants.MAXINT, 2]).value) == constants.MAXINT + 2
+        assert r_uint(prim(primitives.ADD, [2 * constants.MAXINT - 2, 2]).value) == 2 * constants.MAXINT
+    else:
+        prim_fails(primitives.ADD, [constants.MAXINT, 2])
+        prim_fails(primitives.ADD, [2 * constants.MAXINT - 2, 2])
 
 def test_small_int_minus():
     assert prim(primitives.SUBTRACT, [5,9]).value == -4
 
 def test_small_int_multiply():
     assert prim(primitives.MULTIPLY, [6,3]).value == 18
-    w_result = prim(primitives.MULTIPLY, [constants.MAXINT, 2])
-    assert isinstance(w_result, model.W_LargePositiveInteger1Word)
-    assert r_uint(w_result.value) == constants.MAXINT * 2
+    if constants.LONG_BIT == 32:
+        w_result = prim(primitives.MULTIPLY, [constants.MAXINT, 2])
+        assert isinstance(w_result, model.W_LargePositiveInteger1Word)
+        assert r_uint(w_result.value) == constants.MAXINT * 2
+    else:
+        prim_fails(primitives.MULTIPLY, [constants.MAXINT, 2])
 
 def test_small_int_divide():
     assert prim(primitives.DIVIDE, [6,3]).value == 2
@@ -163,11 +170,11 @@ def test_small_int_bit_shift_negative():
     assert prim(primitives.BIT_SHIFT, [-4, 27]).value == -536870912
 
 def test_small_int_bit_shift_fail():
-    prim_fails(primitives.BIT_SHIFT, [4, 32])
-    prim_fails(primitives.BIT_SHIFT, [4, 31])
-    w_result = prim(primitives.BIT_SHIFT, [4, 29])
+    prim_fails(primitives.BIT_SHIFT, [4, constants.LONG_BIT])
+    prim_fails(primitives.BIT_SHIFT, [4, constants.LONG_BIT - 1])
+    w_result = prim(primitives.BIT_SHIFT, [4, constants.LONG_BIT - 3])
     assert isinstance(w_result, model.W_LargePositiveInteger1Word)
-    assert w_result.value == intmask(4 << 29)
+    assert w_result.value == intmask(4 << constants.LONG_BIT - 3)
 
 def test_smallint_as_float():
     assert prim(primitives.SMALLINT_AS_FLOAT, [12]).value == 12.0
@@ -452,11 +459,11 @@ def test_primitive_utc_microseconds_clock():
     start = space.unwrap_longlong(prim(primitives.UTC_MICROSECOND_CLOCK, [0]))
     time.sleep(0.3)
     stop = space.unwrap_longlong(prim(primitives.UTC_MICROSECOND_CLOCK, [0]))
-    assert start + r_longlong(250 * 1000) <= stop
+    assert start + r_int64(250 * 1000) <= stop
 
 def test_signal_at_utc_microseconds():
     start = space.unwrap_longlong(prim(primitives.UTC_MICROSECOND_CLOCK, [0]))
-    future = start + r_longlong(400 * 1000)
+    future = start + r_int64(400 * 1000)
     sema = space.w_Semaphore.as_class_get_shadow(space).new()
     prim(primitives.SIGNAL_AT_UTC_MICROSECONDS, [space.w_nil, sema, future])
     assert space.objtable["w_timerSemaphore"] is sema

@@ -3,7 +3,7 @@ from spyvm import constants, model, error, model_display, wrapper
 from spyvm.util import stream, system
 from spyvm.util.bitmanipulation import splitter
 from rpython.rlib import objectmodel
-from rpython.rlib.rarithmetic import r_ulonglong, intmask, r_uint, r_longlong
+from rpython.rlib.rarithmetic import r_ulonglong, intmask, r_uint, r_uint32, r_int64
 from rpython.rlib import jit
 
 # Access for module users
@@ -448,7 +448,7 @@ class NonSpurReader(BaseReaderStrategy):
             raise error.CorruptImageError("Unknown format 5")
         elif self.isfloat(g_object):
             return objectmodel.instantiate(model.W_Float)
-        elif self.is32bitlargepositiveinteger(g_object):
+        elif self.iswordsizedlargepositiveinteger(g_object):
             return objectmodel.instantiate(model.W_LargePositiveInteger1Word)
         elif self.iswords(g_object):
             return objectmodel.instantiate(model.W_WordsObject)
@@ -464,10 +464,10 @@ class NonSpurReader(BaseReaderStrategy):
     def isbytes(self, g_object):
         return 8 <= g_object.format <= 11
 
-    def is32bitlargepositiveinteger(self, g_object):
+    def iswordsizedlargepositiveinteger(self, g_object):
         return (g_object.format == 8 and
                 self.space.w_LargePositiveInteger.is_same_object(g_object.g_class.w_object) and
-                g_object.len_bytes() <= 4)
+                g_object.len_bytes() <= constants.BYTES_PER_MACHINE_INT)
 
     def ischar(self, g_object):
         return (self.ispointers(g_object) and
@@ -534,13 +534,14 @@ class SpurReader(BaseReaderStrategy):
                 self.chunks[pos + currentAddressSwizzle] = chunk
             print "bridge at", self.stream.count, "(", self.stream.count + currentAddressSwizzle, ")"
             # read bridge
-            bridgeSpan = intmask(self.stream.next_qword())
-            nextSegmentSize = intmask(self.stream.next_qword())
+            # the additional cast to r_uint32 is for 64bit VMs reading 32bit images
+            bridgeSpan = intmask(r_uint32(self.stream.next_qword()))
+            nextSegmentSize = intmask(r_uint32(self.stream.next_qword()))
             print "bridgeSpan", bridgeSpan, "nextSegmentSize", nextSegmentSize
             # the above causes silent overflow in 32bit builds and 64bit images
             if self.version.is_64bit:
                 # subtract the overflow slots bits which are 255
-                bridgeSpan = intmask(bridgeSpan & ~self.SLOTS_MASK)
+                bridgeSpan = intmask(r_uint32(bridgeSpan & ~self.SLOTS_MASK))
             assert bridgeSpan >= 0
             assert nextSegmentSize >= 0
             assert self.stream.count == segmentEnd
@@ -573,7 +574,7 @@ class SpurReader(BaseReaderStrategy):
             classid_l, _, format_l, _, hash_l, _, overflow_size = splitter[22,2,5,3,22,2,8](self.stream.next_qword())
             classid, format, hash = intmask(classid_l), intmask(format_l), intmask(hash_l)
             assert overflow_size == OVERFLOW_SLOTS, "objects with long header must have 255 in slot count"
-        size = r_uint(size_l)  # reading 64 bit images not supported in 32 bit build
+        size = r_uint(r_uint32(size_l)) # reading 64 bit images not supported in 32 bit build
         assert 0 <= format <= 31
         chunk = ImageChunk(size, format, classid, hash)
         # the minimum object length is 16 bytes, i.e. 8 header + 8 payload
@@ -668,7 +669,7 @@ class SpurReader(BaseReaderStrategy):
             return objectmodel.instantiate(model.W_PointersObject)
         elif self.isfloat(g_object):
             return objectmodel.instantiate(model.W_Float)
-        elif self.is32bitlargepositiveinteger(g_object):
+        elif self.iswordsizedlargepositiveinteger(g_object):
             return objectmodel.instantiate(model.W_LargePositiveInteger1Word)
         elif self.iswords(g_object):
             return objectmodel.instantiate(model.W_WordsObject)
@@ -690,10 +691,10 @@ class SpurReader(BaseReaderStrategy):
     def isweak(self, g_object):
         return 4 <= g_object.format <= 5
 
-    def is32bitlargepositiveinteger(self, g_object):
+    def iswordsizedlargepositiveinteger(self, g_object):
         return (g_object.format == 16 and
                 self.space.w_LargePositiveInteger.is_same_object(g_object.g_class.w_object) and
-                g_object.len_bytes() <= 4)
+                g_object.len_bytes() <= constants.BYTES_PER_MACHINE_INT)
 
     def iswords(self, g_object):
         return 9 <= g_object.format <= 15
@@ -842,8 +843,8 @@ class GenericObject(object):
         return bytes[:stop] # omit odd bytes
 
     def get_ruints(self, required_len=-1):
-        from rpython.rlib.rarithmetic import r_uint
-        words = [r_uint(x) for x in self.chunk.data]
+        from rpython.rlib.rarithmetic import r_uint32, r_uint
+        words = [r_uint(r_uint32(x)) for x in self.chunk.data]
         if required_len != -1 and len(words) != required_len:
             raise error.CorruptImageError("Expected %d words, got %d" % (required_len, len(words)))
         return words
@@ -1115,7 +1116,7 @@ class SpurImageWriter(object):
                     return self.reserve(self.space.wrap_large_number(r_ulonglong(obj.value), self.space.w_LargePositiveInteger))
             else:
                 if obj.value >= constants.TAGGED_MININT:
-                    newoop = intmask((((r_longlong(1) << 31) + obj.value) << 1) + 1)
+                    newoop = intmask((((r_int64(1) << 31) + obj.value) << 1) + 1)
                 else:
                     return self.reserve(self.space.wrap_large_number(r_ulonglong(obj.value), self.space.w_LargeNegativeInteger))
             return (newoop, 0, 0, 0, 0)

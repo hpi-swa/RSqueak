@@ -1,6 +1,6 @@
 import sys
 import time
-from rpython.rlib.rarithmetic import r_longlong, r_uint
+from rpython.rlib.rarithmetic import r_int64, r_uint
 
 from spyvm.util.bitmanipulation import splitter
 
@@ -71,7 +71,7 @@ INTERP_PROXY_MAJOR = 1
 INTERP_PROXY_MINOR = 13
 
 # The Delta between Squeak Epoch (Jan 1st 1901) and POSIX Epoch (Jan 1st 1970)
-SQUEAK_EPOCH_DELTA_MICROSECONDS = r_longlong(2177452800000000L)
+SQUEAK_EPOCH_DELTA_MICROSECONDS = r_int64(2177452800000000L)
 
 # ___________________________________________________________________________
 # Special objects indices
@@ -161,7 +161,7 @@ objects_in_special_object_table = {
     "cannotReturn": SO_CANNOT_RETURN,
 }
 
-LONG_BIT = 32
+from rpython.rlib.rarithmetic import LONG_BIT
 TAGGED_MAXINT = 2 ** (LONG_BIT - 2) - 1
 TAGGED_MININT = -2 ** (LONG_BIT - 2)
 
@@ -169,7 +169,18 @@ TAGGED_MASK = int(2 ** (LONG_BIT - 1) - 1)
 
 MAXINT = sys.maxint
 MININT = -sys.maxint-1
-U_MAXINT = r_uint(2 ** 32 - 1)
+U_MAXINT = r_uint(2 ** LONG_BIT - 1)
+
+if LONG_BIT == 32:
+    IS_64BIT = False
+    BYTES_PER_MACHINE_INT = 4
+    BYTES_PER_MACHINE_LONGLONG = 8
+elif LONG_BIT == 64:
+    IS_64BIT = True
+    BYTES_PER_MACHINE_INT = 8
+    BYTES_PER_MACHINE_LONGLONG = 8
+else:
+    assert False
 
 # Entries into SO_SPECIAL_SELECTORS_ARRAY:
 #(#+ 1 #- 1 #< 1 #> 1 #<= 1 #>= 1 #= 1 #~= 1 #* 1 #/ 1 #\\ 1 #@ 1 #bitShift: 1 #// 1 #bitAnd: 1 #bitOr: 1 #at: 1 #at:put: 2 #size 0 #next 0 #nextPut: 1 #atEnd 0 #== 1 #class 0 #blockCopy: 1 #value 0 #value: 1 #do: 1 #new 0 #new: 1 #x 0 #y 0)
@@ -207,12 +218,12 @@ def decode_compiled_method_header(header):
 def decode_alternate_compiled_method_header(header):
     """Decode 30-bit method header and apply new format.
 
-    (index 0)	16 bits:	number of literals (#numLiterals)
-    (index 16)	  1 bit:	has primitive
-    (index 17)	  1 bit:	whether a large frame size is needed (#frameSize)
-    (index 18)	  6 bits:	number of temporary variables (#numTemps)
-    (index 24)	  4 bits:	number of arguments to the method (#numArgs)
-    (index 28)	  2 bits:	reserved for an access modifier (00-unused, 01-private, 10-protected, 11-public)
+    (index 0)   16 bits:        number of literals (#numLiterals)
+    (index 16)    1 bit:        has primitive
+    (index 17)    1 bit:        whether a large frame size is needed (#frameSize)
+    (index 18)    6 bits:       number of temporary variables (#numTemps)
+    (index 24)    4 bits:       number of arguments to the method (#numArgs)
+    (index 28)    2 bits:       reserved for an access modifier (00-unused, 01-private, 10-protected, 11-public)
     """
     literalsize, has_primitive, islarge, tempsize, numargs, access_mod = (
             splitter[16,1,1,6,4,2](header))
