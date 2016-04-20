@@ -27,7 +27,14 @@ def _compile_time_version():
         import subprocess
         return subprocess.check_output(
             ["git", "log", "--format=format:\"Home-built: %ai %h%d\"", "-n", "1"])
+
+def _compile_git_version():
+    import subprocess
+    return subprocess.check_output(
+            ["git", "describe", "--tags", "--always"]).strip()
+
 VERSION = _compile_time_version()
+GIT_VERSION = _compile_git_version()
 BUILD_DATE = "%s +0000" % time.asctime(time.gmtime())
 
 def _usage(argv):
@@ -181,6 +188,9 @@ class Config(object):
                 raise error.Exit("")
             elif arg in ["-v", "--version"]:
                 print "RSqueakVM %s, built on %s" % (VERSION, BUILD_DATE)
+                raise error.Exit("")
+            elif arg in ["--git-version"]:
+                print GIT_VERSION
                 raise error.Exit("")
             elif arg == "--no-highdpi":
                 self.space.highdpi.deactivate()
