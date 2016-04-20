@@ -2,9 +2,9 @@
 import sys, time, os
 from rpython.jit.codewriter.policy import JitPolicy
 from rpython.rlib import jit, rpath, objectmodel, streamio
-from spyvm import model, interpreter, squeakimage, objspace, wrapper, error
-from spyvm.plugins.simulation import SIMULATE_PRIMITIVE_SELECTOR
-from spyvm.util import system
+from rsqueakvm import model, interpreter, squeakimage, objspace, wrapper, error
+from rsqueakvm.plugins.simulation import SIMULATE_PRIMITIVE_SELECTOR
+from rsqueakvm.util import system
 
 sys.setrecursionlimit(15000)
 
@@ -197,7 +197,7 @@ class Config(object):
             elif arg in ["-P", "--process"]:
                 self.headless = False
             elif arg in ["-u", "--stop-ui"]:
-                from spyvm.plugins.vmdebugging import stop_ui_process
+                from rsqueakvm.plugins.vmdebugging import stop_ui_process
                 stop_ui_process()
             elif arg in ["--simulate-numeric-primitives"]:
                 self.space.simulate_numeric_primitives.activate()
@@ -275,13 +275,13 @@ class Config(object):
                     break
         if path is None:
             if system.IS_WINDOWS:
-                from spyvm.util import win32_dialog
+                from rsqueakvm.util import win32_dialog
                 path = win32_dialog.get_file()
             elif system.IS_LINUX:
-                from spyvm.util import linux_dialog
+                from rsqueakvm.util import linux_dialog
                 path = linux_dialog.get_file()
             elif system.IS_DARWIN:
-                from spyvm.util import macosx_dialog
+                from rsqueakvm.util import macosx_dialog
                 path = macosx_dialog.get_file()
             else:
                 path = "Squeak.image"

@@ -100,7 +100,7 @@ arguments to the script or tweak the default arguments in the script itself.
 
 The second script that is useful for working on issues regarding the
 interpreter is `unittests.py`. By default it runs all tests under the
-`spyvm/test` directory (but not those in `spyvm/test/jittest/`). This
+`rsqueakvm/test` directory (but not those in `rsqueakvm/test/jittest/`). This
 is a standalone pytest script, so you can pass arguments or select single
 test files as you would for pytest.
 
@@ -108,7 +108,7 @@ test files as you would for pytest.
 
 This script requires that you have already built an `rsqueak` binary and
 that you have the C Squeak VM installed. It executes the tests in
-`spyvm/test/jittest/` and checks for the JIT output. We use these tests to
+`rsqueakvm/test/jittest/` and checks for the JIT output. We use these tests to
 ensure that development on the VM does not break JIT optimizations.
 
 ###### jit.py

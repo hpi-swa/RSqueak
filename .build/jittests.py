@@ -13,7 +13,7 @@ if __name__ == "__main__":
             print "WARN: You need to configure where to find the squeak binary in %s to run the full suite of JIT tests" % config
         sys.argv.append("--squeak=%s" % squeak)
     if not any(arg.find("jittest/test") != -1 for arg in sys.argv):
-        sys.argv.append(path.join(path.dirname(__file__), "..", "spyvm", "test", "jittest"))
+        sys.argv.append(path.join(path.dirname(__file__), "..", "rsqueakvm", "test", "jittest"))
 
     import pytest
     exit(pytest.main(args=sys.argv))
