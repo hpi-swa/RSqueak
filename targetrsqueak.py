@@ -257,7 +257,16 @@ class Config(object):
 
     def ensure_path(self):
         path = self.path
-        if path is None:
+        if path:
+            if os.path.exists(path):
+                self.path = path
+                return
+            exedir = self.get_exepath()
+            path = rpath.rjoin(exedir, path)
+            if os.path.exists(path):
+                self.path = path
+                return
+        else:
             for filename in os.listdir(os.getcwd()):
                 if filename.startswith("Squeak") and filename.endswith(".image"):
                     path = filename
@@ -293,17 +302,19 @@ class Config(object):
                     break
         return rpath.rabspath(executable)
 
-    def init_from_ini(self):
+    def get_exepath(self):
         splitpaths = self.exepath.split(os.sep)
-        exedir = ""
         splitlen = len(splitpaths)
         # tfel: The dance below makes translation work. os.path.dirname breaks :(
         if splitlen > 2:
             splitlen = splitlen - 1
             assert splitlen >= 0
-            exedir = os.sep.join(splitpaths[0:splitlen])
+            return os.sep.join(splitpaths[0:splitlen])
         else:
             return
+
+    def init_from_ini(self):
+        exedir = self.get_exepath()
         inifile = rpath.rjoin(exedir, "rsqueak.ini")
         if os.path.exists(inifile):
             f = streamio.open_file_as_stream(inifile, mode="r", buffering=0)
