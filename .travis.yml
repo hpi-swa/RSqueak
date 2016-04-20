@@ -27,7 +27,7 @@ env:
     - BUILD_ARCH=32bit TEST_TYPE=default
     - BUILD_ARCH=32bit
     - BUILD_ARCH=32bit TEST_TYPE=coverage
-    - BUILD_ARCH=lldebug
+    # - BUILD_ARCH=lldebug
     - BUILD_ARCH=64bit TEST_TYPE=default
     - BUILD_ARCH=64bit
     - BUILD_ARCH=armv6
