@@ -261,7 +261,9 @@ class Config(object):
             if os.path.exists(path):
                 self.path = path
                 return
-            exedir = self.get_exepath()
+            exedir = self.get_exedir()
+            if not exedir:
+                return
             path = rpath.rjoin(exedir, path)
             if os.path.exists(path):
                 self.path = path
@@ -302,7 +304,7 @@ class Config(object):
                     break
         return rpath.rabspath(executable)
 
-    def get_exepath(self):
+    def get_exedir(self):
         splitpaths = self.exepath.split(os.sep)
         splitlen = len(splitpaths)
         # tfel: The dance below makes translation work. os.path.dirname breaks :(
@@ -314,7 +316,9 @@ class Config(object):
             return
 
     def init_from_ini(self):
-        exedir = self.get_exepath()
+        exedir = self.get_exedir()
+        if not exedir:
+            return
         inifile = rpath.rjoin(exedir, "rsqueak.ini")
         if os.path.exists(inifile):
             f = streamio.open_file_as_stream(inifile, mode="r", buffering=0)
