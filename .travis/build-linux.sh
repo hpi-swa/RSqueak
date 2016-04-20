@@ -10,7 +10,7 @@ case "$BUILD_ARCH" in
         binary=rsqueak
         python .build/build.py
         buildcode=$?
-        cp rsqueak* rsqueak-x86-${UNAME}-jit-$TRAVIS_COMMIT || true
+        cp rsqueak rsqueak-x86-${UNAME}-jit-$TRAVIS_COMMIT || true
         python .build/jittests.py
         $EX rm -rf .build/pypy/rpython/_cache
         exitcode=$?
@@ -20,7 +20,7 @@ case "$BUILD_ARCH" in
         binary=rsqueak
         python .build/build.py 64bit
         buildcode=$?
-        cp rsqueak* rsqueak-x86_64-${UNAME}-jit-$TRAVIS_COMMIT || true
+        cp rsqueak rsqueak-x86_64-${UNAME}-jit-$TRAVIS_COMMIT || true
         python .build/jittests.py 64bit
         $EX rm -rf .build/pypy/rpython/_cache
         exitcode=$?
@@ -29,7 +29,7 @@ case "$BUILD_ARCH" in
     lldebug)
         binary=rsqueak
         python .build/build.py --lldebug -Ojit
-        cp rsqueak* rsqueak-x86-${UNAME}-dbg-$TRAVIS_COMMIT || true
+        cp rsqueak rsqueak-x86-${UNAME}-dbg-$TRAVIS_COMMIT || true
         exitcode=$?
         buildcode=$exitcode
         $EX rm -rf .build/pypy/rpython/_cache
@@ -54,7 +54,7 @@ case "$BUILD_ARCH" in
         sb2 -t rasp make -j 5
         cp rsqueak $oldpwd/rsqueak
         cd $oldpwd
-        cp rsqueak* rsqueak-$armv-${UNAME}-jit-$TRAVIS_COMMIT
+        cp rsqueak rsqueak-$armv-${UNAME}-jit-$TRAVIS_COMMIT
         buildcode=$?
         exitcode=$buildcode
         latest=true

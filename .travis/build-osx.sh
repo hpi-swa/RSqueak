@@ -29,7 +29,7 @@ case "$BUILD_ARCH" in
     lldebug)
         binary=rsqueak
         python .build/build.py --lldebug -Ojit
-        cp rsqueak* rsqueak-x86-${UNAME}-dbg-$TRAVIS_COMMIT || true
+        cp rsqueak rsqueak-x86-${UNAME}-dbg-$TRAVIS_COMMIT || true
         exitcode=$?
         buildcode=$exitcode
         # $EX rm -rf .build/pypy/rpython/_cache
