@@ -1,6 +1,8 @@
 #!/bin/bash
 set -ex
 
+readonly BASE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 presetup_osx() {
     echo "OS X Pre-setup"
 }
@@ -101,11 +103,16 @@ setup_linux() {
     tar xzvf Squeak-4.10*.tar.gz
     rm Squeak-4.10*.tar.gz
     ln -s $PWD/Squeak-4.10*/bin/squeak .build/squeak
-    # also install coveralls
-    if [ "$BUILD_ARCH" == "32bit" ]; then
-	export PATH=.build/pypy-linux32/bin/:$PATH
-	pip install coveralls
-    fi
+    case "$BUILD_ARCH" in
+    	32bit)
+		    # also install coveralls
+			export PATH=.build/pypy-linux32/bin/:$PATH
+			pip install coveralls
+			;;
+    	arm*)
+			"${BASE}/setup_arm.sh"
+			;;
+	esac
 }
 
 presetup_$TRAVIS_OS_NAME

@@ -24,43 +24,32 @@ env:
     - LIBRARY_PATH=$LIBRARY_PATH:$HOME/SDL2/lib
     - C_INCLUDE_PATH=$C_INCLUDE_PATH:$HOME/SDL2/include
   matrix:
-    - BUILD_ARCH=32bit BUILD_TYPE=test TEST_TYPE=default
-    - BUILD_ARCH=32bit BUILD_TYPE=build
-    - BUILD_ARCH=32bit BUILD_TYPE=test TEST_TYPE=coverage
-    - BUILD_ARCH=lldebug BUILD_TYPE=build
-    - BUILD_ARCH=64bit BUILD_TYPE=test TEST_TYPE=default
-    - BUILD_ARCH=64bit BUILD_TYPE=build
-    - BUILD_ARCH=armv6 BUILD_TYPE=build
-    - BUILD_ARCH=armv7-a BUILD_TYPE=build
-    - BUILD_ARCH=armv8-a BUILD_TYPE=build
+    - BUILD_ARCH=32bit TEST_TYPE=default
+    - BUILD_ARCH=32bit
+    - BUILD_ARCH=32bit TEST_TYPE=coverage
+    - BUILD_ARCH=lldebug
+    - BUILD_ARCH=64bit TEST_TYPE=default
+    - BUILD_ARCH=64bit
+    - BUILD_ARCH=armv6
+    - BUILD_ARCH=armv7-a
+    - BUILD_ARCH=armv8-a
 matrix:
   exclude:
     - os: osx
-      env: BUILD_ARCH=32bit BUILD_TYPE=test TEST_TYPE=coverage
+      env: BUILD_ARCH=32bit TEST_TYPE=coverage
     - os: osx
-      env: BUILD_ARCH=armv6 BUILD_TYPE=build
+      env: BUILD_ARCH=armv6
     - os: osx
-      env: BUILD_ARCH=armv7-a BUILD_TYPE=build
+      env: BUILD_ARCH=armv7-a
     - os: osx
-      env: BUILD_ARCH=armv8-a BUILD_TYPE=build
+      env: BUILD_ARCH=armv8-a
   allow_failures:
-    - env: BUILD_ARCH=64bit BUILD_TYPE=build
-    - env: BUILD_ARCH=64bit BUILD_TYPE=test TEST_TYPE=default
-    # - env: BUILD_ARCH=armv6 BUILD_TYPE=build
-    # - env: BUILD_ARCH=armv7-a BUILD_TYPE=build
-    # - env: BUILD_ARCH=armv8-a BUILD_TYPE=build
+    - env: BUILD_ARCH=64bit
+    - env: BUILD_ARCH=64bit TEST_TYPE=default
+    # - env: BUILD_ARCH=armv6
+    # - env: BUILD_ARCH=armv7-a
+    # - env: BUILD_ARCH=armv8-a
   fast_finish: true
-install:
-  - .travis/install_requirements.sh
-  - if [ "$TRAVIS_OS_NAME" == linux ]; then .travis/setup_arm.sh; fi
-before_script:
-  - export TESTSCRIPT=true
-  - if [ "$TRAVIS_OS_NAME" == osx ]; then if [ "$BUILD_ARCH" == 32bit -o "$BUILD_ARCH" == lldebug ]; then export CFLAGS="-arch i386"; export CC="cc -arch i386"; export VERSIONER_PYTHON_PREFER_32_BIT=yes; fi; fi
-  - if [ "$TRAVIS_OS_NAME" == linux ]; then export SDL_VIDEODRIVER=dummy; fi
-  - if [ "$BUILD_TYPE" == test ]; then export TESTSCRIPT=.travis/test.sh; fi
-  - if [ "$TRAVIS_OS_NAME" == linux -a "$BUILD_TYPE" == build ]; then export TESTSCRIPT=.travis/build-linux.sh; fi
-  - if [ "$TRAVIS_OS_NAME" == osx -a "$BUILD_TYPE" == build ]; then export TESTSCRIPT=.travis/build-osx.sh; fi
-script:
-  - $TESTSCRIPT
-after_success:
-  - if [ "x$TEST_TYPE" == "xcoverage" ]; then export PATH=.build/pypy-linux32/bin/:$PATH ; coveralls; fi
+install: .travis/install_requirements.sh
+script: .travis/build.sh
+after_success: .travis/success.sh
