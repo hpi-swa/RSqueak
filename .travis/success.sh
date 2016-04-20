@@ -1,5 +1,14 @@
 #!/bin/bash
-set -ex
+set -e
+
+
+if [[ -n "${TEST_TYPE}" ]]; then
+  if [[ "${TEST_TYPE}" = "coverage" ]]; then
+    export PATH=.build/pypy-linux32/bin/:$PATH;
+    coveralls;
+  fi
+  exit
+fi
 
 case "$TRAVIS_OS_NAME" in
   linux)
@@ -7,10 +16,10 @@ case "$TRAVIS_OS_NAME" in
     curl -T rsqueak-$armv* http://www.lively-kernel.org/babelsberg/RSqueak/ || true
     curl -T rsqueak-x86* -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/commits/ || true
     curl -T rsqueak-$armv* -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/commits/ || true
-    if [ "$BUILD_ARCH" == "32bit" ]; then
+    if [[ "$BUILD_ARCH" = "32bit" ]]; then
       curl -v -H "commitid: $TRAVIS_COMMIT" -X POST http://lively-kernel.org/codespeed/ || true
     fi
-    if [ "$TRAVIS_BRANCH" == "master" -a "$TRAVIS_PULL_REQUEST" == "false" ]; then
+    if [[ "$TRAVIS_BRANCH" = "master" ]] && [[ "$TRAVIS_PULL_REQUEST" = "false" ]]; then
       case "$BUILD_ARCH" in
         32bit)
           # only builds that pass the jittests are 'latest'
@@ -34,7 +43,7 @@ case "$TRAVIS_OS_NAME" in
   osx)
     curl -T rsqueak-x86* http://www.lively-kernel.org/babelsberg/RSqueak/
     curl -T rsqueak-x86* -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/commits/
-    if [ "$TRAVIS_BRANCH" == "master" -a "$TRAVIS_PULL_REQUEST" == "false" ]; then
+    if [[ "$TRAVIS_BRANCH" = "master" ]] && [[ "$TRAVIS_PULL_REQUEST" = "false" ]]; then
       case "$BUILD_ARCH" in
         32bit)
           cp rsqueak rsqueak-${UNAME}-latest
@@ -50,8 +59,3 @@ case "$TRAVIS_OS_NAME" in
     fi
     ;;
 esac
-
-if [[ "${TEST_TYPE:-}" = "coverage" ]]; then
-  export PATH=.build/pypy-linux32/bin/:$PATH;
-  coveralls;
-fi
