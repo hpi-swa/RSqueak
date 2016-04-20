@@ -29,9 +29,12 @@ def _compile_time_version():
             ["git", "log", "--format=format:\"Home-built: %ai %h%d\"", "-n", "1"])
 
 def _compile_git_version():
-    import subprocess
-    return subprocess.check_output(
-            ["git", "describe", "--tags", "--always"]).strip()
+    if os.environ.get("APPVEYOR", None):
+        return os.environ.get("APPVEYOR_REPO_TAG_NAME", None) or os.environ["APPVEYOR_REPO_COMMIT"][0:6]
+    else:
+        import subprocess
+        return subprocess.check_output(
+                ["git", "describe", "--tags", "--always"]).strip()
 
 VERSION = _compile_time_version()
 GIT_VERSION = _compile_git_version()
