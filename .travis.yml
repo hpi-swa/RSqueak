@@ -1,12 +1,11 @@
 language: smalltalk
-sudo: false
+sudo: required
+dist: trusty
+group: edge
 
 smalltalk:
   - Squeak-latest
 
 after_success: ./prepare.sh
 
-addons:
-  apt:
-    packages:
-      - libsdl2-dev
+install: sudo apt-get install -yq --no-install-suggests --no-install-recommends --force-yes libsdl2-dev
