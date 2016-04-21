@@ -12,6 +12,8 @@ fi
 
 case "$TRAVIS_OS_NAME" in
   linux)
+    UNAME=linux
+    armv="${BUILD_ARCH}raspbian"
     curl -T rsqueak-x86* http://www.lively-kernel.org/babelsberg/RSqueak/ || true
     curl -T rsqueak-$armv* http://www.lively-kernel.org/babelsberg/RSqueak/ || true
     curl -T rsqueak-x86* -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/commits/ || true
@@ -41,6 +43,7 @@ case "$TRAVIS_OS_NAME" in
     fi
     ;;
   osx)
+    UNAME=darwin
     curl -T rsqueak-x86* http://www.lively-kernel.org/babelsberg/RSqueak/
     curl -T rsqueak-x86* -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/commits/
     if [[ "$TRAVIS_BRANCH" = "master" ]] && [[ "$TRAVIS_PULL_REQUEST" = "false" ]]; then
