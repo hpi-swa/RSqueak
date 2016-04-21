@@ -8,4 +8,4 @@ smalltalk:
 
 after_success: ./prepare.sh
 
-install: sudo apt-get install -yq --no-install-suggests --no-install-recommends --force-yes libsdl2-dev
+install: sudo apt-get install -yq --no-install-suggests --no-install-recommends --force-yes libsdl2-2.0-0:i386
