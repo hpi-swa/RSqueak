@@ -30,7 +30,7 @@ curl -f -s --retry 3 -o "${VM_WIN_TARGET}" "${BASE_URL}/${VM_WIN}"
 
 chmod 755 "${VM_LINUX_TARGET}" "${VM_OSX_TARGET}" "${VM_WIN_TARGET}"
 
-VERSION=$(git describe --tags --always)
+VERSION="$(${VM_LINUX_TARGET} --git-version)"
 sed -i "s/%VERSION%/${VERSION}/g" "${CONTENTS_DIR}/Info.plist"
 
 echo "Compressing bundle..."
