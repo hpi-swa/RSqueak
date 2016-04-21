@@ -38,6 +38,8 @@ sed -i ".bak" "s/%VERSION%/${VERSION}/g" "${CONTENTS_DIR}/Info.plist"
 
 unzip -q ./certs/dist.zip -d ./certs
 security create-keychain -p travis osx-build.keychain
+security default-keychain -s osx-build.keychain
+security unlock-keychain -p travis osx-build.keychain
 security import ./certs/dist.cer -k ~/Library/Keychains/osx-build.keychain -T /usr/bin/codesign
 security import ./certs/dist.p12 -k ~/Library/Keychains/osx-build.keychain -P "${CERT_PASSWORD}" -T /usr/bin/codesign
 echo "Signing app bundle..."
