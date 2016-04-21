@@ -5,3 +5,8 @@ smalltalk:
   - Squeak-latest
 
 after_success: ./prepare.sh
+
+addons:
+  apt:
+    packages:
+      - libsdl2-2.0-0:i386
