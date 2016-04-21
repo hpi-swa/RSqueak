@@ -6,6 +6,4 @@ smalltalk:
 after_success: ./prepare.sh
 before_install:
 - openssl aes-256-cbc -K $encrypted_fa398914a9db_key -iv $encrypted_fa398914a9db_iv
-  -in certs/dist.p12.enc -out certs/dist.p12 -d
-- openssl aes-256-cbc -K $encrypted_fa398914a9db_key -iv $encrypted_fa398914a9db_iv
-  -in certs/dist.cer.enc -out certs/dist.cer -d
+  -in certs/dist.zip.enc -out certs/dist.zip -d
