@@ -31,10 +31,10 @@ curl -f -s --retry 3 -o "${VM_WIN_TARGET}" "${BASE_URL}/${VM_WIN}"
 # Install SDL2
 sudo ditto "${CONTENTS_DIR}/Frameworks/SDL2.framework" "/Library/Frameworks/SDL2.framework"
 
-chmod 755 "${VM_LINUX_TARGET}" "${VM_OSX_TARGET}" "${VM_WIN_TARGET}"
+chmod +x "${VM_LINUX_TARGET}" "${VM_OSX_TARGET}" "${VM_WIN_TARGET}"
 
 VERSION="$(${VM_OSX_TARGET} --git-version)"
-sed -i "s/%VERSION%/${VERSION}/g" "${CONTENTS_DIR}/Info.plist"
+sed -i ".bak" "s/%VERSION%/${VERSION}/g" "${CONTENTS_DIR}/Info.plist"
 
 unzip -q ./certs/dist.zip -d ./certs
 security create-keychain -p travis osx-build.keychain
