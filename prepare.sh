@@ -35,8 +35,8 @@ sed -i "s/%VERSION%/${VERSION}/g" "${CONTENTS_DIR}/Info.plist"
 
 echo "Compressing bundle..."
 pushd "${TEMPLATE_DIR}" > /dev/null
-tar czvf "${TARGET_TARGZ}" "./RSqueak.app"
-zip -r "${TARGET_ZIP}" "./RSqueak.app"
+tar czvf "${TARGET_TARGZ}" "./"
+zip -r "${TARGET_ZIP}" "./"
 popd > /dev/null
 
 echo "Uploading files..."
