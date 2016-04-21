@@ -1,11 +1,14 @@
 language: smalltalk
 sudo: required
-dist: trusty
-group: edge
-
+os: osx
 smalltalk:
-  - Squeak-latest
-
+- Squeak-latest
 after_success: ./prepare.sh
-
-install: sudo apt-get install -yq --no-install-suggests --no-install-recommends --force-yes libsdl2-2.0-0:i386
+env:
+  global:
+    secure: N+pkkh6iUjunGrVQeEFcIVpCkT52VeCAQN+kvWWY+acKwR6s0GhJ+Xx9JYo14Mr4AqceRqdRHLPynSoxIZfGtkk7H3sFNDZfen1eDoTdE2MHi7OqnNtL+LrLLLBr1Qm2a5fDcbgbWq60cj4Gh0JwqNiqAdFgGV5W0Ovhrh+Xn2hGVno0dYlrws8dLch+/oGXLewa1a9qltZeZmSE2EU5vJlD6O5JsG5ZidF5uWKlD8/YVSY1e9gXhJCABX85z/02AbLg+eyXYFHKFVPnrzh6JS1ue1XImUh/IWxFxuv0/cp+hauHnQcy25+kAC2rgDiLjIILG0ekel0poPF03jh46TOyM6qFcIuE+RSi/OgDkrYQV9tlj+gTJjb97N4Z8rKIE2U3xTBwDuT+7uYU+LZaHkY6z9PFfT4AijyRwhItIqJ4ZC8sUbX8mS4hn30Kl2UG5PTM/G/332KgTuy3CwHuIDM3/yFTNr9EyJGy1hJLMXhgBHjtFFW7a2tMJpS72XgEX0KgqwcKFkjiWyBgDatz8ZBtFkTMQBN7KHzI8/RljnY6nmgKALheYQ4p5hpmFs2SVPaXIf4rdJs/h7xpdAL9bkUNUnQ3+IteE6abd9TVoyL5tcRXzfZbfXEGuRBmC+7j5TS++2z9015+I/YBUm9xP273OQ70Ip63BtVolLKVaqA=
+before_install:
+- openssl aes-256-cbc -K $encrypted_fa398914a9db_key -iv $encrypted_fa398914a9db_iv
+  -in certs/dist.cer.enc -out certs/dist.cer -d
+- openssl aes-256-cbc -K $encrypted_fa398914a9db_key -iv $encrypted_fa398914a9db_iv
+  -in certs/dist.p12.enc -out certs/dist.p12 -d

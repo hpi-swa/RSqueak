@@ -33,6 +33,13 @@ chmod 755 "${VM_LINUX_TARGET}" "${VM_OSX_TARGET}" "${VM_WIN_TARGET}"
 VERSION="$(${VM_LINUX_TARGET} --git-version)"
 sed -i "s/%VERSION%/${VERSION}/g" "${CONTENTS_DIR}/Info.plist"
 
+security create-keychain -p travis osx-build.keychain
+security import ./certs/dist.cer -k ~/Library/Keychains/osx-build.keychain -T /usr/bin/codesign
+security import ./certs/dist.p12 -k ~/Library/Keychains/osx-build.keychain -P "${CERT_PASSWORD}" -T /usr/bin/codesign
+echo "Signing app bundle..."
+codesign -s "${SIGN_IDENTITY}" --force --deep --verbose "${TEMPLATE_DIR}/RSqueak.app"
+security delete-keychain osx-build.keychain
+
 echo "Compressing bundle..."
 pushd "${TEMPLATE_DIR}" > /dev/null
 tar czvf "${TARGET_TARGZ}" "./"
