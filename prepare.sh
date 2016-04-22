@@ -28,8 +28,8 @@ curl -f -s --retry 3 -o "${VM_LINUX_TARGET}" "${BASE_URL}/${VM_LINUX}"
 curl -f -s --retry 3 -o "${VM_OSX_TARGET}" "${BASE_URL}/${VM_OSX}"
 curl -f -s --retry 3 -o "${VM_WIN_TARGET}" "${BASE_URL}/${VM_WIN}"
 
-# Install SDL2
-sudo ditto "${CONTENTS_DIR}/Frameworks/SDL2.framework" "/Library/Frameworks/SDL2.framework"
+# Let RSqueak for OSX use SDL2 from Frameworks directory
+install_name_tool -add_rpath "@executable_path/../Frameworks" "${VM_OSX_TARGET}"
 
 chmod +x "${VM_LINUX_TARGET}" "${VM_OSX_TARGET}" "${VM_WIN_TARGET}"
 
