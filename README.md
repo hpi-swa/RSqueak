@@ -1,20 +1,20 @@
-## RSqueak/VM
+## RSqueak/VM [![Linux Build Status](https://travis-ci.org/HPI-SWA-Lab/RSqueak.svg?branch=master)](https://travis-ci.org/HPI-SWA-Lab/RSqueak) [![Windows Build Status](https://ci.appveyor.com/api/projects/status/e37a79tt5irr7sx1/branch/master?svg=true)](https://ci.appveyor.com/project/timfel/rsqueak) [![Coverage Status](https://coveralls.io/repos/github/HPI-SWA-Lab/RSqueak/badge.svg?branch=master)](https://coveralls.io/github/HPI-SWA-Lab/RSqueak?branch=master)
 
 A Squeak VM written in RPython.
 
-All-in-One bundle for Linux, Windows and OS X
+### Download
 
-[![Download zip](https://img.shields.io/badge/Download-zip-brightgreen.svg)](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/bundle/RSqueak.zip) [![Download tar.gz](https://img.shields.io/badge/Download-tar.gz-brightgreen.svg)](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/bundle/RSqueak.tar.gz)
+All-in-One bundle for Linux, Windows and OS X:
 
-Prebuilt binaries
-* [Linux](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-latest) [![Linux Build Status](https://travis-ci.org/HPI-SWA-Lab/RSqueak.svg?branch=master)](https://travis-ci.org/HPI-SWA-Lab/RSqueak)
-* [Mac OS X](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-darwin-latest) [![Max OS X Build Status](https://travis-ci.org/timfel/RSqueak-MacOSXBuild.svg?branch=master)](https://travis-ci.org/HPI-SWA-Lab/RSqueak)
-* [Windows](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-win32-latest.exe) [![Windows Build Status](https://ci.appveyor.com/api/projects/status/e37a79tt5irr7sx1/branch/master?svg=true)](https://ci.appveyor.com/project/timfel/rsqueak)
+[![Download zip](https://img.shields.io/badge/Download-zip-blue.svg)](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/bundle/RSqueak.zip) [![Download tar.gz](https://img.shields.io/badge/Download-tar.gz-blue.svg)](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/bundle/RSqueak.tar.gz)
+
+Pre-built binaries
+
+[![Download Linux](https://img.shields.io/badge/Download-Linux-blue.svg)](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-latest) [![Download Mac OS X](https://img.shields.io/badge/Download-Mac_OS_X-blue.svg)](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-darwin-latest) [![Download Windows](https://img.shields.io/badge/Download-Windows-blue.svg)](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-win32-latest.exe)
 
 We also have experimental builds for Raspberry Pi:
-* [Raspberry Pi 1](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-armv6raspbian-latest)
-* [Raspberry Pi 2](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-armv7-araspbian-latest)
-* [Raspberry Pi 3](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-armv8-araspbian-latest)
+
+[![Download Raspberry Pi 1](https://img.shields.io/badge/Download-Raspberry_Pi_1-blue.svg)](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-armv6raspbian-latest) [![Download Raspberry Pi 2](https://img.shields.io/badge/Download-Raspberry_Pi_2-blue.svg)](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-armv7-araspbian-latest) [![Download Raspberry Pi 3](https://img.shields.io/badge/Download-Raspberry_Pi_3-blue.svg)](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-armv8-araspbian-latest)
 
 We do build 64-bit virtual machines, but these are not fully functional,
 yet. They can be used to open both 32-bit and 64-bit images, but bugs remain
@@ -22,10 +22,8 @@ that can cause slowdowns or crashes. We are actively investigating 64-bit
 support and some benchmarks show promising results. Due to limitations of the
 underlying RPython toolchain, Windows binaries cannot currently be built in
 64-bit mode.
-* [Linux x86_64](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-x86_64-latest)
-* [Mac OS X x86_64](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-darwin-x86_64-latest)
 
-[![Coverage Status](https://coveralls.io/repos/github/HPI-SWA-Lab/RSqueak/badge.svg?branch=master)](https://coveralls.io/github/HPI-SWA-Lab/RSqueak?branch=master)
+[![Download Linux x86_64](https://img.shields.io/badge/Download-Linux_x86__64-blue.svg)](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-x86_64-latest) [![Download Mac OS X x86_64](https://img.shields.io/badge/Download-Mac%20OS%20X%20x86__64-blue.svg)](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-darwin-x86_64-latest)
 
 ### Finding a working image
 
