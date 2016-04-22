@@ -2,6 +2,10 @@
 
 A Squeak VM written in RPython.
 
+All-in-One bundle for Linux, Windows and OS X
+
+[![Download zip](https://img.shields.io/badge/Download-zip-brightgreen.svg)](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/bundle/RSqueak.zip) [![Download tar.gz](https://img.shields.io/badge/Download-tar.gz-brightgreen.svg)](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/bundle/RSqueak.tar.gz)
+
 Prebuilt binaries
 * [Linux](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-latest) [![Linux Build Status](https://travis-ci.org/HPI-SWA-Lab/RSqueak.svg?branch=master)](https://travis-ci.org/HPI-SWA-Lab/RSqueak)
 * [Mac OS X](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-darwin-latest) [![Max OS X Build Status](https://travis-ci.org/timfel/RSqueak-MacOSXBuild.svg?branch=master)](https://travis-ci.org/HPI-SWA-Lab/RSqueak)
