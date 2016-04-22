@@ -28,13 +28,15 @@ curl -f -s --retry 3 -o "${VM_LINUX_TARGET}" "${BASE_URL}/${VM_LINUX}"
 curl -f -s --retry 3 -o "${VM_OSX_TARGET}" "${BASE_URL}/${VM_OSX}"
 curl -f -s --retry 3 -o "${VM_WIN_TARGET}" "${BASE_URL}/${VM_WIN}"
 
-# Let RSqueak for OSX use SDL2 from Frameworks directory
+# Let RSqueak for OS X use SDL2 from Frameworks directory
 install_name_tool -add_rpath "@executable_path/../Frameworks" "${VM_OSX_TARGET}"
 
 chmod +x "${VM_LINUX_TARGET}" "${VM_OSX_TARGET}" "${VM_WIN_TARGET}"
 
+# Extract and set version for OS X bundle
 VERSION="$(${VM_OSX_TARGET} --git-version)"
 sed -i ".bak" "s/%VERSION%/${VERSION}/g" "${CONTENTS_DIR}/Info.plist"
+rm -f "${CONTENTS_DIR}/Info.plist.bak"
 
 unzip -q ./certs/dist.zip -d ./certs
 security create-keychain -p travis osx-build.keychain
@@ -48,8 +50,8 @@ security delete-keychain osx-build.keychain
 
 echo "Compressing bundle..."
 pushd "${TEMPLATE_DIR}" > /dev/null
-tar czvf "${TARGET_TARGZ}" "./"
-zip -r "${TARGET_ZIP}" "./"
+tar czf "${TARGET_TARGZ}" "./"
+zip -q -r "${TARGET_ZIP}" "./"
 popd > /dev/null
 
 echo "Uploading files..."
