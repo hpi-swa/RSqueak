@@ -291,58 +291,6 @@ def test_keyboard_chords(sut, mocked_sdl_event_queue, stub_events, stub_mod_stat
     assert_keyevent_array(sqAUp, ord('A'), display.EventKeyUp, display.CtrlKeyBit)
     assert_keyevent_array(sqCtrlUp, key_constants.CTRL, display.EventKeyUp, 0)
 
-def test_command_is_command_on_mac(sut, stub_key_event, stub_mod_state, monkeypatch):
-    from spyvm.util import system
-    monkeypatch.setattr(system, 'IS_DARWIN', True)
-    # Command down (LMETA in SDL1)
-    rffi.setintfield(stub_key_event, 'c_type', RSDL.KEYDOWN)
-    rffi.setintfield(stub_key_event.c_keysym, 'c_sym', RSDL.K_LMETA)
-    stub_mod_state.set(RSDL.KMOD_LMETA)
-    result = sut.get_next_event()
-    assert_keyevent_array(result, key_constants.COMMAND, display.EventKeyDown, display.CommandKeyBit)
-    # A down
-    rffi.setintfield(stub_key_event.c_keysym, 'c_sym', RSDL.K_a)
-    rffi.setintfield(stub_key_event.c_keysym, 'c_unicode', ord('a'))
-    result = sut.get_next_event()
-    assert_keyevent_array(result, ord('a'), display.EventKeyDown, display.CommandKeyBit)
-    result = sut.get_next_event()
-    assert_keyevent_array(result, ord('a'), display.EventKeyChar, display.CommandKeyBit)
-    # A up
-    rffi.setintfield(stub_key_event, 'c_type', RSDL.KEYUP)
-    result = sut.get_next_event()
-    assert_keyevent_array(result, ord('a'), display.EventKeyUp, display.CommandKeyBit)
-    # Command up
-    rffi.setintfield(stub_key_event.c_keysym, 'c_sym', RSDL.K_LMETA)
-    stub_mod_state.set(RSDL.KMOD_NONE)
-    result = sut.get_next_event()
-    assert_keyevent_array(result, key_constants.COMMAND, display.EventKeyUp, 0)
-
-def test_alt_is_command_on_windwos(sut, stub_key_event, stub_mod_state, monkeypatch):
-    from spyvm.util import system
-    monkeypatch.setattr(system, 'IS_WINDOWS', True)
-    # Alt down
-    rffi.setintfield(stub_key_event, 'c_type', RSDL.KEYDOWN)
-    rffi.setintfield(stub_key_event.c_keysym, 'c_sym', RSDL.K_LALT)
-    stub_mod_state.set(RSDL.KMOD_LALT)
-    result = sut.get_next_event()
-    assert_keyevent_array(result, key_constants.COMMAND, display.EventKeyDown, display.CommandKeyBit)
-    # A down
-    rffi.setintfield(stub_key_event.c_keysym, 'c_sym', RSDL.K_a)
-    rffi.setintfield(stub_key_event.c_keysym, 'c_unicode', ord('a'))
-    result = sut.get_next_event()
-    assert_keyevent_array(result, ord('a'), display.EventKeyDown, display.CommandKeyBit)
-    result = sut.get_next_event()
-    assert_keyevent_array(result, ord('a'), display.EventKeyChar, display.CommandKeyBit)
-    # A up
-    rffi.setintfield(stub_key_event, 'c_type', RSDL.KEYUP)
-    result = sut.get_next_event()
-    assert_keyevent_array(result, ord('a'), display.EventKeyUp, display.CommandKeyBit)
-    # Command up
-    rffi.setintfield(stub_key_event.c_keysym, 'c_sym', RSDL.K_LALT)
-    stub_mod_state.set(RSDL.KMOD_NONE)
-    result = sut.get_next_event()
-    assert_keyevent_array(result, key_constants.COMMAND, display.EventKeyUp, 0)
-
 @pytest.fixture
 def stub_screen_texture_creation(monkeypatch):
     capture_buffer = []

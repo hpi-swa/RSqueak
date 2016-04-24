@@ -222,8 +222,8 @@ class SDLDisplay(object):
             key = key_constants.CTRL
         elif not system.IS_DARWIN and (sym == RSDL.K_LALT or sym == RSDL.K_RALT):
             key = key_constants.COMMAND
-        elif system.IS_DARWIN and (sym == RSDL.K_LMETA or sym == RSDL.K_RMETA):
-            key = key.constants.COMMAND
+        elif system.IS_DARWIN and (sym == RSDL.K_LGUI or sym == RSDL.K_RGUI):
+            key = key_constants.COMMAND
         elif sym == RSDL.K_DELETE:
             key = key_constants.DELETE
         elif sym == RSDL.K_BACKSPACE:
@@ -402,7 +402,7 @@ class SDLDisplay(object):
             modifier |= ShiftKeyBit
         if not system.IS_DARWIN and (mod & RSDL.KMOD_ALT != 0):
             modifier |= CommandKeyBit
-        if mod & RSDL.KMOD_META != 0:
+        if mod & RSDL.KMOD_GUI != 0:
             modifier |= CommandKeyBit
         return intmask(modifier << shift)
 
