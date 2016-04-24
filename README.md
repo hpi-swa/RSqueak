@@ -8,7 +8,7 @@ All-in-One bundle for Linux, Windows and OS X:
 
 [![Download zip](https://img.shields.io/badge/Download-zip-blue.svg)](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/bundle/RSqueak.zip) [![Download tar.gz](https://img.shields.io/badge/Download-tar.gz-blue.svg)](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/bundle/RSqueak.tar.gz)
 
-Pre-built binaries
+Pre-built binaries:
 
 [![Download Linux](https://img.shields.io/badge/Download-Linux-blue.svg)](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-latest) [![Download Mac OS X](https://img.shields.io/badge/Download-Mac_OS_X-blue.svg)](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-darwin-latest) [![Download Windows](https://img.shields.io/badge/Download-Windows-blue.svg)](https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-win32-latest.exe)
 
@@ -34,7 +34,7 @@ VMMaker from the VMMaker.oscog branch fully works. Try this in a recent Trunk
 image to prepare it for use with RSqueak/VM:
 
 ```Smalltalk
-(Installer squeak project: 'VMMaker') install: 'VMMaker.oscog'
+(Installer squeak project: 'VMMaker') install: 'VMMaker.oscog'.
 MCMcmUpdater updateFromServer.
 ```
 
@@ -76,7 +76,9 @@ compile a fallback file chooser when the VM is launched without image argument.
 RSqueak/VM currently needs to be compiled using a 32-bit python and
 32-bit clang. To do so, run
 
-    export VERSIONER_PYTHON_PREFER_32_BIT=yes
+```bash
+export VERSIONER_PYTHON_PREFER_32_BIT=yes
+```
 
 before you run any of the python scripts in the `.build` directory. You also
 need to download SDL2 as a framework (homebrew version is not tested). Check
