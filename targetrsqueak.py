@@ -493,8 +493,6 @@ def execute_context(interp, s_frame):
 
 def target(driver, *args):
     driver.exe_name = "rsqueak"
-    if system.IS_64BIT:
-        driver.exe_name += "-64"
     return safe_entry_point, None
 
 def jitpolicy(self):
