@@ -1,12 +1,16 @@
 import py, os, math, time
 from rsqueakvm import model, model_display, storage_contexts, constants, primitives, wrapper, display
 from rsqueakvm.primitives import prim_table, PrimitiveFailedError
+from rsqueakvm.util import system
 from rpython.rlib.rfloat import isinf, isnan
 from rpython.rlib.rarithmetic import intmask, r_uint, r_int64
 from rpython.rtyper.lltypesystem import lltype, rffi
 from .util import create_space, copy_to_module, cleanup_module, TestInterpreter, very_slow_test
 
 def setup_module():
+    if system.IS_WINDOWS:
+        from rpython.tool import ansi_print
+        ansi_print.isatty = lambda: False
     space = create_space(bootstrap = True)
     wrap = space.w
     bootstrap_class = space.bootstrap_class
