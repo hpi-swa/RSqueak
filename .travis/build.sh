@@ -3,6 +3,10 @@ set -e
 
 readonly BASE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Only build arm on master
+if [[ "${TRAVIS_BRANCH}" != "master" ]] && [[ "${BUILD_ARCH}" = arm* ]]; then
+    exit 0
+fi
 
 case "$TRAVIS_OS_NAME" in
   linux)

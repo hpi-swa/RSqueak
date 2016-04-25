@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+# Only build arm on master
+if [[ "${TRAVIS_BRANCH}" != "master" ]] && [[ "${BUILD_ARCH}" = arm* ]]; then
+  exit 0
+fi
 
 if [[ -n "${TEST_TYPE}" ]]; then
   if [[ "${TEST_TYPE}" = "coverage" ]]; then

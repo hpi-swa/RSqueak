@@ -12,7 +12,6 @@ from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargePositiveInte
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.primitives import prim_table, PrimitiveFailedError
-from rsqueakvm.util import system
 
 from rpython.rlib.rarithmetic import intmask, r_uint, r_int64
 from rpython.rlib.rfloat import isinf, isnan

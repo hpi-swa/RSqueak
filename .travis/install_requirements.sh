@@ -103,7 +103,7 @@ setup_linux() {
     tar xzvf Squeak-4.10*.tar.gz
     rm Squeak-4.10*.tar.gz
     ln -s $PWD/Squeak-4.10*/bin/squeak .build/squeak
-    case "$BUILD_ARCH" in
+    case "${BUILD_ARCH}" in
     	32bit)
 		    # also install coveralls
 			export PATH=.build/pypy-linux32/bin/:$PATH
@@ -114,6 +114,11 @@ setup_linux() {
 			;;
 	esac
 }
+
+# Only build arm on master
+if [[ "${TRAVIS_BRANCH}" != "master" ]] && [[ "${BUILD_ARCH}" = arm* ]]; then
+    exit 0
+fi
 
 presetup_$TRAVIS_OS_NAME
 python .build/download_dependencies.py || true
