@@ -4,6 +4,7 @@ from rpython.rtyper.lltypesystem import lltype, rffi
 from rpython.rlib import jit
 
 from rsdl import RSDL
+from rsqueakvm.util import system
 import key_constants
 
 
@@ -219,8 +220,14 @@ class SDLDisplay(object):
             key = key_constants.SHIFT
         elif sym == RSDL.K_LCTRL or sym == RSDL.K_RCTRL:
             key = key_constants.CTRL
-        elif sym == RSDL.K_LALT or sym == RSDL.K_RALT:
+        elif not system.IS_DARWIN and (sym == RSDL.K_LALT or sym == RSDL.K_RALT):
             key = key_constants.COMMAND
+        elif system.IS_DARWIN and (sym == RSDL.K_LGUI or sym == RSDL.K_RGUI):
+            key = key_constants.COMMAND
+        elif sym == RSDL.K_DELETE:
+            key = key_constants.DELETE
+        elif sym == RSDL.K_BACKSPACE:
+            key = key_constants.BACKSPACE
         elif sym == RSDL.K_PAUSE:
             key = key_constants.BREAK
         elif sym == RSDL.K_CAPSLOCK:
@@ -393,7 +400,9 @@ class SDLDisplay(object):
             modifier |= CtrlKeyBit
         if mod & RSDL.KMOD_SHIFT != 0:
             modifier |= ShiftKeyBit
-        if mod & RSDL.KMOD_ALT != 0:
+        if not system.IS_DARWIN and (mod & RSDL.KMOD_ALT != 0):
+            modifier |= CommandKeyBit
+        if mod & RSDL.KMOD_GUI != 0:
             modifier |= CommandKeyBit
         return intmask(modifier << shift)
 
