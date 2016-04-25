@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import py, operator
 from collections import OrderedDict
+from rsqueakvm.primitives import prim_holder
 from rsqueakvm.test.test_primitives import MockFrame
 from .util import read_image, copy_to_module, cleanup_module, create_space, slow_test
 
@@ -20,7 +21,7 @@ def teardown_module():
 def perform_primitive(rcvr, w_selector, *args):
     code = rcvr.class_shadow(space).lookup(w_selector).primitive()
     assert code
-    func = primitives.prim_holder.prim_table[code]
+    func = prim_holder.prim_table[code]
     s_frame = MockFrame(space, [rcvr] + list(args)).as_context_get_shadow(space)
     func(interp, s_frame, len(args))
     return s_frame.pop()

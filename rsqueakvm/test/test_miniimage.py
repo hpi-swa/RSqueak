@@ -1,9 +1,11 @@
 import math
 
-from rsqueakvm import constants, storage_contexts, wrapper, primitives, error
+from rsqueakvm import constants, storage_contexts, wrapper, error
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargePositiveInteger1Word
 from rsqueakvm.model.variable import W_BytesObject
+from rsqueakvm.primitives.bytecodes import PERFORM_WITH_ARGS
+
 
 from .util import read_image, open_reader, copy_to_module, cleanup_module, TestInterpreter, slow_test, very_slow_test
 
@@ -48,7 +50,7 @@ def test_read_all_header():
     reader = open_reader(space, "mini.image")
     reader.read_header()
     next = reader.stream.peek()
-    assert next != 0 #expects object header, which must not be 0x00000000
+    assert next != 0  # expects object header, which must not be 0x00000000
 
 def _test_all_pointers_are_valid(reader):
     for each in reader.chunks.itervalues():
@@ -299,7 +301,7 @@ def test_primitive_perform_with_args():
     for sel in selectors_w:
         if sel.unwrap_string(None) == 'size':
             w_sel = sel
-    size = _prim(space, primitives.PERFORM_WITH_ARGS, [w_o, w_sel, []])
+    size = _prim(space, PERFORM_WITH_ARGS, [w_o, w_sel, []])
     assert size.value == 3
 
 def test_step_run_something():

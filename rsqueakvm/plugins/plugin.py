@@ -5,7 +5,7 @@ from rsqueakvm import error
 
 class Plugin(object):
     def __init__(self):
-        self.prims = {}
+        self.primitives = {}
         self.userdata = {}
 
     def call(self, name, interp, s_frame, argcount, w_method):
@@ -17,7 +17,7 @@ class Plugin(object):
 
     @jit.elidable
     def _find_prim(self, name):
-        return self.prims.get(name, None)
+        return self.primitives.get(name, None)
 
     def expose_primitive(self,  wrap_func=None, **kwargs):
         from rsqueakvm.primitives import wrap_primitive, unwrap_alternatives
@@ -29,7 +29,7 @@ class Plugin(object):
         def decorator(func):
             wrapped = wrap_func(**kwargs)(func)
             wrapped.func_name = "wrap_prim_" + func.func_name
-            self.prims[func.func_name] = wrapped
+            self.primitives[func.func_name] = wrapped
             return func
         return decorator
 

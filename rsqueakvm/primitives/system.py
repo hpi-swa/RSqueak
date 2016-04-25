@@ -1,0 +1,162 @@
+from rsqueakvm import constants
+from rsqueakvm.error import PrimitiveFailedError, MetaPrimFailed
+from rsqueakvm.model.numeric import W_SmallInteger
+from rsqueakvm.primitives import expose_primitive
+from rsqueakvm.primitives.bytecodes import *
+
+
+# ___________________________________________________________________________
+# Drawing
+
+@expose_primitive(IDLE_FOR_MICROSECONDS,
+                  unwrap_spec=[object, int], no_result=True, clean_stack=False)
+def func(interp, s_frame, w_rcvr, time_mu_s):
+    import time
+    s_frame.pop()
+    time_s = time_mu_s / 1000000.0
+    interp.interrupt_check_counter = 0
+    interp.quick_check_for_interrupt(s_frame, dec=0)
+    time.sleep(time_s)
+    interp.interrupt_check_counter = 0
+    interp.quick_check_for_interrupt(s_frame, dec=0)
+
+# @expose_primitive(FORCE_DISPLAY_UPDATE, unwrap_spec=[object])
+# def func(interp, s_frame, w_rcvr):
+#     interp.space.display().flip(force=True)
+#     return w_rcvr
+
+@expose_primitive(SET_FULL_SCREEN, unwrap_spec=[object, bool])
+def func(interp, s_frame, w_rcvr, flag):
+    interp.space.display().set_full_screen(flag)
+    return w_rcvr
+
+# ___________________________________________________________________________
+# VM implementor primitives
+
+@expose_primitive(META_PRIM_FAILED, unwrap_spec=[object, int])
+def func(interp, s_frame, w_rcvr, primFailFlag):
+    if primFailFlag != 0:
+        raise MetaPrimFailed(s_frame, primFailFlag)
+    raise PrimitiveFailedError
+
+@expose_primitive(VM_PARAMETERS)
+def func(interp, s_frame, argcount):
+    """Behaviour depends on argument count:
+            0 args: return an Array of VM parameter values;
+            1 arg:  return the indicated VM parameter;
+            2 args: set the VM indicated parameter.
+        VM parameters are numbered as follows:
+            1   byte size of old-space (read-only)
+            2   byte size of young-space (read-only)
+            3   byte size of object memory (read-only)
+            4   allocationCount (read-only; nil in Cog VMs)
+            5   allocations between GCs (read-write; nil in Cog VMs)
+            6   survivor count tenuring threshold (read-write)
+            7   full GCs since startup (read-only)
+            8   total milliseconds in full GCs since startup (read-only)
+            9   incremental GCs since startup (read-only; scavenging GCs on Spur)
+            10  total milliseconds in incremental/scavenging GCs since startup (read-only)
+            11  tenures of surving objects since startup (read-only)
+            12-20 specific to the translating VM (nil in Cog VMs)
+            21  root table size (read-only)
+            22  root table overflows since startup (read-only)
+            23  bytes of extra memory to reserve for VM buffers, plugins, etc.
+            24  memory threshold above which to shrink object memory (read-write)
+            25  ammount to grow by when growing object memory (read-write)
+            26  interruptChecksEveryNms - force an ioProcessEvents every N milliseconds (read-write)
+            27  number of times mark loop iterated for current IGC/FGC (read-only) includes ALL marking
+            28  number of times sweep loop iterated for current IGC/FGC (read-only)
+            29  number of times make forward loop iterated for current IGC/FGC (read-only)
+            30  number of times compact move loop iterated for current IGC/FGC (read-only)
+            31  number of grow memory requests (read-only)
+            32  number of shrink memory requests (read-only)
+            33  number of root table entries used for current IGC/FGC (read-only)
+            34  number of allocations done before current IGC/FGC (read-only)
+            35  number of survivor objects after current IGC/FGC (read-only)
+            36  millisecond clock when current IGC/FGC completed (read-only)
+            37  number of marked objects for Roots of the world, not including Root Table entries for current IGC/FGC (read-only)
+            38  milliseconds taken by current IGC (read-only)
+            39  Number of finalization signals for Weak Objects pending when current IGC/FGC completed (read-only)
+            40  BytesPerWord for this image
+            41  imageFormatVersion for the VM
+            42  number of stack pages in use (Cog Stack VM only, otherwise nil)
+            43  desired number of stack pages (stored in image file header, max 65535; Cog VMs only, otherwise nil)
+            44  size of eden, in bytes (Cog VMs only, otherwise nil)
+            45  desired size of eden, in bytes (stored in image file header; Cog VMs only, otherwise nil)
+            46  size of machine code zone, in bytes (stored in image file header; Cog JIT VM only, otherwise nil)
+            47  desired size of machine code zone, in bytes (applies at startup only, stored in image file header; Cog JIT VM only)
+            48  various properties of the Cog VM as an integer encoding an array of bit flags.
+                Bit 0: implies the image's Process class has threadId as its 3rd inst var (zero relative)
+                Bit 1: on Cog VMs asks the VM to set the flag bit in interpreted methods
+                Bit 2: if set, preempting a process puts it to the head of its run queue, not the back,
+                        i.e. preempting a process by a higher one will not cause the process to yield
+                            to others at the same priority.
+            49  the size of the external semaphore table (read-write; Cog VMs only)
+            50-53 reserved for VM parameters that persist in the image (such as eden above)
+            54  total size of free old space (Spur only, otherwise nil)
+            55  ratio of growth and image size at or above which a GC will be performed post scavenge (Spur only, otherwise nil)
+            56  number of process switches since startup (read-only)
+            57  number of ioProcessEvents calls since startup (read-only)
+            58  number of forceInterruptCheck (Cog VMs) or quickCheckInterruptCalls (non-Cog VMs) calls since startup (read-only)
+            59  number of check event calls since startup (read-only)
+            60  number of stack page overflows since startup (read-only; Cog VMs only)
+            61  number of stack page divorces since startup (read-only; Cog VMs only)
+            62  number of machine code zone compactions since startup (read-only; Cog VMs only)
+            63  milliseconds taken by machine code zone compactions since startup (read-only; Cog VMs only)
+            64  current number of machine code methods (read-only; Cog VMs only)
+            65  true if the VM supports multiple bytecode sets;  (read-only; Cog VMs only; nil in older Cog VMs)
+            66  the byte size of a stack page in the stack zone  (read-only; Cog VMs only)
+            67 - 69 reserved for more Cog-related info
+            70  the value of VM_PROXY_MAJOR (the interpreterProxy major version number)
+            71  the value of VM_PROXY_MINOR (the interpreterProxy minor version number)
+
+        Note: Thanks to Ian Piumarta for this primitive."""
+
+    if not 0 <= argcount <= 2:
+        raise PrimitiveFailedError
+
+    arg1_w = s_frame.pop()  # receiver
+
+    vm_w_params = [interp.space.wrap_int(0)] * 71
+
+    vm_w_params[2] = interp.space.wrap_int(1)  # must be 1 for VM Stats view to work
+    vm_w_params[8] = interp.space.wrap_int(1)  # must be 1 for VM Stats view to work
+
+    vm_w_params[41] = interp.space.wrap_int(1)  # We are a "stack-like" VM - number of stack tables
+    vm_w_params[45] = interp.space.wrap_int(1)  # We are a "cog-like" VM - machine code zone size
+
+    vm_w_params[39] = interp.space.wrap_int(constants.BYTES_PER_WORD)
+    vm_w_params[40] = interp.space.wrap_int(interp.image.version.magic)
+    vm_w_params[55] = interp.space.wrap_int(interp.process_switch_count)
+    vm_w_params[57] = interp.space.wrap_int(interp.forced_interrupt_checks_count)
+    vm_w_params[59] = interp.space.wrap_int(interp.stack_overflow_count)
+    vm_w_params[69] = interp.space.wrap_int(constants.INTERP_PROXY_MAJOR)
+    vm_w_params[70] = interp.space.wrap_int(constants.INTERP_PROXY_MINOR)
+
+    if argcount == 0:
+        return interp.space.wrap_list(vm_w_params)
+
+    arg2_w = s_frame.pop()  # index (really the receiver, index has been removed above)
+    if not isinstance(arg1_w, W_SmallInteger):
+        raise PrimitiveFailedError
+    if argcount == 1:
+        if not 0 <= arg1_w.value <= 70:
+            raise PrimitiveFailedError
+        return vm_w_params[arg1_w.value - 1]
+
+    s_frame.pop()  # new value
+    if argcount == 2:
+        # return the 'old value'
+        return interp.space.wrap_int(0)
+
+# list the n-th loaded module
+@expose_primitive(VM_LOADED_MODULES, unwrap_spec=[int])
+def func(interp, s_frame, index):
+    if interp.space.use_plugins.is_set():
+        from rsqueakvm.plugins.squeak_plugin_proxy import IProxy
+        modulenames = IProxy.loaded_module_names()
+        try:
+            return interp.space.wrap_string(modulenames[index])
+        except IndexError:
+            return interp.space.w_nil
+    return interp.space.w_nil

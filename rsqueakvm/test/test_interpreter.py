@@ -2,9 +2,10 @@ import pytest
 import py
 import operator
 
-from rsqueakvm import interpreter, primitives, storage_classes, storage_contexts, wrapper, constants, error
+from rsqueakvm import interpreter, storage_classes, storage_contexts, wrapper, constants, error
 from rsqueakvm.model.base import W_Object
 from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod
+from rsqueakvm.primitives.bytecodes import *
 
 from .util import create_space_interp, copy_to_module, cleanup_module, import_bytecodes
 
@@ -13,7 +14,7 @@ import_bytecodes(__name__)
 
 @pytest.fixture(scope='module')
 def space_and_interp():
-    return create_space_interp(bootstrap = True)
+    return create_space_interp(bootstrap=True)
 
 @pytest.fixture
 def space(space_and_interp):
@@ -24,7 +25,7 @@ def interp(space_and_interp):
     return space_and_interp[1]
 
 def setup_module():
-    space, interp = create_space_interp(bootstrap = True)
+    space, interp = create_space_interp(bootstrap=True)
     w = space.w
     interpret_bc = interp.interpret_bc
     copy_to_module(locals(), __name__)
@@ -125,10 +126,10 @@ def fakeliterals(space, *literals):
 
 def test_create_frame():
     w_method = W_PreSpurCompiledMethod(space, len("hello"))
-    w_method.bytes="hello"
+    w_method.bytes = "hello"
     w_method.islarge = 1
-    w_method.argsize=2
-    w_method._tempsize=8
+    w_method.argsize = 2
+    w_method._tempsize = 8
     s_frame = w_method.create_frame(space, w("receiver"), [w("foo"), w("bar")])
     w_frame = s_frame.w_self()
     assert s_frame.w_receiver().unwrap_string(None) == "receiver"
@@ -166,9 +167,9 @@ def test_pushReceiverBytecode():
     assert s_frame.top().is_same_object(
             s_frame.w_receiver())
 
-def test_pushReceiverVariableBytecode(bytecode = (pushReceiverVariableBytecode(0) +
-                                                  pushReceiverVariableBytecode(1) +
-                                                  pushReceiverVariableBytecode(2))):
+def test_pushReceiverVariableBytecode(bytecode=(pushReceiverVariableBytecode(0) +
+                                                pushReceiverVariableBytecode(1) +
+                                                pushReceiverVariableBytecode(2))):
     w_demo = bootstrap_class(3).as_class_get_shadow(space).new()
     egg, bar, baz = w("egg"), w("bar"), w("baz")
     w_demo.store(space, 0, egg)
@@ -211,7 +212,7 @@ def test_pushLiteralVariableBytecode(bytecode=pushLiteralVariableBytecode(0)):
     w_association.store(space, 0, mykey)
     w_association.store(space, 1, myvalue)
     w_frame, s_frame = new_frame(bytecode)
-    s_frame.w_method().setliterals( fakeliterals(space, w_association))
+    s_frame.w_method().setliterals(fakeliterals(space, w_association))
     step_in_interp(s_frame)
     assert_list(s_frame.stack(), [myvalue])
 
@@ -238,7 +239,7 @@ def test_storeAndPopReceiverVariableBytecode(bytecode=storeAndPopReceiverVariabl
 def test_storeAndPopTemporaryVariableBytecode(bytecode=storeAndPopTemporaryVariableBytecode):
     for index in range(8):
         w_frame, s_frame = new_frame(pushConstantTrueBytecode + bytecode(index))
-        #s_frame.temps = [None] * 8
+        # s_frame.temps = [None] * 8
         step_in_interp(s_frame)
         step_in_interp(s_frame)
         assert s_frame.stack() == []
@@ -395,7 +396,7 @@ def test_bytecodePrimNew():
     w_frame, s_frame = new_frame(bytecodePrimNew)
     s_frame.push(w_fakeclass)
     run_with_faked_primitive_methods(
-        [[w_fakeclassclass, primitives.NEW, 0, "new"]],
+        [[w_fakeclassclass, NEW, 0, "new"]],
         step_in_interp,
         s_frame)
     w_fakeinst = s_frame.pop()
@@ -411,7 +412,7 @@ def test_bytecodePrimNewWithArg():
     s_frame.push(w_fakeclass)
     s_frame.push(space.w_two)
     run_with_faked_primitive_methods(
-        [[w_fakeclassclass, primitives.NEW_WITH_ARG, 1, "new:"]],
+        [[w_fakeclassclass, NEW_WITH_ARG, 1, "new:"]],
         step_in_interp,
         s_frame)
     w_fakeinst = s_frame.pop()
@@ -425,7 +426,7 @@ def test_bytecodePrimSize():
     w_frame, s_frame = new_frame(bytecodePrimSize)
     s_frame.push(w_fakeinst)
     run_with_faked_primitive_methods(
-        [[w_fakeclass, primitives.SIZE, 0, "size"]],
+        [[w_fakeclass, SIZE, 0, "size"]],
         step_in_interp,
         s_frame)
     assert s_frame.pop().value == 5
@@ -436,11 +437,11 @@ def test_bytecodePrimSize():
 # w_object - the actual object we will be sending the method to
 # bytecodes - the bytecode to be executed
 def sendBytecodesTest(w_class, w_object, bytecodes):
-    for bytecode, result in [ (returnReceiverBytecode, w_object),
+    for bytecode, result in [(returnReceiverBytecode, w_object),
           (returnTrueBytecode, space.w_true),
           (returnFalseBytecode, space.w_false),
           (returnNilBytecode, space.w_nil),
-          (returnTopFromMethodBytecode, space.w_one) ]:
+          (returnTopFromMethodBytecode, space.w_one)]:
         shadow = w_class.as_class_get_shadow(space)
         w_method = W_PreSpurCompiledMethod(space, 2)
         w_method.bytes = pushConstantOneBytecode + bytecode
@@ -469,7 +470,7 @@ def test_sendLiteralSelectorBytecode():
     sendBytecodesTest(w_class, w_object, sendLiteralSelectorBytecode(0))
 
 def test_fibWithArgument():
-    bytecode = ''.join(map(chr, [ 16, 119, 178, 154, 118, 164, 11, 112, 16, 118, 177, 224, 112, 16, 119, 177, 224, 176, 124 ]))
+    bytecode=''.join(map(chr, [16, 119, 178, 154, 118, 164, 11, 112, 16, 118, 177, 224, 112, 16, 119, 177, 224, 176, 124]))
     shadow = bootstrap_class(0).as_class_get_shadow(space)
     method = W_PreSpurCompiledMethod(space, len(bytecode))
     method.literalsize = 1
@@ -501,7 +502,7 @@ def test_send_to_primitive():
         assert space.unwrap_int(w_result) == 42
 
     run_with_faked_primitive_methods(
-        [[space.w_SmallInteger, primitives.SUBTRACT,
+        [[space.w_SmallInteger, SUBTRACT,
           1, "-"]],
         test)
 
@@ -726,7 +727,7 @@ def test_bc_3_plus_4():
     #
     #   ^ [ 3 + 4 ] value
     assert interpret_bc(
-        [ 137, 117, 200, 164, 4, 32, 33, 176, 125, 201, 124],
+        [137, 117, 200, 164, 4, 32, 33, 176, 125, 201, 124],
         fakeliterals(space, 3, 4)).value == 7
 
 
@@ -737,8 +738,8 @@ def test_bc_x_plus_x_plus_1():
     #
     #   ^ [ :x | x + x + 1 ] value: 3
     assert interpret_bc(
-        [ 137, 118, 200, 164, 7, 104, 16, 16,
-          176, 118, 176, 125, 32, 202, 124 ],
+        [137, 118, 200, 164, 7, 104, 16, 16,
+         176, 118, 176, 125, 32, 202, 124],
         fakeliterals(space, 3)).value == 7
 
 def test_bc_x_plus_y():
@@ -750,11 +751,11 @@ def test_bc_x_plus_y():
 
     def test():
         assert interpret_bc(
-            [ 137, 119, 200, 164, 6, 105, 104, 16, 17,
-              176, 125, 33, 34, 240, 124 ],
+            [137, 119, 200, 164, 6, 105, 104, 16, 17,
+             176, 125, 33, 34, 240, 124],
             fakeliterals(space, "value:value:", 3, 4)).value == 7
     run_with_faked_primitive_methods(
-        [[space.w_BlockContext, primitives.VALUE,
+        [[space.w_BlockContext, VALUE,
           2, "value:value:"]],
         test)
 
@@ -765,7 +766,7 @@ def test_bc_push_rcvr_in_block():
     #
     #   ^ [ self ] value
     assert interpret_bc(
-        [ 137, 117, 200, 164, 2, 112, 125, 201, 124 ],
+        [137, 117, 200, 164, 2, 112, 125, 201, 124],
         fakeliterals(space, 3)).is_nil(space)
 
 def test_bc_value_return():
@@ -775,7 +776,7 @@ def test_bc_value_return():
     #
     #   [ ^ 1 ] value. ^ 2
     assert interpret_bc(
-        [ 137, 117, 200, 164, 2, 118, 124, 201, 135, 119, 124 ],
+        [137, 117, 200, 164, 2, 118, 124, 201, 135, 119, 124],
         fakeliterals(space, )).value == 1
 
 def test_bc_value_with_args():
@@ -786,14 +787,14 @@ def test_bc_value_with_args():
     #   [ :a :b | a - b ] valueWithArguments: #(3 2)
     def test():
         val = interpret_bc(
-            [ 137, 119, 200, 164, 6,
-              105, 104, 16, 17, 177,
-              125, 33, 224, 124 ],
+            [137, 119, 200, 164, 6,
+             105, 104, 16, 17, 177,
+             125, 33, 224, 124],
             fakeliterals(space, "valueWithArguments:",
                          [3, 2]))
         assert val.value == 1
     run_with_faked_primitive_methods(
-        [[space.w_BlockContext, primitives.VALUE_WITH_ARGS,
+        [[space.w_BlockContext, VALUE_WITH_ARGS,
           1, "valueWithArguments:"]],
         test)
 
@@ -801,20 +802,20 @@ def test_bc_primBytecodeAt_string():
     #   ^ 'a' at: 1
     def test():
         assert interpret_bc(
-            [ 32, 118, 192, 124],
+            [32, 118, 192, 124],
             fakeliterals(space, "a")) == space.wrap_char("a")
     run_with_faked_primitive_methods(
-        [[space.w_String, primitives.STRING_AT, 1, "at:"]],
+        [[space.w_String, STRING_AT, 1, "at:"]],
         test)
 
 def test_bc_primBytecodeAtPut_string():
     #   ^ 'a' at: 1 put:'b'
     def test():
         assert interpret_bc(
-            [ 32, 118, 33, 193, 124 ],
+            [32, 118, 33, 193, 124],
             fakeliterals(space, "a", space.wrap_char("b"))) == space.wrap_char("b")
     run_with_faked_primitive_methods(
-        [[space.w_String, primitives.STRING_AT_PUT, 2, "at:put:"]],
+        [[space.w_String, STRING_AT_PUT, 2, "at:put:"]],
         test)
 
 def test_bc_primBytecodeAt_with_instvars():
@@ -829,7 +830,7 @@ def test_bc_primBytecodeAt_with_instvars():
             fakeliterals(space, ),
             receiver=w_fakeinst)) == "b"
     run_with_faked_primitive_methods(
-        [[w_fakeclass, primitives.AT, 1, "at:"]],
+        [[w_fakeclass, AT, 1, "at:"]],
         test)
 
 def test_bc_primBytecodeAtPut_with_instvars():
@@ -846,7 +847,7 @@ def test_bc_primBytecodeAtPut_with_instvars():
         assert space.unwrap_char_as_byte(w_fakeinst.fetch(space, 0)) == "a"
         assert space.unwrap_char_as_byte(w_fakeinst.fetch(space, 1)) == "b"
     run_with_faked_primitive_methods(
-        [[w_fakeclass, primitives.AT_PUT, 2, "at:put:"]],
+        [[w_fakeclass, AT_PUT, 2, "at:put:"]],
         test)
 
 def test_bc_objectAtAndAtPut():
@@ -868,8 +869,8 @@ def test_bc_objectAtAndAtPut():
         assert interpret_bc(
             [112, 119, 224, 124], oal, receiver=prim_meth).value == 3
     run_with_faked_primitive_methods(
-        [[space.w_CompiledMethod, primitives.OBJECT_AT, 1, "objectAt:"],
-         [space.w_CompiledMethod, primitives.OBJECT_AT_PUT, 2, "objectAt:put:"]],
+        [[space.w_CompiledMethod, OBJECT_AT, 1, "objectAt:"],
+         [space.w_CompiledMethod, OBJECT_AT_PUT, 2, "objectAt:put:"]],
         test)
 
 # Closure Bytecodes
@@ -904,7 +905,7 @@ def test_bc_pushNewArray(bytecode=pushNewArrayBytecode):
     assert array.size() == 7
     assert array.at0(space, 0).is_nil(space)
 
-def test_bc_pushRemoteTempLongBytecode(bytecode = pushRemoteTempLongBytecode):
+def test_bc_pushRemoteTempLongBytecode(bytecode=pushRemoteTempLongBytecode):
     w_frame, s_frame = new_frame(bytecode + chr(0) + chr(0))
     s_frame.settemp(0, space.w_Array.as_class_get_shadow(interp.space).new(2))
     step_in_interp(s_frame)
@@ -921,21 +922,21 @@ def setupTempArrayAndContext(bytecode):
     step_in_interp(s_frame)
     return s_frame, temp_array
 
-def test_bc_pushRemoteTempLongBytecode2(bytecode = pushRemoteTempLongBytecode):
+def test_bc_pushRemoteTempLongBytecode2(bytecode=pushRemoteTempLongBytecode):
     context, _ = setupTempArrayAndContext(bytecode)
     assert space.unwrap_array(context.top()) == fakeliterals(space, "pub")
 
-def test_bc_storeRemoteTempLongBytecode(bytecode = storeRemoteTempLongBytecode):
+def test_bc_storeRemoteTempLongBytecode(bytecode=storeRemoteTempLongBytecode):
     context, temp_array = setupTempArrayAndContext(bytecode)
     assert space.unwrap_array(context.top()) == fakeliterals(space, "bar")
     assert space.unwrap_array(temp_array.at0(space, 2)) == fakeliterals(space, "bar")
 
-def test_bc_storeAndPopRemoteTempLongBytecode(bytecode = storeAndPopRemoteTempLongBytecode):
+def test_bc_storeAndPopRemoteTempLongBytecode(bytecode=storeAndPopRemoteTempLongBytecode):
     context, temp_array = setupTempArrayAndContext(bytecode)
     assert space.unwrap_array(temp_array.at0(space, 2)) == fakeliterals(space, "bar")
     assert space.unwrap_array(context.top()) == fakeliterals(space, "english")
 
-def test_bc_pushClosureCopyCopied0ValuesBytecode(bytecode = pushClosureCopyCopiedValuesBytecode):
+def test_bc_pushClosureCopyCopied0ValuesBytecode(bytecode=pushClosureCopyCopiedValuesBytecode):
     for i in (0, 0xF0, 0x0FF0, 0xFFF0):
         w_frame, s_frame = new_frame(bytecode + chr(2) + chr(i >> 8) + chr(i & 0xFF))
         pc = s_frame.pc()
@@ -946,7 +947,7 @@ def test_bc_pushClosureCopyCopied0ValuesBytecode(bytecode = pushClosureCopyCopie
         assert closure.startpc() == pc + 4 + 4 + 1 # pc + offset + headerword + smalltalk 1-indexing
         assert closure.outerContext() is s_frame._w_self
 
-def test_bc_pushClosureCopyCopied2ValuesBytecode(bytecode = pushClosureCopyCopiedValuesBytecode):
+def test_bc_pushClosureCopyCopied2ValuesBytecode(bytecode=pushClosureCopyCopiedValuesBytecode):
     w_frame, s_frame = new_frame(bytecode + chr(0x23) + chr(0) + chr(0))
     s_frame.push(w("english"))
     s_frame.push(w("bar"))
@@ -967,7 +968,7 @@ def test_blockclosure_valuevalue():
             [ 0x8f, 2, 0, 4, 16, 17, 0xb0, 0x7d, 0x76, 0x77, 0xf0, 0x7c ],
             fakeliterals(space, "value:value:", )).value == 3
     run_with_faked_primitive_methods(
-        [[space.w_BlockClosure, primitives.CLOSURE_VALUE_VALUE,
+        [[space.w_BlockClosure, CLOSURE_VALUE_VALUE,
             2, "value:value:"]],
         test)
 
@@ -981,7 +982,7 @@ def test_blockclosure_return():
             0x76, 0x77, 0xf0, 0x87, 0x76, 0x7c ],
             fakeliterals(space, "value:value:", )).value == 3
     run_with_faked_primitive_methods(
-        [[space.w_BlockClosure, primitives.CLOSURE_VALUE_VALUE,
+        [[space.w_BlockClosure, CLOSURE_VALUE_VALUE,
             2, "value:value:"]],
         test)
 

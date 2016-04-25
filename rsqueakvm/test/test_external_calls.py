@@ -1,12 +1,14 @@
 import py
 import os
 
-from rsqueakvm import constants, primitives
+from rsqueakvm import constants
+from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.display import W_DisplayBitmap
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.numeric import W_LargePositiveInteger1Word
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
-from rsqueakvm.primitives import prim_table, PrimitiveFailedError
+from rsqueakvm.primitives import prim_table
+from rsqueakvm.primitives.bytecodes import EXTERNAL_CALL
 
 from rpython.rtyper.lltypesystem import lltype, rffi
 
@@ -39,7 +41,7 @@ def external_call(module_name, method_name, stack):
     w_description.atput0(space, 0, space.w(module_name))
     w_description.atput0(space, 1, space.w(method_name))
     context = new_frame("<not called>", [w_description], stack[0], stack[1:])[0]
-    return prim(primitives.EXTERNAL_CALL, stack, context)
+    return prim(EXTERNAL_CALL, stack, context)
 
 def setup_module():
     space = create_space(bootstrap = True)

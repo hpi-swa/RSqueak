@@ -1,8 +1,11 @@
 import pdb
 
-from rsqueakvm import primitives, error
+from rsqueakvm import error
 from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.primitives import prim_table
+from rsqueakvm.primitives.bytecodes import EXTERNAL_CALL
 from rsqueakvm.storage_contexts import ContextPartShadow
+
 
 # This module patches up the interpreter and adds breakpoints at certain execution points.
 # Only usable in interpreted mode due to pdb.
@@ -109,4 +112,4 @@ def activate_debugging():
                 raise e
         return meth
 
-    primitives.prim_table[primitives.EXTERNAL_CALL] = failed_named_primitive(primitives.prim_table[primitives.EXTERNAL_CALL])
+    prim_table[EXTERNAL_CALL] = failed_named_primitive(prim_table[EXTERNAL_CALL])

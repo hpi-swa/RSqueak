@@ -1,11 +1,13 @@
-from rsqueakvm import primitives, wrapper, error
+from rsqueakvm import wrapper, error
 from rsqueakvm.model.compiled_methods import W_CompiledMethod
 from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.primitives import bytecodes, prim_table, prim_holder
 from rsqueakvm.storage_classes import ClassShadow
 from rsqueakvm.storage_contexts import ContextPartShadow, DirtyContext
-
 from rsqueakvm.util.bitmanipulation import splitter
+
 from rpython.rlib import objectmodel, unroll, jit
+
 
 # unrolling_zero has been removed from rlib at some point.
 if hasattr(unroll, "unrolling_zero"):
@@ -41,13 +43,13 @@ def bytecode_implementation(parameter_bytes=0):
     return bytecode_implementation_decorator
 
 def make_call_primitive_bytecode(primitive, selector, argcount, store_pc=False):
-    func = primitives.prim_table[primitive]
+    func = prim_table[primitive]
     @bytecode_implementation()
     def callPrimitive(self, interp, current_bytecode):
         # WARNING: this is used for bytecodes for which it is safe to
         # directly call the primitive.  In general, it is not safe: for
         # example, depending on the type of the receiver, bytecodePrimAt
-        # may invoke primitives.AT, primitives.STRING_AT, or anything
+        # may invoke AT, STRING_AT, or anything
         # else that the user put in a class in an 'at:' method.
         # The rule of thumb is that primitives with only int and float
         # in their unwrap_spec are safe.
@@ -66,10 +68,10 @@ def make_call_primitive_bytecode_classbased(a_class_name, a_primitive, alternati
         receiver_class = rcvr.getclass(self.space)
         try:
             if receiver_class is getattr(self.space, a_class_name):
-                func = primitives.prim_table[a_primitive]
+                func = prim_table[a_primitive]
                 return func(interp, self, argcount)
             elif receiver_class is getattr(self.space, alternative_class_name):
-                func = primitives.prim_table[alternative_primitive]
+                func = prim_table[alternative_primitive]
                 return func(interp, self, argcount)
         except error.PrimitiveFailedError:
             pass
@@ -79,7 +81,7 @@ def make_call_primitive_bytecode_classbased(a_class_name, a_primitive, alternati
 
 # Some selectors cannot be overwritten, therefore no need to handle PrimitiveFailed.
 def make_quick_call_primitive_bytecode(primitive_index, argcount):
-    func = primitives.prim_table[primitive_index]
+    func = prim_table[primitive_index]
     @bytecode_implementation()
     def quick_call_primitive_bytecode(self, interp, current_bytecode):
         return func(interp, self, argcount)
@@ -399,7 +401,7 @@ class __extend__(ContextPartShadow):
         self.pop()  # The receiver, already known.
 
         if interp.space.headless.is_set():
-            primitives.exitFromHeadlessExecution(self, "doesNotUnderstand:", w_message)
+            self.exitFromHeadlessExecution("doesNotUnderstand:", w_message)
         return self._sendSpecialSelector(interp, receiver, "doesNotUnderstand", [w_message])
 
     def _mustBeBoolean(self, interp, receiver):
@@ -411,7 +413,7 @@ class __extend__(ContextPartShadow):
             interp.print_padded("-> primitive %d \t(in %s, named %s)" % (
                                     code, self.w_method().get_identifier_string(),
                                     w_selector.selector_string()))
-        func = primitives.prim_holder.prim_table[code]
+        func = prim_holder.prim_table[code]
         try:
             # note: argcount does not include rcvr
             # the primitive pushes the result (if any) onto the stack itself
@@ -615,22 +617,22 @@ class __extend__(ContextPartShadow):
 
     # ====== Bytecodes implemented with primitives and message sends ======
 
-    bytecodePrimAdd = make_call_primitive_bytecode(primitives.ADD, "+", 1)
-    bytecodePrimSubtract = make_call_primitive_bytecode(primitives.SUBTRACT, "-", 1)
-    bytecodePrimLessThan = make_call_primitive_bytecode (primitives.LESSTHAN, "<", 1)
-    bytecodePrimGreaterThan = make_call_primitive_bytecode(primitives.GREATERTHAN, ">", 1)
-    bytecodePrimLessOrEqual = make_call_primitive_bytecode(primitives.LESSOREQUAL,  "<=", 1)
-    bytecodePrimGreaterOrEqual = make_call_primitive_bytecode(primitives.GREATEROREQUAL,  ">=", 1)
-    bytecodePrimEqual = make_call_primitive_bytecode(primitives.EQUAL,   "=", 1)
-    bytecodePrimNotEqual = make_call_primitive_bytecode(primitives.NOTEQUAL,  "~=", 1)
-    bytecodePrimMultiply = make_call_primitive_bytecode(primitives.MULTIPLY,  "*", 1)
-    bytecodePrimDivide = make_call_primitive_bytecode(primitives.DIVIDE,  "/", 1)
-    bytecodePrimMod = make_call_primitive_bytecode(primitives.MOD, "\\\\", 1)
-    bytecodePrimMakePoint = make_call_primitive_bytecode(primitives.MAKE_POINT, "@", 1)
-    bytecodePrimBitShift = make_call_primitive_bytecode(primitives.BIT_SHIFT, "bitShift:", 1)
-    bytecodePrimDiv = make_call_primitive_bytecode(primitives.DIV, "//", 1)
-    bytecodePrimBitAnd = make_call_primitive_bytecode(primitives.BIT_AND, "bitAnd:", 1)
-    bytecodePrimBitOr = make_call_primitive_bytecode(primitives.BIT_OR, "bitOr:", 1)
+    bytecodePrimAdd = make_call_primitive_bytecode(bytecodes.ADD, "+", 1)
+    bytecodePrimSubtract = make_call_primitive_bytecode(bytecodes.SUBTRACT, "-", 1)
+    bytecodePrimLessThan = make_call_primitive_bytecode(bytecodes.LESSTHAN, "<", 1)
+    bytecodePrimGreaterThan = make_call_primitive_bytecode(bytecodes.GREATERTHAN, ">", 1)
+    bytecodePrimLessOrEqual = make_call_primitive_bytecode(bytecodes.LESSOREQUAL,  "<=", 1)
+    bytecodePrimGreaterOrEqual = make_call_primitive_bytecode(bytecodes.GREATEROREQUAL,  ">=", 1)
+    bytecodePrimEqual = make_call_primitive_bytecode(bytecodes.EQUAL,   "=", 1)
+    bytecodePrimNotEqual = make_call_primitive_bytecode(bytecodes.NOTEQUAL,  "~=", 1)
+    bytecodePrimMultiply = make_call_primitive_bytecode(bytecodes.MULTIPLY,  "*", 1)
+    bytecodePrimDivide = make_call_primitive_bytecode(bytecodes.DIVIDE,  "/", 1)
+    bytecodePrimMod = make_call_primitive_bytecode(bytecodes.MOD, "\\\\", 1)
+    bytecodePrimMakePoint = make_call_primitive_bytecode(bytecodes.MAKE_POINT, "@", 1)
+    bytecodePrimBitShift = make_call_primitive_bytecode(bytecodes.BIT_SHIFT, "bitShift:", 1)
+    bytecodePrimDiv = make_call_primitive_bytecode(bytecodes.DIV, "//", 1)
+    bytecodePrimBitAnd = make_call_primitive_bytecode(bytecodes.BIT_AND, "bitAnd:", 1)
+    bytecodePrimBitOr = make_call_primitive_bytecode(bytecodes.BIT_OR, "bitOr:", 1)
 
     bytecodePrimAt = make_send_selector_bytecode("at:", 1)
     bytecodePrimAtPut = make_send_selector_bytecode("at:put:", 2)
@@ -639,12 +641,12 @@ class __extend__(ContextPartShadow):
     bytecodePrimNextPut = make_send_selector_bytecode("nextPut:", 1)
     bytecodePrimAtEnd = make_send_selector_bytecode("atEnd", 0)
 
-    bytecodePrimEquivalent = make_quick_call_primitive_bytecode(primitives.EQUIVALENT, 1)
-    bytecodePrimClass = make_quick_call_primitive_bytecode(primitives.CLASS, 0)
+    bytecodePrimEquivalent = make_quick_call_primitive_bytecode(bytecodes.EQUIVALENT, 1)
+    bytecodePrimClass = make_quick_call_primitive_bytecode(bytecodes.CLASS, 0)
 
-    bytecodePrimBlockCopy = make_call_primitive_bytecode(primitives.BLOCK_COPY, "blockCopy:", 1)
-    bytecodePrimValue = make_call_primitive_bytecode_classbased("w_BlockContext", primitives.VALUE, "w_BlockClosure", primitives.CLOSURE_VALUE, "value", 0)
-    bytecodePrimValueWithArg = make_call_primitive_bytecode_classbased("w_BlockContext", primitives.VALUE, "w_BlockClosure", primitives.CLOSURE_VALUE_, "value:", 1)
+    bytecodePrimBlockCopy = make_call_primitive_bytecode(bytecodes.BLOCK_COPY, "blockCopy:", 1)
+    bytecodePrimValue = make_call_primitive_bytecode_classbased("w_BlockContext", bytecodes.VALUE, "w_BlockClosure", bytecodes.CLOSURE_VALUE, "value", 0)
+    bytecodePrimValueWithArg = make_call_primitive_bytecode_classbased("w_BlockContext", bytecodes.VALUE, "w_BlockClosure", bytecodes.CLOSURE_VALUE_, "value:", 1)
 
     bytecodePrimDo = make_send_selector_bytecode("do:", 1)
     bytecodePrimNew = make_send_selector_bytecode("new", 0)
