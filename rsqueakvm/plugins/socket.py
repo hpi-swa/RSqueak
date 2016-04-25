@@ -1,9 +1,13 @@
-from rpython.rlib import rsocket, _rsocket_rffi, jit, objectmodel
-from rsqueakvm import model, error
-from rsqueakvm.plugins.plugin import Plugin
 import errno
 
+from rsqueakvm import error
+from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
+from rsqueakvm.model.variable import W_BytesObject
+from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.util.system import IS_WINDOWS
+
+from rpython.rlib import rsocket, _rsocket_rffi, jit, objectmodel
+
 
 if IS_WINDOWS:
     def non_blocking_recv(self, count):
@@ -53,7 +57,7 @@ Connected = 2
 OtherEndClosed = 3
 ThisEndClosed = 4
 
-class W_SocketHandle(model.W_AbstractObjectWithIdentityHash):
+class W_SocketHandle(W_AbstractObjectWithIdentityHash):
     _attrs_ = ["socket", "state", "family", "socketType"]
     repr_classname = "W_SocketHandle"
 
@@ -549,7 +553,7 @@ def primitiveSocketConnectionStatus(interp, s_frame, w_rcvr, w_socket):
 @SocketPlugin.expose_primitive(unwrap_spec=[object, object, object, int])
 def primitiveSocketConnectToPort(interp, s_frame, w_rcvr, w_handle, w_hostaddr, port):
     w_socket = ensure_socket(w_handle)
-    if not isinstance(w_hostaddr, model.W_BytesObject):
+    if not isinstance(w_hostaddr, W_BytesObject):
         raise error.PrimitiveFailedError
     w_socket.connect(w_hostaddr, port)
     return interp.space.w_nil
@@ -585,7 +589,7 @@ def primitiveSocketReceiveDataBufCount(interp, s_frame, w_rcvr, w_handle, w_targ
     assert isinstance(w_socket, W_SocketHandle)
     if start + count - 1 > w_target.size():
         raise error.PrimitiveFailedError
-    if not isinstance(w_target, model.W_BytesObject):
+    if not isinstance(w_target, W_BytesObject):
         raise error.PrimitiveFailedError
     try:
         data = w_socket.recv(count)

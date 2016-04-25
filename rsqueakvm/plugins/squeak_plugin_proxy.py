@@ -13,13 +13,20 @@
 #   plugin perform: primitiveName asSymbol.
 import inspect
 
+from rsqueakvm import error, objspace, wrapper
+from rsqueakvm.model.base import W_Object
+from rsqueakvm.model.display import W_DisplayBitmap
+from rsqueakvm.model.compiled_methods import W_CompiledMethod
+from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.model.numeric import W_Float, W_SmallInteger
+from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
+
 from rpython.rlib.entrypoint import entrypoint_highlevel
 from rpython.rtyper.annlowlevel import llhelper
 from rpython.rtyper.lltypesystem.lltype import FuncType, Ptr
 from rpython.rtyper.lltypesystem import lltype, rffi
 from rpython.rlib.unroll import unrolling_iterable
 
-from rsqueakvm import error, model, model_display, objspace, wrapper
 
 sqInt = rffi.INT
 sqLong = rffi.LONG
@@ -71,7 +78,7 @@ def expose_on_virtual_machine_proxy(unwrap_spec, result_type, minor=0, major=1):
                 if IProxy.trace_proxy.is_set():
                     print '\t-> %s' % result
                 if result_type is oop:
-                    assert isinstance(result, model.W_Object)
+                    assert isinstance(result, W_Object)
                     return IProxy.object_to_oop(result)
                 elif result_type in (int, float):
                     assert isinstance(result, result_type)
@@ -173,7 +180,7 @@ def stackIntegerValue(offset):
 def stackObjectValue(offset):
     s_frame = IProxy.s_frame
     w_object = s_frame.peek(offset)
-    if not isinstance(w_object, model.W_SmallInteger):
+    if not isinstance(w_object, W_SmallInteger):
         return w_object
     raise ProxyFunctionFailed
 
@@ -184,7 +191,7 @@ def stackValue(offset):
 
 @expose_on_virtual_machine_proxy([oop], int)
 def argumentCountOf(w_method):
-    if isinstance(w_method, model.W_CompiledMethod):
+    if isinstance(w_method, W_CompiledMethod):
         return w_method.argsize
     raise ProxyFunctionFailed
 
@@ -243,25 +250,25 @@ def firstFixedField(w_object):
 @expose_on_virtual_machine_proxy([oop], list)
 def firstIndexableField(w_object):
     # return a list with values (?) of w_objects variable-parts
-    if isinstance(w_object, model.W_WordsObject):
+    if isinstance(w_object, W_WordsObject):
         return w_object.convert_to_c_layout()
-    elif isinstance(w_object, model.W_BytesObject):
+    elif isinstance(w_object, W_BytesObject):
         return rffi.cast(sqIntArrayPtr, w_object.convert_to_c_layout())
-    elif isinstance(w_object, model_display.W_DisplayBitmap):
+    elif isinstance(w_object, W_DisplayBitmap):
         return rffi.cast(sqIntArrayPtr, w_object.convert_to_c_layout())
     else:
         raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([int, oop], oop)
 def literalofMethod(offset, w_method):
-    if isinstance(w_method, model.W_CompiledMethod):
+    if isinstance(w_method, W_CompiledMethod):
         return w_method.literalat0(IProxy.space, offset)
     else:
         raise ProxyFunctionFailed
 
 @expose_on_virtual_machine_proxy([oop], int)
 def literalCountOf(w_method):
-    if isinstance(w_method, model.W_CompiledMethod):
+    if isinstance(w_method, W_CompiledMethod):
         return w_method.getliteralsize()
     else:
         raise ProxyFunctionFailed
@@ -276,7 +283,7 @@ def methodPrimitiveIndex():
 
 @expose_on_virtual_machine_proxy([oop], int)
 def primitiveIndexOf(w_method):
-    if isinstance(w_method, model.W_CompiledMethod):
+    if isinstance(w_method, W_CompiledMethod):
         return w_method.primitive()
     else:
         raise ProxyFunctionFailed
@@ -342,11 +349,11 @@ def isMemberOf(w_object, name):
 
 @expose_on_virtual_machine_proxy([oop], bool)
 def isBytes(w_object):
-    return isinstance(w_object, model.W_BytesObject)
+    return isinstance(w_object, W_BytesObject)
 
 @expose_on_virtual_machine_proxy([oop], bool)
 def isFloatObject(w_object):
-    return isinstance(w_object, model.W_Float)
+    return isinstance(w_object, W_Float)
 
 @expose_on_virtual_machine_proxy([oop], bool)
 def isIndexable(w_object):
@@ -355,7 +362,7 @@ def isIndexable(w_object):
 
 @expose_on_virtual_machine_proxy([oop], bool)
 def isIntegerObject(w_object):
-    return isinstance(w_object, model.W_SmallInteger)
+    return isinstance(w_object, W_SmallInteger)
 
 @expose_on_virtual_machine_proxy([int], bool)
 def isIntegerValue(n):
@@ -365,15 +372,15 @@ def isIntegerValue(n):
 
 @expose_on_virtual_machine_proxy([oop], bool)
 def isPointers(w_object):
-    return isinstance(w_object, model.W_PointersObject)
+    return isinstance(w_object, W_PointersObject)
 
 @expose_on_virtual_machine_proxy([oop], bool)
 def isWeak(w_object):
-    return isinstance(w_object, model.W_PointersObject) and w_object.is_weak()
+    return isinstance(w_object, W_PointersObject) and w_object.is_weak()
 
 @expose_on_virtual_machine_proxy([oop], bool)
 def isWords(w_object):
-    return w_object.is_array_object() and not isinstance(w_object, model.W_BytesObject)
+    return w_object.is_array_object() and not isinstance(w_object, W_BytesObject)
 
 @expose_on_virtual_machine_proxy([oop], bool)
 def isWordsOrBytes(w_object):
@@ -494,7 +501,7 @@ def clone(w_object):
 
 @expose_on_virtual_machine_proxy([oop, int], oop)
 def instantiateClassindexableSize(w_class, varsize):
-    if not isinstance(w_class, model.W_PointersObject):
+    if not isinstance(w_class, W_PointersObject):
         raise error.PrimitiveFailedError
     s_class = w_class.as_class_get_shadow(IProxy.space)
     return s_class.new(varsize)
@@ -534,7 +541,7 @@ def failed():
 @expose_on_virtual_machine_proxy([], int)
 def fullDisplayUpdate():
     w_display = IProxy.space.objtable['w_display']
-    if isinstance(w_display, model_display.W_DisplayBitmap):
+    if isinstance(w_display, W_DisplayBitmap):
         w_display.update_from_buffer()
         w_display.flush_to_screen()
         return 0
@@ -586,7 +593,7 @@ def success(aBoolean):
 
 @expose_on_virtual_machine_proxy([oop], oop)
 def superclassOf(w_class):
-    if not isinstance(w_class, model.W_PointersObject):
+    if not isinstance(w_class, W_PointersObject):
         raise error.PrimitiveFailedError
     s_superclass = w_class.as_class_get_shadow(IProxy.space).s_superclass()
     if s_superclass is not None:
@@ -723,7 +730,7 @@ def signed64BitValueOf(w_number):
 def isArray(w_object):
     # TODO - are ByteObjects and WordObjects not considered Arrays?
     # What are the exact semantics of this? Should only the class Array return true?
-    if not isinstance(w_object, model.W_PointersObject):
+    if not isinstance(w_object, W_PointersObject):
         return False
     space = IProxy.space
     s_class = w_object.class_shadow(space)
@@ -906,7 +913,7 @@ def primitiveFailureCode():
 
 @expose_on_virtual_machine_proxy([oop], int, minor=10)
 def instanceSizeOf(w_class):
-    if isinstance(w_class, model.W_PointersObject):
+    if isinstance(w_class, W_PointersObject):
         s_class = w_class.as_class_get_shadow(IProxy.space)
         return s_class.instsize()
     raise ProxyFunctionFailed
@@ -1158,15 +1165,15 @@ class _InterpreterProxy(object):
 IProxy = _InterpreterProxy()
 
 # # Class extensions for Array conversion
-# class __extend__(model.W_PointersObject):
+# class __extend__(W_PointersObject):
 #     def as_c_array(self, proxy):
 #         return map(lambda x: proxy.object_to_oop(x), self.vars[self.instsize():])
 
-# class __extend__(model.W_BytesObject):
+# class __extend__(W_BytesObject):
 #     def as_c_array(self, proxy):
 #         print "InterpreterProxy >> as_c_array on BytesObject"
 #         raise ProxyFunctionFailed
 
-# class __extend__(model.W_WordsObject):
+# class __extend__(W_WordsObject):
 #     def as_c_array(self, proxy):
 #         return map(lambda x: proxy.object_to_oop(proxy.space.wrap_positive_wordsize_int(x), self.words)

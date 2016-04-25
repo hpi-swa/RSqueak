@@ -1,6 +1,13 @@
-import py, sys
-from rsqueakvm import model, storage_classes, objspace, util, constants, squeakimage, interpreter, interpreter_bytecodes
+import py
+import sys
+
+from rsqueakvm import storage_classes, interpreter, objspace, util, constants, squeakimage, interpreter_bytecodes
+from rsqueakvm.model.base import W_Object
+from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod
+from rsqueakvm.model.pointers import W_PointersObject
+
 from rpython.rlib.objectmodel import instantiate
+
 
 # Use these as decorators, if the test takes longer then a few seconds.
 # The according options is configured in conftest.py.
@@ -320,7 +327,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
 
     def bootstrap_class(self, instsize, w_superclass=None, w_metaclass=None,
                         name='?', format=storage_classes.POINTERS, varsized=False):
-        w_class = model.W_PointersObject(self, w_metaclass, 6)
+        w_class = W_PointersObject(self, w_metaclass, 6)
         self.patch_class(w_class, instsize, w_superclass, w_metaclass, name, format, varsized)
         return w_class
 
@@ -335,7 +342,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
                 return val
         if False: pass
         elif any is None: return self.w_nil
-        elif isinstance(any, model.W_Object): return any
+        elif isinstance(any, W_Object): return any
         elif isinstance(any, long): return self.wrap_longlong(looooong(any))
         elif isinstance(any, bool): return self.wrap_bool(any)
         # elif isinstance(any, int): return self.wrap_int(any)
@@ -357,7 +364,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         interp.perform(w_class, w_selector=initialize_symbol)
 
     def find_symbol_in_methoddict(self, string, cls, fail=True):
-        if isinstance(cls, model.W_PointersObject):
+        if isinstance(cls, W_PointersObject):
             cls = cls.as_class_get_shadow(self)
         s_methoddict = cls.s_methoddict()
         s_methoddict.sync_method_cache()
@@ -380,13 +387,13 @@ class BootstrappedObjSpace(objspace.ObjSpace):
     def make_method(self, bytes, literals=None, numargs=0):
         if not isinstance(bytes, str):
             bytes = "".join([chr(x) for x in bytes])
-        w_method = model.W_PreSpurCompiledMethod(self, len(bytes))
+        w_method = W_PreSpurCompiledMethod(self, len(bytes))
         w_method.islarge = 1
         w_method.bytes = bytes
         w_method.argsize=numargs
         w_method._tempsize=8
         if literals is None:
-            literals = [model.W_PointersObject(self, None, 2)]
+            literals = [W_PointersObject(self, None, 2)]
         w_method.setliterals(literals)
         return w_method
 

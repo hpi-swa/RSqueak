@@ -1,6 +1,10 @@
-import operator, sys
-from rsqueakvm import model
+import sys
+
+from rsqueakvm.model.numeric import W_SmallInteger
+from rsqueakvm.model.pointers import W_PointersObject
+
 from .util import read_image, copy_to_module, cleanup_module, slow_test, very_slow_test, skip
+
 
 # The tests are quick, but loading the big image takes time.
 pytestmark = slow_test
@@ -78,12 +82,12 @@ def test_ContextPart_jump():
            0xc9, 0x82, 0xc0, 0x40, 0x7c] # Send value and return
 
     Association = space.classtable["w_Point"] # Wrong class, doesn't matter.
-    assoc = model.W_PointersObject(space, Association, 2)
+    assoc = W_PointersObject(space, Association, 2)
     assoc.store(space, 0, w('a'))
     assoc.store(space, 1, w(3))
     w_method = space.make_method(bytes, [assoc, w(5), push, sender, jump, w(10)])
     result = interp.execute_method(w_method)
-    assert isinstance(result, model.W_SmallInteger)
+    assert isinstance(result, W_SmallInteger)
     assert result.value == 2
 
 def test_ContextPart_jump_nonlocal():
@@ -112,15 +116,15 @@ def test_ContextPart_jump_nonlocal():
                0xc9, 0x82, 0xc0, 0x40, 0x7c] # Send value and return
 
     Association = space.classtable["w_Point"] # Wrong class, doesn't matter.
-    assoc = model.W_PointersObject(space, Association, 2)
+    assoc = W_PointersObject(space, Association, 2)
     assoc.store(space, 0, w('a'))
     assoc.store(space, 1, space.w_nil)
-    assoc2 = model.W_PointersObject(space, Association, 2)
+    assoc2 = W_PointersObject(space, Association, 2)
     assoc2.store(space, 0, w('outer'))
     assoc2.store(space, 1, space.w_nil)
     w_method = space.make_method(bytes, [assoc, w(5), assoc2, push, jump, w(10)])
     result = interp.execute_method(w_method)
-    assert isinstance(result, model.W_SmallInteger)
+    assert isinstance(result, W_SmallInteger)
     assert result.value == 2
 
 def test_contextOn_do_():
@@ -143,19 +147,19 @@ def test_contextOn_do_():
     ]
 
     Association = space.classtable["w_Point"] # Wrong class, doesn't matter.
-    ctxAssoc = model.W_PointersObject(space, Association, 2)
+    ctxAssoc = W_PointersObject(space, Association, 2)
     ctxAssoc.store(space, 0, w('ctx'))
     ctxAssoc.store(space, 1, space.w_nil)
-    contextPartAssoc = model.W_PointersObject(space, Association, 2)
+    contextPartAssoc = W_PointersObject(space, Association, 2)
     contextPartAssoc.store(space, 0, w('ContextPart'))
     contextPartAssoc.store(space, 1, ContextPart)
-    errorAssoc = model.W_PointersObject(space, Association, 2)
+    errorAssoc = W_PointersObject(space, Association, 2)
     errorAssoc.store(space, 0, w('Point'))
     errorAssoc.store(space, 1, Association)
     w_method = space.make_method(bytes, [ctxAssoc, contextOnDo, contextPartAssoc, errorAssoc, w('nothing')])
 
     result = interp.execute_method(w_method)
-    assert isinstance(result, model.W_PointersObject)
+    assert isinstance(result, W_PointersObject)
     s = result.as_context_get_shadow(space)
     assert s.w_method().lookup_selector == "on:do:"
     assert s.w_method().primitive() == 199
@@ -193,11 +197,11 @@ def test_semaphore():
     ]
 
     Association = space.classtable["w_Point"] # Wrong class, doesn't matter.
-    semaAssoc = model.W_PointersObject(space, Association, 2)
+    semaAssoc = W_PointersObject(space, Association, 2)
     semaAssoc.store(space, 0, w_sema)
     semaAssoc.store(space, 1, w_semaphore_cls)
     w_method = space.make_method(bytes, [semaAssoc, w_fork, w_wait, w_yield, w_processor, w_suspPrimOFail, w('nothing')])
 
     result = interp.execute_method(w_method)
     import pdb; pdb.set_trace()
-    assert isinstance(result, model.W_PointersObject)
+    assert isinstance(result, W_PointersObject)

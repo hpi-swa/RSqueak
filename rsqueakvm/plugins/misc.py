@@ -1,6 +1,7 @@
-from rsqueakvm import model
 from rsqueakvm.error import PrimitiveFailedError
+from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.plugins.plugin import Plugin
+
 from rpython.rlib.rarithmetic import r_uint
 
 
@@ -18,7 +19,7 @@ def _bytesHashLoop(bytes, start):
 
 @MiscPrimitivePlugin.expose_primitive(unwrap_spec=[object, object, r_uint])
 def primitiveStringHash(interp, s_frame, w_rcvr, thestring, initialHash):
-    if not isinstance(thestring, model.W_BytesObject):
+    if not isinstance(thestring, W_BytesObject):
         raise PrimitiveFailedError
     hash = r_uint(initialHash) & r_uint(0xFFFFFFF)
     bytes = thestring.getbytes()

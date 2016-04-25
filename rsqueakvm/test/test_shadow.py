@@ -1,6 +1,11 @@
 import pytest
 import random
-from rsqueakvm import model, storage_classes, constants, wrapper
+
+from rsqueakvm import storage_classes, constants, wrapper
+from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod, W_SpurCompiledMethod
+from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.model.variable import W_BytesObject
+
 from .util import create_space, copy_to_module, cleanup_module
 
 @pytest.fixture
@@ -55,7 +60,7 @@ def build_smalltalk_class(name, format, w_superclass=None,
                                                w_Metaclass)
     w_methoddict = build_methoddict(methods)
     size = constants.CLASS_NAME_INDEX + 1
-    w_class = model.W_PointersObject(space, w_classofclass, size)
+    w_class = W_PointersObject(space, w_classofclass, size)
     w_class.store(space, constants.CLASS_SUPERCLASS_INDEX, w_superclass)
     w_class.store(space, constants.CLASS_METHODDICT_INDEX, w_methoddict)
     w_class.store(space, constants.CLASS_FORMAT_INDEX, space.wrap_int(format))
@@ -85,8 +90,8 @@ def test_basic_shape():
     yield basicshape, "CompiledMeth", 0xE02,   storage_classes.COMPILED_METHOD, True, 0
 
 def test_methoddict():
-    methods = {'foo': model.W_PreSpurCompiledMethod(space, 0),
-               'bar': model.W_PreSpurCompiledMethod(space, 0)}
+    methods = {'foo': W_PreSpurCompiledMethod(space, 0),
+               'bar': W_PreSpurCompiledMethod(space, 0)}
     w_class = build_smalltalk_class("Demo", 0x90, methods=methods)
     classshadow = w_class.as_class_get_shadow(space)
     methoddict = classshadow.s_methoddict().methoddict
@@ -95,7 +100,7 @@ def test_methoddict():
         assert methods[w_key.unwrap_string(None)] is value
 
 def create_method(tempsize=3,argsize=2, bytes="abcde"):
-    w_m = model.W_PreSpurCompiledMethod(space, )
+    w_m = W_PreSpurCompiledMethod(space, )
     w_m.bytes = bytes
     w_m._tempsize = tempsize
     w_m.argsize = argsize
@@ -108,7 +113,7 @@ def methodcontext(w_sender=None, pc=13, stackpointer=0, stacksize=5,
         w_sender = space.w_nil
     if method is None:
         method = create_method()
-    w_object = model.W_PointersObject(space, space.w_MethodContext, constants.MTHDCTX_TEMP_FRAME_START+method.tempsize()+stacksize)
+    w_object = W_PointersObject(space, space.w_MethodContext, constants.MTHDCTX_TEMP_FRAME_START+method.tempsize()+stacksize)
     w_object.store(space, constants.CTXPART_SENDER_INDEX, w_sender)
     w_object.store(space, constants.CTXPART_PC_INDEX, space.wrap_int(pc))
     w_object.store(space, constants.CTXPART_STACKP_INDEX, space.wrap_int(method.tempsize()+stackpointer))
@@ -126,7 +131,7 @@ def blockcontext(w_sender=None, pc=13, stackpointer=1, stacksize=5,
         w_sender = space.w_nil
     if home is None:
         home = methodcontext()
-    w_object = model.W_PointersObject(space, space.w_BlockContext, constants.MTHDCTX_TEMP_FRAME_START+stacksize)
+    w_object = W_PointersObject(space, space.w_BlockContext, constants.MTHDCTX_TEMP_FRAME_START+stacksize)
     w_object.store(space, constants.CTXPART_SENDER_INDEX, w_sender)
     w_object.store(space, constants.CTXPART_PC_INDEX, space.wrap_int(pc))
     w_object.store(space, constants.CTXPART_STACKP_INDEX, space.wrap_int(stackpointer))
@@ -238,9 +243,9 @@ def test_observee_shadow():
 
 def test_cached_methoddict():
     # create a methoddict
-    foo = model.W_PreSpurCompiledMethod(space, 0)
-    bar = model.W_PreSpurCompiledMethod(space, 0)
-    baz = model.W_PreSpurCompiledMethod(space, 0)
+    foo = W_PreSpurCompiledMethod(space, 0)
+    bar = W_PreSpurCompiledMethod(space, 0)
+    baz = W_PreSpurCompiledMethod(space, 0)
     methods = {'foo': foo,
                'bar': bar}
     w_class = build_smalltalk_class("Demo", 0x90, methods=methods)
@@ -265,13 +270,13 @@ def test_cached_methoddict():
 
 def test_updating_class_changes_subclasses():
     w_parent = build_smalltalk_class("Demo", 0x90,
-            methods={'bar': model.W_PreSpurCompiledMethod(space, 0)})
+            methods={'bar': W_PreSpurCompiledMethod(space, 0)})
     w_class = build_smalltalk_class("Demo", 0x90,
-            methods={'foo': model.W_PreSpurCompiledMethod(space, 0)}, w_superclass=w_parent)
+            methods={'foo': W_PreSpurCompiledMethod(space, 0)}, w_superclass=w_parent)
     s_class = w_class.as_class_get_shadow(space)
     version = s_class.version
 
-    w_method = model.W_PreSpurCompiledMethod(space, 0)
+    w_method = W_PreSpurCompiledMethod(space, 0)
     key = space.wrap_string('foo')
 
     s_md = w_parent.as_class_get_shadow(space).s_methoddict()
@@ -344,41 +349,41 @@ def test_class_format_spur(space_spur):
 def test_class_new_fixed_v3(space_v3):
     w_class = build_smalltalk_class('TestClass', (4 << 1) | (1 << 7))  # fixed format
     w_inst = w_class.as_class_get_shadow(space_v3).new()
-    assert isinstance(w_inst, model.W_PointersObject)
+    assert isinstance(w_inst, W_PointersObject)
     assert w_inst.size() == 3
 def test_class_new_array_v3(space_v3):
     w_class = build_smalltalk_class('TestClass', 2 << 7)  # array format
     w_inst = w_class.as_class_get_shadow(space_v3).new()
-    assert isinstance(w_inst, model.W_PointersObject)
+    assert isinstance(w_inst, W_PointersObject)
 def test_class_new_bytes_v3(space_v3):
     w_class = build_smalltalk_class('TestClass', (1 << 1) | (8 << 7))  # indexable bytes
     w_inst = w_class.as_class_get_shadow(space_v3).new(5)
-    assert isinstance(w_inst, model.W_BytesObject)
+    assert isinstance(w_inst, W_BytesObject)
     assert w_inst.size() == 5
 def test_class_new_compiledmethod_v3(space_v3):
     w_class = build_smalltalk_class('TestClass', (1 << 1) | (12 << 7))
     w_inst = w_class.as_class_get_shadow(space_v3).new(4)
-    assert isinstance(w_inst, model.W_PreSpurCompiledMethod)
+    assert isinstance(w_inst, W_PreSpurCompiledMethod)
     assert w_inst.size() == 8
 
 def test_class_new_fixed_spur(space_spur):
     w_class = build_smalltalk_class('TestClass', 4 | (1 << 16), space=space_spur)
     w_inst = w_class.as_class_get_shadow(space_spur).new()
-    assert isinstance(w_inst, model.W_PointersObject)
+    assert isinstance(w_inst, W_PointersObject)
     assert w_inst.size() == 4
 def test_class_new_array_spur(space_spur):
     w_class = build_smalltalk_class('TestClass', 2 << 16, space=space_spur)
     w_inst = w_class.as_class_get_shadow(space_spur).new()
-    assert isinstance(w_inst, model.W_PointersObject)
+    assert isinstance(w_inst, W_PointersObject)
 def test_class_new_bytes_spur(space_spur):
     w_class = build_smalltalk_class('TestClass', 16 << 16, space=space_spur)
     w_inst = w_class.as_class_get_shadow(space_spur).new(5)
-    assert isinstance(w_inst, model.W_BytesObject)
+    assert isinstance(w_inst, W_BytesObject)
     assert w_inst.size() == 5
 def test_class_new_compiledmethod_spur(space_spur):
     w_class = build_smalltalk_class('TestClass', 24 << 16, space=space_spur)
     w_inst = w_class.as_class_get_shadow(space_spur).new(4)
-    assert isinstance(w_inst, model.W_SpurCompiledMethod)
+    assert isinstance(w_inst, W_SpurCompiledMethod)
     assert w_inst.size() == 8
 
 def test_class_of_smallinteger(space_spur):

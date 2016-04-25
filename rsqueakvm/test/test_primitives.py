@@ -1,16 +1,29 @@
-import py, os, math, time
-from rsqueakvm import model, model_display, storage_contexts, constants, primitives, wrapper, display
+import py
+import os
+import math
+import time
+
+from rsqueakvm import storage_contexts, constants, primitives, wrapper, display
+from rsqueakvm.model.base import W_Object
+from rsqueakvm.model.character import W_Character
+from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod
+from rsqueakvm.model.display import W_DisplayBitmap
+from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargePositiveInteger1Word
+from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.primitives import prim_table, PrimitiveFailedError
 from rsqueakvm.util import system
-from rpython.rlib.rfloat import isinf, isnan
+
 from rpython.rlib.rarithmetic import intmask, r_uint, r_int64
+from rpython.rlib.rfloat import isinf, isnan
 from rpython.rtyper.lltypesystem import lltype, rffi
+
 from .util import create_space, copy_to_module, cleanup_module, TestInterpreter, very_slow_test
 
+
 def setup_module():
-    if system.IS_WINDOWS:
-        from rpython.tool import ansi_print
-        ansi_print.isatty = lambda: False
+    from rpython.tool import ansi_print
+    ansi_print.isatty = lambda: False
     space = create_space(bootstrap = True)
     wrap = space.w
     bootstrap_class = space.bootstrap_class
@@ -23,7 +36,7 @@ def teardown_module():
     wrapper.ProcessWrapper.store_suspended_context = old_suspended_context
     cleanup_module(__name__)
 
-class MockFrame(model.W_PointersObject):
+class MockFrame(W_PointersObject):
     def __init__(self, space, stack):
         size = 6 + len(stack) + 6
         self._initialize_storage(space, space.w_BlockContext, size)
@@ -87,7 +100,7 @@ def test_small_int_multiply():
     assert prim(primitives.MULTIPLY, [6,3]).value == 18
     if constants.LONG_BIT == 32:
         w_result = prim(primitives.MULTIPLY, [constants.MAXINT, 2])
-        assert isinstance(w_result, model.W_LargePositiveInteger1Word)
+        assert isinstance(w_result, W_LargePositiveInteger1Word)
         assert r_uint(w_result.value) == constants.MAXINT * 2
     else:
         prim_fails(primitives.MULTIPLY, [constants.MAXINT, 2])
@@ -177,7 +190,7 @@ def test_small_int_bit_shift_fail():
     prim_fails(primitives.BIT_SHIFT, [4, constants.LONG_BIT])
     prim_fails(primitives.BIT_SHIFT, [4, constants.LONG_BIT - 1])
     w_result = prim(primitives.BIT_SHIFT, [4, constants.LONG_BIT - 3])
-    assert isinstance(w_result, model.W_LargePositiveInteger1Word)
+    assert isinstance(w_result, W_LargePositiveInteger1Word)
     assert w_result.value == intmask(4 << constants.LONG_BIT - 3)
 
 def test_smallint_as_float():
@@ -218,7 +231,7 @@ def test_at():
     w_obj.store(space, 0, foo)
     assert prim(primitives.AT, [w_obj, 1]) is foo
 
-    w_obj = model.W_Float(1.1)
+    w_obj = W_Float(1.1)
     foo = wrap(1)
     w_obj.store(space, 0, foo)
     assert prim(primitives.AT, [w_obj, 1]) == foo
@@ -253,7 +266,7 @@ def test_size():
 def test_size_of_compiled_method():
     literalsize = 3
     bytecount = 3
-    w_cm = model.W_PreSpurCompiledMethod(space, bytecount)
+    w_cm = W_PreSpurCompiledMethod(space, bytecount)
     w_cm.literalsize = literalsize
     assert prim(primitives.SIZE, [w_cm]).value == (literalsize+1)*constants.BYTES_PER_WORD + bytecount
 
@@ -477,7 +490,7 @@ def test_seconds_clock():
     w_smalltalk_now1 = prim(primitives.SECONDS_CLOCK, [42])
     w_smalltalk_now2 = prim(primitives.SECONDS_CLOCK, [42])
     # the test now is flaky, because we assume both have the same type
-    if isinstance(w_smalltalk_now1, model.W_BytesObject):
+    if isinstance(w_smalltalk_now1, W_BytesObject):
         assert (now % 256 - ord(w_smalltalk_now1.bytes[0])) % 256 <= 2
         # the high-order byte should only change by one (and even that is
         # extreeemely unlikely)
@@ -497,7 +510,7 @@ def test_interrupt_semaphore():
     prim(primitives.INTERRUPT_SEMAPHORE, [1, space.w_true])
     assert space.objtable["w_interrupt_semaphore"].is_nil(space)
 
-    class SemaphoreInst(model.W_Object):
+    class SemaphoreInst(W_Object):
         def getclass(self, space):
             return space.w_Semaphore
     w_semaphore = SemaphoreInst()
@@ -544,7 +557,7 @@ def test_primitive_system_attribute():
 
     space.set_system_attribute(1001, "WinuxOS")
     w_r = prim(primitives.SYSTEM_ATTRIBUTE, [space.w_nil, 1001])
-    assert isinstance(w_r, model.W_Object)
+    assert isinstance(w_r, W_Object)
     assert space.unwrap_string(w_r) == "WinuxOS"
 
 def test_file_open_write(monkeypatch):
@@ -686,7 +699,7 @@ def test_primitive_some_instance():
 def test_primitive_some_object():
     import gc; gc.collect()
     w_r = prim(primitives.SOME_OBJECT, [space.w_nil])
-    assert isinstance(w_r, model.W_Object)
+    assert isinstance(w_r, W_Object)
 
 def test_primitive_next_object():
     someInstances = map(space.wrap_list, [[2], [3]])
@@ -696,12 +709,12 @@ def test_primitive_next_object():
     interp = TestInterpreter(space)
     prim_table[primitives.SOME_OBJECT](interp, s_context, 0)
     w_1 = s_context.pop()
-    assert isinstance(w_1, model.W_Object)
+    assert isinstance(w_1, W_Object)
 
     s_context.push(w_1)
     prim_table[primitives.NEXT_OBJECT](interp, s_context, 0)
     w_2 = s_context.pop()
-    assert isinstance(w_2, model.W_Object)
+    assert isinstance(w_2, W_Object)
     assert w_1 is not w_2
 
 def test_primitive_next_instance():
@@ -775,8 +788,8 @@ def test_primitive_value_no_context_switch(monkeypatch):
 
 def test_primitive_be_display():
     assert space.objtable["w_display"] is None
-    mock_display = model.W_PointersObject(space, space.w_Point, 4)
-    w_wordbmp = model.W_WordsObject(space, space.w_Bitmap, 10)
+    mock_display = W_PointersObject(space, space.w_Point, 4)
+    w_wordbmp = W_WordsObject(space, space.w_Bitmap, 10)
     mock_display.store(space, 0, w_wordbmp)  # bitmap
     mock_display.store(space, 1, space.wrap_int(32))  # width
     mock_display.store(space, 2, space.wrap_int(10))  # height
@@ -785,19 +798,19 @@ def test_primitive_be_display():
     assert space.objtable["w_display"] is mock_display
     w_bitmap = mock_display.fetch(space, 0)
     assert w_bitmap is not w_wordbmp
-    assert isinstance(w_bitmap, model_display.W_DisplayBitmap)
+    assert isinstance(w_bitmap, W_DisplayBitmap)
     sdldisplay = w_bitmap.display()
     assert isinstance(sdldisplay, display.SDLDisplay)
 
-    mock_display2 = model.W_PointersObject(space, space.w_Point, 4)
-    mock_display2.store(space, 0, model.W_WordsObject(space, space.w_Bitmap, 10))  # bitmap
+    mock_display2 = W_PointersObject(space, space.w_Point, 4)
+    mock_display2.store(space, 0, W_WordsObject(space, space.w_Bitmap, 10))  # bitmap
     mock_display2.store(space, 1, space.wrap_int(32))  # width
     mock_display2.store(space, 2, space.wrap_int(10))  # height
     mock_display2.store(space, 3, space.wrap_int(1))  # depth
     prim(primitives.BE_DISPLAY, [mock_display2])
     assert space.objtable["w_display"] is mock_display2
     w_bitmap2 = mock_display.fetch(space, 0)
-    assert isinstance(w_bitmap2, model_display.W_DisplayBitmap)
+    assert isinstance(w_bitmap2, W_DisplayBitmap)
     assert w_bitmap.display() is w_bitmap2.display()
     assert sdldisplay.width == 32
     assert sdldisplay.height == 10
@@ -807,8 +820,8 @@ def test_primitive_be_display():
     assert mock_display.fetch(space, 0) is w_bitmap
 
 # def test_primitive_force_display_update(monkeypatch):
-#     mock_display = model.W_PointersObject(space, space.w_Point, 4)
-#     w_wordbmp = model.W_WordsObject(space, space.w_Array, 10)
+#     mock_display = W_PointersObject(space, space.w_Point, 4)
+#     w_wordbmp = W_WordsObject(space, space.w_Array, 10)
 #     mock_display.store(space, 0, w_wordbmp)  # bitmap
 #     mock_display.store(space, 1, space.wrap_int(32))  # width
 #     mock_display.store(space, 2, space.wrap_int(10))  # height
@@ -849,7 +862,7 @@ def test_screen_size_queries_sdl_window_size(monkeypatch):
 def test_immediate_identity_hash():
     w_char = space.wrap_char('x')
     w_result = prim(primitives.IMMEDIATE_IDENTITY_HASH, [w_char])
-    assert isinstance(w_result, model.W_SmallInteger)
+    assert isinstance(w_result, W_SmallInteger)
     assert w_result.value == ord('x')
     # TODO: add assertion for w_float once 64bit Spur images are supported
 
@@ -858,13 +871,13 @@ def test_class_identity_hash():
     assert w_result.value == space.w_nil.getclass(space).gethash()
     s_class = bootstrap_class(0).as_class_get_shadow(space)
     w_result = prim(primitives.CLASS_IDENTITY_HASH, [s_class.w_self()])
-    assert isinstance(w_result, model.W_SmallInteger)
+    assert isinstance(w_result, W_SmallInteger)
 
 def test_character_value():
     # SmallInteger>>asCharacter
     w_result = prim(primitives.CHARACTER_VALUE, [space.wrap_int(ord('x'))])
     assert w_result.value == ord('x')
-    assert isinstance(w_result, model.W_Character)
+    assert isinstance(w_result, W_Character)
     # Character class>>value:
     w_result = prim(primitives.CHARACTER_VALUE,
             [space.wrap_char('x').getclass(space), ord('y')])

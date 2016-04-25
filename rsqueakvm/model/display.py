@@ -1,6 +1,8 @@
-
-from rsqueakvm import model, constants, error
+from rsqueakvm import constants, error
+from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
+from rsqueakvm.model.variable import W_WordsObject
 from rsqueakvm.util import system
+
 from rpython.rlib import jit
 from rpython.rtyper.lltypesystem import lltype, rffi
 from rpython.rlib.rarithmetic import r_uint
@@ -29,7 +31,7 @@ def from_words_object(w_obj, form):
 
     return w_display_bitmap
 
-class W_DisplayBitmap(model.W_AbstractObjectWithIdentityHash):
+class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
     _attrs_ = ['pixelbuffer_words', '_real_depth_buffer', '_realsize', '_display', '_depth']
     _immutable_fields_ = ['pixelbuffer_words?', '_real_depth_buffer', '_realsize', '_display', '_depth']
     repr_classname = "W_DisplayBitmap"
@@ -134,7 +136,7 @@ class W_DisplayBitmap(model.W_AbstractObjectWithIdentityHash):
         return False
 
     def clone(self, space):
-        w_result = model.W_WordsObject(space, self.getclass(space), self.size())
+        w_result = W_WordsObject(space, self.getclass(space), self.size())
         for n in range(self.size()):
             w_result.setword(n, self.getword(n))
         return w_result

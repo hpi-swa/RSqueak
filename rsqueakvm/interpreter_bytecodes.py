@@ -1,6 +1,9 @@
-from rsqueakvm.storage_contexts import ContextPartShadow, DirtyContext
+from rsqueakvm import primitives, wrapper, error
+from rsqueakvm.model.compiled_methods import W_CompiledMethod
+from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.storage_classes import ClassShadow
-from rsqueakvm import model, primitives, wrapper, error
+from rsqueakvm.storage_contexts import ContextPartShadow, DirtyContext
+
 from rsqueakvm.util.bitmanipulation import splitter
 from rpython.rlib import objectmodel, unroll, jit
 
@@ -297,7 +300,7 @@ class __extend__(ContextPartShadow):
 
     def _sendSuperSelector(self, w_selector, argcount, interp):
         compiledin_class = self.w_method().compiled_in()
-        assert isinstance(compiledin_class, model.W_PointersObject)
+        assert isinstance(compiledin_class, W_PointersObject)
         s_compiledin = compiledin_class.as_class_get_shadow(self.space)
         return self._sendSelector(w_selector, argcount, interp, self.w_receiver(),
                                   s_compiledin.s_superclass())
@@ -315,7 +318,7 @@ class __extend__(ContextPartShadow):
             return self._doesNotUnderstand(w_selector, argcount, interp,
                                            receiver)
 
-        if not isinstance(w_method, model.W_CompiledMethod):
+        if not isinstance(w_method, W_CompiledMethod):
             if w_arguments:
                 self.push_all(w_arguments)
             return self._invokeObjectAsMethod(interp, argcount, w_method,
@@ -376,7 +379,7 @@ class __extend__(ContextPartShadow):
                 # jit compilation should be able to remove those operations
             return self._doesNotUnderstand(w_special_selector, len(w_args), interp, receiver)
 
-        if not isinstance(w_method, model.W_CompiledMethod):
+        if not isinstance(w_method, W_CompiledMethod):
             raise Exception("SpecialSelector can't be an Object")
         s_frame = w_method.create_frame(interp.space, receiver, w_args)
         # ######################################################################
@@ -388,7 +391,7 @@ class __extend__(ContextPartShadow):
     def _doesNotUnderstand(self, w_selector, argcount, interp, receiver):
         arguments = self.pop_and_return_n(argcount)
         w_message_class = self.space.classtable["w_Message"]
-        assert isinstance(w_message_class, model.W_PointersObject)
+        assert isinstance(w_message_class, W_PointersObject)
         s_message_class = w_message_class.as_class_get_shadow(self.space)
         w_message = s_message_class.new()
         w_message.store(self.space, 0, w_selector)
@@ -404,7 +407,7 @@ class __extend__(ContextPartShadow):
 
     def _call_primitive(self, code, interp, argcount, w_method, w_selector):
         # ##################################################################
-        if interp.is_tracing() and isinstance(w_method, model.W_CompiledMethod):
+        if interp.is_tracing() and isinstance(w_method, W_CompiledMethod):
             interp.print_padded("-> primitive %d \t(in %s, named %s)" % (
                                     code, self.w_method().get_identifier_string(),
                                     w_selector.selector_string()))
@@ -414,7 +417,7 @@ class __extend__(ContextPartShadow):
             # the primitive pushes the result (if any) onto the stack itself
             return func(interp, self, argcount, w_method)
         except error.PrimitiveFailedError, e:
-            if interp.is_tracing() and isinstance(w_method, model.W_CompiledMethod):
+            if interp.is_tracing() and isinstance(w_method, W_CompiledMethod):
                 interp.print_padded("-- primitive %d FAILED\t (in %s, named %s)" % (
                             code, w_method.safe_identifier_string(), w_selector.selector_string()))
             raise e

@@ -1,8 +1,14 @@
 import operator
-from rsqueakvm import model, constants, primitives
+
+from rsqueakvm import constants, primitives
+from rsqueakvm.model.numeric import W_LargePositiveInteger1Word
+from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.test.test_primitives import MockFrame
-from .util import read_image, copy_to_module, cleanup_module
+
 from rpython.rlib.rarithmetic import intmask, r_uint
+
+from .util import read_image, copy_to_module, cleanup_module
+
 
 def setup_module():
     space, interp, _, _ = read_image('bootstrapped.image')
@@ -26,12 +32,12 @@ def w_l(largeInteger):
     if largeInteger >= 0 and largeInteger <= constants.TAGGED_MAXINT:
         return space.wrap_int(intmask(largeInteger))
     elif largeInteger >= 0:
-        return model.W_LargePositiveInteger1Word(intmask(largeInteger))
+        return W_LargePositiveInteger1Word(intmask(largeInteger))
     else:
         assert largeInteger < 0
         assert space.w_LargeNegativeInteger is not None
-        w_o = model.W_BytesObject(space, space.w_LargeNegativeInteger, 4)
-        w_li = model.W_LargePositiveInteger1Word(intmask(-largeInteger))
+        w_o = W_BytesObject(space, space.w_LargeNegativeInteger, 4)
+        w_li = W_LargePositiveInteger1Word(intmask(-largeInteger))
         w_o.bytes = list(w_li.unwrap_string(space))
         return w_o
 

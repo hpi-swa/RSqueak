@@ -1,11 +1,16 @@
-import os, stat, sys
+import os
+import stat
+import sys
 
-from rpython.rlib import jit, rarithmetic
-
-from rsqueakvm import model, model_display, constants
+from rsqueakvm.model.display import W_DisplayBitmap
+from rsqueakvm.model.numeric import W_Float, W_LargePositiveInteger1Word
+from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.primitives import PrimitiveFailedError, index1_0
 from rsqueakvm.util.system import IS_WINDOWS
+
+from rpython.rlib import jit, rarithmetic
+
 
 FilePlugin = Plugin()
 os.stat_float_times(False)
@@ -151,7 +156,7 @@ def primitiveFileAtEnd(interp, s_frame, w_rcvr, fd):
 
 @FilePlugin.expose_primitive(unwrap_spec=[object, int, object, index1_0, int])
 def primitiveFileRead(interp, s_frame, w_rcvr, fd, target, start, count):
-    if not isinstance(target, model.W_BytesObject):
+    if not isinstance(target, W_BytesObject):
         raise PrimitiveFailedError
     try:
         contents = os.read(fd, count)
@@ -200,15 +205,15 @@ def primitiveFileStdioHandles(interp, s_frame, w_rcvr):
 @FilePlugin.expose_primitive(unwrap_spec=[object, int, object, index1_0, int])
 def primitiveFileWrite(interp, s_frame, w_rcvr, fd, content, start, count):
     size = content.size()
-    if isinstance(content, model.W_WordsObject):
+    if isinstance(content, W_WordsObject):
         element_size = 4
-    elif isinstance(content, model.W_Float):
+    elif isinstance(content, W_Float):
         element_size = 8
-    elif isinstance(content, model_display.W_DisplayBitmap):
+    elif isinstance(content, W_DisplayBitmap):
         element_size = 4
-    elif isinstance(content, model.W_BytesObject):
+    elif isinstance(content, W_BytesObject):
         element_size = 1
-    elif isinstance(content, model.W_LargePositiveInteger1Word):
+    elif isinstance(content, W_LargePositiveInteger1Word):
         element_size = 1
     else:
         raise PrimitiveFailedError

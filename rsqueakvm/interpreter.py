@@ -3,9 +3,11 @@ import sys
 
 sys.setrecursionlimit(1000000)
 
+from rsqueakvm import constants, wrapper, objspace, interpreter_bytecodes
+from rsqueakvm.error import MetaPrimFailed, FatalError
+from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod, W_SpurCompiledMethod
+from rsqueakvm.model.numeric import W_SmallInteger
 from rsqueakvm.storage_contexts import ContextPartShadow, ActiveContext, InactiveContext, DirtyContext
-from rsqueakvm import model, constants, wrapper, objspace, interpreter_bytecodes, error
-from rsqueakvm.error import MetaPrimFailed
 
 from rpython.rlib import jit, rstackovf, unroll, objectmodel, rsignal
 
@@ -30,7 +32,7 @@ class LocalReturn(Return):
     _attrs_ = []
     @staticmethod
     def make(space, w_value):
-        if isinstance(w_value, model.W_SmallInteger):
+        if isinstance(w_value, W_SmallInteger):
             return IntLocalReturn(space.unwrap_int(w_value))
         else:
             return WrappedLocalReturn(w_value)
@@ -41,7 +43,7 @@ class NonLocalReturn(Return):
 
     @staticmethod
     def make(space, s_target_context, w_value):
-        if isinstance(w_value, model.W_SmallInteger):
+        if isinstance(w_value, W_SmallInteger):
             return IntNonLocalReturn(
                     s_target_context, space.unwrap_int(w_value))
         else:
@@ -300,7 +302,7 @@ class Interpreter(object):
                 msg = "Context chain ended while trying to unwind primitive simulation\nfrom\n%s\n(pc %s)" % (
                         start_context.short_str(),
                         start_context.pc())
-                raise error.FatalError(msg)
+                raise FatalError(msg)
 
         fallbackContext = context.get_fallback()
 
@@ -324,7 +326,7 @@ class Interpreter(object):
                         start_context.pc(),
                         target_context.short_str(),
                         start_context.pc())
-                raise error.FatalError(msg)
+                raise FatalError(msg)
             s_sender = context.s_sender()
             context._activate_unwind_context(self)
             context = s_sender
@@ -447,9 +449,9 @@ class Interpreter(object):
                                               "asSymbol")
 
         if self.space.is_spur.is_set():
-            w_method = model.W_SpurCompiledMethod(self.space, header=512)
+            w_method = W_SpurCompiledMethod(self.space, header=512)
         else:
-            w_method = model.W_PreSpurCompiledMethod(self.space, header=512)
+            w_method = W_PreSpurCompiledMethod(self.space, header=512)
         w_method.literalatput0(self.space, 1, w_selector)
         assert len(w_arguments) <= 7
         w_method.setbytes([chr(131), chr(len(w_arguments) << 5 + 0), chr(124)])  #returnTopFromMethodBytecode

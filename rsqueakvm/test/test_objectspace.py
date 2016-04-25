@@ -1,7 +1,13 @@
-import py, sys
-from rsqueakvm import objspace, model, error, constants
+import py
+import sys
+
+from rsqueakvm import objspace, error, constants
+# from rsqueakvm.model.variable import W_BytesObject
+
 from rpython.rlib.rarithmetic import r_uint
+
 from .util import create_space, copy_to_module, cleanup_module
+
 
 def setup_module():
     space = create_space(bootstrap = True)
@@ -52,7 +58,7 @@ def test_ruint():
         with py.test.raises(objspace.WrappingError):
             space.wrap_uint(num)
     # byteobj = space.wrap_uint(0x100000000)
-    # assert isinstance(byteobj, model.W_BytesObject)
+    # assert isinstance(byteobj, W_BytesObject)
     # byteobj.bytes.append('\x01')
     # num = space.unwrap_uint(byteobj)
     # should not raise. see docstring.

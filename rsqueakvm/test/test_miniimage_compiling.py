@@ -1,6 +1,9 @@
-import py, math
-from rsqueakvm import model, constants, storage_contexts, wrapper, primitives, interpreter, error, storage_classes
+from rsqueakvm import constants, storage_classes
+from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargePositiveInteger1Word
+from rsqueakvm.model.variable import W_BytesObject
+
 from .util import read_image, open_reader, copy_to_module, cleanup_module, TestInterpreter, slow_test, very_slow_test
+
 
 def setup_module():
     space, interp, _, _ = read_image("mini.image")
@@ -150,7 +153,7 @@ def test_compiling_float():
                         ^ 1.1"""
     perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
     w_result = perform(w(10), "aFloat")
-    assert isinstance(w_result, model.W_Float)
+    assert isinstance(w_result, W_Float)
     assert w_result.value == 1.1
 
 def test_compiling_large_positive_integer():
@@ -159,9 +162,9 @@ def test_compiling_large_positive_integer():
     perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
     w_result = perform(w(10), "aLargeInteger")
     if not constants.IS_64BIT:
-        assert isinstance(w_result, model.W_LargePositiveInteger1Word)
+        assert isinstance(w_result, W_LargePositiveInteger1Word)
     else:
-        assert isinstance(w_result, model.W_SmallInteger)
+        assert isinstance(w_result, W_SmallInteger)
 
 def test_compiling_large_large_positive_integer():
     sourcecode = """aLargeInteger
@@ -169,9 +172,9 @@ def test_compiling_large_large_positive_integer():
     perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
     w_result = perform(w(10), "aLargeInteger")
     if not constants.IS_64BIT:
-        assert isinstance(w_result, model.W_BytesObject)
+        assert isinstance(w_result, W_BytesObject)
     else:
-        assert isinstance(w_result, model.W_LargePositiveInteger1Word)
+        assert isinstance(w_result, W_LargePositiveInteger1Word)
 
 def test_simulate_numericprim():
     sourcecode = """absentPrimitive: anInt with: anotherInt
@@ -187,7 +190,7 @@ def test_simulate_numericprim():
     interp.image.w_simulatePrimitive = w_sim
 
     w_result = perform(w(10), "absentPrimitive:with:", w(3), w(4))
-    assert isinstance(w_result, model.W_BytesObject)
+    assert isinstance(w_result, W_BytesObject)
     assert w_result.unwrap_string(space) == 'numeric simulation for 3 4'
 
 def test_simulate_numericprim_fallback():
@@ -209,7 +212,7 @@ def test_simulate_numericprim_fallback():
     interp.image.w_simulatePrimitive = w_sim
 
     w_result = perform(w(10), "absentPrimitive:with:", w(3), w(4))
-    assert isinstance(w_result, model.W_BytesObject)
+    assert isinstance(w_result, W_BytesObject)
     assert w_result.unwrap_string(space) == 'numeric fallback for 3 4 because of 123'
 
 def test_simulate_externalcall():
@@ -228,7 +231,7 @@ def test_simulate_externalcall():
     interp.image.w_simulatePrimitive = w_sim
 
     w_result = perform(w(10), "absentPrimitive:with:", w(3), w(4))
-    assert isinstance(w_result, model.W_BytesObject)
+    assert isinstance(w_result, W_BytesObject)
     assert w_result.unwrap_string(space) == 'externalcall simulation for 3 4'
 
 def test_snapshotPrimitive(tmpdir):

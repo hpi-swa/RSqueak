@@ -1,13 +1,16 @@
-import py, os, math, time
-from rsqueakvm import model, model_display, storage_contexts, constants, primitives, wrapper, display
+import py
+import time
+
+from rsqueakvm import constants, primitives
+from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod
+from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.primitives import prim_table, PrimitiveFailedError
-import rsqueakvm.plugins.socket as socket
-from rpython.rlib.rfloat import isinf, isnan
-from rpython.rlib.rarithmetic import intmask, r_uint
-from rpython.rtyper.lltypesystem import lltype, rffi
+from rsqueakvm.plugins import socket as socket
+
 from .util import create_space, copy_to_module, cleanup_module, TestInterpreter, very_slow_test
 from .test_interpreter import run_with_faked_primitive_methods
 from .test_primitives import MockFrame, mock
+
 
 def setup_module():
     space = create_space(bootstrap = True)
@@ -25,7 +28,7 @@ IMAGENAME = "anImage.image"
 def _prim(space, name, module, stack, context = None):
     interp, w_frame, argument_count = mock(space, stack, context)
     orig_stack = list(w_frame.as_context_get_shadow(space).stack())
-    prim_meth = model.W_PreSpurCompiledMethod(space, 0, header=17045052)
+    prim_meth = W_PreSpurCompiledMethod(space, 0, header=17045052)
     prim_meth._primitive = primitives.EXTERNAL_CALL
     prim_meth.argsize = argument_count - 1
     descr = space.wrap_list([space.wrap_string(module), space.wrap_string(name)])
@@ -63,7 +66,7 @@ def test_resolver_lookup_result():
     assert prim("primitiveResolverStartNameLookup", "SocketPlugin",
                 [space.w_nil, space.wrap_string("google.com")]) == space.w_nil
     w_res = prim("primitiveResolverNameLookupResult", "SocketPlugin")
-    assert isinstance(w_res, model.W_BytesObject)
+    assert isinstance(w_res, W_BytesObject)
 
 
 def test_socket_create():

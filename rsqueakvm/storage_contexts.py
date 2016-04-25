@@ -1,10 +1,13 @@
-
-from rsqueakvm import model, constants, error, wrapper
+from rsqueakvm import constants, error, wrapper
+from rsqueakvm.model.compiled_methods import W_CompiledMethod
+from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.storage import AbstractStrategy, ShadowMixin
-from rpython.tool.pairtype import extendabletype
+
 from rpython.rlib import jit, objectmodel
 from rpython.rlib.objectmodel import import_from_mixin
 from rpython.rlib.rstrategies import rstrategies as rstrat
+from rpython.tool.pairtype import extendabletype
+
 
 @objectmodel.specialize.call_location()
 def fresh_virtualizable(x):
@@ -181,7 +184,7 @@ class ContextPartShadow(AbstractStrategy):
 
     def store_context_part(self, n0, w_value):
         if n0 == constants.CTXPART_SENDER_INDEX:
-            assert isinstance(w_value, model.W_PointersObject)
+            assert isinstance(w_value, W_PointersObject)
             if w_value.is_nil(self.space):
                 self.store_s_sender(None)
                 if self.state is ActiveContext:
@@ -386,7 +389,7 @@ class ContextPartShadow(AbstractStrategy):
             # Magic numbers... Takes care of cases where reflective
             # code writes more than actual stack size
             method = self.w_method()
-            assert isinstance(method, model.W_CompiledMethod)
+            assert isinstance(method, W_CompiledMethod)
             stacksize = method.compute_frame_size()
         else:
             # TODO why not use method.compute_frame_size for BlockContext too?
@@ -567,7 +570,7 @@ class __extend__(ContextPartShadow):
     @staticmethod
     def build_block_context(space, s_home, argcnt, pc):
         size = s_home.own_size() - s_home.tempsize()
-        w_self = model.W_PointersObject(space, space.w_BlockContext, size)
+        w_self = W_PointersObject(space, space.w_BlockContext, size)
 
         ctx = ContextPartShadow(space, w_self, size, space.w_BlockContext)
         ctx.store_expected_argument_count(argcnt)
@@ -595,7 +598,7 @@ class __extend__(ContextPartShadow):
 
     def w_method_block_context(self):
         retval = self.s_home().w_method()
-        assert isinstance(retval, model.W_CompiledMethod)
+        assert isinstance(retval, W_CompiledMethod)
         return retval
 
     def is_closure_context_block_context(self):
@@ -635,7 +638,7 @@ class __extend__(ContextPartShadow):
             return self.store_context_part(n0, w_value)
 
     def store_w_home(self, w_home):
-        assert isinstance(w_home, model.W_PointersObject)
+        assert isinstance(w_home, W_PointersObject)
         self.get_extra_data()._w_home = w_home
 
     def unwrap_store_initialip(self, w_value):
@@ -763,7 +766,7 @@ class __extend__(ContextPartShadow):
         if self.is_closure_context():
             # this is a context for a blockClosure
             w_outerContext = self.closure.outerContext()
-            assert isinstance(w_outerContext, model.W_PointersObject)
+            assert isinstance(w_outerContext, W_PointersObject)
             s_outerContext = w_outerContext.as_context_get_shadow(self.space)
             # XXX check whether we can actually return from that context
             if s_outerContext.is_returned():
@@ -776,7 +779,7 @@ class __extend__(ContextPartShadow):
         return constants.MTHDCTX_TEMP_FRAME_START
 
     def store_w_method(self, w_method):
-        assert isinstance(w_method, model.W_CompiledMethod)
+        assert isinstance(w_method, W_CompiledMethod)
         self._w_method = w_method
 
     def w_receiver_method_context(self):
@@ -784,7 +787,7 @@ class __extend__(ContextPartShadow):
 
     def w_method_method_context(self):
         retval = self._w_method
-        assert isinstance(retval, model.W_CompiledMethod)
+        assert isinstance(retval, W_CompiledMethod)
         return retval
 
     def tempsize_method_context(self):
@@ -807,7 +810,7 @@ class __extend__(ContextPartShadow):
             return self._w_self
         else:
             space = self.space
-            w_self = model.W_PointersObject(space, space.w_MethodContext, self._w_self_size)
+            w_self = W_PointersObject(space, space.w_MethodContext, self._w_self_size)
             w_self.store_strategy(self)
             self._w_self = w_self
             return w_self

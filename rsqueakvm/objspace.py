@@ -1,10 +1,12 @@
-import os
-
-from rsqueakvm import constants, model, wrapper, display, storage
-from rsqueakvm.util.version import Version
-from rsqueakvm.error import WrappingError
+from rsqueakvm import constants, wrapper, display, storage
 from rsqueakvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, SYSTEM_ATTRIBUTE_IMAGE_ARGS_INDEX
-from rpython.rlib import jit, rpath
+from rsqueakvm.error import WrappingError
+from rsqueakvm.model.character import W_Character
+from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargePositiveInteger1Word
+from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.util.version import Version
+
+from rpython.rlib import jit
 from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin, we_are_translated
 from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32, int_between, r_int64, r_ulonglong, is_valid_int, r_longlonglong
 
@@ -48,7 +50,7 @@ class ConstantVersion(object):
     default_value = Version()
 
 def empty_object():
-    return instantiate(model.W_PointersObject)
+    return instantiate(W_PointersObject)
 
 class ForceHeadless(object):
     def __init__(self, space):
@@ -163,10 +165,10 @@ class ObjSpace(object):
         self.make_bootstrap_object("w_true")
         self.make_bootstrap_object("w_false")
         self.make_bootstrap_object("w_special_selectors")
-        self.add_bootstrap_object("w_minus_one", model.W_SmallInteger(-1))
-        self.add_bootstrap_object("w_zero", model.W_SmallInteger(0))
-        self.add_bootstrap_object("w_one", model.W_SmallInteger(1))
-        self.add_bootstrap_object("w_two", model.W_SmallInteger(2))
+        self.add_bootstrap_object("w_minus_one", W_SmallInteger(-1))
+        self.add_bootstrap_object("w_zero", W_SmallInteger(0))
+        self.add_bootstrap_object("w_one", W_SmallInteger(1))
+        self.add_bootstrap_object("w_two", W_SmallInteger(2))
 
         # Certain special objects are already created. The rest will be
         # populated when the image is loaded, but prepare empty slots for them.
@@ -193,7 +195,7 @@ class ObjSpace(object):
         elif not is_valid_int(val):
             raise WrappingError
         # we don't do tagging
-        return model.W_SmallInteger(intmask(val))
+        return W_SmallInteger(intmask(val))
 
     def wrap_uint(self, val):
         if val < 0:
@@ -207,9 +209,9 @@ class ObjSpace(object):
         if not we_are_translated() and val < 0:
             print "WARNING: wrap_positive_32bit_int casts %d to 32bit unsigned" % val
         if int_between(0, val, constants.MAXINT):
-            return model.W_SmallInteger(val)
+            return W_SmallInteger(val)
         else:
-            return model.W_LargePositiveInteger1Word(val)
+            return W_LargePositiveInteger1Word(val)
 
     @jit.unroll_safe
     @specialize.arg(2)
@@ -293,7 +295,7 @@ class ObjSpace(object):
         return self.wrap_int(val)
 
     def wrap_float(self, i):
-        return model.W_Float(i)
+        return W_Float(i)
 
     def wrap_string(self, string):
         w_inst = self.w_String.as_class_get_shadow(self).new(len(string))
@@ -303,7 +305,7 @@ class ObjSpace(object):
 
     def wrap_char(self, c):
         # return self.w_charactertable.fetch(self, ord(c))
-        return model.W_Character(ord(c))
+        return W_Character(ord(c))
 
     def wrap_bool(self, b):
         if b:
@@ -387,7 +389,7 @@ class ObjSpace(object):
 
     @jit.unroll_safe
     def newClosure(self, w_outer_ctxt, pc, numArgs, copiedValues):
-        assert isinstance(w_outer_ctxt, model.W_PointersObject)
+        assert isinstance(w_outer_ctxt, W_PointersObject)
         pc_with_bytecodeoffset = pc + w_outer_ctxt.as_context_get_shadow(self).w_method().bytecodeoffset() + 1
         BlockClosureShadow = self.w_BlockClosure.as_class_get_shadow(self)
         numCopied = len(copiedValues)

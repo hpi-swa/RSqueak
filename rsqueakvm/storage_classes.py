@@ -1,8 +1,14 @@
-
-from rsqueakvm import model, constants, error
+from rsqueakvm import constants, error
+from rsqueakvm.model.base import W_Object
+from rsqueakvm.model.compiled_methods import W_CompiledMethod, W_PreSpurCompiledMethod, W_SpurCompiledMethod
+from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargePositiveInteger1Word
+from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.storage import AbstractCachingShadow, AbstractGenericShadow
 from rsqueakvm.util.version import constant_for_version, constant_for_version_arg, Version
+
 from rpython.rlib import jit
+
 
 POINTERS = 0
 BYTES = 1
@@ -47,7 +53,7 @@ class ClassShadow(AbstractCachingShadow):
         else:
             if w_self.getclass(self.space).is_same_object(self.space.classtable["w_Metaclass"]):
                 # In case of Metaclasses, the "instance" class is stored in the last field.
-                if n0 == self.size(w_self) - 1 and isinstance(w_val, model.W_PointersObject):
+                if n0 == self.size(w_self) - 1 and isinstance(w_val, W_PointersObject):
                     cl_shadow = w_val.as_class_get_shadow(self.space)
                     self.name = "%s class" % cl_shadow.getname()
                     self.changed()
@@ -65,7 +71,7 @@ class ClassShadow(AbstractCachingShadow):
         if w_val.is_same_object(self.space.w_nil):
             return
         # read and painfully decode the format
-        assert isinstance(w_val, model.W_SmallInteger)
+        assert isinstance(w_val, W_SmallInteger)
         classformat = self.space.unwrap_int(w_val)
         # The classformat in Squeak, as an integer value, is:
         #    <2 bits=instSize//64><5 bits=cClass><4 bits=instSpec>
@@ -113,7 +119,7 @@ class ClassShadow(AbstractCachingShadow):
     def store_spur_classformat(self, w_self, n0, w_val):
         if w_val.is_same_object(self.space.w_nil):
             return
-        assert isinstance(w_val, model.W_SmallInteger)
+        assert isinstance(w_val, W_SmallInteger)
         classformat = self.space.unwrap_int(w_val)
         # The classformat in Spur, as an integer value, is:
         #     <5 bits inst spec><16 bits inst size>
@@ -160,7 +166,7 @@ class ClassShadow(AbstractCachingShadow):
             self._s_superclass = None
             self.changed()
         else:
-            assert isinstance(w_class, model.W_PointersObject)
+            assert isinstance(w_class, W_PointersObject)
             s_new_superclass = w_class.as_class_get_shadow(self.space)
             if superclass is s_new_superclass:
                 return
@@ -176,7 +182,7 @@ class ClassShadow(AbstractCachingShadow):
             self._s_methoddict = None
             self.changed()
         else:
-            assert isinstance(w_methoddict, model.W_PointersObject)
+            assert isinstance(w_methoddict, W_PointersObject)
             s_new_methoddict = w_methoddict.as_methoddict_get_shadow(self.space)
             if methoddict is s_new_methoddict:
                 return
@@ -197,7 +203,7 @@ class ClassShadow(AbstractCachingShadow):
         del self.subclass_s[s_other]
 
     def store_w_name(self, w_name):
-        if isinstance(w_name, model.W_BytesObject):
+        if isinstance(w_name, W_BytesObject):
             self.name = w_name.unwrap_string(None)
         else:
             self.name = None
@@ -215,26 +221,26 @@ class ClassShadow(AbstractCachingShadow):
         instance_kind = self.get_instance_kind()
         if instance_kind == POINTERS:
             size = self.instsize() + extrasize
-            w_new = model.W_PointersObject(self.space, w_cls, size)
+            w_new = W_PointersObject(self.space, w_cls, size)
         elif instance_kind == WORDS:
-            w_new = model.W_WordsObject(self.space, w_cls, extrasize)
+            w_new = W_WordsObject(self.space, w_cls, extrasize)
         elif instance_kind == BYTES:
-            w_new = model.W_BytesObject(self.space, w_cls, extrasize)
+            w_new = W_BytesObject(self.space, w_cls, extrasize)
         elif instance_kind == COMPILED_METHOD:
             if self.space.is_spur.is_set():
-                w_new = model.W_SpurCompiledMethod(self.space, extrasize)
+                w_new = W_SpurCompiledMethod(self.space, extrasize)
             else:
-                w_new = model.W_PreSpurCompiledMethod(self.space, extrasize)
+                w_new = W_PreSpurCompiledMethod(self.space, extrasize)
         elif instance_kind == FLOAT:
-            w_new = model.W_Float(0)  # Squeak gives a random piece of memory
+            w_new = W_Float(0)  # Squeak gives a random piece of memory
         elif instance_kind == LARGE_POSITIVE_INTEGER:
             if extrasize <= 4:
-                w_new = model.W_LargePositiveInteger1Word(0, extrasize)
+                w_new = W_LargePositiveInteger1Word(0, extrasize)
             else:
-                w_new = model.W_BytesObject(self.space, w_cls, extrasize)
+                w_new = W_BytesObject(self.space, w_cls, extrasize)
         elif instance_kind == WEAK_POINTERS:
             size = self.instsize() + extrasize
-            w_new = model.W_PointersObject(self.space, w_cls, size, weak=True)
+            w_new = W_PointersObject(self.space, w_cls, size, weak=True)
         else:
             raise NotImplementedError(instance_kind)
         return w_new
@@ -314,8 +320,8 @@ class ClassShadow(AbstractCachingShadow):
     def initialize_methoddict(self):
         "NOT_RPYTHON"     # this is only for testing.
         if self._s_methoddict is None:
-            w_methoddict = model.W_PointersObject(self.space, None, 2)
-            w_methoddict.store(self.space, constants.METHODDICT_VALUES_INDEX, model.W_PointersObject(self.space, None, 0))
+            w_methoddict = W_PointersObject(self.space, None, 2)
+            w_methoddict.store(self.space, constants.METHODDICT_VALUES_INDEX, W_PointersObject(self.space, None, 0))
             self.store_s_methoddict(w_methoddict.as_methoddict_get_shadow(self.space))
 
     def installmethod(self, w_selector, w_method):
@@ -323,7 +329,7 @@ class ClassShadow(AbstractCachingShadow):
         assert not isinstance(w_selector, str)
         self.initialize_methoddict()
         self.s_methoddict().methoddict[w_selector] = w_method
-        if isinstance(w_method, model.W_CompiledMethod):
+        if isinstance(w_method, W_CompiledMethod):
             w_method.compiledin_class = self.w_self()
 ClassShadow.instantiate_type = ClassShadow
 
@@ -375,7 +381,7 @@ class MethodDictionaryShadow(AbstractGenericShadow):
 
     def w_values(self):
         w_values = self.own_fetch(constants.METHODDICT_VALUES_INDEX)
-        assert isinstance(w_values, model.W_PointersObject)
+        assert isinstance(w_values, W_PointersObject)
         return w_values
 
     def flush_method_cache(self):
@@ -391,7 +397,7 @@ class MethodDictionaryShadow(AbstractGenericShadow):
         for i in range(size):
             w_selector = self.own_fetch(constants.METHODDICT_NAMES_INDEX+i)
             if not w_selector.is_nil(self.space):
-                if isinstance(w_selector, model.W_BytesObject):
+                if isinstance(w_selector, W_BytesObject):
                     selector = w_selector.unwrap_string(None)
                 else:
                     selector = "? (non-byteobject selector)"
@@ -402,12 +408,12 @@ class MethodDictionaryShadow(AbstractGenericShadow):
                     # raise ClassShadowError("bogus selector in method dict")
 
                 w_compiledmethod = w_values.fetch(self.space, i)
-                if not isinstance(w_compiledmethod, model.W_Object):
+                if not isinstance(w_compiledmethod, W_Object):
                     raise ClassShadowError("The methoddict must contain only wrapped Objects."
                                        "If the value observed is nil, our "
                                        "invalidating mechanism may be broken.")
                 self.methoddict[w_selector] = w_compiledmethod
-                if isinstance(w_compiledmethod, model.W_CompiledMethod) and self.s_class:
+                if isinstance(w_compiledmethod, W_CompiledMethod) and self.s_class:
                     if (w_compiledmethod.lookup_class is not self.s_class.w_self() or
                         w_compiledmethod.lookup_selector is not selector):
                         w_compiledmethod.set_lookup_class_and_name(self.s_class.w_self(), selector)

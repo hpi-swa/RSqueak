@@ -88,10 +88,10 @@ class TestBasic(BaseJITTest):
         self.assert_matches(traces[0].loop, """
             i598 = int_le(2, i153),
             guard_false(i598, descr=<Guard0x37cba50>),
-            i599 = getfield_gc_pure(p589, descr=<FieldS rsqueakvm.model.W_SmallInteger.inst_value 8>),
+            i599 = getfield_gc_pure(p589, descr=<FieldS rsqueakvm.model.numeric.W_SmallInteger.inst_value 8>),
             i600 = int_add_ovf(i599, i162),
             guard_no_overflow(descr=<Guard0x37cb910>),
-            i601 = getfield_gc_pure(p592, descr=<FieldS rsqueakvm.model.W_SmallInteger.inst_value 8>),
+            i601 = getfield_gc_pure(p592, descr=<FieldS rsqueakvm.model.numeric.W_SmallInteger.inst_value 8>),
             i602 = int_add_ovf(i601, i171),
             guard_no_overflow(descr=<Guard0x37cb7d0>),
             i603 = int_add_ovf(i176, 1),
@@ -103,7 +103,7 @@ class TestBasic(BaseJITTest):
             i606 = int_le(i603, i187),
             guard_true(i606, descr=<Guard0x37cb3d0>),
             guard_not_invalidated(descr=<Guard0x37cb290>),
-            i607 = getfield_gc_pure(p364, descr=<FieldS rsqueakvm.model.W_SmallInteger.inst_value 8>),
+            i607 = getfield_gc_pure(p364, descr=<FieldS rsqueakvm.model.numeric.W_SmallInteger.inst_value 8>),
             i608 = int_mod(i607, i224),
             i609 = int_rshift(i608, 31),
             i610 = int_and(i224, i609),
@@ -310,13 +310,13 @@ class TestBasic(BaseJITTest):
             i772 = int_le(i771, 0)
             guard_false(i772, descr=<Guard0x2f34890>)
             p773 = new_with_vtable(23083336)
-            setfield_gc(p773, i769, descr=<FieldS rsqueakvm.model.W_SmallInteger.inst_value 8>)
+            setfield_gc(p773, i769, descr=<FieldS rsqueakvm.model.numeric.W_SmallInteger.inst_value 8>)
             setarrayitem_gc(p147, 34, p773, descr=<ArrayP 4>)
             p774 = new_with_vtable(23083336)
-            setfield_gc(p774, i770, descr=<FieldS rsqueakvm.model.W_SmallInteger.inst_value 8>)
+            setfield_gc(p774, i770, descr=<FieldS rsqueakvm.model.numeric.W_SmallInteger.inst_value 8>)
             setarrayitem_gc(p147, 35, p774, descr=<ArrayP 4>)
             p775 = new_with_vtable(23083336)
-            setfield_gc(p775, i618, descr=<FieldS rsqueakvm.model.W_SmallInteger.inst_value 8>)
+            setfield_gc(p775, i618, descr=<FieldS rsqueakvm.model.numeric.W_SmallInteger.inst_value 8>)
             setarrayitem_gc(p147, 20, p775, descr=<ArrayP 4>)
             i776 = arraylen_gc(p147, descr=<ArrayP 4>)
             i777 = arraylen_gc(p581, descr=<ArrayP 4>)
@@ -513,9 +513,9 @@ class TestBasic(BaseJITTest):
         guard_false(i108, descr=<Guard0xa96779c>)
         p109 = getarrayitem_gc_r(p82, i105, descr=<ArrayP 4>)
         guard_class(p109, ConstClass(W_PointersObject), descr=<Guard0xa967764>)
-        p110 = getfield_gc_r(p109, descr=<FieldP rsqueakvm.model.W_PointersObject.inst_strategy 16>)
+        p110 = getfield_gc_r(p109, descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 16>)
         guard_value(p111, ConstPtr(ptr93), descr=<Guard0xa9676f4>)
-        p112 = getfield_gc_r(p109, descr=<FieldP rsqueakvm.model.W_PointersObject.inst__storage 12>)
+        p112 = getfield_gc_r(p109, descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst__storage 12>)
         i113 = arraylen_gc(p112, descr=<ArrayP 4>)
         i115 = uint_lt(i105, i113)
         guard_true(i115, descr=<Guard0xa967630>)

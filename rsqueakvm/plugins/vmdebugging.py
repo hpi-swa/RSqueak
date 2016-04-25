@@ -1,5 +1,7 @@
 import os
-from rsqueakvm import model, error
+
+from rsqueakvm import error
+from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.util.system import IS_WINDOWS
 
@@ -59,7 +61,7 @@ def isVMTranslated(interp, s_frame, w_rcvr):
 
 @DebuggingPlugin.expose_primitive(unwrap_spec=[object, object])
 def debugPrint(interp, s_frame, w_rcvr, w_string):
-    if not isinstance(w_string, model.W_BytesObject):
+    if not isinstance(w_string, W_BytesObject):
         raise error.PrimitiveFailedError()
     print interp.space.unwrap_string(w_string).replace('\r', '\n')
     return w_rcvr

@@ -1,6 +1,8 @@
 import pdb
+
+from rsqueakvm import primitives, error
+from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.storage_contexts import ContextPartShadow
-from rsqueakvm import model, primitives, error
 
 # This module patches up the interpreter and adds breakpoints at certain execution points.
 # Only usable in interpreted mode due to pdb.
@@ -97,7 +99,7 @@ def activate_debugging():
 
                     space = interp.space
                     w_description = w_method.literalat0(space, 1)
-                    if isinstance(w_description, model.W_PointersObject) and w_description.size() >= 2:
+                    if isinstance(w_description, W_PointersObject) and w_description.size() >= 2:
                         w_modulename = w_description.at0(space, 0)
                         w_functionname = w_description.at0(space, 1)
                         print "Failed named primitive. Module: %s, Function: %s" % (w_modulename, w_functionname)

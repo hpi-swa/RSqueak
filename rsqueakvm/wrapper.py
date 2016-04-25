@@ -1,9 +1,12 @@
-from rsqueakvm import model, model_display, constants
+from rsqueakvm import constants
 from rsqueakvm.error import FatalError, WrapperException, PrimitiveFailedError
+from rsqueakvm.model.display import W_DisplayBitmap, from_words_object
+from rsqueakvm.model.pointers import W_PointersObject
+
 
 class Wrapper(object):
     def __init__(self, space, w_self):
-        if not isinstance(w_self, model.W_PointersObject):
+        if not isinstance(w_self, W_PointersObject):
             raise WrapperException("Unexpected instance given to wrapper")
         self.wrapped = w_self
         self.space = space
@@ -82,7 +85,7 @@ class ProcessWrapper(LinkWrapper):
         old_proc.store_suspended_context(s_old_frame.w_self())
         w_new_active_context = self.suspended_context()
         self.store_suspended_context(self.space.w_nil)
-        assert isinstance(w_new_active_context, model.W_PointersObject)
+        assert isinstance(w_new_active_context, W_PointersObject)
         raise ProcessSwitch(w_new_active_context.as_context_get_shadow(self.space))
 
     def resume(self, s_current_frame):
@@ -198,7 +201,7 @@ def scheduler(space):
     w_association = space.objtable["w_schedulerassociationpointer"]
     assert w_association is not None
     w_scheduler = AssociationWrapper(space, w_association).value()
-    assert isinstance(w_scheduler, model.W_PointersObject)
+    assert isinstance(w_scheduler, W_PointersObject)
     return SchedulerWrapper(space, w_scheduler)
 
 class SemaphoreWrapper(LinkedListWrapper):
@@ -294,13 +297,13 @@ class FormWrapper(Wrapper):
     depth, store_depth = make_int_getter_setter(constants.FORM_DEPTH)
 
     def create_display_bitmap(self):
-        w_display_bitmap = model_display.from_words_object(self.bits(), self)
+        w_display_bitmap = from_words_object(self.bits(), self)
         self.store_bits(w_display_bitmap)
         return w_display_bitmap
 
     def get_display_bitmap(self):
         w_bitmap = self.bits()
-        if not isinstance(w_bitmap, model_display.W_DisplayBitmap):
+        if not isinstance(w_bitmap, W_DisplayBitmap):
             w_display_bitmap = self.create_display_bitmap()
         else:
             w_display_bitmap = w_bitmap

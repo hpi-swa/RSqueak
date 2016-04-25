@@ -2,12 +2,19 @@ import os
 import inspect
 import math
 import operator
-from rsqueakvm import model, model_display, storage_contexts, error, constants, display
-from rsqueakvm.error import PrimitiveFailedError, PrimitiveNotYetWrittenError, MetaPrimFailed
-from rsqueakvm import wrapper
+
+from rsqueakvm import storage_contexts, error, constants, display, wrapper
+from rsqueakvm.error import MetaPrimFailed, PrimitiveFailedError, PrimitiveNotYetWrittenError
+from rsqueakvm.model.base import W_Object
+from rsqueakvm.model.character import W_Character
+from rsqueakvm.model.compiled_methods import W_CompiledMethod, W_PreSpurCompiledMethod, W_SpurCompiledMethod
+from rsqueakvm.model.display import W_DisplayBitmap
+from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargePositiveInteger1Word
+from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 
 from rpython.rlib import rfloat, unroll, jit, objectmodel
-from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int, r_int64, int_between, r_uint32
+from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int, r_int64, int_between
 
 
 def assert_class(interp, w_obj, w_class):
@@ -22,7 +29,7 @@ def assert_valid_index(space, n0, w_obj):
     return n0
 
 def assert_pointers(w_obj):
-    if not (isinstance(w_obj, model.W_PointersObject) or isinstance(w_obj, model.W_Character)):
+    if not (isinstance(w_obj, W_PointersObject) or isinstance(w_obj, W_Character)):
         raise PrimitiveFailedError
     return w_obj
 
@@ -110,13 +117,13 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                     elif spec is float:
                         args += (interp.space.unwrap_float(w_arg), )
                     elif spec is object:
-                        assert isinstance(w_arg, model.W_Object)
+                        assert isinstance(w_arg, W_Object)
                         args += (w_arg, )
                     elif spec is str:
-                        assert isinstance(w_arg, model.W_BytesObject)
+                        assert isinstance(w_arg, W_BytesObject)
                         args += (interp.space.unwrap_string(w_arg), )
                     elif spec is list:
-                        assert isinstance(w_arg, model.W_PointersObject)
+                        assert isinstance(w_arg, W_PointersObject)
                         args += (interp.space.unwrap_array(w_arg), )
                     elif spec is char:
                         args += (interp.space.unwrap_char_as_byte(w_arg), )
@@ -142,7 +149,7 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                         s_frame.pop_n(len_unwrap_spec)
                     if not no_result:
                         assert w_result is not None
-                        assert isinstance(w_result, model.W_Object)
+                        assert isinstance(w_result, W_Object)
                         s_frame.push(w_result)
         wrapped.func_name = "wrapped_%s" % func.func_name
         return wrapped
@@ -388,9 +395,9 @@ def func(interp, s_frame, rcvr, arg):
         return interp.space.wrap_float(math.ldexp(rcvr, arg))
     except OverflowError:
         if rcvr >= 0.0:
-            return model.W_Float(INFINITY)
+            return W_Float(INFINITY)
         else:
-            return model.W_Float(-INFINITY)
+            return W_Float(-INFINITY)
 
 @expose_primitive(FLOAT_SQUARE_ROOT, unwrap_spec=[float])
 def func(interp, s_frame, f):
@@ -445,7 +452,7 @@ def func(interp, s_frame, x, y):
 FAIL = 19
 
 def get_string(w_obj):
-    if isinstance(w_obj, model.W_BytesObject):
+    if isinstance(w_obj, W_BytesObject):
         return w_obj.unwrap_string(None)
     return w_obj.as_repr_string()
 
@@ -455,13 +462,13 @@ def exitFromHeadlessExecution(s_frame, selector="", w_message=None):
             return # During Testing
         import pdb; pdb.set_trace()
     print "== Receiver: %s" % s_frame.w_receiver().as_repr_string()
-    if isinstance(w_message, model.W_PointersObject):
+    if isinstance(w_message, W_PointersObject):
         fields = w_message.fetch_all(s_frame.space)
         if len(fields) >= 1:
             print "== Selector: %s" % get_string(fields[0])
         if len(fields) >= 2:
             w_args = fields[1]
-            if isinstance(w_args, model.W_PointersObject):
+            if isinstance(w_args, W_PointersObject):
                 arg_strings = [ get_string(w_arg) for w_arg in w_args.fetch_all(s_frame.space) ]
                 if len(arg_strings) > 0:
                     print "== Arguments: %s" % ', '.join(arg_strings)
@@ -511,8 +518,8 @@ def func(interp, s_frame, w_obj):
 def func(interp, s_frame, w_obj, n0):
     n0 = assert_valid_index(interp.space, n0, w_obj)
     # TODO: This can actually be called on any indexable object...
-    if not (isinstance(w_obj, model.W_BytesObject) or
-            isinstance(w_obj, model.W_WordsObject)):
+    if not (isinstance(w_obj, W_BytesObject) or
+            isinstance(w_obj, W_WordsObject)):
         raise PrimitiveFailedError
     return interp.space.wrap_char(w_obj.getchar(n0))
 
@@ -520,9 +527,9 @@ def func(interp, s_frame, w_obj, n0):
 def func(interp, s_frame, w_obj, n0, w_val):
     val = interp.space.unwrap_char_as_byte(w_val)
     n0 = assert_valid_index(interp.space, n0, w_obj)
-    if not (isinstance(w_obj, model.W_CompiledMethod) or
-            isinstance(w_obj, model.W_BytesObject) or
-            isinstance(w_obj, model.W_WordsObject)):
+    if not (isinstance(w_obj, W_CompiledMethod) or
+            isinstance(w_obj, W_BytesObject) or
+            isinstance(w_obj, W_WordsObject)):
         raise PrimitiveFailedError()
     w_obj.setchar(n0, val)
     return w_val
@@ -599,13 +606,13 @@ def primitive_store(interp, s_frame, w_rcvr, n0, w_value):
 
 @expose_primitive(OBJECT_AT, unwrap_spec=[object, index1_0])
 def func(interp, s_frame, w_rcvr, n0):
-    if not isinstance(w_rcvr, model.W_CompiledMethod):
+    if not isinstance(w_rcvr, W_CompiledMethod):
         raise PrimitiveFailedError()
     return w_rcvr.literalat0(interp.space, n0)
 
 @expose_primitive(OBJECT_AT_PUT, unwrap_spec=[object, index1_0, object])
 def func(interp, s_frame, w_rcvr, n0, w_value):
-    if not isinstance(w_rcvr, model.W_CompiledMethod):
+    if not isinstance(w_rcvr, W_CompiledMethod):
         raise PrimitiveFailedError()
     w_rcvr.literalatput0(interp.space, n0, w_value)
     return w_value
@@ -653,7 +660,7 @@ def func(interp, s_frame, w_from, w_to):
         gcref = pending.pop()
         if not rgc.get_gcflag_extra(gcref):
             rgc.toggle_gcflag_extra(gcref)
-            w_obj = rgc.try_cast_gcref_to_instance(model.W_Object, gcref)
+            w_obj = rgc.try_cast_gcref_to_instance(W_Object, gcref)
             if w_obj is not None and w_obj.has_class():
                 w_obj.pointers_become_one_way(space, from_w, to_w)
             pending.extend(rgc.get_rpy_referents(gcref))
@@ -681,7 +688,7 @@ def func(interp, s_frame, w_rcvr, n0, w_value):
 @expose_also_as(IMMEDIATE_IDENTITY_HASH, CLASS_IDENTITY_HASH)
 @expose_primitive(AS_OOP, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    if isinstance(w_rcvr, model.W_SmallInteger):
+    if isinstance(w_rcvr, W_SmallInteger):
         raise PrimitiveFailedError()
     return interp.space.wrap_int(w_rcvr.gethash())
 
@@ -703,7 +710,7 @@ def get_instances_array_gc(interp, w_class=None):
         gcref = pending.pop()
         if not rgc.get_gcflag_extra(gcref):
             rgc.toggle_gcflag_extra(gcref)
-            w_obj = rgc.try_cast_gcref_to_instance(model.W_Object, gcref)
+            w_obj = rgc.try_cast_gcref_to_instance(W_Object, gcref)
 
             if w_obj is not None and w_obj.has_class():
                 w_cls = w_obj.getclass(space)
@@ -746,9 +753,9 @@ def get_instances_array_trace(interp, w_class, some_instance=False):
 
 def _trace_pointers(space, w_obj):
     p_w = [w_obj.getclass(space)]
-    if isinstance(w_obj, model.W_CompiledMethod):
+    if isinstance(w_obj, W_CompiledMethod):
         p_w.extend(w_obj.literals)
-    elif isinstance(w_obj, model.W_PointersObject):
+    elif isinstance(w_obj, W_PointersObject):
         p_w.extend(w_obj.fetch_all(space))
     return p_w
 
@@ -816,9 +823,9 @@ def func(interp, s_frame, w_obj):
 def func(interp, s_frame, w_class, bytecount, header):
     # We ignore w_class because W_CompiledMethod subclasses are special
     if interp.space.is_spur.is_set():
-        return model.W_SpurCompiledMethod(interp.space, bytecount, header)
+        return W_SpurCompiledMethod(interp.space, bytecount, header)
     else:
-        return model.W_PreSpurCompiledMethod(interp.space, bytecount, header)
+        return W_PreSpurCompiledMethod(interp.space, bytecount, header)
 
 # ___________________________________________________________________________
 # I/O Primitives
@@ -847,7 +854,7 @@ KBD_PEEK = 109
 @expose_primitive(MOUSE_POINT, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
     x, y = interp.space.display().mouse_point()
-    w_point = model.W_PointersObject(interp.space, interp.space.w_Point, 2)
+    w_point = W_PointersObject(interp.space, interp.space.w_Point, 2)
     w_point.store(interp.space, 0, interp.space.wrap_int(x))
     w_point.store(interp.space, 1, interp.space.wrap_int(y))
     return w_point
@@ -909,19 +916,19 @@ def func(interp, s_frame, argcount):
     mask_words = None
     if argcount == 1:
         w_mask = s_frame.peek(0)
-        if isinstance(w_mask, model.W_WordsObject):
+        if isinstance(w_mask, W_WordsObject):
             mask_words = w_mask.words
-        elif isinstance(w_mask, model.W_PointersObject):
+        elif isinstance(w_mask, W_PointersObject):
             # mask is a form object
             w_contents = w_mask.fetch(interp.space, 0)
-            if isinstance(w_contents, model.W_WordsObject):
+            if isinstance(w_contents, W_WordsObject):
                 mask_words = w_contents.words
             else:
                 raise PrimitiveFailedError
         else:
             raise PrimitiveFailedError()
     w_bitmap = w_rcvr.fetch(interp.space, 0)
-    if not isinstance(w_bitmap, model.W_WordsObject):
+    if not isinstance(w_bitmap, W_WordsObject):
         raise PrimitiveFailedError()
     width = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 1))
     height = interp.space.unwrap_int(w_rcvr.fetch(interp.space, 2))
@@ -948,11 +955,11 @@ def func(interp, s_frame, argcount):
 def func(interp, s_frame, w_rcvr):
     if interp.space.headless.is_set():
         exitFromHeadlessExecution(s_frame)
-    if not isinstance(w_rcvr, model.W_PointersObject) or w_rcvr.size() < 4:
+    if not isinstance(w_rcvr, W_PointersObject) or w_rcvr.size() < 4:
         raise PrimitiveFailedError
 
     old_display = interp.space.objtable['w_display']
-    if isinstance(old_display, model_display.W_DisplayBitmap):
+    if isinstance(old_display, W_DisplayBitmap):
         old_display.relinquish_display()
     interp.space.objtable['w_display'] = w_rcvr
 
@@ -1087,12 +1094,12 @@ def func(interp, s_frame, w_arg, w_rcvr):
     # or vice versa XXX we don't have to fail here, but for squeak it's a problem
 
     # 3. Format of rcvr is different from format of argument
-    if ((isinstance(w_arg, model.W_PointersObject) and
-         isinstance(w_rcvr, model.W_PointersObject)) or
-        (isinstance(w_arg, model.W_BytesObject) and
-         isinstance(w_rcvr, model.W_BytesObject)) or
-        (isinstance(w_arg, model.W_WordsObject) and
-         isinstance(w_rcvr, model.W_WordsObject))):
+    if ((isinstance(w_arg, W_PointersObject) and
+         isinstance(w_rcvr, W_PointersObject)) or
+        (isinstance(w_arg, W_BytesObject) and
+         isinstance(w_rcvr, W_BytesObject)) or
+        (isinstance(w_arg, W_WordsObject) and
+         isinstance(w_rcvr, W_WordsObject))):
         w_rcvr.change_class(interp.space, w_arg_class)
         return w_rcvr
     else:
@@ -1104,7 +1111,7 @@ def func(interp, s_frame, w_arg, w_rcvr):
 def func(interp, s_frame, argcount, w_method):
     space = interp.space
     w_description = w_method.literalat0(space, 1)
-    if not isinstance(w_description, model.W_PointersObject) or w_description.size() < 2:
+    if not isinstance(w_description, W_PointersObject) or w_description.size() < 2:
         raise PrimitiveFailedError
     w_modulename = jit.promote(w_description.at0(space, 0))
     w_functionname = jit.promote(w_description.at0(space, 1))
@@ -1117,8 +1124,8 @@ def func(interp, s_frame, argcount, w_method):
         """
         raise  PrimitiveFailedError
 
-    if not (isinstance(w_modulename, model.W_BytesObject) and
-            isinstance(w_functionname, model.W_BytesObject)):
+    if not (isinstance(w_modulename, W_BytesObject) and
+            isinstance(w_functionname, W_BytesObject)):
         raise PrimitiveFailedError
     signature = (space.unwrap_string(w_modulename), space.unwrap_string(w_functionname))
 
@@ -1151,7 +1158,7 @@ def func(interp, s_frame, argcount, w_method):
 
 @expose_primitive(COMPILED_METHOD_FLUSH_CACHE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    if not isinstance(w_rcvr, model.W_CompiledMethod):
+    if not isinstance(w_rcvr, W_CompiledMethod):
         raise PrimitiveFailedError()
     w_class = w_rcvr.compiled_in()
     if w_class:
@@ -1209,7 +1216,7 @@ def func(interp, s_frame, argument_count):
         return interp.space.wrap_string(interp.space.get_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX))
     elif argument_count == 1:
         w_arg = s_frame.pop()
-        assert isinstance(w_arg, model.W_BytesObject)
+        assert isinstance(w_arg, W_BytesObject)
         interp.space.set_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, interp.space.unwrap_string(w_arg))
         return s_frame.pop()
     raise PrimitiveFailedError
@@ -1431,27 +1438,27 @@ def func(interp, s_frame, w_receiver):
 
 @expose_primitive(SHORT_AT, unwrap_spec=[object, index1_0])
 def func(interp, s_frame, w_receiver, n0):
-    if not (isinstance(w_receiver, model.W_BytesObject)
-            or isinstance(w_receiver, model.W_WordsObject)):
+    if not (isinstance(w_receiver, W_BytesObject)
+            or isinstance(w_receiver, W_WordsObject)):
         raise PrimitiveFailedError
     return w_receiver.short_at0(interp.space, n0)
 
 @expose_primitive(SHORT_AT_PUT, unwrap_spec=[object, index1_0, object])
 def func(interp, s_frame, w_receiver, n0, w_value):
-    if not (isinstance(w_receiver, model.W_BytesObject)
-            or isinstance(w_receiver, model.W_WordsObject)):
+    if not (isinstance(w_receiver, W_BytesObject)
+            or isinstance(w_receiver, W_WordsObject)):
         raise PrimitiveFailedError
     return w_receiver.short_atput0(interp.space, n0, w_value)
 
 @expose_primitive(FILL, unwrap_spec=[object, pos_32bit_int])
 def func(interp, s_frame, w_arg, new_value):
     space = interp.space
-    if isinstance(w_arg, model.W_BytesObject):
+    if isinstance(w_arg, W_BytesObject):
         if new_value > 255:
             raise PrimitiveFailedError
         for i in xrange(w_arg.size()):
             w_arg.setchar(i, chr(new_value))
-    elif isinstance(w_arg, model.W_WordsObject) or isinstance(w_arg, model_display.W_DisplayBitmap):
+    elif isinstance(w_arg, W_WordsObject) or isinstance(w_arg, W_DisplayBitmap):
         for i in xrange(w_arg.size()):
             w_arg.setword(i, new_value)
     else:
@@ -1530,9 +1537,9 @@ def func(interp, s_frame, _):
 @expose_primitive(CHARACTER_VALUE)
 def func(interp, s_frame, argument_count):
     w_value = s_frame.peek(0)
-    assert isinstance(w_value, model.W_SmallInteger)
+    assert isinstance(w_value, W_SmallInteger)
     s_frame.pop_n(argument_count + 1)
-    return model.W_Character(interp.space.unwrap_int(w_value))
+    return W_Character(interp.space.unwrap_int(w_value))
 
 
 
@@ -1729,7 +1736,7 @@ def func(interp, s_frame, w_rcvr, w_selector, w_arguments):
 @expose_primitive(WITH_ARGS_EXECUTE_METHOD,
     result_is_new_frame=True, unwrap_spec=[object, list, object])
 def func(interp, s_frame, w_rcvr, args_w, w_cm):
-    if not isinstance(w_cm, model.W_CompiledMethod):
+    if not isinstance(w_cm, W_CompiledMethod):
         raise PrimitiveFailedError()
     code = w_cm.primitive()
     if code:
@@ -1812,22 +1819,22 @@ class Entry(ExtRegistryEntry):
         hop.exception_cannot_occur()
         sz = sizeof(modelrepr.lowleveltype.TO, 1)
         # Also add the instance-specific helper structs that all instances have
-        if modelrepr.rclass.classdef.classdesc.pyobj is model.W_PointersObject:
+        if modelrepr.rclass.classdef.classdesc.pyobj is W_PointersObject:
             sz += sizeof(modelrepr.lowleveltype.TO._flds["inst__storage"].TO, 0)
             # not adding shadows, because these are often shared
-        elif modelrepr.rclass.classdef.classdesc.pyobj is model.W_WordsObject:
+        elif modelrepr.rclass.classdef.classdesc.pyobj is W_WordsObject:
             sz += sizeof(modelrepr.lowleveltype.TO._flds["mutate_words"].TO)
             sz += sizeof(modelrepr.lowleveltype.TO._flds["inst_words"].TO, 0)
-        elif modelrepr.rclass.classdef.classdesc.pyobj is model.W_BytesObject:
+        elif modelrepr.rclass.classdef.classdesc.pyobj is W_BytesObject:
             sz += sizeof(modelrepr.lowleveltype.TO._flds["mutate_version"].TO)
-        elif modelrepr.rclass.classdef.classdesc.pyobj is model.W_CompiledMethod:
+        elif modelrepr.rclass.classdef.classdesc.pyobj is W_CompiledMethod:
             sz += sizeof(modelrepr.lowleveltype.TO._flds["mutate_version"].TO)
             sz += sizeof(modelrepr.lowleveltype.TO._flds["inst_literals"].TO, 0)
             sz += sizeof(modelrepr.lowleveltype.TO._flds["inst_version"].TO)
             sz += sizeof(modelrepr.lowleveltype.TO._flds["inst_lookup_selector"].TO, 0)
-        elif modelrepr.rclass.classdef.classdesc.pyobj is model.W_Float:
+        elif modelrepr.rclass.classdef.classdesc.pyobj is W_Float:
             pass
-        elif modelrepr.rclass.classdef.classdesc.pyobj is model.W_LargePositiveInteger1Word:
+        elif modelrepr.rclass.classdef.classdesc.pyobj is W_LargePositiveInteger1Word:
             pass
         return hop.inputconst(lltype.Signed, sz)
 
@@ -1852,20 +1859,20 @@ def func(interp, s_frame, argcount):
     s_class = w_rcvr.as_class_get_shadow(interp.space)
     instance_kind = s_class.get_instance_kind()
     if instance_kind in [POINTERS, WEAK_POINTERS]:
-        r = model_sizeof(objectmodel.instantiate(model.W_PointersObject)) + (s_class.instsize() + size) * constants.BYTES_PER_WORD
+        r = model_sizeof(objectmodel.instantiate(W_PointersObject)) + (s_class.instsize() + size) * constants.BYTES_PER_WORD
     elif instance_kind == WORDS:
-        r = model_sizeof(objectmodel.instantiate(model.W_WordsObject)) + size * constants.BYTES_PER_WORD
+        r = model_sizeof(objectmodel.instantiate(W_WordsObject)) + size * constants.BYTES_PER_WORD
     elif instance_kind == BYTES:
-        r = model_sizeof(objectmodel.instantiate(model.W_BytesObject)) + size
+        r = model_sizeof(objectmodel.instantiate(W_BytesObject)) + size
     elif instance_kind == COMPILED_METHOD:
-        r = model_sizeof(objectmodel.instantiate(model.W_CompiledMethod))
+        r = model_sizeof(objectmodel.instantiate(W_CompiledMethod))
     elif instance_kind == FLOAT:
-        r = model_sizeof(objectmodel.instantiate(model.W_Float))
+        r = model_sizeof(objectmodel.instantiate(W_Float))
     elif instance_kind == LARGE_POSITIVE_INTEGER:
         if size <= 4:
-            r = model_sizeof(objectmodel.instantiate(model.W_LargePositiveInteger1Word))
+            r = model_sizeof(objectmodel.instantiate(W_LargePositiveInteger1Word))
         else:
-            r = model_sizeof(objectmodel.instantiate(model.W_BytesObject)) + size
+            r = model_sizeof(objectmodel.instantiate(W_BytesObject)) + size
     else:
         raise PrimitiveFailedError
     return interp.space.wrap_int(r)
@@ -1902,14 +1909,14 @@ def activateClosure(interp, w_block, args_w):
     if not (outer_ctxt_class is space.w_MethodContext
                 or outer_ctxt_class is space.w_BlockContext):
         raise PrimitiveFailedError()
-    assert isinstance(outer_ctxt, model.W_PointersObject)
+    assert isinstance(outer_ctxt, W_PointersObject)
 
     # additionally to the smalltalk implementation, this also pushes
     # args and copiedValues
     s_new_frame = block.create_frame(outer_ctxt, args_w)
     w_closureMethod = s_new_frame.w_method()
 
-    assert isinstance(w_closureMethod, model.W_CompiledMethod)
+    assert isinstance(w_closureMethod, W_CompiledMethod)
     assert w_block is not block.outerContext()
 
     return s_new_frame
@@ -1956,7 +1963,7 @@ CTXT_SIZE = 212
 
 @expose_primitive(CTXT_SIZE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    if isinstance(w_rcvr, model.W_PointersObject):
+    if isinstance(w_rcvr, W_PointersObject):
         if w_rcvr.getclass(interp.space).is_same_object(interp.space.w_MethodContext):
             if w_rcvr.fetch(interp.space, constants.MTHDCTX_METHOD) is interp.space.w_nil:
                 # special case: (MethodContext allInstances at: 1) does not have a method. All fields are nil
@@ -2109,7 +2116,7 @@ def func(interp, s_frame, argcount):
         return interp.space.wrap_list(vm_w_params)
 
     arg2_w = s_frame.pop()  # index (really the receiver, index has been removed above)
-    if not isinstance(arg1_w, model.W_SmallInteger):
+    if not isinstance(arg1_w, W_SmallInteger):
         raise PrimitiveFailedError
     if argcount == 1:
         if not 0 <= arg1_w.value <= 70:

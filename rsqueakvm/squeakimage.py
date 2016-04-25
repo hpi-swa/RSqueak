@@ -1,7 +1,16 @@
-import os, time
-from rsqueakvm import constants, model, error, model_display, wrapper
+import os
+import time
+
+from rsqueakvm import constants, error, wrapper
+from rsqueakvm.model.character import W_Character
+from rsqueakvm.model.compiled_methods import W_CompiledMethod, W_PreSpurCompiledMethod, W_SpurCompiledMethod
+from rsqueakvm.model.display import W_DisplayBitmap
+from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargePositiveInteger1Word
+from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.util import stream, system
 from rsqueakvm.util.bitmanipulation import splitter
+
 from rpython.rlib import objectmodel
 from rpython.rlib.rarithmetic import r_ulonglong, intmask, r_uint, r_uint32, r_int64
 from rpython.rlib import jit
@@ -441,23 +450,23 @@ class NonSpurReader(BaseReaderStrategy):
         # the instantiate call circumvents the constructors
         # and makes empty objects
         if self.ischar(g_object):
-            return objectmodel.instantiate(model.W_Character)
+            return objectmodel.instantiate(W_Character)
         elif self.ispointers(g_object):
-            return objectmodel.instantiate(model.W_PointersObject)
+            return objectmodel.instantiate(W_PointersObject)
         elif g_object.format == 5:
             raise error.CorruptImageError("Unknown format 5")
         elif self.isfloat(g_object):
-            return objectmodel.instantiate(model.W_Float)
+            return objectmodel.instantiate(W_Float)
         elif self.iswordsizedlargepositiveinteger(g_object):
-            return objectmodel.instantiate(model.W_LargePositiveInteger1Word)
+            return objectmodel.instantiate(W_LargePositiveInteger1Word)
         elif self.iswords(g_object):
-            return objectmodel.instantiate(model.W_WordsObject)
+            return objectmodel.instantiate(W_WordsObject)
         elif g_object.format == 7:
             raise error.CorruptImageError("Unknown format 7, no 64-bit support yet :-)")
         elif self.isbytes(g_object):
-            return objectmodel.instantiate(model.W_BytesObject)
+            return objectmodel.instantiate(W_BytesObject)
         elif self.iscompiledmethod(g_object):
-            return objectmodel.instantiate(model.W_PreSpurCompiledMethod)
+            return objectmodel.instantiate(W_PreSpurCompiledMethod)
         else:
             assert 0, "not reachable"
 
@@ -664,19 +673,19 @@ class SpurReader(BaseReaderStrategy):
         # and makes empty objects
         # timfel: sorted by likelyhood so the JIT can generate better checks
         if self.ischar(g_object):
-            return objectmodel.instantiate(model.W_Character)
+            return objectmodel.instantiate(W_Character)
         elif self.ispointers(g_object):
-            return objectmodel.instantiate(model.W_PointersObject)
+            return objectmodel.instantiate(W_PointersObject)
         elif self.isfloat(g_object):
-            return objectmodel.instantiate(model.W_Float)
+            return objectmodel.instantiate(W_Float)
         elif self.iswordsizedlargepositiveinteger(g_object):
-            return objectmodel.instantiate(model.W_LargePositiveInteger1Word)
+            return objectmodel.instantiate(W_LargePositiveInteger1Word)
         elif self.iswords(g_object):
-            return objectmodel.instantiate(model.W_WordsObject)
+            return objectmodel.instantiate(W_WordsObject)
         elif self.isbytes(g_object):
-            return objectmodel.instantiate(model.W_BytesObject)
+            return objectmodel.instantiate(W_BytesObject)
         elif self.iscompiledmethod(g_object):
-            return objectmodel.instantiate(model.W_SpurCompiledMethod)
+            return objectmodel.instantiate(W_SpurCompiledMethod)
         elif g_object.format in (6, 7, 8):
             raise error.CorruptImageError("Unknown format " + str(g_object.format))
         else:
@@ -740,14 +749,14 @@ class SqueakImage(object):
 
     def find_symbol(self, space, reader, symbol):
         w_dnu = self.special(constants.SO_DOES_NOT_UNDERSTAND)
-        assert isinstance(w_dnu, model.W_BytesObject)
+        assert isinstance(w_dnu, W_BytesObject)
         assert space.unwrap_string(w_dnu) == "doesNotUnderstand:"
         w_Symbol = w_dnu.getclass(space)
         w_obj = None
         # bit annoying that we have to hunt through the image :-(
         for chunk in reader.chunklist:
             w_obj = chunk.g_object.w_object
-            if not isinstance(w_obj, model.W_BytesObject):
+            if not isinstance(w_obj, W_BytesObject):
                 continue
             if not w_obj.getclass(space).is_same_object(w_Symbol):
                 continue
@@ -790,7 +799,7 @@ class GenericObject(object):
     def initialize_char(self, untagged_value, reader, space):
         self.reader = reader
         self.size = 0
-        self.w_object = model.W_Character(untagged_value)
+        self.w_object = W_Character(untagged_value)
         self.filled_in = True
 
     def initialize(self, chunk, reader, space):
@@ -870,7 +879,7 @@ class GenericObject(object):
 
     def get_class(self):
         w_class = self.g_class.w_object
-        assert isinstance(w_class, model.W_PointersObject)
+        assert isinstance(w_class, W_PointersObject)
         return w_class
 
     def get_hash(self):
@@ -944,7 +953,7 @@ class SpurImageWriter(object):
     def len_and_header(self, obj):
         import math
         n = self.fixed_and_indexable_size_for(obj)
-        if isinstance(obj, model.W_BytesObject) or isinstance(obj, model.W_LargePositiveInteger1Word) or isinstance(obj, model.W_CompiledMethod):
+        if isinstance(obj, W_BytesObject) or isinstance(obj, W_LargePositiveInteger1Word) or isinstance(obj, W_CompiledMethod):
             size = int(math.ceil(n / float(self.word_size)))
         else:
             size = n
@@ -965,13 +974,13 @@ class SpurImageWriter(object):
         return constants.COMPILED_METHOD_FULL_FRAME_SIZE
 
     def fixed_and_indexable_size_for(self, obj):
-        if (isinstance(obj, model.W_PointersObject) and
+        if (isinstance(obj, W_PointersObject) and
             (obj.getclass(self.space).is_same_object(self.space.w_MethodContext) or
              obj.getclass(self.space).is_same_object(self.space.w_BlockContext))):
             return obj.instsize() + self.frame_size_for(obj)
-        elif isinstance(obj, model.W_SpurCompiledMethod):
+        elif isinstance(obj, W_SpurCompiledMethod):
             return obj.varsize()
-        elif isinstance(obj, model.W_PreSpurCompiledMethod):
+        elif isinstance(obj, W_PreSpurCompiledMethod):
             if obj.primitive() != 0:
                 return obj.varsize() + 3  # account for three extra bytes with
                                           # primitive idx
@@ -1004,8 +1013,8 @@ class SpurImageWriter(object):
             self.reserve(self.space.w_false)
             self.reserve(self.space.w_true)
             # free list object. we need a word array kind of thing. Bitmaps are like that
-            self.reserve(model.W_WordsObject(self.space, self.space.w_Bitmap, self.word_size * 8))
-            self.hidden_roots = model.W_PointersObject(self.space, self.space.w_Array, 2**12 + 8)
+            self.reserve(W_WordsObject(self.space, self.space.w_Bitmap, self.word_size * 8))
+            self.hidden_roots = W_PointersObject(self.space, self.space.w_Array, 2**12 + 8)
             self.reserve(self.hidden_roots)
             self.reserve(self.image.special_objects)
             self.trace_until_finish()
@@ -1074,7 +1083,7 @@ class SpurImageWriter(object):
         minoridx = classhash & ((1 << 10) - 1)
         page = self.hidden_roots.fetch(self.space, majoridx)
         if page.is_nil(self.space):
-            page = model.W_PointersObject(self.space, self.space.w_Array, 2**10)
+            page = W_PointersObject(self.space, self.space.w_Array, 2**10)
             self.hidden_roots.store(self.space, majoridx, page)
         # XXX: TODO: Why does this happen??
         # assert page.fetch(self.space, minoridx).is_nil(self.space)
@@ -1093,11 +1102,11 @@ class SpurImageWriter(object):
 
         assert self.f.tell() == (oop + (2 * self.word_size))
 
-        if isinstance(obj, model.W_BytesObject) or isinstance(obj, model.W_LargePositiveInteger1Word):
+        if isinstance(obj, W_BytesObject) or isinstance(obj, W_LargePositiveInteger1Word):
             self.write_bytes_object(obj)
-        elif isinstance(obj, model.W_WordsObject) or isinstance(obj, model_display.W_DisplayBitmap) or isinstance(obj, model.W_Float):
+        elif isinstance(obj, W_WordsObject) or isinstance(obj, W_DisplayBitmap) or isinstance(obj, W_Float):
             self.write_words_object(obj)
-        elif isinstance(obj, model.W_CompiledMethod):
+        elif isinstance(obj, W_CompiledMethod):
             self.write_compiled_method(obj)
         else:
             self.write_pointers_object(obj)
@@ -1107,7 +1116,7 @@ class SpurImageWriter(object):
         assert self.f.tell() == oop + length * self.word_size + padding
 
     def reserve(self, obj):
-        if isinstance(obj, model.W_SmallInteger):
+        if isinstance(obj, W_SmallInteger):
             newoop = 0
             if obj.value >= 0:
                 if obj.value <= constants.TAGGED_MAXINT:
@@ -1120,7 +1129,7 @@ class SpurImageWriter(object):
                 else:
                     return self.reserve(self.space.wrap_large_number(r_ulonglong(obj.value), self.space.w_LargeNegativeInteger))
             return (newoop, 0, 0, 0, 0)
-        elif isinstance(obj, model.W_Character):
+        elif isinstance(obj, W_Character):
             assert obj.value < constants.TAGGED_MAXINT
             return ((obj.value << 2) + 0b10, 0, 0, 0, 0)
         else:
@@ -1242,7 +1251,7 @@ class SpurImageWriter(object):
         wordlen = size
         fmt = 0
         w_fmt = Class.fetch(self.space, constants.CLASS_FORMAT_INDEX)
-        assert isinstance(w_fmt, model.W_SmallInteger)
+        assert isinstance(w_fmt, W_SmallInteger)
         if self.space.is_spur.is_set():
             fmt = (w_fmt.value >> 16) & 0x1f
         else:

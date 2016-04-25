@@ -1,10 +1,17 @@
 #! /usr/bin/env python
-import sys, time, os
-from rpython.jit.codewriter.policy import JitPolicy
-from rpython.rlib import jit, rpath, objectmodel, streamio
-from rsqueakvm import model, interpreter, squeakimage, objspace, wrapper, error
+import sys
+import time
+import os
+
+from rsqueakvm import interpreter, squeakimage, objspace, wrapper, error
+from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.plugins.simulation import SIMULATE_PRIMITIVE_SELECTOR
 from rsqueakvm.util import system
+
+from rpython.jit.codewriter.policy import JitPolicy
+from rpython.rlib import jit, rpath, objectmodel, streamio
+
 
 sys.setrecursionlimit(15000)
 
@@ -445,7 +452,7 @@ def compile_code(interp, w_receiver, code):
             space.w_nil]
         )
         # TODO - is this expected in every image?
-        if not isinstance(w_result, model.W_BytesObject) or space.unwrap_string(w_result) != selector:
+        if not isinstance(w_result, W_BytesObject) or space.unwrap_string(w_result) != selector:
             raise error.Exit("Unexpected compilation result (probably failed to compile): %s" % result_string(w_result))
     space.suppress_process_switch.deactivate()
 
@@ -461,8 +468,8 @@ def create_context(interp, w_receiver, selector, stringarg):
 def create_process(interp, s_frame):
     space = interp.space
     w_active_process = wrapper.scheduler(space).active_process()
-    assert isinstance(w_active_process, model.W_PointersObject)
-    w_benchmark_proc = model.W_PointersObject(
+    assert isinstance(w_active_process, W_PointersObject)
+    w_benchmark_proc = W_PointersObject(
         space, w_active_process.getclass(space), w_active_process.size()
     )
     if interp.image.version.has_closures:
@@ -482,7 +489,7 @@ def active_context(space):
     w_active_process = wrapper.scheduler(space).active_process()
     active_process = wrapper.ProcessWrapper(space, w_active_process)
     w_active_context = active_process.suspended_context()
-    assert isinstance(w_active_context, model.W_PointersObject)
+    assert isinstance(w_active_context, W_PointersObject)
     active_process.store_suspended_context(space.w_nil)
     return w_active_context.as_context_get_shadow(space)
 

@@ -1,9 +1,15 @@
-import py, os, math, time
-from rsqueakvm import model, model_display, storage_contexts, constants, primitives, wrapper, display
+import py
+import os
+
+from rsqueakvm import constants, primitives
+from rsqueakvm.model.display import W_DisplayBitmap
+from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.model.numeric import W_LargePositiveInteger1Word
+from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.primitives import prim_table, PrimitiveFailedError
-from rpython.rlib.rfloat import isinf, isnan
-from rpython.rlib.rarithmetic import intmask, r_uint
+
 from rpython.rtyper.lltypesystem import lltype, rffi
+
 from .util import create_space, copy_to_module, cleanup_module, TestInterpreter, very_slow_test
 
 IMAGENAME = "anImage.image"
@@ -29,7 +35,7 @@ def prim(code, stack, context = None):
     return _prim(space, code, stack, context)
 
 def external_call(module_name, method_name, stack):
-    w_description = model.W_PointersObject(space, space.classtable['w_Array'], 2)
+    w_description = W_PointersObject(space, space.classtable['w_Array'], 2)
     w_description.atput0(space, 0, space.w(module_name))
     w_description.atput0(space, 1, space.w(method_name))
     context = new_frame("<not called>", [w_description], stack[0], stack[1:])[0]
@@ -111,7 +117,7 @@ def test_fileplugin_filewrite_bytes(monkeypatch):
         return 4
     monkeypatch.setattr(os, "write", write)
 
-    content = model.W_BytesObject(space, space.w_String, 4)
+    content = W_BytesObject(space, space.w_String, 4)
     content.bytes = ["a", "b", "c", "d"]
     try:
         stack = [space.w(1), space.w(1), content, space.w(1), space.w(4)]
@@ -126,7 +132,7 @@ def test_fileplugin_filewrite_words(monkeypatch):
         return 4
     monkeypatch.setattr(os, "write", write)
 
-    content = model.W_WordsObject(space, space.w_String, 1)
+    content = W_WordsObject(space, space.w_String, 1)
     content.words = [rffi.r_uint(1633837924)]
     try:
         stack = [space.w(1), space.w(1), content, space.w(1), space.w(1)]
@@ -156,7 +162,7 @@ def test_fileplugin_filewrite_largeposint(monkeypatch):
         return 4
     monkeypatch.setattr(os, "write", write)
 
-    content = model.W_LargePositiveInteger1Word(1633837924)
+    content = W_LargePositiveInteger1Word(1633837924)
     try:
         stack = [space.w(1), space.w(1), content, space.w(1), space.w(4)]
         w_c = external_call('FilePlugin', 'primitiveFileWrite', stack)
@@ -170,7 +176,7 @@ def test_fileplugin_filewrite_bitmap(monkeypatch):
         return 4
     monkeypatch.setattr(os, "write", write)
 
-    content = model_display.W_DisplayBitmap(space, 1, 32)
+    content = W_DisplayBitmap(space, 1, 32)
     content._real_depth_buffer[0] = rffi.r_uint(1633837924)
     try:
         stack = [space.w(1), space.w(1), content, space.w(1), space.w(1)]

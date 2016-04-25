@@ -1,6 +1,12 @@
-import py, math
-from rsqueakvm import model, constants, storage_contexts, wrapper, primitives, interpreter, error
+import math
+
+from rsqueakvm import constants, storage_contexts, wrapper, primitives, error
+from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargePositiveInteger1Word
+from rsqueakvm.model.variable import W_BytesObject
+
 from .util import read_image, open_reader, copy_to_module, cleanup_module, TestInterpreter, slow_test, very_slow_test
+
 
 def setup_module():
     space, interp, image, reader = read_image("mini.image")
@@ -64,7 +70,7 @@ def test_float_class_size():
 def test_float_class_name():
     w_float_class = get_float_class()
     w_float_class_name = w_float_class.fetch(space, 6)
-    assert isinstance(w_float_class_name, model.W_BytesObject)
+    assert isinstance(w_float_class_name, W_BytesObject)
     assert w_float_class_name.bytes == list("Float")
 
 # TODO - many of these test would belong in test_model.py
@@ -183,7 +189,7 @@ def test_special_objects0():
 def _test_lookup_abs_in_integer(interp):
     w_abs = interp.perform(interp.space.w("abs"), "asSymbol")
     for value in [10, -3, 0]:
-        w_object = model.W_SmallInteger(value)
+        w_object = W_SmallInteger(value)
         w_res = interp.perform(w_object, w_selector=w_abs)
         assert w_res.value == abs(value)
 
@@ -226,24 +232,24 @@ def test_create_new_symbol_new_with_arg0():
     w_Symbol = w_dnu.getclass(space)
     w_res = perform(w_Symbol, "new:", w(0))
     assert w_res.getclass(space).is_same_object(w_Symbol)
-    assert isinstance(w_res, model.W_BytesObject)
+    assert isinstance(w_res, W_BytesObject)
     assert w_res.size() == 0
 
 def test_pi_as_w_float():
     w_result = perform(interp.space.w_Float, "pi")
     assert w_result is not None
-    assert isinstance(w_result, model.W_Float)
+    assert isinstance(w_result, W_Float)
     assert w_result.value == math.pi
 
 def test_new_float_as_w_float():
     w_result = perform(interp.space.w_Float, "new")
     assert w_result is not None
-    assert isinstance(w_result, model.W_Float)
+    assert isinstance(w_result, W_Float)
 
 def test_existing_large_positive_integer_as_W_LargePositiveInteger1Word():
     w_result = perform(interp.space.w_Float, "pi")
     assert w_result is not None
-    assert isinstance(w_result, model.W_Float)
+    assert isinstance(w_result, W_Float)
     assert w_result.value == math.pi
 
 def test_large_positive_integer_operation_add():
@@ -251,37 +257,37 @@ def test_large_positive_integer_operation_add():
     w_result = perform(w_result, "+", interp.space.wrap_int(2 * interp.space.unwrap_int(w_result)))
     assert w_result is not None
     if not constants.IS_64BIT:
-        assert isinstance(w_result, model.W_LargePositiveInteger1Word)
+        assert isinstance(w_result, W_LargePositiveInteger1Word)
     else:
-        assert isinstance(w_result, model.W_SmallInteger)
+        assert isinstance(w_result, W_SmallInteger)
 
 def test_large_positive_integer_operation_times():
     w_result = perform(interp.space.w_SmallInteger, "maxVal")
     w_result = perform(w_result, "*", w_result)
     assert w_result is not None
     if not constants.IS_64BIT:
-        assert isinstance(w_result, model.W_BytesObject)
+        assert isinstance(w_result, W_BytesObject)
     else:
-        assert isinstance(w_result, model.W_SmallInteger)
+        assert isinstance(w_result, W_SmallInteger)
 
 def test_doesNotUnderstand():
     w_dnu = interp.space.objtable["w_doesNotUnderstand"]
-    assert isinstance(w_dnu, model.W_BytesObject)
+    assert isinstance(w_dnu, W_BytesObject)
     assert w_dnu.unwrap_string(None) == "doesNotUnderstand:"
 
 def test_mustBeBoolean():
     w_mbb = interp.space.objtable["w_mustBeBoolean"]
-    assert isinstance(w_mbb, model.W_BytesObject)
+    assert isinstance(w_mbb, W_BytesObject)
     assert w_mbb.unwrap_string(None) == "mustBeBoolean"
 
 def test_Message():
     w_message_cls = interp.space.w_Message
     assert w_message_cls is interp.space.classtable["w_Message"]
-    assert isinstance(w_message_cls, model.W_PointersObject)
+    assert isinstance(w_message_cls, W_PointersObject)
     s_message_cls = w_message_cls.as_class_get_shadow(interp.space)
     assert s_message_cls.getname() == "Message"
     w_message = s_message_cls.new()
-    assert isinstance(w_message, model.W_PointersObject)
+    assert isinstance(w_message, W_PointersObject)
 
 def test_primitive_perform_with_args():
     from rsqueakvm.test.test_primitives import _prim
@@ -316,11 +322,11 @@ def test_step_run_something():
 def test_run_doesNotUnderstand():
     space, interp = runningSomethingImage()
     w_result = interp.perform(interp.space.wrap_int(0), "runningADNU")
-    assert isinstance(w_result, model.W_BytesObject)
+    assert isinstance(w_result, W_BytesObject)
     assert w_result.unwrap_string(None) == "foobarThis:doesNotExist:('pypy' 'heya' )"
 
 def test_run_mustBeBoolean():
     space, interp = runningSomethingImage()
     w_result = interp.perform(interp.space.wrap_int(0), "runningMustBeBoolean")
-    assert isinstance(w_result, model.W_BytesObject)
+    assert isinstance(w_result, W_BytesObject)
     assert w_result.unwrap_string(None) == "mustBeBoolean has been called"

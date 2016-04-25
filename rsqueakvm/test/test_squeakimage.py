@@ -1,10 +1,17 @@
 # -*- coding: utf-8 -*-
 import pytest
-import py, StringIO
-from struct import pack, unpack
+import py
+import StringIO
+from struct import pack
+
 from rsqueakvm import squeakimage, error
-from rsqueakvm import model
+from rsqueakvm.model.character import W_Character
+from rsqueakvm.model.compiled_methods import W_CompiledMethod
+from rsqueakvm.model.numeric import W_SmallInteger
+from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.util.stream import chrs2int, chrs2long, swapped_chrs2long
+
 from .util import create_space
 
 # ----- helpers ----------------------------------------------
@@ -185,7 +192,7 @@ def test_object_format_v3(monkeypatch):
     g_class_mock = squeakimage.GenericObject()
     from rpython.rlib import objectmodel
     from rsqueakvm.storage_classes import ClassShadow
-    w_class_mock = objectmodel.instantiate(model.W_PointersObject)
+    w_class_mock = objectmodel.instantiate(W_PointersObject)
     w_class_mock.strategy = ClassShadow(None, w_class_mock, 3, None)
     w_class_mock.strategy._instance_size = 0
     g_class_mock.w_object = w_class_mock
@@ -223,35 +230,35 @@ def test_object_format_v3(monkeypatch):
                    # of literal oops specified in method header,
                    followed by indexable bytes (same interpretation of low 2 bits as above)
     """
-    w_obj, _ = assert_w_object_type(0, model.W_PointersObject)
+    w_obj, _ = assert_w_object_type(0, W_PointersObject)
     assert w_obj.size() == 0
     body_42_and_1 = ints2str(joinbits([1, 42], [1, 31]), joinbits([1, 1], [1, 31]))
-    w_obj, space = assert_w_object_type(1, model.W_PointersObject, length=2, body=body_42_and_1)
+    w_obj, space = assert_w_object_type(1, W_PointersObject, length=2, body=body_42_and_1)
     assert w_obj.size() == 2
     assert space.unwrap_int(w_obj.fetch(space, 0)) == 42
     assert space.unwrap_int(w_obj.fetch(space, 1)) == 1
-    w_obj, space = assert_w_object_type(2, model.W_PointersObject, length=2,
+    w_obj, space = assert_w_object_type(2, W_PointersObject, length=2,
             body=body_42_and_1)
     assert w_obj.size() == 2
     assert space.unwrap_int(w_obj.fetch(space, 0)) == 42
     assert space.unwrap_int(w_obj.fetch(space, 1)) == 1
-    assert_w_object_type(3, model.W_PointersObject, length=2, body=body_42_and_1)
-    w_obj, _ = assert_w_object_type(4, model.W_PointersObject, length=2,
+    assert_w_object_type(3, W_PointersObject, length=2, body=body_42_and_1)
+    w_obj, _ = assert_w_object_type(4, W_PointersObject, length=2,
             body=body_42_and_1)
     assert w_obj.is_weak()
     assert w_obj.size() == 2
     assert space.unwrap_int(w_obj.fetch(space, 0)) == 42
     assert space.unwrap_int(w_obj.fetch(space, 1)) == 1
-    w_obj, space = assert_w_object_type(6, model.W_WordsObject, length=2,
+    w_obj, space = assert_w_object_type(6, W_WordsObject, length=2,
             body=body_42_and_1)
     assert w_obj.size() == 2
     assert w_obj.getword(0) == 42 << 1 | 1
     assert w_obj.getword(1) == 1 << 1 | 1
-    w_obj, space = assert_w_object_type(8, model.W_BytesObject, length=2,
+    w_obj, space = assert_w_object_type(8, W_BytesObject, length=2,
             body=body_42_and_1)
     assert w_obj.size() == 8 # 2 * 32 bit == 8 * 8 bit
     assert space.unwrap_string(w_obj) == body_42_and_1
-    w_obj, space = assert_w_object_type(12, model.W_CompiledMethod, length=2,
+    w_obj, space = assert_w_object_type(12, W_CompiledMethod, length=2,
             body=body_42_and_1)
     assert w_obj.size() == 8
 
@@ -289,7 +296,7 @@ def test_object_format_spur(monkeypatch):
     g_class_mock = squeakimage.GenericObject()
     from rpython.rlib import objectmodel
     from rsqueakvm.storage_classes import ClassShadow
-    w_class_mock = objectmodel.instantiate(model.W_PointersObject)
+    w_class_mock = objectmodel.instantiate(W_PointersObject)
     w_class_mock.strategy = ClassShadow(None, w_class_mock, 3, None)
     w_class_mock.strategy._instance_size = 0
     g_class_mock.w_object = w_class_mock
@@ -311,31 +318,31 @@ def test_object_format_spur(monkeypatch):
         assert isinstance(w_object, expected_type)
         return w_object, r.space
     # 0 zero sized object
-    w_obj, space = assert_w_object_type(0, model.W_PointersObject, body=("\x00"*3+"\x01")*2)
+    w_obj, space = assert_w_object_type(0, W_PointersObject, body=("\x00"*3+"\x01")*2)
     # 1 fixed-size object with inst-vars
     body_1_to_9 = ints2str(*(joinbits([1, n], [1, 31]) for n in range(1, 10)))
-    w_obj, space = assert_w_object_type(1, model.W_PointersObject, length=2, body=body_1_to_9)
+    w_obj, space = assert_w_object_type(1, W_PointersObject, length=2, body=body_1_to_9)
     assert w_obj.size() == 2
     assert w_obj.fetch(space, 0) == space.wrap_int(1)
     assert w_obj.fetch(space, 1) == space.wrap_int(2)
     # 2 variable sized object without inst vars
-    w_obj, space = assert_w_object_type(2, model.W_PointersObject, length=2, body=body_1_to_9)
+    w_obj, space = assert_w_object_type(2, W_PointersObject, length=2, body=body_1_to_9)
     assert w_obj.size() == 2
     assert w_obj.fetch(space, 0) == space.wrap_int(1)
     assert w_obj.fetch(space, 1) == space.wrap_int(2)
     # 3 variable sized object with inst vars
-    w_obj, space = assert_w_object_type(3, model.W_PointersObject, length=2, body=body_1_to_9)
+    w_obj, space = assert_w_object_type(3, W_PointersObject, length=2, body=body_1_to_9)
     assert w_obj.size() == 2
     assert w_obj.fetch(space, 0) == space.wrap_int(1)
     assert w_obj.fetch(space, 1) == space.wrap_int(2)
     # 4 weak variable sized object with inst vars
-    w_obj, space = assert_w_object_type(4, model.W_PointersObject, length=2, body=body_1_to_9)
+    w_obj, space = assert_w_object_type(4, W_PointersObject, length=2, body=body_1_to_9)
     assert w_obj.is_weak()
     assert w_obj.size() == 2
     assert w_obj.fetch(space, 0) == space.wrap_int(1)
     assert w_obj.fetch(space, 1) == space.wrap_int(2)
     # 5 weak fixed sized object with inst vars (Ephemeron)
-    w_obj, space = assert_w_object_type(5, model.W_PointersObject, length=2, body=body_1_to_9)
+    w_obj, space = assert_w_object_type(5, W_PointersObject, length=2, body=body_1_to_9)
     assert w_obj.is_weak()
     assert w_obj.size() == 2
     assert w_obj.fetch(space, 0) == space.wrap_int(1)
@@ -344,30 +351,30 @@ def test_object_format_spur(monkeypatch):
     # 7 forwarding object, does not occur in images
     # 8 unused
     # 9 64 bit indexables
-    w_obj, space = assert_w_object_type(9, model.W_WordsObject, length=2, body=body_1_to_9)
+    w_obj, space = assert_w_object_type(9, W_WordsObject, length=2, body=body_1_to_9)
     # 64-bit not supported yet
     # assert w_obj.getlong(space, 0) == chrs2long(body_1_to_9[:8])
     # 10-11 32 bit indexables (11 unused in 32 bits)
-    w_obj, space = assert_w_object_type(10, model.W_WordsObject, length=2, body=body_1_to_9)
+    w_obj, space = assert_w_object_type(10, W_WordsObject, length=2, body=body_1_to_9)
     assert w_obj.size() == 2
     assert w_obj.getword(0) == chrs2int(body_1_to_9[:4])
     assert w_obj.getword(1) == chrs2int(body_1_to_9[4:8])
     # TODO: add tests for correct reading of 32 bit indexables with trailing slots (11)
     # 12-15 16 bit indexables (14,15 unused in 32 bits)
-    w_obj, space = assert_w_object_type(12, model.W_WordsObject, length=2, body=body_1_to_9)
+    w_obj, space = assert_w_object_type(12, W_WordsObject, length=2, body=body_1_to_9)
     # XXX assert w_obj.size() == 4
     # XXX assert w_obj.getword(0) == chrs2int("\x00\x00" + body_1_to_9[:2])
     # XXX assert w_obj.getword(1) == chrs2int("\x00\x00" + body_1_to_9[2:4])
     # TODO: add tests for correct reading of 16 bit indexables with trailing slots (13-15)
     # 16-23 8 bit indexables (20-23 unused in 32 bits)
-    w_obj, space = assert_w_object_type(18, model.W_BytesObject, length=2, body=body_1_to_9)
+    w_obj, space = assert_w_object_type(18, W_BytesObject, length=2, body=body_1_to_9)
     assert w_obj.size() == 6
     assert space.unwrap_string(w_obj) == body_1_to_9[:6]
     # TODO: add tests for correct reading of 8 bit indexables with trailing slots (17-23)
     # 24-31 compiled methods (28-31 unused in 32 bits)
     literals = [chrs2int(body_1_to_9[:4])]
     bytecodes = "\x00\x01\x02\x03" + "\x04\x05\x06\x07"
-    w_obj, space = assert_w_object_type(24, model.W_CompiledMethod, length=1+1+1,
+    w_obj, space = assert_w_object_type(24, W_CompiledMethod, length=1+1+1,
             body=ints2str(joinbits([1, 0, 0, 3, 2, 0, 1], [16,1,1,6,4,2,1]) << 1 | 1,
                 *literals) + bytecodes)
     assert w_obj.literals[0] == space.wrap_int(1)
@@ -377,7 +384,7 @@ def test_object_format_spur(monkeypatch):
 @pytest.fixture
 def reader_mock_v3(monkeypatch, space):
     from rsqueakvm.squeakimage import GenericObject, NonSpurReader
-    from rsqueakvm.model import W_PointersObject
+    from rsqueakvm.model.pointers import W_PointersObject
     from rpython.rlib import objectmodel
     class FakeVersion:
         is_big_endian = True
@@ -391,7 +398,7 @@ def reader_mock_v3(monkeypatch, space):
 @pytest.fixture
 def reader_mock_spur(monkeypatch, space):
     from rsqueakvm.squeakimage import GenericObject, SpurReader
-    from rsqueakvm.model import W_PointersObject
+    from rsqueakvm.model.pointers import W_PointersObject
     from rpython.rlib import objectmodel
     class FakeVersion:
         is_big_endian = True
@@ -433,7 +440,7 @@ def test_tagged_int_helper():
 
 def test_char_array_instantiation(space, reader_mock_spur):
     from rsqueakvm.squeakimage import ImageChunk
-    from rsqueakvm.model import W_Character
+    from rsqueakvm.model.character import W_Character
     # given
     array_chunk = ImageChunk(size=1, format=1, classid=1, hash=0,
             data=[tagged_chr(ord('a'))])
@@ -447,7 +454,7 @@ def test_char_array_instantiation(space, reader_mock_spur):
 
 def test_char_array_instantiation_with_high_chars(space, reader_mock_spur):
     from rsqueakvm.squeakimage import ImageChunk
-    from rsqueakvm.model import W_Character
+    from rsqueakvm.model.character import W_Character
     # given
     array_chunk = ImageChunk(size=1, format=1, classid=1, hash=0,
             data=[tagged_chr(0x10ffff)])
@@ -461,7 +468,7 @@ def test_char_array_instantiation_with_high_chars(space, reader_mock_spur):
 
 def test_v3_compiled_method_instantiation(space, reader_mock_v3):
     from rsqueakvm.squeakimage import ImageChunk
-    from rsqueakvm.model import W_CompiledMethod
+    from rsqueakvm.model.compiled_methods import W_CompiledMethod
     # given
     cm_chunk = ImageChunk(size=4, format=12, classid=1, hash=0,
             data=[tagged_int(joinbits([0,2,0,1,1,0,0], [9,8,1,6,4,1,1])),
@@ -480,7 +487,7 @@ def test_v3_compiled_method_instantiation(space, reader_mock_v3):
 
 def test_v3_compiled_method_with_primitive_instantiation(space, reader_mock_v3):
     from rsqueakvm.squeakimage import ImageChunk
-    from rsqueakvm.model import W_CompiledMethod
+    from rsqueakvm.model.compiled_methods import W_CompiledMethod
     # given
     cm_chunk = ImageChunk(size=4, format=12, classid=1, hash=0,
             data=[tagged_int(joinbits([500,2,0,1,1,1,0], [9,8,1,6,4,1,1])),
@@ -499,7 +506,7 @@ def test_v3_compiled_method_with_primitive_instantiation(space, reader_mock_v3):
 
 def test_spur_compiled_method_instantiation(space, reader_mock_spur):
     from rsqueakvm.squeakimage import ImageChunk
-    from rsqueakvm.model import W_CompiledMethod
+    from rsqueakvm.model.compiled_methods import W_CompiledMethod
     # given
     cm_chunk = ImageChunk(size=4, format=24, classid=1, hash=0,
             data=[tagged_int(joinbits([2,0,0,0,1,1,0,0], [15,1,1,1,6,4,2,1])),
@@ -518,7 +525,7 @@ def test_spur_compiled_method_instantiation(space, reader_mock_spur):
 
 def test_spur_compiled_method_with_primitive_instantiation(space, reader_mock_spur):
     from rsqueakvm.squeakimage import ImageChunk
-    from rsqueakvm.model import W_CompiledMethod
+    from rsqueakvm.model.compiled_methods import W_CompiledMethod
     # given
     cm_chunk = ImageChunk(size=4, format=24, classid=1, hash=0,
             data=[tagged_int(joinbits([2,0,1,0,1,1,0,0], [15,1,1,1,6,4,2,1])),
@@ -813,11 +820,11 @@ def test_simple_spur_image_with_segments():
     assert theArray.fetch(r.space, 0).is_same_object(r.space.w_nil)
     assert theArray.fetch(r.space, 1).is_same_object(r.space.w_false)
     assert theArray.fetch(r.space, 2).is_same_object(r.space.w_true)
-    assert isinstance(theArray.fetch(r.space, 3), model.W_SmallInteger)
+    assert isinstance(theArray.fetch(r.space, 3), W_SmallInteger)
     assert r.space.unwrap_int(theArray.fetch(r.space, 3)) == 42
-    assert isinstance(theArray.fetch(r.space, 4), model.W_Character)
+    assert isinstance(theArray.fetch(r.space, 4), W_Character)
     assert r.space.unwrap_char_as_byte(theArray.fetch(r.space, 4)) == 'p'
-    assert isinstance(theArray.fetch(r.space, 5), model.W_Character)
+    assert isinstance(theArray.fetch(r.space, 5), W_Character)
     # we do not support unicode yet
     #assert r.space.unwrap_char(theArray.fetch(r.space, 5)) == u'ü'
     assert theArray.fetch(r.space, 6).gethash() == 4040

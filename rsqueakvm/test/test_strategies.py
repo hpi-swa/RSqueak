@@ -1,5 +1,7 @@
+from rsqueakvm import storage
+from rsqueakvm.model.numeric import W_Float, W_SmallInteger
+from rsqueakvm.model.pointers import W_PointersObject
 
-from rsqueakvm import model, storage
 from .util import create_space_interp, copy_to_module, cleanup_module
 
 def setup_module():
@@ -12,7 +14,7 @@ def teardown_module():
     cleanup_module(__name__)
 
 def arr(size):
-    return model.W_PointersObject(space, class_Array, size)
+    return W_PointersObject(space, class_Array, size)
 
 def list_arr(size):
     a = arr(size)
@@ -35,10 +37,10 @@ def check_arr(arr, expected):
         if expected[i] == w_nil:
             assert w_val.is_nil(space)
         elif isinstance(expected[i], int):
-            assert isinstance(w_val, model.W_SmallInteger)
+            assert isinstance(w_val, W_SmallInteger)
             assert space.unwrap_int(w_val) == expected[i]
         elif isinstance(expected[i], float):
-            assert isinstance(w_val, model.W_Float)
+            assert isinstance(w_val, W_Float)
             assert space.unwrap_float(w_val) == expected[i]
         else:
             assert False, "Unexpected array of expected values."

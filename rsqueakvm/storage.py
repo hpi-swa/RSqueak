@@ -1,7 +1,14 @@
 
-import weakref, sys
-from rsqueakvm import model, constants
+import weakref
+import sys
+
+from rsqueakvm import constants
+from rsqueakvm.model.character import W_Character
+from rsqueakvm.model.numeric import W_Float, W_SmallInteger
+from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.util.version import VersionMixin, constant_for_version_arg2
+
 from rpython.rlib import jit
 from rpython.rlib.objectmodel import import_from_mixin
 from rpython.rlib.rstrategies import rstrategies as rstrat
@@ -121,7 +128,7 @@ class ListEntry(object):
 
     @staticmethod
     def is_strong_anyway(value, is_instvar):
-        return is_instvar or isinstance(value, model.W_SmallInteger) or isinstance(value, model.W_BytesObject)
+        return is_instvar or isinstance(value, W_SmallInteger) or isinstance(value, W_BytesObject)
 
 class StrongListEntry(ListEntry):
     def __init__(self, value):
@@ -200,7 +207,7 @@ WeakListStrategy.instantiate_type = WeakListStrategy
 class SmallIntegerOrNilStrategy(SimpleStorageStrategy):
     repr_classname = "SmallIntegerOrNilStrategy"
     import_from_mixin(rstrat.TaggingStrategy)
-    contained_type = model.W_SmallInteger
+    contained_type = W_SmallInteger
     def wrap(self, val): return self.space.wrap_int(val)
     def unwrap(self, w_val): return self.space.unwrap_int(w_val)
     def wrapped_tagged_value(self): return self.space.w_nil
@@ -211,11 +218,11 @@ SmallIntegerOrNilStrategy.instantiate_type = SmallIntegerOrNilStrategy
 class CharacterOrNilStrategy(SimpleStorageStrategy):
     repr_classname = "CharacterOrNilStrategy"
     import_from_mixin(rstrat.TaggingStrategy)
-    contained_type = model.W_Character
-    def wrap(self, val): return model.W_Character(val)
+    contained_type = W_Character
+    def wrap(self, val): return W_Character(val)
     def unwrap(self, w_val):
         # XXX why would you think, this could be a W_Object?
-        assert isinstance(w_val, model.W_Character)
+        assert isinstance(w_val, W_Character)
         return w_val.value
     def wrapped_tagged_value(self): return self.space.w_nil
     def unwrapped_tagged_value(self): return constants.MAXINT
@@ -225,7 +232,7 @@ CharacterOrNilStrategy.instantiate_type = CharacterOrNilStrategy
 class FloatOrNilStrategy(SimpleStorageStrategy):
     repr_classname = "FloatOrNilStrategy"
     import_from_mixin(rstrat.TaggingStrategy)
-    contained_type = model.W_Float
+    contained_type = W_Float
     tag_float = sys.float_info.max
     def wrap(self, val): return self.space.wrap_float(val)
     def unwrap(self, w_val): return self.space.unwrap_float(w_val)
@@ -378,7 +385,7 @@ class AbstractGenericShadow(ListStrategy):
     import_from_mixin(ShadowMixin)
     def __init__(self, space, w_self, size, w_class):
         ListStrategy.__init__(self, space, w_self, size, w_class)
-        assert w_self is None or isinstance(w_self, model.W_PointersObject)
+        assert w_self is None or isinstance(w_self, W_PointersObject)
         self._w_self = w_self
     def _convert_storage_from(self, w_self, previous_strategy):
         # Subclasses need a store() invokation for every field.
