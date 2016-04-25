@@ -4,6 +4,7 @@ from rpython.rlib.rarithmetic import intmask, r_uint
 from rpython.rtyper.lltypesystem import lltype, rffi
 from rsdl import RSDL
 from rsqueakvm import display, key_constants
+from rsqueakvm.util import system
 
 @pytest.fixture(autouse=True)
 def stub_sdl(monkeypatch):
@@ -149,8 +150,12 @@ def test_modifiers_do_not_cause_keychar_event(sut, mocked_sdl_event_queue, stub_
     assert_key(RSDL.K_RSHIFT, RSDL.KMOD_RSHIFT, key_constants.SHIFT, display.ShiftKeyBit)
     assert_key(RSDL.K_LCTRL, RSDL.KMOD_LCTRL, key_constants.CTRL, display.CtrlKeyBit)
     assert_key(RSDL.K_RCTRL, RSDL.KMOD_RCTRL, key_constants.CTRL, display.CtrlKeyBit)
-    assert_key(RSDL.K_LALT, RSDL.KMOD_LALT, key_constants.COMMAND, display.CommandKeyBit)
-    assert_key(RSDL.K_RALT, RSDL.KMOD_RALT, key_constants.COMMAND, display.CommandKeyBit)
+    if system.IS_DARWIN:
+        assert_key(RSDL.K_LGUI, RSDL.KMOD_LGUI, key_constants.COMMAND, display.CommandKeyBit)
+        assert_key(RSDL.K_RGUI, RSDL.KMOD_RGUI, key_constants.COMMAND, display.CommandKeyBit)
+    else:
+        assert_key(RSDL.K_LALT, RSDL.KMOD_LALT, key_constants.COMMAND, display.CommandKeyBit)
+        assert_key(RSDL.K_RALT, RSDL.KMOD_RALT, key_constants.COMMAND, display.CommandKeyBit)
     assert_key(RSDL.K_LGUI, RSDL.KMOD_NONE, None, None)
     assert_key(RSDL.K_RGUI, RSDL.KMOD_NONE, None, None)
 
