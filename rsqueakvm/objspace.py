@@ -367,15 +367,21 @@ class ObjSpace(object):
     def executable_path(self):
         return self._executable_path.get()
 
+    def window_title(self):
+        title = self.title.get()
+        imgpath = self.get_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX)
+        if len(title) == 0:
+            title = "RSqueak (%s)" % imgpath
+        else:
+            title = "%s (%s)" % (self.title.get(), imgpath)
+        return title
+
     def display(self):
         disp = self._display.get()
         if disp is None:
             # Create lazy to allow headless execution.
-            title = self.title.get()
-            if len(title) == 0:
-                title = self.get_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX)
             disp = display.SDLDisplay(
-                title,
+                self.window_title(),
                 self.highdpi.is_set(),
                 self.altf4quit.is_set()
             )
