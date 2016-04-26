@@ -62,7 +62,7 @@ def _usage(argv):
             -r|--run <code>  - Code will be compiled and executed in
                                headless mode, result printed.
             -m|--method <selector>
-                             - Selector will be sent to a SmallInteger in
+                             - Selector will be sent to nil in
                                headless mode, result printed.
             -n|--num <int>   - Only with -m or -r. SmallInteger to be used as
                                receiver (default: nil).
