@@ -2,11 +2,12 @@ import os
 import stat
 import sys
 
+from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.display import W_DisplayBitmap
 from rsqueakvm.model.numeric import W_Float, W_LargePositiveInteger1Word
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.plugins.plugin import Plugin
-from rsqueakvm.primitives import PrimitiveFailedError, index1_0
+from rsqueakvm.primitives import index1_0
 from rsqueakvm.util.system import IS_WINDOWS
 
 from rpython.rlib import jit, rarithmetic

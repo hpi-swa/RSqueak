@@ -1,10 +1,12 @@
 import py
 import time
 
-from rsqueakvm import constants, primitives
+from rsqueakvm import constants
 from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod
 from rsqueakvm.model.variable import W_BytesObject
-from rsqueakvm.primitives import prim_table, PrimitiveFailedError
+from rsqueakvm.primitives import prim_table
+from rsqueakvm.primitives.bytecodes import EXTERNAL_CALL
+from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.plugins import socket as socket
 
 from .util import create_space, copy_to_module, cleanup_module, TestInterpreter, very_slow_test
@@ -29,12 +31,12 @@ def _prim(space, name, module, stack, context = None):
     interp, w_frame, argument_count = mock(space, stack, context)
     orig_stack = list(w_frame.as_context_get_shadow(space).stack())
     prim_meth = W_PreSpurCompiledMethod(space, 0, header=17045052)
-    prim_meth._primitive = primitives.EXTERNAL_CALL
+    prim_meth._primitive = EXTERNAL_CALL
     prim_meth.argsize = argument_count - 1
     descr = space.wrap_list([space.wrap_string(module), space.wrap_string(name)])
     prim_meth.literalatput0(space, 1, descr)
     def call():
-        prim_table[primitives.EXTERNAL_CALL](interp, w_frame.as_context_get_shadow(space), argument_count-1, prim_meth)
+        prim_table[EXTERNAL_CALL](interp, w_frame.as_context_get_shadow(space), argument_count-1, prim_meth)
     return w_frame, orig_stack, call
 
 def prim(name, module=None, stack = None, context = None):

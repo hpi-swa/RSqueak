@@ -1,8 +1,9 @@
 import operator
 
-from rsqueakvm import constants, primitives
+from rsqueakvm import constants
 from rsqueakvm.model.numeric import W_LargePositiveInteger1Word
 from rsqueakvm.model.variable import W_BytesObject
+from rsqueakvm.primitives import prim_holder
 from rsqueakvm.test.test_primitives import MockFrame
 
 from rpython.rlib.rarithmetic import intmask, r_uint
@@ -23,7 +24,7 @@ def teardown_module():
 def perform_primitive(rcvr, w_selector, *args):
     code = rcvr.class_shadow(space).lookup(w_selector).primitive()
     assert code
-    func = primitives.prim_holder.prim_table[code]
+    func = prim_holder.prim_table[code]
     s_frame = MockFrame(space, [rcvr] + list(args)).as_context_get_shadow(space)
     func(interp, s_frame, len(args))
     return s_frame.pop()

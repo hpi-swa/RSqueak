@@ -561,6 +561,27 @@ class ContextPartShadow(AbstractStrategy):
             desc = self.short_str()
         return padding + ' ', '%s\n%s%s' % (ret_str, padding, desc)
 
+    def exitFromHeadlessExecution(self, selector="", w_message=None):
+        if not objectmodel.we_are_translated():
+            if getattr(self.space, "testing", False):
+                return  # During Testing
+            import pdb; pdb.set_trace()
+        print "== Receiver: %s" % self.w_receiver().as_repr_string()
+        if isinstance(w_message, W_PointersObject):
+            fields = w_message.fetch_all(self.space)
+            if len(fields) >= 1:
+                print "== Selector: %s" % fields[0].selector_string()
+            if len(fields) >= 2:
+                w_args = fields[1]
+                if isinstance(w_args, W_PointersObject):
+                    arg_strings = [w_arg.selector_string() for w_arg in w_args.fetch_all(self.space)]
+                    if len(arg_strings) > 0:
+                        print "== Arguments: %s" % ', '.join(arg_strings)
+        print "== Smalltalk Stack:%s" % self.print_stack()
+        if selector == "":
+            selector = self.w_method().lookup_selector
+        raise error.Exit("Unhandled %s in headless mode." % selector)
+
 
 class __extend__(ContextPartShadow):
     # Extensions for --- BlockContextShadow ---

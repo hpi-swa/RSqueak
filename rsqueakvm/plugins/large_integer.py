@@ -1,11 +1,9 @@
-from rsqueakvm.primitives import prim_table, \
-    BIT_AND, BIT_OR, BIT_XOR, BIT_SHIFT, ADD, SUBTRACT, DIVIDE, MULTIPLY, \
-    pos_32bit_int
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.plugins.plugin import Plugin
+from rsqueakvm.primitives import prim_table
+from rsqueakvm.primitives.bytecodes import *
 
 LargeIntegerPlugin = Plugin()
-
 
 bitops = {
     'primDigitBitAnd': BIT_AND,
@@ -51,8 +49,8 @@ for name, primitive in ops.items():
             if 2 < argcount or argcount < 1:
                 raise PrimitiveFailedError
             rcvr = s_frame.peek(argcount).unwrap_longlong(interp.space)
-            arg =  s_frame.peek(argcount - 1).unwrap_longlong(interp.space)
-            if (rcvr  < 0 and arg >= 0) or (rcvr >= 0 and arg < 0):
+            arg = s_frame.peek(argcount - 1).unwrap_longlong(interp.space)
+            if (rcvr < 0 and arg >= 0) or (rcvr >= 0 and arg < 0):
                 raise PrimitiveFailedError
             return primfunc(interp, s_frame, argcount)
         func.func_name = name
