@@ -132,6 +132,9 @@ class SDLDisplay(object):
         else:
             RSDL.SetWindowFullscreen(self.window, 0)
 
+    def set_title(self, title):
+        RSDL.SetWindowTitle(self.window, title)
+
     def get_pixelbuffer(self):
         return jit.promote(rffi.cast(RSDL.Uint32P, self.get_plain_pixelbuffer()))
 

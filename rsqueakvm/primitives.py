@@ -1218,6 +1218,7 @@ def func(interp, s_frame, argument_count):
         w_arg = s_frame.pop()
         assert isinstance(w_arg, W_BytesObject)
         interp.space.set_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, interp.space.unwrap_string(w_arg))
+        interp.space.display().set_title(interp.space.window_title())
         return s_frame.pop()
     raise PrimitiveFailedError
 
