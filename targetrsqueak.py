@@ -279,14 +279,14 @@ class Config(object):
         path = self.path
         if path:
             if os.path.exists(path):
-                self.path = path
+                self.path = rpath.rabspath(path)
                 return
             exedir = self.get_exedir()
             if not exedir:
                 return
             path = rpath.rjoin(exedir, path)
             if os.path.exists(path):
-                self.path = path
+                self.path = rpath.rabspath(path)
                 return
         else:
             for filename in os.listdir(os.getcwd()):
