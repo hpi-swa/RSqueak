@@ -1722,9 +1722,17 @@ def func(interp, s_frame, w_block_ctx, args_w):
     s_block_ctx.reset_pc()
     return s_block_ctx
 
-@expose_primitive(PERFORM)
+@expose_primitive(PERFORM,
+                  no_result=True, clean_stack=False)
 def func(interp, s_frame, argcount):
-    raise PrimitiveFailedError()
+    if argcount == 1:
+        w_selector = s_frame.pop()
+        w_rcvr = s_frame.top()
+        return s_frame._sendSelector(
+            w_selector, 0, interp, w_rcvr,
+            w_rcvr.class_shadow(interp.space))
+    else:
+        raise PrimitiveFailedError
 
 @expose_primitive(PERFORM_WITH_ARGS,
                   unwrap_spec=[object, object, list],

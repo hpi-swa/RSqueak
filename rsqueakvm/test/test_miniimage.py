@@ -289,6 +289,19 @@ def test_Message():
     w_message = s_message_cls.new()
     assert isinstance(w_message, W_PointersObject)
 
+def test_primitive_perform():
+    from rsqueakvm.test.test_primitives import _prim
+    w_o = space.wrap_list([1, 2, 3])
+    w_methoddict = w_o.class_shadow(space).s_superclass().s_superclass().w_methoddict()
+    w_methoddict.as_methoddict_get_shadow(space).sync_method_cache()
+    selectors_w = w_methoddict.strategy.methoddict.keys()
+    w_sel = None
+    for sel in selectors_w:
+        if sel.unwrap_string(None) == 'size':
+            w_sel = sel
+    size = _prim(space, primitives.PERFORM, [w_o, w_sel])
+    assert size.value == 3
+
 def test_primitive_perform_with_args():
     from rsqueakvm.test.test_primitives import _prim
     w_o = space.wrap_list([1, 2, 3])
