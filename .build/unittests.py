@@ -17,7 +17,7 @@ SHOULD_RUN_FIRST = [
 if __name__ == "__main__":
     import pytest
     if not any("/test" in arg or "\\test" in arg for arg in sys.argv):
-        testdir = path.join(path.dirname(__file__), "..", "spyvm", "test")
+        testdir = path.join(path.dirname(__file__), "..", "rsqueakvm", "test")
         exitcode = 0
         args = sys.argv[:]
         for n in SHOULD_RUN_FIRST:

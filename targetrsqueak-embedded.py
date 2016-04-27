@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 import sys
 from rpython.jit.codewriter.policy import JitPolicy
-from spyvm import model, objspace, interpreter, squeakimage
+from rsqueakvm import model, objspace, interpreter, squeakimage
 
 # This loads an image file in advance and includes it in the
 # translation-output. At run-time, the defined selector is sent

@@ -23,8 +23,8 @@ conftest.option = o
 
 from rpython.rlib import jit
 from rpython.jit.metainterp.test.test_ajit import LLJitMixin
-from spyvm.test.util import import_bytecodes, read_image
-from spyvm import model, storage_contexts
+from rsqueakvm.test.util import import_bytecodes, read_image
+from rsqueakvm import model, storage_contexts
 import targetrsqueak as rsqueak
 
 sys.setrecursionlimit(10000000)
@@ -112,7 +112,7 @@ def main():
     # ===== First define which image we are going to use.
     # imagename = "minibluebookdebug.image"
     # imagename = "mini.image"
-    imagename = "../spyvm/test/images/jittest.image"
+    imagename = "../rsqueakvm/test/images/jittest.image"
     # imagename = "Squeak4.5-13702.image"
     # imagename = "Squeak4.6-vmmaker.1.image"
 
@@ -146,7 +146,7 @@ def main():
     print_result(res)
 
 # This is for execution using pytest.py. This way you can get a pdb on assertion-errors etc.
-# Execute e.g. $ pypy ../pypy/pytest.py spyvm/test/jit.py -s --pdb -k test_main
+# Execute e.g. $ pypy ../pypy/pytest.py rsqueakvm/test/jit.py -s --pdb -k test_main
 def test_main():
     main()
 

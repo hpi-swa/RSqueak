@@ -267,3 +267,6 @@ $RECYCLE.BIN/
 .DS_Store
 
 images/
+
+!rsqueakvm*
+!rsqueakvm/test/images*

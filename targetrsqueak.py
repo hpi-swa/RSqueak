@@ -1,10 +1,17 @@
 #! /usr/bin/env python
-import sys, time, os
+import sys
+import time
+import os
+
+from rsqueakvm import interpreter, squeakimage, objspace, wrapper, error
+from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.model.variable import W_BytesObject
+from rsqueakvm.plugins.simulation import SIMULATE_PRIMITIVE_SELECTOR
+from rsqueakvm.util import system
+
 from rpython.jit.codewriter.policy import JitPolicy
 from rpython.rlib import jit, rpath, objectmodel, streamio
-from spyvm import model, interpreter, squeakimage, objspace, wrapper, error
-from spyvm.plugins.simulation import SIMULATE_PRIMITIVE_SELECTOR
-from spyvm.util import system
+
 
 sys.setrecursionlimit(15000)
 
@@ -27,7 +34,17 @@ def _compile_time_version():
         import subprocess
         return subprocess.check_output(
             ["git", "log", "--format=format:\"Home-built: %ai %h%d\"", "-n", "1"])
+
+def _compile_git_version():
+    if os.environ.get("APPVEYOR", None):
+        return os.environ.get("APPVEYOR_REPO_TAG_NAME", None) or os.environ["APPVEYOR_REPO_COMMIT"][0:6]
+    else:
+        import subprocess
+        return subprocess.check_output(
+                ["git", "describe", "--tags", "--always"]).strip()
+
 VERSION = _compile_time_version()
+GIT_VERSION = _compile_git_version()
 BUILD_DATE = "%s +0000" % time.asctime(time.gmtime())
 
 def _usage(argv):
@@ -45,7 +62,7 @@ def _usage(argv):
             -r|--run <code>  - Code will be compiled and executed in
                                headless mode, result printed.
             -m|--method <selector>
-                             - Selector will be sent to a SmallInteger in
+                             - Selector will be sent to nil in
                                headless mode, result printed.
             -n|--num <int>   - Only with -m or -r. SmallInteger to be used as
                                receiver (default: nil).
@@ -182,6 +199,9 @@ class Config(object):
             elif arg in ["-v", "--version"]:
                 print "RSqueakVM %s, built on %s" % (VERSION, BUILD_DATE)
                 raise error.Exit("")
+            elif arg in ["--git-version"]:
+                print GIT_VERSION
+                raise error.Exit("")
             elif arg == "--no-highdpi":
                 self.space.highdpi.deactivate()
             # Execution
@@ -197,7 +217,7 @@ class Config(object):
             elif arg in ["-P", "--process"]:
                 self.headless = False
             elif arg in ["-u", "--stop-ui"]:
-                from spyvm.plugins.vmdebugging import stop_ui_process
+                from rsqueakvm.plugins.vmdebugging import stop_ui_process
                 stop_ui_process()
             elif arg in ["--simulate-numeric-primitives"]:
                 self.space.simulate_numeric_primitives.activate()
@@ -257,20 +277,31 @@ class Config(object):
 
     def ensure_path(self):
         path = self.path
-        if path is None:
+        if path:
+            if os.path.exists(path):
+                self.path = rpath.rabspath(path)
+                return
+            exedir = self.get_exedir()
+            if not exedir:
+                return
+            path = rpath.rjoin(exedir, path)
+            if os.path.exists(path):
+                self.path = rpath.rabspath(path)
+                return
+        else:
             for filename in os.listdir(os.getcwd()):
                 if filename.startswith("Squeak") and filename.endswith(".image"):
                     path = filename
                     break
         if path is None:
             if system.IS_WINDOWS:
-                from spyvm.util import win32_dialog
+                from rsqueakvm.util import win32_dialog
                 path = win32_dialog.get_file()
             elif system.IS_LINUX:
-                from spyvm.util import linux_dialog
+                from rsqueakvm.util import linux_dialog
                 path = linux_dialog.get_file()
             elif system.IS_DARWIN:
-                from spyvm.util import macosx_dialog
+                from rsqueakvm.util import macosx_dialog
                 path = macosx_dialog.get_file()
             else:
                 path = "Squeak.image"
@@ -293,16 +324,20 @@ class Config(object):
                     break
         return rpath.rabspath(executable)
 
-    def init_from_ini(self):
+    def get_exedir(self):
         splitpaths = self.exepath.split(os.sep)
-        exedir = ""
         splitlen = len(splitpaths)
         # tfel: The dance below makes translation work. os.path.dirname breaks :(
         if splitlen > 2:
             splitlen = splitlen - 1
             assert splitlen >= 0
-            exedir = os.sep.join(splitpaths[0:splitlen])
+            return os.sep.join(splitpaths[0:splitlen])
         else:
+            return
+
+    def init_from_ini(self):
+        exedir = self.get_exedir()
+        if not exedir:
             return
         inifile = rpath.rjoin(exedir, "rsqueak.ini")
         if os.path.exists(inifile):
@@ -417,7 +452,7 @@ def compile_code(interp, w_receiver, code):
             space.w_nil]
         )
         # TODO - is this expected in every image?
-        if not isinstance(w_result, model.W_BytesObject) or space.unwrap_string(w_result) != selector:
+        if not isinstance(w_result, W_BytesObject) or space.unwrap_string(w_result) != selector:
             raise error.Exit("Unexpected compilation result (probably failed to compile): %s" % result_string(w_result))
     space.suppress_process_switch.deactivate()
 
@@ -433,8 +468,8 @@ def create_context(interp, w_receiver, selector, stringarg):
 def create_process(interp, s_frame):
     space = interp.space
     w_active_process = wrapper.scheduler(space).active_process()
-    assert isinstance(w_active_process, model.W_PointersObject)
-    w_benchmark_proc = model.W_PointersObject(
+    assert isinstance(w_active_process, W_PointersObject)
+    w_benchmark_proc = W_PointersObject(
         space, w_active_process.getclass(space), w_active_process.size()
     )
     if interp.image.version.has_closures:
@@ -454,7 +489,7 @@ def active_context(space):
     w_active_process = wrapper.scheduler(space).active_process()
     active_process = wrapper.ProcessWrapper(space, w_active_process)
     w_active_context = active_process.suspended_context()
-    assert isinstance(w_active_context, model.W_PointersObject)
+    assert isinstance(w_active_context, W_PointersObject)
     active_process.store_suspended_context(space.w_nil)
     return w_active_context.as_context_get_shadow(space)
 
