@@ -26,7 +26,8 @@ eci = ExternalCompilationInfo(
         link_files=[str(this_dir.join("tinyfiledialogs/tinyfiledialogs.c"))],
         separate_module_sources=["""
             DLLEXPORT int RSqueakOpenFileDialog_linux(char* szFile, int len) {
-                const char * file = tinyfd_openFileDialog("", "", 0, 0, 0, 0);
+                char const * const filter = "*.image";
+                const char * file = tinyfd_openFileDialog("", "", 1, &filter, 0, 0);
                 strcpy(szFile, file);
                 return (szFile == 0) ? 0: 1;
             }
