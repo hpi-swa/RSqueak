@@ -11,6 +11,7 @@ _Default = "Squeak.image"
 eci = ExternalCompilationInfo(
         post_include_bits = ["""
             #include "tinyfiledialogs/tinyfiledialogs.h"
+            #include <string.h>
             #ifdef _WIN32
             #include <windows.h>
             #include <psapi.h>
@@ -25,7 +26,7 @@ eci = ExternalCompilationInfo(
         link_files=[str(this_dir.join("tinyfiledialogs/tinyfiledialogs.c"))],
         separate_module_sources=["""
             DLLEXPORT int RSqueakOpenFileDialog_linux(char* szFile, int len) {
-                char * file = tinyfd_openFileDialog("", "", 0, 0, 0, 0);
+                const char * file = tinyfd_openFileDialog("", "", 0, 0, 0, 0);
                 strcpy(szFile, file);
                 return (szFile == 0) ? 0: 1;
             }
