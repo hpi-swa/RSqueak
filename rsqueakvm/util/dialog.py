@@ -12,15 +12,9 @@ eci = ExternalCompilationInfo(
         post_include_bits = ["""
             #include "tinyfiledialogs/tinyfiledialogs.h"
             #include <string.h>
-            #ifdef _WIN32
-            #include <windows.h>
-            #include <psapi.h>
-            #define DLLEXPORT __declspec(dllexport)
-            #else
             #include <sys/time.h>
             #include <sys/resource.h>
             #define DLLEXPORT __attribute__((__visibility__("default")))
-            #endif
             """],
         include_dirs=[this_dir],
         link_files=[str(this_dir.join("tinyfiledialogs/tinyfiledialogs.c"))],

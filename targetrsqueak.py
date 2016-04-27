@@ -294,8 +294,12 @@ class Config(object):
                     path = filename
                     break
         if path is None:
-            from rsqueakvm.util import dialog
-            path = dialog.get_file()
+            if system.IS_WINDOWS:
+                from rsqueakvm.util import win32_dialog
+                path = win32_dialog.get_file()
+            else:
+                from rsqueakvm.util import dialog
+                path = dialog.get_file()
         self.path = rpath.rabspath(path)
 
     def sanitize(self):
