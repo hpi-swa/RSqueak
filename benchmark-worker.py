@@ -3,6 +3,7 @@ import os
 import platform
 import socket
 import sqlite3
+import subprocess
 import sys
 import time
 import urllib
@@ -20,8 +21,13 @@ class BenchmarkWorker(object):
 
     def serve_forever(self):
         while True:
-            self.run()
-            time.sleep(10)
+            try:
+                self.run()
+                time.sleep(10)
+            except Exception, e:
+                print e.msg
+                print e
+                time.sleep(10)
 
     def run(self):
         self.c.execute("""
@@ -46,37 +52,37 @@ class BenchmarkWorker(object):
                 %s}.
                 SmalltalkImage current snapshot: false andQuit: true.
                 """ % (bm, ITERATIONS))
-                for vm in VMS:
-                    if "rsqueak" in vm: vm = rsqueak
-                    r = subprocess.check_output(
-                        vm,
-                        shell=True,
-                        cwd=os.path.dirname(__file__)
-                    )
-                    match = OUTPUT_RE.search(r)
-                    while match:
-                        self.post_data(
-                            vm=vm,
-                            benchmark=match.group(1),
-                            commitid=commitid,
-                            time=int(match.group(2)),
-                            stdev=int(match.group(3)))
-                        match = OUTPUT_RE.search(r, match.end(3))
+                f.flush()
+            for vm in VMS:
+                if "rsqueak" in vm: vm = rsqueak
+                r = subprocess.check_output(
+                    "%s $(pwd)/Squeak*.image $(pwd)/run.st" % vm,
+                    shell=True
+                )
+                match = OUTPUT_RE.search(r)
+                while match:
+                    self.post_data(
+                        vm=vm,
+                        benchmark=match.group(1),
+                        commitid=commitid,
+                        rtime=match.group(2),
+                        stdev=match.group(3))
+                    match = OUTPUT_RE.search(r, match.end(3))
 
     def download_rsqueak(self, commitid):
         executable_name = BINARY_BASENAME.format(commitid)
         url = BINARY_URL.format(executable_name)
         print "Downloading %s" % url
         try:
-            urllib.urlretrieve(url)
+            filename, _ = urllib.urlretrieve(url)
         except Exception, e:
             print e.msg
             print e
             return None
-        os.chmod(executable_name, 0755)
-        return executable_name
+        os.chmod(filename, 0755)
+        return filename
 
-    def post_data(self, vm=None, benchmark=None, commitid=None, time=0, stdev=0):
+    def post_data(self, vm=None, benchmark=None, commitid=None, rtime=None, stdev=None):
         commit_date = time.strftime("%Y-%m-%d %H:%M", time.localtime())
         project = "rsqueakvm" if "rsqueak" in vm else "cog"
         executable = "%s-%s-%s" % (project, sys.platform, platform.architecture()[0])
@@ -89,10 +95,10 @@ class BenchmarkWorker(object):
             'executable': executable,
             'benchmark': benchmark,
             'environment': env,
-            'result_value': str(time),
-            'min': str(time),
-            'max': str(time),
-            'std_dev': str(stdev) }
+            'result_value': rtime,
+            'min': rtime,
+            'max': rtime,
+            'std_dev': stdev }
         params = urllib.urlencode(data)
         try:
             f = urllib2.urlopen(CODESPEED_URL + 'result/add/', params)
