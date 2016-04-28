@@ -68,9 +68,6 @@ RSqueak/VM currently needs to be compiled using a 32-bit python and SDL2 using
 chroot, but you can also install the `:i386` versions of the SDL2 dependencies
 for your distro.
 
-Optionally you can also install FLTK-1.3 development files if you want to
-compile a fallback file chooser when the VM is launched without image argument.
-
 ###### Mac OS X
 
 RSqueak/VM currently needs to be compiled using a 32-bit python and
