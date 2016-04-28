@@ -32,6 +32,7 @@ case "$BUILD_ARCH" in
     armv="${BUILD_ARCH}raspbian"
     export SB2OPT="-t ${SB2NAME}"
     export CFLAGS="-march=$BUILD_ARCH -mfpu=vfp -mfloat-abi=hard -marm\
+           -I${SB2}/usr/include/\
            -I${SB2}/usr/include/arm-linux-gnueabihf/"
     export LDFLAGS="-L${SB2}/usr/lib/arm-linux-gnueabihf/pulseaudio\
            -Wl,-rpath=${SB2}/usr/lib/arm-linux-gnueabihf/pulseaudio\
