@@ -10,7 +10,7 @@ import urllib2
 
 sys.path.insert(0, os.path.dirname(__file__))
 from constants import JOB_TABLE, COMMITID, FLAG, DBFILE, CODESPEED_URL, VMS, \
-    BENCHMARKS, ITERATIONS, OUTPUT_RE
+    BENCHMARKS, ITERATIONS, OUTPUT_RE, BINARY_URL, BINARY_BASENAME
 
 class BenchmarkWorker(object):
     def __init__(self):
@@ -34,6 +34,9 @@ class BenchmarkWorker(object):
             self.execute(commitid)
 
     def execute(self, commitid):
+        rsqueak = self.download_rsqueak(commitid)
+        if not rsqueak:
+            return
         for bm in BENCHMARKS:
             with open("run.st", "w") as f:
                 f.write("""
@@ -44,6 +47,7 @@ class BenchmarkWorker(object):
                 SmalltalkImage current snapshot: false andQuit: true.
                 """ % (bm, ITERATIONS))
                 for vm in VMS:
+                    if "rsqueak" in vm: vm = rsqueak
                     r = subprocess.check_output(
                         vm,
                         shell=True,
@@ -58,6 +62,19 @@ class BenchmarkWorker(object):
                             time=int(match.group(2)),
                             stdev=int(match.group(3)))
                         match = OUTPUT_RE.search(r, match.end(3))
+
+    def download_rsqueak(self, commitid):
+        executable_name = BINARY_BASENAME.format(commitid)
+        url = BINARY_URL.format(executable_name)
+        print "Downloading %s" % url
+        try:
+            urllib.urlretrieve(url)
+        except Exception, e:
+            print e.msg
+            print e
+            return None
+        os.chmod(executable_name, 0755)
+        return executable_name
 
     def post_data(self, vm=None, benchmark=None, commitid=None, time=0, stdev=0):
         commit_date = time.strftime("%Y-%m-%d %H:%M", time.localtime())
