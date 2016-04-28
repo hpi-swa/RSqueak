@@ -20,10 +20,16 @@ eci = ExternalCompilationInfo(
             #ifdef _WIN32
             #include <windows.h>
             #include <Commdlg.h>
+            #ifndef _tinyfd
+            #define _tinyfd
             #include "tinyfiledialogs/tinyfiledialogs.c"
+            #endif
             #define DLLEXPORT __declspec(dllexport)
             #else
+            #ifndef _tinyfd
+            #define _tinyfd
             #include "tinyfiledialogs/tinyfiledialogs.h"
+            #endif
             #include <sys/time.h>
             #include <sys/resource.h>
             #define DLLEXPORT __attribute__((__visibility__("default")))
@@ -58,4 +64,5 @@ def tiny_get_file():
 
 def get_file():
     return tiny_get_file()
+
 
