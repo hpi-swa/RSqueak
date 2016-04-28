@@ -3,7 +3,7 @@ import re
 API_PORT = 8082
 QUEUE_PORT = 8083
 BENCHMARK_MACHINES = [
-    "http://fb12ce8ws06:%s", QUEUE_PORT
+    "http://fb12ce8ws06:%s" % QUEUE_PORT
 ]
 JOB_TABLE = "jobs"
 COMMITID = "commitid"
