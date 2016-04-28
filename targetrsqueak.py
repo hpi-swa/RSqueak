@@ -294,8 +294,11 @@ class Config(object):
                     path = filename
                     break
         if path is None:
-            from rsqueakvm.util import dialog
-            path = dialog.get_file()
+            if system.IS_WINDOWS or system.IS_LINUX or system.IS_DARWIN:
+                from rsqueakvm.util import dialog
+                path = dialog.get_file()
+            else:
+                path = "Squeak.image"
         self.path = rpath.rabspath(path)
 
     def sanitize(self):

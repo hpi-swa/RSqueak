@@ -15,7 +15,9 @@ else:
 _Default = "Squeak.image"
 
 eci = ExternalCompilationInfo(
-        post_include_bits = ["""
+        include_dirs=[this_dir],
+        link_files=lfiles,
+        separate_module_sources=["""
             #include <string.h>
             #ifdef _WIN32
             #include <windows.h>
@@ -34,10 +36,6 @@ eci = ExternalCompilationInfo(
             #include <sys/resource.h>
             #define DLLEXPORT __attribute__((__visibility__("default")))
             #endif
-            """],
-        include_dirs=[this_dir],
-        link_files=lfiles,
-        separate_module_sources=["""
             DLLEXPORT int RSqueakOpenFileDialog_linux(char* szFile, int len) {
                 char const * const filter = "*.image";
                 const char * file = tinyfd_openFileDialog("", "", 1, &filter, 0, 0);
