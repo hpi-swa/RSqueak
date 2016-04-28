@@ -1,7 +1,12 @@
 #!/usr/bin/env python
 import BaseHTTPServer
-import urllib, urllib2
-from .constants import API_PORT, BENCHMARK_MACHINES
+import os
+import urllib
+import urllib2
+import sys
+
+sys.path.insert(0, os.path.dirname(__file__))
+from constants import API_PORT, BENCHMARK_MACHINES
 
 
 class BenchmarkApi(BaseHTTPServer.BaseHTTPRequestHandler):
@@ -25,8 +30,10 @@ class BenchmarkApi(BaseHTTPServer.BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    print "Starting Benchmark API server"
     httpd = BaseHTTPServer.HTTPServer(('', API_PORT), BenchmarkApi)
     try:
         httpd.serve_forever()
     finally:
+        print "Bye"
         httpd.server_close()

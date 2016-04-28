@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 import BaseHTTPServer
+import os
 import sqlite3
-from .constants import QUEUE_PORT, JOB_TABLE, COMMITID, FLAG, DBFILE
+import sys
+
+sys.path.insert(0, os.path.dirname(__file__))
+from constants import QUEUE_PORT, JOB_TABLE, COMMITID, FLAG, DBFILE
 
 
 class BenchmarkQueue(BaseHTTPServer.BaseHTTPRequestHandler):
@@ -43,8 +47,10 @@ class BenchmarkQueue(BaseHTTPServer.BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    print "Starting Benchmark queue"
     httpd = BaseHTTPServer.HTTPServer(('', QUEUE_PORT), BenchmarkQueue)
     try:
         httpd.serve_forever()
     finally:
+        print "Bye"
         httpd.server_close()

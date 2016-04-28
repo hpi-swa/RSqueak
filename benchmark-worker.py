@@ -7,7 +7,9 @@ import sys
 import time
 import urllib
 import urllib2
-from .constants import JOB_TABLE, COMMITID, FLAG, DBFILE, CODESPEED_URL, VMS, \
+
+sys.path.insert(0, os.path.dirname(__file__))
+from constants import JOB_TABLE, COMMITID, FLAG, DBFILE, CODESPEED_URL, VMS, \
     BENCHMARKS, ITERATIONS, OUTPUT_RE
 
 class BenchmarkWorker(object):
@@ -15,6 +17,11 @@ class BenchmarkWorker(object):
         self.conn = sqlite3.connect(DBFILE)
         self.conn.row_factory = sqlite3.Row
         self.c = self.conn.cursor()
+
+    def serve_forever(self):
+        while True:
+            time.sleep(10)
+            self.run()
 
     def run(self):
         self.c.execute("""
@@ -28,7 +35,7 @@ class BenchmarkWorker(object):
 
     def execute(self, commitid):
         for bm in BENCHMARKS:
-            with f as open("run.st", "w"):
+            with open("run.st", "w") as f:
                 f.write("""
                 BenchmarkAutosizeSuite run: {
                 'BenchmarkSimpleStatisticsReporter'.
@@ -40,7 +47,7 @@ class BenchmarkWorker(object):
                     r = subprocess.check_output(
                         vm,
                         shell=True,
-                        os.path.dirname(__file__)
+                        cwd=os.path.dirname(__file__)
                     )
                     match = OUTPUT_RE.search(r)
                     while match:
@@ -88,8 +95,6 @@ class BenchmarkWorker(object):
         self.conn.close()
 
 if __name__ == "__main__":
-    httpd = BaseHTTPServer.HTTPServer(('', 8082), BenchmarkQueue)
-    try:
-        httpd.serve_forever()
-    finally:
-        httpd.server_close()
+    b = BenchmarkWorker()
+    print "Running worker"
+    b.serve_forever()
