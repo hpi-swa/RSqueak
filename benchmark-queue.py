@@ -14,19 +14,19 @@ class BenchmarkQueue(BaseHTTPServer.BaseHTTPRequestHandler):
         self.conn = sqlite3.connect(DBFILE)
         self.c = self.conn.cursor()
         self.c.execute("""
-        SELECT name FROM sqlite_master WHERE type='table' AND name='?';
-        """, (JOB_TABLE,))
+        SELECT name FROM sqlite_master WHERE type='table' AND name='%s';
+        """ % JOB_TABLE)
         if not self.c.fetchone():
             self.c.execute("""
-            CREATE TABLE ? (? VARCHAR(255), ? BYTE);
-            """, (JOB_TABLE, COMMITID, FLAG))
+            CREATE TABLE %s (%s VARCHAR(255), %s BYTE);
+            """ % (JOB_TABLE, COMMITID, FLAG))
             self.conn.commit()
 
     def do_POST(self):
         commitid = self.headers.getheader(COMMITID)
         self.c.execute("""
-        SELECT * FROM ? WHERE ?='?' LIMIT 1;
-        """, (job_table, COMMITID, commitid,))
+        SELECT * FROM %s WHERE %s='%s' LIMIT 1;
+        """ % (job_table, COMMITID, commitid))
         if self.c.fetchone():
             # already in DB, not running again
             self.send_response(304)
@@ -34,8 +34,8 @@ class BenchmarkQueue(BaseHTTPServer.BaseHTTPRequestHandler):
         else:
             # insert the job
             self.c.execute("""
-            INSERT INTO ? (?, ?) VALUES ('?', 0);
-            """, (JOB_TABLE, COMMITID, FLAG, commitid,))
+            INSERT INTO %s (%s, %s) VALUES ('%s', 0);
+            """ % (JOB_TABLE, COMMITID, FLAG, commitid))
             self.conn.commit()
             self.send_response(200)
             self.end_headers()

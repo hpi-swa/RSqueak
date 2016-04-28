@@ -25,8 +25,8 @@ class BenchmarkWorker(object):
 
     def run(self):
         self.c.execute("""
-        SELECT * FROM ? WHERE ?=0 LIMIT 1;
-        """, (JOB_TABLE, FLAG))
+        SELECT * FROM %s WHERE %s=0 LIMIT 1;
+        """ % (JOB_TABLE, FLAG))
         result = self.c.fetchone()
         if result:
             commitid = result[COMMITID]
