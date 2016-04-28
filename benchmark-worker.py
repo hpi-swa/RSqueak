@@ -20,8 +20,8 @@ class BenchmarkWorker(object):
 
     def serve_forever(self):
         while True:
-            time.sleep(10)
             self.run()
+            time.sleep(10)
 
     def run(self):
         self.c.execute("""

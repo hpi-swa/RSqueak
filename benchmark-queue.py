@@ -10,7 +10,6 @@ from constants import QUEUE_PORT, JOB_TABLE, COMMITID, FLAG, DBFILE
 
 class BenchmarkQueue(BaseHTTPServer.BaseHTTPRequestHandler):
     def __init__(self, *args):
-        super(*args)
         self.conn = sqlite3.connect(DBFILE)
         self.c = self.conn.cursor()
         self.c.execute("""
@@ -21,12 +20,13 @@ class BenchmarkQueue(BaseHTTPServer.BaseHTTPRequestHandler):
             CREATE TABLE %s (%s VARCHAR(255), %s BYTE);
             """ % (JOB_TABLE, COMMITID, FLAG))
             self.conn.commit()
+        BaseHTTPServer.BaseHTTPRequestHandler.__init__(self, *args)
 
     def do_POST(self):
         commitid = self.headers.getheader(COMMITID)
         self.c.execute("""
         SELECT * FROM %s WHERE %s='%s' LIMIT 1;
-        """ % (job_table, COMMITID, commitid))
+        """ % (JOB_TABLE, COMMITID, commitid))
         if self.c.fetchone():
             # already in DB, not running again
             self.send_response(304)
