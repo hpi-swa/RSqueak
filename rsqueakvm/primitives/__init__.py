@@ -218,6 +218,7 @@ from rsqueakvm.primitives import arithmetic
 from rsqueakvm.primitives import array_stream
 from rsqueakvm.primitives import block_closure
 from rsqueakvm.primitives import control
+from rsqueakvm.primitives import database
 from rsqueakvm.primitives import input_output
 from rsqueakvm.primitives import misc
 from rsqueakvm.primitives import storage

@@ -17,6 +17,7 @@ branches:
   except:
     - /^v[0-9]/  # Ignore version tags
     - windows-build
+    - sqpyte
 env:
   global:
     - SB2="$PWD/raspbian_arm"
