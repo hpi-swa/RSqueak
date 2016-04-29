@@ -55,10 +55,14 @@ class BenchmarkWorker(object):
                 f.flush()
             for vm in VMS:
                 if "rsqueak" in vm: vm = rsqueak
-                r = subprocess.check_output(
-                    "%s $(pwd)/Squeak*.image $(pwd)/run.st" % vm,
-                    shell=True
-                )
+                try:
+                    r = subprocess.check_output(
+                        "%s $(pwd)/Squeak*.image $(pwd)/run.st" % vm,
+                        shell=True
+                    )
+                except Exception, e:
+                    print e
+                    continue
                 match = OUTPUT_RE.search(r)
                 while match:
                     self.post_data(
