@@ -11,7 +11,7 @@ zip=${zip#*=}
 zip=${zip#\"}
 zip=${zip%%\"}
 curl -O "$SQUEAK_SERVER/${folder}${zip}"
-unzip -o -f ${zip}
+unzip -o ${zip}
 rm ${zip}
 # Pull Squeak out of subdirectory
 if [[ -z $(ls | grep Squeak.*image) ]]; then
