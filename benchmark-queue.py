@@ -17,7 +17,7 @@ class BenchmarkQueue(BaseHTTPServer.BaseHTTPRequestHandler):
         """ % JOB_TABLE)
         if not self.c.fetchone():
             self.c.execute("""
-            CREATE TABLE %s (%s VARCHAR(255), %s, VARCHAR(255), %s BYTE);
+            CREATE TABLE %s (%s VARCHAR(255), %s VARCHAR(255), %s BYTE);
             """ % (JOB_TABLE, COMMITID, BRANCH, FLAG))
             self.conn.commit()
         BaseHTTPServer.BaseHTTPRequestHandler.__init__(self, *args)
