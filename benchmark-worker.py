@@ -38,7 +38,7 @@ class BenchmarkWorker(object):
             branch = result[BRANCH]
             print "Running benchmarks for %s on %s" % (commitid, branch)
             self.c.execute("""
-            UPDATE %s SET %s=1 WHERE %s=%s AND %s=%s
+            UPDATE %s SET %s=1 WHERE %s='%s' AND %s='%s'
             """ % (JOB_TABLE, FLAG, COMMITID, commitid, BRANCH, branch))
             self.conn.commit()
             self.execute(commitid, branch)
