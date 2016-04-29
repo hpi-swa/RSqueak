@@ -7,6 +7,7 @@ BENCHMARK_MACHINES = [
 ]
 JOB_TABLE = "jobs"
 COMMITID = "commitid"
+BRANCH = "branch"
 FLAG = "done"
 DBFILE = "benchmarks.db"
 CODESPEED_URL = 'http://172.16.64.134/'

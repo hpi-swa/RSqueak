@@ -11,7 +11,7 @@ import urllib2
 
 sys.path.insert(0, os.path.dirname(__file__))
 from constants import JOB_TABLE, COMMITID, FLAG, DBFILE, CODESPEED_URL, VMS, \
-    BENCHMARKS, ITERATIONS, OUTPUT_RE, BINARY_URL, BINARY_BASENAME
+    BENCHMARKS, ITERATIONS, OUTPUT_RE, BINARY_URL, BINARY_BASENAME, BRANCH
 
 class BenchmarkWorker(object):
     def __init__(self):
@@ -25,7 +25,6 @@ class BenchmarkWorker(object):
                 self.run()
                 time.sleep(10)
             except Exception, e:
-                print e.msg
                 print e
                 time.sleep(10)
 
@@ -36,10 +35,11 @@ class BenchmarkWorker(object):
         result = self.c.fetchone()
         if result:
             commitid = result[COMMITID]
-            print "Running benchmarks for %s" % commitid
-            self.execute(commitid)
+            branch = result[BRANCH]
+            print "Running benchmarks for %s on %s" % (commitid, branch)
+            self.execute(commitid, branch)
 
-    def execute(self, commitid):
+    def execute(self, commitid, branch):
         rsqueak = self.download_rsqueak(commitid)
         if not rsqueak:
             return
@@ -65,6 +65,7 @@ class BenchmarkWorker(object):
                         vm=vm,
                         benchmark=match.group(1),
                         commitid=commitid,
+                        branch=branch,
                         rtime=match.group(2),
                         stdev=match.group(3))
                     match = OUTPUT_RE.search(r, match.end(3))
@@ -76,13 +77,12 @@ class BenchmarkWorker(object):
         try:
             filename, _ = urllib.urlretrieve(url)
         except Exception, e:
-            print e.msg
             print e
             return None
         os.chmod(filename, 0755)
         return filename
 
-    def post_data(self, vm=None, benchmark=None, commitid=None, rtime=None, stdev=None):
+    def post_data(self, vm=None, benchmark=None, commitid=None, branch=None, rtime=None, stdev=None):
         commit_date = time.strftime("%Y-%m-%d %H:%M", time.localtime())
         project = "rsqueakvm" if "rsqueak" in vm else "cog"
         executable = "%s-%s-%s" % (project, sys.platform, platform.architecture()[0])
@@ -90,7 +90,7 @@ class BenchmarkWorker(object):
         params = {
             'commitid': commitid[0:10],
             'result_date': commit_date,
-            'branch': 'default',
+            'branch': branch,
             'project': project,
             'executable': executable,
             'benchmark': benchmark,
@@ -99,7 +99,7 @@ class BenchmarkWorker(object):
             'min': rtime,
             'max': rtime,
             'std_dev': stdev }
-        params = urllib.urlencode(data)
+        params = urllib.urlencode(params)
         try:
             f = urllib2.urlopen(CODESPEED_URL + 'result/add/', params)
         except urllib2.HTTPError as e:

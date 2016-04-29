@@ -6,17 +6,19 @@ import urllib2
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
-from constants import API_PORT, BENCHMARK_MACHINES, COMMITID
+from constants import API_PORT, BENCHMARK_MACHINES, COMMITID, BRANCH
 
 
 class BenchmarkApi(BaseHTTPServer.BaseHTTPRequestHandler):
     def do_POST(self):
         c = self.headers.getheader(COMMITID, None)
-        if not c: return
+        b = self.headers.getheader(BRANCH, None)
+        if not c or not b: return
         for m in BENCHMARK_MACHINES:
             try:
                 req = urllib2.Request(m)
                 req.add_header(COMMITID, c)
+                req.add_header(BRANCH, b)
                 req.add_data(COMMITID) # just to switch to POST
                 f = urllib2.urlopen(req)
             except urllib2.HTTPError as e:

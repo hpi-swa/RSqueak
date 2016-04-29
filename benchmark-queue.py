@@ -5,7 +5,7 @@ import sqlite3
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
-from constants import QUEUE_PORT, JOB_TABLE, COMMITID, FLAG, DBFILE
+from constants import QUEUE_PORT, JOB_TABLE, COMMITID, FLAG, BRANCH, DBFILE
 
 
 class BenchmarkQueue(BaseHTTPServer.BaseHTTPRequestHandler):
@@ -17,13 +17,14 @@ class BenchmarkQueue(BaseHTTPServer.BaseHTTPRequestHandler):
         """ % JOB_TABLE)
         if not self.c.fetchone():
             self.c.execute("""
-            CREATE TABLE %s (%s VARCHAR(255), %s BYTE);
-            """ % (JOB_TABLE, COMMITID, FLAG))
+            CREATE TABLE %s (%s VARCHAR(255), %s, VARCHAR(255), %s BYTE);
+            """ % (JOB_TABLE, COMMITID, BRANCH, FLAG))
             self.conn.commit()
         BaseHTTPServer.BaseHTTPRequestHandler.__init__(self, *args)
 
     def do_POST(self):
         commitid = self.headers.getheader(COMMITID)
+        branch = self.headers.getheader(BRANCH)
         self.c.execute("""
         SELECT * FROM %s WHERE %s='%s' LIMIT 1;
         """ % (JOB_TABLE, COMMITID, commitid))
@@ -34,8 +35,8 @@ class BenchmarkQueue(BaseHTTPServer.BaseHTTPRequestHandler):
         else:
             # insert the job
             self.c.execute("""
-            INSERT INTO %s (%s, %s) VALUES ('%s', 0);
-            """ % (JOB_TABLE, COMMITID, FLAG, commitid))
+            INSERT INTO %s (%s, %s, %s) VALUES ('%s', '%s', 0);
+            """ % (JOB_TABLE, COMMITID, BRANCH, FLAG, commitid, branch))
             self.conn.commit()
             self.send_response(200)
             self.end_headers()
