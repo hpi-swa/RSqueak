@@ -91,7 +91,7 @@ class BenchmarkWorker(object):
 
     def post_data(self, vm=None, benchmark=None, commitid=None, branch=None, rtime=None, stdev=None):
         commit_date = time.strftime("%Y-%m-%d %H:%M", time.localtime())
-        project = "rsqueakvm" if "rsqueak" in vm else "cog"
+        project = "cog" if "cog" in vm else "rsqueakvm"
         executable = "%s-%s-%s" % (project, sys.platform, platform.architecture()[0])
         env = socket.gethostname()
         params = {
