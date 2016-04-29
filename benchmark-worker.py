@@ -69,7 +69,8 @@ class BenchmarkWorker(object):
                     )
                 except Exception, e:
                     print e
-                    continue
+                    break # don't bother executing the other VM if we cannot
+                          # compare
                 out, err = pipe.communicate()
                 errcode = pipe.wait()
                 match = OUTPUT_RE.search(out)
