@@ -11,7 +11,7 @@ zip=${zip#*=}
 zip=${zip#\"}
 zip=${zip%%\"}
 curl -O "$SQUEAK_SERVER/${folder}${zip}"
-unzip ${zip}
+unzip -o -f ${zip}
 rm ${zip}
 # Pull Squeak out of subdirectory
 if [[ -z $(ls | grep Squeak.*image) ]]; then
@@ -26,7 +26,7 @@ src=${src#*=}
 src=${src#\"}
 src=${src%%\"}
 curl -O "$SQUEAK_SERVER/$SOURCE_FOLDER/${src}"
-gunzip ${src}
+gunzip -f ${src}
 
 update_file="__squeak_update.st"
 cat <<EOF> $update_file
