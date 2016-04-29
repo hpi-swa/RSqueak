@@ -45,3 +45,5 @@ BENCHMARKS = [
 ITERATIONS = 100
 
 OUTPUT_RE = re.compile(r"([a-zA-Z0-9]+) total: iterations=%s runtime: ([0-9\.]+)ms \+/\-([0-9\.]+)" % ITERATIONS)
+
+from config import *
