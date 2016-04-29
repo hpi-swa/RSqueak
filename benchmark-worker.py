@@ -46,6 +46,12 @@ class BenchmarkWorker(object):
         for bm in BENCHMARKS:
             with open("run.st", "w") as f:
                 f.write("""
+                "The first run is for warmup"
+                BenchmarkAutosizeSuite run: {
+                'BenchmarkReporter'.
+                '%s'.
+                %s}.
+                "Now we actually run"
                 BenchmarkAutosizeSuite run: {
                 'BenchmarkSimpleStatisticsReporter'.
                 '%s'.
