@@ -15,8 +15,8 @@ BINARY_URL = "https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/commit
 BINARY_BASENAME = "rsqueak-x86-linux-jit-{}"
 
 VMS = [
+    "rsqueak",
     "./cogspurlinux/squeak",
-    "rsqueak"
 ]
 
 BENCHMARKS = [
