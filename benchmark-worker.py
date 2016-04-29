@@ -56,14 +56,17 @@ class BenchmarkWorker(object):
             for vm in VMS:
                 if "rsqueak" in vm: vm = rsqueak
                 try:
-                    r = subprocess.check_output(
+                    pipe = subprocess.Popen(
                         "%s $(pwd)/Squeak*.image $(pwd)/run.st" % vm,
-                        shell=True
+                        shell=True,
+                        stdout=subprocess.PIPE
                     )
                 except Exception, e:
                     print e
                     continue
-                match = OUTPUT_RE.search(r)
+                out, err = pipe.communicate()
+                errcode = pipe.wait()
+                match = OUTPUT_RE.search(out)
                 while match:
                     self.post_data(
                         vm=vm,
@@ -72,7 +75,7 @@ class BenchmarkWorker(object):
                         branch=branch,
                         rtime=match.group(2),
                         stdev=match.group(3))
-                    match = OUTPUT_RE.search(r, match.end(3))
+                    match = OUTPUT_RE.search(out, match.end(3))
 
     def download_rsqueak(self, commitid):
         executable_name = BINARY_BASENAME.format(commitid)
