@@ -31,7 +31,7 @@ env:
     # - BUILD_ARCH=lldebug
     # BUILD_ARCH=64bit TEST_TYPE=default
     # BUILD_ARCH=64bit
-     BUILD_ARCH=armv6
+      - BUILD_ARCH=armv6
     # BUILD_ARCH=armv7-a
     # BUILD_ARCH=armv8-a
 matrix:
