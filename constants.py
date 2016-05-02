@@ -84,6 +84,7 @@ BENCHMARKS = [
     "SMarkSqueakJS.benchFillString",
     "SMarkSqueakJS.benchIntegerBytecodes",
     "SMarkSqueakJS.benchMandala",
+    "SMarkToolBenchmark.benchToolInteraction",
 ]
 
 ITERATIONS = 100
