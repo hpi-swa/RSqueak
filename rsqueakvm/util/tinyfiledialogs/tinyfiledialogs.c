@@ -74,7 +74,7 @@ misrepresented as being the original software.
 3. This notice may not be removed or altered from any source distribution.
 */
 
-//#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>

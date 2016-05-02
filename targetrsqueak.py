@@ -294,7 +294,7 @@ class Config(object):
                     path = filename
                     break
         if path is None:
-            if system.IS_WINDOWS or system.IS_LINUX or system.IS_DARWIN:
+            if not system.IS_ARM and (system.IS_WINDOWS or system.IS_LINUX or system.IS_DARWIN):
                 from rsqueakvm.util import dialog
                 path = dialog.get_file()
             else:
