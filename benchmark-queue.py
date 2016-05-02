@@ -57,7 +57,7 @@ class BenchmarkQueue(BaseHTTPServer.BaseHTTPRequestHandler):
         self.conn.close()
 
 
-if __name__ == "__main__":
+def start():
     print "Starting Benchmark queue"
     BenchmarkQueue.ensure_db()
     httpd = BaseHTTPServer.HTTPServer(('', QUEUE_PORT), BenchmarkQueue)
@@ -66,3 +66,7 @@ if __name__ == "__main__":
     finally:
         print "Bye"
         httpd.server_close()
+
+
+if __name__ == "__main__":
+    start()

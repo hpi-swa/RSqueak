@@ -2,6 +2,7 @@ import re
 
 API_PORT = 8082
 QUEUE_PORT = 8083
+CONTROL_PORT = 8084
 BENCHMARK_MACHINES = [
     "http://fb12ce8ws06:%s" % QUEUE_PORT
 ]

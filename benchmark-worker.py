@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import os
 import platform
+import signal
 import socket
 import sqlite3
 import subprocess
@@ -18,15 +19,21 @@ class BenchmarkWorker(object):
         self.conn = sqlite3.connect(DBFILE)
         self.conn.row_factory = sqlite3.Row
         self.c = self.conn.cursor()
+        self.should_terminate = False
 
     def serve_forever(self):
         while True:
+            if should_terminate:
+                return
             try:
                 self.run()
                 time.sleep(10)
             except Exception, e:
                 print e
                 time.sleep(10)
+
+    def terminate(self):
+        self.should_terminate = True
 
     def run(self):
         self.c.execute("""
@@ -135,7 +142,14 @@ class BenchmarkWorker(object):
         self.c.close()
         self.conn.close()
 
-if __name__ == "__main__":
-    b = BenchmarkWorker()
+
+def start():
+    global worker
+    worker = BenchmarkWorker()
+    signal.signal(signal.SIGTERM, lambda signum, frame: worker.terminate())
     print "Running worker"
-    b.serve_forever()
+    worker.serve_forever()
+
+
+if __name__ == "__main__":
+    start()
