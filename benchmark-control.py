@@ -47,18 +47,19 @@ def selfupdate():
     global WorkerPid
     global httpd
     httpd.server_close()
-    os.kill(QueuePid, signal.SIGTERM)
     os.kill(WorkerPid, signal.SIGTERM)
-    print "Waiting for queue and worker to finish"
-    os.wait()
+    print "Waiting for worker to finish"
+    os.waitpid(WorkerPid)
     print "Updating from git"
     scriptdir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "scripts")
     pipe = subprocess.Popen("git pull", shell=True, cwd=scriptdir)
     pipe.wait()
-    print "Updating image and Cog"
+    print "Updating image and Cog VM"
     os.system(os.path.join(scriptdir, "update_image.sh"))
     os.system(os.path.join(scriptdir, "get_cog.sh"))
-    print "Exec self"
+    print "Kill queue and re-exec self"
+    os.kill(WorkerPid, signal.SIGTERM)
+    os.wait()
     os.execl(sys.executable, sys.executable, __file__)
 
 
