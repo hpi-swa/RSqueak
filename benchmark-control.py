@@ -58,7 +58,7 @@ def selfupdate():
     os.system(os.path.join(scriptdir, "update_image.sh"))
     os.system(os.path.join(scriptdir, "get_cog.sh"))
     print "Kill queue and re-exec self"
-    os.kill(WorkerPid, signal.SIGTERM)
+    os.kill(QueuePid, signal.SIGTERM)
     os.wait()
     os.execl(sys.executable, sys.executable, __file__)
 

@@ -24,6 +24,7 @@ class BenchmarkWorker(object):
     def serve_forever(self):
         while True:
             if self.should_terminate:
+                print "Termination requested, done"
                 return
             try:
                 self.run()
