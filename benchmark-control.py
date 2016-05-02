@@ -6,8 +6,8 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
-from benchmark-queue import start as start_queue
-from benchmark-where import start as start_worker
+queue = __import__("benchmark-queue")
+worker = __import__("benchmark-worker")
 from constants import CONTROL_PORT
 
 
@@ -29,10 +29,10 @@ def start():
     print "Starting Benchmark control"
     QueuePid = os.fork()
     if QueuePid == 0:
-        return start_queue()
+        return queue.start()
     WorkerPid = os.fork()
     if WorkerPid == 0:
-        return start_worker()
+        return worker.start()
     httpd = BaseHTTPServer.HTTPServer(('', CONTROL_PORT), BenchmarkControl)
     try:
         httpd.serve_forever()
@@ -50,17 +50,16 @@ def selfupdate():
     os.kill(QueuePid, signal.SIGTERM)
     os.kill(WorkerPid, signal.SIGTERM)
     print "Waiting for queue and worker to finish"
-    os.wait(QueuePid)
-    os.wait(WorkerPid)
+    os.wait()
     print "Updating from git"
-    scriptdir = os.path.join(os.path.dirname(__file__), "scripts")
+    scriptdir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "scripts")
     pipe = subprocess.Popen("git pull", shell=True, cwd=scriptdir)
     pipe.wait()
     print "Updating image and Cog"
-    os.system(os.path.join(scriptdir, "update_image"))
-    os.system(os.path.join(scriptdir, "get_cog"))
+    os.system(os.path.join(scriptdir, "update_image.sh"))
+    os.system(os.path.join(scriptdir, "get_cog.sh"))
     print "Exec self"
-    os.execl(__file__)
+    os.execl(sys.executable, sys.executable, __file__)
 
 
 if __name__ == "__main__":

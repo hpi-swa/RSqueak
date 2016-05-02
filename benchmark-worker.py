@@ -23,7 +23,7 @@ class BenchmarkWorker(object):
 
     def serve_forever(self):
         while True:
-            if should_terminate:
+            if self.should_terminate:
                 return
             try:
                 self.run()
