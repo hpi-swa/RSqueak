@@ -32,7 +32,6 @@ case "$BUILD_ARCH" in
     armv="${BUILD_ARCH}raspbian"
     export SB2OPT="-t ${SB2NAME}"
     export CFLAGS="-march=$BUILD_ARCH -mfpu=vfp -mfloat-abi=hard -marm\
-           -I${SB2}/usr/include/\
            -I${SB2}/usr/include/arm-linux-gnueabihf/"
     export LDFLAGS="-L${SB2}/usr/lib/arm-linux-gnueabihf/pulseaudio\
            -Wl,-rpath=${SB2}/usr/lib/arm-linux-gnueabihf/pulseaudio\
@@ -41,7 +40,7 @@ case "$BUILD_ARCH" in
            -L${SB2}/lib/arm-linux-gnueabihf/\
            -Wl,-rpath=${SB2}/lib/arm-linux-gnueabihf/"
     # uses the 32-bit pypy from download_dependencies.py
-    .build/pypy-linux32/bin/pypy .build/build.py --gc=incminimark --gcrootfinder=shadowstack --jit-backend=arm -O2 --platform=arm || true
+    .build/pypy-linux32/bin/pypy .build/build.py --gc=incminimark --gcrootfinder=shadowstack --jit-backend=arm -Ojit --platform=arm || true
     # sometimes the translation fails because "make got killed", make sure
     oldpwd=$(pwd)
     cd /tmp/usession-default-0/testing_1/
