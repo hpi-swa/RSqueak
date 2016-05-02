@@ -6,6 +6,11 @@ from rsqueakvm.util import system
 
 _Default = "Squeak.image"
 
+print
+print "os uname:",
+print os.uname()
+print
+
 if system.IS_ARM:
     def get_file():
         return _Default
