@@ -63,7 +63,7 @@ class BenchmarkWorker(object):
                 '%s'.
                 %s}] on: Error do: ["Just fail"].
                 SmalltalkImage current snapshot: false andQuit: true.
-                """ % (bm, ITERATIONS / 3, bm, ITERATIONS))
+                """ % (bm, ITERATIONS))
                 f.flush()
             for vm in VMS:
                 if "rsqueak" in vm: vm = rsqueak
