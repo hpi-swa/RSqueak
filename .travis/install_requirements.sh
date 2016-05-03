@@ -116,9 +116,9 @@ setup_linux() {
 }
 
 # Only build arm on master
-#if [[ "${TRAVIS_BRANCH}" != "master" ]] && [[ "${BUILD_ARCH}" = arm* ]]; then
-#    exit 0
-#fi
+if [[ "${TRAVIS_BRANCH}" != "master" ]] && [[ "${BUILD_ARCH}" = arm* ]]; then
+    exit 0
+fi
 
 presetup_$TRAVIS_OS_NAME
 python .build/download_dependencies.py || true
