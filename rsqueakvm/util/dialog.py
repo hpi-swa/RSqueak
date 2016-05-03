@@ -4,30 +4,43 @@ from rpython.translator.tool.cbuild import ExternalCompilationInfo
 from rpython.rtyper.lltypesystem import rffi
 from rsqueakvm.util import system
 
+_Default = "Squeak.image"
 this_dir = py.path.local(__file__).dirpath()
 
-_Default = "Squeak.image"
+if system.IS_WINDOWS:
+    lfiles = ['comdlg32.lib', 'ole32.lib', 'shell32.lib', 'user32.lib']
+else:
+    lfiles = [str(this_dir.join("tinyfiledialogs/tinyfiledialogs.c"))]
 
 eci = ExternalCompilationInfo(
-        post_include_bits = ["""
-            #include "tinyfiledialogs/tinyfiledialogs.h"
+        include_dirs=[this_dir],
+        link_files=lfiles,
+        separate_module_sources=["""
+            #include <string.h>
             #ifdef _WIN32
             #include <windows.h>
-            #include <psapi.h>
+            #include <Commdlg.h>
+            #ifndef _tinyfd
+            #define _tinyfd
+            #include "tinyfiledialogs/tinyfiledialogs.c"
+            #endif
             #define DLLEXPORT __declspec(dllexport)
             #else
+            #ifndef _tinyfd
+            #define _tinyfd
+            #include "tinyfiledialogs/tinyfiledialogs.h"
+            #endif
             #include <sys/time.h>
             #include <sys/resource.h>
             #define DLLEXPORT __attribute__((__visibility__("default")))
             #endif
-            """],
-        include_dirs=[this_dir],
-        link_files=[str(this_dir.join("tinyfiledialogs/tinyfiledialogs.c"))],
-        separate_module_sources=["""
             DLLEXPORT int RSqueakOpenFileDialog_linux(char* szFile, int len) {
-                char * file = tinyfd_openFileDialog("", "", 0, 0, 0, 0);
-                strcpy(szFile, file);
-                return (szFile == 0) ? 0: 1;
+                char const * const filter = "*.image";
+                const char * file = tinyfd_openFileDialog("", "", 1, &filter, 0, 0);
+                if (file != 0) {
+                    strcpy(szFile, file);
+                }
+                return (file == 0) ? 0: 1;
             }
             """]
 )
@@ -47,3 +60,5 @@ def tiny_get_file():
 
 def get_file():
     return tiny_get_file()
+
+
