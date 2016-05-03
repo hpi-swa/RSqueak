@@ -14,6 +14,7 @@ def load_config():
             cp.add_section("General")
             cp.set("General", "pypy", pathjoin(dirname(__file__), "pypy"))
             cp.set("General", "rsdl", pathjoin(dirname(__file__), "rsdl"))
+            cp.set("General", "sqpyte", pathjoin(dirname(__file__), "sqpyte"))
             cp.set("General", "squeak", pathjoin(dirname(__file__), "squeak"))
             cp.add_section("Linux")
             cp.set("Linux", "Python32Bit", pathjoin(dirname(__file__), "pypy-linux32", "bin", "pypy"))
@@ -99,6 +100,7 @@ def prepare_environment_variables():
         raise AssertionError("Unsupported platform")
     sys.path.insert(0, cp.get("General", "pypy"))
     sys.path.insert(0, cp.get("General", "rsdl"))
+    sys.path.insert(0, cp.get("General", "sqpyte"))
     try:
         import targetrsqueak as rsqueak
     except ImportError:
