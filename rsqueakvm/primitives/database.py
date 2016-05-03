@@ -1,66 +1,86 @@
 # -*- coding: utf-8 -*-
 
+from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.primitives import expose_primitive
-from rsqueakvm.primitives.bytecodes import SQLITE, SQLPYTE
-from rsqueakvm.model.variable import W_BytesObject
-from rsqueakvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX
+from rsqueakvm.primitives.bytecodes import *
 
+from rpython.rlib import jit
 from rpython.rtyper.lltypesystem import rffi
-from sqpyte.interpreter import Sqlite3DB, Sqlite3Query
+
 from sqpyte.capi import CConfig
-from sqpyte import capi
 
 
-###############################################################################
-# Interpreter-only, because sqlite3 cannot be compiled with rpython ¯\_(ツ)_/¯ #
-###############################################################################
-# import sqlite3
+@expose_primitive(SQPYTE_EXECUTE, unwrap_spec=[object, str])
+def sqpyte_execute(interp, s_frame, w_rcvr, sql_statement):
+    space = interp.space
 
-# @expose_primitive(SQLITE)
-# def func(interp, s_frame, argument_count):
+    query = interp.db_execute(sql_statement)
 
-#     w_arg1 = s_frame.pop()
-#     assert isinstance(w_arg1, W_BytesObject)
-#     sql_statement = interp.space.unwrap_string(w_arg1)
-#     w_arg2 = s_frame.pop()
-#     assert isinstance(w_arg2, W_BytesObject)
-#     dbfile = interp.space.unwrap_string(w_arg2)
-
-#     print dbfile
-#     print sql_statement
-
-#     conn = sqlite3.connect(dbfile)
-#     try:
-#         cursor = conn.cursor()
-
-#         cursor.execute(sql_statement)
-#         result = [str('; '.join(row)) for row in cursor]
-#     finally:
-#         conn.close()
-
-#     return interp.space.wrap_string('%s' % '\n '.join(result))
-###############################################################################
-
-
-@expose_primitive(SQLPYTE, unwrap_spec=[object, str])
-def func(interp, s_frame, w_rcvr, sql_statement):
-
-    dbfile = interp.space.get_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX)
-    dbfile = dbfile + '.db'
-
-    db = Sqlite3DB(dbfile)
-    query = db.execute(sql_statement)
+    # Fetch first row
     rc = query.mainloop()
+    num_cols = query.data_count()
 
-    result = []
+    rows = []
+    # Fetch all other rows
     while rc == CConfig.SQLITE_ROW:
-        textlen1 = query.column_bytes(0)
-        col1 = rffi.charpsize2str(
-                rffi.cast(rffi.CCHARP, query.column_text(0)), textlen1)
-        textlen2 = query.column_bytes(1)
-        col2 = rffi.charpsize2str(
-                rffi.cast(rffi.CCHARP, query.column_text(1)), textlen2)
-        result.append('%s; %s' % (col1, col2))
+        row = fetch_one_row(query, space, num_cols)
+        row_w = space.wrap_list(row)
+        rows.append(row_w)
         rc = query.mainloop()
 
-    return interp.space.wrap_string('%s' % '\n '.join(result))
+    return space.wrap_list(rows)
+
+
+@jit.unroll_safe
+def fetch_one_row(query, space, num_cols):
+    cols = [None] * num_cols
+    for i in range(num_cols):
+        typ = query.column_type(i)
+        if typ == CConfig.SQLITE_TEXT or typ == CConfig.SQLITE_BLOB:
+            textlen = query.column_bytes(i)
+            result = rffi.charpsize2str(
+                    rffi.cast(rffi.CCHARP, query.column_text(i)), textlen)
+            w_result = space.wrap_string(result)  # no encoding
+        elif typ == CConfig.SQLITE_INTEGER:
+            result = query.column_int64(i)
+            w_result = space.wrap_int(result)
+        elif typ == CConfig.SQLITE_FLOAT:
+            result = query.column_double(i)
+            w_result = space.wrap_float(result)
+        elif typ == CConfig.SQLITE_NULL:
+            w_result = space.w_nil
+        else:
+            raise PrimitiveFailedError
+        cols[i] = w_result
+    return cols
+
+
+@expose_primitive(SQPYTE_CLOSE, unwrap_spec=[object, str])
+def sqpyte_close(interp, s_frame, w_rcvr, sql_statement):
+    return interp.space.wrap_bool(interp.db_close())
+
+
+###############################################################################
+# Interpreter-only, because sqlite3 cannot be compiled with RPython ¯\_(ツ)_/¯ #
+###############################################################################
+# from rpython.rlib import objectmodel
+# if objectmodel.we_are_translated():
+#     import sqlite3
+
+#     @expose_primitive(SQLITE, unwrap_spec=[object, str, str])
+#     def func(interp, s_frame, w_rcvr, db_file, sql_statement):
+
+#         print db_file
+#         print sql_statement
+
+#         conn = sqlite3.connect(db_file)
+#         try:
+#             cursor = conn.cursor()
+
+#             cursor.execute(sql_statement)
+#             result = [str('; '.join(row)) for row in cursor]
+#         finally:
+#             conn.close()
+
+#         return interp.space.wrap_string('%s' % '\n '.join(result))
+###############################################################################

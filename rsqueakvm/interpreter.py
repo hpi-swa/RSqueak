@@ -9,6 +9,8 @@ from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod, W_SpurComp
 from rsqueakvm.model.numeric import W_SmallInteger
 from rsqueakvm.storage_contexts import ContextPartShadow, ActiveContext, InactiveContext, DirtyContext
 
+from sqpyte.interpreter import Sqlite3DB, SQPyteException, SqliteException
+
 from rpython.rlib import jit, rstackovf, unroll, objectmodel, rsignal
 
 
@@ -172,6 +174,9 @@ class Interpreter(object):
         self.process_switch_count = 0
         self.forced_interrupt_checks_count = 0
         self.stack_overflow_count = 0
+
+        # === SQPyte
+        self.db = None
 
         if not objectmodel.we_are_translated():
             if USE_SIGUSR1:
@@ -471,6 +476,39 @@ class Interpreter(object):
     def print_padded(self, str):
         assert self.is_tracing()
         print (' ' * self.stack_depth) + str
+
+    # ============== Methods for SQPyte ==============
+
+    def db_execute(self, sql):
+        jit.promote(sql)
+        if not self.db:
+            self.db_connect()
+
+        return self.db.execute(sql)
+
+    def db_connect(self):
+        # Expecting .db file with same name and in same directory as image
+        db_file = self.space.get_system_attribute(
+                constants.SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX)
+        db_file_end = len(db_file) - 6
+        assert db_file_end > 0
+        db_file = db_file[:db_file_end] + '.db'
+
+        # Open database
+        try:
+            print "Trying to connect to %s..." % db_file
+            self.db = Sqlite3DB(db_file)
+            print "Success"
+        except (SQPyteException, SqliteException) as e:
+            print e
+
+    def db_close(self):
+        if self.db:
+            self.db.close()
+            self.db = None
+            print "Disconnected"
+            return True
+        return False
 
 # Uncomment this to load debugging facilities at startup.
 #from rsqueakvm import interpreter_debugging; Interpreter.__init__ = interpreter_debugging.activating_init(Interpreter.__init__)
