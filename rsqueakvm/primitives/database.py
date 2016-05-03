@@ -1,32 +1,66 @@
+# -*- coding: utf-8 -*-
+
 from rsqueakvm.primitives import expose_primitive
-from rsqueakvm.primitives.bytecodes import SQLITE
+from rsqueakvm.primitives.bytecodes import SQLITE, SQLPYTE
 from rsqueakvm.model.variable import W_BytesObject
+from rsqueakvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX
 
-import sqlite3
+from rpython.rtyper.lltypesystem import rffi
+from sqpyte.interpreter import Sqlite3DB, Sqlite3Query
+from sqpyte.capi import CConfig
+from sqpyte import capi
 
 
-@expose_primitive(SQLITE)
-def func(interp, s_frame, argument_count):
-    if argument_count != 2:
-        return interp.space.wrap_string('Two arguments expected!')
+###############################################################################
+# Interpreter-only, because sqlite3 cannot be compiled with rpython ¯\_(ツ)_/¯ #
+###############################################################################
+# import sqlite3
 
-    w_arg1 = s_frame.pop()
-    assert isinstance(w_arg1, W_BytesObject)
-    sql_statement = interp.space.unwrap_string(w_arg1)
-    w_arg2 = s_frame.pop()
-    assert isinstance(w_arg2, W_BytesObject)
-    dbfile = interp.space.unwrap_string(w_arg2)
+# @expose_primitive(SQLITE)
+# def func(interp, s_frame, argument_count):
 
-    print dbfile
-    print sql_statement
+#     w_arg1 = s_frame.pop()
+#     assert isinstance(w_arg1, W_BytesObject)
+#     sql_statement = interp.space.unwrap_string(w_arg1)
+#     w_arg2 = s_frame.pop()
+#     assert isinstance(w_arg2, W_BytesObject)
+#     dbfile = interp.space.unwrap_string(w_arg2)
 
-    conn = sqlite3.connect(dbfile)
-    try:
-        cursor = conn.cursor()
+#     print dbfile
+#     print sql_statement
 
-        cursor.execute(sql_statement)
-        result = [str('; '.join(row)) for row in cursor]
-    finally:
-        conn.close()
+#     conn = sqlite3.connect(dbfile)
+#     try:
+#         cursor = conn.cursor()
+
+#         cursor.execute(sql_statement)
+#         result = [str('; '.join(row)) for row in cursor]
+#     finally:
+#         conn.close()
+
+#     return interp.space.wrap_string('%s' % '\n '.join(result))
+###############################################################################
+
+
+@expose_primitive(SQLPYTE, unwrap_spec=[object, str])
+def func(interp, s_frame, w_rcvr, sql_statement):
+
+    dbfile = interp.space.get_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX)
+    dbfile = dbfile + '.db'
+
+    db = Sqlite3DB(dbfile)
+    query = db.execute(sql_statement)
+    rc = query.mainloop()
+
+    result = []
+    while rc == CConfig.SQLITE_ROW:
+        textlen1 = query.column_bytes(0)
+        col1 = rffi.charpsize2str(
+                rffi.cast(rffi.CCHARP, query.column_text(0)), textlen1)
+        textlen2 = query.column_bytes(1)
+        col2 = rffi.charpsize2str(
+                rffi.cast(rffi.CCHARP, query.column_text(1)), textlen2)
+        result.append('%s; %s' % (col1, col2))
+        rc = query.mainloop()
 
     return interp.space.wrap_string('%s' % '\n '.join(result))
