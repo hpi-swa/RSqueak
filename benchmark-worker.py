@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import os
-import platform
 import signal
 import socket
 import sqlite3
@@ -122,7 +121,7 @@ class BenchmarkWorker(object):
     def post_data(self, vm=None, benchmark=None, commitid=None, branch=None, rtime=None, stdev=None):
         commit_date = time.strftime("%Y-%m-%d %H:%M", time.localtime())
         project = "cog" if "cog" in vm else "rsqueakvm"
-        executable = "%s-%s-%s" % (project, sys.platform, platform.architecture()[0])
+        executable = "%s-%s" % (project, sys.platform)
         env = socket.gethostname()
         params = {
             'commitid': commitid[0:10],
