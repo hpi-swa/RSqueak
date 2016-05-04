@@ -23,7 +23,7 @@ BENCHMARKS = [
     "SMarkCompiler.benchCompiler",
     "SMarkDeltaBlue.benchDeltaBlue",
     "SMarkFannkuch.benchFannkuch",
-    # "SMarkGSGraphSearch.benchGraphSearch", # takes ages
+    "SMarkGSGraphSearch.benchGraphSearch", # takes ages
     "SMarkJSJson.benchJson",
     "SMarkLoops.benchArrayAccess",
     "SMarkLoops.benchClassVarBinding",
