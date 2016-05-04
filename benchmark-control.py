@@ -4,6 +4,7 @@ import os
 import signal
 import subprocess
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(__file__))
 queue = __import__("benchmark-queue")
@@ -30,6 +31,7 @@ def start():
     QueuePid = os.fork()
     if QueuePid == 0:
         return queue.start()
+    time.sleep(2)
     WorkerPid = os.fork()
     if WorkerPid == 0:
         return worker.start()
