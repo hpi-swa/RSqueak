@@ -1,7 +1,7 @@
 from rsqueakvm import constants, error
 from rsqueakvm.model.base import W_Object, W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.pointers import W_PointersObject
-from rsqueakvm.util.version import constant_for_version, constant_for_version_arg, VersionMixin
+from rsqueakvm.util.version import constant_for_version, constant_for_version_arg, constant_for_version_arg2, VersionMixin
 
 from rpython.rlib.objectmodel import import_from_mixin, we_are_translated
 
@@ -120,6 +120,13 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
             self.compiledin_class = None
         self.changed()
 
+    def setliteralvariable(self, space, index, w_value):
+        w_assoc = self.getliteral(index)
+        from rsqueakvm import wrapper
+        association = wrapper.AssociationWrapper(space, w_assoc)
+        association.store_value(w_value)
+        self.changed()
+
     def setliterals(self, literals):
         """NOT RPYTHON""" # Only for testing, not safe.
         self.literals = literals
@@ -174,6 +181,13 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     @constant_for_version_arg
     def getliteral(self, index):
         return self.literals[index]
+
+    @constant_for_version_arg2
+    def getliteralvariable(self, space, index):
+        from rsqueakvm import wrapper
+        w_assoc = self.getliteral(index)
+        association = wrapper.AssociationWrapper(space, w_assoc)
+        return association.value()
 
     @constant_for_version
     def primitive(self):
