@@ -71,17 +71,22 @@ class BenchmarkWorker(object):
                 Smalltalk image quitPrimitive.
                 """ % (bm, ITERATIONS / 3, bm, ITERATIONS))
                 f.flush()
-            try:
-                pipe = subprocess.Popen(
-                    "%s $(pwd)/Squeak*.image $(pwd)/run.st" % binary,
-                    shell=True,
-                    stdout=subprocess.PIPE
-                )
-            except Exception, e:
-                print e
-                break
-            out, err = pipe.communicate()
-            errcode = pipe.wait()
+            retries = 1
+            while retries >= 0:
+                try:
+                    pipe = subprocess.Popen(
+                        "%s $(pwd)/Squeak*.image $(pwd)/run.st" % binary,
+                        shell=True,
+                        stdout=subprocess.PIPE
+                    )
+                out, err = pipe.communicate()
+                errcode = pipe.wait()
+                if errcode == 0:
+                    break
+                else:
+                    retries -= 1
+                except Exception, e:
+                    print e
             results = {}
             match = OUTPUT_RE.search(out)
             while match:
