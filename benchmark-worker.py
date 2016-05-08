@@ -54,7 +54,7 @@ class BenchmarkWorker(object):
     def execute(self, vm, commitid, branch):
         if vm == "cog":
             binary = self.download_cog(commitid)
-        elif vm == "rsqueak":
+        else:
             binary = self.download_rsqueak(commitid)
         if not binary: return
         for bm in BENCHMARKS:
