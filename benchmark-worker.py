@@ -169,7 +169,7 @@ def start():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
+    if len(sys.argv) <= 1:
         start()
     else:
         conn = sqlite3.connect(DBFILE)
