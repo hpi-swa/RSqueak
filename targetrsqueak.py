@@ -294,15 +294,9 @@ class Config(object):
                     path = filename
                     break
         if path is None:
-            if system.IS_WINDOWS:
-                from rsqueakvm.util import win32_dialog
-                path = win32_dialog.get_file()
-            elif system.IS_LINUX:
-                from rsqueakvm.util import linux_dialog
-                path = linux_dialog.get_file()
-            elif system.IS_DARWIN:
-                from rsqueakvm.util import macosx_dialog
-                path = macosx_dialog.get_file()
+            if not system.IS_ARM and (system.IS_WINDOWS or system.IS_LINUX or system.IS_DARWIN):
+                from rsqueakvm.util import dialog
+                path = dialog.get_file()
             else:
                 path = "Squeak.image"
         self.path = rpath.rabspath(path)
