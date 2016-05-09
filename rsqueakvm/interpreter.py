@@ -6,7 +6,7 @@ sys.setrecursionlimit(1000000)
 from rsqueakvm import constants, wrapper, objspace, interpreter_bytecodes
 from rsqueakvm.error import MetaPrimFailed, FatalError
 from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod, W_SpurCompiledMethod
-from rsqueakvm.model.numeric import W_SmallInteger
+from rsqueakvm.model.numeric import W_SmallInteger, W_Float
 from rsqueakvm.storage_contexts import ContextPartShadow, ActiveContext, InactiveContext, DirtyContext
 
 from rpython.rlib import jit, rstackovf, unroll, objectmodel, rsignal
@@ -34,6 +34,8 @@ class LocalReturn(Return):
     def make(space, w_value):
         if isinstance(w_value, W_SmallInteger):
             return IntLocalReturn(space.unwrap_int(w_value))
+        elif isinstance(w_value, W_Float):
+            return FloatLocalReturn(space.unwrap_float(w_value))
         else:
             return WrappedLocalReturn(w_value)
 
@@ -44,8 +46,9 @@ class NonLocalReturn(Return):
     @staticmethod
     def make(space, s_target_context, w_value):
         if isinstance(w_value, W_SmallInteger):
-            return IntNonLocalReturn(
-                    s_target_context, space.unwrap_int(w_value))
+            return IntNonLocalReturn(s_target_context, space.unwrap_int(w_value))
+        elif isinstance(w_value, W_Float):
+            return FloatNonLocalReturn(s_target_context, space.unwrap_float(w_value))
         else:
             return WrappedNonLocalReturn(s_target_context, w_value)
 
@@ -67,6 +70,13 @@ class IntLocalReturn(LocalReturn):
         self._value = intresult
     def value(self, space): return space.wrap_int(self._value)
 
+class FloatLocalReturn(LocalReturn):
+    _attrs_ = ["_value"]
+    _immutable_fields_ = ["_value"]
+    def __init__(self, result):
+        self._value = result
+    def value(self, space): return space.wrap_float(self._value)
+
 class WrappedNonLocalReturn(NonLocalReturn):
     _attrs_ = ["w_value"]
     _immutable_fields_ = ["w_value"]
@@ -82,6 +92,14 @@ class IntNonLocalReturn(NonLocalReturn):
         NonLocalReturn.__init__(self, s_target_context)
         self._value = intvalue
     def value(self, space): return space.wrap_int(self._value)
+
+class FloatNonLocalReturn(NonLocalReturn):
+    _attrs_ = ["_value"]
+    _immutable_fields_ = ["_value"]
+    def __init__(self, s_target_context, value):
+        NonLocalReturn.__init__(self, s_target_context)
+        self._value = value
+    def value(self, space): return space.wrap_float(self._value)
 
 class NonVirtualReturn(Exception):
     _attrs_ = ["s_target_context", "s_current_context", "w_value"]
