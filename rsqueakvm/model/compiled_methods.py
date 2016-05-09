@@ -182,7 +182,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def getliteral(self, index):
         return self.literals[index]
 
-    @elidable_for_version(2, promote=False)
+    @elidable_for_version(2)
     def getliteralvariable(self, space, index):
         from rsqueakvm import wrapper
         w_assoc = self.getliteral(index)
