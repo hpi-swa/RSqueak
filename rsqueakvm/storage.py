@@ -7,7 +7,7 @@ from rsqueakvm.model.character import W_Character
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject
-from rsqueakvm.util.version import VersionMixin, constant_for_version_arg2
+from rsqueakvm.util.version import VersionMixin, elidable_for_version
 
 from rpython.rlib import jit
 from rpython.rlib.objectmodel import import_from_mixin
@@ -413,7 +413,7 @@ class CachedObjectShadow(AbstractCachingShadow):
     """
     repr_classname = "CachedObjectShadow"
 
-    @constant_for_version_arg2
+    @elidable_for_version(2, promote=True)
     def fetch(self, w_self, n0):
         return AbstractCachingShadow.fetch(self, w_self, n0)
 

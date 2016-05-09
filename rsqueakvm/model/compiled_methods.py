@@ -1,7 +1,7 @@
 from rsqueakvm import constants, error
 from rsqueakvm.model.base import W_Object, W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.pointers import W_PointersObject
-from rsqueakvm.util.version import constant_for_version, constant_for_version_arg, constant_for_version_arg2, VersionMixin
+from rsqueakvm.util.version import elidable_for_version, VersionMixin
 
 from rpython.rlib.objectmodel import import_from_mixin, we_are_translated
 
@@ -155,51 +155,51 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def getbytes(self):
         return self.bytes
 
-    @constant_for_version
+    @elidable_for_version(0)
     def size(self):
         return self.headersize() + self.getliteralsize() + len(self.bytes)
 
-    @constant_for_version
+    @elidable_for_version(0)
     def tempsize(self):
         return self._tempsize
 
-    @constant_for_version
+    @elidable_for_version(0)
     def getliteralsize(self):
         return self.literalsize * constants.BYTES_PER_WORD
 
-    @constant_for_version
+    @elidable_for_version(0)
     def bytecodeoffset(self):
         return self.getliteralsize() + self.headersize()
 
     def headersize(self):
         return constants.BYTES_PER_WORD
 
-    @constant_for_version
+    @elidable_for_version(0)
     def getheader(self):
         return self.header
 
-    @constant_for_version_arg
+    @elidable_for_version(1)
     def getliteral(self, index):
         return self.literals[index]
 
-    @constant_for_version_arg2
+    @elidable_for_version(2, promote=False)
     def getliteralvariable(self, space, index):
         from rsqueakvm import wrapper
         w_assoc = self.getliteral(index)
         association = wrapper.AssociationWrapper(space, w_assoc)
         return association.value()
 
-    @constant_for_version
+    @elidable_for_version(0)
     def primitive(self):
         return self._primitive
 
-    @constant_for_version
+    @elidable_for_version(0)
     def compute_frame_size(self):
         # From blue book: normal mc have place for 12 temps+maxstack
         # mc for methods with islarge flag turned on 32
         return 16 + self.islarge * 40 + self.argsize
 
-    @constant_for_version_arg
+    @elidable_for_version(1)
     def fetch_bytecode(self, pc):
         assert pc >= 0 and pc < len(self.bytes)
         return self.bytes[pc]
@@ -220,11 +220,11 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         assert result is None or isinstance(result, W_PointersObject)
         return result
 
-    @constant_for_version
+    @elidable_for_version(0)
     def constant_compiledin_class(self):
         return self.compiledin_class
 
-    @constant_for_version
+    @elidable_for_version(0)
     def constant_lookup_class(self):
         return self.lookup_class
 
