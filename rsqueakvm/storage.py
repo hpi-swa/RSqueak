@@ -109,7 +109,21 @@ class ListStrategy(SimpleStorageStrategy):
     repr_classname = "ListStrategy"
 
     import_from_mixin(rstrat.GenericStrategy)
+
+    def store(self, w_self, index0, w_value):
+        self.check_index_store(w_self, index0)
+        storage = self.get_storage(w_self)
+        if isinstance(w_value, W_SmallInteger):
+            w_old = storage[index0]
+            if isinstance(w_old, W_SmallInteger):
+                w_old.value = w_value.value
+            else:
+                storage[index0] = self.space.wrap_int(w_value.value)
+        else:
+            storage[index0] = w_value
+
 ListStrategy.instantiate_type = ListStrategy
+
 
 class ListEntry(object):
     _attrs_ = ['strong_content', 'weak_content']
