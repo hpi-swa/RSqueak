@@ -41,6 +41,7 @@ def func(interp, s_frame, w_rcvr, primFailFlag):
 
 @expose_primitive(VM_PARAMETERS)
 def func(interp, s_frame, argcount):
+    from rpython.rlib import jit_hooks
     """Behaviour depends on argument count:
             0 args: return an Array of VM parameter values;
             1 arg:  return the indicated VM parameter;
@@ -123,13 +124,20 @@ def func(interp, s_frame, argcount):
     vm_w_params[8] = interp.space.wrap_int(1)  # must be 1 for VM Stats view to work
 
     vm_w_params[41] = interp.space.wrap_int(1)  # We are a "stack-like" VM - number of stack tables
-    vm_w_params[45] = interp.space.wrap_int(1)  # We are a "cog-like" VM - machine code zone size
+    # sizeOfMachineCode = jit_hooks.stats_asmmemmgr_allocated(None)
+    sizeOfMachineCode = jit_hooks.stats_asmmemmgr_used(None)
+    vm_w_params[45] = interp.space.wrap_int(sizeOfMachineCode)
 
     vm_w_params[39] = interp.space.wrap_int(constants.BYTES_PER_WORD)
     vm_w_params[40] = interp.space.wrap_int(interp.image.version.magic)
     vm_w_params[55] = interp.space.wrap_int(interp.process_switch_count)
     vm_w_params[57] = interp.space.wrap_int(interp.forced_interrupt_checks_count)
     vm_w_params[59] = interp.space.wrap_int(interp.stack_overflow_count)
+
+    numberOfLoops = jit_hooks.stats_get_counter_value("TOTAL_COMPILED_LOOPS")
+    numberOfBridges = jit_hooks.stats_get_counter_value("TOTAL_COMPILED_BRIDGES")
+    vm_w_params[63] = interp.space.wrap_int(numberOfLoops + numberOfBridges)
+
     vm_w_params[69] = interp.space.wrap_int(constants.INTERP_PROXY_MAJOR)
     vm_w_params[70] = interp.space.wrap_int(constants.INTERP_PROXY_MINOR)
 
