@@ -67,7 +67,7 @@ class BenchmarkWorker(object):
                 [BenchmarkAutosizeSuite run: {
                 'BenchmarkSimpleStatisticsReporter'.
                 '%s'.
-                %s}] on: Error do: ["Just fail"].
+                %s}] on: Error do: [:e | FileStream stderr nextPutAll: e printString].
                 Smalltalk image quitPrimitive.
                 """ % (bm, ITERATIONS / 3, bm, ITERATIONS))
                 f.flush()
