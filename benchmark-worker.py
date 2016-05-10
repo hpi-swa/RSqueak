@@ -60,10 +60,10 @@ class BenchmarkWorker(object):
         for bm in BENCHMARKS:
             with open("run.st", "w") as f:
                 f.write("""
-                [BenchmarkAutosizeSuite run: {
+                "[BenchmarkAutosizeSuite run: {
                 'BenchmarkSimpleStatisticsReporter'.
                 '%s'.
-                %s}] on: Error do: ["Just fail"].
+                %s}] on: Error do: ["Just fail"]."
                 [BenchmarkAutosizeSuite run: {
                 'BenchmarkSimpleStatisticsReporter'.
                 '%s'.
