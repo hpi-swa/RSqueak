@@ -202,8 +202,10 @@ WITH_ARGS_EXECUTE_METHOD = 188
 # ___________________________________________________________________________
 # Sqpyte
 SQLITE = 190
-SQPYTE_EXECUTE = 191
-SQPYTE_CLOSE = 192
+SQPYTE_CONNECT = 195
+SQPYTE_EXECUTE = 196
+SQPYTE_NEXT = 197
+SQPYTE_CLOSE = 198
 # ___________________________________________________________________________
 # BlockClosure Primitives
 CLOSURE_COPY_WITH_COPIED_VALUES = 200
