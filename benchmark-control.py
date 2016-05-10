@@ -74,7 +74,7 @@ if __name__ == "__main__":
         c = conn.cursor()
         if sys.argv[1] == "show":
             c.execute("SELECT * FROM %s WHERE %s=0;" % (JOB_TABLE, FLAG))
-            print self.c.fetchall()
+            print c.fetchall()
         else:
             commitid = sys.argv[1]
             print "Resetting benchmarks commit %s" % commitid
