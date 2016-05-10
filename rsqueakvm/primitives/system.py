@@ -1,3 +1,5 @@
+from rpython.rlib import jit
+
 from rsqueakvm import constants
 from rsqueakvm.error import PrimitiveFailedError, MetaPrimFailed
 from rsqueakvm.model.numeric import W_SmallInteger
@@ -40,6 +42,7 @@ def func(interp, s_frame, w_rcvr, primFailFlag):
     raise PrimitiveFailedError
 
 @expose_primitive(VM_PARAMETERS)
+@jit.dont_look_inside
 def func(interp, s_frame, argcount):
     from rpython.rlib import jit_hooks
     """Behaviour depends on argument count:
@@ -134,8 +137,8 @@ def func(interp, s_frame, argcount):
     vm_w_params[57] = interp.space.wrap_int(interp.forced_interrupt_checks_count)
     vm_w_params[59] = interp.space.wrap_int(interp.stack_overflow_count)
 
-    numberOfLoops = jit_hooks.stats_get_counter_value("TOTAL_COMPILED_LOOPS")
-    numberOfBridges = jit_hooks.stats_get_counter_value("TOTAL_COMPILED_BRIDGES")
+    numberOfLoops = jit_hooks.stats_get_counter_value(None, jit.Counters.TOTAL_COMPILED_LOOPS)
+    numberOfBridges = jit_hooks.stats_get_counter_value(None, jit.Counters.TOTAL_COMPILED_BRIDGES)
     vm_w_params[63] = interp.space.wrap_int(numberOfLoops + numberOfBridges)
 
     vm_w_params[69] = interp.space.wrap_int(constants.INTERP_PROXY_MAJOR)
