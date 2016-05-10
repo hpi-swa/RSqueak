@@ -71,8 +71,10 @@ class BenchmarkWorker(object):
                 Smalltalk image quitPrimitive.
                 """ % (bm, ITERATIONS / 3, bm, ITERATIONS))
                 f.flush()
-            retries = 1
-            while retries >= 0:
+            tries_left = 2
+            match = None
+            results = {}
+            while tries_left > 0:
                 try:
                     pipe = subprocess.Popen(
                         "%s $(pwd)/Squeak*.image $(pwd)/run.st" % binary,
@@ -81,15 +83,12 @@ class BenchmarkWorker(object):
                     )
                     out, err = pipe.communicate()
                     errcode = pipe.wait()
+                    match = OUTPUT_RE.search(out)
+                    if match: tries_left = 0
                 except Exception, e:
-                    errcode = -1
-                    print e
-                if errcode == 0:
-                    break
-                else:
-                    retries -= 1
-            results = {}
-            match = OUTPUT_RE.search(out)
+                    print e, out
+                finally:
+                    tries_left -= 1
             while match:
                 # This purposefully overwrites any duplicate run result with the
                 # second run, under the assumption that all previous were warmup
