@@ -63,7 +63,7 @@ class BenchmarkWorker(object):
                 "[BenchmarkAutosizeSuite run: {
                 'BenchmarkSimpleStatisticsReporter'.
                 '%s'.
-                %s}] on: Error do: ["Just fail"]."
+                %s}] on: Error do: []."
                 [BenchmarkAutosizeSuite run: {
                 'BenchmarkSimpleStatisticsReporter'.
                 '%s'.
