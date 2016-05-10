@@ -9,7 +9,7 @@ import time
 sys.path.insert(0, os.path.dirname(__file__))
 queue = __import__("benchmark-queue")
 worker = __import__("benchmark-worker")
-from constants import CONTROL_PORT
+from constants import CONTROL_PORT, DBFILE, JOB_TABLE, FLAG, COMMITID
 
 
 class BenchmarkControl(BaseHTTPServer.BaseHTTPRequestHandler):
@@ -66,4 +66,20 @@ def selfupdate():
 
 
 if __name__ == "__main__":
-    start()
+    if len(sys.argv) <= 1:
+        start()
+    else:
+        conn = sqlite3.connect(DBFILE)
+        c = conn.cursor()
+        if sys.argv[1] == "show":
+            self.c.execute("""
+            SELECT * FROM %s WHERE %s=0;
+            """ % (JOB_TABLE, FLAG))
+            print self.c.fetchall()
+        else:
+            commitid = sys.argv[1]
+            print "Resetting benchmarks commit %s" % commitid
+            c.execute("UPDATE %s SET %s=0 WHERE %s='%s'" % (JOB_TABLE, FLAG, COMMITID, commitid))
+            conn.commit()
+        c.close()
+        conn.close()

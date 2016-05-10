@@ -168,14 +168,4 @@ def start():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) <= 1:
-        start()
-    else:
-        conn = sqlite3.connect(DBFILE)
-        c = conn.cursor()
-        commitid = sys.argv[1]
-        print "Resetting benchmarks commit %s" % commitid
-        c.execute("UPDATE %s SET %s=0 WHERE %s='%s'" % (JOB_TABLE, FLAG, COMMITID, commitid))
-        conn.commit()
-        c.close()
-        conn.close()
+    start()
