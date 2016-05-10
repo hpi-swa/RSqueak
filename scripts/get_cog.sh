@@ -8,10 +8,18 @@ else
     COGURL="http://www.mirandabanda.org/files/Cog/VM/latest/"
 fi
 
-zip=$(curl -s $COGURL | grep -o "href=\"cogspurlinux-.*tgz\"" | tail -1)
+string="$(uname -m)"
+if [[ "$string" == *"arm"* ]]; then
+    zip=$(curl -s $COGURL | grep -o "href=\"cogspurlinuxhtARM-.*tgz\"" | tail -1)
+else
+    zip=$(curl -s $COGURL | grep -o "href=\"cogspurlinux-.*tgz\"" | tail -1)
+fi
+
 zip=${zip#*=}
 zip=${zip#\"}
 zip=${zip%%\"}
 curl -O "$COGURL/$zip"
+rm -rf cogspurlinux
 tar xzf $zip
 rm $zip
+mv cogspurlinux* cogspurlinux
