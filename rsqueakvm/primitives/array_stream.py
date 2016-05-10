@@ -56,4 +56,5 @@ def func(interp, s_frame, w_receiver, n0, w_value):
     if not (isinstance(w_receiver, W_BytesObject) or
             isinstance(w_receiver, W_WordsObject)):
         raise PrimitiveFailedError
-    return w_receiver.short_atput0(interp.space, n0, w_value)
+    w_receiver.short_atput0(interp.space, n0, w_value)
+    return w_value
