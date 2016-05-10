@@ -73,9 +73,7 @@ if __name__ == "__main__":
         conn = sqlite3.connect(DBFILE)
         c = conn.cursor()
         if sys.argv[1] == "show":
-            self.c.execute("""
-            SELECT * FROM %s WHERE %s=0;
-            """ % (JOB_TABLE, FLAG))
+            c.execute("SELECT * FROM %s WHERE %s=0;" % (JOB_TABLE, FLAG))
             print self.c.fetchall()
         else:
             commitid = sys.argv[1]
