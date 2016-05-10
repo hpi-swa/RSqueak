@@ -69,6 +69,7 @@ if __name__ == "__main__":
     if len(sys.argv) <= 1:
         start()
     else:
+        import sqlite3
         conn = sqlite3.connect(DBFILE)
         c = conn.cursor()
         if sys.argv[1] == "show":
