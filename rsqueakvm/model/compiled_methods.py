@@ -120,13 +120,6 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
             self.compiledin_class = None
         self.changed()
 
-    def setliteralvariable(self, space, index, w_value):
-        w_assoc = self.getliteral(index)
-        from rsqueakvm import wrapper
-        association = wrapper.AssociationWrapper(space, w_assoc)
-        association.store_value(w_value)
-        self.changed()
-
     def setliterals(self, literals):
         """NOT RPYTHON""" # Only for testing, not safe.
         self.literals = literals
@@ -181,13 +174,6 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     @elidable_for_version(1)
     def getliteral(self, index):
         return self.literals[index]
-
-    @elidable_for_version(2)
-    def getliteralvariable(self, space, index):
-        from rsqueakvm import wrapper
-        w_assoc = self.getliteral(index)
-        association = wrapper.AssociationWrapper(space, w_assoc)
-        return association.value()
 
     @elidable_for_version(0)
     def primitive(self):

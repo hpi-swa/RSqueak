@@ -180,20 +180,6 @@ class AssociationWrapper(Wrapper):
     key = make_getter(0)
     value, store_value = make_getter_setter(1)
 
-    def read(self, index0):
-        try:
-            strategy = self.wrapped._get_strategy()
-            from rsqueakvm.storage import SimpleStorageStrategy
-            # tfel: We are certain that the storage is _not_ something crazy
-            # like ContextPartShadow. ContextPartShadow>>fetch has random
-            # effects so that any read from an association wrapper could not be
-            # used inside an elidable function
-            assert isinstance(strategy, SimpleStorageStrategy)
-            return strategy.fetch(self.wrapped, index0)
-            # XXX Index error never raised after translation
-        except IndexError:
-            raise WrapperException("Unexpected instance layout. Too small")
-
 class SchedulerWrapper(Wrapper):
     priority_list = make_getter(0)
     active_process, store_active_process = make_getter_setter(1)
