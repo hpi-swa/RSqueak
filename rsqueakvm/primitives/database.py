@@ -4,60 +4,161 @@ from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.primitives import expose_primitive
 from rsqueakvm.primitives.bytecodes import *
 
-# from rpython.rlib import jit
+from rpython.rlib import jit
 from rpython.rtyper.lltypesystem import rffi
 
 from sqpyte.capi import CConfig
 from sqpyte.interpreter import Sqlite3DB, SQPyteException, SqliteException
 
 
+class Statement(object):
+    _immutable_fields_ = ['w_connection', 'sql', 'query']
+
+    def __init__(self, w_connection, sql):
+        assert isinstance(w_connection, _SQPyteDB)
+        self.w_connection = w_connection
+        self.sql = sql
+        try:
+            self.query = w_connection.db.execute(sql)
+        except SqliteException, e:
+            print e
+            # space = w_connection.space
+            # w_module = space.getbuiltinmodule('sqpyte')
+            # w_error = space.getattr(w_module, space.wrap('OperationalError'))
+            # raise OperationError(w_error, space.wrap(e.msg))
+        # self.query.use_translated.disable_from_cmdline(
+        #     w_connection.disable_opcodes)
+
+    def close(self):
+        if self.query:
+            self.query.close()
+            self.query = None
+
+    def _reset(self):
+        cache = self.w_connection.statement_cache
+        holder = cache.get_holder(self.sql)
+        if holder.statement is not None:
+            self.close()
+        else:
+            holder.statement = self
+            self.query.reset_query()
+
+
+class StatementHolder(object):
+    def __init__(self):
+        self.statement = None
+
+    def _get_or_make(self, cache, sql):
+        if self.statement is None:
+            return Statement(cache.w_connection, sql)
+        result = self.statement
+        self.statement = None
+        return jit.promote(result)
+
+
+class StatementCache(object):
+    def __init__(self, w_connection):
+        self.w_connection = w_connection
+        self.cache = {}
+
+    def get_or_make(self, sql):
+        holder = self.get_holder(sql)
+        return holder._get_or_make(self, sql)
+
+    def get_holder(self, sql):
+        jit.promote(self)
+        return self._get_holder(sql)
+
+    @jit.elidable
+    def _get_holder(self, sql):
+        holder = self.cache.get(sql, None)
+        if not holder:
+            holder = self.cache[sql] = StatementHolder()
+        return holder
+
+    def all_statements(self):
+        # return [holder.statement for holder in self.cache.itervalues()
+        #         if holder.statement is not None]
+        return []
+
+
 class _SQPyteDB(object):
 
     def __init__(self, filename):
         self.connect(filename)
+        self.statement_cache = StatementCache(self)
 
     def execute(self, sql):
-        # jit.promote(sql)
-        return self._db.execute(sql)
+        statement = self.statement_cache.get_or_make(sql)
+        return _SQPyteCursor(statement)
 
     def connect(self, filename):
         # Open database
         try:
             print "Trying to connect to %s..." % filename
-            self._db = Sqlite3DB(filename)
+            self.db = Sqlite3DB(filename)
             print "Success"
         except (SQPyteException, SqliteException) as e:
             print e
 
-    def disconnected(self):
-        return self._db is None
-
     def close(self):
-        if self.disconnected():
+        if self.db is None:
             return False
 
-        self._db.close()
-        self._db = None
+        for val in self.statement_cache.all_statements():
+            val.close()
+        self.db.close()
+        self.db = None
         print "Disconnected"
         return True
 
 
 class _SQPyteCursor(object):
-    def __init__(self, cursor):
-        self.cursor = cursor
+    def __init__(self, statement):
+        self.statement = statement
         self.num_cols = 0
         self.rc = 0
+        self.exhausted = False
 
-    def next(self):
-        self.rc = self.cursor.mainloop()
-
-        if not self.num_cols:
-            self.num_cols = self.cursor.data_count()
-
-        if self.rc != CConfig.SQLITE_ROW:
+    def next(self, space):
+        if self.exhausted:
             return None
 
-        return self.cursor
+        self.rc = self.statement.query.mainloop()
+
+        if self.rc != CConfig.SQLITE_ROW:
+            self.exhausted = True
+            return None
+
+        if not self.num_cols:
+            self.num_cols = self.statement.query.data_count()
+
+        return self.fetch_one_row(space)
+
+    @jit.unroll_safe
+    def fetch_one_row(self, space):
+        query = jit.promote(self.statement).query
+        cols = [None] * self.num_cols
+        for i in range(self.num_cols):
+            typ = query.column_type(i)
+            if typ == CConfig.SQLITE_TEXT or typ == CConfig.SQLITE_BLOB:
+                textlen = query.column_bytes(i)
+                result = rffi.charpsize2str(rffi.cast(rffi.CCHARP,
+                                                      query.column_text(i)),
+                                            textlen)
+                w_result = space.wrap_string(result)  # no encoding
+            elif typ == CConfig.SQLITE_INTEGER:
+                result = query.column_int64(i)
+                w_result = space.wrap_int(result)
+            elif typ == CConfig.SQLITE_FLOAT:
+                result = query.column_double(i)
+                w_result = space.wrap_float(result)
+            elif typ == CConfig.SQLITE_NULL:
+                w_result = space.w_nil
+            else:
+                raise PrimitiveFailedError
+            cols[i] = w_result
+        return cols
 
 
 class _DBManager(object):
@@ -77,13 +178,15 @@ class _DBManager(object):
 
         return pointer
 
-    def execute(self, db_pointer, sql_statement):
+    def execute(self, db_pointer, sql):
         db = self._dbs.get(db_pointer, None)
         if not db:
             raise PrimitiveFailedError
 
         pointer = self._cursor_count
-        self._cursors[pointer] = _SQPyteCursor(db.execute(sql_statement))
+
+        statement = db.statement_cache.get_or_make(sql)
+        self._cursors[pointer] = _SQPyteCursor(statement)
 
         self._cursor_count += 1
 
@@ -108,42 +211,18 @@ def sqpyte_connect(interp, s_frame, w_rcvr, filename):
 
 
 @expose_primitive(SQPYTE_EXECUTE, unwrap_spec=[object, int, str])
-def sqpyte_execute(interp, s_frame, w_rcvr, db_pointer, sql_statement):
-    return interp.space.wrap_int(dbm.execute(db_pointer, sql_statement))
+def sqpyte_execute(interp, s_frame, w_rcvr, db_pointer, sql):
+    return interp.space.wrap_int(dbm.execute(db_pointer, sql))
 
 
 @expose_primitive(SQPYTE_NEXT, unwrap_spec=[object, int])
 def sqpyte_next(interp, s_frame, w_rcvr, cursor_pointer):
     cursor = dbm.cursor(cursor_pointer)
-    if not cursor:
-        return interp.space.w_nil
-    row = fetch_one_row(cursor, interp.space)
-    return interp.space.wrap_list(row)
-
-
-def fetch_one_row(cursor, space):
-    query = cursor.next()
-    cols = [None] * cursor.num_cols
-    for i in range(cursor.num_cols):
-        typ = query.column_type(i)
-        if typ == CConfig.SQLITE_TEXT or typ == CConfig.SQLITE_BLOB:
-            textlen = query.column_bytes(i)
-            result = rffi.charpsize2str(rffi.cast(rffi.CCHARP,
-                                                  query.column_text(i)),
-                                        textlen)
-            w_result = space.wrap_string(result)  # no encoding
-        elif typ == CConfig.SQLITE_INTEGER:
-            result = query.column_int64(i)
-            w_result = space.wrap_int(result)
-        elif typ == CConfig.SQLITE_FLOAT:
-            result = query.column_double(i)
-            w_result = space.wrap_float(result)
-        elif typ == CConfig.SQLITE_NULL:
-            w_result = space.w_nil
-        else:
-            raise PrimitiveFailedError
-        cols[i] = w_result
-    return cols
+    row = cursor.next(interp.space)
+    if row:
+        return interp.space.wrap_list(row)
+    # cursor exhausted
+    return interp.space.w_nil
 
 
 @expose_primitive(SQPYTE_CLOSE, unwrap_spec=[object, int])
@@ -159,16 +238,16 @@ def sqpyte_close(interp, s_frame, w_rcvr, db_pointer):
 #     import sqlite3
 
 #     @expose_primitive(SQLITE, unwrap_spec=[object, str, str])
-#     def func(interp, s_frame, w_rcvr, db_file, sql_statement):
+#     def func(interp, s_frame, w_rcvr, db_file, sql):
 
 #         print db_file
-#         print sql_statement
+#         print sql
 
 #         conn = sqlite3.connect(db_file)
 #         try:
 #             cursor = conn.cursor()
 
-#             cursor.execute(sql_statement)
+#             cursor.execute(sql)
 #             result = [str('; '.join(row)) for row in cursor]
 #         finally:
 #             conn.close()
