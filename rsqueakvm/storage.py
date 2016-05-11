@@ -130,7 +130,7 @@ class ListStrategy(SimpleStorageStrategy):
             w_old = storage[index0]
             if isinstance(w_old, W_SmallInteger):
                 assert isinstance(w_old, W_MutableSmallInteger)
-                w_old.value = w_value.value
+                w_old.set_value(w_value.value)
             else:
                 storage[index0] = W_MutableSmallInteger(w_value.value)
         else:

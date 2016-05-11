@@ -339,3 +339,6 @@ class W_MutableSmallInteger(W_SmallInteger):
     _attrs_ = ["value"]
     __slots__ = ('value',)     # the only allowed slot here
     _immutable_fields_ = []
+
+    def set_value(self, v):
+        self.value = intmask(v)
