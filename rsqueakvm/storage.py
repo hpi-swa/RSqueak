@@ -4,7 +4,7 @@ import sys
 
 from rsqueakvm import constants
 from rsqueakvm.model.character import W_Character
-from rsqueakvm.model.numeric import W_Float, W_SmallInteger
+from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_MutableSmallInteger
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.util.version import VersionMixin, elidable_for_version
@@ -110,15 +110,29 @@ class ListStrategy(SimpleStorageStrategy):
 
     import_from_mixin(rstrat.GenericStrategy)
 
+    def _wrap(self, w_value):
+        if isinstance(w_value, W_MutableSmallInteger):
+            assert not isinstance(w_value, W_SmallInteger)
+            return self.space.wrap_int(w_value.value)
+        else:
+            return w_value
+
+    def _unwrap(self, w_value):
+        if isinstance(w_value, W_SmallInteger):
+            return W_MutableSmallInteger(w_value.value)
+        else:
+            return w_value
+
     def store(self, w_self, index0, w_value):
         self.check_index_store(w_self, index0)
         storage = self.get_storage(w_self)
-        if isinstance(w_value, W_SmallInteger):
+        if isinstance(w_value, W_MutableSmallInteger):
             w_old = storage[index0]
-            if isinstance(w_old, W_SmallInteger):
+            if isinstance(w_old, W_MutableSmallInteger):
+                assert not isinstance(w_old, W_SmallInteger)
                 w_old.value = w_value.value
             else:
-                storage[index0] = self.space.wrap_int(w_value.value)
+                storage[index0] = W_MutableSmallInteger(w_value.value)
         else:
             storage[index0] = w_value
 
