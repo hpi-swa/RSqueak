@@ -34,7 +34,10 @@ class BaseJITTest(object):
             self._assert_ops_equal(aliases, op, expected)
 
     def _assert_ops_equal(self, aliases, op, expected):
-        assert op.name == expected.name
+        if op.name == "guard_class" or op.name == "guard_nonnull_class":
+            assert expected.name == "guard_class" or expected.name == "guard_nonnull_class"
+        else:
+            assert op.name == expected.name
         # assert len(op.args) == len(expected.args)
         # for arg, expected_arg in zip(op.args, expected.args):
         #     if arg in aliases:
