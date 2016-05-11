@@ -107,7 +107,6 @@ class SimpleStorageStrategy(AbstractStrategy):
 class ListStrategy(SimpleStorageStrategy):
     _attrs_ = []
     repr_classname = "ListStrategy"
-
     import_from_mixin(rstrat.GenericStrategy)
 
     def _wrap(self, w_value):

@@ -246,6 +246,7 @@ class W_SmallInteger(W_Object):
     """Boxed integer value"""
     _attrs_ = ['value']
     __slots__ = ('value',)     # the only allowed slot here
+    _immutable_fields_ = ['value']
     repr_classname = "W_SmallInteger"
 
     def __init__(self, value):
