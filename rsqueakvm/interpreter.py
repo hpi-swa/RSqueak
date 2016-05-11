@@ -65,7 +65,7 @@ class IntLocalReturn(LocalReturn):
     _immutable_fields_ = ["_value"]
     def __init__(self, intresult):
         self._value = intresult
-    def value(self, space): return space.wrap_int(self._value)
+    def value(self, space): return space.wrap_smallint_unsafe(self._value)
 
 class WrappedNonLocalReturn(NonLocalReturn):
     _attrs_ = ["w_value"]
@@ -81,7 +81,7 @@ class IntNonLocalReturn(NonLocalReturn):
     def __init__(self, s_target_context, intvalue):
         NonLocalReturn.__init__(self, s_target_context)
         self._value = intvalue
-    def value(self, space): return space.wrap_int(self._value)
+    def value(self, space): return space.wrap_smallint_unsafe(self._value)
 
 class NonVirtualReturn(Exception):
     _attrs_ = ["s_target_context", "s_current_context", "w_value"]

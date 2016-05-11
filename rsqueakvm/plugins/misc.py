@@ -23,4 +23,4 @@ def primitiveStringHash(interp, s_frame, w_rcvr, thestring, initialHash):
         raise PrimitiveFailedError
     hash = r_uint(initialHash) & r_uint(0xFFFFFFF)
     bytes = thestring.getbytes()
-    return interp.space.wrap_int(_bytesHashLoop(bytes, hash))
+    return interp.space.wrap_smallint_unsafe(_bytesHashLoop(bytes, hash))

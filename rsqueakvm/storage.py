@@ -402,12 +402,7 @@ class ShadowMixin(object):
     def promote_if_neccessary(self):
         return self
 
-class AbstractGenericListStrategyShadow(SimpleStorageStrategy):
-    _attrs_ = []
-    import_from_mixin(rstrat.GenericStrategy)
-
-
-class AbstractGenericShadow(AbstractGenericListStrategyShadow):
+class AbstractGenericShadow(ListStrategy):
     """
     This class behaves just like a generic list storage strategy,
     but allows safe subclassing for more specific, non-singleton strategies.
@@ -416,7 +411,7 @@ class AbstractGenericShadow(AbstractGenericListStrategyShadow):
     _immutable_fields_ = ['_w_self?']
     import_from_mixin(ShadowMixin)
     def __init__(self, space, w_self, size, w_class):
-        AbstractGenericListStrategyShadow.__init__(self, space, w_self, size, w_class)
+        ListStrategy.__init__(self, space, w_self, size, w_class)
         assert w_self is None or isinstance(w_self, W_PointersObject)
         self._w_self = w_self
     def _convert_storage_from(self, w_self, previous_strategy):

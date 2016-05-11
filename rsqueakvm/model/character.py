@@ -73,7 +73,7 @@ class W_Character(W_AbstractObjectWithIdentityHash):
     def fetch(self, space, n0):
         if n0 != 0:
             raise IndexError
-        return space.wrap_int(self.value)
+        return space.wrap_smallint_unsafe(self.value)
 
     def store(self, space, n0, w_obj):
         if n0 != 0:
