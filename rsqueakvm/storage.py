@@ -113,7 +113,7 @@ class ListStrategy(SimpleStorageStrategy):
     def _wrap(self, w_value):
         if isinstance(w_value, W_SmallInteger):
             assert isinstance(w_value, W_MutableSmallInteger)
-            return self.space.wrap_int(w_value.value)
+            return self.space.wrap_smallint_unsafe(w_value.value)
         else:
             return w_value
 
@@ -236,7 +236,7 @@ class SmallIntegerOrNilStrategy(SimpleStorageStrategy):
     repr_classname = "SmallIntegerOrNilStrategy"
     import_from_mixin(rstrat.TaggingStrategy)
     contained_type = W_SmallInteger
-    def wrap(self, val): return self.space.wrap_int(val)
+    def wrap(self, val): return self.space.wrap_smallint_unsafe(val)
     def unwrap(self, w_val): return self.space.unwrap_int(w_val)
     def wrapped_tagged_value(self): return self.space.w_nil
     def unwrapped_tagged_value(self): return constants.MAXINT
