@@ -242,7 +242,7 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
         W_AbstractObjectWithIdentityHash._become(self, w_other)
 
 
-class W_MutableSmallInteger(W_Object):
+class W_SmallInteger(W_Object):
     """Boxed integer value"""
     _attrs_ = ['value']
     __slots__ = ('value',)     # the only allowed slot here
@@ -335,5 +335,7 @@ class W_MutableSmallInteger(W_Object):
     def clone(self, space):
         return self
 
-class W_SmallInteger(W_MutableSmallInteger):
-    _immutable_fields_ = ["value"]
+class W_MutableSmallInteger(W_SmallInteger):
+    _attrs_ = ["value"]
+    __slots__ = ('value',)     # the only allowed slot here
+    _immutable_fields_ = []

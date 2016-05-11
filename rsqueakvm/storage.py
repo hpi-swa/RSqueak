@@ -111,8 +111,8 @@ class ListStrategy(SimpleStorageStrategy):
     import_from_mixin(rstrat.GenericStrategy)
 
     def _wrap(self, w_value):
-        if isinstance(w_value, W_MutableSmallInteger):
-            assert not isinstance(w_value, W_SmallInteger)
+        if isinstance(w_value, W_SmallInteger):
+            assert isinstance(w_value, W_MutableSmallInteger)
             return self.space.wrap_int(w_value.value)
         else:
             return w_value
@@ -126,10 +126,10 @@ class ListStrategy(SimpleStorageStrategy):
     def store(self, w_self, index0, w_value):
         self.check_index_store(w_self, index0)
         storage = self.get_storage(w_self)
-        if isinstance(w_value, W_MutableSmallInteger):
+        if isinstance(w_value, W_SmallInteger):
             w_old = storage[index0]
-            if isinstance(w_old, W_MutableSmallInteger):
-                assert not isinstance(w_old, W_SmallInteger)
+            if isinstance(w_old, W_SmallInteger):
+                assert isinstance(w_old, W_MutableSmallInteger)
                 w_old.value = w_value.value
             else:
                 storage[index0] = W_MutableSmallInteger(w_value.value)
