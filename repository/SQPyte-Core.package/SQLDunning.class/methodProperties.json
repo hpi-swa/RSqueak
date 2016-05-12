@@ -1,6 +1,7 @@
 {
 	"class" : {
-		"worstCase" : "fn 5/12/2016 10:01",
+		"betterCase" : "fn 5/12/2016 10:46",
+		"worstCase" : "fn 5/12/2016 10:55",
 		"worstCaseCreditDebitSql:" : "fn 5/12/2016 10:00",
 		"worstCaseInfoSql:" : "fn 5/11/2016 09:14",
 		"worstCaseListSql" : "fn 5/11/2016 09:10",

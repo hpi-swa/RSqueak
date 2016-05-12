@@ -16,8 +16,9 @@ worstCase
 		customerID := knr first.
 		cursor2 := db execute: (self worstCaseInfoSql: customerID).
 		[ item := cursor2 next ] whileNotNil: [ beleg add: item ].
-	
-		beleg do: [ :bel | | overdue cursor3 hasDebit cursor4 |
+		beleg do: [ :bel |
+			| overdue cursor3 hasDebit cursor4 |
+			FileStream stdout nextPut: $..
 			cursor3 := db execute: (self worstCaseOverdueSql: bel first).
 			overdue := cursor3 next first = 1.
 			cursor4 := db execute: (self worstCaseCreditDebitSql: customerID).
