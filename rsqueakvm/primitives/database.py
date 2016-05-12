@@ -220,6 +220,8 @@ def sqpyte_execute(interp, s_frame, w_rcvr, db_pointer, sql):
 @expose_primitive(SQPYTE_NEXT, unwrap_spec=[object, int])
 def sqpyte_next(interp, s_frame, w_rcvr, cursor_pointer):
     cursor = dbm.cursor(cursor_pointer)
+    if not cursor:
+        raise PrimitiveFailedError
     row = cursor.next(interp.space)
     if row:
         return interp.space.wrap_list(row)
