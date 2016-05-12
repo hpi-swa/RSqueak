@@ -21,7 +21,7 @@ class Statement(object):
         try:
             self.query = w_connection.db.execute(sql)
         except SqliteException, e:
-            print e
+            print e.msg
             # space = w_connection.space
             # w_module = space.getbuiltinmodule('sqpyte')
             # w_error = space.getattr(w_module, space.wrap('OperationalError'))
@@ -124,6 +124,9 @@ class _SQPyteCursor(object):
         if self.exhausted:
             return None
 
+        if not self.statement.query:
+            return None
+
         self.rc = self.statement.query.mainloop()
 
         if self.rc != CConfig.SQLITE_ROW:
@@ -186,6 +189,11 @@ class _DBManager(object):
         pointer = self._cursor_count
 
         statement = db.statement_cache.get_or_make(sql)
+
+        # Check if statement failed to parse
+        if not statement.query:
+            return None
+
         self._cursors[pointer] = _SQPyteCursor(statement)
 
         self._cursor_count += 1
@@ -212,7 +220,10 @@ def sqpyte_connect(interp, s_frame, w_rcvr, filename):
 
 @expose_primitive(SQPYTE_EXECUTE, unwrap_spec=[object, int, str])
 def sqpyte_execute(interp, s_frame, w_rcvr, db_pointer, sql):
-    return interp.space.wrap_int(dbm.execute(db_pointer, sql))
+    cursor_pointer = dbm.execute(db_pointer, sql)
+    if cursor_pointer:
+        return interp.space.wrap_int(cursor_pointer)
+    raise PrimitiveFailedError
 
 
 @expose_primitive(SQPYTE_NEXT, unwrap_spec=[object, int])
