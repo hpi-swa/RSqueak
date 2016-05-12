@@ -17,7 +17,6 @@ branches:
   except:
     - /^v[0-9]/  # Ignore version tags
     - windows-build
-    - sqpyte
 env:
   global:
     - SB2="$PWD/raspbian_arm"
@@ -26,32 +25,7 @@ env:
     - LIBRARY_PATH=$LIBRARY_PATH:$HOME/SDL2/lib
     - C_INCLUDE_PATH=$C_INCLUDE_PATH:$HOME/SDL2/include
   matrix:
-    - BUILD_ARCH=32bit TEST_TYPE=default
-    - BUILD_ARCH=32bit
-    - BUILD_ARCH=32bit TEST_TYPE=coverage
-    # - BUILD_ARCH=lldebug
-    - BUILD_ARCH=64bit TEST_TYPE=default
     - BUILD_ARCH=64bit
-    - BUILD_ARCH=armv6
-    - BUILD_ARCH=armv7-a
-    - BUILD_ARCH=armv8-a
-matrix:
-  exclude:
-    - os: osx
-      env: BUILD_ARCH=32bit TEST_TYPE=coverage
-    - os: osx
-      env: BUILD_ARCH=armv6
-    - os: osx
-      env: BUILD_ARCH=armv7-a
-    - os: osx
-      env: BUILD_ARCH=armv8-a
-  allow_failures:
-    - env: BUILD_ARCH=64bit
-    - env: BUILD_ARCH=64bit TEST_TYPE=default
-    # - env: BUILD_ARCH=armv6
-    # - env: BUILD_ARCH=armv7-a
-    # - env: BUILD_ARCH=armv8-a
-  fast_finish: true
 install: .travis/install_requirements.sh
 script: .travis/build.sh
 after_success: .travis/success.sh
