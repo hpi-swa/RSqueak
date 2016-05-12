@@ -19,8 +19,6 @@ branches:
     - windows-build
 env:
   global:
-    - SB2="$PWD/raspbian_arm"
-    - SB2NAME="rasp"
     - PATH=$PATH:$HOME/SDL2/bin
     - LIBRARY_PATH=$LIBRARY_PATH:$HOME/SDL2/lib
     - C_INCLUDE_PATH=$C_INCLUDE_PATH:$HOME/SDL2/include
