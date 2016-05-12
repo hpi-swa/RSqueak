@@ -247,7 +247,7 @@ class ContextPartShadow(AbstractStrategy):
         return self._stack_ptr
 
     def wrap_stackpointer(self):
-        return self.space.wrap_int(self.stackdepth())
+        return self.space.wrap_smallint_unsafe(self.stackdepth())
 
     # === Program Counter ===
 
@@ -267,7 +267,7 @@ class ContextPartShadow(AbstractStrategy):
         else:
             pc += 1
             pc += self.w_method().bytecodeoffset()
-            return self.space.wrap_int(pc)
+            return self.space.wrap_smallint_unsafe(pc)
 
     def pc(self):
         return self._pc
@@ -673,7 +673,7 @@ class __extend__(ContextPartShadow):
     def wrap_initialip(self):
         initialip = self.initialip()
         initialip += 1 + self.w_method().literalsize
-        return self.space.wrap_int(initialip)
+        return self.space.wrap_smallint_unsafe(initialip)
 
     def reset_pc(self):
         self.store_pc(self.initialip())
@@ -685,7 +685,7 @@ class __extend__(ContextPartShadow):
         self.store_expected_argument_count(self.space.unwrap_int(w_value))
 
     def wrap_eargc(self):
-        return self.space.wrap_int(self.expected_argument_count())
+        return self.space.wrap_smallint_unsafe(self.expected_argument_count())
 
     def expected_argument_count(self):
         return self.get_extra_data()._eargc

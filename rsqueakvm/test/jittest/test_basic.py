@@ -520,6 +520,7 @@ class TestBasic(BaseJITTest):
         i115 = uint_lt(i105, i113)
         guard_true(i115, descr=<Guard0xa967630>)
         p116 = getarrayitem_gc_r(p112, i105, descr=<ArrayP 4>)
+        guard_nonnull_class(p116, ConstClass(W_Character), descr=<Guard0x903c130>)
         i117 = int_add(i100, 1)
         jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, i117, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, p47, p70, i83, p82, descr=TargetToken(177582744))
         """)

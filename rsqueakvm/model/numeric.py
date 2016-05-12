@@ -211,7 +211,7 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
     def at0(self, space, index0):
         shift = index0 * 8
         result = (self.value >> shift) & 0xff
-        return space.wrap_int(intmask(result))
+        return space.wrap_smallint_unsafe(intmask(result))
 
     def atput0(self, space, index0, w_byte):
         self.setbyte(index0, space.unwrap_int(w_byte))
@@ -246,7 +246,7 @@ class W_SmallInteger(W_Object):
     """Boxed integer value"""
     _attrs_ = ['value']
     __slots__ = ('value',)     # the only allowed slot here
-    _immutable_fields_ = ["value"]
+    _immutable_fields_ = ['value']
     repr_classname = "W_SmallInteger"
 
     def __init__(self, value):
@@ -335,3 +335,11 @@ class W_SmallInteger(W_Object):
 
     def clone(self, space):
         return self
+
+class W_MutableSmallInteger(W_SmallInteger):
+    _attrs_ = ["value"]
+    __slots__ = ('value',)     # the only allowed slot here
+    _immutable_fields_ = []
+
+    def set_value(self, v):
+        self.value = intmask(v)
