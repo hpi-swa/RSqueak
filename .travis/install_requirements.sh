@@ -124,8 +124,8 @@ presetup_$TRAVIS_OS_NAME
 python .build/download_dependencies.py || true
 setup_$TRAVIS_OS_NAME
 
-ls .build/
+ls -lisah .build/
 # build sqlite in sqpyte project
-pushd ".build/sqpyte/" > /dev/null
+pushd ".build/sqpyte" > /dev/null
 make
 popd > /dev/null
