@@ -128,5 +128,5 @@ setup_$TRAVIS_OS_NAME
 rm -f .build/sqpyte
 mv .build/softdevteam-sqpyte-* .build/sqpyte
 pushd ".build/sqpyte" > /dev/null
-sudo bash make
+sudo make
 popd > /dev/null
