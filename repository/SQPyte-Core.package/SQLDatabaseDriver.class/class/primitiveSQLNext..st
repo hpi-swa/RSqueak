@@ -1,0 +1,3 @@
+primitives
+primitiveSQLNext: aCursorPointer
+	self subclassResponsibility

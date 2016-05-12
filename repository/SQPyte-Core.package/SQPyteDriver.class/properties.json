@@ -1,0 +1,14 @@
+{
+	"category" : "SQPyte-Core",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "SQPyteDriver",
+	"pools" : [
+		 ],
+	"super" : "SQLDatabaseDriver",
+	"type" : "normal" }

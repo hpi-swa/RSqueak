@@ -1,0 +1,8 @@
+{
+	"class" : {
+		"primitiveSQLClose:" : "fn 5/10/2016 16:28",
+		"primitiveSQLConnect:" : "fn 5/10/2016 16:28",
+		"primitiveSQLExecute:with:" : "fn 5/10/2016 16:28",
+		"primitiveSQLNext:" : "fn 5/10/2016 17:43" },
+	"instance" : {
+		 } }

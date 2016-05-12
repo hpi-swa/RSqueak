@@ -1,0 +1,3 @@
+primitives
+primitiveSQLClose: aDatabasePointer
+	self subclassResponsibility

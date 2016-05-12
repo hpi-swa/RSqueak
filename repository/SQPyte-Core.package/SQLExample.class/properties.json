@@ -1,0 +1,14 @@
+{
+	"category" : "SQPyte-Core",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "SQLExample",
+	"pools" : [
+		 ],
+	"super" : "Object",
+	"type" : "normal" }
