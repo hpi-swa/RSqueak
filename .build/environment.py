@@ -111,6 +111,6 @@ def prepare_environment_variables():
 cp, config = load_config()
 if "64bit" in sys.argv:
     sys.argv.remove("64bit")
-# else:
-#     ensure_32bit_environment()
+else:
+    ensure_32bit_environment()
 prepare_environment_variables()
