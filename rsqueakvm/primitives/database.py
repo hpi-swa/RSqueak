@@ -22,7 +22,7 @@ class Statement(object):
             self.query = w_connection.db.execute(sql)
         except SqliteException, e:
             print e.msg
-            raise PrimitiveFailedError
+            raise PrimitiveFailedError(e.msg)
             # space = w_connection.space
             # w_module = space.getbuiltinmodule('sqpyte')
             # w_error = space.getattr(w_module, space.wrap('OperationalError'))
@@ -121,7 +121,7 @@ class _SQPyteCursor(object):
 
     def __init__(self, statement):
         self.statement = statement
-        if not self.statement.query:
+        if self.statement.query is None:
             self.rc = 0
             self.num_cols = 0
         else:
@@ -157,7 +157,7 @@ class _SQPyteCursor(object):
             elif typ == CConfig.SQLITE_NULL:
                 w_result = space.w_nil
             else:
-                raise PrimitiveFailedError
+                raise PrimitiveFailedError()
             cols[i] = w_result
         return cols
 
@@ -181,8 +181,8 @@ class _DBManager(object):
 
     def execute(self, db_pointer, sql):
         db = self._dbs.get(db_pointer, None)
-        if not db:
-            raise PrimitiveFailedError
+        if db is None:
+            raise PrimitiveFailedError()
 
         pointer = self._cursor_count
 
@@ -199,8 +199,8 @@ class _DBManager(object):
 
     def close(self, db_pointer):
         db = self._dbs.get(db_pointer, None)
-        if not db:
-            raise PrimitiveFailedError
+        if db is None:
+            raise PrimitiveFailedError()
         return db.close()
 
 
@@ -220,13 +220,12 @@ def sqpyte_execute(interp, s_frame, w_rcvr, db_pointer, sql):
 @expose_primitive(SQPYTE_NEXT, unwrap_spec=[object, int])
 def sqpyte_next(interp, s_frame, w_rcvr, cursor_pointer):
     cursor = dbm.cursor(cursor_pointer)
-    if not cursor:
-        raise PrimitiveFailedError
+    if cursor is None:
+        raise PrimitiveFailedError()
     row = cursor.next(interp.space)
-    if row:
-        return interp.space.wrap_list(row)
-    # cursor exhausted
-    return interp.space.w_nil
+    if row is None:  # cursor exhausted
+        return interp.space.w_nil
+    return interp.space.wrap_list(row)
 
 
 @expose_primitive(SQPYTE_CLOSE, unwrap_spec=[object, int])
