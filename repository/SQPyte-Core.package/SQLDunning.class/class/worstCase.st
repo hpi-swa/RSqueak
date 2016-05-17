@@ -1,7 +1,6 @@
 as yet unclassified
 worstCase
 	| db result cursor1 item kunnr |
-	FileStream startUp: true.
 	FileStream stdout nextPutAll: 'Start'; cr.
 	db := SQLDatabase open: '/Users/fniephaus/code/RSqueak/images/sqpyte/energy.db'.
 
@@ -27,4 +26,5 @@ worstCase
 			(overdue and: [ hasDebit ])
 				ifTrue: [ result add: {customerID. bel} ] ] ].
 
+	FileStream stdout nextPutAll: result asString.
 	^ result

@@ -1,3 +1,4 @@
 primitives
 primitiveSQLClose: aDatabasePointer
-	<primitive: 198>
+	<primitive: 'primitiveSQPyteClose' module: 'DatabasePlugin'>
+	self primitiveFailed

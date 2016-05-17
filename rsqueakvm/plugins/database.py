@@ -246,7 +246,7 @@ sqlite3_column_count = rffi.llexternal("sqlite3_column_count", [capi.VDBEP],
 
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, str])
-def sqlite_connect(interp, s_frame, w_rcvr, connect_str):
+def primitiveSQLiteConnect(interp, s_frame, w_rcvr, connect_str):
     with rffi.scoped_str2charp(connect_str) as connect_str, \
             lltype.scoped_alloc(capi.SQLITE3PP.TO, 1) as result:
         rc = capi.sqlite3_open(connect_str, result)
@@ -262,7 +262,7 @@ def sqlite_connect(interp, s_frame, w_rcvr, connect_str):
 
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, int, str])
-def sqlite_execute(interp, s_frame, w_rcvr, db_ptr, query):
+def primitiveSQLiteExecute(interp, s_frame, w_rcvr, db_ptr, query):
     length = len(query)
     v_db_ptr = rffi.cast(rffi.VOIDP, db_ptr)
 
@@ -281,7 +281,7 @@ def sqlite_execute(interp, s_frame, w_rcvr, db_ptr, query):
 
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
-def sqlite_next(interp, s_frame, w_rcvr, stmt_ptr):
+def primitiveSQLiteNext(interp, s_frame, w_rcvr, stmt_ptr):
     if stmt_ptr == 0:
         return interp.space.w_nil
 

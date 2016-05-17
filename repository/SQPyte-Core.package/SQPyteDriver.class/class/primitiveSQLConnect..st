@@ -1,3 +1,4 @@
 primitives
 primitiveSQLConnect: aFilename
-	<primitive: 195>
+	<primitive: 'primitiveSQPyteConnect' module: 'DatabasePlugin'>
+	self primitiveFailed

@@ -1,3 +1,4 @@
 primitives
 primitiveSQLClose: aDatabasePointer
-	<primitive: 1234>
+	<primitive: 'primitiveSQLiteClose' module: 'DatabasePlugin'>
+	self primitiveFailed
