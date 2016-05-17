@@ -102,9 +102,9 @@ class _SQPyteDB(object):
     def connect(self, filename):
         # Open database
         try:
-            print "Trying to connect to %s..." % filename
+            print 'Trying to connect to %s...' % filename
             self.db = Sqlite3DB(filename)
-            print "Success"
+            print 'Success'
         except (SQPyteException, SqliteException) as e:
             print e.msg
 
@@ -116,7 +116,7 @@ class _SQPyteDB(object):
             holder.close()
         self.db.close()
         self.is_closed = True
-        print "Disconnected"
+        print 'Disconnected'
         return True
 
 
@@ -240,9 +240,13 @@ def primitiveSQPyteClose(interp, s_frame, w_rcvr, db_pointer):
 #
 # libsqlite3 via rffi
 #
-sqlite3_step = rffi.llexternal("sqlite3_step", [capi.VDBEP], rffi.INT)
-sqlite3_column_count = rffi.llexternal("sqlite3_column_count", [capi.VDBEP],
+sqlite3_step = rffi.llexternal('sqlite3_step', [capi.VDBEP], rffi.INT)
+sqlite3_column_count = rffi.llexternal('sqlite3_column_count', [capi.VDBEP],
                                        rffi.INT)
+
+sqlite3_column_type = rffi.llexternal('sqlite3_column_type',
+                                      [capi.VDBEP, rffi.INT],
+                                      rffi.INT)
 
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, str])
