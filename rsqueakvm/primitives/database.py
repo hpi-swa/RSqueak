@@ -254,7 +254,7 @@ def sqlite_connect(interp, s_frame, w_rcvr, connect_str):
         db = rffi.cast(capi.SQLITE3P, result[0])
         pt = rffi.cast(rffi.VOIDP, db)
 
-        print 'open ptr: {}'.format(pt)
+        # print 'open ptr: {}'.format(pt)
 
         return interp.space.wrap_int(pt)
 
@@ -264,7 +264,7 @@ def sqlite_execute(interp, s_frame, w_rcvr, db_ptr, query):
     length = len(query)
     v_db_ptr = rffi.cast(rffi.VOIDP, db_ptr)
 
-    print 'exec ptr: {}'.format(v_db_ptr)
+    # print 'exec ptr: {}'.format(v_db_ptr)
 
     with rffi.scoped_str2charp(query) as query_p, \
             lltype.scoped_alloc(rffi.VOIDPP.TO, 1) as result, \
