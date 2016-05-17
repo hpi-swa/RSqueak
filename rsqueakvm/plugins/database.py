@@ -8,7 +8,7 @@ from rpython.rlib import jit
 from rpython.rtyper.lltypesystem import rffi, lltype
 
 from sqpyte import capi
-from sqpyte.capi import CConfig, sqlite3_open, sqlite3_prepare_v2, sqlite3_column_type
+from sqpyte.capi import CConfig
 from sqpyte.interpreter import Sqlite3DB, SQPyteException, SqliteException
 
 
@@ -245,7 +245,7 @@ sqlite3_column_count = rffi.llexternal("sqlite3_column_count", [capi.VDBEP],
                                        rffi.INT)
 
 
-@expose_primitive(SQLITE_CONNECT, unwrap_spec=[object, str])
+@DatabasePlugin.expose_primitive(unwrap_spec=[object, str])
 def sqlite_connect(interp, s_frame, w_rcvr, connect_str):
     with rffi.scoped_str2charp(connect_str) as connect_str, \
             lltype.scoped_alloc(capi.SQLITE3PP.TO, 1) as result:
@@ -261,7 +261,7 @@ def sqlite_connect(interp, s_frame, w_rcvr, connect_str):
         return interp.space.wrap_int(pt)
 
 
-@expose_primitive(SQLITE_EXECUTE, unwrap_spec=[object, int, str])
+@DatabasePlugin.expose_primitive(unwrap_spec=[object, int, str])
 def sqlite_execute(interp, s_frame, w_rcvr, db_ptr, query):
     length = len(query)
     v_db_ptr = rffi.cast(rffi.VOIDP, db_ptr)
@@ -280,7 +280,7 @@ def sqlite_execute(interp, s_frame, w_rcvr, db_ptr, query):
             return interp.space.w_nil
 
 
-@expose_primitive(SQLITE_NEXT, unwrap_spec=[object, int])
+@DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
 def sqlite_next(interp, s_frame, w_rcvr, stmt_ptr):
     if stmt_ptr == 0:
         return interp.space.w_nil
@@ -299,33 +299,24 @@ def sqlite_next(interp, s_frame, w_rcvr, stmt_ptr):
 def sqlite_read_row(interp, space, stmt_ptr):
     column_count = sqlite3_column_count(stmt_ptr)
     row = [None] * column_count
-
     for i in range(column_count):
         tid = sqlite3_column_type(stmt_ptr, i)
-
         if tid == CConfig.SQLITE_TEXT or tid == CConfig.SQLITE_BLOB:
             text_len = capi.sqlite3_column_bytes(stmt_ptr, i)
             text_ptr = capi.sqlite3_column_text(stmt_ptr, i)
-
             row[i] = space.wrap_string(
                 rffi.charpsize2str(text_ptr, text_len))
-
         elif tid == CConfig.SQLITE_INTEGER:
             value = capi.sqlite3_column_int64(stmt_ptr, i)
-
             row[i] = space.wrap_int(value)
-
         elif tid == CConfig.SQLITE_FLOAT:
             value = capi.sqlite3_column_double(stmt_ptr, i)
-
             row[i] = space.wrap_float(value)
 
         elif tid == CConfig.SQLITE_NULL:
             row[i] = space.w_nil
-
         else:
             raise PrimitiveFailedError()
-
     return row
 
 
@@ -336,7 +327,7 @@ def sqlite_read_row(interp, space, stmt_ptr):
 # if objectmodel.we_are_translated():
 #     import sqlite3
 
-#     @expose_primitive(SQLITE, unwrap_spec=[object, str, str])
+#     @DatabasePlugin.expose_primitive(SQLITE, unwrap_spec=[object, str, str])
 #     def func(interp, s_frame, w_rcvr, db_file, sql):
 
 #         print db_file
