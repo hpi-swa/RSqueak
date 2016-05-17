@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from rsqueakvm.error import PrimitiveFailedError
-from rsqueakvm.primitives import expose_primitive
+from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.primitives.bytecodes import *
 
 from rpython.rlib import jit
@@ -9,6 +9,9 @@ from rpython.rtyper.lltypesystem import rffi
 
 from sqpyte.capi import CConfig
 from sqpyte.interpreter import Sqlite3DB, SQPyteException, SqliteException
+
+
+DatabasePlugin = Plugin()
 
 
 class Statement(object):
@@ -207,18 +210,18 @@ class _DBManager(object):
 dbm = _DBManager()
 
 
-@expose_primitive(SQPYTE_CONNECT, unwrap_spec=[object, str])
-def sqpyte_connect(interp, s_frame, w_rcvr, filename):
+@DatabasePlugin.expose_primitive(unwrap_spec=[object, str])
+def primitiveSQPyteConnect(interp, s_frame, w_rcvr, filename):
     return interp.space.wrap_int(dbm.connect(filename))
 
 
-@expose_primitive(SQPYTE_EXECUTE, unwrap_spec=[object, int, str])
-def sqpyte_execute(interp, s_frame, w_rcvr, db_pointer, sql):
+@DatabasePlugin.expose_primitive(unwrap_spec=[object, int, str])
+def primitiveSQPyteExecute(interp, s_frame, w_rcvr, db_pointer, sql):
     return interp.space.wrap_int(dbm.execute(db_pointer, sql))
 
 
-@expose_primitive(SQPYTE_NEXT, unwrap_spec=[object, int])
-def sqpyte_next(interp, s_frame, w_rcvr, cursor_pointer):
+@DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
+def primitiveSQPyteNext(interp, s_frame, w_rcvr, cursor_pointer):
     cursor = dbm.cursor(cursor_pointer)
     if cursor is None:
         raise PrimitiveFailedError()
@@ -228,8 +231,8 @@ def sqpyte_next(interp, s_frame, w_rcvr, cursor_pointer):
     return interp.space.wrap_list(row)
 
 
-@expose_primitive(SQPYTE_CLOSE, unwrap_spec=[object, int])
-def sqpyte_close(interp, s_frame, w_rcvr, db_pointer):
+@DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
+def primitiveSQPyteClose(interp, s_frame, w_rcvr, db_pointer):
     return interp.space.wrap_bool(dbm.close(db_pointer))
 
 

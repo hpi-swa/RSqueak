@@ -200,13 +200,6 @@ ENTER_CRITICAL_SECTION = 186  # similar to WAIT, hence WAIT + 100
 TEST_AND_SET_OWNERSHIP_OF_CRITICAL_SECTION = 187
 WITH_ARGS_EXECUTE_METHOD = 188
 # ___________________________________________________________________________
-# Sqpyte
-SQLITE = 190
-SQPYTE_CONNECT = 195
-SQPYTE_EXECUTE = 196
-SQPYTE_NEXT = 197
-SQPYTE_CLOSE = 198
-# ___________________________________________________________________________
 # BlockClosure Primitives
 CLOSURE_COPY_WITH_COPIED_VALUES = 200
 CLOSURE_VALUE = 201
