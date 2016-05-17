@@ -123,3 +123,11 @@ fi
 presetup_$TRAVIS_OS_NAME
 python .build/download_dependencies.py || true
 setup_$TRAVIS_OS_NAME
+
+# Prepare sqpyte/sqlite
+rm -f .build/sqpyte
+mv .build/softdevteam-sqpyte-* .build/sqpyte
+pushd ".build/sqpyte" > /dev/null
+chmod +x ./sqlite/configure
+sudo make
+popd > /dev/null

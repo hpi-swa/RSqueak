@@ -5,7 +5,6 @@ from os.path import dirname, join as pathjoin
 
 DEFAULT_OSX_SYSTEM_PYTHON = '/usr/bin/python'
 
-sys.argv[0] = 'rpython' # required for sqpyte hacks
 
 def load_config():
     config = pathjoin(dirname(__file__), "buildconfig.ini")

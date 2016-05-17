@@ -3,6 +3,8 @@
 import sys, os
 
 if __name__ == "__main__":
+    sys.argv[0] = 'rpython'  # required for sqpyte hacks
+
     if not any(arg.startswith("-O") for arg in sys.argv):
         sys.argv.append("--batch")
         sys.argv.append("-Ojit")
