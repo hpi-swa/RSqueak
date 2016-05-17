@@ -23,7 +23,7 @@ class Statement(object):
             self.query = w_connection.db.execute(sql)
         except SqliteException, e:
             print e.msg
-            raise PrimitiveFailedError
+            raise PrimitiveFailedError()
             # space = w_connection.space
             # w_module = space.getbuiltinmodule('sqpyte')
             # w_error = space.getattr(w_module, space.wrap('OperationalError'))
@@ -158,7 +158,7 @@ class _SQPyteCursor(object):
             elif typ == CConfig.SQLITE_NULL:
                 w_result = space.w_nil
             else:
-                raise PrimitiveFailedError
+                raise PrimitiveFailedError()
             cols[i] = w_result
         return cols
 
@@ -183,7 +183,7 @@ class _DBManager(object):
     def execute(self, db_pointer, sql):
         db = self._dbs.get(db_pointer, None)
         if not db:
-            raise PrimitiveFailedError
+            raise PrimitiveFailedError()
 
         pointer = self._cursor_count
 
@@ -201,7 +201,7 @@ class _DBManager(object):
     def close(self, db_pointer):
         db = self._dbs.get(db_pointer, None)
         if not db:
-            raise PrimitiveFailedError
+            raise PrimitiveFailedError()
         return db.close()
 
 
@@ -222,7 +222,7 @@ def sqpyte_execute(interp, s_frame, w_rcvr, db_pointer, sql):
 def sqpyte_next(interp, s_frame, w_rcvr, cursor_pointer):
     cursor = dbm.cursor(cursor_pointer)
     if not cursor:
-        raise PrimitiveFailedError
+        raise PrimitiveFailedError()
     row = cursor.next(interp.space)
     if row:
         return interp.space.wrap_list(row)
@@ -239,12 +239,14 @@ def sqpyte_close(interp, s_frame, w_rcvr, db_pointer):
 # libsqlite3 via rffi
 #
 sqlite3_step = rffi.llexternal("sqlite3_step", [capi.VDBEP], rffi.INT)
-sqlite3_column_count = rffi.llexternal("sqlite3_column_count", [capi.VDBEP], rffi.INT)
+sqlite3_column_count = rffi.llexternal("sqlite3_column_count", [capi.VDBEP],
+                                       rffi.INT)
+
 
 @expose_primitive(SQLITE_CONNECT, unwrap_spec=[object, str])
 def sqlite_connect(interp, s_frame, w_rcvr, connect_str):
     with rffi.scoped_str2charp(connect_str) as connect_str, \
-         lltype.scoped_alloc(capi.SQLITE3PP.TO, 1) as result:
+            lltype.scoped_alloc(capi.SQLITE3PP.TO, 1) as result:
         rc = capi.sqlite3_open(connect_str, result)
 
         assert rc == 0
@@ -265,9 +267,10 @@ def sqlite_execute(interp, s_frame, w_rcvr, db_ptr, query):
     print 'exec ptr: {}'.format(v_db_ptr)
 
     with rffi.scoped_str2charp(query) as query_p, \
-         lltype.scoped_alloc(rffi.VOIDPP.TO, 1) as result, \
-         lltype.scoped_alloc(rffi.CCHARPP.TO, 1) as unused_buffer:
-        rc = capi.sqlite3_prepare_v2(v_db_ptr, query_p, length, result, unused_buffer)
+            lltype.scoped_alloc(rffi.VOIDPP.TO, 1) as result, \
+            lltype.scoped_alloc(rffi.CCHARPP.TO, 1) as unused_buffer:
+        rc = capi.sqlite3_prepare_v2(v_db_ptr, query_p, length, result,
+                                     unused_buffer)
 
         if rc == CConfig.SQLITE_OK:
             return interp.space.wrap_int(result[0])
@@ -319,7 +322,7 @@ def sqlite_read_row(interp, space, stmt_ptr):
             row[i] = space.w_nil
 
         else:
-            raise PrimitiveFailedError
+            raise PrimitiveFailedError()
 
     return row
 
