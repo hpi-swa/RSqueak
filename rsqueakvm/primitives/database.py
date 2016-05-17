@@ -246,11 +246,15 @@ def sqlite_connect(interp, s_frame, w_rcvr, connect_str):
     with rffi.scoped_str2charp(connect_str) as connect_str, \
          lltype.scoped_alloc(capi.SQLITE3PP.TO, 1) as result:
         rc = capi.sqlite3_open(connect_str, result)
+
         assert rc == 0
 
         db = rffi.cast(capi.SQLITE3P, result[0])
+        pt = rffi.cast(rffi.VOIDP, db)
 
-        return interp.space.wrap_int(rffi.cast(rffi.INT, db))
+        print 'open ptr: {}'.format(pt)
+
+        return interp.space.wrap_int(pt)
 
 
 @expose_primitive(SQLITE_EXECUTE, unwrap_spec=[object, int, str])
@@ -258,10 +262,12 @@ def sqlite_execute(interp, s_frame, w_rcvr, db_ptr, query):
     length = len(query)
     v_db_ptr = rffi.cast(rffi.VOIDP, db_ptr)
 
-    with rffi.scoped_str2charp(query) as query, \
+    print 'exec ptr: {}'.format(v_db_ptr)
+
+    with rffi.scoped_str2charp(query) as query_p, \
          lltype.scoped_alloc(rffi.VOIDPP.TO, 1) as result, \
          lltype.scoped_alloc(rffi.CCHARPP.TO, 1) as unused_buffer:
-        rc = capi.sqlite3_prepare_v2(v_db_ptr, query, length, result, unused_buffer)
+        rc = capi.sqlite3_prepare_v2(v_db_ptr, query_p, length, result, unused_buffer)
 
         if rc == CConfig.SQLITE_OK:
             return interp.space.wrap_int(result[0])
