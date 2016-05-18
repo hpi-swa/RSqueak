@@ -11,6 +11,7 @@ from rpython.rlib.objectmodel import compute_hash
 class W_Float(W_AbstractObjectWithIdentityHash):
     """Boxed float value."""
     _attrs_ = ['value']
+    _immutable_fields_ = ['value?']
     repr_classname = "W_Float"
 
     def fillin_fromwords(self, space, high, low):
