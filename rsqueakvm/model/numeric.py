@@ -11,7 +11,6 @@ from rpython.rlib.objectmodel import compute_hash
 class W_Float(W_AbstractObjectWithIdentityHash):
     """Boxed float value."""
     _attrs_ = ['value']
-    _immutable_fields_ = ['value']
     repr_classname = "W_Float"
 
     def fillin_fromwords(self, space, high, low):
@@ -58,14 +57,16 @@ class W_Float(W_AbstractObjectWithIdentityHash):
     def invariant(self):
         return isinstance(self.value, float)
 
-    def become(self, w_other):
-        return False
+    def _become(self, w_other):
+        assert isinstance(w_other, W_Float)
+        self.value, w_other.value = w_other.value, self.value
+        W_AbstractObjectWithIdentityHash._become(self, w_other)
 
     def is_same_object(self, other):
         if not isinstance(other, W_Float):
             return False
-        return ((self.value == other.value) or
-                (math.isnan(self.value) and math.isnan(other.value)))
+        return self.value == (other.value or (math.isnan(self.value) and
+                                              math.isnan(other.value)))
 
     def __eq__(self, other):
         if not isinstance(other, W_Float):
@@ -105,7 +106,17 @@ class W_Float(W_AbstractObjectWithIdentityHash):
                 return space.wrap_uint(r_uint32(intmask(r)))
 
     def store(self, space, n0, w_obj):
-        raise error.PrimitiveFailedError
+        from rpython.rlib.rstruct.ieee import float_unpack, float_pack
+        from rpython.rlib.rarithmetic import r_ulonglong
+
+        uint = r_ulonglong(space.unwrap_uint(w_obj))
+        r = float_pack(self.value, 8)
+        if n0 == 0:
+            r = ((r << 32) >> 32) | (uint << 32)
+        else:
+            assert n0 == 1
+            r = ((r >> 32) << 32) | uint
+        self.value = float_unpack(r, 8)
 
     def size(self):
         return constants.WORDS_IN_FLOAT
