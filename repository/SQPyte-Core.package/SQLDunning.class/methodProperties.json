@@ -5,6 +5,7 @@
 		"worstCaseCreditDebitSql:" : "fn 5/12/2016 10:00",
 		"worstCaseInfoSql:" : "fn 5/11/2016 09:14",
 		"worstCaseListSql" : "fn 5/11/2016 09:10",
-		"worstCaseOverdueSql:" : "fn 5/11/2016 09:17" },
+		"worstCaseOverdueSql:" : "fn 5/11/2016 09:17",
+		"worstCaseSqlite" : "dw 5/19/2016 14:14" },
 	"instance" : {
 		 } }
