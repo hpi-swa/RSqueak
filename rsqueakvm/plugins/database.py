@@ -1,14 +1,18 @@
 # -*- coding: utf-8 -*-
 
 from rsqueakvm.error import PrimitiveFailedError
-from rsqueakvm.primitives import expose_primitive
+from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.primitives.bytecodes import *
 
 from rpython.rlib import jit
-from rpython.rtyper.lltypesystem import rffi
+from rpython.rtyper.lltypesystem import rffi, lltype
 
+from sqpyte import capi
 from sqpyte.capi import CConfig
 from sqpyte.interpreter import Sqlite3DB, SQPyteException, SqliteException
+
+
+DatabasePlugin = Plugin()
 
 
 class Statement(object):
@@ -98,9 +102,9 @@ class _SQPyteDB(object):
     def connect(self, filename):
         # Open database
         try:
-            print "Trying to connect to %s..." % filename
+            print 'Trying to connect to %s...' % filename
             self.db = Sqlite3DB(filename)
-            print "Success"
+            print 'Success'
         except (SQPyteException, SqliteException) as e:
             print e.msg
 
@@ -112,7 +116,7 @@ class _SQPyteDB(object):
             holder.close()
         self.db.close()
         self.is_closed = True
-        print "Disconnected"
+        print 'Disconnected'
         return True
 
 
@@ -207,18 +211,18 @@ class _DBManager(object):
 dbm = _DBManager()
 
 
-@expose_primitive(SQPYTE_CONNECT, unwrap_spec=[object, str])
-def sqpyte_connect(interp, s_frame, w_rcvr, filename):
+@DatabasePlugin.expose_primitive(unwrap_spec=[object, str])
+def primitiveSQPyteConnect(interp, s_frame, w_rcvr, filename):
     return interp.space.wrap_int(dbm.connect(filename))
 
 
-@expose_primitive(SQPYTE_EXECUTE, unwrap_spec=[object, int, str])
-def sqpyte_execute(interp, s_frame, w_rcvr, db_pointer, sql):
+@DatabasePlugin.expose_primitive(unwrap_spec=[object, int, str])
+def primitiveSQPyteExecute(interp, s_frame, w_rcvr, db_pointer, sql):
     return interp.space.wrap_int(dbm.execute(db_pointer, sql))
 
 
-@expose_primitive(SQPYTE_NEXT, unwrap_spec=[object, int])
-def sqpyte_next(interp, s_frame, w_rcvr, cursor_pointer):
+@DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
+def primitiveSQPyteNext(interp, s_frame, w_rcvr, cursor_pointer):
     cursor = dbm.cursor(cursor_pointer)
     if cursor is None:
         raise PrimitiveFailedError()
@@ -228,9 +232,96 @@ def sqpyte_next(interp, s_frame, w_rcvr, cursor_pointer):
     return interp.space.wrap_list(row)
 
 
-@expose_primitive(SQPYTE_CLOSE, unwrap_spec=[object, int])
-def sqpyte_close(interp, s_frame, w_rcvr, db_pointer):
+@DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
+def primitiveSQPyteClose(interp, s_frame, w_rcvr, db_pointer):
     return interp.space.wrap_bool(dbm.close(db_pointer))
+
+
+#
+# libsqlite3 via rffi
+#
+sqlite3_step = rffi.llexternal('sqlite3_step', [capi.VDBEP], rffi.INT)
+sqlite3_column_count = rffi.llexternal('sqlite3_column_count', [capi.VDBEP],
+                                       rffi.INT)
+
+sqlite3_column_type = rffi.llexternal('sqlite3_column_type',
+                                      [capi.VDBEP, rffi.INT],
+                                      rffi.INT)
+
+
+@DatabasePlugin.expose_primitive(unwrap_spec=[object, str])
+def primitiveSQLiteConnect(interp, s_frame, w_rcvr, connect_str):
+    with rffi.scoped_str2charp(connect_str) as connect_str, \
+            lltype.scoped_alloc(capi.SQLITE3PP.TO, 1) as result:
+        rc = capi.sqlite3_open(connect_str, result)
+
+        assert rc == 0
+
+        db = rffi.cast(capi.SQLITE3P, result[0])
+        pt = rffi.cast(rffi.VOIDP, db)
+
+        # print 'open ptr: {}'.format(pt)
+
+        return interp.space.wrap_int(pt)
+
+
+@DatabasePlugin.expose_primitive(unwrap_spec=[object, int, str])
+def primitiveSQLiteExecute(interp, s_frame, w_rcvr, db_ptr, query):
+    length = len(query)
+    v_db_ptr = rffi.cast(rffi.VOIDP, db_ptr)
+
+    # print 'exec ptr: {}'.format(v_db_ptr)
+
+    with rffi.scoped_str2charp(query) as query_p, \
+            lltype.scoped_alloc(rffi.VOIDPP.TO, 1) as result, \
+            lltype.scoped_alloc(rffi.CCHARPP.TO, 1) as unused_buffer:
+        rc = capi.sqlite3_prepare_v2(v_db_ptr, query_p, length, result,
+                                     unused_buffer)
+
+        if rc == CConfig.SQLITE_OK:
+            return interp.space.wrap_int(result[0])
+        else:
+            return interp.space.w_nil
+
+
+@DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
+def primitiveSQLiteNext(interp, s_frame, w_rcvr, stmt_ptr):
+    if stmt_ptr == 0:
+        return interp.space.w_nil
+
+    stmt_ptr = rffi.cast(capi.VDBEP, stmt_ptr)
+
+    rc = sqlite3_step(stmt_ptr)
+
+    if rc == CConfig.SQLITE_ROW:
+        return interp.space.wrap_list(
+            sqlite_read_row(interp, interp.space, stmt_ptr))
+    else:
+        return interp.space.w_nil
+
+
+def sqlite_read_row(interp, space, stmt_ptr):
+    column_count = sqlite3_column_count(stmt_ptr)
+    row = [None] * column_count
+    for i in range(column_count):
+        tid = sqlite3_column_type(stmt_ptr, i)
+        if tid == CConfig.SQLITE_TEXT or tid == CConfig.SQLITE_BLOB:
+            text_len = capi.sqlite3_column_bytes(stmt_ptr, i)
+            text_ptr = capi.sqlite3_column_text(stmt_ptr, i)
+            row[i] = space.wrap_string(
+                rffi.charpsize2str(text_ptr, text_len))
+        elif tid == CConfig.SQLITE_INTEGER:
+            value = capi.sqlite3_column_int64(stmt_ptr, i)
+            row[i] = space.wrap_int(value)
+        elif tid == CConfig.SQLITE_FLOAT:
+            value = capi.sqlite3_column_double(stmt_ptr, i)
+            row[i] = space.wrap_float(value)
+
+        elif tid == CConfig.SQLITE_NULL:
+            row[i] = space.w_nil
+        else:
+            raise PrimitiveFailedError()
+    return row
 
 
 ###############################################################################
@@ -240,7 +331,7 @@ def sqpyte_close(interp, s_frame, w_rcvr, db_pointer):
 # if objectmodel.we_are_translated():
 #     import sqlite3
 
-#     @expose_primitive(SQLITE, unwrap_spec=[object, str, str])
+#     @DatabasePlugin.expose_primitive(SQLITE, unwrap_spec=[object, str, str])
 #     def func(interp, s_frame, w_rcvr, db_file, sql):
 
 #         print db_file

@@ -1,3 +1,4 @@
 primitives
 primitiveSQLNext: aCursorPointer
-	<primitive: 197>
+	<primitive: 'primitiveSQPyteNext' module: 'DatabasePlugin'>
+	self primitiveFailed

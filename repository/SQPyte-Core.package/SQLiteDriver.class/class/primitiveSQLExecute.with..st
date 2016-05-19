@@ -1,3 +1,4 @@
 primitives
 primitiveSQLExecute: aDatabasePointer with: aSql
-	<primitive: 1234>
+	<primitive: 'primitiveSQLiteExecute' module: 'DatabasePlugin'>
+	self primitiveFailed

@@ -1,3 +1,4 @@
 primitives
 primitiveSQLExecute: aDatabasePointer with: aSql
-	<primitive: 196>
+	<primitive: 'primitiveSQPyteExecute' module: 'DatabasePlugin'>
+	self primitiveFailed

@@ -1,3 +1,4 @@
 primitives
 primitiveSQLNext: aCursorPointer
-	<primitive: 1234>
+	<primitive: 'primitiveSQLiteNext' module: 'DatabasePlugin'>
+	self primitiveFailed

@@ -1,3 +1,4 @@
 primitives
 primitiveSQLConnect: aFilename
-	<primitive: 1234>
+	<primitive: 'primitiveSQLiteConnect' module: 'DatabasePlugin'>
+	self primitiveFailed

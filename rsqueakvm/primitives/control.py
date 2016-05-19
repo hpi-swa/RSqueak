@@ -123,6 +123,10 @@ def func(interp, s_frame, argcount, w_method):
         from rsqueakvm.plugins.misc import MiscPrimitivePlugin
         return MiscPrimitivePlugin.call(signature[1], interp, s_frame,
                                         argcount, w_method)
+    elif signature[0] == 'DatabasePlugin':
+        from rsqueakvm.plugins.database import DatabasePlugin
+        return DatabasePlugin.call(signature[1], interp, s_frame,
+                                        argcount, w_method)
     elif signature[0] == "SocketPlugin":
         from rsqueakvm.plugins.socket import SocketPlugin
         return SocketPlugin.call(signature[1], interp, s_frame, argcount,
