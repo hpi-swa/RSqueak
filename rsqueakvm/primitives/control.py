@@ -79,6 +79,9 @@ def func(interp, s_frame, w_arg, w_rcvr):
          isinstance(w_rcvr, W_WordsObject))):
         w_rcvr.change_class(interp.space, w_arg_class)
         return w_rcvr
+    elif (isinstance(w_arg, W_LargePositiveInteger1Word) and isinstance(w_rcvr, W_BytesObject)):
+        w_rcvr.change_class(interp.space, interp.space.w_LargePositiveInteger)
+        return w_rcvr
     else:
         # TODO: this should also work to change bytes to words and such
         raise PrimitiveNotYetWrittenError
