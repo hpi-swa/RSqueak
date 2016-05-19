@@ -252,7 +252,7 @@ def primitiveSQLiteConnect(interp, s_frame, w_rcvr, connect_str):
         rc = capi.sqlite3_open(connect_str, result)
 
         if rc == CConfig.SQLITE_OK:
-            ptr = rffi.cast(rffi.UINT, result[0])
+            ptr = rffi.cast(rffi.ULONG, result[0])
             return interp.space.wrap_int(ptr)
         else:
             raise PrimitiveFailedError('rc: %s' % rc)
@@ -270,7 +270,7 @@ def primitiveSQLiteExecute(interp, s_frame, w_rcvr, db_ptr, query):
                                      unused_buffer)
 
         if rc == CConfig.SQLITE_OK:
-            ptr = rffi.cast(rffi.UINT, result[0])
+            ptr = rffi.cast(rffi.ULONG, result[0])
             return interp.space.wrap_int(ptr)
         else:
             raise PrimitiveFailedError('rc: %s' % rc)
