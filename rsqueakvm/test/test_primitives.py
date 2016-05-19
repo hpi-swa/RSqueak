@@ -233,9 +233,9 @@ def test_at():
     w_obj.store(space, 0, foo)
     assert prim(AT, [w_obj, 1]) is foo
 
-    w_obj = W_WordsObject(space, space.w_Bitmap, 2)
+    w_obj = W_Float(1.1)
     foo = wrap(1)
-    w_obj.atput0(space, 0, foo)
+    w_obj.store(space, 0, foo)
     assert prim(AT, [w_obj, 1]) == foo
 
 def test_invalid_at():

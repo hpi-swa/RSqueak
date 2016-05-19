@@ -333,20 +333,20 @@ def test_float_at():
 
 def test_float_at_put():
     target = W_Float(1.0)
-    with py.test.raises(error.PrimitiveFailedError):
-        for f in [1.0, -1.0, 1.1, 64.4, -0.0, float('nan'), float('inf')]:
-            source = W_Float(f)
-            target.store(space, 0, source.fetch(space, 0))
-            target.store(space, 1, source.fetch(space, 1))
-            if math.isnan(f):
-                assert math.isnan(target.value)
-            else:
-                assert target.value == f
+    for f in [1.0, -1.0, 1.1, 64.4, -0.0, float('nan'), float('inf')]:
+        source = W_Float(f)
+        target.store(space, 0, source.fetch(space, 0))
+        target.store(space, 1, source.fetch(space, 1))
+        if math.isnan(f):
+            assert math.isnan(target.value)
+        else:
+            assert target.value == f
 
 def test_float_hash():
     target = W_Float(1.1)
     assert target.gethash() == W_Float(1.1).gethash()
-    assert target.gethash() != W_Float(1.2).gethash()
+    target.store(space, 0, space.wrap_int(42))
+    assert target.gethash() != W_Float(1.1).gethash()
 
 def test_large_positive_integer_1word_at():
     b = W_LargePositiveInteger1Word(-1)
