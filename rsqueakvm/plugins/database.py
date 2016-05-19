@@ -244,10 +244,6 @@ sqlite3_step = capi.llexternal('sqlite3_step', [capi.VDBEP], rffi.INT)
 sqlite3_column_count = capi.llexternal('sqlite3_column_count', [capi.VDBEP],
                                        rffi.INT)
 
-sqlite3_column_type = capi.llexternal('sqlite3_column_type',
-                                      [capi.VDBEP, rffi.INT],
-                                      rffi.INT)
-
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, str])
 def primitiveSQLiteConnect(interp, s_frame, w_rcvr, connect_str):
@@ -259,7 +255,7 @@ def primitiveSQLiteConnect(interp, s_frame, w_rcvr, connect_str):
             ptr = rffi.cast(rffi.UINT, result[0])
             return interp.space.wrap_int(ptr)
         else:
-            raise PrimitiveFailedError(rc)
+            raise PrimitiveFailedError('rc: %s' % rc)
 
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, int, str])
@@ -277,7 +273,7 @@ def primitiveSQLiteExecute(interp, s_frame, w_rcvr, db_ptr, query):
             ptr = rffi.cast(rffi.UINT, result[0])
             return interp.space.wrap_int(ptr)
         else:
-            raise PrimitiveFailedError(rc)
+            raise PrimitiveFailedError('rc: %s' % rc)
 
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
@@ -291,14 +287,14 @@ def primitiveSQLiteNext(interp, s_frame, w_rcvr, stmt_ptr):
     elif rc == CConfig.SQLITE_DONE:
         return interp.space.w_nil
     else:
-        raise PrimitiveFailedError(rc)
+        raise PrimitiveFailedError('rc: %s' % rc)
 
 
 def sqlite_read_row(interp, space, ptr):
     column_count = sqlite3_column_count(ptr)
     row = [None] * column_count
     for i in range(column_count):
-        tid = sqlite3_column_type(ptr, i)
+        tid = capi.sqlite3_column_type(ptr, i)
         if tid == CConfig.SQLITE_TEXT or tid == CConfig.SQLITE_BLOB:
             text_len = capi.sqlite3_column_bytes(ptr, i)
             text_ptr = capi.sqlite3_column_text(ptr, i)
