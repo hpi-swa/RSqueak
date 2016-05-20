@@ -30,7 +30,7 @@ class Statement(object):
             # space = w_connection.space
             # w_module = space.getbuiltinmodule('sqpyte')
             # w_error = space.getattr(w_module, space.wrap('OperationalError'))
-            # raise OperationError(w_error, space.wrap(e.msg))
+            # raise PrimitiveFailedError(w_error, space.wrap(e.msg))
         # self.query.use_translated.disable_from_cmdline(
         #     w_connection.disable_opcodes)
 
@@ -88,16 +88,21 @@ class StatementCache(object):
 
 
 class _SQPyteDB(object):
-    _immutable_fields_ = ['db']
+    _immutable_fields_ = ['db', 'statement_cache']
 
-    def __init__(self, filename):
+    def __init__(self, space, filename):
+        self.space = space
         self.connect(filename)
         self.statement_cache = StatementCache(self)
         self.is_closed = False
 
+    def cursor(self):
+        return _SQPyteCursor(self)
+
     def execute(self, sql):
-        statement = self.statement_cache.get_or_make(sql)
-        return _SQPyteCursor(statement)
+        if self.db is None:
+            raise PrimitiveFailedError('db is closed')
+        return self.cursor().execute(sql)
 
     def connect(self, filename):
         # Open database
@@ -121,49 +126,80 @@ class _SQPyteDB(object):
 
 
 class _SQPyteCursor(object):
-    _immutable_fields_ = ['statement']
+    _immutable_fields_ = ['connection']
 
-    def __init__(self, statement):
-        self.statement = statement
-        if self.statement.query is None:
-            self.rc = 0
-            self.num_cols = 0
-        else:
-            self.rc = self.statement.query.mainloop()
-            self.num_cols = self.statement.query.data_count()
-
-    def next(self, space):
-        if self.rc != CConfig.SQLITE_ROW:
-            return None
-        else:
-            row = self.fetch_one_row(space)
-            self.rc = self.statement.query.mainloop()
-            return row
+    def __init__(self, connection):
+        self.space = connection.space
+        assert isinstance(connection, _SQPyteDB)
+        self.connection = connection
+        self.statement = None
 
     @jit.unroll_safe
-    def fetch_one_row(self, space):
+    def execute(self, sql):
+        jit.promote(self.connection)
+        jit.promote(self.statement)
+        cache = self.connection.statement_cache
+        self.statement = cache.get_or_make(sql)
+        rc = self.statement.query.mainloop()
+        if rc == CConfig.SQLITE_ROW:
+            pass  # storage stays on sqlite side
+        elif rc == CConfig.SQLITE_DONE:
+            self._reset()
+        else:
+            raise PrimitiveFailedError('strange result: %s' % rc)
+        return self
+
+    def next(self):
+        if jit.promote(self.statement) is None:
+            raise PrimitiveFailedError('next [statement is None]')
+
+        w_row = self.fetch_one_row()
+        rc = self.statement.query.mainloop()
+        if rc == CConfig.SQLITE_ROW:
+            pass
+        elif rc == CConfig.SQLITE_DONE:
+            self._reset()
+            return self.space.w_nil
+        else:
+            raise PrimitiveFailedError('strange result: %s' % rc)
+        return self.space.wrap_list(w_row)
+
+    @jit.unroll_safe
+    def fetch_one_row(self):
         query = jit.promote(self.statement).query
-        cols = [None] * self.num_cols
-        for i in range(self.num_cols):
-            typ = query.column_type(i)
-            if typ == CConfig.SQLITE_TEXT or typ == CConfig.SQLITE_BLOB:
+        num_cols = query.data_count()
+        jit.promote(num_cols)
+        cols = [None] * num_cols
+        for i in range(num_cols):
+            tid = query.column_type(i)
+            if tid == CConfig.SQLITE_TEXT or tid == CConfig.SQLITE_BLOB:
                 textlen = query.column_bytes(i)
                 result = rffi.charpsize2str(rffi.cast(rffi.CCHARP,
                                                       query.column_text(i)),
                                             textlen)
-                w_result = space.wrap_string(result)  # no encoding
-            elif typ == CConfig.SQLITE_INTEGER:
+                w_result = self.space.wrap_string(result)  # no encoding
+            elif tid == CConfig.SQLITE_INTEGER:
                 result = query.column_int64(i)
-                w_result = space.wrap_int(result)
-            elif typ == CConfig.SQLITE_FLOAT:
+                w_result = self.space.wrap_int(result)
+            elif tid == CConfig.SQLITE_FLOAT:
                 result = query.column_double(i)
-                w_result = space.wrap_float(result)
-            elif typ == CConfig.SQLITE_NULL:
-                w_result = space.w_nil
+                w_result = self.space.wrap_float(result)
+            elif tid == CConfig.SQLITE_NULL:
+                w_result = self.space.w_nil
             else:
-                raise PrimitiveFailedError()
+                raise PrimitiveFailedError('read_row [tid: %s' % tid)
             cols[i] = w_result
         return cols
+
+    def close(self):
+        if self.statement:
+            self.statement.close()
+            self.statement = None
+
+    def _reset(self):
+        if self.statement:
+            self.statement._reset()
+            self.statement = None
 
 
 class _DBManager(object):
@@ -175,9 +211,9 @@ class _DBManager(object):
     def __init__(self):
         pass
 
-    def connect(self, filename):
+    def connect(self, space, filename):
         pointer = self._db_count
-        self._dbs[pointer] = _SQPyteDB(filename)
+        self._dbs[pointer] = _SQPyteDB(space, filename)
 
         self._db_count += 1
 
@@ -186,12 +222,10 @@ class _DBManager(object):
     def execute(self, db_pointer, sql):
         db = self._dbs.get(db_pointer, None)
         if db is None:
-            raise PrimitiveFailedError()
+            raise PrimitiveFailedError('execute [db is None]')
 
         pointer = self._cursor_count
-
-        statement = db.statement_cache.get_or_make(sql)
-        self._cursors[pointer] = _SQPyteCursor(statement)
+        self._cursors[pointer] = db.execute(sql)
 
         self._cursor_count += 1
 
@@ -204,7 +238,7 @@ class _DBManager(object):
     def close(self, db_pointer):
         db = self._dbs.get(db_pointer, None)
         if db is None:
-            raise PrimitiveFailedError()
+            raise PrimitiveFailedError('close [db is None]')
         return db.close()
 
 
@@ -213,7 +247,7 @@ dbm = _DBManager()
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, str])
 def primitiveSQPyteConnect(interp, s_frame, w_rcvr, filename):
-    return interp.space.wrap_int(dbm.connect(filename))
+    return interp.space.wrap_int(dbm.connect(interp.space, filename))
 
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, int, str])
@@ -225,11 +259,8 @@ def primitiveSQPyteExecute(interp, s_frame, w_rcvr, db_pointer, sql):
 def primitiveSQPyteNext(interp, s_frame, w_rcvr, cursor_pointer):
     cursor = dbm.cursor(cursor_pointer)
     if cursor is None:
-        raise PrimitiveFailedError()
-    row = cursor.next(interp.space)
-    if row is None:  # cursor exhausted
-        return interp.space.w_nil
-    return interp.space.wrap_list(row)
+        raise PrimitiveFailedError('cursor not found')
+    return cursor.next()
 
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
@@ -255,7 +286,7 @@ def primitiveSQLiteConnect(interp, s_frame, w_rcvr, connect_str):
             ptr = rffi.cast(rffi.ULONG, result[0])
             return interp.space.wrap_int(ptr)
         else:
-            raise PrimitiveFailedError('rc: %s' % rc)
+            raise PrimitiveFailedError('conntect [rc: %s]' % rc)
 
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, int, str])
@@ -273,7 +304,7 @@ def primitiveSQLiteExecute(interp, s_frame, w_rcvr, db_ptr, query):
             ptr = rffi.cast(rffi.ULONG, result[0])
             return interp.space.wrap_int(ptr)
         else:
-            raise PrimitiveFailedError('rc: %s' % rc)
+            raise PrimitiveFailedError('execute [rc: %s]' % rc)
 
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
@@ -283,14 +314,14 @@ def primitiveSQLiteNext(interp, s_frame, w_rcvr, stmt_ptr):
 
     if rc == CConfig.SQLITE_ROW:
         return interp.space.wrap_list(
-            sqlite_read_row(interp, interp.space, ptr))
+            sqlite_read_row(interp.space, ptr))
     elif rc == CConfig.SQLITE_DONE:
         return interp.space.w_nil
     else:
-        raise PrimitiveFailedError('rc: %s' % rc)
+        raise PrimitiveFailedError('next [rc: %s]' % rc)
 
 
-def sqlite_read_row(interp, space, ptr):
+def sqlite_read_row(space, ptr):
     column_count = sqlite3_column_count(ptr)
     row = [None] * column_count
     for i in range(column_count):
@@ -310,7 +341,7 @@ def sqlite_read_row(interp, space, ptr):
         elif tid == CConfig.SQLITE_NULL:
             row[i] = space.w_nil
         else:
-            raise PrimitiveFailedError()
+            raise PrimitiveFailedError('read_row [tid: %s' % tid)
     return row
 
 
