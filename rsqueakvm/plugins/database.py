@@ -151,7 +151,7 @@ class _SQPyteCursor(object):
 
     def next(self):
         if jit.promote(self.statement) is None:
-            raise PrimitiveFailedError('next [statement is None]')
+            return self.space.w_nil
 
         w_row = self.fetch_one_row()
         rc = self.statement.query.mainloop()
@@ -159,7 +159,6 @@ class _SQPyteCursor(object):
             pass
         elif rc == CConfig.SQLITE_DONE:
             self._reset()
-            return self.space.w_nil
         else:
             raise PrimitiveFailedError('strange result: %s' % rc)
         return self.space.wrap_list(w_row)
