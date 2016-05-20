@@ -1,9 +1,10 @@
 as yet unclassified
 worstCase
 	| db result cursor1 item kunnr |
+	FileStream startUp: true.
 	FileStream stdout nextPutAll: 'Start'; cr.
-	db := SQLDatabase open: '/Users/fniephaus/code/RSqueak/images/sqpyte/energy.db'.
-
+	db := SQLDatabase open: (self dataPath, 'energy.db').
+	
 	result := OrderedCollection new.
 	
 	kunnr := OrderedCollection new.

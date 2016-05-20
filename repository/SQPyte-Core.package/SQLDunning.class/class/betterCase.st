@@ -3,7 +3,7 @@ betterCase
 	| db result cursor1 kunnr beleg |
 	FileStream startUp: true.
 	FileStream stdout nextPutAll: 'Start'; cr.
-	db := SQLDatabase open: '/Users/fniephaus/code/RSqueak/images/sqpyte/energy100.db'.
+	db := SQLDatabase open: (self dataPath, 'energy100.db').
 
 	result := OrderedCollection new.
 	

@@ -4,7 +4,7 @@ worstCaseSqlite
 	FileStream startUp: true.
 	FileStream stdout nextPutAll: 'Start';
 		 cr.
-	t1 := (SQLiteConnection fileNamed: '../dev/DunningSimulation/data/energy.db') open.
+	t1 := (SQLiteConnection fileNamed: (self dataPath, 'energy.db')) open.
 	t2 := OrderedCollection new.
 	t3 := t1 executeQuery: self worstCaseListSql.
 	t3

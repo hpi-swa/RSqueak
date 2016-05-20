@@ -1,10 +1,12 @@
 {
 	"class" : {
-		"betterCase" : "fn 5/12/2016 10:46",
-		"worstCase" : "fn 5/12/2016 17:32",
+		"betterCase" : "PO 5/19/2016 14:55",
+		"dataPath" : "PO 5/19/2016 19:12",
+		"worstCase" : "PO 5/20/2016 17:08",
 		"worstCaseCreditDebitSql:" : "fn 5/12/2016 10:00",
 		"worstCaseInfoSql:" : "fn 5/11/2016 09:14",
 		"worstCaseListSql" : "fn 5/11/2016 09:10",
-		"worstCaseOverdueSql:" : "fn 5/11/2016 09:17" },
+		"worstCaseOverdueSql:" : "fn 5/11/2016 09:17",
+		"worstCaseSqlite" : "PO 5/19/2016 14:56" },
 	"instance" : {
 		 } }
