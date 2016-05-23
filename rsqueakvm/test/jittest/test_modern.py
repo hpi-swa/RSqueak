@@ -11,9 +11,13 @@ class TestModern(ModernJITTest):
         """)
         self.assert_matches(traces[0].loop, """
         guard_not_invalidated(descr=<Guard0xdb8da34>)
-        i70 = int_le(i69, 100000)
-        guard_true(i70, descr=<Guard0xdc9c7f0>)
+        i69 = int_le(i69, 100000)
+        guard_true(i69, descr=<Guard0xdc9c7f0>)
         i71 = int_add(i69, 1)
+        i70 = int_sub(i61, 1),
+        setfield_gc(ConstPtr(ptr71), i70, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 32>),
+        i73 = int_le(i70, 0),
+        guard_false(i73, descr=<Guard0x9c13130>),
         i72 = arraylen_gc(p65, descr=<ArrayP 4>)
         jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, i71, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, p47, p65, descr=TargetToken(231309508))
         """)
@@ -29,6 +33,10 @@ class TestModern(ModernJITTest):
         i70 = int_le(i69, 100000)
         guard_true(i70, descr=<Guard0xdc9c7f0>)
         i71 = int_add(i69, 1)
+        i73 = int_sub(i61, 1),
+        setfield_gc(ConstPtr(ptr71), i70, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 32>),
+        i74 = int_le(i73, 0),
+        guard_false(i74, descr=<Guard0x9c13130>),
         i72 = arraylen_gc(p65, descr=<ArrayP 4>)
         jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, i71, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, p47, p65, descr=TargetToken(231309508))
         """)
@@ -144,6 +152,10 @@ class TestModern(ModernJITTest):
         leave_portal_frame(0)
         i92 = int_add(i84, 100)
         i93 = int_add(i84, 1)
+        i70 = int_sub(i61, 1),
+        setfield_gc(ConstPtr(ptr71), i70, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 32>),
+        i73 = int_le(i70, 0),
+        guard_false(i73, descr=<Guard0x9c13130>),
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, i93, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, i94, p68, descr=TargetToken(312516328))
         """)
         # self.assert_matches(traces[0].bridges[0], """
@@ -179,6 +191,10 @@ class TestModern(ModernJITTest):
         leave_portal_frame(0)
         leave_portal_frame(0)
         i93 = int_add(i84, 1)
+        i70 = int_sub(i61, 1),
+        setfield_gc(ConstPtr(ptr71), i70, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 32>),
+        i73 = int_le(i70, 0),
+        guard_false(i73, descr=<Guard0x9c13130>),
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, i93, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, i94, p68, descr=TargetToken(312516328))
         """)
 
@@ -235,6 +251,10 @@ class TestModern(ModernJITTest):
         i137 = int_add_ovf(i135, i130)
         guard_no_overflow(descr=<Guard0xd7bd2d0>)
         leave_portal_frame(0)
+        i70 = int_sub(i61, 1),
+        setfield_gc(ConstPtr(ptr71), i70, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 32>),
+        i73 = int_le(i70, 0),
+        guard_false(i73, descr=<Guard0x9c13130>),
         i139 = arraylen_gc(p64, descr=<ArrayS 4>)
         jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, i135, i136, p23, i137, p31, p33, p35, p37, p39, p41, p43, p45, p47, p49, i58, p64, i70, i66, p85, p92, p96, i101, p78, i130, p123, p104, descr=TargetToken(227905452))
         """)
