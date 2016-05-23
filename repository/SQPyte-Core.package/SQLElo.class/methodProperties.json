@@ -1,6 +1,9 @@
 {
 	"class" : {
 		"testSQLite" : "PO 5/20/2016 18:28",
-		"testSQPyte" : "PO 5/20/2016 18:22" },
+		"testSQLiteCFFI" : "PO 5/23/2016 13:45",
+		"testSQLiteRFFI" : "PO 5/23/2016 13:48",
+		"testSQPyte" : "PO 5/20/2016 18:22",
+		"testSQPyte:" : "PO 5/23/2016 13:46" },
 	"instance" : {
 		 } }
