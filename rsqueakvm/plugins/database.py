@@ -99,10 +99,10 @@ class _SQPyteDB(object):
     def cursor(self):
         return _SQPyteCursor(self)
 
-    def execute(self, sql):
+    def execute(self, sql, args):
         if self.db is None:
             raise PrimitiveFailedError('db is closed')
-        return self.cursor().execute(sql)
+        return self.cursor().execute(sql, args)
 
     def connect(self, filename):
         # Open database
@@ -135,11 +135,19 @@ class _SQPyteCursor(object):
         self.statement = None
 
     @jit.unroll_safe
-    def execute(self, sql):
+    def execute(self, sql, args=None):
         jit.promote(self.connection)
         jit.promote(self.statement)
         cache = self.connection.statement_cache
         self.statement = cache.get_or_make(sql)
+
+        if args is not None:
+            query = self.statement.query
+            if len(args) != query.bind_parameter_count():
+                raise PrimitiveFailedError('wrong # of arguments for query')
+            for i, w_value in enumerate(args):
+                self._convert_query_argument(w_value, query, i + 1)
+
         rc = self.statement.query.mainloop()
         if rc == CConfig.SQLITE_ROW:
             pass  # storage stays on sqlite side
@@ -195,6 +203,21 @@ class _SQPyteCursor(object):
             self.statement.close()
             self.statement = None
 
+    def _convert_query_argument(self, w_value, query, i):
+        space = self.space
+        cls = w_value.getclass(space)
+        if (cls.is_same_object(space.w_String)):
+            query.bind_str(i, space.unwrap_string(w_value))
+        elif cls.is_same_object(space.w_SmallInteger):
+            query.bind_int64(i, space.unwrap_int(w_value))
+        elif cls.is_same_object(space.w_Float):
+            query.bind_double(i, space.unwrap_float(w_value))
+        elif cls.is_same_object(space.w_nil):
+            query.bind_null(i)
+        else:
+            raise PrimitiveFailedError(
+                'unable to unwrap %s' % w_value.getclass(space))
+
     def _reset(self):
         if self.statement:
             self.statement._reset()
@@ -218,13 +241,13 @@ class _DBManager(object):
 
         return pointer
 
-    def execute(self, db_pointer, sql):
+    def execute(self, db_pointer, sql, args):
         db = self._dbs.get(db_pointer, None)
         if db is None:
             raise PrimitiveFailedError('execute [db is None]')
 
         pointer = self._cursor_count
-        self._cursors[pointer] = db.execute(sql)
+        self._cursors[pointer] = db.execute(sql, args)
 
         self._cursor_count += 1
 
@@ -249,9 +272,24 @@ def primitiveSQPyteConnect(interp, s_frame, w_rcvr, filename):
     return interp.space.wrap_int(dbm.connect(interp.space, filename))
 
 
-@DatabasePlugin.expose_primitive(unwrap_spec=[object, int, str])
-def primitiveSQPyteExecute(interp, s_frame, w_rcvr, db_pointer, sql):
-    return interp.space.wrap_int(dbm.execute(db_pointer, sql))
+@DatabasePlugin.expose_primitive()
+def primitiveSQPyteExecute(interp, s_frame, argcount):
+    if not 2 <= argcount <= 3:
+        raise PrimitiveFailedError('wrong number of arguments: %s' % argcount)
+
+    space = interp.space
+
+    args = []
+    if argcount == 3:
+        args = space.unwrap_array(s_frame.pop())
+
+    arg3_w = s_frame.pop()
+    sql = space.unwrap_string(arg3_w)
+    arg2_w = s_frame.pop()
+    db_pointer = space.unwrap_int(arg2_w)
+    s_frame.pop()  # receiver
+
+    return interp.space.wrap_int(dbm.execute(db_pointer, sql, args))
 
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
@@ -288,22 +326,62 @@ def primitiveSQLiteConnect(interp, s_frame, w_rcvr, connect_str):
             raise PrimitiveFailedError('conntect [rc: %s]' % rc)
 
 
-@DatabasePlugin.expose_primitive(unwrap_spec=[object, int, str])
-def primitiveSQLiteExecute(interp, s_frame, w_rcvr, db_ptr, query):
-    length = len(query)
-    v_db_ptr = rffi.cast(rffi.VOIDP, db_ptr)
+@DatabasePlugin.expose_primitive()
+def primitiveSQLiteExecute(interp, s_frame, argcount):
+    if not 2 <= argcount <= 3:
+        raise PrimitiveFailedError('wrong number of arguments: %s' % argcount)
 
-    with rffi.scoped_str2charp(query) as query_p, \
+    space = interp.space
+
+    args = []
+    if argcount == 3:
+        args = space.unwrap_array(s_frame.pop())
+
+    arg3_w = s_frame.pop()
+    sql = space.unwrap_string(arg3_w)
+    arg2_w = s_frame.pop()
+    db_pointer = space.unwrap_int(arg2_w)
+    s_frame.pop()  # receiver
+
+    length = len(sql)
+    v_db_ptr = rffi.cast(rffi.VOIDP, db_pointer)
+
+    with rffi.scoped_str2charp(sql) as query_p, \
             lltype.scoped_alloc(rffi.VOIDPP.TO, 1) as result, \
             lltype.scoped_alloc(rffi.CCHARPP.TO, 1) as unused_buffer:
         rc = capi.sqlite3_prepare_v2(v_db_ptr, query_p, length, result,
                                      unused_buffer)
 
         if rc == CConfig.SQLITE_OK:
+            v_pointer = rffi.cast(capi.VDBEP, result[0])
             ptr = rffi.cast(rffi.ULONG, result[0])
+
+            if len(args) != capi.sqlite3_bind_parameter_count(v_pointer):
+                raise PrimitiveFailedError('wrong # of arguments for query')
+
+            for i, w_value in enumerate(args):
+                _convert_query_argument(space, w_value, v_pointer, i + 1)
+
             return interp.space.wrap_int(ptr)
         else:
             raise PrimitiveFailedError('execute [rc: %s]' % rc)
+
+
+def _convert_query_argument(space, w_value, v_pointer, i):
+    cls = w_value.getclass(space)
+    if (cls.is_same_object(space.w_String)):
+        text = space.unwrap_string(w_value)
+        charp = rffi.str2charp(text)
+        capi.sqlite3_bind_text(v_pointer, i, charp, -1, None)
+    elif cls.is_same_object(space.w_SmallInteger):
+        capi.sqlite3_bind_int64(v_pointer, i, space.unwrap_int(w_value))
+    elif cls.is_same_object(space.w_Float):
+        capi.sqlite3_bind_double(v_pointer, i, space.unwrap_float(w_value))
+    elif cls.is_same_object(space.w_nil):
+        capi.sqlite3_bind_null(v_pointer, i)
+    else:
+        raise PrimitiveFailedError(
+            'unable to unwrap %s' % w_value.getclass(space))
 
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
