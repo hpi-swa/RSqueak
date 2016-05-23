@@ -1,3 +1,3 @@
 *SQPyte-Core
 testBetterDunning
-	^ SQLDunning betterCase
+	^ SQLDunning betterCase: SQPyteDriver

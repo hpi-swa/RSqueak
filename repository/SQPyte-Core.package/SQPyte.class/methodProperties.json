@@ -6,12 +6,16 @@
 		"primitiveSQPyteClose" : "fn 5/3/2016 22:30",
 		"primitiveSQPyteExecute:" : "fn 5/3/2016 22:04",
 		"run:" : "fn 5/3/2016 22:33",
+		"testAggregate" : "fn 5/19/2016 17:24",
+		"testInnerJoin" : "fn 5/19/2016 17:25",
 		"testJoin" : "fn 5/3/2016 21:02",
+		"testPythonJoin1" : "fn 5/19/2016 17:39",
 		"testQuery06" : "fn 5/3/2016 21:12",
 		"testQuery14" : "fn 5/3/2016 21:04",
 		"testQuery17" : "fn 5/3/2016 21:05",
 		"testQuery19" : "fn 5/3/2016 21:09",
 		"testQuery20" : "fn 5/3/2016 21:12",
-		"testSQL" : "fn 5/3/2016 21:50" },
+		"testSQL" : "fn 5/3/2016 21:50",
+		"testSelect" : "fn 5/19/2016 17:24" },
 	"instance" : {
 		 } }

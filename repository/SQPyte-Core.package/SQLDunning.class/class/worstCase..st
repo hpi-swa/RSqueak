@@ -1,12 +1,12 @@
 as yet unclassified
-worstCase
-	| db result cursor1 item kunnr |
+worstCase: aDatabaseDriver
+	| db results time cursor1 item kunnr |
 	FileStream startUp: true.
 	FileStream stdout nextPutAll: 'Start'; cr.
-	db := SQLDatabase open: (self dataPath, 'energy.db').
+	db := SQLDatabase open: './energy.db' with: aDatabaseDriver.
+	results := OrderedCollection new.
 	
-	result := OrderedCollection new.
-	
+	time := [
 	kunnr := OrderedCollection new.
 	cursor1 := db execute: self worstCaseListSql.
 	[ item := cursor1 next ] whileNotNil: [ kunnr add: item ].
@@ -15,7 +15,7 @@ worstCase
 		beleg := OrderedCollection new.
 		customerID := knr first.
 		cursor2 := db execute: (self worstCaseInfoSql: customerID).
-		[ item := cursor2 next ] whileNotNil: [ beleg add: item ].
+		[ item := cursor2 next ] whileNotNil: [ beleg add: item].
 		beleg do: [ :bel |
 			| overdue cursor3 hasDebit cursor4 |
 			FileStream stdout nextPut: $..
@@ -25,7 +25,7 @@ worstCase
 			hasDebit := cursor4 next first = 1.
 			
 			(overdue and: [ hasDebit ])
-				ifTrue: [ result add: {customerID. bel} ] ] ].
+				ifTrue: [ results add: {customerID. bel} ] ] ] ] timeToRun.
 
-	FileStream stdout nextPutAll: result asString.
-	^ result
+	FileStream stdout cr; nextPutAll: results size asString, ' total results in ', time asString, 'ms'; cr.
+	^ results

@@ -1,3 +1,3 @@
 *SQPyte-Core
 testDunning
-	^ SQLDunning worstCase
+	^ SQLDunning worstCase: SQPyteDriver

@@ -1,9 +1,9 @@
 {
 	"class" : {
+		"testElo:" : "fn 5/23/2016 16:07",
+		"testPreparedElo:" : "fn 5/23/2016 17:57",
+		"testPreparedElo:match:" : "fn 5/23/2016 18:37",
 		"testSQLite" : "PO 5/20/2016 18:28",
-		"testSQLiteCFFI" : "PO 5/23/2016 13:45",
-		"testSQLiteRFFI" : "PO 5/23/2016 13:48",
-		"testSQPyte" : "PO 5/20/2016 18:22",
-		"testSQPyte:" : "PO 5/23/2016 13:46" },
+		"testSQPyte" : "PO 5/20/2016 18:22" },
 	"instance" : {
 		 } }

@@ -1,4 +1,4 @@
 *SQPyte-Core
 testEloSQLite
-	^ SQLElo testSQLite.
+	^ SQLElo testElo: SQLiteDriver.
 	
