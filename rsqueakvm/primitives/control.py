@@ -56,7 +56,7 @@ def func(interp, s_frame, w_rcvr):
     raise PrimitiveNotYetWrittenError()
 
 @expose_primitive(CHANGE_CLASS, unwrap_spec=[object, object], no_result=True)
-def func(interp, s_frame, w_arg, w_rcvr):
+def func(interp, s_frame, w_rcvr, w_arg):
     w_arg_class = w_arg.getclass(interp.space)
     w_rcvr_class = w_rcvr.getclass(interp.space)
 
