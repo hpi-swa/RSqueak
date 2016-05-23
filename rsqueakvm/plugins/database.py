@@ -229,6 +229,7 @@ class _DBManager(object):
     _dbs = {}
     _cursor_count = 0
     _cursors = {}
+    _sqlite_rcs = {}
 
     def __init__(self):
         pass
@@ -272,7 +273,7 @@ def primitiveSQPyteConnect(interp, s_frame, w_rcvr, filename):
     return interp.space.wrap_int(dbm.connect(interp.space, filename))
 
 
-@DatabasePlugin.expose_primitive()
+@DatabasePlugin.expose_primitive(clean_stack=False)
 def primitiveSQPyteExecute(interp, s_frame, argcount):
     if not 2 <= argcount <= 3:
         raise PrimitiveFailedError('wrong number of arguments: %s' % argcount)
@@ -286,7 +287,7 @@ def primitiveSQPyteExecute(interp, s_frame, argcount):
     arg3_w = s_frame.pop()
     sql = space.unwrap_string(arg3_w)
     arg2_w = s_frame.pop()
-    db_pointer = space.unwrap_int(arg2_w)
+    db_pointer = space.unwrap_longlong(arg2_w)
     s_frame.pop()  # receiver
 
     return interp.space.wrap_int(dbm.execute(db_pointer, sql, args))
@@ -326,7 +327,7 @@ def primitiveSQLiteConnect(interp, s_frame, w_rcvr, connect_str):
             raise PrimitiveFailedError('conntect [rc: %s]' % rc)
 
 
-@DatabasePlugin.expose_primitive()
+@DatabasePlugin.expose_primitive(clean_stack=False)
 def primitiveSQLiteExecute(interp, s_frame, argcount):
     if not 2 <= argcount <= 3:
         raise PrimitiveFailedError('wrong number of arguments: %s' % argcount)
@@ -337,11 +338,10 @@ def primitiveSQLiteExecute(interp, s_frame, argcount):
     if argcount == 3:
         args = space.unwrap_array(s_frame.pop())
 
-    arg3_w = s_frame.pop()
-    sql = space.unwrap_string(arg3_w)
     arg2_w = s_frame.pop()
-    db_pointer = space.unwrap_int(arg2_w)
-    s_frame.pop()  # receiver
+    sql = space.unwrap_string(arg2_w)
+    arg1_w = s_frame.pop()
+    db_pointer = space.unwrap_longlong(arg1_w)
 
     length = len(sql)
     v_db_ptr = rffi.cast(rffi.VOIDP, db_pointer)
@@ -349,22 +349,30 @@ def primitiveSQLiteExecute(interp, s_frame, argcount):
     with rffi.scoped_str2charp(sql) as query_p, \
             lltype.scoped_alloc(rffi.VOIDPP.TO, 1) as result, \
             lltype.scoped_alloc(rffi.CCHARPP.TO, 1) as unused_buffer:
-        rc = capi.sqlite3_prepare_v2(v_db_ptr, query_p, length, result,
-                                     unused_buffer)
+        errorcode = capi.sqlite3_prepare_v2(v_db_ptr, query_p, length, result,
+                                            unused_buffer)
+        if not errorcode == 0:
+            raise PrimitiveFailedError('errorcode != 0: %s' % str(errorcode))
 
-        if rc == CConfig.SQLITE_OK:
-            v_pointer = rffi.cast(capi.VDBEP, result[0])
-            ptr = rffi.cast(rffi.ULONG, result[0])
+        v_pointer = rffi.cast(capi.VDBEP, result[0])
+        ptr = rffi.cast(rffi.ULONG, result[0])
 
-            if len(args) != capi.sqlite3_bind_parameter_count(v_pointer):
-                raise PrimitiveFailedError('wrong # of arguments for query')
+        if len(args) != capi.sqlite3_bind_parameter_count(v_pointer):
+            raise PrimitiveFailedError('wrong # of arguments for query')
 
-            for i, w_value in enumerate(args):
-                _convert_query_argument(space, w_value, v_pointer, i + 1)
+        for i, w_value in enumerate(args):
+            _convert_query_argument(space, w_value, v_pointer, i + 1)
 
-            return interp.space.wrap_int(ptr)
+        rc = sqlite3_step(v_pointer)
+        if rc == CConfig.SQLITE_ROW:
+            dbm._sqlite_rcs[rffi.cast(rffi.LONG, result[0])] = True
+        elif rc == CConfig.SQLITE_DONE:
+            pass
         else:
-            raise PrimitiveFailedError('execute [rc: %s]' % rc)
+            raise PrimitiveFailedError('strange result: %s' % rc)
+
+        s_frame.pop()  # receiver
+        return interp.space.wrap_int(ptr)
 
 
 def _convert_query_argument(space, w_value, v_pointer, i):
@@ -386,16 +394,21 @@ def _convert_query_argument(space, w_value, v_pointer, i):
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveSQLiteNext(interp, s_frame, w_rcvr, stmt_ptr):
-    ptr = rffi.cast(capi.VDBEP, stmt_ptr)
-    rc = sqlite3_step(ptr)
-
-    if rc == CConfig.SQLITE_ROW:
-        return interp.space.wrap_list(
-            sqlite_read_row(interp.space, ptr))
-    elif rc == CConfig.SQLITE_DONE:
+    if stmt_ptr not in dbm._sqlite_rcs:
         return interp.space.w_nil
+
+    ptr = rffi.cast(capi.VDBEP, stmt_ptr)
+
+    row = sqlite_read_row(interp.space, ptr)
+    rc = sqlite3_step(ptr)
+    if rc == CConfig.SQLITE_ROW:
+        pass
+    elif rc == CConfig.SQLITE_DONE:
+        del dbm._sqlite_rcs[stmt_ptr]
     else:
         raise PrimitiveFailedError('next [rc: %s]' % rc)
+
+    return interp.space.wrap_list(row)
 
 
 def sqlite_read_row(space, ptr):
