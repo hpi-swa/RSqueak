@@ -440,10 +440,12 @@ def compile_code(interp, w_receiver, code):
     with objspace.ForceHeadless(space):
         w_result = interp.perform(
             w_receiver_class,
-            "compile:classified:notifying:",
+            "compile:classified:withStamp:notifying:logSource:",
             w_arguments = [space.wrap_string("%s\r\n%s" % (selector, code)),
             space.wrap_string("spy-run-code"),
-            space.w_nil]
+            space.w_nil,
+            space.w_nil,
+            space.w_false]
         )
         # TODO - is this expected in every image?
         if not isinstance(w_result, W_BytesObject) or space.unwrap_string(w_result) != selector:
