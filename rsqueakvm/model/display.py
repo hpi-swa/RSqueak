@@ -161,7 +161,7 @@ class W_32BitDisplayBitmap(W_DisplayBitmap):
     repr_classname = "W_32BitDisplayBitmap"
 
     def force_words(self, start, stop):
-        assert start > 0 and stop > 0 and self.size() >= stop and self.pixelbuffer_words >= stop and stop >= start
+        assert start >= 0 and stop >= 0 and self.size() >= stop and self.pixelbuffer_words >= stop and stop >= start
         pixbuf = rffi.ptradd(self.display().get_pixelbuffer(), start)
         realbuf = rffi.ptradd(self._real_depth_buffer, start)
         rffi.c_memcpy(

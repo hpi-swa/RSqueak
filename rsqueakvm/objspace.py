@@ -197,6 +197,10 @@ class ObjSpace(object):
         # we don't do tagging
         return W_SmallInteger(intmask(val))
 
+    def wrap_smallint_unsafe(self, val):
+        assert is_valid_int(val)
+        return W_SmallInteger(intmask(val))
+
     def wrap_uint(self, val):
         if val < 0:
             raise WrappingError("negative integer")

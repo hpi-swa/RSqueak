@@ -4,10 +4,10 @@ import sys
 
 from rsqueakvm import constants
 from rsqueakvm.model.character import W_Character
-from rsqueakvm.model.numeric import W_Float, W_SmallInteger
+from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_MutableSmallInteger
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject
-from rsqueakvm.util.version import VersionMixin, constant_for_version_arg2
+from rsqueakvm.util.version import VersionMixin, elidable_for_version
 
 from rpython.rlib import jit
 from rpython.rlib.objectmodel import import_from_mixin
@@ -107,9 +107,36 @@ class SimpleStorageStrategy(AbstractStrategy):
 class ListStrategy(SimpleStorageStrategy):
     _attrs_ = []
     repr_classname = "ListStrategy"
-
     import_from_mixin(rstrat.GenericStrategy)
+
+    def _wrap(self, w_value):
+        if isinstance(w_value, W_SmallInteger):
+            assert isinstance(w_value, W_MutableSmallInteger)
+            return self.space.wrap_smallint_unsafe(w_value.value)
+        else:
+            return w_value
+
+    def _unwrap(self, w_value):
+        if isinstance(w_value, W_SmallInteger):
+            return W_MutableSmallInteger(w_value.value)
+        else:
+            return w_value
+
+    def store(self, w_self, index0, w_value):
+        self.check_index_store(w_self, index0)
+        storage = self.get_storage(w_self)
+        if isinstance(w_value, W_SmallInteger):
+            w_old = storage[index0]
+            if isinstance(w_old, W_SmallInteger):
+                assert isinstance(w_old, W_MutableSmallInteger)
+                w_old.set_value(w_value.value)
+            else:
+                storage[index0] = W_MutableSmallInteger(w_value.value)
+        else:
+            storage[index0] = w_value
+
 ListStrategy.instantiate_type = ListStrategy
+
 
 class ListEntry(object):
     _attrs_ = ['strong_content', 'weak_content']
@@ -208,7 +235,7 @@ class SmallIntegerOrNilStrategy(SimpleStorageStrategy):
     repr_classname = "SmallIntegerOrNilStrategy"
     import_from_mixin(rstrat.TaggingStrategy)
     contained_type = W_SmallInteger
-    def wrap(self, val): return self.space.wrap_int(val)
+    def wrap(self, val): return self.space.wrap_smallint_unsafe(val)
     def unwrap(self, w_val): return self.space.unwrap_int(w_val)
     def wrapped_tagged_value(self): return self.space.w_nil
     def unwrapped_tagged_value(self): return constants.MAXINT
@@ -413,7 +440,7 @@ class CachedObjectShadow(AbstractCachingShadow):
     """
     repr_classname = "CachedObjectShadow"
 
-    @constant_for_version_arg2
+    @elidable_for_version(2, promote=True)
     def fetch(self, w_self, n0):
         return AbstractCachingShadow.fetch(self, w_self, n0)
 

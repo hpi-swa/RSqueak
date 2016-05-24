@@ -5,7 +5,7 @@ from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargePositiveInte
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.storage import AbstractCachingShadow, AbstractGenericShadow
-from rsqueakvm.util.version import constant_for_version, constant_for_version_arg, Version
+from rsqueakvm.util.version import elidable_for_version, Version
 
 from rpython.rlib import jit
 
@@ -245,23 +245,23 @@ class ClassShadow(AbstractCachingShadow):
             raise NotImplementedError(instance_kind)
         return w_new
 
-    @constant_for_version
+    @elidable_for_version(0)
     def get_instance_kind(self):
         return self.instance_kind
 
-    @constant_for_version
+    @elidable_for_version(0)
     def w_methoddict(self):
         return self._s_methoddict.w_self()
 
-    @constant_for_version
+    @elidable_for_version(0)
     def s_methoddict(self):
         return self._s_methoddict
 
-    @constant_for_version
+    @elidable_for_version(0)
     def s_superclass(self):
         return self._s_superclass
 
-    @constant_for_version
+    @elidable_for_version(0)
     def getname(self):
         return self.name
 
@@ -271,12 +271,12 @@ class ClassShadow(AbstractCachingShadow):
     # included so that we can reproduce code from the reference impl
     # more easily
 
-    @constant_for_version
+    @elidable_for_version(0)
     def isvariable(self):
         " True if instances of this class have indexed inst variables "
         return self.instance_varsized
 
-    @constant_for_version
+    @elidable_for_version(0)
     def instsize(self):
         " Number of named instance variables for each instance of this class "
         return self._instance_size
@@ -284,7 +284,7 @@ class ClassShadow(AbstractCachingShadow):
     # _______________________________________________________________
     # Other Methods
 
-    @constant_for_version_arg
+    @elidable_for_version(1)
     def lookup(self, w_selector):
         look_in_shadow = self
         while look_in_shadow is not None:

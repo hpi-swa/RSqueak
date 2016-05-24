@@ -56,7 +56,7 @@ def func(interp, s_frame, w_rcvr):
     raise PrimitiveNotYetWrittenError()
 
 @expose_primitive(CHANGE_CLASS, unwrap_spec=[object, object], no_result=True)
-def func(interp, s_frame, w_arg, w_rcvr):
+def func(interp, s_frame, w_rcvr, w_arg):
     w_arg_class = w_arg.getclass(interp.space)
     w_rcvr_class = w_rcvr.getclass(interp.space)
 
@@ -78,6 +78,9 @@ def func(interp, s_frame, w_arg, w_rcvr):
         (isinstance(w_arg, W_WordsObject) and
          isinstance(w_rcvr, W_WordsObject))):
         w_rcvr.change_class(interp.space, w_arg_class)
+        return w_rcvr
+    elif (isinstance(w_arg, W_LargePositiveInteger1Word) and isinstance(w_rcvr, W_BytesObject)):
+        w_rcvr.change_class(interp.space, interp.space.w_LargePositiveInteger)
         return w_rcvr
     else:
         # TODO: this should also work to change bytes to words and such
@@ -259,14 +262,12 @@ def func(interp, s_frame, w_block_ctx, args_w):
 @expose_primitive(PERFORM,
                   no_result=True, clean_stack=False)
 def func(interp, s_frame, argcount):
-    if argcount == 1:
-        w_selector = s_frame.pop()
-        w_rcvr = s_frame.top()
-        return s_frame._sendSelector(
-            w_selector, 0, interp, w_rcvr,
-            w_rcvr.class_shadow(interp.space))
-    else:
-        raise PrimitiveFailedError
+    arguments_w = s_frame.pop_and_return_n(argcount - 1)
+    w_selector = s_frame.pop()
+    w_rcvr = s_frame.top()
+    return s_frame._sendSelector(
+        w_selector, argcount - 1, interp, w_rcvr,
+        w_rcvr.class_shadow(interp.space), w_arguments=arguments_w)
 
 @expose_primitive(PERFORM_WITH_ARGS,
                   unwrap_spec=[object, object, list],

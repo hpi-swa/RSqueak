@@ -65,7 +65,7 @@ class IntLocalReturn(LocalReturn):
     _immutable_fields_ = ["_value"]
     def __init__(self, intresult):
         self._value = intresult
-    def value(self, space): return space.wrap_int(self._value)
+    def value(self, space): return space.wrap_smallint_unsafe(self._value)
 
 class WrappedNonLocalReturn(NonLocalReturn):
     _attrs_ = ["w_value"]
@@ -81,7 +81,7 @@ class IntNonLocalReturn(NonLocalReturn):
     def __init__(self, s_target_context, intvalue):
         NonLocalReturn.__init__(self, s_target_context)
         self._value = intvalue
-    def value(self, space): return space.wrap_int(self._value)
+    def value(self, space): return space.wrap_smallint_unsafe(self._value)
 
 class NonVirtualReturn(Exception):
     _attrs_ = ["s_target_context", "s_current_context", "w_value"]
@@ -357,11 +357,10 @@ class Interpreter(object):
             return
         # Normally, the tick counter is decremented by 1 for every message send.
         # Since we don't know how many messages are called during this trace, we
-        # just decrement by 1000th of the trace length (num of bytecodes).
+        # just divide by 10**2 and make sure it's always at least 1
         trace_length = jit.current_trace_length()
-        decr_by = int(trace_length // 1000)
-        if decr_by > 0:
-            self.quick_check_for_interrupt(s_frame, decr_by)
+        decr_by = int(trace_length >> 10 | 1)
+        self.quick_check_for_interrupt(s_frame, decr_by)
 
     def quick_check_for_interrupt(self, s_frame, dec=1):
         if not self.interrupts:

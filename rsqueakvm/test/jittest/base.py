@@ -34,7 +34,10 @@ class BaseJITTest(object):
             self._assert_ops_equal(aliases, op, expected)
 
     def _assert_ops_equal(self, aliases, op, expected):
-        assert op.name == expected.name
+        if op.name == "guard_class" or op.name == "guard_nonnull_class":
+            assert expected.name == "guard_class" or expected.name == "guard_nonnull_class"
+        else:
+            assert op.name == expected.name
         # assert len(op.args) == len(expected.args)
         # for arg, expected_arg in zip(op.args, expected.args):
         #     if arg in aliases:
@@ -48,9 +51,23 @@ class ModernJITTest(BaseJITTest):
     image_name = "Squeak4.3.image"
     test_image = image_path(image_name)
 
-    def run(self, spy, squeak, tmpdir, code):
+    def prepare(self, squeak, tmpdir, code):
+        self.has_copied = True
         shutil.copyfile(self.test_image, str(tmpdir.join(self.image_name)))
+        infile = tmpdir.join("input.st")
+        f = open(str(infile), 'w')
+        f.write("Utilities setAuthorInitials: 'foo'. %s Smalltalk snapshot: true andQuit: true." % code)
+        f.close()
+        curdir = os.getcwd()
+        os.chdir(str(tmpdir))
+        try:
+            squeak.system(self.image_name, infile)
+        finally:
+            os.chdir(curdir)
 
+    def run(self, spy, squeak, tmpdir, code):
+        if not getattr(self, "has_copied", False):
+            shutil.copyfile(self.test_image, str(tmpdir.join(self.image_name)))
         infile = tmpdir.join("input.st")
         f = open(str(infile), 'w')
         f.write("Utilities setAuthorInitials: 'foo'. SmallInteger compile: 'jittestNow\r\n%s'.\r\nSmalltalk snapshot: true andQuit: true." % code.replace("'", "''"))
@@ -67,7 +84,7 @@ class ModernJITTest(BaseJITTest):
         proc = spy.popen(
             "--reader-jit-args", "off", "-n", "0", "-m", "jittestNow", self.image_name,
             cwd=str(tmpdir),
-            env={"PYPYLOG": "jit-log-opt:%s" % logfile,
+            env={"PYPYLOG": "jit-log-opt,jit-summary:%s" % logfile,
                  "SDL_VIDEODRIVER": "dummy"}
         )
         proc.wait()

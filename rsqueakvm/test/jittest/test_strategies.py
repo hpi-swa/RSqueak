@@ -118,6 +118,10 @@ class TestBasic(BaseJITTest):
         guard_false(i133, descr=<Guard0x939956c>)
         i134 = int_add_ovf(i123, 1)
         guard_no_overflow(descr=<Guard0x9399550>)
+        i70 = int_sub(i61, 1),
+        setfield_gc(ConstPtr(ptr71), i70, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 32>),
+        i73 = int_le(i70, 0),
+        guard_false(i73, descr=<Guard0x9c13130>),
         i135 = arraylen_gc(p69, descr=<ArrayP 4>)
         jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, p19, p21, i134, p25, p31, p33, p35, p37, p39, p41, p43, p45, p47, p49, p51, p53, i63, p69, p74, p87, i91, i98, p103, p101, i111, p110, i120, descr=TargetToken(154592580))
         """)

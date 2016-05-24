@@ -38,7 +38,7 @@ eci = ExternalCompilationInfo(
                 char const * const filter = "*.image";
                 const char * file = tinyfd_openFileDialog("", "", 1, &filter, 0, 0);
                 if (file != 0) {
-                    strcpy(szFile, file);
+                    strncpy(szFile, file, len - 1);
                 }
                 return (file == 0) ? 0: 1;
             }
@@ -51,11 +51,12 @@ __llget_file = rffi.llexternal('RSqueakOpenFileDialog_linux',
 def tiny_get_file():
     charp = rffi.str2charp("".join(["\0"] * 260))
     res = __llget_file(charp, 260)
-    if (res == 1):
+    if res == 1:
         path = rffi.charp2str(charp)
         rffi.free_charp(charp)
         return path
     else:
+        rffi.free_charp(charp)
         return _Default
 
 def get_file():

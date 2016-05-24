@@ -31,7 +31,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         self.native_bytes = None
 
     def at0(self, space, index0):
-        return space.wrap_int(ord(self.getchar(index0)))
+        return space.wrap_smallint_unsafe(ord(self.getchar(index0)))
 
     def atput0(self, space, index0, w_value):
         self.setchar(index0, chr(space.unwrap_int(w_value)))
@@ -57,7 +57,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         byte1 = ord(self.getchar(byte_index0 + 1)) << 8
         if byte1 & 0x8000 != 0:
             byte1 = intmask(r_uint(r_uint32(0xffff0000)) | r_uint(r_uint32(byte1)))
-        return space.wrap_int(byte1 | byte0)
+        return space.wrap_smallint_unsafe(byte1 | byte0)
 
     def short_atput0(self, space, index0, w_value):
         from rpython.rlib.rarithmetic import int_between
@@ -264,7 +264,7 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
             short = (word >> 16) & 0xffff
         if short & 0x8000 != 0:
             short = r_uint(0xffff0000) | r_uint(short)
-        return space.wrap_int(intmask(short))
+        return space.wrap_smallint_unsafe(intmask(short))
 
     def short_atput0(self, space, index0, w_value):
         from rpython.rlib.rarithmetic import int_between
