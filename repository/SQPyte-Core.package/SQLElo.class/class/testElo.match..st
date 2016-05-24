@@ -19,11 +19,11 @@ FileStream stdout nextPut: $p.
 ].
 
 FileStream stdout nextPut: $m.
-rng := Random new.
+rng := Random seed: 1.
 matchCount timesRepeat: [ | rndA rndB winner |
 	rndA := (rng next * playerCount) ceiling.
 	rndB := (rng next * playerCount) ceiling.
-	winner := 2 atRandom.
+	winner := (rng next rounded) + 1.
 	a execute: 'INSERT INTO MATCHES values (', rndA, ', ', rndB, ', ', winner, ');'
 ].
 
