@@ -9,17 +9,39 @@ from rpython.rtyper.lltypesystem import rffi, lltype
 
 from sqpyte import capi
 from sqpyte.capi import CConfig
-from sqpyte.interpreter import Sqlite3DB, SQPyteException, SqliteException
+from sqpyte.interpreter import Sqlite3DB as SQPyteDBBase, SQPyteException, SqliteException
 
+# These empty base classes are for some reason necessary for RPython.
+# object doesn't suffice as a common base class.
+class DBClassBase(object):
+    def __init__(self):
+        pass
+
+class DBCursorBase(object):
+    def __init__(self):
+        pass
+
+class SQPyteDB(DBClassBase):
+
+    def __init__(self, filename, space):
+        self.sqpyte = SQPyteDBBase(filename)
+
+    def cursor(self, connection):
+        return _SQPyteCursor(connection)
+
+    def close(self):
+        pass
+
+    def execute(self, sql):
+        return self.sqpyte.execute(sql)
 
 DatabasePlugin = Plugin()
-
 
 class Statement(object):
     _immutable_fields_ = ['w_connection', 'sql', 'query']
 
     def __init__(self, w_connection, sql):
-        assert isinstance(w_connection, _SQPyteDB)
+        assert isinstance(w_connection, DatabaseWrapper)
         self.w_connection = w_connection
         self.sql = sql
         try:
@@ -87,28 +109,30 @@ class StatementCache(object):
         return []
 
 
-class _SQPyteDB(object):
+class DatabaseWrapper(object):
     _immutable_fields_ = ['db', 'statement_cache']
 
-    def __init__(self, space, filename):
+    def __init__(self, space, filename, DBClass):
         self.space = space
-        self.connect(filename)
+        self.dbClass = DBClass
         self.statement_cache = StatementCache(self)
         self.is_closed = False
 
-    def cursor(self):
-        return _SQPyteCursor(self)
+        self.connect(filename)
 
-    def execute(self, sql, args):
+    def cursor(self):
+        return self.db.cursor(self)
+
+    def execute(self, sql, args, db_pointer):
         if self.db is None:
             raise PrimitiveFailedError('db is closed')
-        return self.cursor().execute(sql, args)
+        return self.cursor().execute(sql, args, db_pointer)
 
     def connect(self, filename):
         # Open database
         try:
             print 'Trying to connect to %s...' % filename
-            self.db = Sqlite3DB(filename)
+            self.db = self.dbClass(filename, self.space)
             print 'Success'
         except (SQPyteException, SqliteException) as e:
             print e.msg
@@ -125,17 +149,17 @@ class _SQPyteDB(object):
         return True
 
 
-class _SQPyteCursor(object):
+class _SQPyteCursor(DBCursorBase):
     _immutable_fields_ = ['connection']
 
     def __init__(self, connection):
         self.space = connection.space
-        assert isinstance(connection, _SQPyteDB)
+        assert isinstance(connection, DatabaseWrapper)
         self.connection = connection
         self.statement = None
 
     @jit.unroll_safe
-    def execute(self, sql, args=None):
+    def execute(self, sql, args, db_pointer):
         jit.promote(self.connection)
         jit.promote(self.statement)
         cache = self.connection.statement_cache
@@ -229,14 +253,13 @@ class _DBManager(object):
     _dbs = {}
     _cursor_count = 0
     _cursors = {}
-    _sqlite_rcs = {}
 
     def __init__(self):
         pass
 
-    def connect(self, space, filename):
+    def connect(self, space, filename, DBClass):
         pointer = self._db_count
-        self._dbs[pointer] = _SQPyteDB(space, filename)
+        self._dbs[pointer] = DatabaseWrapper(space, filename, DBClass)
 
         self._db_count += 1
 
@@ -248,7 +271,7 @@ class _DBManager(object):
             raise PrimitiveFailedError('execute [db is None]')
 
         pointer = self._cursor_count
-        self._cursors[pointer] = db.execute(sql, args)
+        self._cursors[pointer] = db.execute(sql, args, db_pointer)
 
         self._cursor_count += 1
 
@@ -270,7 +293,7 @@ dbm = _DBManager()
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, str])
 def primitiveSQPyteConnect(interp, s_frame, w_rcvr, filename):
-    return interp.space.wrap_int(dbm.connect(interp.space, filename))
+    return interp.space.wrap_int(dbm.connect(interp.space, filename, SQPyteDB))
 
 
 @DatabasePlugin.expose_primitive(clean_stack=False)
@@ -313,66 +336,91 @@ sqlite3_step = capi.llexternal('sqlite3_step', [capi.VDBEP], rffi.INT)
 sqlite3_column_count = capi.llexternal('sqlite3_column_count', [capi.VDBEP],
                                        rffi.INT)
 
+class SQLiteDB(DBClassBase):
+
+    def __init__(self, filename, space):
+        self.space = space
+        self.open(filename)
+
+    def open(self, filename):
+        with rffi.scoped_str2charp(filename) as filename, \
+                lltype.scoped_alloc(capi.SQLITE3PP.TO, 1) as result:
+            rc = capi.sqlite3_open(filename, result)
+
+            if rc == CConfig.SQLITE_OK:
+                self.ptr = result[0]
+            else:
+                raise PrimitiveFailedError('conntect [rc: %s]' % rc)
+
+    def close(self):
+        pass
+
+    def cursor(self, connection):
+        return _SQLiteCursor(connection)
+
+
+class _SQLiteCursor(DBCursorBase):
+
+    def __init__(self, connection):
+        self.space = connection.space
+        assert isinstance(connection, DatabaseWrapper)
+        self.connection = connection
+        self.statement = None
+        self.isDone = False
+
+    def execute(self, sql, args, db_pointer):
+
+        length = len(sql)
+        v_db_ptr = self.connection.db.ptr
+
+        with rffi.scoped_str2charp(sql) as query_p, \
+                lltype.scoped_alloc(rffi.VOIDPP.TO, 1) as result, \
+                lltype.scoped_alloc(rffi.CCHARPP.TO, 1) as unused_buffer:
+            errorcode = capi.sqlite3_prepare_v2(v_db_ptr, query_p, length, result,
+                                                unused_buffer)
+            if not errorcode == 0:
+                raise PrimitiveFailedError('errorcode != 0: %s' % str(errorcode))
+
+            v_pointer = rffi.cast(capi.VDBEP, result[0])
+            self.ptr = result[0]
+
+            if len(args) != capi.sqlite3_bind_parameter_count(v_pointer):
+                raise PrimitiveFailedError('wrong # of arguments for query')
+
+            for i, w_value in enumerate(args):
+                _convert_query_argument(self.space, w_value, v_pointer, i + 1)
+
+            rc = sqlite3_step(v_pointer)
+            if rc != CConfig.SQLITE_ROW and rc != CConfig.SQLITE_DONE:
+                raise PrimitiveFailedError('strange result: %s' % rc)
+
+        return self
+
+    def next(self):
+        if self.isDone:
+            return self.space.w_nil
+
+        ptr = rffi.cast(capi.VDBEP, self.ptr)
+
+        row = sqlite_read_row(self.space, ptr)
+        rc = sqlite3_step(ptr)
+        if rc == CConfig.SQLITE_ROW:
+            pass
+        elif rc == CConfig.SQLITE_DONE:
+            self.isDone = True
+        else:
+            raise PrimitiveFailedError('next [rc: %s]' % rc)
+
+        return self.space.wrap_list(row)
+
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, str])
-def primitiveSQLiteConnect(interp, s_frame, w_rcvr, connect_str):
-    with rffi.scoped_str2charp(connect_str) as connect_str, \
-            lltype.scoped_alloc(capi.SQLITE3PP.TO, 1) as result:
-        rc = capi.sqlite3_open(connect_str, result)
-
-        if rc == CConfig.SQLITE_OK:
-            ptr = rffi.cast(rffi.ULONG, result[0])
-            return interp.space.wrap_int(ptr)
-        else:
-            raise PrimitiveFailedError('conntect [rc: %s]' % rc)
-
+def primitiveSQLiteConnect(interp, s_frame, w_rcvr, filename):
+    return interp.space.wrap_int(dbm.connect(interp.space, filename, SQLiteDB))
 
 @DatabasePlugin.expose_primitive(clean_stack=False)
 def primitiveSQLiteExecute(interp, s_frame, argcount):
-    if not 2 <= argcount <= 3:
-        raise PrimitiveFailedError('wrong number of arguments: %s' % argcount)
-
-    space = interp.space
-
-    args = []
-    if argcount == 3:
-        args = space.unwrap_array(s_frame.pop())
-
-    arg2_w = s_frame.pop()
-    sql = space.unwrap_string(arg2_w)
-    arg1_w = s_frame.pop()
-    db_pointer = space.unwrap_longlong(arg1_w)
-
-    length = len(sql)
-    v_db_ptr = rffi.cast(rffi.VOIDP, db_pointer)
-
-    with rffi.scoped_str2charp(sql) as query_p, \
-            lltype.scoped_alloc(rffi.VOIDPP.TO, 1) as result, \
-            lltype.scoped_alloc(rffi.CCHARPP.TO, 1) as unused_buffer:
-        errorcode = capi.sqlite3_prepare_v2(v_db_ptr, query_p, length, result,
-                                            unused_buffer)
-        if not errorcode == 0:
-            raise PrimitiveFailedError('errorcode != 0: %s' % str(errorcode))
-
-        v_pointer = rffi.cast(capi.VDBEP, result[0])
-        ptr = rffi.cast(rffi.ULONG, result[0])
-
-        if len(args) != capi.sqlite3_bind_parameter_count(v_pointer):
-            raise PrimitiveFailedError('wrong # of arguments for query')
-
-        for i, w_value in enumerate(args):
-            _convert_query_argument(space, w_value, v_pointer, i + 1)
-
-        rc = sqlite3_step(v_pointer)
-        if rc == CConfig.SQLITE_ROW:
-            dbm._sqlite_rcs[rffi.cast(rffi.LONG, result[0])] = True
-        elif rc == CConfig.SQLITE_DONE:
-            pass
-        else:
-            raise PrimitiveFailedError('strange result: %s' % rc)
-
-        s_frame.pop()  # receiver
-        return interp.space.wrap_int(ptr)
+    return primitiveSQPyteExecute(interp, s_frame, argcount)
 
 
 def _convert_query_argument(space, w_value, v_pointer, i):
@@ -394,21 +442,7 @@ def _convert_query_argument(space, w_value, v_pointer, i):
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveSQLiteNext(interp, s_frame, w_rcvr, stmt_ptr):
-    if stmt_ptr not in dbm._sqlite_rcs:
-        return interp.space.w_nil
-
-    ptr = rffi.cast(capi.VDBEP, stmt_ptr)
-
-    row = sqlite_read_row(interp.space, ptr)
-    rc = sqlite3_step(ptr)
-    if rc == CConfig.SQLITE_ROW:
-        pass
-    elif rc == CConfig.SQLITE_DONE:
-        del dbm._sqlite_rcs[stmt_ptr]
-    else:
-        raise PrimitiveFailedError('next [rc: %s]' % rc)
-
-    return interp.space.wrap_list(row)
+    return primitiveSQPyteNext(interp, s_frame, w_rcvr, stmt_ptr)
 
 
 def sqlite_read_row(space, ptr):
