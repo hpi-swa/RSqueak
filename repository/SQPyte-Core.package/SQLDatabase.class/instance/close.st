@@ -1,3 +1,3 @@
 database
 close
-	self dbDriver primitiveSQLClose: self dbPointer
+	self class primitiveSQLClose: self dbPointer

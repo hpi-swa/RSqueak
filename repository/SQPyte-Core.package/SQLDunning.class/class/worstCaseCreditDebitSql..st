@@ -1,4 +1,4 @@
-as yet unclassified
+sql
 worstCaseCreditDebitSql: aKUNNR
 	^ 'SELECT SUM(DEBIT) > SUM(CREDIT) FROM 
 		(SELECT MANDT, BUKRS, BELNR, GJAHR, KUNNR, WRBTR as CREDIT, 0 as DEBIT

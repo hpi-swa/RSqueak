@@ -1,3 +1,3 @@
-as yet unclassified
+sql
 worstCaseListSql
 	^ 'SELECT DISTINCT KUNNR FROM BSEG WHERE AUGBL IS NULL'

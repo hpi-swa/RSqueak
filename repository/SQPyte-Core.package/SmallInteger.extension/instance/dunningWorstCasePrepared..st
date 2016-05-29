@@ -2,4 +2,4 @@
 dunningWorstCasePrepared: aString
 	| args |
 	args := aString findTokens: ' '.
-	^ SQLDunning worstCasePreparedIn: args second with: (Smalltalk classNamed: args first)
+	^ SQLDunning worstCasePreparedIn: args second usingSQPyte: (SQPyte check: args first)

@@ -2,5 +2,4 @@
 elo: aString
 	| args |
 	args := aString findTokens: ' '.
-	^ SQLElo testElo: (Smalltalk classNamed: args first) match: args second asInteger
-	
+	^ SQLElo testElo: args second asInteger usingSQPyte: (SQPyte check: args first)

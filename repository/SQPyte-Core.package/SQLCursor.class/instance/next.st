@@ -1,3 +1,3 @@
 database
 next
-	^ self dbDriver primitiveSQLNext: self cursorPointer
+	^ self class primitiveSQLNext: self cursorPointer

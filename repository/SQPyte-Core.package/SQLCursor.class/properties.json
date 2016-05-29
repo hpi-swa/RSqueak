@@ -6,7 +6,6 @@
 		 ],
 	"commentStamp" : "",
 	"instvars" : [
-		"dbDriver",
 		"cursorPointer" ],
 	"name" : "SQLCursor",
 	"pools" : [

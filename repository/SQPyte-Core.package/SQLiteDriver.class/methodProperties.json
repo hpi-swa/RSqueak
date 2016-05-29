@@ -1,9 +1,0 @@
-{
-	"class" : {
-		"primitiveSQLClose:" : "fn 5/17/2016 17:17",
-		"primitiveSQLConnect:" : "fn 5/17/2016 17:17",
-		"primitiveSQLExecute:with:" : "fn 5/17/2016 17:17",
-		"primitiveSQLExecute:with:args:" : "fn 5/23/2016 13:18",
-		"primitiveSQLNext:" : "fn 5/17/2016 17:17" },
-	"instance" : {
-		 } }

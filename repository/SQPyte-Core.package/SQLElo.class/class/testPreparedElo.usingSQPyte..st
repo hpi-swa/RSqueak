@@ -1,9 +1,9 @@
 as yet unclassified
-testPreparedElo: aDriver match: aNumber
+testPreparedElo: aNumber usingSQPyte: aBool 
 
 | a time rng count matchCount playerCount ranks cursor row |
 FileStream startUp: true.
-a := SQLDatabase open: ':memory:' with: aDriver.
+a := SQLDatabase open: ':memory:' usingSQPyte: aBool.
 
 time := [
 

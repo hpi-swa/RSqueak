@@ -1,6 +1,5 @@
 instance creation
-for: aCursorPointer with: aSQLDriver
+for: aCursorPointer
 	^ self new
-		dbDriver: aSQLDriver;
 		cursorPointer: aCursorPointer;
 		yourself

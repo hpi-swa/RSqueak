@@ -1,12 +1,14 @@
 {
 	"class" : {
-		"open:" : "fn 5/10/2016 15:27",
-		"open:with:" : "fn 5/24/2016 09:00" },
+		"open:" : "fn 5/29/2016 17:24",
+		"open:usingSQPyte:" : "fn 5/29/2016 17:55",
+		"primitiveSQLClose:" : "fn 5/29/2016 17:15",
+		"primitiveSQLConnect:usingSQPyte:" : "fn 5/29/2016 17:55",
+		"primitiveSQLExecute:with:" : "fn 5/29/2016 17:14",
+		"primitiveSQLExecute:with:args:" : "fn 5/29/2016 17:14" },
 	"instance" : {
-		"close" : "fn 5/10/2016 16:23",
-		"dbDriver" : "fn 5/10/2016 15:09",
-		"dbDriver:" : "fn 5/10/2016 15:09",
+		"close" : "fn 5/29/2016 17:27",
 		"dbPointer" : "fn 5/10/2016 14:53",
 		"dbPointer:" : "fn 5/10/2016 14:53",
-		"execute:" : "fn 5/10/2016 15:28",
-		"execute:args:" : "fn 5/23/2016 13:18" } }
+		"execute:" : "fn 5/29/2016 17:27",
+		"execute:args:" : "fn 5/29/2016 17:26" } }

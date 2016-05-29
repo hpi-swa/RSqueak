@@ -1,9 +1,9 @@
 as yet unclassified
-worstCasePreparedIn: aDatabaseFile with: aDatabaseDriver
+worstCaseIn: aDatabaseFile usingSQPyte: aBool
 	| db results time cursor1 item kunnr |
 	FileStream startUp: true.
 	FileStream stdout nextPutAll: 'Start'; cr.
-	db := SQLDatabase open: './', aDatabaseFile with: aDatabaseDriver.
+	db := SQLDatabase open: './', aDatabaseFile usingSQPyte: aBool.
 	results := OrderedCollection new.
 	
 	time := [
@@ -14,14 +14,14 @@ worstCasePreparedIn: aDatabaseFile with: aDatabaseDriver
 	kunnr do: [ :knr | | customerID beleg cursor2 |
 		beleg := OrderedCollection new.
 		customerID := knr first.
-		cursor2 := db execute: self worstCaseInfoSql args: {customerID}.
+		cursor2 := db execute: (self worstCaseInfoSql: customerID).
 		[ item := cursor2 next ] whileNotNil: [ beleg add: item].
 		beleg do: [ :bel |
 			| overdue cursor3 hasDebit cursor4 |
 			FileStream stdout nextPut: $..
-			cursor3 := db execute: self worstCaseOverdueSql args: {bel first}.
+			cursor3 := db execute: (self worstCaseOverdueSql: bel first).
 			overdue := cursor3 next first = 1.
-			cursor4 := db execute: self worstCaseCreditDebitSql args: {customerID}.
+			cursor4 := db execute: (self worstCaseCreditDebitSql: customerID).
 			hasDebit := cursor4 next first = 1.
 			
 			(overdue and: [ hasDebit ])

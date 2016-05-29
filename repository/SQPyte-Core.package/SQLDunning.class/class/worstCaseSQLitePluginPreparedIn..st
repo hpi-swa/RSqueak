@@ -1,4 +1,4 @@
-as yet unclassified
+sqlite-plugin
 worstCaseSQLitePluginPreparedIn: aDatabaseFile
 	| db results time kunnr |
 	FileStream startUp: true.

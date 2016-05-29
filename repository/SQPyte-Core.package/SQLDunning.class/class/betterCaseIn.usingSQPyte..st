@@ -1,9 +1,9 @@
 as yet unclassified
-betterCaseIn: aDatabaseFile with: aDatabaseDriver
+betterCaseIn: aDatabaseFile usingSQPyte: aBool
 	| db results time cursor1 kunnr beleg |
 	FileStream startUp: true.
 	FileStream stdout nextPutAll: 'Start'; cr.
-	db := SQLDatabase open: './', aDatabaseFile with: aDatabaseDriver.
+	db := SQLDatabase open: './', aDatabaseFile usingSQPyte: aBool.
 	results := OrderedCollection new.
 	
 	time := [
