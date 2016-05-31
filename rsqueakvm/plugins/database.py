@@ -5,9 +5,9 @@ from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.primitives.bytecodes import *
 
 from rpython.rlib import jit
-from rpython.rtyper.lltypesystem import rffi, lltype
+from rpython.rtyper.lltypesystem import rffi
 
-from sqpyte import capi, interpreter
+from sqpyte import interpreter
 from sqpyte.capi import CConfig
 
 
@@ -15,136 +15,32 @@ DatabasePlugin = Plugin()
 
 
 ###############################################################################
-# Abstract Database Implementation                                            #
+# SQL Connection And Cursor Implementation                                    #
 ###############################################################################
 
-class DBConnectionBase(object):
-    _immutable_fields_ = ['db', 'v_db_ptr', 'statement_cache']
+class SQLConnection(object):
+    _immutable_fields_ = ['db', 'statement_cache']
 
-    def __init__(self, space, filename):
+    def __init__(self, space, db_class, filename):
         self.space = space
         self.statement_cache = StatementCache(self)
         self.is_closed = False
 
-        self.connect(filename)
+        self.connect(db_class, filename)
 
-    def cursor(self):
-        raise NotImplementedError
-
-    def execute(self, sql, args):
-        return self.cursor().execute(sql, args)
-
-    def connect(self, filename):
-        raise NotImplementedError
-
-    def close(self):
-        return False
-
-
-class DBCursorBase(object):
-    _immutable_fields_ = ['connection', 'space']
-
-    def execute(self, sql, args):
-        raise NotImplementedError
-
-    def next(self):
-        raise NotImplementedError
-
-    def close(self):
-        return False
-
-
-###############################################################################
-# Statement Caching                                                           #
-###############################################################################
-
-class Statement(object):
-    _immutable_fields_ = ['w_connection', 'sql', 'query']
-
-    def __init__(self, w_connection, sql):
-        assert isinstance(w_connection, DBConnectionBase)
-        self.w_connection = w_connection
-        self.sql = sql
-        try:
-            self.query = w_connection.db.execute(sql)
-        except interpreter.SqliteException, e:
-            print e.msg
-            raise PrimitiveFailedError(e.msg)
-            # space = w_connection.space
-            # w_module = space.getbuiltinmodule('sqpyte')
-            # w_error = space.getattr(w_module, space.wrap('OperationalError'))
-            # raise PrimitiveFailedError(w_error, space.wrap(e.msg))
-        # self.query.use_translated.disable_from_cmdline(
-        #     w_connection.disable_opcodes)
-
-    def close(self):
-        if self.query:
-            self.query.close()
-            self.query = None
-
-    def _reset(self):
-        cache = self.w_connection.statement_cache
-        holder = cache.get_holder(self.sql)
-        if holder.statement is not None:
-            self.close()
-        else:
-            holder.statement = self
-            self.query.reset_query()
-
-
-class StatementHolder(object):
-    def __init__(self):
-        self.statement = None
-
-    def _get_or_make(self, cache, sql):
-        if self.statement is None:
-            return Statement(cache.w_connection, sql)
-        result = self.statement
-        self.statement = None
-        return jit.promote(result)
-
-
-class StatementCache(object):
-    def __init__(self, w_connection):
-        self.w_connection = w_connection
-        self.cache = {}
-
-    def get_or_make(self, sql):
-        holder = self.get_holder(sql)
-        return holder._get_or_make(self, sql)
-
-    def get_holder(self, sql):
-        jit.promote(self)
-        return self._get_holder(sql)
-
-    @jit.elidable
-    def _get_holder(self, sql):
-        holder = self.cache.get(sql, None)
-        if not holder:
-            holder = self.cache[sql] = StatementHolder()
-        return holder
-
-    def all_statements(self):
-        # return [holder.statement for holder in self.cache.itervalues()
-        #         if holder.statement is not None]
-        return []
-
-
-###############################################################################
-# SQPyte Implementation                                                       #
-###############################################################################
-
-class SQPyteConnection(DBConnectionBase):
-    def connect(self, filename):
+    def connect(self, db_class, filename):
         try:
             print 'Trying to connect to %s...' % filename
-            self.db = interpreter.Sqlite3DB(filename)
+            self.db = db_class(filename)
             print 'Success'
         except (interpreter.SQPyteException, interpreter.SqliteException) as e:
             print e.msg
 
     def cursor(self):
-        return SQPyteCursor(self)
+        return SQLCursor(self)
+
+    def execute(self, sql, args):
+        return self.cursor().execute(sql, args)
 
     def close(self):
         if self.is_closed:
@@ -158,11 +54,12 @@ class SQPyteConnection(DBConnectionBase):
         return True
 
 
-class SQPyteCursor(DBCursorBase):
+class SQLCursor(object):
+    _immutable_fields_ = ['connection', 'space']
 
     def __init__(self, connection):
         self.space = connection.space
-        assert isinstance(connection, DBConnectionBase)
+        assert isinstance(connection, SQLConnection)
         self.connection = connection
         self.statement = None
 
@@ -257,119 +154,79 @@ class SQPyteCursor(DBCursorBase):
 
 
 ###############################################################################
-# libsqlit3 via rffi                                                          #
+# Statement Caching                                                           #
 ###############################################################################
 
-sqlite3_step = capi.llexternal('sqlite3_step', [capi.VDBEP], rffi.INT)
-sqlite3_column_count = capi.llexternal('sqlite3_column_count', [capi.VDBEP],
-                                       rffi.INT)
+class Statement(object):
+    _immutable_fields_ = ['w_connection', 'sql', 'query']
+
+    def __init__(self, w_connection, sql):
+        assert isinstance(w_connection, SQLConnection)
+        self.w_connection = w_connection
+        self.sql = sql
+        try:
+            self.query = w_connection.db.execute(sql)
+        except interpreter.SqliteException, e:
+            print e.msg
+            raise PrimitiveFailedError(e.msg)
+            # space = w_connection.space
+            # w_module = space.getbuiltinmodule('sqpyte')
+            # w_error = space.getattr(w_module, space.wrap('OperationalError'))
+            # raise PrimitiveFailedError(w_error, space.wrap(e.msg))
+        # self.query.use_translated.disable_from_cmdline(
+        #     w_connection.disable_opcodes)
+
+    def close(self):
+        if self.query:
+            self.query.close()
+            self.query = None
+
+    def _reset(self):
+        cache = self.w_connection.statement_cache
+        holder = cache.get_holder(self.sql)
+        if holder.statement is not None:
+            self.close()
+        else:
+            holder.statement = self
+            self.query.reset_query()
 
 
-class SQLiteConnection(DBConnectionBase):
-    def connect(self, filename):
-        with rffi.scoped_str2charp(filename) as filename, \
-                lltype.scoped_alloc(capi.SQLITE3PP.TO, 1) as result:
-            rc = capi.sqlite3_open(filename, result)
-
-            if rc == CConfig.SQLITE_OK:
-                self.v_db_ptr = rffi.cast(capi.VDBEP, result[0])
-            else:
-                raise PrimitiveFailedError('conntect [rc: %s]' % rc)
-
-    def cursor(self):
-        return SQLiteCursor(self)
-
-
-class SQLiteCursor(DBCursorBase):
-
-    def __init__(self, connection):
-        self.space = connection.space
-        assert isinstance(connection, DBConnectionBase)
-        self.connection = connection
+class StatementHolder(object):
+    def __init__(self):
         self.statement = None
-        self.isDone = False
 
-    def execute(self, sql, args):
-        length = len(sql)
+    def _get_or_make(self, cache, sql):
+        if self.statement is None:
+            return Statement(cache.w_connection, sql)
+        result = self.statement
+        self.statement = None
+        return jit.promote(result)
 
-        with rffi.scoped_str2charp(sql) as query_p, \
-                lltype.scoped_alloc(rffi.VOIDPP.TO, 1) as result, \
-                lltype.scoped_alloc(rffi.CCHARPP.TO, 1) as unused_buffer:
-            errorcode = capi.sqlite3_prepare_v2(self.connection.v_db_ptr,
-                                                query_p, length, result,
-                                                unused_buffer)
-            if not errorcode == 0:
-                raise PrimitiveFailedError('errorcode!=0: %s' % str(errorcode))
 
-            self.ptr = rffi.cast(capi.VDBEP, result[0])
+class StatementCache(object):
+    def __init__(self, w_connection):
+        self.w_connection = w_connection
+        self.cache = {}
 
-            if len(args) != capi.sqlite3_bind_parameter_count(self.ptr):
-                raise PrimitiveFailedError('wrong # of arguments for query')
+    def get_or_make(self, sql):
+        holder = self.get_holder(sql)
+        return holder._get_or_make(self, sql)
 
-            for i, w_value in enumerate(args):
-                self.bind_query_argument(w_value, i + 1)
+    def get_holder(self, sql):
+        jit.promote(self)
+        return self._get_holder(sql)
 
-            rc = sqlite3_step(self.ptr)
-            if rc != CConfig.SQLITE_ROW and rc != CConfig.SQLITE_DONE:
-                raise PrimitiveFailedError('strange result: %s' % rc)
+    @jit.elidable
+    def _get_holder(self, sql):
+        holder = self.cache.get(sql, None)
+        if not holder:
+            holder = self.cache[sql] = StatementHolder()
+        return holder
 
-        return self
-
-    def bind_query_argument(self, w_value, i):
-        space = self.space
-        cls = w_value.getclass(space)
-        if (cls.is_same_object(space.w_String)):
-            text = space.unwrap_string(w_value)
-            charp = rffi.str2charp(text)
-            capi.sqlite3_bind_text(self.ptr, i, charp, -1, None)
-        elif cls.is_same_object(space.w_SmallInteger):
-            capi.sqlite3_bind_int64(self.ptr, i, space.unwrap_int(w_value))
-        elif cls.is_same_object(space.w_Float):
-            capi.sqlite3_bind_double(self.ptr, i, space.unwrap_float(w_value))
-        elif cls.is_same_object(space.w_nil):
-            capi.sqlite3_bind_null(self.ptr, i)
-        else:
-            raise PrimitiveFailedError(
-                'unable to unwrap %s' % w_value.getclass(space))
-
-    def next(self):
-        if self.isDone:
-            return self.space.w_nil
-
-        row = self.fetch_one_row()
-        rc = sqlite3_step(self.ptr)
-        if rc == CConfig.SQLITE_ROW:
-            pass
-        elif rc == CConfig.SQLITE_DONE:
-            self.isDone = True
-        else:
-            raise PrimitiveFailedError('next [rc: %s]' % rc)
-
-        return self.space.wrap_list(row)
-
-    @jit.unroll_safe
-    def fetch_one_row(self):
-        column_count = sqlite3_column_count(self.ptr)
-        row = [None] * column_count
-        for i in range(column_count):
-            tid = capi.sqlite3_column_type(self.ptr, i)
-            if tid == CConfig.SQLITE_TEXT or tid == CConfig.SQLITE_BLOB:
-                text_len = capi.sqlite3_column_bytes(self.ptr, i)
-                text_ptr = capi.sqlite3_column_text(self.ptr, i)
-                row[i] = self.space.wrap_string(
-                    rffi.charpsize2str(text_ptr, text_len))
-            elif tid == CConfig.SQLITE_INTEGER:
-                value = capi.sqlite3_column_int64(self.ptr, i)
-                row[i] = self.space.wrap_int(value)
-            elif tid == CConfig.SQLITE_FLOAT:
-                value = capi.sqlite3_column_double(self.ptr, i)
-                row[i] = self.space.wrap_float(value)
-
-            elif tid == CConfig.SQLITE_NULL:
-                row[i] = self.space.w_nil
-            else:
-                raise PrimitiveFailedError('read_row [tid: %s' % tid)
-        return row
+    def all_statements(self):
+        # return [holder.statement for holder in self.cache.itervalues()
+        #         if holder.statement is not None]
+        return []
 
 
 ###############################################################################
@@ -384,7 +241,7 @@ class DBManager(object):
 
     def connect(self, space, db_class, filename):
         handle = self._db_count
-        self._dbs[handle] = db_class(space, filename)
+        self._dbs[handle] = SQLConnection(space, db_class, filename)
 
         self._db_count += 1
 
@@ -440,8 +297,8 @@ dbm = DBManager()
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, str, bool])
 def primitiveSQLConnect(interp, s_frame, w_rcvr, filename, sqpyte):
     if sqpyte:
-        return dbm.connect(interp.space, SQPyteConnection, filename)
-    return dbm.connect(interp.space, SQLiteConnection, filename)
+        return dbm.connect(interp.space, interpreter.SQPyteDB, filename)
+    return dbm.connect(interp.space, interpreter.SQLite3DB, filename)
 
 
 @DatabasePlugin.expose_primitive(clean_stack=False)

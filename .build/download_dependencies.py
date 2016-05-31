@@ -66,7 +66,7 @@ def download_and_extract(url, targetdir, callback=None):
 
 DEPS = [("https://bitbucket.org/pypy/pypy/get/default.zip", cp.get("General", "pypy")),
         ("https://bitbucket.org/pypy/rsdl/get/sdl2.zip", cp.get("General", "rsdl")),
-        ("https://bitbucket.org/softdevteam/sqpyte/get/default.zip", cp.get("General", "sqpyte"))]
+        ("https://github.com/HPI-SWA-Lab/SQPyte/archive/rsqueak.zip", cp.get("General", "sqpyte"))]
 
 def build_pypy32(exe, directory):
     oldcwd = os.getcwd()
