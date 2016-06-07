@@ -3,12 +3,14 @@ from rsqueakvm.model.base import W_Object
 from rsqueakvm.model.compiled_methods import W_CompiledMethod, W_PreSpurCompiledMethod, W_SpurCompiledMethod
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargePositiveInteger1Word
 from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.model.DBObject import W_DBObject
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.storage import AbstractCachingShadow, AbstractGenericShadow
 from rsqueakvm.util.version import elidable_for_version, Version
 
 from rpython.rlib import jit
 
+import pdb
 
 POINTERS = 0
 BYTES = 1
@@ -221,7 +223,20 @@ class ClassShadow(AbstractCachingShadow):
         instance_kind = self.get_instance_kind()
         if instance_kind == POINTERS:
             size = self.instsize() + extrasize
-            w_new = W_PointersObject(self.space, w_cls, size)
+
+            # TODO: refactor
+            def inherits_from():
+                s_cls = w_cls.class_shadow(self.space)
+                while s_cls.getname() != "Object class":
+                    if s_cls.getname() == "DBObject class":
+                        return True
+                    s_cls = s_cls.s_superclass()
+                return False
+
+            if inherits_from():
+                w_new = W_DBObject(self.space, w_cls, size)
+            else:
+                w_new = W_PointersObject(self.space, w_cls, size)
         elif instance_kind == WORDS:
             w_new = W_WordsObject(self.space, w_cls, extrasize)
         elif instance_kind == BYTES:
