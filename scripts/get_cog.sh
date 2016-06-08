@@ -22,4 +22,5 @@ curl -O "$COGURL/$zip"
 rm -rf cogspurlinux
 tar xzf $zip
 rm $zip
-mv cogspurlinux* cogspurlinux
+mv cogspurlinux* tmpcog
+mv tmpcog cogspurlinux

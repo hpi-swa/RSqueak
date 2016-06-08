@@ -78,7 +78,7 @@ if __name__ == "__main__":
         else:
             commitid = sys.argv[1]
             print "Resetting benchmarks commit %s" % commitid
-            c.execute("UPDATE %s SET %s=0 WHERE %s='%s'" % (JOB_TABLE, FLAG, COMMITID, commitid))
+            c.execute("DELETE FROM %s WHERE %s='%s'" % (JOB_TABLE, COMMITID, commitid))
             conn.commit()
         c.close()
         conn.close()
