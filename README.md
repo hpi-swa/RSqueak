@@ -5,6 +5,15 @@ results to our
 [Codespeed](https://www.hpi.uni-potsdam.de/hirschfeld/codespeed/). Very specific
 to RSqueak. Probably not useful for re-use.
 
+## API
+A public API server should just run the `benchmark-api.py` script.
+In its `config.py` the `BENCHMARK_MACHINES` might have to be overwritten.
+
+## Worker
+Each worker should run `benchmark-control.py`. This will run the queue and worker, and
+also allow selfupdate triggering. An example of how this can be run is in `xinitrc`.
+In its `config.py` the `BINARY_BASENAME` might have to be overwritten.
+
 Note: how to get a system+vm version string:
 ```smalltalk
 FileStream stdout
