@@ -54,6 +54,9 @@ def selfupdate():
     os.waitpid(WorkerPid, 0)
     print "Updating from git"
     scriptdir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "scripts")
+    pipe = subprocess.Popen("git checkout -- ../benchmarks.py", shell=True, cwd=scriptdir)
+    pipe.wait()
+    scriptdir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "scripts")
     pipe = subprocess.Popen("git pull", shell=True, cwd=scriptdir)
     pipe.wait()
     print "Updating image and Cog VM"
