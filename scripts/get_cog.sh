@@ -12,7 +12,7 @@ string="$(uname -m)"
 if [[ "$string" == *"arm"* ]]; then
     zip=$(curl -s $COGURL | grep -o "href=\"cogspurlinuxhtARM-.*tgz\"" | tail -1)
 else
-    zip=$(curl -s $COGURL | grep -o "href=\"cogspurlinux-.*tgz\"" | tail -1)
+    zip=$(curl -s $COGURL | grep -o "href=\"cogspurlinuxht-.*tgz\"" | tail -1)
 fi
 
 zip=${zip#*=}

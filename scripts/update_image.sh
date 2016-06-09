@@ -19,5 +19,5 @@ SystemWindow allSubInstancesDo: [:w | w delete].
 (SmalltalkImage current snapshot: true andQuit: false) ifFalse: [
         SmalltalkImage current quitPrimitive].
 EOF
-timeout -s 9 600 cogspurlinux/squeak Squeak*.image $update_file
+timeout -s 9 1800 cogspurlinux/squeak Squeak*.image $update_file
 rm $update_file
