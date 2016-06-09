@@ -9,6 +9,7 @@ Benchmark allSubclassesDo: [:class |
         class benchmarkSelectors do: [:sel |
 		FileStream stdout nextPutAll: '"', class, '.', sel, '",'; cr]]].
 FileStream stdout nextPut: $]; cr; flush.
+Smalltalk quitPrimitive.
 EOF
 cogspurlinux/squeak Squeak*.image $file
 rm $file
