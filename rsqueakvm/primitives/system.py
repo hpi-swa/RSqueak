@@ -1,4 +1,5 @@
 from rpython.rlib import jit
+from rpython.rlib.objectmodel import we_are_translated
 
 from rsqueakvm import constants
 from rsqueakvm.error import PrimitiveFailedError, MetaPrimFailed
@@ -127,9 +128,13 @@ def func(interp, s_frame, argcount):
     vm_w_params[8] = interp.space.wrap_int(1)  # must be 1 for VM Stats view to work
 
     vm_w_params[41] = interp.space.wrap_int(1)  # We are a "stack-like" VM - number of stack tables
-    # sizeOfMachineCode = jit_hooks.stats_asmmemmgr_allocated(None)
-    sizeOfMachineCode = jit_hooks.stats_asmmemmgr_used(None)
-    vm_w_params[45] = interp.space.wrap_int(sizeOfMachineCode)
+
+    if we_are_translated():
+        # sizeOfMachineCode = jit_hooks.stats_asmmemmgr_allocated(None)
+        sizeOfMachineCode = jit_hooks.stats_asmmemmgr_used(None)
+        vm_w_params[45] = interp.space.wrap_int(sizeOfMachineCode)
+    else:
+        vm_w_params[45] = 0
 
     vm_w_params[39] = interp.space.wrap_int(constants.BYTES_PER_WORD)
     vm_w_params[40] = interp.space.wrap_int(interp.image.version.magic)
@@ -137,9 +142,12 @@ def func(interp, s_frame, argcount):
     vm_w_params[57] = interp.space.wrap_int(interp.forced_interrupt_checks_count)
     vm_w_params[59] = interp.space.wrap_int(interp.stack_overflow_count)
 
-    numberOfLoops = jit_hooks.stats_get_counter_value(None, jit.Counters.TOTAL_COMPILED_LOOPS)
-    numberOfBridges = jit_hooks.stats_get_counter_value(None, jit.Counters.TOTAL_COMPILED_BRIDGES)
-    vm_w_params[63] = interp.space.wrap_int(numberOfLoops + numberOfBridges)
+    if we_are_translated():
+        numberOfLoops = jit_hooks.stats_get_counter_value(None, jit.Counters.TOTAL_COMPILED_LOOPS)
+        numberOfBridges = jit_hooks.stats_get_counter_value(None, jit.Counters.TOTAL_COMPILED_BRIDGES)
+        vm_w_params[63] = interp.space.wrap_int(numberOfLoops + numberOfBridges)
+    else:
+        vm_w_params[63] = 0
 
     vm_w_params[69] = interp.space.wrap_int(constants.INTERP_PROXY_MAJOR)
     vm_w_params[70] = interp.space.wrap_int(constants.INTERP_PROXY_MINOR)
