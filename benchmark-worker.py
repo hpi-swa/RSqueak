@@ -54,6 +54,8 @@ class BenchmarkWorker(object):
     def execute(self, vm, commitid, branch):
         if vm == "cog":
             binary = self.download_cog(commitid)
+        elif vm == "interpreter":
+            binary = self.download_interpreter(commitid)
         else:
             binary = self.download_rsqueak(commitid)
         if not binary: return
@@ -114,6 +116,14 @@ class BenchmarkWorker(object):
             return None
         os.chmod(filename, 0755)
         return filename
+
+    def download_interpreter(self, commitid):
+        print "Downloading Interpreter VM"
+        scriptdir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "scripts")
+        if os.system("%s %s" % (os.path.join(scriptdir, "get_interpreter.sh"), commitid)) != 0:
+            return None
+        else:
+            return "./squeakvm/bin/squeak"
 
     def download_cog(self, commitid):
         print "Downloading Cog"
