@@ -1244,10 +1244,9 @@ class SpurImageWriter(object):
 
     def headers_for_hash_numfields(self, Class, Hash, size):
         import math
-        from rpython.rlib.rbigint import rbigint, NULLRBIGINT
         from rsqueakvm.storage_classes import BYTES, COMPILED_METHOD, LARGE_POSITIVE_INTEGER
         classshadow = Class.as_class_get_shadow(self.space)
-        length = rbigint.fromint(size)
+        length = r_int64(size)
         wordlen = size
         fmt = 0
         w_fmt = Class.fetch(self.space, constants.CLASS_FORMAT_INDEX)
@@ -1260,20 +1259,29 @@ class SpurImageWriter(object):
             classshadow.instance_kind == COMPILED_METHOD or
             classshadow.instance_kind == LARGE_POSITIVE_INTEGER):
             wordlen = int(math.ceil(size / 4.0))
-            length = rbigint.fromint(wordlen)
+            length = r_int64(wordlen)
             fmt = fmt | ((wordlen * 4) - size)
-        header = NULLRBIGINT
-        length_header = NULLRBIGINT
+        header = r_int64(0)
+        length_header = r_int64(0)
         if wordlen >= 255:
-            length_header = length.or_(rbigint.fromint(0xff).lshift(56))
-            length = rbigint.fromint(0xff)
-        header = header.or_(length.lshift(56).
-                            or_(rbigint.fromint(Hash).lshift(32)).
-                            int_or_(fmt << 24).
-                            int_or_(Class.gethash()))
+            length_header = r_int64(length | (r_int64(0xff) << 56))
+            length = r_int64(0xff)
+        header = header | ((length << 56) |
+                           (r_int64(Hash) << 32) |
+                           (r_int64(fmt) << 24) |
+                           (r_int64(Class.gethash())))
 
         if wordlen >= 255:
-            header = header.lshift(64).or_(length_header)
-            return header.tobytes(16, "little", False)
+            header = (header << 64) | length_header
+            return self.rint64_tobytes(header, 16)
         else:
-            return header.tobytes(8, "little", False)
+            return self.rint64_tobytes(header, 8)
+
+    def rint64_tobytes(self, i, sz):
+        res = ['\0'] * sz
+        value = i
+        mask = r_int64(0xff)
+        for i in range(sz):
+            res[i] = chr(intmask(value & mask))
+            value >>= 8
+        return "".join(res)
