@@ -299,8 +299,8 @@ class SDLDisplay(object):
         e = rffi.cast(RSDL.MouseWheelEventPtr, event)
         return [EventTypeMouseWheel,
                 time,
-                intmask(e.c_x),
-                intmask(e.c_y),
+                intmask(e.c_x) * 120,
+                intmask(e.c_y) * 120,
                 btn,
                 mods,
                 0,
