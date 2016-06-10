@@ -22,4 +22,4 @@ curl -O "$URL/$zip"
 rm -rf squeakvm
 tar xzf $zip
 rm $zip
-mv Squeak* squeakvm
+mv Squeak-* squeakvm
