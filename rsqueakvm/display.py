@@ -25,6 +25,7 @@ EventTypeDragDropFiles = 3
 EventTypeMenu = 4
 EventTypeWindow = 5
 EventTypeComplex = 6
+EventTypeMouseWheel = 7
 
 EventKeyChar = 0
 EventKeyDown = 1
@@ -272,7 +273,7 @@ class SDLDisplay(object):
                                 h=intmask(window_event.c_data2),
                                 d=self.depth)
 
-    def get_next_mouse_event(self, time):
+    def get_mouse_event_buttons_and_mods(self):
         mods = self.get_modifier_mask(3)
         btn = self.button
         if btn == RedButtonBit:
@@ -280,10 +281,26 @@ class SDLDisplay(object):
                 btn = BlueButtonBit
             elif mods & CommandKeyBit:
                 btn = YellowButtonBit
+        return (btn, mods)
+
+    def get_next_mouse_event(self, time):
+        btn, mods = self.get_mouse_event_buttons_and_mods()
         return [EventTypeMouse,
                 time,
                 int(self.mouse_position[0]),
                 int(self.mouse_position[1]),
+                btn,
+                mods,
+                0,
+                0]
+
+    def get_next_mouse_wheel_event(self, time, event):
+        btn, mods = self.get_mouse_event_buttons_and_mods()
+        e = rffi.cast(RSDL.MouseWheelEventPtr, event)
+        return [EventTypeMouseWheel,
+                time,
+                intmask(e.c_x),
+                intmask(e.c_y),
                 btn,
                 mods,
                 0,
@@ -315,6 +332,8 @@ class SDLDisplay(object):
                 elif event_type == RSDL.MOUSEMOTION:
                     self.handle_mouse_move(event_type, event)
                     return self.get_next_mouse_event(time)
+                elif event_type == RSDL.MOUSEWHEEL:
+                    return self.get_next_mouse_wheel_event(time, event)
                 elif event_type == RSDL.KEYDOWN:
                     self.handle_keyboard_event(event_type, event)
                     if not self.is_modifier_key(self.key) and (
