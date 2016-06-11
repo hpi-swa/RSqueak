@@ -12,8 +12,14 @@ from rsqueakvm.util import stream, system
 from rsqueakvm.util.bitmanipulation import splitter
 
 from rpython.rlib import objectmodel
-from rpython.rlib.rarithmetic import r_ulonglong, intmask, r_uint, r_uint32, r_int64, r_uint64
+from rpython.rlib.rarithmetic import r_ulonglong, r_longlong, r_int, intmask, r_uint, r_uint32, r_int64
 from rpython.rlib import jit
+
+if r_longlong is not r_int:
+    r_uint64 = r_ulonglong
+else:
+    r_uint64 = r_uint
+
 
 # Access for module users
 Stream = stream.Stream
