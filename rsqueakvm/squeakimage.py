@@ -12,7 +12,7 @@ from rsqueakvm.util import stream, system
 from rsqueakvm.util.bitmanipulation import splitter
 
 from rpython.rlib import objectmodel
-from rpython.rlib.rarithmetic import r_ulonglong, intmask, r_uint, r_uint32, r_int64
+from rpython.rlib.rarithmetic import r_ulonglong, intmask, r_uint, r_uint32, r_int64, r_uint64
 from rpython.rlib import jit
 
 # Access for module users
@@ -1246,7 +1246,7 @@ class SpurImageWriter(object):
         import math
         from rsqueakvm.storage_classes import BYTES, COMPILED_METHOD, LARGE_POSITIVE_INTEGER
         classshadow = Class.as_class_get_shadow(self.space)
-        length = r_int64(size)
+        length = r_uint64(size)
         wordlen = size
         fmt = 0
         w_fmt = Class.fetch(self.space, constants.CLASS_FORMAT_INDEX)
@@ -1259,28 +1259,29 @@ class SpurImageWriter(object):
             classshadow.instance_kind == COMPILED_METHOD or
             classshadow.instance_kind == LARGE_POSITIVE_INTEGER):
             wordlen = int(math.ceil(size / 4.0))
-            length = r_int64(wordlen)
+            length = r_uint64(wordlen)
             fmt = fmt | ((wordlen * 4) - size)
-        header = r_int64(0)
-        length_header = r_int64(0)
+        header = r_uint64(0)
+        length_header = r_uint64(0)
         if wordlen >= 255:
-            length_header = r_int64(length | (r_int64(0xff) << 56))
-            length = r_int64(0xff)
+            length_header = r_uint64(length | (r_uint64(0xff) << 56))
+            length = r_uint64(0xff)
         header = header | ((length << 56) |
-                           (r_int64(Hash) << 32) |
-                           (r_int64(fmt) << 24) |
-                           (r_int64(Class.gethash())))
+                           (r_uint64(Hash) << 32) |
+                           (r_uint64(fmt) << 24) |
+                           (r_uint64(Class.gethash())))
 
         if wordlen >= 255:
-            header = (header << 64) | length_header
-            return self.rint64_tobytes(header, 16)
+            extra_bytes = self.ruint64_tobytes(length_header)
+            header_bytes = self.ruint64_tobytes(header)
+            return extra_bytes + header_bytes
         else:
-            return self.rint64_tobytes(header, 8)
+            return self.ruint64_tobytes(header)
 
-    def rint64_tobytes(self, i, sz):
-        res = ['\0'] * sz
+    def ruint64_tobytes(self, i):
+        res = ['\0'] * 8
         value = i
-        mask = r_int64(0xff)
+        mask = r_uint64(0xff)
         for i in range(sz):
             res[i] = chr(intmask(value & mask))
             value >>= 8
