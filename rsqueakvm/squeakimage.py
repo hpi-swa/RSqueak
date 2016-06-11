@@ -1282,7 +1282,7 @@ class SpurImageWriter(object):
         res = ['\0'] * 8
         value = i
         mask = r_uint64(0xff)
-        for i in range(sz):
+        for i in range(8):
             res[i] = chr(intmask(value & mask))
             value >>= 8
         return "".join(res)
