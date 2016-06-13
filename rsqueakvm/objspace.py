@@ -231,7 +231,7 @@ class ObjSpace(object):
 
     @jit.unroll_safe
     def _number_bytesize(self, val):
-        assert val != 0
+        if val == 0: return 1
         sz = 0
         while val != 0:
             sz += 1
@@ -240,7 +240,7 @@ class ObjSpace(object):
 
     @specialize.argtype(1)
     def wrap_ulonglong(self, val):
-        assert val > 0 and not is_valid_int(val)
+        assert val >= 0
         r_val = r_ulonglong(val)
         w_class = self.w_LargePositiveInteger
         return self.wrap_large_number(r_val, w_class)
@@ -249,7 +249,7 @@ class ObjSpace(object):
     def wrap_nlonglong(self, val):
         if self.w_LargeNegativeInteger is None:
             raise WrappingError
-        assert val < 0 and not is_valid_int(val)
+        assert val < 0
         try:
             r_val = r_ulonglong(-val)
         except OverflowError:
@@ -297,6 +297,14 @@ class ObjSpace(object):
                     return self.wrap_nlonglong(val)
         # handles the rest and raises if necessary
         return self.wrap_int(val)
+
+    def wrap_longlonglong(self, val):
+        assert isinstance(val, r_longlonglong)
+        assert constants.IS_64BIT
+        if val > 0:
+            return self.wrap_ulonglong(val)
+        else:
+            return self.wrap_nlonglong(val)
 
     def wrap_float(self, i):
         return W_Float(i)

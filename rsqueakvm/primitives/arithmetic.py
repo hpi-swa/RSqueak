@@ -68,6 +68,10 @@ for (code, op) in math_ops.items():
                 else:
                     assert False
             except OverflowError:
+                if (constants.IS_64BIT and (not interp.image.version.is_64bit)):
+                    from rpython.rlib.rarithmetic import r_longlonglong
+                    res = op(r_longlonglong(receiver), r_longlonglong(argument))
+                    return interp.space.wrap_longlonglong(res)
                 raise PrimitiveFailedError()
             return interp.space.wrap_int(res)
     make_func(op)

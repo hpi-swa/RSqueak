@@ -175,6 +175,7 @@ def test_compiling_large_large_positive_integer():
         assert isinstance(w_result, W_BytesObject)
     else:
         assert isinstance(w_result, W_LargePositiveInteger1Word)
+    assert space.unwrap_longlong(w_result) == 0xFFFFFFFFFFFFFFFF
 
 def test_simulate_numericprim():
     sourcecode = """absentPrimitive: anInt with: anotherInt
