@@ -428,32 +428,26 @@ class TestBasic(BaseJITTest):
         1 to: 10000 do: [:i | li // i].
         """)
         self.assert_matches(traces[0].loop, """
-        guard_not_invalidated(descr=<Guard0x9449df0>),
-        i141 = int_le(i134, 10000),
-        guard_true(i141, descr=<Guard0x9449dc0>),
-        f142 = call_f(ConstClass(_ll_1_llong_from_int__Signed), i134, descr=<CallL 8 i EF=0 OS=84>),
-        i143 = call_i(ConstClass(_ll_2_llong_eq__SignedLongLong_SignedLongLong), f142, 0.000000, descr=<Calli 1 LL EF=0 OS=75>),
-        guard_false(i143, descr=<Guard0x9449d90>),
-        f144 = call_f(ConstClass(_ll_2_llong_floordiv__SignedLongLong_SignedLongLong), f103, f142, descr=<CallL 8 LL EF=2>),
-        f145 = call_f(ConstClass(_ll_2_llong_mul__SignedLongLong_SignedLongLong), f144, f142, descr=<CallL 8 LL EF=0 OS=72>),
-        i146 = call_i(ConstClass(_ll_2_llong_lt__SignedLongLong_SignedLongLong), f142, 0.000000, descr=<Calli 1 LL EF=0 OS=73>),
-        guard_false(i146, descr=<Guard0x9449d60>),
-        f147 = call_f(ConstClass(_ll_2_llong_sub__SignedLongLong_SignedLongLong), f103, f145, descr=<CallL 8 LL EF=0 OS=71>),
-        f148 = call_f(ConstClass(_ll_2_llong_rshift__SignedLongLong_Signed), f147, 63, descr=<CallL 8 Li EF=0 OS=82>),
-        f149 = call_f(ConstClass(_ll_2_llong_add__SignedLongLong_SignedLongLong), f144, f148, descr=<CallL 8 LL EF=0 OS=70>),
-        i150 = call_i(ConstClass(_ll_2_llong_gt__SignedLongLong_SignedLongLong), f149, 0.000000, descr=<Calli 1 LL EF=0 OS=77>),
-        guard_true(i150, descr=<Guard0x9449d30>),
-        i151 = call_i(ConstClass(_ll_2_ullong_ult__UnsignedLongLong_UnsignedLongLong), f149, 0.000000, descr=<Calli 1 LL EF=0 OS=88>),
-        guard_true(i151, descr=<Guard0x9449d00>),
-        i152 = call_i(ConstClass(_ll_1_llong_to_int__SignedLongLong), f149, descr=<Calli 4 L EF=0 OS=85>),
-        i153 = uint_lt(i152, 2147483647),
-        guard_true(i153, descr=<Guard0x9449cd0>),
-        i154 = int_add(i134, 1),
-        i70 = int_sub(i61, 1),
-        setfield_gc(ConstPtr(ptr71), i70, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 32>),
-        i73 = int_le(i70, 0),
-        guard_false(i73, descr=<Guard0x9c13130>),
-        jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, p18, i154, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, f103, i155, p66, descr=TargetToken(155615448))
+        guard_not_invalidated(descr=<Guard0x8e8c65c>)
+        i152 = int_le(i143, 10000)
+        guard_true(i152, descr=<Guard0x8eb7e44>)
+        f154 = call_f(ConstClass(_ll_1_llong_from_int__Signed), i143, descr=<CallL 8 i EF=0 OS=84>)
+        i157 = call_i(ConstClass(_ll_2_llong_eq__SignedLongLong_SignedLongLong), f154, 0.000000, descr=<Calli 1 LL EF=0 OS=75>)
+        guard_false(i157, descr=<Guard0x8e8c690>)
+        f159 = call_f(ConstClass(ll_llong_py_div__SignedLongLong_SignedLongLong), f119, f154, descr=<CallL 8 LL EF=2>)
+        i162 = call_i(ConstClass(_ll_2_llong_gt__SignedLongLong_SignedLongLong), f159, 0.000000, descr=<Calli 1 LL EF=0 OS=77>)
+        guard_true(i162, descr=<Guard0x8e8c6c4>)
+        i165 = call_i(ConstClass(_ll_2_llong_le__SignedLongLong_SignedLongLong), f159, 0.000000, descr=<Calli 1 LL EF=0 OS=74>)
+        guard_true(i165, descr=<Guard0x8e8c6f8>)
+        i167 = call_i(ConstClass(_ll_1_llong_to_int__SignedLongLong), f159, descr=<Calli 4 L EF=0 OS=85>)
+        i169 = uint_lt(i167, 2147483647)
+        guard_true(i169, descr=<Guard0x8e8c72c>)
+        i171 = int_add(i143, 1)
+        i173 = int_sub(i147, 1)
+        setfield_gc(ConstPtr(ptr174), i173, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 32>)
+        i176 = int_le(i173, 0)
+        guard_false(i176, descr=<Guard0x8e8c760>)
+        jump(p0, p1, i2, p3, p4, p7, p8, p10, p13, p15, i171, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p58, i67, f69, f72, i79, f81, f75, f84, i90, f92, f86, f95, i101, f103, f97, f106, i112, f114, f108, f117, f119, i173, descr=TargetToken(149645480))
         """)
 
     def test_large_integer_div(self, spy, tmpdir):
@@ -463,18 +457,18 @@ class TestBasic(BaseJITTest):
         1 to: 100000 do: [:i | li // i].
         """)
         self.assert_matches(traces[0].loop, """
-        guard_not_invalidated(descr=<Guard0x9fbad00>),
-        i75 = int_le(i68, 100000),
-        guard_true(i75, descr=<Guard0x9fbacd0>),
-        i76 = uint_floordiv(i58, i68),
-        i77 = uint_lt(i76, 2147483647),
-        guard_true(i77, descr=<Guard0x9fbaca0>),
-        i78 = int_add(i68, 1),
-        i70 = int_sub(i61, 1),
-        setfield_gc(ConstPtr(ptr71), i70, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 32>),
-        i73 = int_le(i70, 0),
-        guard_false(i73, descr=<Guard0x9c13130>),
-        jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, p18, i78, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, i58, i79, descr=TargetToken(167641264))
+        guard_not_invalidated(descr=<Guard0xad564bc>)
+        i77 = int_le(i68, 100000)
+        guard_true(i77, descr=<Guard0xad81d90>)
+        i79 = call_i(ConstClass(ll_uint_py_div__Unsigned_Unsigned), i57, i68, descr=<Calli 4 ii EF=0 OS=13>)
+        i81 = uint_lt(i79, 2147483647)
+        guard_true(i81, descr=<Guard0xad564f0>)
+        i83 = int_add(i68, 1)
+        i85 = int_sub(i72, 1)
+        setfield_gc(ConstPtr(ptr86), i85, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 32>)
+        i88 = int_le(i85, 0)
+        guard_false(i88, descr=<Guard0xad56524>)
+        jump(p0, p1, i2, p3, p4, p7, p8, p10, p13, p15, i83, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, i57, i85, descr=TargetToken(181930064))
         """)
 
     def test_large_integer_xor(self, spy, tmpdir):
@@ -547,34 +541,29 @@ class TestBasic(BaseJITTest):
         1 to: 10000 do: [:i | (o at: (i \\\\ 2) + 1) at: (i \\\\ 2) + 1].
         """)
         self.assert_matches(traces[0].loop, """
-        guard_not_invalidated(descr=<Guard0xa935da4>)
-        i101 = int_le(i100, 10000)
-        guard_true(i101, descr=<Guard0xa9677d4>)
-        i102 = int_mod(i100, 2)
-        i103 = int_rshift(i102, 31)
-        i104 = int_and(2, i103)
-        i105 = int_add(i102, i104)
-        i106 = int_add(i105, 1)
-        i107 = uint_lt(i105, i83)
-        guard_true(i107, descr=<Guard0xa9677b8>)
-        i108 = int_lt(i105, 0)
-        guard_false(i108, descr=<Guard0xa96779c>)
-        p109 = getarrayitem_gc_r(p82, i105, descr=<ArrayP 4>)
-        guard_class(p109, ConstClass(W_PointersObject), descr=<Guard0xa967764>)
-        p110 = getfield_gc_r(p109, descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 16>)
-        guard_value(p111, ConstPtr(ptr93), descr=<Guard0xa9676f4>)
-        p112 = getfield_gc_r(p109, descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst__storage 12>)
-        i113 = arraylen_gc(p112, descr=<ArrayP 4>)
-        i115 = uint_lt(i105, i113)
-        guard_true(i115, descr=<Guard0xa967630>)
-        p116 = getarrayitem_gc_r(p112, i105, descr=<ArrayP 4>)
-        guard_nonnull_class(p116, ConstClass(W_Character), descr=<Guard0x903c130>)
-        i117 = int_add(i100, 1)
-        i70 = int_sub(i61, 1),
-        setfield_gc(ConstPtr(ptr71), i70, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 32>),
-        i73 = int_le(i70, 0),
-        guard_false(i73, descr=<Guard0x9c13130>),
-        jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, i117, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, p47, p70, i83, p82, descr=TargetToken(177582744))
+        guard_not_invalidated(descr=<Guard0xab945c0>)
+        i94 = int_le(i85, 10000)
+        guard_true(i94, descr=<Guard0xabbbc70>)
+        i96 = int_and(i85, 1)
+        i98 = int_add(i96, 1)
+        i99 = uint_lt(i96, i73)
+        guard_true(i99, descr=<Guard0xabbbc94>)
+        p100 = getarrayitem_gc_r(p72, i96, descr=<ArrayP 4>)
+        guard_nonnull_class(p100, ConstClass(W_PointersObject), descr=<Guard0xab945f4>)
+        p102 = getfield_gc_r(p100, descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 20>)
+        guard_value(p102, ConstPtr(ptr103), descr=<Guard0xab94628>)
+        p104 = getfield_gc_r(p100, descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst__storage 16>)
+        i105 = arraylen_gc(p104, descr=<ArrayP 4>)
+        i106 = uint_lt(i96, i105)
+        guard_true(i106, descr=<Guard0xabbbcb8>)
+        p107 = getarrayitem_gc_r(p104, i96, descr=<ArrayP 4>)
+        guard_nonnull_class(p107, ConstClass(W_Character), descr=<Guard0xab9465c>)
+        i110 = int_add(i85, 1)
+        i112 = int_sub(i89, 1)
+        setfield_gc(ConstPtr(ptr113), i112, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 32>)
+        i115 = int_le(i112, 0)
+        guard_false(i115, descr=<Guard0xab94690>)
+        jump(p0, p1, i2, p3, p4, p7, p8, p10, p13, i110, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, i73, p72, i112, descr=TargetToken(180086732))
         """)
 
     def test_named_object_access(self, spy, tmpdir):
