@@ -199,9 +199,18 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
 
     def unwrap_longlong(self, space):
         if not constants.IS_64BIT:
-            return r_int64(r_uint(self.value))
+            retval = r_int64(r_uint(self.value))
         else:
-            return intmask(r_uint(self.value))
+            retval = intmask(r_uint(self.value))
+        if retval < 0:
+            raise error.UnwrappingError
+
+    def unwrap_long_untranslated(self, space):
+        """NOT RPYTHON"""
+        if not constants.IS_64BIT:
+            return r_uint(self.value)
+        else:
+            return r_uint(self.value)
 
     def unwrap_float(self, space):
         return float(self.value)
