@@ -72,3 +72,11 @@ def pytest_funcarg__squeak(request):
         return _Executor_(py.path.local(val), "-nodisplay")
     else:
         return _Executor_(py.path.local(val), "-headless")
+
+from .jittest.base import Trace
+def pytest_assertrepr_compare(op, left, right):
+    if isinstance(left, Trace) and isinstance(right, Trace) and op == "==":
+        return (['Comparing Traces failed:'] +
+                [str(op) for op in left.trace] +
+                ["-----------------"] +
+                [str(op) for op in right.trace])
