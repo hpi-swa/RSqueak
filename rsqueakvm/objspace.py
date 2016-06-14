@@ -218,10 +218,9 @@ class ObjSpace(object):
             return W_LargePositiveInteger1Word(val)
 
     @jit.unroll_safe
+    @specialize.argtype(1)
     @specialize.arg(2)
     def wrap_large_number(self, val, w_class):
-        # import pdb; pdb.set_trace()
-        assert isinstance(val, r_ulonglong)
         inst_size = self._number_bytesize(val)
         w_result = w_class.as_class_get_shadow(self).new(inst_size)
         for i in range(inst_size):
@@ -230,6 +229,7 @@ class ObjSpace(object):
         return w_result
 
     @jit.unroll_safe
+    @specialize.argtype(1)
     def _number_bytesize(self, val):
         if val == 0: return 1
         sz = 0
@@ -302,9 +302,15 @@ class ObjSpace(object):
         assert isinstance(val, r_longlonglong)
         assert constants.IS_64BIT
         if val > 0:
-            return self.wrap_ulonglong(val)
+            return self.wrap_large_number(val, self.w_LargePositiveInteger)
         else:
-            return self.wrap_nlonglong(val)
+            if self.w_LargeNegativeInteger is None:
+                raise WrappingError
+            try:
+                r_val = r_longlonglong(-val)
+            except OverflowError:
+                raise WrappingError
+            return self.wrap_large_number(r_val, self.w_LargeNegativeInteger)
 
     def wrap_float(self, i):
         return W_Float(i)

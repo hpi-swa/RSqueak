@@ -92,8 +92,7 @@ def test_small_int_add():
         assert r_uint(prim(ADD, [constants.MAXINT, 2]).value) == constants.MAXINT + 2
         assert r_uint(prim(ADD, [2 * constants.MAXINT - 2, 2]).value) == 2 * constants.MAXINT
     else:
-        prim_fails(ADD, [constants.MAXINT, 2])
-        prim_fails(ADD, [2 * constants.MAXINT - 2, 2])
+        assert r_uint(prim(ADD, [constants.MAXINT, constants.MAXINT]).unwrap_long_untranslated(space)) == constants.MAXINT * 2
 
 def test_small_int_minus():
     assert prim(SUBTRACT, [5,9]).value == -4
@@ -105,7 +104,9 @@ def test_small_int_multiply():
         assert isinstance(w_result, W_LargePositiveInteger1Word)
         assert r_uint(w_result.value) == constants.MAXINT * 2
     else:
-        prim_fails(MULTIPLY, [constants.MAXINT, 2])
+        w_result = prim(MULTIPLY, [constants.MAXINT, constants.MAXINT])
+        assert isinstance(w_result, W_BytesObject)
+        assert w_result.unwrap_long_untranslated(space) == constants.MAXINT ** 2
 
 def test_small_int_divide():
     assert prim(DIVIDE, [6,3]).value == 2
