@@ -10,7 +10,7 @@ IMAGE_EXTRACT=${IMAGE_EXTRACT:-"./RSqueak.app/Contents/Resources/"}
 RESULT_CMD=${RESULT_CMD:-}
 RESULT_CMD_URL=${RESULT_CMD_URL:-"https://raw.githubusercontent.com/hpi-swa/smalltalkCI/master/lib/junit_xml_prettfier.py"}
 
-FILETREE_PATH=$(realpath repository)
+FILETREE_PATH=$(readlink -f repository)
 
 read -d '' CODE <<EOF || true
     FileStream startUp: true.
@@ -38,7 +38,7 @@ if [ -z "${IMAGE}" ]; then
 
     echo "==== Extract archive..."
     tar -zxf "${TAR}" "${IMAGE_EXTRACT}"
-    IMAGE=$(realpath "${IMAGE_PATH}")
+    IMAGE=$(readlink -f "${IMAGE_PATH}")
 
     popd
 else
