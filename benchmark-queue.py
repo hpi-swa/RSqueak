@@ -34,8 +34,8 @@ class BenchmarkQueue(BaseHTTPServer.BaseHTTPRequestHandler):
         branch = self.headers.getheader(BRANCH)
         vm = self.headers.getheader(VM)
         self.c.execute("""
-        SELECT * FROM %s WHERE %s='%s' LIMIT 1;
-        """ % (JOB_TABLE, COMMITID, commitid))
+        SELECT * FROM %s WHERE %s='%s' AND %s='%s' LIMIT 1;
+        """ % (JOB_TABLE, COMMITID, commitid, VM, vm))
         if self.c.fetchone():
             # already in DB, not running again
             self.send_response(304)
