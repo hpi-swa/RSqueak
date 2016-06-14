@@ -1,0 +1,14 @@
+{
+	"category" : "ORM",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "DBObject",
+	"pools" : [
+		 ],
+	"super" : "Object",
+	"type" : "normal" }
