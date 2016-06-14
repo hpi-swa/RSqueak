@@ -9,7 +9,7 @@ from rsqueakvm.primitives.bytecodes import *
 
 from rpython.rlib import rfloat, jit
 from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int, r_int64
-
+from rpython.rlib.objectmodel import specialize
 
 combination_specs = [[int, int], [pos_32bit_int, pos_32bit_int], [r_int64, r_int64]]
 
@@ -46,13 +46,27 @@ for (code, op) in bool_ops.items():
 # ___________________________________________________________________________
 # SmallInteger Primitives
 
+@jit.dont_look_inside
+@specialize.arg(1)
+def overflow_math_op_64bit(interp, code, receiver, argument):
+    from rpython.rlib.rarithmetic import r_longlonglong
+    if code == ADD:
+        res = r_longlonglong(receiver) + r_longlonglong(argument)
+    elif code == SUBTRACT:
+        res = r_longlonglong(receiver) - r_longlonglong(argument)
+    elif code == MULTIPLY:
+        res = r_longlonglong(receiver) * r_longlonglong(argument)
+    else:
+        assert False
+    return interp.space.wrap_longlonglong(res)
+
 math_ops = {
     ADD: operator.add,
     SUBTRACT: operator.sub,
     MULTIPLY: operator.mul,
     }
 for (code, op) in math_ops.items():
-    def make_func(op):
+    def make_func(op, code):
         @expose_also_as(code + LARGE_OFFSET)
         @expose_primitive(code, unwrap_specs=[[int, int], [r_int64, r_int64]])
         def func(interp, s_frame, receiver, argument):
@@ -68,9 +82,11 @@ for (code, op) in math_ops.items():
                 else:
                     assert False
             except OverflowError:
+                if constants.IS_64BIT:
+                    return overflow_math_op_64bit(interp, code, receiver, argument)
                 raise PrimitiveFailedError()
             return interp.space.wrap_int(res)
-    make_func(op)
+    make_func(op, code)
 
 bitwise_binary_ops = {
     BIT_AND: operator.and_,

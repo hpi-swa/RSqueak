@@ -57,6 +57,7 @@ presetup_linux() {
 	    ;;
 	64bit)
 	    PACKAGES="
+	    libfreetype6:i386 \
 	    libsdl2-dev \
 	    "
 	    ;;

@@ -105,6 +105,7 @@ def import_bytecodes(module_name):
 
 class TestImage():
     def __init__(self, space):
+        self.version = squeakimage.ImageVersion(0, False, False, False, False, False)
         if space.w_Array.strategy:
             self.special_objects = space.wrap_list([i for i in space.objtable.values() if i])
 

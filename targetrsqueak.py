@@ -387,6 +387,10 @@ def entry_point(argv):
         print_error("%s -- %s (LoadError)" % (os.strerror(e.errno), cfg.path))
         return 1
 
+    if cfg.code or cfg.selector:
+        # Mark headless mode when running code or selector
+        argv.append('-headless')
+
     # Load & prepare image and environment
     image = squeakimage.ImageReader(space, stream).create_image()
     interp = interpreter.Interpreter(space, image,
@@ -438,15 +442,24 @@ def compile_code(interp, w_receiver, code):
     # Instead, we want to execute our own context. Then remove this flag (and all references to it)
     space.suppress_process_switch.activate()
     with objspace.ForceHeadless(space):
-        w_result = interp.perform(
-            w_receiver_class,
-            "compile:classified:withStamp:notifying:logSource:",
-            w_arguments = [space.wrap_string("%s\r\n%s" % (selector, code)),
-            space.wrap_string("spy-run-code"),
-            space.w_nil,
-            space.w_nil,
-            space.w_false]
-        )
+        if interp.image.version.is_modern:
+            w_result = interp.perform(
+                w_receiver_class,
+                "compile:classified:withStamp:notifying:logSource:",
+                w_arguments = [space.wrap_string("%s\r\n%s" % (selector, code)),
+                               space.wrap_string("spy-run-code"),
+                               space.w_nil,
+                               space.w_nil,
+                               space.w_false]
+            )
+        else:
+            w_result = interp.perform(
+                w_receiver_class,
+                "compile:classified:notifying:",
+                w_arguments = [space.wrap_string("%s\r\n%s" % (selector, code)),
+                               space.wrap_string("spy-run-code"),
+                               space.w_nil]
+            )
         # TODO - is this expected in every image?
         if not isinstance(w_result, W_BytesObject) or space.unwrap_string(w_result) != selector:
             raise error.Exit("Unexpected compilation result (probably failed to compile): %s" % result_string(w_result))
