@@ -204,6 +204,7 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
             retval = intmask(r_uint(self.value))
         if retval < 0:
             raise error.UnwrappingError
+        return retval
 
     def unwrap_long_untranslated(self, space):
         """NOT RPYTHON"""
