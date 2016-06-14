@@ -11,5 +11,5 @@ Benchmark allSubclassesDo: [:class |
 FileStream stdout nextPut: $]; cr; flush.
 Smalltalk quitPrimitive.
 EOF
-cogspurlinux/squeak Squeak*.image $file
+cog32/squeak Spur32.image $file
 rm $file

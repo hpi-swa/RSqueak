@@ -11,7 +11,7 @@ import urllib2
 
 sys.path.insert(0, os.path.dirname(__file__))
 from constants import JOB_TABLE, COMMITID, FLAG, DBFILE, CODESPEED_URL, \
-    BENCHMARKS, ITERATIONS, OUTPUT_RE, BINARY_URL, BINARY_BASENAME, BRANCH, VM
+    BENCHMARKS, ITERATIONS, OUTPUT_RE, BINARY_URL, BINARY_BASENAME, BRANCH, VM, IMAGES
 
 class BenchmarkWorker(object):
     def __init__(self):
@@ -52,13 +52,9 @@ class BenchmarkWorker(object):
             self.execute(vm, commitid, branch)
 
     def execute(self, vm, commitid, branch):
-        if vm == "cog":
-            binary = self.download_cog(commitid)
-        elif vm == "interpreter":
-            binary = self.download_interpreter(commitid)
-        else:
-            binary = self.download_rsqueak(commitid)
-        if not binary: return
+        binary = getattr(self, "download_%s" % vm, lambda id: None)(commitid)
+        image = IMAGES.get(vm, None)
+        if not binary or not image: return
         for bm in BENCHMARKS:
             with open("run.st", "w") as f:
                 f.write("""
@@ -79,7 +75,7 @@ class BenchmarkWorker(object):
             while tries_left > 0:
                 try:
                     pipe = subprocess.Popen(
-                        "%s $(pwd)/Squeak*.image $(pwd)/run.st" % binary,
+                        "%s $(pwd)/%s $(pwd)/run.st" % (binary, image),
                         shell=True,
                         stdout=subprocess.PIPE
                     )
@@ -107,6 +103,14 @@ class BenchmarkWorker(object):
 
     def download_rsqueak(self, commitid):
         executable_name = BINARY_BASENAME.format(commitid)
+        return self._download_rsqueak(commitid, executable_name)
+
+    def downloading_rsqueak64(self, commitid):
+        executable_name = BINARY_BASENAME.format(commitid)
+        executable_name = executable_name.replace("-x86-", "-x86_64-")
+        return self._download_rsqueak(commitid, executable_name)
+
+    def _download_rsqueak(self, commitid, executable_name):
         url = BINARY_URL.format(executable_name)
         print "Downloading %s" % url
         try:
@@ -118,20 +122,22 @@ class BenchmarkWorker(object):
         return filename
 
     def download_interpreter(self, commitid):
-        print "Downloading Interpreter VM"
-        scriptdir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "scripts")
-        if os.system("%s %s" % (os.path.join(scriptdir, "get_interpreter.sh"), commitid)) != 0:
-            return None
-        else:
+        if self._download_with_script("get_interpreter.sh", commitid):
             return "./squeakvm/bin/squeak"
 
     def download_cog(self, commitid):
-        print "Downloading Cog"
+        if self._download_with_script("get_cog.sh", commitid):
+            return "./cog32/squeak"
+
+    def download_cog64(self, commitid):
+        if self._download_with_script("get_cog64.sh", commitid):
+            return "./cog64/squeak"
+
+    def _download_with_script(self, scriptname, commitid):
+        print scriptname
         scriptdir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "scripts")
-        if os.system("%s %s" % (os.path.join(scriptdir, "get_cog.sh"), commitid)) != 0:
+        if os.system("%s %s" % (os.path.join(scriptdir, scriptname), commitid)) != 0:
             return None
-        else:
-            return "./cogspurlinux/squeak"
 
     def post_data(self, vm=None, benchmark=None, commitid=None, branch=None, rtime=None, stdev=None):
         commit_date = time.strftime("%Y-%m-%d %H:%M", time.localtime())

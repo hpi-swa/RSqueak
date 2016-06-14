@@ -23,5 +23,16 @@ OUTPUT_RE = re.compile(r"([a-zA-Z0-9]+) total: iterations=%s runtime: ([0-9\.]+)
 
 BENCHMARKS = []
 
+IMAGES = {
+    "rsqueak": "Spur32.image",
+    "cog": "Spur32.image",
+    "interpreter": "V332.image",
+    "rsqueak64": "Spur32.image",
+    "squeakjs": "V332.image",
+    "cog64": "Spur64.image",
+    "stack": "Spur32.image",
+    "stack64": "Spur64.image"
+}
+
 from benchmarks import BENCHMARKS
 from config import *

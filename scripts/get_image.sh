@@ -1,4 +1,6 @@
 #!/bin/bash
+
+# A 32-bit Spur-Trunk image
 SQUEAK_SERVER="http://ftp.squeak.org/"
 SOURCE_FOLDER="sources_files"
 SQUEAK_WILDCARD="5.\d"
@@ -27,5 +29,28 @@ src=${src#\"}
 src=${src%%\"}
 curl -O "$SQUEAK_SERVER/$SOURCE_FOLDER/${src}"
 gunzip -f ${src}
+mv Squeak*.image Spur32.image
+mv Squeak*.changes Spur32.changes
+
+# A 32-bit V3-Trunk image
+curl -L -O http://build.squeak.org/job/FollowTrunkOnOldV3Image/lastSuccessfulBuild/artifact/trunkV3Images.zip
+unzip -o trunkV3Images.zip
+rm trunkV3Images.zip
+mv Squeak*64.image V364.image
+mvS queak*64.changes V364.changes
+mv Squeak*.image V332.image
+mv Squeak*.image V332.image
+
+# A 64-bit Spur image
+spurimgurl="http://www.mirandabanda.org/files/Cog/VM/SpurImages/"
+image=$(curl -s $spurimgurl | grep -o "href=\".*\.image\"" | tail -1)
+image=${image#*=}
+image=${image#\"}
+image=${image%%\"}
+curl -L -O $spurimgurl$image
+curl -L -O $spurimgurl${image%%.image}.changes
+mv $image Spur64.image
+mv ${image%%.image}.changes Spur64.changes
+
 
 exec $(dirname $0)/update_image.sh

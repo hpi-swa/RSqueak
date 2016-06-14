@@ -19,8 +19,8 @@ zip=${zip#*=}
 zip=${zip#\"}
 zip=${zip%%\"}
 curl -O "$COGURL/$zip"
-rm -rf cogspurlinux
+rm -rf cog32
 tar xzf $zip
 rm $zip
 mv cogspurlinux* tmpcog
-mv tmpcog cogspurlinux
+mv tmpcog cog32
