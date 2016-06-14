@@ -521,6 +521,7 @@ class TestBasic(BaseJITTest):
             """)
 
     def test_large_integer_xor(self, spy, tmpdir):
+        if IS_64BIT: return # XXX
         traces = self.run(spy, tmpdir, """
         | li block |
         li := 2147483648.
