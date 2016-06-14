@@ -7,12 +7,15 @@ import pdb
 class W_DBObject(W_PointersObject):
 
     db_connection = None
+    id_counter = 0
     db_pointers = {}
 
     @jit.unroll_safe
     def __init__(self, space, w_class, size, weak=False):
         super(W_DBObject, self).__init__(space, w_class, size, weak)
         self.column_names = {}
+        self.id = W_DBObject.id_counter
+        W_DBObject.id_counter += 1
 
         if not W_DBObject.db_connection:
             print("Establish connection")
@@ -21,7 +24,7 @@ class W_DBObject(W_PointersObject):
         self.class_name = w_class.classname(space)
         if not self.class_name in W_DBObject.db_pointers:
             print("CREATE TABLE", self.class_name, "(id integer)")
-            W_DBObject.db_pointers[self.class_name] = 1337
+            W_DBObject.db_pointers[self.class_name] = True
 
 
     def fetch(self, space, n0):
