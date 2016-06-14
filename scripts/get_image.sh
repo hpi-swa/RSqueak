@@ -1,5 +1,8 @@
 #!/bin/bash
 
+rm -f Squeak*.image
+rm -f Squeak*.changes
+
 # A 32-bit Spur-Trunk image
 SQUEAK_SERVER="http://ftp.squeak.org/"
 SOURCE_FOLDER="sources_files"
@@ -37,9 +40,15 @@ curl -L -O http://build.squeak.org/job/FollowTrunkOnOldV3Image/lastSuccessfulBui
 unzip -o trunkV3Images.zip
 rm trunkV3Images.zip
 mv Squeak*64.image V364.image
-mvS queak*64.changes V364.changes
+mv Squeak*64.changes V364.changes
 mv Squeak*.image V332.image
 mv Squeak*.image V332.image
+src=$(curl -s $SQUEAK_SERVER/$SOURCE_FOLDER/ | grep -o "href=\".*46.*gz\"" | tail -1)
+src=${src#*=}
+src=${src#\"}
+src=${src%%\"}
+curl -O "$SQUEAK_SERVER/$SOURCE_FOLDER/${src}"
+gunzip -f ${src}
 
 # A 64-bit Spur image
 spurimgurl="http://www.mirandabanda.org/files/Cog/VM/SpurImages/"
