@@ -24,6 +24,8 @@ case "$TRAVIS_OS_NAME" in
     curl -T rsqueak-$armv* -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/commits/ || true
     if [[ "$BUILD_ARCH" = "32bit" ]]; then
       curl -v -H "commitid: $TRAVIS_COMMIT" -H "branch: $TRAVIS_BRANCH" -H "vm: rsqueak" -X POST http://lively-kernel.org/codespeed/ || true
+    elif [[ "$BUILD_ARCH" = "64bit" ]]; then
+      curl -v -H "commitid: $TRAVIS_COMMIT" -H "branch: $TRAVIS_BRANCH" -H "vm: rsqueak64" -X POST http://lively-kernel.org/codespeed/ || true
     fi
     if [[ "$TRAVIS_BRANCH" = "master" ]] && [[ "$TRAVIS_PULL_REQUEST" = "false" ]]; then
       case "$BUILD_ARCH" in
