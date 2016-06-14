@@ -5,6 +5,46 @@ from rpython.jit.tool import oparser
 from rsqueakvm.util import logparser
 from rsqueakvm.test.util import image_path
 
+
+aliases = {
+    "guard_class": "guard_nonnull_class",
+}
+for k, v in aliases.items():
+    aliases[v] = k
+
+
+class Trace(object):
+    def __init__(self, string=None, trace=None):
+        assert string or trace
+        self.trace = trace
+        self.string = string
+
+    def __eq__(self, other):
+        if not isinstance(other, Trace): return False
+        try:
+            self._parse()
+        except Exception, e:
+            self.trace = [str(e)]
+            return False
+        try:
+            other._parse()
+        except Exception, e:
+            other.trace = [str(e)]
+            return False
+        for op, expected in zip(self.trace, other.trace):
+            if not self._ops_equal(op, expected):
+                return False
+        return True
+
+    def _parse(self):
+        if not self.trace:
+            parser = Parser(None, None, {}, "lltype", invent_fail_descr=None, nonstrict=True)
+            self.trace = [parser.parse_next_op(l) for l in self.string]
+
+    def _ops_equal(self, op, expected):
+        return op.name == expected.name or aliases.get(op.name, None) == expected.name
+
+
 class BaseJITTest(object):
     test_image = image_path("jittest.image")
 
@@ -20,31 +60,13 @@ class BaseJITTest(object):
         proc.wait()
         return logparser.extract_traces(logfile)
 
-    def assert_matches(self, trace, expected):
+    def assert_matches(self, trace, expected_str):
         expected_lines = [
             line.strip()
-            for line in expected.splitlines()
+            for line in expected_str.splitlines()
             if line and not line.isspace()
         ]
-        parser = Parser(None, None, {}, "lltype", invent_fail_descr=None, nonstrict=True)
-        expected_ops = [parser.parse_next_op(l) for l in expected_lines]
-        aliases = {}
-        assert len(trace) == len(expected_ops)
-        for op, expected in zip(trace, expected_ops):
-            self._assert_ops_equal(aliases, op, expected)
-
-    def _assert_ops_equal(self, aliases, op, expected):
-        if op.name == "guard_class" or op.name == "guard_nonnull_class":
-            assert expected.name == "guard_class" or expected.name == "guard_nonnull_class"
-        else:
-            assert op.name == expected.name
-        # assert len(op.args) == len(expected.args)
-        # for arg, expected_arg in zip(op.args, expected.args):
-        #     if arg in aliases:
-        #         arg = aliases[arg]
-        #     elif arg != expected_arg and expected_arg not in aliases.viewvalues():
-        #         aliases[arg] = arg = expected_arg
-        #     assert arg == expected_arg
+        assert Trace(string=expected_lines) == Trace(trace=trace)
 
 
 class ModernJITTest(BaseJITTest):

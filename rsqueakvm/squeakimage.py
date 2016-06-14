@@ -12,8 +12,14 @@ from rsqueakvm.util import stream, system
 from rsqueakvm.util.bitmanipulation import splitter
 
 from rpython.rlib import objectmodel
-from rpython.rlib.rarithmetic import r_ulonglong, intmask, r_uint, r_uint32, r_int64
+from rpython.rlib.rarithmetic import r_ulonglong, r_longlong, r_int, intmask, r_uint, r_uint32, r_int64
 from rpython.rlib import jit
+
+if r_longlong is not r_int:
+    r_uint64 = r_ulonglong
+else:
+    r_uint64 = r_uint
+
 
 # Access for module users
 Stream = stream.Stream
@@ -1244,10 +1250,9 @@ class SpurImageWriter(object):
 
     def headers_for_hash_numfields(self, Class, Hash, size):
         import math
-        from rpython.rlib.rbigint import rbigint, NULLRBIGINT
         from rsqueakvm.storage_classes import BYTES, COMPILED_METHOD, LARGE_POSITIVE_INTEGER
         classshadow = Class.as_class_get_shadow(self.space)
-        length = rbigint.fromint(size)
+        length = r_uint64(size)
         wordlen = size
         fmt = 0
         w_fmt = Class.fetch(self.space, constants.CLASS_FORMAT_INDEX)
@@ -1260,20 +1265,30 @@ class SpurImageWriter(object):
             classshadow.instance_kind == COMPILED_METHOD or
             classshadow.instance_kind == LARGE_POSITIVE_INTEGER):
             wordlen = int(math.ceil(size / 4.0))
-            length = rbigint.fromint(wordlen)
+            length = r_uint64(wordlen)
             fmt = fmt | ((wordlen * 4) - size)
-        header = NULLRBIGINT
-        length_header = NULLRBIGINT
+        header = r_uint64(0)
+        length_header = r_uint64(0)
         if wordlen >= 255:
-            length_header = length.or_(rbigint.fromint(0xff).lshift(56))
-            length = rbigint.fromint(0xff)
-        header = header.or_(length.lshift(56).
-                            or_(rbigint.fromint(Hash).lshift(32)).
-                            int_or_(fmt << 24).
-                            int_or_(Class.gethash()))
+            length_header = r_uint64(length | (r_uint64(0xff) << 56))
+            length = r_uint64(0xff)
+        header = header | ((length << 56) |
+                           (r_uint64(Hash) << 32) |
+                           (r_uint64(fmt) << 24) |
+                           (r_uint64(Class.gethash())))
 
         if wordlen >= 255:
-            header = header.lshift(64).or_(length_header)
-            return header.tobytes(16, "little", False)
+            extra_bytes = self.ruint64_tobytes(length_header)
+            header_bytes = self.ruint64_tobytes(header)
+            return extra_bytes + header_bytes
         else:
-            return header.tobytes(8, "little", False)
+            return self.ruint64_tobytes(header)
+
+    def ruint64_tobytes(self, i):
+        res = ['\0'] * 8
+        value = i
+        mask = r_uint64(0xff)
+        for i in range(8):
+            res[i] = chr(intmask(value & mask))
+            value >>= 8
+        return "".join(res)
