@@ -141,20 +141,18 @@ class BenchmarkWorker(object):
 
     def post_data(self, vm=None, benchmark=None, commitid=None, branch=None, rtime=None, stdev=None):
         commit_date = time.strftime("%Y-%m-%d %H:%M", time.localtime())
-        project = "cog" if "cog" in vm else "rsqueakvm"
+        project = vm.replace("rsqueak", "rsqueakvm") # XXX
         executable = "%s-%s" % (project, sys.platform)
         env = socket.gethostname()
         params = {
             'commitid': commitid[0:10],
             'result_date': commit_date,
             'branch': branch,
-            'project': project,
+            'project': project.replace("64", ""),
             'executable': executable,
             'benchmark': benchmark,
             'environment': env,
             'result_value': rtime,
-            'min': rtime,
-            'max': rtime,
             'std_dev': stdev }
         params = urllib.urlencode(params)
         try:
