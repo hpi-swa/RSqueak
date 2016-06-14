@@ -1,6 +1,8 @@
 from rsqueakvm import constants, error
 from rsqueakvm.model.pointers import W_PointersObject
 from rpython.rlib import objectmodel, jit
+from rsqueakvm.plugins.database import SQLConnection
+from sqpyte import interpreter
 import pdb
 
 
@@ -8,7 +10,6 @@ class W_DBObject(W_PointersObject):
 
     db_connection = None
     id_counter = 0
-    db_pointers = {}
 
     @jit.unroll_safe
     def __init__(self, space, w_class, size, weak=False):
@@ -19,12 +20,14 @@ class W_DBObject(W_PointersObject):
 
         if not W_DBObject.db_connection:
             print("Establish connection")
-            W_DBObject.db_connection = "New Connection"
+            W_DBObject.db_connection = SQLConnection(space, interpreter.SQLite3DB, ":memory:")
 
-        self.class_name = w_class.classname(space)
-        if not self.class_name in W_DBObject.db_pointers:
-            print("CREATE TABLE", self.class_name, "(id integer)")
-            W_DBObject.db_pointers[self.class_name] = True
+        # remove " class" from the classname
+        self.class_name = w_class.classname(space).split(" ")[0]
+
+        print "CREATE TABLE IF NOT EXISTS", self.class_name, "(id integer)"
+        create_sql = "CREATE TABLE IF NOT EXISTS " + self.class_name + " (id INTEGER);"
+        W_DBObject.db_connection.execute(create_sql, None)
 
 
     def fetch(self, space, n0):
