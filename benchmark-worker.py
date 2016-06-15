@@ -105,7 +105,7 @@ class BenchmarkWorker(object):
         executable_name = BINARY_BASENAME.format(commitid)
         return self._download_rsqueak(commitid, executable_name)
 
-    def downloading_rsqueak64(self, commitid):
+    def download_rsqueak64(self, commitid):
         executable_name = BINARY_BASENAME.format(commitid)
         executable_name = executable_name.replace("-x86-", "-x86_64-")
         return self._download_rsqueak(commitid, executable_name)
@@ -137,7 +137,9 @@ class BenchmarkWorker(object):
         print scriptname
         scriptdir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "scripts")
         if os.system("%s %s" % (os.path.join(scriptdir, scriptname), commitid)) != 0:
-            return None
+            return False
+        else:
+            return True
 
     def post_data(self, vm=None, benchmark=None, commitid=None, branch=None, rtime=None, stdev=None):
         commit_date = time.strftime("%Y-%m-%d %H:%M", time.localtime())
