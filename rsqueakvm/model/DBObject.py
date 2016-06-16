@@ -16,6 +16,7 @@ class W_DBObject(W_PointersObject):
         super(W_DBObject, self).__init__(space, w_class, size, weak)
         self.column_names = {}
         self.id = W_DBObject.id_counter
+        self.w_id = space.wrap_int(self.id)
         W_DBObject.id_counter += 1
 
         if not W_DBObject.db_connection:
@@ -27,7 +28,9 @@ class W_DBObject(W_PointersObject):
 
         print "CREATE TABLE IF NOT EXISTS", self.class_name, "(id integer)"
         create_sql = "CREATE TABLE IF NOT EXISTS " + self.class_name + " (id INTEGER);"
-        W_DBObject.db_connection.execute(create_sql, None)
+        W_DBObject.db_connection.execute(create_sql)
+        print "insert into " + self.class_name + " values ('" + str(self.id) + "');"
+        W_DBObject.db_connection.execute("insert into " + self.class_name + " values (" + str(self.id) + ");")
 
 
     def fetch(self, space, n0):
@@ -36,19 +39,32 @@ class W_DBObject(W_PointersObject):
 
     def store(self, space, n0, w_value):
 
+        aType = "blob"
+        cls = w_value.getclass(space)
+        if (cls.is_same_object(space.w_String)):
+            aType = "text"
+        elif cls.is_same_object(space.w_SmallInteger):
+            aType = "integer"
+        elif cls.is_same_object(space.w_Float):
+            aType = "real"
+        elif cls.is_same_object(space.w_nil):
+            return
+        else:
+            raise PrimitiveFailedError(
+                'unable to unwrap %s' % w_value.getclass(space))
+
         if not n0 in self.column_names:
-            aType = "blob"
-            w_value_type = type(w_value)
-            # TODO: type checking does not work this way, since primitive types
-            # are wrapped
-            if w_value_type == int:
-                aType = "integer"
-            elif w_value_type == str:
-                aType = "text"
-            elif w_value_type == float:
-                aType = "real"
             print("alter table", self.class_name, "add column", '"' + str(n0) + '"', aType)
+
+            alter_sql = "alter table " + self.class_name + " add column " + '"' + str(n0) + '" ' + aType
+            W_DBObject.db_connection.execute(alter_sql)
+
             self.column_names[n0] = True
 
         print("Store in", self.class_name, n0, w_value)
+
+        update_sql = "update %s set '%s'=? where id=?" % (self.class_name, n0)
+        W_DBObject.db_connection.execute(update_sql, [w_value, self.w_id])
+
         return self._get_strategy().store(self, n0, w_value)
+

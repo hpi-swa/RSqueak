@@ -39,7 +39,7 @@ class SQLConnection(object):
     def cursor(self):
         return SQLCursor(self)
 
-    def execute(self, sql, args):
+    def execute(self, sql, args=None):
         return self.cursor().execute(sql, args)
 
     def close(self):
