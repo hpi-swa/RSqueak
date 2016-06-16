@@ -154,13 +154,15 @@ prebuilt_space = objspace.ObjSpace()
 def safe_entry_point(argv):
     try:
         return entry_point(argv)
-    except error.Exit, e:
+    except error.CleanExit as e:
+        return 0
+    except error.Exit as e:
         print_error("Exited: %s" % e.msg)
         return -1
-    except error.SmalltalkException, e:
+    except error.SmalltalkException as e:
         print_error("Unhandled %s. Message: %s" % (e.exception_type, e.msg))
         return -1
-    except BaseException, e:
+    except BaseException as e:
         print_error("Exception: %s" % str(e))
         if not objectmodel.we_are_translated():
             raise
@@ -195,13 +197,13 @@ class Config(object):
             # General
             if arg in ["-h", "--help"]:
                 _usage(argv)
-                raise error.Exit("")
+                raise error.CleanExit()
             elif arg in ["-v", "--version"]:
                 print "RSqueakVM %s, built on %s" % (VERSION, BUILD_DATE)
-                raise error.Exit("")
+                raise error.CleanExit()
             elif arg in ["--git-version"]:
                 print GIT_VERSION
-                raise error.Exit("")
+                raise error.CleanExit()
             elif arg == "--no-highdpi":
                 self.space.highdpi.deactivate()
             # Execution
@@ -374,12 +376,11 @@ def entry_point(argv):
         cfg.init_from_ini()
         cfg.init_from_arguments()
         cfg.sanitize()
+    except error.CleanExit as e:
+        return 0
     except error.Exit as e:
-        if e.msg == "":
-            return 0
-        else:
-            print_error(e.msg)
-            return 1
+        print_error(e.msg)
+        return 1
 
     try:
         stream = squeakimage.Stream(filename=cfg.path)

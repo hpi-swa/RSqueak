@@ -54,6 +54,9 @@ class Exit(Exception):
 class CorruptImageError(Exit):
     pass
 
+class CleanExit(Exit):
+    pass
+
 class MetaPrimFailed(SmalltalkException):
     """
     Indicates that the simulated primitive code failed and that the fallback
