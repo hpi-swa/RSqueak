@@ -55,7 +55,8 @@ class CorruptImageError(Exit):
     pass
 
 class CleanExit(Exit):
-    pass
+    def __init__(self, msg=""):
+        Exit.__init__(self, msg)
 
 class MetaPrimFailed(SmalltalkException):
     """
