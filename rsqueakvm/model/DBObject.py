@@ -42,6 +42,10 @@ class W_DBObject(W_PointersObject):
         return W_DBObject.column_types_for_table[self.class_name]
 
     def fetch(self, space, n0):
+        if n0 not in self.get_column_types():
+            print "Can't find column. Falling back to default fetch."
+            return super(W_DBObject, self).fetch(space, n0)
+
         query_sql = "SELECT inst_var_%s FROM %s WHERE id=?;" % (n0, self.class_name)
         print query_sql
         cursor = W_DBObject.db_connection.execute(query_sql, [self.w_id])
@@ -75,8 +79,9 @@ class W_DBObject(W_PointersObject):
                 # Save id in database.
                 w_value = w_value.w_id
             else:
-                raise PrimitiveFailedError(
-                    'unable to unwrap %s' % w_value.getclass(space))
+                print 'Unable to unwrap %s' % w_value.getclass(space)
+                print 'Falling back to standard store.'
+                return super(W_DBObject, self).store(space, n0, w_value)
 
         if aType and not n0 in self.get_column_types():
             alter_sql = "alter table %s add column inst_var_%s %s;" % (self.class_name, n0, aType)
@@ -90,4 +95,3 @@ class W_DBObject(W_PointersObject):
         W_DBObject.db_connection.execute(update_sql, [w_value, self.w_id])
 
         return self._get_strategy().store(self, n0, w_value)
-
