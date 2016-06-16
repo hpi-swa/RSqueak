@@ -17,6 +17,7 @@ branches:
   except:
     - /^v[0-9]/  # Ignore version tags
     - windows-build
+    - sqpyte-dbobject
 env:
   global:
     - PATH=$PATH:$HOME/SDL2/bin
