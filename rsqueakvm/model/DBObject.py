@@ -29,7 +29,7 @@ class W_DBObject(W_PointersObject):
         create_sql = "CREATE TABLE IF NOT EXISTS %s (id INTEGER);" % self.class_name
         print create_sql
         W_DBObject.db_connection.execute(create_sql)
-        insert_sql = "insert into %s values (?);" % self.class_name
+        insert_sql = "insert into %s (id) values (?);" % self.class_name
         print insert_sql
         W_DBObject.db_connection.execute(insert_sql, [self.w_id])
 
