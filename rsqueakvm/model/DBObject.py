@@ -3,6 +3,7 @@ from rsqueakvm.model.pointers import W_PointersObject
 from rpython.rlib import objectmodel, jit
 from rsqueakvm.plugins.database import SQLConnection
 from sqpyte import interpreter
+from rsqueakvm.error import PrimitiveFailedError
 import pdb
 
 
@@ -35,7 +36,14 @@ class W_DBObject(W_PointersObject):
 
     def fetch(self, space, n0):
         print("Fetch in", self.class_name, n0)
-        return self._get_strategy().fetch(self, n0)
+        query_sql = "SELECT '%s' FROM %s WHERE id=?" % (n0, self.class_name)
+        cursor = W_DBObject.db_connection.execute(query_sql, [self.w_id])
+        w_result = space.unwrap_array(cursor.next())
+        pdb.set_trace()
+        if w_result:
+            return w_result[0]
+        else:
+            raise PrimitiveFailedError
 
     def store(self, space, n0, w_value):
 
@@ -63,8 +71,10 @@ class W_DBObject(W_PointersObject):
 
         print("Store in", self.class_name, n0, w_value)
 
-        update_sql = "update %s set '%s'=? where id=?" % (self.class_name, n0)
-        W_DBObject.db_connection.execute(update_sql, [w_value, self.w_id])
+        # update_sql = "update %s set '%s'=? where id=?" % (self.class_name, n0)
+        update_sql = "update %s set '0'=123 where id=0" % (self.class_name)
+        # W_DBObject.db_connection.execute(update_sql, [w_value, self.w_id])
+        W_DBObject.db_connection.execute(update_sql)
 
         return self._get_strategy().store(self, n0, w_value)
 
