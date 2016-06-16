@@ -388,6 +388,10 @@ def entry_point(argv):
         print_error("%s -- %s (LoadError)" % (os.strerror(e.errno), cfg.path))
         return 1
 
+    if cfg.code or cfg.selector:
+        # Mark headless mode when running code or selector
+        argv.append('-headless')
+
     # Load & prepare image and environment
     image = squeakimage.ImageReader(space, stream).create_image()
     interp = interpreter.Interpreter(space, image,
