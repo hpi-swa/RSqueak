@@ -11,11 +11,11 @@ class W_DBObject(W_PointersObject):
 
     db_connection = None
     id_counter = 0
+    column_names_for_table = {}
 
     @jit.unroll_safe
     def __init__(self, space, w_class, size, weak=False):
         super(W_DBObject, self).__init__(space, w_class, size, weak)
-        self.column_names = {}
         self.id = W_DBObject.id_counter
         self.w_id = space.wrap_int(self.id)
         W_DBObject.id_counter += 1
@@ -26,6 +26,8 @@ class W_DBObject(W_PointersObject):
 
         # remove " class" from the classname
         self.class_name = w_class.classname(space).split(" ")[0]
+        if not self.class_name in W_DBObject.column_names_for_table:
+            W_DBObject.column_names_for_table[self.class_name] = {}
 
         create_sql = "CREATE TABLE IF NOT EXISTS %s (id INTEGER);" % self.class_name
         print create_sql
@@ -37,10 +39,10 @@ class W_DBObject(W_PointersObject):
 
     def fetch(self, space, n0):
         print("Fetch in", self.class_name, n0)
-        query_sql = "SELECT '%s' FROM %s WHERE id=?" % (n0, self.class_name)
+        query_sql = "SELECT inst_var_%s FROM %s WHERE id=?;" % (n0, self.class_name)
         cursor = W_DBObject.db_connection.execute(query_sql, [self.w_id])
+
         w_result = space.unwrap_array(cursor.next())
-        pdb.set_trace()
         if w_result:
             return w_result[0]
         else:
@@ -62,19 +64,16 @@ class W_DBObject(W_PointersObject):
             raise PrimitiveFailedError(
                 'unable to unwrap %s' % w_value.getclass(space))
 
-        if not n0 in self.column_names:
-            alter_sql = "alter table %s add column '%s' %s" % (self.class_name, n0, aType)
+        if not n0 in W_DBObject.column_names_for_table[self.class_name]:
+            alter_sql = "alter table %s add column inst_var_%s %s;" % (self.class_name, n0, aType)
             print alter_sql
             W_DBObject.db_connection.execute(alter_sql)
 
-            self.column_names[n0] = True
+            W_DBObject.column_names_for_table[self.class_name][n0] = True
 
-        print "Store in", self.class_name, n0, w_value
-
-        # update_sql = "update %s set '%s'=? where id=?" % (self.class_name, n0)
-        update_sql = "update %s set '0'=123 where id=0" % (self.class_name)
-        # W_DBObject.db_connection.execute(update_sql, [w_value, self.w_id])
-        W_DBObject.db_connection.execute(update_sql)
+        update_sql = "update %s set inst_var_%s=? where id=?" % (self.class_name, n0)
+        print update_sql
+        W_DBObject.db_connection.execute(update_sql, [w_value, self.w_id])
 
         return self._get_strategy().store(self, n0, w_value)
 
