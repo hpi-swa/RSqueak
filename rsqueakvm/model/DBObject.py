@@ -26,11 +26,12 @@ class W_DBObject(W_PointersObject):
         # remove " class" from the classname
         self.class_name = w_class.classname(space).split(" ")[0]
 
-        print "CREATE TABLE IF NOT EXISTS", self.class_name, "(id integer)"
-        create_sql = "CREATE TABLE IF NOT EXISTS " + self.class_name + " (id INTEGER);"
+        create_sql = "CREATE TABLE IF NOT EXISTS %s (id INTEGER);" % self.class_name
+        print create_sql
         W_DBObject.db_connection.execute(create_sql)
-        print "insert into " + self.class_name + " values ('" + str(self.id) + "');"
-        W_DBObject.db_connection.execute("insert into " + self.class_name + " values (" + str(self.id) + ");")
+        insert_sql = "insert into %s values (?);" % self.class_name
+        print insert_sql
+        W_DBObject.db_connection.execute(insert_sql, [self.w_id])
 
 
     def fetch(self, space, n0):
@@ -54,14 +55,13 @@ class W_DBObject(W_PointersObject):
                 'unable to unwrap %s' % w_value.getclass(space))
 
         if not n0 in self.column_names:
-            print("alter table", self.class_name, "add column", '"' + str(n0) + '"', aType)
-
-            alter_sql = "alter table " + self.class_name + " add column " + '"' + str(n0) + '" ' + aType
+            alter_sql = "alter table %s add column '%s' %s" % (self.class_name, n0, aType)
+            print alter_sql
             W_DBObject.db_connection.execute(alter_sql)
 
             self.column_names[n0] = True
 
-        print("Store in", self.class_name, n0, w_value)
+        print "Store in", self.class_name, n0, w_value
 
         update_sql = "update %s set '%s'=? where id=?" % (self.class_name, n0)
         W_DBObject.db_connection.execute(update_sql, [w_value, self.w_id])
