@@ -62,7 +62,7 @@ class BenchmarkWorker(object):
                 'BenchmarkSimpleStatisticsReporter'.
                 '%s'.
                 %s}] on: Error do: []."
-                [BenchmarkAutosizeSuite run: {
+                [BenchmarkAutosizeSteadyStateSuite run: {
                 'BenchmarkSimpleStatisticsReporter'.
                 '%s'.
                 %s}] on: Error do: [:e | FileStream stderr nextPutAll: e printString].
