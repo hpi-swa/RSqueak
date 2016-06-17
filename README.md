@@ -70,8 +70,7 @@ for your distro.
 
 ###### Mac OS X
 
-RSqueak/VM currently needs to be compiled using a 32-bit python and
-32-bit clang. To do so, run
+To compile RSqueak/VM for 32-bit, run
 
 ```bash
 export VERSIONER_PYTHON_PREFER_32_BIT=yes
