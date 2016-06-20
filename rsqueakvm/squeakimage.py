@@ -186,9 +186,6 @@ class ImageReader(object):
     def chunks(self):
         return self.readerStrategy.chunks
 
-    def chunk(self, pointer):
-        return self.readerStrategy.chunk(pointer)
-
     def decode_pointers(self, g_object, space, end=-1):
         return self.readerStrategy.decode_pointers(g_object, space, end)
 
@@ -417,9 +414,6 @@ class NonSpurReader(BaseReaderStrategy):
         else:
             return self.chunks[chunk.classid].g_object
 
-    def chunk(self, pointer):
-        return self.chunks[pointer]
-
     def decode_pointers(self, g_object, space, end=-1):
         if end == -1:
             end = len(g_object.chunk.data)
@@ -434,7 +428,7 @@ class NonSpurReader(BaseReaderStrategy):
                 pointers.append(small_int)
             else:
                 # pointer = ...0
-                pointers.append(self.chunk(pointer).g_object)
+                pointers.append(self.chunks[pointer].g_object)
         return pointers
 
     def instantiate(self, g_object):
@@ -623,13 +617,6 @@ class SpurReader(BaseReaderStrategy):
     def minor_class_index_of(self, classid):
         return classid & ((1 << 10) - 1)
 
-    def chunk(self, pointer):
-        if pointer not in self.chunks:
-            # HACK: use nil by default
-            print "WARNING: bogus pointer", pointer
-            return self.chunklist[0]
-        return self.chunks[pointer]
-
     def decode_pointers(self, g_object, space, end=-1):
         if end == -1:
             end = len(g_object.chunk.data)
@@ -638,7 +625,7 @@ class SpurReader(BaseReaderStrategy):
             pointer = g_object.chunk.data[i]
             if (pointer & 3) == 0:
                 # pointer = ...00
-                pointers.append(self.chunk(pointer).g_object)
+                pointers.append(self.chunks[pointer].g_object)
             elif (pointer & 1) == 1:
                 # pointer = ....1
                 # tagged integer
