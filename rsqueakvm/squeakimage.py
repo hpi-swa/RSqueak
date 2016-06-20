@@ -107,11 +107,12 @@ set_reader_user_param("threshold=2,function_threshold=2,trace_eagerness=2,loop_l
 class ImageReader(object):
     _immutable_fields_ = ["space", "stream", "readerStrategy"]
 
-    def __init__(self, space, stream):
+    def __init__(self, space, stream, logging_enabled):
         self.space = space
         self.stream = stream
         self.version = None
         self.readerStrategy = None
+        self.logging_enabled = logging_enabled
 
     def create_image(self):
         self.read_all()
@@ -201,12 +202,17 @@ class BaseReaderStrategy(object):
         self.chunklist = [] # Flat list of all read chunks
         self.intcache = {} # Cached instances of SmallInteger
         self.lastWindowSize = 0
-        self.filledin_objects = 0
-        self.filledin_weakobjects = 0
+        self._progress = 0
 
-    def log_progress(self, progress, char):
-        if progress % 5000 == 0:
-            os.write(2, char)
+    def log_progress(self):
+        self._progress += 1
+        if self._progress % 20000 == 0:
+            char = ['|', '/', '-', '\\'][self._progress / 20000 % 4]
+            os.write(2, '%s\r' % char)
+
+    def log(self, msg):
+        if self.imageReader.logging_enabled:
+            print msg
 
     def continue_read_header(self):
         # 1 word headersize
@@ -313,14 +319,6 @@ class BaseReaderStrategy(object):
         fillin_weak_w_objects_driver.jit_merge_point(self=self, chunk=chunk)
         chunk.g_object.fillin_weak(self.space)
 
-    def log_object_filledin(self):
-        self.filledin_objects = self.filledin_objects + 1
-        self.log_progress(self.filledin_objects, '%')
-
-    def log_weakobject_filledin(self):
-        self.filledin_weakobjects = self.filledin_weakobjects + 1
-        self.log_progress(self.filledin_weakobjects * 100, '*')
-
     def len_bytes_of(self, chunk):
         return len(chunk.data) * 4
 
@@ -349,7 +347,7 @@ class NonSpurReader(BaseReaderStrategy):
         self.stream.reset_count()
         while self.stream.count < self.endofmemory:
             chunk, pos = self.read_object()
-            self.log_progress(len(self.chunklist), '#')
+            self.log_progress()
             self.chunklist.append(chunk)
             self.chunks[pos + self.oldbaseaddress] = chunk
         self.stream.close()
@@ -536,22 +534,22 @@ class SpurReader(BaseReaderStrategy):
         while self.stream.count < segmentEnd:
             while self.stream.count < segmentEnd - 16:
                 chunk, pos = self.read_object()
-                self.log_progress(len(self.chunklist), '#')
+                self.log_progress()
                 if chunk.classid == self.FREE_OBJECT_CLASS_INDEX_PUN:
                     continue # ignore free chunks
                 self.chunklist.append(chunk)
                 self.chunks[pos + currentAddressSwizzle] = chunk
-            print "bridge at", self.stream.count, "(", self.stream.count + currentAddressSwizzle, ")"
+            self.log("bridge: %s (%s)" % (self.stream.count, self.stream.count + currentAddressSwizzle))
             # read bridge
             bridgeSpan = intmask(r_uint64(self.stream.next_qword() & ~self.SLOTS_MASK))
             nextSegmentSize = intmask(r_uint64(self.stream.next_qword()))
-            print "bridgeSpan", bridgeSpan, "nextSegmentSize", nextSegmentSize
+            self.log("bridgeSpan: %s; nextSegmentSize: %s" % (bridgeSpan, nextSegmentSize))
             assert bridgeSpan >= 0
             assert nextSegmentSize >= 0
             assert self.stream.count == segmentEnd
             # if nextSegmentSize is zero, the end of the image has been reached
             if nextSegmentSize == 0:
-                print "last segment end at", segmentEnd + currentAddressSwizzle
+                self.log("last segment end: %s " % (segmentEnd + currentAddressSwizzle))
                 bridgeSpanMagicHeader = intmask(r_uint32(bridgeSpan))
                 if self.version.is_64bit:
                     FINAL_BRIDGE_HEADER = (1 << 30) + (9 << 24) + 3
@@ -852,13 +850,13 @@ class GenericObject(object):
         if not self.filled_in:
             self.filled_in = True
             self.w_object.fillin(space, self)
-            self.reader.log_object_filledin()
+            self.reader.log_progress()
 
     def fillin_weak(self, space):
         if not self.filled_in_weak and self.isweak():
             self.filled_in_weak = True
             self.w_object.fillin_weak(space, self)
-            self.reader.log_weakobject_filledin()
+            self.reader.log_progress()
 
     def get_g_pointers(self):
         assert self.pointers is not None

@@ -109,6 +109,7 @@ def _usage(argv):
             -L|--storage-log-aggregate
                              - Output an aggregated storage log at the end of
                                execution.
+            --log-image-loading - print bridges/segments information
 
           Global: (This section is for compatibility with Squeak.ini)
             --ImageFile <path>   - path to the image file
@@ -188,6 +189,7 @@ class Config(object):
         self.trace = False
         self.trace_important = False
         self.extra_arguments_idx = len(argv)
+        self.log_image_loading = False
 
     def parse_args(self, argv, skip_bad=False):
         idx = 1
@@ -251,6 +253,8 @@ class Config(object):
                 self.space.strategy_factory.logger.activate()
             elif arg in ["-L", "--storage-log-aggregate"]:
                 self.space.strategy_factory.logger.activate(aggregate=True)
+            elif arg == "--log-image-loading":
+                self.log_image_loading = True
             # Global
             elif arg in ["--ImageFile"]:
                 self.path, idx = get_parameter(argv, idx, arg)
@@ -393,7 +397,7 @@ def entry_point(argv):
         argv.append('-headless')
 
     # Load & prepare image and environment
-    image = squeakimage.ImageReader(space, stream).create_image()
+    image = squeakimage.ImageReader(space, stream, cfg.log_image_loading).create_image()
     interp = interpreter.Interpreter(space, image,
                 trace=cfg.trace, trace_important=cfg.trace_important,
                 evented=not cfg.poll, interrupts=cfg.interrupts)
