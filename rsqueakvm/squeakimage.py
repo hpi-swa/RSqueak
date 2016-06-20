@@ -107,7 +107,7 @@ set_reader_user_param("threshold=2,function_threshold=2,trace_eagerness=2,loop_l
 class ImageReader(object):
     _immutable_fields_ = ["space", "stream", "readerStrategy"]
 
-    def __init__(self, space, stream, logging_enabled):
+    def __init__(self, space, stream, logging_enabled=False):
         self.space = space
         self.stream = stream
         self.version = None
