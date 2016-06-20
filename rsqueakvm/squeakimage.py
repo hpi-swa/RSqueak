@@ -549,7 +549,7 @@ class SpurReader(BaseReaderStrategy):
                 self.chunks[pos + currentAddressSwizzle] = chunk
             print "bridge at", self.stream.count, "(", self.stream.count + currentAddressSwizzle, ")"
             # read bridge
-            bridgeSpan = r_uint64(self.stream.next_qword() & ~self.SLOTS_MASK)
+            bridgeSpan = intmask(r_uint64(self.stream.next_qword() & ~self.SLOTS_MASK))
             nextSegmentSize = intmask(r_uint64(self.stream.next_qword()))
             print "bridgeSpan", bridgeSpan, "nextSegmentSize", nextSegmentSize
             assert bridgeSpan >= 0
