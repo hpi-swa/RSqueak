@@ -549,29 +549,26 @@ class SpurReader(BaseReaderStrategy):
                 self.chunks[pos + currentAddressSwizzle] = chunk
             print "bridge at", self.stream.count, "(", self.stream.count + currentAddressSwizzle, ")"
             # read bridge
-            # the additional cast to r_uint32 is for 64bit VMs reading 32bit images
-            bridgeSpan = intmask(r_uint32(self.stream.next_qword()))
-            nextSegmentSize = intmask(r_uint32(self.stream.next_qword()))
+            bridgeSpan = r_uint64(self.stream.next_qword() & ~self.SLOTS_MASK)
+            nextSegmentSize = intmask(r_uint64(self.stream.next_qword()))
             print "bridgeSpan", bridgeSpan, "nextSegmentSize", nextSegmentSize
-            # the above causes silent overflow in 32bit builds and 64bit images
-            if self.version.is_64bit:
-                # subtract the overflow slots bits which are 255
-                bridgeSpan = intmask(r_uint32(bridgeSpan & ~self.SLOTS_MASK))
             assert bridgeSpan >= 0
             assert nextSegmentSize >= 0
             assert self.stream.count == segmentEnd
             # if nextSegmentSize is zero, the end of the image has been reached
             if nextSegmentSize == 0:
                 print "last segment end at", segmentEnd + currentAddressSwizzle
+                bridgeSpanMagicHeader = intmask(r_uint32(bridgeSpan))
                 if self.version.is_64bit:
                     FINAL_BRIDGE_HEADER = (1 << 30) + (9 << 24) + 3
-                    assert bridgeSpan == FINAL_BRIDGE_HEADER
+                    assert bridgeSpanMagicHeader == FINAL_BRIDGE_HEADER
                 else:
                     FINAL_BRIDGE_HEADER = (1 << 30) + (10 << 24) + 3
-                    assert bridgeSpan == FINAL_BRIDGE_HEADER
+                    assert bridgeSpanMagicHeader == FINAL_BRIDGE_HEADER
                 break
             segmentEnd = segmentEnd + nextSegmentSize
-            currentAddressSwizzle += bridgeSpan
+            # address swizzle is in bytes, but bridgeSpan is in image words 
+            currentAddressSwizzle += (bridgeSpan * (8 if self.version.is_64bit else 4))
         self.stream.close()
         return self.chunklist # return for testing
 
