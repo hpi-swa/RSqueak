@@ -10,6 +10,7 @@ from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.util import stream, system
 from rsqueakvm.util.bitmanipulation import splitter
+from rsqueakvm.util.progress import Progress
 
 from rpython.rlib import objectmodel
 from rpython.rlib.rarithmetic import r_ulonglong, r_longlong, r_int, intmask, r_uint, r_uint32, r_int64
@@ -202,13 +203,7 @@ class BaseReaderStrategy(object):
         self.chunklist = [] # Flat list of all read chunks
         self.intcache = {} # Cached instances of SmallInteger
         self.lastWindowSize = 0
-        self._progress = 0
-
-    def log_progress(self):
-        self._progress += 1
-        if self._progress % 20000 == 0:
-            char = ['|', '/', '-', '\\'][self._progress / 20000 % 4]
-            os.write(2, '%s\r' % char)
+        self._progress = Progress(stages=5)  # Track 5 stages in read_and_initialize
 
     def log(self, msg):
         if self.imageReader.logging_enabled:
@@ -252,8 +247,10 @@ class BaseReaderStrategy(object):
         raise NotImplementedError("subclass must override this")
 
     def init_g_objects(self):
+        self._progress.next_stage(len(self.chunks))
         for chunk in self.chunks.itervalues():
             self.init_g_object(chunk)
+            self._progress.update()
         self.special_g_objects = self.chunks[self.specialobjectspointer].g_object.pointers
 
     def init_g_object(self, chunk):
@@ -292,8 +289,10 @@ class BaseReaderStrategy(object):
         return self.special_g_objects[index]
 
     def init_w_objects(self):
+        self._progress.next_stage(len(self.chunks))
         for chunk in self.chunks.itervalues():
             self.init_w_object(chunk)
+            self._progress.update()
         self.special_w_objects = [g.w_object for g in self.special_g_objects]
 
     def init_w_object(self, chunk):
@@ -304,16 +303,20 @@ class BaseReaderStrategy(object):
         self.space.populate_special_objects(self.special_w_objects)
 
     def fillin_w_objects(self):
+        self._progress.next_stage(len(self.chunks))
         for chunk in self.chunks.itervalues():
             self.fillin_w_object(chunk)
+            self._progress.update()
 
     def fillin_w_object(self, chunk):
         fillin_w_objects_driver.jit_merge_point(self=self, chunk=chunk)
         chunk.g_object.fillin(self.space)
 
     def fillin_weak_w_objects(self):
+        self._progress.next_stage(len(self.chunks))
         for chunk in self.chunks.itervalues():
             self.fillin_weak_w_object(chunk)
+            self._progress.update()
 
     def fillin_weak_w_object(self, chunk):
         fillin_weak_w_objects_driver.jit_merge_point(self=self, chunk=chunk)
@@ -345,9 +348,10 @@ class NonSpurReader(BaseReaderStrategy):
 
     def read_body(self):
         self.stream.reset_count()
+        self._progress.next_stage(self.stream.length())
         while self.stream.count < self.endofmemory:
             chunk, pos = self.read_object()
-            self.log_progress()
+            self._progress.update(self.stream.count)
             self.chunklist.append(chunk)
             self.chunks[pos + self.oldbaseaddress] = chunk
         self.stream.close()
@@ -531,10 +535,11 @@ class SpurReader(BaseReaderStrategy):
         self.stream.reset_count()
         segmentEnd = self.firstSegSize
         currentAddressSwizzle = self.oldbaseaddress
+        self._progress.next_stage(self.stream.length())
         while self.stream.count < segmentEnd:
             while self.stream.count < segmentEnd - 16:
                 chunk, pos = self.read_object()
-                self.log_progress()
+                self._progress.update(self.stream.count)
                 if chunk.classid == self.FREE_OBJECT_CLASS_INDEX_PUN:
                     continue # ignore free chunks
                 self.chunklist.append(chunk)
@@ -850,13 +855,11 @@ class GenericObject(object):
         if not self.filled_in:
             self.filled_in = True
             self.w_object.fillin(space, self)
-            self.reader.log_progress()
 
     def fillin_weak(self, space):
         if not self.filled_in_weak and self.isweak():
             self.filled_in_weak = True
             self.w_object.fillin_weak(space, self)
-            self.reader.log_progress()
 
     def get_g_pointers(self):
         assert self.pointers is not None
