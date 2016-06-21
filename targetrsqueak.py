@@ -55,6 +55,7 @@ def _usage(argv):
 
           General:
             --no-highdpi           - Disable High-DPI support (default: on).
+            --software-renderer    - Use software renderer (default: off).
             -h|--help              - Output this message and exit.
             -v|--version           - Print version info and exit.
 
@@ -208,6 +209,8 @@ class Config(object):
                 raise error.CleanExit()
             elif arg == "--no-highdpi":
                 self.space.highdpi.deactivate()
+            elif arg == "--software-renderer":
+                self.space.software_renderer.activate()
             # Execution
             elif arg in ["-r", "--run"]:
                 self.code, idx = get_parameter(argv, idx, arg)
