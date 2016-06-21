@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# set -e
+set -e
 
 IMAGE=${IMAGE:-}
 IMAGE_URL=${IMAGE_URL:-"https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/bundle/RSqueak.tar.gz"}
