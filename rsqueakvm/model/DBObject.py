@@ -32,9 +32,8 @@ class W_DBObject(W_PointersObject):
 
     @jit.unroll_safe
     def __init__(self, space, w_class, size, weak=False):
-        W_DBObject.__init__(self, space, w_class, size, weak)
+        W_PointersObject.__init__(self, space, w_class, size, weak)
         self.id = W_DBObject.next_id()
-
 
         # remove " class" from the classname
         self.class_name = w_class.classname(space).split(" ")[0]
@@ -43,10 +42,11 @@ class W_DBObject(W_PointersObject):
 
         create_sql = "CREATE TABLE IF NOT EXISTS %s (id INTEGER);" % self.class_name
         # print create_sql
-        W_DBObject.connection().execute(create_sql)
+
+        W_DBObject.connection(space).execute(create_sql)
         insert_sql = "insert into %s (id) values (?);" % self.class_name
         # print insert_sql
-        W_DBObject.connection().execute(insert_sql, [self.w_id(space)])
+        W_DBObject.connection(space).execute(insert_sql, [self.w_id(space)])
 
     def w_id(self, space):
         return space.wrap_int(self.id)
@@ -57,11 +57,11 @@ class W_DBObject(W_PointersObject):
     def fetch(self, space, n0):
         if n0 not in self.get_column_types():
             # print "Can't find column. Falling back to default fetch."
-            return W_DBObject.fetch(self, space, n0)
+            return W_PointersObject.fetch(self, space, n0)
 
         query_sql = "SELECT inst_var_%s FROM %s WHERE id=?;" % (n0, self.class_name)
         # print query_sql
-        cursor = W_DBObject.connection().execute(query_sql, [self.w_id(space)])
+        cursor = W_DBObject.connection(space).execute(query_sql, [self.w_id(space)])
 
         w_result = space.unwrap_array(cursor.next())
         if w_result:
@@ -93,17 +93,15 @@ class W_DBObject(W_PointersObject):
             else:
                 # print 'Unable to unwrap %s' % w_value.getclass(space)
                 # print 'Falling back to standard store.'
-                return W_DBObject.store(self, space, n0, w_value)
+                return W_PointersObject.store(self, space, n0, w_value)
 
         if aType != "__nil__" and not n0 in self.get_column_types():
             alter_sql = "alter table %s add column inst_var_%s %s;" % (self.class_name, n0, aType)
             # print alter_sql
-            W_DBObject.connection().execute(alter_sql)
+            W_DBObject.connection(space).execute(alter_sql)
 
             self.get_column_types()[n0] = aType
 
         update_sql = "update %s set inst_var_%s=? where id=?" % (self.class_name, n0)
         # print update_sql
-        W_DBObject.connection().execute(update_sql, [w_value, self.w_id(space)])
-
-        return self._get_strategy().store(self, n0, w_value)
+        W_DBObject.connection(space).execute(update_sql, [w_value, self.w_id(space)])
