@@ -1,0 +1,16 @@
+{
+	"category" : "Obsidian-Elo",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"id",
+		"playerName",
+		"score" ],
+	"name" : "EloPlayer",
+	"pools" : [
+		 ],
+	"super" : "Object",
+	"type" : "normal" }
