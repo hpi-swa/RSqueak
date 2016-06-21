@@ -21,6 +21,15 @@ FLOAT = 5
 LARGE_POSITIVE_INTEGER = 6
 FORWARDER_AND_INVALID = 7
 
+# TODO: refactor
+def inherits_from(w_cls, space):
+    s_cls = w_cls.class_shadow(space)
+    while s_cls.getname() != "Object class":
+        if s_cls.getname() == "DBObject class":
+            return True
+        s_cls = s_cls.s_superclass()
+    return False
+
 class ClassShadowError(error.SmalltalkException):
     exception_type = "ClassShadowError"
 
@@ -224,16 +233,7 @@ class ClassShadow(AbstractCachingShadow):
         if instance_kind == POINTERS:
             size = self.instsize() + extrasize
 
-            # TODO: refactor
-            def inherits_from():
-                s_cls = w_cls.class_shadow(self.space)
-                while s_cls.getname() != "Object class":
-                    if s_cls.getname() == "DBObject class":
-                        return True
-                    s_cls = s_cls.s_superclass()
-                return False
-
-            if inherits_from():
+            if inherits_from(w_cls, self.space):
                 w_new = W_DBObject(self.space, w_cls, size)
             else:
                 w_new = W_PointersObject(self.space, w_cls, size)
