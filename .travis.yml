@@ -27,5 +27,5 @@ env:
 install: .travis/install_requirements.sh
 script:
 - .travis/build.sh
-- .travis/test_sm.sh
+- .travis/test_smalltalk.sh
 after_success: .travis/success.sh
