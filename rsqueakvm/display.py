@@ -49,7 +49,7 @@ class SDLDisplay(object):
                "altf4quit",
                "width", "height", "depth", "screen_surface", "has_surface",
                "mouse_position", "button", "key", "interrupt_key", "_defer_updates",
-               "_deferred_events", "bpp", "pitch", "highdpi"]
+               "_deferred_events", "bpp", "pitch", "highdpi", "software_renderer"]
 
     def __init__(self, title, highdpi, software_renderer, altf4quit):
         self._init_sdl()
