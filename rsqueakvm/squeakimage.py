@@ -105,13 +105,14 @@ set_reader_user_param("threshold=2,function_threshold=2,trace_eagerness=2,loop_l
 
 
 class ImageReader(object):
-    _immutable_fields_ = ["space", "stream", "readerStrategy"]
+    _immutable_fields_ = ["space", "stream", "readerStrategy", "logging_enabled"]
 
-    def __init__(self, space, stream):
+    def __init__(self, space, stream, logging_enabled=False):
         self.space = space
         self.stream = stream
         self.version = None
         self.readerStrategy = None
+        self.logging_enabled = logging_enabled
 
     def create_image(self):
         self.read_all()
@@ -186,9 +187,6 @@ class ImageReader(object):
     def chunks(self):
         return self.readerStrategy.chunks
 
-    def chunk(self, pointer):
-        return self.readerStrategy.chunk(pointer)
-
     def decode_pointers(self, g_object, space, end=-1):
         return self.readerStrategy.decode_pointers(g_object, space, end)
 
@@ -204,12 +202,17 @@ class BaseReaderStrategy(object):
         self.chunklist = [] # Flat list of all read chunks
         self.intcache = {} # Cached instances of SmallInteger
         self.lastWindowSize = 0
-        self.filledin_objects = 0
-        self.filledin_weakobjects = 0
+        self._progress = 0
 
-    def log_progress(self, progress, char):
-        if progress % 5000 == 0:
-            os.write(2, char)
+    def log_progress(self):
+        self._progress += 1
+        if self._progress % 20000 == 0:
+            char = ['|', '/', '-', '\\'][self._progress / 20000 % 4]
+            os.write(2, '%s\r' % char)
+
+    def log(self, msg):
+        if self.imageReader.logging_enabled:
+            print msg
 
     def continue_read_header(self):
         # 1 word headersize
@@ -316,14 +319,6 @@ class BaseReaderStrategy(object):
         fillin_weak_w_objects_driver.jit_merge_point(self=self, chunk=chunk)
         chunk.g_object.fillin_weak(self.space)
 
-    def log_object_filledin(self):
-        self.filledin_objects = self.filledin_objects + 1
-        self.log_progress(self.filledin_objects, '%')
-
-    def log_weakobject_filledin(self):
-        self.filledin_weakobjects = self.filledin_weakobjects + 1
-        self.log_progress(self.filledin_weakobjects * 100, '*')
-
     def len_bytes_of(self, chunk):
         return len(chunk.data) * 4
 
@@ -352,7 +347,7 @@ class NonSpurReader(BaseReaderStrategy):
         self.stream.reset_count()
         while self.stream.count < self.endofmemory:
             chunk, pos = self.read_object()
-            self.log_progress(len(self.chunklist), '#')
+            self.log_progress()
             self.chunklist.append(chunk)
             self.chunks[pos + self.oldbaseaddress] = chunk
         self.stream.close()
@@ -417,9 +412,6 @@ class NonSpurReader(BaseReaderStrategy):
         else:
             return self.chunks[chunk.classid].g_object
 
-    def chunk(self, pointer):
-        return self.chunks[pointer]
-
     def decode_pointers(self, g_object, space, end=-1):
         if end == -1:
             end = len(g_object.chunk.data)
@@ -434,7 +426,7 @@ class NonSpurReader(BaseReaderStrategy):
                 pointers.append(small_int)
             else:
                 # pointer = ...0
-                pointers.append(self.chunk(pointer).g_object)
+                pointers.append(self.chunks[pointer].g_object)
         return pointers
 
     def instantiate(self, g_object):
@@ -542,36 +534,33 @@ class SpurReader(BaseReaderStrategy):
         while self.stream.count < segmentEnd:
             while self.stream.count < segmentEnd - 16:
                 chunk, pos = self.read_object()
-                self.log_progress(len(self.chunklist), '#')
+                self.log_progress()
                 if chunk.classid == self.FREE_OBJECT_CLASS_INDEX_PUN:
                     continue # ignore free chunks
                 self.chunklist.append(chunk)
                 self.chunks[pos + currentAddressSwizzle] = chunk
-            print "bridge at", self.stream.count, "(", self.stream.count + currentAddressSwizzle, ")"
+            self.log("bridge: %s (%s)" % (self.stream.count, self.stream.count + currentAddressSwizzle))
             # read bridge
-            # the additional cast to r_uint32 is for 64bit VMs reading 32bit images
-            bridgeSpan = intmask(r_uint32(self.stream.next_qword()))
-            nextSegmentSize = intmask(r_uint32(self.stream.next_qword()))
-            print "bridgeSpan", bridgeSpan, "nextSegmentSize", nextSegmentSize
-            # the above causes silent overflow in 32bit builds and 64bit images
-            if self.version.is_64bit:
-                # subtract the overflow slots bits which are 255
-                bridgeSpan = intmask(r_uint32(bridgeSpan & ~self.SLOTS_MASK))
+            bridgeSpan = intmask(r_uint64(self.stream.next_qword() & ~self.SLOTS_MASK))
+            nextSegmentSize = intmask(r_uint64(self.stream.next_qword()))
+            self.log("bridgeSpan: %s; nextSegmentSize: %s" % (bridgeSpan, nextSegmentSize))
             assert bridgeSpan >= 0
             assert nextSegmentSize >= 0
             assert self.stream.count == segmentEnd
             # if nextSegmentSize is zero, the end of the image has been reached
             if nextSegmentSize == 0:
-                print "last segment end at", segmentEnd + currentAddressSwizzle
+                self.log("last segment end: %s " % (segmentEnd + currentAddressSwizzle))
+                bridgeSpanMagicHeader = intmask(r_uint32(bridgeSpan))
                 if self.version.is_64bit:
                     FINAL_BRIDGE_HEADER = (1 << 30) + (9 << 24) + 3
-                    assert bridgeSpan == FINAL_BRIDGE_HEADER
+                    assert bridgeSpanMagicHeader == FINAL_BRIDGE_HEADER
                 else:
                     FINAL_BRIDGE_HEADER = (1 << 30) + (10 << 24) + 3
-                    assert bridgeSpan == FINAL_BRIDGE_HEADER
+                    assert bridgeSpanMagicHeader == FINAL_BRIDGE_HEADER
                 break
             segmentEnd = segmentEnd + nextSegmentSize
-            currentAddressSwizzle += bridgeSpan
+            # address swizzle is in bytes, but bridgeSpan is in image words 
+            currentAddressSwizzle += (bridgeSpan * (8 if self.version.is_64bit else 4))
         self.stream.close()
         return self.chunklist # return for testing
 
@@ -626,13 +615,6 @@ class SpurReader(BaseReaderStrategy):
     def minor_class_index_of(self, classid):
         return classid & ((1 << 10) - 1)
 
-    def chunk(self, pointer):
-        if pointer not in self.chunks:
-            # HACK: use nil by default
-            print "WARNING: bogus pointer", pointer
-            return self.chunklist[0]
-        return self.chunks[pointer]
-
     def decode_pointers(self, g_object, space, end=-1):
         if end == -1:
             end = len(g_object.chunk.data)
@@ -641,7 +623,7 @@ class SpurReader(BaseReaderStrategy):
             pointer = g_object.chunk.data[i]
             if (pointer & 3) == 0:
                 # pointer = ...00
-                pointers.append(self.chunk(pointer).g_object)
+                pointers.append(self.chunks[pointer].g_object)
             elif (pointer & 1) == 1:
                 # pointer = ....1
                 # tagged integer
@@ -868,13 +850,13 @@ class GenericObject(object):
         if not self.filled_in:
             self.filled_in = True
             self.w_object.fillin(space, self)
-            self.reader.log_object_filledin()
+            self.reader.log_progress()
 
     def fillin_weak(self, space):
         if not self.filled_in_weak and self.isweak():
             self.filled_in_weak = True
             self.w_object.fillin_weak(space, self)
-            self.reader.log_weakobject_filledin()
+            self.reader.log_progress()
 
     def get_g_pointers(self):
         assert self.pointers is not None

@@ -213,10 +213,12 @@ def test_runimage_and_quit():
     from targetrsqueak import active_context, execute_context
     space, interp = runningExitImage(cached=False)
     frame = active_context(space)
+    clean_exit = False
     try:
         execute_context(interp, frame)
-    except error.Exit, e:
-        assert e.msg == "Quit-Primitive called"
+    except error.CleanExit:
+        clean_exit = True
+    assert clean_exit
 
 def test_step_forged_image():
     ap = wrapper.ProcessWrapper(space, wrapper.scheduler(space).active_process())
