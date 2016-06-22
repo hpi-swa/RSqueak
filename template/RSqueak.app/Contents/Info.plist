@@ -7,9 +7,9 @@
 	<key>NSSupportsAutomaticGraphicsSwitching</key>
 	<true/>
 	<key>NSHighResolutionCapable</key>
+	<true/>
 	<key>NSPrincipalClass</key>
 	<string>SDLApplication</string>
-	<true/>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
