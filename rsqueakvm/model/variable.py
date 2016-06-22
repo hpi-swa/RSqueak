@@ -339,7 +339,7 @@ class NativeWordsWrapper(object):
 
     def __init__(self, words):
         self.size = len(words)
-        from rsqueakvm.plugins.squeak_plugin_proxy import sqIntArrayPtr
+        from rsqueakvm.plugins.iproxy import sqIntArrayPtr
         self.c_words = lltype.malloc(sqIntArrayPtr.TO, self.size, flavor='raw')
         for i in range(self.size):
             self.c_words[i] = rffi.r_int(words[i])

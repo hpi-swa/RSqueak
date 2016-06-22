@@ -217,7 +217,7 @@ class Config(object):
             elif arg in ["-P", "--process"]:
                 self.headless = False
             elif arg in ["-u", "--stop-ui"]:
-                from rsqueakvm.plugins.vmdebugging import stop_ui_process
+                from rsqueakvm.plugins.v_m_debugging import stop_ui_process
                 stop_ui_process()
             elif arg in ["--simulate-numeric-primitives"]:
                 self.space.simulate_numeric_primitives.activate()

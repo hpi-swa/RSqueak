@@ -2,6 +2,8 @@ import py
 
 from .base import BaseJITTest
 
+from rsqueakvm.util.system import IS_64BIT
+
 class TestBasic(BaseJITTest):
     def test_while_loop(self, spy, tmpdir):
         traces = self.run(spy, tmpdir, """
