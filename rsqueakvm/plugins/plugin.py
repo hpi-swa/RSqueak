@@ -3,6 +3,10 @@ from rpython.rlib import jit
 from rsqueakvm import error
 
 
+# A place to put plugin start functions that take space and argv as argument
+PluginStartupScripts = []
+
+
 class Plugin(object):
     def __init__(self):
         self.primitives = {}
