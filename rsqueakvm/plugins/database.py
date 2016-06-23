@@ -230,6 +230,8 @@ class StatementCache(object):
         #         if holder.statement is not None]
         return []
 
+    def invalidate(self):
+        self.cache = {}
 
 ###############################################################################
 # Generic Database Manager                                                    #
