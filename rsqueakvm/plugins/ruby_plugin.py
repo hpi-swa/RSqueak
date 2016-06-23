@@ -29,7 +29,7 @@ def startup(space, argv):
     try:
         ruby_space.setup(argv[0])
     except RubyError as e:
-        print_traceback(ruby_space, e)
+        print_traceback(ruby_space, e.w_value)
 PluginStartupScripts.append(startup)
 
 
@@ -102,11 +102,9 @@ class RubyClassShadow(ClassShadow):
     @jit.elidable
     def _lookup(self, w_selector, version):
         methodname = self.space.unwrap_string(w_selector)
-        try:
-            idx = methodname.index(":")
+        idx = methodname.find(":")
+        if idx > 0:
             methodname = methodname[0:idx]
-        except ValueError:
-            pass
         ruby_method = self.wr_class.find_method(ruby_space, methodname)
         if ruby_method is None:
             return None
@@ -132,7 +130,7 @@ def eval(interp, s_frame, w_rcvr, source):
     try:
         return wrap(interp, ruby_space.execute(source))
     except RubyError as e:
-        print_traceback(ruby_space, e)
+        print_traceback(ruby_space, e.w_value)
         raise PrimitiveFailedError
 
 @RubyPlugin.expose_primitive(compiled_method=True)
@@ -154,5 +152,5 @@ def send(interp, s_frame, argcount, w_method):
     try:
         return wrap(interp, ruby_space.send(wr_rcvr, methodname, args_w=args_rw))
     except RubyError as e:
-        print_traceback(ruby_space, e)
+        print_traceback(ruby_space, e.w_value)
         raise PrimitiveFailedError
