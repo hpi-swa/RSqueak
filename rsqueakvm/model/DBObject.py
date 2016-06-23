@@ -20,7 +20,9 @@ class W_DBObject(W_PointersObject):
     def connection(space):
         if W_DBObject.db_connection is None:
             # print("Establish connection")
-            W_DBObject.db_connection = SQLConnection(space, interpreter.SQLite3DB, ":memory:")
+            print "DBMode:", SQLConnection.db_mode
+            db = interpreter.SQLite3DB if SQLConnection.db_mode == 1 else interpreter.SQPyteDB
+            W_DBObject.db_connection = SQLConnection(space, db, ":memory:")
         assert W_DBObject.db_connection is not None
         return W_DBObject.db_connection
 
