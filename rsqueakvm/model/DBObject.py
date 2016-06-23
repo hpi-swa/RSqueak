@@ -99,6 +99,8 @@ class W_DBObject(W_PointersObject):
             alter_sql = "alter table %s add column inst_var_%s %s;" % (self.class_name, n0, aType)
             # print alter_sql
             W_DBObject.connection(space).execute(alter_sql)
+            # print "invalidate cache"
+            W_DBObject.connection(space).statement_cache.invalidate()
 
             self.get_column_types()[n0] = aType
 
