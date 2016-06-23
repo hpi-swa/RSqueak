@@ -97,11 +97,11 @@ class RubyClassShadow(ClassShadow):
         AbstractCachingShadow.__init__(self, space, space.w_nil, 0, space.w_nil)
 
     def lookup(self, w_selector):
-        return self._lookup(w_selector, self.wr_class.version)
+        methodname = self.space.unwrap_string(w_selector)
+        return self._lookup(methodname, self.wr_class.version)
 
     @jit.elidable
-    def _lookup(self, w_selector, version):
-        methodname = self.space.unwrap_string(w_selector)
+    def _lookup(self, methodname, version):
         idx = methodname.find(":")
         if idx > 0:
             methodname = methodname[0:idx]
@@ -114,7 +114,6 @@ class RubyClassShadow(ClassShadow):
             w_cm = W_PreSpurCompiledMethod(self.space, bytecount=0, header=0)
         w_cm._primitive = EXTERNAL_CALL
         w_cm.literalsize = 2
-        w_cm.argsize = ruby_method.arity(ruby_space)
         w_cm.literals = [
             self.space.wrap_list([
                 self.space.wrap_string("RubyPlugin"),
