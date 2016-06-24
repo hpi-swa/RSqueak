@@ -24,9 +24,12 @@ from rpython.rlib import objectmodel, jit
 RubyPlugin = Plugin()
 ruby_space = ObjectSpace(None)
 
-
 def startup(space, argv):
     try:
+        space.objtable["RubyPluginSend"] = space.wrap_list([
+            space.wrap_string("RubyPlugin"),
+            space.wrap_string("send")
+        ])
         ruby_space.setup(argv[0])
     except RubyError as e:
         print_traceback(ruby_space, e.w_value)
@@ -84,13 +87,15 @@ class W_RubyObject(W_AbstractObjectWithIdentityHash):
     def getclass(self, space):
         return W_RubyObject(self.wr_object.getclass(ruby_space))
 
+    @jit.elidable
     def class_shadow(self, space):
-        if not self.s_class:
-            self.s_class = RubyClassShadow(space, ruby_space.getclass(self.wr_object))
-        return self.s_class
+        wr_class = ruby_space.getclass(self.wr_object)
+        return RubyClassShadowCache.setdefault(wr_class, RubyClassShadow(space, wr_class))
 
     def is_same_object(self, other):
         return isinstance(other, W_RubyObject) and (other.wr_object is self.wr_object)
+
+RubyClassShadowCache = {}
 
 class RubyClassShadow(ClassShadow):
     _attrs_ = ["wr_class"]
@@ -106,7 +111,6 @@ class RubyClassShadow(ClassShadow):
     def _lookup(self, w_selector, version):
         return self.make_method(w_selector)
 
-    @jit.dont_look_inside
     def make_method(self, w_selector):
         methodname = self.space.unwrap_string(w_selector)
         idx = methodname.find(":")
@@ -116,20 +120,21 @@ class RubyClassShadow(ClassShadow):
         if ruby_method is None:
             return None
         if self.space.is_spur.is_set():
-            w_cm = W_SpurCompiledMethod(self.space, bytecount=0, header=0)
+            w_cm = objectmodel.instantiate(W_SpurCompiledMethod)
         else:
-            w_cm = W_PreSpurCompiledMethod(self.space, bytecount=0, header=0)
+            w_cm = objectmodel.instantiate(W_PreSpurCompiledMethod)
+        w_cm.header = 0
         w_cm._primitive = EXTERNAL_CALL
         w_cm.literalsize = 2
+        w_cm.islarge = False
+        w_cm._tempsize = 0
+        w_cm.argsize = 0
+        w_cm.bytes = []
         w_cm.literals = [
-            self.space.wrap_list([
-                self.space.wrap_string("RubyPlugin"),
-                self.space.wrap_string("send")
-            ]),
-            self.space.wrap_string(methodname)
+            self.space.special_object("RubyPluginSend"),
+            w_selector
         ]
         return w_cm
-
 
 
 @RubyPlugin.expose_primitive(unwrap_spec=[object, str])
@@ -155,6 +160,9 @@ def send(interp, s_frame, argcount, w_method):
         args_w = interp.space.unwrap_array(args_w[2])
     else:
         raise PrimitiveFailedError
+    idx = methodname.find(":")
+    if idx > 0:
+        methodname = methodname[0:idx]
     args_rw = [unwrap(interp, w_arg) for w_arg in args_w]
     try:
         return wrap(interp, ruby_space.send(wr_rcvr, methodname, args_w=args_rw))
