@@ -73,18 +73,21 @@ def unwrap(interp, w_object):
     raise PrimitiveFailedError
 
 class W_RubyObject(W_AbstractObjectWithIdentityHash):
-    _attrs_ = ["wr_object"]
-    _immutable_fields_ = ["wr_object"]
+    _attrs_ = ["wr_object", "s_class"]
+    _immutable_fields_ = ["wr_object", "s_class?"]
     repr_classname = "W_RubyObject"
 
     def __init__(self, wr_object):
         self.wr_object = wr_object
+        self.s_class = None
 
     def getclass(self, space):
         return W_RubyObject(self.wr_object.getclass(ruby_space))
 
     def class_shadow(self, space):
-        return RubyClassShadow(space, ruby_space.getclass(self.wr_object))
+        if not self.s_class:
+            self.s_class = RubyClassShadow(space, ruby_space.getclass(self.wr_object))
+        return self.s_class
 
     def is_same_object(self, other):
         return isinstance(other, W_RubyObject) and (other.wr_object is self.wr_object)
@@ -97,11 +100,15 @@ class RubyClassShadow(ClassShadow):
         AbstractCachingShadow.__init__(self, space, space.w_nil, 0, space.w_nil)
 
     def lookup(self, w_selector):
-        methodname = self.space.unwrap_string(w_selector)
-        return self._lookup(methodname, self.wr_class.version)
+        return self._lookup(w_selector, self.wr_class.version)
 
     @jit.elidable
-    def _lookup(self, methodname, version):
+    def _lookup(self, w_selector, version):
+        return self.make_method(w_selector)
+
+    @jit.dont_look_inside
+    def make_method(self, w_selector):
+        methodname = self.space.unwrap_string(w_selector)
         idx = methodname.find(":")
         if idx > 0:
             methodname = methodname[0:idx]
@@ -122,6 +129,7 @@ class RubyClassShadow(ClassShadow):
             self.space.wrap_string(methodname)
         ]
         return w_cm
+
 
 
 @RubyPlugin.expose_primitive(unwrap_spec=[object, str])
