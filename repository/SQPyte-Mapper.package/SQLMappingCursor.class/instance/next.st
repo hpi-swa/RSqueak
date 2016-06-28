@@ -1,7 +1,7 @@
 accessing
 next
 	| row object |
-	row := self cursor next.
+	row := super next.
 	row isNil ifTrue: [ ^ row ].
 	
 	object := self mapping new.

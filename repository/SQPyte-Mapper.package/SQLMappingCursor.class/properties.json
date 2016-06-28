@@ -6,10 +6,9 @@
 		 ],
 	"commentStamp" : "",
 	"instvars" : [
-		"cursor",
 		"mapping" ],
 	"name" : "SQLMappingCursor",
 	"pools" : [
 		 ],
-	"super" : "Object",
+	"super" : "SQLCursor",
 	"type" : "normal" }
