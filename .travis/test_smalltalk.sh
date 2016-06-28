@@ -62,7 +62,7 @@ if [[ ! -f "${IMAGE}" ]]; then
 fi
 
 echo "==== Run tests..."
-./rsqueak "${IMAGE}" "${HOME}/runSQPyteTests.st"
+./rsqueak --no-display "${IMAGE}" "${HOME}/runSQPyteTests.st"
 
 if [[ -z "${RESULT_CMD}" ]]; then
     RESULT_CMD="/tmp/print_test_results.py"
@@ -73,6 +73,6 @@ if [[ -z "${RESULT_CMD}" ]]; then
     fi
 fi
 
-if [[ ! -z "${RESULT_CMD}" ]]; then
+if [[ -n "${RESULT_CMD}" ]]; then
     "${RESULT_CMD}" "${IMAGE_DIR}"
 fi
