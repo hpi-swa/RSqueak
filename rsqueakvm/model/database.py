@@ -4,31 +4,37 @@ from rsqueakvm.plugins.database import dbm, SQLConnection
 from rsqueakvm.error import PrimitiveFailedError
 
 
+class W_DBObject_State:
+    def __init__(self):
+        self.db_connection = None
+        self.id_counter = 0
+        self.column_types_for_table = {}
+        # Maps from DBObject id to DBObject and only includes DBObjects which
+        # are referenced from an attribute of a DBObject.
+        self.db_objects = {}
+
+
 class W_DBObject(W_PointersObject):
 
     _attrs_ = ["id", "class_name"]
-    db_connection = [None]
-    id_counter = [0]
-    column_types_for_table = {}
-    # Maps from DBObject id to DBObject and only includes DBObjects which are
-    # referenced from an attribute of a DBObject.
-    db_objects = {}
+    state = W_DBObject_State()
 
     @staticmethod
     def connection(space):
-        if W_DBObject.db_connection[0] is None:
-            # print("Establish connection")
-            assert dbm.driver is not None
-            print "DBMode: %s" % dbm.driver
-            connection = SQLConnection(space, dbm.driver, ":memory:")
-            W_DBObject.db_connection[0] = connection
-        assert W_DBObject.db_connection[0] is not None
-        return W_DBObject.db_connection[0]
+        if W_DBObject.state.db_connection is not None:
+            return W_DBObject.state.db_connection
+        assert dbm.driver is not None
+        # print("Establish connection")
+        print "DBMode: %s" % dbm.driver
+        connection = SQLConnection(space, dbm.driver, ":memory:")
+        assert connection is not None
+        W_DBObject.state.db_connection = connection
+        return connection
 
     @staticmethod
     def next_id():
-        theId = W_DBObject.id_counter[0]
-        W_DBObject.id_counter[0] += 1
+        theId = W_DBObject.state.id_counter
+        W_DBObject.state.id_counter += 1
         return theId
 
     @jit.unroll_safe
@@ -38,8 +44,8 @@ class W_DBObject(W_PointersObject):
 
         # remove " class" from the classname
         self.class_name = w_class.classname(space).split(" ")[0]
-        if self.class_name not in W_DBObject.column_types_for_table:
-            W_DBObject.column_types_for_table[self.class_name] = {}
+        if self.class_name not in W_DBObject.state.column_types_for_table:
+            W_DBObject.state.column_types_for_table[self.class_name] = {}
 
         create_sql = ("CREATE TABLE IF NOT EXISTS %s (id INTEGER);" %
                       self.class_name)
@@ -54,7 +60,7 @@ class W_DBObject(W_PointersObject):
         return space.wrap_int(self.id)
 
     def get_column_types(self):
-        return W_DBObject.column_types_for_table[self.class_name]
+        return W_DBObject.state.column_types_for_table[self.class_name]
 
     def fetch(self, space, n0):
         if n0 not in self.get_column_types():
@@ -71,7 +77,7 @@ class W_DBObject(W_PointersObject):
         if w_result:
             if self.get_column_types()[n0] == "blob":
                 db_id = space.unwrap_int(w_result[0])
-                return W_DBObject.db_objects[db_id]
+                return W_DBObject.state.db_objects[db_id]
             else:
                 return w_result[0]
         else:
@@ -91,7 +97,7 @@ class W_DBObject(W_PointersObject):
         else:
             if isinstance(w_value, W_DBObject):
                 aType = "blob"
-                W_DBObject.db_objects[w_value.id] = w_value
+                W_DBObject.state.db_objects[w_value.id] = w_value
                 # Save id in database.
                 w_value = w_value.w_id(space)
             else:
