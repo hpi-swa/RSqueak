@@ -88,7 +88,7 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
         return jit.promote(self._display)
 
     def is_headless(self):
-        return self._display.is_headless
+        return self._display.is_headless()
 
     def pixelbuffer(self):
         return self.display().get_pixelbuffer()
@@ -123,12 +123,12 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
             self.force_words(start, stop)
 
     def force_words(self, start, stop):
-        if self.is_headless: return
+        if self.is_headless(): return
         for i in range(stop - start):
             self.set_pixelbuffer_word(i + start, self.getword(i + start))
 
     def update_from_buffer(self):
-        if self.is_headless: return
+        if self.is_headless(): return
         if self.pixelbuffer_words > 0:
             for i in range(self.size()):
                 self.set_pixelbuffer_word(i, self.getword(i))
@@ -164,7 +164,7 @@ class W_32BitDisplayBitmap(W_DisplayBitmap):
     repr_classname = "W_32BitDisplayBitmap"
 
     def force_words(self, start, stop):
-        if self.is_headless: return
+        if self.is_headless(): return
         assert start >= 0 and stop >= 0 and self.size() >= stop and self.pixelbuffer_words >= stop and stop >= start
         pixbuf = rffi.ptradd(self.display().get_pixelbuffer(), start)
         realbuf = rffi.ptradd(self._real_depth_buffer, start)
