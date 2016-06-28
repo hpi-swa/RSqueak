@@ -1,4 +1,4 @@
-## RSqueak/VM [![Linux Build Status](https://travis-ci.org/HPI-SWA-Lab/RSqueak.svg?branch=master)](https://travis-ci.org/HPI-SWA-Lab/RSqueak) [![Windows Build Status](https://ci.appveyor.com/api/projects/status/e37a79tt5irr7sx1/branch/master?svg=true)](https://ci.appveyor.com/project/timfel/rsqueak) [![Coverage Status](https://coveralls.io/repos/github/HPI-SWA-Lab/RSqueak/badge.svg?branch=master)](https://coveralls.io/github/HPI-SWA-Lab/RSqueak?branch=master)
+## RSqueak/VM [![Linux Build Status](https://travis-ci.org/HPI-SWA-Lab/RSqueak.svg?branch=master)](https://travis-ci.org/HPI-SWA-Lab/RSqueak) [![Windows Build Status](https://ci.appveyor.com/api/projects/status/e37a79tt5irr7sx1/branch/master?svg=true)](https://ci.appveyor.com/project/timfel/rsqueak) [![Coverage Status](https://coveralls.io/repos/github/HPI-SWA-Lab/RSqueak/badge.svg?branch=master)](https://coveralls.io/github/HPI-SWA-Lab/RSqueak?branch=master) [![Benchmarks](https://img.shields.io/badge/benchmarks-open-yellowgreen.svg)](http://speed.squeak.org/)
 
 A Squeak VM written in RPython.
 
@@ -70,8 +70,7 @@ for your distro.
 
 ###### Mac OS X
 
-RSqueak/VM currently needs to be compiled using a 32-bit python and
-32-bit clang. To do so, run
+To compile RSqueak/VM for 32-bit, run
 
 ```bash
 export VERSIONER_PYTHON_PREFER_32_BIT=yes

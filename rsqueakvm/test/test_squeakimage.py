@@ -786,7 +786,7 @@ def test_simple_spur_image_with_segments():
                      + pack(">q", 0)           # 1048 reserved for forward ptr
                      + longs2str(1241513987, 0))  # 1056 final bridge = stop
     first_segment = first_segment + \
-            longs2str(1000 - len(first_segment) - 16 + (255 << 56), # bridge span
+            longs2str(((1000 - len(first_segment) - 16) / 4) + (255 << 56), # bridge span, divided by 4 to get "word-size span" and then set with top bits
                       len(second_segment))            # next segment size
     body = first_segment + second_segment
     header_size = 16 * word_size

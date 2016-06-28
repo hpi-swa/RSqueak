@@ -55,6 +55,7 @@ def _usage(argv):
 
           General:
             --no-highdpi           - Disable High-DPI support (default: on).
+            --software-renderer    - Use software renderer (default: off).
             -h|--help              - Output this message and exit.
             -v|--version           - Print version info and exit.
 
@@ -109,6 +110,7 @@ def _usage(argv):
             -L|--storage-log-aggregate
                              - Output an aggregated storage log at the end of
                                execution.
+            --log-image-loading - print bridges/segments information
 
           Global: (This section is for compatibility with Squeak.ini)
             --ImageFile <path>   - path to the image file
@@ -154,13 +156,15 @@ prebuilt_space = objspace.ObjSpace()
 def safe_entry_point(argv):
     try:
         return entry_point(argv)
-    except error.Exit, e:
+    except error.CleanExit as e:
+        return 0
+    except error.Exit as e:
         print_error("Exited: %s" % e.msg)
         return -1
-    except error.SmalltalkException, e:
+    except error.SmalltalkException as e:
         print_error("Unhandled %s. Message: %s" % (e.exception_type, e.msg))
         return -1
-    except BaseException, e:
+    except BaseException as e:
         print_error("Exception: %s" % str(e))
         if not objectmodel.we_are_translated():
             raise
@@ -186,6 +190,7 @@ class Config(object):
         self.trace = False
         self.trace_important = False
         self.extra_arguments_idx = len(argv)
+        self.log_image_loading = False
 
     def parse_args(self, argv, skip_bad=False):
         idx = 1
@@ -195,15 +200,17 @@ class Config(object):
             # General
             if arg in ["-h", "--help"]:
                 _usage(argv)
-                raise error.Exit("")
+                raise error.CleanExit()
             elif arg in ["-v", "--version"]:
                 print "RSqueakVM %s, built on %s" % (VERSION, BUILD_DATE)
-                raise error.Exit("")
+                raise error.CleanExit()
             elif arg in ["--git-version"]:
                 print GIT_VERSION
-                raise error.Exit("")
+                raise error.CleanExit()
             elif arg == "--no-highdpi":
                 self.space.highdpi.deactivate()
+            elif arg == "--software-renderer":
+                self.space.software_renderer.activate()
             # Execution
             elif arg in ["-r", "--run"]:
                 self.code, idx = get_parameter(argv, idx, arg)
@@ -249,6 +256,8 @@ class Config(object):
                 self.space.strategy_factory.logger.activate()
             elif arg in ["-L", "--storage-log-aggregate"]:
                 self.space.strategy_factory.logger.activate(aggregate=True)
+            elif arg == "--log-image-loading":
+                self.log_image_loading = True
             # Global
             elif arg in ["--ImageFile"]:
                 self.path, idx = get_parameter(argv, idx, arg)
@@ -374,12 +383,11 @@ def entry_point(argv):
         cfg.init_from_ini()
         cfg.init_from_arguments()
         cfg.sanitize()
+    except error.CleanExit as e:
+        return 0
     except error.Exit as e:
-        if e.msg == "":
-            return 0
-        else:
-            print_error(e.msg)
-            return 1
+        print_error(e.msg)
+        return 1
 
     try:
         stream = squeakimage.Stream(filename=cfg.path)
@@ -392,7 +400,7 @@ def entry_point(argv):
         argv.append('-headless')
 
     # Load & prepare image and environment
-    image = squeakimage.ImageReader(space, stream).create_image()
+    image = squeakimage.ImageReader(space, stream, cfg.log_image_loading).create_image()
     interp = interpreter.Interpreter(space, image,
                 trace=cfg.trace, trace_important=cfg.trace_important,
                 evented=not cfg.poll, interrupts=cfg.interrupts)

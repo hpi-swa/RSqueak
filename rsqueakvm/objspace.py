@@ -72,6 +72,7 @@ class ObjSpace(object):
         self.run_spy_hacks = ConstantFlag()
         self.headless = ConstantFlag()
         self.highdpi = ConstantFlag(True)
+        self.software_renderer = ConstantFlag(False)
         self.use_plugins = ConstantFlag()
         self.omit_printing_raw_bytes = ConstantFlag()
         self.image_loaded = ConstantFlag()
@@ -401,6 +402,7 @@ class ObjSpace(object):
             disp = display.SDLDisplay(
                 self.window_title(),
                 self.highdpi.is_set(),
+                self.software_renderer.is_set(),
                 self.altf4quit.is_set()
             )
             self._display.set(disp)
