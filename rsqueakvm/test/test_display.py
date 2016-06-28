@@ -76,7 +76,7 @@ def stub_mod_state(monkeypatch):
 
 @pytest.fixture
 def sut():
-    return display.SDLDisplay("test", True, False)
+    return display.SDLDisplay("test", True, False, False)
 
 def assert_keyevent_array(actual, expected_char_code=None,
         expected_key_event_type=None, expected_modifiers=None):

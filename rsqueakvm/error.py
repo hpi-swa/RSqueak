@@ -54,6 +54,10 @@ class Exit(Exception):
 class CorruptImageError(Exit):
     pass
 
+class CleanExit(Exit):
+    def __init__(self, msg=""):
+        Exit.__init__(self, msg)
+
 class MetaPrimFailed(SmalltalkException):
     """
     Indicates that the simulated primitive code failed and that the fallback

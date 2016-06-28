@@ -25,5 +25,7 @@ env:
   matrix:
     - BUILD_ARCH=64bit
 install: .travis/install_requirements.sh
-script: .travis/build.sh
+script:
+- .travis/build.sh
+- .travis/test_smalltalk.sh
 after_success: .travis/success.sh
