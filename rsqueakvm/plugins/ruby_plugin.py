@@ -25,14 +25,11 @@ RubyPlugin = Plugin()
 ruby_space = ObjectSpace(None)
 
 def startup(space, argv):
-    try:
-        space.objtable["RubyPluginSend"] = space.wrap_list([
-            space.wrap_string("RubyPlugin"),
-            space.wrap_string("send")
-        ])
-        ruby_space.setup(argv[0])
-    except RubyError as e:
-        print_traceback(ruby_space, e.w_value)
+    space.objtable["RubyPluginSend"] = space.wrap_list([
+        space.wrap_string("RubyPlugin"),
+        space.wrap_string("send")
+    ])
+    ruby_space.setup(argv[0])
 PluginStartupScripts.append(startup)
 
 
