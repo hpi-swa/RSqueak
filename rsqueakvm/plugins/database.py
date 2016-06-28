@@ -18,10 +18,14 @@ DatabasePlugin = Plugin()
 # SQL Connection And Cursor Implementation                                    #
 ###############################################################################
 
+class SQLConnection_State:
+    def __init__(self):
+        # 0: no db, 1: SQLite, 2: SQPyte
+        self.db_mode = 2
+
 class SQLConnection(object):
     _immutable_fields_ = ['db', 'statement_cache']
-    # 0: no db, 1: SQLite, 2: SQPyte
-    db_mode = [2]
+    state = SQLConnection_State()
 
     def __init__(self, space, db_class, filename):
         self.space = space
@@ -321,5 +325,5 @@ def primitiveSQLClose(interp, s_frame, w_rcvr, db_handle):
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveSQLModeSwitch(interp, s_frame, w_rcvr, mode):
-    SQLConnection.db_mode[0] = mode
+    SQLConnection.state.db_mode = mode
     return interp.space.w_nil
