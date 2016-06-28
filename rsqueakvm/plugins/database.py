@@ -121,6 +121,21 @@ class SQLCursor(object):
             raise PrimitiveFailedError('strange result: %s' % rc)
         return self.space.wrap_list(w_row)
 
+    def column_count(self):
+        column_count = self.statement.query.data_count()
+        return self.space.wrap_int(column_count)
+
+    def column_name(self, index):
+        column_name = rffi.charp2strn(self.statement.query.column_name(index), 255)
+        return self.space.wrap_string(column_name)
+
+    def column_names(self):
+        names = []
+        for i in range(0, self.statement.query.data_count()):
+            names.append(self.column_name(i))
+
+        return self.space.wrap_list(names)
+
     @jit.unroll_safe
     def fetch_one_row(self):
         query = jit.promote(self.statement).query
@@ -317,6 +332,25 @@ def primitiveSQLExecute(interp, s_frame, argcount):
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveSQLNext(interp, s_frame, w_rcvr, cursor_handle):
     return dbm.cursor(cursor_handle).next()
+
+
+@DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
+def primitiveSQLColumnCount(interp, s_frame, w_rcvr, cursor_handle):
+    return dbm.cursor(cursor_handle).column_count()
+
+
+@DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
+def primitiveSQLColumnNames(interp, s_frame, w_rcvr, cursor_handle):
+    return dbm.cursor(cursor_handle).column_names()
+
+
+@DatabasePlugin.expose_primitive(unwrap_spec=[object, int, int])
+def primitiveSQLColumnName(interp, s_frame, w_rcvr, cursor_handle, index):
+    if index < 1:
+        raise PrimitiveFailedError('Index must be >= 1')
+
+    # Smalltalk counts from 1, rest of world from 0
+    return dbm.cursor(cursor_handle).column_name(index - 1)
 
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
