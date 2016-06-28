@@ -20,8 +20,6 @@ DatabasePlugin = Plugin()
 
 class SQLConnection(object):
     _immutable_fields_ = ['db', 'statement_cache']
-    # 0: no db, 1: SQLite, 2: SQPyte
-    db_mode = [2]
 
     def __init__(self, space, db_class, filename):
         self.space = space
@@ -237,11 +235,16 @@ class StatementCache(object):
 # Generic Database Manager                                                    #
 ###############################################################################
 
+
 class DBManager(object):
-    _db_count = 0
-    _dbs = {}
-    _cursor_count = 0
-    _cursors = {}
+
+    def __init__(self):
+        self.driver = interpreter.SQPyteDB  # Driver for DBObjects
+
+        self._db_count = 0
+        self._dbs = {}
+        self._cursor_count = 0
+        self._cursors = {}
 
     def connect(self, space, db_class, filename):
         handle = self._db_count
@@ -319,7 +322,13 @@ def primitiveSQLNext(interp, s_frame, w_rcvr, cursor_handle):
 def primitiveSQLClose(interp, s_frame, w_rcvr, db_handle):
     return dbm.close(interp.space, db_handle)
 
+
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveSQLModeSwitch(interp, s_frame, w_rcvr, mode):
-    SQLConnection.db_mode[0] = mode
+    if mode == 1:
+        dbm.driver = interpreter.SQLite3DB
+    elif mode == 2:
+        dbm.driver = interpreter.SQPyteDB
+    else:
+        dbm.driver = None
     return interp.space.w_nil

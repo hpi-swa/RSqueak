@@ -3,11 +3,11 @@ from rsqueakvm.model.base import W_Object
 from rsqueakvm.model.compiled_methods import W_CompiledMethod, W_PreSpurCompiledMethod, W_SpurCompiledMethod
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargePositiveInteger1Word
 from rsqueakvm.model.pointers import W_PointersObject
-from rsqueakvm.model.DBObject import W_DBObject
+from rsqueakvm.model.database import W_DBObject
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.storage import AbstractCachingShadow, AbstractGenericShadow
 from rsqueakvm.util.version import elidable_for_version, Version
-from rsqueakvm.plugins.database import SQLConnection
+from rsqueakvm.plugins.database import dbm
 
 from rpython.rlib import jit
 
@@ -25,7 +25,9 @@ FORWARDER_AND_INVALID = 7
 # TODO: refactor
 def inherits_from(w_cls, space):
     s_cls = w_cls.class_shadow(space)
-    while s_cls.getname() != "Object class":
+    while s_cls is not None:
+        if not s_cls.provides_getname:
+            break
         if s_cls.getname() == "DBObject class":
             return True
         s_cls = s_cls.s_superclass()
@@ -233,8 +235,7 @@ class ClassShadow(AbstractCachingShadow):
         instance_kind = self.get_instance_kind()
         if instance_kind == POINTERS:
             size = self.instsize() + extrasize
-
-            if SQLConnection.db_mode[0] != 0 and inherits_from(w_cls, self.space):
+            if dbm.driver is not None and inherits_from(w_cls, self.space):
                 w_new = W_DBObject(self.space, w_cls, size)
             else:
                 w_new = W_PointersObject(self.space, w_cls, size)
