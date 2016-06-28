@@ -1,5 +1,7 @@
 import os
 
+from rpython.rlib.objectmodel import we_are_translated
+
 DATA = [
     '\x0a', ' ' * 10,
     '\xe2\x96\x84\xe2\x96\x88\xe2\x96\x80\xe2\x96\x80\xe2\x96\x80\xe2\x96\x84',
@@ -125,6 +127,8 @@ class Progress(object):
         return int(self._maxval * (stage + steps * 1 / self._stages))
 
     def update(self, new_steps=-1):
+        if not we_are_translated():
+            return
         if new_steps < 0:
             self._current_steps += 1
         else:

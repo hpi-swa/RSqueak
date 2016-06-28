@@ -40,18 +40,78 @@ WindowEventStinks = 6
 
 MINIMUM_DEPTH = 8
 
+
 class SqueakInterrupt(Exception):
     pass
 
 
-class SDLDisplay(object):
-    _attrs_ = ["window", "title", "renderer", "screen_texture",
-               "altf4quit",
-               "width", "height", "depth", "screen_surface", "has_surface",
-               "mouse_position", "button", "key", "interrupt_key", "_defer_updates",
-               "_deferred_events", "bpp", "pitch", "highdpi", "software_renderer"]
+class NullDisplay(object):
+    _attrs_ = ["button", "mouse_position", "key", "width", "height", "depth",
+               "pitch"]
+
+    def __init__(self):
+        self.button = 0
+        self.mouse_position = [0, 0]
+        self.key = 0
+        self.width = 0
+        self.height = 0
+        self.depth = 32
+        self.pitch = 0
+
+    def defer_updates(self, flag):
+        pass
+
+    def get_pixelbuffer(self):
+        raise RuntimeError("Code path should not be reached")
+
+    def get_plain_pixelbuffer(self):
+        raise RuntimeError("Code path should not be reached")
+
+    def get_next_event(self, time=0):
+        return [EventTypeNone, 0, 0, 0, 0, 0, 0, 0]
+
+    def flip(self, force=False):
+        pass
+
+    def has_clipboard_text(self):
+        return False
+
+    def is_headless(self):
+        return True
+
+    def mouse_button(self):
+        return self.button
+
+    def mouse_point(self):
+        return self.mouse_position
+
+    def next_keycode(self):
+        return self.key
+
+    def peek_keycode(self):
+        return self.key
+
+    def set_full_screen(self, flag):
+        pass
+
+    def set_interrupt_key(self, space, encoded_key):
+        pass
+
+    def set_clipboard_text(self, text):
+        return True
+
+    def set_video_mode(self, w, h, d):
+        pass
+
+
+class SDLDisplay(NullDisplay):
+    _attrs_ = ["window", "title", "renderer", "screen_texture", "altf4quit",
+               "screen_surface", "has_surface", "interrupt_key",
+               "_defer_updates", "_deferred_events", "bpp", "pitch", "highdpi",
+               "software_renderer"]
 
     def __init__(self, title, highdpi, software_renderer, altf4quit):
+        NullDisplay.__init__(self)
         self._init_sdl()
         self.title = title
         self.highdpi = highdpi
@@ -63,13 +123,7 @@ class SDLDisplay(object):
         self.screen_texture = lltype.nullptr(RSDL.TexturePtr.TO)
         self.screen_surface = lltype.nullptr(RSDL.Surface)
         self.has_surface = False
-        self.mouse_position = [0, 0]
         self.interrupt_key = 15 << 8  # pushing all four meta keys, of which we support three...
-        self.button = 0
-        self.key = 0
-        self.width = 0
-        self.height = 0
-        self.depth = 32
         self._deferred_events = []
         self._defer_updates = False
 
@@ -81,6 +135,9 @@ class SDLDisplay(object):
             if RSDL.Init(RSDL.INIT_VIDEO) < 0:
                 print RSDL.GetError()
                 assert False
+
+    def is_headless(self):
+        return False
 
     def close(self):
         RSDL.Quit()

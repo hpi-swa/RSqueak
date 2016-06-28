@@ -73,6 +73,7 @@ class ObjSpace(object):
         self.headless = ConstantFlag()
         self.highdpi = ConstantFlag(True)
         self.software_renderer = ConstantFlag(False)
+        self.no_display = ConstantFlag(False)
         self.use_plugins = ConstantFlag()
         self.omit_printing_raw_bytes = ConstantFlag()
         self.image_loaded = ConstantFlag()
@@ -399,12 +400,16 @@ class ObjSpace(object):
         disp = self._display.get()
         if disp is None:
             # Create lazy to allow headless execution.
-            disp = display.SDLDisplay(
-                self.window_title(),
-                self.highdpi.is_set(),
-                self.software_renderer.is_set(),
-                self.altf4quit.is_set()
-            )
+            if self.no_display.is_set():
+                disp = display.NullDisplay()
+                print 'Attaching a dummy display...'
+            else:
+                disp = display.SDLDisplay(
+                    self.window_title(),
+                    self.highdpi.is_set(),
+                    self.software_renderer.is_set(),
+                    self.altf4quit.is_set()
+                )
             self._display.set(disp)
         return jit.promote(disp)
 
