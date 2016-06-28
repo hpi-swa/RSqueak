@@ -1,7 +1,8 @@
 {
 	"category" : "ORM",
 	"classinstvars" : [
-		 ],
+		"Mode",
+		"Foo" ],
 	"classvars" : [
 		 ],
 	"commentStamp" : "",
