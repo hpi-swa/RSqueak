@@ -6,9 +6,11 @@
 		 ],
 	"commentStamp" : "",
 	"instvars" : [
-		 ],
-	"name" : "SQLiteTests",
+		"id",
+		"name",
+		"salary" ],
+	"name" : "SQLTestRecord",
 	"pools" : [
 		 ],
-	"super" : "SQLDatabaseTests",
+	"super" : "Object",
 	"type" : "normal" }

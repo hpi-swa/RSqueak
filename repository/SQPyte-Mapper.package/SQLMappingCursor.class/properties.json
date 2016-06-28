@@ -1,14 +1,15 @@
 {
-	"category" : "SQPyte-Tests",
+	"category" : "SQPyte-Mapper",
 	"classinstvars" : [
 		 ],
 	"classvars" : [
 		 ],
 	"commentStamp" : "",
 	"instvars" : [
-		 ],
-	"name" : "SQLiteTests",
+		"cursor",
+		"mapping" ],
+	"name" : "SQLMappingCursor",
 	"pools" : [
 		 ],
-	"super" : "SQLDatabaseTests",
+	"super" : "Object",
 	"type" : "normal" }

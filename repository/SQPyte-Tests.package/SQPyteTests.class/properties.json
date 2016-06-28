@@ -10,5 +10,5 @@
 	"name" : "SQPyteTests",
 	"pools" : [
 		 ],
-	"super" : "AbstractSQPyteTests",
+	"super" : "SQLDatabaseTests",
 	"type" : "normal" }
