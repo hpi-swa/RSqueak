@@ -18,16 +18,20 @@ realpath() {
 
 FILETREE_PATH=$(realpath repository)
 
-read -d '' CODE <<EOF || true
+cat > "${HOME}/runSQPyteTests.st" <<EOF
+    | fileTreeRepoDirectory |
     FileStream startUp: true.
-
+    fileTreeRepoDirectory := FileDirectory on: '${FILETREE_PATH}'.
     Gofer new
-        repository: 'filetree://${FILETREE_PATH}';
+        repository: (MCFileTreeRepository new directory: fileTreeRepoDirectory);
         package: 'SQPyte-Core';
         package: 'SQPyte-Tests';
         load.
-
-    SCISqueakTestReport runClasses: {SQLiteTests. SQPyteTests} named: 'test'.
+    SCISqueakTestReport runClasses: {(Smalltalk at: #SQLiteTests). (Smalltalk at: #SQPyteTests)} named: 'test'.
+    Smalltalk at: #WorldState ifPresent: [:global |
+        global addDeferredUIMessage: [
+            Smalltalk at: #SmalltalkImage ifPresent: [:image |
+                image current snapshot: false andQuit: true ]]]
 EOF
 
 if [[ -z "${IMAGE}" ]]; then
@@ -58,7 +62,7 @@ if [[ ! -f "${IMAGE}" ]]; then
 fi
 
 echo "==== Run tests..."
-./rsqueak -r "${CODE}" "${IMAGE}"
+./rsqueak "${IMAGE}" "${HOME}/runSQPyteTests.st"
 
 if [[ -z "${RESULT_CMD}" ]]; then
     RESULT_CMD="/tmp/print_test_results.py"
