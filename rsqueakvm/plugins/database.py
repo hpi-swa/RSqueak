@@ -21,7 +21,7 @@ DatabasePlugin = Plugin()
 class SQLConnection(object):
     _immutable_fields_ = ['db', 'statement_cache']
     # 0: no db, 1: SQLite, 2: SQPyte
-    db_mode = 2
+    db_mode = [2]
 
     def __init__(self, space, db_class, filename):
         self.space = space
@@ -321,5 +321,5 @@ def primitiveSQLClose(interp, s_frame, w_rcvr, db_handle):
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveSQLModeSwitch(interp, s_frame, w_rcvr, mode):
-    SQLConnection.db_mode = mode
+    SQLConnection.db_mode[0] = mode
     return interp.space.w_nil

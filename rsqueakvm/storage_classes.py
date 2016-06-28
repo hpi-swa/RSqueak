@@ -234,7 +234,7 @@ class ClassShadow(AbstractCachingShadow):
         if instance_kind == POINTERS:
             size = self.instsize() + extrasize
 
-            if SQLConnection.db_mode != 0 and inherits_from(w_cls, self.space):
+            if SQLConnection.db_mode[0] != 0 and inherits_from(w_cls, self.space):
                 w_new = W_DBObject(self.space, w_cls, size)
             else:
                 w_new = W_PointersObject(self.space, w_cls, size)

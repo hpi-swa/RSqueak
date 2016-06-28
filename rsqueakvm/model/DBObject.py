@@ -9,8 +9,8 @@ from rsqueakvm.error import PrimitiveFailedError
 class W_DBObject(W_PointersObject):
 
     _attrs_ = ["id", "class_name"]
-    db_connection = None
-    id_counter = 0
+    db_connection = [None]
+    id_counter = [0]
     column_types_for_table = {}
     # Maps from DBObject id to DBObject and only includes DBObjects which are
     # referenced from an attribute of a DBObject.
@@ -18,18 +18,18 @@ class W_DBObject(W_PointersObject):
 
     @staticmethod
     def connection(space):
-        if W_DBObject.db_connection is None:
+        if W_DBObject.db_connection[0] is None:
             # print("Establish connection")
-            print "DBMode:", SQLConnection.db_mode
-            db = interpreter.SQLite3DB if SQLConnection.db_mode == 1 else interpreter.SQPyteDB
-            W_DBObject.db_connection = SQLConnection(space, db, ":memory:")
-        assert W_DBObject.db_connection is not None
-        return W_DBObject.db_connection
+            print "DBMode:", SQLConnection.db_mode[0]
+            db = interpreter.SQLite3DB if SQLConnection.db_mode[0] == 1 else interpreter.SQPyteDB
+            W_DBObject.db_connection[0] = SQLConnection(space, db, ":memory:")
+        assert W_DBObject.db_connection[0] is not None
+        return W_DBObject.db_connection[0]
 
     @staticmethod
     def next_id():
-        theId = W_DBObject.id_counter
-        W_DBObject.id_counter += 1
+        theId = W_DBObject.id_counter[0]
+        W_DBObject.id_counter[0] += 1
         return theId
 
     @jit.unroll_safe
