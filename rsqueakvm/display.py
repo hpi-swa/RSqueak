@@ -49,12 +49,13 @@ class SDLDisplay(object):
                "altf4quit",
                "width", "height", "depth", "screen_surface", "has_surface",
                "mouse_position", "button", "key", "interrupt_key", "_defer_updates",
-               "_deferred_events", "bpp", "pitch", "highdpi"]
+               "_deferred_events", "bpp", "pitch", "highdpi", "software_renderer"]
 
-    def __init__(self, title, highdpi, altf4quit):
+    def __init__(self, title, highdpi, software_renderer, altf4quit):
         self._init_sdl()
         self.title = title
         self.highdpi = highdpi
+        self.software_renderer = software_renderer
         self.altf4quit = altf4quit
         SDLCursor.has_display = True
         self.window = lltype.nullptr(RSDL.WindowPtr.TO)
@@ -88,6 +89,8 @@ class SDLDisplay(object):
         flags = RSDL.WINDOW_RESIZABLE
         if self.highdpi:
             flags |= RSDL.WINDOW_ALLOW_HIGHDPI
+        if self.software_renderer:
+            flags |= RSDL.RENDERER_SOFTWARE
         self.window = RSDL.CreateWindow(self.title, x, y, width, height, flags)
         # https://wiki.libsdl.org/SDL_CreateRenderer#flags: "Note that providing
         # no flags gives priority to available SDL_RENDERER_ACCELERATED
