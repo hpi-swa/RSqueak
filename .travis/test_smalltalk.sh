@@ -53,8 +53,6 @@ if [[ -z "${IMAGE}" ]]; then
     IMAGE=$(realpath "${IMAGE_PATH}")
 
     popd
-else
-    IMAGE_DIR=$(dirname "${IMAGE}")
 fi
 
 if [[ ! -f "${IMAGE}" ]]; then
@@ -73,6 +71,4 @@ if [[ -z "${RESULT_CMD}" ]]; then
     fi
 fi
 
-if [[ -n "${RESULT_CMD}" ]]; then
-    "${RESULT_CMD}" "${IMAGE_DIR}"
-fi
+"${RESULT_CMD}" "$(dirname "${IMAGE}")"
