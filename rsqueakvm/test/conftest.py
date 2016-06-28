@@ -80,3 +80,10 @@ def pytest_assertrepr_compare(op, left, right):
                 [str(op) for op in left.trace] +
                 ["-----------------"] +
                 [str(op) for op in right.trace])
+
+
+# Disable image loading output during testing
+def fake_update(self, new_steps=-1):
+    pass
+from rsqueakvm.util.progress import Progress
+Progress.update = fake_update
