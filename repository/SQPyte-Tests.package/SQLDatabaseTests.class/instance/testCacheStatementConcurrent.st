@@ -8,7 +8,9 @@ testCacheStatementConcurrent
 	query1 := database execute: 'SELECT * FROM employees'.
 	query2 := database execute: 'SELECT * FROM employees'.
 	
-	self assert: query1 next equals: #(1 'John Smith' 12.5).
-	self assert: query2 next equals: #(1 'John Smith' 12.5).
-	self assert: query1 next equals: nil.
-	self assert: query2 next equals: nil.
+	self assert: #(1 'John Smith' 12.5) equals: query1 next.
+	self assert: #(1 'John Smith' 12.5) equals: query2 next.
+	self assert: #(2 'Jane Smith' 16.7) equals: query1 next.
+	self assert: #(2 'Jane Smith' 16.7) equals: query2 next.
+	self assert: nil equals: query1 next.
+	self assert: nil equals: query2 next.

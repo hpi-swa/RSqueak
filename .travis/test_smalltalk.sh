@@ -25,6 +25,7 @@ cat > "${HOME}/runSQPyteTests.st" <<EOF
     Gofer new
         repository: (MCFileTreeRepository new directory: fileTreeRepoDirectory);
         package: 'SQPyte-Core';
+        package: 'SQPyte-Mapper';
         package: 'SQPyte-Tests';
         load.
     SCISqueakTestReport runClasses: {(Smalltalk at: #SQLiteTests). (Smalltalk at: #SQPyteTests)} named: 'test'.
