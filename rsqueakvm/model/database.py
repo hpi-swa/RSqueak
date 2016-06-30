@@ -12,6 +12,11 @@ class W_DBObject_State:
         # Maps from DBObject id to DBObject and only includes DBObjects which
         # are referenced from an attribute of a DBObject.
         self.db_objects = {}
+        self.class_names = {}
+
+    @jit.elidable
+    def get_column_types(self, w_dbobject):
+        return self.column_types_for_table[w_dbobject]
 
 
 class W_DBObject(W_PointersObject):
@@ -24,7 +29,6 @@ class W_DBObject(W_PointersObject):
         if W_DBObject.state.db_connection is not None:
             return W_DBObject.state.db_connection
         assert dbm.driver is not None
-        # print("Establish connection")
         print "DBMode: %s" % dbm.driver
         connection = SQLConnection(space, dbm.driver, ":memory:")
         assert connection is not None
@@ -44,38 +48,50 @@ class W_DBObject(W_PointersObject):
 
         # remove " class" from the classname
         self.class_name = w_class.classname(space).split(" ")[0]
-        if self.class_name not in W_DBObject.state.column_types_for_table:
-            W_DBObject.state.column_types_for_table[self.class_name] = {}
+        if self not in W_DBObject.state.column_types_for_table:
+            W_DBObject.state.column_types_for_table[self] = [''] * size
 
-        create_sql = ("CREATE TABLE IF NOT EXISTS %s (id INTEGER);" %
-                      self.class_name)
-        # print create_sql
+        connection = W_DBObject.connection(space)
+        if self.class_name not in W_DBObject.state.class_names:
+            create_sql = ("CREATE TABLE IF NOT EXISTS %s (id INTEGER);" %
+                          self.class_name)
+            connection.execute(create_sql)
+            W_DBObject.state.class_names[self.class_name] = True
 
-        W_DBObject.connection(space).execute(create_sql)
-        insert_sql = "INSERT INTO %s (id) VALUES (?);" % self.class_name
-        # print insert_sql
-        W_DBObject.connection(space).execute(insert_sql, [self.w_id(space)])
+        connection.execute(self._insert_sql(), [self.w_id(space)])
 
     def w_id(self, space):
         return space.wrap_int(self.id)
 
-    def get_column_types(self):
-        return W_DBObject.state.column_types_for_table[self.class_name]
+    @jit.elidable
+    def _insert_sql(self):
+        return "INSERT INTO %s (id) VALUES (?);" % self.class_name
+
+    @jit.elidable
+    def _select_sql(self, n0):
+        return ("SELECT inst_var_%s FROM %s WHERE id=?;" %
+                (n0, self.class_name))
+
+    @jit.elidable
+    def _alter_sql(self, n0, aType):
+        return ("ALTER TABLE %s ADD COLUMN inst_var_%s %s;" %
+                (self.class_name, n0, aType))
+
+    @jit.elidable
+    def _update_sql(self, n0):
+        return "UPDATE %s SET inst_var_%s=? WHERE id=?" % (self.class_name, n0)
 
     def fetch(self, space, n0):
-        if n0 not in self.get_column_types():
+        if not W_DBObject.state.get_column_types(self)[n0]:
             # print "Can't find column. Falling back to default fetch."
             return W_PointersObject.fetch(self, space, n0)
 
-        query_sql = ("SELECT inst_var_%s FROM %s WHERE id=?;" %
-                     (n0, self.class_name))
-        # print query_sql
         connection = W_DBObject.connection(space)
-        cursor = connection.execute(query_sql, [self.w_id(space)])
+        cursor = connection.execute(self._select_sql(n0), [self.w_id(space)])
 
         w_result = space.unwrap_array(cursor.next())
         if w_result:
-            if self.get_column_types()[n0] == "blob":
+            if W_DBObject.state.get_column_types(self)[n0] == "blob":
                 db_id = space.unwrap_int(w_result[0])
                 return W_DBObject.state.db_objects[db_id]
             else:
@@ -84,7 +100,6 @@ class W_DBObject(W_PointersObject):
             raise PrimitiveFailedError
 
     def store(self, space, n0, w_value):
-
         cls = w_value.getclass(space)
         if (cls.is_same_object(space.w_String)):
             aType = "text"
@@ -105,18 +120,12 @@ class W_DBObject(W_PointersObject):
                 # print 'Falling back to standard store.'
                 return W_PointersObject.store(self, space, n0, w_value)
 
-        if aType != "__nil__" and n0 not in self.get_column_types():
-            alter_sql = ("ALTER TABLE %s ADD COLUMN inst_var_%s %s;" %
-                         (self.class_name, n0, aType))
-            # print alter_sql
-            W_DBObject.connection(space).execute(alter_sql)
+        if (aType != "__nil__" and
+                not W_DBObject.state.get_column_types(self)[n0]):
+            W_DBObject.connection(space).execute(self._alter_sql(n0, aType))
             # print "invalidate cache"
             W_DBObject.connection(space).statement_cache.invalidate()
+            W_DBObject.state.get_column_types(self)[n0] = aType
 
-            self.get_column_types()[n0] = aType
-
-        update_sql = ("UPDATE %s SET inst_var_%s=? WHERE id=?" %
-                      (self.class_name, n0))
-        # print update_sql
         connection = W_DBObject.connection(space)
-        connection.execute(update_sql, [w_value, self.w_id(space)])
+        connection.execute(self._update_sql(n0), [w_value, self.w_id(space)])
