@@ -6,7 +6,6 @@ from rsqueakvm.error import PrimitiveFailedError
 
 class W_DBObject_State:
     def __init__(self):
-        self.db_connection = None
         self.id_counter = 0
         self.column_types_for_table = {}
         # Maps from DBObject id to DBObject and only includes DBObjects which
@@ -28,17 +27,6 @@ class W_DBObject(W_PointersObject):
     state = W_DBObject_State()
 
     @staticmethod
-    def connection(space):
-        if W_DBObject.state.db_connection is not None:
-            return W_DBObject.state.db_connection
-        assert dbm.driver is not None
-        print "DBMode: %s" % dbm.driver
-        connection = SQLConnection(space, dbm.driver, ":memory:")
-        assert connection is not None
-        W_DBObject.state.db_connection = connection
-        return connection
-
-    @staticmethod
     def next_id():
         theId = W_DBObject.state.id_counter
         W_DBObject.state.id_counter += 1
@@ -54,7 +42,7 @@ class W_DBObject(W_PointersObject):
         if self.class_name not in W_DBObject.state.column_types_for_table:
             W_DBObject.state.column_types_for_table[self.class_name] = [''] * size
 
-        connection = W_DBObject.connection(space)
+        connection = dbm.connection(space)
         if self.class_name not in W_DBObject.state.class_names:
             create_sql = ("CREATE TABLE IF NOT EXISTS %s (id INTEGER);" %
                           self.class_name)
@@ -89,7 +77,7 @@ class W_DBObject(W_PointersObject):
             # print "Can't find column. Falling back to default fetch."
             return W_PointersObject.fetch(self, space, n0)
 
-        connection = W_DBObject.connection(space)
+        connection = dbm.connection(space)
         cursor = connection.execute(self._select_sql(n0), [self.w_id(space)])
 
         w_result = space.unwrap_array(cursor.next())
@@ -125,10 +113,10 @@ class W_DBObject(W_PointersObject):
 
         if (aType != "__nil__" and
                 W_DBObject.state.get_column_types(self)[n0] == ''):
-            W_DBObject.connection(space).execute(self._alter_sql(n0, aType))
+            dbm.connection(space).execute(self._alter_sql(n0, aType))
             # print "invalidate cache"
-            W_DBObject.connection(space).statement_cache.invalidate()
+            dbm.connection(space).statement_cache.invalidate()
             W_DBObject.state.set_column_type(self, n0, aType)
 
-        connection = W_DBObject.connection(space)
+        connection = dbm.connection(space)
         connection.execute(self._update_sql(n0), [w_value, self.w_id(space)])
