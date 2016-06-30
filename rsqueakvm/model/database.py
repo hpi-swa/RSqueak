@@ -43,7 +43,7 @@ class W_DBObject_State:
     # break out of the trace and compile a new bridge, anyway. When that
     # happens, this was already run once, so we don't need to do it again.
     @jit.not_in_trace
-    def create_column_types_if_neccessary(self, class_name):
+    def create_column_types_if_neccessary(self, class_name, size):
         if class_name not in self.column_types_for_table:
             W_DBObject.state.column_types_for_table[class_name] = [''] * size
 
@@ -51,7 +51,8 @@ class W_DBObject_State:
     @jit.not_in_trace
     def create_table_if_neccessary(self, class_name, connection):
         if class_name not in W_DBObject.state.class_names:
-            create_sql = ("CREATE TABLE IF NOT EXISTS %s (id INTEGER);" % class_name)
+            create_sql = ("CREATE TABLE IF NOT EXISTS %s (id INTEGER);" %
+                          class_name)
             connection.execute(create_sql)
             W_DBObject.state.class_names[class_name] = True
 
@@ -78,25 +79,25 @@ class W_DBObject(W_PointersObject):
         W_DBObject.state.id_counter += 1
         return theId
 
-    @jit.elidable
     @staticmethod
+    @jit.elidable
     def _insert_sql(class_name):
         return "INSERT INTO %s (id) VALUES (?);" % class_name
 
-    @jit.elidable
     @staticmethod
+    @jit.elidable
     def _select_sql(class_name, n0):
         return ("SELECT inst_var_%s FROM %s WHERE id=?;" %
                 (n0, class_name))
 
-    @jit.elidable
     @staticmethod
+    @jit.elidable
     def _alter_sql(class_name, n0, aType):
         return ("ALTER TABLE %s ADD COLUMN inst_var_%s %s;" %
                 (class_name, n0, aType))
 
-    @jit.elidable
     @staticmethod
+    @jit.elidable
     def _update_sql(class_name, n0):
         return "UPDATE %s SET inst_var_%s=? WHERE id=?" % (class_name, n0)
 
@@ -106,10 +107,11 @@ class W_DBObject(W_PointersObject):
         self.id = W_DBObject.next_id()
 
         class_name = self.class_name(space)
-        W_DBObject.state.create_column_types_if_neccessary(class_name)
+        W_DBObject.state.create_column_types_if_neccessary(class_name, size)
         connection = W_DBObject.connection(space)
         W_DBObject.state.create_table_if_neccessary(class_name, connection)
-        connection.execute(W_DBObject._insert_sql(class_name), [self.w_id(space)])
+        connection.execute(W_DBObject._insert_sql(class_name),
+                           [self.w_id(space)])
 
     def class_name(self, space):
         return jit.promote(self.classname(space))
@@ -124,7 +126,8 @@ class W_DBObject(W_PointersObject):
             return W_PointersObject.fetch(self, space, n0)
 
         connection = W_DBObject.connection(space)
-        cursor = connection.execute(W_DBObject._select_sql(class_name, n0), [self.w_id(space)])
+        cursor = connection.execute(W_DBObject._select_sql(class_name, n0),
+                                    [self.w_id(space)])
 
         w_result = space.unwrap_array(cursor.next())
         if w_result:
@@ -161,11 +164,13 @@ class W_DBObject(W_PointersObject):
         class_name = self.class_name(space)
 
         if (aType is not NIL and
-            W_DBObject.state.get_column_type(class_name, n0) is NIL):
-            W_DBObject.connection(space).execute(W_DBObject._alter_sql(class_name, n0, aType))
+                W_DBObject.state.get_column_type(class_name, n0) is NIL):
+            W_DBObject.connection(space).execute(
+                W_DBObject._alter_sql(class_name, n0, aType))
             # print "invalidate cache"
             W_DBObject.connection(space).statement_cache.invalidate()
             W_DBObject.state.set_column_type(class_name, n0, aType)
 
         connection = W_DBObject.connection(space)
-        connection.execute(W_DBObject._update_sql(class_name, n0), [w_value, self.w_id(space)])
+        connection.execute(W_DBObject._update_sql(class_name, n0),
+                           [w_value, self.w_id(space)])
