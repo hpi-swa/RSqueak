@@ -14,5 +14,5 @@
 	"name" : "EloMatch",
 	"pools" : [
 		 ],
-	"super" : "Object",
+	"super" : "DBObject",
 	"type" : "normal" }

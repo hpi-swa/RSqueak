@@ -22,5 +22,5 @@
 	"name" : "EloDataGenerator",
 	"pools" : [
 		 ],
-	"super" : "Object",
+	"super" : "DBObject",
 	"type" : "normal" }

@@ -12,5 +12,5 @@
 	"name" : "EloPlayer",
 	"pools" : [
 		 ],
-	"super" : "Object",
+	"super" : "DBObject",
 	"type" : "normal" }
