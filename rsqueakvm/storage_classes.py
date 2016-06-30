@@ -23,7 +23,7 @@ LARGE_POSITIVE_INTEGER = 6
 FORWARDER_AND_INVALID = 7
 
 # TODO: refactor
-@jit.elidable
+# @jit.elidable  # translation fails when turned on
 def inherits_from(w_cls, space):
     s_cls = w_cls.class_shadow(space)
     while s_cls is not None:
