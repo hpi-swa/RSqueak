@@ -16,7 +16,10 @@ class W_DBObject_State:
 
     @jit.elidable
     def get_column_types(self, w_dbobject):
-        return self.column_types_for_table[w_dbobject]
+        return self.column_types_for_table[w_dbobject.class_name]
+
+    def set_column_type(self, w_dbobject, position, value):
+        self.get_column_types(w_dbobject)[position] = value
 
 
 class W_DBObject(W_PointersObject):
@@ -48,8 +51,8 @@ class W_DBObject(W_PointersObject):
 
         # remove " class" from the classname
         self.class_name = w_class.classname(space).split(" ")[0]
-        if self not in W_DBObject.state.column_types_for_table:
-            W_DBObject.state.column_types_for_table[self] = [''] * size
+        if self.class_name not in W_DBObject.state.column_types_for_table:
+            W_DBObject.state.column_types_for_table[self.class_name] = [''] * size
 
         connection = W_DBObject.connection(space)
         if self.class_name not in W_DBObject.state.class_names:
@@ -121,11 +124,11 @@ class W_DBObject(W_PointersObject):
                 return W_PointersObject.store(self, space, n0, w_value)
 
         if (aType != "__nil__" and
-                not W_DBObject.state.get_column_types(self)[n0]):
+                W_DBObject.state.get_column_types(self)[n0] == ''):
             W_DBObject.connection(space).execute(self._alter_sql(n0, aType))
             # print "invalidate cache"
             W_DBObject.connection(space).statement_cache.invalidate()
-            W_DBObject.state.get_column_types(self)[n0] = aType
+            W_DBObject.state.set_column_type(self, n0, aType)
 
         connection = W_DBObject.connection(space)
         connection.execute(self._update_sql(n0), [w_value, self.w_id(space)])
