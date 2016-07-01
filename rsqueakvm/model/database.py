@@ -126,7 +126,7 @@ class W_DBObject(W_PointersObject):
 
     def fetch(self, space, n0):
         class_name = self.class_name(space)
-        if not W_DBObject.state.get_column_type(class_name, n0):
+        if W_DBObject.state.get_column_type(class_name, n0) is NIL:
             # print "Can't find column. Falling back to default fetch."
             return W_PointersObject.fetch(self, space, n0)
 
