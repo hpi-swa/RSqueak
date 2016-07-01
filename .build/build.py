@@ -6,7 +6,8 @@ if __name__ == "__main__":
     sys.argv[0] = 'rpython'  # required for sqpyte hacks
 
     if not any(arg.startswith("-O") for arg in sys.argv):
-        sys.argv.append("--batch")
+        if os.environ.get("TRAVIS", None) or os.environ.get("APPVEYOR", None):
+            sys.argv.append("--batch")
         sys.argv.append("-Ojit")
     if not any(arg.startswith("--gcrootfinder") for arg in sys.argv):
         # default to shadowstack, so all platforms are created equal
