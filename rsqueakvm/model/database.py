@@ -11,13 +11,55 @@ INTEGER = DBType()
 REAL = DBType()
 BLOB = DBType()
 
+ALTER_SQL = "ALTER TABLE %s ADD COLUMN inst_var_%s %s;"
+CREATE_SQL = "CREATE TABLE IF NOT EXISTS %s (id INTEGER);"
+INSERT_SQL = "INSERT INTO %s (id) VALUES (?);"
+SELECT_SQL = "SELECT inst_var_%s FROM %s WHERE id=?;"
+UPDATE_SQL = "UPDATE %s SET inst_var_%s=? WHERE id=?"
+
+
+@jit.elidable
+def insert_sql(class_name):
+    return INSERT_SQL % class_name
+
+
+@jit.elidable
+def select_sql(class_name, n0):
+    return SELECT_SQL % (n0, class_name)
+
+
+@jit.elidable
+def alter_sql(class_name, n0, dbtype):
+    if dbtype is NIL:
+        strtype = ""
+    elif dbtype is TEXT:
+        strtype = "text"
+    elif dbtype is INTEGER:
+        strtype = "integer"
+    elif dbtype is REAL:
+        strtype = "real"
+    elif dbtype is BLOB:
+        strtype = "blob"
+    else:
+        assert False
+    return ALTER_SQL % (class_name, n0, strtype)
+
+
+@jit.elidable
+def update_sql(class_name, n0):
+    return UPDATE_SQL % (class_name, n0)
+
+
+@jit.elidable
+def create_sql(class_name):
+    return CREATE_SQL % class_name
+
 
 class W_DBObject_State:
     _immutable_fields_ = ["db_connection?", "column_types_for_table",
                           "db_objects", "class_names"]
 
     def __init__(self):
-        self.db_connection = None
         self.id_counter = 0
         self.column_types_for_table = {}
         # Maps from DBObject id to DBObject and only includes DBObjects which
@@ -44,7 +86,7 @@ class W_DBObject_State:
     # break out of the trace and compile a new bridge, anyway. When that
     # happens, this was already run once, so we don't need to do it again.
     @jit.not_in_trace
-    def create_column_types_if_neccessary(self, class_name, size):
+    def init_column_types_if_neccessary(self, class_name, size):
         if class_name not in self.column_types_for_table:
             W_DBObject.state.column_types_for_table[class_name] = [NIL] * size
 
@@ -52,8 +94,7 @@ class W_DBObject_State:
     @jit.not_in_trace
     def create_table_if_neccessary(self, class_name, connection):
         if class_name not in W_DBObject.state.class_names:
-            create_sql = ("CREATE TABLE IF NOT EXISTS %s (id INTEGER);" % class_name)
-            connection.execute(create_sql)
+            connection.execute(create_sql(class_name))
             W_DBObject.state.class_names[class_name] = True
 
 
@@ -63,55 +104,10 @@ class W_DBObject(W_PointersObject):
     state = W_DBObject_State()
 
     @staticmethod
-    def connection(space):
-        if W_DBObject.state.db_connection is not None:
-            return W_DBObject.state.db_connection
-        assert dbm.driver is not None
-        print "DBMode: %s" % dbm.driver
-        connection = SQLConnection(space, dbm.driver, ":memory:")
-        assert connection is not None
-        W_DBObject.state.db_connection = connection
-        return connection
-
-    @staticmethod
     def next_id():
         theId = W_DBObject.state.id_counter
         W_DBObject.state.id_counter += 1
         return theId
-
-    @staticmethod
-    @jit.elidable
-    def _insert_sql(class_name):
-        return "INSERT INTO %s (id) VALUES (?);" % class_name
-
-    @staticmethod
-    @jit.elidable
-    def _select_sql(class_name, n0):
-        return ("SELECT inst_var_%s FROM %s WHERE id=?;" %
-                (n0, class_name))
-
-    @staticmethod
-    @jit.elidable
-    def _alter_sql(class_name, n0, dbtype):
-        if dbtype is NIL:
-            strtype = ""
-        elif dbtype is TEXT:
-            strtype = "text"
-        elif dbtype is INTEGER:
-            strtype = "integer"
-        elif dbtype is REAL:
-            strtype = "real"
-        elif dbtype is BLOB:
-            strtype = "blob"
-        else:
-            assert False
-        return ("ALTER TABLE %s ADD COLUMN inst_var_%s %s;" %
-                (class_name, n0, strtype))
-
-    @staticmethod
-    @jit.elidable
-    def _update_sql(class_name, n0):
-        return "UPDATE %s SET inst_var_%s=? WHERE id=?" % (class_name, n0)
 
     @jit.unroll_safe
     def __init__(self, space, w_class, size, weak=False):
@@ -119,10 +115,10 @@ class W_DBObject(W_PointersObject):
         self.id = W_DBObject.next_id()
 
         class_name = self.class_name(space)
-        W_DBObject.state.create_column_types_if_neccessary(class_name, size)
-        connection = W_DBObject.connection(space)
+        W_DBObject.state.init_column_types_if_neccessary(class_name, size)
+        connection = dbm.connection(space)
         W_DBObject.state.create_table_if_neccessary(class_name, connection)
-        connection.execute(W_DBObject._insert_sql(class_name), [self.w_id(space)])
+        connection.execute(insert_sql(class_name), [self.w_id(space)])
 
     def class_name(self, space):
         return jit.promote_string(self.classname(space))
@@ -136,8 +132,8 @@ class W_DBObject(W_PointersObject):
             # print "Can't find column. Falling back to default fetch."
             return W_PointersObject.fetch(self, space, n0)
 
-        connection = W_DBObject.connection(space)
-        cursor = connection.execute(W_DBObject._select_sql(class_name, n0), [self.w_id(space)])
+        cursor = dbm.connection(space).execute(
+            select_sql(class_name, n0), [self.w_id(space)])
 
         w_result = space.unwrap_array(cursor.next())
         if w_result:
@@ -174,11 +170,13 @@ class W_DBObject(W_PointersObject):
         class_name = self.class_name(space)
 
         if (aType is not NIL and
-            W_DBObject.state.get_column_type(class_name, n0) is NIL):
-            W_DBObject.connection(space).execute(W_DBObject._alter_sql(class_name, n0, aType))
+                W_DBObject.state.get_column_type(class_name, n0) is NIL):
+            connection = dbm.connection(space)
+            connection.execute(alter_sql(class_name, n0, aType))
             # print "invalidate cache"
-            W_DBObject.connection(space).statement_cache.invalidate()
+            connection.statement_cache.invalidate()
             W_DBObject.state.set_column_type(class_name, n0, aType)
 
-        connection = W_DBObject.connection(space)
-        connection.execute(W_DBObject._update_sql(class_name, n0), [w_value, self.w_id(space)])
+        connection = dbm.connection(space)
+        connection.execute(update_sql(class_name, n0),
+                           [w_value, self.w_id(space)])

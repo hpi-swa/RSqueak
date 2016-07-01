@@ -257,11 +257,23 @@ class DBManager(object):
 
     def __init__(self):
         self.driver = interpreter.SQPyteDB  # Driver for DBObjects
+        self.db_file_name = ":memory:"
+        self.db_connection = None
 
         self._db_count = 0
         self._dbs = {}
         self._cursor_count = 0
         self._cursors = {}
+
+    def connection(self, space):
+        if self.db_connection is not None:
+            return self.db_connection
+        assert self.driver is not None
+        print "DBMode: %s" % self.driver
+        connection = SQLConnection(space, self.driver, self.db_file_name)
+        assert connection is not None
+        self.db_connection = connection
+        return connection
 
     def connect(self, space, db_class, filename):
         handle = self._db_count
@@ -367,4 +379,14 @@ def primitiveSQLModeSwitch(interp, s_frame, w_rcvr, mode):
         dbm.driver = interpreter.SQPyteDB
     else:
         dbm.driver = None
+    return interp.space.w_nil
+
+@DatabasePlugin.expose_primitive(unwrap_spec=[object, str])
+def primitiveSetDBFile(interp, s_frame, w_rcvr, db_file_name):
+    dbm.db_file_name = db_file_name
+    return interp.space.w_nil
+
+@DatabasePlugin.expose_primitive(unwrap_spec=[object])
+def primitiveCloseDBObject(interp, s_frame, w_rcvr):
+    dbm.connection(interp.space).close()
     return interp.space.w_nil
