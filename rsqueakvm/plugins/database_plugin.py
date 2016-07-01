@@ -254,6 +254,7 @@ class StatementCache(object):
 
 
 class DBManager(object):
+    _immutable_fields_ = ["db_connection?"]
 
     def __init__(self):
         self.driver = interpreter.SQPyteDB  # Driver for DBObjects
@@ -324,11 +325,6 @@ class DBManager(object):
 
 
 dbm = DBManager()
-
-
-def startup(space, argv):
-    dbm.connection(space)
-PluginStartupScripts.append(startup)
 
 
 ###############################################################################

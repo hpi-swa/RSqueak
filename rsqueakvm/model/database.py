@@ -1,6 +1,6 @@
 from rsqueakvm.model.pointers import W_PointersObject
 from rpython.rlib import jit
-from rsqueakvm.plugins.database import dbm, SQLConnection
+from rsqueakvm.plugins.database_plugin import dbm, SQLConnection
 from rsqueakvm.error import PrimitiveFailedError
 
 

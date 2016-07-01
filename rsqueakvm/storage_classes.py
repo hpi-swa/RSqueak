@@ -7,7 +7,7 @@ from rsqueakvm.model.database import W_DBObject
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.storage import AbstractCachingShadow, AbstractGenericShadow
 from rsqueakvm.util.version import elidable_for_version, Version
-from rsqueakvm.plugins.database import dbm
+from rsqueakvm.plugins.database_plugin import dbm
 
 from rpython.rlib import jit
 
