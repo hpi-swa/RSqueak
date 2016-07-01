@@ -79,19 +79,19 @@ class W_DBObject(W_PointersObject):
         W_DBObject.state.id_counter += 1
         return theId
 
-    @jit.elidable
     @staticmethod
+    @jit.elidable
     def _insert_sql(class_name):
         return "INSERT INTO %s (id) VALUES (?);" % class_name
 
-    @jit.elidable
     @staticmethod
+    @jit.elidable
     def _select_sql(class_name, n0):
         return ("SELECT inst_var_%s FROM %s WHERE id=?;" %
                 (n0, class_name))
 
-    @jit.elidable
     @staticmethod
+    @jit.elidable
     def _alter_sql(class_name, n0, dbtype):
         if dbtype is NIL:
             strtype = ""
@@ -108,8 +108,8 @@ class W_DBObject(W_PointersObject):
         return ("ALTER TABLE %s ADD COLUMN inst_var_%s %s;" %
                 (class_name, n0, strtype))
 
-    @jit.elidable
     @staticmethod
+    @jit.elidable
     def _update_sql(class_name, n0):
         return "UPDATE %s SET inst_var_%s=? WHERE id=?" % (class_name, n0)
 
@@ -170,7 +170,7 @@ class W_DBObject(W_PointersObject):
                 # print 'Falling back to standard store.'
                 return W_PointersObject.store(self, space, n0, w_value)
 
-        aType = jit.promote_string(aType)
+        aType = jit.promote(aType)
         class_name = self.class_name(space)
 
         if (aType is not NIL and

@@ -224,7 +224,7 @@ class ClassShadow(AbstractCachingShadow):
         instance_kind = self.get_instance_kind()
         if instance_kind == POINTERS:
             size = self.instsize() + extrasize
-            if dbm.driver is not None and self.inherits_from_dbobject(self):
+            if dbm.driver is not None and self.inherits_from_dbobject():
                 w_new = W_DBObject(self.space, w_cls, size)
             else:
                 w_new = W_PointersObject(self.space, w_cls, size)
