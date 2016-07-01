@@ -50,7 +50,7 @@ def ensure_32bit_environment():
             os.environ["CC"] = os.getenv("CC", "cc") + " -m32"
             os.environ["CFLAGS"] = os.getenv("CFLAGS", "") + " -m32"
             os.environ["PYTHONPATH"] = os.getenv("PYTHONPATH", "") + ":" + cp.get("Linux", "pygame_cffi")
-            if cp.get("Linux", "SDL32bit"):
+            if cp.has_option("Linux", "SDL32bit"):
                 os.environ["SDL_PREFIX"] = cp.get("Linux", "SDL32bit")
             child = subprocess.Popen([py] + sys.argv)
         elif "darwin" == sys.platform and "64bit" in platform.architecture()[0]:
@@ -109,7 +109,7 @@ def prepare_environment_variables():
 
 cp, config = load_config()
 if "64bit" in sys.argv:
-    if cp.get("Linux", "SDL64bit"):
+    if cp.has_option("Linux", "SDL64bit"):
         os.environ["SDL_PREFIX"] = cp.get("Linux", "SDL64bit")
     sys.argv.remove("64bit")
 else:
