@@ -44,7 +44,7 @@ class W_DBObject_State:
     # break out of the trace and compile a new bridge, anyway. When that
     # happens, this was already run once, so we don't need to do it again.
     @jit.not_in_trace
-    def create_column_types_if_neccessary(self, class_name):
+    def create_column_types_if_neccessary(self, class_name, size):
         if class_name not in self.column_types_for_table:
             W_DBObject.state.column_types_for_table[class_name] = [NIL] * size
 
@@ -119,7 +119,7 @@ class W_DBObject(W_PointersObject):
         self.id = W_DBObject.next_id()
 
         class_name = self.class_name(space)
-        W_DBObject.state.create_column_types_if_neccessary(class_name)
+        W_DBObject.state.create_column_types_if_neccessary(class_name, size)
         connection = W_DBObject.connection(space)
         W_DBObject.state.create_table_if_neccessary(class_name, connection)
         connection.execute(W_DBObject._insert_sql(class_name), [self.w_id(space)])
