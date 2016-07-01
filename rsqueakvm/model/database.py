@@ -4,11 +4,12 @@ from rsqueakvm.plugins.database import dbm, SQLConnection
 from rsqueakvm.error import PrimitiveFailedError
 
 
-NIL = ''
-TEXT = 'text'
-INTEGER = 'integer'
-REAL = 'real'
-BLOB = 'blob'
+class DBType(object): pass
+NIL = DBType()
+TEXT = DBType()
+INTEGER = DBType()
+REAL = DBType()
+BLOB = DBType()
 
 
 class W_DBObject_State:
@@ -25,9 +26,9 @@ class W_DBObject_State:
         self.class_names = {}
 
     def get_column_type(self, class_name, n0):
-        str_type = self.get_column_types(class_name)
-        if str_type != NIL:
-            return jit.promote(str_type)
+        dbtype = self.get_column_types(class_name)[n0]
+        if dbtype != NIL:
+            return jit.promote(dbtype)
         else:
             return NIL
 
@@ -45,7 +46,7 @@ class W_DBObject_State:
     @jit.not_in_trace
     def create_column_types_if_neccessary(self, class_name):
         if class_name not in self.column_types_for_table:
-            W_DBObject.state.column_types_for_table[class_name] = [''] * size
+            W_DBObject.state.column_types_for_table[class_name] = [NIL] * size
 
     # Same reason as above
     @jit.not_in_trace
@@ -91,9 +92,21 @@ class W_DBObject(W_PointersObject):
 
     @jit.elidable
     @staticmethod
-    def _alter_sql(class_name, n0, aType):
+    def _alter_sql(class_name, n0, dbtype):
+        if dbtype is NIL:
+            strtype = ""
+        elif dbtype is TEXT:
+            strtype = "text"
+        elif dbtype is INTEGER:
+            strtype = "integer"
+        elif dbtype is REAL:
+            strtype = "real"
+        elif dbtype is BLOB:
+            strtype = "blob"
+        else:
+            assert False
         return ("ALTER TABLE %s ADD COLUMN inst_var_%s %s;" %
-                (class_name, n0, aType))
+                (class_name, n0, strtype))
 
     @jit.elidable
     @staticmethod
@@ -112,7 +125,7 @@ class W_DBObject(W_PointersObject):
         connection.execute(W_DBObject._insert_sql(class_name), [self.w_id(space)])
 
     def class_name(self, space):
-        return jit.promote(self.classname(space))
+        return jit.promote_string(self.classname(space))
 
     def w_id(self, space):
         return space.wrap_int(self.id)

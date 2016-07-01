@@ -22,18 +22,6 @@ FLOAT = 5
 LARGE_POSITIVE_INTEGER = 6
 FORWARDER_AND_INVALID = 7
 
-# TODO: refactor
-@jit.elidable
-def inherits_from(w_cls, space):
-    s_cls = w_cls.class_shadow(space)
-    while s_cls is not None:
-        if not s_cls.provides_getname:
-            break
-        if s_cls.getname() == "DBObject class":
-            return True
-        s_cls = s_cls.s_superclass()
-    return False
-
 class ClassShadowError(error.SmalltalkException):
     exception_type = "ClassShadowError"
 
@@ -236,7 +224,7 @@ class ClassShadow(AbstractCachingShadow):
         instance_kind = self.get_instance_kind()
         if instance_kind == POINTERS:
             size = self.instsize() + extrasize
-            if dbm.driver is not None and inherits_from(w_cls, self.space):
+            if dbm.driver is not None and self.inherits_from_dbobject(self):
                 w_new = W_DBObject(self.space, w_cls, size)
             else:
                 w_new = W_PointersObject(self.space, w_cls, size)
@@ -282,6 +270,15 @@ class ClassShadow(AbstractCachingShadow):
     @elidable_for_version(0)
     def getname(self):
         return self.name
+
+    @elidable_for_version(0)
+    def inherits_from_dbobject(self):
+        if self.getname() == "DBObject":
+            return True
+        s_superclass = self.s_superclass()
+        if s_superclass:
+            return s_superclass.inherits_from_dbobject()
+        return False
 
     # _______________________________________________________________
     # Methods for querying the format word, taken from the blue book:
