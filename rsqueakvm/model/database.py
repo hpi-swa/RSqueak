@@ -109,11 +109,9 @@ class W_DBObject(W_PointersObject):
         W_DBObject.state.id_counter += 1
         return theId
 
-    @jit.unroll_safe
     def __init__(self, space, w_class, size, weak=False):
         W_PointersObject.__init__(self, space, w_class, size, weak)
         self.id = W_DBObject.next_id()
-
         class_name = self.class_name(space)
         W_DBObject.state.init_column_types_if_neccessary(class_name, size)
         connection = dbm.connection(space)
