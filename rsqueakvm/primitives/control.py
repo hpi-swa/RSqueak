@@ -86,8 +86,29 @@ def func(interp, s_frame, w_rcvr, w_arg):
         # TODO: this should also work to change bytes to words and such
         raise PrimitiveNotYetWrittenError
 
+def find_plugins():
+    import os
+    files = os.listdir(os.path.join(os.path.dirname(__file__), "..", "plugins"))
+    plugins = []
+    plugin_names = []
+    for filename in files:
+        if "_" not in filename or filename.startswith("_") or not filename.endswith(".py"):
+            continue
+        modulename = filename.replace(".py", "")
+        module = getattr(getattr(
+            __import__("rsqueakvm.plugins.%s" % modulename), "plugins"), modulename)
+        pluginname = "".join([f.capitalize() for f in modulename.split("_")])
+        plugin = getattr(module, pluginname)
+        plugin_names.append(pluginname)
+        plugins.append(plugin)
+    print "Building with\n\t" + "\n\t".join(plugin_names)
+    return plugin_names, plugins
+ExternalPluginNames, ExternalPlugins = find_plugins()
+
+
 @expose_primitive(EXTERNAL_CALL, clean_stack=False, no_result=True,
                   compiled_method=True)
+@jit.unroll_safe
 def func(interp, s_frame, argcount, w_method):
     space = interp.space
     w_description = w_method.literalat0(space, 1)
@@ -111,41 +132,20 @@ def func(interp, s_frame, argcount, w_method):
     signature = (space.unwrap_string(w_modulename), space.unwrap_string(w_functionname))
 
     if (not constants.IS_64BIT) and interp.space.use_plugins.is_set():
-        from rsqueakvm.plugins.squeak_plugin_proxy import IProxy, MissingPlugin
+        from rsqueakvm.plugins.iproxy import IProxy, MissingPlugin
         try:
             return IProxy.call(signature, interp, s_frame, argcount, w_method)
         except MissingPlugin:
             pass
 
-    if False: pass  # just elifs
-    elif signature[0] == 'LargeIntegers':
-        from rsqueakvm.plugins.large_integer import LargeIntegerPlugin
-        return LargeIntegerPlugin.call(signature[1], interp, s_frame,
-                                       argcount, w_method)
-    elif signature[0] == 'MiscPrimitivePlugin':
-        from rsqueakvm.plugins.misc import MiscPrimitivePlugin
-        return MiscPrimitivePlugin.call(signature[1], interp, s_frame,
-                                        argcount, w_method)
-    elif signature[0] == 'DatabasePlugin':
-        from rsqueakvm.plugins.database import DatabasePlugin
-        return DatabasePlugin.call(signature[1], interp, s_frame,
-                                        argcount, w_method)
-    elif signature[0] == "SocketPlugin":
-        from rsqueakvm.plugins.socket import SocketPlugin
-        return SocketPlugin.call(signature[1], interp, s_frame, argcount,
-                                 w_method)
-    elif signature[0] == "FilePlugin":
-        from rsqueakvm.plugins.fileplugin import FilePlugin
-        return FilePlugin.call(signature[1], interp, s_frame, argcount,
-                               w_method)
-    elif signature[0] == "VMDebugging":
-        from rsqueakvm.plugins.vmdebugging import DebuggingPlugin
-        return DebuggingPlugin.call(signature[1], interp, s_frame, argcount,
-                                    w_method)
-    else:
-        from rsqueakvm.plugins.simulation import SimulationPlugin
-        return SimulationPlugin.simulate(w_functionname, signature, interp,
-                                         s_frame, argcount, w_method)
+    for i, p in enumerate(ExternalPluginNames):
+        if signature[0] == p:
+            return ExternalPlugins[i].call(signature[1], interp, s_frame, argcount, w_method)
+
+    # If all else fails, try to simulate
+    from rsqueakvm.plugins.simulation import SimulationPlugin
+    return SimulationPlugin.simulate(w_functionname, signature, interp,
+                                     s_frame, argcount, w_method)
 
 @expose_primitive(COMPILED_METHOD_FLUSH_CACHE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):

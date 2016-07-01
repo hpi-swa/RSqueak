@@ -168,7 +168,7 @@ def func(interp, s_frame, argcount):
 @expose_primitive(VM_LOADED_MODULES, unwrap_spec=[int])
 def func(interp, s_frame, index):
     if interp.space.use_plugins.is_set():
-        from rsqueakvm.plugins.squeak_plugin_proxy import IProxy
+        from rsqueakvm.plugins.iproxy import IProxy
         modulenames = IProxy.loaded_module_names()
         try:
             return interp.space.wrap_string(modulenames[index])

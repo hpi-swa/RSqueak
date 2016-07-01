@@ -3,7 +3,7 @@ from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.primitives import prim_table
 from rsqueakvm.primitives.bytecodes import *
 
-LargeIntegerPlugin = Plugin()
+LargeIntegers = Plugin()
 
 bitops = {
     'primDigitBitAnd': BIT_AND,
@@ -17,7 +17,7 @@ for name, primitive in bitops.items():
         def func(interp, s_frame, argcount):
             return primfunc(interp, s_frame, argcount)
         func.func_name = name
-        LargeIntegerPlugin.expose_primitive(clean_stack=False, no_result=True)(func)
+        LargeIntegers.expose_primitive(clean_stack=False, no_result=True)(func)
     make_func(primitive)
 
 negOps = {
@@ -33,7 +33,7 @@ for name, primitive in negOps.items():
             neg = interp.space.w_true is s_frame.pop()
             return primfunc(interp, s_frame, 2)
         func.func_name = name
-        LargeIntegerPlugin.expose_primitive()(func)
+        LargeIntegers.expose_primitive()(func)
     make_func(primitive)
 
 ops = {
@@ -54,5 +54,5 @@ for name, primitive in ops.items():
                 raise PrimitiveFailedError
             return primfunc(interp, s_frame, argcount)
         func.func_name = name
-        LargeIntegerPlugin.expose_primitive(clean_stack=False, no_result=True)(func)
+        LargeIntegers.expose_primitive(clean_stack=False, no_result=True)(func)
     make_func(primitive)

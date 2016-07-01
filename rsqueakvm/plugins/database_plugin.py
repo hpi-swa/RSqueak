@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from rsqueakvm.error import PrimitiveFailedError
-from rsqueakvm.plugins.plugin import Plugin
+from rsqueakvm.plugins.plugin import Plugin, PluginStartupScripts
 from rsqueakvm.primitives.bytecodes import *
 
 from rpython.rlib import jit
@@ -324,6 +324,11 @@ class DBManager(object):
 
 
 dbm = DBManager()
+
+
+def startup(space, argv):
+    dbm.connection(space)
+PluginStartupScripts.append(startup)
 
 
 ###############################################################################

@@ -107,8 +107,9 @@ class ObjSpace(object):
         self.set_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, image_name)
         self.image_loaded.activate()
         self.init_system_attributes(argv)
-        from rpython.rlib.rsocket import rsocket_startup
-        rsocket_startup()
+        from rsqueakvm.plugins.plugin import PluginStartupScripts
+        for func in PluginStartupScripts:
+            func(self, argv)
 
     def init_system_attributes(self, argv):
         for i in xrange(1, len(argv)):
