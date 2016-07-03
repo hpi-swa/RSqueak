@@ -133,13 +133,13 @@ class W_DBObject(W_PointersObject):
         cursor = dbm.connection(space).execute(
             select_sql(class_name, n0), [self.w_id(space)])
 
-        w_result = space.unwrap_array(cursor.next())
+        w_result = cursor.next().fetch(space, 0)
         if w_result:
             if W_DBObject.state.get_column_type(class_name, n0) is BLOB:
-                db_id = space.unwrap_int(w_result[0])
+                db_id = space.unwrap_int(w_result)
                 return W_DBObject.state.db_objects[db_id]
             else:
-                return w_result[0]
+                return w_result
         else:
             raise PrimitiveFailedError
 

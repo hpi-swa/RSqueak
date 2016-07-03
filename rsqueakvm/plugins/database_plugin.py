@@ -113,7 +113,9 @@ class SQLCursor(object):
             self._reset()
         else:
             raise PrimitiveFailedError('strange result: %s' % rc)
-        return self.space.wrap_list(w_row)
+        # This should be unroll safe, since fetch_one_row was also marked
+        # unroll_safe.
+        return self.space.wrap_list_unroll_safe(w_row)
 
     def column_count(self):
         column_count = self.statement.query.data_count()
