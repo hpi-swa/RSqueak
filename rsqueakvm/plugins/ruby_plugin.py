@@ -21,6 +21,13 @@ from topaz.error import RubyError, print_traceback
 from rpython.rlib import objectmodel, jit
 
 
+# Patch-out virtualizables from Topaz so that translation works
+from topaz.frame import Frame as TopazFrame
+from topaz.interpreter import Interpreter as TopazInterpreter
+delattr(TopazFrame, "_virtualizable_")
+delattr(TopazInterpreter.jitdriver, "virtualizables")
+
+
 RubyPlugin = Plugin()
 ruby_space = ObjectSpace(None)
 
