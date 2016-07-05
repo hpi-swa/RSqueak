@@ -46,8 +46,8 @@ def func(interp, s_frame, w_rcvr):
 
 @expose_primitive(QUIT, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    from rsqueakvm.error import Exit
-    raise Exit('Quit-Primitive called')
+    from rsqueakvm import error
+    raise error.CleanExit('Quit-Primitive called')
 
 @expose_primitive(EXIT_TO_DEBUGGER, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):

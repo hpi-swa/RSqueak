@@ -72,6 +72,8 @@ class ObjSpace(object):
         self.run_spy_hacks = ConstantFlag()
         self.headless = ConstantFlag()
         self.highdpi = ConstantFlag(True)
+        self.software_renderer = ConstantFlag(False)
+        self.no_display = ConstantFlag(False)
         self.use_plugins = ConstantFlag()
         self.omit_printing_raw_bytes = ConstantFlag()
         self.image_loaded = ConstantFlag()
@@ -219,10 +221,9 @@ class ObjSpace(object):
             return W_LargePositiveInteger1Word(val)
 
     @jit.unroll_safe
+    @specialize.argtype(1)
     @specialize.arg(2)
     def wrap_large_number(self, val, w_class):
-        # import pdb; pdb.set_trace()
-        assert isinstance(val, r_ulonglong)
         inst_size = self._number_bytesize(val)
         w_result = w_class.as_class_get_shadow(self).new(inst_size)
         for i in range(inst_size):
@@ -231,8 +232,9 @@ class ObjSpace(object):
         return w_result
 
     @jit.unroll_safe
+    @specialize.argtype(1)
     def _number_bytesize(self, val):
-        assert val != 0
+        if val == 0: return 1
         sz = 0
         while val != 0:
             sz += 1
@@ -241,7 +243,7 @@ class ObjSpace(object):
 
     @specialize.argtype(1)
     def wrap_ulonglong(self, val):
-        assert val > 0 and not is_valid_int(val)
+        assert val >= 0
         r_val = r_ulonglong(val)
         w_class = self.w_LargePositiveInteger
         return self.wrap_large_number(r_val, w_class)
@@ -250,7 +252,7 @@ class ObjSpace(object):
     def wrap_nlonglong(self, val):
         if self.w_LargeNegativeInteger is None:
             raise WrappingError
-        assert val < 0 and not is_valid_int(val)
+        assert val < 0
         try:
             r_val = r_ulonglong(-val)
         except OverflowError:
@@ -298,6 +300,20 @@ class ObjSpace(object):
                     return self.wrap_nlonglong(val)
         # handles the rest and raises if necessary
         return self.wrap_int(val)
+
+    def wrap_longlonglong(self, val):
+        assert isinstance(val, r_longlonglong)
+        assert constants.IS_64BIT
+        if val > 0:
+            return self.wrap_large_number(val, self.w_LargePositiveInteger)
+        else:
+            if self.w_LargeNegativeInteger is None:
+                raise WrappingError
+            try:
+                r_val = r_longlonglong(-val)
+            except OverflowError:
+                raise WrappingError
+            return self.wrap_large_number(r_val, self.w_LargeNegativeInteger)
 
     def wrap_float(self, i):
         return W_Float(i)
@@ -385,11 +401,16 @@ class ObjSpace(object):
         disp = self._display.get()
         if disp is None:
             # Create lazy to allow headless execution.
-            disp = display.SDLDisplay(
-                self.window_title(),
-                self.highdpi.is_set(),
-                self.altf4quit.is_set()
-            )
+            if self.no_display.is_set():
+                disp = display.NullDisplay()
+                print 'Attaching a dummy display...'
+            else:
+                disp = display.SDLDisplay(
+                    self.window_title(),
+                    self.highdpi.is_set(),
+                    self.software_renderer.is_set(),
+                    self.altf4quit.is_set()
+                )
             self._display.set(disp)
         return jit.promote(disp)
 

@@ -98,14 +98,14 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                 for i, spec in unrolling_unwrap_spec:
                     index = len_unwrap_spec - 1 - i
                     w_arg = s_frame.peek(index)
-                    if spec is int:
+                    if spec is r_int64:
+                        args += (interp.space.unwrap_longlong(w_arg),)
+                    elif spec is int:
                         args += (interp.space.unwrap_int(w_arg), )
                     elif spec is pos_32bit_int:
                         args += (interp.space.unwrap_positive_wordsize_int(w_arg),)
                     elif spec is r_uint:
                         args += (interp.space.unwrap_uint(w_arg),)
-                    elif spec is r_int64:
-                        args += (interp.space.unwrap_longlong(w_arg),)
                     elif spec is index1_0:
                         args += (interp.space.unwrap_int(w_arg)-1, )
                     elif spec is float:
