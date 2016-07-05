@@ -5,8 +5,6 @@ testElo: aNumber usingSQPyte: aBool
 FileStream startUp: true.
 a := SQLDatabase open: ':memory:' usingSQPyte: aBool.
 
-time := [
-
 a execute: 'CREATE TABLE IF NOT EXISTS MATCHES (playerIdA integer, playerIdB integer, winnerId integer);'.
 a execute: 'CREATE TABLE IF NOT EXISTS PLAYERS (playerId integer, rank integer);'.
 
@@ -21,6 +19,8 @@ FileStream stdout nextPut: $p.
 FileStream stdout nextPut: $m.
 rng := Random seed: 1.
 count := 0.
+
+time := [
 
 matchCount timesRepeat: [ | rankA rankB winner playerA playerB playerBRow delta outcome expected scoreDiff |
 	playerA := (rng next * playerCount) ceiling.
