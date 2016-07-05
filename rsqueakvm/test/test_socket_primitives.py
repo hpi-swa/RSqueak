@@ -7,7 +7,7 @@ from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.primitives import prim_table
 from rsqueakvm.primitives.bytecodes import EXTERNAL_CALL
 from rsqueakvm.error import PrimitiveFailedError
-from rsqueakvm.plugins import socket as socket
+from rsqueakvm.plugins import socket_plugin as socket
 
 from .util import create_space, copy_to_module, cleanup_module, TestInterpreter, very_slow_test
 from .test_interpreter import run_with_faked_primitive_methods

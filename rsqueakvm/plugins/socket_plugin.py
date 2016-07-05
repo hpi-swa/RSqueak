@@ -3,7 +3,7 @@ import errno
 from rsqueakvm import error
 from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.variable import W_BytesObject
-from rsqueakvm.plugins.plugin import Plugin
+from rsqueakvm.plugins.plugin import Plugin, PluginStartupScripts
 from rsqueakvm.util.system import IS_WINDOWS
 
 from rpython.rlib import rsocket, _rsocket_rffi, jit, objectmodel
@@ -32,6 +32,12 @@ ResolverUninitialized = 0
 ResolverReady = 1
 ResolverBusy = 2
 ResolverError = 3
+
+def startup(space, argv):
+    from rpython.rlib.rsocket import rsocket_startup
+    rsocket_startup()
+PluginStartupScripts.append(startup)
+
 
 class SocketPluginClass(Plugin):
     _attrs_ = ["fds", "sockets", "last_lookup"]
