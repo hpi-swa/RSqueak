@@ -1,10 +1,11 @@
 from rsqueakvm.model.pointers import W_PointersObject
 from rpython.rlib import jit
-from rsqueakvm.plugins.database_plugin import dbm, SQLConnection
+from rsqueakvm.plugins.database_plugin import dbm
 from rsqueakvm.error import PrimitiveFailedError
 
 
-class DBType(object): pass
+class DBType(object):
+    pass
 NIL = DBType()
 TEXT = DBType()
 INTEGER = DBType()
