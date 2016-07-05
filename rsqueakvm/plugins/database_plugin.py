@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from rsqueakvm.error import PrimitiveFailedError
-from rsqueakvm.plugins.plugin import Plugin, PluginStartupScripts
+from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.primitives.bytecodes import *
 
 from rpython.rlib import jit
@@ -384,10 +384,12 @@ def primitiveSQLModeSwitch(interp, s_frame, w_rcvr, mode):
         dbm.driver = None
     return interp.space.w_nil
 
+
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, str])
 def primitiveSetDBFile(interp, s_frame, w_rcvr, db_file_name):
     dbm.db_file_name = db_file_name
     return interp.space.w_nil
+
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object])
 def primitiveCloseDBObject(interp, s_frame, w_rcvr):

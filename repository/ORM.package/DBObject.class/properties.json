@@ -2,7 +2,7 @@
 	"category" : "ORM",
 	"classinstvars" : [
 		"Mode",
-		"Foo" ],
+		"DBFileName" ],
 	"classvars" : [
 		 ],
 	"commentStamp" : "",
