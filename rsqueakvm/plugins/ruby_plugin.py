@@ -92,7 +92,7 @@ class W_RubyObject(W_AbstractObjectWithIdentityHash):
         return W_RubyObject(self.wr_object.getclass(ruby_space))
 
     def class_shadow(self, space):
-        W_RubyObject.pure_class_shadow(space, self.wr_object)
+        return W_RubyObject.pure_class_shadow(space, self.wr_object)
 
     @staticmethod
     @jit.elidable
