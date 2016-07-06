@@ -318,6 +318,7 @@ class ObjSpace(object):
     def wrap_float(self, i):
         return W_Float(i)
 
+    @jit.look_inside_iff(lambda self, string: jit.isconstant(string))
     def wrap_string(self, string):
         w_inst = self.w_String.as_class_get_shadow(self).new(len(string))
         for i in range(len(string)):
