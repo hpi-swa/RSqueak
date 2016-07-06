@@ -92,12 +92,12 @@ class W_RubyObject(W_AbstractObjectWithIdentityHash):
         return W_RubyObject(self.wr_object.getclass(ruby_space))
 
     def class_shadow(self, space):
-        return W_RubyObject.pure_class_shadow(space, self.wr_object)
+        wr_class = ruby_space.getclass(self.wr_object)
+        return W_RubyObject.pure_class_shadow(space, wr_class)
 
     @staticmethod
     @jit.elidable
-    def pure_class_shadow(space, wr_object):
-        wr_class = ruby_space.getclass(wr_object)
+    def pure_class_shadow(space, wr_class):
         return RubyClassShadowCache.setdefault(wr_class, RubyClassShadow(space, wr_class))
 
     def is_same_object(self, other):
@@ -147,7 +147,6 @@ class RubyClassShadow(ClassShadow):
             w_selector
         ]
         return w_cm
-
 
 @RubyPlugin.expose_primitive(unwrap_spec=[object, str])
 def eval(interp, s_frame, w_rcvr, source):
