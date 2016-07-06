@@ -91,9 +91,13 @@ class W_RubyObject(W_AbstractObjectWithIdentityHash):
     def getclass(self, space):
         return W_RubyObject(self.wr_object.getclass(ruby_space))
 
-    @jit.elidable
     def class_shadow(self, space):
-        wr_class = ruby_space.getclass(self.wr_object)
+        W_RubyObject.pure_class_shadow(space, self.wr_object)
+
+    @staticmethod
+    @jit.elidable
+    def pure_class_shadow(space, wr_object):
+        wr_class = ruby_space.getclass(wr_object)
         return RubyClassShadowCache.setdefault(wr_class, RubyClassShadow(space, wr_class))
 
     def is_same_object(self, other):
@@ -101,12 +105,16 @@ class W_RubyObject(W_AbstractObjectWithIdentityHash):
 
 RubyClassShadowCache = {}
 
+
 class RubyClassShadow(ClassShadow):
     _attrs_ = ["wr_class"]
     _immutable_fields_ = ["wr_class"]
     def __init__(self, space, wr_class):
         self.wr_class = wr_class
         AbstractCachingShadow.__init__(self, space, space.w_nil, 0, space.w_nil)
+
+    def changed(self):
+        pass # Changes to Ruby classes are handled in Ruby land
 
     def lookup(self, w_selector):
         return self._lookup(w_selector, self.wr_class.version)
