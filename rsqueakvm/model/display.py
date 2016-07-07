@@ -118,7 +118,7 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
         if self.pixelbuffer_words > 0:
             start = max(self.word_from_pixel(left, top), 0)
             stop = min(self.word_from_pixel(right, bottom), self.size() - 1)
-            if stop < start:
+            if stop <= start:
                 return
             self.force_words(start, stop)
 
@@ -165,13 +165,13 @@ class W_32BitDisplayBitmap(W_DisplayBitmap):
 
     def force_words(self, start, stop):
         if self.is_headless(): return
-        assert start >= 0 and stop >= 0 and self.size() >= stop and self.pixelbuffer_words >= stop and stop >= start
-        pixbuf = rffi.ptradd(self.display().get_pixelbuffer(), start)
-        realbuf = rffi.ptradd(self._real_depth_buffer, start)
-        rffi.c_memcpy(
-            rffi.cast(rffi.VOIDP, pixbuf),
-            rffi.cast(rffi.VOIDP, realbuf),
-            (stop - start) * constants.BYTES_PER_WORD)  # VOIDP is char*, we want to copy word*
+        if start >= 0 and stop >= 0 and self.size() > stop and self.pixelbuffer_words > stop and stop > start:
+            pixbuf = rffi.ptradd(self.display().get_pixelbuffer(), start)
+            realbuf = rffi.ptradd(self._real_depth_buffer, start)
+            rffi.c_memcpy(
+                rffi.cast(rffi.VOIDP, pixbuf),
+                rffi.cast(rffi.VOIDP, realbuf),
+                (stop - start) * constants.BYTES_PER_WORD)  # VOIDP is char*, we want to copy word*
 
 
 class W_16BitDisplayBitmap(W_DisplayBitmap):
