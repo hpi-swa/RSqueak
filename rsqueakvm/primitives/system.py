@@ -1,7 +1,7 @@
 from rpython.rlib import jit, objectmodel
 
 from rsqueakvm import constants
-from rsqueakvm.error import PrimitiveFailedError, MetaPrimFailed
+from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.numeric import W_SmallInteger
 from rsqueakvm.primitives import expose_primitive
 from rsqueakvm.primitives.bytecodes import *
@@ -35,10 +35,12 @@ def func(interp, s_frame, w_rcvr, flag):
 # ___________________________________________________________________________
 # VM implementor primitives
 
-@expose_primitive(META_PRIM_FAILED, unwrap_spec=[object, int])
+@expose_primitive(META_PRIM_FAILED, unwrap_spec=[object, int], result_is_new_frame=True)
 def func(interp, s_frame, w_rcvr, primFailFlag):
+    from rsqueakvm.storage_contexts import DirtyContext
     if primFailFlag != 0:
-        raise MetaPrimFailed(s_frame, primFailFlag)
+        s_fallback = interp.unwind_primitive_simulation(s_frame, primFailFlag)
+        return s_fallback
     raise PrimitiveFailedError
 
 @expose_primitive(VM_PARAMETERS)
