@@ -1,7 +1,8 @@
 from rsqueakvm.model.pointers import W_PointersObject
-from rpython.rlib import jit
-from rsqueakvm.plugins.database_plugin import dbm
+from rsqueakvm.database import dbm
 from rsqueakvm.error import PrimitiveFailedError
+
+from rpython.rlib import jit
 
 
 class DBType(object):
@@ -103,6 +104,7 @@ class W_DBObject(W_PointersObject):
     _attrs_ = ["id"]
     _immutable_fields_ = ["id"]
     state = W_DBObject_State()
+    repr_classname = "W_DBObject"
 
     @staticmethod
     def next_id():
@@ -110,8 +112,11 @@ class W_DBObject(W_PointersObject):
         W_DBObject.state.id_counter += 1
         return theId
 
-    def __init__(self, space, w_class, size, weak=False):
+    def __init__(self, space, w_class, size, weak=False, object_id=-1):
         W_PointersObject.__init__(self, space, w_class, size, weak)
+        if object_id > 0:
+            self.id = object_id
+            return
         self.id = W_DBObject.next_id()
         class_name = self.class_name(space)
         W_DBObject.state.init_column_types_if_neccessary(class_name, size)
@@ -124,6 +129,12 @@ class W_DBObject(W_PointersObject):
 
     def w_id(self, space):
         return space.wrap_int(self.id)
+
+    def is_same_object(self, other):
+        if not isinstance(other, W_DBObject):
+            return False
+        # IDs are unique at the moment, so no need to check class_name as well
+        return self.id == other.id
 
     def fetch(self, space, n0):
         class_name = self.class_name(space)
