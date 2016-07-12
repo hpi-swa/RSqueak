@@ -102,10 +102,8 @@ def primitiveSQLAllInstances(interp, s_frame, w_class):
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveSQLNextObject(interp, s_frame, w_rcvr, cursor_handle):
     query = dbm.cursor(cursor_handle).raw_next()
-    if query.column_type(0) == CConfig.SQLITE_NULL:
+    if query is None or query.column_type(0) != CConfig.SQLITE_INTEGER:
         return interp.space.w_nil
-    elif query.column_type(0) != CConfig.SQLITE_INTEGER:
-        raise PrimitiveFailedError('First column not an integer')
     object_id = query.column_int64(0)
     num_cols = query.data_count()
     obj = W_DBObject(interp.space, w_rcvr, num_cols, object_id=object_id)
