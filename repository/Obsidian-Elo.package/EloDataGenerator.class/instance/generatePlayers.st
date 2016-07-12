@@ -1,5 +1,5 @@
 instance-generation
 generatePlayers
 
-	^(1 to: self numPlayers) collect: [ :each |
+	^(0 to: self numPlayers) collect: [ :each |
 		self generatePlayer: each]

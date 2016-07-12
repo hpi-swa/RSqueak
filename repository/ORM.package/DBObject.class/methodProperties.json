@@ -4,6 +4,9 @@
 		"DBFileName:" : "fw 6/30/2016 15:49",
 		"Mode" : "fw 6/23/2016 14:41",
 		"Mode:" : "fw 6/23/2016 16:46",
-		"close" : "fw 6/30/2016 16:44" },
+		"allInstancesDo:" : "fn 7/12/2016 18:56",
+		"close" : "fw 6/30/2016 16:44",
+		"primitiveSQLAllInstances" : "fn 7/12/2016 16:23",
+		"primitiveSQLNextObject:" : "fn 7/12/2016 16:55" },
 	"instance" : {
 		 } }
