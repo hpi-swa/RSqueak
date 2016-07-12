@@ -165,11 +165,18 @@ def func(interp, s_frame, argcount):
 # list the n-th loaded module
 @expose_primitive(VM_LOADED_MODULES, unwrap_spec=[int])
 def func(interp, s_frame, index):
+    from rsqueakvm.primitives.control import ExternalPluginNames
+    offset = 0
     if interp.space.use_plugins.is_set():
         from rsqueakvm.plugins.iproxy import IProxy
         modulenames = IProxy.loaded_module_names()
+        offset = len(modulenames)
         try:
             return interp.space.wrap_string(modulenames[index])
         except IndexError:
-            return interp.space.w_nil
+            pass
+    try:
+        return interp.space.wrap_string(ExternalPluginNames[index + offset])
+    except IndexError:
+        pass
     return interp.space.w_nil
