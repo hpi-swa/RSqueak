@@ -40,6 +40,7 @@ def func(interp, s_frame, w_rcvr, primFailFlag):
     from rsqueakvm.storage_contexts import DirtyContext
     if primFailFlag != 0:
         s_fallback = interp.unwind_primitive_simulation(s_frame, primFailFlag)
+        s_fallback.state = DirtyContext
         return s_fallback
     raise PrimitiveFailedError
 
