@@ -101,7 +101,7 @@ class W_DBObject_State:
 
 
 class W_DBObject(W_PointersObject):
-    _attrs_ = ["id"]
+    _attrs_ = ["id", "ivar_cache"]
     _immutable_fields_ = ["id"]
     state = W_DBObject_State()
     repr_classname = "W_DBObject"
@@ -114,6 +114,7 @@ class W_DBObject(W_PointersObject):
 
     def __init__(self, space, w_class, size, weak=False, object_id=-1):
         W_PointersObject.__init__(self, space, w_class, size, weak)
+        self.ivar_cache = [None] * size
         if object_id > 0:
             self.id = object_id
             return
@@ -142,6 +143,9 @@ class W_DBObject(W_PointersObject):
             # print "Can't find column. Falling back to default fetch."
             return W_PointersObject.fetch(self, space, n0)
 
+        if self.ivar_cache[n0] is not None:
+            return self.ivar_cache[n0]
+
         cursor = dbm.connection(space).execute(
             select_sql(class_name, n0), [self.w_id(space)])
 
@@ -149,13 +153,16 @@ class W_DBObject(W_PointersObject):
         if w_result:
             if W_DBObject.state.get_column_type(class_name, n0) is BLOB:
                 db_id = space.unwrap_int(w_result)
-                return W_DBObject.state.db_objects[db_id]
-            else:
-                return w_result
+                w_result = W_DBObject.state.db_objects[db_id]
+
+            self.ivar_cache[n0] = w_result
+            return w_result
         else:
             raise PrimitiveFailedError
 
     def store(self, space, n0, w_value):
+        self.ivar_cache[n0] = w_value
+
         cls = w_value.getclass(space)
         if (cls.is_same_object(space.w_String)):
             aType = TEXT
