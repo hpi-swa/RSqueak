@@ -377,7 +377,7 @@ class Config(object):
 
 
 def entry_point(argv):
-    jit.set_param(None, "trace_limit", 16000)
+    jit.set_param(None, "trace_limit", 1000000)
     # == Main execution parameters
     space = prebuilt_space
     cfg = Config(space, argv)
@@ -519,6 +519,15 @@ def execute_context(interp, s_frame):
 # _____ Target and Main _____
 
 def target(driver, *args):
+    driver.config.translation.suggest(**{
+        "jit": True,
+        "jit_opencoder_model": "big",
+    })
+    driver.config.translation.set(gcrootfinder="shadowstack")
+    if system.IS_WINDOWS:
+        driver.config.translation.suggest(**{
+            "icon": os.path.join(os.path.dirname(__file__), "rsqueak.ico")
+        })
     driver.exe_name = "rsqueak"
     return safe_entry_point, None
 
