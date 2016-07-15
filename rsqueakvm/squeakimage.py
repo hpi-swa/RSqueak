@@ -564,7 +564,7 @@ class SpurReader(BaseReaderStrategy):
                     assert bridgeSpanMagicHeader == FINAL_BRIDGE_HEADER
                 break
             segmentEnd = segmentEnd + nextSegmentSize
-            # address swizzle is in bytes, but bridgeSpan is in image words 
+            # address swizzle is in bytes, but bridgeSpan is in image words
             currentAddressSwizzle += (bridgeSpan * (8 if self.version.is_64bit else 4))
         self.stream.close()
         return self.chunklist # return for testing
@@ -628,7 +628,13 @@ class SpurReader(BaseReaderStrategy):
             pointer = g_object.chunk.data[i]
             if (pointer & 3) == 0:
                 # pointer = ...00
-                pointers.append(self.chunks[pointer].g_object)
+                try:
+                    pointers.append(self.chunks[pointer].g_object)
+                except KeyError:
+                    print "WARN: Bogus pointer: %d. Treating as small int." % pointer
+                    small_int = GenericObject()
+                    small_int.initialize_int(pointer >> 1, self, space)
+                    pointers.append(small_int)
             elif (pointer & 1) == 1:
                 # pointer = ....1
                 # tagged integer
