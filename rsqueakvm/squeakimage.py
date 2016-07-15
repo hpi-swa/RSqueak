@@ -947,6 +947,7 @@ class SpurImageWriter(object):
         self.trace_queue = []
         self.hidden_roots = None
 
+    @objectmodel.specialize.argtype(1)
     def len_and_header(self, obj):
         import math
         n = self.fixed_and_indexable_size_for(obj)
@@ -970,6 +971,7 @@ class SpurImageWriter(object):
             return self.frame_size_for(w_home)
         return constants.COMPILED_METHOD_FULL_FRAME_SIZE
 
+    @objectmodel.specialize.argtype(1)
     def fixed_and_indexable_size_for(self, obj):
         if (isinstance(obj, W_PointersObject) and
             (obj.getclass(self.space).is_same_object(self.space.w_MethodContext) or
@@ -1086,6 +1088,7 @@ class SpurImageWriter(object):
         # assert page.fetch(self.space, minoridx).is_nil(self.space)
         page.store(self.space, minoridx, obj)
 
+    @objectmodel.specialize.argtype(1)
     def write_and_trace(self, obj):
         if obj.is_class(self.space):
             self.insert_class_into_classtable(obj)
@@ -1112,6 +1115,7 @@ class SpurImageWriter(object):
 
         assert self.f.tell() == oop + length * self.word_size + padding
 
+    @objectmodel.specialize.argtype(1)
     def reserve(self, obj):
         if isinstance(obj, W_SmallInteger):
             newoop = 0
