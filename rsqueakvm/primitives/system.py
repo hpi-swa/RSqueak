@@ -132,7 +132,7 @@ def func(interp, s_frame, argcount):
         sizeOfMachineCode = jit_hooks.stats_asmmemmgr_used(None)
         vm_w_params[45] = interp.space.wrap_int(sizeOfMachineCode)
 
-    vm_w_params[39] = interp.space.wrap_int(constants.BYTES_PER_WORD)
+    vm_w_params[39] = interp.space.wrap_int(constants.BYTES_PER_MACHINE_INT)
     vm_w_params[40] = interp.space.wrap_int(interp.image.version.magic)
     vm_w_params[55] = interp.space.wrap_int(interp.process_switch_count)
     vm_w_params[57] = interp.space.wrap_int(interp.forced_interrupt_checks_count)
