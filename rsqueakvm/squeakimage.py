@@ -1116,18 +1116,18 @@ class SpurImageWriter(object):
         if isinstance(obj, W_SmallInteger):
             newoop = 0
             if obj.value >= 0:
-                if obj.value <= constants.TAGGED_MAXINT:
+                if obj.value <= constants.TAGGED_MAXINT32:
                     newoop = (obj.value << 1) + 1
                 else:
                     return self.reserve(self.space.wrap_large_number(r_ulonglong(obj.value), self.space.w_LargePositiveInteger))
             else:
-                if obj.value >= constants.TAGGED_MININT:
+                if obj.value >= constants.TAGGED_MININT32:
                     newoop = intmask((((r_int64(1) << 31) + obj.value) << 1) + 1)
                 else:
                     return self.reserve(self.space.wrap_large_number(r_ulonglong(obj.value), self.space.w_LargeNegativeInteger))
             return (newoop, 0, 0, 0, 0)
         elif isinstance(obj, W_Character):
-            assert obj.value < constants.TAGGED_MAXINT
+            assert obj.value < constants.TAGGED_MAXINT32
             return ((obj.value << 2) + 0b10, 0, 0, 0, 0)
         else:
             oop = self.oop_map.get(obj, (0, 0, 0, 0, 0))
