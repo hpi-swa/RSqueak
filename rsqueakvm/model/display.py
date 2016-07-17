@@ -112,7 +112,7 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
         self.display().flip()
 
     def word_from_pixel(self, x, y):
-        return (x + y * self.display().width) / self.pixel_per_word()
+        return (x - 1 + (y - 1) * self.display().width) / self.pixel_per_word()
 
     def force_rectange_to_screen(self, left, right, top, bottom):
         if self.pixelbuffer_words > 0:
@@ -165,7 +165,8 @@ class W_32BitDisplayBitmap(W_DisplayBitmap):
 
     def force_words(self, start, stop):
         if self.is_headless(): return
-        if start >= 0 and stop >= 0 and self.size() > stop and self.pixelbuffer_words > stop and stop > start:
+        if (start >= 0 and stop > start and self.size() > stop and
+            self.pixelbuffer_words > stop):
             pixbuf = rffi.ptradd(self.display().get_pixelbuffer(), start)
             realbuf = rffi.ptradd(self._real_depth_buffer, start)
             rffi.c_memcpy(
