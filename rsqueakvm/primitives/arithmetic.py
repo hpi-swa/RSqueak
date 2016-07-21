@@ -167,7 +167,6 @@ math_ops = {
     FLOAT_ADD: operator.add,
     FLOAT_SUBTRACT: operator.sub,
     FLOAT_MULTIPLY: operator.mul,
-    FLOAT_DIVIDE: operator.div,
     }
 for (code, op) in math_ops.items():
     def make_func(op):
@@ -176,6 +175,12 @@ for (code, op) in math_ops.items():
             w_res = interp.space.wrap_float(op(v1, v2))
             return w_res
     make_func(op)
+
+@expose_primitive(FLOAT_DIVIDE, unwrap_spec=[float, float])
+def func(interp, s_frame, v1, v2):
+    if v2 == 0:
+        raise PrimitiveFailedError
+    return interp.space.wrap_float(v1 / v2)
 
 @expose_primitive(FLOAT_TRUNCATED, unwrap_spec=[float])
 def func(interp, s_frame, f):

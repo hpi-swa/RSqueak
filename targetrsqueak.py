@@ -77,6 +77,8 @@ def _usage(argv):
                                synthetic high-prio Process.
             -u|--stop-ui     - Only with -m or -r. Try to stop UI-process at
                                startup. Can help benchmarking.
+            --shell          - Stop after loading the image. Any code typed is
+                               compiled an run.
             --simulate-numeric-primitives
                              - This flag determines if an attempt is made to run
                                Slang Simulation code for _unimplemented_ numeric
@@ -193,6 +195,7 @@ class Config(object):
         self.trace_important = False
         self.extra_arguments_idx = len(argv)
         self.log_image_loading = False
+        self.shell = False
 
     def parse_args(self, argv, skip_bad=False):
         idx = 1
@@ -232,6 +235,8 @@ class Config(object):
             elif arg in ["-u", "--stop-ui"]:
                 from rsqueakvm.plugins.v_m_debugging import stop_ui_process
                 stop_ui_process()
+            elif arg == "--shell":
+                self.shell = True
             elif arg in ["--simulate-numeric-primitives"]:
                 self.space.simulate_numeric_primitives.activate()
             # Other
@@ -401,7 +406,7 @@ def entry_point(argv):
         print_error("%s -- %s (LoadError)" % (os.strerror(e.errno), cfg.path))
         return 1
 
-    if cfg.code or cfg.selector:
+    if cfg.code or cfg.selector or cfg.shell:
         # Mark headless mode when running code or selector
         argv.append('-headless')
 
@@ -430,6 +435,14 @@ def entry_point(argv):
         else:
             create_process(interp, s_frame)
             context = active_context(space)
+    elif cfg.shell:
+        if objectmodel.we_are_translated():
+            print "Not possible after translation"
+            return -1
+        from rsqueakvm.util.shell import Shell
+        cfg = None
+        Shell(interp, space).run()
+        return 0
     else:
         context = active_context(space)
 
@@ -444,10 +457,16 @@ def result_string(w_result):
         return ""
     return w_result.as_repr_string().replace('\r', '\n')
 
-def compile_code(interp, w_receiver, code):
-    selector = "DoIt%d" % int(time.time())
+def compile_code(interp, w_receiver, code, isclass=False, make_selector=True):
+    if make_selector:
+        selector = "DoIt%d\r\n" % int(time.time())
+    else:
+        selector = ""
     space = interp.space
-    w_receiver_class = w_receiver.getclass(space)
+    if isclass:
+        w_receiver_class = w_receiver
+    else:
+        w_receiver_class = w_receiver.getclass(space)
 
     # The suppress_process_switch flag is a hack/workaround to enable compiling code
     # before having initialized the image cleanly. The problem is that the TimingSemaphore is not yet
@@ -460,7 +479,7 @@ def compile_code(interp, w_receiver, code):
             w_result = interp.perform(
                 w_receiver_class,
                 "compile:classified:withStamp:notifying:logSource:",
-                w_arguments = [space.wrap_string("%s\r\n%s" % (selector, code)),
+                w_arguments = [space.wrap_string("".join([selector, code])),
                                space.wrap_string("spy-run-code"),
                                space.w_nil,
                                space.w_nil,
@@ -470,17 +489,17 @@ def compile_code(interp, w_receiver, code):
             w_result = interp.perform(
                 w_receiver_class,
                 "compile:classified:notifying:",
-                w_arguments = [space.wrap_string("%s\r\n%s" % (selector, code)),
+                w_arguments = [space.wrap_string("".join([selector, code])),
                                space.wrap_string("spy-run-code"),
                                space.w_nil]
             )
         # TODO - is this expected in every image?
-        if not isinstance(w_result, W_BytesObject) or space.unwrap_string(w_result) != selector:
+        if not isinstance(w_result, W_BytesObject):
             raise error.Exit("Unexpected compilation result (probably failed to compile): %s" % result_string(w_result))
     space.suppress_process_switch.deactivate()
 
     w_receiver_class.as_class_get_shadow(space).s_methoddict().sync_method_cache()
-    return selector
+    return selector.strip()
 
 def create_context(interp, w_receiver, selector, stringarg):
     args = []

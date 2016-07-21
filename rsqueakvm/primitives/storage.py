@@ -8,7 +8,7 @@ from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.primitives import expose_primitive, expose_also_as, assert_pointers, index1_0
 from rsqueakvm.primitives.bytecodes import *
 
-from rpython.rlib import jit
+from rpython.rlib import jit, objectmodel
 
 
 # ___________________________________________________________________________
@@ -68,6 +68,9 @@ def func(interp, s_frame, w_cls, size):
 
 @expose_primitive(ARRAY_BECOME_ONE_WAY, unwrap_spec=[object, object])
 def func(interp, s_frame, w_from, w_to):
+    if not objectmodel.we_are_translated():
+        if hasattr(interp, "shell_execute"):
+            return w_from
     from_w = interp.space.unwrap_array(w_from)
     to_w = interp.space.unwrap_array(w_to)
     space = interp.space
