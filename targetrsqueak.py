@@ -433,6 +433,9 @@ def entry_point(argv):
             create_process(interp, s_frame)
             context = active_context(space)
     elif cfg.shell:
+        if objectmodel.we_are_translated():
+            print "Not possible after translation"
+            return -1
         from rsqueakvm.util.shell import Shell
         cfg = None
         Shell(interp, space).run()
