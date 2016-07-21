@@ -1,6 +1,6 @@
 import readline
+import sys
 from rpython.rlib import objectmodel, unroll
-
 
 
 COMMANDS = []
@@ -60,13 +60,24 @@ def untranslated_cmd(func):
 
 class Shell(object):
     def __init__(self, interp, space):
-        if not objectmodel.we_are_translated():
-            readline.set_completer(completer)
-            readline.set_completer_delims("\t ")
+        self.set_readline()
         self.interp = interp
         self.space = space
         self.methods = {}
+        self.w_rcvr = self.space.wrap_int(0).getclass(self.space)
         space.headless.activate()
+
+    def set_readline(self):
+        if not objectmodel.we_are_translated():
+            self.old_completer = readline.get_completer()
+            self.old_delims = readline.get_completer_delims()
+            readline.set_completer(completer)
+            readline.set_completer_delims("\t ")
+
+    def reset_readline():
+        if not objectmodel.we_are_translated():
+            readline.set_completer(self.old_completer)
+            readline.set_completer_delims(self.old_delims)
 
     @cmd
     def q(self, code):
@@ -76,7 +87,9 @@ class Shell(object):
     @untranslated_cmd
     def pdb(self, code):
         "!pdb to drop to python shell"
+        self.reset_readline()
         import pdb; pdb.set_trace()
+        self.set_readline()
 
     @cmd
     def help(self, code):
@@ -150,10 +163,13 @@ class Shell(object):
         from targetrsqueak import compile_code, execute_context
         w_selector = self.methods.get(code, None)
         if not w_selector:
+            sys.stdout.write("Compiling code... ")
+            sys.stdout.flush()
             w_selector = self.interp.perform(
-                self.space.wrap_string(compile_code(self.interp, self.space.w_nil, "^ %s" % code)),
+                self.space.wrap_string(compile_code(self.interp, self.w_rcvr, "^ %s" % code)),
                 "asSymbol")
             self.methods[code] = w_selector
+            print "...done."
         s_frame = self.interp.create_toplevel_context(
-            self.space.w_nil, w_selector=w_selector, w_arguments=[])
+            self.space.w_rcvr, w_selector=w_selector, w_arguments=[])
         return execute_context(self.interp, s_frame)
