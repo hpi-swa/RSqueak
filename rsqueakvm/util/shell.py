@@ -163,8 +163,8 @@ class Shell(object):
             else:
                 try:
                     w_result = self._execute_code(code)
-                except Exit:
-                    w_result = None
+                except:
+                    import pdb; pdb.set_trace()
                 if w_result:
                     print w_result.as_repr_string().replace('\r', '\n')
 
