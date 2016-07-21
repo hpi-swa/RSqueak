@@ -564,7 +564,7 @@ class SpurReader(BaseReaderStrategy):
                     assert bridgeSpanMagicHeader == FINAL_BRIDGE_HEADER
                 break
             segmentEnd = segmentEnd + nextSegmentSize
-            # address swizzle is in bytes, but bridgeSpan is in image words 
+            # address swizzle is in bytes, but bridgeSpan is in image words
             currentAddressSwizzle += (bridgeSpan * (8 if self.version.is_64bit else 4))
         self.stream.close()
         return self.chunklist # return for testing
@@ -628,7 +628,13 @@ class SpurReader(BaseReaderStrategy):
             pointer = g_object.chunk.data[i]
             if (pointer & 3) == 0:
                 # pointer = ...00
-                pointers.append(self.chunks[pointer].g_object)
+                try:
+                    pointers.append(self.chunks[pointer].g_object)
+                except KeyError:
+                    print "WARN: Bogus pointer: %d. Treating as small int." % pointer
+                    small_int = GenericObject()
+                    small_int.initialize_int(pointer >> 1, self, space)
+                    pointers.append(small_int)
             elif (pointer & 1) == 1:
                 # pointer = ....1
                 # tagged integer
@@ -941,6 +947,7 @@ class SpurImageWriter(object):
         self.trace_queue = []
         self.hidden_roots = None
 
+    @objectmodel.specialize.argtype(1)
     def len_and_header(self, obj):
         import math
         n = self.fixed_and_indexable_size_for(obj)
@@ -964,6 +971,7 @@ class SpurImageWriter(object):
             return self.frame_size_for(w_home)
         return constants.COMPILED_METHOD_FULL_FRAME_SIZE
 
+    @objectmodel.specialize.argtype(1)
     def fixed_and_indexable_size_for(self, obj):
         if (isinstance(obj, W_PointersObject) and
             (obj.getclass(self.space).is_same_object(self.space.w_MethodContext) or
@@ -1080,6 +1088,7 @@ class SpurImageWriter(object):
         # assert page.fetch(self.space, minoridx).is_nil(self.space)
         page.store(self.space, minoridx, obj)
 
+    @objectmodel.specialize.argtype(1)
     def write_and_trace(self, obj):
         if obj.is_class(self.space):
             self.insert_class_into_classtable(obj)
@@ -1106,22 +1115,23 @@ class SpurImageWriter(object):
 
         assert self.f.tell() == oop + length * self.word_size + padding
 
+    @objectmodel.specialize.argtype(1)
     def reserve(self, obj):
         if isinstance(obj, W_SmallInteger):
             newoop = 0
             if obj.value >= 0:
-                if obj.value <= constants.TAGGED_MAXINT:
+                if obj.value <= constants.TAGGED_MAXINT32:
                     newoop = (obj.value << 1) + 1
                 else:
                     return self.reserve(self.space.wrap_large_number(r_ulonglong(obj.value), self.space.w_LargePositiveInteger))
             else:
-                if obj.value >= constants.TAGGED_MININT:
+                if obj.value >= constants.TAGGED_MININT32:
                     newoop = intmask((((r_int64(1) << 31) + obj.value) << 1) + 1)
                 else:
                     return self.reserve(self.space.wrap_large_number(r_ulonglong(obj.value), self.space.w_LargeNegativeInteger))
             return (newoop, 0, 0, 0, 0)
         elif isinstance(obj, W_Character):
-            assert obj.value < constants.TAGGED_MAXINT
+            assert obj.value < constants.TAGGED_MAXINT32
             return ((obj.value << 2) + 0b10, 0, 0, 0, 0)
         else:
             oop = self.oop_map.get(obj, (0, 0, 0, 0, 0))

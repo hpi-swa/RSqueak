@@ -165,6 +165,9 @@ from rpython.rlib.rarithmetic import LONG_BIT
 TAGGED_MAXINT = 2 ** (LONG_BIT - 2) - 1
 TAGGED_MININT = -2 ** (LONG_BIT - 2)
 
+TAGGED_MAXINT32 = 2 ** (32 - 2) - 1
+TAGGED_MININT32 = -2 ** (32 - 2)
+
 TAGGED_MASK = int(2 ** (LONG_BIT - 1) - 1)
 
 MAXINT = sys.maxint
