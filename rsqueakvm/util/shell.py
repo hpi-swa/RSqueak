@@ -1,6 +1,7 @@
 import readline
 import sys
 from rpython.rlib import objectmodel, unroll
+from rsqueakvm.error import Exit
 
 
 COMMANDS = []
@@ -61,11 +62,16 @@ def untranslated_cmd(func):
 class Shell(object):
     def __init__(self, interp, space):
         self.set_readline()
-        self.interp = interp
+        self.set_interp(interp)
         self.space = space
         self.methods = {}
-        self.w_rcvr = self.space.wrap_int(0).getclass(self.space)
+        self.w_rcvr = self.space.w_nil
         space.headless.activate()
+
+    def set_interp(self, interp):
+        if not objectmodel.we_are_translated():
+            interp.shell_execute = True
+        self.interp = interp
 
     def set_readline(self):
         if not objectmodel.we_are_translated():
@@ -116,10 +122,10 @@ class Shell(object):
             import rsqueakvm.interpreter_bytecodes
             reload(rsqueakvm.interpreter_bytecodes)
             reload(rsqueakvm.interpreter)
-            self.interp = interpreter.Interpreter(
+            self.set_interp(interpreter.Interpreter(
                 self.space, self.interp.image,
                 self.interp.trace, self.interp.trace_important,
-                self.interp.evented, self.interp.interrupts)
+                self.interp.evented, self.interp.interrupts))
         else:
             print "Cannot reload %s" % code
             return
@@ -155,7 +161,10 @@ class Shell(object):
                         getattr(self, n)(code)
                         break
             else:
-                w_result = self._execute_code(code)
+                try:
+                    w_result = self._execute_code(code)
+                except Exit:
+                    w_result = None
                 if w_result:
                     print w_result.as_repr_string().replace('\r', '\n')
 
@@ -170,6 +179,7 @@ class Shell(object):
                 "asSymbol")
             self.methods[code] = w_selector
             print "...done."
+            sys.stdout.flush()
         s_frame = self.interp.create_toplevel_context(
-            self.space.w_rcvr, w_selector=w_selector, w_arguments=[])
+            self.w_rcvr, w_selector=w_selector, w_arguments=[])
         return execute_context(self.interp, s_frame)
