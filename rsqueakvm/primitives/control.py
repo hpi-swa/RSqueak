@@ -97,6 +97,7 @@ def find_plugins():
         modulename = filename.replace(".py", "")
         module = getattr(getattr(
             __import__("rsqueakvm.plugins.%s" % modulename), "plugins"), modulename)
+        reload(module) # always do a one-shot reload
         pluginname = "".join([f.capitalize() for f in modulename.split("_")])
         plugin = getattr(module, pluginname)
         plugin_names.append(pluginname)

@@ -5,12 +5,49 @@ from rpython.rlib import objectmodel, unroll
 
 COMMANDS = []
 HELP = []
+autocompletions = {
+    "rsqueakvm": {
+        "interpreter": None,
+        "plugins": None,
+        "primitives": {
+            "arithmetic": None,
+            "array_stream": None,
+            "block_closure": None,
+            "bytecodes": None,
+            "control": None,
+            "input_output": None,
+            "misc": None,
+            "storage": None,
+            "system": None,
+        }
+    }
+}
 
 
 def cmd(func):
     COMMANDS.append(func.__name__)
     HELP.append(func.__doc__)
+    autocompletions["!%s" % func.__name__] = None
     return func
+
+
+def completer(text, state, completions=None):
+    "NOT RPYTHON"
+    if not completions:
+        completions = autocompletions
+    matches = 0
+    for k,v in completions.items():
+        pk = "%s." % k
+        if k.find(text) == 0:
+            if matches == state:
+                return pk if v else k
+            else:
+                matches += 1
+        elif text.find(pk) == 0 and v:
+            subtext = text.replace(pk, "", 1)
+            subkey = completer(subtext, state, completions=v)
+            return "%s%s" % (pk, subkey) if subkey else None
+    return None
 
 
 def untranslated_cmd(func):
@@ -23,14 +60,17 @@ def untranslated_cmd(func):
 
 class Shell(object):
     def __init__(self, interp, space):
+        if not objectmodel.we_are_translated():
+            readline.set_completer(completer)
+            readline.set_completer_delims("\t ")
         self.interp = interp
         self.space = space
         self.methods = {}
         space.headless.activate()
 
     @cmd
-    def exit(self, code):
-        "!exit for quitting"
+    def q(self, code):
+        "!q for quitting"
         exit(0)
 
     @untranslated_cmd
@@ -46,8 +86,31 @@ class Shell(object):
 
     @untranslated_cmd
     def reload(self, code):
-        "!reload(...) to reload a python file"
-        pass
+        "!reload rsqueakvm.abc.xyz... to reload some VM code"
+        code = code.split(" ", 1)
+        if len(code) != 2:
+            print "Error in command syntax"
+            return
+        code = code[1]
+        if code.startswith("rsqueakvm.plugins"):
+            import rsqueakvm.primitives.control
+            reload(rsqueakvm.primitives.control)
+        elif code.startswith("rsqueakvm.primitives"):
+            primmod = __import__(code, fromlist=["rsqueakvm.primitives"])
+            reload(primmod)
+        elif code.startswith("rsqueakvm.interpreter"):
+            import rsqueakvm.interpreter
+            import rsqueakvm.interpreter_bytecodes
+            reload(rsqueakvm.interpreter_bytecodes)
+            reload(rsqueakvm.interpreter)
+            self.interp = interpreter.Interpreter(
+                self.space, self.interp.image,
+                self.interp.trace, self.interp.trace_important,
+                self.interp.evented, self.interp.interrupts)
+        else:
+            print "Cannot reload %s" % code
+            return
+        print "Reloaded %s" % code
 
     @cmd
     def method(self, code):
