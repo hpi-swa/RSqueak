@@ -74,6 +74,7 @@ class ObjSpace(object):
         self.highdpi = ConstantFlag(True)
         self.software_renderer = ConstantFlag(False)
         self.no_display = ConstantFlag(False)
+        self.silent = ConstantFlag(False)
         self.use_plugins = ConstantFlag()
         self.omit_printing_raw_bytes = ConstantFlag()
         self.image_loaded = ConstantFlag()

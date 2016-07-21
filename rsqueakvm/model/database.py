@@ -1,10 +1,12 @@
 from rsqueakvm.model.pointers import W_PointersObject
-from rpython.rlib import jit
-from rsqueakvm.plugins.database_plugin import dbm, SQLConnection
+from rsqueakvm.database import dbm
 from rsqueakvm.error import PrimitiveFailedError
 
+from rpython.rlib import jit
 
-class DBType(object): pass
+
+class DBType(object):
+    pass
 NIL = DBType()
 TEXT = DBType()
 INTEGER = DBType()
@@ -99,9 +101,10 @@ class W_DBObject_State:
 
 
 class W_DBObject(W_PointersObject):
-    _attrs_ = ["id"]
+    _attrs_ = ["id", "ivar_cache"]
     _immutable_fields_ = ["id"]
     state = W_DBObject_State()
+    repr_classname = "W_DBObject"
 
     @staticmethod
     def next_id():
@@ -109,8 +112,12 @@ class W_DBObject(W_PointersObject):
         W_DBObject.state.id_counter += 1
         return theId
 
-    def __init__(self, space, w_class, size, weak=False):
+    def __init__(self, space, w_class, size, weak=False, object_id=-1):
         W_PointersObject.__init__(self, space, w_class, size, weak)
+        self.ivar_cache = [None] * size
+        if object_id > 0:
+            self.id = object_id
+            return
         self.id = W_DBObject.next_id()
         class_name = self.class_name(space)
         W_DBObject.state.init_column_types_if_neccessary(class_name, size)
@@ -124,11 +131,20 @@ class W_DBObject(W_PointersObject):
     def w_id(self, space):
         return space.wrap_int(self.id)
 
+    def is_same_object(self, other):
+        if not isinstance(other, W_DBObject):
+            return False
+        # IDs are unique at the moment, so no need to check class_name as well
+        return self.id == other.id
+
     def fetch(self, space, n0):
         class_name = self.class_name(space)
         if W_DBObject.state.get_column_type(class_name, n0) is NIL:
             # print "Can't find column. Falling back to default fetch."
             return W_PointersObject.fetch(self, space, n0)
+
+        if self.ivar_cache[n0] is not None:
+            return self.ivar_cache[n0]
 
         cursor = dbm.connection(space).execute(
             select_sql(class_name, n0), [self.w_id(space)])
@@ -137,13 +153,16 @@ class W_DBObject(W_PointersObject):
         if w_result:
             if W_DBObject.state.get_column_type(class_name, n0) is BLOB:
                 db_id = space.unwrap_int(w_result)
-                return W_DBObject.state.db_objects[db_id]
-            else:
-                return w_result
+                w_result = W_DBObject.state.db_objects[db_id]
+
+            self.ivar_cache[n0] = w_result
+            return w_result
         else:
             raise PrimitiveFailedError
 
     def store(self, space, n0, w_value):
+        self.ivar_cache[n0] = w_value
+
         cls = w_value.getclass(space)
         if (cls.is_same_object(space.w_String)):
             aType = TEXT

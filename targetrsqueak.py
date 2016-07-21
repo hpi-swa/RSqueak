@@ -58,6 +58,7 @@ def _usage(argv):
             --software-renderer    - Use software renderer (default: off).
             --no-display           - Use dummy display (default: off).
             -h|--help              - Output this message and exit.
+            --silent               - Disable image loading output
             -v|--version           - Print version info and exit.
 
           Execution:
@@ -214,6 +215,8 @@ class Config(object):
                 self.space.software_renderer.activate()
             elif arg == "--no-display":
                 self.space.no_display.activate()
+            elif arg == "--silent":
+                self.space.silent.activate()
             # Execution
             elif arg in ["-r", "--run"]:
                 self.code, idx = get_parameter(argv, idx, arg)
@@ -519,6 +522,15 @@ def execute_context(interp, s_frame):
 # _____ Target and Main _____
 
 def target(driver, *args):
+    driver.config.translation.suggest(**{
+        "jit": True,
+        "jit_opencoder_model": "big",
+    })
+    driver.config.translation.set(gcrootfinder="shadowstack")
+    if system.IS_WINDOWS:
+        driver.config.translation.suggest(**{
+            "icon": os.path.join(os.path.dirname(__file__), "rsqueak.ico")
+        })
     driver.exe_name = "rsqueak"
     return safe_entry_point, None
 

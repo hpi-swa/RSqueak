@@ -5,8 +5,6 @@ testPreparedElo: aNumber usingSQPyte: aBool
 FileStream startUp: true.
 a := SQLDatabase open: ':memory:' usingSQPyte: aBool.
 
-time := [
-
 a execute: 'CREATE TABLE IF NOT EXISTS MATCHES (playerIdA integer, playerIdB integer, winnerId integer);'.
 a execute: 'CREATE TABLE IF NOT EXISTS PLAYERS (playerId integer, rank integer);'.
 
@@ -29,6 +27,8 @@ matchCount timesRepeat: [ | rndA rndB winner |
 
 ranks := Array new: playerCount.
 (1 to: playerCount) do: [ :idx | ranks at: idx put: 100 ].
+
+time := [
 
 cursor := a execute: 'SELECT * FROM MATCHES;'.
 

@@ -3,6 +3,7 @@
 		 },
 	"instance" : {
 		"benchElo" : "toma 5/11/2016 14:29",
+		"benchEloWithAllInstances" : "fn 7/12/2016 20:46",
 		"benchOpponentMatching" : "toma 5/11/2016 16:29",
 		"initialize" : "toma 5/11/2016 14:31",
 		"numMatches" : "toma 5/11/2016 13:50",
@@ -13,4 +14,5 @@
 		"runTimes:" : "toma 5/11/2016 13:55",
 		"seed" : "toma 5/11/2016 13:51",
 		"seed:" : "toma 5/11/2016 13:51",
-		"setUp" : "toma 5/11/2016 16:19" } }
+		"setUp" : "toma 5/11/2016 16:19",
+		"setUp:" : "fn 7/12/2016 20:46" } }

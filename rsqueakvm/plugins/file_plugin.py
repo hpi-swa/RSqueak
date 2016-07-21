@@ -39,9 +39,10 @@ if IS_WINDOWS:
         compilation_info=eci,
     )
 
-    os.ftruncate = _chsize
+    ftruncate = _chsize
 else:
     # O_BINARY is only available on Windows
+    ftruncate = os.ftruncate
     os.O_BINARY = 0
 
 #should we implement primitiveDirectoryEntry ?
@@ -236,7 +237,7 @@ def primitiveFileWrite(interp, s_frame, w_rcvr, fd, content, start, count):
 @FilePlugin.expose_primitive(unwrap_spec=[object, int, int])
 def primitiveFileTruncate(interp, s_frame, w_rcvr, fd, position):
     try:
-        os.ftruncate(fd, position)
+        ftruncate(fd, position)
     except OSError:
         raise PrimitiveFailedError
     return w_rcvr
@@ -246,7 +247,6 @@ def primitiveDirectorySetMacTypeAndCreator(interp, s_frame, w_rcvr, filename, ty
     # TODO: this is a stub. "MacOS.SetCreatorAndType" is not available in my pypy build
     return w_rcvr
 
-@jit.elidable
 def smalltalk_timestamp(space, sec_since_epoch):
     import time
     from rsqueakvm.constants import SQUEAK_EPOCH_DELTA_MICROSECONDS

@@ -1,8 +1,8 @@
 {
 	"class" : {
-		"testElo:usingSQPyte:" : "fn 5/29/2016 17:29",
+		"testElo:usingSQPyte:" : "fn 7/5/2016 23:07",
 		"testEloSQLite:" : "PO 5/24/2016 10:10",
-		"testPreparedElo:usingSQPyte:" : "fn 5/29/2016 17:34",
+		"testPreparedElo:usingSQPyte:" : "fn 7/5/2016 23:07",
 		"testSQLite" : "PO 5/20/2016 18:28" },
 	"instance" : {
 		 } }
