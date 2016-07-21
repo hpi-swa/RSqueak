@@ -94,6 +94,9 @@ class NullDisplay(object):
     def set_full_screen(self, flag):
         pass
 
+    def set_title(self, title):
+        pass
+
     def set_interrupt_key(self, space, encoded_key):
         pass
 
