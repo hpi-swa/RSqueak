@@ -522,6 +522,15 @@ def execute_context(interp, s_frame):
 # _____ Target and Main _____
 
 def target(driver, *args):
+    driver.config.translation.suggest(**{
+        "jit": True,
+        "jit_opencoder_model": "big",
+    })
+    driver.config.translation.set(gcrootfinder="shadowstack")
+    if system.IS_WINDOWS:
+        driver.config.translation.suggest(**{
+            "icon": os.path.join(os.path.dirname(__file__), "rsqueak.ico")
+        })
     driver.exe_name = "rsqueak"
     return safe_entry_point, None
 

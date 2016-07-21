@@ -94,6 +94,9 @@ class NullDisplay(object):
     def set_full_screen(self, flag):
         pass
 
+    def set_title(self, title):
+        pass
+
     def set_interrupt_key(self, space, encoded_key):
         pass
 
@@ -208,11 +211,22 @@ class SDLDisplay(NullDisplay):
     def flip(self, force=False):
         if self._defer_updates and not force:
             return
-        assert RSDL.UpdateTexture(self.screen_texture, lltype.nullptr(RSDL.Rect),
-                self.screen_surface.c_pixels, self.screen_surface.c_pitch) \
-                        == 0, RSDL.GetError()
-        assert RSDL.RenderCopy(self.renderer, self.screen_texture, lltype.nullptr(RSDL.Rect), lltype.nullptr(RSDL.Rect)) \
-                == 0, RSDL.GetError()
+        ec = RSDL.UpdateTexture(
+            self.screen_texture,
+            lltype.nullptr(RSDL.Rect),
+            self.screen_surface.c_pixels,
+            self.screen_surface.c_pitch)
+        if ec != 0:
+            print RSDL.GetError()
+            return
+        ec = RSDL.RenderCopy(
+            self.renderer,
+            self.screen_texture,
+            lltype.nullptr(RSDL.Rect),
+            lltype.nullptr(RSDL.Rect))
+        if ec != 0:
+            print RSDL.GetError()
+            return
         RSDL.RenderPresent(self.renderer)
 
     def set_squeak_colormap(self, surface):

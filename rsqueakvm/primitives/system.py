@@ -2,7 +2,7 @@ from rpython.rlib import jit, objectmodel
 from rpython.rlib.objectmodel import we_are_translated
 
 from rsqueakvm import constants
-from rsqueakvm.error import PrimitiveFailedError, MetaPrimFailed
+from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.numeric import W_SmallInteger
 from rsqueakvm.primitives import expose_primitive
 from rsqueakvm.primitives.bytecodes import *
@@ -36,10 +36,13 @@ def func(interp, s_frame, w_rcvr, flag):
 # ___________________________________________________________________________
 # VM implementor primitives
 
-@expose_primitive(META_PRIM_FAILED, unwrap_spec=[object, int])
+@expose_primitive(META_PRIM_FAILED, unwrap_spec=[object, int], result_is_new_frame=True)
 def func(interp, s_frame, w_rcvr, primFailFlag):
+    from rsqueakvm.storage_contexts import DirtyContext
     if primFailFlag != 0:
-        raise MetaPrimFailed(s_frame, primFailFlag)
+        s_fallback = interp.unwind_primitive_simulation(s_frame, primFailFlag)
+        s_fallback.state = DirtyContext
+        return s_fallback
     raise PrimitiveFailedError
 
 @expose_primitive(VM_PARAMETERS)
@@ -134,7 +137,7 @@ def func(interp, s_frame, argcount):
         sizeOfMachineCode = jit_hooks.stats_asmmemmgr_used(None)
         vm_w_params[45] = interp.space.wrap_int(sizeOfMachineCode)
 
-    vm_w_params[39] = interp.space.wrap_int(constants.BYTES_PER_WORD)
+    vm_w_params[39] = interp.space.wrap_int(constants.BYTES_PER_MACHINE_INT)
     vm_w_params[40] = interp.space.wrap_int(interp.image.version.magic)
     vm_w_params[55] = interp.space.wrap_int(interp.process_switch_count)
     vm_w_params[57] = interp.space.wrap_int(interp.forced_interrupt_checks_count)
@@ -167,11 +170,18 @@ def func(interp, s_frame, argcount):
 # list the n-th loaded module
 @expose_primitive(VM_LOADED_MODULES, unwrap_spec=[int])
 def func(interp, s_frame, index):
+    from rsqueakvm.primitives.control import ExternalPluginNames
+    offset = 0
     if interp.space.use_plugins.is_set():
         from rsqueakvm.plugins.iproxy import IProxy
         modulenames = IProxy.loaded_module_names()
+        offset = len(modulenames)
         try:
             return interp.space.wrap_string(modulenames[index])
         except IndexError:
-            return interp.space.w_nil
+            pass
+    try:
+        return interp.space.wrap_string(ExternalPluginNames[index + offset])
+    except IndexError:
+        pass
     return interp.space.w_nil
