@@ -1,5 +1,7 @@
 import readline
+import re
 import sys
+import inspect
 from rpython.rlib import objectmodel, unroll
 from rsqueakvm.error import Exit
 
@@ -9,6 +11,15 @@ HELP = []
 autocompletions = {
     "rsqueakvm": {
         "interpreter": None,
+        "model": {
+            "base": None,
+            "character": None,
+            "compiled_methods": None,
+            "display": None,
+            "numeric": None,
+            "pointers": None,
+            "variable": None,
+        },
         "plugins": None,
         "primitives": {
             "arithmetic": None,
@@ -80,7 +91,7 @@ class Shell(object):
             readline.set_completer(completer)
             readline.set_completer_delims("\t ")
 
-    def reset_readline():
+    def reset_readline(self):
         if not objectmodel.we_are_translated():
             readline.set_completer(self.old_completer)
             readline.set_completer_delims(self.old_delims)
@@ -114,9 +125,36 @@ class Shell(object):
         if code.startswith("rsqueakvm.plugins"):
             import rsqueakvm.primitives.control
             reload(rsqueakvm.primitives.control)
-        elif code.startswith("rsqueakvm.primitives"):
+        elif code.startswith("rsqueakvm.primitives."):
             primmod = __import__(code, fromlist=["rsqueakvm.primitives"])
             reload(primmod)
+        elif code.startswith("rsqueakvm.model."):
+            modmod = __import__(code, fromlist=["rsqueakvm.model"])
+            # This does not do a reload, and thus gives the old classes
+            oldclasses = inspect.getmembers(
+                modmod, lambda x: inspect.isclass(x) and inspect.getmodule(x) is modmod)
+            reload(modmod)
+            newclasses = inspect.getmembers(
+                modmod, lambda x: inspect.isclass(x) and inspect.getmodule(x) is modmod)
+            for k,v in oldclasses:
+                setattr(modmod, k, v) # patch old classes into module again
+            oldclasses = dict(oldclasses)
+            for classname,klass in newclasses:
+                methods = inspect.getmembers(klass, lambda x: inspect.ismethod(x))
+                for methodname,method in methods:
+                    if methodname.startswith("__"):
+                        continue
+                    # define new method in module
+                    l = {}
+                    outdent = re.match("^\\s*", inspect.getsource(method)).end()
+                    exec("\n".join([
+                        re.sub("^" + "\\s" * outdent, "", line) for line in inspect.getsource(method).split("\n")
+                    ]), modmod.__dict__, l)
+                    try:
+                        setattr(oldclasses[classname], methodname, l[methodname])
+                    except KeyError:
+                        print "Error updating " + methodname + ". Maybe try again?"
+                        pass
         elif code.startswith("rsqueakvm.interpreter"):
             import rsqueakvm.interpreter
             import rsqueakvm.interpreter_bytecodes
@@ -141,6 +179,8 @@ class Shell(object):
             srcline = ""
             while srcline != "!!":
                 srcline = raw_input("%s| " % parts[1]).strip()
+                if srcline: # don't record method source as history
+                    readline.remove_history_item(readline.get_current_history_length() - 1)
                 methodsrc.append(srcline)
             from targetrsqueak import compile_code
             methodsrc.pop() # remove trailing !!
@@ -159,11 +199,11 @@ class Shell(object):
                 for n in unroll.unrolling_iterable(COMMANDS):
                     if n == method:
                         getattr(self, n)(code)
-                        break
             else:
                 try:
                     w_result = self._execute_code(code)
-                except Exit:
+                except:
+                    print "Error: ", sys.exc_info()[0]
                     w_result = None
                 if w_result:
                     print w_result.as_repr_string().replace('\r', '\n')
