@@ -144,7 +144,7 @@ class Shell(object):
                     # define new method in module
                     l = {}
                     outdent = re.match("^\\s*", inspect.getsource(method)).end()
-                    code = compile(
+                    codeobj = compile(
                         "\n".join([
                             re.sub("^" + "\\s" * outdent, "", line) \
                             for line in inspect.getsource(method).split("\n")
@@ -152,11 +152,11 @@ class Shell(object):
                         inspect.getsourcefile(method),
                         'exec'
                     )
-                    exec(code, modmod.__dict__, l)
+                    exec(codeobj, modmod.__dict__, l)
                     try:
                         setattr(oldclasses[classname], methodname, l[methodname])
                     except KeyError:
-                        print "Error updating " + methodname + ". Maybe try again?"
+                        print "Error updating " + classname + "#" + methodname + ". Maybe try again?"
                         pass
         elif code.startswith("rsqueakvm.interpreter"):
             import rsqueakvm.interpreter
@@ -190,7 +190,9 @@ class Shell(object):
             while srcline != "!!":
                 srcline = self.raw_input("%s| " % parts[1])
                 if srcline: # don't record method source as history
-                    readline.remove_history_item(readline.get_current_history_length() - 1)
+                    readline.remove_history_item(
+                        readline.get_current_history_length() - 1
+                    )
                 methodsrc.append(srcline)
             from targetrsqueak import compile_code
             methodsrc.pop() # remove trailing !!
