@@ -72,7 +72,6 @@ def untranslated_cmd(func):
 
 class Shell(object):
     def __init__(self, interp, space):
-        self.set_readline()
         self.set_interp(interp)
         self.space = space
         self.methods = {}
@@ -104,9 +103,7 @@ class Shell(object):
     @untranslated_cmd
     def pdb(self, code):
         "!pdb to drop to python shell"
-        self.reset_readline()
         import pdb; pdb.set_trace()
-        self.set_readline()
 
     @cmd
     def help(self, code):
@@ -147,9 +144,15 @@ class Shell(object):
                     # define new method in module
                     l = {}
                     outdent = re.match("^\\s*", inspect.getsource(method)).end()
-                    exec("\n".join([
-                        re.sub("^" + "\\s" * outdent, "", line) for line in inspect.getsource(method).split("\n")
-                    ]), modmod.__dict__, l)
+                    code = compile(
+                        "\n".join([
+                            re.sub("^" + "\\s" * outdent, "", line) \
+                            for line in inspect.getsource(method).split("\n")
+                        ]),
+                        inspect.getsourcefile(method),
+                        'exec'
+                    )
+                    exec(code, modmod.__dict__, l)
                     try:
                         setattr(oldclasses[classname], methodname, l[methodname])
                     except KeyError:
@@ -169,6 +172,13 @@ class Shell(object):
             return
         print "Reloaded %s" % code
 
+    def raw_input(self, delim):
+        self.set_readline()
+        try:
+            return raw_input(delim).strip()
+        finally:
+            self.reset_readline()
+
     @cmd
     def method(self, code):
         "!method Class to define a method. End with !!"
@@ -178,7 +188,7 @@ class Shell(object):
             methodsrc = []
             srcline = ""
             while srcline != "!!":
-                srcline = raw_input("%s| " % parts[1]).strip()
+                srcline = self.raw_input("%s| " % parts[1])
                 if srcline: # don't record method source as history
                     readline.remove_history_item(readline.get_current_history_length() - 1)
                 methodsrc.append(srcline)
@@ -193,7 +203,7 @@ class Shell(object):
     def run(self):
         print "You're in a Smalltalk REPL. Type `!exit' to quit, !help for help."
         while True:
-            code = raw_input("$ ").strip()
+            code = self.raw_input("$ ")
             if code.startswith("!"):
                 method = code[1:].split(" ")[0]
                 for n in unroll.unrolling_iterable(COMMANDS):
