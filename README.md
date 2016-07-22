@@ -103,6 +103,30 @@ early during startup (`DisplayScreen class>>startUp` is a good candidate)
 and then you add your breakpoints to the source. You can also pass commandline
 arguments to the script or tweak the default arguments in the script itself.
 
+__Running a "Smalltalk REPL"__
+
+When you want to work on primitives or plugins, it is useful to prepare an image
+a little (for example, make it so test runs print to the console), and then run
+the following:
+
+```bash
+pypy .build/run.py --shell <PATH_TO_IMAGE>
+```
+
+This will load the image and dump you in a simple REPL for Smalltalk, but with
+some commands to help you execute Python code and, in particular, to reload the
+Python code you write in any plugin or primitive file. Thus, you can run some
+Smalltalk code, check for errors, change the primitive code, reload it, and try
+again. This avoids having to reload the image in interpreted mode all the time
+(which can be slow).
+
+There is an integrated help that you can get by typing !help, and there is
+limited autocomplete, too.
+
+Note that the REPL only loads the image, but does not process startup. For many
+things, you might want to run `FileStream startUp: true` or `Delay startUp` to
+get basic I/O working or delays working.
+
 ###### unittests.py
 
 The second script that is useful for working on issues regarding the

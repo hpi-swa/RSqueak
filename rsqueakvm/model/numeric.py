@@ -66,8 +66,8 @@ class W_Float(W_AbstractObjectWithIdentityHash):
     def is_same_object(self, other):
         if not isinstance(other, W_Float):
             return False
-        # NaN's are identical if their pointer is the same
-        return (self.value == other.value) or (self is other)
+        return ((self.value == other.value) or
+                (math.isnan(self.value) and math.isnan(other.value)))
 
     def __eq__(self, other):
         if not isinstance(other, W_Float):

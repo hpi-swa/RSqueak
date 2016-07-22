@@ -204,7 +204,7 @@ class Shell(object):
                     w_result = self._execute_code(code)
                 except:
                     print "Error: ", sys.exc_info()[0]
-                    w_result = None
+                    import pdb; pdb.set_trace()
                 if w_result:
                     print w_result.as_repr_string().replace('\r', '\n')
 
