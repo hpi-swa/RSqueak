@@ -213,11 +213,9 @@ class ObjSpace(object):
     def wrap_positive_wordsize_int(self, val):
         # This will always return a positive value.
         from rpython.rlib.objectmodel import we_are_translated
-        if val < 0:
-            if not we_are_translated():
-                print "WARNING: wrap_positive_wordsize_int casts %d to unsigned" % val
-            return W_LargePositiveInteger1Word(val)
-        elif val <= constants.MAXINT:
+        if not we_are_translated() and val < 0:
+            print "WARNING: wrap_positive_32bit_int casts %d to 32bit unsigned" % val
+        if int_between(0, val, constants.MAXINT):
             return W_SmallInteger(val)
         else:
             return W_LargePositiveInteger1Word(val)
