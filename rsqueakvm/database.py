@@ -1,14 +1,18 @@
+import platform
 from rsqueakvm.error import PrimitiveFailedError
 
 from rpython.rlib import jit
 from rpython.rtyper.lltypesystem import rffi
 
 try:
+    assert "64bit" in platform.architecture()[0]
     from sqpyte.capi import CConfig
-except ImportError:
+    from sqpyte.interpreter import SQPyteDB
+except (ImportError, AssertionError):
     class CConfig():
         SQLITE_TEXT = SQLITE_BLOB = SQLITE_INTEGER = SQLITE_FLOAT = None
         SQLITE_NULL = SQLITE_ROW = SQLITE_DONE = None
+    SQPyteDB = None
 
 
 ###############################################################################
@@ -254,13 +258,7 @@ class DBManager(object):
     def __init__(self):
         self.db_file_name = ":memory:"
         self.db_connection = None
-        self.driver = None  # Driver for DBObjects
-        try:
-            from sqpyte.interpreter import SQPyteDB
-            self.driver = SQPyteDB
-        except ImportError:
-            pass
-
+        self.driver = SQPyteDB if SQPyteDB else None  # Driver for DBObjects
         self._db_count = 0
         self._dbs = {}
         self._cursor_count = 0
