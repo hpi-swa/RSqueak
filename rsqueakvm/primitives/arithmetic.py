@@ -119,7 +119,7 @@ def make_ovfcheck(op):
                 # manual ovfcheck as in Squeak VM
                 raise PrimitiveFailedError
             return res
-        else:s
+        else:
             try:
                 return ovfcheck(op(receiver, argument))
             except OverflowError:
