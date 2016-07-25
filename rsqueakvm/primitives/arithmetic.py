@@ -118,7 +118,8 @@ def make_ovfcheck(op):
             if ((receiver ^ argument >= 0) and (receiver ^ res < 0)):
                 # manual ovfcheck as in Squeak VM
                 raise PrimitiveFailedError
-        else:
+            return res
+        else:s
             try:
                 return ovfcheck(op(receiver, argument))
             except OverflowError:
