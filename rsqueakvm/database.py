@@ -30,7 +30,7 @@ class SQLConnection(object):
             self.db = db_class(filename)
             print 'Success'
         except Exception as e:
-            print e.msg
+            print 'Unable to connect to database: ', e
 
     def cursor(self):
         return SQLCursor(self)
@@ -180,8 +180,7 @@ class Statement(object):
         try:
             self.query = w_connection.db.execute(sql)
         except Exception as e:
-            print e.msg
-            raise PrimitiveFailedError(e.msg)
+            raise PrimitiveFailedError(str(e))
             # space = w_connection.space
             # w_module = space.getbuiltinmodule('sqpyte')
             # w_error = space.getattr(w_module, space.wrap('OperationalError'))
