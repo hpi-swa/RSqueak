@@ -15,7 +15,6 @@ Example:
 """
 
 if __name__ == "__main__":
-    sys.argv[0] = 'rpython'  # required for sqpyte hacks
     if not any(arg.startswith("-") for arg in sys.argv):
         sys.argv.append("--batch")
     target = os.path.join(os.path.dirname(__file__), "..", "targetrsqueak.py")
