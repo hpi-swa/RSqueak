@@ -270,3 +270,4 @@ images/
 
 !rsqueakvm*
 !rsqueakvm/test/images*
+*.db
