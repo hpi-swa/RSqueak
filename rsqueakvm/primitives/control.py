@@ -12,6 +12,8 @@ from rpython.rlib import jit, objectmodel
 from rpython.rtyper.extregistry import ExtRegistryEntry
 
 
+OPTIONAL_PLUGINS = ['DatabasePlugin']
+
 # ___________________________________________________________________________
 # Failure
 
@@ -87,7 +89,14 @@ def func(interp, s_frame, w_rcvr, w_arg):
         raise PrimitiveNotYetWrittenError
 
 def find_plugins():
-    import os
+    import os, sys
+    enabled_plugins = []
+    if "--plugins" in sys.argv:
+        plugin_idx = sys.argv.index("--plugins") + 1
+        if plugin_idx >= len(sys.argv):
+            raise ValueError("Comma-separated list required after --plugins")
+        enabled_plugins = sys.argv[plugin_idx].rsplit(",")
+    disabled_plugins = [p for p in OPTIONAL_PLUGINS if p not in enabled_plugins]
     files = os.listdir(os.path.join(os.path.dirname(__file__), "..", "plugins"))
     plugins = []
     plugin_names = []
@@ -99,6 +108,8 @@ def find_plugins():
             __import__("rsqueakvm.plugins.%s" % modulename), "plugins"), modulename)
         reload(module) # always do a one-shot reload
         pluginname = "".join([f.capitalize() for f in modulename.split("_")])
+        if pluginname in disabled_plugins:
+            continue
         plugin = getattr(module, pluginname)
         plugin_names.append(pluginname)
         plugins.append(plugin)
