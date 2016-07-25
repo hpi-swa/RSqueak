@@ -125,8 +125,10 @@ presetup_$TRAVIS_OS_NAME
 python .build/download_dependencies.py || true
 setup_$TRAVIS_OS_NAME
 
-# Prepare sqpyte/sqlite
-pushd ".build/sqpyte" > /dev/null
-chmod +x ./sqlite/configure
-sudo make
-popd > /dev/null
+if [[ -d ".build/sqpyte" ]]; then
+  # Make sqlite/sqpyte for DatabasePlugin
+  pushd ".build/sqpyte" > /dev/null
+  chmod +x ./sqlite/configure
+  sudo make
+  popd > /dev/null
+fi
