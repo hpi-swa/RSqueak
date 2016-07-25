@@ -16,8 +16,7 @@ from sqpyte.capi import CConfig
 class SQLConnection(object):
     _immutable_fields_ = ['db', 'statement_cache']
 
-    def __init__(self, space, db_class, filename):
-        self.space = space
+    def __init__(self, db_class, filename):
         self.statement_cache = StatementCache(self)
         self.is_closed = False
 
@@ -34,8 +33,8 @@ class SQLConnection(object):
     def cursor(self):
         return SQLCursor(self)
 
-    def execute(self, sql, args=None):
-        return self.cursor().execute(sql, args)
+    def execute(self, space, sql, args=None):
+        return self.cursor().execute(space, sql, args)
 
     def close(self):
         if self.is_closed:
@@ -50,16 +49,15 @@ class SQLConnection(object):
 
 
 class SQLCursor(object):
-    _immutable_fields_ = ['connection', 'space']
+    _immutable_fields_ = ['connection']
 
     def __init__(self, connection):
-        self.space = connection.space
         assert isinstance(connection, SQLConnection)
         self.connection = connection
         self.statement = None
 
     @jit.unroll_safe
-    def execute(self, sql, args=None):
+    def execute(self, space, sql, args=None):
         jit.promote(self.connection)
         jit.promote(self.statement)
         cache = self.connection.statement_cache
@@ -70,13 +68,12 @@ class SQLCursor(object):
             if len(args) != query.bind_parameter_count():
                 raise PrimitiveFailedError('wrong # of arguments for query')
             for i, w_value in enumerate(args):
-                self.bind_query_argument(w_value, query, i + 1)
+                self.bind_query_argument(space, w_value, query, i + 1)
 
         self._step()
         return self
 
-    def bind_query_argument(self, w_value, query, i):
-        space = self.space
+    def bind_query_argument(self, space, w_value, query, i):
         cls = w_value.getclass(space)
         if (cls.is_same_object(space.w_String)):
             query.bind_str(i, space.unwrap_string(w_value))
@@ -90,14 +87,14 @@ class SQLCursor(object):
             raise PrimitiveFailedError(
                 'unable to unwrap %s' % w_value.getclass(space))
 
-    def next(self):
+    def next(self, space):
         if jit.promote(self.statement) is None:
-            return self.space.w_nil
-        row = self._fetch_one_row()
+            return space.w_nil
+        row = self._fetch_one_row(space)
         self._step()
         # This should be unroll safe, since _fetch_one_row() was also marked
         # unroll_safe.
-        return self.space.wrap_list_unroll_safe(row)
+        return space.wrap_list_unroll_safe(row)
 
     def raw_next(self):
         if jit.promote(self.statement) is None:
@@ -107,21 +104,18 @@ class SQLCursor(object):
         return query
 
     def column_count(self):
-        column_count = self.statement.query.data_count()
-        return self.space.wrap_int(column_count)
+        return self.statement.query.data_count()
 
     def column_name(self, index):
         query = self.statement.query
         assert query is not None
-        column_name = rffi.charp2strn(query.column_name(index), 255)
-        return self.space.wrap_string(column_name)
+        return rffi.charp2strn(query.column_name(index), 255)
 
     def column_names(self):
         names = []
-        for i in range(0, self.statement.query.data_count()):
+        for i in range(0, self.column_count()):
             names.append(self.column_name(i))
-
-        return self.space.wrap_list(names)
+        return names
 
     def close(self):
         if self.statement:
@@ -129,7 +123,7 @@ class SQLCursor(object):
             self.statement = None
 
     @jit.unroll_safe
-    def _fetch_one_row(self):
+    def _fetch_one_row(self, space):
         query = jit.promote(self.statement).query
         num_cols = query.data_count()
         jit.promote(num_cols)
@@ -141,15 +135,15 @@ class SQLCursor(object):
                 result = rffi.charpsize2str(rffi.cast(rffi.CCHARP,
                                                       query.column_text(i)),
                                             textlen)
-                w_result = self.space.wrap_string(result)  # no encoding
+                w_result = space.wrap_string(result)  # no encoding
             elif tid == CConfig.SQLITE_INTEGER:
                 result = query.column_int64(i)
-                w_result = self.space.wrap_int(result)
+                w_result = space.wrap_int(result)
             elif tid == CConfig.SQLITE_FLOAT:
                 result = query.column_double(i)
-                w_result = self.space.wrap_float(result)
+                w_result = space.wrap_float(result)
             elif tid == CConfig.SQLITE_NULL:
-                w_result = self.space.w_nil
+                w_result = space.w_nil
             else:
                 raise PrimitiveFailedError('read_row [tid: %s' % tid)
             cols[i] = w_result
@@ -266,23 +260,21 @@ class DBManager(object):
         self._cursor_count = 0
         self._cursors = {}
 
-    def connection(self, space):
+    def connection(self):
         if self.db_connection is not None:
             return self.db_connection
         assert self.driver is not None
         print "DBMode: %s" % self.driver
-        connection = SQLConnection(space, self.driver, self.db_file_name)
+        connection = SQLConnection(self.driver, self.db_file_name)
         assert connection is not None
         self.db_connection = connection
         return connection
 
-    def connect(self, space, db_class, filename):
+    def connect(self, db_class, filename):
         handle = self._db_count
-        self._dbs[handle] = SQLConnection(space, db_class, filename)
-
+        self._dbs[handle] = SQLConnection(db_class, filename)
         self._db_count += 1
-
-        return space.wrap_int(handle)
+        return handle
 
     def get_connection(self, db_handle):
         db = self._dbs.get(db_handle, None)
@@ -290,9 +282,9 @@ class DBManager(object):
             raise PrimitiveFailedError('execute [db is None]')
         return db
 
-    def execute(self, db, sql, args=None):
+    def execute(self, space, db, sql, args=None):
         handle = self._cursor_count
-        self._cursors[handle] = db.execute(sql, args)
+        self._cursors[handle] = db.execute(space, sql, args)
         self._cursor_count += 1
         return handle
 
@@ -303,11 +295,10 @@ class DBManager(object):
             raise PrimitiveFailedError('cursor not found')
         return cursor
 
-    def close(self, space, db_pointer):
+    def close(self, db_pointer):
         db = self._dbs.get(db_pointer, None)
         if db is None:
             raise PrimitiveFailedError('close [db is None]')
-        return space.wrap_bool(db.close())
-
+        return db.close()
 
 dbm = DBManager()

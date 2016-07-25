@@ -94,9 +94,9 @@ class W_DBObject_State:
 
     # Same reason as above
     @jit.not_in_trace
-    def create_table_if_neccessary(self, class_name, connection):
+    def create_table_if_neccessary(self, space, class_name, connection):
         if class_name not in W_DBObject.state.class_names:
-            connection.execute(create_sql(class_name))
+            connection.execute(space, create_sql(class_name))
             W_DBObject.state.class_names[class_name] = True
 
 
@@ -121,9 +121,10 @@ class W_DBObject(W_PointersObject):
         self.id = W_DBObject.next_id()
         class_name = self.class_name(space)
         W_DBObject.state.init_column_types_if_neccessary(class_name, size)
-        connection = dbm.connection(space)
-        W_DBObject.state.create_table_if_neccessary(class_name, connection)
-        connection.execute(insert_sql(class_name), [self.w_id(space)])
+        connection = dbm.connection()
+        W_DBObject.state.create_table_if_neccessary(space, class_name,
+                                                    connection)
+        connection.execute(space, insert_sql(class_name), [self.w_id(space)])
 
     def class_name(self, space):
         return jit.promote_string(self.classname(space))
@@ -146,10 +147,10 @@ class W_DBObject(W_PointersObject):
         if self.ivar_cache[n0] is not None:
             return self.ivar_cache[n0]
 
-        cursor = dbm.connection(space).execute(
-            select_sql(class_name, n0), [self.w_id(space)])
+        cursor = dbm.connection().execute(
+            space, select_sql(class_name, n0), [self.w_id(space)])
 
-        w_result = cursor.next().fetch(space, 0)
+        w_result = cursor.next(space).fetch(space, 0)
         if w_result:
             if W_DBObject.state.get_column_type(class_name, n0) is BLOB:
                 db_id = space.unwrap_int(w_result)
@@ -188,12 +189,12 @@ class W_DBObject(W_PointersObject):
 
         if (aType is not NIL and
                 W_DBObject.state.get_column_type(class_name, n0) is NIL):
-            connection = dbm.connection(space)
-            connection.execute(alter_sql(class_name, n0, aType))
+            connection = dbm.connection()
+            connection.execute(space, alter_sql(class_name, n0, aType))
             # print "invalidate cache"
             connection.statement_cache.invalidate()
             W_DBObject.state.set_column_type(class_name, n0, aType)
 
-        connection = dbm.connection(space)
-        connection.execute(update_sql(class_name, n0),
+        connection = dbm.connection()
+        connection.execute(space, update_sql(class_name, n0),
                            [w_value, self.w_id(space)])
