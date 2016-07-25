@@ -12,7 +12,7 @@ from rpython.rlib import jit, objectmodel
 from rpython.rtyper.extregistry import ExtRegistryEntry
 
 
-OPTIONAL_PLUGINS = ['DatabasePlugin']
+OPTIONAL_PLUGINS = ['database_plugin']
 
 # ___________________________________________________________________________
 # Failure
@@ -104,12 +104,12 @@ def find_plugins():
         if "_" not in filename or filename.startswith("_") or not filename.endswith(".py"):
             continue
         modulename = filename.replace(".py", "")
+        if modulename in disabled_plugins:
+            continue
         module = getattr(getattr(
             __import__("rsqueakvm.plugins.%s" % modulename), "plugins"), modulename)
         reload(module) # always do a one-shot reload
         pluginname = "".join([f.capitalize() for f in modulename.split("_")])
-        if pluginname in disabled_plugins:
-            continue
         plugin = getattr(module, pluginname)
         plugin_names.append(pluginname)
         plugins.append(plugin)
