@@ -73,9 +73,9 @@ for (code, op) in math_ops.items():
             try:
                 if isinstance(receiver, int) and isinstance(argument, int):
                     res = ovfcheck(op(receiver, argument))
-                elif (isinstance(receiver, r_int64) and
+                elif ((not constants.IS_64BIT) and
+                      isinstance(receiver, r_int64) and
                       isinstance(argument, r_int64)):
-                    assert not constants.IS_64BIT
                     res = op(receiver, argument)
                     if ((receiver ^ argument >= 0) and (receiver ^ res < 0)):
                         # manual ovfcheck as in Squeak VM
@@ -111,9 +111,9 @@ def make_ovfcheck(op):
     def fun(receiver, argument):
         if isinstance(receiver, r_uint) and isinstance(argument, r_uint):
             return op(receiver, argument)
-        elif (isinstance(receiver, r_int64) and
+        elif ((not constants.IS_64BIT) and
+              isinstance(receiver, r_int64) and
               isinstance(argument, r_int64)):
-            assert not constants.IS_64BIT
             res = op(receiver, argument)
             if ((receiver ^ argument >= 0) and (receiver ^ res < 0)):
                 # manual ovfcheck as in Squeak VM
