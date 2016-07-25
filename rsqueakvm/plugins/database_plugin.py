@@ -7,14 +7,21 @@ from rsqueakvm.primitives.bytecodes import *
 from rsqueakvm.model.database import W_DBObject
 
 
+def _import_sqpyte():
+    try:
+        from sqpyte import interpreter
+        from sqpyte.capi import CConfig
+        return interpreter, CConfig
+    except ImportError:
+        return None, None
+interpreter, CConfig = _import_sqpyte()
+
 DatabasePlugin = Plugin()
 
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, str, bool])
 def primitiveSQLConnect(interp, s_frame, w_rcvr, filename, sqpyte):
-    try:
-        from sqpyte import interpreter
-    except ImportError:
+    if interpreter is None:
         raise PrimitiveFailedError('sqpyte not found')
     if sqpyte:
         db_handle = dbm.connect(interpreter.SQPyteDB, filename)
@@ -77,6 +84,8 @@ def primitiveSQLClose(interp, s_frame, w_rcvr, db_handle):
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveSQLModeSwitch(interp, s_frame, w_rcvr, mode):
+    if interpreter is None:
+        raise PrimitiveFailedError('sqpyte not found')
     if mode == 1:
         dbm.driver = interpreter.SQLite3DB
     elif mode == 2:
@@ -108,9 +117,7 @@ def primitiveSQLAllInstances(interp, s_frame, w_class):
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveSQLNextObject(interp, s_frame, w_rcvr, cursor_handle):
-    try:
-        from sqpyte.capi import CConfig
-    except ImportError:
+    if CConfig is None:
         raise PrimitiveFailedError('sqpyte not found')
     query = dbm.cursor(cursor_handle).raw_next()
     if query is None or query.column_type(0) != CConfig.SQLITE_INTEGER:
