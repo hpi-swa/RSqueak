@@ -6,19 +6,25 @@ EX=
 #set EX to sudo if required.
 
 exitcode=0
+plugins=""
+plugins_suffix=""
+if [[ -n "$PLUGINS" ]]; then
+  plugins="--plugins ${PLUGINS}"
+  plugins_suffix="-${PLUGINS}"
+fi
 
 case "$BUILD_ARCH" in
   32bit)
-    python .build/build.py
+    python .build/build.py $plugins
     exitcode=$?
-    cp rsqueak rsqueak-x86-${UNAME}-jit-$TRAVIS_COMMIT || true
+    cp rsqueak rsqueak-x86-${UNAME}$plugins_suffix-jit-$TRAVIS_COMMIT || true
     python .build/jittests.py
     $EX rm -rf .build/pypy/rpython/_cache
     ;;
   64bit)
-    python .build/build.py -- --64bit
+    python .build/build.py -- --64bit $plugins
     exitcode=$?
-    cp rsqueak rsqueak-x86_64-${UNAME}-jit-$TRAVIS_COMMIT || true
+    cp rsqueak rsqueak-x86_64-${UNAME}$plugins_suffix-jit-$TRAVIS_COMMIT || true
     # python .build/jittests.py 64bit
     $EX rm -rf .build/pypy/rpython/_cache
     ;;
@@ -48,7 +54,7 @@ case "$BUILD_ARCH" in
     exitcode=$?
     cp rsqueak $oldpwd/rsqueak
     cd $oldpwd
-    cp rsqueak rsqueak-$armv-${UNAME}-jit-$TRAVIS_COMMIT
+    cp rsqueak rsqueak-$armv-${UNAME}$plugins_suffix-jit-$TRAVIS_COMMIT
     ;;
 esac
 
