@@ -1,7 +1,5 @@
 #! /usr/bin/env python
 
-#! /usr/bin/env python
-
 import sys
 from os import path, walk
 import environment
@@ -16,6 +14,7 @@ SHOULD_RUN_FIRST = [
 
 if __name__ == "__main__":
     import pytest
+
     if not any("/test" in arg or "\\test" in arg for arg in sys.argv):
         testdir = path.join(path.dirname(__file__), "..", "rsqueakvm", "test")
         exitcode = 0
@@ -28,7 +27,8 @@ if __name__ == "__main__":
         for root, subdirs, files in walk(testdir):
             files.sort()
             for f in files:
-                if f.startswith("test_") and f.endswith(".py") and (not f in SHOULD_RUN_FIRST):
+                if (f.startswith("test_") and f.endswith(".py") and
+                        (f not in SHOULD_RUN_FIRST)):
                     args.append(path.join(root, f))
         exitcode |= pytest.main(args=args)
         exit(exitcode)
