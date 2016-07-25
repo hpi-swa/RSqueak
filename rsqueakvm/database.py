@@ -1,12 +1,14 @@
-# -*- coding: utf-8 -*-
-
 from rsqueakvm.error import PrimitiveFailedError
 
 from rpython.rlib import jit
 from rpython.rtyper.lltypesystem import rffi
 
-from sqpyte import interpreter
-from sqpyte.capi import CConfig
+try:
+    from sqpyte.capi import CConfig
+except ImportError:
+    class CConfig():
+        SQLITE_TEXT = SQLITE_BLOB = SQLITE_INTEGER = SQLITE_FLOAT = None
+        SQLITE_NULL = SQLITE_ROW = SQLITE_DONE = None
 
 
 ###############################################################################
@@ -27,7 +29,7 @@ class SQLConnection(object):
             print 'Trying to connect to %s...' % filename
             self.db = db_class(filename)
             print 'Success'
-        except (interpreter.SQPyteException, interpreter.SqliteException) as e:
+        except Exception as e:
             print e.msg
 
     def cursor(self):
@@ -177,7 +179,7 @@ class Statement(object):
         self.sql = sql
         try:
             self.query = w_connection.db.execute(sql)
-        except interpreter.SqliteException, e:
+        except Exception as e:
             print e.msg
             raise PrimitiveFailedError(e.msg)
             # space = w_connection.space
@@ -251,9 +253,14 @@ class DBManager(object):
     _immutable_fields_ = ["db_connection?"]
 
     def __init__(self):
-        self.driver = interpreter.SQPyteDB  # Driver for DBObjects
         self.db_file_name = ":memory:"
         self.db_connection = None
+        self.driver = None  # Driver for DBObjects
+        try:
+            from sqpyte.interpreter import SQPyteDB
+            self.driver = SQPyteDB
+        except ImportError:
+            pass
 
         self._db_count = 0
         self._dbs = {}
