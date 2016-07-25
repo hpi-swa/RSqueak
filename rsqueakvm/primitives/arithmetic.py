@@ -105,15 +105,19 @@ for (code, op) in bitwise_binary_ops.items():
                 return interp.space.wrap_int(intmask(res))
     make_func(op)
 
-@specialize.argtype(0, 1)
-def ovfcheck_div(receiver, argument):
-    if isinstance(receiver, r_uint) and isinstance(argument, r_uint):
-        return receiver // argument
-    else:
-        try:
-            return ovfcheck(receiver // argument)
-        except OverflowError:
-            raise PrimitiveFailedError
+def make_ovfcheck(op):
+    @specialize.argtype(0, 1)
+    def fun(receiver, argument):
+        if isinstance(receiver, r_uint) and isinstance(argument, r_uint):
+            return op(receiver, argument)
+        else:
+            try:
+                return ovfcheck(op(receiver, argument))
+            except OverflowError:
+                raise PrimitiveFailedError
+    return fun
+ovfcheck_div = make_ovfcheck(operator.floordiv)
+ovfcheck_mod = make_ovfcheck(operator.mod)
 
 # #/ -- return the result of a division, only succeed if the division is exact
 @expose_also_as(LARGE_DIVIDE)
@@ -121,7 +125,7 @@ def ovfcheck_div(receiver, argument):
 def func(interp, s_frame, receiver, argument):
     if argument == 0:
         raise PrimitiveFailedError()
-    if receiver % argument != 0:
+    if ovfcheck_mod(receiver, argument) != 0:
         raise PrimitiveFailedError()
     return interp.space.wrap_int(ovfcheck_div(receiver, argument))
 
@@ -131,7 +135,7 @@ def func(interp, s_frame, receiver, argument):
 def func(interp, s_frame, receiver, argument):
     if argument == 0:
         raise PrimitiveFailedError()
-    return interp.space.wrap_int(receiver % argument)
+    return interp.space.wrap_int(ovfcheck_mod(receiver, argument))
 
 # #// -- return the result of a division, rounded towards negative infinity
 @expose_also_as(LARGE_DIV)
