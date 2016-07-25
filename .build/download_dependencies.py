@@ -67,7 +67,8 @@ def download_and_extract(url, targetdir, callback=None):
 DEPS = [("https://bitbucket.org/pypy/pypy/get/default.zip", cp.get("General", "pypy")),
         ("https://bitbucket.org/pypy/rsdl/get/sdl2.zip", cp.get("General", "rsdl"))]
 
-if 'DatabasePlugin' in ' '.join(sys.argv):
+if ('database_plugin' in ' '.join(sys.argv) or
+    'database_plugin' in os.environ.get('PLUGINS', '')):
     DEPS.append(("https://github.com/HPI-SWA-Lab/SQPyte/archive/rsqueak.zip",
                 cp.get("General", "sqpyte")))
 
