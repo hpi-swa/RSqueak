@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+import platform
 
 from rsqueakvm.database import dbm
 from rsqueakvm.error import PrimitiveFailedError
@@ -9,10 +9,11 @@ from rsqueakvm.model.database import W_DBObject
 
 def _import_sqpyte():
     try:
+        assert "64bit" in platform.architecture()[0]
         from sqpyte import interpreter
         from sqpyte.capi import CConfig
         return interpreter, CConfig
-    except ImportError:
+    except (ImportError, AssertionError):
         return None, None
 interpreter, CConfig = _import_sqpyte()
 
