@@ -7,5 +7,4 @@ matrix:
   - env: REPOSITORY=OpenSmalltalk/opensmalltalk-vm VM=cog
 
 script:
-  - gem install travis activesupport --no-ri --no-rdoc
   - ruby .travis.rb
