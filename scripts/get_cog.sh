@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 if ( echo $0 | grep 64 ); then
     words=64
