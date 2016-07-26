@@ -1,0 +1,15 @@
+{
+	"class" : {
+		"open:" : "fn 5/29/2016 17:24",
+		"open:usingSQPyte:" : "jg 6/28/2016 17:27",
+		"primitiveSQLClose:" : "fn 5/29/2016 17:15",
+		"primitiveSQLConnect:usingSQPyte:" : "fn 5/29/2016 17:55",
+		"primitiveSQLExecute:with:" : "fn 5/29/2016 17:14",
+		"primitiveSQLExecute:with:args:" : "fn 5/29/2016 17:14" },
+	"instance" : {
+		"close" : "fn 5/29/2016 17:27",
+		"dbPointer" : "fn 5/10/2016 14:53",
+		"dbPointer:" : "fn 5/10/2016 14:53",
+		"execute:" : "fn 5/29/2016 17:27",
+		"execute:args:" : "jg 6/28/2016 17:26",
+		"execute:args:cursorClass:" : "jg 6/28/2016 17:21" } }

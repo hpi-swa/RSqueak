@@ -141,7 +141,7 @@ class W_Object(object):
         """Get the name of the class of the receiver"""
         name = None
         if self.has_class():
-            name = self.class_shadow(space).name
+            name = self.class_shadow(space).getname()
         if not name:
             name = "?"
         return name

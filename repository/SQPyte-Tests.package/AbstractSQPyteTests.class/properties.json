@@ -1,0 +1,14 @@
+{
+	"category" : "SQPyte-Tests",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "AbstractSQPyteTests",
+	"pools" : [
+		 ],
+	"super" : "TestCase",
+	"type" : "normal" }

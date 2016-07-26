@@ -1,4 +1,5 @@
 from rpython.rlib import jit, objectmodel
+from rpython.rlib.objectmodel import we_are_translated
 
 from rsqueakvm import constants
 from rsqueakvm.error import PrimitiveFailedError
@@ -130,6 +131,7 @@ def func(interp, s_frame, argcount):
     vm_w_params[8] = interp.space.wrap_int(1)  # must be 1 for VM Stats view to work
 
     vm_w_params[41] = interp.space.wrap_int(1)  # We are a "stack-like" VM - number of stack tables
+    
     if objectmodel.we_are_translated():
         # sizeOfMachineCode = jit_hooks.stats_asmmemmgr_allocated(None)
         sizeOfMachineCode = jit_hooks.stats_asmmemmgr_used(None)

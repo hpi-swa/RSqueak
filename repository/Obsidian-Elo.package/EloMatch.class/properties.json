@@ -1,0 +1,18 @@
+{
+	"category" : "Obsidian-Elo",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"id",
+		"date",
+		"blackPlayer",
+		"whitePlayer",
+		"outcome" ],
+	"name" : "EloMatch",
+	"pools" : [
+		 ],
+	"super" : "DBObject",
+	"type" : "normal" }

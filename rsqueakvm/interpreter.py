@@ -464,5 +464,6 @@ class Interpreter(object):
         assert self.is_tracing()
         print (' ' * self.stack_depth) + str
 
+
 # Uncomment this to load debugging facilities at startup.
 #from rsqueakvm import interpreter_debugging; Interpreter.__init__ = interpreter_debugging.activating_init(Interpreter.__init__)

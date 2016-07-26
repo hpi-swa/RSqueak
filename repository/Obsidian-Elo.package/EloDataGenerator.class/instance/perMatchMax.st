@@ -1,0 +1,4 @@
+accessing
+perMatchMax
+
+	^ perMatchMax

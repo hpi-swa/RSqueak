@@ -1,0 +1,15 @@
+{
+	"category" : "K-Means",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"nrClusters",
+		"data" ],
+	"name" : "KMeansBenchmark",
+	"pools" : [
+		 ],
+	"super" : "Object",
+	"type" : "normal" }

@@ -1,0 +1,14 @@
+{
+	"category" : "Obsidian-Elo",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "EloTest",
+	"pools" : [
+		 ],
+	"super" : "TestCase",
+	"type" : "normal" }

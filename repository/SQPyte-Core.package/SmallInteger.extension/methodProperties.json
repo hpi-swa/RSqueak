@@ -1,0 +1,15 @@
+{
+	"class" : {
+		 },
+	"instance" : {
+		"dunningBetterCase:" : "fn 5/29/2016 17:38",
+		"dunningBetterCasePrepared:" : "fn 5/29/2016 17:38",
+		"dunningWorstCase:" : "fn 5/29/2016 17:38",
+		"dunningWorstCasePrepared:" : "fn 5/29/2016 17:37",
+		"elo:" : "fn 5/29/2016 17:33",
+		"eloPrepared:" : "fn 5/29/2016 17:34",
+		"eloSQLite:" : "PO 5/24/2016 10:09",
+		"eloTest" : "PO 7/5/2016 17:06",
+		"testDBObject" : "PO 7/5/2016 13:51",
+		"testDBObjectElo" : "PO 7/5/2016 14:55",
+		"tpch:" : "fn 5/29/2016 17:24" } }

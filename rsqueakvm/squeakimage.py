@@ -203,7 +203,7 @@ class BaseReaderStrategy(object):
         self.chunklist = [] # Flat list of all read chunks
         self.intcache = {} # Cached instances of SmallInteger
         self.lastWindowSize = 0
-        self._progress = Progress(stages=5)  # Track 5 stages in read_and_initialize
+        self._progress = Progress(stages=5, silent=space.silent.is_set())  # Track 5 stages in read_and_initialize
 
     def log(self, msg):
         if self.imageReader.logging_enabled:
