@@ -48,13 +48,28 @@ done
 
 echo ""
 
+POINTS=1000
+POINTS_STEP=1000
+POINTS_MAX=5000
+CLUSTERS=2
+CLUSTERS_STEP=10
+CLUSTERS_MAX=20
+
 echo "#### Running KMeans Benchmarks..."
-"${RSQUEAK}" ${ARGS} -r "|b| DBObject Mode: 0. b := KMeansBenchmark new. b setup. ^ [b run] timeToRun" "${IMAGE}"
-echo "KMeansBenchmark without database"
-echo "======================================================================="
-"${RSQUEAK}" ${ARGS} -r "|b| DBObject Mode: 1. b := KMeansBenchmark new. b setup. ^ [b run] timeToRun" "${IMAGE}"
-echo "KMeansBenchmark with DBObject+SQLite"
-echo "======================================================================="
-"${RSQUEAK}" ${ARGS} -r "|b| DBObject Mode: 2. b := KMeansBenchmark new. b setup. ^ [b run] timeToRun" "${IMAGE}"
-echo "KMeansBenchmark with DBObject+SQPyte"
-echo "======================================================================="
+while [ ${CLUSTERS} -le ${CLUSTERS_MAX} ]; do
+  while [ ${POINTS} -le ${POINTS_MAX} ]; do
+    
+    "${RSQUEAK}" ${ARGS} -r "|b| DBObject Mode: 0. b := KMeansBenchmark new. b setupNrPoints: ${POINTS} withSeed: 42. ^ [b runWithNrClusters: ${CLUSTERS}] timeToRun" "${IMAGE}"
+    echo "KMeansBenchmark without database"
+    echo "======================================================================="
+    "${RSQUEAK}" ${ARGS} -r "|b| DBObject Mode: 1. b := KMeansBenchmark new. b setupNrPoints: ${POINTS} withSeed: 42. ^ [b runWithNrClusters: ${CLUSTERS}] timeToRun" "${IMAGE}"
+    echo "KMeansBenchmark with DBObject+SQLite"
+    echo "======================================================================="
+    "${RSQUEAK}" ${ARGS} -r "|b| DBObject Mode: 2. b := KMeansBenchmark new. b setupNrPoints: ${POINTS} withSeed: 42. ^ [b runWithNrClusters: ${CLUSTERS}] timeToRun" "${IMAGE}"
+    echo "KMeansBenchmark with DBObject+SQPyte"
+    echo "======================================================================="
+    
+    POINTS=$((${POINTS}+${POINTS_STEP}))
+  done
+  CLUSTERS=$((${CLUSTERS}+${CLUSTERS_STEPS}))
+done
