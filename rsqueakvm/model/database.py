@@ -101,8 +101,8 @@ class W_DBObject_State:
 
 
 class W_DBObject(W_PointersObject):
-    _attrs_ = ["id", "ivar_cache"]
-    _immutable_fields_ = ["id"]
+    _attrs_ = ["id", "w_id", "ivar_cache"]
+    _immutable_fields_ = ["id", "w_id"]
     state = W_DBObject_State()
     repr_classname = "W_DBObject"
 
@@ -112,25 +112,25 @@ class W_DBObject(W_PointersObject):
         W_DBObject.state.id_counter += 1
         return theId
 
-    def __init__(self, space, w_class, size, weak=False, object_id=-1):
+    def __init__(self, space, w_class, size, weak=False, w_id=None,
+                 cache=None):
         W_PointersObject.__init__(self, space, w_class, size, weak)
-        self.ivar_cache = [None] * size
-        if object_id > 0:
-            self.id = object_id
+        self.ivar_cache = cache if cache else [None] * size
+        if w_id is not None:
+            self.id = space.unwrap_int(w_id)
+            self.w_id = w_id
             return
         self.id = W_DBObject.next_id()
+        self.w_id = space.wrap_int(self.id)
         class_name = self.class_name(space)
         W_DBObject.state.init_column_types_if_neccessary(class_name, size)
         connection = dbm.connection()
         W_DBObject.state.create_table_if_neccessary(space, class_name,
                                                     connection)
-        connection.execute(space, insert_sql(class_name), [self.w_id(space)])
+        connection.execute(space, insert_sql(class_name), [self.w_id])
 
     def class_name(self, space):
         return jit.promote_string(self.classname(space))
-
-    def w_id(self, space):
-        return space.wrap_int(self.id)
 
     def is_same_object(self, other):
         if not isinstance(other, W_DBObject):
@@ -148,7 +148,7 @@ class W_DBObject(W_PointersObject):
             return self.ivar_cache[n0]
 
         cursor = dbm.connection().execute(
-            space, select_sql(class_name, n0), [self.w_id(space)])
+            space, select_sql(class_name, n0), [self.w_id])
 
         w_result = cursor.next(space).fetch(space, 0)
         if w_result:
@@ -178,7 +178,7 @@ class W_DBObject(W_PointersObject):
                 aType = BLOB
                 W_DBObject.state.db_objects[w_value.id] = w_value
                 # Save id in database.
-                w_value = w_value.w_id(space)
+                w_value = w_value.w_id
             else:
                 # print 'Unable to unwrap %s' % w_value.getclass(space)
                 # print 'Falling back to standard store.'
@@ -197,4 +197,4 @@ class W_DBObject(W_PointersObject):
 
         connection = dbm.connection()
         connection.execute(space, update_sql(class_name, n0),
-                           [w_value, self.w_id(space)])
+                           [w_value, self.w_id])
