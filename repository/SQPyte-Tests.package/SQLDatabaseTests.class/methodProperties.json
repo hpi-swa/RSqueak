@@ -1,6 +1,6 @@
 {
 	"class" : {
-		 },
+		"isAbstract" : "jg 7/26/2016 14:36" },
 	"instance" : {
 		"createDatabase:" : "jg 6/28/2016 15:06",
 		"defaultDatabase" : "jg 6/28/2016 17:01",
@@ -12,4 +12,5 @@
 		"testQueryColumnCount" : "jg 6/28/2016 17:05",
 		"testQueryColumnNameAt" : "jg 6/28/2016 17:05",
 		"testQueryColumnNames" : "jg 6/28/2016 17:05",
-		"testSingleStatementInsert" : "jg 6/28/2016 17:05" } }
+		"testSingleStatementInsert" : "jg 6/28/2016 17:05",
+		"testSingleStatementUpdate" : "jg 7/26/2016 14:24" } }
