@@ -8,4 +8,4 @@ matrix:
 
 script:
   - bundle install
-  - ruby .travis.rb
+  - bundle exec ruby .travis.rb
