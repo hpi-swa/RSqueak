@@ -7,5 +7,4 @@ matrix:
   - env: REPOSITORY=OpenSmalltalk/opensmalltalk-vm VM=cog
 
 script:
-  - bundle install
   - bundle exec ruby .travis.rb
