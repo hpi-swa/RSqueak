@@ -9,7 +9,7 @@ require "active_support/core_ext/time"
 CODESPEED = URI("http://lively-kernel.org/codespeed")
 
 client = Travis::Client.new(access_token: ENV["TRAVIS_API_TOKEN"])
-repo = client.find(ENV["REPOSITORY"])
+repo = client.repo(ENV["REPOSITORY"])
 vm = ENV["VM"]
 
 repo.builds.select do |b|
