@@ -1,0 +1,11 @@
+language: ruby
+rvm:
+  2.2
+
+matrix:
+  - env: REPOSITORY=HPI-SWA-Lab/RSqueak VM=rsqueak USE_SHA=1
+  - env: REPOSITORY=OpenSmalltalk/opensmalltalk-vm VM=cog
+
+script:
+  - gem install travis activesupport --no-ri --no-rdoc
+  - ruby .travis.rb
