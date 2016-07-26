@@ -2,9 +2,9 @@ language: ruby
 rvm:
   2.3.1
 
-matrix:
-  - env: REPOSITORY=HPI-SWA-Lab/RSqueak VM=rsqueak USE_SHA=1
-  - env: REPOSITORY=OpenSmalltalk/opensmalltalk-vm VM=cog
+env:
+  - REPOSITORY=HPI-SWA-Lab/RSqueak VM=rsqueak USE_SHA=1
+  - REPOSITORY=OpenSmalltalk/opensmalltalk-vm VM=cog
 
 script:
   - bundle exec ruby .travis.rb
