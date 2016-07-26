@@ -5,18 +5,19 @@ import pytest
 from rsqueakvm.database import dbm
 from rsqueakvm.error import PrimitiveFailedError
 
-from sqpyte.interpreter import SQPyteDB
 
-
-def _is_incompatible():
+def _import_SQPyteDB():
     try:
-        import sqpyte
-        return "64bit" not in platform.architecture()[0]
-    except ImportError:
-        return True
+        assert "64bit" in platform.architecture()[0]
+        from sqpyte.interpreter import SQPyteDB
+        return SQPyteDB
+    except (ImportError, AssertionError):
+        return None
+
+SQPyteDB = _import_SQPyteDB()
 
 skipif_incompatible = pytest.mark.skipif(
-    _is_incompatible(), reason="64bit required or sqpyte not found")
+    SQPyteDB is None, reason="64bit required or sqpyte not found")
 
 
 @skipif_incompatible
