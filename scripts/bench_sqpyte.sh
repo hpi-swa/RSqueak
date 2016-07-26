@@ -60,13 +60,13 @@ while [ ${CLUSTERS} -le ${CLUSTERS_MAX} ]; do
   while [ ${POINTS} -le ${POINTS_MAX} ]; do
     
     "${RSQUEAK}" ${ARGS} -r "|b| DBObject Mode: 0. b := KMeansBenchmark new. b setupNrPoints: ${POINTS} withSeed: 42. ^ [b runWithNrClusters: ${CLUSTERS}] timeToRun" "${IMAGE}"
-    echo "KMeansBenchmark without database"
+    echo "KMeansBenchmark (${POINTS} Points, ${CLUSTERS} Clusters) without database"
     echo "======================================================================="
     "${RSQUEAK}" ${ARGS} -r "|b| DBObject Mode: 1. b := KMeansBenchmark new. b setupNrPoints: ${POINTS} withSeed: 42. ^ [b runWithNrClusters: ${CLUSTERS}] timeToRun" "${IMAGE}"
-    echo "KMeansBenchmark with DBObject+SQLite"
+    echo "KMeansBenchmark (${POINTS} Points, ${CLUSTERS} Clusters) with DBObject+SQLite"
     echo "======================================================================="
     "${RSQUEAK}" ${ARGS} -r "|b| DBObject Mode: 2. b := KMeansBenchmark new. b setupNrPoints: ${POINTS} withSeed: 42. ^ [b runWithNrClusters: ${CLUSTERS}] timeToRun" "${IMAGE}"
-    echo "KMeansBenchmark with DBObject+SQPyte"
+    echo "KMeansBenchmark (${POINTS} Points, ${CLUSTERS} Clusters) with DBObject+SQPyte"
     echo "======================================================================="
     
     POINTS=$((${POINTS}+${POINTS_STEP}))
