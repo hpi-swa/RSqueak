@@ -1,6 +1,6 @@
 language: ruby
 rvm:
-  2.2
+  2.3
 
 matrix:
   - env: REPOSITORY=HPI-SWA-Lab/RSqueak VM=rsqueak USE_SHA=1
