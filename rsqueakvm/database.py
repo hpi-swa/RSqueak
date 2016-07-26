@@ -267,7 +267,8 @@ class DBManager(object):
     def connection(self):
         if self.db_connection is not None:
             return self.db_connection
-        assert self.driver is not None
+        if self.driver is None:
+            raise PrimitiveFailedError('connection [driver is None]')
         print "DBMode: %s" % self.driver
         connection = SQLConnection(self.driver, self.db_file_name)
         assert connection is not None
