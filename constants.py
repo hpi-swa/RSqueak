@@ -19,7 +19,7 @@ BINARY_BASENAME = "rsqueak-x86-linux-jit-{}"
 
 ITERATIONS = 100
 
-OUTPUT_RE = re.compile(r"([a-zA-Z0-9]+) total: iterations=%s runtime: ([0-9\.]+)ms \+/\-([0-9\.]+)" % ITERATIONS)
+OUTPUT_RE = re.compile(r"([a-zA-Z0-9]+) total: iterations=[0-9]+ runtime: ([0-9\.]+)ms \+/\-([0-9\.]+)")
 
 BENCHMARKS = []
 
