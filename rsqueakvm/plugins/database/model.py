@@ -1,5 +1,5 @@
 from rsqueakvm.model.pointers import W_PointersObject
-from rsqueakvm.database import dbm
+from rsqueakvm.plugins.database import dbm
 from rsqueakvm.error import PrimitiveFailedError
 
 from rpython.rlib import jit

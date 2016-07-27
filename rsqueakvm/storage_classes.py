@@ -3,11 +3,9 @@ from rsqueakvm.model.base import W_Object
 from rsqueakvm.model.compiled_methods import W_CompiledMethod, W_PreSpurCompiledMethod, W_SpurCompiledMethod
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargePositiveInteger1Word
 from rsqueakvm.model.pointers import W_PointersObject
-from rsqueakvm.model.database import W_DBObject
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.storage import AbstractCachingShadow, AbstractGenericShadow
 from rsqueakvm.util.version import elidable_for_version, Version
-from rsqueakvm.plugins.database_plugin import dbm
 
 from rpython.rlib import jit
 
@@ -224,10 +222,7 @@ class ClassShadow(AbstractCachingShadow):
         instance_kind = self.get_instance_kind()
         if instance_kind == POINTERS:
             size = self.instsize() + extrasize
-            if dbm.driver is not None and self.inherits_from_dbobject():
-                w_new = W_DBObject(self.space, w_cls, size)
-            else:
-                w_new = W_PointersObject(self.space, w_cls, size)
+            w_new = self.make_pointers_object(w_cls, size)
         elif instance_kind == WORDS:
             w_new = W_WordsObject(self.space, w_cls, extrasize)
         elif instance_kind == BYTES:
@@ -251,6 +246,9 @@ class ClassShadow(AbstractCachingShadow):
             raise NotImplementedError(instance_kind)
         return w_new
 
+    def make_pointers_object(self, w_cls, size):
+        return W_PointersObject(self.space, w_cls, size)
+
     @elidable_for_version(0)
     def get_instance_kind(self):
         return self.instance_kind
@@ -270,15 +268,6 @@ class ClassShadow(AbstractCachingShadow):
     @elidable_for_version(0)
     def getname(self):
         return self.name
-
-    @elidable_for_version(0)
-    def inherits_from_dbobject(self):
-        if self.getname() == "DBObject":
-            return True
-        s_superclass = self.s_superclass()
-        if s_superclass:
-            return s_superclass.inherits_from_dbobject()
-        return False
 
     # _______________________________________________________________
     # Methods for querying the format word, taken from the blue book:

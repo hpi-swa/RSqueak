@@ -1,6 +1,6 @@
 import py
 
-from rsqueakvm.database import dbm, SQLCursor
+from rsqueakvm.plugins.database import dbm, SQLCursor
 from rsqueakvm.error import PrimitiveFailedError
 
 from .util import create_space

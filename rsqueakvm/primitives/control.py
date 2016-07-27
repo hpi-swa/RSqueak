@@ -12,8 +12,6 @@ from rpython.rlib import jit, objectmodel
 from rpython.rtyper.extregistry import ExtRegistryEntry
 
 
-OPTIONAL_PLUGINS = ['database_plugin']
-
 # ___________________________________________________________________________
 # Failure
 
@@ -96,7 +94,7 @@ def find_plugins():
         if plugin_idx >= len(sys.argv):
             raise ValueError("Comma-separated list required after --plugins")
         enabled_plugins = sys.argv[plugin_idx].rsplit(",")
-    disabled_plugins = [p for p in OPTIONAL_PLUGINS if p not in enabled_plugins]
+    disabled_plugins = [p for p in constants.OPTIONAL_PLUGINS if p not in enabled_plugins]
     files = os.listdir(os.path.join(os.path.dirname(__file__), "..", "plugins"))
     plugins = []
     plugin_names = []
