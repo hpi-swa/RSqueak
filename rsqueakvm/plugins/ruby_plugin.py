@@ -24,8 +24,11 @@ from rpython.rlib import objectmodel, jit
 # Patch-out virtualizables from Topaz so that translation works
 from topaz.frame import Frame as TopazFrame
 from topaz.interpreter import Interpreter as TopazInterpreter
-delattr(TopazFrame, "_virtualizable_")
-delattr(TopazInterpreter.jitdriver, "virtualizables")
+try:
+    delattr(TopazFrame, "_virtualizable_")
+    delattr(TopazInterpreter.jitdriver, "virtualizables")
+except AttributeError:
+    pass # this is fine
 
 
 RubyPlugin = Plugin()
