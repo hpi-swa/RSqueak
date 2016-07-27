@@ -28,3 +28,7 @@ if [[ -n "${TEST_TYPE}" ]]; then
 fi
 
 "${BASE}/${SCRIPT_NAME}"
+
+if [[ "${PLUGINS}" = *"database_plugin"* ]]; then
+  "${BASE}/test_database_integration.sh"
+fi

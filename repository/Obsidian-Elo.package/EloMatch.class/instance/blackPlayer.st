@@ -1,0 +1,4 @@
+accessing
+blackPlayer
+
+	^ blackPlayer

@@ -4,7 +4,7 @@ import sys
 sys.setrecursionlimit(1000000)
 
 from rsqueakvm import constants, wrapper, objspace, interpreter_bytecodes
-from rsqueakvm.error import MetaPrimFailed, FatalError
+from rsqueakvm.error import FatalError
 from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod, W_SpurCompiledMethod
 from rsqueakvm.model.numeric import W_SmallInteger
 from rsqueakvm.storage_contexts import ContextPartShadow, ActiveContext, InactiveContext, DirtyContext
@@ -217,8 +217,6 @@ class Interpreter(object):
                 if self.is_tracing() or self.trace_important:
                     ret.print_trace()
                 s_context = self.unwind_context_chain(ret.s_current_context, ret.s_target_context, ret.w_value, s_context)
-            except MetaPrimFailed, e:
-                s_context = self.unwind_primitive_simulation(e.s_frame, e.error_code, s_context)
 
     # This is a wrapper around loop_bytecodes that cleanly enters/leaves the frame,
     # handles the stack overflow protection mechanism and handles/dispatches Returns.
@@ -288,23 +286,18 @@ class Interpreter(object):
                 else:
                     raise ret
 
-    def unwind_primitive_simulation(self, start_context, error_code, s_current_context):
-        if start_context is None:
-            # This is the toplevel frame. Execution ended.
-            raise ReturnFromTopLevel(self.space.w_nil, s_current_context)
+    def unwind_primitive_simulation(self, start_context, error_code):
         context = start_context
         while context.get_fallback() is None:
             s_sender = context.s_sender()
-            context._activate_unwind_context(self)
             context = s_sender
-
             if not context:
                 msg = "Context chain ended while trying to unwind primitive simulation\nfrom\n%s\n(pc %s)" % (
                         start_context.short_str(),
                         start_context.pc())
                 raise FatalError(msg)
-
         fallbackContext = context.get_fallback()
+        fallbackContext.store_s_sender(context.s_sender())
 
         if fallbackContext.tempsize() > len(fallbackContext.w_arguments()):
             fallbackContext.settemp(len(fallbackContext.w_arguments()), self.space.wrap_int(error_code))
@@ -470,6 +463,7 @@ class Interpreter(object):
     def print_padded(self, str):
         assert self.is_tracing()
         print (' ' * self.stack_depth) + str
+
 
 # Uncomment this to load debugging facilities at startup.
 #from rsqueakvm import interpreter_debugging; Interpreter.__init__ = interpreter_debugging.activating_init(Interpreter.__init__)

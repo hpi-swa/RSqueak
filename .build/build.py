@@ -2,16 +2,26 @@
 
 import sys, os
 
+
+"""
+RSqueak Build Options (separated with `--` from RPython options)
+
+Example:
+  .build/build.py -Ojit -- --64bit
+
+  --64bit                                       - Compile for 64bit platform
+  --plugins database_plugin[,another_plugin]    - Comma-separated list of optional plugins
+                                                  (e.g. DatabasePlugin)
+"""
+
 if __name__ == "__main__":
-    if not any(arg.startswith("-O") for arg in sys.argv):
+    if not any(arg.startswith("-") for arg in sys.argv):
         sys.argv.append("--batch")
-        sys.argv.append("-Ojit")
-    if not any(arg.startswith("--gcrootfinder") for arg in sys.argv):
-        # default to shadowstack, so all platforms are created equal
-        # (and also because asmgcc doesn't work when cross-compiling
-        # on Linux, where it is the default)
-        sys.argv.append("--gcrootfinder=shadowstack")
-    sys.argv.append(os.path.join(os.path.dirname(__file__), "..", "targetrsqueak.py"))
+    target = os.path.join(os.path.dirname(__file__), "..", "targetrsqueak.py")
+    if '--' in sys.argv:
+      sys.argv[sys.argv.index('--')] = target
+    else:
+      sys.argv.append(target)
     import environment
     from rpython.translator.goal.translate import main
     main()

@@ -1,0 +1,14 @@
+{
+	"class" : {
+		"for:" : "fn 5/29/2016 17:25",
+		"primitiveSQLColumnCount:" : "jg 6/28/2016 16:00",
+		"primitiveSQLColumnName:at:" : "jg 6/28/2016 16:01",
+		"primitiveSQLColumnNames:" : "jg 6/28/2016 16:43",
+		"primitiveSQLNext:" : "fn 5/29/2016 17:14" },
+	"instance" : {
+		"columnCount" : "jg 6/28/2016 16:03",
+		"columnNameAt:" : "jg 6/28/2016 16:34",
+		"columnNames" : "jg 6/28/2016 16:43",
+		"cursorPointer" : "fn 5/10/2016 15:00",
+		"cursorPointer:" : "fn 5/10/2016 15:00",
+		"next" : "fn 5/29/2016 17:27" } }

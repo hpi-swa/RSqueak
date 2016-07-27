@@ -1,0 +1,16 @@
+{
+	"category" : "K-Means",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"x",
+		"y",
+		"cluster" ],
+	"name" : "DataPoint",
+	"pools" : [
+		 ],
+	"super" : "DBObject",
+	"type" : "normal" }
