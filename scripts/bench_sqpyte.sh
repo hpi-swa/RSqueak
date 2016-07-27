@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Required Squeak packages: KMeans, Obsidian-Elo, ORM, SQPyte-Core
+# Requires SQPyte package to be present in Squeak image (see /repository)
 
 if [ "$#" -ne 2 ]; then
   echo "Please provide a RSqueak binary and an image!"
