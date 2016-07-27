@@ -3,10 +3,10 @@ import py
 import pytest
 
 from rsqueakvm import storage_classes
-from rsqueakvm.database import dbm
 from rsqueakvm.error import PrimitiveFailedError
-from rsqueakvm.model.database import W_DBObject
 from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.plugins.database import dbm
+from rsqueakvm.plugins.database.model import W_DBObject
 
 from .util import create_space
 

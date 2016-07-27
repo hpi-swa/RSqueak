@@ -1,10 +1,10 @@
 import platform
 
-from rsqueakvm.database import dbm
+from rsqueakvm.plugins.database import dbm
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.primitives.bytecodes import *
-from rsqueakvm.model.database import W_DBObject, BLOB
+from rsqueakvm.plugins.database.model import W_DBObject, BLOB
 
 
 def _import_sqpyte():
@@ -16,6 +16,31 @@ def _import_sqpyte():
     except (ImportError, AssertionError):
         return None, None
 interpreter, CConfig = _import_sqpyte()
+
+
+def _patch_class_shadow():
+    from rsqueakvm.storage_classes import ClassShadow
+    from rsqueakvm.util.version import elidable_for_version
+    old_make_pointers = ClassShadow.make_pointers_object
+
+    def db_make_pointers_object(self, w_cls, size):
+        if dbm.driver is not None and self.inherits_from_dbobject():
+            return W_DBObject(self.space, w_cls, size)
+        else:
+            return old_make_pointers(self, w_cls, size)
+
+    def inherits_from_dbobject(self):
+        if self.getname() == "DBObject":
+            return True
+        s_superclass = self.s_superclass()
+        if s_superclass:
+            return s_superclass.inherits_from_dbobject()
+        return False
+    ClassShadow.make_pointers_object = db_make_pointers_object
+    ClassShadow.inherits_from_dbobject = elidable_for_version(0)(
+        inherits_from_dbobject)
+_patch_class_shadow()
+
 
 DatabasePlugin = Plugin()
 
