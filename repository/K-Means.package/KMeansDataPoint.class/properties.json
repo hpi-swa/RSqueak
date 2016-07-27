@@ -9,7 +9,7 @@
 		"x",
 		"y",
 		"cluster" ],
-	"name" : "DataPoint",
+	"name" : "KMeansDataPoint",
 	"pools" : [
 		 ],
 	"super" : "DBObject",

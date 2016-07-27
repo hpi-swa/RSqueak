@@ -1,1 +1,1 @@
-(name 'K-Means-fw.1' message 'implemented k-means benchmark' id 'fb0b7a11-8d1a-9e46-b594-e2f12be8a12f' date '21 July 2016' time '5:00:48.635 pm' author 'fw' ancestors () stepChildren ())
+(name 'K-Means-fw.2' message 'Refactor KMeans' id 'fb561f54-123a-be4e-8692-5cbad3fd7d4a' date '26 July 2016' time '5:57:50.164 pm' author 'fw' ancestors ((name 'K-Means-fw.1' message 'implemented k-means benchmark' id 'fb0b7a11-8d1a-9e46-b594-e2f12be8a12f' date '21 July 2016' time '5:00:48.635 pm' author 'fw' ancestors () stepChildren ())) stepChildren ())

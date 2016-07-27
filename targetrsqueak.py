@@ -277,6 +277,8 @@ class Config(object):
                 self.space.title.set(title)
             elif arg in ["--EnableAltF4Quit"]:
                 self.space.altf4quit.activate()
+            elif arg in ["--plugins"]:  # not handled here
+                idx +=1 # skip next argument
             # Default
             elif arg in ["--"]:
                 print "Image arguments: %s" % ", ".join(argv[idx:])

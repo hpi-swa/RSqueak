@@ -9,7 +9,7 @@
 		"numDataPoints",
 		"maxValue",
 		"random" ],
-	"name" : "DataGenerator",
+	"name" : "KMeansDataGenerator",
 	"pools" : [
 		 ],
 	"super" : "Object",

@@ -4,7 +4,7 @@ from rsqueakvm.database import dbm
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.primitives.bytecodes import *
-from rsqueakvm.model.database import W_DBObject
+from rsqueakvm.model.database import W_DBObject, BLOB
 
 
 def _import_sqpyte():
@@ -58,14 +58,14 @@ def primitiveSQLNext(interp, s_frame, w_rcvr, cursor_handle):
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveSQLColumnCount(interp, s_frame, w_rcvr, cursor_handle):
-    return interp.space.wrap_int(dbm.cursor(cursor_handle).column_count())
+    return interp.space.wrap_int(dbm.cursor(cursor_handle).column_count)
 
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveSQLColumnNames(interp, s_frame, w_rcvr, cursor_handle):
     return interp.space.wrap_list([
         interp.space.wrap_string(c) for c in
-        dbm.cursor(cursor_handle).column_names()])
+        dbm.cursor(cursor_handle).column_names])
 
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, int, int])
@@ -75,7 +75,7 @@ def primitiveSQLColumnName(interp, s_frame, w_rcvr, cursor_handle, index):
 
     # Smalltalk counts from 1, rest of world from 0
     return interp.space.wrap_string(
-        dbm.cursor(cursor_handle).column_name(index - 1))
+        dbm.cursor(cursor_handle).column_names[index - 1])
 
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
@@ -120,10 +120,26 @@ def primitiveSQLAllInstances(interp, s_frame, w_class):
 def primitiveSQLNextObject(interp, s_frame, w_rcvr, cursor_handle):
     if CConfig is None:
         raise PrimitiveFailedError('sqpyte not found')
-    query = dbm.cursor(cursor_handle).raw_next()
-    if query is None or query.column_type(0) != CConfig.SQLITE_INTEGER:
-        return interp.space.w_nil
-    object_id = query.column_int64(0)
-    num_cols = query.data_count()
-    obj = W_DBObject(interp.space, w_rcvr, num_cols, object_id=object_id)
-    return obj
+    space = interp.space
+    cursor = dbm.cursor(cursor_handle)
+    row = cursor.raw_next(space)
+    if not row:
+        return space.w_nil
+    w_id = None
+    num_cols = len(row)
+    cache = [None] * num_cols
+    for i in range(num_cols):
+        name = cursor.column_names[i]
+        if name == 'id':
+            w_id = row[i]
+        else:
+            n0 = int(name[9:])  # strip 'inst_var_'
+            class_name = w_rcvr.classname(interp.space).split(' ')[0]
+            if W_DBObject.state.get_column_type(class_name, n0) is BLOB:
+                db_id = space.unwrap_int(row[i])
+                cache[n0] = W_DBObject.state.db_objects[db_id]
+            else:
+                cache[n0] = row[i]
+    if w_id is None:
+        raise PrimitiveFailedError('Could not find w_id')
+    return W_DBObject(space, w_rcvr, num_cols, w_id=w_id, cache=cache)
