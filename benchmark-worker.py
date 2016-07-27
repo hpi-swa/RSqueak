@@ -74,6 +74,7 @@ class BenchmarkWorker(object):
             results = {}
             while tries_left > 0:
                 try:
+                    print "Running %s" % bm
                     pipe = subprocess.Popen(
                         "%s $(pwd)/%s $(pwd)/run.st" % (binary, image),
                         shell=True,
