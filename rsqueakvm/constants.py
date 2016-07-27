@@ -245,4 +245,4 @@ SYSTEM_ATTRIBUTE_IMAGE_ARGS_INDEX = 2
 #___________________________________________________________________________
 # Plugin constants
 #
-OPTIONAL_PLUGINS = ['database_plugin']
+OPTIONAL_PLUGINS = ['database_plugin', 'ruby_plugin']
