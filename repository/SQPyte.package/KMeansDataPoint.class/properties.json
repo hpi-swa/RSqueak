@@ -1,0 +1,16 @@
+{
+	"category" : "SQPyte-KMeans",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"x",
+		"y",
+		"cluster" ],
+	"name" : "KMeansDataPoint",
+	"pools" : [
+		 ],
+	"super" : "DBObject",
+	"type" : "normal" }
