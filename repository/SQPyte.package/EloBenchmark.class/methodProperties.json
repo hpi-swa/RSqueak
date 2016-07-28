@@ -2,6 +2,8 @@
 	"class" : {
 		 },
 	"instance" : {
+		"benchDryElo" : "fn 7/28/2016 11:13",
+		"benchDryEloWithAllInstances" : "fn 7/28/2016 11:13",
 		"benchElo" : "toma 5/11/2016 14:29",
 		"benchEloWithAllInstances" : "fn 7/12/2016 20:46",
 		"benchOpponentMatching" : "toma 5/11/2016 16:29",

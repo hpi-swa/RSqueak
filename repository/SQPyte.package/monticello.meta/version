@@ -1,1 +1,1 @@
-(name 'SQPyte-fn.1' message 'Merge all packages into SQPyte package' id 'f5ae1847-ab7d-457e-9295-04ace7c39b9a' date '27 July 2016' time '7:01:05.449548 pm' author 'fn' ancestors () stepChildren ())
+(name 'SQPyte-fn.2' message 'Add Elo dry mode' id 'cff22168-a9b5-48b0-9139-0f51e07fc695' date '28 July 2016' time '12:22:18.38458 pm' author 'fn' ancestors ((name 'SQPyte-fn.1' message 'Merge all packages into SQPyte package' id 'f5ae1847-ab7d-457e-9295-04ace7c39b9a' date '27 July 2016' time '7:01:05.449548 pm' author 'fn' ancestors () stepChildren ())) stepChildren ())

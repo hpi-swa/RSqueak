@@ -1,7 +1,7 @@
 elo-ranking
-adjustPlayerScores
+dryAdjustPlayerScores
 	| expected delta |
 	expected := self blackPlayer chanceOfDefeating: (self whitePlayer).
 	delta := (self outcome - expected) * EloMatch maxMovedPoints.
-	self blackPlayer	scorePoints: delta from: self whitePlayer.
+	"self blackPlayer scorePoints: delta from: self whitePlayer."
 	

@@ -26,24 +26,39 @@ while [ ${MATCHES} -le ${MAX} ]; do
   "${RSQUEAK}" ${ARGS} -r "|b| DBObject Mode: 0. b := (EloBenchmark new) setUp: ${MATCHES}. ^ [b benchElo] timeToRun" "${IMAGE}"
   echo "for ${MATCHES} matches without database"
   echo "======================================================================="
-  "${RSQUEAK}" ${ARGS} -r "|b| DBObject Mode: 0. b := (EloBenchmark new) setUp: ${MATCHES}. ^ [b benchEloWithAllInstances] timeToRun." "${IMAGE}"
+  "${RSQUEAK}" ${ARGS} -r "|b| DBObject Mode: 0. b := (EloBenchmark new) setUp: ${MATCHES}. ^ [b benchEloWithAllInstances] timeToRun" "${IMAGE}"
   echo "for ${MATCHES} matches without database and with Object>>allInstancesDo:"
   echo "======================================================================="
   "${RSQUEAK}" ${ARGS} -r "|b| DBObject Mode: 1. b := (EloBenchmark new) setUp: ${MATCHES}. ^ [b benchElo] timeToRun" "${IMAGE}"
   echo "for ${MATCHES} matches with DBObject+SQLite"
   echo "======================================================================="
-  "${RSQUEAK}" ${ARGS} -r "|b| DBObject Mode: 1. b := (EloBenchmark new) setUp: ${MATCHES}. ^ [b benchEloWithAllInstances] timeToRun." "${IMAGE}"
+  "${RSQUEAK}" ${ARGS} -r "|b| DBObject Mode: 1. b := (EloBenchmark new) setUp: ${MATCHES}. ^ [b benchEloWithAllInstances] timeToRun" "${IMAGE}"
   echo "for ${MATCHES} matches with RFFI+SQLite and DBObject>>allInstancesDo:"
   echo "======================================================================="
   "${RSQUEAK}" ${ARGS} -r "|b| DBObject Mode: 2. b := (EloBenchmark new) setUp: ${MATCHES}. ^ [b benchElo] timeToRun" "${IMAGE}"
   echo "for ${MATCHES} matches with DBObject+SQPyte"
   echo "======================================================================="
-  "${RSQUEAK}" ${ARGS} -r "|b| DBObject Mode: 2. b := (EloBenchmark new) setUp: ${MATCHES}. ^ [b benchEloWithAllInstances] timeToRun." "${IMAGE}"
+  "${RSQUEAK}" ${ARGS} -r "|b| DBObject Mode: 2. b := (EloBenchmark new) setUp: ${MATCHES}. ^ [b benchEloWithAllInstances] timeToRun" "${IMAGE}"
   echo "for ${MATCHES} matches with RFFI+SQPyte and DBObject>>allInstancesDo:"
+  echo "======================================================================="
+
+  "${RSQUEAK}" ${ARGS} -r "|b| DBObject Mode: 0. b := (EloBenchmark new) setUp: ${MATCHES}. ^ [b benchDryElo] timeToRun" "${IMAGE}"
+  echo "for ${MATCHES} matches in dry-mode without database"
+  echo "======================================================================="
+  "${RSQUEAK}" ${ARGS} -r "|b| DBObject Mode: 0. b := (EloBenchmark new) setUp: ${MATCHES}. ^ [b benchDryEloWithAllInstances] timeToRun" "${IMAGE}"
+  echo "for ${MATCHES} matches in dry-mode without database and with Object>>allInstancesDo:"
+  echo "======================================================================="
+  "${RSQUEAK}" ${ARGS} -r "|b| DBObject Mode: 2. b := (EloBenchmark new) setUp: ${MATCHES}. ^ [b benchDryElo] timeToRun" "${IMAGE}"
+  echo "for ${MATCHES} matches in dry-mode with DBObject+SQPyte"
+  echo "======================================================================="
+  "${RSQUEAK}" ${ARGS} -r "|b| DBObject Mode: 2. b := (EloBenchmark new) setUp: ${MATCHES}. ^ [b benchDryEloWithAllInstances] timeToRun" "${IMAGE}"
+  echo "for ${MATCHES} matches in dry-mode with RFFI+SQPyte and DBObject>>allInstancesDo:"
   echo "======================================================================="
 
   MATCHES=$((${MATCHES}+${STEPS}))
 done
+
+exit
 
 echo ""
 
