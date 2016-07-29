@@ -1,7 +1,7 @@
 from rsqueakvm import wrapper, error
 from rsqueakvm.model.compiled_methods import W_CompiledMethod
 from rsqueakvm.model.pointers import W_PointersObject
-from rsqueakvm.primitives import bytecodes, prim_table, prim_holder
+from rsqueakvm.primitives import constants, prim_table, prim_holder
 from rsqueakvm.storage_classes import ClassShadow
 from rsqueakvm.storage_contexts import ContextPartShadow, DirtyContext
 from rsqueakvm.util.bitmanipulation import splitter
@@ -617,22 +617,22 @@ class __extend__(ContextPartShadow):
 
     # ====== Bytecodes implemented with primitives and message sends ======
 
-    bytecodePrimAdd = make_call_primitive_bytecode(bytecodes.ADD, "+", 1)
-    bytecodePrimSubtract = make_call_primitive_bytecode(bytecodes.SUBTRACT, "-", 1)
-    bytecodePrimLessThan = make_call_primitive_bytecode(bytecodes.LESSTHAN, "<", 1)
-    bytecodePrimGreaterThan = make_call_primitive_bytecode(bytecodes.GREATERTHAN, ">", 1)
-    bytecodePrimLessOrEqual = make_call_primitive_bytecode(bytecodes.LESSOREQUAL,  "<=", 1)
-    bytecodePrimGreaterOrEqual = make_call_primitive_bytecode(bytecodes.GREATEROREQUAL,  ">=", 1)
-    bytecodePrimEqual = make_call_primitive_bytecode(bytecodes.EQUAL,   "=", 1)
-    bytecodePrimNotEqual = make_call_primitive_bytecode(bytecodes.NOTEQUAL,  "~=", 1)
-    bytecodePrimMultiply = make_call_primitive_bytecode(bytecodes.MULTIPLY,  "*", 1)
-    bytecodePrimDivide = make_call_primitive_bytecode(bytecodes.DIVIDE,  "/", 1)
-    bytecodePrimMod = make_call_primitive_bytecode(bytecodes.MOD, "\\\\", 1)
-    bytecodePrimMakePoint = make_call_primitive_bytecode(bytecodes.MAKE_POINT, "@", 1)
-    bytecodePrimBitShift = make_call_primitive_bytecode(bytecodes.BIT_SHIFT, "bitShift:", 1)
-    bytecodePrimDiv = make_call_primitive_bytecode(bytecodes.DIV, "//", 1)
-    bytecodePrimBitAnd = make_call_primitive_bytecode(bytecodes.BIT_AND, "bitAnd:", 1)
-    bytecodePrimBitOr = make_call_primitive_bytecode(bytecodes.BIT_OR, "bitOr:", 1)
+    bytecodePrimAdd = make_call_primitive_bytecode(constants.ADD, "+", 1)
+    bytecodePrimSubtract = make_call_primitive_bytecode(constants.SUBTRACT, "-", 1)
+    bytecodePrimLessThan = make_call_primitive_bytecode(constants.LESSTHAN, "<", 1)
+    bytecodePrimGreaterThan = make_call_primitive_bytecode(constants.GREATERTHAN, ">", 1)
+    bytecodePrimLessOrEqual = make_call_primitive_bytecode(constants.LESSOREQUAL,  "<=", 1)
+    bytecodePrimGreaterOrEqual = make_call_primitive_bytecode(constants.GREATEROREQUAL,  ">=", 1)
+    bytecodePrimEqual = make_call_primitive_bytecode(constants.EQUAL,   "=", 1)
+    bytecodePrimNotEqual = make_call_primitive_bytecode(constants.NOTEQUAL,  "~=", 1)
+    bytecodePrimMultiply = make_call_primitive_bytecode(constants.MULTIPLY,  "*", 1)
+    bytecodePrimDivide = make_call_primitive_bytecode(constants.DIVIDE,  "/", 1)
+    bytecodePrimMod = make_call_primitive_bytecode(constants.MOD, "\\\\", 1)
+    bytecodePrimMakePoint = make_call_primitive_bytecode(constants.MAKE_POINT, "@", 1)
+    bytecodePrimBitShift = make_call_primitive_bytecode(constants.BIT_SHIFT, "bitShift:", 1)
+    bytecodePrimDiv = make_call_primitive_bytecode(constants.DIV, "//", 1)
+    bytecodePrimBitAnd = make_call_primitive_bytecode(constants.BIT_AND, "bitAnd:", 1)
+    bytecodePrimBitOr = make_call_primitive_bytecode(constants.BIT_OR, "bitOr:", 1)
 
     bytecodePrimAt = make_send_selector_bytecode("at:", 1)
     bytecodePrimAtPut = make_send_selector_bytecode("at:put:", 2)
@@ -641,12 +641,12 @@ class __extend__(ContextPartShadow):
     bytecodePrimNextPut = make_send_selector_bytecode("nextPut:", 1)
     bytecodePrimAtEnd = make_send_selector_bytecode("atEnd", 0)
 
-    bytecodePrimEquivalent = make_quick_call_primitive_bytecode(bytecodes.EQUIVALENT, 1)
-    bytecodePrimClass = make_quick_call_primitive_bytecode(bytecodes.CLASS, 0)
+    bytecodePrimEquivalent = make_quick_call_primitive_bytecode(constants.EQUIVALENT, 1)
+    bytecodePrimClass = make_quick_call_primitive_bytecode(constants.CLASS, 0)
 
-    bytecodePrimBlockCopy = make_call_primitive_bytecode(bytecodes.BLOCK_COPY, "blockCopy:", 1)
-    bytecodePrimValue = make_call_primitive_bytecode_classbased("w_BlockContext", bytecodes.VALUE, "w_BlockClosure", bytecodes.CLOSURE_VALUE, "value", 0)
-    bytecodePrimValueWithArg = make_call_primitive_bytecode_classbased("w_BlockContext", bytecodes.VALUE, "w_BlockClosure", bytecodes.CLOSURE_VALUE_, "value:", 1)
+    bytecodePrimBlockCopy = make_call_primitive_bytecode(constants.BLOCK_COPY, "blockCopy:", 1)
+    bytecodePrimValue = make_call_primitive_bytecode_classbased("w_BlockContext", constants.VALUE, "w_BlockClosure", constants.CLOSURE_VALUE, "value", 0)
+    bytecodePrimValueWithArg = make_call_primitive_bytecode_classbased("w_BlockContext", constants.VALUE, "w_BlockClosure", constants.CLOSURE_VALUE_, "value:", 1)
 
     bytecodePrimDo = make_send_selector_bytecode("do:", 1)
     bytecodePrimNew = make_send_selector_bytecode("new", 0)

@@ -5,7 +5,7 @@ from rsqueakvm import constants, wrapper
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.numeric import W_Float
 from rsqueakvm.primitives import expose_primitive, expose_also_as, pos_32bit_int
-from rsqueakvm.primitives.bytecodes import *
+from rsqueakvm.primitives.constants import *
 
 from rpython.rlib import rfloat, jit
 from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int, r_int64

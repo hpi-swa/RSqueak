@@ -5,7 +5,7 @@ from rsqueakvm.model.numeric import W_Float, W_LargePositiveInteger1Word
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.primitives import expose_primitive, assert_pointers, assert_class
-from rsqueakvm.primitives.bytecodes import *
+from rsqueakvm.primitives.constants import *
 from rsqueakvm.primitives.misc import fake_bytes_left
 
 from rpython.rlib import jit, objectmodel

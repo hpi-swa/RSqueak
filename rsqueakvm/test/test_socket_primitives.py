@@ -5,13 +5,12 @@ from rsqueakvm import constants
 from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod
 from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.primitives import prim_table
-from rsqueakvm.primitives.bytecodes import EXTERNAL_CALL
+from rsqueakvm.primitives.constants import EXTERNAL_CALL
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.plugins import socket_plugin as socket
 
-from .util import create_space, copy_to_module, cleanup_module, TestInterpreter, very_slow_test
-from .test_interpreter import run_with_faked_primitive_methods
-from .test_primitives import MockFrame, mock
+from .util import create_space, copy_to_module, cleanup_module
+from .test_primitives import mock
 
 
 def setup_module():

@@ -8,11 +8,11 @@ from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.numeric import W_LargePositiveInteger1Word
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.primitives import prim_table
-from rsqueakvm.primitives.bytecodes import EXTERNAL_CALL
+from rsqueakvm.primitives.constants import EXTERNAL_CALL
 
-from rpython.rtyper.lltypesystem import lltype, rffi
+from rpython.rtyper.lltypesystem import rffi
 
-from .util import create_space, copy_to_module, cleanup_module, TestInterpreter, very_slow_test
+from .util import create_space, copy_to_module, cleanup_module, TestInterpreter
 
 IMAGENAME = "anImage.image"
 

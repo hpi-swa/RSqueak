@@ -3,7 +3,7 @@ import platform
 from rsqueakvm.plugins.database import dbm
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.plugins.plugin import Plugin
-from rsqueakvm.primitives.bytecodes import *
+from rsqueakvm.primitives.constants import *
 from rsqueakvm.plugins.database.model import W_DBObject, BLOB
 
 

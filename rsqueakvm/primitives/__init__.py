@@ -5,7 +5,7 @@ from rsqueakvm.model.base import W_Object
 from rsqueakvm.model.character import W_Character
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject
-from rsqueakvm.primitives.bytecodes import *
+from rsqueakvm.primitives.constants import *
 
 from rpython.rlib import unroll, jit, objectmodel
 from rpython.rlib.rarithmetic import r_uint, r_int64, int_between
