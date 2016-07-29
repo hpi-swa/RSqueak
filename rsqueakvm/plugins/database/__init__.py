@@ -55,28 +55,40 @@ class SQLConnection(object):
 
 
 class SQLCursor(object):
-    _immutable_fields_ = ['connection']
+
+    _immutable_fields_ = ['connection', 'column_count', 'column_names']
 
     def __init__(self, connection):
         assert isinstance(connection, SQLConnection)
         self.connection = connection
         self.statement = None
+        self.column_count = -1
 
     @jit.unroll_safe
     def execute(self, space, sql, args=None):
+        if self.column_count > 0:
+            raise PrimitiveFailedError(
+                'execute() cannot be called twice on same cursor')
+            # otherwise we can't assume that column_{count,names} are immutable
+
         jit.promote(self.connection)
         jit.promote(self.statement)
         cache = self.connection.statement_cache
         self.statement = cache.get_or_make(sql)
+        query = self.statement.query
 
         if args is not None:
-            query = self.statement.query
             if len(args) != query.bind_parameter_count():
                 raise PrimitiveFailedError('wrong # of arguments for query')
             for i, w_value in enumerate(args):
                 self.bind_query_argument(space, w_value, query, i + 1)
 
         self._step()
+
+        self.column_count = query.data_count()
+        self.column_names = [rffi.charp2strn(query.column_name(i), 255)
+                             for i in range(self.column_count)]
+
         return self
 
     def bind_query_argument(self, space, w_value, query, i):
@@ -102,26 +114,12 @@ class SQLCursor(object):
         # unroll_safe.
         return space.wrap_list_unroll_safe(row)
 
-    def raw_next(self):
+    def raw_next(self, space):
         if jit.promote(self.statement) is None:
-            return None
-        query = self.statement.query
+            return []
+        row = self._fetch_one_row(space)
         self._step()
-        return query
-
-    def column_count(self):
-        return self.statement.query.data_count()
-
-    def column_name(self, index):
-        query = self.statement.query
-        assert query is not None
-        return rffi.charp2strn(query.column_name(index), 255)
-
-    def column_names(self):
-        names = []
-        for i in range(0, self.column_count()):
-            names.append(self.column_name(i))
-        return names
+        return row
 
     def close(self):
         if self.statement:
@@ -267,7 +265,8 @@ class DBManager(object):
     def connection(self):
         if self.db_connection is not None:
             return self.db_connection
-        assert self.driver is not None
+        if self.driver is None:
+            raise PrimitiveFailedError('connection [driver is None]')
         print "DBMode: %s" % self.driver
         connection = SQLConnection(self.driver, self.db_file_name)
         assert connection is not None
