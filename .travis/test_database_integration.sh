@@ -24,9 +24,7 @@ cat > "${HOME}/runSQPyteTests.st" <<EOF
     fileTreeRepoDirectory := FileDirectory on: '${FILETREE_PATH}'.
     Gofer new
         repository: (MCFileTreeRepository new directory: fileTreeRepoDirectory);
-        package: 'SQPyte-Core';
-        package: 'SQPyte-Mapper';
-        package: 'SQPyte-Tests';
+        package: 'SQPyte';
         load.
     SCISqueakTestReport runClasses: {(Smalltalk at: #SQLiteTests). (Smalltalk at: #SQPyteTests)} named: 'test'.
     Smalltalk at: #WorldState ifPresent: [:global |
@@ -61,7 +59,7 @@ if [[ ! -f "${IMAGE}" ]]; then
 fi
 
 echo "==== Run tests..."
-./rsqueak --no-display "${IMAGE}" "${HOME}/runSQPyteTests.st"
+./rsqueak --silent --no-display "${IMAGE}" "${HOME}/runSQPyteTests.st"
 
 if [[ -z "${RESULT_CMD}" ]]; then
     RESULT_CMD="/tmp/print_test_results.py"
