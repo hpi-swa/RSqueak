@@ -1,11 +1,10 @@
 from rpython.rlib import jit, objectmodel
-from rpython.rlib.objectmodel import we_are_translated
 
 from rsqueakvm import constants
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.numeric import W_SmallInteger
 from rsqueakvm.primitives import expose_primitive
-from rsqueakvm.primitives.bytecodes import *
+from rsqueakvm.primitives.constants import *
 
 
 # ___________________________________________________________________________

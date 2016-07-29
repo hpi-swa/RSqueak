@@ -4,6 +4,8 @@
 	"instance" : {
 		"adjustPlayerScores" : "fn 7/12/2016 20:45",
 		"adjustPlayerScoresWithAllInstances" : "fn 7/12/2016 20:46",
+		"dryAdjustPlayerScores" : "fn 7/28/2016 11:02",
+		"dryAdjustPlayerScoresWithAllInstances" : "fn 7/28/2016 11:02",
 		"findOpponentFor:goodEnough:" : "toma 5/11/2016 14:54",
 		"matches" : "toma 5/10/2016 17:37",
 		"matches:" : "toma 5/10/2016 17:37",

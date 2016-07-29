@@ -3,7 +3,7 @@ from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.compiled_methods import W_CompiledMethod
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.primitives import prim_table, expose_primitive, assert_class
-from rsqueakvm.primitives.bytecodes import *
+from rsqueakvm.primitives.constants import *
 
 from rpython.rlib import jit
 

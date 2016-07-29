@@ -2,12 +2,14 @@ import math
 
 from rsqueakvm import constants, storage_contexts, wrapper, error
 from rsqueakvm.model.pointers import W_PointersObject
-from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargePositiveInteger1Word
+from rsqueakvm.model.numeric import (W_Float, W_SmallInteger,
+                                     W_LargePositiveInteger1Word)
 from rsqueakvm.model.variable import W_BytesObject
-from rsqueakvm.primitives.bytecodes import PERFORM_WITH_ARGS, PERFORM
+from rsqueakvm.primitives.constants import PERFORM_WITH_ARGS, PERFORM
 
 
-from .util import read_image, open_reader, copy_to_module, cleanup_module, TestInterpreter, slow_test, very_slow_test
+from .util import (read_image, open_reader, copy_to_module, cleanup_module,
+                   very_slow_test)
 
 
 def setup_module():

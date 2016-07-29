@@ -5,7 +5,7 @@ from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.display import W_DisplayBitmap
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.primitives import expose_primitive, pos_32bit_int
-from rsqueakvm.primitives.bytecodes import *
+from rsqueakvm.primitives.constants import *
 from rsqueakvm.primitives.storage import get_instances_array
 
 from rpython.rlib import jit
