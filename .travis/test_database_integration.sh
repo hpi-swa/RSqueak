@@ -19,12 +19,11 @@ realpath() {
 FILETREE_PATH=$(realpath repository)
 
 cat > "${HOME}/runSQPyteTests.st" <<EOF
-    | fileTreeRepoDirectory |
     FileStream startUp: true.
-    fileTreeRepoDirectory := FileDirectory on: '${FILETREE_PATH}'.
-    Gofer new
-        repository: (MCFileTreeRepository new directory: fileTreeRepoDirectory);
-        package: 'SQPyte';
+    Metacello new
+        baseline: 'SQPyte';
+        repository: 'filetree://${FILETREE_PATH}';
+        onConflict: [:ex | ex allow];
         load.
     SCISqueakTestReport runClasses: {(Smalltalk at: #SQLiteTests). (Smalltalk at: #SQPyteTests)} named: 'test'.
     Smalltalk at: #WorldState ifPresent: [:global |
