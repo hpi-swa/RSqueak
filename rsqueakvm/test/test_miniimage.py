@@ -210,7 +210,7 @@ def test_map_mirrors_to_classtable():
 
 @very_slow_test
 def test_runimage_and_quit():
-    from targetrsqueak import active_context, execute_context
+    from rsqueakvm.main import active_context, execute_context
     space, interp = runningExitImage(cached=False)
     frame = active_context(space)
     clean_exit = False

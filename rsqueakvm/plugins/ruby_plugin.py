@@ -1,3 +1,9 @@
+from rsqueakvm.util import system
+if "ruby_plugin" not in system.optional_plugins:
+    raise ImportError
+else:
+    system.translationconfig.set(continuation=True)
+
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger
 from rsqueakvm.model.variable import W_BytesObject

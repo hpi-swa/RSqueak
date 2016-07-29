@@ -3,17 +3,6 @@
 import sys, os
 
 
-"""
-RSqueak Build Options (separated with `--` from RPython options)
-
-Example:
-  .build/build.py -Ojit -- --64bit
-
-  --64bit                                       - Compile for 64bit platform
-  --plugins database_plugin[,another_plugin]    - Comma-separated list of optional plugins
-                                                  (e.g. DatabasePlugin)
-"""
-
 if __name__ == "__main__":
     if not any(arg.startswith("-") for arg in sys.argv):
         sys.argv.append("--batch")
