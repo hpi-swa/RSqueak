@@ -17,6 +17,7 @@ def load_config():
             cp.set("General", "sqpyte", pathjoin(dirname(__file__), "sqpyte"))
             cp.set("General", "topaz", pathjoin(dirname(__file__), "topaz"))
             cp.set("General", "rply", pathjoin(dirname(__file__), "rply"))
+            cp.set("General", "appdirs", pathjoin(dirname(__file__), "appdirs"))
             cp.set("General", "squeak", pathjoin(dirname(__file__), "squeak"))
             cp.add_section("Linux")
             cp.set("Linux", "Python32Bit", pathjoin(dirname(__file__), "pypy-linux32", "bin", "pypy"))
@@ -105,6 +106,7 @@ def prepare_environment_variables():
     sys.path.insert(0, cp.get("General", "sqpyte"))
     sys.path.insert(0, cp.get("General", "topaz"))
     sys.path.insert(0, cp.get("General", "rply"))
+    sys.path.insert(0, cp.get("General", "appdirs"))
     try:
         import targetrsqueak as rsqueak
     except ImportError:

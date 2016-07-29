@@ -76,6 +76,8 @@ if ('ruby_plugin' in ' '.join(sys.argv) or
     'ruby_plugin' in os.environ.get('PLUGINS', '')):
     DEPS.append(("https://github.com/alex/rply/archive/master.zip",
                 cp.get("General", "rply")))
+    DEPS.append(("https://github.com/ActiveState/appdirs/archive/master.zip",
+                cp.get("General", "appdirs")))
     DEPS.append(("https://github.com/topazproject/topaz/archive/tim/fix-translation.zip",
                 cp.get("General", "topaz")))
 

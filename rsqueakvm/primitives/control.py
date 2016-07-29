@@ -99,7 +99,7 @@ def find_plugins():
         try:
             module = getattr(getattr(
                 __import__("rsqueakvm.plugins.%s" % modulename), "plugins"), modulename)
-        except ImportError:
+        except ImportError as e:
             # The plugin may have decided it doesn't want to be enabled
             continue
         reload(module) # always do a one-shot reload
