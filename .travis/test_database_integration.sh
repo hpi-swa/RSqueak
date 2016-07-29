@@ -22,6 +22,10 @@ cat > "${HOME}/runSQPyteTests.st" <<EOF
     | fileTreeRepoDirectory |
     FileStream startUp: true.
     fileTreeRepoDirectory := FileDirectory on: '${FILETREE_PATH}'.
+    Installer swa
+        project: 'BenchmarkRunner';
+        install: 'Benchmark';
+        install: 'SMark'.
     Gofer new
         repository: (MCFileTreeRepository new directory: fileTreeRepoDirectory);
         package: 'SQPyte';
