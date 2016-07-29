@@ -3,7 +3,7 @@ import os
 import platform
 
 from rpython.config.config import OptionDescription, Option, BoolOption, \
-    IntOption, ArbitraryOption, FloatOption, DEFAULT_OPTION_NAME
+    IntOption, StrOption, ArbitraryOption, FloatOption, DEFAULT_OPTION_NAME
 from rpython.config.translationoption import get_combined_translation_config
 
 
@@ -23,30 +23,15 @@ if IS_WINDOWS and (not any(arg.startswith("-Ojit") for arg in sys.argv)):
         return uname
     platform.uname = win32uname
 
-
-class ListOption(Option):
-    opt_type = "string"
-
-    def __init__(self, name, doc, default=[], cmdline=DEFAULT_OPTION_NAME):
-        super(ListOption, self).__init__(name, doc, cmdline)
-        self.default = default
-
-    def validate(self, value):
-        return True
-
-    def setoption(self, config, value, who):
-        return super(ListOption, self).setoption(config, value.split(","), who)
-
-
 def translation_options():
     """NOT RPYTHON"""
     return OptionDescription(
         "rsqueak", "RSqueak Options", [
-            ListOption(
+            StrOption(
                 "optional_plugins",
                 "Which optional plugins should be enabled (a comma-separated "\
                 "list, e.g. 'ruby_plugin,database_plugin')",
-                default=[], cmdline="--plugins"
+                default="", cmdline="--plugins"
             )
         ]
     )
