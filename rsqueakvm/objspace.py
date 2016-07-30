@@ -67,7 +67,7 @@ class ObjSpace(object):
     _immutable_fields_ = ['objtable']
 
     def __init__(self):
-        # This is a hack; see compile_code() in targetrsqueak.py
+        # This is a hack; see compile_code() in main.py
         self.suppress_process_switch = ConstantFlag()
         self.run_spy_hacks = ConstantFlag()
         self.headless = ConstantFlag()
@@ -116,7 +116,7 @@ class ObjSpace(object):
         for i in xrange(1, len(argv)):
             self.set_system_attribute(-i, argv[i])
         import platform
-        from targetrsqueak import VERSION, BUILD_DATE
+        from rsqueakvm.main import VERSION, BUILD_DATE
         self.set_system_attribute(0, self._executable_path.get())
         self.set_system_attribute(1001, platform.system())    # operating system
         self.set_system_attribute(1002, platform.version())   # operating system version
@@ -319,6 +319,7 @@ class ObjSpace(object):
     def wrap_float(self, i):
         return W_Float(i)
 
+    @jit.look_inside_iff(lambda self, string: jit.isconstant(string))
     def wrap_string(self, string):
         w_inst = self.w_String.as_class_get_shadow(self).new(len(string))
         for i in range(len(string)):

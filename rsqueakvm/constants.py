@@ -241,8 +241,3 @@ CompileTime = time.time()
 
 SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX = 1
 SYSTEM_ATTRIBUTE_IMAGE_ARGS_INDEX = 2
-
-#___________________________________________________________________________
-# Plugin constants
-#
-OPTIONAL_PLUGINS = ['database_plugin']

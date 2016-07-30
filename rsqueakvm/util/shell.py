@@ -194,7 +194,7 @@ class Shell(object):
                         readline.get_current_history_length() - 1
                     )
                 methodsrc.append(srcline)
-            from targetrsqueak import compile_code
+            from rsqueakvm.main import compile_code
             methodsrc.pop() # remove trailing !!
             compile_code(self.interp, w_cls,
                          "\r\n".join(methodsrc),
@@ -221,7 +221,7 @@ class Shell(object):
                     print w_result.as_repr_string().replace('\r', '\n')
 
     def _execute_code(self, code):
-        from targetrsqueak import compile_code, execute_context
+        from rsqueakvm.main import compile_code, execute_context
         w_selector = self.methods.get(code, None)
         if not w_selector:
             sys.stdout.write("Compiling code... ")

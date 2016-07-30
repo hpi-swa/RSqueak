@@ -9,7 +9,7 @@ exitcode=0
 plugins=""
 plugins_suffix=""
 if [[ -n "$PLUGINS" ]]; then
-  plugins="--plugins ${PLUGINS}"
+  plugins="--plugins=${PLUGINS}"
   plugins_suffix="-${PLUGINS}"
 fi
 

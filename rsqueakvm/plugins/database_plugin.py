@@ -1,3 +1,7 @@
+from rsqueakvm.util import system
+if "database_plugin" not in system.optional_plugins:
+    raise ImportError
+
 import platform
 
 from rsqueakvm.plugins.database import dbm
