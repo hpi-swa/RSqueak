@@ -4,7 +4,7 @@ from rsqueakvm import constants
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.numeric import W_SmallInteger
 from rsqueakvm.primitives import expose_primitive
-from rsqueakvm.primitives.bytecodes import *
+from rsqueakvm.primitives.constants import *
 
 
 # ___________________________________________________________________________
@@ -130,6 +130,7 @@ def func(interp, s_frame, argcount):
     vm_w_params[8] = interp.space.wrap_int(1)  # must be 1 for VM Stats view to work
 
     vm_w_params[41] = interp.space.wrap_int(1)  # We are a "stack-like" VM - number of stack tables
+    
     if objectmodel.we_are_translated():
         # sizeOfMachineCode = jit_hooks.stats_asmmemmgr_allocated(None)
         sizeOfMachineCode = jit_hooks.stats_asmmemmgr_used(None)

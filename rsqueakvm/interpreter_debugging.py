@@ -3,7 +3,7 @@ import pdb
 from rsqueakvm import error
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.primitives import prim_table
-from rsqueakvm.primitives.bytecodes import EXTERNAL_CALL
+from rsqueakvm.primitives.constants import EXTERNAL_CALL
 from rsqueakvm.storage_contexts import ContextPartShadow
 
 

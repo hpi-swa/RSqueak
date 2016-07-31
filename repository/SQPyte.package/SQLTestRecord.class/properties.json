@@ -1,0 +1,16 @@
+{
+	"category" : "SQPyte-Tests",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"id",
+		"name",
+		"salary" ],
+	"name" : "SQLTestRecord",
+	"pools" : [
+		 ],
+	"super" : "Object",
+	"type" : "normal" }

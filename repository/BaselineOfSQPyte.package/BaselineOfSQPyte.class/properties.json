@@ -1,0 +1,14 @@
+{
+	"category" : "BaselineOfSQPyte",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "BaselineOfSQPyte",
+	"pools" : [
+		 ],
+	"super" : "BaselineOf",
+	"type" : "normal" }

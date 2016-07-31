@@ -9,6 +9,7 @@ from rsqueakvm.util.version import elidable_for_version, Version
 
 from rpython.rlib import jit
 
+import pdb
 
 POINTERS = 0
 BYTES = 1
@@ -221,7 +222,7 @@ class ClassShadow(AbstractCachingShadow):
         instance_kind = self.get_instance_kind()
         if instance_kind == POINTERS:
             size = self.instsize() + extrasize
-            w_new = W_PointersObject(self.space, w_cls, size)
+            w_new = self.make_pointers_object(w_cls, size)
         elif instance_kind == WORDS:
             w_new = W_WordsObject(self.space, w_cls, extrasize)
         elif instance_kind == BYTES:
@@ -244,6 +245,9 @@ class ClassShadow(AbstractCachingShadow):
         else:
             raise NotImplementedError(instance_kind)
         return w_new
+
+    def make_pointers_object(self, w_cls, size):
+        return W_PointersObject(self.space, w_cls, size)
 
     @elidable_for_version(0)
     def get_instance_kind(self):

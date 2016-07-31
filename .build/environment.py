@@ -14,6 +14,10 @@ def load_config():
             cp.add_section("General")
             cp.set("General", "pypy", pathjoin(dirname(__file__), "pypy"))
             cp.set("General", "rsdl", pathjoin(dirname(__file__), "rsdl"))
+            cp.set("General", "sqpyte", pathjoin(dirname(__file__), "sqpyte"))
+            cp.set("General", "topaz", pathjoin(dirname(__file__), "topaz"))
+            cp.set("General", "rply", pathjoin(dirname(__file__), "rply"))
+            cp.set("General", "appdirs", pathjoin(dirname(__file__), "appdirs"))
             cp.set("General", "squeak", pathjoin(dirname(__file__), "squeak"))
             cp.add_section("Linux")
             cp.set("Linux", "Python32Bit", pathjoin(dirname(__file__), "pypy-linux32", "bin", "pypy"))
@@ -99,6 +103,10 @@ def prepare_environment_variables():
         raise AssertionError("Unsupported platform")
     sys.path.insert(0, cp.get("General", "pypy"))
     sys.path.insert(0, cp.get("General", "rsdl"))
+    sys.path.insert(0, cp.get("General", "sqpyte"))
+    sys.path.insert(0, cp.get("General", "topaz"))
+    sys.path.insert(0, cp.get("General", "rply"))
+    sys.path.insert(0, cp.get("General", "appdirs"))
     try:
         import targetrsqueak as rsqueak
     except ImportError:
@@ -106,10 +114,10 @@ def prepare_environment_variables():
 
 
 cp, config = load_config()
-if "64bit" in sys.argv:
+if "--64bit" in sys.argv:
     if cp.has_option("Linux", "SDL64bit"):
         os.environ["SDL_PREFIX"] = cp.get("Linux", "SDL64bit")
-    sys.argv.remove("64bit")
+    sys.argv.remove("--64bit")
 else:
     ensure_32bit_environment()
 prepare_environment_variables()

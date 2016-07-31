@@ -72,7 +72,7 @@ dlldata.c
 *_p.c
 *_i.h
 *.ilk
-*.meta
+# *.meta
 *.obj
 *.pch
 *.pdb
@@ -270,3 +270,4 @@ images/
 
 !rsqueakvm*
 !rsqueakvm/test/images*
+*.db

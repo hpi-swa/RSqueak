@@ -5,7 +5,7 @@ from rsqueakvm import constants, wrapper
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.numeric import W_Float
 from rsqueakvm.primitives import expose_primitive, expose_also_as, pos_32bit_int
-from rsqueakvm.primitives.bytecodes import *
+from rsqueakvm.primitives.constants import *
 
 from rpython.rlib import rfloat, jit
 from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int, r_int64
@@ -73,7 +73,8 @@ for (code, op) in math_ops.items():
             try:
                 if isinstance(receiver, int) and isinstance(argument, int):
                     res = ovfcheck(op(receiver, argument))
-                elif (isinstance(receiver, r_int64) and
+                elif ((not constants.IS_64BIT) and
+                      isinstance(receiver, r_int64) and
                       isinstance(argument, r_int64)):
                     res = op(receiver, argument)
                     if ((receiver ^ argument >= 0) and (receiver ^ res < 0)):
@@ -105,15 +106,37 @@ for (code, op) in bitwise_binary_ops.items():
                 return interp.space.wrap_int(intmask(res))
     make_func(op)
 
+def make_ovfcheck(op):
+    @specialize.argtype(0, 1)
+    def fun(receiver, argument):
+        if isinstance(receiver, r_uint) and isinstance(argument, r_uint):
+            return op(receiver, argument)
+        elif ((not constants.IS_64BIT) and
+              isinstance(receiver, r_int64) and
+              isinstance(argument, r_int64)):
+            res = op(receiver, argument)
+            if ((receiver ^ argument >= 0) and (receiver ^ res < 0)):
+                # manual ovfcheck as in Squeak VM
+                raise PrimitiveFailedError
+            return res
+        else:
+            try:
+                return ovfcheck(op(receiver, argument))
+            except OverflowError:
+                raise PrimitiveFailedError
+    return fun
+ovfcheck_div = make_ovfcheck(operator.floordiv)
+ovfcheck_mod = make_ovfcheck(operator.mod)
+
 # #/ -- return the result of a division, only succeed if the division is exact
 @expose_also_as(LARGE_DIVIDE)
 @expose_primitive(DIVIDE, unwrap_specs=combination_specs)
 def func(interp, s_frame, receiver, argument):
     if argument == 0:
         raise PrimitiveFailedError()
-    if receiver % argument != 0:
+    if ovfcheck_mod(receiver, argument) != 0:
         raise PrimitiveFailedError()
-    return interp.space.wrap_int(receiver // argument)
+    return interp.space.wrap_int(ovfcheck_div(receiver, argument))
 
 # #\\ -- return the remainder of a division
 @expose_also_as(LARGE_MOD)
@@ -121,7 +144,7 @@ def func(interp, s_frame, receiver, argument):
 def func(interp, s_frame, receiver, argument):
     if argument == 0:
         raise PrimitiveFailedError()
-    return interp.space.wrap_int(receiver % argument)
+    return interp.space.wrap_int(ovfcheck_mod(receiver, argument))
 
 # #// -- return the result of a division, rounded towards negative infinity
 @expose_also_as(LARGE_DIV)
@@ -129,7 +152,7 @@ def func(interp, s_frame, receiver, argument):
 def func(interp, s_frame, receiver, argument):
     if argument == 0:
         raise PrimitiveFailedError()
-    return interp.space.wrap_int(receiver // argument)
+    return interp.space.wrap_int(ovfcheck_div(receiver, argument))
 
 # #// -- return the result of a division, rounded towards negative infinite
 @expose_also_as(LARGE_QUO)
@@ -137,7 +160,7 @@ def func(interp, s_frame, receiver, argument):
 def func(interp, s_frame, receiver, argument):
     if argument == 0:
         raise PrimitiveFailedError()
-    res = receiver // argument
+    res = ovfcheck_div(receiver, argument)
     # see http://python-history.blogspot.de/2010/08/why-pythons-integer-division-floors.html
     if res < 0 and not abs(receiver) == abs(argument):
         res = res + 1
@@ -167,7 +190,6 @@ math_ops = {
     FLOAT_ADD: operator.add,
     FLOAT_SUBTRACT: operator.sub,
     FLOAT_MULTIPLY: operator.mul,
-    FLOAT_DIVIDE: operator.div,
     }
 for (code, op) in math_ops.items():
     def make_func(op):
@@ -176,6 +198,12 @@ for (code, op) in math_ops.items():
             w_res = interp.space.wrap_float(op(v1, v2))
             return w_res
     make_func(op)
+
+@expose_primitive(FLOAT_DIVIDE, unwrap_spec=[float, float])
+def func(interp, s_frame, v1, v2):
+    if v2 == 0:
+        raise PrimitiveFailedError
+    return interp.space.wrap_float(v1 / v2)
 
 @expose_primitive(FLOAT_TRUNCATED, unwrap_spec=[float])
 def func(interp, s_frame, f):

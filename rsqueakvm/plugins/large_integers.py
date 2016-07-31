@@ -1,7 +1,7 @@
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.primitives import prim_table
-from rsqueakvm.primitives.bytecodes import *
+from rsqueakvm.primitives.constants import *
 
 LargeIntegers = Plugin()
 

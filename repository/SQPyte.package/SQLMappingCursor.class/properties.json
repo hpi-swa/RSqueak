@@ -1,0 +1,14 @@
+{
+	"category" : "SQPyte-Mapper",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"mapping" ],
+	"name" : "SQLMappingCursor",
+	"pools" : [
+		 ],
+	"super" : "SQLCursor",
+	"type" : "normal" }

@@ -1,0 +1,14 @@
+{
+	"category" : "SQPyte-Mapper",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"database" ],
+	"name" : "SQLMapper",
+	"pools" : [
+		 ],
+	"super" : "Object",
+	"type" : "normal" }

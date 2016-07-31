@@ -1,0 +1,15 @@
+{
+	"category" : "SQPyte-Elo",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"matches",
+		"players" ],
+	"name" : "EloRanking",
+	"pools" : [
+		 ],
+	"super" : "DBObject",
+	"type" : "normal" }

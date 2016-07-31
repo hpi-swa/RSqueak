@@ -5,7 +5,7 @@ from rsqueakvm.model.numeric import W_Float, W_LargePositiveInteger1Word
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.primitives import expose_primitive, assert_pointers, assert_class
-from rsqueakvm.primitives.bytecodes import *
+from rsqueakvm.primitives.constants import *
 from rsqueakvm.primitives.misc import fake_bytes_left
 
 from rpython.rlib import jit, objectmodel
@@ -87,7 +87,8 @@ def func(interp, s_frame, w_rcvr, w_arg):
         raise PrimitiveNotYetWrittenError
 
 def find_plugins():
-    import os
+    import os, sys
+    enabled_plugins = []
     files = os.listdir(os.path.join(os.path.dirname(__file__), "..", "plugins"))
     plugins = []
     plugin_names = []
@@ -95,8 +96,12 @@ def find_plugins():
         if "_" not in filename or filename.startswith("_") or not filename.endswith(".py"):
             continue
         modulename = filename.replace(".py", "")
-        module = getattr(getattr(
-            __import__("rsqueakvm.plugins.%s" % modulename), "plugins"), modulename)
+        try:
+            module = getattr(getattr(
+                __import__("rsqueakvm.plugins.%s" % modulename), "plugins"), modulename)
+        except ImportError as e:
+            # The plugin may have decided it doesn't want to be enabled
+            continue
         reload(module) # always do a one-shot reload
         pluginname = "".join([f.capitalize() for f in modulename.split("_")])
         plugin = getattr(module, pluginname)

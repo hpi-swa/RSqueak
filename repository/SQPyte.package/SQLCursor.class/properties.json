@@ -1,0 +1,14 @@
+{
+	"category" : "SQPyte-Core",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"cursorPointer" ],
+	"name" : "SQLCursor",
+	"pools" : [
+		 ],
+	"super" : "Object",
+	"type" : "normal" }

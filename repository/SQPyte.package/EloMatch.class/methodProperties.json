@@ -1,0 +1,16 @@
+{
+	"class" : {
+		"maxMovedPoints" : "toma 5/10/2016 19:16" },
+	"instance" : {
+		"adjustPlayerScores" : "fn 7/28/2016 11:01",
+		"blackPlayer" : "toma 5/10/2016 16:00",
+		"blackPlayer:" : "toma 5/10/2016 16:00",
+		"date" : "toma 5/10/2016 16:00",
+		"date:" : "toma 5/10/2016 16:00",
+		"dryAdjustPlayerScores" : "fn 7/28/2016 11:02",
+		"id" : "toma 5/10/2016 16:00",
+		"id:" : "toma 5/10/2016 16:00",
+		"outcome" : "toma 5/10/2016 16:00",
+		"outcome:" : "toma 5/10/2016 16:00",
+		"whitePlayer" : "toma 5/10/2016 16:00",
+		"whitePlayer:" : "toma 5/10/2016 16:00" } }

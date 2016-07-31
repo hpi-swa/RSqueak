@@ -2,12 +2,14 @@ import pytest
 import py
 import operator
 
-from rsqueakvm import interpreter, storage_classes, storage_contexts, wrapper, constants, error
+from rsqueakvm import (interpreter, storage_classes, storage_contexts, wrapper,
+                       constants, error)
 from rsqueakvm.model.base import W_Object
 from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod
-from rsqueakvm.primitives.bytecodes import *
+from rsqueakvm.primitives.constants import *
 
-from .util import create_space_interp, copy_to_module, cleanup_module, import_bytecodes
+from .util import (create_space_interp, copy_to_module, cleanup_module,
+                   import_bytecodes)
 
 
 import_bytecodes(__name__)

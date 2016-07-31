@@ -6,7 +6,7 @@ from rsqueakvm.model.display import W_DisplayBitmap
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_WordsObject
 from rsqueakvm.primitives import expose_primitive, assert_class
-from rsqueakvm.primitives.bytecodes import *
+from rsqueakvm.primitives.constants import *
 
 from rpython.rlib import jit
 

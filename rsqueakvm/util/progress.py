@@ -101,7 +101,7 @@ DATA = [
 
 class Progress(object):
 
-    def __init__(self, stages):
+    def __init__(self, stages, silent=False):
         self._stages = float(stages)
         self._stage = 0
         self._total_steps = 0
@@ -110,6 +110,7 @@ class Progress(object):
         self._data = ''.join(DATA)
         self._maxval = len(self._data)
         self._current_index = 0
+        self._silent = silent
 
     def next_stage(self, steps):
         self._total_steps = float(steps)
@@ -125,6 +126,9 @@ class Progress(object):
         return int(self._maxval * (stage + steps * 1 / self._stages))
 
     def update(self, new_steps=-1):
+        if self._silent:
+            return
+
         if new_steps < 0:
             self._current_steps += 1
         else:

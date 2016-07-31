@@ -1,0 +1,15 @@
+{
+	"category" : "SQPyte-ORM",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"secondVar",
+		"var" ],
+	"name" : "TestDBObject2",
+	"pools" : [
+		 ],
+	"super" : "DBObject",
+	"type" : "normal" }

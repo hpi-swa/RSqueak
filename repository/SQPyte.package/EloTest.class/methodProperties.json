@@ -1,0 +1,12 @@
+{
+	"class" : {
+		 },
+	"instance" : {
+		"assert:between:and:" : "toma 5/10/2016 18:12",
+		"testExpectedUpdate" : "toma 5/10/2016 18:49",
+		"testMovePoints" : "toma 5/10/2016 18:16",
+		"testOpponentClosest" : "toma 5/11/2016 14:55",
+		"testScoreUpdate" : "toma 5/10/2016 18:20",
+		"testSymmetricUpdate" : "toma 5/11/2016 11:45",
+		"testUnexpectedUpdate" : "toma 5/11/2016 11:47",
+		"testWinningProbability" : "toma 5/10/2016 18:19" } }

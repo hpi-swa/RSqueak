@@ -8,19 +8,20 @@ from rsqueakvm.model.base import W_Object
 from rsqueakvm.model.character import W_Character
 from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod
 from rsqueakvm.model.display import W_DisplayBitmap
-from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargePositiveInteger1Word
+from rsqueakvm.model.numeric import (W_Float, W_SmallInteger,
+                                     W_LargePositiveInteger1Word)
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm import primitives
 from rsqueakvm.primitives import prim_table
-from rsqueakvm.primitives.bytecodes import *
+from rsqueakvm.primitives.constants import *
 
 from rpython.rlib.rarithmetic import intmask, r_uint, r_int64
 from rpython.rlib.rfloat import isinf, isnan
-from rpython.rtyper.lltypesystem import lltype, rffi
 
-from .util import create_space, copy_to_module, cleanup_module, TestInterpreter, very_slow_test
+from .util import (create_space, copy_to_module, cleanup_module,
+                   TestInterpreter, very_slow_test)
 
 
 def setup_module():

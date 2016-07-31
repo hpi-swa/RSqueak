@@ -2,7 +2,7 @@ from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.compiled_methods import W_CompiledMethod
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.primitives import expose_primitive, assert_valid_index, index1_0
-from rsqueakvm.primitives.bytecodes import *
+from rsqueakvm.primitives.constants import *
 
 # ___________________________________________________________________________
 # Array and Stream Primitives

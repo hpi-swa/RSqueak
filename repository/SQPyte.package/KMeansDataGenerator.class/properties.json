@@ -1,0 +1,16 @@
+{
+	"category" : "SQPyte-KMeans",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"numDataPoints",
+		"maxValue",
+		"random" ],
+	"name" : "KMeansDataGenerator",
+	"pools" : [
+		 ],
+	"super" : "Object",
+	"type" : "normal" }

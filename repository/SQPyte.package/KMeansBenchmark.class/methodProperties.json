@@ -1,0 +1,12 @@
+{
+	"class" : {
+		 },
+	"instance" : {
+		"data" : "fw 7/21/2016 16:33",
+		"data:" : "fw 7/21/2016 16:33",
+		"initialize" : "fw 7/26/2016 16:40",
+		"nrClusters" : "fw 7/21/2016 16:01",
+		"nrClusters:" : "fw 7/21/2016 16:01",
+		"run" : "fw 7/21/2016 16:38",
+		"runWithNrClusters:" : "fw 7/26/2016 16:40",
+		"setupNrPoints:withSeed:" : "fw 7/26/2016 17:55" } }
