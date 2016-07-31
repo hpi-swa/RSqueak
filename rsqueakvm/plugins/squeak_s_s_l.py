@@ -1,6 +1,5 @@
 from rsqueakvm import error
 from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
-from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.primitives import index1_0
 from rsqueakvm.plugins.plugin import Plugin, PluginStartupScripts
 
@@ -11,8 +10,15 @@ from rpython.rtyper.lltypesystem import rffi, lltype
 ropenssl.ssl_external('SSL_set_bio', [ropenssl.SSL, ropenssl.BIO, ropenssl.BIO], lltype.Void)
 ropenssl.ssl_external('BIO_read', [ropenssl.BIO, rffi.CCHARP, rffi.INT], rffi.INT)
 ropenssl.ssl_external('BIO_write', [ropenssl.BIO, rffi.CCHARP, rffi.INT], rffi.INT)
-# XXX: these are taken from bio.h
-PY_BIO_CTRL_PENDING = 10
+ropenssl.ssl_external('BIO_set_close', [ropenssl.BIO, rffi.LONG], rffi.INT, macro=True)
+
+
+class CConfig:
+    _compilation_info_ = ropenssl.eci
+    BIO_CLOSE = ropenssl.rffi_platform.ConstantInteger("BIO_CLOSE")
+    BIO_CTRL_PENDING = ropenssl.rffi_platform.ConstantInteger("BIO_CTRL_PENDING")
+for k, v in ropenssl.rffi_platform.configure(CConfig).items():
+    globals()[k] = v
 
 
 def startup(space, argv):
@@ -22,11 +28,21 @@ PluginStartupScripts.append(startup)
 
 
 SqueakSSL = Plugin()
+SSL_VERSION = 2
+
 SSL_UNUSED = 0
 SSL_NOT_CONNECTED = 0
 SSL_ACCEPTING = 1
 SSL_CONNECTING = 2
 SSL_CONNECTED = 3
+
+SSL_OK = 0
+SSL_NEED_MORE_DATA = -1
+SSL_INVALID_STATE = -2
+SSL_BUFFER_TOO_SMALL = -3
+SSL_INPUT_TOO_LARGE = -4
+SSL_GENERIC_ERROR = -5
+SSL_OUT_OF_MEMORY = -6
 
 PROP_VERSION = 0
 PROP_LOGLEVEL = 1
@@ -46,6 +62,7 @@ class W_SSLHandle(W_AbstractObjectWithIdentityHash):
     def __init__(self):
         self.state = SSL_UNUSED
         self.certflags = 0
+        self.loglevel = 0
         self.peername = ""
         self.servername = ""
         self.certname = ""
@@ -57,7 +74,8 @@ class W_SSLHandle(W_AbstractObjectWithIdentityHash):
         self.ssl = ropenssl.libssl_SSL_new(self.ctx)
         self.readbio = ropenssl.libssl_BIO_new(ropenssl.libssl_BIO_s_mem())
         self.writebio = ropenssl.libssl_BIO_new(ropenssl.libssl_BIO_s_mem())
-        # todo: set_close to BIO_CLOSE
+        ropenssl.libssl_BIO_set_close(self.readbio, BIO_CLOSE)
+        ropenssl.libssl_BIO_set_close(self.writebio, BIO_CLOSE)
         ropenssl.libssl_SSL_set_bio(self.ssl, self.readbio, self.writebio)
 
     def getclass(self, space):
@@ -72,10 +90,10 @@ class W_SSLHandle(W_AbstractObjectWithIdentityHash):
 
 
 def ensured_handle(w_obj):
-    if isinstance(w_obj, W_SSLHandle):
-        if w_obj.wasclosed == False:
-            return w_obj
-    raise error.PrimitiveFailedError
+    if not isinstance(w_obj, W_SSLHandle) or w_obj.wasclosed:
+        raise error.PrimitiveFailedError
+
+    return w_obj
 
 
 def copy_bio_ssl(bio, w_dst, nbytes):
@@ -101,12 +119,14 @@ def primitiveEncrypt(interp, s_frame, w_rcvr, w_handle, src, start, srclen, w_ds
     import pdb; pdb.set_trace()
     w_sslhandle = ensured_handle(w_handle)
     if w_sslhandle.state != SSL_CONNECTED:
-        raise error.PrimitiveFailedError
+        return interp.space.wrap_int(SSL_INVALID_STATE)
+    if w_sslhandle.loglevel:
+        print "sqEncryptSSL: Encrypting %s bytes" % srclen
     num_bytes = ropenssl.libssl_SSL_write(w_sslhandle.ssl, src[start:start+srclen], srclen)
     if num_bytes != srclen:
-        raise error.PrimitiveFailedError
+        return interp.space.wrap_int(SSL_GENERIC_ERROR)
     nullp = lltype.nullptr(rffi.VOIDP.TO)
-    nbytes = ropenssl.libssl_BIO_ctrl(w_sslhandle.writebio, PY_BIO_CTRL_PENDING, 0, nullp)
+    nbytes = ropenssl.libssl_BIO_ctrl(w_sslhandle.writebio, BIO_CTRL_PENDING, 0, nullp)
     dstlen = w_dst.size()
     if nbytes > dstlen:
         raise error.PrimitiveFailedError
@@ -118,10 +138,10 @@ def primitiveDecrypt(interp, s_frame, w_rcvr, w_handle, src, start, srclen, w_ds
     import pdb; pdb.set_trace()
     w_sslhandle = ensured_handle(w_handle)
     if w_sslhandle.state != SSL_CONNECTED:
-        raise error.PrimitiveFailedError
+        return interp.space.wrap_int(SSL_INVALID_STATE)
     nbytes = ropenssl.libssl_BIO_write(w_sslhandle.readbio, src[start:start+srclen], srclen)
     if nbytes != srclen:
-        raise error.PrimitiveFailedError
+        return interp.space.wrap_int(SSL_GENERIC_ERROR)
     dstlen = w_dst.size()
     with rffi.scoped_alloc_buffer(dstlen) as buf:
         nbytes = ropenssl.libssl_SSL_read(w_sslhandle.ssl, buf.raw, dstlen)
@@ -129,7 +149,7 @@ def primitiveDecrypt(interp, s_frame, w_rcvr, w_handle, src, start, srclen, w_ds
             err = ropenssl.libssl_SSL_get_error(w_sslhandle.ssl, nbytes)
             if (err != ropenssl.SSL_ERROR_WANT_READ and
                 err != ropenssl.SSL_ERROR_ZERO_RETURN):
-                raise error.PrimitiveFailedError
+                return interp.space.wrap_int(SSL_GENERIC_ERROR)
             else:
                 nbytes = 0
         for idx, char in enumerate(rffi.charp2str(buf.raw)):
@@ -144,6 +164,8 @@ def primitiveSetStringProperty(interp, s_frame, w_rcvr, w_handle, propid, value)
     elif propid == PROP_SERVERNAME:
         w_sslhandle.servername = value
     else:
+        if w_sslhandle.loglevel:
+            print 'primitiveSetStringProperty: Unknown property ID %s' % propid
         return interp.space.wrap_int(0)
     return interp.space.wrap_int(1)
 
@@ -158,26 +180,35 @@ def primitiveGetStringProperty(interp, s_frame, w_rcvr, w_handle, propid):
     elif propid == PROP_SERVERNAME:
         r = w_sslhandle.servername
     else:
+        if w_sslhandle.loglevel:
+            print 'primitiveGetStringProperty: Unknown property ID %s' % propid
         r = ""
     return interp.space.wrap_string(r)
 
 @SqueakSSL.expose_primitive(unwrap_spec=[object, object, int, int])
 def primitiveSetIntProperty(interp, s_frame, w_rcvr, w_handle, propid, value):
     w_sslhandle = ensured_handle(w_handle)
-    return interp.space.wrap_int(0)
+    if propid == PROP_LOGLEVEL:
+        w_sslhandle.loglevel = value
+    else:
+        if w_sslhandle.loglevel:
+            print 'primitiveSetIntProperty: Unknown property ID %s' % propid
+        return interp.space.wrap_int(0)
+    return interp.space.wrap_int(1)
 
 @SqueakSSL.expose_primitive(unwrap_spec=[object, object, int])
 def primitiveGetIntProperty(interp, s_frame, w_rcvr, w_handle, propid):
     w_sslhandle = ensured_handle(w_handle)
-    if propid == PROP_VERSION:
-        r = 2
-    elif propid == PROP_CERTSTATE:
-        # r = w_sslhandle.certflags
-        r = 0
-    elif propid == PROP_SSLSTATE:
+    if propid == PROP_SSLSTATE:
         r = w_sslhandle.state
+    elif propid == PROP_CERTSTATE:
+        r = w_sslhandle.certflags
+    elif propid == PROP_VERSION:
+        r = SSL_VERSION
     else:
-        return interp.space.wrap_int(0)
+        if w_sslhandle.loglevel:
+            print 'primitiveGetIntProperty: Unknown property ID %s' % propid
+        r = 0
     return interp.space.wrap_int(r)
 
 @SqueakSSL.expose_primitive(unwrap_spec=[object, object, str, index1_0, int, object])
@@ -185,22 +216,24 @@ def primitiveConnect(interp, s_frame, w_rcvr, w_handle, src, start, srclen, w_ds
     import pdb; pdb.set_trace()
     w_sslhandle = ensured_handle(w_handle)
     if w_sslhandle.state != SSL_UNUSED and w_sslhandle.state != SSL_CONNECTING:
-        raise error.PrimitiveFailedError
+        return interp.space.wrap_int(SSL_INVALID_STATE)
     if w_sslhandle.state == SSL_UNUSED:
         w_sslhandle.state = SSL_CONNECTING
         ropenssl.libssl_SSL_set_connect_state(w_sslhandle.ssl)
     n = ropenssl.libssl_BIO_write(w_sslhandle.readbio, src[start:start+srclen], srclen)
-    if n < srclen:
-        raise error.PrimitiveFailedError
-    if n < 0:
-        raise error.PrimitiveFailedError
+    if n < srclen or n < 0:
+        return interp.space.wrap_int(SSL_GENERIC_ERROR)
     if w_sslhandle.servername:
         ropenssl.libssl_SSL_set_tlsext_host_name(w_sslhandle.ssl, w_sslhandle.servername)
     result = ropenssl.libssl_SSL_connect(w_sslhandle.ssl)
     if result < 0:
         err = ropenssl.libssl_SSL_get_error(w_sslhandle.ssl, result)
         if err != ropenssl.SSL_ERROR_WANT_READ:
-            raise error.PrimitiveFailedError
+            if w_sslhandle.loglevel:
+                print "primitiveConnect: SSL_connect failed"
+            return interp.space.wrap_int(-1)
+        if w_sslhandle.loglevel:
+            print "primitiveConnect: copy_bio_ssl"
         copy_bio_ssl(w_sslhandle.writebio, w_dst, n)
         return interp.space.wrap_int(n)
     w_sslhandle.state = SSL_CONNECTED
