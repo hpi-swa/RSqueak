@@ -8,6 +8,8 @@ from rpython.rtyper.lltypesystem import rffi, lltype
 
 
 ropenssl.ssl_external('SSL_set_bio', [ropenssl.SSL, ropenssl.BIO, ropenssl.BIO], lltype.Void)
+ropenssl.ssl_external('SSL_CTX_use_certificate_file', [ropenssl.SSL_CTX, rffi.CCHARP, rffi.INT], rffi.INT,
+                      save_err=rffi.RFFI_FULL_ERRNO_ZERO)
 ropenssl.ssl_external('BIO_read', [ropenssl.BIO, rffi.CCHARP, rffi.INT], rffi.INT)
 ropenssl.ssl_external('BIO_write', [ropenssl.BIO, rffi.CCHARP, rffi.INT], rffi.INT)
 ropenssl.ssl_external('BIO_set_close', [ropenssl.BIO, rffi.LONG], rffi.INT, macro=True)
@@ -67,16 +69,33 @@ class W_SSLHandle(W_AbstractObjectWithIdentityHash):
         self.servername = ""
         self.certname = ""
         self.wasclosed = False
-        self.ctx = ropenssl.libssl_SSL_CTX_new(ropenssl.libssl_SSLv23_method())
-        ropenssl.libssl_SSL_CTX_set_options(self.ctx, ropenssl.SSL_OP_NO_SSLv2 | ropenssl.SSL_OP_NO_SSLv3)
-        ropenssl.libssl_SSL_CTX_set_cipher_list(self.ctx, "!ADH:HIGH:MEDIUM:@STRENGTH")
-        ropenssl.libssl_SSL_CTX_set_default_verify_paths(self.ctx)
-        self.ssl = ropenssl.libssl_SSL_new(self.ctx)
         self.readbio = ropenssl.libssl_BIO_new(ropenssl.libssl_BIO_s_mem())
         self.writebio = ropenssl.libssl_BIO_new(ropenssl.libssl_BIO_s_mem())
         ropenssl.libssl_BIO_set_close(self.readbio, BIO_CLOSE)
         ropenssl.libssl_BIO_set_close(self.writebio, BIO_CLOSE)
+
+    def setup(self):
+        import pdb; pdb.set_trace()
+        self.ctx = ropenssl.libssl_SSL_CTX_new(ropenssl.libssl_SSLv23_method())
+        ropenssl.libssl_SSL_CTX_set_verify(self.ctx, ropenssl.SSL_VERIFY_NONE, lltype.nullptr(rffi.VOIDP.TO))
+        # if ropenssl.libssl_SSL_CTX_set_options(
+        #         self.ctx, ropenssl.SSL_OP_NO_SSLv2 | ropenssl.SSL_OP_NO_SSLv3) <= 0:
+        #     return False
+        ropenssl.libssl_SSL_CTX_set_cipher_list(self.ctx, "!ADH:HIGH:MEDIUM:@STRENGTH")
+        if self.certname:
+            if self.loglevel:
+                print "W_SSLHandle.setup: Using cert file %s" % self.certname
+            if ropenssl.libssl_SSL_CTX_use_certificate_file(
+                    self.ctx, self.certname, ropenssl.SSL_FILETYPE_PEM) <= 0:
+                return False
+            if ropenssl.libssl_SSL_CTX_use_PrivateKey_file(
+                    self.ctx, self.certname, ropenssl.SSL_FILETYPE_PEM) <= 0:
+                return False
+        if ropenssl.libssl_SSL_CTX_set_default_verify_paths(self.ctx) <= 0:
+            return False
+        self.ssl = ropenssl.libssl_SSL_new(self.ctx)
         ropenssl.libssl_SSL_set_bio(self.ssl, self.readbio, self.writebio)
+        return True
 
     def getclass(self, space):
         return space.w_SmallInteger
@@ -219,6 +238,8 @@ def primitiveConnect(interp, s_frame, w_rcvr, w_handle, src, start, srclen, w_ds
         return interp.space.wrap_int(SSL_INVALID_STATE)
     if w_sslhandle.state == SSL_UNUSED:
         w_sslhandle.state = SSL_CONNECTING
+        if not w_sslhandle.setup():
+            return interp.space.wrap_int(SSL_GENERIC_ERROR)
         ropenssl.libssl_SSL_set_connect_state(w_sslhandle.ssl)
     n = ropenssl.libssl_BIO_write(w_sslhandle.readbio, src[start:start+srclen], srclen)
     if n < srclen or n < 0:
