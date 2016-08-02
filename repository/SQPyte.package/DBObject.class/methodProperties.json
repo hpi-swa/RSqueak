@@ -5,7 +5,10 @@
 		"Mode" : "fn 7/26/2016 15:25",
 		"Mode:" : "fn 7/26/2016 15:25",
 		"allInstancesDo:" : "fn 7/26/2016 15:24",
+		"beginTransaction" : "fn 8/1/2016 17:40",
 		"close" : "fn 7/26/2016 15:25",
+		"endTransaction" : "fn 8/1/2016 17:40",
+		"primitiveDBObjectExecute:args:" : "fn 8/1/2016 17:39",
 		"primitiveSQLAllInstances" : "fn 7/26/2016 15:25",
 		"primitiveSQLNextObject:" : "fn 7/26/2016 15:25" },
 	"instance" : {
