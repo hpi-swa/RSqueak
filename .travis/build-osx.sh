@@ -22,7 +22,7 @@ case "$BUILD_ARCH" in
     # $EX rm -rf .build/pypy/rpython/_cache
     ;;
   64bit)
-    python .build/build.py -- --64bit $plugins
+    pypy .build/build.py -- --64bit $plugins
     exitcode=$?
     cp rsqueak rsqueak-x86_64-${UNAME}$plugins_suffix-jit-$TRAVIS_COMMIT || true
     # python .build/jittests.py

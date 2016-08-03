@@ -8,6 +8,13 @@ presetup_osx() {
 }
 
 setup_osx() {
+    brew update
+    case "${BUILD_ARCH}" in
+      64bit)
+      brew install pypy
+      ;;
+    esac
+    
     SDL_DMG=SDL2-2.0.3.dmg
     curl -L -O http://www.libsdl.org/release/${SDL_DMG}
     hdiutil mount ${SDL_DMG}
