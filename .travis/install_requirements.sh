@@ -8,6 +8,9 @@ presetup_osx() {
 }
 
 setup_osx() {
+    brew update
+    brew install openssl
+
     SDL_DMG=SDL2-2.0.3.dmg
     curl -L -O http://www.libsdl.org/release/${SDL_DMG}
     hdiutil mount ${SDL_DMG}

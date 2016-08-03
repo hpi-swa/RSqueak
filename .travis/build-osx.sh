@@ -5,6 +5,9 @@ UNAME=darwin
 EX=
 #set EX to sudo if required.
 
+# set up PKG_CONFIG_PATH in order to use openssl installed via Homebrew
+PKG_CONFIG_PATH=$(brew --prefix)/opt/openssl/lib/pkgconfig
+
 exitcode=0
 plugins=""
 plugins_suffix=""
