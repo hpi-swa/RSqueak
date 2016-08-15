@@ -13,7 +13,8 @@ environment:
   matrix:
     - buildscript: unittests.py
     - buildscript: build.py
-    - buildscript: build.py --plugins=ruby_plugin
+    - buildscript: build.py
+      buildargs: -- --plugins=ruby_plugin
 
 matrix:
   fast_finish: true
