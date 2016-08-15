@@ -1,6 +1,6 @@
 from rsqueakvm.util import system
 if "database_plugin" not in system.optional_plugins:
-    raise ImportError
+    raise LookupError
 
 import platform
 

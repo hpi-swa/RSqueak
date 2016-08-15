@@ -1,6 +1,6 @@
 from rsqueakvm.util import system
 if "ruby_plugin" not in system.optional_plugins:
-    raise ImportError
+    raise LookupError
 else:
     system.translationconfig.set(continuation=True)
 
@@ -12,7 +12,7 @@ from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod, W_SpurComp
 from rsqueakvm.plugins.plugin import Plugin, PluginStartupScripts
 from rsqueakvm.storage_classes import ClassShadow
 from rsqueakvm.storage import AbstractCachingShadow
-from rsqueakvm.primitives.bytecodes import EXTERNAL_CALL
+from rsqueakvm.primitives.constants import EXTERNAL_CALL
 
 from topaz.objspace import ObjectSpace
 from topaz.objects.floatobject import W_FloatObject
