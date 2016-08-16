@@ -45,6 +45,10 @@ def startup(space, argv):
         space.wrap_string("RubyPlugin"),
         space.wrap_string("send")
     ])
+    w_ruby_class = space.smalltalk_at("RubyObject")
+    if w_ruby_class is None:
+        w_ruby_class = space.w_nil.getclass(space)
+    space.objtable["RubyObject"] = w_ruby_class
     ruby_space.setup(argv[0])
 PluginStartupScripts.append(startup)
 
@@ -129,9 +133,7 @@ class RubyClassShadow(ClassShadow):
     def lookup(self, w_selector):
         w_method = self._lookup(w_selector, self.wr_class.version)
         if w_method is None:
-            w_dnu = self.space.special_object("w_doesNotUnderstand")
-            if w_selector == w_dnu:
-                return self.space.w_nil.class_shadow(self.space).lookup(w_dnu)
+            return self.space.special_object("RubyObject").lookup(w_selector)
         return w_method
 
     @jit.elidable
