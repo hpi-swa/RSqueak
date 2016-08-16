@@ -120,13 +120,19 @@ class RubyClassShadow(ClassShadow):
     _immutable_fields_ = ["wr_class"]
     def __init__(self, space, wr_class):
         self.wr_class = wr_class
+        self.name = wr_class.name
         AbstractCachingShadow.__init__(self, space, space.w_nil, 0, space.w_nil)
 
     def changed(self):
         pass # Changes to Ruby classes are handled in Ruby land
 
     def lookup(self, w_selector):
-        return self._lookup(w_selector, self.wr_class.version)
+        w_method = self._lookup(w_selector, self.wr_class.version)
+        if w_method is None:
+            w_dnu = self.space.special_object("w_doesNotUnderstand")
+            if w_selector == w_dnu:
+                return self.space.w_nil.class_shadow(self.space).lookup(w_dnu)
+        return w_method
 
     @jit.elidable
     def _lookup(self, w_selector, version):
