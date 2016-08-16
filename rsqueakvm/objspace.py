@@ -1,6 +1,6 @@
 from rsqueakvm import constants, wrapper, display, storage
 from rsqueakvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, SYSTEM_ATTRIBUTE_IMAGE_ARGS_INDEX
-from rsqueakvm.error import WrappingError
+from rsqueakvm.error import WrappingError, UnwrappingError
 from rsqueakvm.model.character import W_Character
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargePositiveInteger1Word
 from rsqueakvm.model.pointers import W_PointersObject
@@ -415,6 +415,27 @@ class ObjSpace(object):
                 )
             self._display.set(disp)
         return jit.promote(disp)
+
+    def smalltalk_at(self, string):
+        """A helper to find a class by name in modern Squeak images"""
+        if self.special_object("w_smalltalkdict").instsize() == 1:
+            w_globals = w_sd.fetch(self, 0)
+            if w_globals.instsize() == 6:
+                w_bindings = w_globals.fetch(self, 2)
+                if w_bindings.instsize() == 2:
+                    try:
+                        tally = self.unwrap_int(w_bindings.fetch(self, 0))
+                    except UnwrappingError:
+                        return None
+                    w_array = w_bindings.fetch(self, 1)
+                    for i in range(tally):
+                        w_assoc = w_array.fetch(self, i)
+                        if w_assoc.instsize() == 2:
+                            try:
+                                if self.unwrap_string(w_assoc.fetch(self, 0)) == string:
+                                    return w_assoc.fetch(self, 1)
+                            except UnwrappingError:
+                                pass
 
     # ============= Other Methods =============
 
