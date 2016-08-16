@@ -418,7 +418,8 @@ class ObjSpace(object):
 
     def smalltalk_at(self, string):
         """A helper to find a class by name in modern Squeak images"""
-        if self.special_object("w_smalltalkdict").instsize() == 1:
+        w_sd = self.special_object("w_smalltalkdict")
+        if w_sd.instsize() == 1:
             w_globals = w_sd.fetch(self, 0)
             if w_globals.instsize() == 6:
                 w_bindings = w_globals.fetch(self, 2)
