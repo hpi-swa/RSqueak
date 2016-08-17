@@ -424,12 +424,9 @@ class ObjSpace(object):
             if w_globals.instsize() == 6:
                 w_bindings = w_globals.fetch(self, 2)
                 if w_bindings.instsize() == 2:
-                    try:
-                        tally = self.unwrap_int(w_bindings.fetch(self, 0))
-                    except UnwrappingError:
-                        return None
                     w_array = w_bindings.fetch(self, 1)
-                    for i in range(tally):
+                    size = w_array.varsize()
+                    for i in range(size):
                         w_assoc = w_array.fetch(self, i)
                         if w_assoc.instsize() == 2:
                             try:
