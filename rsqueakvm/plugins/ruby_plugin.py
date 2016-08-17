@@ -133,7 +133,8 @@ class RubyClassShadow(ClassShadow):
     def lookup(self, w_selector):
         w_method = self._lookup(w_selector, self.wr_class.version)
         if w_method is None:
-            return self.space.special_object("RubyObject").lookup(w_selector)
+            w_ro = self.space.special_object("RubyObject")
+            return w_ro.as_class_get_shadow(self.space).lookup(w_selector)
         return w_method
 
     @jit.elidable
