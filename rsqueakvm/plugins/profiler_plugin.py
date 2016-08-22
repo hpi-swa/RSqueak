@@ -25,13 +25,13 @@ def patch_interpreter():
 PluginPatchScripts.append(patch_interpreter)
 
 def _safe(s):
-    if len(s) > 210:
-        s = s[:207] + '...'
+    if len(s) > 200:
+        s = s[:197] + '...'
     return s.replace(':', ';')
 
 def _get_full_name(w_cm):
     # must not be longer than 255 chars
-    return "py:%s:0:img" % _safe(w_cm.safe_identifier_string())
+    return "st:%s:0:/img" % _safe(w_cm.safe_identifier_string())
 
 rvmprof.register_code_object_class(W_CompiledMethod, _get_full_name)
 
