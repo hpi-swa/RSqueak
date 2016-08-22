@@ -208,6 +208,20 @@ def _trace_pointers(space, w_obj):
 
 def get_instances_array(interp, s_frame, w_class=None, store=True,
                         some_instance=False):
+    # early return for classes that never had instances. This is true for a
+    # bunch of special classes.
+    if w_class:
+        if interp.space.w_SmallInteger.is_same_object(w_class):
+            return []
+        if interp.space.is_spur.is_set():
+            if interp.space.w_Character.is_same_object(w_class):
+                return []
+            if interp.image.version.is_64bit:
+                if interp.space.w_Float.is_same_object(w_class):
+                    return []
+        if interp.image.version.is_modern:
+            if interp.space.w_BlockContext.is_same_object(w_class):
+                return []
     # make sure we also get any objects in the currently active process
     w_active_process = wrapper.scheduler(interp.space).active_process()
     active_process = wrapper.ProcessWrapper(interp.space, w_active_process)
