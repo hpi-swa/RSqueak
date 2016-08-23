@@ -212,6 +212,7 @@ class Shell(object):
                     if n == method:
                         getattr(self, n)(code)
             else:
+                w_result = None
                 try:
                     w_result = self._execute_code(code)
                 except:
