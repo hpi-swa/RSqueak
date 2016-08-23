@@ -315,7 +315,7 @@ def primitiveConnect(interp, s_frame, w_rcvr, w_handle, src, start, srclen, w_ds
         ropenssl.libssl_SSL_set_tlsext_host_name(w_sslhandle.ssl, w_sslhandle.servername)
     w_sslhandle.log("primitiveConnect: SSL_connect")
     result = ropenssl.libssl_SSL_connect(w_sslhandle.ssl)
-    if result < 0:
+    if result <= 0:
         err = ropenssl.libssl_SSL_get_error(w_sslhandle.ssl, result)
         if err != ropenssl.SSL_ERROR_WANT_READ:
             w_sslhandle.log("primitiveConnect: SSL_connect failed with %s", err)
