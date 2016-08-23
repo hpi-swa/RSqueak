@@ -1,6 +1,6 @@
 from rsqueakvm.util import system
 if "ruby_plugin" not in system.optional_plugins:
-    raise ImportError
+    raise LookupError
 else:
     system.translationconfig.set(continuation=True)
 
@@ -12,7 +12,7 @@ from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod, W_SpurComp
 from rsqueakvm.plugins.plugin import Plugin, PluginStartupScripts
 from rsqueakvm.storage_classes import ClassShadow
 from rsqueakvm.storage import AbstractCachingShadow
-from rsqueakvm.primitives.bytecodes import EXTERNAL_CALL
+from rsqueakvm.primitives.constants import EXTERNAL_CALL
 
 from topaz.objspace import ObjectSpace
 from topaz.objects.floatobject import W_FloatObject
@@ -45,6 +45,10 @@ def startup(space, argv):
         space.wrap_string("RubyPlugin"),
         space.wrap_string("send")
     ])
+    w_ruby_class = space.smalltalk_at("RubyObject")
+    if w_ruby_class is None:
+        w_ruby_class = space.w_nil.getclass(space)
+    space.objtable["RubyObject"] = w_ruby_class
     ruby_space.setup(argv[0])
 PluginStartupScripts.append(startup)
 
@@ -120,13 +124,18 @@ class RubyClassShadow(ClassShadow):
     _immutable_fields_ = ["wr_class"]
     def __init__(self, space, wr_class):
         self.wr_class = wr_class
+        self.name = wr_class.name
         AbstractCachingShadow.__init__(self, space, space.w_nil, 0, space.w_nil)
 
     def changed(self):
         pass # Changes to Ruby classes are handled in Ruby land
 
     def lookup(self, w_selector):
-        return self._lookup(w_selector, self.wr_class.version)
+        w_method = self._lookup(w_selector, self.wr_class.version)
+        if w_method is None:
+            w_ro = self.space.special_object("RubyObject")
+            return w_ro.as_class_get_shadow(self.space).lookup(w_selector)
+        return w_method
 
     @jit.elidable
     def _lookup(self, w_selector, version):

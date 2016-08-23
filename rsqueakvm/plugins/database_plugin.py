@@ -1,6 +1,6 @@
 from rsqueakvm.util import system
 if "database_plugin" not in system.optional_plugins:
-    raise ImportError
+    raise LookupError
 
 import platform
 
@@ -134,6 +134,13 @@ def primitiveSetDBFile(interp, s_frame, w_rcvr, db_file_name):
 @DatabasePlugin.expose_primitive(unwrap_spec=[object])
 def primitiveCloseDBObject(interp, s_frame, w_rcvr):
     return interp.space.wrap_bool(dbm.connection().close())
+
+
+@DatabasePlugin.expose_primitive(unwrap_spec=[object, str, object])
+def primitiveDBObjectExecute(interp, s_frame, w_rcvr, sql, args):
+    cursor_handle = dbm.execute(
+        interp.space, dbm.connection(), sql, interp.space.unwrap_array(args))
+    return interp.space.wrap_int(cursor_handle)
 
 
 @DatabasePlugin.expose_primitive(unwrap_spec=[object])

@@ -13,6 +13,8 @@ environment:
   matrix:
     - buildscript: unittests.py
     - buildscript: build.py
+    - buildscript: build.py
+      buildargs: -- --plugins=ruby_plugin
 
 matrix:
   fast_finish: true
@@ -20,7 +22,7 @@ matrix:
 shallow_clone: true
 platform: x86
 install:
-  - cmd: C:\\Python27\\python .build/download_dependencies.py
+  - cmd: C:\\Python27\\python .build/download_dependencies.py ruby_plugin
 build: false
 test_script:
   - cmd: .appveyor/rsqueak-build.bat
@@ -29,3 +31,6 @@ cache:
   - .build/pypy -> .appveyor/cache_tag
   - .build/rsdl -> .appveyor/cache_tag
   - .build/SDL -> .appveyor/binary_cache_tag
+  - .build/rply -> .appveyor/binary_cache_tag
+  - .build/appdirs -> .appveyor/binary_cache_tag
+  - .build/topaz -> .appveyor/binary_cache_tag

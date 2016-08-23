@@ -1,0 +1,14 @@
+{
+	"category" : "TopazRuby",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "RubyObject",
+	"pools" : [
+		 ],
+	"super" : "Object",
+	"type" : "normal" }

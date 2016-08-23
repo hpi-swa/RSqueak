@@ -5,10 +5,14 @@ from rsqueakvm import interpreter, squeakimage, objspace, wrapper, error
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.plugins.simulation import SIMULATE_PRIMITIVE_SELECTOR
+from rsqueakvm.plugins.plugin import PluginPatchScripts
 from rsqueakvm.util import system
 
 from rpython.rlib import jit, rpath, objectmodel, streamio
 
+# XXX: HACK: We have circular dependencies in some plugins ... :(
+for pluginpatch in PluginPatchScripts:
+    pluginpatch()
 
 def _compile_time_version():
     if os.environ.get("APPVEYOR", None):

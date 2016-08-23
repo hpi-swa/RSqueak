@@ -94,6 +94,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def __init__(self, space, bytecount=0, header=0):
         self.bytes = ["\x00"] * bytecount
         self.setheader(space, header, initializing=True)
+        self.post_init()
 
     def fillin(self, space, g_self):
         self.bytes = [] # make sure the attribute is defined
@@ -101,6 +102,11 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         for i, w_object in enumerate(g_self.get_pointers()):
             self.literalatput0(space, i, w_object, initializing=True)
         self.setbytes(g_self.get_bytes()[self.bytecodeoffset():])
+        self.post_init()
+
+    def post_init(self):
+        # A hook, usually left empty, but patched e.g. in profiler_plugin
+        pass
 
     # === Setters ===
 
