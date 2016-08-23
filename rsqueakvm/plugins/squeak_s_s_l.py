@@ -171,9 +171,9 @@ def copy_bio_ssl(bio, w_dst, dstlen, loglevel):
     if nbytes > dstlen:  # more bytes to copy than available
         return -1
     with rffi.scoped_alloc_buffer(nbytes) as buf:
-        r = ropenssl.libssl_BIO_read(bio, buf.raw, nbytes)
-        for idx, char in enumerate(rffi.charp2str(buf.raw)):
-            w_dst.setchar(idx, char)
+        r = ropenssl.libssl_BIO_read(bio, buf.raw, dstlen)
+        for idx in range(r):
+            w_dst.setchar(idx, buf.raw[idx])
         return r
 
 
