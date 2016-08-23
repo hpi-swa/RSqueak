@@ -4,7 +4,7 @@ from rsqueakvm.primitives import index1_0
 from rsqueakvm.plugins.plugin import Plugin, PluginStartupScripts
 
 from rpython.rlib import ropenssl
-from rpython.rlib.objectmodel import we_are_translated
+from rpython.rlib.objectmodel import we_are_translated, specialize
 from rpython.rtyper.lltypesystem import rffi, lltype
 
 
@@ -25,6 +25,11 @@ ropenssl.ssl_external("X509_NAME_get_text_by_NID",
                       [ropenssl.X509_NAME, rffi.INT, rffi.CCHARP, rffi.INT],
                       rffi.INT)
 
+ropenssl.eci.post_include_bits = tuple(list(ropenssl.eci.post_include_bits) + [
+    "#define pypy_ERR_print_errors_stdout() ERR_print_errors_fp(stdout)"
+])
+
+ropenssl.ssl_external('pypy_ERR_print_errors_stdout', [], lltype.Void, macro=True)
 
 class CConfig:
     _compilation_info_ = ropenssl.eci
@@ -102,8 +107,18 @@ class W_SSLHandle(W_AbstractObjectWithIdentityHash):
         ropenssl.libssl_BIO_set_close(self.readbio, BIO_CLOSE)
         ropenssl.libssl_BIO_set_close(self.writebio, BIO_CLOSE)
 
+    @specialize.argtype(2)
+    def log(self, str, args=None):
+        if self.loglevel:
+            if args is not None:
+                print str % args
+            else:
+                print str
+
     def setup(self):
         _debug_in_interpreter()
+        self.log("W_SSLHandle.setup: setting method")
+        self.log("W_SSLHandle.setup: Creating context")
         self.ctx = ropenssl.libssl_SSL_CTX_new(ropenssl.libssl_SSLv23_method())
         # ropenssl.libssl_SSL_CTX_set_verify(
         #     self.ctx, ropenssl.SSL_VERIFY_NONE, None)
@@ -111,20 +126,23 @@ class W_SSLHandle(W_AbstractObjectWithIdentityHash):
         #         self.ctx,
         #         ropenssl.SSL_OP_NO_SSLv2 | ropenssl.SSL_OP_NO_SSLv3) <= 0:
         #     return False
+        self.log("W_SSLHandle.setup: setting cipher list")
         ropenssl.libssl_SSL_CTX_set_cipher_list(
             self.ctx, "!ADH:HIGH:MEDIUM:@STRENGTH")
         if self.certname:
-            if self.loglevel:
-                print "W_SSLHandle.setup: Using cert file %s" % self.certname
+            self.log("W_SSLHandle.setup: Using cert file %s", self.certname)
             if ropenssl.libssl_SSL_CTX_use_certificate_file(
                     self.ctx, self.certname, ropenssl.SSL_FILETYPE_PEM) <= 0:
                 return False
             if ropenssl.libssl_SSL_CTX_use_PrivateKey_file(
                     self.ctx, self.certname, ropenssl.SSL_FILETYPE_PEM) <= 0:
                 return False
+        self.log("W_SSLHandle.setup: No root CA given; using default verify paths")
         if ropenssl.libssl_SSL_CTX_set_default_verify_paths(self.ctx) <= 0:
             return False
+        self.log("W_SSLHandle.setup: Creating SSL")
         self.ssl = ropenssl.libssl_SSL_new(self.ctx)
+        self.log("W_SSLHandle.setup: setting bios")
         ropenssl.libssl_SSL_set_bio(self.ssl, self.readbio, self.writebio)
         return True
 
@@ -144,7 +162,6 @@ def ensured_handle(w_obj):
         raise error.PrimitiveFailedError
 
     return w_obj
-
 
 def copy_bio_ssl(bio, w_dst, dstlen, loglevel):
     nbytes = ropenssl.libssl_BIO_ctrl_pending(bio)
@@ -182,8 +199,7 @@ def primitiveEncrypt(interp, s_frame, w_rcvr, w_handle, src, start, srclen, w_ds
     w_sslhandle = ensured_handle(w_handle)
     if w_sslhandle.state != SSL_CONNECTED:
         return interp.space.wrap_int(SSL_INVALID_STATE)
-    if w_sslhandle.loglevel:
-        print "sqEncryptSSL: Encrypting %s bytes" % srclen
+    w_sslhandle.log("sqEncryptSSL: Encrypting %s bytes", srclen)
     assert start >= 0 and srclen >= 0
     num_bytes = ropenssl.libssl_SSL_write(w_sslhandle.ssl, src[start:start+srclen], srclen)
     if num_bytes != srclen:
@@ -228,8 +244,7 @@ def primitiveSetStringProperty(interp, s_frame, w_rcvr, w_handle, propid, value)
     elif propid == PROP_SERVERNAME:
         w_sslhandle.servername = value
     else:
-        if w_sslhandle.loglevel:
-            print "primitiveSetStringProperty: Unknown property ID %s" % propid
+        w_sslhandle.log("primitiveSetStringProperty: Unknown property ID %s", propid)
         return interp.space.wrap_int(0)
     return interp.space.wrap_int(1)
 
@@ -244,8 +259,7 @@ def primitiveGetStringProperty(interp, s_frame, w_rcvr, w_handle, propid):
     elif propid == PROP_SERVERNAME:
         r = w_sslhandle.servername
     else:
-        if w_sslhandle.loglevel:
-            print "primitiveGetStringProperty: Unknown property ID %s" % propid
+        w_sslhandle.log("primitiveGetStringProperty: Unknown property ID %s", propid)
         r = ""
     return interp.space.wrap_string(r)
 
@@ -255,8 +269,7 @@ def primitiveSetIntProperty(interp, s_frame, w_rcvr, w_handle, propid, value):
     if propid == PROP_LOGLEVEL:
         w_sslhandle.loglevel = value
     else:
-        if w_sslhandle.loglevel:
-            print "primitiveSetIntProperty: Unknown property ID %s" % propid
+        w_sslhandle.log("primitiveSetIntProperty: Unknown property ID %s", propid)
         return interp.space.wrap_int(0)
     return interp.space.wrap_int(1)
 
@@ -270,8 +283,7 @@ def primitiveGetIntProperty(interp, s_frame, w_rcvr, w_handle, propid):
     elif propid == PROP_VERSION:
         r = SSL_VERSION
     else:
-        if w_sslhandle.loglevel:
-            print "primitiveGetIntProperty: Unknown property ID %s" % propid
+        w_sslhandle.log("primitiveGetIntProperty: Unknown property ID %s", propid)
         r = 0
     return interp.space.wrap_int(r)
 
@@ -279,69 +291,57 @@ def primitiveGetIntProperty(interp, s_frame, w_rcvr, w_handle, propid):
 def primitiveConnect(interp, s_frame, w_rcvr, w_handle, src, start, srclen, w_dst):
     _debug_in_interpreter()
     w_sslhandle = ensured_handle(w_handle)
-    if w_sslhandle.loglevel:
-        print "primitiveConnect: handle %s" % w_sslhandle.hash
+    w_sslhandle.log("primitiveConnect: handle %s", w_sslhandle.hash)
     if w_sslhandle.state != SSL_UNUSED and w_sslhandle.state != SSL_CONNECTING:
         return interp.space.wrap_int(SSL_INVALID_STATE)
     if w_sslhandle.state == SSL_UNUSED:
         w_sslhandle.state = SSL_CONNECTING
-        if w_sslhandle.loglevel:
-            print "primitiveConnect: Setting up SSL"
+        w_sslhandle.log("primitiveConnect: Setting up SSL")
         if not w_sslhandle.setup():
             return interp.space.wrap_int(SSL_GENERIC_ERROR)
-        if w_sslhandle.loglevel:
-            print "primitiveConnect: Setting connect state"
+        w_sslhandle.log("primitiveConnect: Setting connect state")
         ropenssl.libssl_SSL_set_connect_state(w_sslhandle.ssl)
     assert start >= 0 and srclen >= 0
-    if w_sslhandle.loglevel:
-        print "primitiveConnect: BIO_write %s bytes" % srclen
+    w_sslhandle.log("primitiveConnect: BIO_write %s bytes", srclen)
     n = ropenssl.libssl_BIO_write(w_sslhandle.readbio, src[start:start+srclen], srclen)
     if n < srclen:
-        if w_sslhandle.loglevel:
-            print "primitiveConnect: BIO too small for input"
+        w_sslhandle.log("primitiveConnect: BIO too small for input")
         return interp.space.wrap_int(SSL_GENERIC_ERROR)
     if n < 0:
-        if w_sslhandle.loglevel:
-            print "primitiveConnect: BIO_write failed" % srclen
+        w_sslhandle.log("primitiveConnect: BIO_write failed", srclen)
         return interp.space.wrap_int(SSL_GENERIC_ERROR)
     if w_sslhandle.servername:
-        if w_sslhandle.loglevel:
-            print "primitiveConnect: Using server name %s" % w_sslhandle.servername
+        w_sslhandle.log("primitiveConnect: Using server name %s", w_sslhandle.servername)
         ropenssl.libssl_SSL_set_tlsext_host_name(w_sslhandle.ssl, w_sslhandle.servername)
+    w_sslhandle.log("primitiveConnect: SSL_connect")
     result = ropenssl.libssl_SSL_connect(w_sslhandle.ssl)
     if result < 0:
         err = ropenssl.libssl_SSL_get_error(w_sslhandle.ssl, result)
         if err != ropenssl.SSL_ERROR_WANT_READ:
-            if w_sslhandle.loglevel:
-                print "primitiveConnect: SSL_connect failed with %s" % err
+            w_sslhandle.log("primitiveConnect: SSL_connect failed with %s", err)
+            ropenssl.libssl_pypy_ERR_print_errors_stdout()
             return interp.space.wrap_int(-1)
-        if w_sslhandle.loglevel:
-            print "primitiveConnect: copy_bio_ssl"
+        w_sslhandle.log("primitiveConnect: copy_bio_ssl")
         c = copy_bio_ssl(w_sslhandle.writebio, w_dst, w_dst.bytesize(),
                          w_sslhandle.loglevel)
         return interp.space.wrap_int(c)
     # We are connected. Verify the cert.
     w_sslhandle.state = SSL_CONNECTED
-    if w_sslhandle.loglevel:
-        print "primitiveConnect: SSL_get_peer_certificate"
+    w_sslhandle.log("primitiveConnect: SSL_get_peer_certificate")
     cert = ropenssl.libssl_SSL_get_peer_certificate(w_sslhandle.ssl)
-    if w_sslhandle.loglevel:
-        print "primitiveConnect: cert = %s" % cert
+    w_sslhandle.log("primitiveConnect: cert = %s", cert)
     if cert:
         x509_name = ropenssl.libssl_X509_get_subject_name(cert)
         with rffi.scoped_alloc_buffer(256) as buf:
             ropenssl.libssl_X509_NAME_get_text_by_NID(
                 x509_name, NID_commonName, buf.raw, 256)
             w_sslhandle.peername = rffi.charp2str(buf.raw)
-        if w_sslhandle.loglevel:
-            print "primitiveConnect: peerName = %s" % w_sslhandle.peername
+        w_sslhandle.log("primitiveConnect: peerName = %s", w_sslhandle.peername)
         ropenssl.libssl_X509_free(cert)
 
         # Check the result of verification
         result = ropenssl.libssl_SSL_get_verify_result(w_sslhandle.ssl)
-        if w_sslhandle.loglevel:
-            print ("primitiveConnect: SSL_get_verify_result = %s (%s)" %
-                   (result, result == X509_V_OK))
+        w_sslhandle.log("primitiveConnect: SSL_get_verify_result = %s (%s)", (result, result == X509_V_OK))
         if result == X509_V_OK:
             w_sslhandle.certflags = SSL_OK
         else:
