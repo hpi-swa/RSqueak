@@ -7,7 +7,7 @@ from rsqueakvm.model.character import W_Character
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_MutableSmallInteger
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject
-from rsqueakvm.model.variable import W_CompiledMethod
+from rsqueakvm.model.compiled_methods import W_CompiledMethod
 from rsqueakvm.util.version import VersionMixin, elidable_for_version
 
 from rpython.rlib import jit
