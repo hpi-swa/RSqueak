@@ -27,10 +27,15 @@ def download_and_extract(url, targetdir, callback=None):
             with zipfile.ZipFile(filename) as f:
                 # extractall doesn't work if zipfiles do not include directories
                 # as separate members (as for github and bitbucket)
+                topdirs = []
                 for m in f.namelist():
-                    if m.endswith("/"): continue
+                    if m.endswith("/"):
+                        if len(m.split("/")) == 2:
+                            topdirs.append(m.split("/")[0])
+                        continue
                     directory = "/".join(m.split("/")[0:-2])
-                    if directory.find("/") == -1: topdir = directory
+                    if directory.find("/") == -1:
+                        topdirs.append(directory)
                     if (len(directory) > 0 and
                         not directory.startswith("/") and
                         (directory.find("..") == -1) and
@@ -38,10 +43,16 @@ def download_and_extract(url, targetdir, callback=None):
                         os.makedirs(directory)
                     sys.stdout.write(".")
                     f.extract(m)
-                if not topdir:
-                    topdir = f.namelist()[0]
-                print topdir
-                shutil.move(topdir, targetdir)
+                topdirs = filter(lambda x: len(x) != 0, topdirs)
+                topdirs = list(set(topdirs))
+                if not topdirs:
+                    topdirs = [f.namelist()[0]]
+                if len(topdirs) > 1:
+                    os.makedirs(targetdir)
+                    for d in topdirs:
+                        shutil.move(d, "%s/%s" % (targetdir, d))
+                else:
+                    shutil.move(topdirs[0], targetdir)
         elif filename.endswith(".bz2"):
             import tarfile, shutil
             with tarfile.open(filename) as tar:
