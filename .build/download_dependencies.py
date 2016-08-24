@@ -95,6 +95,7 @@ def build_pypy32(exe, directory):
 
 if os.name == "nt":
     DEPS.append(("http://libsdl.org/release/SDL2-devel-2.0.3-VC.zip", cp.get("Windows", "SDL")))
+    DEPS.append(("https://bitbucket.org/pypy/pypy/downloads/local_2.4.zip", cp.get("Windows", "pypyextlibs")))
     if os.getenv("APPVEYOR") is None:
         # Don't download this on appveyor, saves time and memory
         DEPS.extend([

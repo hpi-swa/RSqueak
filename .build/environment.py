@@ -29,6 +29,7 @@ def load_config():
             cp.set("Windows", "WindowsSDK7", "C:\\Program Files (x86)\\Microsoft SDKs\\Windows\\v7.1A")
             cp.set("Windows", "VisualStudio9", "C:\\Program Files (x86)\\Microsoft Visual Studio 9.0")
             cp.set("Windows", "Graphviz", pathjoin(dirname(__file__), "Graphviz"))
+            cp.set("Windows", "pypyextlibs", pathjoin(dirname(__file__), "pypyextlibs"))
             cp.write(f)
         print "I've just added a config file at %s. Please review the values and run `install_dependencies` (if needed)." % config
     else:
@@ -85,7 +86,8 @@ def prepare_environment_variables():
     if "nt" == os.name:
         vs = cp.get("Windows", "VisualStudio9")
         sdk = cp.get("Windows", "WindowsSDK7")
-        paths = [pathjoin(vs, "VC"), pathjoin(vs, "VC", "atlmfc"), sdk]
+        pypyextlibs = cp.get("Windows", "pypyextlibs")
+        paths = [pathjoin(vs, "VC"), pathjoin(vs, "VC", "atlmfc"), sdk, pypyextlibs]
         os.environ['INCLUDE'] = ";".join([pathjoin(e, "include") for e in paths])
         os.environ['LIB'] = ";".join([pathjoin(e, "lib") for e in paths])
         os.environ['LIBPATH'] = ";".join([pathjoin(e, "lib") for e in paths[0:2]])
