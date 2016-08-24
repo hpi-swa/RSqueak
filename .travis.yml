@@ -25,18 +25,8 @@ env:
     - LIBRARY_PATH=$LIBRARY_PATH:$HOME/SDL2/lib
     - C_INCLUDE_PATH=$C_INCLUDE_PATH:$HOME/SDL2/include
   matrix:
-    - BUILD_ARCH=32bit TEST_TYPE=default
-    - BUILD_ARCH=32bit
-    - BUILD_ARCH=32bit TEST_TYPE=coverage
-    # - BUILD_ARCH=lldebug
     - BUILD_ARCH=64bit TEST_TYPE=default
     - BUILD_ARCH=64bit
-    - BUILD_ARCH=armv6
-    - BUILD_ARCH=armv7-a
-    - BUILD_ARCH=armv8-a
-    - BUILD_ARCH=64bit PLUGINS=database_plugin
-    - BUILD_ARCH=64bit PLUGINS=ruby_plugin
-    - BUILD_ARCH=64bit PLUGINS=profiler_plugin
 matrix:
   exclude:
     - os: osx
