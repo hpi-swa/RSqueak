@@ -205,13 +205,15 @@ def primitiveEncrypt(interp, s_frame, w_rcvr, w_handle, src, start, srclen, w_ds
     num_bytes = ropenssl.libssl_SSL_write(w_sslhandle.ssl, src[start:start+srclen], srclen)
     if num_bytes != srclen:
         return interp.space.wrap_int(SSL_GENERIC_ERROR)
+
     nullp = lltype.nullptr(rffi.VOIDP.TO)
     nbytes = ropenssl.libssl_BIO_ctrl(w_sslhandle.writebio, BIO_CTRL_PENDING, 0, nullp)
     dstlen = w_dst.size()
     if nbytes > dstlen:
         raise error.PrimitiveFailedError
-    copy_bio_ssl(w_sslhandle.writebio, w_dst, nbytes, w_sslhandle.loglevel)
-    return interp.space.wrap_int(nbytes)
+
+    c = copy_bio_ssl(w_sslhandle.writebio, w_dst, dstlen, w_sslhandle.loglevel)
+    return interp.space.wrap_int(c)
 
 @SqueakSSL.expose_primitive(unwrap_spec=[object, object, str, index1_0, int, object])
 def primitiveDecrypt(interp, s_frame, w_rcvr, w_handle, src, start, srclen, w_dst):
