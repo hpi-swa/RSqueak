@@ -287,7 +287,7 @@ def primitiveGetIntProperty(interp, s_frame, w_rcvr, w_handle, propid):
         r = 0
     return interp.space.wrap_int(r)
 
-@SqueakSSL.expose_primitive(unwrap_spec=[object, object, str, int, int, object])
+@SqueakSSL.expose_primitive(unwrap_spec=[object, object, str, index1_0, int, object])
 def primitiveConnect(interp, s_frame, w_rcvr, w_handle, src, start, srclen, w_dst):
     _debug_in_interpreter()
     w_sslhandle = ensured_handle(w_handle)
