@@ -107,6 +107,7 @@ class W_SSLHandle(W_AbstractObjectWithIdentityHash):
         ropenssl.libssl_BIO_set_close(self.readbio, BIO_CLOSE)
         ropenssl.libssl_BIO_set_close(self.writebio, BIO_CLOSE)
 
+    @specialize.arg(1)
     @specialize.argtype(2)
     def log(self, str, args=None):
         if self.loglevel:
