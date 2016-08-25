@@ -68,6 +68,8 @@ def fix(name):
     return w(base64.standard_b64decode(f))
 
 def test_https_connect():
+    import os
+    if os.name == "nt": return # fixtures are from linux
     w_handle = prim("primitiveCreate")
     prim("primitiveSetIntProperty", stack=[w_handle, w(1), w(2)])
     assert w_handle.loglevel == 2
