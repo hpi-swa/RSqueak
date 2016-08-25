@@ -254,3 +254,11 @@ def smalltalk_timestamp(space, sec_since_epoch):
     secs_between_1901_and_1970 = SQUEAK_EPOCH_DELTA_MICROSECONDS / 1000000
     sec_since_1901 = r_uint(sec_since_epoch + secs_between_1901_and_1970)
     return space.wrap_uint(sec_since_1901)
+
+@FilePlugin.expose_primitive(unwrap_spec=[object, int])
+def primitiveFileFlush(interp, s_frame, w_rcvr, fd):
+    try:
+        os.fdopen(fd).flush()
+    except OSError:
+        raise PrimitiveFailedError
+    return w_rcvr

@@ -197,3 +197,19 @@ def test_fileplugin_dirdelete_raises(monkeypatch):
             w_c = external_call('FilePlugin', 'primitiveDirectoryDelete', stack)
     finally:
         monkeypatch.undo()
+
+def test_locale_plugin_primLang_fails(monkeypatch):
+    from rpython.rlib import rlocale
+    def setlocale(*args):
+        return "C"
+    monkeypatch.setattr(rlocale, "setlocale", setlocale)
+    with py.test.raises(PrimitiveFailedError):
+        external_call('LocalePlugin', 'primitiveLanguage', [space.w_nil])
+
+def test_locale_plugin_primLang(monkeypatch):
+    from rpython.rlib import rlocale
+    def setlocale(*args):
+        return "en_US.UTF-8"
+    monkeypatch.setattr(rlocale, "setlocale", setlocale)
+    w_locale_str = external_call('LocalePlugin', 'primitiveLanguage', [space.w_nil])
+    assert space.unwrap_string(w_locale_str) == "en"
