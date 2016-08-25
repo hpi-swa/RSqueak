@@ -87,14 +87,15 @@ def prepare_environment_variables():
         vs = cp.get("Windows", "VisualStudio9")
         sdk = cp.get("Windows", "WindowsSDK7")
         pypyextlibs = cp.get("Windows", "pypyextlibs")
-        paths = [pathjoin(vs, "VC"), pathjoin(vs, "VC", "atlmfc"), sdk, pypyextlibs]
+        paths = [pathjoin(vs, "VC"), pathjoin(vs, "VC", "atlmfc"), pypyextlibs, sdk]
         os.environ['INCLUDE'] = ";".join([pathjoin(e, "include") for e in paths])
         os.environ['LIB'] = ";".join([pathjoin(e, "lib") for e in paths])
-        os.environ['LIBPATH'] = ";".join([pathjoin(e, "lib") for e in paths[0:2]])
+        os.environ['LIBPATH'] = ";".join([pathjoin(e, "lib") for e in paths[0:3]])
         os.environ['Path'] = ";".join([pathjoin(vs, "VC", "bin"),
                                        pathjoin(vs, "Common7", "IDE"),
                                        pathjoin(sdk, "Bin"),
                                        pathjoin(cp.get("Windows", "Graphviz"), "bin"),
+                                       pathjoin(pypyextlibs, "bin"),
                                        os.environ["Path"]])
         os.environ["SDL_PREFIX"] = cp.get("Windows", "SDL")
     elif "linux" in sys.platform:
