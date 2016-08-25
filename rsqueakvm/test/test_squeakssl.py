@@ -19,21 +19,7 @@ from rpython.rlib import ropenssl
 ropenssl.init_ssl()
 ropenssl.init_digests()
 
-from multiprocessing import Process
-
-def servessl():
-    import BaseHTTPServer, SimpleHTTPServer
-    import ssl
-    httpd = BaseHTTPServer.HTTPServer(
-        ('localhost', 4443),
-        SimpleHTTPServer.SimpleHTTPRequestHandler)
-    httpd.socket = ssl.wrap_socket(
-        httpd.socket, certfile='path/to/localhost.pem', server_side=True)
-    httpd.serve_forever()
-
 def setup_module():
-    server = Process(target=servessl, args=())
-    server.start()
     space = create_space(bootstrap = True)
     space.set_system_attribute(constants.SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, "IMAGENAME")
     w = space.w
@@ -42,7 +28,6 @@ def setup_module():
     copy_to_module(locals(), __name__)
 
 def teardown_module():
-    server.terminate()
     cleanup_module(__name__)
 
 IMAGENAME = "anImage.image"
