@@ -173,8 +173,10 @@ def copy_bio_ssl(bio, w_dst, dstlen, loglevel):
 
 def _debug_in_interpreter():
     if not we_are_translated():
-        import pdb
-        pdb.set_trace()
+        import sys
+        if "shell" in sys.argv:
+            import pdb
+            pdb.set_trace()
 
 
 @SqueakSSL.expose_primitive(unwrap_spec=[object])

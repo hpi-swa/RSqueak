@@ -55,6 +55,19 @@ class SocketPluginClass(Plugin):
     def is_socket(self, space, w_int):
         return isinstance(w_int, W_SocketHandle)
 
+
+if not objectmodel.we_are_translated():
+    def wrappedcall(self, name, interp, s_frame, argcount, w_method):
+        import sys, time
+        sys.stdout.write("%s(%s): " % (name, s_frame.peek_n(argcount)))
+        if "Socket" in name:
+            time.sleep(0.5)
+        r = Plugin.call(self, name, interp, s_frame, argcount, w_method)
+        print r
+        return r
+    SocketPluginClass.call = wrappedcall
+
+
 SocketPlugin = SocketPluginClass()
 InvalidSocket = -1
 Unconnected = 0
