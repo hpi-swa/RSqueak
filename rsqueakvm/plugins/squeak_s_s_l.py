@@ -98,6 +98,8 @@ class W_SSLHandle(W_AbstractObjectWithIdentityHash):
         self.state = SSL_UNUSED
         self.certflags = 0
         self.loglevel = 0
+        if not we_are_translated():
+            self.loglevel = 1
         self.peername = ""
         self.servername = ""
         self.certname = ""
@@ -232,8 +234,8 @@ def primitiveDecrypt(interp, s_frame, w_rcvr, w_handle, src, start, srclen, w_ds
                 return interp.space.wrap_int(SSL_GENERIC_ERROR)
             else:
                 nbytes = 0
-        for idx, char in enumerate(rffi.charp2str(buf.raw)):
-            w_dst.setchar(idx, char)
+        for idx in range(nbytes):
+            w_dst.setchar(idx, buf.raw[idx])
     return interp.space.wrap_int(nbytes)
 
 @SqueakSSL.expose_primitive(unwrap_spec=[object, object, int, str])
