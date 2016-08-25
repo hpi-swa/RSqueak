@@ -162,4 +162,3 @@ Host: www.google.com
     assert w_result.value > 0
     http_response = space.unwrap_string(w_out)[0:w_result.value]
     assert http_response.startswith("HTTP/1.1")
-    assert http_response.endswith("\r\n")
