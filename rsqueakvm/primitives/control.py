@@ -387,9 +387,7 @@ class Entry(ExtRegistryEntry):
         elif modelrepr.rclass.classdef.classdesc.pyobj is W_BytesObject:
             sz += sizeof(modelrepr.lowleveltype.TO._flds["mutate_version"].TO)
         elif modelrepr.rclass.classdef.classdesc.pyobj is W_CompiledMethod:
-            sz += sizeof(modelrepr.lowleveltype.TO._flds["mutate_version"].TO)
             sz += sizeof(modelrepr.lowleveltype.TO._flds["inst_literals"].TO, 0)
-            sz += sizeof(modelrepr.lowleveltype.TO._flds["inst_version"].TO)
             sz += sizeof(modelrepr.lowleveltype.TO._flds["inst_lookup_selector"].TO, 0)
         elif modelrepr.rclass.classdef.classdesc.pyobj is W_Float:
             pass

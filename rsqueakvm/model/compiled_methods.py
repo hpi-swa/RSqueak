@@ -3,6 +3,7 @@ from rsqueakvm.model.base import W_Object, W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.util.version import elidable_for_version, VersionMixin
 
+from rpython.rlib import jit
 from rpython.rlib.objectmodel import import_from_mixin, we_are_translated
 
 
@@ -59,10 +60,8 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
                 "bytes", "literals",
                 # Additional info about the method
                 "lookup_selector", "compiledin_class", "lookup_class" ]
-    _immutable_fields_ = ["version?"]
     lookup_selector = "<unknown>"
     lookup_class = None
-    import_from_mixin(VersionMixin)
 
     def pointers_become_one_way(self, space, from_w, to_w):
         W_AbstractObjectWithIdentityHash.pointers_become_one_way(self, space, from_w, to_w)
@@ -77,7 +76,8 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
             assert isinstance(new_w_class, W_PointersObject)
             self.compiledin_class = new_w_class
             compiledin_class.post_become_one_way(new_w_class)
-            self.changed()
+            new_w_class.as_class_get_shadow(space).flush_method_caches()
+            compiledin_class.as_class_get_shadow(space).flush_method_caches()
         idx = -1
         try:
             idx = from_w.index(self.lookup_class)
@@ -89,7 +89,8 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
             assert isinstance(new_w_class, W_PointersObject)
             self.lookup_class = new_w_class
             lookup_class.post_become_one_way(new_w_class)
-            self.changed()
+            new_w_class.as_class_get_shadow(space).flush_method_caches()
+            lookup_class.as_class_get_shadow(space).flush_method_caches()
 
     def __init__(self, space, bytecount=0, header=0):
         self.bytes = ["\x00"] * bytecount
@@ -124,27 +125,22 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         self.literals[index] = w_lit
         if index == len(self.literals):
             self.compiledin_class = None
-        self.changed()
 
     def setliterals(self, literals):
         """NOT RPYTHON""" # Only for testing, not safe.
         self.literals = literals
         self.compiledin_class = None
-        self.changed()
 
     def set_lookup_class_and_name(self, w_class, selector):
         self.lookup_class = w_class
         self.lookup_selector = selector
-        self.changed()
 
     def setbytes(self, bytes):
         self.bytes = bytes
-        self.changed()
 
     def setchar(self, index0, character):
         assert index0 >= 0
         self.bytes[index0] = character
-        self.changed()
 
     # === Getters ===
 
@@ -154,44 +150,47 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def getbytes(self):
         return self.bytes
 
-    @elidable_for_version(0)
     def size(self):
+        return self._elidable_size()
+
+    @jit.elidable
+    def _elidable_size(self):
         return self.headersize() + self.getliteralsize() + len(self.bytes)
 
-    @elidable_for_version(0)
+    @jit.elidable
     def tempsize(self):
         return self._tempsize
 
-    @elidable_for_version(0)
+    @jit.elidable
     def getliteralsize(self):
         return self.literalsize * constants.BYTES_PER_WORD
 
-    @elidable_for_version(0)
+    @jit.elidable
     def bytecodeoffset(self):
         return self.getliteralsize() + self.headersize()
 
     def headersize(self):
         return constants.BYTES_PER_WORD
 
-    @elidable_for_version(0)
+    @jit.elidable
     def getheader(self):
         return self.header
 
-    @elidable_for_version(1)
+    @jit.elidable
     def getliteral(self, index):
         return self.literals[index]
 
-    @elidable_for_version(0)
+    @jit.elidable
     def primitive(self):
         return self._primitive
 
-    @elidable_for_version(0)
+    @jit.elidable
     def compute_frame_size(self):
         # From blue book: normal mc have place for 12 temps+maxstack
         # mc for methods with islarge flag turned on 32
         return 16 + self.islarge * 40 + self.argsize
 
-    @elidable_for_version(1)
+    @jit.elidable
     def fetch_bytecode(self, pc):
         assert pc >= 0 and pc < len(self.bytes)
         return self.bytes[pc]
@@ -212,11 +211,11 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         assert result is None or isinstance(result, W_PointersObject)
         return result
 
-    @elidable_for_version(0)
+    @jit.elidable
     def constant_compiledin_class(self):
         return self.compiledin_class
 
-    @elidable_for_version(0)
+    @jit.elidable
     def constant_lookup_class(self):
         return self.lookup_class
 
@@ -287,7 +286,6 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
                         compiledin_class = w_literal
                 if compiledin_class:
                     self.compiledin_class = w_literal
-                    self.changed()
 
     def _become(self, w_other):
         assert isinstance(w_other, W_CompiledMethod)
@@ -302,8 +300,12 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         self.lookup_selector, w_other.lookup_selector = w_other.lookup_selector, self.lookup_selector
         self.compiledin_class, w_other.compiledin_class = w_other.compiledin_class, self.compiledin_class
         W_AbstractObjectWithIdentityHash._become(self, w_other)
-        self.changed()
-        w_other.changed()
+        if isinstance(self.compiledin_class, W_PointersObject):
+            space = self.compiledin_class.space()
+            self.compiledin_class.as_class_get_shadow(space).flush_method_caches()
+        if isinstance(w_other.compiledin_class, W_PointersObject):
+            space = w_other.compiledin_class.space()
+            w_other.compiledin_class.as_class_get_shadow(space).flush_method_caches()
 
     def clone(self, space):
         copy = self.__class__(space, 0, self.getheader())
@@ -311,7 +313,6 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         copy.literals = list(self.literals)
         copy.compiledin_class = self.compiledin_class
         copy.lookup_selector = self.lookup_selector
-        copy.changed()
         return copy
 
     def invariant(self):
@@ -401,7 +402,6 @@ class W_SpurCompiledMethod(W_CompiledMethod):
             self.update_primitive_index()
         else:
             self._primitive = 0
-        self.changed()
 
     def setbytes(self, bytes):
         W_CompiledMethod.setbytes(self, bytes)
@@ -430,4 +430,3 @@ class W_PreSpurCompiledMethod(W_CompiledMethod):
         self._primitive = decoded_header.primitive_index
         self.islarge = decoded_header.large_frame
         self.compiledin_class = None
-        self.changed()
