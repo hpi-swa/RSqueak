@@ -36,15 +36,12 @@ env:
     - BUILD_ARCH=armv8-a
     - BUILD_ARCH=64bit PLUGINS=database_plugin
     - BUILD_ARCH=64bit PLUGINS=ruby_plugin
-    - BUILD_ARCH=64bit PLUGINS=profiler_plugin
 matrix:
   exclude:
     - os: osx
       env: BUILD_ARCH=64bit PLUGINS=database_plugin
     - os: osx
       env: BUILD_ARCH=64bit PLUGINS=ruby_plugin
-    - os: osx
-      env: BUILD_ARCH=64bit PLUGINS=profiler_plugin
     - os: osx
       env: BUILD_ARCH=32bit TEST_TYPE=coverage
     - os: osx

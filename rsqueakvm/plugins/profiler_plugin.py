@@ -1,12 +1,16 @@
+import os
+
 from rsqueakvm.util import system
-if "profiler_plugin" not in system.optional_plugins:
-    raise LookupError
+
+from rpython.rlib import rvmprof, jit
+from rpython.rlib.rjitlog import rjitlog
 
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.compiled_methods import W_CompiledMethod
 from rsqueakvm.plugins.plugin import Plugin, PluginPatchScripts
-
-from rpython.rlib import rvmprof
+from rsqueakvm.primitives import expose_primitive, expose_also_as, pos_32bit_int
+from rsqueakvm.primitives.constants import (VM_CLEAR_PROFILE, VM_DUMP_PROFILE,
+                                            VM_START_PROFILING, VM_STOP_PROFILING)
 
 
 ProfilerPlugin = Plugin()
@@ -14,6 +18,7 @@ ProfilerPlugin = Plugin()
 # ____________________________________________________________
 
 def patch_interpreter():
+    from rpython.rlib import rvmprof
     from rsqueakvm.interpreter import Interpreter
     def _get_code(interp, s_frame, s_sender, may_context_switch=True):
         return s_frame.w_method()
@@ -37,6 +42,7 @@ rvmprof.register_code_object_class(W_CompiledMethod, _get_full_name)
 
 def patch_compiled_method():
     def _my_post_init(self):
+        from rpython.rlib import rvmprof
         rvmprof.register_code(self, _get_full_name)
     W_CompiledMethod.post_init = _my_post_init
 patch_compiled_method()
@@ -44,17 +50,90 @@ patch_compiled_method()
 # ____________________________________________________________
 
 @ProfilerPlugin.expose_primitive(unwrap_spec=[object, int, float])
-def enable(interp, s_frame, w_rcvr, fileno, period):
+def enableProfiler(interp, s_frame, w_rcvr, fileno, period):
     try:
         rvmprof.enable(fileno, period)
     except rvmprof.VMProfError as e:
         print e.msg
         raise PrimitiveFailedError
+    return w_rcvr
 
-@ProfilerPlugin.expose_primitive()
-def disable(interp, s_frame, argcount):
+@ProfilerPlugin.expose_primitive(unwrap_spec=[object])
+def disableProfiler(interp, s_frame, w_rcvr):
     try:
         rvmprof.disable()
     except rvmprof.VMProfError as e:
         print e.msg
         raise PrimitiveFailedError
+    return w_rcvr
+
+@ProfilerPlugin.expose_primitive(unwrap_spec=[object, int])
+def enableJitlog(interp, s_frame, w_rcvr, fileno):
+    try:
+        rjitlog.enable_jitlog(fileno)
+    except rjitlog.JitlogError as e:
+        print e.msg
+        raise PrimitiveFailedError
+    return w_rcvr
+
+@ProfilerPlugin.expose_primitive(unwrap_spec=[object])
+@jit.dont_look_inside
+def disableJitlog(interp, s_frame, w_rcvr):
+    rjitlog.disable_jitlog()
+    return w_rcvr
+
+
+O_BINARY = 0
+if system.IS_WINDOWS:
+    O_BINARY = os.O_BINARY
+class LogFile(object):
+    _attrs_ = ["fd"]
+    def __init__(self): self.fd = -1
+    def fileno(self): return self.fd
+    def open(self, name):
+        self.fd = os.open(name, os.O_RDWR | os.O_CREAT | O_BINARY, 0666)
+    def close(self):
+        os.close(self.fd)
+        self.fd = -1
+jitlogfile = LogFile()
+vmproflogfile = LogFile()
+
+
+@expose_also_as(VM_DUMP_PROFILE, VM_CLEAR_PROFILE)
+@expose_primitive(VM_STOP_PROFILING, unwrap_spec=[object])
+@jit.dont_look_inside
+def func(interp, s_frame, w_rcvr):
+    from rsqueakvm.plugins.profiler_plugin import vmproflogfile, jitlogfile
+    if vmproflogfile.fileno() > 0:
+        rjitlog.disable_jitlog()
+        try:
+            rvmprof.disable()
+        except rvmprof.VMProfError as e:
+            print e.msg
+            raise PrimitiveFailedError
+        finally:
+            vmproflogfile.close()
+            jitlogfile.close()
+    return w_rcvr
+
+DEFAULT_PERIOD = 0.001
+@expose_primitive(VM_START_PROFILING, unwrap_spec=[object])
+def func(interp, s_frame, w_rcvr):
+    from rsqueakvm.plugins.profiler_plugin import vmproflogfile, jitlogfile
+    if vmproflogfile.fileno() < 0:
+        vmproflogfile.open("SqueakProfile.log")
+        try:
+            rvmprof.enable(vmproflogfile.fileno(), DEFAULT_PERIOD)
+        except rvmprof.VMProfError as e:
+            print e.msg
+            vmproflogfile.close()
+            raise PrimitiveFailedError
+        jitlogfile.open("SqueakJitlog.log")
+        try:
+            rjitlog.enable_jitlog(jitlogfile.fileno())
+        except rjitlog.JitlogError as e:
+            print e.msg
+            vmproflogfile.close()
+            jitlogfile.close()
+            raise PrimitiveFailedError
+    return w_rcvr
