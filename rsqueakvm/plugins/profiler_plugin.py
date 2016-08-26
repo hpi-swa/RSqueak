@@ -3,6 +3,7 @@ if "profiler_plugin" not in system.optional_plugins:
     raise LookupError
 
 from rpython.rlib import rvmprof
+from rpython.rlib.rjitlog import rjitlog
 
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.compiled_methods import W_CompiledMethod
@@ -49,20 +50,36 @@ patch_compiled_method()
 # ____________________________________________________________
 
 @ProfilerPlugin.expose_primitive(unwrap_spec=[object, int, float])
-def enable(interp, s_frame, w_rcvr, fileno, period):
+def enableProfiler(interp, s_frame, w_rcvr, fileno, period):
     try:
         rvmprof.enable(fileno, period)
     except rvmprof.VMProfError as e:
         print e.msg
         raise PrimitiveFailedError
+    return w_rcvr
 
 @ProfilerPlugin.expose_primitive(unwrap_spec=[object])
-def disable(interp, s_frame, w_rcvr):
+def disableProfiler(interp, s_frame, w_rcvr):
     try:
         rvmprof.disable()
     except rvmprof.VMProfError as e:
         print e.msg
         raise PrimitiveFailedError
+    return w_rcvr
+
+@ProfilerPlugin.expose_primitive(unwrap_spec=[object, int])
+def enableJitlog(interp, s_frame, w_rcvr, fileno):
+    try:
+        rjitlog.enable_jitlog(fileno)
+    except rjitlog.JitlogError as e:
+        print e.msg
+        raise PrimitiveFailedError
+    return w_rcvr
+
+@ProfilerPlugin.expose_primitive(unwrap_spec=[object])
+def disableJitlog(interp, s_frame, w_rcvr):
+    rjitlog.disable_jitlog()
+    return w_rcvr
 
 
 class LogFile(object):
@@ -70,14 +87,16 @@ class LogFile(object):
     def __init__(self): self.fd = -1
     def set(self, v): self.fd = v
     def get(self): return self.fd
-logfile = LogFile()
+jitlogfile = LogFile()
+vmproflogfile = LogFile()
 
 
 @expose_also_as(VM_DUMP_PROFILE)
 @expose_also_as(VM_CLEAR_PROFILE)
 @expose_primitive(VM_STOP_PROFILING, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    if logfile.get() > 0:
+    if vmproflogfile.get() > 0:
+        rjitlog.disable_jitlog()
         try:
             rvmprof.disable()
         except rvmprof.VMProfError as e:
@@ -88,13 +107,21 @@ def func(interp, s_frame, w_rcvr):
 DEFAULT_PERIOD = 0.001
 @expose_primitive(VM_START_PROFILING, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    if logfile.get() < 0:
-        logfile.set(
+    if vmproflogfile.get() < 0:
+        vmproflogfile.set(
             os.open("SqueakProfile.log", os.O_RDWR | os.O_CREAT | os.O_BINARY, 0666)
         )
         try:
             rvmprof.enable(logfile.get(), DEFAULT_PERIOD)
         except rvmprof.VMProfError as e:
+            print e.msg
+            raise PrimitiveFailedError
+        jitlogfile.set(
+            os.open("SqueakJitlog.log", os.O_RDWR | os.O_CREAT | os.O_BINARY, 0666)
+        )
+        try:
+            rjitlog.enable_jitlog(fileno)
+        except rjitlog.JitlogError as e:
             print e.msg
             raise PrimitiveFailedError
     return w_rcvr
