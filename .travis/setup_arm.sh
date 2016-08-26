@@ -25,7 +25,7 @@ sudo qemu-debootstrap --no-check-gpg --include=fakeroot,build-essential --arch=a
 schroot -c rpi -- uname -m
 sudo su -c "echo \"deb ${MIRROR} jessie main contrib rpi\" > ${SB2}/etc/apt/sources.list"
 schroot -c rpi -u root -- apt-get update
-schroot -c rpi -u root -- apt-get --allow-unauthenticated install -qq -y build-essential python libffi-dev libsdl2-dev libpulse-dev
+schroot -c rpi -u root -- apt-get --allow-unauthenticated install -qq -y build-essential python libffi-dev libsdl2-dev libpulse-dev libssl-dev
 # sb2
 pushd $SB2
 sb2-init -c `which qemu-arm` $SB2NAME $TOOLS_DIR/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin/arm-linux-gnueabihf-gcc

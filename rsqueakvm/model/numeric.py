@@ -317,7 +317,7 @@ class W_SmallInteger(W_Object):
         # ByteArrays to be unwrapped as characters and put into strings
         from rpython.rlib.rarithmetic import int_between
         value = self.value
-        if not int_between(0, value, 255):
+        if not int_between(0, value, 256):
             raise error.UnwrappingError
         else:
             return chr(self.value)

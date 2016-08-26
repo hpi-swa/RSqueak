@@ -111,6 +111,17 @@ class Shell(object):
         for h in HELP:
             print h
 
+    @cmd
+    def trace(self, code):
+        "!trace on|off to enable/disable interp tracing"
+        if "on" in code:
+            self.interp.trace = True
+        elif "off" in code:
+            self.interp.trace = False
+        else:
+            print "Error in command syntax"
+        return
+
     @untranslated_cmd
     def reload(self, code):
         "!reload rsqueakvm.abc.xyz... to reload some VM code"
@@ -212,6 +223,7 @@ class Shell(object):
                     if n == method:
                         getattr(self, n)(code)
             else:
+                w_result = None
                 try:
                     w_result = self._execute_code(code)
                 except:

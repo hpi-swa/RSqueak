@@ -1,4 +1,5 @@
 import errno
+import sys
 
 from rsqueakvm import error
 from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
@@ -54,6 +55,20 @@ class SocketPluginClass(Plugin):
 
     def is_socket(self, space, w_int):
         return isinstance(w_int, W_SocketHandle)
+
+
+if "--shell" in sys.argv:
+    def wrappedcall(self, name, interp, s_frame, argcount, w_method):
+        import sys, time
+        # sys.stdout.write("%s(%s): " % (name, s_frame.peek_n(argcount)))
+        print name
+        if "Socket" in name:
+            time.sleep(0.5)
+        r = Plugin.call(self, name, interp, s_frame, argcount, w_method)
+        # print r
+        return r
+    SocketPluginClass.call = wrappedcall
+
 
 SocketPlugin = SocketPluginClass()
 InvalidSocket = -1
