@@ -1,7 +1,6 @@
 from rsqueakvm import constants, error
 from rsqueakvm.model.base import W_Object, W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.pointers import W_PointersObject
-from rsqueakvm.util.version import elidable_for_version, VersionMixin
 
 from rpython.rlib import jit
 from rpython.rlib.objectmodel import import_from_mixin, we_are_translated
@@ -150,47 +149,44 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def getbytes(self):
         return self.bytes
 
+    @jit.elidable_promote()
     def size(self):
-        return self._elidable_size()
-
-    @jit.elidable
-    def _elidable_size(self):
         return self.headersize() + self.getliteralsize() + len(self.bytes)
 
-    @jit.elidable
+    @jit.elidable_promote()
     def tempsize(self):
         return self._tempsize
 
-    @jit.elidable
+    @jit.elidable_promote()
     def getliteralsize(self):
         return self.literalsize * constants.BYTES_PER_WORD
 
-    @jit.elidable
+    @jit.elidable_promote()
     def bytecodeoffset(self):
         return self.getliteralsize() + self.headersize()
 
     def headersize(self):
         return constants.BYTES_PER_WORD
 
-    @jit.elidable
+    @jit.elidable_promote()
     def getheader(self):
         return self.header
 
-    @jit.elidable
+    @jit.elidable_promote()
     def getliteral(self, index):
         return self.literals[index]
 
-    @jit.elidable
+    @jit.elidable_promote()
     def primitive(self):
         return self._primitive
 
-    @jit.elidable
+    @jit.elidable_promote()
     def compute_frame_size(self):
         # From blue book: normal mc have place for 12 temps+maxstack
         # mc for methods with islarge flag turned on 32
         return 16 + self.islarge * 40 + self.argsize
 
-    @jit.elidable
+    @jit.elidable_promote()
     def fetch_bytecode(self, pc):
         assert pc >= 0 and pc < len(self.bytes)
         return self.bytes[pc]
@@ -211,11 +207,11 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         assert result is None or isinstance(result, W_PointersObject)
         return result
 
-    @jit.elidable
+    @jit.elidable_promote()
     def constant_compiledin_class(self):
         return self.compiledin_class
 
-    @jit.elidable
+    @jit.elidable_promote()
     def constant_lookup_class(self):
         return self.lookup_class
 
