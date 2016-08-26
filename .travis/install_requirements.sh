@@ -57,7 +57,7 @@ presetup_linux() {
 	    libglu1-mesa-dev:i386 \
 	    libglu1-mesa:i386 \
 	    libssl1.0.0:i386 \
-      libssl-dev:i386 \
+	    libssl-dev:i386 \
 	    libstdc++6:i386 \
 	    libtinfo5:i386 \
 	    libxext-dev:i386 \
@@ -89,7 +89,7 @@ presetup_linux() {
 	    libffi-dev:i386 \
 	    libffi6:i386 \
 	    libssl1.0.0:i386 \
-      libssl-dev:i386 \
+	    libssl-dev:i386 \
 	    libbz2-1.0:i386 \
 	    libc6-dev-i386 \
 	    libc6:i386 \
