@@ -9,7 +9,7 @@ presetup_osx() {
 
 setup_osx() {
     brew update
-    brew install openssl
+    brew install openssl --universal
 
     case "${BUILD_ARCH}" in
       64bit)
