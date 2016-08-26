@@ -2,10 +2,6 @@ language: cpp
 sudo: required
 dist: trusty
 group: edge
-os:
-  - linux
-  - osx
-osx_image: xcode7.3
 notifications:
   irc:
     channels:
@@ -37,19 +33,13 @@ env:
     - BUILD_ARCH=64bit PLUGINS=database_plugin
     - BUILD_ARCH=64bit PLUGINS=ruby_plugin
 matrix:
-  exclude:
+  include:
     - os: osx
-      env: BUILD_ARCH=64bit PLUGINS=database_plugin
+      osx_image: xcode7.3
+      env: BUILD_ARCH=64bit TEST_TYPE=default
     - os: osx
-      env: BUILD_ARCH=64bit PLUGINS=ruby_plugin
-    - os: osx
-      env: BUILD_ARCH=32bit
-    - os: osx
-      env: BUILD_ARCH=armv6
-    - os: osx
-      env: BUILD_ARCH=armv7-a
-    - os: osx
-      env: BUILD_ARCH=armv8-a
+      osx_image: xcode7.3
+      env: BUILD_ARCH=64bit
   # allow_failures:
   #   - env: BUILD_ARCH=64bit
   #   - env: BUILD_ARCH=64bit TEST_TYPE=default
