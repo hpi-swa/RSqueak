@@ -1,8 +1,10 @@
+import os
+
 from rsqueakvm.util import system
 if "profiler_plugin" not in system.optional_plugins:
     raise LookupError
 
-from rpython.rlib import rvmprof
+from rpython.rlib import rvmprof, jit
 from rpython.rlib.rjitlog import rjitlog
 
 from rsqueakvm.error import PrimitiveFailedError
@@ -77,51 +79,63 @@ def enableJitlog(interp, s_frame, w_rcvr, fileno):
     return w_rcvr
 
 @ProfilerPlugin.expose_primitive(unwrap_spec=[object])
+@jit.dont_look_inside
 def disableJitlog(interp, s_frame, w_rcvr):
     rjitlog.disable_jitlog()
     return w_rcvr
 
 
+O_BINARY = 0
+if system.IS_WINDOWS:
+    O_BINARY = os.O_BINARY
 class LogFile(object):
     _attrs_ = ["fd"]
     def __init__(self): self.fd = -1
-    def set(self, v): self.fd = v
-    def get(self): return self.fd
+    def fileno(self): return self.fd
+    def open(self, name):
+        self.fd = os.open(name, os.O_RDWR | os.O_CREAT | O_BINARY, 0666)
+    def close(self):
+        os.close(self.fd)
+        self.fd = -1
 jitlogfile = LogFile()
 vmproflogfile = LogFile()
 
 
-@expose_also_as(VM_DUMP_PROFILE)
-@expose_also_as(VM_CLEAR_PROFILE)
+@expose_also_as(VM_DUMP_PROFILE, VM_CLEAR_PROFILE)
 @expose_primitive(VM_STOP_PROFILING, unwrap_spec=[object])
+@jit.dont_look_inside
 def func(interp, s_frame, w_rcvr):
-    if vmproflogfile.get() > 0:
+    from rsqueakvm.plugins.profiler_plugin import vmproflogfile, jitlogfile
+    if vmproflogfile.fileno() > 0:
         rjitlog.disable_jitlog()
         try:
             rvmprof.disable()
         except rvmprof.VMProfError as e:
             print e.msg
             raise PrimitiveFailedError
+        finally:
+            vmproflogfile.close()
+            jitlogfile.close()
     return w_rcvr
 
 DEFAULT_PERIOD = 0.001
 @expose_primitive(VM_START_PROFILING, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    if vmproflogfile.get() < 0:
-        vmproflogfile.set(
-            os.open("SqueakProfile.log", os.O_RDWR | os.O_CREAT | os.O_BINARY, 0666)
-        )
+    from rsqueakvm.plugins.profiler_plugin import vmproflogfile, jitlogfile
+    if vmproflogfile.fileno() < 0:
+        vmproflogfile.open("SqueakProfile.log")
         try:
-            rvmprof.enable(logfile.get(), DEFAULT_PERIOD)
+            rvmprof.enable(vmproflogfile.fileno(), DEFAULT_PERIOD)
         except rvmprof.VMProfError as e:
             print e.msg
+            vmproflogfile.close()
             raise PrimitiveFailedError
-        jitlogfile.set(
-            os.open("SqueakJitlog.log", os.O_RDWR | os.O_CREAT | os.O_BINARY, 0666)
-        )
+        jitlogfile.open("SqueakJitlog.log")
         try:
-            rjitlog.enable_jitlog(fileno)
+            rjitlog.enable_jitlog(jitlogfile.fileno())
         except rjitlog.JitlogError as e:
             print e.msg
+            vmproflogfile.close()
+            jitlogfile.close()
             raise PrimitiveFailedError
     return w_rcvr
