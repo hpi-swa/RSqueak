@@ -14,7 +14,7 @@ environment:
     - buildscript: unittests.py
     - buildscript: build.py
     - buildscript: build.py
-      buildargs: -- --plugins=ruby_plugin
+      buildargs: -- --plugins=ruby_plugin,profiler_plugin
 
 matrix:
   fast_finish: true

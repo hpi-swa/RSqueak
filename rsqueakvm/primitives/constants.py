@@ -229,9 +229,9 @@ UPDATE_TIMEZONE = 243
 # ___________________________________________________________________________
 # VM implementor primitives
 VM_CLEAR_PROFILE = 250
-VM_CONTROL_PROFILING = 251
-VM_PROFILE_SAMPLES_INTO = 252
-VM_PROFILE_INFO_INTO = 253
+VM_DUMP_PROFILE = 251
+VM_START_PROFILING = 252
+VM_STOP_PROFILING = 253
 VM_PARAMETERS = 254
 META_PRIM_FAILED = 255  # Used to be INST_VARS_PUT_FROM_STACK. Never used except in Disney tests.  Remove after 2.3 release.
 # ___________________________________________________________________________
