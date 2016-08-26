@@ -1,8 +1,6 @@
 import os
 
 from rsqueakvm.util import system
-if "profiler_plugin" not in system.optional_plugins:
-    raise LookupError
 
 from rpython.rlib import rvmprof, jit
 from rpython.rlib.rjitlog import rjitlog
