@@ -257,8 +257,4 @@ def smalltalk_timestamp(space, sec_since_epoch):
 
 @FilePlugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveFileFlush(interp, s_frame, w_rcvr, fd):
-    try:
-        os.fdopen(fd).flush()
-    except OSError:
-        raise PrimitiveFailedError
     return w_rcvr
