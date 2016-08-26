@@ -220,6 +220,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 
     # === Object Access ===
 
+    @jit.elidable_promote()
     def literalat0(self, space, index0):
         if index0 == 0:
             return space.wrap_int(self.getheader())
@@ -236,6 +237,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def store(self, space, index0, w_v):
         self.atput0(space, index0, w_v)
 
+    @jit.elidable_promote()
     def at0(self, space, index0):
         if index0 < self.bytecodeoffset():
             # XXX: find out what happens if unaligned

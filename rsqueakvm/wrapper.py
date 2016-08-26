@@ -1,3 +1,5 @@
+from rpython.rlib import jit
+
 from rsqueakvm import constants
 from rsqueakvm.error import FatalError, WrapperException, PrimitiveFailedError
 from rsqueakvm.model.display import W_DisplayBitmap, from_words_object
@@ -178,7 +180,14 @@ class LinkedListWrapper(Wrapper):
 
 class AssociationWrapper(Wrapper):
     key = make_getter(0)
-    value, store_value = make_getter_setter(1)
+    store_value = make_setter(1)
+
+    def value(self):
+        w_value = self.read(1)
+        if w_value.getclass(self.space).is_same_object(self.space.w_ClassBinding):
+            return jit.promote(w_value)
+        else:
+            return w_value
 
 class SchedulerWrapper(Wrapper):
     priority_list = make_getter(0)

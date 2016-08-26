@@ -142,6 +142,7 @@ classes_in_special_object_table = {
 #    "PseudoContext" : SO_PSEUDOCONTEXT_CLASS,
 #    "TranslatedMethod" : SO_TRANSLATEDMETHOD_CLASS,
     "LargeNegativeInteger" : SO_LARGENEGATIVEINTEGER_CLASS,
+    "ClassBinding": 10000, # doesn't exist, but we'd like it to
 }
 
 objects_in_special_object_table = {
