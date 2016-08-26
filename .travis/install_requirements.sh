@@ -8,11 +8,9 @@ presetup_osx() {
 }
 
 setup_osx() {
-    brew update
-    brew reinstall openssl --universal
-
     case "${BUILD_ARCH}" in
       64bit)
+      # brew update
       brew install pypy
       ;;
     esac

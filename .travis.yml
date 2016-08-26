@@ -43,7 +43,7 @@ matrix:
     - os: osx
       env: BUILD_ARCH=64bit PLUGINS=ruby_plugin
     - os: osx
-      env: BUILD_ARCH=32bit TEST_TYPE=coverage
+      env: BUILD_ARCH=32bit
     - os: osx
       env: BUILD_ARCH=armv6
     - os: osx
