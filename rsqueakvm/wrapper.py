@@ -185,7 +185,7 @@ class AssociationWrapper(Wrapper):
     def value(self):
         w_value = self.read(1)
         if (self.space.w_ClassBinding and
-            w_value.getclass(self.space).is_same_object(self.space.w_ClassBinding)):
+            self.wrapped.getclass(self.space).is_same_object(self.space.w_ClassBinding)):
             return jit.promote(w_value)
         else:
             return w_value
