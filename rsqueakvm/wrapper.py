@@ -180,8 +180,9 @@ class LinkedListWrapper(Wrapper):
 
 class AssociationWrapper(Wrapper):
     key = make_getter(0)
-    store_value = make_setter(1)
+    value, store_value = make_getter_setter(1)
 
+class LiteralAssociationWrapper(AssociationWrapper):
     def value(self):
         w_value = self.read(1)
         if (self.space.w_ClassBinding and

@@ -278,7 +278,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
                     compiledin_class = w_literal
                 elif w_literal.size() >= 2:
                     from rsqueakvm import wrapper
-                    association = wrapper.AssociationWrapper(space, w_literal)
+                    association = wrapper.LiteralAssociationWrapper(space, w_literal)
                     w_literal = association.value()
                     if w_literal.is_class(space):
                         compiledin_class = w_literal
