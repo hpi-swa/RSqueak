@@ -182,14 +182,17 @@ class AssociationWrapper(Wrapper):
     key = make_getter(0)
     value, store_value = make_getter_setter(1)
 
-class LiteralAssociationWrapper(AssociationWrapper):
-    def value(self):
-        w_value = self.read(1)
-        if (self.space.w_ClassBinding and
-            self.wrapped.getclass(self.space).is_same_object(self.space.w_ClassBinding)):
-            return jit.promote(w_value)
+    @staticmethod
+    def build(space, w_assoc):
+        if (space.w_ClassBinding and
+            w_assoc.getclass(space).is_same_object(space.w_ClassBinding)):
+            return PromotingAssociationWrapper(space, w_assoc)
         else:
-            return w_value
+            return AssociationWrapper(space, w_assoc)
+
+class PromotingAssociationWrapper(AssociationWrapper):
+    def value(self):
+        return jit.promote(self.read(1))
 
 class SchedulerWrapper(Wrapper):
     priority_list = make_getter(0)
