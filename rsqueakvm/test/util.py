@@ -250,6 +250,9 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         define_cls("w_ContextPart", "w_Object")
         define_cls("w_Link", "w_Object")
         define_cls("w_LinkedList", "w_SequenceableCollection")
+        define_cls("w_LookupKey", "w_Magnitude")
+        define_cls("w_Binding", "w_LookupKey")
+        define_cls("w_ClassBinding", "w_Binding")
 
         # Also create classes for the objects in the special objects array
         define_cls("w_UndefinedObject", "w_Object")
