@@ -8,6 +8,7 @@ from rsqueakvm.util.bitmanipulation import splitter
 
 from rpython.rlib import objectmodel, unroll, jit
 
+BYTECODE_OFFSETS = []
 
 # unrolling_zero has been removed from rlib at some point.
 if hasattr(unroll, "unrolling_zero"):
@@ -27,6 +28,7 @@ else:
 # parameter_bytes=N means N additional bytes are fetched as parameters.
 def bytecode_implementation(parameter_bytes=0):
     def bytecode_implementation_decorator(actual_implementation_method):
+        BYTECODE_OFFSETS.append((actual_implementation_method.func_name, parameter_bytes))
         @jit.unroll_safe
         def bytecode_implementation_wrapper(self, interp, current_bytecode):
             parameters = ()
@@ -749,6 +751,20 @@ def initialize_bytecode_names():
     return result
 
 BYTECODE_NAMES = initialize_bytecode_names()
+
+def initialize_bytecode_argcount():
+    result = [0] * 256
+    for nom, extra in BYTECODE_OFFSETS:
+        for pos, name in enumerate(BYTECODE_NAMES):
+            if name.endswith(")"):
+                name = name[0:name.index("(")]
+            if name == nom:
+                result[pos] = extra
+                break
+    return result
+
+BYTECODE_ARGUMENT_COUNT = initialize_bytecode_argcount()
+del BYTECODE_OFFSETS
 
 def initialize_bytecode_table():
     result = [None] * 256
