@@ -282,7 +282,8 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
             if ord(byte) == 143: # pushClosureCopyCopiedValuesBytecode
                 j, i = self.bytes[idx + 2:idx + 4]
                 blockSize = (ord(j) << 8) | ord(i)
-                blockBytes = self.bytes[idx + 4:idx + blockSize]
+                assert blockSize > 0
+                blockBytes = self.bytes[idx + 4:idx + 4 + blockSize]
                 idx = idx + blockSize + 1
                 for blockByte in blockBytes:
                     if ord(blockByte) in [120, 121, 122, 123, 124]: # return bytecodes that do NLR
