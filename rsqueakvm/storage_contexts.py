@@ -33,7 +33,7 @@ class ExtraContextAttributes(object):
         # Cache for allInstances
         'instances_w',
         # Fallback for failed primitives
-        '_s_fallback',
+        '_s_fallback', 'closure',
         # From block-context
         '_w_home', '_initialip', '_eargc']
 
@@ -64,7 +64,7 @@ class ContextPartShadow(AbstractStrategy):
                # Core context data
                '_s_sender', '_pc', '_temps_and_stack', '_stack_ptr',
                # MethodContext data
-               'closure', '_w_receiver', '_w_method', '_tempsize',
+               '_w_receiver', '_w_method', '_tempsize', '_is_closure',
                # Extra data
                'extra_data'
                ]
@@ -95,10 +95,10 @@ class ContextPartShadow(AbstractStrategy):
         self.store_pc(0)
 
         # From MethodContext
-        self.closure = None
         self._w_method = None
         self._w_receiver = None
         self._tempsize = 0
+        self._is_closure = False
         # Extra data
         self.extra_data = None
 
@@ -141,6 +141,15 @@ class ContextPartShadow(AbstractStrategy):
             return None
         else:
             return self.extra_data._s_fallback
+
+    def set_closure(self, closure):
+        self.get_extra_data().closure = closure
+
+    def closure(self):
+        if self.extra_data is None:
+            return None
+        else:
+            return self.extra_data.closure
 
     # ______________________________________________________________________
     # Accessing object fields
@@ -729,20 +738,20 @@ class __extend__(ContextPartShadow):
                     # closure if this context might have an nlr (flagged on the
                     # w_method)
             if w_method.hasnlrblocks():
-                ctx.closure = closure
+                ctx.set_closure(closure)
+            ctx._is_closure = True
             ctx._tempsize = closure.tempsize()
         else:
             ctx._tempsize = w_method.tempsize()
         ctx.init_temps_and_stack()
-        ctx.initialize_temps(arguments)
+        ctx.initialize_temps(arguments, closure)
         return ctx
 
     @jit.unroll_safe
-    def initialize_temps(self, arguments):
+    def initialize_temps(self, arguments, closure):
         argc = len(arguments)
         for i0 in range(argc):
             self.settemp(i0, arguments[i0])
-        closure = self.closure
         if closure:
             startpc = jit.promote(closure.startpc())
             pc = startpc - self.w_method().bytecodeoffset() - 1
@@ -756,8 +765,8 @@ class __extend__(ContextPartShadow):
         if n0 == constants.MTHDCTX_METHOD:
             return self.w_method()
         if n0 == constants.MTHDCTX_CLOSURE_OR_NIL:
-            if self.closure:
-                return self.closure.wrapped
+            if self.closure():
+                return self.closure().wrapped
             else:
                 return self.space.w_nil
         if n0 == constants.MTHDCTX_RECEIVER:
@@ -773,9 +782,9 @@ class __extend__(ContextPartShadow):
             return self.store_w_method(w_value)
         if n0 == constants.MTHDCTX_CLOSURE_OR_NIL:
             if w_value.is_nil(self.space):
-                self.closure = None
+                self.set_closure(None)
             else:
-                self.closure = wrapper.BlockClosureWrapper(self.space, w_value)
+                self.set_closure(wrapper.BlockClosureWrapper(self.space, w_value))
             return
         if n0 == constants.MTHDCTX_RECEIVER:
             self.store_w_receiver(w_value)
@@ -794,7 +803,10 @@ class __extend__(ContextPartShadow):
     def s_home_method_context(self):
         if self.is_closure_context():
             # this is a context for a blockClosure
-            w_outerContext = self.closure.outerContext()
+            closure = self.closure()
+            if closure is None:
+                raise error.BlockCannotReturnError()
+            w_outerContext = closure.outerContext()
             assert isinstance(w_outerContext, W_PointersObject)
             s_outerContext = w_outerContext.as_context_get_shadow(self.space)
             # XXX check whether we can actually return from that context
@@ -823,7 +835,7 @@ class __extend__(ContextPartShadow):
         return self._tempsize
 
     def is_closure_context_method_context(self):
-        return self.closure is not None
+        return self._is_closure
 
     def home_is_self_method_context(self):
         return not self.is_closure_context()

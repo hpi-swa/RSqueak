@@ -666,7 +666,7 @@ def build_up_closure_environment(args, copiedValues=[]):
 def test_primitive_closure_value():
     s_initial_context, closure, s_new_context = build_up_closure_environment([])
 
-    assert s_new_context.closure.wrapped is closure
+    assert s_new_context.closure().wrapped is closure
     assert s_new_context.s_sender() is s_initial_context
     assert s_new_context.w_receiver().is_nil(space)
 
@@ -674,7 +674,7 @@ def test_primitive_closure_value_value():
     s_initial_context, closure, s_new_context = build_up_closure_environment([
             wrap("first arg"), wrap("second arg")])
 
-    assert s_new_context.closure.wrapped is closure
+    assert s_new_context.closure().wrapped is closure
     assert s_new_context.s_sender() is s_initial_context
     assert s_new_context.w_receiver().is_nil(space)
     assert s_new_context.gettemp(0).unwrap_string(None) == "first arg"
@@ -685,7 +685,7 @@ def test_primitive_closure_value_value_with_temps():
             [wrap("first arg"), wrap("second arg")],
         copiedValues=[wrap('some value')])
 
-    assert s_new_context.closure.wrapped is closure
+    assert s_new_context.closure().wrapped is closure
     assert s_new_context.s_sender() is s_initial_context
     assert s_new_context.w_receiver().is_nil(space)
     assert s_new_context.gettemp(0).unwrap_string(None) == "first arg"
