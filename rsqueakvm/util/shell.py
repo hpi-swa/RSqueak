@@ -103,6 +103,7 @@ class Shell(object):
     @untranslated_cmd
     def pdb(self, code):
         "!pdb to drop to python shell"
+        import rsqueakvm
         import pdb; pdb.set_trace()
 
     @cmd

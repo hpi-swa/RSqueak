@@ -58,7 +58,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
                 # Main method content
                 "bytes", "literals",
                 # Additional info about the method
-                "lookup_selector", "compiledin_class", "lookup_class" ]
+                "lookup_selector", "compiledin_class", "lookup_class", "_hasnlrblocks" ]
     lookup_selector = "<unknown>"
     lookup_class = None
 
@@ -93,6 +93,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 
     def __init__(self, space, bytecount=0, header=0):
         self.bytes = ["\x00"] * bytecount
+        self._hasnlrblocks = False
         self.setheader(space, header, initializing=True)
         self.post_init()
 
@@ -136,6 +137,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 
     def setbytes(self, bytes):
         self.bytes = bytes
+        self._hasnlrblocks = self.analyze_nlr_blocks()
 
     def setchar(self, index0, character):
         assert index0 >= 0
@@ -263,7 +265,31 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
             assert index0 < len(self.bytes)
             self.setchar(index0, chr(space.unwrap_int(w_value)))
 
+    @jit.elidable_promote()
+    def hasnlrblocks(self):
+        return self._hasnlrblocks
+
     # === Misc ===
+
+    def analyze_nlr_blocks(self):
+        # XXX: HACK: Clean this up if this experiment is worthwhile before merging
+        from rsqueakvm.interpreter_bytecodes import BYTECODE_ARGUMENT_COUNT
+        idx = 0
+        # we can skip the last three bytes, the closure bytecode we're
+        # interested in takes three argument bytes
+        while idx < (len(self.bytes) - 3):
+            byte = self.bytes[idx]
+            if ord(byte) == 143: # pushClosureCopyCopiedValuesBytecode
+                j, i = self.bytes[idx + 2:idx + 4]
+                blockSize = (ord(j) << 8) | ord(i)
+                blockBytes = self.bytes[idx + 4:idx + blockSize]
+                idx = idx + blockSize + 1
+                for blockByte in blockBytes:
+                    if ord(blockByte) in [120, 121, 122, 123, 124]: # return bytecodes that do NLR
+                        return True
+            else:
+                idx = idx + BYTECODE_ARGUMENT_COUNT[ord(byte)] + 1
+        return False
 
     def update_compiledin_class_from_literals(self):
         # (Blue book, p 607) Last of the literals is either the containing class

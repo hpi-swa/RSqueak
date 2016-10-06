@@ -64,7 +64,7 @@ class ContextPartShadow(AbstractStrategy):
                # Core context data
                '_s_sender', '_pc', '_temps_and_stack', '_stack_ptr',
                # MethodContext data
-               'closure', '_w_receiver', '_w_method',
+               'closure', '_w_receiver', '_w_method', '_tempsize',
                # Extra data
                'extra_data'
                ]
@@ -98,6 +98,7 @@ class ContextPartShadow(AbstractStrategy):
         self.closure = None
         self._w_method = None
         self._w_receiver = None
+        self._tempsize = 0
         # Extra data
         self.extra_data = None
 
@@ -724,7 +725,14 @@ class __extend__(ContextPartShadow):
             ctx.get_extra_data()._s_fallback = s_fallback
         ctx.store_w_receiver(w_receiver)
         ctx.store_w_method(w_method)
-        ctx.closure = closure
+        if closure: # we calculate the tempsize eagerly. we only need the
+                    # closure if this context might have an nlr (flagged on the
+                    # w_method)
+            if w_method.hasnlrblocks():
+                ctx.closure = closure
+            ctx._tempsize = closure.tempsize()
+        else:
+            ctx._tempsize = w_method.tempsize()
         ctx.init_temps_and_stack()
         ctx.initialize_temps(arguments)
         return ctx
@@ -812,10 +820,7 @@ class __extend__(ContextPartShadow):
         return retval
 
     def tempsize_method_context(self):
-        if not self.is_closure_context():
-            return self.w_method().tempsize()
-        else:
-            return self.closure.tempsize()
+        return self._tempsize
 
     def is_closure_context_method_context(self):
         return self.closure is not None
