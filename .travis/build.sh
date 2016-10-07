@@ -19,6 +19,8 @@ case "$TRAVIS_OS_NAME" in
       export CC="cc -arch i386";
       export VERSIONER_PYTHON_PREFER_32_BIT=yes;
     fi
+    # set up PKG_CONFIG_PATH in order to use openssl installed via Homebrew
+    export PKG_CONFIG_PATH=$(brew --prefix)/opt/openssl/lib/pkgconfig
     SCRIPT_NAME="build-osx.sh"
     ;;
 esac

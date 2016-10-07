@@ -12,9 +12,14 @@ case "${TEST_TYPE}" in
     ;;
 esac
 
-case "$BUILD_ARCH" in
-  64bit) testflag="$testflag --64bit" ;;
+case "${BUILD_ARCH}" in
+  64bit) testflag="${testflag} --64bit" ;;
   *) ;;
 esac
 
-python .build/unittests.py -s $testflag
+ex="python"
+if [[ "${TRAVIS_OS_NAME}" == "osx" ]] && [[ "${BUILD_ARCH}" == "64bit" ]]; then
+  ex="pypy"
+fi
+
+${ex} .build/unittests.py -s ${testflag}
