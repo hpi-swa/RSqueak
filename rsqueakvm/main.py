@@ -384,7 +384,7 @@ class Config(object):
 
 
 def entry_point(argv):
-    jit.set_param(None, "trace_limit", 1000000)
+    # jit.set_param(None, "trace_limit", 1000000) # this is huge
     # == Main execution parameters
     space = prebuilt_space
     cfg = Config(space, argv)
