@@ -73,7 +73,7 @@ class ContextPartShadow(AbstractStrategy):
         "_w_self", "_w_self_size",
         'state',
         '_s_sender', "_pc", "_temps_and_stack[*]", "_stack_ptr",
-        'closure', '_w_receiver', '_w_method',
+        '_w_receiver', '_w_method', '_tempsize', '_is_closure',
         'extra_data'
     ]
 
