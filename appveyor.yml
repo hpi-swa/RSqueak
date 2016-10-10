@@ -18,6 +18,9 @@ environment:
 
 matrix:
   fast_finish: true
+  allow_failures:
+    - buildscript: build.py
+      buildargs: -- --plugins=ruby_plugin
 
 shallow_clone: true
 platform: x86
