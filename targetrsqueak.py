@@ -20,7 +20,7 @@ def target(driver, args):
 
     driver.config.translation.suggest(**{
         "jit": True,
-        "jit_opencoder_model": "big",
+        # "jit_opencoder_model": "big", # this is only needed if we want to have huge trace length (> TRACE_LIMIT)
     })
     driver.config.translation.set(gcrootfinder="shadowstack")
     if system.IS_WINDOWS:

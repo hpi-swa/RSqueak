@@ -2,7 +2,7 @@ from rsqueakvm import constants, storage_classes
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargePositiveInteger1Word
 from rsqueakvm.model.variable import W_BytesObject
 
-from .util import read_image, open_reader, copy_to_module, cleanup_module, TestInterpreter, slow_test, very_slow_test
+from .util import read_image, open_reader, copy_to_module, cleanup_module, InterpreterForTest, slow_test, very_slow_test
 
 
 def setup_module():

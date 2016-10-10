@@ -12,7 +12,7 @@ from rsqueakvm.primitives.constants import EXTERNAL_CALL
 
 from rpython.rtyper.lltypesystem import rffi
 
-from .util import create_space, copy_to_module, cleanup_module, TestInterpreter
+from .util import create_space, copy_to_module, cleanup_module, InterpreterForTest
 
 IMAGENAME = "anImage.image"
 
@@ -21,7 +21,7 @@ def mock(space, stack, context = None):
     frame = context
     for i in range(len(stack)):
         frame.as_context_get_shadow(space).push(stack[i])
-    interp = TestInterpreter(space)
+    interp = InterpreterForTest(space)
     interp.space.set_system_attribute(constants.SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, IMAGENAME)
     return interp, frame, len(stack)
 

@@ -21,7 +21,7 @@ from rpython.rlib.rarithmetic import intmask, r_uint, r_int64
 from rpython.rlib.rfloat import isinf, isnan
 
 from .util import (create_space, copy_to_module, cleanup_module,
-                   TestInterpreter, very_slow_test)
+                   InterpreterForTest, very_slow_test)
 
 
 def setup_module():
@@ -63,7 +63,7 @@ def mock(space, stack, context=None):
         frame = context
         for i in range(len(stack)):
             frame.as_context_get_shadow(space).push(stack[i])
-    interp = TestInterpreter(space)
+    interp = InterpreterForTest(space)
     return interp, frame, len(stack)
 
 def _prim(space, code, stack, context=None):
@@ -659,7 +659,7 @@ def build_up_closure_environment(args, copiedValues=[]):
     closure = space.newClosure(w_frame, 4, #pc
                                 size_arguments, copiedValues)
     s_initial_context.push_all([closure] + args)
-    interp = TestInterpreter(space)
+    interp = InterpreterForTest(space)
     s_active_context = prim_table[CLOSURE_VALUE + size_arguments](interp, s_initial_context, size_arguments)
     return s_initial_context, closure, s_active_context
 
@@ -710,7 +710,7 @@ def test_primitive_next_object():
     w_frame, s_context = new_frame("<never called, but needed for method generation>")
 
     s_context.push(space.w_nil)
-    interp = TestInterpreter(space)
+    interp = InterpreterForTest(space)
     prim_table[SOME_OBJECT](interp, s_context, 0)
     w_1 = s_context.pop()
     assert isinstance(w_1, W_Object)
@@ -726,7 +726,7 @@ def test_primitive_next_instance():
     w_frame, s_context = new_frame("<never called, but needed for method generation>")
 
     s_context.push(space.w_Array)
-    interp = TestInterpreter(space)
+    interp = InterpreterForTest(space)
     prim_table[SOME_INSTANCE](interp, s_context, 0)
     w_1 = s_context.pop()
     assert w_1.getclass(space) is space.w_Array
@@ -742,7 +742,7 @@ def test_primitive_next_instance_wo_some_instance_in_same_frame():
     w_frame, s_context = new_frame("<never called, but needed for method generation>")
 
     s_context.push(space.w_Array)
-    interp = TestInterpreter(space)
+    interp = InterpreterForTest(space)
     w_1 = someInstances[0]
     assert w_1.getclass(space) is space.w_Array
 
@@ -767,7 +767,7 @@ def test_primitive_value_no_context_switch(monkeypatch):
 
     closure = space.newClosure(w_frame, 4, 0, [])
     s_frame = w_frame.as_context_get_shadow(space)
-    interp = TestInterpreter(space)
+    interp = InterpreterForTest(space)
     interp._loop = True
 
     try:
