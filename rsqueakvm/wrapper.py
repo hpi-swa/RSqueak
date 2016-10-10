@@ -20,6 +20,14 @@ class Wrapper(object):
         except IndexError:
             raise WrapperException("Unexpected instance layout. Too small")
 
+    @staticmethod
+    @jit.elidable
+    def pure_read(space, wrapped, index0):
+        try:
+            return wrapped.fetch(space, index0)
+        except IndexError:
+            assert False
+
     def write(self, index0, w_new):
         try:
             self.wrapped.store(self.space, index0, w_new)
@@ -34,6 +42,15 @@ class VarsizedWrapper(Wrapper):
     def atput0(self, i0, w_value):
         return self.wrapped.atput0(self.space, i0, w_value)
 
+def make_elidable_getter(index0):
+    def getter(self):
+        return Wrapper.pure_read(self.space, self.wrapper, index0)
+    return getter
+
+def make_elidable_int_getter(index0):
+    def getter(self):
+        return self.space.unwrap_int(Wrapper.pure_read(self.space, self.wrapper, index0))
+    return getter
 
 def make_getter(index0):
     def getter(self):
@@ -191,8 +208,7 @@ class AssociationWrapper(Wrapper):
             return AssociationWrapper(space, w_assoc)
 
 class PromotingAssociationWrapper(AssociationWrapper):
-    def value(self):
-        return jit.promote(self.read(1))
+    value = make_elidable_getter(1)
 
 class SchedulerWrapper(Wrapper):
     priority_list = make_getter(0)
@@ -279,11 +295,13 @@ class PointWrapper(Wrapper):
     x, store_x = make_int_getter_setter(0)
     y, store_y = make_int_getter_setter(1)
 
-
 class BlockClosureWrapper(VarsizedWrapper):
-    outerContext, store_outerContext = make_getter_setter(constants.BLKCLSR_OUTER_CONTEXT)
-    startpc, store_startpc = make_int_getter_setter(constants.BLKCLSR_STARTPC)
-    numArgs, store_numArgs = make_int_getter_setter(constants.BLKCLSR_NUMARGS)
+    outerContext = make_elidable_getter(constants.BLKCLSR_OUTER_CONTEXT)
+    store_outerContext = make_setter(constants.BLKCLSR_OUTER_CONTEXT)
+    startpc = make_elidable_int_getter(constants.BLKCLSR_STARTPC)
+    store_startpc = make_int_setter(constants.BLKCLSR_STARTPC)
+    numArgs = make_elidable_int_getter(constants.BLKCLSR_NUMARGS)
+    store_numArgs = make_int_setter(constants.BLKCLSR_NUMARGS)
 
     def create_frame(self, w_outerContext, arguments=[]):
         from rsqueakvm import storage_contexts

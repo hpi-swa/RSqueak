@@ -22,7 +22,7 @@ def activateClosure(interp, w_block, args_w):
     space = interp.space
     assert_class(interp, w_block, space.w_BlockClosure)
     block = wrapper.BlockClosureWrapper(space, w_block)
-    blockNumArgs = jit.promote(block.numArgs())
+    blockNumArgs = block.numArgs()
     if not blockNumArgs == len(args_w):
         raise PrimitiveFailedError()
     outer_ctxt = block.outerContext()
