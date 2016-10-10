@@ -4,11 +4,11 @@ set -e
 if ( echo $0 | grep 64 ); then
     words=64
     pkg=cog_linux64x64_squeak.cog.spur
-    product=cogspur64linuxht
+    product=sqcogspur64linuxht
 else
     words=32
     pkg=cog_linux32x86_squeak.cog.spur
-    product=cogspurlinuxht
+    product=sqcogspurlinuxht
 fi
 
 credentials="$(cat `dirname $0`/bintray.credentials | head -1)"

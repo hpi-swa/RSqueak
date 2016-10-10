@@ -28,7 +28,7 @@ IMAGES = {
     "cog": "Spur32.image",
     "interpreter": "V332.image",
     "rsqueak64": "Spur32.image",
-    "squeakjs": "V332.image",
+    "squeakjs": "Spur32.image",
     "cog64": "Spur64.image",
     "stack": "Spur32.image",
     "stack64": "Spur64.image"
