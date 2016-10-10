@@ -27,8 +27,9 @@ curl -sLO "$COGURL"
 for i in cogspurlinux*; do
     test -d $i && rm -rf $i
 done
-rm -rf cog${words}
 tar xzf ${pkg}_${version}.tar.gz
 rm ${pkg}_${version}.tar.gz
-mv products/${product} cog${words}
+mv products/${product} cog${words}_new
+rm -rf cog${words}
 rm -rf products
+mv cog${words}_new cog${words}
