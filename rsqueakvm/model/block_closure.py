@@ -1,7 +1,6 @@
 from rsqueakvm import constants, error
 from rsqueakvm.model.base import W_Object, W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.pointers import W_PointersObject
-from rsqueakvm.util.version import VersionMixin, elidable_for_version
 
 from rpython.rlib import jit
 from rpython.rlib.objectmodel import import_from_mixin, we_are_translated
@@ -11,8 +10,7 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
     bytes_per_slot = 1
     _attrs_ = [ "_w_outerContext",
                 "_startpc",
-                "_numArgs", "_stack", "version" ]
-    import_from_mixin(VersionMixin)
+                "_numArgs", "_stack" ]
 
     def pointers_become_one_way(self, space, from_w, to_w):
         W_AbstractObjectWithIdentityHash.pointers_become_one_way(self, space, from_w, to_w)
@@ -76,15 +74,12 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
     def at0(self, space, index0):
         return self._stack[index0]
 
-    @elidable_for_version(0, promote=False)
     def w_outerContext(self):
         return self._w_outerContext
 
-    @elidable_for_version(0, promote=False)
     def startpc(self):
         return self._startpc
 
-    @elidable_for_version(0, promote=False)
     def numArgs(self):
         return self._numArgs
 
@@ -100,7 +95,6 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
                 self._numArgs = space.unwrap_int(w_value)
             else:
                 assert False
-            self.changed()
 
     def atput0(self, space, index0, w_value):
         self._stack[index0] = w_value
@@ -122,8 +116,6 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
         self._startpc, w_other._startpc = w_other._startpc, self._startpc
         self._stack, w_other._stack = w_other._stack, self._stack
         W_AbstractObjectWithIdentityHash._become(self, w_other)
-        self.changed()
-        w_other.changed()
 
     def clone(self, space):
         copy = self.__class__(
