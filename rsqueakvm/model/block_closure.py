@@ -12,7 +12,6 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
     _attrs_ = [ "_w_outerContext",
                 "_startpc",
                 "_numArgs", "_stack", "version" ]
-    _immutable_fields_ = ['version?']
     import_from_mixin(VersionMixin)
 
     def pointers_become_one_way(self, space, from_w, to_w):
@@ -77,15 +76,15 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
     def at0(self, space, index0):
         return self._stack[index0]
 
-    @elidable_for_version(0)
+    @elidable_for_version(0, promote=False)
     def w_outerContext(self):
         return self._w_outerContext
 
-    @elidable_for_version(0)
+    @elidable_for_version(0, promote=False)
     def startpc(self):
         return self._startpc
 
-    @elidable_for_version(0)
+    @elidable_for_version(0, promote=False)
     def numArgs(self):
         return self._numArgs
 
@@ -111,6 +110,7 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
                 space.wrap_int(self.startpc()),
                 space.wrap_int(self.numArgs())] + self._stack
 
+    @jit.unroll_safe
     def store_all(self, space, lst_w):
         for i, w_v in enumerate(lst_w):
             self.store(space, i, w_v)
@@ -127,8 +127,7 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
 
     def clone(self, space):
         copy = self.__class__(
-            space, self.w_outerContext(), self.startpc(), self.numArgs(), self.varsize()
-        )
+            space, self.w_outerContext(), self.startpc(), self.numArgs(), self.varsize())
         copy._stack = list(self._stack)
         return copy
 
