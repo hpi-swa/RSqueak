@@ -7,6 +7,7 @@ from rsqueakvm.model.compiled_methods import W_CompiledMethod, W_PreSpurCompiled
 from rsqueakvm.model.display import W_DisplayBitmap
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargePositiveInteger1Word
 from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.model.block_closure import W_BlockClosure
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.util import stream, system
 from rsqueakvm.util.bitmanipulation import splitter
@@ -453,6 +454,8 @@ class NonSpurReader(BaseReaderStrategy):
         # and makes empty objects
         if self.ischar(g_object):
             return objectmodel.instantiate(W_Character)
+        elif self.isblockclosure(g_object):
+            return objectmodel.instantiate(W_BlockClosure)
         elif self.ispointers(g_object):
             return objectmodel.instantiate(W_PointersObject)
         elif g_object.format == 5:
@@ -486,6 +489,9 @@ class NonSpurReader(BaseReaderStrategy):
 
     def iswords(self, g_object):
         return g_object.format == 6
+
+    def isblockclosure(self, g_object):
+        return self.ispointers(g_object) and self.space.w_BlockClosure.is_same_object(g_object.g_class.w_object)
 
     def ispointers(self, g_object):
         return g_object.format < 5
@@ -673,6 +679,8 @@ class SpurReader(BaseReaderStrategy):
         # timfel: sorted by likelyhood so the JIT can generate better checks
         if self.ischar(g_object):
             return objectmodel.instantiate(W_Character)
+        elif self.isblockclosure(g_object):
+            return objectmodel.instantiate(W_BlockClosure)
         elif self.ispointers(g_object):
             return objectmodel.instantiate(W_PointersObject)
         elif self.isfloat(g_object):
@@ -692,6 +700,9 @@ class SpurReader(BaseReaderStrategy):
 
     def ischar(self, g_object):
         return self.space.w_Character.is_same_object(g_object.g_class.w_object)
+
+    def isblockclosure(self, g_object):
+        return self.ispointers(g_object) and self.space.w_BlockClosure.is_same_object(g_object.g_class.w_object)
 
     def ispointers(self, g_object):
         return g_object.format < 6

@@ -1,6 +1,7 @@
 from rsqueakvm import constants, error, wrapper
 from rsqueakvm.model.compiled_methods import W_CompiledMethod
 from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.model.block_closure import W_BlockClosure
 from rsqueakvm.storage import AbstractStrategy, ShadowMixin
 
 from rpython.rlib import jit, objectmodel
@@ -726,11 +727,11 @@ class __extend__(ContextPartShadow):
         ctx.store_w_method(w_method)
         ctx.closure = closure
         ctx.init_temps_and_stack()
-        ctx.initialize_temps(arguments)
+        ctx.initialize_temps(space, arguments)
         return ctx
 
     @jit.unroll_safe
-    def initialize_temps(self, arguments):
+    def initialize_temps(self, space, arguments):
         argc = len(arguments)
         for i0 in range(argc):
             self.settemp(i0, arguments[i0])
@@ -739,8 +740,8 @@ class __extend__(ContextPartShadow):
             startpc = jit.promote(closure.startpc())
             pc = startpc - self.w_method().bytecodeoffset() - 1
             self.store_pc(pc)
-            for i0 in range(closure.size()):
-                self.settemp(i0+argc, closure.at0(i0))
+            for i0 in range(closure.varsize()):
+                self.settemp(i0+argc, closure.at0(space, i0))
 
     # === Accessing object fields ===
 
@@ -749,7 +750,7 @@ class __extend__(ContextPartShadow):
             return self.w_method()
         if n0 == constants.MTHDCTX_CLOSURE_OR_NIL:
             if self.closure:
-                return self.closure.wrapped
+                return self.closure
             else:
                 return self.space.w_nil
         if n0 == constants.MTHDCTX_RECEIVER:
@@ -767,7 +768,9 @@ class __extend__(ContextPartShadow):
             if w_value.is_nil(self.space):
                 self.closure = None
             else:
-                self.closure = wrapper.BlockClosureWrapper(self.space, w_value)
+                if not isinstance(w_value, W_BlockClosure):
+                    raise error.PrimitiveFailedError
+                self.closure = w_value
             return
         if n0 == constants.MTHDCTX_RECEIVER:
             self.store_w_receiver(w_value)
@@ -786,7 +789,7 @@ class __extend__(ContextPartShadow):
     def s_home_method_context(self):
         if self.is_closure_context():
             # this is a context for a blockClosure
-            w_outerContext = self.closure.outerContext()
+            w_outerContext = self.closure.w_outerContext()
             assert isinstance(w_outerContext, W_PointersObject)
             s_outerContext = w_outerContext.as_context_get_shadow(self.space)
             # XXX check whether we can actually return from that context

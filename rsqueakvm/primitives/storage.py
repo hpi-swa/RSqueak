@@ -2,6 +2,7 @@ from rsqueakvm import constants, wrapper
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.base import W_Object
 from rsqueakvm.model.character import W_Character
+from rsqueakvm.model.block_closure import W_BlockClosure
 from rsqueakvm.model.compiled_methods import (W_CompiledMethod,
                                               W_PreSpurCompiledMethod,
                                               W_SpurCompiledMethod)
@@ -203,6 +204,8 @@ def _trace_pointers(space, w_obj):
     if isinstance(w_obj, W_CompiledMethod):
         p_w.extend(w_obj.literals)
     elif isinstance(w_obj, W_PointersObject):
+        p_w.extend(w_obj.fetch_all(space))
+    elif isinstance(w_obj, W_BlockClosure):
         p_w.extend(w_obj.fetch_all(space))
     return p_w
 

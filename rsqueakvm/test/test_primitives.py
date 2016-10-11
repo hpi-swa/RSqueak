@@ -632,11 +632,10 @@ def test_primitive_closure_copyClosure():
     w_block = prim(CLOSURE_COPY_WITH_COPIED_VALUES, map(wrap,
                     [w_outer_frame, 2, [wrap(1), wrap(2)]]), w_frame)
     assert not w_block.is_nil(space)
-    w_w_block = wrapper.BlockClosureWrapper(space, w_block)
-    assert w_w_block.startpc() is 5
-    assert w_w_block.at0(0) == wrap(1)
-    assert w_w_block.at0(1) == wrap(2)
-    assert w_w_block.numArgs() is 2
+    assert w_block.startpc() is 5
+    assert w_block.at0(space, 0) == wrap(1)
+    assert w_block.at0(space, 1) == wrap(2)
+    assert w_block.numArgs() is 2
 
 # def test_primitive_string_copy():
 #     w_r = prim(STRING_REPLACE, ["aaaaa", 1, 5, "ababab", 1])
@@ -666,7 +665,7 @@ def build_up_closure_environment(args, copiedValues=[]):
 def test_primitive_closure_value():
     s_initial_context, closure, s_new_context = build_up_closure_environment([])
 
-    assert s_new_context.closure.wrapped is closure
+    assert s_new_context.closure is closure
     assert s_new_context.s_sender() is s_initial_context
     assert s_new_context.w_receiver().is_nil(space)
 
@@ -674,7 +673,7 @@ def test_primitive_closure_value_value():
     s_initial_context, closure, s_new_context = build_up_closure_environment([
             wrap("first arg"), wrap("second arg")])
 
-    assert s_new_context.closure.wrapped is closure
+    assert s_new_context.closure is closure
     assert s_new_context.s_sender() is s_initial_context
     assert s_new_context.w_receiver().is_nil(space)
     assert s_new_context.gettemp(0).unwrap_string(None) == "first arg"
@@ -685,7 +684,7 @@ def test_primitive_closure_value_value_with_temps():
             [wrap("first arg"), wrap("second arg")],
         copiedValues=[wrap('some value')])
 
-    assert s_new_context.closure.wrapped is closure
+    assert s_new_context.closure is closure
     assert s_new_context.s_sender() is s_initial_context
     assert s_new_context.w_receiver().is_nil(space)
     assert s_new_context.gettemp(0).unwrap_string(None) == "first arg"
