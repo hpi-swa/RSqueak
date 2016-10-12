@@ -92,11 +92,13 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
             lookup_class.as_class_get_shadow(space).flush_method_caches()
 
     def __init__(self, space, bytecount=0, header=0):
+        self.lookup_selector = "unknown%d" % self.gethash()
         self.bytes = ["\x00"] * bytecount
         self.setheader(space, header, initializing=True)
         self.post_init()
 
     def fillin(self, space, g_self):
+        self.lookup_selector = "unknown%d" % self.gethash()
         self.bytes = [] # make sure the attribute is defined
         # Implicitly sets the header, including self.literalsize
         for i, w_object in enumerate(g_self.get_pointers()):

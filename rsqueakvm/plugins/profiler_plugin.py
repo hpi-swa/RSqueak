@@ -22,7 +22,7 @@ def patch_interpreter():
     from rsqueakvm.interpreter import Interpreter
     def _get_code(interp, s_frame, s_sender, may_context_switch=True):
         return s_frame.w_method()
-    _decorator = rvmprof.vmprof_execute_code("rsqueak", _get_code)
+    _decorator = rvmprof.vmprof_execute_code("pypy", _get_code)
     _my_stack_frame = _decorator(Interpreter.stack_frame)
     Interpreter.stack_frame = _my_stack_frame
     print "Interpreter was patched for vmprof"
@@ -90,9 +90,11 @@ class LogFile(object):
     _attrs_ = ["fd"]
     def __init__(self): self.fd = -1
     def fileno(self): return self.fd
+    def isopen(self): return self.fd > 0
     def open(self, name):
         self.fd = os.open(name, os.O_RDWR | os.O_CREAT | O_BINARY, 0666)
     def close(self):
+        if not self.isopen(): return
         os.close(self.fd)
         self.fd = -1
 jitlogfile = LogFile()
@@ -104,36 +106,33 @@ vmproflogfile = LogFile()
 @jit.dont_look_inside
 def func(interp, s_frame, w_rcvr):
     from rsqueakvm.plugins.profiler_plugin import vmproflogfile, jitlogfile
-    if vmproflogfile.fileno() > 0:
-        rjitlog.disable_jitlog()
+    if vmproflogfile.isopen():
         try:
             rvmprof.disable()
         except rvmprof.VMProfError as e:
-            print e.msg
-            raise PrimitiveFailedError
-        finally:
-            vmproflogfile.close()
-            jitlogfile.close()
+            print "Failure disabling vmprof: %s" % e.msg
+        vmproflogfile.close()
+    if jitlogfile.isopen():
+        rjitlog.disable_jitlog()
+        jitlogfile.close()
     return w_rcvr
 
 DEFAULT_PERIOD = 0.001
 @expose_primitive(VM_START_PROFILING, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
     from rsqueakvm.plugins.profiler_plugin import vmproflogfile, jitlogfile
-    if vmproflogfile.fileno() < 0:
+    if not vmproflogfile.isopen():
         vmproflogfile.open("SqueakProfile.log")
         try:
             rvmprof.enable(vmproflogfile.fileno(), DEFAULT_PERIOD)
         except rvmprof.VMProfError as e:
-            print e.msg
+            print "Failed to start vmprof: %s" % e.msg
             vmproflogfile.close()
-            raise PrimitiveFailedError
+    if not jitlogfile.isopen():
         jitlogfile.open("SqueakJitlog.log")
         try:
             rjitlog.enable_jitlog(jitlogfile.fileno())
         except rjitlog.JitlogError as e:
-            print e.msg
-            vmproflogfile.close()
+            print "Failed to start jitlog: %s" % e.msg
             jitlogfile.close()
-            raise PrimitiveFailedError
     return w_rcvr
