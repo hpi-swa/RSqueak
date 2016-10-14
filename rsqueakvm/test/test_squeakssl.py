@@ -69,7 +69,7 @@ def fix(name):
     f = getattr(squeakssl_data, name)
     return w(base64.standard_b64decode(f))
 
-@py.test.mark.skipif(os.name == 'nt' or sys.platform == 'darwin')
+@py.test.mark.skipif(os.name == 'nt' or sys.platform == 'darwin', reason="Only works on Linux")
 def test_https_connect():
     import os
     w_handle = prim("primitiveCreate")
@@ -105,7 +105,7 @@ def test_https_connect():
                 fix("outbuf3")])
     assert w_result.value == 0
 
-@py.test.mark.skipif(sys.platform == 'darwin')
+@py.test.mark.skipif(sys.platform == 'darwin', reason="Not working on darwin")
 def test_http_real():
     s = pysocket.socket(pysocket.AF_INET, pysocket.SOCK_STREAM)
     s.connect((pysocket.gethostbyname("www.google.com"), 443))
