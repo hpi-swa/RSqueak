@@ -3,8 +3,8 @@ import py
 from .base import ModernJITTest
 
 class TestModern(ModernJITTest):
-    def test_named_access(self, spy, squeak, tmpdir):
-        traces = self.run(spy, squeak, tmpdir, """
+    def test_named_access(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
         | m |
         m := Morph new.
         1 to: 100000 do: [:i | m bounds ].
@@ -22,8 +22,8 @@ class TestModern(ModernJITTest):
         jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, i71, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, p47, p65, descr=TargetToken(231309508))
         """)
 
-    def test_named_access_in_array(self, spy, squeak, tmpdir):
-        traces = self.run(spy, squeak, tmpdir, """
+    def test_named_access_in_array(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
         | o |
         o := Array with: Morph new.
         1 to: 100000 do: [:i | (o at: 1) bounds ].
@@ -42,8 +42,8 @@ class TestModern(ModernJITTest):
         """)
 
     @py.test.mark.skipif("'Not ready'")
-    def test_named_access_in_do_block(self, spy, squeak, tmpdir):
-        traces = self.run(spy, squeak, tmpdir, """
+    def test_named_access_in_do_block(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
         | o |
         o := Array with: Morph new.
         1 to: 100000 do: [:i | o do: [:m | m bounds ] ].
@@ -58,8 +58,8 @@ class TestModern(ModernJITTest):
         jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, i71, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, p47, p65, descr=TargetToken(231309508))
         """)
 
-    def test_named_access_fresh(self, spy, squeak, tmpdir):
-        traces = self.run(spy, squeak, tmpdir, """
+    def test_named_access_fresh(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
         1 to: 100000 do: [:i | Morph new bounds ].
         """)
         self.assert_matches(traces[0].loop, """
@@ -95,8 +95,8 @@ class TestModern(ModernJITTest):
         jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, i170, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, p47, p61, p68, p63, p94, p112, p114, p140, p142, p154, i171, descr=TargetToken(241143860))
         """)
 
-    def test_named_access_and_send(self, spy, squeak, tmpdir):
-        traces = self.run(spy, squeak, tmpdir, """
+    def test_named_access_and_send(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
         | m |
         m := Morph new.
         1 to: 100000 do: [:i | m bounds outsetBy: 10 ].
@@ -140,8 +140,8 @@ class TestModern(ModernJITTest):
         jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, i235, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, p47, p65, p67, p86, p89, p97, p91, p119, p121, p145, p169, p189, p88, i236, i147, i156, descr=TargetToken(231130940))
         """)
 
-    def test_simple_loop_with_closure(self, spy, squeak, tmpdir):
-        traces = self.run(spy, squeak, tmpdir, """
+    def test_simple_loop_with_closure(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
         1 to: 100000 do: [:i | [i] value + 100].
         """)
         self.assert_matches(traces[0].loop, """
@@ -177,8 +177,8 @@ class TestModern(ModernJITTest):
         # jump(p0, p1, p2, i3, i4, p5, i6, i7, p8, p9, p10, i24, p11, p12, p13, p14, p15, p16, p17, p18, p19, p20, p21, p22, p23, 10000, descr=TargetToken(152597176))
         # """)
 
-    def test_block_passing(self, spy, squeak, tmpdir):
-        traces = self.run(spy, squeak, tmpdir, """
+    def test_block_passing(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
         1 to: 100000 do: [:i | [:blk | blk value: i] value: [:x | x + 100]].
         """)
         self.assert_matches(traces[0].loop, """
@@ -199,8 +199,8 @@ class TestModern(ModernJITTest):
         """)
 
     @py.test.mark.skipif("'Not ready'")
-    def test_collection_at(self, spy, squeak, tmpdir):
-        traces = self.run(spy, squeak, tmpdir, """
+    def test_collection_at(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
         | o |
         o := OrderedCollection newFrom: #(12 13 123 13 1 123 132 132 123 1 213 123 112  2).
         1 to: 100000 do: [:i | o at: 2].
@@ -209,8 +209,8 @@ class TestModern(ModernJITTest):
         """)
 
     @py.test.mark.skipif("'Not ready'")
-    def test_collect(self, spy, squeak, tmpdir):
-        traces = self.run(spy, squeak, tmpdir, """
+    def test_collect(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
         | o |
         o := OrderedCollection newFrom: #(12 13 123 13 1 123 132 132 123 1 213 123 112  2).
         1 to: 100000 do: [:i | o collect: [:e | e * 2]].
@@ -219,8 +219,8 @@ class TestModern(ModernJITTest):
         """)
 
     @py.test.mark.skipif("'Not ready'")
-    def test_inject(self, spy, squeak, tmpdir):
-        traces = self.run(spy, squeak, tmpdir, """
+    def test_inject(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
         | o |
         o := OrderedCollection newFrom: #(12 13 123 13 1 123 132 132 123 1 213 123 112  2).
         1 to: 100000 do: [:i | o inject: 0 into: [:sum :e | e + sum]].
@@ -228,8 +228,8 @@ class TestModern(ModernJITTest):
         self.assert_matches(traces[0].loop, """
         """)
 
-    def test_mixed_stack(self, spy, squeak, tmpdir):
-        traces = self.run(spy, squeak, tmpdir, """
+    def test_mixed_stack(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
         | a |
         a := 0.
         (1 to: 10000) do: [:i|
@@ -259,10 +259,49 @@ class TestModern(ModernJITTest):
         jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, i135, i136, p23, i137, p31, p33, p35, p37, p39, p41, p43, p45, p47, p49, i58, p64, i70, i66, p85, p92, p96, i101, p78, i130, p123, p104, descr=TargetToken(227905452))
         """)
 
+    def test_global_class_access(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | a |
+        a := nil.
+        (1 to: 1000000) do: [:i|
+           a := OrderedCollection compilerClass.
+        ].
+        """)
+        self.assert_matches(traces[0].loop,
+        """
+        guard_not_invalidated(descr=<Guard0x9ee1c90>),
+        i146 = int_lt(i69, i52),
+        guard_true(i146, descr=<Guard0x9fda218>),
+        i147 = int_mul_ovf(i69, i63),
+        guard_no_overflow(descr=<Guard0x9fda1d0>),
+        i148 = int_add_ovf(i59, i147),
+        guard_no_overflow(descr=<Guard0x9fda140>),
+        i150 = int_add(i69, 1),
+        cond_call(i80, 6284336, p75, descr=<Callv 0 r EF=2 OS=121>),
+        p153 = getarrayitem_gc_r(p88, 0, descr=<ArrayP 8>),
+        enter_portal_frame(4, 0),
+        enter_portal_frame(4, 0),
+        leave_portal_frame(4),
+        guard_class(p153, ConstClass(W_PointersObject), descr=<Guard0x9ee1c28>),
+        p161 = getfield_gc_r(p153, descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>),
+        guard_value(p161, ConstPtr(ptr162), descr=<Guard0x9ee1bc0>),
+        p163 = getfield_gc_r(p153, descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst__storage 24>),
+        leave_portal_frame(4),
+        i166 = int_sub(i140, 1),
+        setfield_gc(ConstPtr(ptr167), i166, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>),
+        setarrayitem_gc(p163, 0, p145, descr=<ArrayP 8>),
+        i170 = int_le(i166, 0),
+        guard_false(i170, descr=<Guard0x9ee1b58>),
+        i171 = arraylen_gc(p57, descr=<ArrayS 8>),
+        i172 = arraylen_gc(p106, descr=<ArrayP 8>),
+        i173 = arraylen_gc(p124, descr=<ArrayP 8>),
+        jump(p0, p1, i2, p3, p4, p7, p8, p10, p13, i148, i150, p19, p145, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, i52, p57, i63, i59, p74, p75, i80, p88, p106, p108, p111, p124, p145, p83, i166, descr=TargetToken(166580560))
+        """)
+
     @py.test.mark.skipif("'Flaky, check with pypy devs'")
-    def test_benchFib(self, spy, squeak, tmpdir):
+    def test_benchFib(self, spy, tmpdir):
         """Tests how well call_assembler and int-local-return works"""
-        traces = self.run(spy, squeak, tmpdir, """
+        traces = self.run(spy, tmpdir, """
         25 benchFib
         """)
         self.assert_matches(traces[0].bridges[-1], """

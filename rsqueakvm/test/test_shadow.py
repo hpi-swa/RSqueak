@@ -301,8 +301,7 @@ def test_methodcontext_s_home():
     s_context = w_context.as_context_get_shadow(space)
 
     w_closure = space.newClosure(w_context, 3, 0, [])
-    block = wrapper.BlockClosureWrapper(space, w_closure)
-    s_closure_context = block.create_frame(block.outerContext())
+    s_closure_context = w_closure.create_frame(space, w_closure.w_outerContext())
     assert s_closure_context.s_home() is s_context
 
 def test_class_format_v3(space_v3):

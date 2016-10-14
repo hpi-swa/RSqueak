@@ -53,7 +53,7 @@ def read_image(image_filename, space=None, cached=True):
         reader = open_reader(space, image_filename)
         image = reader.create_image()
         image_cache[image_filename] = (space, reader, image)
-    interp = TestInterpreter(space, image)
+    interp = InterpreterForTest(space, image)
     interp.populate_remaining_special_objects()
     return space, interp, image, reader
 
@@ -67,7 +67,7 @@ def create_space(bootstrap = bootstrap_by_default):
 
 def create_space_interp(bootstrap = bootstrap_by_default):
     space = create_space(bootstrap)
-    interp = TestInterpreter(space)
+    interp = InterpreterForTest(space)
     return space, interp
 
 def copy_to_module(locals, module_name, all_tests_slow = False):
@@ -111,7 +111,7 @@ class TestImage():
 
 # This interpreter allows fine grained control of the interpretation
 # by manually stepping through the bytecodes, if _loop is set to False.
-class TestInterpreter(interpreter.Interpreter):
+class InterpreterForTest(interpreter.Interpreter):
     _loop = False
 
     def __init__(self, *args, **kwargs):
@@ -250,6 +250,9 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         define_cls("w_ContextPart", "w_Object")
         define_cls("w_Link", "w_Object")
         define_cls("w_LinkedList", "w_SequenceableCollection")
+        define_cls("w_LookupKey", "w_Magnitude")
+        define_cls("w_Binding", "w_LookupKey")
+        define_cls("w_ClassBinding", "w_Binding")
 
         # Also create classes for the objects in the special objects array
         define_cls("w_UndefinedObject", "w_Object")

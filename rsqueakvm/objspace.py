@@ -4,6 +4,7 @@ from rsqueakvm.error import WrappingError, UnwrappingError
 from rsqueakvm.model.character import W_Character
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargePositiveInteger1Word
 from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.model.block_closure import W_BlockClosure
 from rsqueakvm.util.version import Version
 
 from rpython.rlib import jit
@@ -443,14 +444,10 @@ class ObjSpace(object):
     @jit.unroll_safe
     def newClosure(self, w_outer_ctxt, pc, numArgs, copiedValues):
         assert isinstance(w_outer_ctxt, W_PointersObject)
-        pc_with_bytecodeoffset = pc + w_outer_ctxt.as_context_get_shadow(self).w_method().bytecodeoffset() + 1
-        BlockClosureShadow = self.w_BlockClosure.as_class_get_shadow(self)
+        w_method = w_outer_ctxt.as_context_get_shadow(self).w_method()
+        pc_with_bytecodeoffset = pc + w_method.bytecodeoffset() + 1
         numCopied = len(copiedValues)
-        w_closure = BlockClosureShadow.new(numCopied)
-        closure = wrapper.BlockClosureWrapper(self, w_closure)
-        closure.store_outerContext(w_outer_ctxt)
-        closure.store_startpc(pc_with_bytecodeoffset)
-        closure.store_numArgs(numArgs)
+        w_closure = W_BlockClosure(self, w_outer_ctxt, pc_with_bytecodeoffset, numArgs, numCopied)
         for i0 in range(numCopied):
-            closure.atput0(i0, copiedValues[i0])
+            w_closure.atput0(self, i0, copiedValues[i0])
         return w_closure

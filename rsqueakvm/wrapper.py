@@ -1,3 +1,5 @@
+from rpython.rlib import jit
+
 from rsqueakvm import constants
 from rsqueakvm.error import FatalError, WrapperException, PrimitiveFailedError
 from rsqueakvm.model.display import W_DisplayBitmap, from_words_object
@@ -31,7 +33,6 @@ class VarsizedWrapper(Wrapper):
 
     def atput0(self, i0, w_value):
         return self.wrapped.atput0(self.space, i0, w_value)
-
 
 def make_getter(index0):
     def getter(self):
@@ -180,6 +181,18 @@ class AssociationWrapper(Wrapper):
     key = make_getter(0)
     value, store_value = make_getter_setter(1)
 
+    @staticmethod
+    def build(space, w_assoc):
+        if (space.w_ClassBinding and
+            w_assoc.getclass(space).is_same_object(space.w_ClassBinding)):
+            return PromotingAssociationWrapper(space, w_assoc)
+        else:
+            return AssociationWrapper(space, w_assoc)
+
+class PromotingAssociationWrapper(AssociationWrapper):
+    def value(self):
+        return jit.promote(self.read(1))
+
 class SchedulerWrapper(Wrapper):
     priority_list = make_getter(0)
     active_process, store_active_process = make_getter_setter(1)
@@ -264,31 +277,6 @@ class CriticalSectionWrapper(LinkedListWrapper):
 class PointWrapper(Wrapper):
     x, store_x = make_int_getter_setter(0)
     y, store_y = make_int_getter_setter(1)
-
-
-class BlockClosureWrapper(VarsizedWrapper):
-    outerContext, store_outerContext = make_getter_setter(constants.BLKCLSR_OUTER_CONTEXT)
-    startpc, store_startpc = make_int_getter_setter(constants.BLKCLSR_STARTPC)
-    numArgs, store_numArgs = make_int_getter_setter(constants.BLKCLSR_NUMARGS)
-
-    def create_frame(self, w_outerContext, arguments=[]):
-        from rsqueakvm import storage_contexts
-        s_outerContext = w_outerContext.as_context_get_shadow(self.space)
-        assert not s_outerContext.pure_is_block_context()
-        w_method = s_outerContext.w_method()
-        w_receiver = s_outerContext.w_receiver()
-        return storage_contexts.ContextPartShadow.build_method_context(self.space, w_method, w_receiver, arguments, self)
-
-    def tempsize(self):
-        # We ignore the number of temps a block has, because the first
-        # bytecodes of the block will initialize them for us. We will only
-        # use this information for deciding where the stack pointer should be
-        # initialy.
-        # For a finding the correct number, see BlockClosure>#numTemps in an Image.
-        return self.size() + self.numArgs()
-
-    def size(self):
-        return self.wrapped.size() - constants.BLKCLSR_SIZE
 
 class FormWrapper(Wrapper):
     bits, store_bits = make_getter_setter(constants.FORM_BITS)

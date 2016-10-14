@@ -21,7 +21,7 @@ from rpython.rlib.rarithmetic import intmask, r_uint, r_int64
 from rpython.rlib.rfloat import isinf, isnan
 
 from .util import (create_space, copy_to_module, cleanup_module,
-                   TestInterpreter, very_slow_test)
+                   InterpreterForTest, very_slow_test)
 
 
 def setup_module():
@@ -63,7 +63,7 @@ def mock(space, stack, context=None):
         frame = context
         for i in range(len(stack)):
             frame.as_context_get_shadow(space).push(stack[i])
-    interp = TestInterpreter(space)
+    interp = InterpreterForTest(space)
     return interp, frame, len(stack)
 
 def _prim(space, code, stack, context=None):
@@ -632,11 +632,10 @@ def test_primitive_closure_copyClosure():
     w_block = prim(CLOSURE_COPY_WITH_COPIED_VALUES, map(wrap,
                     [w_outer_frame, 2, [wrap(1), wrap(2)]]), w_frame)
     assert not w_block.is_nil(space)
-    w_w_block = wrapper.BlockClosureWrapper(space, w_block)
-    assert w_w_block.startpc() is 5
-    assert w_w_block.at0(0) == wrap(1)
-    assert w_w_block.at0(1) == wrap(2)
-    assert w_w_block.numArgs() is 2
+    assert w_block.startpc() is 5
+    assert w_block.at0(space, 0) == wrap(1)
+    assert w_block.at0(space, 1) == wrap(2)
+    assert w_block.numArgs() is 2
 
 # def test_primitive_string_copy():
 #     w_r = prim(STRING_REPLACE, ["aaaaa", 1, 5, "ababab", 1])
@@ -659,14 +658,14 @@ def build_up_closure_environment(args, copiedValues=[]):
     closure = space.newClosure(w_frame, 4, #pc
                                 size_arguments, copiedValues)
     s_initial_context.push_all([closure] + args)
-    interp = TestInterpreter(space)
+    interp = InterpreterForTest(space)
     s_active_context = prim_table[CLOSURE_VALUE + size_arguments](interp, s_initial_context, size_arguments)
     return s_initial_context, closure, s_active_context
 
 def test_primitive_closure_value():
     s_initial_context, closure, s_new_context = build_up_closure_environment([])
 
-    assert s_new_context.closure.wrapped is closure
+    assert s_new_context.closure is closure
     assert s_new_context.s_sender() is s_initial_context
     assert s_new_context.w_receiver().is_nil(space)
 
@@ -674,7 +673,7 @@ def test_primitive_closure_value_value():
     s_initial_context, closure, s_new_context = build_up_closure_environment([
             wrap("first arg"), wrap("second arg")])
 
-    assert s_new_context.closure.wrapped is closure
+    assert s_new_context.closure is closure
     assert s_new_context.s_sender() is s_initial_context
     assert s_new_context.w_receiver().is_nil(space)
     assert s_new_context.gettemp(0).unwrap_string(None) == "first arg"
@@ -685,7 +684,7 @@ def test_primitive_closure_value_value_with_temps():
             [wrap("first arg"), wrap("second arg")],
         copiedValues=[wrap('some value')])
 
-    assert s_new_context.closure.wrapped is closure
+    assert s_new_context.closure is closure
     assert s_new_context.s_sender() is s_initial_context
     assert s_new_context.w_receiver().is_nil(space)
     assert s_new_context.gettemp(0).unwrap_string(None) == "first arg"
@@ -710,7 +709,7 @@ def test_primitive_next_object():
     w_frame, s_context = new_frame("<never called, but needed for method generation>")
 
     s_context.push(space.w_nil)
-    interp = TestInterpreter(space)
+    interp = InterpreterForTest(space)
     prim_table[SOME_OBJECT](interp, s_context, 0)
     w_1 = s_context.pop()
     assert isinstance(w_1, W_Object)
@@ -726,7 +725,7 @@ def test_primitive_next_instance():
     w_frame, s_context = new_frame("<never called, but needed for method generation>")
 
     s_context.push(space.w_Array)
-    interp = TestInterpreter(space)
+    interp = InterpreterForTest(space)
     prim_table[SOME_INSTANCE](interp, s_context, 0)
     w_1 = s_context.pop()
     assert w_1.getclass(space) is space.w_Array
@@ -742,7 +741,7 @@ def test_primitive_next_instance_wo_some_instance_in_same_frame():
     w_frame, s_context = new_frame("<never called, but needed for method generation>")
 
     s_context.push(space.w_Array)
-    interp = TestInterpreter(space)
+    interp = InterpreterForTest(space)
     w_1 = someInstances[0]
     assert w_1.getclass(space) is space.w_Array
 
@@ -767,7 +766,7 @@ def test_primitive_value_no_context_switch(monkeypatch):
 
     closure = space.newClosure(w_frame, 4, 0, [])
     s_frame = w_frame.as_context_get_shadow(space)
-    interp = TestInterpreter(space)
+    interp = InterpreterForTest(space)
     interp._loop = True
 
     try:

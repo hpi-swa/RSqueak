@@ -73,45 +73,9 @@ class ModernJITTest(BaseJITTest):
     image_name = "Squeak4.3.image"
     test_image = image_path(image_name)
 
-    def prepare(self, squeak, tmpdir, code):
-        self.has_copied = True
-        shutil.copyfile(self.test_image, str(tmpdir.join(self.image_name)))
-        infile = tmpdir.join("input.st")
-        f = open(str(infile), 'w')
-        f.write("Utilities setAuthorInitials: 'foo'. %s Smalltalk snapshot: true andQuit: true." % code)
-        f.close()
-        curdir = os.getcwd()
-        os.chdir(str(tmpdir))
-        try:
-            squeak.system(self.image_name, infile)
-        finally:
-            os.chdir(curdir)
-
-    def run(self, spy, squeak, tmpdir, code):
-        if not getattr(self, "has_copied", False):
-            shutil.copyfile(self.test_image, str(tmpdir.join(self.image_name)))
-        infile = tmpdir.join("input.st")
-        f = open(str(infile), 'w')
-        f.write("Utilities setAuthorInitials: 'foo'. SmallInteger compile: 'jittestNow\r\n%s'.\r\nSmalltalk snapshot: true andQuit: true." % code.replace("'", "''"))
-        f.close()
-        curdir = os.getcwd()
-        os.chdir(str(tmpdir))
-        try:
-            squeak.system(self.image_name, infile)
-        finally:
-            os.chdir(curdir)
-
-        logfile = str(tmpdir.join("x.pypylog"))
-        print logfile
-        proc = spy.popen(
-            "--reader-jit-args", "off", "-n", "0", "-m", "jittestNow", self.image_name,
-            cwd=str(tmpdir),
-            env={"PYPYLOG": "jit-log-opt,jit-summary:%s" % logfile,
-                 "SDL_VIDEODRIVER": "dummy"}
-        )
-        proc.wait()
-        return logparser.extract_traces(logfile)
-
+    def run(self, spy, tmpdir, code):
+        # first loop is from compiling
+        return BaseJITTest.run(self, spy, tmpdir, code)[1:]
 
 class Parser(oparser.OpParser):
     def get_descr(self, poss_descr, allow_invent):

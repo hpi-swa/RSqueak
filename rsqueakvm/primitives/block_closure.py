@@ -2,6 +2,7 @@ from rsqueakvm import constants, wrapper
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.compiled_methods import W_CompiledMethod
 from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.model.block_closure import W_BlockClosure
 from rsqueakvm.primitives import prim_table, expose_primitive, assert_class
 from rsqueakvm.primitives.constants import *
 
@@ -20,26 +21,24 @@ def func(interp, s_frame, outerContext, numArgs, copiedValues):
 
 def activateClosure(interp, w_block, args_w):
     space = interp.space
-    assert_class(interp, w_block, space.w_BlockClosure)
-    block = wrapper.BlockClosureWrapper(space, w_block)
-    blockNumArgs = jit.promote(block.numArgs())
+    if not isinstance(w_block, W_BlockClosure):
+        raise PrimitiveFailedError
+    blockNumArgs = w_block.numArgs()
     if not blockNumArgs == len(args_w):
         raise PrimitiveFailedError()
-    outer_ctxt = block.outerContext()
-    outer_ctxt_class = jit.promote(outer_ctxt.getclass(space))
-    if not (outer_ctxt_class is space.w_MethodContext or
-            outer_ctxt_class is space.w_BlockContext):
+    w_outer_ctxt = w_block.w_outerContext()
+    w_outer_ctxt_class = jit.promote(w_outer_ctxt.getclass(space))
+    if not (w_outer_ctxt_class is space.w_MethodContext or
+            w_outer_ctxt_class is space.w_BlockContext):
         raise PrimitiveFailedError()
-    assert isinstance(outer_ctxt, W_PointersObject)
+    assert isinstance(w_outer_ctxt, W_PointersObject)
 
     # additionally to the smalltalk implementation, this also pushes
     # args and copiedValues
-    s_new_frame = block.create_frame(outer_ctxt, args_w)
+    s_new_frame = w_block.create_frame(space, w_outer_ctxt, arguments=args_w)
     w_closureMethod = s_new_frame.w_method()
 
     assert isinstance(w_closureMethod, W_CompiledMethod)
-    assert w_block is not block.outerContext()
-
     return s_new_frame
 
 

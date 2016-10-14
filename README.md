@@ -62,7 +62,9 @@ dependencies automatically. You will also need a Python and a C compiler for
 
 On Windows, you will have to use the C compiler that comes with Visual Studio
 2008, because newer ones crash the JIT. It suffices to just install the
-[Microsoft C compiler V90 plus Windows SDK 7](https://github.com/HPI-SWA-Lab/RSqueak/releases/download/Dependencies/vc_stdx86.zip). The
+[Microsoft C compiler V90 plus Windows SDK 7](https://github.com/HPI-SWA-Lab/RSqueak/releases/download/Dependencies/vc_stdx86.zip).
+Also, install the [Python 2.7 Visual Studio compiler package](aka.ms/vcpython27).
+The
 packages provided in the link install it to the default paths. If you already
 have the compiler and SDK, you can also just update the paths in
 `.build/buildconfig.ini`.

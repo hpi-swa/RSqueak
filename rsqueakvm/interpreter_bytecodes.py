@@ -127,7 +127,7 @@ class __extend__(ContextPartShadow):
         # named var (the value).
         index = current_bytecode & 31
         w_association = self.w_method().getliteral(index)
-        association = wrapper.AssociationWrapper(self.space, w_association)
+        association = wrapper.AssociationWrapper.build(self.space, w_association)
         self.push(association.value())
 
     @bytecode_implementation()
@@ -210,7 +210,7 @@ class __extend__(ContextPartShadow):
             self.push(self.w_method().getliteral(variableIndex))
         elif variableType == 3:
             w_association = self.w_method().getliteral(variableIndex)
-            association = wrapper.AssociationWrapper(self.space, w_association)
+            association = wrapper.AssociationWrapper.build(self.space, w_association)
             self.push(association.value())
         else:
             assert 0
@@ -225,7 +225,7 @@ class __extend__(ContextPartShadow):
             raise error.FatalError("Illegal ExtendedStoreBytecode. veriableType 2.")
         elif variableType == 3:
             w_association = self.w_method().getliteral(variableIndex)
-            association = wrapper.AssociationWrapper(self.space, w_association)
+            association = wrapper.AssociationWrapper.build(self.space, w_association)
             association.store_value(self.top())
 
     @bytecode_implementation(parameter_bytes=1)
@@ -348,15 +348,15 @@ class __extend__(ContextPartShadow):
         return interp.stack_frame(s_frame, self)
 
     def _invokeObjectAsMethod(self, interp, argcount, w_method, w_selector):
-        args = self.pop_and_return_n(argcount)
-        arguments_w = interp.space.wrap_list(args)
+        args_w = self.pop_and_return_n(argcount)
+        w_arguments = interp.space.wrap_list(args_w)
         w_rcvr = self.pop()
         w_newrcvr = w_method
 
-        w_newarguments = [w_selector, arguments_w, w_rcvr]
+        w_newarguments = [w_selector, w_arguments, w_rcvr]
 
         self.push(w_newrcvr)
-        return self._sendSpecialSelector(interp, w_newrcvr, "runWithIn", w_newarguments);
+        return self._sendSpecialSelector(interp, w_newrcvr, "runWithIn", w_newarguments)
 
     @objectmodel.specialize.arg(1)
     def _sendSelfSelectorSpecial(self, selector, numargs, interp):
@@ -508,7 +508,7 @@ class __extend__(ContextPartShadow):
         elif opType == 4:
             # pushLiteralVariable
             w_association = self.w_method().getliteral(third)
-            association = wrapper.AssociationWrapper(self.space, w_association)
+            association = wrapper.AssociationWrapper.build(self.space, w_association)
             self.push(association.value())
         elif opType == 5:
             self.w_receiver().store(self.space, third, self.top())
@@ -516,7 +516,7 @@ class __extend__(ContextPartShadow):
             self.w_receiver().store(self.space, third, self.pop())
         elif opType == 7:
             w_association = self.w_method().getliteral(third)
-            association = wrapper.AssociationWrapper(self.space, w_association)
+            association = wrapper.AssociationWrapper.build(self.space, w_association)
             association.store_value(self.top())
 
     @bytecode_implementation(parameter_bytes=1)

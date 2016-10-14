@@ -945,9 +945,9 @@ def test_bc_pushClosureCopyCopied0ValuesBytecode(bytecode=pushClosureCopyCopiedV
         # create/find a method with an appropriate blockClosure
         step_in_interp(s_frame)
         assert s_frame.pc() == pc + 4 + i
-        closure = wrapper.BlockClosureWrapper(space, s_frame.top())
+        closure = s_frame.top()
         assert closure.startpc() == pc + 4 + 4 + 1 # pc + offset + headerword + smalltalk 1-indexing
-        assert closure.outerContext() is s_frame._w_self
+        assert closure.w_outerContext() is s_frame._w_self
 
 def test_bc_pushClosureCopyCopied2ValuesBytecode(bytecode=pushClosureCopyCopiedValuesBytecode):
     w_frame, s_frame = new_frame(bytecode + chr(0x23) + chr(0) + chr(0))
@@ -956,11 +956,11 @@ def test_bc_pushClosureCopyCopied2ValuesBytecode(bytecode=pushClosureCopyCopiedV
     pc = s_frame.pc()
     step_in_interp(s_frame)
     assert s_frame.pc() == pc + 4
-    closure = wrapper.BlockClosureWrapper(space, s_frame.top())
+    closure = s_frame.top()
     assert closure.startpc() == pc + 4 + 5
-    assert closure.outerContext() is s_frame._w_self
-    assert closure.at0(0).unwrap_string(None) == "english"
-    assert closure.at0(1).unwrap_string(None) == "bar"
+    assert closure.w_outerContext() is s_frame._w_self
+    assert closure.at0(space, 0).unwrap_string(None) == "english"
+    assert closure.at0(space, 1).unwrap_string(None) == "bar"
 
 def test_blockclosure_valuevalue():
     #someTest
