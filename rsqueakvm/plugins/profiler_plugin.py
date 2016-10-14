@@ -22,7 +22,7 @@ def patch_interpreter():
     from rsqueakvm.interpreter import Interpreter
     def _get_code(interp, s_frame, s_sender, may_context_switch=True):
         return s_frame.w_method()
-    _decorator = rvmprof.vmprof_execute_code("pypy", _get_code)
+    _decorator = rvmprof.vmprof_execute_code("rsqueak", _get_code)
     _my_stack_frame = _decorator(Interpreter.stack_frame)
     Interpreter.stack_frame = _my_stack_frame
     print "Interpreter was patched for vmprof"
@@ -111,10 +111,10 @@ def func(interp, s_frame, w_rcvr):
             rvmprof.disable()
         except rvmprof.VMProfError as e:
             print "Failure disabling vmprof: %s" % e.msg
-        vmproflogfile.close()
     if jitlogfile.isopen():
         rjitlog.disable_jitlog()
-        jitlogfile.close()
+    vmproflogfile.close()
+    jitlogfile.close()
     return w_rcvr
 
 DEFAULT_PERIOD = 0.001
@@ -122,14 +122,14 @@ DEFAULT_PERIOD = 0.001
 def func(interp, s_frame, w_rcvr):
     from rsqueakvm.plugins.profiler_plugin import vmproflogfile, jitlogfile
     if not vmproflogfile.isopen():
-        vmproflogfile.open("SqueakProfile.log")
+        vmproflogfile.open("SqueakProfile")
         try:
             rvmprof.enable(vmproflogfile.fileno(), DEFAULT_PERIOD)
         except rvmprof.VMProfError as e:
             print "Failed to start vmprof: %s" % e.msg
             vmproflogfile.close()
     if not jitlogfile.isopen():
-        jitlogfile.open("SqueakJitlog.log")
+        jitlogfile.open("SqueakProfile.jitlog")
         try:
             rjitlog.enable_jitlog(jitlogfile.fileno())
         except rjitlog.JitlogError as e:
