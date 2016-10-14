@@ -1,7 +1,9 @@
+import os
 import py
 import time
 import base64
 import socket as pysocket
+import sys
 
 from rsqueakvm import constants
 from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod
@@ -67,9 +69,9 @@ def fix(name):
     f = getattr(squeakssl_data, name)
     return w(base64.standard_b64decode(f))
 
+@py.test.mark.skipif(os.name == 'nt' or sys.platform == 'darwin')
 def test_https_connect():
     import os
-    if os.name == "nt": return # fixtures are from linux
     w_handle = prim("primitiveCreate")
     prim("primitiveSetIntProperty", stack=[w_handle, w(1), w(2)])
     assert w_handle.loglevel == 2
@@ -103,6 +105,7 @@ def test_https_connect():
                 fix("outbuf3")])
     assert w_result.value == 0
 
+@py.test.mark.skipif(sys.platform == 'darwin')
 def test_http_real():
     s = pysocket.socket(pysocket.AF_INET, pysocket.SOCK_STREAM)
     s.connect((pysocket.gethostbyname("www.google.com"), 443))
