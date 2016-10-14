@@ -86,7 +86,7 @@ class ContextPartShadow(AbstractStrategy):
         self = fresh_virtualizable(self)
         AbstractStrategy.__init__(self, space, w_self, size, w_class)
 
-        self._s_sender = None
+        self._s_sender = jit.non_virtual_ref(None)
         if w_self is not None:
             self._w_self_size = w_self.size()
         else:
@@ -187,11 +187,11 @@ class ContextPartShadow(AbstractStrategy):
         if n0 == constants.CTXPART_SENDER_INDEX:
             assert isinstance(w_value, W_PointersObject)
             if w_value.is_nil(self.space):
-                self.store_s_sender(None)
+                self.remove_s_sender()
                 if self.state is ActiveContext:
                     self.state = DirtyContext
             else:
-                self.store_s_sender(w_value.as_context_get_shadow(self.space))
+                self.store_s_sender(jit.non_virtual_ref(w_value.as_context_get_shadow(self.space)))
             return
         if n0 == constants.CTXPART_PC_INDEX:
             return self.store_unwrap_pc(w_value)
@@ -209,11 +209,13 @@ class ContextPartShadow(AbstractStrategy):
 
     # === Sender ===
 
-    def store_s_sender(self, s_sender):
-        if s_sender is not self._s_sender:
-            self._s_sender = s_sender
-            # If new sender is None, we are just being marked as returned.
-            if s_sender is not None and self.state is ActiveContext:
+    def remove_s_sender(self):
+        self._s_sender = jit.non_virtual_ref(None)
+
+    def store_s_sender(self, virtualref_s_sender):
+        if virtualref_s_sender is not self._s_sender:
+            self._s_sender = virtualref_s_sender
+            if self.state is ActiveContext:
                 self.state = DirtyContext
 
     def w_sender(self):
@@ -223,7 +225,7 @@ class ContextPartShadow(AbstractStrategy):
         return sender.w_self()
 
     def s_sender(self):
-        return self._s_sender
+        return self._s_sender()
 
     # === Stack Pointer ===
 
@@ -357,10 +359,10 @@ class ContextPartShadow(AbstractStrategy):
 
     def mark_returned(self):
         self.store_pc(-1)
-        self.store_s_sender(None)
+        self.remove_s_sender()
 
     def is_returned(self):
-        return self.pc() == -1 and self.w_sender().is_nil(self.space)
+        return self.pc() == -1 and self.s_sender() is None
 
     def external_stackpointer(self):
         return self.stackdepth() + self.stackstart()

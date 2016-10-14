@@ -6,6 +6,7 @@ from rsqueakvm.model.base import W_Object
 from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod
 from rsqueakvm.model.pointers import W_PointersObject
 
+from rpython.rlib import jit
 from rpython.rlib.objectmodel import instantiate
 
 
@@ -127,7 +128,7 @@ class InterpreterForTest(interpreter.Interpreter):
         if not self._loop:
             # this test is done to not loop in test, but rather step just once where wanted
             # Unfortunately, we have to mimick some of the original behaviour.
-            s_new_frame.store_s_sender(s_sender)
+            s_new_frame.store_s_sender(jit.non_virtual_ref(s_sender))
             return s_new_frame
         return interpreter.Interpreter.stack_frame(self, s_new_frame, s_sender, may_context_switch)
 
@@ -386,7 +387,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
     def wrap_frame(self, s_frame):
         # Add a toplevel frame around s_frame to properly return.
         toplevel_frame = self.make_method([0x7c]).create_frame(self, self.w(0), [])
-        s_frame.store_s_sender(toplevel_frame)
+        s_frame.store_s_sender(jit.non_virtual_ref(toplevel_frame))
 
     def make_method(self, bytes, literals=None, numargs=0):
         if not isinstance(bytes, str):

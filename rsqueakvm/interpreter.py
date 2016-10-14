@@ -223,11 +223,15 @@ class Interpreter(object):
     # This is a wrapper around loop_bytecodes that cleanly enters/leaves the frame,
     # handles the stack overflow protection mechanism and handles/dispatches Returns.
     def stack_frame(self, s_frame, s_sender, may_context_switch=True):
+        if s_sender is not None:
+            senderref = jit.virtual_ref(s_sender)
+        else:
+            senderref = jit.non_virtual_ref(None)
         try:
             if self.is_tracing():
                 self.stack_depth += 1
-            if s_frame._s_sender is None and s_sender is not None:
-                s_frame.store_s_sender(s_sender)
+            if s_frame.s_sender() is None and s_sender is not None:
+                s_frame.store_s_sender(senderref)
             # Now (continue to) execute the context bytecodes
             # assert s_frame.state is InactiveContext
             s_frame.state = ActiveContext
@@ -237,17 +241,17 @@ class Interpreter(object):
             raise StackOverflow(s_frame)
         except LocalReturn, ret:
             if s_frame.state is DirtyContext:
-                s_sender = s_frame.s_sender()  # The sender has changed!
+                s_new_sender = s_frame.s_sender()  # The sender has changed!
                 s_frame._activate_unwind_context(self)
-                raise NonVirtualReturn(s_sender, s_sender, ret.value(self.space))
+                raise NonVirtualReturn(s_new_sender, s_new_sender, ret.value(self.space))
             else:
                 s_frame._activate_unwind_context(self)
                 raise ret
         except NonLocalReturn, ret:
             if s_frame.state is DirtyContext:
-                s_sender = s_frame.s_sender()  # The sender has changed!
+                s_new_sender = s_frame.s_sender()  # The sender has changed!
                 s_frame._activate_unwind_context(self)
-                raise NonVirtualReturn(ret.s_target_context, s_sender, ret.value(self.space))
+                raise NonVirtualReturn(ret.s_target_context, s_new_sender, ret.value(self.space))
             else:
                 s_frame._activate_unwind_context(self)
                 if ret.s_target_context is s_sender:
@@ -257,6 +261,10 @@ class Interpreter(object):
             if self.is_tracing():
                 self.stack_depth -= 1
             s_frame.state = InactiveContext
+            if s_sender is not None:
+                if s_frame.s_sender() is not None:
+                    s_frame.store_s_sender(jit.non_virtual_ref(s_sender))
+                jit.virtual_ref_finish(senderref, s_sender)
 
     def loop_bytecodes(self, s_context, may_context_switch=True):
         old_pc = 0
@@ -299,7 +307,7 @@ class Interpreter(object):
                         start_context.pc())
                 raise FatalError(msg)
         fallbackContext = context.get_fallback()
-        fallbackContext.store_s_sender(context.s_sender())
+        fallbackContext.store_s_sender(jit.non_virtual_ref(context.s_sender()))
 
         if fallbackContext.tempsize() > len(fallbackContext.w_arguments()):
             fallbackContext.settemp(len(fallbackContext.w_arguments()), self.space.wrap_int(error_code))
