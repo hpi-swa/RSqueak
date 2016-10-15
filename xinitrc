@@ -7,7 +7,7 @@ cd "`dirname $(readlink $0)`"
 xterm &
 if grep hpi.uni-potsdam.de /etc/resolv.conf > /dev/null 2>&1; then
     # Within HPI, we must make ourselves known to the API. Try to reconnect if we get disconnected.
-    bash -c "while true; do xterm -e ssh -R8083:localhost:8083 dglaeser@172.16.64.134 'pwd; cd ~/RSqueakBenchmarks && git pull && python benchmark-api.py'; sleep 30; done" &
+    xterm -e "bash -c 'while true; do ssh -Rlocalhost:9093:localhost:8083 -N lively-kernel.org; sleep 30; done'" &
 fi
 xterm -e python benchmark-control.py &
 twm
