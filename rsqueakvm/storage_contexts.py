@@ -86,7 +86,7 @@ class ContextPartShadow(AbstractStrategy):
         self = fresh_virtualizable(self)
         AbstractStrategy.__init__(self, space, w_self, size, w_class)
 
-        self._s_sender = jit.non_virtual_ref(None)
+        self._s_sender = jit.vref_None
         if w_self is not None:
             self._w_self_size = w_self.size()
         else:
@@ -191,7 +191,7 @@ class ContextPartShadow(AbstractStrategy):
                 if self.state is ActiveContext:
                     self.state = DirtyContext
             else:
-                self.store_s_sender(jit.non_virtual_ref(w_value.as_context_get_shadow(self.space)))
+                self.store_s_sender(w_value.as_context_get_shadow(self.space))
             return
         if n0 == constants.CTXPART_PC_INDEX:
             return self.store_unwrap_pc(w_value)
@@ -210,13 +210,34 @@ class ContextPartShadow(AbstractStrategy):
     # === Sender ===
 
     def remove_s_sender(self):
-        self._s_sender = jit.non_virtual_ref(None)
+        self._s_sender = jit.vref_None
 
-    def store_s_sender(self, virtualref_s_sender):
-        if virtualref_s_sender is not self._s_sender:
-            self._s_sender = virtualref_s_sender
-            if self.state is ActiveContext:
-                self.state = DirtyContext
+    def has_s_sender(self):
+        return self._s_sender is not jit.vref_None
+
+    def store_s_sender(self, s_sender):
+        assert s_sender is not None
+        self._s_sender = jit.non_virtual_ref(s_sender)
+        if self.state is ActiveContext:
+            self.state = DirtyContext
+
+    def enter_virtual_frame(self, s_sender):
+        self.state = ActiveContext
+        if self.has_s_sender() or s_sender is None:
+            return jit.vref_None
+        else:
+            self._s_sender = jit.virtual_ref(s_sender)
+            return self._s_sender
+
+    def leave_virtual_frame(self, vref, ref):
+        self.state = InactiveContext
+        if vref is not jit.vref_None:
+            jit.virtual_ref_finish(vref, ref)
+            if vref is self._s_sender:
+                # If this frame was not manipulated, _s_sender is still our
+                # initial vref. If the frame was manipulated (or has no sender)
+                # _s_sender is already a non_virtual_ref.
+                self._s_sender = jit.non_virtual_ref(ref)
 
     def w_sender(self):
         sender = self.s_sender()
@@ -362,7 +383,7 @@ class ContextPartShadow(AbstractStrategy):
         self.remove_s_sender()
 
     def is_returned(self):
-        return self.pc() == -1 and self.s_sender() is None
+        return self.pc() == -1 and (not self.has_s_sender())
 
     def external_stackpointer(self):
         return self.stackdepth() + self.stackstart()
@@ -556,7 +577,7 @@ class ContextPartShadow(AbstractStrategy):
 
     def print_padded_stack(self, method):
         padding = ret_str = ''
-        if self.s_sender() is not None:
+        if self.has_s_sender():
             padding, ret_str = self.s_sender().print_padded_stack(method)
         if method:
             desc = self.method_str()

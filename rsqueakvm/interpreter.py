@@ -38,19 +38,19 @@ class LocalReturn(Return):
             return WrappedLocalReturn(w_value)
 
 class NonLocalReturn(Return):
-    _attrs_ = ["s_target_context", "arrived_at_target"]
+    _attrs_ = ["s_home_context", "arrived_at_target"]
     _immutable_fields_ = ["s_target_context"]
 
     @staticmethod
-    def make(space, s_target_context, w_value):
+    def make(space, s_home_context, w_value):
         if isinstance(w_value, W_SmallInteger):
             return IntNonLocalReturn(
-                    s_target_context, space.unwrap_int(w_value))
+                    s_home_context, space.unwrap_int(w_value))
         else:
-            return WrappedNonLocalReturn(s_target_context, w_value)
+            return WrappedNonLocalReturn(s_home_context, w_value)
 
-    def __init__(self, s_target_context):
-        self.s_target_context = s_target_context
+    def __init__(self, s_home_context):
+        self.s_home_context = s_home_context
         self.arrived_at_target = False
 
 class WrappedLocalReturn(LocalReturn):
@@ -70,16 +70,16 @@ class IntLocalReturn(LocalReturn):
 class WrappedNonLocalReturn(NonLocalReturn):
     _attrs_ = ["w_value"]
     _immutable_fields_ = ["w_value"]
-    def __init__(self, s_target_context, w_value):
-        NonLocalReturn.__init__(self, s_target_context)
+    def __init__(self, s_home_context, w_value):
+        NonLocalReturn.__init__(self, s_home_context)
         self.w_value = w_value
     def value(self, space): return self.w_value
 
 class IntNonLocalReturn(NonLocalReturn):
     _attrs_ = ["_value"]
     _immutable_fields_ = ["_value"]
-    def __init__(self, s_target_context, intvalue):
-        NonLocalReturn.__init__(self, s_target_context)
+    def __init__(self, s_home_context, intvalue):
+        NonLocalReturn.__init__(self, s_home_context)
         self._value = intvalue
     def value(self, space): return space.wrap_smallint_unsafe(self._value)
 
@@ -213,7 +213,7 @@ class Interpreter(object):
                 target = s_sender
                 s_context = self.unwind_context_chain(s_sender, target, ret.value(self.space), s_context)
             except NonLocalReturn, ret:
-                target = s_sender if ret.arrived_at_target else ret.s_target_context
+                target = s_sender if ret.arrived_at_target else ret.s_home_context.s_sender() # fine to force here
                 s_context = self.unwind_context_chain(s_sender, target, ret.value(self.space), s_context)
             except NonVirtualReturn, ret:
                 if self.is_tracing() or self.trace_important:
@@ -223,18 +223,10 @@ class Interpreter(object):
     # This is a wrapper around loop_bytecodes that cleanly enters/leaves the frame,
     # handles the stack overflow protection mechanism and handles/dispatches Returns.
     def stack_frame(self, s_frame, s_sender, may_context_switch=True):
-        if s_sender is not None:
-            senderref = jit.virtual_ref(s_sender)
-        else:
-            senderref = jit.non_virtual_ref(None)
+        if self.is_tracing():
+            self.stack_depth += 1
+        vref = s_frame.enter_virtual_frame(s_sender)
         try:
-            if self.is_tracing():
-                self.stack_depth += 1
-            if s_frame.s_sender() is None and s_sender is not None:
-                s_frame.store_s_sender(senderref)
-            # Now (continue to) execute the context bytecodes
-            # assert s_frame.state is InactiveContext
-            s_frame.state = ActiveContext
             self.loop_bytecodes(s_frame, may_context_switch)
         except rstackovf.StackOverflow:
             rstackovf.check_stack_overflow()
@@ -250,21 +242,21 @@ class Interpreter(object):
         except NonLocalReturn, ret:
             if s_frame.state is DirtyContext:
                 s_new_sender = s_frame.s_sender()  # The sender has changed!
+                # To get the target context:
+                #  a) we can force the home_context.s_sender() here, we're spilling to the heap anyway
+                #  b) we need to do it before we unwind the current context, because s_home and s_frame may be the same
+                s_target_context = ret.s_home_context.s_sender()
                 s_frame._activate_unwind_context(self)
-                raise NonVirtualReturn(ret.s_target_context, s_new_sender, ret.value(self.space))
+                raise NonVirtualReturn(s_target_context, s_new_sender, ret.value(self.space))
             else:
                 s_frame._activate_unwind_context(self)
-                if ret.s_target_context is s_sender:
+                if ret.s_home_context is s_frame:
                     ret.arrived_at_target = True
                 raise ret
         finally:
             if self.is_tracing():
                 self.stack_depth -= 1
-            s_frame.state = InactiveContext
-            if s_sender is not None:
-                if s_frame.s_sender() is not None:
-                    s_frame.store_s_sender(jit.non_virtual_ref(s_sender))
-                jit.virtual_ref_finish(senderref, s_sender)
+            s_frame.leave_virtual_frame(vref, s_sender)
 
     def loop_bytecodes(self, s_context, may_context_switch=True):
         old_pc = 0
@@ -307,7 +299,7 @@ class Interpreter(object):
                         start_context.pc())
                 raise FatalError(msg)
         fallbackContext = context.get_fallback()
-        fallbackContext.store_s_sender(jit.non_virtual_ref(context.s_sender()))
+        fallbackContext.store_s_sender(context.s_sender())
 
         if fallbackContext.tempsize() > len(fallbackContext.w_arguments()):
             fallbackContext.settemp(len(fallbackContext.w_arguments()), self.space.wrap_int(error_code))

@@ -83,7 +83,7 @@ def func(interp, s_frame, w_from, w_to):
 
     # TODO: make this fast (context-switch and stack-rebuilding?)
     s_current = s_frame
-    while s_current.s_sender() is not None:
+    while s_current.has_s_sender():
         s_current.w_self()  # just for the side effect of creating the
                             # ContextPart object
         s_current = s_current.s_sender()
