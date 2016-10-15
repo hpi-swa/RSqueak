@@ -433,18 +433,21 @@ class __extend__(ContextPartShadow):
             interp.print_padded('<- ' + return_value.as_repr_string())
 
 
-        # a local return just needs to go up the stack once. there
-        # it will find the sender as a local, and we don't have to
-        # force the reference
-        # EXECPT someone fiddled with our context chain!
+        # A local return just needs to go up the stack once. there it will find
+        # the sender as a local, and we don't have to force the reference. A NLR
+        # will go up the stack until it finds its home context, and then once
+        # more, also not forcing the senders virtual reference.
+        #
+        # THE ONLY EXCEPTION is when someone fiddled with our context chain, but
+        # then we'll force everything to the heap, anyway.
         from rsqueakvm.interpreter import FreshReturn
         if (self.home_is_self() or local_return) and (self.state is not DirtyContext):
             from rsqueakvm.interpreter import LocalReturn
             raise FreshReturn(LocalReturn.make(self.space, return_value))
         else:
-            s_return_to = self.s_home().s_sender()
+            s_return_from = self.s_home()
             from rsqueakvm.interpreter import NonLocalReturn
-            raise FreshReturn(NonLocalReturn.make(self.space, s_return_to, return_value))
+            raise FreshReturn(NonLocalReturn.make(self.space, s_return_from, return_value))
 
     # ====== Send/Return bytecodes ======
 
