@@ -99,6 +99,7 @@ class TestBasic(BaseJITTest):
         guard_not_invalidated(descr=<Guard0xf65da5bc>)
         i124 = int_le(i123, i63)
         guard_true(i124, descr=<Guard0x9399668>)
+        p98 = force_token()
         enter_portal_frame(0, 0)
         i125 = int_add_ovf(i123, i91)
         guard_no_overflow(descr=<Guard0x939964c>)

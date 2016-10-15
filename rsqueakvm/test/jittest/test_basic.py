@@ -379,6 +379,7 @@ class TestBasic(BaseJITTest):
         guard_not_invalidated(descr=<Guard0x93168f8>),
         i129 = int_le(i123, 10000),
         guard_true(i129, descr=<Guard0x9316934>),
+        p98 = force_token()
         enter_portal_frame(0, 0)
         leave_portal_frame(0),
         i141 = int_add(i123, 1),
@@ -666,7 +667,9 @@ class TestBasic(BaseJITTest):
         guard_not_invalidated(descr=<Guard0x98fe0c0>)
         i135 = int_le(i134, 10000)
         guard_true(i135, descr=<Guard0x9906304>)
+        p98 = force_token()
         enter_portal_frame(4, 0)
+        p99 = force_token()
         enter_portal_frame(4, 0)
         leave_portal_frame(4)
         leave_portal_frame(4)
