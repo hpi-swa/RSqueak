@@ -86,7 +86,7 @@ class ContextPartShadow(AbstractStrategy):
         self = fresh_virtualizable(self)
         AbstractStrategy.__init__(self, space, w_self, size, w_class)
 
-        self._s_sender = jit.non_virtual_ref(None)
+        self._s_sender = jit.vref_None
         if w_self is not None:
             self._w_self_size = w_self.size()
         else:
@@ -210,13 +210,21 @@ class ContextPartShadow(AbstractStrategy):
     # === Sender ===
 
     def remove_s_sender(self):
-        self._s_sender = jit.non_virtual_ref(None)
+        self._s_sender = jit.vref_None
+
+    def has_s_sender(self):
+        return self._s_sender is not jit.vref_None
 
     def store_s_sender(self, virtualref_s_sender):
         if virtualref_s_sender is not self._s_sender:
             self._s_sender = virtualref_s_sender
             if self.state is ActiveContext:
                 self.state = DirtyContext
+
+    def ensure_sender_non_virtual(self):
+        if isinstance(self._s_sender, jit.DirectJitVRef):
+            # only JitVRefs need to be converted. vref_None is never a JitVRef
+            self._s_sender = jit.non_virtual_ref(self._s_sender())
 
     def w_sender(self):
         sender = self.s_sender()
@@ -362,7 +370,7 @@ class ContextPartShadow(AbstractStrategy):
         self.remove_s_sender()
 
     def is_returned(self):
-        return self.pc() == -1 and self.s_sender() is None
+        return self.pc() == -1 and (not self.has_s_sender())
 
     def external_stackpointer(self):
         return self.stackdepth() + self.stackstart()
@@ -556,7 +564,7 @@ class ContextPartShadow(AbstractStrategy):
 
     def print_padded_stack(self, method):
         padding = ret_str = ''
-        if self.s_sender() is not None:
+        if self.has_s_sender():
             padding, ret_str = self.s_sender().print_padded_stack(method)
         if method:
             desc = self.method_str()

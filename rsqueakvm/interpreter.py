@@ -223,18 +223,14 @@ class Interpreter(object):
     # This is a wrapper around loop_bytecodes that cleanly enters/leaves the frame,
     # handles the stack overflow protection mechanism and handles/dispatches Returns.
     def stack_frame(self, s_frame, s_sender, may_context_switch=True):
-        if s_sender is not None:
+        if self.is_tracing():
+            self.stack_depth += 1
+        senderref = jit.vref_None
+        if s_sender is not None and (not s_frame.has_s_sender()):
             senderref = jit.virtual_ref(s_sender)
-        else:
-            senderref = jit.non_virtual_ref(None)
+            s_frame.store_s_sender(senderref)
+        s_frame.state = ActiveContext
         try:
-            if self.is_tracing():
-                self.stack_depth += 1
-            if s_frame.s_sender() is None and s_sender is not None:
-                s_frame.store_s_sender(senderref)
-            # Now (continue to) execute the context bytecodes
-            # assert s_frame.state is InactiveContext
-            s_frame.state = ActiveContext
             self.loop_bytecodes(s_frame, may_context_switch)
         except rstackovf.StackOverflow:
             rstackovf.check_stack_overflow()
@@ -261,9 +257,8 @@ class Interpreter(object):
             if self.is_tracing():
                 self.stack_depth -= 1
             s_frame.state = InactiveContext
-            if s_sender is not None:
-                if s_frame.s_sender() is not None:
-                    s_frame.store_s_sender(jit.non_virtual_ref(s_sender))
+            if senderref is not jit.vref_None:
+                s_frame.ensure_sender_non_virtual()
                 jit.virtual_ref_finish(senderref, s_sender)
 
     def loop_bytecodes(self, s_context, may_context_switch=True):
