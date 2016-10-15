@@ -1,8 +1,7 @@
 from rsqueakvm.error import SimulatedPrimitiveFailedError
 from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.model.compiled_methods import W_CompiledMethod
-
-from rpython.rlib import jit
+from rsqueakvm.storage_contexts import InactiveContext
 
 # If an EXTERNAL_CALL for the given moduleName and functionName is not found,
 # the SimulationPlugin is used to enable the image simulating that primitive.
@@ -38,7 +37,8 @@ class SimulationPluginClass(Plugin):
         s_frame.pop() # remove receiver
 
         s_fallback = w_method.create_frame(interp.space, w_rcvr, w_arguments)
-        s_fallback._s_sender = jit.non_virtual_ref(s_frame)
+        assert s_fallback.state is InactiveContext
+        s_fallback.store_s_sender(s_frame)
         s_sim_frame = w_sim_method.create_frame(
             interp.space,
             w_rcvr,

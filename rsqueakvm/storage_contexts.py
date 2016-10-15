@@ -191,7 +191,7 @@ class ContextPartShadow(AbstractStrategy):
                 if self.state is ActiveContext:
                     self.state = DirtyContext
             else:
-                self.store_s_sender(jit.non_virtual_ref(w_value.as_context_get_shadow(self.space)))
+                self.store_s_sender(w_value.as_context_get_shadow(self.space))
             return
         if n0 == constants.CTXPART_PC_INDEX:
             return self.store_unwrap_pc(w_value)
@@ -215,16 +215,29 @@ class ContextPartShadow(AbstractStrategy):
     def has_s_sender(self):
         return self._s_sender is not jit.vref_None
 
-    def store_s_sender(self, virtualref_s_sender):
-        if virtualref_s_sender is not self._s_sender:
-            self._s_sender = virtualref_s_sender
-            if self.state is ActiveContext:
-                self.state = DirtyContext
+    def store_s_sender(self, s_sender):
+        assert s_sender is not None
+        self._s_sender = jit.non_virtual_ref(s_sender)
+        if self.state is ActiveContext:
+            self.state = DirtyContext
 
-    def ensure_sender_non_virtual(self):
-        if isinstance(self._s_sender, jit.DirectJitVRef):
-            # only JitVRefs need to be converted. vref_None is never a JitVRef
-            self._s_sender = jit.non_virtual_ref(self._s_sender())
+    def enter_virtual_frame(self, s_sender):
+        self.state = ActiveContext
+        if self.has_s_sender() or s_sender is None:
+            return jit.vref_None
+        else:
+            self._s_sender = jit.virtual_ref(s_sender)
+            return self._s_sender
+
+    def leave_virtual_frame(self, vref, ref):
+        self.state = InactiveContext
+        if vref is not jit.vref_None:
+            jit.virtual_ref_finish(vref, ref)
+            if vref is self._s_sender:
+                # If this frame was not manipulated, _s_sender is still our
+                # initial vref. If the frame was manipulated (or has no sender)
+                # _s_sender is already a non_virtual_ref.
+                self._s_sender = jit.non_virtual_ref(ref)
 
     def w_sender(self):
         sender = self.s_sender()

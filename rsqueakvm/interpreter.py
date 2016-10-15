@@ -225,11 +225,7 @@ class Interpreter(object):
     def stack_frame(self, s_frame, s_sender, may_context_switch=True):
         if self.is_tracing():
             self.stack_depth += 1
-        senderref = jit.vref_None
-        if s_sender is not None and (not s_frame.has_s_sender()):
-            senderref = jit.virtual_ref(s_sender)
-            s_frame.store_s_sender(senderref)
-        s_frame.state = ActiveContext
+        vref = s_frame.enter_virtual_frame(s_sender)
         try:
             self.loop_bytecodes(s_frame, may_context_switch)
         except rstackovf.StackOverflow:
@@ -256,10 +252,7 @@ class Interpreter(object):
         finally:
             if self.is_tracing():
                 self.stack_depth -= 1
-            s_frame.state = InactiveContext
-            if senderref is not jit.vref_None:
-                s_frame.ensure_sender_non_virtual()
-                jit.virtual_ref_finish(senderref, s_sender)
+            s_frame.leave_virtual_frame(vref, s_sender)
 
     def loop_bytecodes(self, s_context, may_context_switch=True):
         old_pc = 0
@@ -302,7 +295,7 @@ class Interpreter(object):
                         start_context.pc())
                 raise FatalError(msg)
         fallbackContext = context.get_fallback()
-        fallbackContext.store_s_sender(jit.non_virtual_ref(context.s_sender()))
+        fallbackContext.store_s_sender(context.s_sender())
 
         if fallbackContext.tempsize() > len(fallbackContext.w_arguments()):
             fallbackContext.settemp(len(fallbackContext.w_arguments()), self.space.wrap_int(error_code))
