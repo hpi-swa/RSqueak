@@ -258,7 +258,7 @@ class W_AbstractObjectWithIdentityHash(W_Object):
 
     def can_become(self, w_other):
         # TODO -- what about become: with a Float and a CompiledMethod etc.?
-        # We might be in trouble regarding W_LargePositiveInteger1Word, too.
+        # We might be in trouble regarding W_LargeInteger, too.
         return self.__class__ is w_other.__class__
 
     def _become(self, w_other):

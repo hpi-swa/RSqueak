@@ -5,7 +5,7 @@ from rsqueakvm import constants, error, wrapper
 from rsqueakvm.model.character import W_Character
 from rsqueakvm.model.compiled_methods import W_CompiledMethod, W_PreSpurCompiledMethod, W_SpurCompiledMethod
 from rsqueakvm.model.display import W_DisplayBitmap
-from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargePositiveInteger1Word
+from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargeInteger
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.block_closure import W_BlockClosure
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
@@ -462,8 +462,8 @@ class NonSpurReader(BaseReaderStrategy):
             raise error.CorruptImageError("Unknown format 5")
         elif self.isfloat(g_object):
             return objectmodel.instantiate(W_Float)
-        elif self.iswordsizedlargepositiveinteger(g_object):
-            return objectmodel.instantiate(W_LargePositiveInteger1Word)
+        elif self.islargeinteger(g_object):
+            return objectmodel.instantiate(W_LargeInteger)
         elif self.iswords(g_object):
             return objectmodel.instantiate(W_WordsObject)
         elif g_object.format == 7:
@@ -685,8 +685,8 @@ class SpurReader(BaseReaderStrategy):
             return objectmodel.instantiate(W_PointersObject)
         elif self.isfloat(g_object):
             return objectmodel.instantiate(W_Float)
-        elif self.iswordsizedlargepositiveinteger(g_object):
-            return objectmodel.instantiate(W_LargePositiveInteger1Word)
+        elif self.islargeinteger(g_object):
+            return objectmodel.instantiate(W_LargeInteger)
         elif self.iswords(g_object):
             return objectmodel.instantiate(W_WordsObject)
         elif self.isbytes(g_object):
@@ -962,7 +962,7 @@ class SpurImageWriter(object):
     def len_and_header(self, obj):
         import math
         n = self.fixed_and_indexable_size_for(obj)
-        if isinstance(obj, W_BytesObject) or isinstance(obj, W_LargePositiveInteger1Word) or isinstance(obj, W_CompiledMethod):
+        if isinstance(obj, W_BytesObject) or isinstance(obj, W_LargeInteger) or isinstance(obj, W_CompiledMethod):
             size = int(math.ceil(n / float(self.word_size)))
         else:
             size = n
@@ -1113,7 +1113,7 @@ class SpurImageWriter(object):
 
         assert self.f.tell() == (oop + (2 * self.word_size))
 
-        if isinstance(obj, W_BytesObject) or isinstance(obj, W_LargePositiveInteger1Word):
+        if isinstance(obj, W_BytesObject) or isinstance(obj, W_LargeInteger):
             self.write_bytes_object(obj)
         elif isinstance(obj, W_WordsObject) or isinstance(obj, W_DisplayBitmap) or isinstance(obj, W_Float):
             self.write_words_object(obj)

@@ -1,5 +1,5 @@
 from rsqueakvm import constants, storage_classes
-from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargePositiveInteger1Word
+from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargeInteger
 from rsqueakvm.model.variable import W_BytesObject
 
 from .util import read_image, open_reader, copy_to_module, cleanup_module, InterpreterForTest, slow_test, very_slow_test
@@ -162,7 +162,7 @@ def test_compiling_large_positive_integer():
     perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
     w_result = perform(w(10), "aLargeInteger")
     if not constants.IS_64BIT:
-        assert isinstance(w_result, W_LargePositiveInteger1Word)
+        assert isinstance(w_result, W_LargeInteger)
     else:
         assert isinstance(w_result, W_SmallInteger)
 

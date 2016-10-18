@@ -4,7 +4,7 @@ Squeak model.
     W_Object
         W_SmallInteger
         W_AbstractObjectWithIdentityHash
-            W_LargePositiveInteger1Word
+            W_LargeInteger
             W_Float
             W_Character
             W_PointersObject

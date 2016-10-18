@@ -2,12 +2,12 @@ from rsqueakvm import constants, wrapper, display, storage
 from rsqueakvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, SYSTEM_ATTRIBUTE_IMAGE_ARGS_INDEX
 from rsqueakvm.error import WrappingError, UnwrappingError
 from rsqueakvm.model.character import W_Character
-from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargePositiveInteger1Word
+from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargeInteger
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.block_closure import W_BlockClosure
 from rsqueakvm.util.version import Version
 
-from rpython.rlib import jit
+from rpython.rlib import jit, rbigint
 from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin, we_are_translated
 from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32, int_between, r_int64, r_ulonglong, is_valid_int, r_longlonglong
 
@@ -220,7 +220,7 @@ class ObjSpace(object):
         if int_between(0, val, constants.MAXINT):
             return W_SmallInteger(val)
         else:
-            return W_LargePositiveInteger1Word(val)
+            return W_LargeInteger(rbigint.rbigint.fromint(val))
 
     @jit.unroll_safe
     @specialize.argtype(1)

@@ -1,7 +1,7 @@
 from rsqueakvm import constants, error
 from rsqueakvm.model.base import W_Object
 from rsqueakvm.model.compiled_methods import W_CompiledMethod, W_PreSpurCompiledMethod, W_SpurCompiledMethod
-from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargePositiveInteger1Word
+from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargeInteger
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.storage import AbstractCachingShadow, AbstractGenericShadow
@@ -18,7 +18,8 @@ WEAK_POINTERS = 3
 COMPILED_METHOD = 4
 FLOAT = 5
 LARGE_POSITIVE_INTEGER = 6
-FORWARDER_AND_INVALID = 7
+LARGE_NEGATIVE_INTEGER = 7
+FORWARDER_AND_INVALID = 8
 
 class ClassShadowError(error.SmalltalkException):
     exception_type = "ClassShadowError"
@@ -107,6 +108,8 @@ class ClassShadow(AbstractCachingShadow):
         elif 8 <= format <= 11:
             if self.space.w_LargePositiveInteger.is_same_object(self.w_self()):
                 self.instance_kind = LARGE_POSITIVE_INTEGER
+            elif self.space.w_LargeNegativeInteger.is_same_object(self.w_self()):
+                self.instance_kind = LARGE_NEGATIVE_INTEGER
             else:
                 self.instance_kind = BYTES
             if self.instsize() != 0:
@@ -150,6 +153,8 @@ class ClassShadow(AbstractCachingShadow):
         elif 16 <= format <= 23:
             if self.space.w_LargePositiveInteger.is_same_object(self.w_self()):
                 self.instance_kind = LARGE_POSITIVE_INTEGER
+            elif self.space.w_LargeNegativeInteger.is_same_object(self.w_self()):
+                self.instance_kind = LARGE_NEGATIVE_INTEGER
             else:
                 self.instance_kind = BYTES
             if self.instsize() != 0:
@@ -235,10 +240,9 @@ class ClassShadow(AbstractCachingShadow):
         elif instance_kind == FLOAT:
             w_new = W_Float(0)  # Squeak gives a random piece of memory
         elif instance_kind == LARGE_POSITIVE_INTEGER:
-            if extrasize <= 4:
-                w_new = W_LargePositiveInteger1Word(0, extrasize)
-            else:
-                w_new = W_BytesObject(self.space, w_cls, extrasize)
+            w_new = W_LargeInteger(rbigint.rbigint(sign=1), extrasize)
+        elif instance_kind == LARGE_NEGATIVE_INTEGER:
+            w_new = W_LargeInteger(rbigint.rbigint(sign=-1), extrasize)
         elif instance_kind == WEAK_POINTERS:
             size = self.instsize() + extrasize
             w_new = W_PointersObject(self.space, w_cls, size, weak=True)

@@ -188,6 +188,8 @@ class Interpreter(object):
                         assert self.space.objtable[name]
                     elif name == "ClassBinding":
                         self.space.objtable[name] = self.space.smalltalk_at("ClassBinding")
+                    elif name == "LargeNegativeInteger":
+                        self.space.objtable[name] = self.space.smalltalk_at("LargeNegativeInteger")
                     else:
                         raise Warning("don't know how to populate " + name + " which was not in special objects table")
 
