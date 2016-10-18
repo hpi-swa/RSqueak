@@ -164,6 +164,9 @@ class W_Object(object):
     def unwrap_longlong(self, space):
         raise error.UnwrappingError("Got unexpected class unwrap_longlong")
 
+    def unwrap_rbigint(self, space):
+        raise error.UnwrappingError("Got unexpected class unwrap_rbigint")
+
     def unwrap_long_untranslated(self, space):
         return self.unwrap_longlong(space)
 

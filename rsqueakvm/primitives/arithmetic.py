@@ -7,7 +7,8 @@ from rsqueakvm.model.numeric import W_Float
 from rsqueakvm.primitives import expose_primitive, expose_also_as, pos_32bit_int
 from rsqueakvm.primitives.constants import *
 
-from rpython.rlib import rfloat, jit
+from rpython.rlib import rfloat, jit, rbigint
+from rpython.rlib.rbigint import rbigint
 from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int, r_int64
 from rpython.rlib.objectmodel import specialize
 
@@ -45,20 +46,17 @@ for (code, op) in bool_ops.items():
 
 # ___________________________________________________________________________
 # SmallInteger Primitives
-
-@jit.dont_look_inside
 @specialize.arg(1)
-def overflow_math_op_64bit(interp, code, receiver, argument):
-    from rpython.rlib.rarithmetic import r_longlonglong
+def rbigint_math_op(interp, code, receiver, argument):
     if code == ADD:
-        res = r_longlonglong(receiver) + r_longlonglong(argument)
+        res = receiver.add(argument)
     elif code == SUBTRACT:
-        res = r_longlonglong(receiver) - r_longlonglong(argument)
+        res = receiver.sub(argument)
     elif code == MULTIPLY:
-        res = r_longlonglong(receiver) * r_longlonglong(argument)
+        res = receiver.mul(argument)
     else:
         assert False
-    return interp.space.wrap_longlonglong(res)
+    return interp.space.wrap_rbigint(res)
 
 math_ops = {
     ADD: operator.add,
@@ -68,7 +66,7 @@ math_ops = {
 for (code, op) in math_ops.items():
     def make_func(op, code):
         @expose_also_as(code + LARGE_OFFSET)
-        @expose_primitive(code, unwrap_specs=[[int, int], [r_int64, r_int64]])
+        @expose_primitive(code, unwrap_specs=[[int, int], [r_int64, r_int64], [rbigint, rbigint]])
         def func(interp, s_frame, receiver, argument):
             try:
                 if isinstance(receiver, int) and isinstance(argument, int):
@@ -80,11 +78,11 @@ for (code, op) in math_ops.items():
                     if ((receiver ^ argument >= 0) and (receiver ^ res < 0)):
                         # manual ovfcheck as in Squeak VM
                         raise OverflowError
+                elif isinstance(receiver, rbigint) and isinstance(argument, rbigint):
+                    return rbigint_math_op(interp, code, receiver, argument)
                 else:
                     assert False
             except OverflowError:
-                if constants.IS_64BIT:
-                    return overflow_math_op_64bit(interp, code, receiver, argument)
                 raise PrimitiveFailedError()
             return interp.space.wrap_int(res)
     make_func(op, code)
