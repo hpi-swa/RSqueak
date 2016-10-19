@@ -213,7 +213,7 @@ class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
         else:
             return r_uint(self.value)
 
-    def unwrap_rbigint(self):
+    def unwrap_rbigint(self, space):
         from rpython.rlib.rbigint import rbigint
         return rbigint.fromrarith_int(r_uint(self.value))
 
@@ -311,7 +311,7 @@ class W_SmallInteger(W_Object):
     def unwrap_longlong(self, space):
         return r_int64(self.value)
 
-    def unwrap_rbigint(self):
+    def unwrap_rbigint(self, space):
         from rpython.rlib.rbigint import rbigint
         return rbigint.fromint(self.value)
 

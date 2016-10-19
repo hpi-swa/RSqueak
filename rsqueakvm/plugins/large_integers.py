@@ -34,11 +34,11 @@ for name, op in ops.items():
         LargeIntegers.expose_primitive(unwrap_spec=[rbigint, rbigint])(func)
     make_func(primitive)
 
-@LargeIntegers.expose_primitive(unwrap_spec=[rbigint, rbigint])
+@LargeIntegers.expose_primitive(unwrap_spec=[rbigint, rbigint, object])
 def primDigitMultiplyNegative(interp, s_frame, rcvr, arg, neg):
     return interp.space.wrap_rbigint(rcvr.mul(arg))
 
-@LargeIntegers.expose_primitive(unwrap_spec=[rbigint, rbigint])
+@LargeIntegers.expose_primitive(unwrap_spec=[rbigint, rbigint, object])
 def primDigitDivNegative(interp, s_frame, rcvr, arg, neg):
     if arg == NULLRBIGINT:
         raise PrimitiveFailedError
