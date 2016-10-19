@@ -14,25 +14,27 @@ bitops = {
     'primDigitBitShiftMagnitude': BIT_SHIFT,
 }
 for name, primitive in bitops.items():
-    def make_func(primitive):
+    def make_func(name, primitive):
         primfunc = prim_table[primitive]
         def func(interp, s_frame, argcount):
             return primfunc(interp, s_frame, argcount)
         func.func_name = name
         LargeIntegers.expose_primitive(clean_stack=False, no_result=True)(func)
-    make_func(primitive)
+    make_func(name, primitive)
 
-ops = {
-    'primDigitAdd': rbigint.add,
-    'primDigitSubtract': rbigint.sub,
-}
-for name, op in ops.items():
-    def make_func(primitive):
-        def func(interp, s_frame, rcvr, arg):
-            return space.wrap_rbigint(op(rcvr, arg))
-        func.func_name = name
-        LargeIntegers.expose_primitive(unwrap_spec=[rbigint, rbigint])(func)
-    make_func(primitive)
+@LargeIntegers.expose_primitive(unwrap_spec=[rbigint, rbigint])
+def primDigitAdd(interp, s_frame, rcvr, arg):
+    if rcvr.sign != arg.sign:
+        return interp.space.wrap_rbigint(rcvr.sub(arg))
+    else:
+        return interp.space.wrap_rbigint(rcvr.add(arg))
+
+@LargeIntegers.expose_primitive(unwrap_spec=[rbigint, rbigint])
+def primDigitSubtract(interp, s_frame, rcvr, arg):
+    if rcvr.sign != arg.sign:
+        return interp.space.wrap_rbigint(rcvr.add(arg))
+    else:
+        return interp.space.wrap_rbigint(rcvr.sub(arg))
 
 @LargeIntegers.expose_primitive(unwrap_spec=[rbigint, rbigint, object])
 def primDigitMultiplyNegative(interp, s_frame, rcvr, arg, neg):

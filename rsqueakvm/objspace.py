@@ -330,6 +330,10 @@ class ObjSpace(object):
             val = val.neg()
         else:
             w_class = self.w_LargePositiveInteger
+            try:
+                return self.wrap_int(val.touint())
+            except OverflowError:
+                pass
         bytes = val.tobytes(int(math.floor(val.log(256))) + 1, 'little', False)
         w_result = w_class.as_class_get_shadow(self).new(len(bytes))
         for i, byte in enumerate(bytes):
