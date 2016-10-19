@@ -60,18 +60,6 @@ def longlonglong_math_op(interp, code, receiver, argument):
         assert False
     return interp.space.wrap_longlonglong(res)
 
-@specialize.arg(1)
-def rbigint_math_op(interp, code, receiver, argument):
-    if code == ADD:
-        res = receiver.add(argument)
-    elif code == SUBTRACT:
-        res = receiver.sub(argument)
-    elif code == MULTIPLY:
-        res = receiver.mul(argument)
-    else:
-        assert False
-    return interp.space.wrap_rbigint(res)
-
 math_ops = {
     ADD: operator.add,
     SUBTRACT: operator.sub,
@@ -80,7 +68,7 @@ math_ops = {
 for (code, op) in math_ops.items():
     def make_func(op, code):
         @expose_also_as(code + LARGE_OFFSET)
-        @expose_primitive(code, unwrap_specs=[[int, int], [r_int64, r_int64], [rbigint, rbigint]])
+        @expose_primitive(code, unwrap_specs=[[int, int], [r_int64, r_int64]])
         def func(interp, s_frame, receiver, argument):
             if isinstance(receiver, int) and isinstance(argument, int):
                 try:
@@ -96,11 +84,6 @@ for (code, op) in math_ops.items():
                 res = op(receiver, argument)
                 if ((receiver ^ argument >= 0) and (receiver ^ res < 0)):
                     # manual ovfcheck as in Squeak VM
-                    raise PrimitiveFailedError
-            elif isinstance(receiver, rbigint) and isinstance(argument, rbigint):
-                try:
-                    return rbigint_math_op(interp, code, receiver, argument)
-                except (ValueError, OverflowError):
                     raise PrimitiveFailedError
             else:
                 assert False

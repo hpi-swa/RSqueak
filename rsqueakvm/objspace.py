@@ -319,6 +319,10 @@ class ObjSpace(object):
 
     def wrap_rbigint(self, val):
         import math
+        try:
+            return self.wrap_int(val.toint())
+        except OverflowError:
+            pass
         if val.sign < 0:
             w_class = self.w_LargeNegativeInteger
             if w_class is None:
