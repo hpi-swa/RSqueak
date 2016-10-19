@@ -7,7 +7,7 @@ from rsqueakvm.model.numeric import W_Float
 from rsqueakvm.primitives import expose_primitive, expose_also_as, pos_32bit_int
 from rsqueakvm.primitives.constants import *
 
-from rpython.rlib import rfloat, jit, rbigint
+from rpython.rlib import rfloat, jit
 from rpython.rlib.rbigint import rbigint
 from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int, r_int64
 from rpython.rlib.objectmodel import specialize
@@ -46,6 +46,20 @@ for (code, op) in bool_ops.items():
 
 # ___________________________________________________________________________
 # SmallInteger Primitives
+@jit.dont_look_inside
+@specialize.arg(1)
+def longlonglong_math_op(interp, code, receiver, argument):
+    from rpython.rlib.rarithmetic import r_longlonglong
+    if code == ADD:
+        res = r_longlonglong(receiver) + r_longlonglong(argument)
+    elif code == SUBTRACT:
+        res = r_longlonglong(receiver) - r_longlonglong(argument)
+    elif code == MULTIPLY:
+        res = r_longlonglong(receiver) * r_longlonglong(argument)
+    else:
+        assert False
+    return interp.space.wrap_longlonglong(res)
+
 @specialize.arg(1)
 def rbigint_math_op(interp, code, receiver, argument):
     if code == ADD:
@@ -68,22 +82,28 @@ for (code, op) in math_ops.items():
         @expose_also_as(code + LARGE_OFFSET)
         @expose_primitive(code, unwrap_specs=[[int, int], [r_int64, r_int64], [rbigint, rbigint]])
         def func(interp, s_frame, receiver, argument):
-            try:
-                if isinstance(receiver, int) and isinstance(argument, int):
+            if isinstance(receiver, int) and isinstance(argument, int):
+                try:
                     res = ovfcheck(op(receiver, argument))
-                elif ((not constants.IS_64BIT) and
-                      isinstance(receiver, r_int64) and
-                      isinstance(argument, r_int64)):
-                    res = op(receiver, argument)
-                    if ((receiver ^ argument >= 0) and (receiver ^ res < 0)):
-                        # manual ovfcheck as in Squeak VM
-                        raise OverflowError
-                elif isinstance(receiver, rbigint) and isinstance(argument, rbigint):
+                except OverflowError:
+                    if constants.IS_64BIT:
+                        return longlonglong_math_op(interp, code, receiver, argument)
+                    else:
+                        raise PrimitiveFailedError
+            elif ((not constants.IS_64BIT) and
+                  isinstance(receiver, r_int64) and
+                  isinstance(argument, r_int64)):
+                res = op(receiver, argument)
+                if ((receiver ^ argument >= 0) and (receiver ^ res < 0)):
+                    # manual ovfcheck as in Squeak VM
+                    raise PrimitiveFailedError
+            elif isinstance(receiver, rbigint) and isinstance(argument, rbigint):
+                try:
                     return rbigint_math_op(interp, code, receiver, argument)
-                else:
-                    assert False
-            except OverflowError:
-                raise PrimitiveFailedError()
+                except (ValueError, OverflowError):
+                    raise PrimitiveFailedError
+            else:
+                assert False
             return interp.space.wrap_int(res)
     make_func(op, code)
 

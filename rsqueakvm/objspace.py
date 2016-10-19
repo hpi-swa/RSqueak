@@ -317,7 +317,6 @@ class ObjSpace(object):
                 raise WrappingError
             return self.wrap_large_number(r_val, self.w_LargeNegativeInteger)
 
-    @jit.unroll_safe
     def wrap_rbigint(self, val):
         import math
         if val.sign < 0:
