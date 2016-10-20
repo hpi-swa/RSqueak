@@ -156,7 +156,7 @@ def test_compiling_float():
     assert isinstance(w_result, W_Float)
     assert w_result.value == 1.1
 
-def test_compiling_large_positive_integer():
+def test_compiling_32bit_positive_integer():
     sourcecode = """aLargeInteger
                         ^ 16rFFFFFFFF"""
     perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
@@ -166,7 +166,7 @@ def test_compiling_large_positive_integer():
     else:
         assert isinstance(w_result, W_SmallInteger)
 
-def test_compiling_large_large_positive_integer():
+def test_compiling_64bit_positive_integer():
     sourcecode = """aLargeInteger
                         ^ 16rFFFFFFFFFFFFFFFF"""
     perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
@@ -174,8 +174,16 @@ def test_compiling_large_large_positive_integer():
     if not constants.IS_64BIT:
         assert isinstance(w_result, W_BytesObject)
     else:
-        assert isinstance(w_result, W_BytesObject)
+        assert isinstance(w_result, W_LargePositiveInteger1Word)
     assert w_result.unwrap_long_untranslated(space) == 0xFFFFFFFFFFFFFFFF
+
+def test_compiling_128bit_positive_integer():
+    sourcecode = """aLargeInteger
+                        ^ 16rFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"""
+    perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
+    w_result = perform(w(10), "aLargeInteger")
+    assert isinstance(w_result, W_BytesObject)
+    assert w_result.unwrap_long_untranslated(space) == 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 
 def test_simulate_numericprim():
     sourcecode = """absentPrimitive: anInt with: anotherInt

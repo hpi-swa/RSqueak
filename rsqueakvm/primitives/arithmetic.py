@@ -77,7 +77,7 @@ for (code, ops) in math_ops.items():
         smallop = ops[0]
         bigop = ops[1]
         @expose_also_as(code + LARGE_OFFSET)
-        @expose_primitive(code, unwrap_specs=[[int, int], [r_int64, r_int64], [float, float], [rbigint, rbigint]])
+        @expose_primitive(code, unwrap_specs=[[int, int], [r_int64, r_int64], [rbigint, rbigint], [float, float]])
         def func(interp, s_frame, receiver, argument):
             try:
                 if isinstance(receiver, int) and isinstance(argument, int):
@@ -90,7 +90,7 @@ for (code, ops) in math_ops.items():
                         # manual ovfcheck as in Squeak VM
                         raise OverflowError
                 elif isinstance(receiver, float) and isinstance(argument, float):
-                    return interp.space.wrap_float(op(receiver, argument))
+                    return interp.space.wrap_float(smallop(receiver, argument))
                 elif isinstance(receiver, rbigint) and isinstance(argument, rbigint):
                     return interp.space.wrap_rbigint(bigop(receiver, argument))
                 else:
