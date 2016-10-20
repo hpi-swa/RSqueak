@@ -199,7 +199,7 @@ def func(interp, s_frame, w_receiver, argument):
         if argument > 0:
             return interp.space.wrap_rbigint(w_receiver.lshift(argument))
         else:
-            return interp.space.wrap_rbigint(w_receiver.rshift(argument))
+            return interp.space.wrap_rbigint(w_receiver.rshift(-argument))
 
 # ___________________________________________________________________________
 # Float Primitives
