@@ -3,7 +3,7 @@ from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.primitives import prim_table
 from rsqueakvm.primitives.constants import *
 
-from rpython.rlib.rbigint import rbigint, NULLRBIGINT
+from rpython.rlib.rbigint import rbigint, NULLRBIGINT, _divrem
 
 LargeIntegers = Plugin()
 
@@ -42,6 +42,11 @@ def primDigitMultiplyNegative(interp, s_frame, rcvr, arg, neg):
 
 @LargeIntegers.expose_primitive(unwrap_spec=[rbigint, rbigint, object])
 def primDigitDivNegative(interp, s_frame, rcvr, arg, neg):
-    if arg == NULLRBIGINT:
+    try:
+        quo, rem = _divrem(rcvr, arg)
+    except ZeroDivisionError:
         raise PrimitiveFailedError
-    return interp.space.wrap_rbigint(rcvr.div(arg))
+    return interp.space.wrap_list(
+        interp.space.wrap_rbigint(quo),
+        interp.space.wrap_rbigint(rem)
+    )
