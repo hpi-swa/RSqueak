@@ -690,34 +690,66 @@ class TestBasic(BaseJITTest):
         li := 2 raisedTo: 128.
         1 to: 10000 do: [:i | li * i].
         """)
-        self.assert_matches(traces[0].loop, """
-        guard_not_invalidated(descr=<Guard0x352f6e0>),
-        i82 = int_le(i73, 10000),
-        guard_true(i82, descr=<Guard0x3513ec8>),
-        p83 = getfield_gc_r(p13, descr=<FieldP rsqueakvm.model.variable.W_BytesObject.inst_bytes 40>),
-        i84 = arraylen_gc(p83, descr=<ArrayU 1>),
-        i86 = int_gt(i84, 8),
-        guard_true(i86, descr=<Guard0x3513f10>),
-        p88 = call_r(ConstClass(W_BytesObject.getrbigint), p13, p62, descr=<Callr 8 rr EF=4>),
-        guard_no_exception(descr=<Guard0x352f748>),
-        p90 = call_r(ConstClass(fromint), i73, descr=<Callr 8 i EF=3>),
-        guard_no_exception(descr=<Guard0x352f7b0>),
-        p92 = call_r(ConstClass(rbigint.mul), p88, p90, descr=<Callr 8 rr EF=4>),
-        guard_no_exception(descr=<Guard0x352f818>),
-        p93 = force_token(),
-        setfield_gc(p0, p93, descr=<FieldP rsqueakvm.storage_contexts.ContextPartShadow.vable_token 16>),
-        p95 = call_may_force_r(ConstClass(wrap_rbigint), p92, descr=<Callr 8 r EF=7>),
-        guard_not_forced(descr=<Guard0x34d3ad0>),
-        guard_no_exception(descr=<Guard0x3513f58>),
-        guard_not_invalidated(descr=<Guard0x3513fa0>),
-        i97 = int_add(i73, 1),
-        i99 = getfield_gc_i(ConstPtr(ptr98), descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>),
-        i101 = int_sub(i99, 1),
-        setfield_gc(ConstPtr(ptr102), i101, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>),
-        i104 = int_le(i101, 0),
-        guard_false(i104, descr=<Guard0x352f880>),
-        jump(p0, p1, i2, p3, p4, p7, p8, p10, p13, p15, i97, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p62, descr=TargetToken(55721584))
-        """)
+        if IS_64BIT: # difference: 64bit has no native_bytes is None check
+            self.assert_matches(traces[0].loop, """
+            guard_not_invalidated(descr=<Guard0x352f6e0>),
+            i82 = int_le(i73, 10000),
+            guard_true(i82, descr=<Guard0x3513ec8>),
+            p83 = getfield_gc_r(p13, descr=<FieldP rsqueakvm.model.variable.W_BytesObject.inst_bytes 40>),
+            i84 = arraylen_gc(p83, descr=<ArrayU 1>),
+            i86 = int_gt(i84, 8),
+            guard_true(i86, descr=<Guard0x3513f10>),
+            p88 = call_r(ConstClass(W_BytesObject.getrbigint), p13, p62, descr=<Callr 8 rr EF=4>),
+            guard_no_exception(descr=<Guard0x352f748>),
+            p90 = call_r(ConstClass(fromint), i73, descr=<Callr 8 i EF=3>),
+            guard_no_exception(descr=<Guard0x352f7b0>),
+            p92 = call_r(ConstClass(rbigint.mul), p88, p90, descr=<Callr 8 rr EF=4>),
+            guard_no_exception(descr=<Guard0x352f818>),
+            p93 = force_token(),
+            setfield_gc(p0, p93, descr=<FieldP rsqueakvm.storage_contexts.ContextPartShadow.vable_token 16>),
+            p95 = call_may_force_r(ConstClass(wrap_rbigint), p92, descr=<Callr 8 r EF=7>),
+            guard_not_forced(descr=<Guard0x34d3ad0>),
+            guard_no_exception(descr=<Guard0x3513f58>),
+            guard_not_invalidated(descr=<Guard0x3513fa0>),
+            i97 = int_add(i73, 1),
+            i99 = getfield_gc_i(ConstPtr(ptr98), descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>),
+            i101 = int_sub(i99, 1),
+            setfield_gc(ConstPtr(ptr102), i101, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>),
+            i104 = int_le(i101, 0),
+            guard_false(i104, descr=<Guard0x352f880>),
+            jump(p0, p1, i2, p3, p4, p7, p8, p10, p13, p15, i97, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p62, descr=TargetToken(55721584))
+            """)
+        else:
+            self.assert_matches(traces[0].loop, """
+            guard_not_invalidated(descr=<Guard0x352f6e0>),
+            i82 = int_le(i73, 10000),
+            guard_true(i82, descr=<Guard0x3513ec8>),
+            p81 = getfield_gc_r(p13, descr=<FieldP rsqueakvm.model.variable.W_BytesObject.inst_native_bytes 40>),
+            guard_isnull(p81, descr=<Guard0xf53b96f4>)
+            p83 = getfield_gc_r(p13, descr=<FieldP rsqueakvm.model.variable.W_BytesObject.inst_bytes 40>),
+            i84 = arraylen_gc(p83, descr=<ArrayU 1>),
+            i86 = int_gt(i84, 8),
+            guard_true(i86, descr=<Guard0x3513f10>),
+            p88 = call_r(ConstClass(W_BytesObject.getrbigint), p13, p62, descr=<Callr 8 rr EF=4>),
+            guard_no_exception(descr=<Guard0x352f748>),
+            p90 = call_r(ConstClass(fromint), i73, descr=<Callr 8 i EF=3>),
+            guard_no_exception(descr=<Guard0x352f7b0>),
+            p92 = call_r(ConstClass(rbigint.mul), p88, p90, descr=<Callr 8 rr EF=4>),
+            guard_no_exception(descr=<Guard0x352f818>),
+            p93 = force_token(),
+            setfield_gc(p0, p93, descr=<FieldP rsqueakvm.storage_contexts.ContextPartShadow.vable_token 16>),
+            p95 = call_may_force_r(ConstClass(wrap_rbigint), p92, descr=<Callr 8 r EF=7>),
+            guard_not_forced(descr=<Guard0x34d3ad0>),
+            guard_no_exception(descr=<Guard0x3513f58>),
+            guard_not_invalidated(descr=<Guard0x3513fa0>),
+            i97 = int_add(i73, 1),
+            i99 = getfield_gc_i(ConstPtr(ptr98), descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>),
+            i101 = int_sub(i99, 1),
+            setfield_gc(ConstPtr(ptr102), i101, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>),
+            i104 = int_le(i101, 0),
+            guard_false(i104, descr=<Guard0x352f880>),
+            jump(p0, p1, i2, p3, p4, p7, p8, p10, p13, p15, i97, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p62, descr=TargetToken(55721584))
+            """)
 
     def test_float_mul(self, spy, tmpdir):
         traces = self.run(spy, tmpdir, """
