@@ -46,7 +46,7 @@ def primDigitDivNegative(interp, s_frame, rcvr, arg, neg):
         quo, rem = _divrem(rcvr, arg)
     except ZeroDivisionError:
         raise PrimitiveFailedError
-    return interp.space.wrap_list(
+    return interp.space.wrap_list([
         interp.space.wrap_rbigint(quo),
         interp.space.wrap_rbigint(rem)
-    )
+    ])
