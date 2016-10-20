@@ -185,16 +185,21 @@ def func(interp, s_frame, receiver, argument):
 
 # #bitShift: -- return the shifted value
 @expose_also_as(LARGE_BIT_SHIFT)
-@expose_primitive(BIT_SHIFT, unwrap_spec=[object, int])
+@expose_primitive(BIT_SHIFT, unwrap_specs=[[object, int], [rbigint, int]])
 def func(interp, s_frame, w_receiver, argument):
-    if -constants.LONG_BIT < argument < constants.LONG_BIT:
-        # overflow-checking done in lshift implementations
-        if argument > 0:
-            return w_receiver.lshift(interp.space, argument)
-        else:
-            return w_receiver.rshift(interp.space, -argument)
-    else:
+    if not isinstance(w_receiver, rbigint):
+        if -constants.LONG_BIT < argument < constants.LONG_BIT:
+            # overflow-checking done in lshift implementations
+            if argument > 0:
+                return w_receiver.lshift(interp.space, argument)
+            else:
+                return w_receiver.rshift(interp.space, -argument)
         raise PrimitiveFailedError()
+    else:
+        if argument > 0:
+            return interp.space.wrap_rbigint(w_receiver.lshift(argument))
+        else:
+            return interp.space.wrap_rbigint(w_receiver.rshift(argument))
 
 # ___________________________________________________________________________
 # Float Primitives
