@@ -49,7 +49,7 @@ version if you want to keep the original around.
 We have scripts for installing dependencies, building, running the unit tests,
 and running JIT tests in the `.build` subdirectory. You need the `PyPy` source
 tree, and the `rsdl` source tree. If you already have all these, run
-`.build/build.py` to build 32-bit VM. Run `.build/build.py 64bit` to compile a
+`.build/build.py --32bit` to build 32-bit VM. Run `.build/build.py` to compile a
 64-bit VM. The script passes all other arguments on to the `rpython` translator,
 so you can pass other options.
 

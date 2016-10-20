@@ -13,7 +13,7 @@ case "${TEST_TYPE}" in
 esac
 
 case "${BUILD_ARCH}" in
-  64bit) testflag="${testflag} --64bit" ;;
+  32bit) testflag="${testflag} --32bit" ;;
   *) ;;
 esac
 
