@@ -334,7 +334,12 @@ class ObjSpace(object):
                 return self.wrap_int(val.touint())
             except OverflowError:
                 pass
-        bytes = val.tobytes(int(math.floor(val.log(256))) + 1, 'little', False)
+        bytelen = int(math.floor(val.log(256))) + 1
+        try:
+            bytes = val.tobytes(bytelen, 'little', False)
+        except OverflowError:
+            # round-off errors in math.log, might need an extra byte
+            bytes = val.tobytes(bytelen + 1, 'little', False)
         w_result = w_class.as_class_get_shadow(self).new(len(bytes))
         for i, byte in enumerate(bytes):
             w_result.setchar(i, byte)
