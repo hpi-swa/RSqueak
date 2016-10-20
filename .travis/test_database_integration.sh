@@ -25,7 +25,9 @@ cat > "${HOME}/runSQPyteTests.st" <<EOF
         repository: 'filetree://${FILETREE_PATH}';
         onConflict: [:ex | ex allow];
         load.
-    SCISqueakTestReport runClasses: {(Smalltalk at: #SQLiteTests). (Smalltalk at: #SQPyteTests)} named: 'test'.
+    classesToTest := {(Smalltalk at: #SQLiteTests). (Smalltalk at: #SQPyteTests)}.
+    runner := SCISqueakTestRunner runClasses: classesToTest named: 'Database Integration Tests'.
+    SCITestReporterStdout report: runner.
     Smalltalk at: #WorldState ifPresent: [:global |
         global addDeferredUIMessage: [
             Smalltalk at: #SmalltalkImage ifPresent: [:image |
