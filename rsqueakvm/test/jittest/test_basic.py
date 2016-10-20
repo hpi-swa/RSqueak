@@ -683,3 +683,58 @@ class TestBasic(BaseJITTest):
         i139 = arraylen_gc(p98, descr=<ArrayS 4>)
         jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, i136, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, p47, p71, p81, p73, p75, p98, p106, descr=TargetToken(160421980))
         """)
+
+    def test_very_large_integer_mul(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | li block |
+        li := 2 raisedTo: 128.
+        1 to: 10000 do: [:i | li * i].
+        """)
+        self.assert_matches(traces[0].loop, """
+        guard_not_invalidated(descr=<Guard0x352f6e0>),
+        i82 = int_le(i73, 10000),
+        guard_true(i82, descr=<Guard0x3513ec8>),
+        p83 = getfield_gc_r(p13, descr=<FieldP rsqueakvm.model.variable.W_BytesObject.inst_bytes 40>),
+        i84 = arraylen_gc(p83, descr=<ArrayU 1>),
+        i86 = int_gt(i84, 8),
+        guard_true(i86, descr=<Guard0x3513f10>),
+        p88 = call_r(ConstClass(W_BytesObject.getrbigint), p13, p62, descr=<Callr 8 rr EF=4>),
+        guard_no_exception(descr=<Guard0x352f748>),
+        p90 = call_r(ConstClass(fromint), i73, descr=<Callr 8 i EF=3>),
+        guard_no_exception(descr=<Guard0x352f7b0>),
+        p92 = call_r(ConstClass(rbigint.mul), p88, p90, descr=<Callr 8 rr EF=4>),
+        guard_no_exception(descr=<Guard0x352f818>),
+        p93 = force_token(),
+        setfield_gc(p0, p93, descr=<FieldP rsqueakvm.storage_contexts.ContextPartShadow.vable_token 16>),
+        p95 = call_may_force_r(ConstClass(wrap_rbigint), p92, descr=<Callr 8 r EF=7>),
+        guard_not_forced(descr=<Guard0x34d3ad0>),
+        guard_no_exception(descr=<Guard0x3513f58>),
+        guard_not_invalidated(descr=<Guard0x3513fa0>),
+        i97 = int_add(i73, 1),
+        i99 = getfield_gc_i(ConstPtr(ptr98), descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>),
+        i101 = int_sub(i99, 1),
+        setfield_gc(ConstPtr(ptr102), i101, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>),
+        i104 = int_le(i101, 0),
+        guard_false(i104, descr=<Guard0x352f880>),
+        jump(p0, p1, i2, p3, p4, p7, p8, p10, p13, p15, i97, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p62, descr=TargetToken(55721584))
+        """)
+
+    def test_float_mul(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | f block |
+        f := 13.4.
+        1 to: 10000 do: [:i | f * i].
+        """)
+        self.assert_matches(traces[0].loop, """
+        guard_not_invalidated(descr=<Guard0x39d74d8>)
+        i76 = int_le(i67, 10000)
+        guard_true(i76, descr=<Guard0x39bbe80>)
+        f77 = cast_int_to_float(i67)
+        f78 = float_mul(f63, f77)
+        i80 = int_add(i67, 1)
+        i82 = int_sub(i71, 1)
+        setfield_gc(ConstPtr(ptr83), i82, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
+        i85 = int_le(i82, 0)
+        guard_false(i85, descr=<Guard0x39d7540>)
+        jump(p0, p1, i2, p3, p4, p7, p8, p10, p13, p15, i80, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, f63, i82, descr=TargetToken(60603936))
+        """)
