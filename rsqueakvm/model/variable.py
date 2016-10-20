@@ -168,14 +168,18 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         return self.unwrap_longlong(space)
 
     def unwrap_rbigint(self, space):
-        from rpython.rlib.rbigint import rbigint
         if self.getclass(space).is_same_object(space.w_LargePositiveInteger):
-            return rbigint.frombytes(self.getbytes(), 'little', False)
+            return self.getrbigint(self.version)
         elif ((space.w_LargeNegativeInteger is not None) and
               self.getclass(space).is_same_object(space.w_LargeNegativeInteger)):
-            return rbigint.frombytes(self.getbytes(), 'little', False).neg()
+            return self.getrbigint(self.version).neg()
         else:
             raise error.UnwrappingError
+
+    @jit.elidable
+    def getrbigint(self, version):
+        from rpython.rlib.rbigint import rbigint
+        return rbigint.frombytes(self.getbytes(), 'little', False)
 
     def is_array_object(self):
         return True
