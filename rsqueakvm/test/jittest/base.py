@@ -52,7 +52,7 @@ class BaseJITTest(object):
         logfile = str(tmpdir.join("x.pypylog"))
         print logfile
         proc = spy.popen(
-            "--reader-jit-args", "off", "-r", code.replace("\n", "\r\n"), self.test_image,
+            "--reader-jit-args", "off", "--silent", "-r", code.replace("\n", "\r\n"), self.test_image,
             cwd=str(tmpdir),
             env={"PYPYLOG": "jit-log-opt:%s" % logfile,
                  "SDL_VIDEODRIVER": "dummy"}
@@ -74,7 +74,7 @@ class ModernJITTest(BaseJITTest):
     test_image = image_path(image_name)
 
     def run(self, spy, tmpdir, code):
-        # first loop is from compiling
+        # first loop is from compiling, skip that
         return BaseJITTest.run(self, spy, tmpdir, code)[1:]
 
 class Parser(oparser.OpParser):
