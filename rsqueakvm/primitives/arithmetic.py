@@ -79,26 +79,30 @@ for (code, ops) in math_ops.items():
         @expose_also_as(code + LARGE_OFFSET)
         @expose_primitive(code, unwrap_specs=[[int, int], [r_int64, r_int64], [rbigint, rbigint], [float, float]])
         def func(interp, s_frame, receiver, argument):
-            try:
-                if isinstance(receiver, int) and isinstance(argument, int):
+            if isinstance(receiver, int) and isinstance(argument, int):
+                try:
                     res = ovfcheck(smallop(receiver, argument))
-                elif ((not constants.IS_64BIT) and
-                      isinstance(receiver, r_int64) and
-                      isinstance(argument, r_int64)):
+                except OverflowError:
+                    if constants.IS_64BIT:
+                        return overflow_math_op_64bit(interp, code, receiver, argument)
+                    raise PrimitiveFailedError()
+            elif ((not constants.IS_64BIT) and
+                  isinstance(receiver, r_int64) and
+                  isinstance(argument, r_int64)):
+                try:
                     res = smallop(receiver, argument)
-                    if ((receiver ^ argument >= 0) and (receiver ^ res < 0)):
-                        # manual ovfcheck as in Squeak VM
-                        raise OverflowError
-                elif isinstance(receiver, float) and isinstance(argument, float):
-                    return interp.space.wrap_float(smallop(receiver, argument))
-                elif isinstance(receiver, rbigint) and isinstance(argument, rbigint):
-                    return interp.space.wrap_rbigint(bigop(receiver, argument))
-                else:
-                    assert False
-            except OverflowError:
-                if constants.IS_64BIT:
-                    return overflow_math_op_64bit(interp, code, receiver, argument)
-                raise PrimitiveFailedError()
+                except OverflowError:
+                    # Never raised after translation, but before
+                    raise PrimitiveFailedError
+                if ((receiver ^ argument >= 0) and (receiver ^ res < 0)):
+                    # manual ovfcheck as in Squeak VM
+                    raise PrimitiveFailedError
+            elif isinstance(receiver, rbigint) and isinstance(argument, rbigint):
+                return interp.space.wrap_rbigint(bigop(receiver, argument))
+            elif isinstance(receiver, float) and isinstance(argument, float):
+                return interp.space.wrap_float(smallop(receiver, argument))
+            else:
+                assert False
             return interp.space.wrap_int(res)
     make_func(ops, code)
 
