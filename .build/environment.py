@@ -101,7 +101,11 @@ def prepare_environment_variables():
     elif "linux" in sys.platform:
         pass
     elif "darwin" == sys.platform:
-        pass
+        try:
+            # Check if sdl2-config is installed (e.g. when SDL2 is installed via brew)
+            os.environ["SDL_PREFIX"] = subprocess.check_output(['sdl2-config', '--prefix']).strip()
+        except:
+            pass
     else:
         raise AssertionError("Unsupported platform")
     sys.path.insert(0, cp.get("General", "pypy"))

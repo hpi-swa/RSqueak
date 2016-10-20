@@ -14,14 +14,11 @@ setup_osx() {
 
       # Use Pypy2 v5.4.0
       brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/c5a201f49c9da47d4771ebc544d10b3f9c579021/Formula/pypy.rb
+      
+      brew install sdl2
       ;;
     esac
 
-    SDL_DMG=SDL2-2.0.3.dmg
-    curl -L -O http://www.libsdl.org/release/${SDL_DMG}
-    hdiutil mount ${SDL_DMG}
-    ls /Volumes/*SDL*/
-    sudo ditto /Volumes/*SDL*/SDL2.framework /Library/Frameworks/SDL2.framework
     # todo: Squeak for jittests
 
     # Don't install coveralls on OS X, because it's too slow (see #116)
