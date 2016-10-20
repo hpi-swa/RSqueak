@@ -552,7 +552,11 @@ class SpurReader(BaseReaderStrategy):
                 self.chunks[pos + currentAddressSwizzle] = chunk
             self.log("bridge: %s (%s)" % (self.stream.count, self.stream.count + currentAddressSwizzle))
             # read bridge
-            bridgeSpan = intmask(r_uint64(self.stream.next_qword() & ~self.SLOTS_MASK))
+            bridge = r_uint64(self.stream.next_qword())
+            if bridge & self.SLOTS_MASK == 0:
+                bridgeSpan = 0
+            else:
+                bridgeSpan = intmask(r_uint64(bridge & ~self.SLOTS_MASK))
             nextSegmentSize = intmask(r_uint64(self.stream.next_qword()))
             self.log("bridgeSpan: %s; nextSegmentSize: %s" % (bridgeSpan, nextSegmentSize))
             assert bridgeSpan >= 0
@@ -561,13 +565,6 @@ class SpurReader(BaseReaderStrategy):
             # if nextSegmentSize is zero, the end of the image has been reached
             if nextSegmentSize == 0:
                 self.log("last segment end: %s " % (segmentEnd + currentAddressSwizzle))
-                bridgeSpanMagicHeader = intmask(r_uint32(bridgeSpan))
-                if self.version.is_64bit:
-                    FINAL_BRIDGE_HEADER = (1 << 30) + (9 << 24) + 3
-                    assert bridgeSpanMagicHeader == FINAL_BRIDGE_HEADER
-                else:
-                    FINAL_BRIDGE_HEADER = (1 << 30) + (10 << 24) + 3
-                    assert bridgeSpanMagicHeader == FINAL_BRIDGE_HEADER
                 break
             segmentEnd = segmentEnd + nextSegmentSize
             # address swizzle is in bytes, but bridgeSpan is in image words
