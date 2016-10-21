@@ -8,9 +8,6 @@ rsqueak/bundle/RSqueak.tar.gz"}"
 IMAGE_DIR="${IMAGE_DIR:-}"
 IMAGE_EXTRACT="${IMAGE_EXTRACT:-"./RSqueak.app/Contents/Resources"}"
 IMAGE_PATH="${IMAGE_EXTRACT}/RSqueak.image"
-RESULT_CMD="${RESULT_CMD:-}"
-RESULT_CMD_URL="${RESULT_CMD_URL:-"https://raw.githubusercontent.com/hpi-swa/\
-smalltalkCI/master/lib/junit_xml_prettfier.py"}"
 
 realpath() {
     [[ $1 = /* ]] && echo "$1" || echo "$PWD/${1#./}"
@@ -28,10 +25,13 @@ cat > "${HOME}/runSQPyteTests.st" <<EOF
     classesToTest := {(Smalltalk at: #SQLiteTests). (Smalltalk at: #SQPyteTests)}.
     runner := SCISqueakTestRunner runClasses: classesToTest named: 'Database Integration Tests'.
     SCITestReporterStdout report: runner.
+    exitCode := 0.
+    (runner totalTests = runner passingTests)
+        ifFalse: [ exitCode := 1 ].
     Smalltalk at: #WorldState ifPresent: [:global |
         global addDeferredUIMessage: [
             Smalltalk at: #SmalltalkImage ifPresent: [:image |
-                image current snapshot: false andQuit: true ]]]
+                image current snapshot: false andQuitWithExitCode: exitCode ]]]
 EOF
 
 if [[ -z "${IMAGE}" ]]; then
@@ -61,14 +61,3 @@ fi
 
 echo "==== Run tests..."
 ./rsqueak --silent --no-display "${IMAGE}" "${HOME}/runSQPyteTests.st"
-
-if [[ -z "${RESULT_CMD}" ]]; then
-    RESULT_CMD="/tmp/print_test_results.py"
-
-    if [[ ! -f "${RESULT_CMD}" ]]; then
-        wget --quiet "${RESULT_CMD_URL}" -O "${RESULT_CMD}"
-        chmod +x "${RESULT_CMD}"
-    fi
-fi
-
-"${RESULT_CMD}" "$(dirname "${IMAGE}")"
