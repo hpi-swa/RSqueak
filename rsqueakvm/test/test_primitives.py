@@ -190,9 +190,25 @@ def test_small_int_bit_shift_negative():
     assert prim(BIT_SHIFT, [-4, 3]).value == -32
     assert prim(BIT_SHIFT, [-4, 27]).value == -536870912
 
-def test_small_int_bit_shift_fail():
-    prim_fails(BIT_SHIFT, [4, constants.LONG_BIT])
-    prim_fails(BIT_SHIFT, [4, constants.LONG_BIT - 1])
+def test_small_int_bit_shift_overflow():
+    w_result = prim(BIT_SHIFT, [4, constants.LONG_BIT])
+    assert isinstance(w_result, W_BytesObject)
+    assert w_result.unwrap_long_untranslated(space) == 4 << constants.LONG_BIT
+    w_result = prim(BIT_SHIFT, [4, constants.LONG_BIT - 1])
+    assert isinstance(w_result, W_BytesObject)
+    assert w_result.unwrap_long_untranslated(space) == 4 << (constants.LONG_BIT - 1)
+    w_result = prim(BIT_SHIFT, [4, -constants.LONG_BIT])
+    assert isinstance(w_result, W_SmallInteger)
+    assert w_result.value == 0
+    w_result = prim(BIT_SHIFT, [-4, -constants.LONG_BIT])
+    assert isinstance(w_result, W_SmallInteger)
+    assert w_result.value == -1
+    w_result = prim(BIT_SHIFT, [-2**(constants.LONG_BIT*2), -constants.LONG_BIT])
+    assert isinstance(w_result, W_BytesObject)
+    assert w_result.unwrap_long_untranslated(space) == -2**constants.LONG_BIT
+    w_result = prim(BIT_SHIFT, [-2**(constants.LONG_BIT*2), -constants.LONG_BIT - 1])
+    assert isinstance(w_result, W_SmallInteger)
+    assert w_result.unwrap_long_untranslated(space) == -2**(constants.LONG_BIT-1)
     w_result = prim(BIT_SHIFT, [4, constants.LONG_BIT - 3])
     assert isinstance(w_result, W_LargePositiveInteger1Word)
     assert w_result.value == intmask(4 << constants.LONG_BIT - 3)

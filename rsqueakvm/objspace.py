@@ -317,6 +317,34 @@ class ObjSpace(object):
                 raise WrappingError
             return self.wrap_large_number(r_val, self.w_LargeNegativeInteger)
 
+    def wrap_rbigint(self, val):
+        import math
+        try:
+            return self.wrap_int(val.toint())
+        except OverflowError:
+            pass
+        if val.sign < 0:
+            w_class = self.w_LargeNegativeInteger
+            if w_class is None:
+                raise WrappingError
+            val = val.neg()
+        else:
+            w_class = self.w_LargePositiveInteger
+            try:
+                return self.wrap_int(val.touint())
+            except OverflowError:
+                pass
+        bytelen = int(math.floor(val.log(256))) + 1
+        try:
+            bytes = val.tobytes(bytelen, 'little', False)
+        except OverflowError:
+            # round-off errors in math.log, might need an extra byte
+            bytes = val.tobytes(bytelen + 1, 'little', False)
+        w_result = w_class.as_class_get_shadow(self).new(len(bytes))
+        for i, byte in enumerate(bytes):
+            w_result.setchar(i, byte)
+        return w_result
+
     def wrap_float(self, i):
         return W_Float(i)
 
@@ -367,6 +395,9 @@ class ObjSpace(object):
 
     def unwrap_longlong(self, w_value):
         return w_value.unwrap_longlong(self)
+
+    def unwrap_rbigint(self, w_value):
+        return w_value.unwrap_rbigint(self)
 
     def unwrap_char_as_byte(self, w_char):
         return w_char.unwrap_char_as_byte(self)

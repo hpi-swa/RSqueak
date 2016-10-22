@@ -8,40 +8,47 @@ from rsqueakvm.primitives import expose_primitive, expose_also_as, pos_32bit_int
 from rsqueakvm.primitives.constants import *
 
 from rpython.rlib import rfloat, jit
+from rpython.rlib.rbigint import rbigint
 from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int, r_int64
 from rpython.rlib.objectmodel import specialize
 
 combination_specs = [[int, int], [pos_32bit_int, pos_32bit_int], [r_int64, r_int64]]
+comparison_specs = combination_specs + [[rbigint, rbigint], [float, float]]
 
 # ___________________________________________________________________________
 # Boolean Primitives
 
 bool_ops = {
-    LESSTHAN: operator.lt,
-    GREATERTHAN: operator.gt,
-    LESSOREQUAL: operator.le,
-    GREATEROREQUAL: operator.ge,
-    EQUAL: operator.eq,
-    NOTEQUAL: operator.ne
+    LESSTHAN: (operator.lt, rbigint.lt),
+    GREATERTHAN: (operator.gt, rbigint.gt),
+    LESSOREQUAL: (operator.le, rbigint.le),
+    GREATEROREQUAL: (operator.ge, rbigint.ge),
+    EQUAL: (operator.eq, rbigint.eq),
+    NOTEQUAL: (operator.ne, rbigint.ne),
     }
-for (code, op) in bool_ops.items():
-    def make_func(op):
+for (code, ops) in bool_ops.items():
+    def make_func(ops):
+        smallop = ops[0]
+        bigop = ops[1]
         @expose_also_as(code + LARGE_OFFSET)
-        @expose_primitive(code, unwrap_specs=combination_specs)
+        @expose_primitive(code, unwrap_specs=comparison_specs)
         def func(interp, s_frame, v1, v2):
-            res = op(v1, v2)
-            w_res = interp.space.wrap_bool(res)
-            return w_res
-    make_func(op)
+            if not (isinstance(v1, rbigint) and isinstance(v2, rbigint)):
+                res = smallop(v1, v2)
+            else:
+                res = bigop(v1, v2)
+            return interp.space.wrap_bool(res)
+    make_func(ops)
 
-for (code, op) in bool_ops.items():
-    def make_func(op):
+for (code, ops) in bool_ops.items():
+    def make_func(ops):
+        smallop = ops[0]
         @expose_primitive(code + FLOAT_OFFSET, unwrap_spec=[float, float])
         def func(interp, s_frame, v1, v2):
-            res = op(v1, v2)
+            res = smallop(v1, v2)
             w_res = interp.space.wrap_bool(res)
             return w_res
-    make_func(op)
+    make_func(ops)
 
 # ___________________________________________________________________________
 # SmallInteger Primitives
@@ -61,33 +68,43 @@ def overflow_math_op_64bit(interp, code, receiver, argument):
     return interp.space.wrap_longlonglong(res)
 
 math_ops = {
-    ADD: operator.add,
-    SUBTRACT: operator.sub,
-    MULTIPLY: operator.mul,
+    ADD: (operator.add, rbigint.add),
+    SUBTRACT: (operator.sub, rbigint.sub),
+    MULTIPLY: (operator.mul, rbigint.mul),
     }
-for (code, op) in math_ops.items():
-    def make_func(op, code):
+for (code, ops) in math_ops.items():
+    def make_func(ops, code):
+        smallop = ops[0]
+        bigop = ops[1]
         @expose_also_as(code + LARGE_OFFSET)
-        @expose_primitive(code, unwrap_specs=[[int, int], [r_int64, r_int64]])
+        @expose_primitive(code, unwrap_specs=[[int, int], [r_int64, r_int64], [rbigint, rbigint], [float, float]])
         def func(interp, s_frame, receiver, argument):
-            try:
-                if isinstance(receiver, int) and isinstance(argument, int):
-                    res = ovfcheck(op(receiver, argument))
-                elif ((not constants.IS_64BIT) and
-                      isinstance(receiver, r_int64) and
-                      isinstance(argument, r_int64)):
-                    res = op(receiver, argument)
-                    if ((receiver ^ argument >= 0) and (receiver ^ res < 0)):
-                        # manual ovfcheck as in Squeak VM
-                        raise OverflowError
-                else:
-                    assert False
-            except OverflowError:
-                if constants.IS_64BIT:
-                    return overflow_math_op_64bit(interp, code, receiver, argument)
-                raise PrimitiveFailedError()
+            if isinstance(receiver, int) and isinstance(argument, int):
+                try:
+                    res = ovfcheck(smallop(receiver, argument))
+                except OverflowError:
+                    if constants.IS_64BIT:
+                        return overflow_math_op_64bit(interp, code, receiver, argument)
+                    raise PrimitiveFailedError()
+            elif ((not constants.IS_64BIT) and
+                  isinstance(receiver, r_int64) and
+                  isinstance(argument, r_int64)):
+                try:
+                    res = smallop(receiver, argument)
+                except OverflowError:
+                    # Never raised after translation, but before
+                    raise PrimitiveFailedError
+                if ((receiver ^ argument >= 0) and (receiver ^ res < 0)):
+                    # manual ovfcheck as in Squeak VM
+                    raise PrimitiveFailedError
+            elif isinstance(receiver, rbigint) and isinstance(argument, rbigint):
+                return interp.space.wrap_rbigint(bigop(receiver, argument))
+            elif isinstance(receiver, float) and isinstance(argument, float):
+                return interp.space.wrap_float(smallop(receiver, argument))
+            else:
+                assert False
             return interp.space.wrap_int(res)
-    make_func(op, code)
+    make_func(ops, code)
 
 bitwise_binary_ops = {
     BIT_AND: operator.and_,
@@ -168,16 +185,21 @@ def func(interp, s_frame, receiver, argument):
 
 # #bitShift: -- return the shifted value
 @expose_also_as(LARGE_BIT_SHIFT)
-@expose_primitive(BIT_SHIFT, unwrap_spec=[object, int])
+@expose_primitive(BIT_SHIFT, unwrap_specs=[[object, int], [rbigint, int]])
 def func(interp, s_frame, w_receiver, argument):
-    if -constants.LONG_BIT < argument < constants.LONG_BIT:
-        # overflow-checking done in lshift implementations
-        if argument > 0:
-            return w_receiver.lshift(interp.space, argument)
-        else:
-            return w_receiver.rshift(interp.space, -argument)
-    else:
+    if not isinstance(w_receiver, rbigint):
+        if -constants.LONG_BIT < argument < constants.LONG_BIT:
+            # overflow-checking done in lshift implementations
+            if argument > 0:
+                return w_receiver.lshift(interp.space, argument)
+            else:
+                return w_receiver.rshift(interp.space, -argument)
         raise PrimitiveFailedError()
+    else:
+        if argument > 0:
+            return interp.space.wrap_rbigint(w_receiver.lshift(argument))
+        else:
+            return interp.space.wrap_rbigint(w_receiver.rshift(-argument))
 
 # ___________________________________________________________________________
 # Float Primitives

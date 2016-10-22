@@ -9,6 +9,7 @@ from rsqueakvm.primitives.constants import *
 
 from rpython.rlib import unroll, jit, objectmodel
 from rpython.rlib.rarithmetic import r_uint, r_int64, int_between
+from rpython.rlib.rbigint import rbigint
 
 
 def assert_class(interp, w_obj, w_class):
@@ -100,6 +101,8 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                     w_arg = s_frame.peek(index)
                     if spec is r_int64:
                         args += (interp.space.unwrap_longlong(w_arg),)
+                    elif spec is rbigint:
+                        args += (interp.space.unwrap_rbigint(w_arg),)
                     elif spec is int:
                         args += (interp.space.unwrap_int(w_arg), )
                     elif spec is pos_32bit_int:

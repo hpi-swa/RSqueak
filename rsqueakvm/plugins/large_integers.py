@@ -3,6 +3,8 @@ from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.primitives import prim_table
 from rsqueakvm.primitives.constants import *
 
+from rpython.rlib.rbigint import rbigint, NULLRBIGINT, _divrem
+
 LargeIntegers = Plugin()
 
 bitops = {
@@ -12,47 +14,39 @@ bitops = {
     'primDigitBitShiftMagnitude': BIT_SHIFT,
 }
 for name, primitive in bitops.items():
-    def make_func(primitive):
+    def make_func(name, primitive):
         primfunc = prim_table[primitive]
         def func(interp, s_frame, argcount):
             return primfunc(interp, s_frame, argcount)
         func.func_name = name
         LargeIntegers.expose_primitive(clean_stack=False, no_result=True)(func)
-    make_func(primitive)
+    make_func(name, primitive)
 
-negOps = {
-    'primDigitDivNegative': DIVIDE,
-    'primDigitMultiplyNegative': MULTIPLY
-}
-for name, primitive in negOps.items():
-    def make_func(primitive):
-        primfunc = prim_table[primitive]
-        def func(interp, s_frame, argcount):
-            if argcount != 3:
-                raise PrimitiveFailedError
-            neg = interp.space.w_true is s_frame.pop()
-            return primfunc(interp, s_frame, 2)
-        func.func_name = name
-        LargeIntegers.expose_primitive()(func)
-    make_func(primitive)
+@LargeIntegers.expose_primitive(unwrap_spec=[rbigint, rbigint])
+def primDigitAdd(interp, s_frame, rcvr, arg):
+    if rcvr.sign != arg.sign: # Squeak has weird large integer semantics :(
+        return interp.space.wrap_rbigint(rcvr.sub(arg))
+    else:
+        return interp.space.wrap_rbigint(rcvr.add(arg))
 
-ops = {
-    'primDigitAdd': ADD,
-    'primDigitSubtract': SUBTRACT,
-}
-for name, primitive in ops.items():
-    def make_func(primitive):
-        primfunc = prim_table[primitive]
-        def func(interp, s_frame, argcount):
-            """This operation is only supported for sign-matching
-            receiver/argument pairs."""
-            if 2 < argcount or argcount < 1:
-                raise PrimitiveFailedError
-            rcvr = s_frame.peek(argcount).unwrap_longlong(interp.space)
-            arg = s_frame.peek(argcount - 1).unwrap_longlong(interp.space)
-            if (rcvr < 0 and arg >= 0) or (rcvr >= 0 and arg < 0):
-                raise PrimitiveFailedError
-            return primfunc(interp, s_frame, argcount)
-        func.func_name = name
-        LargeIntegers.expose_primitive(clean_stack=False, no_result=True)(func)
-    make_func(primitive)
+@LargeIntegers.expose_primitive(unwrap_spec=[rbigint, rbigint])
+def primDigitSubtract(interp, s_frame, rcvr, arg):
+    if rcvr.sign != arg.sign: # Squeak has weird large integer semantics :(
+        return interp.space.wrap_rbigint(rcvr.add(arg))
+    else:
+        return interp.space.wrap_rbigint(rcvr.sub(arg))
+
+@LargeIntegers.expose_primitive(unwrap_spec=[rbigint, rbigint, object])
+def primDigitMultiplyNegative(interp, s_frame, rcvr, arg, neg):
+    return interp.space.wrap_rbigint(rcvr.mul(arg))
+
+@LargeIntegers.expose_primitive(unwrap_spec=[rbigint, rbigint, object])
+def primDigitDivNegative(interp, s_frame, rcvr, arg, neg):
+    try:
+        quo, rem = _divrem(rcvr, arg)
+    except ZeroDivisionError:
+        raise PrimitiveFailedError
+    return interp.space.wrap_list([
+        interp.space.wrap_rbigint(quo),
+        interp.space.wrap_rbigint(rem)
+    ])

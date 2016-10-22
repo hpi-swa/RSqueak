@@ -37,8 +37,9 @@ def load_config():
     return cp, config
 
 
-def ensure_32bit_environment():
-    if "64bit" in platform.architecture()[0] and "download_dependencies" not in sys.argv[0]:
+def ensure_32bit_environment_if_required():
+    if "64bit" in platform.architecture()[0] and "download_dependencies" not in sys.argv[0] and "--32bit" in sys.argv:
+        sys.argv.remove("--32bit")
         import signal
         if os.name == "nt":
             py = cp.get("Windows", "Python32Bit")
@@ -121,10 +122,9 @@ def prepare_environment_variables():
 
 
 cp, config = load_config()
+if cp.has_option("Linux", "SDL64bit"):
+    os.environ["SDL_PREFIX"] = cp.get("Linux", "SDL64bit")
 if "--64bit" in sys.argv:
-    if cp.has_option("Linux", "SDL64bit"):
-        os.environ["SDL_PREFIX"] = cp.get("Linux", "SDL64bit")
     sys.argv.remove("--64bit")
-else:
-    ensure_32bit_environment()
+ensure_32bit_environment_if_required()
 prepare_environment_variables()

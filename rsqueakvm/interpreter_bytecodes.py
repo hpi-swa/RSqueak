@@ -323,8 +323,8 @@ class __extend__(ContextPartShadow):
         if not isinstance(w_method, W_CompiledMethod):
             if w_arguments:
                 self.push_all(w_arguments)
-            return self._invokeObjectAsMethod(interp, argcount, w_method,
-                                              w_selector)
+            return self._invokeObjectAsMethod(w_selector, argcount, interp,
+                                              w_method)
 
         code = w_method.primitive()
         if code:
@@ -347,16 +347,12 @@ class __extend__(ContextPartShadow):
 
         return interp.stack_frame(s_frame, self)
 
-    def _invokeObjectAsMethod(self, interp, argcount, w_method, w_selector):
+    def _invokeObjectAsMethod(self, w_selector, argcount, interp, w_receiver):
         args_w = self.pop_and_return_n(argcount)
         w_arguments = interp.space.wrap_list(args_w)
         w_rcvr = self.pop()
-        w_newrcvr = w_method
-
         w_newarguments = [w_selector, w_arguments, w_rcvr]
-
-        self.push(w_newrcvr)
-        return self._sendSpecialSelector(interp, w_newrcvr, "runWithIn", w_newarguments)
+        return self._sendSpecialSelector(interp, w_receiver, "runWithIn", w_newarguments)
 
     @objectmodel.specialize.arg(1)
     def _sendSelfSelectorSpecial(self, selector, numargs, interp):

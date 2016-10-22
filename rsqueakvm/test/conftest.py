@@ -25,14 +25,6 @@ def pytest_addoption(parser):
     )
 
     group.addoption(
-        "--squeak",
-        dest="squeakbinary",
-        action="store",
-        default=None,
-        help="Path to a Squeak binary (Cog or interpreter). Enables jit tests."
-    )
-
-    group.addoption(
         "--jitargs",
         dest="jitargs",
         action="store",
@@ -61,17 +53,6 @@ def pytest_funcarg__spy(request):
         return _Executor_(py.path.local(val))
     else:
         return _Executor_(py.path.local(val), jitarg)
-
-def pytest_funcarg__squeak(request):
-    import sys
-    val = request.config.getvalue("squeakbinary")
-    if not val:
-        py.test.skip("Provide --squeak parameter to execute modern jit tests")
-    if sys.platform.startswith('linux'):
-        # -headless is not sufficient on linux
-        return _Executor_(py.path.local(val), "-nodisplay")
-    else:
-        return _Executor_(py.path.local(val), "-headless")
 
 from .jittest.base import Trace
 def pytest_assertrepr_compare(op, left, right):
