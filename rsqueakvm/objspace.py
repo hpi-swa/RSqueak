@@ -4,6 +4,7 @@ from rsqueakvm.error import WrappingError, UnwrappingError
 from rsqueakvm.model.character import W_Character
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargePositiveInteger1Word
 from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.model.block_closure import W_BlockClosure
 from rsqueakvm.util.version import Version
 
@@ -341,18 +342,17 @@ class ObjSpace(object):
             # round-off errors in math.log, might need an extra byte
             bytes = val.tobytes(bytelen + 1, 'little', False)
         w_result = w_class.as_class_get_shadow(self).new(len(bytes))
-        for i, byte in enumerate(bytes):
-            w_result.setchar(i, byte)
+        assert isinstance(w_result, W_BytesObject)
+        w_result.bytes = list(bytes)
         return w_result
 
     def wrap_float(self, i):
         return W_Float(i)
 
-    @jit.look_inside_iff(lambda self, string: jit.isconstant(string))
     def wrap_string(self, string):
         w_inst = self.w_String.as_class_get_shadow(self).new(len(string))
-        for i in range(len(string)):
-            w_inst.setchar(i, string[i])
+        assert isinstance(w_inst, W_BytesObject)
+        w_inst.bytes = list(string)
         return w_inst
 
     def wrap_char(self, c):

@@ -16,7 +16,6 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
     repr_classname = "W_PointersObject"
     rstrat.make_accessors(strategy='strategy', storage='_storage')
 
-    @jit.unroll_safe
     def __init__(self, space, w_class, size, weak=False):
         """Create new object with size = fixed + variable size."""
         W_AbstractObjectWithIdentityHash.__init__(self)
