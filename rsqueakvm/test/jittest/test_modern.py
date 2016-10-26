@@ -3,6 +3,74 @@ import py
 from .base import ModernJITTest
 
 class TestModern(ModernJITTest):
+    def test_init(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | c |
+        Object
+            subclass: #MyA
+            instanceVariableNames: 'i'
+            classVariableNames: ''
+            poolDictionaries: ''
+            category: 'Test'.
+        c := Smalltalk at: #MyA.
+        c compile: 'initialize
+i := 1.' classified: 'none' withStamp: nil notifying: nil logSource: false.
+        1 to: 100000 do: [:i | c new ].
+        """)
+        self.assert_matches(traces[-1].loop, """
+        guard_not_invalidated(descr=<Guard0xb06c3c8>)
+        i88 = int_le(i79, 100000)
+        guard_true(i88, descr=<Guard0xb051148>)
+        p89 = force_token()
+        enter_portal_frame(4, 0)
+        p92 = force_token()
+        enter_portal_frame(4, 0)
+        leave_portal_frame(4)
+        leave_portal_frame(4)
+        i98 = int_add(i79, 1)
+        i100 = int_sub(i83, 1)
+        setfield_gc(ConstPtr(ptr101), i100, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
+        i103 = int_le(i100, 0)
+        guard_false(i103, descr=<Guard0xb06c498>)
+        jump(p0, p1, i2, p3, p4, p7, p8, p10, p13, i98, p21, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, i100, descr=TargetToken(183580560))
+        """)
+
+    def test_ivar_access(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | c o |
+        Object
+            subclass: #MyA
+            instanceVariableNames: 'i'
+            classVariableNames: ''
+            poolDictionaries: ''
+            category: 'Test'.
+        c := Smalltalk at: #MyA.
+        c compile: 'initialize
+i := 1.' classified: 'none' withStamp: nil notifying: nil logSource: false.
+        c compile: 'i
+^ i' classified: 'none' withStamp: nil notifying: nil logSource: false.
+        c compile: 'i: n
+i := n' classified: 'none' withStamp: nil notifying: nil logSource: false.
+        o := c new.
+        [ o i < 10000 ] whileTrue: [ o i: o i + 1 ].
+        """)
+        self.assert_matches(traces[-1].loop, """
+        guard_not_invalidated(descr=<Guard0xa4a48a8>)
+        i78 = int_lt(i61, 10000)
+        guard_true(i78, descr=<Guard0xa485c40>)
+        i80 = int_add(i61, 1)
+        p81 = force_token()
+        enter_portal_frame(4, 0)
+        leave_portal_frame(4)
+        i86 = int_sub(i72, 1)
+        setfield_gc(ConstPtr(ptr87), i86, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
+        setarrayitem_gc(p53, 0, i80, descr=<ArrayS 8>)
+        i90 = int_le(i86, 0)
+        guard_false(i90, descr=<Guard0xa4a4f90>)
+        i91 = arraylen_gc(p53, descr=<ArrayS 8>)
+        jump(p0, p1, i2, p3, p4, p7, p8, p10, p13, p15, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p53, i80, i86, descr=TargetToken(170868656))
+        """)
+
     def test_named_access(self, spy, tmpdir):
         traces = self.run(spy, tmpdir, """
         | m |
