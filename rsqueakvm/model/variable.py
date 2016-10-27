@@ -34,7 +34,10 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         return space.wrap_smallint_unsafe(ord(self.getchar(index0)))
 
     def atput0(self, space, index0, w_value):
-        self.setchar(index0, chr(space.unwrap_int(w_value)))
+        try:
+            self.setchar(index0, chr(space.unwrap_int(w_value)))
+        except ValueError: # when we try to put sth outside of chr range
+            raise error.PrimitiveFailedError
 
     def getchar(self, n0):
         if self.native_bytes is not None:
