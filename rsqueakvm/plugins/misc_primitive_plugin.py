@@ -8,7 +8,7 @@ from rpython.rlib import jit
 
 MiscPrimitivePlugin = Plugin()
 
-@jit.look_inside_iff(lambda bytes, start: jit.isconstant(len(bytes)) and jit.isconstant(len(start)))
+@jit.look_inside_iff(lambda bytes, start: jit.isconstant(len(bytes)) and jit.isconstant(start))
 def _bytesHashLoop(bytes, start):
     hash = start
     for byte in bytes:
