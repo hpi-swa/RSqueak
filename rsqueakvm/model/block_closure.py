@@ -69,7 +69,7 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
     def instsize(self):
         return constants.BLKCLSR_SIZE
 
-    @elidable_for_version(0)
+    @elidable_for_version(0, promote='1')
     def varsize(self):
         return len(self._stack)
 
@@ -100,15 +100,15 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
     def w_outerContext(self):
         return self._w_outerContext
 
-    @elidable_for_version(0)
+    @elidable_for_version(0, promote='1')
     def startpc(self):
         return self._startpc
 
-    @elidable_for_version(0)
+    @elidable_for_version(0, promote='1')
     def numArgs(self):
         return self._numArgs
 
-    @elidable_for_version(0)
+    @elidable_for_version(0, promote='1')
     def w_method(self):
         return self._w_method
 

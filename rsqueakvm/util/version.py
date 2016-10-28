@@ -5,7 +5,7 @@ from rpython.rlib import jit
 # should only be used in situations where the receiver is very unlikely to
 # change in the same context of the interpreted program (like classes or
 # compiled methods).
-def elidable_for_version(numargs, promote=True):
+def elidable_for_version(numargs, promote='all'):
     def decorator(func):
         argstr = "".join([", arg%d" % i for i in range(numargs)])
         code = [
@@ -16,8 +16,8 @@ def elidable_for_version(numargs, promote=True):
         exec "\n".join(code) in d
         versioned_func = d["versioned_func"]
         versioned_func.func_name = "constant_" + func.func_name
-        if promote:
-            elidable_func = jit.elidable_promote()(versioned_func)
+        if promote is not None:
+            elidable_func = jit.elidable_promote(promote)(versioned_func)
         else:
             elidable_func = jit.elidable(versioned_func)
         code = [
