@@ -201,7 +201,7 @@ def func(interp, s_frame, w_rcvr, start, stop, w_replacement, repStart):
 
 @expose_primitive(SCREEN_SIZE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    w_res = interp.space.w_Point.as_class_get_shadow(interp.space).new(2)
+    w_res = interp.space.w_Point.as_class_get_shadow(interp.space).new()
     point = wrapper.PointWrapper(interp.space, w_res)
     display = interp.space.display()
     if display.width == 0:

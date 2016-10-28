@@ -285,7 +285,7 @@ def func(interp, s_frame, f):
 
 @expose_primitive(MAKE_POINT, unwrap_spec=[int, int])
 def func(interp, s_frame, x, y):
-    w_res = interp.space.w_Point.as_class_get_shadow(interp.space).new(2)
+    w_res = interp.space.w_Point.as_class_get_shadow(interp.space).new()
     point = wrapper.PointWrapper(interp.space, w_res)
     point.store_x(x)
     point.store_y(y)
