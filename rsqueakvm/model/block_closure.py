@@ -2,17 +2,9 @@ from rsqueakvm import constants, error
 from rsqueakvm.model.base import W_Object, W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.compiled_methods import W_CompiledMethod
-from rsqueakvm.util.version import Version, VersionMixin, elidable_for_version
 
 from rpython.rlib import jit
 from rpython.rlib.objectmodel import import_from_mixin, we_are_translated
-
-
-# closures are dynamically created, but initially we set their version to this
-# default value, so that when we jit the code including them, we can check this
-# field to see if the closure has ever been modified, and if it hasn't, we can
-# assume that numArgs and startpc are constant
-GENERATED_VERSION = Version()
 
 
 class W_BlockClosure(W_AbstractObjectWithIdentityHash):
@@ -21,10 +13,7 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
     _attrs_ = [ "_w_outerContext",
                 "_startpc",
                 "_numArgs", "_stack",
-                "_w_method",
-                "version" ]
-    _immutable_attrs_ = ["version?"]
-    import_from_mixin(VersionMixin)
+                "_w_method" ]
 
     def pointers_become_one_way(self, space, from_w, to_w):
         W_AbstractObjectWithIdentityHash.pointers_become_one_way(self, space, from_w, to_w)
@@ -39,7 +28,6 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
             ptrs[ptridx] = w_to
             w_from.post_become_one_way(w_to)
         self.store_all(space, ptrs)
-        self.changed()
 
     @jit.unroll_safe
     def __init__(self, space, w_outerctxt, startpc, numArgs, size):
@@ -49,7 +37,6 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
         self._numArgs = numArgs
         self._stack = [space.w_nil] * size
         self._fillin_w_method(space)
-        self.version = GENERATED_VERSION
 
     def fillin(self, space, g_self):
         W_AbstractObjectWithIdentityHash.fillin(self, space, g_self)
@@ -58,7 +45,6 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
             g_obj.fillin(space)
             self.store(space, i, g_obj.w_object)
         self._fillin_w_method(space)
-        self.changed()
 
     def _fillin_w_method(self, space):
         self._w_method = self._w_outerContext.fetch(space, constants.MTHDCTX_METHOD)
@@ -69,7 +55,6 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
     def instsize(self):
         return constants.BLKCLSR_SIZE
 
-    @elidable_for_version(0, promote='1')
     def varsize(self):
         return len(self._stack)
 
@@ -100,15 +85,12 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
     def w_outerContext(self):
         return self._w_outerContext
 
-    @elidable_for_version(0, promote='1')
     def startpc(self):
         return self._startpc
 
-    @elidable_for_version(0, promote='1')
     def numArgs(self):
         return self._numArgs
 
-    @elidable_for_version(0, promote='1')
     def w_method(self):
         return self._w_method
 
@@ -125,7 +107,6 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
                 self._numArgs = space.unwrap_int(w_value)
             else:
                 assert False
-            self.changed()
 
     def atput0(self, space, index0, w_value):
         self._stack[index0] = w_value
