@@ -1,6 +1,7 @@
 from rsqueakvm import constants, error
 from rsqueakvm.model.base import W_Object, W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.util.version import VersionMixin, elidable_for_version
 
 from rpython.rlib import jit
 from rpython.rlib.objectmodel import import_from_mixin, we_are_translated
@@ -10,7 +11,9 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
     bytes_per_slot = 1
     _attrs_ = [ "_w_outerContext",
                 "_startpc",
-                "_numArgs", "_stack" ]
+                "_numArgs", "_stack", "version" ]
+    _immutable_attrs_ = ["version?"]
+    import_from_mixin(VersionMixin)
 
     def pointers_become_one_way(self, space, from_w, to_w):
         W_AbstractObjectWithIdentityHash.pointers_become_one_way(self, space, from_w, to_w)
@@ -25,6 +28,7 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
             ptrs[ptridx] = w_to
             w_from.post_become_one_way(w_to)
         self.store_all(space, ptrs)
+        self.changed()
 
     @jit.unroll_safe
     def __init__(self, space, w_outerctxt, startpc, numArgs, size):
@@ -33,6 +37,7 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
         self._startpc = startpc
         self._numArgs = numArgs
         self._stack = [space.w_nil] * size
+        self.changed()
 
     def fillin(self, space, g_self):
         W_AbstractObjectWithIdentityHash.fillin(self, space, g_self)
@@ -40,6 +45,7 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
         for i, g_obj in enumerate(g_self.pointers):
             g_obj.fillin(space)
             self.store(space, i, g_obj.w_object)
+        self.changed()
 
     def getclass(self, space):
         return space.w_BlockClosure
@@ -47,6 +53,7 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
     def instsize(self):
         return constants.BLKCLSR_SIZE
 
+    @elidable_for_version(0)
     def varsize(self):
         return len(self._stack)
 
@@ -74,12 +81,15 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
     def at0(self, space, index0):
         return self._stack[index0]
 
+    @elidable_for_version(0)
     def w_outerContext(self):
         return self._w_outerContext
 
+    @elidable_for_version(0)
     def startpc(self):
         return self._startpc
 
+    @elidable_for_version(0)
     def numArgs(self):
         return self._numArgs
 
@@ -95,6 +105,7 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
                 self._numArgs = space.unwrap_int(w_value)
             else:
                 assert False
+            self.changed()
 
     def atput0(self, space, index0, w_value):
         self._stack[index0] = w_value
