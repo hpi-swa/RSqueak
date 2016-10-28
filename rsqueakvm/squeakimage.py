@@ -41,7 +41,7 @@ POSSIBLE_IMAGE_OFFSET = 512
 class ImageVersion(object):
     _immutable_fields_ = [
         "magic", "is_big_endian", "is_64bit", "has_closures",
-        "has_floats_reversed", "is_spur"]
+        "has_floats_reversed", "is_modern", "is_spur"]
 
     def __init__(self, magic, is_big_endian, is_64bit, has_closures,
                  has_floats_reversed, is_spur=False):
@@ -107,7 +107,7 @@ set_reader_user_param("threshold=2,function_threshold=2,trace_eagerness=2,loop_l
 
 
 class ImageReader(object):
-    _immutable_fields_ = ["space", "stream", "readerStrategy", "logging_enabled"]
+    _immutable_fields_ = ["space", "stream", "version", "readerStrategy", "logging_enabled"]
 
     def __init__(self, space, stream, logging_enabled=False):
         self.space = space
@@ -727,11 +727,12 @@ class SpurReader(BaseReaderStrategy):
 
 class SqueakImage(object):
     _immutable_fields_ = [
+        "space",
+        "special_objects",
         "w_asSymbol",
-        "w_simulatePrimitive",
         "version",
         "startup_time",
-        "space"
+        "w_simulatePrimitive",
     ]
 
     def __init__(self, reader):
