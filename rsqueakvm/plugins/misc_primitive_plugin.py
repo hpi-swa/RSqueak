@@ -3,10 +3,12 @@ from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.plugins.plugin import Plugin
 
 from rpython.rlib.rarithmetic import r_uint, intmask
+from rpython.rlib import jit
 
 
 MiscPrimitivePlugin = Plugin()
 
+@jit.look_inside_iff(lambda bytes, start: jit.isconstant(len(bytes)) and jit.isconstant(len(start)))
 def _bytesHashLoop(bytes, start):
     hash = start
     for byte in bytes:
