@@ -1,17 +1,28 @@
 from rsqueakvm import constants, error
 from rsqueakvm.model.base import W_Object, W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.pointers import W_PointersObject
-from rsqueakvm.util.version import VersionMixin, elidable_for_version
+from rsqueakvm.model.compiled_methods import W_CompiledMethod
+from rsqueakvm.util.version import Version, VersionMixin, elidable_for_version
 
 from rpython.rlib import jit
 from rpython.rlib.objectmodel import import_from_mixin, we_are_translated
+
+
+# closures are dynamically created, but initially we set their version to this
+# default value, so that when we jit the code including them, we can check this
+# field to see if the closure has ever been modified, and if it hasn't, we can
+# assume that numArgs and startpc are constant
+GENERATED_VERSION = Version()
+
 
 class W_BlockClosure(W_AbstractObjectWithIdentityHash):
     repr_classname = "W_BlockClosure"
     bytes_per_slot = 1
     _attrs_ = [ "_w_outerContext",
                 "_startpc",
-                "_numArgs", "_stack", "version" ]
+                "_numArgs", "_stack",
+                "_w_method",
+                "version" ]
     _immutable_attrs_ = ["version?"]
     import_from_mixin(VersionMixin)
 
@@ -37,7 +48,8 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
         self._startpc = startpc
         self._numArgs = numArgs
         self._stack = [space.w_nil] * size
-        self.changed()
+        self._fillin_w_method(space)
+        self.version = GENERATED_VERSION
 
     def fillin(self, space, g_self):
         W_AbstractObjectWithIdentityHash.fillin(self, space, g_self)
@@ -45,7 +57,11 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
         for i, g_obj in enumerate(g_self.pointers):
             g_obj.fillin(space)
             self.store(space, i, g_obj.w_object)
+        self._fillin_w_method(space)
         self.changed()
+
+    def _fillin_w_method(self, space):
+        self._w_method = self._w_outerContext.fetch(space, constants.MTHDCTX_METHOD)
 
     def getclass(self, space):
         return space.w_BlockClosure
@@ -81,7 +97,6 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
     def at0(self, space, index0):
         return self._stack[index0]
 
-    @elidable_for_version(0)
     def w_outerContext(self):
         return self._w_outerContext
 
@@ -93,12 +108,17 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
     def numArgs(self):
         return self._numArgs
 
+    @elidable_for_version(0)
+    def w_method(self):
+        return self._w_method
+
     def store(self, space, index0, w_value):
         if index0 >= constants.BLKCLSR_SIZE:
             self.atput0(space, index0 - constants.BLKCLSR_SIZE, w_value)
         else:
             if index0 == constants.BLKCLSR_OUTER_CONTEXT:
                 self._w_outerContext = w_value
+                self._fillin_w_method(space)
             elif index0 == constants.BLKCLSR_STARTPC:
                 self._startpc = space.unwrap_int(w_value)
             elif index0 == constants.BLKCLSR_NUMARGS:
@@ -134,11 +154,12 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
         copy._stack = list(self._stack)
         return copy
 
-    def create_frame(self, space, w_outerContext, arguments=[]):
+    def create_frame(self, space, arguments=[]):
         from rsqueakvm import storage_contexts
         s_outerContext = self.w_outerContext().as_context_get_shadow(space)
         assert not s_outerContext.pure_is_block_context()
-        w_method = s_outerContext.w_method()
+        w_method = self.w_method()
+        assert isinstance(w_method, W_CompiledMethod)
         w_receiver = s_outerContext.w_receiver()
         return storage_contexts.ContextPartShadow.build_method_context(
             space,

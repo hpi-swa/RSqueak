@@ -26,19 +26,9 @@ def activateClosure(interp, w_block, args_w):
     blockNumArgs = w_block.numArgs()
     if not blockNumArgs == len(args_w):
         raise PrimitiveFailedError()
-    w_outer_ctxt = w_block.w_outerContext()
-    w_outer_ctxt_class = jit.promote(w_outer_ctxt.getclass(space))
-    if not (w_outer_ctxt_class is space.w_MethodContext or
-            w_outer_ctxt_class is space.w_BlockContext):
-        raise PrimitiveFailedError()
-    assert isinstance(w_outer_ctxt, W_PointersObject)
-
     # additionally to the smalltalk implementation, this also pushes
     # args and copiedValues
-    s_new_frame = w_block.create_frame(space, w_outer_ctxt, arguments=args_w)
-    w_closureMethod = s_new_frame.w_method()
-
-    assert isinstance(w_closureMethod, W_CompiledMethod)
+    s_new_frame = w_block.create_frame(space, arguments=args_w)
     return s_new_frame
 
 
