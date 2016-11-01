@@ -1,3 +1,4 @@
+from rsqueakvm.primitives import index1_0, bytelist, char
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.plugins.plugin import Plugin
@@ -19,10 +20,17 @@ def _bytesHashLoop(bytes, start):
                   & 16383) * 16384)) & r_uint(0x0FFFFFFF)
     return intmask(hash)
 
-@MiscPrimitivePlugin.expose_primitive(unwrap_spec=[object, object, r_uint])
-def primitiveStringHash(interp, s_frame, w_rcvr, thestring, initialHash):
-    if not isinstance(thestring, W_BytesObject):
-        raise PrimitiveFailedError
+@MiscPrimitivePlugin.expose_primitive(unwrap_spec=[object, bytelist, r_uint])
+def primitiveStringHash(interp, s_frame, w_rcvr, thebytes, initialHash):
     hash = r_uint(initialHash) & r_uint(0xFFFFFFF)
-    bytes = thestring.getbytes()
-    return interp.space.wrap_smallint_unsafe(_bytesHashLoop(bytes, hash))
+    return interp.space.wrap_smallint_unsafe(_bytesHashLoop(thebytes, hash))
+
+@MiscPrimitivePlugin.expose_primitive(unwrap_spec=[object, char, bytelist, index1_0])
+def primitiveIndexOfAsciiInString(interp, s_frame, w_rcvr, thechar, thebytes, start):
+    if start < 0:
+        raise PrimitiveFailedError
+    try:
+        res = thebytes.index(thechar, start) + 1
+    except ValueError:
+        res = 0
+    return interp.space.wrap_smallint_unsafe(res)

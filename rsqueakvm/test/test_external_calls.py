@@ -213,3 +213,35 @@ def test_locale_plugin_primLang(monkeypatch):
     monkeypatch.setattr(rlocale, "setlocale", setlocale)
     w_locale_str = external_call('LocalePlugin', 'primitiveLanguage', [space.w_nil])
     assert space.unwrap_string(w_locale_str) == "en"
+
+def test_misc_primitiveIndexOfAscciiInString(monkeypatch):
+    assert space.unwrap_int(
+        external_call(
+            'MiscPrimitivePlugin',
+            'primitiveIndexOfAsciiInString',
+            [space.w_nil, space.wrap_char("f"), space.w("foo"), space.w(1)])) == 1
+    assert space.unwrap_int(
+        external_call(
+            'MiscPrimitivePlugin',
+            'primitiveIndexOfAsciiInString',
+            [space.w_nil, space.wrap_char("o"), space.w("foo"), space.w(1)])) == 2
+    assert space.unwrap_int(
+        external_call(
+            'MiscPrimitivePlugin',
+            'primitiveIndexOfAsciiInString',
+            [space.w_nil, space.wrap_char("f"), space.w("foo"), space.w(2)])) == 0
+    assert space.unwrap_int(
+        external_call(
+            'MiscPrimitivePlugin',
+            'primitiveIndexOfAsciiInString',
+            [space.w_nil, space.wrap_char("f"), space.w("foo"), space.w(100)])) == 0
+    with py.test.raises(PrimitiveFailedError):
+        external_call(
+            'MiscPrimitivePlugin',
+            'primitiveIndexOfAsciiInString',
+            [space.w_nil, space.wrap_char("f"), space.w("foo"), space.w(0)])
+    with py.test.raises(PrimitiveFailedError):
+        external_call(
+            'MiscPrimitivePlugin',
+            'primitiveIndexOfAsciiInString',
+            [space.w_nil, space.wrap_char("f"), space.w("foo"), space.w(-1)])

@@ -33,6 +33,7 @@ def assert_pointers(w_obj):
 index1_0 = object()
 char = object()
 pos_32bit_int = object()
+bytelist = object()
 
 
 def unwrap_alternatives(unwrap_specs=None):
@@ -119,6 +120,10 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                     elif spec is str:
                         assert isinstance(w_arg, W_BytesObject)
                         args += (interp.space.unwrap_string(w_arg), )
+                    elif spec is bytelist:
+                        if not isinstance(w_arg, W_BytesObject):
+                            raise PrimitiveFailedError
+                        args += (w_arg.getbytes(), )
                     elif spec is list:
                         assert isinstance(w_arg, W_PointersObject)
                         args += (interp.space.unwrap_array(w_arg), )
