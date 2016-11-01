@@ -24,17 +24,11 @@ for name, primitive in bitops.items():
 
 @LargeIntegers.expose_primitive(unwrap_spec=[rbigint, rbigint])
 def primDigitAdd(interp, s_frame, rcvr, arg):
-    if rcvr.sign != arg.sign: # Squeak has weird large integer semantics :(
-        return interp.space.wrap_rbigint(rcvr.sub(arg))
-    else:
-        return interp.space.wrap_rbigint(rcvr.add(arg))
+    return interp.space.wrap_rbigint(rcvr.add(arg) if rcvr.sign == arg.sign else rcvr.sub(arg))
 
 @LargeIntegers.expose_primitive(unwrap_spec=[rbigint, rbigint])
 def primDigitSubtract(interp, s_frame, rcvr, arg):
-    if rcvr.sign != arg.sign: # Squeak has weird large integer semantics :(
-        return interp.space.wrap_rbigint(rcvr.add(arg))
-    else:
-        return interp.space.wrap_rbigint(rcvr.sub(arg))
+    return interp.space.wrap_rbigint(rcvr.sub(arg) if rcvr.sign == arg.sign else rcvr.add(arg))
 
 @LargeIntegers.expose_primitive(unwrap_spec=[rbigint, rbigint, object])
 def primDigitMultiplyNegative(interp, s_frame, rcvr, arg, neg):
