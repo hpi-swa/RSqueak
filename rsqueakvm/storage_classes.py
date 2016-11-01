@@ -1,7 +1,7 @@
 from rsqueakvm import constants, error
 from rsqueakvm.model.base import W_Object
 from rsqueakvm.model.compiled_methods import W_CompiledMethod, W_PreSpurCompiledMethod, W_SpurCompiledMethod
-from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargePositiveInteger1Word
+from rsqueakvm.model.numeric import W_MutableFloat, W_SmallInteger, W_LargePositiveInteger1Word
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.storage import AbstractCachingShadow, AbstractGenericShadow
@@ -233,7 +233,7 @@ class ClassShadow(AbstractCachingShadow):
             else:
                 w_new = W_PreSpurCompiledMethod(self.space, extrasize)
         elif instance_kind == FLOAT:
-            w_new = W_Float(0)  # Squeak gives a random piece of memory
+            w_new = W_MutableFloat(0)
         elif instance_kind == LARGE_POSITIVE_INTEGER:
             if extrasize <= 4:
                 w_new = W_LargePositiveInteger1Word(0, extrasize)

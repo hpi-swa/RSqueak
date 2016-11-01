@@ -2,7 +2,7 @@ import math
 
 from rsqueakvm import constants, storage_contexts, wrapper, error
 from rsqueakvm.model.pointers import W_PointersObject
-from rsqueakvm.model.numeric import (W_Float, W_SmallInteger,
+from rsqueakvm.model.numeric import (W_Float, W_SmallInteger, W_MutableFloat,
                                      W_LargePositiveInteger1Word)
 from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.primitives.constants import PERFORM_WITH_ARGS, PERFORM
@@ -245,18 +245,18 @@ def test_pi_as_w_float():
     w_result = perform(interp.space.w_Float, "pi")
     assert w_result is not None
     assert isinstance(w_result, W_Float)
-    assert w_result.value == math.pi
+    assert w_result.getvalue() == math.pi
 
 def test_new_float_as_w_float():
     w_result = perform(interp.space.w_Float, "new")
     assert w_result is not None
-    assert isinstance(w_result, W_Float)
+    assert isinstance(w_result, W_MutableFloat)
 
 def test_existing_large_positive_integer_as_W_LargePositiveInteger1Word():
     w_result = perform(interp.space.w_Float, "pi")
     assert w_result is not None
     assert isinstance(w_result, W_Float)
-    assert w_result.value == math.pi
+    assert w_result.getvalue() == math.pi
 
 def test_large_positive_integer_operation_add():
     w_result = perform(interp.space.w_SmallInteger, "maxVal")

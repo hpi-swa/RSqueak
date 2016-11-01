@@ -8,24 +8,21 @@ from rpython.rlib.rarithmetic import intmask, r_uint32, r_uint, ovfcheck, r_int6
 from rpython.rlib.objectmodel import compute_hash
 
 
-class W_Float(W_AbstractObjectWithIdentityHash):
-    """Boxed float value."""
-    _attrs_ = ['value']
-    _immutable_fields_ = ['value?']
-    repr_classname = "W_Float"
+class W_AbstractFloat(W_AbstractObjectWithIdentityHash):
+    _attrs_ = []
 
     def fillin_fromwords(self, space, high, low):
         from rpython.rlib.rstruct.ieee import float_unpack
         from rpython.rlib.rarithmetic import r_ulonglong
         # TODO: support for larger float values?
         r = (r_ulonglong(high) << 32) | low
-        self.value = float_unpack(r, 8)
+        self.setvalue(float_unpack(r, 8))
 
     def __init__(self, value):
-        self.value = value
+        self.setvalue(value)
 
     def unwrap_string(self, space):
-        word = longlong2float.float2longlong(self.value)
+        word = longlong2float.float2longlong(self.getvalue())
         return "".join([chr(word & 0x000000ff),
                         chr((word >> 8) & 0x000000ff),
                         chr((word >> 16) & 0x000000ff),
@@ -50,41 +47,40 @@ class W_Float(W_AbstractObjectWithIdentityHash):
         return "Float"
 
     def str_content(self):
-        return "%f" % self.value
+        return "%f" % self.getvalue()
 
     def gethash(self):
-        return (intmask(compute_hash(self.value)) % 2**22) + 1
-
-    def invariant(self):
-        return isinstance(self.value, float)
+        return (intmask(compute_hash(self.getvalue())) % 2**22) + 1
 
     def _become(self, w_other):
-        assert isinstance(w_other, W_Float)
-        self.value, w_other.value = w_other.value, self.value
+        assert isinstance(w_other, W_AbstractFloat)
+        self_value, w_other_value = self.getvalue(), w_other.getvalue()
+        self.setvalue(w_other_value)
+        w_other.setvalue(self_value)
         W_AbstractObjectWithIdentityHash._become(self, w_other)
 
     def is_same_object(self, other):
-        if not isinstance(other, W_Float):
+        if not isinstance(other, W_AbstractFloat):
             return False
-        return ((self.value == other.value) or
-                (math.isnan(self.value) and math.isnan(other.value)))
+        return ((self.getvalue() == other.getvalue()) or
+                (math.isnan(self.getvalue()) and math.isnan(other.getvalue())))
 
     def __eq__(self, other):
-        if not isinstance(other, W_Float):
+        if not isinstance(other, W_AbstractFloat):
             return False
-        return self.value == other.value
+        return self.getvalue() == other.getvalue()
 
     def __ne__(self, other):
         return not self == other
 
     def __hash__(self):
-        return hash(self.value)
+        return hash(self.getvalue())
 
     def clone(self, space):
         return self
 
     def unwrap_float(self, space):
-        return self.value
+        return self.getvalue()
 
     def at0(self, space, index0):
         return self.fetch(space, index0)
@@ -94,7 +90,7 @@ class W_Float(W_AbstractObjectWithIdentityHash):
 
     def fetch(self, space, n0):
         from rpython.rlib.rstruct.ieee import float_pack
-        r = float_pack(self.value, 8)  # C double
+        r = float_pack(self.getvalue(), 8)  # C double
         if n0 == 0:
             return space.wrap_uint(r_uint32(intmask(r >> 32)))
         else:
@@ -111,16 +107,47 @@ class W_Float(W_AbstractObjectWithIdentityHash):
         from rpython.rlib.rarithmetic import r_ulonglong
 
         uint = r_ulonglong(space.unwrap_uint(w_obj))
-        r = float_pack(self.value, 8)
+        r = float_pack(self.getvalue(), 8)
         if n0 == 0:
             r = ((r << 32) >> 32) | (uint << 32)
         else:
             assert n0 == 1
             r = ((r >> 32) << 32) | uint
-        self.value = float_unpack(r, 8)
+        self.setvalue(float_unpack(r, 8))
 
     def size(self):
         return constants.WORDS_IN_FLOAT
+
+
+class W_Float(W_AbstractFloat):
+    """Boxed float value."""
+    _attrs_ = ['value']
+    _immutable_fields_ = ['value?']
+    repr_classname = "W_Float"
+
+    def getvalue(self):
+        return self.value
+
+    def setvalue(self, v):
+        self.value = v
+
+
+class W_MutableFloat(W_AbstractFloat):
+    """Balloon frequently converts 32-bit words into Floats from within the image.
+    If we give a normal W_Float and let Balloon mutate the words to fill it in,
+    we always have to abort any trace because we're forcing a quasi-immutable.
+    So just for those cases where someone in the image is creating floats using
+    `new' (in storage_classes.py), we use W_MutableFloat instances, which do not
+    declare they're value as quasi-immutable."""
+    _attrs_ = ["m_value"]
+    _immutable_fields_ = []
+    repr_classname = "W_MutableFloat"
+
+    def getvalue(self):
+        return self.m_value
+
+    def setvalue(self, v):
+        self.m_value = v
 
 
 class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
