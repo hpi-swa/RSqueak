@@ -25,12 +25,19 @@ def primitiveStringHash(interp, s_frame, w_rcvr, thebytes, initialHash):
     hash = r_uint(initialHash) & r_uint(0xFFFFFFF)
     return interp.space.wrap_smallint_unsafe(_bytesHashLoop(thebytes, hash))
 
+@jit.look_inside_iff(lambda thechar, thebytes, start: jit.isconstant(thechar) and jit.isconstant(len(thebytes)) and jit.isconstant(start))
+def _indexOfLoop(thechar, thebytes, start):
+    assert start >= 0
+    while True:
+        try:
+            if thebytes[start] == thechar:
+                return start + 1
+        except IndexError:
+            return 0
+        start += 1
+
 @MiscPrimitivePlugin.expose_primitive(unwrap_spec=[object, char, bytelist, index1_0])
 def primitiveIndexOfAsciiInString(interp, s_frame, w_rcvr, thechar, thebytes, start):
     if start < 0:
         raise PrimitiveFailedError
-    try:
-        res = thebytes[start:].index(thechar) + 1
-    except ValueError:
-        res = 0
-    return interp.space.wrap_smallint_unsafe(res)
+    return interp.space.wrap_smallint_unsafe(_indexOfLoop(thechar, thebytes, start))
