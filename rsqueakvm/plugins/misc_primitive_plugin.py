@@ -30,7 +30,7 @@ def primitiveIndexOfAsciiInString(interp, s_frame, w_rcvr, thechar, thebytes, st
     if start < 0:
         raise PrimitiveFailedError
     try:
-        res = thebytes.index(thechar, start) + 1
+        res = thebytes[start:].index(thechar) + 1
     except ValueError:
         res = 0
     return interp.space.wrap_smallint_unsafe(res)
