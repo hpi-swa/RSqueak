@@ -45,7 +45,6 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
             g_obj.fillin(space)
             self.store(space, i, g_obj.w_object)
         if self._w_outerContext is not None:
-            self._w_outerContext.fillin(space)
             self._fillin_w_method(space)
 
     def _fillin_w_method(self, space):
