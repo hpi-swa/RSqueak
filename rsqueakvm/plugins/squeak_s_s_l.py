@@ -122,7 +122,7 @@ class W_SSLHandle(W_AbstractObjectWithIdentityHash):
         _debug_in_interpreter()
         self.log("W_SSLHandle.setup: setting method")
         self.log("W_SSLHandle.setup: Creating context")
-        self.ctx = ropenssl.libssl_SSL_CTX_new(ropenssl.libssl_SSLv23_method())
+        self.ctx = ropenssl.libssl_SSL_CTX_new(ropenssl.libssl_TLS_method())
         # ropenssl.libssl_SSL_CTX_set_verify(
         #     self.ctx, ropenssl.SSL_VERIFY_NONE, None)
         # if ropenssl.libssl_SSL_CTX_set_options(
