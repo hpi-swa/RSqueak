@@ -139,7 +139,8 @@ class ClassShadow(AbstractCachingShadow):
             self.instance_kind = FORWARDER_AND_INVALID
             # immediate classes like SmallInteger and Character have this
             # to prevent instantiation
-        elif 10 <= format <= 11:
+        elif 9 <= format <= 15:
+            # TODO: split format 9 (64-bit words) and 12-15 (16-bit shorts)
             if self.space.w_Float.is_same_object(self.w_self()):
                 self.instance_kind = FLOAT
             else:

@@ -713,6 +713,10 @@ class SpurReader(BaseReaderStrategy):
                 g_object.len_bytes() <= constants.BYTES_PER_MACHINE_INT)
 
     def iswords(self, g_object):
+        if not system.IS_64BIT and g_object.format == 9:
+            # 64-bit words objects are not supported in our 32-bit VM, because
+            # we mush them all together
+            self.log("Warning: a 64bit-words object is being truncated to 32-bits.")
         return 9 <= g_object.format <= 15
 
     def isbytes(self, g_object):
