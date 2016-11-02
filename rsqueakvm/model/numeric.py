@@ -4,22 +4,28 @@ from rsqueakvm import constants, error
 from rsqueakvm.model.base import W_Object, W_AbstractObjectWithIdentityHash
 
 from rpython.rlib import longlong2float, jit
-from rpython.rlib.rarithmetic import intmask, r_uint32, r_uint, ovfcheck, r_int64
+from rpython.rlib.rarithmetic import intmask, r_uint32, r_uint, ovfcheck, r_int64, r_ulonglong
+from rpython.rlib.rstruct.ieee import float_unpack, float_pack
 from rpython.rlib.objectmodel import compute_hash
 
 
 class W_AbstractFloat(W_AbstractObjectWithIdentityHash):
     _attrs_ = []
 
-    def fillin_fromwords(self, space, high, low):
-        from rpython.rlib.rstruct.ieee import float_unpack
-        from rpython.rlib.rarithmetic import r_ulonglong
-        # TODO: support for larger float values?
-        r = (r_ulonglong(high) << 32) | low
-        self.setvalue(float_unpack(r, 8))
-
     def __init__(self, value):
-        self.setvalue(value)
+        raise NotImplementedError
+
+    def fillin_fromwords(self, space, high, low):
+        raise NotImplementedError
+
+    def store(self, space, n0, w_obj):
+        raise NotImplementedError
+
+    def getvalue(self):
+        raise NotImplementedError
+
+    def setvalue(self, v):
+        raise NotImplementedError
 
     def unwrap_string(self, space):
         word = longlong2float.float2longlong(self.getvalue())
@@ -89,7 +95,6 @@ class W_AbstractFloat(W_AbstractObjectWithIdentityHash):
         self.store(space, index0, w_value)
 
     def fetch(self, space, n0):
-        from rpython.rlib.rstruct.ieee import float_pack
         r = float_pack(self.getvalue(), 8)  # C double
         if n0 == 0:
             return space.wrap_uint(r_uint32(intmask(r >> 32)))
@@ -102,19 +107,6 @@ class W_AbstractFloat(W_AbstractObjectWithIdentityHash):
             else:
                 return space.wrap_uint(r_uint32(intmask(r)))
 
-    def store(self, space, n0, w_obj):
-        from rpython.rlib.rstruct.ieee import float_unpack, float_pack
-        from rpython.rlib.rarithmetic import r_ulonglong
-
-        uint = r_ulonglong(space.unwrap_uint(w_obj))
-        r = float_pack(self.getvalue(), 8)
-        if n0 == 0:
-            r = ((r << 32) >> 32) | (uint << 32)
-        else:
-            assert n0 == 1
-            r = ((r >> 32) << 32) | uint
-        self.setvalue(float_unpack(r, 8))
-
     def size(self):
         return constants.WORDS_IN_FLOAT
 
@@ -124,6 +116,24 @@ class W_Float(W_AbstractFloat):
     _attrs_ = ['value']
     _immutable_fields_ = ['value?']
     repr_classname = "W_Float"
+
+    def __init__(self, value):
+        self.value = value
+
+    def fillin_fromwords(self, space, high, low):
+        # TODO: support for larger float values?
+        r = (r_ulonglong(high) << 32) | low
+        self.value = float_unpack(r, 8)
+
+    def store(self, space, n0, w_obj):
+        uint = r_ulonglong(space.unwrap_uint(w_obj))
+        r = float_pack(self.getvalue(), 8)
+        if n0 == 0:
+            r = ((r << 32) >> 32) | (uint << 32)
+        else:
+            assert n0 == 1
+            r = ((r >> 32) << 32) | uint
+        self.value = float_unpack(r, 8)
 
     def getvalue(self):
         return self.value
@@ -139,15 +149,36 @@ class W_MutableFloat(W_AbstractFloat):
     So just for those cases where someone in the image is creating floats using
     `new' (in storage_classes.py), we use W_MutableFloat instances, which do not
     declare they're value as quasi-immutable."""
-    _attrs_ = ["m_value"]
+    _attrs_ = ["high", "low"]
     _immutable_fields_ = []
     repr_classname = "W_MutableFloat"
 
+    def __init__(self, value):
+        assert value == 0
+        self.high = r_uint32(0)
+        self.low = r_uint32(0)
+
+    def store(self, space, n0, w_obj):
+        """Floats are stored in big-endian (PowerPC) order"""
+        if n0 == 0:
+            self.high = r_uint32(space.unwrap_uint(w_obj))
+        elif n0 == 1:
+            self.low = r_uint32(space.unwrap_uint(w_obj))
+        else:
+            raise error.PrimitiveFailedError
+
     def getvalue(self):
-        return self.m_value
+        # Should be rarely called, probably only to do arithmetic once, and then
+        # return a new W_Float.
+        from rpython.rlib.rstruct.ieee import float_unpack
+        return float_unpack((r_ulonglong(self.high) << 32) | r_ulonglong(self.low), 8)
 
     def setvalue(self, v):
-        self.m_value = v
+        # This will only be called if we `become' a W_MutableFloat, should be rare
+        r = float_pack(v, 8)
+        # just shift and mask
+        self.high = r_uint32(r >> 32)
+        self.low = r_uint32(r)
 
 
 class W_LargePositiveInteger1Word(W_AbstractObjectWithIdentityHash):
