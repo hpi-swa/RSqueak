@@ -237,6 +237,7 @@ class BaseReaderStrategy(object):
         self.fillin_w_objects()
         self.populate_special_objects()
         self.fillin_weak_w_objects()
+        self.fillin_finalize()
 
     def read_body(self):
         raise NotImplementedError("subclass must override this")
@@ -322,6 +323,10 @@ class BaseReaderStrategy(object):
     def fillin_weak_w_object(self, chunk):
         fillin_weak_w_objects_driver.jit_merge_point(self=self, chunk=chunk)
         chunk.g_object.fillin_weak(self.space)
+
+    def fillin_finalize(self):
+        for chunk in self.chunks.itervalues():
+            chunk.g_object.fillin_finalize(self.space)
 
     def len_bytes_of(self, chunk):
         return len(chunk.data) * 4
@@ -879,6 +884,9 @@ class GenericObject(object):
         if not self.filled_in_weak and self.isweak():
             self.filled_in_weak = True
             self.w_object.fillin_weak(space, self)
+
+    def fillin_finalize(self, space):
+        self.w_object.fillin_finalize(space, self)
 
     def get_g_pointers(self):
         assert self.pointers is not None

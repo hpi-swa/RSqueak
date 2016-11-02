@@ -43,9 +43,19 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
         self._stack = [space.w_nil] * len(g_self.pointers)
         for i, g_obj in enumerate(g_self.pointers):
             g_obj.fillin(space)
-            self.store(space, i, g_obj.w_object)
-        if self._w_outerContext is not None:
-            self._fillin_w_method(space)
+            if i >= constants.BLKCLSR_SIZE:
+                self.atput0(space, i - constants.BLKCLSR_SIZE, g_obj.w_object)
+            elif i == constants.BLKCLSR_OUTER_CONTEXT:
+                self._w_outerContext = g_obj.w_object
+            elif i == constants.BLKCLSR_STARTPC:
+                self._startpc = space.unwrap_int(g_obj.w_object)
+            elif i == constants.BLKCLSR_NUMARGS:
+                self._numArgs = space.unwrap_int(g_obj.w_object)
+            else:
+                assert False
+
+    def fillin_finalize(self, space, g_self):
+        self._fillin_w_method(space)
 
     def _fillin_w_method(self, space):
         self._w_method = self._w_outerContext.fetch(space, constants.MTHDCTX_METHOD)

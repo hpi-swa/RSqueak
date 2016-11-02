@@ -86,6 +86,9 @@ class W_Object(object):
     def fillin_weak(self, space, g_self):
         raise NotImplementedError()
 
+    def fillin_finalize(self, space, g_self):
+        pass
+
     def getword(self, n0):
         raise NotImplementedError()
 
