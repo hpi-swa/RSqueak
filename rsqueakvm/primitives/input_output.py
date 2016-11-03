@@ -177,8 +177,14 @@ def func(interp, s_frame, w_rcvr):
         interp.image.lastWindowSize = (form.width() << 16) + form.height()
     return w_rcvr
 
+@jit.look_inside_iff(lambda space, start, stop, repOff, w_rcvr, w_replacement: (
+    jit.isconstant(stop) and jit.isconstant(start) and
+    jit.isconstant(repOff) and (stop - start < 13))) # heuristic
+def _replace_from_to(space, start, stop, repOff, w_rcvr, w_replacement):
+    for i0 in range(start, stop + 1):
+        w_rcvr.atput0(space, i0, w_replacement.at0(space, repOff + i0))
+
 @expose_primitive(REPLACE_FROM_TO, unwrap_spec=[object, index1_0, index1_0, object, index1_0])
-@jit.look_inside_iff(lambda interp, s_frame, w_rcvr, start, stop, w_replacement, repStart: jit.isconstant(stop) and jit.isconstant(start) and (stop - start < 13)) # heuristic
 def func(interp, s_frame, w_rcvr, start, stop, w_replacement, repStart):
     """replaceFrom: start to: stop with: replacement startingAt: repStart
     Primitive. This destructively replaces elements from start to stop in the
@@ -195,8 +201,7 @@ def func(interp, s_frame, w_rcvr, start, stop, w_replacement, repStart):
     if (w_rcvr.varsize() <= stop or w_replacement.varsize() <= repStart + (stop - start)):
         raise PrimitiveFailedError()
     repOff = repStart - start
-    for i0 in range(start, stop + 1):
-        w_rcvr.atput0(interp.space, i0, w_replacement.at0(interp.space, repOff + i0))
+    _replace_from_to(interp.space, start, stop, repOff, w_rcvr, w_replacement)
     return w_rcvr
 
 @expose_primitive(SCREEN_SIZE, unwrap_spec=[object])
