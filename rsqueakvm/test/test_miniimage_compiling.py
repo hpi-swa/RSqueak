@@ -263,3 +263,17 @@ def test_snapshotPrimitive(tmpdir):
             'w_mustBeBoolean'
     ]:
         assert space.unwrap_string(space.objtable[f]) == space2.unwrap_string(space2.objtable[f])
+
+def test_convert_words_to_bytes():
+    sourcecode = """primitiveChangeClassTo: anObject
+    <primitive: 115>
+    """
+    w_s = perform(space.w_Bitmap, "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
+    sourcecode = """calcEndianness
+    | wordThenBytes |
+    wordThenBytes := Bitmap with: 16r01020304.
+    wordThenBytes primitiveChangeClassTo: ByteArray basicNew.
+    wordThenBytes first = 4 ifTrue: [^ #little].
+    ^ #big"""
+    w_s = perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
+    assert perform(w(5), w_s).unwrap_string(space) == "little"

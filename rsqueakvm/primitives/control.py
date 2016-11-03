@@ -82,6 +82,11 @@ def func(interp, s_frame, w_rcvr, w_arg):
     elif (isinstance(w_arg, W_LargePositiveInteger1Word) and isinstance(w_rcvr, W_BytesObject)):
         w_rcvr.change_class(interp.space, interp.space.w_LargePositiveInteger)
         return w_rcvr
+    elif isinstance(w_rcvr, W_WordsObject) and isinstance(w_arg, W_BytesObject):
+        wordsize = constants.BYTES_PER_WORD
+        w_rcvr.convert_to_bytes_layout(wordsize)
+        w_rcvr.change_class(interp.space, w_arg_class)
+        return w_rcvr
     else:
         # TODO: this should also work to change bytes to words and such
         raise PrimitiveNotYetWrittenError
