@@ -36,7 +36,6 @@ def w_l(largeInteger):
         return W_LargePositiveInteger1Word(intmask(largeInteger))
     else:
         assert largeInteger < 0
-        assert space.w_LargeNegativeInteger is not None
         w_o = W_BytesObject(space, space.w_LargeNegativeInteger, 4)
         w_li = W_LargePositiveInteger1Word(intmask(-largeInteger))
         w_o.bytes = list(w_li.unwrap_string(space))

@@ -631,9 +631,7 @@ def copyBitsFromtoat(x0, x1, y):
 # #if VM_PROXY_MINOR > 2
 @expose_on_virtual_machine_proxy([], oop, minor=2)
 def classLargeNegativeInteger():
-    if IProxy.space.w_LargeNegativeInteger is not None:
-        return IProxy.space.w_LargeNegativeInteger
-    raise ProxyFunctionFailed
+    return IProxy.space.w_LargeNegativeInteger
 
 @expose_on_virtual_machine_proxy([int], oop, minor=2)
 def signed32BitIntegerFor(n):

@@ -253,8 +253,6 @@ class ObjSpace(object):
 
     @specialize.argtype(1)
     def wrap_nlonglong(self, val):
-        if self.w_LargeNegativeInteger is None:
-            raise WrappingError
         assert val < 0
         try:
             r_val = r_ulonglong(-val)
@@ -310,8 +308,6 @@ class ObjSpace(object):
         if val > 0:
             return self.wrap_large_number(val, self.w_LargePositiveInteger)
         else:
-            if self.w_LargeNegativeInteger is None:
-                raise WrappingError
             try:
                 r_val = r_longlonglong(-val)
             except OverflowError:

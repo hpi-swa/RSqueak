@@ -150,8 +150,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
                 raise error.UnwrappingError("Too large to convert bytes to word")
         if self.getclass(space).is_same_object(space.w_LargePositiveInteger):
             return word
-        elif ((space.w_LargeNegativeInteger is not None) and
-              self.getclass(space).is_same_object(space.w_LargeNegativeInteger)):
+        elif self.getclass(space).is_same_object(space.w_LargeNegativeInteger):
             return -word
         else:
             raise error.UnwrappingError
@@ -163,8 +162,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
                 word = 0
                 for i in range(self.size()):
                     word += ord(self.getchar(i)) << 8*i
-                if (space.w_LargeNegativeInteger is not None and
-                    self.getclass(space).is_same_object(space.w_LargeNegativeInteger)):
+                if self.getclass(space).is_same_object(space.w_LargeNegativeInteger):
                     return -word
                 else:
                     return word
@@ -173,8 +171,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
     def unwrap_rbigint(self, space):
         if self.getclass(space).is_same_object(space.w_LargePositiveInteger):
             return self.getrbigint(self.version)
-        elif ((space.w_LargeNegativeInteger is not None) and
-              self.getclass(space).is_same_object(space.w_LargeNegativeInteger)):
+        elif self.getclass(space).is_same_object(space.w_LargeNegativeInteger):
             return self.getrbigint(self.version).neg()
         else:
             raise error.UnwrappingError
