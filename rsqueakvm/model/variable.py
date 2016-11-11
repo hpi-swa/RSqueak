@@ -4,7 +4,7 @@ from rsqueakvm.util.version import Version
 
 from rpython.rlib import jit
 from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32, r_int64
-from rpython.rlib.objectmodel import we_are_translated, always_inline
+from rpython.rlib.objectmodel import we_are_translated, always_inline, specialize
 from rpython.rtyper.lltypesystem import lltype, rffi
 
 
@@ -393,6 +393,7 @@ class NativeWordsWrapper(AbstractNativeWordsWrapper):
 
 
 @always_inline
+@specialize.argtype(0)
 def r_char(x):
     return rffi.cast(rffi.CHAR, x)
 
