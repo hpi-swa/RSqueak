@@ -290,6 +290,12 @@ class BaseReaderStrategy(object):
             raise IndexError
         return self.special_g_objects[index]
 
+    def special_g_object_safe(self, index):
+        # while python would raise an IndexError, after translation a nonexisting key results in a segfault...
+        if index >= len(self.special_g_objects):
+            return self.special_g_objects[constants.SO_NIL]
+        return self.special_g_objects[index]
+
     def init_w_objects(self):
         self._progress.next_stage(len(self.chunks))
         for g in self.special_g_objects:
@@ -487,26 +493,22 @@ class NonSpurReader(BaseReaderStrategy):
         return 8 <= g_object.format <= 11
 
     def islargeinteger(self, g_object):
-        g_lpi = self.special_g_object(constants.SO_LARGEPOSITIVEINTEGER_CLASS)
-        g_lni = self.special_g_object(constants.SO_NIL)
-        try:
-            g_lni = self.special_g_object(constants.SO_LARGENEGATIVEINTEGER_CLASS)
-        except IndexError:
-            pass
+        g_lpi = self.special_g_object_safe(constants.SO_LARGEPOSITIVEINTEGER_CLASS)
+        g_lni = self.special_g_object_safe(constants.SO_LARGENEGATIVEINTEGER_CLASS)
         is_large = (g_lpi == g_object.g_class or g_lni == g_object.g_class)
         if is_large:
             assert self.isbytes(g_object)
         return is_large
 
     def ischar(self, g_object):
-        g_char = self.special_g_object(constants.SO_CHARACTER_CLASS)
+        g_char = self.special_g_object_safe(constants.SO_CHARACTER_CLASS)
         return (self.ispointers(g_object) and g_object.g_class == g_char)
 
     def iswords(self, g_object):
         return g_object.format == 6
 
     def isblockclosure(self, g_object):
-        g_closure = self.special_g_object(constants.SO_BLOCKCLOSURE_CLASS)
+        g_closure = self.special_g_object_safe(constants.SO_BLOCKCLOSURE_CLASS)
         return self.ispointers(g_object) and g_closure == g_object.g_class.w_object
 
     def ispointers(self, g_object):
@@ -713,11 +715,11 @@ class SpurReader(BaseReaderStrategy):
 
 
     def ischar(self, g_object):
-        g_char = self.special_g_object(constants.SO_CHARACTER_CLASS)
+        g_char = self.special_g_object_safe(constants.SO_CHARACTER_CLASS)
         return (self.ispointers(g_object) and g_object.g_class == g_char)
 
     def isblockclosure(self, g_object):
-        g_closure = self.special_g_object(constants.SO_BLOCKCLOSURE_CLASS)
+        g_closure = self.special_g_object_safe(constants.SO_BLOCKCLOSURE_CLASS)
         return self.ispointers(g_object) and g_closure == g_object.g_class.w_object
 
     def ispointers(self, g_object):
@@ -727,8 +729,8 @@ class SpurReader(BaseReaderStrategy):
         return 4 <= g_object.format <= 5
 
     def islargeinteger(self, g_object):
-        g_lpi = self.special_g_object(constants.SO_LARGEPOSITIVEINTEGER_CLASS)
-        g_lni = self.special_g_object(constants.SO_LARGENEGATIVEINTEGER_CLASS)
+        g_lpi = self.special_g_object_safe(constants.SO_LARGEPOSITIVEINTEGER_CLASS)
+        g_lni = self.special_g_object_safe(constants.SO_LARGENEGATIVEINTEGER_CLASS)
         is_large = (g_lpi == g_object.g_class or g_lni == g_object.g_class)
         if is_large:
             assert self.isbytes(g_object)
