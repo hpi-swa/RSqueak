@@ -1061,12 +1061,12 @@ class SpurImageWriter(object):
             # make sure we store all the stuff the space knows, too, so we
             # 'upgrade' old images with a newer special objects table in Spur
             # format
-            for idx,name in enumerate(constants.classes_in_special_object_table):
+            for idx,name in enumerate(constants.classes_in_special_object_table.iterkeys()):
                 try:
                     w_special_objects.store(self.space, idx, self.space.special_object(name))
                 except (KeyError, IndexError):
                     pass
-            for idx,name in enumerate(constants.objects_in_special_object_table):
+            for idx,name in enumerate(constants.objects_in_special_object_table.iterkeys()):
                 try:
                     w_special_objects.store(self.space, idx, self.space.special_object(name))
                 except (KeyError, IndexError):
@@ -1179,12 +1179,12 @@ class SpurImageWriter(object):
                 if obj.value <= constants.TAGGED_MAXINT32:
                     newoop = (obj.value << 1) + 1
                 else:
-                    return self.reserve(self.space.wrap_large_number(r_ulonglong(obj.value), self.space.w_LargePositiveInteger))
+                    return self.reserve(self.space.wrap_int(r_longlong(obj.value)))
             else:
                 if obj.value >= constants.TAGGED_MININT32:
                     newoop = intmask((((r_int64(1) << 31) + obj.value) << 1) + 1)
                 else:
-                    return self.reserve(self.space.wrap_large_number(r_ulonglong(obj.value), self.space.w_LargeNegativeInteger))
+                    return self.reserve(self.space.wrap_int(r_longlong(obj.value)))
             return (newoop, 0, 0, 0, 0)
         elif isinstance(obj, W_Character):
             assert obj.value < constants.TAGGED_MAXINT32

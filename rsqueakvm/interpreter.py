@@ -189,7 +189,7 @@ class Interpreter(object):
                     elif name == "ClassBinding":
                         self.space.objtable[name] = self.space.smalltalk_at("ClassBinding")
                     elif name == "LargeNegativeInteger":
-                        s_lpi = self.space.objtable["LargePositiveInteger"].as_class_get_shadow(sef.space)
+                        s_lpi = self.space.objtable["LargePositiveInteger"].as_class_get_shadow(self.space)
                         for s_class in s_lpi.subclass_s:
                             if s_class.getname() == "LargeNegativeInteger":
                                 self.space.objtable[name] = s_class.w_self()

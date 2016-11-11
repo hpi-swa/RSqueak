@@ -184,7 +184,7 @@ class W_MutableFloat(W_AbstractFloat):
 
 class W_LargeInteger(W_AbstractObjectWithClassReference):
     """Large integer using rbigints"""
-    _attrs_ = ["value", "bytes"]
+    _attrs_ = ["value", "_exposed_size"]
     _immutable_fields_ = ["value?"]
     repr_classname = "W_LargeInteger"
     bytes_per_slot = 1
@@ -250,7 +250,7 @@ class W_LargeInteger(W_AbstractObjectWithClassReference):
         return self.value.tofloat()
 
     def clone(self, space):
-        return W_LargeInteger(space, self.getclass(), self.value, self.size())
+        return W_LargeInteger(space, self.getclass(space), self.value, self.size())
 
     def size(self):
         return self._exposed_size

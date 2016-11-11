@@ -106,12 +106,19 @@ def make_ovfcheck(op):
 ovfcheck_div = make_ovfcheck(operator.floordiv)
 ovfcheck_mod = make_ovfcheck(operator.mod)
 
+@specialize.argtype(0)
+def guard_nonnull(value):
+    if isinstance(value, int) and value == 0:
+        raise PrimitiveFailedError
+    if isinstance(value, rbigint) and value == NULLRBIGINT:
+        raise PrimitiveFailedError
+    raise PrimitiveFailedError
+
 # #/ -- return the result of a division, only succeed if the division is exact
 @expose_also_as(LARGE_DIVIDE)
 @expose_primitive(DIVIDE, unwrap_specs=combination_specs)
 def func(interp, s_frame, receiver, argument):
-    if argument == 0 or argument == NULLRBIGINT:
-        raise PrimitiveFailedError()
+    guard_nonnull(argument)
     if isinstance(receiver, rbigint):
         if receiver.mod(argument) != NULLRBIGINT:
             raise PrimitiveFailedError
@@ -125,8 +132,7 @@ def func(interp, s_frame, receiver, argument):
 @expose_also_as(LARGE_MOD)
 @expose_primitive(MOD, unwrap_specs=combination_specs)
 def func(interp, s_frame, receiver, argument):
-    if argument == 0 or argument == NULLRBIGINT:
-        raise PrimitiveFailedError()
+    guard_nonnull(argument)
     if isinstance(receiver, rbigint):
         return interp.space.wrap_rbigint(receiver.mod(argument))
     else:
@@ -136,8 +142,7 @@ def func(interp, s_frame, receiver, argument):
 @expose_also_as(LARGE_DIV)
 @expose_primitive(DIV, unwrap_specs=combination_specs)
 def func(interp, s_frame, receiver, argument):
-    if argument == 0 or argument == NULLRBIGINT:
-        raise PrimitiveFailedError()
+    guard_nonnull(argument)
     if isinstance(receiver, rbigint):
         return interp.space.wrap_rbigint(receiver.div(argument))
     else:
@@ -147,8 +152,7 @@ def func(interp, s_frame, receiver, argument):
 @expose_also_as(LARGE_QUO)
 @expose_primitive(QUO, unwrap_specs=combination_specs)
 def func(interp, s_frame, receiver, argument):
-    if argument == 0 or argument == NULLRBIGINT:
-        raise PrimitiveFailedError()
+    guard_nonnull(argument)
     # see http://python-history.blogspot.de/2010/08/why-pythons-integer-division-floors.html
     if isinstance(receiver, rbigint):
         res = receiver.div(argument)
