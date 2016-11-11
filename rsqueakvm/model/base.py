@@ -149,29 +149,17 @@ class W_Object(object):
             name = "?"
         return name
 
-    def lshift(self, space, shift):
-        raise error.PrimitiveFailedError()
-
-    def rshift(self, space, shift):
-        raise error.PrimitiveFailedError()
-
     def unwrap_int(self, space):
         raise error.UnwrappingError("Got unexpected class in unwrap_int")
 
     def unwrap_uint(self, space):
         raise error.UnwrappingError("Got unexpected class in unwrap_uint")
 
-    def unwrap_positive_wordsize_int(self, space):
-        raise error.UnwrappingError("Got unexpected class unwrap_positive_wordsize_int")
-
-    def unwrap_longlong(self, space):
-        raise error.UnwrappingError("Got unexpected class unwrap_longlong")
+    def unwrap_int64(self, space):
+        raise error.UnwrappingError("Got unexpected class unwrap_int64")
 
     def unwrap_rbigint(self, space):
         raise error.UnwrappingError("Got unexpected class unwrap_rbigint")
-
-    def unwrap_long_untranslated(self, space):
-        return self.unwrap_longlong(space)
 
     def unwrap_char_as_byte(self, space):
         raise error.UnwrappingError
@@ -264,7 +252,7 @@ class W_AbstractObjectWithIdentityHash(W_Object):
 
     def can_become(self, w_other):
         # TODO -- what about become: with a Float and a CompiledMethod etc.?
-        # We might be in trouble regarding W_LargePositiveInteger1Word, too.
+        # We might be in trouble regarding W_LargeInteger, too.
         return self.__class__ is w_other.__class__
 
     def _become(self, w_other):

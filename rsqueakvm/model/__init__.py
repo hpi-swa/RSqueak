@@ -3,12 +3,15 @@ Squeak model.
 
     W_Object
         W_SmallInteger
+            W_MutableSmallInteger
         W_AbstractObjectWithIdentityHash
-            W_LargePositiveInteger1Word
-            W_Float
+            W_AbstractFloat
+                W_Float
+                W_MutableFloat
             W_Character
             W_PointersObject
             W_AbstractObjectWithClassReference
+                W_LargeInteger
                 W_BytesObject
                 W_WordsObject
             W_CompiledMethod

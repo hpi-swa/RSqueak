@@ -8,7 +8,7 @@ from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.primitives.constants import *
 
 from rpython.rlib import unroll, jit, objectmodel
-from rpython.rlib.rarithmetic import r_uint, r_int64, int_between
+from rpython.rlib.rarithmetic import int_between, r_int64
 from rpython.rlib.rbigint import rbigint
 
 
@@ -32,9 +32,8 @@ def assert_pointers(w_obj):
 # converted to an index0
 index1_0 = object()
 char = object()
-pos_32bit_int = object()
 bytelist = object()
-
+uint = object()
 
 def unwrap_alternatives(unwrap_specs=None):
     assert unwrap_specs
@@ -101,15 +100,13 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                     index = len_unwrap_spec - 1 - i
                     w_arg = s_frame.peek(index)
                     if spec is r_int64:
-                        args += (interp.space.unwrap_longlong(w_arg),)
+                        args += (interp.space.unwrap_int64(w_arg),)
+                    elif spec is uint:
+                        args += (interp.space.unwrap_uint(w_arg),)
                     elif spec is rbigint:
                         args += (interp.space.unwrap_rbigint(w_arg),)
                     elif spec is int:
                         args += (interp.space.unwrap_int(w_arg), )
-                    elif spec is pos_32bit_int:
-                        args += (interp.space.unwrap_positive_wordsize_int(w_arg),)
-                    elif spec is r_uint:
-                        args += (interp.space.unwrap_uint(w_arg),)
                     elif spec is index1_0:
                         args += (interp.space.unwrap_int(w_arg)-1, )
                     elif spec is float:

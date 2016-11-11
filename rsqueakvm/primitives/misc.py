@@ -4,7 +4,7 @@ from rsqueakvm import constants, wrapper
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.display import W_DisplayBitmap
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
-from rsqueakvm.primitives import expose_primitive, pos_32bit_int
+from rsqueakvm.primitives import expose_primitive, uint
 from rsqueakvm.primitives.constants import *
 from rsqueakvm.primitives.storage import get_instances_array
 
@@ -172,7 +172,7 @@ def func(interp, s_frame, argument_count):
 def func(interp, s_frame, w_receiver):
     return interp.space.wrap_string("%s%s" % (interp.space.executable_path(), os.path.sep))
 
-@expose_primitive(FILL, unwrap_spec=[object, pos_32bit_int])
+@expose_primitive(FILL, unwrap_spec=[object, uint])
 def func(interp, s_frame, w_arg, new_value):
     space = interp.space
     if isinstance(w_arg, W_BytesObject):

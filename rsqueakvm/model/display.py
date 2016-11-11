@@ -55,7 +55,7 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
     def at0(self, space, index0):
         self = jit.promote(self)
         val = self.getword(index0)
-        return space.wrap_uint(val)
+        return space.wrap_int(r_uint(val))
 
     def atput0(self, space, index0, w_value):
         self = jit.promote(self)

@@ -53,15 +53,7 @@ def test_ruint():
 
     for num in [0, 1, 41, 100, 2**31, sys.maxint + 1, -1]:
         num = r_uint(num)
-        assert space.unwrap_uint(space.wrap_uint(num)) == num
-    for num in [-1, -100, -sys.maxint]:
-        with py.test.raises(objspace.WrappingError):
-            space.wrap_uint(num)
-    # byteobj = space.wrap_uint(0x100000000)
-    # assert isinstance(byteobj, W_BytesObject)
-    # byteobj.bytes.append('\x01')
-    # num = space.unwrap_uint(byteobj)
-    # should not raise. see docstring.
+        assert space.unwrap_uint(space.wrap_int(num)) == num
 
 
 def test_wrap_int():

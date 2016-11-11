@@ -3,7 +3,7 @@ from rsqueakvm.model.base import W_AbstractObjectWithClassReference
 from rsqueakvm.util.version import Version
 
 from rpython.rlib import jit
-from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32, r_int64
+from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32
 from rpython.rlib.objectmodel import we_are_translated, always_inline, specialize
 from rpython.rtyper.lltypesystem import lltype, rffi
 
@@ -103,6 +103,56 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         else:
             return self.bytes
 
+    @jit.unroll_safe
+    def unwrap_uint(self, space):
+        if not (self.getclass(space).is_same_object(space.w_LargePositiveInteger) or
+                self.getclass(space).is_same_object(space.w_LargeNegativeInteger)):
+            raise error.UnwrappingError("Invalid class for unwrapping byte object as uint")
+        if self.size() > constants.BYTES_PER_MACHINE_INT:
+            raise error.UnwrappingError("Too large to convert bytes to word")
+        word = r_uint(0)
+        for i in range(self.size()):
+            word += r_uint(ord(self.getchar(i))) << 8*i
+        return word
+
+    @jit.unroll_safe
+    def unwrap_int64(self, space):
+        if self.size() > constants.BYTES_PER_MACHINE_LONGLONG:
+            raise error.UnwrappingError("Too large to convert bytes to word")
+        elif (self.size() == constants.BYTES_PER_MACHINE_LONGLONG and
+              -              ord(self.getchar(constants.BYTES_PER_MACHINE_LONGLONG - 1)) >= 0x80):
+            # Sign-bit is set, this will overflow
+            raise error.UnwrappingError("Too large to convert bytes to word")
+        word = r_int64(0)
+        for i in range(self.size()):
+            try:
+                word += r_int64(ord(self.getchar(i))) << 8*i
+            except OverflowError: # never raised after translation :(
+                raise error.UnwrappingError("Too large to convert bytes to word")
+        if self.getclass(space).is_same_object(space.w_LargePositiveInteger):
+            return word
+        elif self.getclass(space).is_same_object(space.w_LargeNegativeInteger):
+            return -word
+        else:
+            raise error.UnwrappingError
+
+    def unwrap_rbigint(self, space):
+        if self.getclass(space).is_same_object(space.w_LargePositiveInteger):
+            return self.getrbigint(self.version)
+        elif self.getclass(space).is_same_object(space.w_LargeNegativeInteger):
+            return self.getrbigint(self.version).neg()
+        else:
+            raise error.UnwrappingError
+
+    def unwrap_long_untranslated(self, space):
+        "NOT RPYTHON"
+        return self.unwrap_rbigint(space).tolong()
+
+    @jit.elidable
+    def getrbigint(self, version):
+        from rpython.rlib.rbigint import rbigint
+        return rbigint.frombytes(self.getbytes(), 'little', False)
+
     def selector_string(self):
         return "#" + self.unwrap_string(None)
 
@@ -122,64 +172,6 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         else:
             w_result.bytes = list(self.bytes)
         return w_result
-
-    @jit.unroll_safe
-    def unwrap_uint(self, space):
-        if not self.getclass(space).is_same_object(space.w_LargePositiveInteger):
-            raise error.UnwrappingError("Failed to convert bytes to word")
-        if self.size() > constants.BYTES_PER_MACHINE_INT:
-            raise error.UnwrappingError("Too large to convert bytes to word")
-        word = r_uint(0)
-        for i in range(self.size()):
-            word += r_uint(ord(self.getchar(i))) << 8*i
-        return word
-
-    @jit.unroll_safe
-    def unwrap_longlong(self, space):
-        if self.size() > constants.BYTES_PER_MACHINE_LONGLONG:
-            raise error.UnwrappingError("Too large to convert bytes to word")
-        elif (self.size() == constants.BYTES_PER_MACHINE_LONGLONG and
-              ord(self.getchar(constants.BYTES_PER_MACHINE_LONGLONG - 1)) >= 0x80):
-            # Sign-bit is set, this will overflow
-            raise error.UnwrappingError("Too large to convert bytes to word")
-        word = r_int64(0)
-        for i in range(self.size()):
-            try:
-                word += r_int64(ord(self.getchar(i))) << 8*i
-            except OverflowError: # never raised after translation :(
-                raise error.UnwrappingError("Too large to convert bytes to word")
-        if self.getclass(space).is_same_object(space.w_LargePositiveInteger):
-            return word
-        elif self.getclass(space).is_same_object(space.w_LargeNegativeInteger):
-            return -word
-        else:
-            raise error.UnwrappingError
-
-    def unwrap_long_untranslated(self, space):
-        "NOT_RPYTHON"
-        if not we_are_translated():
-            if self.size() >= constants.BYTES_PER_MACHINE_LONGLONG:
-                word = 0
-                for i in range(self.size()):
-                    word += ord(self.getchar(i)) << 8*i
-                if self.getclass(space).is_same_object(space.w_LargeNegativeInteger):
-                    return -word
-                else:
-                    return word
-        return self.unwrap_longlong(space)
-
-    def unwrap_rbigint(self, space):
-        if self.getclass(space).is_same_object(space.w_LargePositiveInteger):
-            return self.getrbigint(self.version)
-        elif self.getclass(space).is_same_object(space.w_LargeNegativeInteger):
-            return self.getrbigint(self.version).neg()
-        else:
-            raise error.UnwrappingError
-
-    @jit.elidable
-    def getrbigint(self, version):
-        from rpython.rlib.rbigint import rbigint
-        return rbigint.frombytes(self.getbytes(), 'little', False)
 
     def is_array_object(self):
         return True
@@ -243,7 +235,7 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
 
     def at0(self, space, index0):
         val = self.getword(index0)
-        return space.wrap_uint(val)
+        return space.wrap_int(val)
 
     def atput0(self, space, index0, w_value):
         word = space.unwrap_uint(w_value)

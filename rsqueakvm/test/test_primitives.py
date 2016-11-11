@@ -9,7 +9,7 @@ from rsqueakvm.model.character import W_Character
 from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod
 from rsqueakvm.model.display import W_DisplayBitmap
 from rsqueakvm.model.numeric import (W_Float, W_SmallInteger,
-                                     W_LargePositiveInteger1Word)
+                                     W_LargeInteger)
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.error import PrimitiveFailedError
@@ -102,11 +102,11 @@ def test_small_int_multiply():
     assert prim(MULTIPLY, [6,3]).value == 18
     if constants.LONG_BIT == 32:
         w_result = prim(MULTIPLY, [constants.MAXINT, 2])
-        assert isinstance(w_result, W_LargePositiveInteger1Word)
-        assert r_uint(w_result.value) == constants.MAXINT * 2
+        assert isinstance(w_result, W_LargeInteger)
+        assert r_uint(w_result.unwrap_long_untranslated(space)) == constants.MAXINT * 2
     else:
         w_result = prim(MULTIPLY, [constants.MAXINT, constants.MAXINT])
-        assert isinstance(w_result, W_BytesObject)
+        assert isinstance(w_result, W_LargeInteger)
         assert w_result.unwrap_long_untranslated(space) == constants.MAXINT ** 2
 
 def test_small_int_divide():
@@ -192,10 +192,10 @@ def test_small_int_bit_shift_negative():
 
 def test_small_int_bit_shift_overflow():
     w_result = prim(BIT_SHIFT, [4, constants.LONG_BIT])
-    assert isinstance(w_result, W_BytesObject)
+    assert isinstance(w_result, W_LargeInteger)
     assert w_result.unwrap_long_untranslated(space) == 4 << constants.LONG_BIT
     w_result = prim(BIT_SHIFT, [4, constants.LONG_BIT - 1])
-    assert isinstance(w_result, W_BytesObject)
+    assert isinstance(w_result, W_LargeInteger)
     assert w_result.unwrap_long_untranslated(space) == 4 << (constants.LONG_BIT - 1)
     w_result = prim(BIT_SHIFT, [4, -constants.LONG_BIT])
     assert isinstance(w_result, W_SmallInteger)
@@ -204,14 +204,14 @@ def test_small_int_bit_shift_overflow():
     assert isinstance(w_result, W_SmallInteger)
     assert w_result.value == -1
     w_result = prim(BIT_SHIFT, [-2**(constants.LONG_BIT*2), -constants.LONG_BIT])
-    assert isinstance(w_result, W_BytesObject)
+    assert isinstance(w_result, W_LargeInteger)
     assert w_result.unwrap_long_untranslated(space) == -2**constants.LONG_BIT
     w_result = prim(BIT_SHIFT, [-2**(constants.LONG_BIT*2), -constants.LONG_BIT - 1])
     assert isinstance(w_result, W_SmallInteger)
     assert w_result.unwrap_long_untranslated(space) == -2**(constants.LONG_BIT-1)
     w_result = prim(BIT_SHIFT, [4, constants.LONG_BIT - 3])
-    assert isinstance(w_result, W_LargePositiveInteger1Word)
-    assert w_result.value == intmask(4 << constants.LONG_BIT - 3)
+    assert isinstance(w_result, W_LargeInteger)
+    assert w_result.unwrap_long_untranslated(space) == 4 << constants.LONG_BIT - 3
 
 def test_smallint_as_float():
     assert prim(SMALLINT_AS_FLOAT, [12]).value == 12.0
@@ -493,13 +493,13 @@ def test_signal_at_milliseconds():
 
 
 def test_primitive_utc_microseconds_clock():
-    start = space.unwrap_longlong(prim(UTC_MICROSECOND_CLOCK, [0]))
+    start = space.unwrap_int64(prim(UTC_MICROSECOND_CLOCK, [0]))
     time.sleep(0.3)
-    stop = space.unwrap_longlong(prim(UTC_MICROSECOND_CLOCK, [0]))
+    stop = space.unwrap_int64(prim(UTC_MICROSECOND_CLOCK, [0]))
     assert start + r_int64(250 * 1000) <= stop
 
 def test_signal_at_utc_microseconds():
-    start = space.unwrap_longlong(prim(UTC_MICROSECOND_CLOCK, [0]))
+    start = space.unwrap_int64(prim(UTC_MICROSECOND_CLOCK, [0]))
     future = start + r_int64(400 * 1000)
     sema = space.w_Semaphore.as_class_get_shadow(space).new()
     prim(SIGNAL_AT_UTC_MICROSECONDS, [space.w_nil, sema, future])
@@ -510,13 +510,7 @@ def test_seconds_clock():
     w_smalltalk_now1 = prim(SECONDS_CLOCK, [42])
     w_smalltalk_now2 = prim(SECONDS_CLOCK, [42])
     # the test now is flaky, because we assume both have the same type
-    if isinstance(w_smalltalk_now1, W_BytesObject):
-        assert (now % 256 - ord(w_smalltalk_now1.bytes[0])) % 256 <= 2
-        # the high-order byte should only change by one (and even that is
-        # extreeemely unlikely)
-        assert (ord(w_smalltalk_now2.bytes[-1]) - ord(w_smalltalk_now1.bytes[-1])) <= 1
-    else:
-        assert w_smalltalk_now2.value - w_smalltalk_now1.value <= 1
+    assert w_smalltalk_now2.unwrap_long_untranslated(space) - w_smalltalk_now1.unwrap_long_untranslated(space) <= 1
 
 def test_inc_gc():
     # Should not fail :-)

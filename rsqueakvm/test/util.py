@@ -341,17 +341,13 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         from rpython.rlib.rbigint import rbigint
 
         def looooong(val):
-            try:
-                return r_int64(val)
-            except OverflowError:
-                return val
+            return rbigint.fromlong(val)
         if False: pass
         elif any is None: return self.w_nil
         elif isinstance(any, W_Object): return any
-        elif isinstance(any, long): return self.wrap_longlong(looooong(any))
+        elif isinstance(any, long): return self.wrap_int(looooong(any))
         elif isinstance(any, bool): return self.wrap_bool(any)
-        # elif isinstance(any, int): return self.wrap_int(any)
-        elif isinstance(any, int): return self.wrap_longlong(any)
+        elif isinstance(any, int): return self.wrap_int(any)
         elif isinstance(any, float): return self.wrap_float(any)
         elif isinstance(any, list): return self.wrap_list(any)
         elif isinstance(any, str):

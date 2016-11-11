@@ -142,7 +142,7 @@ classes_in_special_object_table = {
 #    "PseudoContext" : SO_PSEUDOCONTEXT_CLASS,
 #    "TranslatedMethod" : SO_TRANSLATEDMETHOD_CLASS,
     "LargeNegativeInteger" : SO_LARGENEGATIVEINTEGER_CLASS,
-    "ClassBinding": 10000, # doesn't exist, but we'd like it to
+    "ClassBinding": 100, # doesn't exist, but we'd like it to
 }
 
 objects_in_special_object_table = {
@@ -161,6 +161,8 @@ objects_in_special_object_table = {
     "runWithIn": SO_RUN_WITH_IN,
     "cannotReturn": SO_CANNOT_RETURN,
 }
+
+SPECIAL_OBJECTS_SIZE = 70 # some room
 
 from rpython.rlib.rarithmetic import LONG_BIT
 TAGGED_MAXINT = 2 ** (LONG_BIT - 2) - 1

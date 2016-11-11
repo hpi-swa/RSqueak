@@ -8,7 +8,7 @@ from rpython.rlib.rjitlog import rjitlog
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.compiled_methods import W_CompiledMethod
 from rsqueakvm.plugins.plugin import Plugin, PluginPatchScripts
-from rsqueakvm.primitives import expose_primitive, expose_also_as, pos_32bit_int
+from rsqueakvm.primitives import expose_primitive, expose_also_as
 from rsqueakvm.primitives.constants import (VM_CLEAR_PROFILE, VM_DUMP_PROFILE,
                                             VM_START_PROFILING, VM_STOP_PROFILING)
 

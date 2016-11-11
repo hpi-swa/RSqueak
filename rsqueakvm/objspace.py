@@ -1,16 +1,16 @@
 from rsqueakvm import constants, wrapper, display, storage
-from rsqueakvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, SYSTEM_ATTRIBUTE_IMAGE_ARGS_INDEX
+from rsqueakvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, SYSTEM_ATTRIBUTE_IMAGE_ARGS_INDEX, IS_64BIT
 from rsqueakvm.error import WrappingError, UnwrappingError
 from rsqueakvm.model.character import W_Character
-from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargePositiveInteger1Word
+from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargeInteger
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.model.block_closure import W_BlockClosure
 from rsqueakvm.util.version import Version
 
-from rpython.rlib import jit
+from rpython.rlib import jit, rbigint
 from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin, we_are_translated
-from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32, int_between, r_int64, r_ulonglong, is_valid_int, r_longlonglong
+from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32, int_between, is_valid_int, r_longlong
 
 
 class ConstantMixin(object):
@@ -191,128 +191,22 @@ class ObjSpace(object):
 
     @specialize.argtype(1)
     def wrap_int(self, val):
-        if isinstance(val, r_int64) and not is_valid_int(val):
-            if val > 0 and val <= r_int64(constants.U_MAXINT):
-                return self.wrap_positive_wordsize_int(intmask(val))
-            else:
-                raise WrappingError
-        elif isinstance(val, r_uint) or isinstance(val, r_uint32):
-            return self.wrap_positive_wordsize_int(intmask(val))
-        elif not is_valid_int(val):
+        if isinstance(val, rbigint.rbigint):
+            return self.wrap_rbigint(val)
+        elif isinstance(val, r_uint):
+            return self.wrap_rbigint(rbigint.rbigint.fromrarith_int(val))
+        elif IS_64BIT and isinstance(val, r_uint32):
+            return self.wrap_smallint_unsafe(intmask(val))
+        elif isinstance(val, r_longlong):
+            return self.wrap_rbigint(rbigint.rbigint.fromrarith_int(val))
+        elif is_valid_int(val):
+            return self.wrap_smallint_unsafe(val)
+        else:
             raise WrappingError
-        # we don't do tagging
-        return W_SmallInteger(intmask(val))
 
     def wrap_smallint_unsafe(self, val):
         assert is_valid_int(val)
         return W_SmallInteger(intmask(val))
-
-    def wrap_uint(self, val):
-        if val < 0:
-            raise WrappingError("negative integer")
-        else:
-            return self.wrap_positive_wordsize_int(intmask(val))
-
-    def wrap_positive_wordsize_int(self, val):
-        # This will always return a positive value.
-        from rpython.rlib.objectmodel import we_are_translated
-        if not we_are_translated() and val < 0:
-            print "WARNING: wrap_positive_32bit_int casts %d to 32bit unsigned" % val
-        if int_between(0, val, constants.MAXINT):
-            return W_SmallInteger(val)
-        else:
-            return W_LargePositiveInteger1Word(val)
-
-    @jit.unroll_safe
-    @specialize.argtype(1)
-    @specialize.arg(2)
-    def wrap_large_number(self, val, w_class):
-        inst_size = self._number_bytesize(val)
-        w_result = w_class.as_class_get_shadow(self).new(inst_size)
-        for i in range(inst_size):
-            byte_value = (val >> (i * 8)) & 255
-            w_result.setchar(i, chr(byte_value))
-        return w_result
-
-    @jit.unroll_safe
-    @specialize.argtype(1)
-    def _number_bytesize(self, val):
-        if val == 0: return 1
-        sz = 0
-        while val != 0:
-            sz += 1
-            val = val >> 8
-        return sz
-
-    @specialize.argtype(1)
-    def wrap_ulonglong(self, val):
-        assert val >= 0
-        r_val = r_ulonglong(val)
-        w_class = self.w_LargePositiveInteger
-        return self.wrap_large_number(r_val, w_class)
-
-    @specialize.argtype(1)
-    def wrap_nlonglong(self, val):
-        assert val < 0
-        try:
-            r_val = r_ulonglong(-val)
-        except OverflowError:
-            # this is a negative max-bit r_int64, mask by simple coercion
-            r_val = r_ulonglong(val)
-        w_class = self.w_LargeNegativeInteger
-        return self.wrap_large_number(r_val, w_class)
-
-    def wrap_long_untranslated(self, val):
-        "NOT_RPYTHON"
-        if val > 0:
-            w_class = self.w_LargePositiveInteger
-        elif  val < 0:
-            w_class = self.w_LargeNegativeInteger
-            val = -val
-        else:
-            raise WrappingError
-        inst_size = self._number_bytesize(val)
-        w_result = w_class.as_class_get_shadow(self).new(inst_size)
-        for i in range(inst_size):
-            byte_value = (val >> (i * 8)) & 255
-            w_result.setchar(i, chr(byte_value))
-        return w_result
-
-    @specialize.argtype(1)
-    def wrap_longlong(self, val):
-        if not we_are_translated():
-            "Tests only"
-            if isinstance(val, long) and not isinstance(val, r_int64):
-                return self.wrap_long_untranslated(val)
-
-        if not is_valid_int(val):
-            if isinstance(val, r_ulonglong):
-                return self.wrap_ulonglong(val)
-            elif isinstance(val, r_int64):
-                if val > 0:
-                    if constants.IS_64BIT:
-                        if not val <= r_longlonglong(constants.U_MAXINT):
-                            # on 64bit, U_MAXINT must be wrapped in an unsigned longlonglong
-                            return self.wrap_ulonglong(val)
-                    else:
-                        if not val <= r_int64(constants.U_MAXINT):
-                            return self.wrap_ulonglong(val)
-                elif val < 0:
-                    return self.wrap_nlonglong(val)
-        # handles the rest and raises if necessary
-        return self.wrap_int(val)
-
-    def wrap_longlonglong(self, val):
-        assert isinstance(val, r_longlonglong)
-        assert constants.IS_64BIT
-        if val > 0:
-            return self.wrap_large_number(val, self.w_LargePositiveInteger)
-        else:
-            try:
-                r_val = r_longlonglong(-val)
-            except OverflowError:
-                raise WrappingError
-            return self.wrap_large_number(r_val, self.w_LargeNegativeInteger)
 
     def wrap_rbigint(self, val):
         import math
@@ -322,25 +216,15 @@ class ObjSpace(object):
             pass
         if val.sign < 0:
             w_class = self.w_LargeNegativeInteger
-            if w_class is None:
-                raise WrappingError
-            val = val.neg()
         else:
             w_class = self.w_LargePositiveInteger
-            try:
-                return self.wrap_int(val.touint())
-            except OverflowError:
-                pass
-        bytelen = int(math.floor(val.log(256))) + 1
-        try:
-            bytes = val.tobytes(bytelen, 'little', False)
-        except OverflowError:
-            # round-off errors in math.log, might need an extra byte
-            bytes = val.tobytes(bytelen + 1, 'little', False)
-        w_result = w_class.as_class_get_shadow(self).new(len(bytes))
-        assert isinstance(w_result, W_BytesObject)
-        w_result.bytes = list(bytes)
-        return w_result
+        bytelen = int(math.floor(val.abs().log(256))) + 1
+        # try:
+        #     bytes = val.tobytes(bytelen, 'little', False)
+        # except OverflowError:
+        #     # round-off errors in math.log, might need an extra byte
+        #     bytes = val.tobytes(bytelen + 1, 'little', False)
+        return W_LargeInteger(self, w_class, val, bytelen)
 
     def wrap_float(self, i):
         return W_Float(i)
@@ -386,11 +270,11 @@ class ObjSpace(object):
     def unwrap_uint(self, w_value):
         return w_value.unwrap_uint(self)
 
-    def unwrap_positive_wordsize_int(self, w_value):
-        return w_value.unwrap_positive_wordsize_int(self)
-
-    def unwrap_longlong(self, w_value):
-        return w_value.unwrap_longlong(self)
+    def unwrap_int64(self, w_value):
+        if IS_64BIT:
+            return w_value.unwrap_int(self)
+        else:
+            return w_value.unwrap_int64(self)
 
     def unwrap_rbigint(self, w_value):
         return w_value.unwrap_rbigint(self)

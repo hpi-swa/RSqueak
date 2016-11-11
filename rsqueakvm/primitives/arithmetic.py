@@ -4,16 +4,17 @@ import operator
 from rsqueakvm import constants, wrapper
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.numeric import W_Float
-from rsqueakvm.primitives import expose_primitive, expose_also_as, pos_32bit_int
+from rsqueakvm.primitives import expose_primitive, expose_also_as
 from rsqueakvm.primitives.constants import *
 
 from rpython.rlib import rfloat, jit
-from rpython.rlib.rbigint import rbigint
+from rpython.rlib.rbigint import rbigint, NULLRBIGINT, ONERBIGINT
 from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int, r_int64
 from rpython.rlib.objectmodel import specialize
 
-combination_specs = [[int, int], [pos_32bit_int, pos_32bit_int], [r_int64, r_int64]]
-comparison_specs = combination_specs + [[rbigint, rbigint], [float, float]]
+combination_specs = [[int, int], [rbigint, rbigint]]
+comparison_specs = combination_specs + [[float, float]]
+arithmetic_specs = comparison_specs
 
 # ___________________________________________________________________________
 # Boolean Primitives
@@ -53,20 +54,6 @@ for (code, ops) in bool_ops.items():
 # ___________________________________________________________________________
 # SmallInteger Primitives
 
-@jit.dont_look_inside
-@specialize.arg(1)
-def overflow_math_op_64bit(interp, code, receiver, argument):
-    from rpython.rlib.rarithmetic import r_longlonglong
-    if code == ADD:
-        res = r_longlonglong(receiver) + r_longlonglong(argument)
-    elif code == SUBTRACT:
-        res = r_longlonglong(receiver) - r_longlonglong(argument)
-    elif code == MULTIPLY:
-        res = r_longlonglong(receiver) * r_longlonglong(argument)
-    else:
-        assert False
-    return interp.space.wrap_longlonglong(res)
-
 math_ops = {
     ADD: (operator.add, rbigint.add),
     SUBTRACT: (operator.sub, rbigint.sub),
@@ -77,70 +64,44 @@ for (code, ops) in math_ops.items():
         smallop = ops[0]
         bigop = ops[1]
         @expose_also_as(code + LARGE_OFFSET)
-        @expose_primitive(code, unwrap_specs=[[int, int], [r_int64, r_int64], [rbigint, rbigint], [float, float]])
+        @expose_primitive(code, unwrap_specs=arithmetic_specs)
         def func(interp, s_frame, receiver, argument):
             if isinstance(receiver, int) and isinstance(argument, int):
                 try:
-                    res = ovfcheck(smallop(receiver, argument))
+                    return interp.space.wrap_int(ovfcheck(smallop(receiver, argument)))
                 except OverflowError:
-                    if constants.IS_64BIT:
-                        return overflow_math_op_64bit(interp, code, receiver, argument)
                     raise PrimitiveFailedError()
-            elif ((not constants.IS_64BIT) and
-                  isinstance(receiver, r_int64) and
-                  isinstance(argument, r_int64)):
-                try:
-                    res = smallop(receiver, argument)
-                except OverflowError:
-                    # Never raised after translation, but before
-                    raise PrimitiveFailedError
-                if ((receiver ^ argument >= 0) and (receiver ^ res < 0)):
-                    # manual ovfcheck as in Squeak VM
-                    raise PrimitiveFailedError
             elif isinstance(receiver, rbigint) and isinstance(argument, rbigint):
                 return interp.space.wrap_rbigint(bigop(receiver, argument))
             elif isinstance(receiver, float) and isinstance(argument, float):
                 return interp.space.wrap_float(smallop(receiver, argument))
             else:
                 assert False
-            return interp.space.wrap_int(res)
     make_func(ops, code)
 
 bitwise_binary_ops = {
-    BIT_AND: operator.and_,
-    BIT_OR: operator.or_,
-    BIT_XOR: operator.xor,
+    BIT_AND: (operator.and_, rbigint.and_),
+    BIT_OR: (operator.or_, rbigint.or_),
+    BIT_XOR: (operator.xor, rbigint.xor),
     }
-for (code, op) in bitwise_binary_ops.items():
-    def make_func(op):
+for (code, ops) in bitwise_binary_ops.items():
+    def make_func(smallop, bigop):
         @expose_also_as(code + LARGE_OFFSET)
-        @expose_primitive(code, unwrap_specs=[[int, int], [r_uint, r_uint]])
+        @expose_primitive(code, unwrap_specs=[[int, int], [rbigint, rbigint]])
         def func(interp, s_frame, receiver, argument):
-            res = op(intmask(receiver), intmask(argument))
-            if isinstance(receiver, r_uint):
-                return interp.space.wrap_positive_wordsize_int(intmask(res))
+            if isinstance(receiver, rbigint):
+                return interp.space.wrap_int(bigop(receiver, argument))
             else:
-                return interp.space.wrap_int(intmask(res))
-    make_func(op)
+                return interp.space.wrap_int(smallop(receiver, argument))
+    make_func(ops[0], ops[1])
 
 def make_ovfcheck(op):
     @specialize.argtype(0, 1)
     def fun(receiver, argument):
-        if isinstance(receiver, r_uint) and isinstance(argument, r_uint):
-            return op(receiver, argument)
-        elif ((not constants.IS_64BIT) and
-              isinstance(receiver, r_int64) and
-              isinstance(argument, r_int64)):
-            res = op(receiver, argument)
-            if ((receiver ^ argument >= 0) and (receiver ^ res < 0)):
-                # manual ovfcheck as in Squeak VM
-                raise PrimitiveFailedError
-            return res
-        else:
-            try:
-                return ovfcheck(op(receiver, argument))
-            except OverflowError:
-                raise PrimitiveFailedError
+        try:
+            return ovfcheck(op(receiver, argument))
+        except OverflowError:
+            raise PrimitiveFailedError
     return fun
 ovfcheck_div = make_ovfcheck(operator.floordiv)
 ovfcheck_mod = make_ovfcheck(operator.mod)
@@ -149,57 +110,80 @@ ovfcheck_mod = make_ovfcheck(operator.mod)
 @expose_also_as(LARGE_DIVIDE)
 @expose_primitive(DIVIDE, unwrap_specs=combination_specs)
 def func(interp, s_frame, receiver, argument):
-    if argument == 0:
+    if argument == 0 or argument == NULLRBIGINT:
         raise PrimitiveFailedError()
-    if ovfcheck_mod(receiver, argument) != 0:
-        raise PrimitiveFailedError()
-    return interp.space.wrap_int(ovfcheck_div(receiver, argument))
+    if isinstance(receiver, rbigint):
+        if receiver.mod(argument) != NULLRBIGINT:
+            raise PrimitiveFailedError
+        return interp.space.wrap_rbigint(receiver.div(argument))
+    else:
+        if ovfcheck_mod(receiver, argument) != 0:
+            raise PrimitiveFailedError()
+        return interp.space.wrap_int(ovfcheck_div(receiver, argument))
 
 # #\\ -- return the remainder of a division
 @expose_also_as(LARGE_MOD)
 @expose_primitive(MOD, unwrap_specs=combination_specs)
 def func(interp, s_frame, receiver, argument):
-    if argument == 0:
+    if argument == 0 or argument == NULLRBIGINT:
         raise PrimitiveFailedError()
-    return interp.space.wrap_int(ovfcheck_mod(receiver, argument))
+    if isinstance(receiver, rbigint):
+        return interp.space.wrap_rbigint(receiver.mod(argument))
+    else:
+        return interp.space.wrap_int(ovfcheck_mod(receiver, argument))
 
 # #// -- return the result of a division, rounded towards negative infinity
 @expose_also_as(LARGE_DIV)
 @expose_primitive(DIV, unwrap_specs=combination_specs)
 def func(interp, s_frame, receiver, argument):
-    if argument == 0:
+    if argument == 0 or argument == NULLRBIGINT:
         raise PrimitiveFailedError()
-    return interp.space.wrap_int(ovfcheck_div(receiver, argument))
+    if isinstance(receiver, rbigint):
+        return interp.space.wrap_rbigint(receiver.div(argument))
+    else:
+        return interp.space.wrap_int(ovfcheck_div(receiver, argument))
 
 # #// -- return the result of a division, rounded towards negative infinite
 @expose_also_as(LARGE_QUO)
 @expose_primitive(QUO, unwrap_specs=combination_specs)
 def func(interp, s_frame, receiver, argument):
-    if argument == 0:
+    if argument == 0 or argument == NULLRBIGINT:
         raise PrimitiveFailedError()
-    res = ovfcheck_div(receiver, argument)
     # see http://python-history.blogspot.de/2010/08/why-pythons-integer-division-floors.html
-    if res < 0 and not abs(receiver) == abs(argument):
-        res = res + 1
-    return interp.space.wrap_int(res)
+    if isinstance(receiver, rbigint):
+        res = receiver.div(argument)
+        if res.lt(NULLRBIGINT) and not receiver.abs() == argument.abs():
+            res = res.add(ONERBIGINT)
+        return interp.space.wrap_rbigint(res)
+    else:
+        res = ovfcheck_div(receiver, argument)
+        if res < 0 and not abs(receiver) == abs(argument):
+            res = res + 1
+        return interp.space.wrap_int(res)
 
 # #bitShift: -- return the shifted value
 @expose_also_as(LARGE_BIT_SHIFT)
-@expose_primitive(BIT_SHIFT, unwrap_specs=[[object, int], [rbigint, int]])
-def func(interp, s_frame, w_receiver, argument):
-    if not isinstance(w_receiver, rbigint):
-        if -constants.LONG_BIT < argument < constants.LONG_BIT:
-            # overflow-checking done in lshift implementations
-            if argument > 0:
-                return w_receiver.lshift(interp.space, argument)
-            else:
-                return w_receiver.rshift(interp.space, -argument)
-        raise PrimitiveFailedError()
-    else:
-        if argument > 0:
-            return interp.space.wrap_rbigint(w_receiver.lshift(argument))
+@expose_primitive(BIT_SHIFT, unwrap_specs=[[int, int], [rbigint, int]])
+def func(interp, s_frame, receiver, shift):
+    if shift > 0:
+        if isinstance(receiver, int):
+            if receiver < 0:
+                raise PrimitiveFailedError
+            try:
+                return interp.space.wrap_int(r_uint(ovfcheck(receiver << shift)))
+            except OverflowError:
+                raise PrimitiveFailedError
         else:
-            return interp.space.wrap_rbigint(w_receiver.rshift(-argument))
+            return interp.space.wrap_rbigint(receiver.lshift(shift))
+    else:
+        if isinstance(receiver, int):
+            # a problem might arrise, because we may shift in ones from left
+            mask = intmask((1 << (constants.LONG_BIT - shift)) - 1)
+            # the mask is only valid if the highest bit of self.value is set
+            # and only in this case we do need such a mask
+            return interp.space.wrap_int((receiver >> -shift) & mask)
+        else:
+            return interp.space.wrap_rbigint(receiver.rshift(-shift))
 
 # ___________________________________________________________________________
 # Float Primitives
@@ -327,18 +311,17 @@ def func(interp, s_frame, w_delay, w_semaphore, ev_timestamp):
 @expose_primitive(SECONDS_CLOCK, unwrap_spec=[object])
 def func(interp, s_frame, w_arg):
     secs_since_1901 = r_uint(interp.time_now() / 1000000)
-    return interp.space.wrap_uint(secs_since_1901)
-
+    return interp.space.wrap_int(secs_since_1901)
 
 @expose_primitive(UTC_MICROSECOND_CLOCK, unwrap_spec=[object])
 def func(interp, s_frame, w_arg):
-    return interp.space.wrap_longlong(interp.time_now())
+    return interp.space.wrap_int(interp.time_now())
 
 @expose_primitive(LOCAL_MICROSECOND_CLOCK, unwrap_spec=[object])
 def func(interp, s_frame, w_arg):
     # XXX: For now, pretend we are UTC. More later...
     x = interp.time_now()
-    return interp.space.wrap_longlong(x)
+    return interp.space.wrap_int(x)
 
 @expose_primitive(SIGNAL_AT_UTC_MICROSECONDS,
                   unwrap_spec=[object, object, r_int64])

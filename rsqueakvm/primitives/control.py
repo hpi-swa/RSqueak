@@ -1,7 +1,7 @@
 from rsqueakvm import storage_contexts, constants, wrapper
 from rsqueakvm.error import PrimitiveFailedError, PrimitiveNotYetWrittenError
 from rsqueakvm.model.compiled_methods import W_CompiledMethod
-from rsqueakvm.model.numeric import W_Float, W_LargePositiveInteger1Word
+from rsqueakvm.model.numeric import W_Float, W_LargeInteger
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.primitives import expose_primitive, assert_pointers, assert_class
@@ -78,9 +78,6 @@ def func(interp, s_frame, w_rcvr, w_arg):
         (isinstance(w_arg, W_WordsObject) and
          isinstance(w_rcvr, W_WordsObject))):
         w_rcvr.change_class(interp.space, w_arg_class)
-        return w_rcvr
-    elif (isinstance(w_arg, W_LargePositiveInteger1Word) and isinstance(w_rcvr, W_BytesObject)):
-        w_rcvr.change_class(interp.space, interp.space.w_LargePositiveInteger)
         return w_rcvr
     elif isinstance(w_rcvr, W_WordsObject) and isinstance(w_arg, W_BytesObject):
         wordsize = constants.BYTES_PER_WORD
@@ -396,7 +393,7 @@ class Entry(ExtRegistryEntry):
             sz += sizeof(modelrepr.lowleveltype.TO._flds["inst_lookup_selector"].TO, 0)
         elif modelrepr.rclass.classdef.classdesc.pyobj is W_Float:
             pass
-        elif modelrepr.rclass.classdef.classdesc.pyobj is W_LargePositiveInteger1Word:
+        elif modelrepr.rclass.classdef.classdesc.pyobj is W_LargeInteger:
             pass
         return hop.inputconst(lltype.Signed, sz)
 
@@ -405,7 +402,7 @@ def func(interp, s_frame, argcount):
     from rpython.memory.lltypelayout import sizeof
     from rsqueakvm.storage_classes import POINTERS,\
         WEAK_POINTERS, WORDS, BYTES, COMPILED_METHOD,\
-        FLOAT, LARGE_POSITIVE_INTEGER
+        FLOAT, LARGE_INTEGER
     # This does not count shadows and the memory required for storage or any of
     # that "meta-info", but only the size of the types struct and the requested
     # fields.
@@ -430,11 +427,8 @@ def func(interp, s_frame, argcount):
         r = model_sizeof(objectmodel.instantiate(W_CompiledMethod))
     elif instance_kind == FLOAT:
         r = model_sizeof(objectmodel.instantiate(W_Float))
-    elif instance_kind == LARGE_POSITIVE_INTEGER:
-        if size <= 4:
-            r = model_sizeof(objectmodel.instantiate(W_LargePositiveInteger1Word))
-        else:
-            r = model_sizeof(objectmodel.instantiate(W_BytesObject)) + size
+    elif instance_kind == LARGE_INTEGER:
+        r = model_sizeof(objectmodel.instantiate(W_LargeInteger))
     else:
         raise PrimitiveFailedError
     return interp.space.wrap_int(r)
