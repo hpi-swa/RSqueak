@@ -509,7 +509,7 @@ class NonSpurReader(BaseReaderStrategy):
 
     def isblockclosure(self, g_object):
         g_closure = self.special_g_object_safe(constants.SO_BLOCKCLOSURE_CLASS)
-        return self.ispointers(g_object) and g_closure == g_object.g_class.w_object
+        return self.ispointers(g_object) and g_object.g_class == g_closure
 
     def ispointers(self, g_object):
         return g_object.format < 5
@@ -720,7 +720,7 @@ class SpurReader(BaseReaderStrategy):
 
     def isblockclosure(self, g_object):
         g_closure = self.special_g_object_safe(constants.SO_BLOCKCLOSURE_CLASS)
-        return self.ispointers(g_object) and g_closure == g_object.g_class.w_object
+        return self.ispointers(g_object) and g_closure == g_object.g_class
 
     def ispointers(self, g_object):
         return g_object.format < 6
