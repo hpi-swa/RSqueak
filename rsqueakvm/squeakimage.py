@@ -1061,12 +1061,12 @@ class SpurImageWriter(object):
             # make sure we store all the stuff the space knows, too, so we
             # 'upgrade' old images with a newer special objects table in Spur
             # format
-            for idx,name in enumerate(constants.classes_in_special_object_table.iterkeys()):
+            for idx,name in enumerate(constants.classes_in_special_object_table.keys()):
                 try:
                     w_special_objects.store(self.space, idx, self.space.special_object(name))
                 except (KeyError, IndexError):
                     pass
-            for idx,name in enumerate(constants.objects_in_special_object_table.iterkeys()):
+            for idx,name in enumerate(constants.objects_in_special_object_table.keys()):
                 try:
                     w_special_objects.store(self.space, idx, self.space.special_object(name))
                 except (KeyError, IndexError):
