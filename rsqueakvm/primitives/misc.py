@@ -60,12 +60,12 @@ def func(interp, s_frame, w_rcvr, left, right, top, bottom):
 # ___________________________________________________________________________
 # Squeak Miscellaneous Primitives (128-134)
 
-def _become(w_rcvr, w_new):
+def _become(space, w_rcvr, w_new):
     w_lefts = []
     w_rights = []
     for i in range(w_rcvr.size()):
-        w_left = w_rcvr.at0(interp.space, i)
-        w_right = w_new.at0(interp.space, i)
+        w_left = w_rcvr.at0(space, i)
+        w_right = w_new.at0(space, i)
         if w_left.become(w_right):
             w_lefts.append(w_left)
             w_rights.append(w_right)
@@ -78,7 +78,7 @@ def _become(w_rcvr, w_new):
 def func(interp, s_frame, w_rcvr, w_new):
     if w_rcvr.size() != w_new.size():
         raise PrimitiveFailedError
-    _become(w_rcvr, w_new)
+    _become(interp.space, w_rcvr, w_new)
     return w_rcvr
 
 @expose_primitive(SPECIAL_OBJECTS_ARRAY, unwrap_spec=[object])
