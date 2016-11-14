@@ -216,10 +216,12 @@ class ObjSpace(object):
             pass
         if val.sign < 0:
             w_class = self.w_LargeNegativeInteger
+            bytelenval = val.abs()
         else:
             w_class = self.w_LargePositiveInteger
+            bytelenval = val
         # XXX +0.1: heuristic hack float rounding errors
-        bytelen = int(math.floor(val.abs().log(256)) + 0.1) + 1
+        bytelen = int(math.floor(bytelenval.log(256) + 0.1)) + 1
         # try:
         #     bytes = val.tobytes(bytelen, 'little', False)
         # except OverflowError:
