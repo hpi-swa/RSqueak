@@ -9,6 +9,7 @@ from rsqueakvm.primitives.constants import *
 from rsqueakvm.primitives.storage import get_instances_array
 
 from rpython.rlib import jit
+from rpython.rlib.rarithmetic import r_uint
 
 
 # ___________________________________________________________________________
@@ -183,7 +184,7 @@ def func(interp, s_frame, w_arg, new_value):
             raise PrimitiveFailedError
         w_arg.setbytes([chr(new_value)] * w_arg.size())
     elif isinstance(w_arg, W_WordsObject) or isinstance(w_arg, W_DisplayBitmap):
-        w_arg.setwords([new_value] * w_arg.size())
+        w_arg.setwords([r_uint(new_value)] * w_arg.size())
     else:
         raise PrimitiveFailedError
     return w_arg
