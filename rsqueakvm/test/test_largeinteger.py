@@ -57,7 +57,7 @@ def do_primitive(selector, operation, i=None, j=None, trace=False):
             else:
                 y = w_l(j)
         z = perform_primitive(x, w_selector, y)
-        assert r_uint(z.value) == r_uint(operation(v, y.value))
+        assert r_uint(z.unwrap_long_untranslated(space)) == r_uint(operation(v, y.unwrap_long_untranslated(space)))
     interp.trace = False
 
 def test_bitAnd():

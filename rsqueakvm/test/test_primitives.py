@@ -90,8 +90,8 @@ def test_small_int_add():
     assert prim(ADD, [3,4]).value == 7
     assert prim(ADD, [constants.TAGGED_MAXINT, 2]).value == constants.TAGGED_MAXINT + 2
     if constants.LONG_BIT == 32:
-        assert r_uint(prim(ADD, [constants.MAXINT, 2]).value) == constants.MAXINT + 2
-        assert r_uint(prim(ADD, [2 * constants.MAXINT - 2, 2]).value) == 2 * constants.MAXINT
+        assert prim(ADD, [constants.MAXINT, 2]).unwrap_long_untranslated(space) == constants.MAXINT + 2
+        assert prim(ADD, [2 * constants.MAXINT - 2, 2]).unwrap_long_untranslated(space) == 2 * constants.MAXINT
     else:
         assert r_uint(prim(ADD, [constants.MAXINT, constants.MAXINT]).unwrap_long_untranslated(space)) == constants.MAXINT * 2
 

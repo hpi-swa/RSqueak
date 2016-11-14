@@ -272,7 +272,7 @@ def test_large_positive_integer_operation_times():
     w_result = perform(w_result, "*", w_result)
     assert w_result is not None
     if not constants.IS_64BIT:
-        assert isinstance(w_result, W_BytesObject)
+        assert isinstance(w_result, W_LargeInteger)
     else:
         assert isinstance(w_result, W_SmallInteger)
 
