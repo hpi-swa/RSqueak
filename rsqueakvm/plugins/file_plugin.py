@@ -11,6 +11,7 @@ from rsqueakvm.primitives import index1_0
 from rsqueakvm.util.system import IS_WINDOWS
 
 from rpython.rlib import jit, rarithmetic
+from rpython.rlib.rarithmetic import r_uint
 
 
 FilePlugin = Plugin()

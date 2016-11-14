@@ -4,7 +4,7 @@ import sys
 from rsqueakvm import objspace, error, constants
 # from rsqueakvm.model.variable import W_BytesObject
 
-from rpython.rlib.rarithmetic import r_uint
+from rpython.rlib.rarithmetic import r_uint, r_longlong
 
 from .util import create_space, copy_to_module, cleanup_module
 
@@ -61,6 +61,8 @@ def test_wrap_int():
         assert space.wrap_int(num).value == num
 
     sbit = (constants.LONG_BIT-1)
-    for num in [2**sbit, -(2**sbit + 1)]:
+    for num in [r_longlong(2**sbit - 1), r_longlong(-(2**sbit))]:
+        assert space.wrap_int(num).unwrap_long_untranslated(space) == num
+    for num in [-(2**sbit + 1)]:
         with py.test.raises(error.WrappingError):
             space.wrap_int(num)

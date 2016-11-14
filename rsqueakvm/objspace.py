@@ -8,9 +8,9 @@ from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.model.block_closure import W_BlockClosure
 from rsqueakvm.util.version import Version
 
-from rpython.rlib import jit, rbigint
+from rpython.rlib import jit, rbigint, rarithmetic
 from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin, we_are_translated
-from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32, int_between, is_valid_int, r_longlong
+from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32, int_between, is_valid_int, r_ulonglong, r_longlong
 
 
 class ConstantMixin(object):
@@ -193,19 +193,16 @@ class ObjSpace(object):
     def wrap_int(self, val):
         if isinstance(val, rbigint.rbigint):
             return self.wrap_rbigint(val)
-        elif isinstance(val, r_uint):
-            if val <= r_uint(constants.MAXINT):
-                return self.wrap_smallint_unsafe(intmask(val))
-            else:
-                return self.wrap_rbigint(rbigint.rbigint.fromrarith_int(val))
-        elif IS_64BIT and isinstance(val, r_uint32):
-            return self.wrap_smallint_unsafe(intmask(val))
-        elif isinstance(val, r_longlong):
-            return self.wrap_rbigint(rbigint.rbigint.fromrarith_int(val))
         elif is_valid_int(val):
             return self.wrap_smallint_unsafe(val)
+        elif isinstance(val, r_uint) and val <= r_uint(constants.MAXINT):
+            return self.wrap_smallint_unsafe(intmask(val))
+        elif IS_64BIT and isinstance(val, r_uint32):
+            return self.wrap_smallint_unsafe(intmask(val))
+        elif isinstance(val, r_longlong) or isinstance(val, r_ulonglong):
+            return self.wrap_rbigint(rbigint.rbigint.fromrarith_int(val))
         else:
-            assert False
+            raise WrappingError
 
     def wrap_smallint_unsafe(self, val):
         assert is_valid_int(val)
