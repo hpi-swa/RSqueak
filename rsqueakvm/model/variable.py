@@ -103,10 +103,18 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         else:
             return self.bytes
 
+    @jit.dont_look_inside
+    def setbytes(self, lst):
+        assert len(lst) == self.size()
+        if self.native_bytes is not None:
+            self.native_bytes.setbytes(lst)
+        else:
+            self.bytes = lst
+        self.mutate()
+
     @jit.unroll_safe
     def unwrap_uint(self, space):
-        if not (self.getclass(space).is_same_object(space.w_LargePositiveInteger) or
-                self.getclass(space).is_same_object(space.w_LargeNegativeInteger)):
+        if not self.getclass(space).is_same_object(space.w_LargePositiveInteger):
             raise error.UnwrappingError("Invalid class for unwrapping byte object as uint")
         if self.size() > constants.BYTES_PER_MACHINE_INT:
             raise error.UnwrappingError("Too large to convert bytes to word")
@@ -213,6 +221,10 @@ class NativeBytesWrapper(object):
     def copy_bytes(self):
         return [self.c_bytes[i] for i in range(self.size)]
 
+    def setbytes(self, lst):
+        for i in range(self.size):
+            self.setchar(i, lst[i])
+
     def __del__(self):
         rffi.free_charp(self.c_bytes)
 
@@ -292,6 +304,14 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
                 word = (i_value << 16) | (word & 0xffff)
             value = r_uint(word & 0xffffffff)
         self.setword(word_index0, value)
+
+    @jit.dont_look_inside
+    def setwords(self, lst):
+        assert len(lst) == self.size()
+        if self.native_words is not None:
+            self.native_words.setwords(lst)
+        else:
+            self.words = lst
 
     def size(self):
         if self.native_words is not None:
@@ -376,6 +396,10 @@ class NativeWordsWrapper(AbstractNativeWordsWrapper):
     def copy_words(self):
         return [r_uint(self.c_words[i]) for i in range(self.size)]
 
+    def setwords(self, lst):
+        for i in range(self.size):
+            self.setword(i, lst[i])
+
     def __del__(self):
         lltype.free(self.c_words, flavor='raw')
 
@@ -408,6 +432,9 @@ class NativeWordsAsBytesWrapper(AbstractNativeWordsWrapper):
         if n0 >= self.size:
             raise IndexError
         return ord(self.c_bytes[n0])
+
+    def setwords(self, lst):
+        raise NotImplementedError
 
     def __del__(self):
         lltype.free(self.c_bytes, flavor='raw')

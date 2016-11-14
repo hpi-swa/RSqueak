@@ -178,11 +178,9 @@ def func(interp, s_frame, w_arg, new_value):
     if isinstance(w_arg, W_BytesObject):
         if new_value > 255:
             raise PrimitiveFailedError
-        for i in xrange(w_arg.size()):
-            w_arg.setchar(i, chr(new_value))
+        w_arg.setbytes([chr(new_value)] * w_arg.size())
     elif isinstance(w_arg, W_WordsObject) or isinstance(w_arg, W_DisplayBitmap):
-        for i in xrange(w_arg.size()):
-            w_arg.setword(i, new_value)
+        w_arg.setwords([new_value] * w_arg.size())
     else:
         raise PrimitiveFailedError
     return w_arg

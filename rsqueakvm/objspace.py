@@ -236,7 +236,7 @@ class ObjSpace(object):
     def wrap_string(self, string):
         w_inst = self.w_String.as_class_get_shadow(self).new(len(string))
         assert isinstance(w_inst, W_BytesObject)
-        w_inst.bytes = list(string)
+        w_inst.setbytes(list(string))
         return w_inst
 
     def wrap_char(self, c):
