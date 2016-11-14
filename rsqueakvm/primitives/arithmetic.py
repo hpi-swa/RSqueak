@@ -181,14 +181,16 @@ def func(interp, s_frame, receiver, shift):
         else:
             return interp.space.wrap_rbigint(receiver.lshift(shift))
     else:
+        shift = -shift
+        assert shift >= 0
         if isinstance(receiver, int):
             # a problem might arise when we shift in ones from left
             mask = intmask((1 << (constants.LONG_BIT - shift)) - 1)
             # the mask is only valid if the highest bit of receiver is set and
             # only in this case we do need such a mask
-            return interp.space.wrap_int((receiver >> -shift) & mask)
+            return interp.space.wrap_int((receiver >> shift) & mask)
         else:
-            return interp.space.wrap_rbigint(receiver.rshift(-shift))
+            return interp.space.wrap_rbigint(receiver.rshift(shift))
 
 # ___________________________________________________________________________
 # Float Primitives
