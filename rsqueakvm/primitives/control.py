@@ -249,6 +249,7 @@ def func(interp, s_frame, argument_count):
 
 @expose_primitive(VALUE_WITH_ARGS, unwrap_spec=[object, list],
                   result_is_new_frame=True)
+@jit.unroll_safe
 def func(interp, s_frame, w_block_ctx, args_w):
 
     w_block_ctx = assert_pointers(w_block_ctx)
