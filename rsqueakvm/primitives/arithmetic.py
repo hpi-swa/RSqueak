@@ -170,20 +170,22 @@ def func(interp, s_frame, receiver, argument):
 def func(interp, s_frame, receiver, shift):
     if shift > 0:
         if isinstance(receiver, int):
-            if receiver < 0:
-                raise PrimitiveFailedError
+            upperbound = intmask(r_uint(-1) >> shift)
             try:
-                return interp.space.wrap_int(r_uint(ovfcheck(receiver << shift)))
+                if receiver >= 0:
+                    return interp.space.wrap_int(r_uint(ovfcheck(receiver << shift)))
+                else:
+                    return interp.space.wrap_int((ovfcheck(receiver << shift)))
             except OverflowError:
                 raise PrimitiveFailedError
         else:
             return interp.space.wrap_rbigint(receiver.lshift(shift))
     else:
         if isinstance(receiver, int):
-            # a problem might arrise, because we may shift in ones from left
+            # a problem might arise when we shift in ones from left
             mask = intmask((1 << (constants.LONG_BIT - shift)) - 1)
-            # the mask is only valid if the highest bit of self.value is set
-            # and only in this case we do need such a mask
+            # the mask is only valid if the highest bit of receiver is set and
+            # only in this case we do need such a mask
             return interp.space.wrap_int((receiver >> -shift) & mask)
         else:
             return interp.space.wrap_rbigint(receiver.rshift(-shift))

@@ -419,13 +419,16 @@ def integerValueOf(w_object):
 
 @expose_on_virtual_machine_proxy([int], oop)
 def positive32BitIntegerFor(n):
-    return IProxy.space.wrap_int(n)
+    return IProxy.space.wrap_int(r_uint(n))
 
 @expose_on_virtual_machine_proxy([oop], int)
 def positive32BitValueOf(n):
     from rpython.rlib.rarithmetic import intmask
-    return intmask(IProxy.space.unwrap_int(n))
-
+    r = IProxy.space.unwrap_int(n)
+    if r >= 0:
+        return intmask(r)
+    else:
+        raise error.UnwrappingError
 #     /* InterpreterProxy methodsFor: 'special objects' */
 
 @expose_on_virtual_machine_proxy([], oop)
@@ -1174,4 +1177,4 @@ IProxy = _InterpreterProxy()
 
 # class __extend__(W_WordsObject):
 #     def as_c_array(self, proxy):
-#         return map(lambda x: proxy.object_to_oop(proxy.space.wrap_int(x), self.words)
+#         return map(lambda x: proxy.object_to_oop(proxy.space.wrap_int(r_uint(x)), self.words)

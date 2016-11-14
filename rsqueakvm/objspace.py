@@ -194,7 +194,10 @@ class ObjSpace(object):
         if isinstance(val, rbigint.rbigint):
             return self.wrap_rbigint(val)
         elif isinstance(val, r_uint):
-            return self.wrap_rbigint(rbigint.rbigint.fromrarith_int(val))
+            if val <= r_uint(constants.MAXINT):
+                return self.wrap_smallint_unsafe(intmask(val))
+            else:
+                return self.wrap_rbigint(rbigint.rbigint.fromrarith_int(val))
         elif IS_64BIT and isinstance(val, r_uint32):
             return self.wrap_smallint_unsafe(intmask(val))
         elif isinstance(val, r_longlong):
@@ -202,7 +205,7 @@ class ObjSpace(object):
         elif is_valid_int(val):
             return self.wrap_smallint_unsafe(val)
         else:
-            raise WrappingError
+            assert False
 
     def wrap_smallint_unsafe(self, val):
         assert is_valid_int(val)
@@ -218,7 +221,8 @@ class ObjSpace(object):
             w_class = self.w_LargeNegativeInteger
         else:
             w_class = self.w_LargePositiveInteger
-        bytelen = int(math.floor(val.abs().log(256))) + 1
+        # XXX +0.1: heuristic hack float rounding errors
+        bytelen = int(math.floor(val.abs().log(256)) + 0.1) + 1
         # try:
         #     bytes = val.tobytes(bytelen, 'little', False)
         # except OverflowError:

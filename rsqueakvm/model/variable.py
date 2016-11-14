@@ -120,7 +120,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         if self.size() > constants.BYTES_PER_MACHINE_LONGLONG:
             raise error.UnwrappingError("Too large to convert bytes to word")
         elif (self.size() == constants.BYTES_PER_MACHINE_LONGLONG and
-              -              ord(self.getchar(constants.BYTES_PER_MACHINE_LONGLONG - 1)) >= 0x80):
+              ord(self.getchar(constants.BYTES_PER_MACHINE_LONGLONG - 1)) >= 0x80):
             # Sign-bit is set, this will overflow
             raise error.UnwrappingError("Too large to convert bytes to word")
         word = r_int64(0)

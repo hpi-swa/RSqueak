@@ -219,7 +219,11 @@ class W_LargeInteger(W_AbstractObjectWithClassReference):
             bytes[n0] = chr(space.unwrap_int(w_value))
         except ValueError: # when we try to put sth outside of chr range
             raise error.PrimitiveFailedError
-        self.value = rbigint.rbigint.frombytes(bytes, 'little', False)
+        value = rbigint.rbigint.frombytes(bytes, 'little', False)
+        if self.getclass(space).is_same_object(space.w_LargePositiveInteger):
+            self.value = value
+        else:
+            self.value = value.neg()
 
     def unwrap_int(self, space):
         try:
@@ -229,7 +233,7 @@ class W_LargeInteger(W_AbstractObjectWithClassReference):
 
     def unwrap_uint(self, space):
         try:
-            return self.value.touint()
+            return self.value.abs().touint()
         except OverflowError:
             raise error.UnwrappingError
 
