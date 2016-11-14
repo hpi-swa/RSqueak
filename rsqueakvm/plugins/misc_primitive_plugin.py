@@ -1,4 +1,4 @@
-from rsqueakvm.primitives import index1_0, bytelist, char
+from rsqueakvm.primitives import index1_0, bytelist, char, uint
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.plugins.plugin import Plugin
@@ -20,7 +20,7 @@ def _bytesHashLoop(bytes, start):
                   & 16383) * 16384)) & r_uint(0x0FFFFFFF)
     return intmask(hash)
 
-@MiscPrimitivePlugin.expose_primitive(unwrap_spec=[object, bytelist, r_uint])
+@MiscPrimitivePlugin.expose_primitive(unwrap_spec=[object, bytelist, uint])
 def primitiveStringHash(interp, s_frame, w_rcvr, thebytes, initialHash):
     hash = r_uint(initialHash) & r_uint(0xFFFFFFF)
     return interp.space.wrap_smallint_unsafe(_bytesHashLoop(thebytes, hash))

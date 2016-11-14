@@ -112,7 +112,6 @@ def guard_nonnull(value):
         raise PrimitiveFailedError
     if isinstance(value, rbigint) and value == NULLRBIGINT:
         raise PrimitiveFailedError
-    raise PrimitiveFailedError
 
 # #/ -- return the result of a division, only succeed if the division is exact
 @expose_also_as(LARGE_DIVIDE)
