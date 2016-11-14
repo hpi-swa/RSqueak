@@ -3,7 +3,7 @@ from rsqueakvm.model.base import W_AbstractObjectWithClassReference
 from rsqueakvm.util.version import Version
 
 from rpython.rlib import jit
-from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32
+from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32, r_int64
 from rpython.rlib.objectmodel import we_are_translated, always_inline, specialize
 from rpython.rtyper.lltypesystem import lltype, rffi
 
