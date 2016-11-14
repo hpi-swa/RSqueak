@@ -26,6 +26,7 @@ from rpython.rtyper.annlowlevel import llhelper
 from rpython.rtyper.lltypesystem.lltype import FuncType, Ptr
 from rpython.rtyper.lltypesystem import lltype, rffi
 from rpython.rlib.unroll import unrolling_iterable
+from rpython.rlib.rarithmetic import intmask, r_uint
 
 
 sqInt = rffi.INT
@@ -423,7 +424,6 @@ def positive32BitIntegerFor(n):
 
 @expose_on_virtual_machine_proxy([oop], int)
 def positive32BitValueOf(n):
-    from rpython.rlib.rarithmetic import intmask
     r = IProxy.space.unwrap_int(n)
     if r >= 0:
         return intmask(r)
@@ -534,7 +534,6 @@ def becomewith(w_array1, w_array2):
 
 @expose_on_virtual_machine_proxy([int], int)
 def byteSwapped(w):
-    from rpython.rlib.rarithmetic import intmask
     return (w >> 24) & 0xFF + (w >> 8) & 0xFF00 + (w << 8) & 0xFF0000 + (w << 24) & -16777216
 
 @expose_on_virtual_machine_proxy([], bool)
