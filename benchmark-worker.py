@@ -134,6 +134,10 @@ class BenchmarkWorker(object):
         if self._download_with_script("get_cog64.sh", commitid):
             return "./cog64/squeak"
 
+    def download_sista(self, commitid):
+        if self._download_with_script("get_sista.sh", commitid):
+            return "./sista32/squeak"
+
     def _download_with_script(self, scriptname, commitid):
         print scriptname
         scriptdir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "scripts")

@@ -63,7 +63,9 @@ def selfupdate():
     os.system(os.path.join(scriptdir, "get_cog.sh"))
     os.system(os.path.join(scriptdir, "get_cog64.sh"))
     os.system(os.path.join(scriptdir, "get_interpreter.sh"))
+    os.system(os.path.join(scriptdir, "get_sista.sh"))
     os.system(os.path.join(scriptdir, "update_image.sh"))
+    os.system(os.path.join(scriptdir, "get_sista_image.sh"))
     os.system(os.path.join(scriptdir, "update_benchmarks.sh"))
     print "Kill queue and re-exec self"
     os.kill(QueuePid, signal.SIGTERM)
