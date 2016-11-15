@@ -36,9 +36,9 @@ sista32/squeak $JOB_NAME.image eval CompilationContext bytecodeBackend: OpalEnco
  SoValidator new validateMethods: SoValidator allExamples passes: \#\(O0 O1 \#O1b O2\) options: \#\( graphSanity reportToTranscript \).\
  Smalltalk snapshot: true andQuit: true
 
-sista32/squeak $JOB_NAME.image eval ScriptLoader \
+sista32/squeak $JOB_NAME.image eval [ ScriptLoader \
  loadLatestPackage: \'Benchmark\' \
  from: \'http://www.hpi.uni-potsdam.de/hirschfeld/squeaksource/BenchmarkRunner\'; \
  loadLatestPackage: \'SMark\' \
- from: \'http://www.hpi.uni-potsdam.de/hirschfeld/squeaksource/BenchmarkRunner\'. \
+ from: \'http://www.hpi.uni-potsdam.de/hirschfeld/squeaksource/BenchmarkRunner\'. ] on: Warning do: [ :ex | ex resume ].\
  Smalltalk snapshot: true andQuit: true
