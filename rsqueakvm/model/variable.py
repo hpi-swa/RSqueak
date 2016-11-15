@@ -262,7 +262,7 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
 
     def setword(self, n, word):
         if self.native_words is not None:
-            self.native_words.setword(n, intmask(word))
+            self.native_words.setword(n, r_uint(word))
         else:
             self.words[n] = r_uint(word)
 
@@ -383,10 +383,10 @@ class NativeWordsWrapper(AbstractNativeWordsWrapper):
         from rsqueakvm.plugins.iproxy import sqIntArrayPtr
         self.c_words = lltype.malloc(sqIntArrayPtr.TO, self.size, flavor='raw')
         for i in range(self.size):
-            self.c_words[i] = rffi.r_int(words[i])
+            self.c_words[i] = words[i]
 
     def setword(self, n0, word):
-        self.c_words[n0] = rffi.r_int(word)
+        self.c_words[n0] = word
 
     def getword(self, n0):
         if n0 >= self.size:

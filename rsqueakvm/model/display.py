@@ -79,6 +79,10 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
     def setword(self, n, word):
         self._real_depth_buffer[n] = rffi.r_uint(word)
 
+    def setwords(self, lst):
+        for i in range(self.size()):
+            self.setword(i, lst[i])
+
     def size(self):
         return self._realsize
 
