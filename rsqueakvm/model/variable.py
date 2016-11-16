@@ -278,11 +278,11 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
 
     def convert_to_bytes_layout(self, wordsize):
         words = self.words
-        new_words = [0] * len(words * wordsize)
+        new_words = [r_uint(0)] * len(words * wordsize)
         for i, word in enumerate(words):
-            new_words[i * 4] = r_uint(word & 0xff)
-            new_words = r_uint((word >> 8) & 0xff)
-            new_words = r_uint((word >> 16) & 0xff)
-            new_words = r_uint((word >> 24) & 0xff)
+            new_words[i * 4 + 0] = r_uint((word >> 0) & 0xff)
+            new_words[i * 4 + 1] = r_uint((word >> 8) & 0xff)
+            new_words[i * 4 + 2] = r_uint((word >> 16) & 0xff)
+            new_words[i * 4 + 3] = r_uint((word >> 24) & 0xff)
         self.words = new_words
         return self
