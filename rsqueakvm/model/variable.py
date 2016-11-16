@@ -171,51 +171,19 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         W_AbstractObjectWithClassReference._become(self, w_other)
 
 
-# This indirection avoids a call for alloc_with_del in Jitted code
-class NativeBytesWrapper(object):
-    _attrs_ = ["c_bytes", "size"]
-    _immutable_fields_ = ["c_bytes", "size"]
-    def __init__(self, string):
-        self.size = len(string)
-        self.c_bytes = rffi.str2charp(string)
-
-    def setchar(self, n0, char):
-        self.c_bytes[n0] = char
-
-    def getchar(self, n0):
-        if n0 >= self.size:
-            raise IndexError
-        return self.c_bytes[n0]
-
-    def as_string(self):
-        return "".join([self.c_bytes[i] for i in range(self.size)])
-
-    def copy_bytes(self):
-        return [self.c_bytes[i] for i in range(self.size)]
-
-    def setbytes(self, lst):
-        for i in range(self.size):
-            self.setchar(i, lst[i])
-
-    def __del__(self):
-        rffi.free_charp(self.c_bytes)
-
-
 class W_WordsObject(W_AbstractObjectWithClassReference):
     # TODO: this assumes only 32-bit words objects
-    _attrs_ = ['words', 'native_words']
+    _attrs_ = ['words']
     repr_classname = "W_WordsObject"
     _immutable_fields_ = ['words?']
 
     def __init__(self, space, w_class, size):
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
         self.words = [r_uint(0)] * size
-        self.native_words = None
 
     def fillin(self, space, g_self):
         W_AbstractObjectWithClassReference.fillin(self, space, g_self)
         self.words = g_self.get_ruints()
-        self.native_words = None
 
     def at0(self, space, index0):
         val = self.getword(index0)
@@ -227,16 +195,10 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
 
     def getword(self, n):
         assert self.size() > n >= 0
-        if self.native_words is not None:
-            return r_uint(self.native_words.getword(n))
-        else:
-            return self.words[n]
+        return self.words[n]
 
     def setword(self, n, word):
-        if self.native_words is not None:
-            self.native_words.setword(n, r_uint(word))
-        else:
-            self.words[n] = r_uint(word)
+        self.words[n] = r_uint(word)
 
     def getchar(self, n0):
         return chr(self.getword(n0))
@@ -280,16 +242,10 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
     @jit.dont_look_inside
     def setwords(self, lst):
         assert len(lst) == self.size()
-        if self.native_words is not None:
-            self.native_words.setwords(lst)
-        else:
-            self.words = lst
+        self.words = lst
 
     def size(self):
-        if self.native_words is not None:
-            return self.native_words.size
-        else:
-            return len(self.words)
+        return len(self.words)
 
     @jit.look_inside_iff(lambda self, space: jit.isconstant(self.size()))
     def unwrap_string(self, space):
@@ -309,7 +265,6 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
     def clone(self, space):
         size = self.size()
         w_result = W_WordsObject(space, self.getclass(space), size)
-        assert self.native_words is None
         w_result.words = list(self.words)
         return w_result
 
@@ -319,48 +274,15 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
     def _become(self, w_other):
         assert isinstance(w_other, W_WordsObject)
         self.words, w_other.words = w_other.words, self.words
-        self.native_words, w_other.native_words = w_other.native_words, self.native_words
         W_AbstractObjectWithClassReference._become(self, w_other)
 
     def convert_to_bytes_layout(self, wordsize):
-        if self.words is not None:
-            self.native_words = NativeWordsAsBytesWrapper(self.words, len(self.words) * wordsize)
-            self.words = None
-        else:
-            raise error.PrimitiveFailedError
-        return self
-
-
-@always_inline
-@specialize.argtype(0)
-def r_char(x):
-    return rffi.cast(rffi.CHAR, x)
-
-
-class NativeWordsAsBytesWrapper(object):
-    """This is a terrible hack. See SmalltalkImage>>calcEndianess in modern Spur images. -tfel"""
-    _attrs_ = ["size", "c_bytes"]
-    _immutable_fields_ = ["size", "c_bytes"]
-
-    def __init__(self, words, size):
-        self.size = size
-        self.c_bytes = lltype.malloc(rffi.CCHARP.TO, self.size, flavor='raw')
+        words = self.words
+        new_words = [0] * len(words * wordsize)
         for i, word in enumerate(words):
-            self.c_bytes[i * 4] = r_char(word)
-            self.c_bytes[i * 4 + 1] = r_char(word >> 8)
-            self.c_bytes[i * 4 + 2] = r_char(word >> 16)
-            self.c_bytes[i * 4 + 3] = r_char(word >> 24)
-
-    def setword(self, n0, word):
-        self.c_bytes[n0] = r_char(word)
-
-    def getword(self, n0):
-        if n0 >= self.size:
-            raise IndexError
-        return ord(self.c_bytes[n0])
-
-    def setwords(self, lst):
-        raise NotImplementedError
-
-    def __del__(self):
-        lltype.free(self.c_bytes, flavor='raw')
+            new_words[i * 4] = r_uint(word & 0xff)
+            new_words = r_uint((word >> 8) & 0xff)
+            new_words = r_uint((word >> 16) & 0xff)
+            new_words = r_uint((word >> 24) & 0xff)
+        self.words = new_words
+        return self
