@@ -333,18 +333,17 @@ class W_LargeIntegerWord(W_LargeInteger):
 
     def unwrap_int64(self, space):
         if constants.IS_64BIT:
-            ret = r_int64(self.value)
-            if self.is_positive(space):
-                return -ret
-            else:
-                return ret
-        else:
             ret = intmask(self.value)
             if self.is_positive(space):
                 if ret < 0: raise error.UnwrappingError
             else:
                 if ret > 0: raise error.UnwrappingError
-            return ret
+        else:
+            ret = r_int64(self.value)
+            if self.is_positive(space):
+                return ret
+            else:
+                return -ret
 
     def unwrap_rbigint(self, space):
         rbig = rbigint.rbigint.fromrarith_int(self.value)

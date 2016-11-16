@@ -66,17 +66,26 @@ for (code, ops) in math_ops.items():
         @expose_also_as(code + LARGE_OFFSET)
         @expose_primitive(code, unwrap_specs=arithmetic_specs)
         def func(interp, s_frame, receiver, argument):
-            if isinstance(receiver, int) and isinstance(argument, int):
+            if isinstance(receiver, rbigint) and isinstance(argument, rbigint):
+                return interp.space.wrap_rbigint(bigop(receiver, argument))
+            elif isinstance(receiver, float) and isinstance(argument, float):
+                return interp.space.wrap_float(smallop(receiver, argument))
+            elif (not constants.IS_64BIT) and isinstance(receiver, r_int64):
+                # manual ovfcheck as in Squeak
+                try:
+                    res = smallop(receiver, argument)
+                except OverflowError:
+                    # Never raised after translation, but before
+                    raise PrimitiveFailedError
+                if ((receiver ^ argument >= 0) and (receiver ^ res < 0)):
+                    # manual ovfcheck as in Squeak VM
+                    raise PrimitiveFailedError
+                return interp.space.wrap_int(res)
+            else:
                 try:
                     return interp.space.wrap_int(ovfcheck(smallop(receiver, argument)))
                 except OverflowError:
                     raise PrimitiveFailedError()
-            elif isinstance(receiver, rbigint) and isinstance(argument, rbigint):
-                return interp.space.wrap_rbigint(bigop(receiver, argument))
-            elif isinstance(receiver, float) and isinstance(argument, float):
-                return interp.space.wrap_float(smallop(receiver, argument))
-            else:
-                assert False
     make_func(ops, code)
 
 bitwise_binary_ops = {
@@ -98,6 +107,12 @@ for (code, ops) in bitwise_binary_ops.items():
 def make_ovfcheck(op):
     @specialize.argtype(0, 1)
     def fun(receiver, argument):
+        if (not constants.IS_64BIT) and isinstance(receiver, r_int64):
+            res = op(receiver, argument)
+            if ((receiver ^ argument >= 0) and (receiver ^ res < 0)):
+                # manual ovfcheck as in Squeak VM
+                raise PrimitiveFailedError
+            return res
         try:
             return ovfcheck(op(receiver, argument))
         except OverflowError:
@@ -108,7 +123,7 @@ ovfcheck_mod = make_ovfcheck(operator.mod)
 
 @specialize.argtype(0)
 def guard_nonnull(value):
-    if isinstance(value, int) and value == 0:
+    if not isinstance(value, rbigint) and value == 0:
         raise PrimitiveFailedError
     if isinstance(value, rbigint) and value == NULLRBIGINT:
         raise PrimitiveFailedError
