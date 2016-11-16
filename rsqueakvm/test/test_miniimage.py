@@ -3,7 +3,7 @@ import math
 from rsqueakvm import constants, storage_contexts, wrapper, error
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.numeric import (W_Float, W_SmallInteger, W_MutableFloat,
-                                     W_LargeInteger)
+                                     W_LargeInteger, W_LargeIntegerWord, W_LargeIntegerBig)
 from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.primitives.constants import PERFORM_WITH_ARGS, PERFORM
 
@@ -263,7 +263,7 @@ def test_large_positive_integer_operation_add():
     w_result = perform(w_result, "+", interp.space.wrap_int(2 * interp.space.unwrap_int(w_result)))
     assert w_result is not None
     if not constants.IS_64BIT:
-        assert isinstance(w_result, W_LargeInteger)
+        assert isinstance(w_result, W_LargeIntegerWord)
     else:
         assert isinstance(w_result, W_SmallInteger)
 
@@ -272,7 +272,7 @@ def test_large_positive_integer_operation_times():
     w_result = perform(w_result, "*", w_result)
     assert w_result is not None
     if not constants.IS_64BIT:
-        assert isinstance(w_result, W_LargeInteger)
+        assert isinstance(w_result, W_LargeIntegerBig)
     else:
         assert isinstance(w_result, W_SmallInteger)
 

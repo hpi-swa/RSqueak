@@ -6,8 +6,9 @@ from rsqueakvm.model.base import W_Object, W_AbstractObjectWithIdentityHash, W_A
 from rpython.rlib import longlong2float, jit
 from rpython.rlib.rarithmetic import intmask, r_uint32, r_uint, ovfcheck, r_int64, r_ulonglong
 from rpython.rlib.rstruct.ieee import float_unpack, float_pack
-from rpython.rlib.objectmodel import compute_hash
+from rpython.rlib.objectmodel import compute_hash, specialize
 from rpython.rlib import rbigint
+from rpython.rlib.rerased import new_static_erasing_pair
 
 
 class W_AbstractFloat(W_AbstractObjectWithIdentityHash):
@@ -183,16 +184,34 @@ class W_MutableFloat(W_AbstractFloat):
 
 
 class W_LargeInteger(W_AbstractObjectWithClassReference):
-    """Large integer using rbigints"""
-    _attrs_ = ["value", "_exposed_size"]
-    _immutable_fields_ = ["value?"]
+    _attrs_ = ["_exposed_size"]
+    _immutable_fields_ = ["_exposed_size"]
     repr_classname = "W_LargeInteger"
     bytes_per_slot = 1
 
-    def __init__(self, space, w_class, value, size):
+    def __init__(self, space, w_class, size):
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
-        self.value = value
         self._exposed_size = size
+
+    def size(self):
+        return self._exposed_size
+
+    def is_array_object(self):
+        return True
+
+    def is_positive(self, space):
+        return self.getclass(space).is_same_object(space.w_LargePositiveInteger)
+
+
+class W_LargeIntegerBig(W_LargeInteger):
+    """Large integer using rbigints"""
+    _attrs_ = ["value"]
+    _immutable_fields_ = ["value?"]
+    repr_classname = "W_LargeIntegerBig"
+
+    def __init__(self, space, w_class, value, size):
+        W_LargeInteger.__init__(self, space, w_class, size)
+        self.value = value
 
     def fillin(self, space, g_self):
         W_AbstractObjectWithClassReference.fillin(self, space, g_self)
@@ -254,16 +273,104 @@ class W_LargeInteger(W_AbstractObjectWithClassReference):
         return self.value.tofloat()
 
     def clone(self, space):
-        return W_LargeInteger(space, self.getclass(space), self.value, self.size())
+        return W_LargeIntegerBig(space, self.getclass(space), self.value, self.size())
 
-    def size(self):
-        return self._exposed_size
-
-    def is_array_object(self):
-        return True
-
+    @jit.dont_look_inside
     def _become(self, w_other):
-        assert isinstance(w_other, W_LargeInteger)
+        assert isinstance(w_other, W_LargeIntegerBig)
+        self.value, w_other.value = w_other.value, self.value
+        self._exposed_size, w_other._exposed_size = (w_other._exposed_size,
+                                                     self._exposed_size)
+        W_AbstractObjectWithClassReference._become(self, w_other)
+
+
+class W_LargeIntegerWord(W_LargeInteger):
+    _attrs_ = ["value"]
+    _immutable_fields_ = ["value?"]
+    repr_classname = "W_LargeIntegerWord"
+
+    def __init__(self, space, w_class, value, size):
+        W_LargeInteger.__init__(self, space, w_class, size)
+        assert isinstance(value, r_uint)
+        self.value = value
+
+    def fillin(self, space, g_self):
+        W_AbstractObjectWithClassReference.fillin(self, space, g_self)
+        bytes = g_self.get_bytes()
+        value = rbigint.rbigint.frombytes(bytes, 'little', False)
+        self.value = value.touint()
+        self._exposed_size = len(bytes)
+
+    def str_content(self):
+        return str(self.value)
+
+    def unwrap_string(self, space):
+        out = []
+        val = self.value
+        for i in range(self.size()):
+            out.append(chr(val & r_uint(0xFF)))
+            val >>= 8
+        return "".join(out)
+
+    def at0(self, space, n0):
+        shift = n0 * 8
+        result = (self.value >> shift) & 0xff
+        return space.wrap_smallint_unsafe(intmask(result))
+
+    def atput0(self, space, n0, w_value):
+        if n0 >= self.size():
+            raise IndexError
+        skew = n0 * 8
+        byte = space.unwrap_int(w_value)
+        if byte > 0xff:
+            raise error.PrimitiveFailedError
+        new_value = self.value & r_uint(~(0xff << skew))
+        new_value |= r_uint(byte << skew)
+        self.value = new_value
+
+    def unwrap_uint(self, space):
+        return r_uint(self.value)
+
+    def unwrap_int64(self, space):
+        if constants.IS_64BIT:
+            ret = r_int64(self.value)
+            if self.is_positive(space):
+                return -ret
+            else:
+                return ret
+        else:
+            ret = intmask(self.value)
+            if self.is_positive(space):
+                if ret < 0: raise error.UnwrappingError
+            else:
+                if ret > 0: raise error.UnwrappingError
+            return ret
+
+    def unwrap_rbigint(self, space):
+        rbig = rbigint.rbigint.fromrarith_int(self.value)
+        if not self.is_positive(space):
+            return rbig.neg()
+        else:
+            return rbig
+
+    def unwrap_long_untranslated(self, space):
+        "NOT RPYTHON"
+        if self.is_positive(space):
+            return long(self.value)
+        else:
+            return -long(self.value)
+
+    def unwrap_float(self, space):
+        if self.is_positive(space):
+            return float(self.value)
+        raise error.UnwrappingError
+
+    def clone(self, space):
+        return W_LargeIntegerWord(space, self.getclass(space), self.value, self.size())
+
+    @jit.dont_look_inside
+    def _become(self, w_other):
+        assert isinstance(w_other, W_LargeIntegerWord)
         self.value, w_other.value = w_other.value, self.value
         self._exposed_size, w_other._exposed_size = (w_other._exposed_size,
                                                      self._exposed_size)
@@ -279,6 +386,14 @@ class W_SmallInteger(W_Object):
 
     def __init__(self, value):
         self.value = intmask(value)
+
+    def fillin(self, space, g_self):
+        "This is only called for Large Integers that for us fit in SmallIntegers"
+        bytes = g_self.get_bytes()
+        value = rbigint.rbigint.frombytes(bytes, 'little', False)
+        if not self.getclass(space).is_same_object(space.w_LargePositiveInteger):
+            value = value.neg()
+        self.value = value.toint()
 
     def getclass(self, space):
         return space.w_SmallInteger
@@ -319,6 +434,9 @@ class W_SmallInteger(W_Object):
             raise error.UnwrappingError
         else:
             return chr(self.value)
+
+    def is_positive(self, space):
+        return self.value >= 0
 
     def guess_classname(self):
         return "SmallInteger"

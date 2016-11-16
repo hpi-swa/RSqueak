@@ -12,6 +12,8 @@ Squeak model.
             W_PointersObject
             W_AbstractObjectWithClassReference
                 W_LargeInteger
+                    W_LargeIntegerWord
+                    W_LargeIntegerBig
                 W_BytesObject
                 W_WordsObject
             W_CompiledMethod

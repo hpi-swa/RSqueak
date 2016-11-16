@@ -1,7 +1,7 @@
 from rsqueakvm import storage_contexts, constants, wrapper
 from rsqueakvm.error import PrimitiveFailedError, PrimitiveNotYetWrittenError
 from rsqueakvm.model.compiled_methods import W_CompiledMethod
-from rsqueakvm.model.numeric import W_Float, W_LargeInteger
+from rsqueakvm.model.numeric import W_Float, W_LargeInteger, W_LargeIntegerBig
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.primitives import expose_primitive, assert_pointers, assert_class
@@ -429,7 +429,7 @@ def func(interp, s_frame, argcount):
     elif instance_kind == FLOAT:
         r = model_sizeof(objectmodel.instantiate(W_Float))
     elif instance_kind == LARGE_INTEGER:
-        r = model_sizeof(objectmodel.instantiate(W_LargeInteger))
+        r = model_sizeof(objectmodel.instantiate(W_LargeIntegerBig))
     else:
         raise PrimitiveFailedError
     return interp.space.wrap_int(r)

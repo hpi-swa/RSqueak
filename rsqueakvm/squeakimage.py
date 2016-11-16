@@ -5,7 +5,7 @@ from rsqueakvm import constants, error, wrapper
 from rsqueakvm.model.character import W_Character
 from rsqueakvm.model.compiled_methods import W_CompiledMethod, W_PreSpurCompiledMethod, W_SpurCompiledMethod
 from rsqueakvm.model.display import W_DisplayBitmap
-from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargeInteger
+from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargeIntegerWord, W_LargeIntegerBig, W_LargeInteger
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.block_closure import W_BlockClosure
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
@@ -15,7 +15,7 @@ from rsqueakvm.util.progress import Progress
 
 from rpython.rlib import objectmodel
 from rpython.rlib.rarithmetic import r_ulonglong, r_longlong, r_int, intmask, r_uint, r_uint32, r_int64
-from rpython.rlib import jit
+from rpython.rlib import jit, rbigint
 
 if r_longlong is not r_int:
     r_uint64 = r_ulonglong
@@ -359,6 +359,34 @@ class BaseReaderStrategy(object):
     def isfloat(self, g_object):
         return self.iswords(g_object) and self.space.w_Float.is_same_object(g_object.g_class.w_object)
 
+    def islargeinteger(self, g_object):
+        g_lpi = self.special_g_object_safe(constants.SO_LARGEPOSITIVEINTEGER_CLASS)
+        g_lni = self.special_g_object_safe(constants.SO_LARGENEGATIVEINTEGER_CLASS)
+        is_large = (g_lpi == g_object.g_class or g_lni == g_object.g_class)
+        if is_large:
+            assert self.isbytes(g_object)
+        return is_large
+
+    def issignedinteger(self, g_object):
+        if not self.islargeinteger(g_object):
+            return False
+        bytes = g_object.get_bytes()
+        value = rbigint.rbigint.frombytes(bytes, 'little', False)
+        if g_object.g_class != self.special_g_object_safe(constants.SO_LARGEPOSITIVEINTEGER_CLASS):
+            value = value.neg()
+        try:
+            value.toint()
+        except OverflowError:
+            return False
+        return True
+
+    def isunsignedinteger(self, g_object):
+        return self.islargeinteger(g_object) and g_object.len_bytes() == constants.BYTES_PER_MACHINE_INT
+
+    def isbiginteger(self, g_object):
+        return self.islargeinteger(g_object) and g_object.len_bytes() > constants.BYTES_PER_MACHINE_INT
+
+
 class NonSpurReader(BaseReaderStrategy):
 
     def read_body(self):
@@ -476,8 +504,12 @@ class NonSpurReader(BaseReaderStrategy):
             raise error.CorruptImageError("Unknown format 5")
         elif self.isfloat(g_object):
             return objectmodel.instantiate(W_Float)
-        elif self.islargeinteger(g_object):
-            return objectmodel.instantiate(W_LargeInteger)
+        elif self.issignedinteger(g_object):
+            return objectmodel.instantiate(W_SmallInteger)
+        elif self.isunsignedinteger(g_object):
+            return objectmodel.instantiate(W_LargeIntegerWord)
+        elif self.isbiginteger(g_object):
+            return objectmodel.instantiate(W_LargeIntegerBig)
         elif self.iswords(g_object):
             return objectmodel.instantiate(W_WordsObject)
         elif g_object.format == 7:
@@ -491,14 +523,6 @@ class NonSpurReader(BaseReaderStrategy):
 
     def isbytes(self, g_object):
         return 8 <= g_object.format <= 11
-
-    def islargeinteger(self, g_object):
-        g_lpi = self.special_g_object_safe(constants.SO_LARGEPOSITIVEINTEGER_CLASS)
-        g_lni = self.special_g_object_safe(constants.SO_LARGENEGATIVEINTEGER_CLASS)
-        is_large = (g_lpi == g_object.g_class or g_lni == g_object.g_class)
-        if is_large:
-            assert self.isbytes(g_object)
-        return is_large
 
     def ischar(self, g_object):
         g_char = self.special_g_object_safe(constants.SO_CHARACTER_CLASS)
@@ -700,8 +724,12 @@ class SpurReader(BaseReaderStrategy):
             return objectmodel.instantiate(W_PointersObject)
         elif self.isfloat(g_object):
             return objectmodel.instantiate(W_Float)
-        elif self.islargeinteger(g_object):
-            return objectmodel.instantiate(W_LargeInteger)
+        elif self.issignedinteger(g_object):
+            return objectmodel.instantiate(W_SmallInteger)
+        elif self.isunsignedinteger(g_object):
+            return objectmodel.instantiate(W_LargeIntegerWord)
+        elif self.isbiginteger(g_object):
+            return objectmodel.instantiate(W_LargeIntegerBig)
         elif self.iswords(g_object):
             return objectmodel.instantiate(W_WordsObject)
         elif self.isbytes(g_object):
@@ -727,14 +755,6 @@ class SpurReader(BaseReaderStrategy):
 
     def isweak(self, g_object):
         return 4 <= g_object.format <= 5
-
-    def islargeinteger(self, g_object):
-        g_lpi = self.special_g_object_safe(constants.SO_LARGEPOSITIVEINTEGER_CLASS)
-        g_lni = self.special_g_object_safe(constants.SO_LARGENEGATIVEINTEGER_CLASS)
-        is_large = (g_lpi == g_object.g_class or g_lni == g_object.g_class)
-        if is_large:
-            assert self.isbytes(g_object)
-        return is_large
 
     def iswords(self, g_object):
         if not system.IS_64BIT and g_object.format == 9:

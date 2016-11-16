@@ -149,6 +149,9 @@ class W_Object(object):
             name = "?"
         return name
 
+    def is_positive(self, space):
+        raise error.UnwrappingError("Got unexpected class in is_positive")
+
     def unwrap_int(self, space):
         raise error.UnwrappingError("Got unexpected class in unwrap_int")
 

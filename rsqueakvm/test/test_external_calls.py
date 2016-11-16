@@ -5,13 +5,14 @@ from rsqueakvm import constants
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.display import W_DisplayBitmap
 from rsqueakvm.model.pointers import W_PointersObject
-from rsqueakvm.model.numeric import W_LargeInteger
+from rsqueakvm.model.numeric import W_LargeIntegerWord
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.primitives import prim_table
 from rsqueakvm.primitives.constants import EXTERNAL_CALL
 
 from rpython.rtyper.lltypesystem import rffi
 from rpython.rlib.rbigint import rbigint
+from rpython.rlib.rarithmetic import r_uint
 
 from .util import create_space, copy_to_module, cleanup_module, InterpreterForTest
 
@@ -165,7 +166,7 @@ def test_fileplugin_filewrite_largeposint(monkeypatch):
         return 4
     monkeypatch.setattr(os, "write", write)
 
-    content = W_LargeInteger(space, space.w_LargePositiveInteger, rbigint.fromlong(1633837924), 4)
+    content = W_LargeIntegerWord(space, space.w_LargePositiveInteger, r_uint(1633837924), 4)
     try:
         stack = [space.w(1), space.w(1), content, space.w(1), space.w(4)]
         w_c = external_call('FilePlugin', 'primitiveFileWrite', stack)

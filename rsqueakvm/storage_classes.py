@@ -1,7 +1,7 @@
 from rsqueakvm import constants, error
 from rsqueakvm.model.base import W_Object
 from rsqueakvm.model.compiled_methods import W_CompiledMethod, W_PreSpurCompiledMethod, W_SpurCompiledMethod
-from rsqueakvm.model.numeric import W_MutableFloat, W_SmallInteger, W_LargeInteger
+from rsqueakvm.model.numeric import W_MutableFloat, W_SmallInteger, W_LargeIntegerWord, W_LargeIntegerBig
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.storage import AbstractCachingShadow, AbstractGenericShadow

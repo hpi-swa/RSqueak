@@ -1,5 +1,5 @@
 from rsqueakvm import constants, storage_classes
-from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargeInteger
+from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargeIntegerWord, W_LargeIntegerBig
 from rsqueakvm.model.variable import W_BytesObject
 
 from .util import read_image, open_reader, copy_to_module, cleanup_module, InterpreterForTest, slow_test, very_slow_test
@@ -162,7 +162,7 @@ def test_compiling_32bit_positive_integer():
     perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
     w_result = perform(w(10), "aLargeInteger")
     if not constants.IS_64BIT:
-        assert isinstance(w_result, W_LargeInteger)
+        assert isinstance(w_result, W_LargeIntegerWord)
     else:
         assert isinstance(w_result, W_SmallInteger)
 
@@ -171,7 +171,10 @@ def test_compiling_64bit_positive_integer():
                         ^ 16rFFFFFFFFFFFFFFFF"""
     perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
     w_result = perform(w(10), "aLargeInteger")
-    assert isinstance(w_result, W_LargeInteger)
+    if not constants.IS_64BIT:
+        assert isinstance(w_result, W_LargeIntegerBig)
+    else:
+        assert isinstance(w_result, W_LargeIntegerWord)
     assert w_result.unwrap_long_untranslated(space) == 0xFFFFFFFFFFFFFFFF
 
 def test_compiling_128bit_positive_integer():
@@ -179,7 +182,7 @@ def test_compiling_128bit_positive_integer():
                         ^ 16rFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"""
     perform(w(10).getclass(space), "compile:classified:notifying:", w(sourcecode), w('pypy'), w(None))
     w_result = perform(w(10), "aLargeInteger")
-    assert isinstance(w_result, W_LargeInteger)
+    assert isinstance(w_result, W_LargeIntegerBig)
     assert w_result.unwrap_long_untranslated(space) == 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 
 def test_simulate_numericprim():

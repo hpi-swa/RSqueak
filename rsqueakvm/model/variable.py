@@ -112,6 +112,9 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
             self.bytes = lst
         self.mutate()
 
+    def is_positive(self, space):
+        return self.getclass(space).is_same_object(space.w_LargePositiveInteger)
+
     @jit.unroll_safe
     def unwrap_uint(self, space):
         if not self.getclass(space).is_same_object(space.w_LargePositiveInteger):

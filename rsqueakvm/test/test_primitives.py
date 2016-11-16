@@ -9,7 +9,7 @@ from rsqueakvm.model.character import W_Character
 from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod
 from rsqueakvm.model.display import W_DisplayBitmap
 from rsqueakvm.model.numeric import (W_Float, W_SmallInteger,
-                                     W_LargeInteger)
+                                     W_LargeIntegerWord, W_LargeIntegerBig)
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.error import PrimitiveFailedError
@@ -100,14 +100,12 @@ def test_small_int_minus():
 
 def test_small_int_multiply():
     assert prim(MULTIPLY, [6,3]).value == 18
-    if constants.LONG_BIT == 32:
-        w_result = prim(MULTIPLY, [constants.MAXINT, 2])
-        assert isinstance(w_result, W_LargeInteger)
-        assert r_uint(w_result.unwrap_long_untranslated(space)) == constants.MAXINT * 2
-    else:
-        w_result = prim(MULTIPLY, [constants.MAXINT, constants.MAXINT])
-        assert isinstance(w_result, W_LargeInteger)
-        assert w_result.unwrap_long_untranslated(space) == constants.MAXINT ** 2
+    w_result = prim(MULTIPLY, [constants.MAXINT, 2])
+    assert isinstance(w_result, W_LargeIntegerWord)
+    assert r_uint(w_result.unwrap_long_untranslated(space)) == constants.MAXINT * 2
+    w_result = prim(MULTIPLY, [constants.MAXINT, constants.MAXINT])
+    assert isinstance(w_result, W_LargeIntegerBig)
+    assert w_result.unwrap_long_untranslated(space) == constants.MAXINT ** 2
 
 def test_small_int_divide():
     assert prim(DIVIDE, [6,3]).value == 2
@@ -192,11 +190,14 @@ def test_small_int_bit_shift_negative():
 
 def test_small_int_bit_shift_overflow():
     w_result = prim(BIT_SHIFT, [4, constants.LONG_BIT])
-    assert isinstance(w_result, W_LargeInteger)
+    assert isinstance(w_result, W_LargeIntegerBig)
     assert w_result.unwrap_long_untranslated(space) == 4 << constants.LONG_BIT
     w_result = prim(BIT_SHIFT, [4, constants.LONG_BIT - 1])
-    assert isinstance(w_result, W_LargeInteger)
+    assert isinstance(w_result, W_LargeIntegerBig)
     assert w_result.unwrap_long_untranslated(space) == 4 << (constants.LONG_BIT - 1)
+    w_result = prim(BIT_SHIFT, [4, constants.LONG_BIT - 3])
+    assert isinstance(w_result, W_LargeIntegerWord)
+    assert w_result.unwrap_long_untranslated(space) == 4 << (constants.LONG_BIT - 3)
     w_result = prim(BIT_SHIFT, [4, -constants.LONG_BIT])
     assert isinstance(w_result, W_SmallInteger)
     assert w_result.value == 0
@@ -204,13 +205,13 @@ def test_small_int_bit_shift_overflow():
     assert isinstance(w_result, W_SmallInteger)
     assert w_result.value == -1
     w_result = prim(BIT_SHIFT, [-2**(constants.LONG_BIT*2), -constants.LONG_BIT])
-    assert isinstance(w_result, W_LargeInteger)
+    assert isinstance(w_result, W_LargeIntegerBig)
     assert w_result.unwrap_long_untranslated(space) == -2**constants.LONG_BIT
     w_result = prim(BIT_SHIFT, [-2**(constants.LONG_BIT*2), -constants.LONG_BIT - 1])
     assert isinstance(w_result, W_SmallInteger)
     assert w_result.unwrap_long_untranslated(space) == -2**(constants.LONG_BIT-1)
     w_result = prim(BIT_SHIFT, [4, constants.LONG_BIT - 3])
-    assert isinstance(w_result, W_LargeInteger)
+    assert isinstance(w_result, W_LargeIntegerWord)
     assert w_result.unwrap_long_untranslated(space) == 4 << constants.LONG_BIT - 3
 
 def test_smallint_as_float():

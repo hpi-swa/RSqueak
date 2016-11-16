@@ -2,7 +2,7 @@ from rsqueakvm import constants, wrapper, display, storage
 from rsqueakvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, SYSTEM_ATTRIBUTE_IMAGE_ARGS_INDEX, IS_64BIT
 from rsqueakvm.error import WrappingError, UnwrappingError
 from rsqueakvm.model.character import W_Character
-from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargeInteger
+from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargeIntegerWord, W_LargeIntegerBig
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.model.block_closure import W_BlockClosure
@@ -195,11 +195,15 @@ class ObjSpace(object):
             return self.wrap_rbigint(val)
         elif is_valid_int(val):
             return self.wrap_smallint_unsafe(val)
-        elif isinstance(val, r_uint) and val <= r_uint(constants.MAXINT):
-            return self.wrap_smallint_unsafe(intmask(val))
+        elif isinstance(val, r_uint):
+            if val <= r_uint(constants.MAXINT):
+                return self.wrap_smallint_unsafe(intmask(val))
+            else:
+                return W_LargeIntegerWord(
+                    self, self.w_LargePositiveInteger, val, constants.BYTES_PER_MACHINE_INT)
         elif IS_64BIT and isinstance(val, r_uint32):
             return self.wrap_smallint_unsafe(intmask(val))
-        elif isinstance(val, r_longlong) or isinstance(val, r_ulonglong) or isinstance(val, r_uint):
+        elif isinstance(val, r_longlong) or isinstance(val, r_ulonglong):
             return self.wrap_rbigint(rbigint.rbigint.fromrarith_int(val))
         else:
             raise WrappingError
@@ -220,6 +224,10 @@ class ObjSpace(object):
         else:
             w_class = self.w_LargePositiveInteger
             bytelenval = val
+        try:
+            return W_LargeIntegerWord(self, w_class, bytelenval.touint(), constants.BYTES_PER_MACHINE_INT)
+        except OverflowError:
+            pass
         # XXX +0.05: heuristic hack float rounding errors
         bytelen = int(math.floor(bytelenval.log(256) + 0.05)) + 1
         # try:
@@ -227,7 +235,7 @@ class ObjSpace(object):
         # except OverflowError:
         #     # round-off errors in math.log, might need an extra byte
         #     bytes = val.tobytes(bytelen + 1, 'little', False)
-        return W_LargeInteger(self, w_class, val, bytelen)
+        return W_LargeIntegerBig(self, w_class, val, bytelen)
 
     def wrap_float(self, i):
         return W_Float(i)
@@ -272,6 +280,11 @@ class ObjSpace(object):
 
     def unwrap_uint(self, w_value):
         return w_value.unwrap_uint(self)
+
+    def unwrap_positive_uint(self, w_value):
+        if w_value.is_positive(self):
+            return w_value.unwrap_uint(self)
+        raise UnwrappingError
 
     def unwrap_int64(self, w_value):
         if IS_64BIT:

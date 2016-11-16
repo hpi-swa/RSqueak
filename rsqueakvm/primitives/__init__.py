@@ -34,6 +34,7 @@ index1_0 = object()
 char = object()
 bytelist = object()
 uint = object()
+positive_uint = object()
 
 def unwrap_alternatives(unwrap_specs=None):
     assert unwrap_specs
@@ -103,6 +104,8 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                         args += (interp.space.unwrap_int64(w_arg),)
                     elif spec is uint:
                         args += (interp.space.unwrap_uint(w_arg),)
+                    elif spec is positive_uint:
+                        args += (interp.space.unwrap_positive_uint(w_arg),)
                     elif spec is rbigint:
                         args += (interp.space.unwrap_rbigint(w_arg),)
                     elif spec is int:
