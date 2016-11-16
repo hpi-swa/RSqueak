@@ -9,7 +9,7 @@ from rpython.rtyper.lltypesystem import lltype, rffi
 
 
 class W_BytesObject(W_AbstractObjectWithClassReference):
-    _attrs_ = ['version', 'bytes', 'native_bytes']
+    _attrs_ = ['version', 'bytes']
     repr_classname = 'W_BytesObject'
     bytes_per_slot = 1
     _immutable_fields_ = ['version?']
@@ -19,7 +19,6 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         assert isinstance(size, int)
         self.mutate()
         self.bytes = ['\x00'] * size
-        self.native_bytes = None
 
     def mutate(self):
         self.version = Version()
@@ -28,7 +27,6 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         W_AbstractObjectWithClassReference.fillin(self, space, g_self)
         self.mutate()
         self.bytes = g_self.get_bytes()
-        self.native_bytes = None
 
     def at0(self, space, index0):
         return space.wrap_smallint_unsafe(ord(self.getchar(index0)))
@@ -40,18 +38,12 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
             raise error.PrimitiveFailedError
 
     def getchar(self, n0):
-        if self.native_bytes is not None:
-            return self.native_bytes.getchar(n0)
-        else:
-            return self.bytes[n0]
+        return self.bytes[n0]
 
     def setchar(self, n0, character):
         assert isinstance(character, str)
         assert len(character) == 1
-        if self.native_bytes is not None:
-            self.native_bytes.setchar(n0, character)
-        else:
-            self.bytes[n0] = character
+        self.bytes[n0] = character
         self.mutate()
 
     def short_at0(self, space, index0):
@@ -74,10 +66,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         self.setchar(byte_index0 + 1, chr(byte1))
 
     def size(self):
-        if self.native_bytes is not None:
-            return self.native_bytes.size
-        else:
-            return len(self.bytes)
+        return len(self.bytes)
 
     def str_content(self):
         if self.getclass(None).has_space():
@@ -92,24 +81,15 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
 
     @jit.elidable
     def _pure_as_string(self, version):
-        if self.native_bytes is not None:
-            return self.native_bytes.as_string()
-        else:
-            return "".join(self.bytes)
+        return "".join(self.bytes)
 
     def getbytes(self):
-        if self.native_bytes is not None:
-            return self.native_bytes.copy_bytes()
-        else:
-            return self.bytes
+        return self.bytes
 
     @jit.dont_look_inside
     def setbytes(self, lst):
         assert len(lst) == self.size()
-        if self.native_bytes is not None:
-            self.native_bytes.setbytes(lst)
-        else:
-            self.bytes = lst
+        self.bytes = lst
         self.mutate()
 
     def is_positive(self, space):
@@ -178,10 +158,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
     def clone(self, space):
         size = self.size()
         w_result = W_BytesObject(space, self.getclass(space), size)
-        if self.native_bytes is not None:
-            w_result.bytes = self.native_bytes.copy_bytes()
-        else:
-            w_result.bytes = list(self.bytes)
+        w_result.bytes = list(self.bytes)
         return w_result
 
     def is_array_object(self):
@@ -190,7 +167,6 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
     def _become(self, w_other):
         assert isinstance(w_other, W_BytesObject)
         self.bytes, w_other.bytes = w_other.bytes, self.bytes
-        self.native_bytes, w_other.native_bytes = w_other.native_bytes, self.native_bytes
         self.mutate()
         W_AbstractObjectWithClassReference._become(self, w_other)
 
@@ -333,11 +309,8 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
     def clone(self, space):
         size = self.size()
         w_result = W_WordsObject(space, self.getclass(space), size)
-        if self.native_words is not None:
-            assert isinstance(self.native_words, NativeWordsWrapper)
-            w_result.words = self.native_words.copy_words()
-        else:
-            w_result.words = list(self.words)
+        assert self.native_words is None
+        w_result.words = list(self.words)
         return w_result
 
     def is_array_object(self):
