@@ -183,8 +183,8 @@ class AssociationWrapper(Wrapper):
 
     @staticmethod
     def build(space, w_assoc):
-        if (space.w_ClassBinding and
-            w_assoc.getclass(space).is_same_object(space.w_ClassBinding)):
+        if (space.special_object("w_ClassBinding") and
+            w_assoc.getclass(space).is_same_object(space.special_object("w_ClassBinding"))):
             return PromotingAssociationWrapper(space, w_assoc)
         else:
             return AssociationWrapper(space, w_assoc)

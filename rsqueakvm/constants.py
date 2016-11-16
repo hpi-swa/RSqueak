@@ -76,6 +76,8 @@ SQUEAK_EPOCH_DELTA_MICROSECONDS = r_int64(2177452800000000L)
 # ___________________________________________________________________________
 # Special objects indices
 
+SPECIAL_OBJECTS_SIZE = 70 # some room
+
 SO_NIL = 0
 SO_FALSE = 1
 SO_TRUE = 2
@@ -142,7 +144,6 @@ classes_in_special_object_table = {
 #    "PseudoContext" : SO_PSEUDOCONTEXT_CLASS,
 #    "TranslatedMethod" : SO_TRANSLATEDMETHOD_CLASS,
     "LargeNegativeInteger" : SO_LARGENEGATIVEINTEGER_CLASS,
-    "ClassBinding": 100, # doesn't exist, but we'd like it to
 }
 
 objects_in_special_object_table = {
@@ -160,9 +161,8 @@ objects_in_special_object_table = {
     "timerSemaphore": SO_TIMER_SEMAPHORE,
     "runWithIn": SO_RUN_WITH_IN,
     "cannotReturn": SO_CANNOT_RETURN,
+    "ClassBinding": SPECIAL_OBJECTS_SIZE + 30, # doesn't exist, but we'd like it to
 }
-
-SPECIAL_OBJECTS_SIZE = 70 # some room
 
 from rpython.rlib.rarithmetic import LONG_BIT
 TAGGED_MAXINT = 2 ** (LONG_BIT - 2) - 1

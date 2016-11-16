@@ -145,7 +145,8 @@ class ObjSpace(object):
                 try:
                     self.objtable[name] = specials[idx]
                 except IndexError:
-                    # if it's not yet in the table, the interpreter has to fill the gap later in populate_remaining_special_objects
+                    # if it's not yet in the table, the interpreter has to fill
+                    # the gap later in populate_remaining_special_objects
                     self.objtable[name] = None
         self.classtable["w_Metaclass"] = self.w_SmallInteger.getclass(self).getclass(self)
 
@@ -362,6 +363,17 @@ class ObjSpace(object):
                                     return w_assoc.fetch(self, 1)
                             except UnwrappingError:
                                 pass
+        elif w_sd.instsize() == 2:
+            w_array = w_sd.fetch(self, 1)
+            size = w_array.varsize()
+            for i in range(size):
+                w_assoc = w_array.fetch(self, i)
+                if w_assoc.instsize() == 2:
+                    try:
+                        if self.unwrap_string(w_assoc.fetch(self, 0)) == string:
+                            return w_assoc.fetch(self, 1)
+                    except UnwrappingError:
+                        pass
 
     # ============= Other Methods =============
 
