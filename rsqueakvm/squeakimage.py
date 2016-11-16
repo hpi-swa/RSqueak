@@ -741,7 +741,6 @@ class SpurReader(BaseReaderStrategy):
         else:
             assert 0, "not reachable"
 
-
     def ischar(self, g_object):
         g_char = self.special_g_object_safe(constants.SO_CHARACTER_CLASS)
         return (self.ispointers(g_object) and g_object.g_class == g_char)
@@ -1075,22 +1074,19 @@ class SpurImageWriter(object):
             self.reserve(W_WordsObject(self.space, self.space.w_Bitmap, self.word_size * 8))
             self.hidden_roots = W_PointersObject(self.space, self.space.w_Array, 2**12 + 8)
             self.reserve(self.hidden_roots)
-            w_special_objects = W_PointersObject(self.space, self.space.w_Array, constants.SPECIAL_OBJECTS_SIZE)
-            for idx,w_o in enumerate(self.image.special_objects.fetch_all(self.space)):
-                w_special_objects.store(self.space, idx, w_o)
-            # make sure we store all the stuff the space knows, too, so we
-            # 'upgrade' old images with a newer special objects table in Spur
-            # format
-            for idx,name in enumerate(constants.classes_in_special_object_table.keys()):
-                try:
-                    w_special_objects.store(self.space, idx, self.space.special_object(name))
-                except (KeyError, IndexError):
-                    pass
-            for idx,name in enumerate(constants.objects_in_special_object_table.keys()):
-                try:
-                    w_special_objects.store(self.space, idx, self.space.special_object(name))
-                except (KeyError, IndexError):
-                    pass
+            w_special_objects = self.image.special_objects
+            for i in range(w_special_objects.size()):
+                w_obj = w_special_objects.fetch(self.space, i)
+                if isinstance(w_obj, W_SmallInteger):
+                    # This cannot be...
+                    val = self.space.unwrap_int(w_obj)
+                    if val >= 0:
+                        w_cls = self.space.w_LargePositiveInteger
+                    else:
+                        w_cls = self.space.w_LargeNegativeInteger
+                    w_special_objects.store(
+                        self.space, i,
+                        W_LargeIntegerWord(self.space, w_cls, r_uint(val), 4))
             self.reserve(w_special_objects)
             self.trace_until_finish()
             # tracing through the image will have populated the hidden roots and
@@ -1199,12 +1195,16 @@ class SpurImageWriter(object):
                 if obj.value <= constants.TAGGED_MAXINT32:
                     newoop = (obj.value << 1) + 1
                 else:
-                    return self.reserve(self.space.wrap_int(r_longlong(obj.value)))
+                    return self.reserve(W_LargeIntegerWord(
+                        self.space, self.space.w_LargePositiveInteger,
+                        r_uint(obj.value), constants.BYTES_PER_MACHINE_INT))
             else:
                 if obj.value >= constants.TAGGED_MININT32:
                     newoop = intmask((((r_int64(1) << 31) + obj.value) << 1) + 1)
                 else:
-                    return self.reserve(self.space.wrap_int(r_longlong(obj.value)))
+                    return self.reserve(W_LargeIntegerWord(
+                        self.space, self.space.w_LargeNegativeInteger,
+                        r_uint(obj.value), constants.BYTES_PER_MACHINE_INT))
             return (newoop, 0, 0, 0, 0)
         elif isinstance(obj, W_Character):
             assert obj.value < constants.TAGGED_MAXINT32
