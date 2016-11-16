@@ -3,7 +3,7 @@ import os
 import math
 import time
 
-from rsqueakvm import storage_contexts, constants, wrapper, display
+from rsqueakvm import storage_contexts, constants, wrapper, display, storage_classes
 from rsqueakvm.model.base import W_Object
 from rsqueakvm.model.character import W_Character
 from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod
@@ -277,6 +277,17 @@ def test_at_and_at_put_bytes():
 def test_invalid_at_put():
     w_obj = bootstrap_class(0).as_class_get_shadow(space).new()
     prim_fails(AT_PUT, [w_obj, 1, 22])
+
+def test_integer_at_put():
+    w_obj = bootstrap_class(0, format=storage_classes.WORDS).as_class_get_shadow(space).new(1)
+    assert prim(INTEGER_AT_PUT, [w_obj, 1, 22]).value == 22
+    assert prim(AT, [w_obj, 1]).value == 22
+    with py.test.raises(PrimitiveFailedError):
+        assert prim(INTEGER_AT_PUT, [w_obj, 1, "112"])
+    with py.test.raises(PrimitiveFailedError):
+        assert prim(INTEGER_AT_PUT, [w_obj, 1, 0xffffffffffffffffffffffff])
+    with py.test.raises(PrimitiveFailedError):
+        assert prim(INTEGER_AT_PUT, [w_obj, 1, -0xffffffffffffffffffffffff])
 
 def test_size():
     w_obj = bootstrap_class(0, varsized=True).as_class_get_shadow(space).new(0)

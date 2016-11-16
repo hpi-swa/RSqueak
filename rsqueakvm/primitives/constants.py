@@ -186,6 +186,8 @@ DIRECTORY_DELTE = 163
 # ___________________________________________________________________________
 # Misc primitives
 YIELD = 167
+INTEGER_AT = 165
+INTEGER_AT_PUT = 166
 CHARACTER_VALUE = 170
 IMMEDIATE_IDENTITY_HASH = 171
 SLOT_AT = 173
