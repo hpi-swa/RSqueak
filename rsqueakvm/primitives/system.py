@@ -130,7 +130,7 @@ def func(interp, s_frame, argcount):
     vm_w_params[8] = interp.space.wrap_int(1)  # must be 1 for VM Stats view to work
 
     vm_w_params[41] = interp.space.wrap_int(1)  # We are a "stack-like" VM - number of stack tables
-    
+
     if objectmodel.we_are_translated():
         # sizeOfMachineCode = jit_hooks.stats_asmmemmgr_allocated(None)
         sizeOfMachineCode = jit_hooks.stats_asmmemmgr_used(None)
@@ -171,14 +171,6 @@ def func(interp, s_frame, argcount):
 def func(interp, s_frame, index):
     from rsqueakvm.primitives.control import ExternalPluginNames
     offset = 0
-    if interp.space.use_plugins.is_set():
-        from rsqueakvm.plugins.iproxy import IProxy
-        modulenames = IProxy.loaded_module_names()
-        offset = len(modulenames)
-        try:
-            return interp.space.wrap_string(modulenames[index])
-        except IndexError:
-            pass
     try:
         return interp.space.wrap_string(ExternalPluginNames[index + offset])
     except IndexError:

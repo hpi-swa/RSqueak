@@ -194,13 +194,6 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         self.mutate()
         W_AbstractObjectWithClassReference._become(self, w_other)
 
-    def convert_to_c_layout(self):
-        if self.bytes is not None:
-            self.native_bytes = NativeBytesWrapper(self.unwrap_string(None))
-            self.bytes = None
-            self.mutate()
-        return self.native_bytes.c_bytes
-
 
 # This indirection avoids a call for alloc_with_del in Jitted code
 class NativeBytesWrapper(object):
@@ -356,13 +349,6 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         self.native_words, w_other.native_words = w_other.native_words, self.native_words
         W_AbstractObjectWithClassReference._become(self, w_other)
 
-    def convert_to_c_layout(self):
-        if self.words is not None:
-            self.native_words = NativeWordsWrapper(self.words)
-            self.words = None
-        assert isinstance(self.native_words, NativeWordsWrapper)
-        return self.native_words.c_words
-
     def convert_to_bytes_layout(self, wordsize):
         if self.words is not None:
             self.native_words = NativeWordsAsBytesWrapper(self.words, len(self.words) * wordsize)
@@ -372,52 +358,16 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         return self
 
 
-class AbstractNativeWordsWrapper(object):
-    _attrs_ = ["size"]
-    _immutable_fields_ = ["size"]
-
-
-class NativeWordsWrapper(AbstractNativeWordsWrapper):
-    _attrs_ = ["c_words"]
-    _immutable_fields_ = ["c_words"]
-
-    def __init__(self, words):
-        self.size = len(words)
-        from rsqueakvm.plugins.iproxy import sqIntArrayPtr
-        self.c_words = lltype.malloc(sqIntArrayPtr.TO, self.size, flavor='raw')
-        for i in range(self.size):
-            self.c_words[i] = words[i]
-
-    def setword(self, n0, word):
-        self.c_words[n0] = word
-
-    def getword(self, n0):
-        if n0 >= self.size:
-            raise IndexError
-        return r_uint(self.c_words[n0])
-
-    def copy_words(self):
-        return [r_uint(self.c_words[i]) for i in range(self.size)]
-
-    def setwords(self, lst):
-        for i in range(self.size):
-            self.setword(i, lst[i])
-
-    def __del__(self):
-        lltype.free(self.c_words, flavor='raw')
-
-
-
 @always_inline
 @specialize.argtype(0)
 def r_char(x):
     return rffi.cast(rffi.CHAR, x)
 
 
-class NativeWordsAsBytesWrapper(AbstractNativeWordsWrapper):
+class NativeWordsAsBytesWrapper(object):
     """This is a terrible hack. See SmalltalkImage>>calcEndianess in modern Spur images. -tfel"""
-    _attrs_ = ["c_bytes"]
-    _immutable_fields_ = ["c_bytes"]
+    _attrs_ = ["size", "c_bytes"]
+    _immutable_fields_ = ["size", "c_bytes"]
 
     def __init__(self, words, size):
         self.size = size

@@ -72,35 +72,9 @@ def test_bytes_object():
     assert w_bytes.getchar(0) == "\x00"
     py.test.raises(IndexError, lambda: w_bytes.getchar(20))
 
-def test_c_bytes_object():
-    w_class = bootstrap_class(0, format=storage_classes.BYTES)
-    w_bytes = w_class.as_class_get_shadow(space).new(20)
-    w_bytes.convert_to_c_layout()
-    assert w_bytes.getclass(space).is_same_object(w_class)
-    assert w_bytes.size() == 20
-    assert w_class.as_class_get_shadow(space).instsize() == 0
-    assert w_bytes.getchar(3) == "\x00"
-    w_bytes.setchar(3, "\xAA")
-    assert w_bytes.getchar(3) == "\xAA"
-    assert w_bytes.getchar(0) == "\x00"
-    py.test.raises(IndexError, lambda: w_bytes.getchar(20))
-
 def test_word_object():
     w_class = bootstrap_class(0, format=storage_classes.WORDS)
     w_bytes = w_class.as_class_get_shadow(space).new(20)
-    assert w_bytes.getclass(space).is_same_object(w_class)
-    assert w_bytes.size() == 20
-    assert w_class.as_class_get_shadow(space).instsize() == 0
-    assert w_bytes.getword(3) == 0
-    w_bytes.setword(3, 42)
-    assert w_bytes.getword(3) == 42
-    assert w_bytes.getword(0) == 0
-    py.test.raises(AssertionError, lambda: w_bytes.getword(20))
-
-def test_c_word_object():
-    w_class = bootstrap_class(0, format=storage_classes.WORDS)
-    w_bytes = w_class.as_class_get_shadow(space).new(20)
-    w_bytes.convert_to_c_layout()
     assert w_bytes.getclass(space).is_same_object(w_class)
     assert w_bytes.size() == 20
     assert w_class.as_class_get_shadow(space).instsize() == 0

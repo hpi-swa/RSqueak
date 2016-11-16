@@ -155,9 +155,6 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
         # TODO - implement _become() for this class. Impossible due to _immutable_fields_?
         return False
 
-    def convert_to_c_layout(self):
-        return self._real_depth_buffer
-
     def __del__(self):
         lltype.free(self._real_depth_buffer, flavor='raw')
 

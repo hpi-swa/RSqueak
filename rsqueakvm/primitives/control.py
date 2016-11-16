@@ -139,13 +139,6 @@ def func(interp, s_frame, argcount, w_method):
         raise PrimitiveFailedError
     signature = (space.unwrap_string(w_modulename), space.unwrap_string(w_functionname))
 
-    if (not constants.IS_64BIT) and interp.space.use_plugins.is_set():
-        from rsqueakvm.plugins.iproxy import IProxy, MissingPlugin
-        try:
-            return IProxy.call(signature, interp, s_frame, argcount, w_method)
-        except MissingPlugin:
-            pass
-
     for i, p in enumerate(ExternalPluginNames):
         if signature[0] == p:
             return ExternalPlugins[i].call(signature[1], interp, s_frame, argcount, w_method)
