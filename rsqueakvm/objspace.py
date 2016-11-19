@@ -10,7 +10,7 @@ from rsqueakvm.util.version import Version
 
 from rpython.rlib import jit, rbigint, rarithmetic
 from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin, we_are_translated
-from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32, int_between, is_valid_int, r_ulonglong, r_longlong
+from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32, int_between, is_valid_int, r_ulonglong, r_longlong, r_int64
 
 
 class ConstantMixin(object):
@@ -193,7 +193,7 @@ class ObjSpace(object):
     def wrap_int(self, val):
         if isinstance(val, rbigint.rbigint):
             return self.wrap_rbigint(val)
-        elif is_valid_int(val):
+        elif isinstance(val, int):
             return self.wrap_smallint_unsafe(val)
         elif isinstance(val, r_uint):
             if val <= r_uint(constants.MAXINT):
@@ -203,7 +203,7 @@ class ObjSpace(object):
                     self, self.w_LargePositiveInteger, val, constants.BYTES_PER_MACHINE_INT)
         elif IS_64BIT and isinstance(val, r_uint32):
             return self.wrap_smallint_unsafe(intmask(val))
-        elif isinstance(val, r_longlong) or isinstance(val, r_ulonglong):
+        elif isinstance(val, r_longlong) or isinstance(val, r_ulonglong) or isinstance(val, r_int64):
             return self.wrap_rbigint(rbigint.rbigint.fromrarith_int(val))
         else:
             raise WrappingError

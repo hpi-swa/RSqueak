@@ -36,9 +36,9 @@ int_ovfcheck_div = make_ovfcheck(operator.floordiv, lambda x,y,r: (x == constant
 # mod overflows like div
 int_ovfcheck_mod = make_ovfcheck(operator.mod, lambda x,y,r: (x == constants.MININT) & (y == -1))
 # add overflows if the result has a different sign than both operands
-int_ovfcheck_add = make_ovfcheck(operator.add, lambda x,y,r: ((r^x) < 0 and (r^y) < 0))
+int_ovfcheck_add = make_ovfcheck(operator.add, lambda x,y,r: (((r^x)<0) & ((r^y)<0)))
 # sub overflows if the result has a different sign than x and negated y
-int_ovfcheck_sub = make_ovfcheck(operator.sub, lambda x,y,r: ((r^x) < 0 and (r^~y) < 0))
+int_ovfcheck_sub = make_ovfcheck(operator.sub, lambda x,y,r: (((r^x)<0) & ((r^~y)<0)))
 # mul overflow check uses doubles to do a conservative overflow check
 int_ovfcheck_mul = make_ovfcheck(operator.mul, lambda x,y,r: float(x)*float(y) == float(r))
 
