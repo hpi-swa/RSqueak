@@ -9,12 +9,39 @@ from rsqueakvm.primitives.constants import *
 
 from rpython.rlib import rfloat, jit
 from rpython.rlib.rbigint import rbigint, NULLRBIGINT, ONERBIGINT
-from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int, r_int64
+from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int, r_int64, is_valid_int
 from rpython.rlib.objectmodel import specialize
 
 combination_specs = [[int, int], [r_int64, r_int64], [rbigint, rbigint]]
 comparison_specs = combination_specs + [[float, float]]
 arithmetic_specs = comparison_specs
+
+
+def make_ovfcheck(op, check):
+    @specialize.argtype(0, 1)
+    def fun(x, y):
+        if isinstance(x, float) and isinstance(y, float):
+            return op(x, y)
+        elif not (isinstance(x, int) and isinstance(y, int)):
+            try: r = op(x, y)
+            except OverflowError: raise PrimitiveFailedError # not raised after translation :(
+            if check(x, y, r): raise PrimitiveFailedError
+            return r
+        else:
+            try: return ovfcheck(op(x, y))
+            except OverflowError: raise PrimitiveFailedError
+    return fun
+# div overflows only in one case
+int_ovfcheck_div = make_ovfcheck(operator.floordiv, lambda x,y,r: (x == constants.MININT) & (y == -1))
+# mod overflows like div
+int_ovfcheck_mod = make_ovfcheck(operator.mod, lambda x,y,r: (x == constants.MININT) & (y == -1))
+# add overflows if the result has a different sign than both operands
+int_ovfcheck_add = make_ovfcheck(operator.add, lambda x,y,r: ((r^x) < 0 and (r^y) < 0))
+# sub overflows if the result has a different sign than x and negated y
+int_ovfcheck_sub = make_ovfcheck(operator.sub, lambda x,y,r: ((r^x) < 0 and (r^~y) < 0))
+# mul overflow check uses doubles to do a conservative overflow check
+int_ovfcheck_mul = make_ovfcheck(operator.mul, lambda x,y,r: float(x)*float(y) == float(r))
+
 
 # ___________________________________________________________________________
 # Boolean Primitives
@@ -55,9 +82,9 @@ for (code, ops) in bool_ops.items():
 # SmallInteger Primitives
 
 math_ops = {
-    ADD: (operator.add, rbigint.add),
-    SUBTRACT: (operator.sub, rbigint.sub),
-    MULTIPLY: (operator.mul, rbigint.mul),
+    ADD: (int_ovfcheck_add, rbigint.add),
+    SUBTRACT: (int_ovfcheck_sub, rbigint.sub),
+    MULTIPLY: (int_ovfcheck_mul, rbigint.mul),
     }
 for (code, ops) in math_ops.items():
     def make_func(ops, code):
@@ -70,22 +97,8 @@ for (code, ops) in math_ops.items():
                 return interp.space.wrap_rbigint(bigop(receiver, argument))
             elif isinstance(receiver, float) and isinstance(argument, float):
                 return interp.space.wrap_float(smallop(receiver, argument))
-            elif (not constants.IS_64BIT) and isinstance(receiver, r_int64):
-                # manual ovfcheck as in Squeak
-                try:
-                    res = smallop(receiver, argument)
-                except OverflowError:
-                    # Never raised after translation, but before
-                    raise PrimitiveFailedError
-                if ((receiver ^ argument >= 0) and (receiver ^ res < 0)):
-                    # manual ovfcheck as in Squeak VM
-                    raise PrimitiveFailedError
-                return interp.space.wrap_int(res)
             else:
-                try:
-                    return interp.space.wrap_int(ovfcheck(smallop(receiver, argument)))
-                except OverflowError:
-                    raise PrimitiveFailedError()
+                return interp.space.wrap_int(smallop(receiver, argument))
     make_func(ops, code)
 
 bitwise_binary_ops = {
@@ -104,23 +117,6 @@ for (code, ops) in bitwise_binary_ops.items():
                 return interp.space.wrap_int(smallop(receiver, argument))
     make_func(ops[0], ops[1])
 
-def make_ovfcheck(op):
-    @specialize.argtype(0, 1)
-    def fun(receiver, argument):
-        if (not constants.IS_64BIT) and isinstance(receiver, r_int64):
-            res = op(receiver, argument)
-            if ((receiver ^ argument >= 0) and (receiver ^ res < 0)):
-                # manual ovfcheck as in Squeak VM
-                raise PrimitiveFailedError
-            return res
-        try:
-            return ovfcheck(op(receiver, argument))
-        except OverflowError:
-            raise PrimitiveFailedError
-    return fun
-ovfcheck_div = make_ovfcheck(operator.floordiv)
-ovfcheck_mod = make_ovfcheck(operator.mod)
-
 @specialize.argtype(0)
 def guard_nonnull(value):
     if not isinstance(value, rbigint) and value == 0:
@@ -138,9 +134,9 @@ def func(interp, s_frame, receiver, argument):
             raise PrimitiveFailedError
         return interp.space.wrap_rbigint(receiver.div(argument))
     else:
-        if ovfcheck_mod(receiver, argument) != 0:
+        if int_ovfcheck_mod(receiver, argument) != 0:
             raise PrimitiveFailedError()
-        return interp.space.wrap_int(ovfcheck_div(receiver, argument))
+        return interp.space.wrap_int(int_ovfcheck_div(receiver, argument))
 
 # #\\ -- return the remainder of a division
 @expose_also_as(LARGE_MOD)
@@ -150,7 +146,7 @@ def func(interp, s_frame, receiver, argument):
     if isinstance(receiver, rbigint):
         return interp.space.wrap_rbigint(receiver.mod(argument))
     else:
-        return interp.space.wrap_int(ovfcheck_mod(receiver, argument))
+        return interp.space.wrap_int(int_ovfcheck_mod(receiver, argument))
 
 # #// -- return the result of a division, rounded towards negative infinity
 @expose_also_as(LARGE_DIV)
@@ -160,7 +156,7 @@ def func(interp, s_frame, receiver, argument):
     if isinstance(receiver, rbigint):
         return interp.space.wrap_rbigint(receiver.div(argument))
     else:
-        return interp.space.wrap_int(ovfcheck_div(receiver, argument))
+        return interp.space.wrap_int(int_ovfcheck_div(receiver, argument))
 
 # #// -- return the result of a division, rounded towards negative infinite
 @expose_also_as(LARGE_QUO)
@@ -174,7 +170,7 @@ def func(interp, s_frame, receiver, argument):
             res = res.add(ONERBIGINT)
         return interp.space.wrap_rbigint(res)
     else:
-        res = ovfcheck_div(receiver, argument)
+        res = int_ovfcheck_div(receiver, argument)
         if res < 0 and not abs(receiver) == abs(argument):
             res = res + 1
         return interp.space.wrap_int(res)
