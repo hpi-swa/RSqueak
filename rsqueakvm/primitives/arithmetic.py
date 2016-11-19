@@ -40,7 +40,7 @@ int_ovfcheck_add = make_ovfcheck(operator.add, lambda x,y,r: (((r^x)<0) & ((r^y)
 # sub overflows if the result has a different sign than x and negated y
 int_ovfcheck_sub = make_ovfcheck(operator.sub, lambda x,y,r: (((r^x)<0) & ((r^~y)<0)))
 # mul overflow check uses doubles to do a conservative overflow check
-int_ovfcheck_mul = make_ovfcheck(operator.mul, lambda x,y,r: float(x)*float(y) == float(r))
+int_ovfcheck_mul = make_ovfcheck(operator.mul, lambda x,y,r: float(x)*float(y) != float(r))
 
 
 # ___________________________________________________________________________
