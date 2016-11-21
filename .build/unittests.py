@@ -18,12 +18,12 @@ if __name__ == "__main__":
     if not any("/test" in arg or "\\test" in arg for arg in sys.argv):
         testdir = path.join(path.dirname(__file__), "..", "rsqueakvm", "test")
         exitcode = 0
-        args = sys.argv[:]
+        args = sys.argv[1:]
         for n in SHOULD_RUN_FIRST:
             args.append(path.join(testdir, n))
             exitcode |= pytest.main(args=args)
             args.pop()
-        args = sys.argv[:]
+        args = sys.argv[1:]
         for root, subdirs, files in walk(testdir):
             files.sort()
             for f in files:
@@ -33,4 +33,4 @@ if __name__ == "__main__":
         exitcode |= pytest.main(args=args)
         exit(exitcode)
     else:
-        exit(pytest.main(args=sys.argv))
+        exit(pytest.main(args=sys.argv[1:]))
