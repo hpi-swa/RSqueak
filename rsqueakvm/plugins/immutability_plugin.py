@@ -5,17 +5,18 @@ from rsqueakvm.primitives import assert_pointers
 ImmutabilityPlugin = Plugin()
 
 
-@ImmutabilityPlugin.expose_primitive(unwrap_spec=[object, list, list],
-                                     clean_stack=False)
+@ImmutabilityPlugin.expose_primitive(unwrap_spec=[object, list, list])
 def newImmutableObject(interp, s_frame, w_cls, w_selector_list, w_args_list):
-    from rsqueakvm.interpreter import LocalReturn
-    s_frame.pop_n(2)  # removing our arguments
     w_cls = assert_pointers(w_cls)
     s_class = w_cls.as_class_get_shadow(interp.space)
     try:
         new_obj = s_class.new()
     except MemoryError:
         raise PrimitiveFailedError
+    return _fill(interp, new_obj, w_selector_list, w_args_list)
+
+
+def _fill(interp, new_obj, w_selector_list, w_args_list):
     # Fill immutable object
     selector_iter = iter(w_selector_list)
     args_iter = iter(w_args_list)
@@ -26,12 +27,7 @@ def newImmutableObject(interp, s_frame, w_cls, w_selector_list, w_args_list):
             w_arguments = interp.space.unwrap_array(next(args_iter))
         except StopIteration:
             break
-        try:
-            s_frame._sendSelector(
-                w_selector, len(w_arguments), interp, new_obj,
-                new_obj.class_shadow(interp.space), w_arguments=w_arguments)
-        except LocalReturn as lr:
-            s_frame.push(lr.value(interp.space))
+        interp.perform(new_obj, w_selector=w_selector, w_arguments=w_arguments)
     new_obj.set_immutable(True)
     return new_obj
 
