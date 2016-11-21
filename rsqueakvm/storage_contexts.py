@@ -586,6 +586,7 @@ class ContextPartShadow(AbstractStrategy):
         return padding + ' ', '%s\n%s%s' % (ret_str, padding, desc)
 
     def exitFromHeadlessExecution(self, selector="", w_message=None):
+        return  # TODO(@fniephaus): disabled for immutable objects development
         if not objectmodel.we_are_translated():
             if getattr(self.space, "testing", False):
                 return  # During Testing

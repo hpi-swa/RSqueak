@@ -171,6 +171,9 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
         return self._get_strategy().fetch(self, n0)
 
     def store(self, space, n0, w_value):
+        if self.is_immutable():
+            print "Immutable: %s, %s, %s" % (self, n0, w_value)
+            return
         return self._get_strategy().store(self, n0, w_value)
 
     def size(self):

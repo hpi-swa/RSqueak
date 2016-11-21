@@ -1,0 +1,9 @@
+{
+	"class" : {
+		 },
+	"instance" : {
+		"testImmutabilityCollector" : "fn 11/20/2016 20:36",
+		"testImmutableObject" : "fn 11/21/2016 10:53",
+		"testImmutableObjectDNU" : "fn 11/14/2016 19:09",
+		"testImmutableObjectFromLists" : "fn 11/21/2016 10:53",
+		"testImmutableObjectVMSupport" : "fn 11/21/2016 09:51" } }

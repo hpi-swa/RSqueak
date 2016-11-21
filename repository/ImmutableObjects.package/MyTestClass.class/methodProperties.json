@@ -1,0 +1,11 @@
+{
+	"class" : {
+		 },
+	"instance" : {
+		"aField" : "fn 11/14/2016 17:42",
+		"aField:" : "fn 11/14/2016 17:42",
+		"anotherField" : "fn 11/14/2016 17:42",
+		"anotherField:" : "fn 11/14/2016 17:42",
+		"someVar1" : "fn 11/14/2016 18:44",
+		"someVar2" : "fn 11/14/2016 18:44",
+		"someVar:someOtherVar:" : "fn 11/14/2016 18:46" } }

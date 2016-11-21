@@ -1,0 +1,17 @@
+{
+	"category" : "ImmutableObjects",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"aField",
+		"anotherField",
+		"someVar1",
+		"someVar2" ],
+	"name" : "MyTestClass",
+	"pools" : [
+		 ],
+	"super" : "Object",
+	"type" : "normal" }
