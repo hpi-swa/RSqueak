@@ -160,7 +160,7 @@ def test_compare(op, operand1):
     for operand2 in the_small_siege:
         assert (perform(w(operand1), w_selector=sel(st_op), w_arguments=[w(operand2)]) is space.w_true) == getattr(operator, py_op)(operand1, operand2)
 
-@py.test.mark.parametrize('operand1', the_small_siege)
+@py.test.mark.parametrize('operand1', the_small_siege + [-x for x in the_small_siege])
 @py.test.mark.parametrize('op', ops['shift'].values(), ids=ops['shift'].keys())
 def test_shift(op, operand1):
     if isinstance(op, tuple):
