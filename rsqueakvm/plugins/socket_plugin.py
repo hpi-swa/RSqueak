@@ -648,7 +648,6 @@ def primitiveResolverStartNameLookup(interp, s_frame, w_rcvr, hostname):
     return interp.space.w_nil
 
 @SocketPlugin.expose_primitive(unwrap_spec=[object])
-@jit.unroll_safe
 def primitiveResolverNameLookupResult(interp, s_frame, w_rcvr):
     inet = SocketPlugin.get_last_lookup()
     if inet is None:

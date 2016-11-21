@@ -1,12 +1,13 @@
 import operator
 
 from rsqueakvm import constants
-from rsqueakvm.model.numeric import W_LargePositiveInteger1Word
+from rsqueakvm.model.numeric import W_LargeInteger
 from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.primitives import prim_holder
 from rsqueakvm.test.test_primitives import MockFrame
 
 from rpython.rlib.rarithmetic import intmask, r_uint
+from rpython.rlib.rbigint import rbigint
 
 from .util import read_image, copy_to_module, cleanup_module
 
@@ -32,17 +33,10 @@ def perform_primitive(rcvr, w_selector, *args):
 def w_l(largeInteger):
     if largeInteger >= 0 and largeInteger <= constants.TAGGED_MAXINT:
         return space.wrap_int(intmask(largeInteger))
-    elif largeInteger >= 0:
-        return W_LargePositiveInteger1Word(intmask(largeInteger))
     else:
-        assert largeInteger < 0
-        assert space.w_LargeNegativeInteger is not None
-        w_o = W_BytesObject(space, space.w_LargeNegativeInteger, 4)
-        w_li = W_LargePositiveInteger1Word(intmask(-largeInteger))
-        w_o.bytes = list(w_li.unwrap_string(space))
-        return w_o
+        return space.wrap_int(rbigint.fromlong(largeInteger))
 
-# test that using W_LargePositiveInteger1Word yields the correct results.
+# test that using W_LargeInteger yields the correct results.
 # we use this way of testing to have multiple different test which may fail
 def do_primitive(selector, operation, i=None, j=None, trace=False):
     candidates = i if i is not None else [0x1FFFFFFF, 0x3FFFFFFF, 0x7FFFFFFF]
@@ -63,7 +57,7 @@ def do_primitive(selector, operation, i=None, j=None, trace=False):
             else:
                 y = w_l(j)
         z = perform_primitive(x, w_selector, y)
-        assert r_uint(z.value) == r_uint(operation(v, y.value))
+        assert r_uint(z.unwrap_long_untranslated(space)) == r_uint(operation(v, y.unwrap_long_untranslated(space)))
     interp.trace = False
 
 def test_bitAnd():

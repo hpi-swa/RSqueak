@@ -5,7 +5,7 @@ from rsqueakvm import constants, error, wrapper
 from rsqueakvm.model.character import W_Character
 from rsqueakvm.model.compiled_methods import W_CompiledMethod, W_PreSpurCompiledMethod, W_SpurCompiledMethod
 from rsqueakvm.model.display import W_DisplayBitmap
-from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargePositiveInteger1Word
+from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargeIntegerWord, W_LargeIntegerBig, W_LargeInteger
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.block_closure import W_BlockClosure
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
@@ -15,7 +15,7 @@ from rsqueakvm.util.progress import Progress
 
 from rpython.rlib import objectmodel
 from rpython.rlib.rarithmetic import r_ulonglong, r_longlong, r_int, intmask, r_uint, r_uint32, r_int64
-from rpython.rlib import jit
+from rpython.rlib import jit, rbigint
 
 if r_longlong is not r_int:
     r_uint64 = r_ulonglong
@@ -41,7 +41,7 @@ POSSIBLE_IMAGE_OFFSET = 512
 class ImageVersion(object):
     _immutable_fields_ = [
         "magic", "is_big_endian", "is_64bit", "has_closures",
-        "has_floats_reversed", "is_spur"]
+        "has_floats_reversed", "is_modern", "is_spur"]
 
     def __init__(self, magic, is_big_endian, is_64bit, has_closures,
                  has_floats_reversed, is_spur=False):
@@ -107,7 +107,7 @@ set_reader_user_param("threshold=2,function_threshold=2,trace_eagerness=2,loop_l
 
 
 class ImageReader(object):
-    _immutable_fields_ = ["space", "stream", "readerStrategy", "logging_enabled"]
+    _immutable_fields_ = ["space", "stream", "version", "readerStrategy", "logging_enabled"]
 
     def __init__(self, space, stream, logging_enabled=False):
         self.space = space
@@ -237,6 +237,7 @@ class BaseReaderStrategy(object):
         self.fillin_w_objects()
         self.populate_special_objects()
         self.fillin_weak_w_objects()
+        self.fillin_finalize()
 
     def read_body(self):
         raise NotImplementedError("subclass must override this")
@@ -289,12 +290,21 @@ class BaseReaderStrategy(object):
             raise IndexError
         return self.special_g_objects[index]
 
+    def special_g_object_safe(self, index):
+        # while python would raise an IndexError, after translation a nonexisting key results in a segfault...
+        if index >= len(self.special_g_objects):
+            return self.special_g_objects[constants.SO_NIL]
+        return self.special_g_objects[index]
+
     def init_w_objects(self):
         self._progress.next_stage(len(self.chunks))
+        for g in self.special_g_objects:
+            self.init_w_object(g.chunk)
+            self._progress.update()
+        self.special_w_objects = [g.w_object for g in self.special_g_objects]
         for chunk in self.chunks.itervalues():
             self.init_w_object(chunk)
             self._progress.update()
-        self.special_w_objects = [g.w_object for g in self.special_g_objects]
 
     def init_w_object(self, chunk):
         init_w_objects_driver.jit_merge_point(self=self, chunk=chunk)
@@ -323,6 +333,10 @@ class BaseReaderStrategy(object):
         fillin_weak_w_objects_driver.jit_merge_point(self=self, chunk=chunk)
         chunk.g_object.fillin_weak(self.space)
 
+    def fillin_finalize(self):
+        for chunk in self.chunks.itervalues():
+            chunk.g_object.fillin_finalize(self.space)
+
     def len_bytes_of(self, chunk):
         return len(chunk.data) * 4
 
@@ -344,6 +358,34 @@ class BaseReaderStrategy(object):
 
     def isfloat(self, g_object):
         return self.iswords(g_object) and self.space.w_Float.is_same_object(g_object.g_class.w_object)
+
+    def islargeinteger(self, g_object):
+        g_lpi = self.special_g_object_safe(constants.SO_LARGEPOSITIVEINTEGER_CLASS)
+        g_lni = self.special_g_object_safe(constants.SO_LARGENEGATIVEINTEGER_CLASS)
+        is_large = (g_lpi == g_object.g_class or g_lni == g_object.g_class)
+        if is_large:
+            assert self.isbytes(g_object)
+        return is_large
+
+    def issignedinteger(self, g_object):
+        if not self.islargeinteger(g_object):
+            return False
+        bytes = g_object.get_bytes()
+        value = rbigint.rbigint.frombytes(bytes, 'little', False)
+        if g_object.g_class != self.special_g_object_safe(constants.SO_LARGEPOSITIVEINTEGER_CLASS):
+            value = value.neg()
+        try:
+            value.toint()
+        except OverflowError:
+            return False
+        return True
+
+    def isunsignedinteger(self, g_object):
+        return self.islargeinteger(g_object) and g_object.len_bytes() == constants.BYTES_PER_MACHINE_INT
+
+    def isbiginteger(self, g_object):
+        return self.islargeinteger(g_object) and g_object.len_bytes() > constants.BYTES_PER_MACHINE_INT
+
 
 class NonSpurReader(BaseReaderStrategy):
 
@@ -462,8 +504,12 @@ class NonSpurReader(BaseReaderStrategy):
             raise error.CorruptImageError("Unknown format 5")
         elif self.isfloat(g_object):
             return objectmodel.instantiate(W_Float)
-        elif self.iswordsizedlargepositiveinteger(g_object):
-            return objectmodel.instantiate(W_LargePositiveInteger1Word)
+        elif self.issignedinteger(g_object):
+            return objectmodel.instantiate(W_SmallInteger)
+        elif self.isunsignedinteger(g_object):
+            return objectmodel.instantiate(W_LargeIntegerWord)
+        elif self.isbiginteger(g_object):
+            return objectmodel.instantiate(W_LargeIntegerBig)
         elif self.iswords(g_object):
             return objectmodel.instantiate(W_WordsObject)
         elif g_object.format == 7:
@@ -478,20 +524,16 @@ class NonSpurReader(BaseReaderStrategy):
     def isbytes(self, g_object):
         return 8 <= g_object.format <= 11
 
-    def iswordsizedlargepositiveinteger(self, g_object):
-        return (g_object.format == 8 and
-                self.space.w_LargePositiveInteger.is_same_object(g_object.g_class.w_object) and
-                g_object.len_bytes() <= constants.BYTES_PER_MACHINE_INT)
-
     def ischar(self, g_object):
-        return (self.ispointers(g_object) and
-                self.space.w_Character.is_same_object(g_object.g_class.w_object))
+        g_char = self.special_g_object_safe(constants.SO_CHARACTER_CLASS)
+        return (self.ispointers(g_object) and g_object.g_class == g_char)
 
     def iswords(self, g_object):
         return g_object.format == 6
 
     def isblockclosure(self, g_object):
-        return self.ispointers(g_object) and self.space.w_BlockClosure.is_same_object(g_object.g_class.w_object)
+        g_closure = self.special_g_object_safe(constants.SO_BLOCKCLOSURE_CLASS)
+        return self.ispointers(g_object) and g_object.g_class == g_closure
 
     def ispointers(self, g_object):
         return g_object.format < 5
@@ -682,8 +724,12 @@ class SpurReader(BaseReaderStrategy):
             return objectmodel.instantiate(W_PointersObject)
         elif self.isfloat(g_object):
             return objectmodel.instantiate(W_Float)
-        elif self.iswordsizedlargepositiveinteger(g_object):
-            return objectmodel.instantiate(W_LargePositiveInteger1Word)
+        elif self.issignedinteger(g_object):
+            return objectmodel.instantiate(W_SmallInteger)
+        elif self.isunsignedinteger(g_object):
+            return objectmodel.instantiate(W_LargeIntegerWord)
+        elif self.isbiginteger(g_object):
+            return objectmodel.instantiate(W_LargeIntegerBig)
         elif self.iswords(g_object):
             return objectmodel.instantiate(W_WordsObject)
         elif self.isbytes(g_object):
@@ -696,10 +742,12 @@ class SpurReader(BaseReaderStrategy):
             assert 0, "not reachable"
 
     def ischar(self, g_object):
-        return self.space.w_Character.is_same_object(g_object.g_class.w_object)
+        g_char = self.special_g_object_safe(constants.SO_CHARACTER_CLASS)
+        return (self.ispointers(g_object) and g_object.g_class == g_char)
 
     def isblockclosure(self, g_object):
-        return self.ispointers(g_object) and self.space.w_BlockClosure.is_same_object(g_object.g_class.w_object)
+        g_closure = self.special_g_object_safe(constants.SO_BLOCKCLOSURE_CLASS)
+        return self.ispointers(g_object) and g_closure == g_object.g_class
 
     def ispointers(self, g_object):
         return g_object.format < 6
@@ -707,12 +755,11 @@ class SpurReader(BaseReaderStrategy):
     def isweak(self, g_object):
         return 4 <= g_object.format <= 5
 
-    def iswordsizedlargepositiveinteger(self, g_object):
-        return (g_object.format == 16 and
-                self.space.w_LargePositiveInteger.is_same_object(g_object.g_class.w_object) and
-                g_object.len_bytes() <= constants.BYTES_PER_MACHINE_INT)
-
     def iswords(self, g_object):
+        if not system.IS_64BIT and g_object.format == 9:
+            # 64-bit words objects are not supported in our 32-bit VM, because
+            # we mush them all together
+            self.log("Warning: a 64bit-words object is being truncated to 32-bits.")
         return 9 <= g_object.format <= 15
 
     def isbytes(self, g_object):
@@ -727,11 +774,12 @@ class SpurReader(BaseReaderStrategy):
 
 class SqueakImage(object):
     _immutable_fields_ = [
+        "space",
+        "special_objects",
         "w_asSymbol",
-        "w_simulatePrimitive",
         "version",
         "startup_time",
-        "space"
+        "w_simulatePrimitive",
     ]
 
     def __init__(self, reader):
@@ -875,6 +923,9 @@ class GenericObject(object):
             self.filled_in_weak = True
             self.w_object.fillin_weak(space, self)
 
+    def fillin_finalize(self, space):
+        self.w_object.fillin_finalize(space, self)
+
     def get_g_pointers(self):
         assert self.pointers is not None
         return self.pointers
@@ -959,7 +1010,7 @@ class SpurImageWriter(object):
     def len_and_header(self, obj):
         import math
         n = self.fixed_and_indexable_size_for(obj)
-        if isinstance(obj, W_BytesObject) or isinstance(obj, W_LargePositiveInteger1Word) or isinstance(obj, W_CompiledMethod):
+        if isinstance(obj, W_BytesObject) or isinstance(obj, W_LargeInteger) or isinstance(obj, W_CompiledMethod):
             size = int(math.ceil(n / float(self.word_size)))
         else:
             size = n
@@ -1023,7 +1074,20 @@ class SpurImageWriter(object):
             self.reserve(W_WordsObject(self.space, self.space.w_Bitmap, self.word_size * 8))
             self.hidden_roots = W_PointersObject(self.space, self.space.w_Array, 2**12 + 8)
             self.reserve(self.hidden_roots)
-            self.reserve(self.image.special_objects)
+            w_special_objects = self.image.special_objects
+            for i in range(w_special_objects.size()):
+                w_obj = w_special_objects.fetch(self.space, i)
+                if isinstance(w_obj, W_SmallInteger):
+                    # This cannot be...
+                    val = self.space.unwrap_int(w_obj)
+                    if val >= 0:
+                        w_cls = self.space.w_LargePositiveInteger
+                    else:
+                        w_cls = self.space.w_LargeNegativeInteger
+                    w_special_objects.store(
+                        self.space, i,
+                        W_LargeIntegerWord(self.space, w_cls, r_uint(val), 4))
+            self.reserve(w_special_objects)
             self.trace_until_finish()
             # tracing through the image will have populated the hidden roots and
             # its classtables. write the hidden roots object again, which
@@ -1032,7 +1096,7 @@ class SpurImageWriter(object):
             self.trace_queue.append(self.hidden_roots)
             self.trace_until_finish()
             self.write_last_bridge()
-            self.write_file_header()
+            self.write_file_header(w_special_objects)
         finally:
             self.f.close()
             active_process.store_suspended_context(self.space.w_nil)
@@ -1045,8 +1109,8 @@ class SpurImageWriter(object):
             obj = self.trace_queue.pop()
             self.write_and_trace(obj)
 
-    def write_file_header(self):
-        sp_obj_oop = self.oop_map[self.image.special_objects][0]
+    def write_file_header(self, w_special_objects):
+        sp_obj_oop = self.oop_map[w_special_objects][0]
         image_header_size = 64 if self.word_size == 4 else 128
         displaysize = self.image.lastWindowSize
         hdrflags = (0 +  # 0/1 fullscreen or not
@@ -1110,7 +1174,7 @@ class SpurImageWriter(object):
 
         assert self.f.tell() == (oop + (2 * self.word_size))
 
-        if isinstance(obj, W_BytesObject) or isinstance(obj, W_LargePositiveInteger1Word):
+        if isinstance(obj, W_BytesObject) or isinstance(obj, W_LargeInteger):
             self.write_bytes_object(obj)
         elif isinstance(obj, W_WordsObject) or isinstance(obj, W_DisplayBitmap) or isinstance(obj, W_Float):
             self.write_words_object(obj)
@@ -1131,12 +1195,16 @@ class SpurImageWriter(object):
                 if obj.value <= constants.TAGGED_MAXINT32:
                     newoop = (obj.value << 1) + 1
                 else:
-                    return self.reserve(self.space.wrap_large_number(r_ulonglong(obj.value), self.space.w_LargePositiveInteger))
+                    return self.reserve(W_LargeIntegerWord(
+                        self.space, self.space.w_LargePositiveInteger,
+                        r_uint(obj.value), constants.BYTES_PER_MACHINE_INT))
             else:
                 if obj.value >= constants.TAGGED_MININT32:
                     newoop = intmask((((r_int64(1) << 31) + obj.value) << 1) + 1)
                 else:
-                    return self.reserve(self.space.wrap_large_number(r_ulonglong(obj.value), self.space.w_LargeNegativeInteger))
+                    return self.reserve(W_LargeIntegerWord(
+                        self.space, self.space.w_LargeNegativeInteger,
+                        r_uint(obj.value), constants.BYTES_PER_MACHINE_INT))
             return (newoop, 0, 0, 0, 0)
         elif isinstance(obj, W_Character):
             assert obj.value < constants.TAGGED_MAXINT32
@@ -1253,7 +1321,7 @@ class SpurImageWriter(object):
 
     def headers_for_hash_numfields(self, Class, Hash, size):
         import math
-        from rsqueakvm.storage_classes import BYTES, COMPILED_METHOD, LARGE_POSITIVE_INTEGER
+        from rsqueakvm.storage_classes import BYTES, COMPILED_METHOD, LARGE_INTEGER
         classshadow = Class.as_class_get_shadow(self.space)
         length = r_uint64(size)
         wordlen = size
@@ -1266,7 +1334,7 @@ class SpurImageWriter(object):
             fmt = self.convert_instspec_to_spur((w_fmt.value >> 7) & 15)
         if (classshadow.instance_kind == BYTES or
             classshadow.instance_kind == COMPILED_METHOD or
-            classshadow.instance_kind == LARGE_POSITIVE_INTEGER):
+            classshadow.instance_kind == LARGE_INTEGER):
             wordlen = int(math.ceil(size / 4.0))
             length = r_uint64(wordlen)
             fmt = fmt | ((wordlen * 4) - size)

@@ -4,11 +4,12 @@ from rsqueakvm import constants, wrapper
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.display import W_DisplayBitmap
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
-from rsqueakvm.primitives import expose_primitive, pos_32bit_int
+from rsqueakvm.primitives import expose_primitive, uint
 from rsqueakvm.primitives.constants import *
 from rsqueakvm.primitives.storage import get_instances_array
 
 from rpython.rlib import jit
+from rpython.rlib.rarithmetic import r_uint
 
 
 # ___________________________________________________________________________
@@ -60,15 +61,12 @@ def func(interp, s_frame, w_rcvr, left, right, top, bottom):
 # ___________________________________________________________________________
 # Squeak Miscellaneous Primitives (128-134)
 
-@expose_primitive(BECOME, unwrap_spec=[object, object])
-def func(interp, s_frame, w_rcvr, w_new):
-    if w_rcvr.size() != w_new.size():
-        raise PrimitiveFailedError
+def _become(space, w_rcvr, w_new):
     w_lefts = []
     w_rights = []
     for i in range(w_rcvr.size()):
-        w_left = w_rcvr.at0(interp.space, i)
-        w_right = w_new.at0(interp.space, i)
+        w_left = w_rcvr.at0(space, i)
+        w_right = w_new.at0(space, i)
         if w_left.become(w_right):
             w_lefts.append(w_left)
             w_rights.append(w_right)
@@ -76,6 +74,12 @@ def func(interp, s_frame, w_rcvr, w_new):
             for i in range(len(w_lefts)):
                 w_lefts[i].become(w_rights[i])
             raise PrimitiveFailedError()
+
+@expose_primitive(BECOME, unwrap_spec=[object, object])
+def func(interp, s_frame, w_rcvr, w_new):
+    if w_rcvr.size() != w_new.size():
+        raise PrimitiveFailedError
+    _become(interp.space, w_rcvr, w_new)
     return w_rcvr
 
 @expose_primitive(SPECIAL_OBJECTS_ARRAY, unwrap_spec=[object])
@@ -172,17 +176,15 @@ def func(interp, s_frame, argument_count):
 def func(interp, s_frame, w_receiver):
     return interp.space.wrap_string("%s%s" % (interp.space.executable_path(), os.path.sep))
 
-@expose_primitive(FILL, unwrap_spec=[object, pos_32bit_int])
+@expose_primitive(FILL, unwrap_spec=[object, uint])
 def func(interp, s_frame, w_arg, new_value):
     space = interp.space
     if isinstance(w_arg, W_BytesObject):
         if new_value > 255:
             raise PrimitiveFailedError
-        for i in xrange(w_arg.size()):
-            w_arg.setchar(i, chr(new_value))
+        w_arg.setbytes([chr(new_value)] * w_arg.size())
     elif isinstance(w_arg, W_WordsObject) or isinstance(w_arg, W_DisplayBitmap):
-        for i in xrange(w_arg.size()):
-            w_arg.setword(i, new_value)
+        w_arg.setwords([r_uint(new_value)] * w_arg.size())
     else:
         raise PrimitiveFailedError
     return w_arg

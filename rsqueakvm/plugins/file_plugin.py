@@ -4,13 +4,14 @@ import sys
 
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.display import W_DisplayBitmap
-from rsqueakvm.model.numeric import W_Float, W_LargePositiveInteger1Word
+from rsqueakvm.model.numeric import W_Float, W_LargeInteger
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.primitives import index1_0
 from rsqueakvm.util.system import IS_WINDOWS
 
 from rpython.rlib import jit, rarithmetic
+from rpython.rlib.rarithmetic import r_uint
 
 
 FilePlugin = Plugin()
@@ -175,11 +176,11 @@ def primitiveFileRead(interp, s_frame, w_rcvr, fd, target, start, count):
 @FilePlugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveFileGetPosition(interp, s_frame, w_rcvr, fd):
     try:
-        pos = os.lseek(fd, 0, os.SEEK_CUR)
+        pos = r_uint(os.lseek(fd, 0, os.SEEK_CUR))
     except OSError:
         raise PrimitiveFailedError
     else:
-        return interp.space.wrap_positive_wordsize_int(rarithmetic.intmask(pos))
+        return interp.space.wrap_int(pos)
 
 @FilePlugin.expose_primitive(unwrap_spec=[object, int, int])
 def primitiveFileSetPosition(interp, s_frame, w_rcvr, fd, position):
@@ -195,7 +196,7 @@ def primitiveFileSize(interp, s_frame, w_rcvr, fd):
         file_info = os.fstat(fd)
     except OSError:
         raise PrimitiveFailedError
-    return interp.space.wrap_positive_wordsize_int(rarithmetic.intmask(file_info.st_size))
+    return interp.space.wrap_int(r_uint(file_info.st_size))
 
 @FilePlugin.expose_primitive(unwrap_spec=[object])
 def primitiveFileStdioHandles(interp, s_frame, w_rcvr):
@@ -215,7 +216,7 @@ def primitiveFileWrite(interp, s_frame, w_rcvr, fd, content, start, count):
         element_size = 4
     elif isinstance(content, W_BytesObject):
         element_size = 1
-    elif isinstance(content, W_LargePositiveInteger1Word):
+    elif isinstance(content, W_LargeInteger):
         element_size = 1
     else:
         raise PrimitiveFailedError
@@ -232,7 +233,7 @@ def primitiveFileWrite(interp, s_frame, w_rcvr, fd, content, start, count):
     except OSError:
         raise PrimitiveFailedError
     else:
-        return space.wrap_positive_wordsize_int(rarithmetic.intmask(written / element_size))
+        return space.wrap_int(r_uint(written / element_size))
 
 @FilePlugin.expose_primitive(unwrap_spec=[object, int, int])
 def primitiveFileTruncate(interp, s_frame, w_rcvr, fd, position):
@@ -253,7 +254,7 @@ def smalltalk_timestamp(space, sec_since_epoch):
     from rpython.rlib.rarithmetic import r_uint
     secs_between_1901_and_1970 = SQUEAK_EPOCH_DELTA_MICROSECONDS / 1000000
     sec_since_1901 = r_uint(sec_since_epoch + secs_between_1901_and_1970)
-    return space.wrap_uint(sec_since_1901)
+    return space.wrap_int(sec_since_1901)
 
 @FilePlugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveFileFlush(interp, s_frame, w_rcvr, fd):

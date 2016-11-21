@@ -4,12 +4,12 @@ from rsqueakvm.util.version import Version
 
 from rpython.rlib import jit
 from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32, r_int64
-from rpython.rlib.objectmodel import we_are_translated
+from rpython.rlib.objectmodel import we_are_translated, always_inline, specialize
 from rpython.rtyper.lltypesystem import lltype, rffi
 
 
 class W_BytesObject(W_AbstractObjectWithClassReference):
-    _attrs_ = ['version', 'bytes', 'native_bytes']
+    _attrs_ = ['version', 'bytes']
     repr_classname = 'W_BytesObject'
     bytes_per_slot = 1
     _immutable_fields_ = ['version?']
@@ -19,7 +19,6 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         assert isinstance(size, int)
         self.mutate()
         self.bytes = ['\x00'] * size
-        self.native_bytes = None
 
     def mutate(self):
         self.version = Version()
@@ -28,27 +27,23 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         W_AbstractObjectWithClassReference.fillin(self, space, g_self)
         self.mutate()
         self.bytes = g_self.get_bytes()
-        self.native_bytes = None
 
     def at0(self, space, index0):
         return space.wrap_smallint_unsafe(ord(self.getchar(index0)))
 
     def atput0(self, space, index0, w_value):
-        self.setchar(index0, chr(space.unwrap_int(w_value)))
+        try:
+            self.setchar(index0, chr(space.unwrap_int(w_value)))
+        except ValueError: # when we try to put sth outside of chr range
+            raise error.PrimitiveFailedError
 
     def getchar(self, n0):
-        if self.native_bytes is not None:
-            return self.native_bytes.getchar(n0)
-        else:
-            return self.bytes[n0]
+        return self.bytes[n0]
 
     def setchar(self, n0, character):
         assert isinstance(character, str)
         assert len(character) == 1
-        if self.native_bytes is not None:
-            self.native_bytes.setchar(n0, character)
-        else:
-            self.bytes[n0] = character
+        self.bytes[n0] = character
         self.mutate()
 
     def short_at0(self, space, index0):
@@ -71,10 +66,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         self.setchar(byte_index0 + 1, chr(byte1))
 
     def size(self):
-        if self.native_bytes is not None:
-            return self.native_bytes.size
-        else:
-            return len(self.bytes)
+        return len(self.bytes)
 
     def str_content(self):
         if self.getclass(None).has_space():
@@ -89,16 +81,68 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
 
     @jit.elidable
     def _pure_as_string(self, version):
-        if self.native_bytes is not None:
-            return self.native_bytes.as_string()
-        else:
-            return "".join(self.bytes)
+        return "".join(self.bytes)
 
     def getbytes(self):
-        if self.native_bytes is not None:
-            return self.native_bytes.copy_bytes()
+        return self.bytes
+
+    @jit.dont_look_inside
+    def setbytes(self, lst):
+        assert len(lst) == self.size()
+        self.bytes = lst
+        self.mutate()
+
+    def is_positive(self, space):
+        return self.getclass(space).is_same_object(space.w_LargePositiveInteger)
+
+    @jit.unroll_safe
+    def unwrap_uint(self, space):
+        if not self.getclass(space).is_same_object(space.w_LargePositiveInteger):
+            raise error.UnwrappingError("Invalid class for unwrapping byte object as uint")
+        if self.size() > constants.BYTES_PER_MACHINE_INT:
+            raise error.UnwrappingError("Too large to convert bytes to word")
+        word = r_uint(0)
+        for i in range(self.size()):
+            word += r_uint(ord(self.getchar(i))) << 8*i
+        return word
+
+    @jit.unroll_safe
+    def unwrap_int64(self, space):
+        if self.size() > constants.BYTES_PER_MACHINE_LONGLONG:
+            raise error.UnwrappingError("Too large to convert bytes to word")
+        elif (self.size() == constants.BYTES_PER_MACHINE_LONGLONG and
+              ord(self.getchar(constants.BYTES_PER_MACHINE_LONGLONG - 1)) >= 0x80):
+            # Sign-bit is set, this will overflow
+            raise error.UnwrappingError("Too large to convert bytes to word")
+        word = r_int64(0)
+        for i in range(self.size()):
+            try:
+                word += r_int64(ord(self.getchar(i))) << 8*i
+            except OverflowError: # never raised after translation :(
+                raise error.UnwrappingError("Too large to convert bytes to word")
+        if self.getclass(space).is_same_object(space.w_LargePositiveInteger):
+            return word
+        elif self.getclass(space).is_same_object(space.w_LargeNegativeInteger):
+            return -word
         else:
-            return self.bytes
+            raise error.UnwrappingError
+
+    def unwrap_rbigint(self, space):
+        if self.getclass(space).is_same_object(space.w_LargePositiveInteger):
+            return self.getrbigint(self.version)
+        elif self.getclass(space).is_same_object(space.w_LargeNegativeInteger):
+            return self.getrbigint(self.version).neg()
+        else:
+            raise error.UnwrappingError
+
+    def unwrap_long_untranslated(self, space):
+        "NOT RPYTHON"
+        return self.unwrap_rbigint(space).tolong()
+
+    @jit.elidable
+    def getrbigint(self, version):
+        from rpython.rlib.rbigint import rbigint
+        return rbigint.frombytes(self.getbytes(), 'little', False)
 
     def selector_string(self):
         return "#" + self.unwrap_string(None)
@@ -114,72 +158,8 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
     def clone(self, space):
         size = self.size()
         w_result = W_BytesObject(space, self.getclass(space), size)
-        if self.native_bytes is not None:
-            w_result.bytes = self.native_bytes.copy_bytes()
-        else:
-            w_result.bytes = list(self.bytes)
+        w_result.bytes = list(self.bytes)
         return w_result
-
-    @jit.unroll_safe
-    def unwrap_uint(self, space):
-        if not self.getclass(space).is_same_object(space.w_LargePositiveInteger):
-            raise error.UnwrappingError("Failed to convert bytes to word")
-        if self.size() > constants.BYTES_PER_MACHINE_INT:
-            raise error.UnwrappingError("Too large to convert bytes to word")
-        word = r_uint(0)
-        for i in range(self.size()):
-            word += r_uint(ord(self.getchar(i))) << 8*i
-        return word
-
-    @jit.unroll_safe
-    def unwrap_longlong(self, space):
-        if self.size() > constants.BYTES_PER_MACHINE_LONGLONG:
-            raise error.UnwrappingError("Too large to convert bytes to word")
-        elif (self.size() == constants.BYTES_PER_MACHINE_LONGLONG and
-              ord(self.getchar(constants.BYTES_PER_MACHINE_LONGLONG - 1)) >= 0x80):
-            # Sign-bit is set, this will overflow
-            raise error.UnwrappingError("Too large to convert bytes to word")
-        word = r_int64(0)
-        for i in range(self.size()):
-            try:
-                word += r_int64(ord(self.getchar(i))) << 8*i
-            except OverflowError: # never raised after translation :(
-                raise error.UnwrappingError("Too large to convert bytes to word")
-        if self.getclass(space).is_same_object(space.w_LargePositiveInteger):
-            return word
-        elif ((space.w_LargeNegativeInteger is not None) and
-              self.getclass(space).is_same_object(space.w_LargeNegativeInteger)):
-            return -word
-        else:
-            raise error.UnwrappingError
-
-    def unwrap_long_untranslated(self, space):
-        "NOT_RPYTHON"
-        if not we_are_translated():
-            if self.size() >= constants.BYTES_PER_MACHINE_LONGLONG:
-                word = 0
-                for i in range(self.size()):
-                    word += ord(self.getchar(i)) << 8*i
-                if (space.w_LargeNegativeInteger is not None and
-                    self.getclass(space).is_same_object(space.w_LargeNegativeInteger)):
-                    return -word
-                else:
-                    return word
-        return self.unwrap_longlong(space)
-
-    def unwrap_rbigint(self, space):
-        if self.getclass(space).is_same_object(space.w_LargePositiveInteger):
-            return self.getrbigint(self.version)
-        elif ((space.w_LargeNegativeInteger is not None) and
-              self.getclass(space).is_same_object(space.w_LargeNegativeInteger)):
-            return self.getrbigint(self.version).neg()
-        else:
-            raise error.UnwrappingError
-
-    @jit.elidable
-    def getrbigint(self, version):
-        from rpython.rlib.rbigint import rbigint
-        return rbigint.frombytes(self.getbytes(), 'little', False)
 
     def is_array_object(self):
         return True
@@ -187,63 +167,27 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
     def _become(self, w_other):
         assert isinstance(w_other, W_BytesObject)
         self.bytes, w_other.bytes = w_other.bytes, self.bytes
-        self.native_bytes, w_other.native_bytes = w_other.native_bytes, self.native_bytes
         self.mutate()
         W_AbstractObjectWithClassReference._become(self, w_other)
-
-    def convert_to_c_layout(self):
-        if self.bytes is not None:
-            self.native_bytes = NativeBytesWrapper(self.unwrap_string(None))
-            self.bytes = None
-            self.mutate()
-        return self.native_bytes.c_bytes
-
-
-# This indirection avoids a call for alloc_with_del in Jitted code
-class NativeBytesWrapper(object):
-    _attrs_ = ["c_bytes", "size"]
-    _immutable_fields_ = ["c_bytes", "size"]
-    def __init__(self, string):
-        self.size = len(string)
-        self.c_bytes = rffi.str2charp(string)
-
-    def setchar(self, n0, char):
-        self.c_bytes[n0] = char
-
-    def getchar(self, n0):
-        if n0 >= self.size:
-            raise IndexError
-        return self.c_bytes[n0]
-
-    def as_string(self):
-        return "".join([self.c_bytes[i] for i in range(self.size)])
-
-    def copy_bytes(self):
-        return [self.c_bytes[i] for i in range(self.size)]
-
-    def __del__(self):
-        rffi.free_charp(self.c_bytes)
 
 
 class W_WordsObject(W_AbstractObjectWithClassReference):
     # TODO: this assumes only 32-bit words objects
-    _attrs_ = ['words', 'native_words']
+    _attrs_ = ['words']
     repr_classname = "W_WordsObject"
     _immutable_fields_ = ['words?']
 
     def __init__(self, space, w_class, size):
         W_AbstractObjectWithClassReference.__init__(self, space, w_class)
         self.words = [r_uint(0)] * size
-        self.native_words = None
 
     def fillin(self, space, g_self):
         W_AbstractObjectWithClassReference.fillin(self, space, g_self)
         self.words = g_self.get_ruints()
-        self.native_words = None
 
     def at0(self, space, index0):
         val = self.getword(index0)
-        return space.wrap_uint(val)
+        return space.wrap_int(val)
 
     def atput0(self, space, index0, w_value):
         word = space.unwrap_uint(w_value)
@@ -251,16 +195,10 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
 
     def getword(self, n):
         assert self.size() > n >= 0
-        if self.native_words is not None:
-            return r_uint(self.native_words.getword(n))
-        else:
-            return self.words[n]
+        return self.words[n]
 
     def setword(self, n, word):
-        if self.native_words is not None:
-            self.native_words.setword(n, intmask(word))
-        else:
-            self.words[n] = r_uint(word)
+        self.words[n] = r_uint(word)
 
     def getchar(self, n0):
         return chr(self.getword(n0))
@@ -301,11 +239,13 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
             value = r_uint(word & 0xffffffff)
         self.setword(word_index0, value)
 
+    @jit.dont_look_inside
+    def setwords(self, lst):
+        assert len(lst) == self.size()
+        self.words = lst
+
     def size(self):
-        if self.native_words is not None:
-            return self.native_words.size
-        else:
-            return len(self.words)
+        return len(self.words)
 
     @jit.look_inside_iff(lambda self, space: jit.isconstant(self.size()))
     def unwrap_string(self, space):
@@ -325,10 +265,7 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
     def clone(self, space):
         size = self.size()
         w_result = W_WordsObject(space, self.getclass(space), size)
-        if self.native_words is not None:
-            w_result.words = self.native_words.copy_words()
-        else:
-            w_result.words = list(self.words)
+        w_result.words = list(self.words)
         return w_result
 
     def is_array_object(self):
@@ -337,37 +274,15 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
     def _become(self, w_other):
         assert isinstance(w_other, W_WordsObject)
         self.words, w_other.words = w_other.words, self.words
-        self.native_words, w_other.native_words = w_other.native_words, self.native_words
         W_AbstractObjectWithClassReference._become(self, w_other)
 
-    def convert_to_c_layout(self):
-        if self.words is not None:
-            self.native_words = NativeWordsWrapper(self.words)
-            self.words = None
-        return self.native_words.c_words
-
-
-class NativeWordsWrapper(object):
-    _attrs_ = ["c_words", "size"]
-    _immutable_fields_ = ["c_words", "size"]
-
-    def __init__(self, words):
-        self.size = len(words)
-        from rsqueakvm.plugins.iproxy import sqIntArrayPtr
-        self.c_words = lltype.malloc(sqIntArrayPtr.TO, self.size, flavor='raw')
-        for i in range(self.size):
-            self.c_words[i] = rffi.r_int(words[i])
-
-    def setword(self, n0, word):
-        self.c_words[n0] = rffi.r_int(word)
-
-    def getword(self, n0):
-        if n0 >= self.size:
-            raise IndexError
-        return r_uint(self.c_words[n0])
-
-    def copy_words(self):
-        return [r_uint(self.c_words[i]) for i in range(self.size)]
-
-    def __del__(self):
-        lltype.free(self.c_words, flavor='raw')
+    def convert_to_bytes_layout(self, wordsize):
+        words = self.words
+        new_words = [r_uint(0)] * len(words * wordsize)
+        for i, word in enumerate(words):
+            new_words[i * 4 + 0] = r_uint((word >> 0) & 0xff)
+            new_words[i * 4 + 1] = r_uint((word >> 8) & 0xff)
+            new_words[i * 4 + 2] = r_uint((word >> 16) & 0xff)
+            new_words[i * 4 + 3] = r_uint((word >> 24) & 0xff)
+        self.words = new_words
+        return self

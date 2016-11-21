@@ -284,7 +284,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         patch_special_cls("w_MethodContext", "w_ContextPart")
         patch_special_cls("w_BlockContext", "w_ContextPart", instvarsize=constants.BLKCTX_STACK_START)
         patch_special_cls("w_BlockClosure", "w_Object", instvarsize=constants.BLKCLSR_SIZE, varsized=True)
-        patch_special_cls("w_Point", "w_Object")
+        patch_special_cls("w_Point", "w_Object", instvarsize=2)
         patch_special_cls("w_LargePositiveInteger", "w_Integer", format=storage_classes.BYTES)
         patch_special_cls("w_LargeNegativeInteger", "w_LargePositiveInteger", format=storage_classes.BYTES)
         patch_special_cls("w_Message", "w_Object")
@@ -341,17 +341,13 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         from rpython.rlib.rbigint import rbigint
 
         def looooong(val):
-            try:
-                return r_int64(val)
-            except OverflowError:
-                return val
+            return rbigint.fromlong(val)
         if False: pass
         elif any is None: return self.w_nil
         elif isinstance(any, W_Object): return any
-        elif isinstance(any, long): return self.wrap_longlong(looooong(any))
+        elif isinstance(any, long): return self.wrap_int(looooong(any))
         elif isinstance(any, bool): return self.wrap_bool(any)
-        # elif isinstance(any, int): return self.wrap_int(any)
-        elif isinstance(any, int): return self.wrap_longlong(any)
+        elif isinstance(any, int): return self.wrap_int(any)
         elif isinstance(any, float): return self.wrap_float(any)
         elif isinstance(any, list): return self.wrap_list(any)
         elif isinstance(any, str):

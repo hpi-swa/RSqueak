@@ -16,7 +16,6 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
     repr_classname = "W_PointersObject"
     rstrat.make_accessors(strategy='strategy', storage='_storage')
 
-    @jit.unroll_safe
     def __init__(self, space, w_class, size, weak=False):
         """Create new object with size = fixed + variable size."""
         W_AbstractObjectWithIdentityHash.__init__(self)
@@ -229,12 +228,17 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
 
     def _become(self, w_other):
         assert isinstance(w_other, W_PointersObject)
+        # Make sure our class shadow is initialized, we will need it
+        if self.getclass(None) and self.getclass(None).has_space():
+            self.class_shadow(self.getclass(None).space())
+        if w_other.getclass(None) and w_other.getclass(None).has_space():
+            w_other.class_shadow(w_other.getclass(None).space())
         # Only one strategy will handle the become (or none of them).
         # The receivers strategy gets the first shot.
         # If it doesn't want to, let the w_other's strategy handle it.
         if self.has_strategy() and self._get_strategy().handles_become():
             self.strategy.become(w_other)
-        elif self.has_strategy() and self._get_strategy().handles_become():
+        elif w_other.has_strategy() and w_other._get_strategy().handles_become():
             w_other.strategy.become(self)
         self.strategy, w_other.strategy = w_other.strategy, self.strategy
         self._storage, w_other._storage = w_other._storage, self._storage

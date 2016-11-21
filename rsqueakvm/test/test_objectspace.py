@@ -4,7 +4,7 @@ import sys
 from rsqueakvm import objspace, error, constants
 # from rsqueakvm.model.variable import W_BytesObject
 
-from rpython.rlib.rarithmetic import r_uint
+from rpython.rlib.rarithmetic import r_uint, r_longlong
 
 from .util import create_space, copy_to_module, cleanup_module
 
@@ -53,15 +53,7 @@ def test_ruint():
 
     for num in [0, 1, 41, 100, 2**31, sys.maxint + 1, -1]:
         num = r_uint(num)
-        assert space.unwrap_uint(space.wrap_uint(num)) == num
-    for num in [-1, -100, -sys.maxint]:
-        with py.test.raises(objspace.WrappingError):
-            space.wrap_uint(num)
-    # byteobj = space.wrap_uint(0x100000000)
-    # assert isinstance(byteobj, W_BytesObject)
-    # byteobj.bytes.append('\x01')
-    # num = space.unwrap_uint(byteobj)
-    # should not raise. see docstring.
+        assert space.unwrap_uint(space.wrap_int(num)) == num
 
 
 def test_wrap_int():
@@ -69,6 +61,8 @@ def test_wrap_int():
         assert space.wrap_int(num).value == num
 
     sbit = (constants.LONG_BIT-1)
-    for num in [2**sbit, -(2**sbit + 1)]:
+    for num in [r_longlong(2**sbit - 1), r_longlong(-(2**sbit))]:
+        assert space.wrap_int(num).unwrap_long_untranslated(space) == num
+    for num in [-(2**sbit + 1)]:
         with py.test.raises(error.WrappingError):
             space.wrap_int(num)

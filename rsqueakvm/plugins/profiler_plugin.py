@@ -8,7 +8,7 @@ from rpython.rlib.rjitlog import rjitlog
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.compiled_methods import W_CompiledMethod
 from rsqueakvm.plugins.plugin import Plugin, PluginPatchScripts
-from rsqueakvm.primitives import expose_primitive, expose_also_as, pos_32bit_int
+from rsqueakvm.primitives import expose_primitive, expose_also_as
 from rsqueakvm.primitives.constants import (VM_CLEAR_PROFILE, VM_DUMP_PROFILE,
                                             VM_START_PROFILING, VM_STOP_PROFILING)
 
@@ -50,6 +50,7 @@ patch_compiled_method()
 # ____________________________________________________________
 
 @ProfilerPlugin.expose_primitive(unwrap_spec=[object, int, float])
+@jit.dont_look_inside
 def enableProfiler(interp, s_frame, w_rcvr, fileno, period):
     try:
         rvmprof.enable(fileno, period)
@@ -59,6 +60,7 @@ def enableProfiler(interp, s_frame, w_rcvr, fileno, period):
     return w_rcvr
 
 @ProfilerPlugin.expose_primitive(unwrap_spec=[object])
+@jit.dont_look_inside
 def disableProfiler(interp, s_frame, w_rcvr):
     try:
         rvmprof.disable()
@@ -68,6 +70,7 @@ def disableProfiler(interp, s_frame, w_rcvr):
     return w_rcvr
 
 @ProfilerPlugin.expose_primitive(unwrap_spec=[object, int])
+@jit.dont_look_inside
 def enableJitlog(interp, s_frame, w_rcvr, fileno):
     try:
         rjitlog.enable_jitlog(fileno)
@@ -119,6 +122,7 @@ def func(interp, s_frame, w_rcvr):
 
 DEFAULT_PERIOD = 0.001
 @expose_primitive(VM_START_PROFILING, unwrap_spec=[object])
+@jit.dont_look_inside
 def func(interp, s_frame, w_rcvr):
     from rsqueakvm.plugins.profiler_plugin import vmproflogfile, jitlogfile
     if not vmproflogfile.isopen():
