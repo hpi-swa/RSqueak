@@ -446,7 +446,7 @@ class CachedObjectShadow(AbstractCachingShadow):
     """
     repr_classname = "CachedObjectShadow"
 
-    @elidable_for_version(2, promote=True)
+    @elidable_for_version(2)
     def fetch(self, w_self, n0):
         return AbstractCachingShadow.fetch(self, w_self, n0)
 

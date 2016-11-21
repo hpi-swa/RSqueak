@@ -186,10 +186,23 @@ class Interpreter(object):
                         w_string = self.space.wrap_string("run:with:in:")
                         self.space.objtable[name] = self.perform(w_string, selector="asSymbol")
                         assert self.space.objtable[name]
-                    elif name == "ClassBinding":
-                        self.space.objtable[name] = self.space.smalltalk_at("ClassBinding")
+                    elif name == "w_ClassBinding":
+                        w_class_binding_class = self.space.smalltalk_at("ClassBinding")
+                        self.space.objtable[name] = w_class_binding_class
                     else:
-                        raise Warning("don't know how to populate " + name + " which was not in special objects table")
+                        raise Warning("don't know how to populate " + name + " in special objects table")
+            for name, idx in constants.classes_in_special_object_table.items():
+                name = "w_" + name
+                if self.space.classtable[name].getclass(self.space) is None:
+                    if name == "w_LargeNegativeInteger":
+                        w_lni_class = self.space.smalltalk_at("LargeNegativeInteger")
+                        if w_lni_class is None:
+                            raise NotImplementedError("cannot find LargeNegativeInteger class")
+                        from rsqueakvm.model.pointers import W_PointersObject
+                        assert isinstance(w_lni_class, W_PointersObject)
+                        self.space.w_LargeNegativeInteger.hash = w_lni_class.hash
+                        self.space.w_LargeNegativeInteger.strategy = w_lni_class.strategy
+                        self.space.w_LargeNegativeInteger._storage = w_lni_class._storage
 
     def loop(self, w_active_context):
         # This is the top-level loop and is not invoked recursively.

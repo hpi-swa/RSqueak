@@ -7,10 +7,11 @@ from rsqueakvm import storage_classes, error, constants
 from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod, SpurCompiledMethodHeader, V3CompiledMethodHeader
 from rsqueakvm.model.display import W_MappingDisplayBitmap
 from rsqueakvm.model.pointers import W_PointersObject
-from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargePositiveInteger1Word
+from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargeIntegerWord, W_LargeIntegerBig
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 
 from rpython.rlib.rarithmetic import intmask, r_uint
+from rpython.rlib.rbigint import rbigint
 
 from .util import create_space, copy_to_module, cleanup_module
 
@@ -71,35 +72,9 @@ def test_bytes_object():
     assert w_bytes.getchar(0) == "\x00"
     py.test.raises(IndexError, lambda: w_bytes.getchar(20))
 
-def test_c_bytes_object():
-    w_class = bootstrap_class(0, format=storage_classes.BYTES)
-    w_bytes = w_class.as_class_get_shadow(space).new(20)
-    w_bytes.convert_to_c_layout()
-    assert w_bytes.getclass(space).is_same_object(w_class)
-    assert w_bytes.size() == 20
-    assert w_class.as_class_get_shadow(space).instsize() == 0
-    assert w_bytes.getchar(3) == "\x00"
-    w_bytes.setchar(3, "\xAA")
-    assert w_bytes.getchar(3) == "\xAA"
-    assert w_bytes.getchar(0) == "\x00"
-    py.test.raises(IndexError, lambda: w_bytes.getchar(20))
-
 def test_word_object():
     w_class = bootstrap_class(0, format=storage_classes.WORDS)
     w_bytes = w_class.as_class_get_shadow(space).new(20)
-    assert w_bytes.getclass(space).is_same_object(w_class)
-    assert w_bytes.size() == 20
-    assert w_class.as_class_get_shadow(space).instsize() == 0
-    assert w_bytes.getword(3) == 0
-    w_bytes.setword(3, 42)
-    assert w_bytes.getword(3) == 42
-    assert w_bytes.getword(0) == 0
-    py.test.raises(AssertionError, lambda: w_bytes.getword(20))
-
-def test_c_word_object():
-    w_class = bootstrap_class(0, format=storage_classes.WORDS)
-    w_bytes = w_class.as_class_get_shadow(space).new(20)
-    w_bytes.convert_to_c_layout()
     assert w_bytes.getclass(space).is_same_object(w_class)
     assert w_bytes.size() == 20
     assert w_class.as_class_get_shadow(space).instsize() == 0
@@ -310,7 +285,7 @@ def test_word_at():
     b.setword(0, 3221225472)
     r = b.at0(space, 0)
     if not constants.IS_64BIT:
-        assert isinstance(r, (W_BytesObject, W_LargePositiveInteger1Word))
+        assert isinstance(r, W_LargeIntegerWord)
         assert r.size() == 4
     else:
         assert isinstance(r, (W_SmallInteger))
@@ -318,7 +293,7 @@ def test_word_at():
 def test_float_at():
     b = W_Float(64.0)
     r = b.fetch(space, 0)
-    if isinstance(r, W_LargePositiveInteger1Word):
+    if isinstance(r, W_LargeIntegerWord):
         assert r.size() == 4
         assert space.unwrap_int(r.at0(space, 0)) == 0
         assert space.unwrap_int(r.at0(space, 1)) == 0
@@ -349,20 +324,34 @@ def test_float_hash():
     assert target.gethash() != W_Float(1.1).gethash()
 
 def test_large_positive_integer_1word_at():
-    b = W_LargePositiveInteger1Word(-1)
+    b = W_LargeIntegerBig(space, space.w_LargePositiveInteger, rbigint.fromlong(2**constants.LONG_BIT-1), constants.BYTES_PER_MACHINE_INT)
     for i in range(4):
         r = b.at0(space, i)
         assert isinstance(r, W_SmallInteger)
         assert space.unwrap_int(r) == 0xff
-    assert b.value == -1
+    assert b.unwrap_long_untranslated(space) == r_uint(-1)
+
+    b = W_LargeIntegerWord(space, space.w_LargePositiveInteger, r_uint(2**constants.LONG_BIT-1), constants.BYTES_PER_MACHINE_INT)
+    for i in range(4):
+        r = b.at0(space, i)
+        assert isinstance(r, W_SmallInteger)
+        assert space.unwrap_int(r) == 0xff
+    assert b.unwrap_long_untranslated(space) == r_uint(-1)
 
 def test_large_positive_integer_1word_at_put():
-    target = W_LargePositiveInteger1Word(0)
-    source = W_LargePositiveInteger1Word(-1)
+    target = W_LargeIntegerWord(space, space.w_LargePositiveInteger, r_uint(0), constants.BYTES_PER_MACHINE_INT)
+    source = W_LargeIntegerWord(space, space.w_LargePositiveInteger, r_uint(2**constants.LONG_BIT-1), constants.BYTES_PER_MACHINE_INT)
     for i in range(constants.BYTES_PER_MACHINE_INT):
         target.atput0(space, i, source.at0(space, i))
         assert target.at0(space, i) == source.at0(space, i)
-    assert hex(r_uint(target.value)) == hex(r_uint(source.value))
+    assert hex(r_uint(target.unwrap_long_untranslated(space))) == hex(r_uint(source.unwrap_long_untranslated(space)))
+
+    target = W_LargeIntegerBig(space, space.w_LargePositiveInteger, rbigint.fromlong(0), constants.BYTES_PER_MACHINE_INT)
+    source = W_LargeIntegerBig(space, space.w_LargePositiveInteger, rbigint.fromlong(2**constants.LONG_BIT-1), constants.BYTES_PER_MACHINE_INT)
+    for i in range(constants.BYTES_PER_MACHINE_INT):
+        target.atput0(space, i, source.at0(space, i))
+        assert target.at0(space, i) == source.at0(space, i)
+    assert hex(r_uint(target.unwrap_long_untranslated(space))) == hex(r_uint(source.unwrap_long_untranslated(space)))
 
 def test_BytesObject_short_at():
     target = W_BytesObject(space, None, 4)

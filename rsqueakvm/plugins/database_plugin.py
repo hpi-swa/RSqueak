@@ -73,7 +73,7 @@ def primitiveSQLExecute(interp, s_frame, argcount):
     arg3_w = s_frame.pop()
     sql = space.unwrap_string(arg3_w)
     arg2_w = s_frame.pop()
-    db_handle = space.unwrap_longlong(arg2_w)
+    db_handle = space.unwrap_int64(arg2_w)
     connection = dbm.get_connection(db_handle)
     cursor_handle = dbm.execute(interp.space, connection, sql, args)
 

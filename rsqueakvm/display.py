@@ -415,8 +415,7 @@ class SDLDisplay(NullDisplay):
                             or RSDL.GetModState() & ~RSDL.KMOD_SHIFT != 0):
                         # no TEXTINPUT event for this key will follow
                         # but Squeak needs a KeyStroke anyway
-                        self._deferred_events.append(
-                                self.get_next_key_event(EventKeyChar, time))
+                        self._deferred_events.append(self.get_next_key_event(EventKeyChar, time))
                     self.fix_key_code_case()
                     return self.get_next_key_event(EventKeyDown, time)
                 elif event_type == RSDL.TEXTINPUT:

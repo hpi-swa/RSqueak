@@ -55,7 +55,7 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
     def at0(self, space, index0):
         self = jit.promote(self)
         val = self.getword(index0)
-        return space.wrap_uint(val)
+        return space.wrap_int(r_uint(val))
 
     def atput0(self, space, index0, w_value):
         self = jit.promote(self)
@@ -78,6 +78,10 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
 
     def setword(self, n, word):
         self._real_depth_buffer[n] = rffi.r_uint(word)
+
+    def setwords(self, lst):
+        for i in range(self.size()):
+            self.setword(i, lst[i])
 
     def size(self):
         return self._realsize
@@ -150,9 +154,6 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
     def can_become(self, w_other):
         # TODO - implement _become() for this class. Impossible due to _immutable_fields_?
         return False
-
-    def convert_to_c_layout(self):
-        return self._real_depth_buffer
 
     def __del__(self):
         lltype.free(self._real_depth_buffer, flavor='raw')

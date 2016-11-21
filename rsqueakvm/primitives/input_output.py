@@ -5,7 +5,7 @@ from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.display import W_DisplayBitmap
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_WordsObject
-from rsqueakvm.primitives import expose_primitive, assert_class
+from rsqueakvm.primitives import expose_primitive, assert_class, index1_0
 from rsqueakvm.primitives.constants import *
 
 from rpython.rlib import jit
@@ -177,36 +177,36 @@ def func(interp, s_frame, w_rcvr):
         interp.image.lastWindowSize = (form.width() << 16) + form.height()
     return w_rcvr
 
-# @expose_primitive(STRING_REPLACE, unwrap_spec=[object, index1_0, index1_0, object, index1_0])
-# @jit.look_inside_iff(lambda interp, s_frame, w_rcvr, start, stop, w_replacement, repStart: jit.isconstant(stop) and jit.isconstant(start))
-# def func(interp, s_frame, w_rcvr, start, stop, w_replacement, repStart):
-#     """replaceFrom: start to: stop with: replacement startingAt: repStart
-#     Primitive. This destructively replaces elements from start to stop in the
-#     receiver starting at index, repStart, in the collection, replacement. Answer
-#     the receiver. Range checks are performed in the primitive only. Essential
-#     for Pharo Candle Symbols.
-#     | index repOff |
-#     repOff := repStart - start.
-#     index := start - 1.
-#     [(index := index + 1) <= stop]
-#         whileTrue: [self at: index put: (replacement at: repOff + index)]"""
-#     if (start < 0 or start - 1 > stop or repStart < 0):
-#         raise PrimitiveFailedError()
-#     # This test deliberately test for equal W_Object class. The Smalltalk classes
-#     # might be different (e.g. Symbol and ByteString)
-#     if w_rcvr.__class__ is not w_replacement.__class__:
-#         raise PrimitiveFailedError
-#     if (w_rcvr.size() - w_rcvr.instsize() <= stop
-#             or w_replacement.size() - w_replacement.instsize() <= repStart + (stop - start)):
-#         raise PrimitiveFailedError()
-#     repOff = repStart - start
-#     for i0 in range(start, stop + 1):
-#         w_rcvr.atput0(interp.space, i0, w_replacement.at0(interp.space, repOff + i0))
-#     return w_rcvr
+@jit.look_inside_iff(lambda space, start, stop, repOff, w_rcvr, w_replacement: (
+    jit.isconstant(stop) and jit.isconstant(start) and
+    jit.isconstant(repOff) and (stop - start < 13))) # heuristic
+def _replace_from_to(space, start, stop, repOff, w_rcvr, w_replacement):
+    for i0 in range(start, stop + 1):
+        w_rcvr.atput0(space, i0, w_replacement.at0(space, repOff + i0))
+
+@expose_primitive(REPLACE_FROM_TO, unwrap_spec=[object, index1_0, index1_0, object, index1_0])
+def func(interp, s_frame, w_rcvr, start, stop, w_replacement, repStart):
+    """replaceFrom: start to: stop with: replacement startingAt: repStart
+    Primitive. This destructively replaces elements from start to stop in the
+    receiver starting at index, repStart, in the collection, replacement. Answer
+    the receiver. Range checks are performed in the primitive only. Essential
+    for Pharo Candle Symbols.
+    | index repOff |
+    repOff := repStart - start.
+    index := start - 1.
+    [(index := index + 1) <= stop]
+        whileTrue: [self at: index put: (replacement at: repOff + index)]"""
+    if (start < 0 or start - 1 > stop or repStart < 0):
+        raise PrimitiveFailedError()
+    if (w_rcvr.varsize() <= stop or w_replacement.varsize() <= repStart + (stop - start)):
+        raise PrimitiveFailedError()
+    repOff = repStart - start
+    _replace_from_to(interp.space, start, stop, repOff, w_rcvr, w_replacement)
+    return w_rcvr
 
 @expose_primitive(SCREEN_SIZE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    w_res = interp.space.w_Point.as_class_get_shadow(interp.space).new(2)
+    w_res = interp.space.w_Point.as_class_get_shadow(interp.space).new()
     point = wrapper.PointWrapper(interp.space, w_res)
     display = interp.space.display()
     if display.width == 0:

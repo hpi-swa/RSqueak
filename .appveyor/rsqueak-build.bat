@@ -37,6 +37,7 @@ if %buildscript%==jittests.py (
 @echo on
 set SDL_VIDEODRIVER=dummy
 C:\Python27\python %~dp0\..\.build\%buildscript% %buildargs%
+if %ERRORLEVEL% GEQ 1 EXIT /B 1
 
 if %buildscript%==build.py (
   copy %~dp0\..\rsqueak.exe %~dp0\..\rsqueak-win32-%APPVEYOR_REPO_COMMIT%.exe

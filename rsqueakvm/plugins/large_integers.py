@@ -24,17 +24,11 @@ for name, primitive in bitops.items():
 
 @LargeIntegers.expose_primitive(unwrap_spec=[rbigint, rbigint])
 def primDigitAdd(interp, s_frame, rcvr, arg):
-    if rcvr.sign != arg.sign: # Squeak has weird large integer semantics :(
-        return interp.space.wrap_rbigint(rcvr.sub(arg))
-    else:
-        return interp.space.wrap_rbigint(rcvr.add(arg))
+    return interp.space.wrap_rbigint(rcvr.add(arg) if rcvr.sign == arg.sign else rcvr.sub(arg))
 
 @LargeIntegers.expose_primitive(unwrap_spec=[rbigint, rbigint])
 def primDigitSubtract(interp, s_frame, rcvr, arg):
-    if rcvr.sign != arg.sign: # Squeak has weird large integer semantics :(
-        return interp.space.wrap_rbigint(rcvr.add(arg))
-    else:
-        return interp.space.wrap_rbigint(rcvr.sub(arg))
+    return interp.space.wrap_rbigint(rcvr.sub(arg) if rcvr.sign == arg.sign else rcvr.add(arg))
 
 @LargeIntegers.expose_primitive(unwrap_spec=[rbigint, rbigint, object])
 def primDigitMultiplyNegative(interp, s_frame, rcvr, arg, neg):
@@ -50,3 +44,29 @@ def primDigitDivNegative(interp, s_frame, rcvr, arg, neg):
         interp.space.wrap_rbigint(quo),
         interp.space.wrap_rbigint(rem)
     ])
+
+@LargeIntegers.expose_primitive(unwrap_specs=[[int, int], [object, int], [rbigint, rbigint]])
+def primDigitCompare(interp, s_frame, rcvr, arg):
+    # the C code is different than the fallback!! The C code does a normal
+    # compare for small integers, and if the first isn't but the second is an
+    # integer, it returns 1!!
+    if isinstance(rcvr, int):
+        if rcvr > arg:
+            res = 1
+        elif rcvr < arg:
+            res = -1
+        else:
+            res = 0
+    elif isinstance(arg, int):
+        res = 1
+    else:
+        if rcvr.sign != arg.sign:
+            rcvr = rcvr.abs()
+            arg = arg.abs()
+        if rcvr.gt(arg):
+            res = 1
+        elif rcvr.lt(arg):
+            res = -1
+        else:
+            res = 0
+    return interp.space.wrap_int(res)

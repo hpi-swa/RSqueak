@@ -35,7 +35,14 @@ def imagestream_mock(string):
 
 def imagereader_mock(string):
     stream = imagestream_mock(string)
-    return squeakimage.ImageReader(create_space(), stream)
+    r = squeakimage.ImageReader(create_space(), stream)
+    f = r.choose_reader_strategy
+    def fun():
+        rstrat = f()
+        rstrat.special_g_objects = [squeakimage.GenericObject()]
+        return rstrat
+    r.choose_reader_strategy = fun
+    return r
 
 @pytest.fixture
 def space():
@@ -390,6 +397,7 @@ def reader_mock_v3(monkeypatch, space):
         is_big_endian = True
     reader_mock = NonSpurReader(imageReader=None, version=FakeVersion(),
             stream=None, space=space)
+    reader_mock.special_g_objects = [GenericObject()]
     fake_g_class = GenericObject()
     fake_g_class.w_object = objectmodel.instantiate(W_PointersObject)
     monkeypatch.setattr(reader_mock, 'g_class_of', lambda chunk: fake_g_class)
@@ -406,6 +414,7 @@ def reader_mock_spur(monkeypatch, space):
             space=space)
     fake_g_class = GenericObject()
     fake_g_class.w_object = objectmodel.instantiate(W_PointersObject)
+    reader_mock.special_g_objects = [GenericObject()]
     monkeypatch.setattr(reader_mock, 'g_class_of', lambda chunk: fake_g_class)
     return reader_mock
 
