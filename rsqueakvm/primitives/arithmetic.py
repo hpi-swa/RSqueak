@@ -4,7 +4,7 @@ import operator
 from rsqueakvm import constants, wrapper
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.numeric import W_Float
-from rsqueakvm.primitives import expose_primitive, expose_also_as, positive_uint, uint
+from rsqueakvm.primitives import expose_primitive, expose_also_as, positive_uint
 from rsqueakvm.primitives.constants import *
 
 from rpython.rlib import rfloat, jit
@@ -115,7 +115,7 @@ bitwise_binary_ops = {
 for (code, ops) in bitwise_binary_ops.items():
     def make_func(smallop, bigop):
         @expose_also_as(code + LARGE_OFFSET)
-        @expose_primitive(code, unwrap_specs=[[int, int], [uint, uint], [rbigint, rbigint]])
+        @expose_primitive(code, unwrap_specs=[[int, int], [positive_uint, positive_uint], [rbigint, rbigint]])
         def func(interp, s_frame, receiver, argument):
             if isinstance(receiver, rbigint):
                 return interp.space.wrap_int(bigop(receiver, argument))
