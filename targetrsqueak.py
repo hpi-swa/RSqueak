@@ -70,7 +70,8 @@ if __name__ == '__main__':
         if hasattr(sys, 'ps1') or not sys.stderr.isatty():
             # we are in interactive mode or we don't have a tty-like
             # device, so we call the default hook
-            sys.__excepthook__(type, value, tb)
+            _type, value, tb = sys.exc_info()
+            sys.__excepthook__(_type, value, tb)
         else:
             import pdb, traceback
             _type, value, tb = sys.exc_info()

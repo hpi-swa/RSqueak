@@ -4,7 +4,7 @@ import operator
 from rsqueakvm import constants, wrapper
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.numeric import W_Float
-from rsqueakvm.primitives import expose_primitive, expose_also_as, positive_uint
+from rsqueakvm.primitives import expose_primitive, expose_also_as, positive_uint, uint
 from rsqueakvm.primitives.constants import *
 
 from rpython.rlib import rfloat, jit
@@ -109,7 +109,7 @@ bitwise_binary_ops = {
 for (code, ops) in bitwise_binary_ops.items():
     def make_func(smallop, bigop):
         @expose_also_as(code + LARGE_OFFSET)
-        @expose_primitive(code, unwrap_specs=[[int, int], [positive_uint, positive_uint], [rbigint, rbigint]])
+        @expose_primitive(code, unwrap_specs=[[int, int], [uint, uint], [rbigint, rbigint]])
         def func(interp, s_frame, receiver, argument):
             if isinstance(receiver, rbigint):
                 return interp.space.wrap_int(bigop(receiver, argument))
@@ -177,7 +177,7 @@ def func(interp, s_frame, receiver, argument):
 
 # #bitShift: -- return the shifted value
 @expose_also_as(LARGE_BIT_SHIFT)
-@expose_primitive(BIT_SHIFT, unwrap_specs=[[int, int], [rbigint, int]])
+@expose_primitive(BIT_SHIFT, unwrap_specs=[[int, int], [r_int64, int], [rbigint, int]])
 def func(interp, s_frame, receiver, shift):
     if shift > 0:
         if isinstance(receiver, int):
@@ -188,14 +188,16 @@ def func(interp, s_frame, receiver, shift):
                     return interp.space.wrap_int((ovfcheck(receiver << shift)))
             except OverflowError:
                 raise PrimitiveFailedError
-        else:
+        elif isinstance(receiver, rbigint):
             return interp.space.wrap_rbigint(receiver.lshift(shift))
+        else:
+            raise PrimitiveFailedError # no point in trying
     elif shift == 0:
         return interp.space.wrap_int(receiver)
     else:
         shift = -shift
         assert shift >= 0
-        if isinstance(receiver, int):
+        if isinstance(receiver, int) or isinstance(receiver, r_int64):
             return interp.space.wrap_int(receiver >> shift)
         else:
             return interp.space.wrap_rbigint(receiver.rshift(shift))
