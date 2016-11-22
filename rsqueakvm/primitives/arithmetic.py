@@ -67,6 +67,8 @@ for (code, ops) in bool_ops.items():
                 res = bigop(v1, v2)
             return interp.space.wrap_bool(res)
     make_func(ops)
+else:
+    del code, ops
 
 for (code, ops) in bool_ops.items():
     def make_func(ops):
@@ -77,6 +79,8 @@ for (code, ops) in bool_ops.items():
             w_res = interp.space.wrap_bool(res)
             return w_res
     make_func(ops)
+else:
+    del code, ops
 
 # ___________________________________________________________________________
 # SmallInteger Primitives
@@ -100,6 +104,8 @@ for (code, ops) in math_ops.items():
             else:
                 return interp.space.wrap_int(smallop(receiver, argument))
     make_func(ops, code)
+else:
+    del code, ops
 
 bitwise_binary_ops = {
     BIT_AND: (operator.and_, rbigint.and_),
@@ -116,6 +122,8 @@ for (code, ops) in bitwise_binary_ops.items():
             else:
                 return interp.space.wrap_int(smallop(receiver, argument))
     make_func(ops[0], ops[1])
+else:
+    del code, ops
 
 @specialize.argtype(0)
 def guard_nonnull(value):
@@ -219,6 +227,8 @@ for (code, op) in math_ops.items():
             w_res = interp.space.wrap_float(op(v1, v2))
             return w_res
     make_func(op)
+else:
+    del code, op
 
 @expose_primitive(FLOAT_DIVIDE, unwrap_spec=[float, float])
 def func(interp, s_frame, v1, v2):
