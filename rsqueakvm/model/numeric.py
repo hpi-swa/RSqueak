@@ -390,7 +390,8 @@ class W_SmallInteger(W_Object):
         "This is only called for Large Integers that for us fit in SmallIntegers"
         bytes = g_self.get_bytes()
         value = rbigint.rbigint.frombytes(bytes, 'little', False)
-        if not self.getclass(space).is_same_object(space.w_LargePositiveInteger):
+        w_prev_class = g_self.get_class()
+        if not w_prev_class.is_same_object(space.w_LargePositiveInteger):
             value = value.neg()
         self.value = value.toint()
 
