@@ -56,8 +56,8 @@ if __name__ == '__main__':
     driver.config = get_combined_translation_config(
         system.translation_options(),
         translating=False)
-    idx = sys.argv.index("--")
-    if idx >= 0:
+    if "--" in sys.argv:
+        idx = sys.argv.index("--")
         configargs, args = sys.argv[0:idx], sys.argv[idx:]
     else:
         configargs, args = [], sys.argv

@@ -160,7 +160,7 @@ def test_compare(op, operand1):
     for operand2 in the_small_siege:
         assert (perform(w(operand1), w_selector=sel(st_op), w_arguments=[w(operand2)]) is space.w_true) == getattr(operator, py_op)(operand1, operand2)
 
-@py.test.mark.parametrize('operand1', the_small_siege)
+@py.test.mark.parametrize('operand1', the_small_siege + [-x for x in the_small_siege])
 @py.test.mark.parametrize('op', ops['shift'].values(), ids=ops['shift'].keys())
 def test_shift(op, operand1):
     if isinstance(op, tuple):
@@ -180,3 +180,16 @@ def test_big(op, operand1):
         st_op = py_op = op
     for operand2 in the_tiny_siege:
         assert perform(w(operand1), w_selector=sel(st_op), w_arguments=[w(operand2)]).unwrap_long_untranslated(space) == getattr(operator, py_op)(operand1, operand2)
+
+def test_invert_equivalence():
+    """
+    test for a regression.
+        Integer>> #bitInvert32  "is" ^ self bitXor: 16rFFFFFFFF.
+    so expect
+        ((2 raisedTo: 30) - 1) bitInvert32 = (((2 raisedTo: 30) - 1) bitXor: 16rFFFFFFFF)
+    """
+    sq32maxval = 2 ** 30 - 1
+    mask = 0xFFFFFFFF
+    assert \
+        perform(w(sq32maxval), w_selector=sel("bitInvert32"), w_arguments=[]).unwrap_long_untranslated(space) == \
+        perform(w(sq32maxval), w_selector=sel("bitXor:"), w_arguments=[w(mask)]).unwrap_long_untranslated(space)

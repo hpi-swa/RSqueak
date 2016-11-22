@@ -67,6 +67,8 @@ for (code, ops) in bool_ops.items():
                 res = bigop(v1, v2)
             return interp.space.wrap_bool(res)
     make_func(ops)
+else:
+    del code, ops
 
 for (code, ops) in bool_ops.items():
     def make_func(ops):
@@ -77,6 +79,8 @@ for (code, ops) in bool_ops.items():
             w_res = interp.space.wrap_bool(res)
             return w_res
     make_func(ops)
+else:
+    del code, ops
 
 # ___________________________________________________________________________
 # SmallInteger Primitives
@@ -100,6 +104,8 @@ for (code, ops) in math_ops.items():
             else:
                 return interp.space.wrap_int(smallop(receiver, argument))
     make_func(ops, code)
+else:
+    del code, ops
 
 bitwise_binary_ops = {
     BIT_AND: (operator.and_, rbigint.and_),
@@ -116,6 +122,8 @@ for (code, ops) in bitwise_binary_ops.items():
             else:
                 return interp.space.wrap_int(smallop(receiver, argument))
     make_func(ops[0], ops[1])
+else:
+    del code, ops
 
 @specialize.argtype(0)
 def guard_nonnull(value):
@@ -177,7 +185,7 @@ def func(interp, s_frame, receiver, argument):
 
 # #bitShift: -- return the shifted value
 @expose_also_as(LARGE_BIT_SHIFT)
-@expose_primitive(BIT_SHIFT, unwrap_specs=[[int, int], [rbigint, int]])
+@expose_primitive(BIT_SHIFT, unwrap_specs=[[int, int], [r_int64, int], [rbigint, int]])
 def func(interp, s_frame, receiver, shift):
     if shift > 0:
         if isinstance(receiver, int):
@@ -188,14 +196,16 @@ def func(interp, s_frame, receiver, shift):
                     return interp.space.wrap_int((ovfcheck(receiver << shift)))
             except OverflowError:
                 raise PrimitiveFailedError
-        else:
+        elif isinstance(receiver, rbigint):
             return interp.space.wrap_rbigint(receiver.lshift(shift))
+        else:
+            raise PrimitiveFailedError # no point in trying
     elif shift == 0:
         return interp.space.wrap_int(receiver)
     else:
         shift = -shift
         assert shift >= 0
-        if isinstance(receiver, int):
+        if isinstance(receiver, int) or isinstance(receiver, r_int64):
             return interp.space.wrap_int(receiver >> shift)
         else:
             return interp.space.wrap_rbigint(receiver.rshift(shift))
@@ -219,6 +229,8 @@ for (code, op) in math_ops.items():
             w_res = interp.space.wrap_float(op(v1, v2))
             return w_res
     make_func(op)
+else:
+    del code, op
 
 @expose_primitive(FLOAT_DIVIDE, unwrap_spec=[float, float])
 def func(interp, s_frame, v1, v2):
