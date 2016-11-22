@@ -384,7 +384,7 @@ class BaseReaderStrategy(object):
         return self.islargeinteger(g_object) and g_object.len_bytes() == constants.BYTES_PER_MACHINE_INT
 
     def isbiginteger(self, g_object):
-        return self.islargeinteger(g_object)
+        return self.islargeinteger(g_object) and g_object.len_bytes() > constants.BYTES_PER_MACHINE_INT
 
 
 class NonSpurReader(BaseReaderStrategy):
