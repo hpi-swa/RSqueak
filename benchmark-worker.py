@@ -18,6 +18,10 @@ class Alarm(Exception):
     pass
 
 
+def alarm_handler(signum, frame):
+    raise Alarm
+
+
 class BenchmarkWorker(object):
     def __init__(self):
         self.conn = sqlite3.connect(DBFILE)
@@ -197,7 +201,7 @@ def start():
     global worker
     worker = BenchmarkWorker()
     signal.signal(signal.SIGTERM, lambda signum, frame: worker.terminate())
-    signal.signal(signal.SIGALRM, lambda signum, frame: raise Alarm)
+    signal.signal(signal.SIGALRM, alarm_handler)
     print "Running worker"
     worker.serve_forever()
 
