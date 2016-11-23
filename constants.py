@@ -31,7 +31,8 @@ IMAGES = {
     "squeakjs": "Spur32.image",
     "cog64": "Spur64.image",
     "stack": "Spur32.image",
-    "stack64": "Spur64.image"
+    "stack64": "Spur64.image",
+    "sista": "Scorch.image",
 }
 
 from benchmarks import BENCHMARKS
