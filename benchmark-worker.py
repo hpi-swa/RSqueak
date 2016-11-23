@@ -13,6 +13,11 @@ sys.path.insert(0, os.path.dirname(__file__))
 from constants import JOB_TABLE, COMMITID, FLAG, DBFILE, CODESPEED_URL, \
     BENCHMARKS, ITERATIONS, OUTPUT_RE, BINARY_URL, BINARY_BASENAME, BRANCH, VM, IMAGES
 
+
+class Alarm(Exception):
+    pass
+
+
 class BenchmarkWorker(object):
     def __init__(self):
         self.conn = sqlite3.connect(DBFILE)
@@ -73,6 +78,7 @@ class BenchmarkWorker(object):
             tries_left = 2
             match = None
             results = {}
+            out, err = "", ""
             while tries_left > 0:
                 try:
                     print "Running %s" % bm
@@ -81,8 +87,14 @@ class BenchmarkWorker(object):
                         shell=True,
                         stdout=subprocess.PIPE
                     )
-                    out, err = pipe.communicate()
-                    errcode = pipe.wait()
+                    signal.alarm(20*60) # 20 minutes
+                    try:
+                        out, err = pipe.communicate()
+                        errcode = pipe.wait()
+                        signal.alarm(0)
+                    except Alarm:
+                        print "Benchmark timeout"
+                        pipe.kill()
                     match = OUTPUT_RE.search(out)
                     if match: tries_left = 0
                 except Exception, e:
@@ -185,6 +197,7 @@ def start():
     global worker
     worker = BenchmarkWorker()
     signal.signal(signal.SIGTERM, lambda signum, frame: worker.terminate())
+    signal.signal(signal.SIGALRM, lambda signum, frame: raise Alarm)
     print "Running worker"
     worker.serve_forever()
 
