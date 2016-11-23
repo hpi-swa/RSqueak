@@ -58,6 +58,7 @@ class BenchmarkWorker(object):
         for bm in BENCHMARKS:
             with open("run.st", "w") as f:
                 f.write("""
+                Smalltalk specialObjectsArray at: 59 put: #conditionalBranchCounterTrippedOn:.
                 "[BenchmarkAutosizeSuite run: {
                 'BenchmarkSimpleStatisticsReporter'.
                 '%s'.
