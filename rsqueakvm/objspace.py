@@ -219,15 +219,14 @@ class ObjSpace(object):
             pass
         if val.sign < 0:
             w_class = self.w_LargeNegativeInteger
-            bytelenval = val.abs()
         else:
             w_class = self.w_LargePositiveInteger
-            bytelenval = val
-        if bytelenval.numdigits() <= rbigint.MAX_DIGITS_THAT_CAN_FIT_IN_INT:
+        if val.numdigits() <= rbigint.MAX_DIGITS_THAT_CAN_FIT_IN_INT:
             try:
-                return W_LargeIntegerWord(self, w_class, bytelenval.touint(), constants.BYTES_PER_MACHINE_INT)
+                uint = val._touint_helper() # this doesn't check the sign, which we want
             except OverflowError:
                 pass
+            return W_LargeIntegerWord(self, w_class, uint, constants.BYTES_PER_MACHINE_INT)
         return W_LargeIntegerBig(self, w_class, val, 0)
 
     def wrap_float(self, i):
