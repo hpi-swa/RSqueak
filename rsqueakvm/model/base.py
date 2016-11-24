@@ -259,7 +259,8 @@ class W_AbstractObjectWithIdentityHash(W_Object):
         return self.__class__ is w_other.__class__
 
     def _become(self, w_other):
-        assert isinstance(w_other, W_AbstractObjectWithIdentityHash)
+        if not isinstance(w_other, W_AbstractObjectWithIdentityHash):
+            raise error.PrimitiveFailedError
         self.hash, w_other.hash = w_other.hash, self.hash
 
 
@@ -323,6 +324,7 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
         w_class.post_become_one_way(new_w_class)
 
     def _become(self, w_other):
-        assert isinstance(w_other, W_AbstractObjectWithClassReference)
+        if not isinstance(w_other, W_AbstractObjectWithClassReference):
+            raise error.PrimitiveFailedError
         self.w_class, w_other.w_class = w_other.w_class, self.w_class
         W_AbstractObjectWithIdentityHash._become(self, w_other)

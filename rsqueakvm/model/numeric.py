@@ -61,7 +61,8 @@ class W_AbstractFloat(W_AbstractObjectWithIdentityHash):
         return (intmask(compute_hash(self.getvalue())) % 2**22) + 1
 
     def _become(self, w_other):
-        assert isinstance(w_other, W_AbstractFloat)
+        if isinstance(w_other, W_AbstractFloat):
+            raise error.PrimitiveFailedError
         self_value, w_other_value = self.getvalue(), w_other.getvalue()
         self.setvalue(w_other_value)
         w_other.setvalue(self_value)
@@ -277,7 +278,8 @@ class W_LargeIntegerBig(W_LargeInteger):
 
     @jit.dont_look_inside
     def _become(self, w_other):
-        assert isinstance(w_other, W_LargeIntegerBig)
+        if not isinstance(w_other, W_LargeIntegerBig):
+            raise error.PrimitiveFailedError
         self.value, w_other.value = w_other.value, self.value
         self._exposed_size, w_other._exposed_size = (w_other._exposed_size,
                                                      self._exposed_size)
@@ -369,7 +371,8 @@ class W_LargeIntegerWord(W_LargeInteger):
 
     @jit.dont_look_inside
     def _become(self, w_other):
-        assert isinstance(w_other, W_LargeIntegerWord)
+        if not isinstance(w_other, W_LargeIntegerWord):
+            raise error.PrimitiveFailedError
         self.value, w_other.value = w_other.value, self.value
         self._exposed_size, w_other._exposed_size = (w_other._exposed_size,
                                                      self._exposed_size)

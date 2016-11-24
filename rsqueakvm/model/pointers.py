@@ -224,7 +224,8 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
         return self.has_strategy()
 
     def _become(self, w_other):
-        assert isinstance(w_other, W_PointersObject)
+        if not isinstance(w_other, W_PointersObject):
+            raise error.PrimitiveFailedError
         # Make sure our class shadow is initialized, we will need it
         if self.getclass(None) and self.getclass(None).has_space():
             self.class_shadow(self.getclass(None).space())

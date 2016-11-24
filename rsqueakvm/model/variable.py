@@ -165,7 +165,8 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         return True
 
     def _become(self, w_other):
-        assert isinstance(w_other, W_BytesObject)
+        if not isinstance(w_other, W_BytesObject):
+            raise error.PrimitiveFailedError
         self.bytes, w_other.bytes = w_other.bytes, self.bytes
         self.mutate()
         W_AbstractObjectWithClassReference._become(self, w_other)
@@ -272,7 +273,8 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         return True
 
     def _become(self, w_other):
-        assert isinstance(w_other, W_WordsObject)
+        if not isinstance(w_other, W_WordsObject):
+            raise error.PrimitiveFailedError
         self.words, w_other.words = w_other.words, self.words
         W_AbstractObjectWithClassReference._become(self, w_other)
 

@@ -288,7 +288,8 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
                     self.compiledin_class = w_literal
 
     def _become(self, w_other):
-        assert isinstance(w_other, W_CompiledMethod)
+        if not isinstance(w_other, W_CompiledMethod):
+            raise error.PrimitiveFailedError
         self.argsize, w_other.argsize = w_other.argsize, self.argsize
         self._primitive, w_other._primitive = w_other._primitive, self._primitive
         self.literals, w_other.literals = w_other.literals, self.literals

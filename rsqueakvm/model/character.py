@@ -1,3 +1,4 @@
+from rsqueakvm import error
 from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.numeric import W_SmallInteger
 
@@ -38,7 +39,8 @@ class W_Character(W_AbstractObjectWithIdentityHash):
         return isinstance(self.value, int)
 
     def _become(self, w_other):
-        assert isinstance(w_other, W_Character)
+        if not isinstance(w_other, W_Character):
+            raise error.PrimitiveFailedError
         self.value, w_other.value = w_other.value, self.value
         W_AbstractObjectWithIdentityHash._become(self, w_other)
 

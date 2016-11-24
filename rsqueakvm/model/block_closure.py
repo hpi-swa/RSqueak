@@ -133,7 +133,8 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
             self.store(space, i, w_v)
 
     def _become(self, w_other):
-        assert isinstance(w_other, W_BlockClosure)
+        if not isinstance(w_other, W_BlockClosure):
+            raise error.PrimitiveFailedError
         self._numArgs, w_other._numArgs = w_other._numArgs, self._numArgs
         self._w_outerContext, w_other._w_outerContext = w_other._w_outerContext, self._w_outerContext
         self._startpc, w_other._startpc = w_other._startpc, self._startpc
