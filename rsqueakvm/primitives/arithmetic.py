@@ -187,6 +187,9 @@ def func(interp, s_frame, receiver, argument):
 @expose_also_as(LARGE_BIT_SHIFT)
 @expose_primitive(BIT_SHIFT, unwrap_specs=[[int, int], [r_int64, int], [rbigint, int]])
 def func(interp, s_frame, receiver, shift):
+    if isinstance(receiver, int):
+        if not (-constants.LONG_BIT < shift < constants.LONG_BIT):
+            raise PrimitiveFailedError
     if shift > 0:
         if isinstance(receiver, int):
             try:
