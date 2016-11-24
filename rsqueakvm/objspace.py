@@ -213,7 +213,6 @@ class ObjSpace(object):
         return W_SmallInteger(intmask(val))
 
     def wrap_rbigint(self, val):
-        import math
         try:
             return self.wrap_int(val.toint())
         except OverflowError:
@@ -224,18 +223,12 @@ class ObjSpace(object):
         else:
             w_class = self.w_LargePositiveInteger
             bytelenval = val
-        try:
-            return W_LargeIntegerWord(self, w_class, bytelenval.touint(), constants.BYTES_PER_MACHINE_INT)
-        except OverflowError:
-            pass
-        # XXX +0.05: heuristic hack float rounding errors
-        bytelen = int(math.floor(bytelenval.log(256) + 0.05)) + 1
-        # try:
-        #     bytes = val.tobytes(bytelen, 'little', False)
-        # except OverflowError:
-        #     # round-off errors in math.log, might need an extra byte
-        #     bytes = val.tobytes(bytelen + 1, 'little', False)
-        return W_LargeIntegerBig(self, w_class, val, bytelen)
+        if bytelenval.numdigits() <= rbigint.MAX_DIGITS_THAT_CAN_FIT_IN_INT:
+            try:
+                return W_LargeIntegerWord(self, w_class, bytelenval.touint(), constants.BYTES_PER_MACHINE_INT)
+            except OverflowError:
+                pass
+        return W_LargeIntegerBig(self, w_class, val, 0)
 
     def wrap_float(self, i):
         return W_Float(i)

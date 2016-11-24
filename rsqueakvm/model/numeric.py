@@ -210,7 +210,7 @@ class W_LargeIntegerBig(W_LargeInteger):
     _immutable_fields_ = ["value?"]
     repr_classname = "W_LargeIntegerBig"
 
-    def __init__(self, space, w_class, value, size):
+    def __init__(self, space, w_class, value, size=0):
         W_LargeInteger.__init__(self, space, w_class, size)
         self.value = value
 
@@ -226,6 +226,28 @@ class W_LargeIntegerBig(W_LargeInteger):
 
     def str_content(self):
         return self.value.str()
+
+    def size(self):
+        return self._lazy_size()
+
+    # this method is elidable so the jit won't look inside to notice that we're
+    # setting an immutable field. This should be ok, because size is hopefully
+    # requested rarely for these numbers.
+    @jit.elidable
+    def _lazy_size(self):
+        if self._exposed_size == 0:
+            import math
+            bytelenval = self.value.abs()
+            # XXX +0.05: heuristic hack float rounding errors
+            bytelen = int(math.floor(bytelenval.log(256) + 0.05)) + 1
+            # TODO: check if this might be better
+            # try:
+            #     bytes = val.tobytes(bytelen, 'little', False)
+            # except OverflowError:
+            #     # round-off errors in math.log, might need an extra byte
+            #     bytes = val.tobytes(bytelen + 1, 'little', False)
+            self._exposed_size = bytelen
+        return self._exposed_size
 
     def unwrap_string(self, space):
         return self.value.abs().tobytes(self.size(), 'little', False)
