@@ -213,20 +213,27 @@ class ObjSpace(object):
         return W_SmallInteger(intmask(val))
 
     def wrap_rbigint(self, val):
-        try:
-            return self.wrap_int(val.toint())
-        except OverflowError:
-            pass
-        if val.sign < 0:
-            w_class = self.w_LargeNegativeInteger
-        else:
+        if val.sign >= 0:
             w_class = self.w_LargePositiveInteger
+        else:
+            w_class = self.w_LargeNegativeInteger
+        # the logic below is an copied from rbigint.toint to make the guards inline better
         if val.numdigits() <= rbigint.MAX_DIGITS_THAT_CAN_FIT_IN_INT:
             try:
                 uint = val._touint_helper() # this doesn't check the sign, which we want
             except OverflowError:
-                pass
-            return W_LargeIntegerWord(self, w_class, uint, constants.BYTES_PER_MACHINE_INT)
+                return self.wrap_rbigint_direct(val, w_class)
+            if val.sign >= 0:
+                res = intmask(uint)
+                if res >= 0:
+                    return self.wrap_smallint_unsafe(res)
+            else:
+                res = intmask(-uint)
+                if res < 0:
+                    return self.wrap_smallint_unsafe(res)
+        return self.wrap_rbigint_direct(val, w_class)
+
+    def wrap_rbigint_direct(self, val, w_class):
         return W_LargeIntegerBig(self, w_class, val, 0)
 
     def wrap_float(self, i):
