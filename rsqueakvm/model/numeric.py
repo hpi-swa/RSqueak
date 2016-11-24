@@ -228,13 +228,17 @@ class W_LargeIntegerBig(W_LargeInteger):
         return self.value.str()
 
     def size(self):
-        return self._lazy_size()
+        if jit.isconstant(self):
+            self.calculate_exposed_size_for_big_int_once()
+            return self._exposed_size
+        else:
+            return self.calculate_exposed_size_for_big_int_call()
 
     # this method is elidable so the jit won't look inside to notice that we're
     # setting an immutable field. This should be ok, because size is hopefully
     # requested rarely for these numbers.
     @jit.elidable
-    def _lazy_size(self):
+    def calculate_exposed_size_for_big_int_call(self):
         if self._exposed_size == 0:
             import math
             bytelenval = self.value.abs()
@@ -248,6 +252,12 @@ class W_LargeIntegerBig(W_LargeInteger):
             #     bytes = val.tobytes(bytelen + 1, 'little', False)
             self._exposed_size = bytelen
         return self._exposed_size
+
+    # if self is a constant, we just ensure we calculate the exposed_size without a
+    # residual call in the trace, if it isn't we always insert the call
+    @jit.not_in_trace
+    def calculate_exposed_size_for_big_int_once(self):
+        self.calculate_exposed_size_for_big_int_call()
 
     def unwrap_string(self, space):
         return self.value.abs().tobytes(self.size(), 'little', False)
