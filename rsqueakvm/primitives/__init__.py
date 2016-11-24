@@ -118,14 +118,12 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                         assert isinstance(w_arg, W_Object)
                         args += (w_arg, )
                     elif spec is str:
-                        assert isinstance(w_arg, W_BytesObject)
                         args += (interp.space.unwrap_string(w_arg), )
                     elif spec is bytelist:
                         if not isinstance(w_arg, W_BytesObject):
                             raise PrimitiveFailedError
                         args += (w_arg.getbytes(), )
                     elif spec is list:
-                        assert isinstance(w_arg, W_PointersObject)
                         args += (interp.space.unwrap_array(w_arg), )
                     elif spec is char:
                         args += (interp.space.unwrap_char_as_byte(w_arg), )

@@ -293,7 +293,6 @@ class W_LargeIntegerWord(W_LargeInteger):
 
     def __init__(self, space, w_class, value, size):
         W_LargeInteger.__init__(self, space, w_class, size)
-        assert isinstance(value, r_uint)
         self.value = value
 
     def fillin(self, space, g_self):

@@ -210,7 +210,6 @@ def func(interp, s_frame, receiver, shift):
         return interp.space.wrap_int(receiver)
     else:
         shift = -shift
-        assert shift >= 0
         if isinstance(receiver, int) or isinstance(receiver, r_int64):
             return interp.space.wrap_int(receiver >> shift)
         else:

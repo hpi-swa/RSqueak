@@ -607,7 +607,6 @@ def primitiveSocketReceiveDataAvailable(interp, s_frame, w_rcvr, w_handle):
 @SocketPlugin.expose_primitive(unwrap_spec=[object, object, object, int, int])
 def primitiveSocketReceiveDataBufCount(interp, s_frame, w_rcvr, w_handle, w_target, start, count):
     w_socket = ensure_socket(w_handle)
-    assert isinstance(w_socket, W_SocketHandle)
     if start + count - 1 > w_target.size():
         raise error.PrimitiveFailedError
     if not isinstance(w_target, W_BytesObject):

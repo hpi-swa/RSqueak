@@ -123,9 +123,9 @@ def func(interp, s_frame, w_rcvr, n0, w_value):
 @expose_primitive(CHARACTER_VALUE)
 def func(interp, s_frame, argument_count):
     w_value = s_frame.peek(0)
-    assert isinstance(w_value, W_SmallInteger)
     s_frame.pop_n(argument_count + 1)
-    return W_Character(interp.space.unwrap_int(w_value))
+    value = interp.space.unwrap_int(w_value)
+    return W_Character(value)
 
 @expose_also_as(IMMEDIATE_IDENTITY_HASH, CLASS_IDENTITY_HASH)
 @expose_primitive(AS_OOP, unwrap_spec=[object])
