@@ -169,7 +169,7 @@ class ContextPartShadow(AbstractStrategy):
             return self.wrap_stackpointer()
         if self.stackstart() <= n0 < self.external_stackpointer():
             temp_i = self.stackdepth() - (n0-self.stackstart()) - 1
-            assert temp_i >= 0
+            assert temp_i >= 0, "trying to access temp out of range"
             return self.peek(temp_i)
         if self.external_stackpointer() <= n0 < self.stackend():
             return self.space.w_nil
@@ -185,7 +185,7 @@ class ContextPartShadow(AbstractStrategy):
 
     def store_context_part(self, n0, w_value):
         if n0 == constants.CTXPART_SENDER_INDEX:
-            assert isinstance(w_value, W_PointersObject)
+            assert isinstance(w_value, W_PointersObject), "trying to store non-pointer sender"
             if w_value.is_nil(self.space):
                 self.remove_s_sender()
                 if self.state is ActiveContext:
@@ -199,7 +199,7 @@ class ContextPartShadow(AbstractStrategy):
             return self.unwrap_store_stackpointer(w_value)
         if self.stackstart() <= n0 < self.external_stackpointer():  # XXX can be simplified?
             temp_i = self.stackdepth() - (n0-self.stackstart()) - 1
-            assert temp_i >= 0
+            assert temp_i >= 0, "trying to store temp out of range"
             return self.set_top(w_value, temp_i)
         if self.external_stackpointer() <= n0 < self.stackend():
             return
@@ -216,7 +216,7 @@ class ContextPartShadow(AbstractStrategy):
         return self._s_sender is not jit.vref_None
 
     def store_s_sender(self, s_sender):
-        assert s_sender is not None
+        assert s_sender is not None, "trying to store None s_sender"
         self._s_sender = jit.non_virtual_ref(s_sender)
         if self.state is ActiveContext:
             self.state = DirtyContext
@@ -260,8 +260,7 @@ class ContextPartShadow(AbstractStrategy):
     def store_stackpointer(self, size):
         depth = self.stackdepth()
         if size < depth:
-            # TODO Warn back to user
-            assert size >= 0
+            assert size >= 0, "trying to store negative stackpointer"
             self.pop_n(depth - size)
         else:
             for i in range(depth, size):
@@ -297,7 +296,7 @@ class ContextPartShadow(AbstractStrategy):
         return self._pc
 
     def store_pc(self, newpc):
-        assert newpc >= -1
+        assert newpc >= -1, "trying to store pc < -1"
         self._pc = newpc
 
     # ______________________________________________________________________
@@ -394,7 +393,7 @@ class ContextPartShadow(AbstractStrategy):
 
     def fetch_next_bytecode(self):
         pc = jit.promote(self._pc)
-        assert pc >= 0
+        assert pc >= 0, "fetching bytecode on returned method"
         self._pc += 1
         return self.fetch_bytecode(pc)
 
@@ -413,7 +412,7 @@ class ContextPartShadow(AbstractStrategy):
             # Magic numbers... Takes care of cases where reflective
             # code writes more than actual stack size
             method = self.w_method()
-            assert isinstance(method, W_CompiledMethod)
+            assert isinstance(method, W_CompiledMethod), "context method is not a W_CompiledMethod"
             stacksize = method.compute_frame_size()
         else:
             # TODO why not use method.compute_frame_size for BlockContext too?
@@ -428,12 +427,12 @@ class ContextPartShadow(AbstractStrategy):
         self._stack_ptr = tempsize  # we point after the last element
 
     def stack_get(self, index0):
-        assert index0 >= 0
+        assert index0 >= 0, "trying to stack_get negative index"
         return self._temps_and_stack[index0]
 
     def stack_put(self, index0, w_val):
-        assert w_val is not None
-        assert index0 >= 0
+        assert w_val is not None, "trying to put None on the stack"
+        assert index0 >= 0, "trying to stack_put at negative index"
         self._temps_and_stack[index0] = w_val
 
     def stack(self):
@@ -461,7 +460,7 @@ class ContextPartShadow(AbstractStrategy):
         # happen.
         # Problem: how do we tell the GC to collect outside self._stack_ptr?
         #  self.stack_put(ptr, self.space.w_nil)
-        assert ptr >= 0
+        assert ptr >= 0, "stack pointer got negative in pop"
         self._stack_ptr = ptr
         return ret
 
@@ -499,7 +498,7 @@ class ContextPartShadow(AbstractStrategy):
         jit.promote(self._stack_ptr)
         while n > 0:
             n -= 1
-            assert self._stack_ptr >= 1
+            assert self._stack_ptr >= 1, "stack pointer reduced to < 1 in pop_n"
             self._stack_ptr -= 1
             self.stack_put(self._stack_ptr, self.space.w_nil)
 
@@ -643,7 +642,7 @@ class __extend__(ContextPartShadow):
 
     def w_method_block_context(self):
         retval = self.s_home().w_method()
-        assert isinstance(retval, W_CompiledMethod)
+        assert isinstance(retval, W_CompiledMethod), "block context method is no W_CompiledMethod"
         return retval
 
     def is_closure_context_block_context(self):
@@ -683,7 +682,7 @@ class __extend__(ContextPartShadow):
             return self.store_context_part(n0, w_value)
 
     def store_w_home(self, w_home):
-        assert isinstance(w_home, W_PointersObject)
+        assert isinstance(w_home, W_PointersObject), "trying to store non-pointer w_home"
         self.get_extra_data()._w_home = w_home
 
     def unwrap_store_initialip(self, w_value):
@@ -813,7 +812,7 @@ class __extend__(ContextPartShadow):
         if self.is_closure_context():
             # this is a context for a blockClosure
             w_outerContext = self.closure.w_outerContext()
-            assert isinstance(w_outerContext, W_PointersObject)
+            assert isinstance(w_outerContext, W_PointersObject), "outer context is no pointers object"
             s_outerContext = w_outerContext.as_context_get_shadow(self.space)
             # XXX check whether we can actually return from that context
             if s_outerContext.is_returned():
@@ -826,7 +825,7 @@ class __extend__(ContextPartShadow):
         return constants.MTHDCTX_TEMP_FRAME_START
 
     def store_w_method(self, w_method):
-        assert isinstance(w_method, W_CompiledMethod)
+        assert isinstance(w_method, W_CompiledMethod), "trying to store method that is not a W_CompiledMethod"
         self._w_method = w_method
 
     def w_receiver_method_context(self):
@@ -834,7 +833,7 @@ class __extend__(ContextPartShadow):
 
     def w_method_method_context(self):
         retval = self._w_method
-        assert isinstance(retval, W_CompiledMethod)
+        assert isinstance(retval, W_CompiledMethod), "method context method is not a W_CompiledMethod"
         return retval
 
     def tempsize_method_context(self):

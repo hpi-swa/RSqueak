@@ -141,7 +141,7 @@ def func(interp, s_frame, w_class):
 
 @expose_primitive(STORE_STACKP, unwrap_spec=[object, int])
 def func(interp, s_frame, w_frame, stackp):
-    assert stackp >= 0
+    assert stackp >= 0, "trying to store a negative stackp in STORE_STACKP"
     w_frame = assert_pointers(w_frame)
     w_frame.store(interp.space, constants.CTXPART_STACKP_INDEX,
                   interp.space.wrap_int(stackp))
