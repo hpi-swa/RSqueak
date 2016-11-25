@@ -1,6 +1,6 @@
 from rsqueakvm import constants, error
 from rsqueakvm.model.base import W_AbstractObjectWithClassReference
-from rsqueakvm.util.version import Version
+from rsqueakvm.util.version import Version, elidable_for_version_iff
 
 from rpython.rlib import jit
 from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32, r_int64
@@ -129,9 +129,9 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
 
     def unwrap_rbigint(self, space):
         if self.getclass(space).is_same_object(space.w_LargePositiveInteger):
-            return self.getrbigint(self.version)
+            return self.getrbigint()
         elif self.getclass(space).is_same_object(space.w_LargeNegativeInteger):
-            return self.getrbigint(self.version).neg()
+            return self.getrbigint().neg()
         else:
             raise error.UnwrappingError
 
@@ -139,8 +139,8 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         "NOT RPYTHON"
         return self.unwrap_rbigint(space).tolong()
 
-    @jit.elidable
-    def getrbigint(self, version):
+    @elidable_for_version_iff(0, cond=lambda self: jit.isconstant(self))
+    def getrbigint(self):
         from rpython.rlib.rbigint import rbigint
         return rbigint.frombytes(self.getbytes(), 'little', False)
 
