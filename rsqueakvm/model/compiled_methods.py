@@ -98,6 +98,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         self.post_init()
 
     def fillin(self, space, g_self):
+        W_AbstractObjectWithIdentityHash.fillin(self, space, g_self)
         self.lookup_selector = "unknown%d" % self.gethash()
         self.bytes = [] # make sure the attribute is defined
         # Implicitly sets the header, including self.literalsize
