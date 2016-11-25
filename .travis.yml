@@ -5,6 +5,7 @@ rvm:
 env:
   - REPOSITORY=HPI-SWA-Lab/RSqueak VM=rsqueak USE_SHA=1
   - REPOSITORY=OpenSmalltalk/opensmalltalk-vm VM=cog
+  - REPOSITORY=OpenSmalltalk/opensmalltalk-vm VM=sista
 
 script:
   - bundle exec ruby .travis.rb
