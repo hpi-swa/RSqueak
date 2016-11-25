@@ -413,30 +413,36 @@ class TestBasic(BaseJITTest):
             """)
         else:
             self.assert_matches(traces[0].loop, """
-            guard_not_invalidated(descr=<Guard0x324f430>),
-            i78 = int_le(i77, 1000000),
-            guard_true(i78, descr=<Guard0x325c240>),
-            f79 = call_f(ConstClass(_ll_1_llong_from_int__Signed), i77, descr=<CallL 8 i EF=0 OS=84>),
-            f80 = call_f(ConstClass(_ll_2_llong_add__SignedLongLong_SignedLongLong), f59, f79, descr=<CallL 8 LL EF=0 OS=70>),
-            f90 = call_f(ConstClass(_ll_2_llong_xor__SignedLongLong_SignedLongLong), f59, f88, descr=<CallL 8 LL EF=0 OS=83>),
-            i91 = call_i(ConstClass(_ll_2_llong_ge__SignedLongLong_SignedLongLong), f90, 0.000000, descr=<Calli 1 LL EF=0 OS=78>),
-            guard_true(i91, descr=<Guard0x379e958>),
-            f92 = call_f(ConstClass(_ll_2_llong_xor__SignedLongLong_SignedLongLong), f59, f89, descr=<CallL 8 LL EF=0 OS=83>),
-            i93 = call_i(ConstClass(_ll_2_llong_lt__SignedLongLong_SignedLongLong), f92, 0.000000, descr=<Calli 1 LL EF=0 OS=73>),
-            guard_false(i93, descr=<Guard0x379e92c>),
-            i81 = call_i(ConstClass(_ll_2_llong_gt__SignedLongLong_SignedLongLong), f80, 0.000000, descr=<Calli 1 LL EF=0 OS=77>),
-            guard_true(i81, descr=<Guard0x324f404>),
-            i82 = call_i(ConstClass(_ll_2_llong_le__SignedLongLong_SignedLongLong), f80, 0.000000, descr=<Calli 1 LL EF=0 OS=74>),
-            guard_true(i82, descr=<Guard0x324f3d8>),
-            i84 = call_i(ConstClass(_ll_1_llong_to_int__SignedLongLong), f80, descr=<Calli 4 L EF=0 OS=85>),
-            i85 = uint_lt(i84, 2147483647),
-            guard_false(i85, descr=<Guard0x324f380>),
-            i86 = int_add(i77, 1),
-            i70 = int_sub(i61, 1),
-            setfield_gc(ConstPtr(ptr71), i70, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 32>),
-            i73 = int_le(i70, 0),
-            guard_false(i73, descr=<Guard0x9c13130>),
-            jump(p0, p1, i2, p3, p4, p7, p8, p10, p13, p15, i86, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, i55, f59, descr=TargetToken(52749852))
+            guard_not_invalidated(descr=<Guard0x354e5f4>)
+            i99 = int_le(i90, 1000000)
+            guard_true(i99, descr=<Guard0x359373c>)
+            f101 = call_f(ConstClass(_ll_1_llong_from_int__Signed), i90, descr=<CallL 8 i EF=0 OS=84>)
+            f103 = call_f(ConstClass(_ll_2_llong_add__SignedLongLong_SignedLongLong), f57, f101, descr=<CallL 8 LL EF=0 OS=70>)
+            f105 = call_f(ConstClass(_ll_2_llong_xor__SignedLongLong_SignedLongLong), f103, f57, descr=<CallL 8 LL EF=0 OS=83>)
+            i108 = call_i(ConstClass(_ll_2_llong_lt__SignedLongLong_SignedLongLong), f105, 0.000000, descr=<Calli 1 LL EF=0 OS=73>)
+            f110 = call_f(ConstClass(_ll_2_llong_xor__SignedLongLong_SignedLongLong), f103, f101, descr=<CallL 8 LL EF=0 OS=83>)
+            i113 = call_i(ConstClass(_ll_2_llong_lt__SignedLongLong_SignedLongLong), f110, 0.000000, descr=<Calli 1 LL EF=0 OS=73>)
+            i114 = int_and(i108, i113)
+            i115 = int_is_true(i114)
+            guard_false(i115, descr=<Guard0x354e628>)
+            p117 = call_r(ConstClass(fromrarith_int__r_longlong), f103, descr=<Callr 4 L EF=4>)
+            guard_no_exception(descr=<Guard0x354e65c>)
+            i118 = getfield_gc_i(p117, descr=<FieldS rpython.rlib.rbigint.rbigint.inst_sign 12 pure>)
+            i120 = int_ge(i118, 0)
+            guard_true(i120, descr=<Guard0x3593760>)
+            i121 = getfield_gc_i(p117, descr=<FieldS rpython.rlib.rbigint.rbigint.inst_size 16 pure>)
+            i123 = int_le(i121, 2)
+            guard_true(i123, descr=<Guard0x3593784>)
+            i125 = call_i(ConstClass(rbigint._touint_helper), p117, descr=<Calli 4 r EF=4>)
+            guard_no_exception(descr=<Guard0x354e690>)
+            i127 = int_ge(i125, 0)
+            guard_false(i127, descr=<Guard0x35937a8>)
+            i129 = int_add(i90, 1)
+            i131 = int_sub(i94, 1)
+            setfield_gc(ConstPtr(ptr132), i131, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 32>)
+            i134 = int_le(i131, 0)
+            guard_false(i134, descr=<Guard0x354e6c4>)
+            jump(p0, p1, i2, p3, p4, p7, p8, p10, p13, p15, i129, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, i55, f57, i131, descr=TargetToken(56121644))
             """)
 
     def test_large_integer_long_div(self, spy, tmpdir):
@@ -447,32 +453,41 @@ class TestBasic(BaseJITTest):
         """)
         if not IS_64BIT:
             self.assert_matches(traces[0].loop, """
-            guard_not_invalidated(descr=<Guard0xf591c830>)
-            i162 = int_le(i153, 10000)
-            guard_true(i162, descr=<Guard0xf59355b0>)
-            f164 = call_f(ConstClass(_ll_1_llong_from_int__Signed), i153, descr=<CallL 8 i EF=0 OS=84>)
-            i167 = call_i(ConstClass(_ll_2_llong_eq__SignedLongLong_SignedLongLong), f164, 0.000000, descr=<Calli 1 LL EF=0 OS=75>)
-            guard_false(i167, descr=<Guard0xf591c864>)
-            f169 = call_f(ConstClass(ll_llong_py_div__SignedLongLong_SignedLongLong), f119, f164, descr=<CallL 8 LL EF=2>)
-            f171 = call_f(ConstClass(_ll_2_llong_xor__SignedLongLong_SignedLongLong), f119, f164, descr=<CallL 8 LL EF=0 OS=83>)
-            i174 = call_i(ConstClass(_ll_2_llong_ge__SignedLongLong_SignedLongLong), f171, 0.000000, descr=<Calli 1 LL EF=0 OS=78>)
-            guard_true(i174, descr=<Guard0xf591c898>)
-            f176 = call_f(ConstClass(_ll_2_llong_xor__SignedLongLong_SignedLongLong), f119, f169, descr=<CallL 8 LL EF=0 OS=83>)
-            i179 = call_i(ConstClass(_ll_2_llong_lt__SignedLongLong_SignedLongLong), f176, 0.000000, descr=<Calli 1 LL EF=0 OS=73>)
-            guard_false(i179, descr=<Guard0xf591c8cc>)
-            i182 = call_i(ConstClass(_ll_2_llong_gt__SignedLongLong_SignedLongLong), f169, 0.000000, descr=<Calli 1 LL EF=0 OS=77>)
-            guard_true(i182, descr=<Guard0xf591c900>)
-            i185 = call_i(ConstClass(_ll_2_llong_le__SignedLongLong_SignedLongLong), f169, 0.000000, descr=<Calli 1 LL EF=0 OS=74>)
-            guard_true(i185, descr=<Guard0xf591c934>)
-            i187 = call_i(ConstClass(_ll_1_llong_to_int__SignedLongLong), f169, descr=<Calli 4 L EF=0 OS=85>)
-            i189 = uint_lt(i187, 2147483647)
-            guard_true(i189, descr=<Guard0xf591c968>)
-            i191 = int_add(i153, 1)
-            i193 = int_sub(i157, 1)
-            setfield_gc(ConstPtr(ptr194), i193, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 32>)
-            i196 = int_le(i193, 0)
-            guard_false(i196, descr=<Guard0xf591c99c>)
-            jump(p0, p1, i2, p3, p4, p7, p8, p10, p13, p15, i191, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p58, i67, f69, f72, i79, f81, f75, f84, i90, f92, f86, f95, i101, f103, f97, f106, i112, f114, f108, f117, f119, i193, descr=TargetToken(-175011716))            """)
+            guard_not_invalidated(descr=<Guard0x344e628>)
+            i102 = int_le(i93, 10000)
+            guard_true(i102, descr=<Guard0x3492880>)
+            i104 = call_i(ConstClass(rbigint._toint_helper), p55, descr=<Calli 4 r EF=4>)
+            p106 = guard_exception(ConstClass(OverflowError), descr=<Guard0x344e65c>)
+            f108 = call_f(ConstClass(rbigint.tolonglong), p55, descr=<CallL 8 r EF=4>)
+            guard_no_exception(descr=<Guard0x344e690>)
+            f110 = call_f(ConstClass(_ll_1_llong_from_int__Signed), i93, descr=<CallL 8 i EF=0 OS=84>)
+            i113 = call_i(ConstClass(_ll_2_llong_eq__SignedLongLong_SignedLongLong), f110, 0.000000, descr=<Calli 1 LL EF=0 OS=75>)
+            guard_false(i113, descr=<Guard0x344e6c4>)
+            i116 = call_i(ConstClass(_ll_2_llong_eq__SignedLongLong_SignedLongLong), f108, nan, descr=<Calli 1 LL EF=0 OS=75>)
+            i119 = call_i(ConstClass(_ll_2_llong_eq__SignedLongLong_SignedLongLong), f110, nan, descr=<Calli 1 LL EF=0 OS=75>)
+            i120 = int_and(i116, i119)
+            i121 = int_is_true(i120)
+            guard_false(i121, descr=<Guard0x344e6f8>)
+            f123 = call_f(ConstClass(ll_llong_py_div__SignedLongLong_SignedLongLong), f108, f110, descr=<CallL 8 LL EF=2>)
+            p125 = call_r(ConstClass(fromrarith_int__r_longlong), f123, descr=<Callr 4 L EF=4>)
+            guard_no_exception(descr=<Guard0x344e72c>)
+            i126 = getfield_gc_i(p125, descr=<FieldS rpython.rlib.rbigint.rbigint.inst_sign 12 pure>)
+            i128 = int_ge(i126, 0)
+            guard_true(i128, descr=<Guard0x34928a4>)
+            i129 = getfield_gc_i(p125, descr=<FieldS rpython.rlib.rbigint.rbigint.inst_size 16 pure>)
+            i131 = int_le(i129, 2)
+            guard_true(i131, descr=<Guard0x34928c8>)
+            i133 = call_i(ConstClass(rbigint._touint_helper), p125, descr=<Calli 4 r EF=4>)
+            guard_no_exception(descr=<Guard0x344e760>)
+            i135 = int_ge(i133, 0)
+            guard_true(i135, descr=<Guard0x34928ec>)
+            i137 = int_add(i93, 1)
+            i139 = int_sub(i97, 1)
+            setfield_gc(ConstPtr(ptr140), i139, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 32>)
+            i142 = int_le(i139, 0)
+            guard_false(i142, descr=<Guard0x344e794>)
+            jump(p0, p1, i2, p3, p4, p7, p8, p10, p13, p15, i137, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p55, i139, descr=TargetToken(55073156))
+            """)
         else:
             self.assert_matches(traces[0].loop, """
             guard_not_invalidated(descr=<Guard0x22233a0>)
@@ -500,18 +515,35 @@ class TestBasic(BaseJITTest):
         """)
         if not IS_64BIT:
             self.assert_matches(traces[0].loop, """
-            guard_not_invalidated(descr=<Guard0xad564bc>)
-            i77 = int_le(i68, 100000)
-            guard_true(i77, descr=<Guard0xad81d90>)
-            i79 = call_i(ConstClass(ll_uint_py_div__Unsigned_Unsigned), i57, i68, descr=<Calli 4 ii EF=0 OS=13>)
-            i81 = uint_lt(i79, 2147483647)
-            guard_true(i81, descr=<Guard0xad564f0>)
-            i83 = int_add(i68, 1)
-            i85 = int_sub(i72, 1)
-            setfield_gc(ConstPtr(ptr86), i85, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 32>)
-            i88 = int_le(i85, 0)
-            guard_false(i88, descr=<Guard0xad56524>)
-            jump(p0, p1, i2, p3, p4, p7, p8, p10, p13, p15, i83, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, i57, i85, descr=TargetToken(181930064))
+            guard_not_invalidated(descr=<Guard0x34ee628>)
+            i98 = int_le(i89, 100000)
+            guard_true(i98, descr=<Guard0x353373c>)
+            f100 = call_f(ConstClass(_ll_1_llong_from_int__Signed), i89, descr=<CallL 8 i EF=0 OS=84>)
+            i103 = call_i(ConstClass(_ll_2_llong_eq__SignedLongLong_SignedLongLong), f100, 0.000000, descr=<Calli 1 LL EF=0 OS=75>)
+            guard_false(i103, descr=<Guard0x34ee65c>)
+            i106 = call_i(ConstClass(_ll_2_llong_eq__SignedLongLong_SignedLongLong), f100, nan, descr=<Calli 1 LL EF=0 OS=75>)
+            i107 = int_and(i68, i106)
+            i108 = int_is_true(i107)
+            guard_false(i108, descr=<Guard0x34ee690>)
+            f110 = call_f(ConstClass(ll_llong_py_div__SignedLongLong_SignedLongLong), f57, f100, descr=<CallL 8 LL EF=2>)
+            p112 = call_r(ConstClass(fromrarith_int__r_longlong), f110, descr=<Callr 4 L EF=4>)
+            guard_no_exception(descr=<Guard0x34ee6c4>)
+            i113 = getfield_gc_i(p112, descr=<FieldS rpython.rlib.rbigint.rbigint.inst_sign 12 pure>)
+            i115 = int_ge(i113, 0)
+            guard_true(i115, descr=<Guard0x3533760>)
+            i116 = getfield_gc_i(p112, descr=<FieldS rpython.rlib.rbigint.rbigint.inst_size 16 pure>)
+            i118 = int_le(i116, 2)
+            guard_true(i118, descr=<Guard0x3533784>)
+            i120 = call_i(ConstClass(rbigint._touint_helper), p112, descr=<Calli 4 r EF=4>)
+            guard_no_exception(descr=<Guard0x34ee6f8>)
+            i122 = int_ge(i120, 0)
+            guard_true(i122, descr=<Guard0x35337a8>)
+            i124 = int_add(i89, 1)
+            i126 = int_sub(i93, 1)
+            setfield_gc(ConstPtr(ptr127), i126, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 32>)
+            i129 = int_le(i126, 0)
+            guard_false(i129, descr=<Guard0x34ee72c>)
+            jump(p0, p1, i2, p3, p4, p7, p8, p10, p13, p15, i124, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, i55, f57, i68, i126, descr=TargetToken(55728428))
             """)
         else:
             self.assert_matches(traces[0].loop, """
@@ -544,7 +576,7 @@ class TestBasic(BaseJITTest):
         i97 = int_le(i90, 100000),
         guard_true(i97, descr=<Guard0xac75ca0>),
         i100 = int_xor(i83, i90),
-        i101 = uint_lt(i100, 2147483647),
+        i101 = uint_le(i100, 2147483647),
         guard_false(i101, descr=<Guard0xac75c10>),
         i102 = int_add(i90, 1),
         i70 = int_sub(i61, 1),
@@ -566,7 +598,7 @@ class TestBasic(BaseJITTest):
             i72 = int_le(i65, 100000),
             guard_true(i72, descr=<Guard0xa11ad00>),
             i73 = int_and(i58, i65),
-            i74 = uint_lt(i73, 2147483647),
+            i74 = uint_le(i73, 2147483647),
             guard_true(i74, descr=<Guard0xa11acd0>),
             i75 = int_add(i65, 1),
             i70 = int_sub(i61, 1),
@@ -601,7 +633,7 @@ class TestBasic(BaseJITTest):
             i72 = int_le(i65, 100000),
             guard_true(i72, descr=<Guard0xa11ad00>),
             i73 = int_or(i58, i65),
-            i74 = uint_lt(i73, 2147483647),
+            i74 = uint_le(i73, 2147483647),
             guard_false(i74, descr=<Guard0xa11acd0>),
             i75 = int_add(i65, 1),
             i70 = int_sub(i61, 1),
@@ -690,27 +722,53 @@ class TestBasic(BaseJITTest):
         li := 2 raisedTo: 128.
         1 to: 10000 do: [:i | li * i].
         """)
-        self.assert_matches(traces[0].loop, """
-        guard_not_invalidated(descr=<Guard0x2d4d7b0>)
-        i79 = int_le(i70, 10000)
-        guard_true(i79, descr=<Guard0x2d6c0b0>)
-        p81 = call_r(ConstClass(fromint), i70, descr=<Callr 8 i EF=3>)
-        guard_no_exception(descr=<Guard0x2d4d818>)
-        p83 = call_r(ConstClass(rbigint.mul), p55, p81, descr=<Callr 8 rr EF=4>)
-        guard_no_exception(descr=<Guard0x2d4d880>)
-        i84 = getfield_gc_i(p83, descr=<FieldS rpython.rlib.rbigint.rbigint.inst_sign 16 pure>)
-        i86 = int_ge(i84, 0)
-        guard_true(i86, descr=<Guard0x2d6c0f8>)
-        i87 = getfield_gc_i(p83, descr=<FieldS rpython.rlib.rbigint.rbigint.inst_size 24 pure>)
-        i89 = int_le(i87, 2)
-        guard_false(i89, descr=<Guard0x2d6c140>)
-        i91 = int_add(i70, 1)
-        i93 = int_sub(i74, 1)
-        setfield_gc(ConstPtr(ptr94), i93, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
-        i96 = int_le(i93, 0)
-        guard_false(i96, descr=<Guard0x2d4d8e8>)
-        jump(p0, p1, i2, p3, p4, p7, p8, p10, p13, p15, i91, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p55, i93, descr=TargetToken(47620368))
-        """)
+	if IS_64BIT:	
+            self.assert_matches(traces[0].loop, """
+            guard_not_invalidated(descr=<Guard0x2d4d7b0>)
+            i79 = int_le(i70, 10000)
+            guard_true(i79, descr=<Guard0x2d6c0b0>)
+            p81 = call_r(ConstClass(fromint), i70, descr=<Callr 8 i EF=3>)
+            guard_no_exception(descr=<Guard0x2d4d818>)
+            p83 = call_r(ConstClass(rbigint.mul), p55, p81, descr=<Callr 8 rr EF=4>)
+            guard_no_exception(descr=<Guard0x2d4d880>)
+            i84 = getfield_gc_i(p83, descr=<FieldS rpython.rlib.rbigint.rbigint.inst_sign 16 pure>)
+            i86 = int_ge(i84, 0)
+            guard_true(i86, descr=<Guard0x2d6c0f8>)
+            i87 = getfield_gc_i(p83, descr=<FieldS rpython.rlib.rbigint.rbigint.inst_size 24 pure>)
+            i89 = int_le(i87, 2)
+            guard_false(i89, descr=<Guard0x2d6c140>)
+            i91 = int_add(i70, 1)
+            i93 = int_sub(i74, 1)
+            setfield_gc(ConstPtr(ptr94), i93, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
+            i96 = int_le(i93, 0)
+            guard_false(i96, descr=<Guard0x2d4d8e8>)
+            jump(p0, p1, i2, p3, p4, p7, p8, p10, p13, p15, i91, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p55, i93, descr=TargetToken(47620368))
+            """)
+	else:
+            self.assert_matches(traces[0].loop, """
+            guard_not_invalidated(descr=<Guard0x351e58c>)
+            i83 = int_le(i74, 10000)
+            guard_true(i83, descr=<Guard0x35627f0>)
+            f85 = call_f(ConstClass(rbigint.tolonglong), p55, descr=<CallL 8 r EF=4>)
+            p87 = guard_exception(ConstClass(OverflowError), descr=<Guard0x351e5c0>)
+            p89 = call_r(ConstClass(fromint), i74, descr=<Callr 4 i EF=3>)
+            guard_no_exception(descr=<Guard0x351e5f4>)
+            p91 = call_r(ConstClass(rbigint.mul), p55, p89, descr=<Callr 4 rr EF=4>)
+            guard_no_exception(descr=<Guard0x351e628>)
+            i92 = getfield_gc_i(p91, descr=<FieldS rpython.rlib.rbigint.rbigint.inst_sign 12 pure>)
+            i94 = int_ge(i92, 0)
+            guard_true(i94, descr=<Guard0x3562814>)
+            i95 = getfield_gc_i(p91, descr=<FieldS rpython.rlib.rbigint.rbigint.inst_size 16 pure>)
+            i97 = int_le(i95, 2)
+            guard_false(i97, descr=<Guard0x3562838>)
+            i99 = int_add(i74, 1)
+            i101 = int_sub(i78, 1)
+            setfield_gc(ConstPtr(ptr102), i101, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 32>)
+            i104 = int_le(i101, 0)
+            guard_false(i104, descr=<Guard0x351e65c>)
+            jump(p0, p1, i2, p3, p4, p7, p8, p10, p13, p15, i99, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p55, i101, descr=TargetToken(55924992))
+            """)
+	    
 
     def test_float_mul(self, spy, tmpdir):
         traces = self.run(spy, tmpdir, """
