@@ -10,7 +10,7 @@ import urllib
 import urllib2
 
 sys.path.insert(0, os.path.dirname(__file__))
-from constants import JOB_TABLE, COMMITID, FLAG, DBFILE, CODESPEED_URL, \
+from constants import JOB_TABLE, COMMITID, FLAG, DBFILE, CODESPEED_URL, EXTRACODE, \
     BENCHMARKS, ITERATIONS, OUTPUT_RE, BINARY_URL, BINARY_BASENAME, BRANCH, VM, IMAGES
 
 
@@ -61,23 +61,21 @@ class BenchmarkWorker(object):
             self.execute(vm, commitid, branch)
 
     def execute(self, vm, commitid, branch):
+        extracode = EXTRACODE.get(vm, "")
         binary = getattr(self, "download_%s" % vm, lambda id: None)(commitid)
         image = IMAGES.get(vm, None)
         if not binary or not image: return
         for bm in BENCHMARKS:
             with open("run.st", "w") as f:
                 f.write("""
-                Smalltalk specialObjectsArray at: 59 put: #conditionalBranchCounterTrippedOn:.
-                "[BenchmarkAutosizeSuite run: {
-                'BenchmarkSimpleStatisticsReporter'.
-                '%s'.
-                %s}] on: Error do: []."
+                Smalltalk specialObjectsArray at: 59 put: nil.
+                %s
                 [BenchmarkAutosizeSteadyStateSuite run: {
                 'BenchmarkSimpleStatisticsReporter'.
                 '%s'.
                 %s}] on: Error do: [:e | FileStream stderr nextPutAll: e printString].
                 Smalltalk image quitPrimitive.
-                """ % (bm, ITERATIONS / 3, bm, ITERATIONS))
+                """ % (extracode, bm, ITERATIONS))
                 f.flush()
             tries_left = 2
             match = None
@@ -154,6 +152,8 @@ class BenchmarkWorker(object):
     def download_sista(self, commitid):
         if self._download_with_script("get_sista.sh", commitid):
             return "./sista32/squeak"
+    download_counters = download_sista
+    download_nocounters = download_cog
 
     def _download_with_script(self, scriptname, commitid):
         print scriptname

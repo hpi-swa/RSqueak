@@ -32,7 +32,13 @@ IMAGES = {
     "cog64": "Spur64.image",
     "stack": "Spur32.image",
     "stack64": "Spur64.image",
-    "sista": "Scorch.image",
+    "sista": "Scorch.image", # VM with counters and Sista is enabled
+    "counters": "Scorch.image", # VM with counters, but Sista is disabled
+    "nocounters": "Scorch.image", # VM without counters
+}
+
+EXTRACODE = {
+    "sista": "Smalltalk specialObjectsArray at: 59 put: #conditionalBranchCounterTrippedOn:."
 }
 
 from benchmarks import BENCHMARKS
