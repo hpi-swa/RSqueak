@@ -2,18 +2,27 @@ from rsqueakvm import constants, error
 from rsqueakvm.model.base import W_Object, W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.compiled_methods import W_CompiledMethod
+from rsqueakvm.util.version import VersionMixin
 
-from rpython.rlib import jit
-from rpython.rlib.objectmodel import import_from_mixin, we_are_translated
+from rpython.rlib import jit, objectmodel
 
 
 class W_BlockClosure(W_AbstractObjectWithIdentityHash):
     repr_classname = "W_BlockClosure"
     bytes_per_slot = 1
-    _attrs_ = [ "_w_outerContext",
-                "_startpc",
-                "_numArgs", "_stack",
-                "_w_method" ]
+    _attrs_ = [
+        "version",
+        "_w_outerContext",
+        "_startpc",
+        "_numArgs", "_stack",
+        "_w_method" ]
+    _immutable_fields_ = [
+        "version?",
+        "_w_outerContext",
+        "_startpc",
+        "_numArgs", "_stack",
+        "_w_method" ]
+    objectmodel.import_from_mixin(VersionMixin)
 
     def pointers_become_one_way(self, space, from_w, to_w):
         W_AbstractObjectWithIdentityHash.pointers_become_one_way(self, space, from_w, to_w)
@@ -30,12 +39,15 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
         self.store_all(space, ptrs)
 
     @jit.unroll_safe
-    def __init__(self, space, w_outerctxt, startpc, numArgs, size):
+    def __init__(self, space, w_outerctxt, startpc, numArgs, size, stack=None):
         W_AbstractObjectWithIdentityHash.__init__(self)
         self._w_outerContext = w_outerctxt
         self._startpc = startpc
         self._numArgs = numArgs
-        self._stack = [space.w_nil] * size
+        if stack:
+            self._stack = stack
+        else:
+            self._stack = [space.w_nil] * size
         self._fillin_w_method(space)
 
     def fillin(self, space, g_self):
@@ -57,6 +69,7 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
     def fillin_finalize(self, space, g_self):
         self._fillin_w_method(space)
 
+    @objectmodel.always_inline
     def _fillin_w_method(self, space):
         self._w_method = self._w_outerContext.fetch(space, constants.MTHDCTX_METHOD)
 
@@ -109,6 +122,7 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
         if index0 >= constants.BLKCLSR_SIZE:
             self.atput0(space, index0 - constants.BLKCLSR_SIZE, w_value)
         else:
+            self.changed() # aborts trace
             if index0 == constants.BLKCLSR_OUTER_CONTEXT:
                 self._w_outerContext = w_value
                 self._fillin_w_method(space)
@@ -135,6 +149,7 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
     def _become(self, w_other):
         if not isinstance(w_other, W_BlockClosure):
             raise error.PrimitiveFailedError
+        self.changed() # aborts trace
         self._numArgs, w_other._numArgs = w_other._numArgs, self._numArgs
         self._w_outerContext, w_other._w_outerContext = w_other._w_outerContext, self._w_outerContext
         self._startpc, w_other._startpc = w_other._startpc, self._startpc
@@ -143,8 +158,7 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
 
     def clone(self, space):
         copy = self.__class__(
-            space, self.w_outerContext(), self.startpc(), self.numArgs(), self.varsize())
-        copy._stack = list(self._stack)
+            space, self.w_outerContext(), self.startpc(), self.numArgs(), self.varsize(), stack=list(self._stack))
         return copy
 
     def create_frame(self, space, arguments=[]):
