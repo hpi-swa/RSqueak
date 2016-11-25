@@ -199,8 +199,7 @@ class ObjSpace(object):
             if val <= r_uint(constants.MAXINT):
                 return self.wrap_smallint_unsafe(intmask(val))
             else:
-                return W_LargeIntegerWord(
-                    self, self.w_LargePositiveInteger, val, constants.BYTES_PER_MACHINE_INT)
+                return self.wrap_wordint_direct(val, self.w_LargePositiveInteger)
         elif IS_64BIT and isinstance(val, r_uint32):
             return self.wrap_smallint_unsafe(intmask(val))
         elif isinstance(val, r_longlong) or isinstance(val, r_ulonglong) or isinstance(val, r_int64):
@@ -231,10 +230,14 @@ class ObjSpace(object):
                 res = intmask(-uint)
                 if res < 0:
                     return self.wrap_smallint_unsafe(res)
+            return self.wrap_wordint_direct(uint, w_class)
         return self.wrap_rbigint_direct(val, w_class)
 
     def wrap_rbigint_direct(self, val, w_class):
         return W_LargeIntegerBig(self, w_class, val, 0)
+
+    def wrap_wordint_direct(self, val, w_class):
+        return W_LargeIntegerWord(self, w_class, val, constants.BYTES_PER_MACHINE_INT)
 
     def wrap_float(self, i):
         return W_Float(i)
