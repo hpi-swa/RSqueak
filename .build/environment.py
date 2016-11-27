@@ -121,6 +121,12 @@ def prepare_environment_variables():
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
+def fix_nt():
+    if "nt" == os.name:
+        import codecs
+        codecs.register(lambda name: codecs.lookup('utf-8') if name == 'cp65001' else None)
+
+
 cp, config = load_config()
 if cp.has_option("Linux", "SDL64bit"):
     os.environ["SDL_PREFIX"] = cp.get("Linux", "SDL64bit")
@@ -128,3 +134,4 @@ if "--64bit" in sys.argv:
     sys.argv.remove("--64bit")
 ensure_32bit_environment_if_required()
 prepare_environment_variables()
+fix_nt()
