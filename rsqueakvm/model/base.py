@@ -8,11 +8,10 @@ from rpython.rlib.rarithmetic import intmask
 
 class W_Object(object):
     """Root of Squeak model, abstract."""
-    _attrs_ = ['immutable']    # no RPython-level instance variables allowed in W_Object
+    _attrs_ = []    # no RPython-level instance variables allowed in W_Object
     _settled_ = True
     repr_classname = "W_Object"
     bytes_per_slot = constants.BYTES_PER_WORD
-    immutable = False
 
     def size(self):
         """Return the number of "slots" or "items" in the receiver object.
@@ -41,11 +40,8 @@ class W_Object(object):
         space, as memory representation varies depending on PyPy translation."""
         return self.size() * self.bytes_per_slot
 
-    def set_immutable(self, boolean):
-        self.immutable = boolean
-
     def is_immutable(self):
-        return self.immutable
+        return False
 
     def getclass(self, space):
         """Return Squeak class."""
