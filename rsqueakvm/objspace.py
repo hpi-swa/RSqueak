@@ -203,11 +203,12 @@ class ObjSpace(object):
         elif IS_64BIT and isinstance(val, r_uint32):
             return self.wrap_smallint_unsafe(intmask(val))
         elif isinstance(val, r_longlong) or isinstance(val, r_int64):
-            if constants.MININT <= val <= constants.MAXINT:
+            # use '&' instead of 'and' in these checks, so we only generate 1 guard instead of two
+            if (constants.MININT <= val) & (val <= constants.MAXINT):
                 return self.wrap_smallint_unsafe(intmask(val))
-            elif 0 <= val <= r_longlong(constants.U_MAXINT):
+            elif (0 <= val) & (val <= r_longlong(constants.U_MAXINT)):
                 return self.wrap_wordint_direct(r_uint(val), self.w_LargePositiveInteger)
-            elif -r_longlong(constants.U_MAXINT) <= val <= 0:
+            elif (0 > val) & (-r_longlong(constants.U_MAXINT) <= val):
                 return self.wrap_wordint_direct(r_uint(val), self.w_LargeNegativeInteger)
             else:
                 return self.wrap_rbigint_direct(rbigint.rbigint.fromrarith_int(val))
