@@ -9,7 +9,7 @@ from rsqueakvm.model.block_closure import W_BlockClosure
 from rsqueakvm.util.version import Version
 
 from rpython.rlib import jit, rbigint, rarithmetic
-from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin, we_are_translated
+from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin, we_are_translated, always_inline
 from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32, int_between, is_valid_int, r_ulonglong, r_longlong, r_int64
 
 
@@ -202,8 +202,22 @@ class ObjSpace(object):
                 return self.wrap_wordint_direct(val, self.w_LargePositiveInteger)
         elif IS_64BIT and isinstance(val, r_uint32):
             return self.wrap_smallint_unsafe(intmask(val))
-        elif isinstance(val, r_longlong) or isinstance(val, r_ulonglong) or isinstance(val, r_int64):
-            return self.wrap_rbigint(rbigint.rbigint.fromrarith_int(val))
+        elif isinstance(val, r_longlong) or isinstance(val, r_int64):
+            if constants.MININT <= val <= constants.MAXINT:
+                return self.wrap_smallint_unsafe(intmask(val))
+            elif 0 <= val <= r_longlong(constants.U_MAXINT):
+                return self.wrap_wordint_direct(r_uint(val), self.w_LargePositiveInteger)
+            elif -r_longlong(constants.U_MAXINT) <= val <= 0:
+                return self.wrap_wordint_direct(r_uint(val), self.w_LargeNegativeInteger)
+            else:
+                return self.wrap_rbigint_direct(rbigint.rbigint.fromrarith_int(val))
+        elif isinstance(val, r_ulonglong):
+            if val <= r_ulonglong(constants.MAXINT):
+                return self.wrap_smallint_unsafe(intmask(val))
+            elif val <= constants.U_MAXINT:
+                return self.wrap_wordint_direct(r_uint(val), self.w_LargePositiveInteger)
+            else:
+                return self.wrap_rbigint_direct(rbigint.rbigint.fromrarith_int(val))
         else:
             raise WrappingError
 
@@ -233,7 +247,13 @@ class ObjSpace(object):
             return self.wrap_wordint_direct(uint, w_class)
         return self.wrap_rbigint_direct(val, w_class)
 
-    def wrap_rbigint_direct(self, val, w_class):
+    @always_inline
+    def wrap_rbigint_direct(self, val, w_class=None):
+        if w_class is None:
+            if val.sign >= 0:
+                w_class = self.w_LargePositiveInteger
+            else:
+                w_class = self.w_LargeNegativeInteger
         return W_LargeIntegerBig(self, w_class, val, 0)
 
     def wrap_wordint_direct(self, val, w_class):
