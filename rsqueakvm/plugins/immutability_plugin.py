@@ -7,15 +7,26 @@ ImmutabilityPlugin = Plugin()
 
 def _add_immutable_subclass(cls, blacklist):
     class ImmutableSubclass(cls):
-        _attrs_ = ['_immutable_storage']
-        _immutable_fields_ = ['_immutable_storage[*]']
+        _attrs_ = ['_immutable_storage', 'w_class', '_instsize']
+        _immutable_fields_ = ['_immutable_storage[*]', '_instsize']
 
         def __init__(self, space, w_cls, pointers):
-            cls.__init__(self, space, w_cls, len(pointers))
+            W_AbstractObjectWithIdentityHash.__init__(self)
+            self.w_class = w_cls
             self._immutable_storage = pointers
+            self._instsize = self.w_class.as_class_get_shadow(space).instsize()
+
+        def getclass(self, space):
+            return self.w_class
+
+        def size(self):
+            return len(self._immutable_storage) - self.instsize()
+
+        def instsize(self):
+            return self._instsize
 
         def fetch(self, space, n0):
-            return self._immutable_storage[n0];
+            return self._immutable_storage[n0]
 
         def is_immutable(self):
             return True
