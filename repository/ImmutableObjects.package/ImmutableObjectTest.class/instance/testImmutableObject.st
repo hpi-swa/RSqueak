@@ -2,11 +2,11 @@ testing
 testImmutableObject
 	| obj |
 	
-	obj := MyTestClass immutableNew
+	obj := MyTestClass new
 		aField: 'foo';
 		anotherField: #(2);
 		someVar: 'bar' someOtherVar: true;
-		commit.
+		immutableCopy.
 
 	self assert: 'foo' equals: obj aField.
 	self assert: #(2) equals: obj anotherField.
