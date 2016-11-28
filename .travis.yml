@@ -5,6 +5,7 @@ rvm:
 env:
   - REPOSITORY=HPI-SWA-Lab/RSqueak VM=rsqueak USE_SHA=1
   - REPOSITORY=OpenSmalltalk/opensmalltalk-vm VM=cog
+  - REPOSITORY=OpenSmalltalk/opensmalltalk-vm VM=stack
   - REPOSITORY=OpenSmalltalk/opensmalltalk-vm VM=sista
   - REPOSITORY=OpenSmalltalk/opensmalltalk-vm VM=counters
   - REPOSITORY=OpenSmalltalk/opensmalltalk-vm VM=nocounters

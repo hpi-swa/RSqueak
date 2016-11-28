@@ -149,6 +149,14 @@ class BenchmarkWorker(object):
         if self._download_with_script("get_cog64.sh", commitid):
             return "./cog64/squeak"
 
+    def download_stack(self, commitid):
+        if self._download_with_script("get_stack.sh", commitid):
+            return "./stack32/squeak"
+
+    def download_stack64(self, commitid):
+        if self._download_with_script("get_stacj64.sh", commitid):
+            return "./stack64/squeak"
+
     def download_sista(self, commitid):
         if self._download_with_script("get_sista.sh", commitid):
             return "./sista32/squeak"
