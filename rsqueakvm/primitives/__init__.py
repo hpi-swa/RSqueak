@@ -93,7 +93,9 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
             unrolling_unwrap_spec = unrolling_iterable(enumerate(unwrap_spec))
             def wrapped(interp, s_frame, argument_count_m1, w_method=None):
                 argument_count = argument_count_m1 + 1 # to account for the rcvr
-                assert argument_count == len_unwrap_spec, ("unexpected argcount %d in %s" % (argument_count, func.func_name))
+                if argument_count != len_unwrap_spec:
+                    print "unexpected argcount %d in %s" % (argument_count, func.func_name)
+                    raise PrimitiveFailedError
                 if s_frame.stackdepth() < len_unwrap_spec:
                     raise PrimitiveFailedError()
                 args = ()
