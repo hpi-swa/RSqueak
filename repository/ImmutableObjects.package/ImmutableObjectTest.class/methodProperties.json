@@ -2,5 +2,7 @@
 	"class" : {
 		 },
 	"instance" : {
-		"testImmutableObject" : "fn 11/28/2016 00:55",
+		"testAsImmutable" : "jc 11/28/2016 12:55",
+		"testImmutableCopy" : "jc 11/28/2016 12:53",
+		"testImmutableFrom" : "jc 11/28/2016 12:54",
 		"testImmutableObjectVMSupport" : "fn 11/28/2016 00:56" } }

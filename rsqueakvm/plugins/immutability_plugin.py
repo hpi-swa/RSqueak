@@ -7,14 +7,18 @@ ImmutabilityPlugin = Plugin()
 
 def _add_immutable_subclass(cls, blacklist):
     class ImmutableSubclass(cls):
-        _attrs_ = ['_frozen']
-        _frozen = False
+        _attrs_ = ['_immutable_storage']
+        _immutable_fields_ = ['_immutable_storage[*]']
 
-        def freeze(self):
-            self._frozen = True
+        def __init__(self, space, w_cls, pointers):
+            cls.__init__(self, space, w_cls, len(pointers))
+            self._immutable_storage = pointers
+
+        def fetch(self, space, n0):
+            return self._immutable_storage[n0];
 
         def is_immutable(self):
-            return self._frozen
+            return True
 
     # Decorate blacklisted methods with immutability check
     def restrict_access(fn):
@@ -41,10 +45,6 @@ def _patch_w_objects():
         return False
     W_Object.is_immutable = is_immutable
 
-    def freeze(self):
-        pass
-    W_Object.freeze = freeze
-
     _add_immutable_subclass(W_PointersObject,
                             ['atput0', 'store', 'store_all', '_become'])
 
@@ -52,18 +52,16 @@ _patch_w_objects()
 
 
 @ImmutabilityPlugin.expose_primitive(unwrap_spec=[object, object])
-def asImmutable(interp, s_frame, w_recv, w_cls):
+def immutableFrom(interp, s_frame, w_cls, w_obj):
     # import pdb; pdb.set_trace()
     try:
-        immutable_class = w_recv.__class__.immutable_class
+        immutable_subclass = w_cls.__class__.immutable_class
     except AttributeError:
         raise PrimitiveFailedError
 
-    if isinstance(w_recv, W_PointersObject):
-        pointers = w_recv.fetch_all(interp.space)
-        w_result = immutable_class(interp.space, w_cls, len(pointers))
-        w_result.store_all(interp.space, pointers)
-        w_result.freeze()
+    if isinstance(w_cls, W_PointersObject):
+        pointers = w_obj.fetch_all(interp.space)
+        w_result = immutable_subclass(interp.space, w_cls, pointers)
         return w_result
 
     raise PrimitiveFailedError
