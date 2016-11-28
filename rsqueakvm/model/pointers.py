@@ -1,11 +1,13 @@
 from rsqueakvm import constants, error
 from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.numeric import W_SmallInteger
+from rsqueakvm.util.model import has_immutable_subclass, no_immutable_access
 
 from rpython.rlib import objectmodel, jit
 from rpython.rlib.rstrategies import rstrategies as rstrat
 
 
+@has_immutable_subclass
 class W_PointersObject(W_AbstractObjectWithIdentityHash):
     """Common object."""
     _attrs_ = ['strategy', '_storage']
@@ -162,6 +164,7 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
         # To test, at0 = in varsize part
         return self.fetch(space, index0 + self.instsize())
 
+    @no_immutable_access
     def atput0(self, space, index0, w_value):
         # To test, at0 = in varsize part
         self.store(space, index0 + self.instsize(), w_value)
@@ -169,10 +172,8 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
     def fetch(self, space, n0):
         return self._get_strategy().fetch(self, n0)
 
+    @no_immutable_access
     def store(self, space, n0, w_value):
-        if self.is_immutable():
-            print "Immutable: %s, %s, %s" % (self, n0, w_value)
-            return
         return self._get_strategy().store(self, n0, w_value)
 
     def size(self):
@@ -226,6 +227,7 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
         # The space is accessed through the strategy.
         return self.has_strategy()
 
+    @no_immutable_access
     def _become(self, w_other):
         assert isinstance(w_other, W_PointersObject)
         # Make sure our class shadow is initialized, we will need it
@@ -244,6 +246,7 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
         self._storage, w_other._storage = w_other._storage, self._storage
         W_AbstractObjectWithIdentityHash._become(self, w_other)
 
+    @no_immutable_access
     def pointers_become_one_way(self, space, from_w, to_w):
         ptrs = self.fetch_all(space)
         ptridx = 0

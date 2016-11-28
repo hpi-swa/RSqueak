@@ -1,35 +1,36 @@
+from rsqueakvm.model import *
 from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.error import PrimitiveFailedError
-from rsqueakvm.primitives import assert_pointers
 
 ImmutabilityPlugin = Plugin()
 
 
-@ImmutabilityPlugin.expose_primitive(unwrap_spec=[object, list, list])
-def newImmutableObject(interp, s_frame, w_cls, w_selector_list, w_args_list):
-    w_cls = assert_pointers(w_cls)
-    s_class = w_cls.as_class_get_shadow(interp.space)
+def _patch_w_object():
+    from rsqueakvm.model.base import W_Object
+
+    def freeze(self):
+        pass
+    W_Object.freeze = freeze
+
+_patch_w_object()
+
+
+@ImmutabilityPlugin.expose_primitive(unwrap_spec=[object])
+def immutableCopy(interp, s_frame, w_recv):
     try:
-        new_obj = s_class.new()
-    except MemoryError:
+        immutable_class = w_recv.__class__.immutable_class
+    except AttributeError:
         raise PrimitiveFailedError
-    return _fill(interp, new_obj, w_selector_list, w_args_list)
 
+    if isinstance(w_recv, W_PointersObject):
+        pointers = w_recv.fetch_all(interp.space)
+        w_result = immutable_class(interp.space, w_recv.getclass(interp.space),
+                                   len(pointers))
+        w_result.store_all(interp.space, pointers)
+        w_result.freeze()
+        return w_result
 
-def _fill(interp, new_obj, w_selector_list, w_args_list):
-    # Fill immutable object
-    selector_iter = iter(w_selector_list)
-    args_iter = iter(w_args_list)
-    # import pdb; pdb.set_trace()
-    while True:
-        try:
-            w_selector = next(selector_iter)
-            w_arguments = interp.space.unwrap_array(next(args_iter))
-        except StopIteration:
-            break
-        interp.perform(new_obj, w_selector=w_selector, w_arguments=w_arguments)
-    new_obj.set_immutable(True)
-    return new_obj
+    raise PrimitiveFailedError
 
 
 @ImmutabilityPlugin.expose_primitive(unwrap_spec=[object])
