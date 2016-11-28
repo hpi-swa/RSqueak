@@ -31,6 +31,27 @@ def elidable_for_version(numargs, promote='all'):
         return meth
     return decorator
 
+# This decorator calls the elidable version of the function only if cond is
+# true. This is useful, for example, to first check that self is a jit constant,
+# and otherwise trace into the original function.
+def elidable_for_version_iff(numargs, promote='all', cond=None):
+    def decorator(func):
+        elidable_func = elidable_for_version(numargs, promote=promote)(func)
+        argstr = "".join([", arg%d" % i for i in range(numargs)])
+        code = [
+            "def cond_versioned_func(self %s):" % argstr,
+            "    if cond(self %s):" % argstr,
+            "        return elidable_func(self %s)" % argstr,
+            "    else:",
+            "        return func(self %s)" % argstr
+        ]
+        d = {"func": func, "elidable_func": elidable_func, "cond": cond}
+        exec "\n".join(code) in d
+        cond_versioned_func = d["cond_versioned_func"]
+        cond_versioned_func.func_name = "cond_constant_method_" + func.func_name
+        return cond_versioned_func
+    return decorator
+
 class Version(object):
     pass
 

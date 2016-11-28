@@ -61,7 +61,8 @@ class W_AbstractFloat(W_AbstractObjectWithIdentityHash):
         return (intmask(compute_hash(self.getvalue())) % 2**22) + 1
 
     def _become(self, w_other):
-        assert isinstance(w_other, W_AbstractFloat)
+        if isinstance(w_other, W_AbstractFloat):
+            raise error.PrimitiveFailedError
         self_value, w_other_value = self.getvalue(), w_other.getvalue()
         self.setvalue(w_other_value)
         w_other.setvalue(self_value)
@@ -209,7 +210,7 @@ class W_LargeIntegerBig(W_LargeInteger):
     _immutable_fields_ = ["value?"]
     repr_classname = "W_LargeIntegerBig"
 
-    def __init__(self, space, w_class, value, size):
+    def __init__(self, space, w_class, value, size=0):
         W_LargeInteger.__init__(self, space, w_class, size)
         self.value = value
 
@@ -225,6 +226,38 @@ class W_LargeIntegerBig(W_LargeInteger):
 
     def str_content(self):
         return self.value.str()
+
+    def size(self):
+        if jit.isconstant(self):
+            self.calculate_exposed_size_for_big_int_once()
+            return self._exposed_size
+        else:
+            return self.calculate_exposed_size_for_big_int_call()
+
+    # this method is elidable so the jit won't look inside to notice that we're
+    # setting an immutable field. This should be ok, because size is hopefully
+    # requested rarely for these numbers.
+    @jit.elidable
+    def calculate_exposed_size_for_big_int_call(self):
+        if self._exposed_size == 0:
+            import math
+            bytelenval = self.value.abs()
+            # XXX +0.05: heuristic hack float rounding errors
+            bytelen = int(math.floor(bytelenval.log(256) + 0.05)) + 1
+            # TODO: check if this might be better
+            # try:
+            #     bytes = val.tobytes(bytelen, 'little', False)
+            # except OverflowError:
+            #     # round-off errors in math.log, might need an extra byte
+            #     bytes = val.tobytes(bytelen + 1, 'little', False)
+            self._exposed_size = bytelen
+        return self._exposed_size
+
+    # if self is a constant, we just ensure we calculate the exposed_size without a
+    # residual call in the trace, if it isn't we always insert the call
+    @jit.not_in_trace
+    def calculate_exposed_size_for_big_int_once(self):
+        self.calculate_exposed_size_for_big_int_call()
 
     def unwrap_string(self, space):
         return self.value.abs().tobytes(self.size(), 'little', False)
@@ -277,7 +310,8 @@ class W_LargeIntegerBig(W_LargeInteger):
 
     @jit.dont_look_inside
     def _become(self, w_other):
-        assert isinstance(w_other, W_LargeIntegerBig)
+        if not isinstance(w_other, W_LargeIntegerBig):
+            raise error.PrimitiveFailedError
         self.value, w_other.value = w_other.value, self.value
         self._exposed_size, w_other._exposed_size = (w_other._exposed_size,
                                                      self._exposed_size)
@@ -291,7 +325,6 @@ class W_LargeIntegerWord(W_LargeInteger):
 
     def __init__(self, space, w_class, value, size):
         W_LargeInteger.__init__(self, space, w_class, size)
-        assert isinstance(value, r_uint)
         self.value = value
 
     def fillin(self, space, g_self):
@@ -369,7 +402,8 @@ class W_LargeIntegerWord(W_LargeInteger):
 
     @jit.dont_look_inside
     def _become(self, w_other):
-        assert isinstance(w_other, W_LargeIntegerWord)
+        if not isinstance(w_other, W_LargeIntegerWord):
+            raise error.PrimitiveFailedError
         self.value, w_other.value = w_other.value, self.value
         self._exposed_size, w_other._exposed_size = (w_other._exposed_size,
                                                      self._exposed_size)

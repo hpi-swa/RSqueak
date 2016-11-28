@@ -93,7 +93,7 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
             unrolling_unwrap_spec = unrolling_iterable(enumerate(unwrap_spec))
             def wrapped(interp, s_frame, argument_count_m1, w_method=None):
                 argument_count = argument_count_m1 + 1 # to account for the rcvr
-                assert argument_count == len_unwrap_spec
+                assert argument_count == len_unwrap_spec, ("unexpected argcount %d in %s" % (argument_count, func.func_name))
                 if s_frame.stackdepth() < len_unwrap_spec:
                     raise PrimitiveFailedError()
                 args = ()
@@ -118,14 +118,12 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                         assert isinstance(w_arg, W_Object)
                         args += (w_arg, )
                     elif spec is str:
-                        assert isinstance(w_arg, W_BytesObject)
                         args += (interp.space.unwrap_string(w_arg), )
                     elif spec is bytelist:
                         if not isinstance(w_arg, W_BytesObject):
                             raise PrimitiveFailedError
                         args += (w_arg.getbytes(), )
                     elif spec is list:
-                        assert isinstance(w_arg, W_PointersObject)
                         args += (interp.space.unwrap_array(w_arg), )
                     elif spec is char:
                         args += (interp.space.unwrap_char_as_byte(w_arg), )

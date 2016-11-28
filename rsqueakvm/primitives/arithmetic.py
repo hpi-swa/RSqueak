@@ -17,30 +17,33 @@ comparison_specs = combination_specs + [[float, float]]
 arithmetic_specs = comparison_specs
 
 
-def make_ovfcheck(op, check):
+def make_ovfcheck(op, before=None, after=None):
+    if not before: before = lambda x,y: False
+    if not after: after = lambda x,y,r: False
     @specialize.argtype(0, 1)
     def fun(x, y):
         if isinstance(x, float) and isinstance(y, float):
             return op(x, y)
         elif not (isinstance(x, int) and isinstance(y, int)):
+            if before(x, y): raise PrimitiveFailedError
             try: r = op(x, y)
             except OverflowError: raise PrimitiveFailedError # not raised after translation :(
-            if check(x, y, r): raise PrimitiveFailedError
+            if after(x, y, r): raise PrimitiveFailedError
             return r
         else:
             try: return ovfcheck(op(x, y))
             except OverflowError: raise PrimitiveFailedError
     return fun
 # div overflows only in one case
-int_ovfcheck_div = make_ovfcheck(operator.floordiv, lambda x,y,r: (x == constants.MININT) & (y == -1))
+int_ovfcheck_div = make_ovfcheck(operator.floordiv, before=lambda x,y: (x == constants.MININT) & (y == -1))
 # mod overflows like div
-int_ovfcheck_mod = make_ovfcheck(operator.mod, lambda x,y,r: (x == constants.MININT) & (y == -1))
+int_ovfcheck_mod = make_ovfcheck(operator.mod, before=lambda x,y: (x == constants.MININT) & (y == -1))
 # add overflows if the result has a different sign than both operands
-int_ovfcheck_add = make_ovfcheck(operator.add, lambda x,y,r: (((r^x)<0) & ((r^y)<0)))
+int_ovfcheck_add = make_ovfcheck(operator.add, after=lambda x,y,r: (((r^x)<0) & ((r^y)<0)))
 # sub overflows if the result has a different sign than x and negated y
-int_ovfcheck_sub = make_ovfcheck(operator.sub, lambda x,y,r: (((r^x)<0) & ((r^~y)<0)))
+int_ovfcheck_sub = make_ovfcheck(operator.sub, after=lambda x,y,r: (((r^x)<0) & ((r^~y)<0)))
 # mul overflow check uses doubles to do a conservative overflow check
-int_ovfcheck_mul = make_ovfcheck(operator.mul, lambda x,y,r: float(x)*float(y) != float(r))
+int_ovfcheck_mul = make_ovfcheck(operator.mul, after=lambda x,y,r: float(x)*float(y) != float(r))
 
 
 # ___________________________________________________________________________
@@ -207,7 +210,6 @@ def func(interp, s_frame, receiver, shift):
         return interp.space.wrap_int(receiver)
     else:
         shift = -shift
-        assert shift >= 0
         if isinstance(receiver, int) or isinstance(receiver, r_int64):
             return interp.space.wrap_int(receiver >> shift)
         else:

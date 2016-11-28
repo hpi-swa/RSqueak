@@ -77,7 +77,7 @@ class ProcessWrapper(LinkWrapper):
 
     def transfer_to_self_from(self, s_old_frame):
         from rsqueakvm.interpreter import ProcessSwitch
-        assert not self.is_active_process()
+        assert not self.is_active_process(), "trying to switch to already active process"
         new_proc = self.wrapped
         sched = scheduler(self.space)
         old_proc = ProcessWrapper(self.space, sched.active_process())

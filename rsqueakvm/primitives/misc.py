@@ -23,7 +23,6 @@ def func(interp, s_frame, argument_count):
         return interp.space.wrap_string(interp.space.get_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX))
     elif argument_count == 1:
         w_arg = s_frame.pop()
-        assert isinstance(w_arg, W_BytesObject)
         arg = interp.space.unwrap_string(w_arg)
         interp.space.set_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, arg)
         interp.space.display().set_title(arg)

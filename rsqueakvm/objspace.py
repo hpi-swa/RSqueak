@@ -199,8 +199,7 @@ class ObjSpace(object):
             if val <= r_uint(constants.MAXINT):
                 return self.wrap_smallint_unsafe(intmask(val))
             else:
-                return W_LargeIntegerWord(
-                    self, self.w_LargePositiveInteger, val, constants.BYTES_PER_MACHINE_INT)
+                return self.wrap_wordint_direct(val, self.w_LargePositiveInteger)
         elif IS_64BIT and isinstance(val, r_uint32):
             return self.wrap_smallint_unsafe(intmask(val))
         elif isinstance(val, r_longlong) or isinstance(val, r_ulonglong) or isinstance(val, r_int64):
@@ -213,29 +212,32 @@ class ObjSpace(object):
         return W_SmallInteger(intmask(val))
 
     def wrap_rbigint(self, val):
-        import math
-        try:
-            return self.wrap_int(val.toint())
-        except OverflowError:
-            pass
-        if val.sign < 0:
-            w_class = self.w_LargeNegativeInteger
-            bytelenval = val.abs()
-        else:
+        if val.sign >= 0:
             w_class = self.w_LargePositiveInteger
-            bytelenval = val
-        try:
-            return W_LargeIntegerWord(self, w_class, bytelenval.touint(), constants.BYTES_PER_MACHINE_INT)
-        except OverflowError:
-            pass
-        # XXX +0.05: heuristic hack float rounding errors
-        bytelen = int(math.floor(bytelenval.log(256) + 0.05)) + 1
-        # try:
-        #     bytes = val.tobytes(bytelen, 'little', False)
-        # except OverflowError:
-        #     # round-off errors in math.log, might need an extra byte
-        #     bytes = val.tobytes(bytelen + 1, 'little', False)
-        return W_LargeIntegerBig(self, w_class, val, bytelen)
+        else:
+            w_class = self.w_LargeNegativeInteger
+        # the logic below is an copied from rbigint.toint to make the guards inline better
+        if val.numdigits() <= rbigint.MAX_DIGITS_THAT_CAN_FIT_IN_INT:
+            try:
+                uint = val._touint_helper() # this doesn't check the sign, which we want
+            except OverflowError:
+                return self.wrap_rbigint_direct(val, w_class)
+            if val.sign >= 0:
+                res = intmask(uint)
+                if res >= 0:
+                    return self.wrap_smallint_unsafe(res)
+            else:
+                res = intmask(-uint)
+                if res < 0:
+                    return self.wrap_smallint_unsafe(res)
+            return self.wrap_wordint_direct(uint, w_class)
+        return self.wrap_rbigint_direct(val, w_class)
+
+    def wrap_rbigint_direct(self, val, w_class):
+        return W_LargeIntegerBig(self, w_class, val, 0)
+
+    def wrap_wordint_direct(self, val, w_class):
+        return W_LargeIntegerWord(self, w_class, val, constants.BYTES_PER_MACHINE_INT)
 
     def wrap_float(self, i):
         return W_Float(i)
