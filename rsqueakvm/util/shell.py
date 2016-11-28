@@ -227,9 +227,15 @@ class Shell(object):
                 try:
                     w_result = self._execute_code(code)
                 except:
-                    error = sys.exc_info()
-                    print "Error: ", error[0]
-                    import pdb; pdb.set_trace()
+                    if hasattr(sys, 'ps1') or not sys.stderr.isatty():
+                        # we are in interactive mode or we don't have a tty-like
+                        # device, so we call the default hook
+                        sys.__excepthook__(type, value, tb)
+                    else:
+                        import pdb, traceback
+                        _type, value, tb = sys.exc_info()
+                        traceback.print_exception(_type, value, tb)
+                        pdb.post_mortem(tb)
                 if w_result:
                     print w_result.as_repr_string().replace('\r', '\n')
 
