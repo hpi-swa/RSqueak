@@ -85,6 +85,7 @@ def ensure_32bit_environment_if_required():
 
 def prepare_environment_variables():
     if "nt" == os.name:
+        section = "Windows"
         vs = cp.get("Windows", "VisualStudio9")
         sdk = cp.get("Windows", "WindowsSDK7")
         pypyextlibs = cp.get("Windows", "pypyextlibs")
@@ -100,8 +101,9 @@ def prepare_environment_variables():
                                        os.environ["Path"]])
         os.environ["SDL_PREFIX"] = cp.get("Windows", "SDL")
     elif "linux" in sys.platform:
-        pass
+        section = "Linux"
     elif "darwin" == sys.platform:
+        section = "macOS"
         try:
             # Check if sdl2-config is installed (e.g. when SDL2 is installed via brew)
             os.environ["SDL_PREFIX"] = subprocess.check_output(['sdl2-config', '--prefix']).strip()
@@ -109,12 +111,11 @@ def prepare_environment_variables():
             pass
     else:
         raise AssertionError("Unsupported platform")
-    sys.path.insert(0, cp.get("General", "pypy"))
-    sys.path.insert(0, cp.get("General", "rsdl"))
-    sys.path.insert(0, cp.get("General", "sqpyte"))
-    sys.path.insert(0, cp.get("General", "topaz"))
-    sys.path.insert(0, cp.get("General", "rply"))
-    sys.path.insert(0, cp.get("General", "appdirs"))
+    for dependency in ["pypy", "rsdl", "sqpyte", "topaz", "rply", "appdirs"]:
+        try:
+            sys.path.insert(0, cp.get(section, dependency))
+        except ConfigParser.NoOptionError:
+            sys.path.insert(0, cp.get("General", dependency))
     try:
         import targetrsqueak as rsqueak
     except ImportError:
