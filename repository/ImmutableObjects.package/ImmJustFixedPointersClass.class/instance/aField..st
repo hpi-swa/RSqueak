@@ -1,4 +1,4 @@
 accessing
 aField: anObject
 
-	aField := anObject
+	aField := anObject.

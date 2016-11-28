@@ -10,7 +10,7 @@
 		"anotherField",
 		"someVar1",
 		"someVar2" ],
-	"name" : "MyTestClass",
+	"name" : "ImmJustFixedPointersClass",
 	"pools" : [
 		 ],
 	"super" : "Object",

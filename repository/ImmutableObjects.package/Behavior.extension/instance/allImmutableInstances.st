@@ -1,3 +1,4 @@
 *ImmutableObjects
 allImmutableInstances
-	^ self allInstances select: [ :ea | ea isImmutable ]
+
+	^ self allInstances select: [:ea | ea isImmutable]

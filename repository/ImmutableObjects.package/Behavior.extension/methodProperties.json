@@ -2,5 +2,6 @@
 	"class" : {
 		 },
 	"instance" : {
-		"allImmutableInstances" : "fn 11/28/2016 01:45",
-		"immutableFrom:" : "jc 11/28/2016 12:40" } }
+		"allImmutableInstances" : "topa 11/28/2016 15:23",
+		"immutableFrom:" : "topa 11/28/2016 15:23",
+		"primImmutableFrom:" : "topa 11/28/2016 15:23" } }

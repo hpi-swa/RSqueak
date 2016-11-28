@@ -7,26 +7,26 @@ ImmutabilityPlugin = Plugin()
 
 def _add_immutable_subclass(cls, blacklist):
     class ImmutableSubclass(cls):
-        _attrs_ = ['_immutable_storage', 'w_class', '_instsize']
-        _immutable_fields_ = ['_immutable_storage[*]', '_instsize']
+        _attrs_ = ['storage', 'w_class', '_instsize']
+        _immutable_fields_ = ['storage[*]', '_instsize']
 
-        def __init__(self, space, w_cls, pointers):
+        def __init__(self, space, w_cls, pointers_w):
             W_AbstractObjectWithIdentityHash.__init__(self)
             self.w_class = w_cls
-            self._immutable_storage = pointers
+            self.storage = pointers_w
             self._instsize = self.w_class.as_class_get_shadow(space).instsize()
 
         def getclass(self, space):
             return self.w_class
 
         def size(self):
-            return len(self._immutable_storage) - self.instsize()
+            return len(self.storage) - self.instsize()
 
         def instsize(self):
             return self._instsize
 
         def fetch(self, space, n0):
-            return self._immutable_storage[n0]
+            return self.storage[n0]
 
         def is_immutable(self):
             return True
@@ -63,8 +63,7 @@ _patch_w_objects()
 
 
 @ImmutabilityPlugin.expose_primitive(unwrap_spec=[object, object])
-def immutableFrom(interp, s_frame, w_cls, w_obj):
-    # import pdb; pdb.set_trace()
+def primitiveImmutableFrom(interp, s_frame, w_cls, w_obj):
     try:
         immutable_subclass = w_cls.__class__.immutable_class
     except AttributeError:
@@ -79,8 +78,7 @@ def immutableFrom(interp, s_frame, w_cls, w_obj):
 
 
 @ImmutabilityPlugin.expose_primitive(unwrap_spec=[object])
-def isImmutable(interp, s_frame, w_recv):
-    # import pdb; pdb.set_trace()
+def primitiveIsImmutable(interp, s_frame, w_recv):
     if w_recv.is_immutable():
         return interp.space.w_true
     return interp.space.w_false
