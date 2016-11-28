@@ -6,9 +6,12 @@
 		 ],
 	"commentStamp" : "",
 	"instvars" : [
-		 ],
-	"name" : "ImmutableObjectTest",
+		"aField",
+		"anotherField",
+		"someVar1",
+		"someVar2" ],
+	"name" : "ImmJustFixedPointersClass",
 	"pools" : [
 		 ],
-	"super" : "ImmutabilityTestCase",
+	"super" : "Object",
 	"type" : "normal" }

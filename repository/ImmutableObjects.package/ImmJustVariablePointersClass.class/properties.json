@@ -6,12 +6,9 @@
 		 ],
 	"commentStamp" : "",
 	"instvars" : [
-		"aField",
-		"anotherField",
-		"someVar1",
-		"someVar2" ],
-	"name" : "MyTestClass",
+		 ],
+	"name" : "ImmJustVariablePointersClass",
 	"pools" : [
 		 ],
 	"super" : "Object",
-	"type" : "normal" }
+	"type" : "variable" }

@@ -2,6 +2,7 @@
 	"class" : {
 		 },
 	"instance" : {
-		"asImmutable:" : "jc 11/28/2016 12:51",
-		"immutableCopy" : "fn 11/28/2016 11:17",
-		"isImmutable" : "fn 11/20/2016 21:22" } }
+		"asImmutable:" : "topa 11/28/2016 15:23",
+		"immutableCopy" : "topa 11/28/2016 15:24",
+		"isImmutable" : "topa 11/28/2016 15:23",
+		"primIsImmutable" : "topa 11/28/2016 15:23" } }

@@ -1,8 +1,10 @@
 {
 	"class" : {
-		 },
+		"isAbstract" : "topa 11/28/2016 16:18" },
 	"instance" : {
-		"testAsImmutable" : "jc 11/28/2016 12:55",
-		"testImmutableCopy" : "jc 11/28/2016 12:53",
-		"testImmutableFrom" : "jc 11/28/2016 12:54",
-		"testImmutableObjectVMSupport" : "fn 11/28/2016 00:56" } }
+		"assertPropertiesOf:" : "topa 11/28/2016 16:12",
+		"classUnderTest" : "topa 11/28/2016 16:12",
+		"objectUnderTest" : "topa 11/28/2016 16:12",
+		"testAsImmutable" : "topa 11/28/2016 16:09",
+		"testImmutableCopy" : "topa 11/28/2016 16:09",
+		"testImmutableFrom" : "topa 11/28/2016 16:10" } }

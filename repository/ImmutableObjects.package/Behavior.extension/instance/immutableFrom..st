@@ -1,4 +1,4 @@
 *ImmutableObjects
 immutableFrom: anObject
-	<primitive: 'immutableFrom' module: 'ImmutabilityPlugin'>
-	self primitiveFailed
+
+	^ self primImmutableFrom: anObject

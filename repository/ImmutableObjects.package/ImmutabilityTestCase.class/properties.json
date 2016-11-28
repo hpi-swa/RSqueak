@@ -7,8 +7,8 @@
 	"commentStamp" : "",
 	"instvars" : [
 		 ],
-	"name" : "ImmutableObjectTest",
+	"name" : "ImmutabilityTestCase",
 	"pools" : [
 		 ],
-	"super" : "ImmutabilityTestCase",
+	"super" : "TestCase",
 	"type" : "normal" }
