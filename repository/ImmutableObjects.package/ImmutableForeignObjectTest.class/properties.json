@@ -1,0 +1,14 @@
+{
+	"category" : "ImmutableObjects",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "ImmutableForeignObjectTest",
+	"pools" : [
+		 ],
+	"super" : "ImmutabilityTestCase",
+	"type" : "normal" }
