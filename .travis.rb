@@ -14,7 +14,7 @@ vm = ENV["VM"]
 
 yesterdays_builds = []
 repo.builds.each do |b|
-  break if (b.finished_at && b.finished_at < 1.day.ago)
+  break if (b.finished_at && b.finished_at < 4.days.ago)
   if vm == "rsqueak"
     # if both linux builds worked, we're good to go
     if b.jobs.select { |j| j.config["os"] == "linux" && j.config["env"] =~ /^BUILD_ARCH=[63][42]bit$/ }.all?(&:passed?)
