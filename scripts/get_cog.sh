@@ -29,7 +29,7 @@ for i in cogspurlinux*; do
 done
 tar xzf ${pkg}_${version}.tar.gz
 rm ${pkg}_${version}.tar.gz
-mv products/${product} cog${words}_new
+mv products/${product} cog${words}_new || mv ${product} cog${words}_new
 rm -rf cog${words}
 rm -rf products
 mv cog${words}_new cog${words}
