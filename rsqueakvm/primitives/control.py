@@ -15,8 +15,8 @@ from rpython.rtyper.extregistry import ExtRegistryEntry
 # ___________________________________________________________________________
 # Failure
 
-@expose_primitive(FAIL, unwrap_spec=[object])
-def func(interp, s_frame, w_rcvr):
+@expose_primitive(FAIL)
+def func(interp, s_frame, argcount):
     if interp.space.headless.is_set():
         w_message = None
         if s_frame.w_method().lookup_selector == 'doesNotUnderstand:':
