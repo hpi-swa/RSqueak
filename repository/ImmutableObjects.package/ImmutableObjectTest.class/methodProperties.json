@@ -3,8 +3,9 @@
 		"isAbstract" : "topa 11/28/2016 16:18" },
 	"instance" : {
 		"assertPropertiesOf:" : "topa 11/28/2016 16:12",
+		"attemptToModify:" : "fn 11/28/2016 20:38",
 		"classUnderTest" : "topa 11/28/2016 16:12",
 		"objectUnderTest" : "topa 11/28/2016 16:12",
-		"testAsImmutable" : "topa 11/28/2016 16:09",
+		"testAsImmutable" : "fn 11/28/2016 20:37",
 		"testImmutableCopy" : "topa 11/28/2016 16:09",
 		"testImmutableFrom" : "topa 11/28/2016 16:10" } }
