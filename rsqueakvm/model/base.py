@@ -40,9 +40,6 @@ class W_Object(object):
         space, as memory representation varies depending on PyPy translation."""
         return self.size() * self.bytes_per_slot
 
-    def is_immutable(self):
-        return False
-
     def getclass(self, space):
         """Return Squeak class."""
         raise NotImplementedError()

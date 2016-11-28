@@ -2,5 +2,6 @@
 	"class" : {
 		 },
 	"instance" : {
-		"immutableCopy" : "fn 11/27/2016 23:34",
+		"asImmutable:" : "fn 11/28/2016 10:28",
+		"immutableCopy" : "fn 11/28/2016 11:17",
 		"isImmutable" : "fn 11/20/2016 21:22" } }

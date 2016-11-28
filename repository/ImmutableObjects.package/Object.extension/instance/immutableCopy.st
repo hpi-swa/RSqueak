@@ -1,4 +1,3 @@
 *ImmutableObjects
 immutableCopy
-	<primitive: 'immutableCopy' module: 'ImmutabilityPlugin'>
-	self primitiveFail
+	^ self asImmutable: self class
