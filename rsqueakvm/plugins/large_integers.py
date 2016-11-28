@@ -2,6 +2,8 @@ from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.primitives import prim_table
 from rsqueakvm.primitives.constants import *
+from rsqueakvm.model.numeric import W_LargeInteger
+from rsqueakvm.model.variable import W_BytesObject
 
 from rpython.rlib.rbigint import rbigint, NULLRBIGINT, _divrem
 
@@ -70,3 +72,17 @@ def primDigitCompare(interp, s_frame, rcvr, arg):
         else:
             res = 0
     return interp.space.wrap_int(res)
+
+@LargeIntegers.expose_primitive(unwrap_spec=[object])
+def primNormalizePositive(interp, s_frame, w_rcvr):
+    if isinstance(w_rcvr, W_BytesObject):
+        # only bytes object may be denormalized
+        return interp.space.wrap_rbigint(w_rcvr.unwrap_rbigint(interp.space))
+    return w_rcvr
+
+@LargeIntegers.expose_primitive(unwrap_spec=[object])
+def primNormalizeNegative(interp, s_frame, w_rcvr):
+    if isinstance(w_rcvr, W_BytesObject):
+        # only bytes object may be denormalized
+        return interp.space.wrap_rbigint(w_rcvr.unwrap_rbigint(interp.space))
+    return w_rcvr
