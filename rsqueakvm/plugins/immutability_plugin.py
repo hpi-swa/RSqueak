@@ -48,7 +48,7 @@ def _add_immutable_w_pointersobject_subclass():
             return self.w_class
 
         def size(self):
-            return len(self.storage) - self.instsize()
+            return len(self.storage)
 
         def instsize(self):
             return self._instsize
