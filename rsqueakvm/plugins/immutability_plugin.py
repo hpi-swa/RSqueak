@@ -3,6 +3,8 @@ from rsqueakvm.model import *
 from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.storage_classes import BYTES, POINTERS, WORDS
 
+from rpython.rlib import jit
+
 ImmutabilityPlugin = Plugin()
 
 WRITE_OPERATIONS = [
@@ -61,16 +63,15 @@ def _add_immutable_w_pointersobject_subclass():
 def _add_immutable_w_bytesobject_subclass():
     @immutable_class
     class W_BytesObject_Immutable(W_BytesObject):
-        _attrs_ = ['storage']
-        _immutable_fields_ = ['storage']
         repr_classname = '%s_Immutable' % W_BytesObject.repr_classname
 
         def __init__(self, space, w_cls, bytes_w):
             W_AbstractObjectWithClassReference.__init__(self, space, w_cls)
-            self.storage = bytes_w
+            self.bytes = bytes_w
 
+        @jit.elidable
         def _bytes(self):
-            return self.storage
+            return W_BytesObject._bytes(self)
 
         def _version(self):
             return None
@@ -81,16 +82,15 @@ def _add_immutable_w_bytesobject_subclass():
 def _add_immutable_w_wordsobject_subclass():
     @immutable_class
     class W_WordsObject_Immutable(W_WordsObject):
-        _attrs_ = ['storage']
-        _immutable_fields_ = ['storage']
         repr_classname = '%s_Immutable' % W_WordsObject.repr_classname
 
         def __init__(self, space, w_cls, words_w):
             W_AbstractObjectWithClassReference.__init__(self, space, w_cls)
-            self.storage = words_w
+            self.words = words_w
 
+        @jit.elidable
         def _words(self):
-            return self.storage
+            return W_WordsObject._words(self)
 
     W_WordsObject.immutable_subclass = W_WordsObject_Immutable
 
