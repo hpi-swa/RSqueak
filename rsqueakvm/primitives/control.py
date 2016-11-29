@@ -53,7 +53,8 @@ def func(interp, s_frame, w_rcvr):
 def func(interp, s_frame, w_rcvr):
     if interp.space.headless.is_set():
         s_frame.exitFromHeadlessExecution("EXIT_TO_DEBUGGER")
-    raise PrimitiveNotYetWrittenError()
+    from rpython.rlib.debug import attach_gdb
+    attach_gdb()
 
 @expose_primitive(CHANGE_CLASS, unwrap_spec=[object, object], no_result=True)
 def func(interp, s_frame, w_rcvr, w_arg):
