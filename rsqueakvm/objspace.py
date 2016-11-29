@@ -209,7 +209,7 @@ class ObjSpace(object):
             elif (0 <= val) & (val <= r_longlong(constants.U_MAXINT)):
                 return self.wrap_wordint_direct(r_uint(val), self.w_LargePositiveInteger)
             elif (0 > val) & (-r_longlong(constants.U_MAXINT) <= val):
-                return self.wrap_wordint_direct(r_uint(val), self.w_LargeNegativeInteger)
+                return self.wrap_wordint_direct(r_uint(-val), self.w_LargeNegativeInteger)
             else:
                 return self.wrap_rbigint_direct(rbigint.rbigint.fromrarith_int(val))
         elif isinstance(val, r_ulonglong):
