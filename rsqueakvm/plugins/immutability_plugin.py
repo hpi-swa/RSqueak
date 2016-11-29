@@ -2,11 +2,10 @@ from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model import *
 from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.storage_classes import BYTES, POINTERS, WORDS
-from rsqueakvm.util.version import Version
 
 ImmutabilityPlugin = Plugin()
 
-WRITE_OPERATIONS_W_OBJECT = [
+WRITE_OPERATIONS = [
     # W_Object
     'atput0', 'store', 'store_all', 'setword' '_become', 'fillin',
     'fillin_weak', 'fillin_finalize',
@@ -23,7 +22,7 @@ def immutable_class(cls):
         return True
     cls.is_immutable = is_immutable
 
-    for method_name in WRITE_OPERATIONS_W_OBJECT:
+    for method_name in WRITE_OPERATIONS:
         if hasattr(cls, method_name):
             def noop(self, *args):
                 pass
