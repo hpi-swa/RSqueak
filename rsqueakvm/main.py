@@ -151,7 +151,12 @@ def get_int_parameter(argv, idx, arg):
 def print_error(str):
     os.write(2, str + os.linesep)
 
-prebuilt_space = objspace.ObjSpace()
+def make_initial_space():
+    from rsqueakvm.plugins.vmdebugging.hooks import jitiface
+    prebuilt_space = objspace.ObjSpace()
+    jitiface.space = prebuilt_space
+    return prebuilt_space
+prebuilt_space = make_initial_space()
 
 def safe_entry_point(argv):
     try:
@@ -409,7 +414,7 @@ def entry_point(argv):
     interp = interpreter.Interpreter(space, image,
                 trace=cfg.trace, trace_important=cfg.trace_important,
                 evented=not cfg.poll, interrupts=cfg.interrupts)
-    space.runtime_setup(cfg.exepath, argv, cfg.path, cfg.extra_arguments_idx)
+    space.runtime_setup(interp, cfg.exepath, argv, cfg.path, cfg.extra_arguments_idx)
 
     interp.populate_remaining_special_objects()
     print_error("") # Line break after image-loading characters

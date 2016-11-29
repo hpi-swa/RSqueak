@@ -821,7 +821,10 @@ class SqueakImage(object):
         return w_obj
 
     def special(self, index):
-        return self.special_objects.at0(self.space, index)
+        if index >= self.special_objects.size():
+            return None
+        else:
+            return self.special_objects.at0(self.space, index)
 
 # ____________________________________________________________
 

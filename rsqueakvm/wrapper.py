@@ -189,6 +189,15 @@ class AssociationWrapper(Wrapper):
         else:
             return AssociationWrapper(space, w_assoc)
 
+    @staticmethod
+    def make_w_assoc(space, w_key, w_value):
+        w_association = space.objtable["w_schedulerassociationpointer"]
+        w_association_class = w_association.getclass(space)
+        w_new_association = w_association_class.as_class_get_shadow(space).new()
+        w_new_association.store(space, 0, w_key)
+        w_new_association.store(space, 1, w_value)
+        return w_new_association
+
 class PromotingAssociationWrapper(AssociationWrapper):
     def value(self):
         return jit.promote(self.read(1))

@@ -4,9 +4,11 @@ import sys
 sys.setrecursionlimit(1000000)
 
 from rsqueakvm import constants, wrapper, objspace, interpreter_bytecodes
-from rsqueakvm.error import FatalError
+from rsqueakvm.error import FatalError, Exit, SmalltalkException
+from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod, W_SpurCompiledMethod
 from rsqueakvm.model.numeric import W_SmallInteger
+from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.storage_contexts import ContextPartShadow, ActiveContext, InactiveContext, DirtyContext
 
 from rpython.rlib import jit, rstackovf, unroll, objectmodel, rsignal
@@ -127,6 +129,7 @@ def get_printable_location(pc, self, method):
 
 USE_SIGUSR1 = hasattr(rsignal, 'SIGUSR1')
 
+jit_driver_name = "rsqueakjit"
 
 class Interpreter(object):
     _immutable_fields_ = ["space",
@@ -139,6 +142,7 @@ class Interpreter(object):
                           "trace"]
 
     jit_driver = jit.JitDriver(
+        name=jit_driver_name,
         greens=['pc', 'self', 'method'],
         reds=['s_context'],
         virtualizables=['s_context'],
@@ -167,7 +171,6 @@ class Interpreter(object):
         # === Initialize mutable variables
         self.interrupt_check_counter = self.interrupt_counter_size
         self.next_wakeup_tick = 0
-        self.trace_proxy = objspace.ConstantFlag()
         self.stack_depth = 0
         self.process_switch_count = 0
         self.forced_interrupt_checks_count = 0
@@ -440,6 +443,14 @@ class Interpreter(object):
                         w_arguments=[e.object])
                     return self.loop(s_context.w_self())
             return e.object
+
+    def perform_headless(self, w_receiver, w_selector, w_arguments):
+        with objspace.ForceHeadless(self.space):
+            try:
+                return self.perform(w_receiver, w_selector=w_selector, w_arguments=w_arguments)
+            except Exit, SmalltalkException:
+                pass
+        return w_receiver
 
     def perform(self, w_receiver, selector="", w_selector=None, w_arguments=[]):
         s_frame = self.create_toplevel_context(w_receiver, selector, w_selector, w_arguments)

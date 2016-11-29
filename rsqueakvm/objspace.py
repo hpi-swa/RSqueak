@@ -47,6 +47,10 @@ class ConstantObject(object):
     import_from_mixin(ConstantMixin)
     default_value = None
 
+class ConstantInterp(object):
+    import_from_mixin(ConstantMixin)
+    default_value = None
+
 class ConstantVersion(object):
     import_from_mixin(ConstantMixin)
     default_value = Version()
@@ -91,6 +95,7 @@ class ObjSpace(object):
         self.title = ConstantString()
         self.altf4quit = ConstantFlag()
         self._display = ConstantObject()
+        self.interp = ConstantInterp()
 
         # Create the nil object.
         # Circumvent the constructor because nil is already referenced there.
@@ -101,7 +106,8 @@ class ObjSpace(object):
         self.make_bootstrap_classes()
         self.make_bootstrap_objects()
 
-    def runtime_setup(self, exepath, argv, image_name, image_args_idx):
+    def runtime_setup(self, interp, exepath, argv, image_name, image_args_idx):
+        self.interp.set(interp)
         fullpath = exepath
         self._executable_path.set(fullpath)
         for i in range(image_args_idx, len(argv)):

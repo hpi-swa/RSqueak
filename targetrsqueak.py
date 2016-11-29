@@ -35,7 +35,8 @@ def target(driver, args):
     return safe_entry_point, None
 
 def jitpolicy(self):
-    return JitPolicy()
+    from rsqueakvm.plugins.vmdebugging.hooks import jitiface
+    return JitPolicy(jitiface)
 
 def parser(config):
     return to_optparse(config, useoptions=["rsqueak.*"])
