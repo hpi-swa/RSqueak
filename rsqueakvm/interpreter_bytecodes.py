@@ -394,6 +394,8 @@ class __extend__(ContextPartShadow):
         w_message = s_message_class.new()
         w_message.store(self.space, 0, w_selector)
         w_message.store(self.space, 1, self.space.wrap_list(arguments))
+        if interp.image.version.is_modern:
+            w_message.store(self.space, 2, receiver.getclass(self.space))
         self.pop()  # The receiver, already known.
 
         if interp.space.headless.is_set():
