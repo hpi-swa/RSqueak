@@ -30,9 +30,20 @@ def translation_options():
             StrOption(
                 "optional_plugins",
                 "Which optional plugins should be enabled (a comma-separated "\
-                "list, e.g. 'ruby_plugin,database_plugin')",
+                "list, e.g. 'RubyPlugin,DatabasePlugin,JitHooks')",
                 default="", cmdline="--plugins"
-            )
+            ),
+            StrOption(
+                "disabled_plugins",
+                "Which default plugins should be disabled (a comma-separated "\
+                "list, e.g. 'LargeIntegers,SocketPlugin,SqueakSSL')",
+                default="", cmdline="--disable_plugins"
+            ),
+            BoolOption(
+                "without_plugins",
+                "Disable all plugins",
+                default=False, cmdline="--without_plugins"
+            ),
         ]
     )
 

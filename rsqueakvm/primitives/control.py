@@ -91,26 +91,43 @@ def func(interp, s_frame, w_rcvr, w_arg):
 
 def find_plugins():
     import os, sys
+    from rsqueakvm.util import system
+
+    if system.without_plugins:
+        print "Plugins have been disabled"
+        return  [], []
+
     enabled_plugins = []
     files = os.listdir(os.path.join(os.path.dirname(__file__), "..", "plugins"))
     plugins = []
     plugin_names = []
+    disabled_plugin_names = []
+
+    # special...
+    if "JitHooks" not in system.optional_plugins:
+        disabled_plugin_names.append("JitHooks")
+
     for filename in files:
         if "_" not in filename or filename.startswith("_") or not filename.endswith(".py"):
             continue
         modulename = filename.replace(".py", "")
+        pluginname = "".join([f.capitalize() for f in modulename.split("_")])
+        if pluginname in system.disabled_plugins:
+            disabled_plugin_names.append(pluginname)
+            continue
         try:
             module = getattr(getattr(
                 __import__("rsqueakvm.plugins.%s" % modulename), "plugins"), modulename)
         except LookupError as e:
             # The plugin may have decided it doesn't want to be enabled
+            disabled_plugin_names.append(pluginname)
             continue
         reload(module) # always do a one-shot reload
-        pluginname = "".join([f.capitalize() for f in modulename.split("_")])
         plugin = getattr(module, pluginname)
         plugin_names.append(pluginname)
         plugins.append(plugin)
     print "Building with\n\t" + "\n\t".join(plugin_names)
+    print "Disabled plugins\n\t" + "\n\t".join(disabled_plugin_names)
     return plugin_names, plugins
 ExternalPluginNames, ExternalPlugins = find_plugins()
 

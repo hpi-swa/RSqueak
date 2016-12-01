@@ -152,9 +152,10 @@ def print_error(str):
     os.write(2, str + os.linesep)
 
 def make_initial_space():
-    from rsqueakvm.plugins.vmdebugging.hooks import jitiface
     prebuilt_space = objspace.ObjSpace()
-    jitiface.space = prebuilt_space
+    if "JitHooks" in system.optional_plugins:
+        from rsqueakvm.plugins.vmdebugging.hooks import jitiface
+        jitiface.space = prebuilt_space
     return prebuilt_space
 prebuilt_space = make_initial_space()
 
