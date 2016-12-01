@@ -114,7 +114,7 @@ def prepare_environment_variables():
     for dependency in ["pypy", "rsdl", "sqpyte", "topaz", "rply", "appdirs"]:
         try:
             sys.path.insert(0, cp.get(section, dependency))
-        except ConfigParser.NoOptionError:
+        except ConfigParser.NoOptionError, ConfigParser.NoSectionError:
             sys.path.insert(0, cp.get("General", dependency))
     try:
         import targetrsqueak as rsqueak
