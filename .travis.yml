@@ -41,8 +41,8 @@ matrix:
       osx_image: xcode7.3
       env: BUILD_ARCH=64bit
   allow_failures:
-    - env: BUILD_ARCH=64bit PLUGINS=database_plugin
-    - env: BUILD_ARCH=64bit PLUGINS=ruby_plugin
+    - env: BUILD_ARCH=64bit PLUGINS=DatabasePlugin
+    - env: BUILD_ARCH=64bit PLUGINS=RubyPlugin
   fast_finish: true
 install: .travis/install_requirements.sh
 script: .travis/build.sh
