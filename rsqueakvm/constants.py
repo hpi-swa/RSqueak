@@ -163,8 +163,6 @@ objects_in_special_object_table = {
     "timerSemaphore": SO_TIMER_SEMAPHORE,
     "runWithIn": SO_RUN_WITH_IN,
     "cannotReturn": SO_CANNOT_RETURN,
-    "jithook": SO_JIT_HOOK,
-    "jithook_rcvr": SO_JIT_HOOK_RCVR,
     "ClassBinding": SPECIAL_OBJECTS_SIZE + 30, # doesn't exist, but we'd like it to
 }
 
