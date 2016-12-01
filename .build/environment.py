@@ -30,6 +30,7 @@ def load_config():
             cp.set("Windows", "VisualStudio9", "C:\\Program Files (x86)\\Microsoft Visual Studio 9.0")
             cp.set("Windows", "Graphviz", pathjoin(dirname(__file__), "Graphviz"))
             cp.set("Windows", "pypyextlibs", pathjoin(dirname(__file__), "pypyextlibs"))
+            cp.add_section("macOS")
             cp.write(f)
         print "I've just added a config file at %s. Please review the values and run `install_dependencies` (if needed)." % config
     else:
