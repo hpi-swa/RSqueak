@@ -157,9 +157,10 @@ def func(interp, s_frame, argcount, w_method):
         raise PrimitiveFailedError
     signature = (space.unwrap_string(w_modulename), space.unwrap_string(w_functionname))
 
-    for i, p in enumerate(ExternalPluginNames):
-        if signature[0] == p:
-            return ExternalPlugins[i].call(signature[1], interp, s_frame, argcount, w_method)
+    if len(ExternalPluginNames) > 0:
+        for i, p in enumerate(ExternalPluginNames):
+            if signature[0] == p:
+                return ExternalPlugins[i].call(signature[1], interp, s_frame, argcount, w_method)
 
     # If all else fails, try to simulate
     from rsqueakvm.plugins.simulation import SimulationPlugin
