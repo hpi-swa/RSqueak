@@ -15,6 +15,7 @@ if [[ -n "${TEST_TYPE}" ]]; then
 fi
 
 case "$TRAVIS_OS_NAME" in
+  TAG="${PLUGINS:-latest}"
   linux)
     UNAME=linux
     armv="${BUILD_ARCH}raspbian"
@@ -35,19 +36,19 @@ case "$TRAVIS_OS_NAME" in
       case "$BUILD_ARCH" in
         32bit)
           # only builds that pass the jittests are 'latest'
-          cp rsqueak-x86* rsqueak-${UNAME}-latest
-          curl -T rsqueak-${UNAME}-latest http://www.lively-kernel.org/babelsberg/RSqueak/
-          curl -T rsqueak-${UNAME}-latest -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/ || true
+          cp rsqueak-x86* rsqueak-${UNAME}-${TAG}
+          curl -T rsqueak-${UNAME}-${TAG} http://www.lively-kernel.org/babelsberg/RSqueak/
+          curl -T rsqueak-${UNAME}-${TAG} -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/ || true
           ;;
         64bit)
-          cp rsqueak-x86_64* rsqueak-${UNAME}-x86_64-latest
-          curl -T rsqueak-${UNAME}-x86_64-latest http://www.lively-kernel.org/babelsberg/RSqueak/
-          curl -T rsqueak-${UNAME}-x86_64-latest -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/ || true
+          cp rsqueak-x86_64* rsqueak-${UNAME}-x86_64-${TAG}
+          curl -T rsqueak-${UNAME}-x86_64-${TAG} http://www.lively-kernel.org/babelsberg/RSqueak/
+          curl -T rsqueak-${UNAME}-x86_64-${TAG} -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/ || true
           ;;
         arm*)
-          cp rsqueak-$armv* rsqueak-${UNAME}-$armv-latest
-          curl -T rsqueak-${UNAME}-$armv-latest http://www.lively-kernel.org/babelsberg/RSqueak/
-          curl -T rsqueak-${UNAME}-$armv-latest -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/ || true
+          cp rsqueak-$armv* rsqueak-${UNAME}-$armv-${TAG}
+          curl -T rsqueak-${UNAME}-$armv-${TAG} http://www.lively-kernel.org/babelsberg/RSqueak/
+          curl -T rsqueak-${UNAME}-$armv-${TAG} -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/ || true
           ;;
       esac
     fi
@@ -59,14 +60,14 @@ case "$TRAVIS_OS_NAME" in
     if [[ "$TRAVIS_BRANCH" = "master" ]] && [[ "$TRAVIS_PULL_REQUEST" = "false" ]]; then
       case "$BUILD_ARCH" in
         32bit)
-          cp rsqueak rsqueak-${UNAME}-latest
-          curl -T rsqueak-${UNAME}-latest http://www.lively-kernel.org/babelsberg/RSqueak/
-          curl -T rsqueak-${UNAME}-latest -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/
+          cp rsqueak rsqueak-${UNAME}-${TAG}
+          curl -T rsqueak-${UNAME}-${TAG} http://www.lively-kernel.org/babelsberg/RSqueak/
+          curl -T rsqueak-${UNAME}-${TAG} -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/
           ;;
         64bit)
-          cp rsqueak rsqueak-${UNAME}-x86_64-latest
-          curl -T rsqueak-${UNAME}-x86_64-latest http://www.lively-kernel.org/babelsberg/RSqueak/
-          curl -T rsqueak-${UNAME}-x86_64-latest -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/
+          cp rsqueak rsqueak-${UNAME}-x86_64-${TAG}
+          curl -T rsqueak-${UNAME}-x86_64-${TAG} http://www.lively-kernel.org/babelsberg/RSqueak/
+          curl -T rsqueak-${UNAME}-x86_64-${TAG} -u "$DEPLOY_CREDENTIALS" https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/
           ;;
       esac
     fi
