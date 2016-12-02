@@ -11,12 +11,13 @@ readonly TARGET_TARGZ="${TRAVIS_BUILD_DIR}/RSqueak.tar.gz"
 readonly TARGET_ZIP="${TRAVIS_BUILD_DIR}/RSqueak.zip"
 readonly BASE_URL="https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak"
 readonly TARGET_URL="${BASE_URL}/bundle/"
-readonly VM_LINUX="rsqueak-linux-x86_64-latest"
-readonly VM_OSX="rsqueak-darwin-x86_64-latest"
-readonly VM_WIN="rsqueak-win32-latest.exe"
+readonly VM_LINUX="rsqueak-linux-x86_64-RubyPlugin"
+readonly VM_OSX="rsqueak-darwin-x86_64-RubyPlugin"
+readonly VM_WIN="rsqueak-win32-RubyPlugin.exe"
 readonly VM_LINUX_TARGET="${CONTENTS_DIR}/Linux/RSqueak"
 readonly VM_OSX_TARGET="${CONTENTS_DIR}/MacOS/RSqueak"
 readonly VM_WIN_TARGET="${CONTENTS_DIR}/Win32/RSqueak.exe"
+readonly VM_TOPAZ_TARGET="${CONTENTS_DIR}/Win32/"
 
 echo "Copying Squeak image into template..."
 cp "${SMALLTALK_CI_IMAGE}" "${IMAGE_TARGET}"
@@ -37,6 +38,9 @@ chmod +x "${VM_LINUX_TARGET}" "${VM_OSX_TARGET}" "${VM_WIN_TARGET}"
 VERSION="$(${VM_OSX_TARGET} --git-version)"
 sed -i ".bak" "s/%VERSION%/${VERSION}/g" "${CONTENTS_DIR}/Info.plist"
 rm -f "${CONTENTS_DIR}/Info.plist.bak"
+
+# Include lib-ruby and lib-topaz
+cp -R "${TRAVIS_BUILD_DIR}"/topaz/{lib-topaz,lib-ruby} "${VM_TOPAZ_TARGET}"
 
 unzip -q ./certs/dist.zip -d ./certs
 security create-keychain -p travis osx-build.keychain

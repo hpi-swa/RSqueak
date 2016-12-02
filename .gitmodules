@@ -1,0 +1,3 @@
+[submodule "topaz"]
+	path = topaz
+	url = git@github.com:topazproject/topaz.git

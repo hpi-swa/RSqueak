@@ -17,6 +17,9 @@ baseline: spec
 						requires: #('FFI' 'SharedPool-Speech-Klatt');
 						file: 'VMMaker.oscog-nice.1812';
 						repository: 'http://source.squeak.org/VMMaker' ];
+				package: 'TopazRuby'
+					with: [ spec
+						repository: 'github://HPI-SWA-Lab/RSqueak:master/repository' ];
 				yourself.
 			spec
 				group: 'default' with: #('VMMakerOSCog') ];
