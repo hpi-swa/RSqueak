@@ -257,6 +257,12 @@ def test_at():
     w_obj.store(space, 0, foo)
     assert prim(AT, [w_obj, 1]) == foo
 
+def test_mirror_at():
+    w_obj = W_Float(1.1)
+    foo = wrap(1)
+    w_obj.store(space, 0, foo)
+    assert prim(AT, [space.w_nil, w_obj, 1]) == foo
+
 def test_invalid_at():
     w_obj = bootstrap_class(0).as_class_get_shadow(space).new()
     prim_fails(AT, [w_obj, 1])
@@ -264,6 +270,11 @@ def test_invalid_at():
 def test_at_put():
     w_obj = bootstrap_class(0, varsized=1).as_class_get_shadow(space).new(1)
     assert prim(AT_PUT, [w_obj, 1, 22]).value == 22
+    assert prim(AT, [w_obj, 1]).value == 22
+
+def test_miror_at_put():
+    w_obj = bootstrap_class(0, varsized=1).as_class_get_shadow(space).new(1)
+    assert prim(AT_PUT, [space.w_nil, w_obj, 1, 22]).value == 22
     assert prim(AT, [w_obj, 1]).value == 22
 
 def test_at_and_at_put_bytes():
@@ -294,6 +305,12 @@ def test_size():
     assert prim(SIZE, [w_obj]).value == 0
     w_obj = bootstrap_class(3, varsized=True).as_class_get_shadow(space).new(5)
     assert prim(SIZE, [w_obj]).value == 5
+
+def test_mirror_size():
+    w_obj = bootstrap_class(0, varsized=True).as_class_get_shadow(space).new(0)
+    assert prim(SIZE, [space.w_nil, w_obj]).value == 0
+    w_obj = bootstrap_class(3, varsized=True).as_class_get_shadow(space).new(5)
+    assert prim(SIZE, [space.w_nil, w_obj]).value == 5
 
 def test_size_of_compiled_method():
     literalsize = 3
@@ -357,6 +374,12 @@ def test_inst_var_at():
                ["q", constants.CHARACTER_VALUE_INDEX+1])
     assert w_v.value == ord("q")
 
+def test_mirror_inst_var_at():
+    # n.b.: 1-based indexing!
+    w_v = prim(INST_VAR_AT,
+               [space.w_nil, "q", constants.CHARACTER_VALUE_INDEX+1])
+    assert w_v.value == ord("q")
+
 def test_inst_var_at_invalid():
     # n.b.: 1-based indexing! (and an invalid index)
     prim_fails(INST_VAR_AT, ["q", constants.CHARACTER_VALUE_INDEX+2])
@@ -369,6 +392,15 @@ def test_inst_var_at_put():
     assert prim(INST_VAR_AT, [w_q, vidx]).is_nil(space)
     assert prim(INST_VAR_AT_PUT, [w_q, vidx, ordq]).value == ordq
     assert prim(INST_VAR_AT, [w_q, vidx]).value == ordq
+
+def test_mirror_inst_var_at_put():
+    # n.b.: 1-based indexing!
+    w_q = space.w_Character.as_class_get_shadow(space).new()
+    vidx = constants.CHARACTER_VALUE_INDEX+1
+    ordq = ord("q")
+    assert prim(INST_VAR_AT, [space.w_nil, w_q, vidx]).is_nil(space)
+    assert prim(INST_VAR_AT_PUT, [space.w_nil, w_q, vidx, ordq]).value == ordq
+    assert prim(INST_VAR_AT, [space.w_nil, w_q, vidx]).value == ordq
 
 def test_inst_var_at_put_invalid():
     # n.b.: 1-based indexing! (and an invalid index)
@@ -401,7 +433,9 @@ def test_slot_at_put_invalid():
 
 def test_class():
     assert prim(CLASS, ["string"]).is_same_object(space.w_String)
+    assert prim(CLASS, [space.w_nil, "string"]).is_same_object(space.w_String)
     assert prim(CLASS, [1]).is_same_object(space.w_SmallInteger)
+    assert prim(CLASS, [space.w_nil, 1]).is_same_object(space.w_SmallInteger)
 
 def test_as_oop():
     # I checked potato, and that returns the hash for as_oop
@@ -433,6 +467,8 @@ def test_boolean():
     assert prim(GREATEROREQUAL, [3,4]).is_same_object(space.w_false)
     assert prim(EQUAL, [2,2]).is_same_object(space.w_true)
     assert prim(NOTEQUAL, [2,2]).is_same_object(space.w_false)
+    assert prim(EQUIVALENT, [2,2]).is_same_object(space.w_true)
+    assert prim(EQUIVALENT, [space.w_nil,2,2]).is_same_object(space.w_true)
 
 def test_float_boolean():
     assert prim(FLOAT_LESSTHAN, [1.0,2.0]).is_same_object(space.w_true)

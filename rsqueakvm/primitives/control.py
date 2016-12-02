@@ -33,11 +33,8 @@ def func(interp, s_frame, argcount):
 def func(interp, s_frame, w_arg, w_rcvr):
     return interp.space.wrap_bool(w_arg.is_same_object(w_rcvr))
 
-@expose_primitive(CLASS, unwrap_spec=None)
-def func(interp, s_frame, argcount):
-    w_obj = s_frame.pop()
-    if argcount == 1:
-        s_frame.pop()  # receiver, e.g. ContextPart>>objectClass:
+@expose_primitive(CLASS, unwrap_spec=[object])
+def func(interp, s_frame, w_obj):
     return w_obj.getclass(interp.space)
 
 @expose_primitive(BYTES_LEFT, unwrap_spec=[object])
@@ -285,7 +282,7 @@ def func(interp, s_frame, w_block_ctx, args_w):
 def func(interp, s_frame, argcount):
     arguments_w = s_frame.pop_and_return_n(argcount - 1)
     w_selector = s_frame.pop()
-    w_rcvr = s_frame.top()
+    w_rcvr = s_frame.top() # rcvr is removed in _sendSelector
     return s_frame._sendSelector(
         w_selector, argcount - 1, interp, w_rcvr,
         w_rcvr.class_shadow(interp.space), w_arguments=arguments_w)
@@ -294,10 +291,19 @@ def func(interp, s_frame, argcount):
                   unwrap_spec=[object, object, list],
                   no_result=True, clean_stack=False)
 def func(interp, s_frame, w_rcvr, w_selector, w_arguments):
-    s_frame.pop_n(2)  # removing our arguments
+    s_frame.pop_n(2)  # removing our arguments, rcvr is removed in _sendSelector
     return s_frame._sendSelector(w_selector, len(w_arguments), interp, w_rcvr,
                                  w_rcvr.class_shadow(interp.space),
                                  w_arguments=w_arguments)
+
+@expose_primitive(PERFORM_IN_SUPERCLASS,
+                  unwrap_spec=[object, object, object, list, object],
+                  no_result=True, clean_stack=False)
+def func(interp, s_frame, w_context, w_rcvr, w_selector, arguments_w, w_class):
+    s_frame.pop_n(4)  # removing our arguments, rcvr is removed in _sendSelector
+    return s_frame._sendSelector(w_selector, len(arguments_w), interp, w_rcvr,
+                                 w_class.as_class_get_shadow(interp.space),
+                                 w_arguments=arguments_w)
 
 @expose_primitive(WITH_ARGS_EXECUTE_METHOD,
                   result_is_new_frame=True, unwrap_spec=[object, list, object])
