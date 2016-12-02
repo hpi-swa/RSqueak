@@ -78,13 +78,13 @@ def download_and_extract(url, targetdir, callback=None):
 DEPS = [("https://bitbucket.org/pypy/pypy/get/default.zip", cp.get("General", "pypy")),
         ("https://bitbucket.org/pypy/rsdl/get/sdl2.zip", cp.get("General", "rsdl"))]
 
-if ('database_plugin' in ' '.join(sys.argv) or
-    'database_plugin' in os.environ.get('PLUGINS', '')):
+if ('DatabasePlugin' in ' '.join(sys.argv) or
+    'DatabasePlugin' in os.environ.get('PLUGINS', '')):
     DEPS.append(("https://github.com/HPI-SWA-Lab/SQPyte/archive/rsqueak.zip",
                 cp.get("General", "sqpyte")))
 
-if ('ruby_plugin' in ' '.join(sys.argv) or
-    'ruby_plugin' in os.environ.get('PLUGINS', '')):
+if ('RubyPlugin' in ' '.join(sys.argv) or
+    'RubyPlugin' in os.environ.get('PLUGINS', '')):
     DEPS.append(("https://github.com/alex/rply/archive/master.zip",
                 cp.get("General", "rply")))
     DEPS.append(("https://github.com/ActiveState/appdirs/archive/master.zip",
