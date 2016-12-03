@@ -14,8 +14,9 @@ if [[ -n "${TEST_TYPE}" ]]; then
   exit
 fi
 
+TAG="${PLUGINS:-latest}"
+
 case "$TRAVIS_OS_NAME" in
-  TAG="${PLUGINS:-latest}"
   linux)
     UNAME=linux
     armv="${BUILD_ARCH}raspbian"
