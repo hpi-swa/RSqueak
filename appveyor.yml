@@ -25,7 +25,7 @@ matrix:
 shallow_clone: true
 platform: x86
 install:
-  - cmd: C:\\Python27\\python .build/download_dependencies.py ruby_plugin
+  - cmd: C:\\Python27\\python .build/download_dependencies.py RubyPlugin
 build: false
 test_script:
   - cmd: .appveyor/rsqueak-build.bat

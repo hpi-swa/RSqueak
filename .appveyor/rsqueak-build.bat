@@ -41,6 +41,14 @@ if %ERRORLEVEL% GEQ 1 EXIT /B 1
 
 if %buildscript%==build.py (
   copy %~dp0\..\rsqueak.exe %~dp0\..\rsqueak-win32-%APPVEYOR_REPO_COMMIT%.exe
+)
+
+if "%buildargs%"=="-- --plugins=RubyPlugin" (
+  copy %~dp0\..\rsqueak.exe %~dp0\..\rsqueak-win32-RubyPlugin.exe
+  del %~dp0\..\rsqueak-win32-%APPVEYOR_REPO_COMMIT%.exe
+)
+
+if %buildscript%==build.py (
   powershell -NonInteractive -executionpolicy Unrestricted -command "& { %~dp0\rsqueak-upload.ps1 }"
 )
 
