@@ -974,6 +974,56 @@ def test_numericbitblt(monkeypatch):
     finally:
         monkeypatch.undo()
 
+def test_vm_loaded_modules():
+    loaded = []
+    idx = 0
+    while True:
+        w_result = prim(VM_LOADED_MODULES, [space.w_nil, idx])
+        idx += 1
+        if w_result is space.w_nil:
+            break
+        assert isinstance(w_result, W_BytesObject)
+        loaded.append(w_result.unwrap_string(space))
+    assert "LargeIntegers" in loaded
+    assert "SocketPlugin" in loaded
+    assert "SqueakSSL" in loaded
+
+def test_idle_for_microseconds():
+    import time
+    t0 = time.time()
+    prim(IDLE_FOR_MICROSECONDS, [None, 1 * 1000 * 1000])
+    assert time.time() - t0 >= 1
+
+def test_fullscreen(monkeypatch):
+    is_fs = {'value': None}
+    class FakeDisplay(): pass
+    disp = FakeDisplay()
+    def display():
+        return disp
+    def set_full_screen(bool):
+        is_fs['value'] = bool
+    monkeypatch.setattr(space, "display", display)
+    setattr(disp, "set_full_screen", set_full_screen)
+    try:
+        prim(SET_FULL_SCREEN, [None, True])
+        assert is_fs['value'] == True
+        prim(SET_FULL_SCREEN, [None, False])
+        assert is_fs['value'] == False
+    finally:
+        monkeypatch.undo()
+
+def test_vm_parameters():
+    params = space.unwrap_array(prim(VM_PARAMETERS, [None]))
+    assert space.unwrap_int(params[2]) != 0, "byte-size young space cannot be 0"
+    assert space.unwrap_int(params[8]) != 0, "total ms in full GCs cannot be 0"
+    assert space.unwrap_int(params[41]) == 1, "we have 'stack-tables' because we do JIT"
+    param = space.unwrap_int(prim(VM_PARAMETERS, [None, 42]))
+    assert param == 1, "we are stack-like"
+    with py.test.raises(PrimitiveFailedError):
+        prim(VM_PARAMETERS, [None, 71])
+
+
+
 # The next cannot be tested untranslated :(
 # def test_primitive_byte_size_of_object():
 #     assert prim(BYTE_SIZE_OF_INSTANCE, [space.w_SmallInteger]).value is 0
