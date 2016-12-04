@@ -27,7 +27,7 @@ cp "${SMALLTALK_CI_BUILD}/"*.sources "${RESOURCES_DIR}/"
 echo "Downloading latest VMs..."
 curl -f -s --retry 3 -o "${VM_LINUX_TARGET}" "${BASE_URL}/${VM_LINUX}"
 curl -f -s --retry 3 -o "${VM_OSX_TARGET}" "${BASE_URL}/${VM_OSX}"
-curl -f -s --retry 3 -o "${VM_WIN_TARGET}" "${BASE_URL}/${VM_WIN}"
+curl -f -s --retry 3 -o "${VM_WIN_TARGET}" "${BASE_URL}/commits/${VM_WIN}"
 
 # Let RSqueak for OS X use SDL2 from Frameworks directory
 install_name_tool -change "/usr/local/opt/sdl2/lib/libSDL2-2.0.0.dylib" "@executable_path/../Frameworks/libSDL2-2.0.5.dylib" "${VM_OSX_TARGET}"
@@ -40,6 +40,7 @@ sed -i ".bak" "s/%VERSION%/${VERSION}/g" "${CONTENTS_DIR}/Info.plist"
 rm -f "${CONTENTS_DIR}/Info.plist.bak"
 
 # Include lib-ruby and lib-topaz
+echo "Including Topaz libraries"
 cp -R "${TRAVIS_BUILD_DIR}"/topaz/{lib-topaz,lib-ruby} "${VM_TOPAZ_TARGET}"
 
 unzip -q ./certs/dist.zip -d ./certs
