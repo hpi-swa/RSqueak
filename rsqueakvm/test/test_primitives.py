@@ -292,7 +292,7 @@ def test_invalid_at_put():
 def test_integer_at_put():
     w_obj = bootstrap_class(0, format=storage_classes.WORDS).as_class_get_shadow(space).new(1)
     assert prim(INTEGER_AT_PUT, [w_obj, 1, 22]).value == 22
-    assert prim(AT, [w_obj, 1]).value == 22
+    assert prim(INTEGER_AT, [w_obj, 1]).value == 22
     with py.test.raises(PrimitiveFailedError):
         assert prim(INTEGER_AT_PUT, [w_obj, 1, "112"])
     with py.test.raises(PrimitiveFailedError):
@@ -328,6 +328,14 @@ def test_string_at_put():
     exp = "foocar"
     for i in range(len(exp)):
         assert prim(STRING_AT, [test_str, i]) == wrap(exp[i])
+
+def test_short_at():
+    assert prim(SHORT_AT, ["foobar", 2]).value == (ord("o") | (ord("b") << 8))
+
+def test_short_at_put():
+    test_str = wrap("foobar")
+    prim(SHORT_AT_PUT, [test_str, 1, (ord("o") | (ord("b") << 8))])
+    assert test_str.unwrap_string(space) == "obobar"
 
 def test_invalid_object_at():
     prim_fails(OBJECT_AT, ["q", constants.CHARACTER_VALUE_INDEX+2])
@@ -1021,8 +1029,6 @@ def test_vm_parameters():
     assert param == 1, "we are stack-like"
     with py.test.raises(PrimitiveFailedError):
         prim(VM_PARAMETERS, [None, 71])
-
-
 
 # The next cannot be tested untranslated :(
 # def test_primitive_byte_size_of_object():
