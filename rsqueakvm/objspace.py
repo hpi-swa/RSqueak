@@ -347,9 +347,12 @@ class ObjSpace(object):
     def executable_path(self):
         return self._executable_path.get()
 
+    def get_image_name(self):
+        return self.get_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX)
+
     def window_title(self):
         title = self.title.get()
-        imgpath = self.get_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX)
+        imgpath = self.get_image_name()
         if len(title) == 0:
             title = "RSqueak (%s)" % imgpath
         else:
