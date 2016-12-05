@@ -1,7 +1,7 @@
 SmalltalkCISpec {
   #loading : [
     SCIMetacelloLoadSpec {
-      #baseline : 'VMMakerOSCog',
+      #baseline : 'RSqueak',
       #directory : 'packages',
       #platforms : [ #squeak ]
     }
