@@ -1,0 +1,4 @@
+testing
+isCons
+
+	^ true

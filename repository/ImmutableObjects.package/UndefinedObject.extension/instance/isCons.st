@@ -1,0 +1,4 @@
+*ImmutableObjects-Structures
+isCons
+
+	^ true
