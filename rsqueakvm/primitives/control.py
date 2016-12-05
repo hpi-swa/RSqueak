@@ -274,6 +274,7 @@ def func(interp, s_frame, w_rcvr, w_selector, w_arguments):
                   unwrap_spec=[object, object, object, list, object],
                   no_result=True, clean_stack=False)
 def func(interp, s_frame, w_context, w_rcvr, w_selector, arguments_w, w_class):
+    raise PrimitiveNotYetWrittenError
     s_frame.pop_n(4)  # removing our arguments, rcvr is removed in _sendSelector
     return s_frame._sendSelector(w_selector, len(arguments_w), interp, w_rcvr,
                                  w_class.as_class_get_shadow(interp.space),
