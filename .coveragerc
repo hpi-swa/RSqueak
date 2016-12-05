@@ -11,3 +11,12 @@ omit =
     rsqueakvm/interpreter_debugging.py
     */__init__.py
     # rsqueakvm/plugins/*
+    rsqueakvm/plugins/ruby_plugin.py
+    rsqueakvm/plugins/database/*
+    rsqueakvm/plugins/database_plugin.py
+    rsqueakvm/plugins/vmdebugging/*
+    rsqueakvm/plugins/v_m_debugging.py
+branch = True
+
+[report]
+ignore_errors = True

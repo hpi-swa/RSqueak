@@ -362,11 +362,11 @@ def model_sizeof(model):
 class Entry(ExtRegistryEntry):
     _about_ = model_sizeof
 
-    def compute_result_annotation(self, s_model):
+    def compute_result_annotation(self, s_model): # pragma: no cover
         from rpython.annotator.model import SomeInteger
         return SomeInteger(nonneg=True, knowntype=int)
 
-    def specialize_call(self, hop):
+    def specialize_call(self, hop): # pragma: no cover
         from rpython.rtyper.lltypesystem import lltype
         from rpython.memory.lltypelayout import sizeof
         modelrepr = hop.rtyper.getrepr(hop.args_s[0])
@@ -391,7 +391,7 @@ class Entry(ExtRegistryEntry):
         return hop.inputconst(lltype.Signed, sz)
 
 @expose_primitive(BYTE_SIZE_OF_INSTANCE)
-def func(interp, s_frame, argcount):
+def func(interp, s_frame, argcount): # pragma: no cover
     from rpython.memory.lltypelayout import sizeof
     from rsqueakvm.storage_classes import POINTERS,\
         WEAK_POINTERS, WORDS, BYTES, COMPILED_METHOD,\

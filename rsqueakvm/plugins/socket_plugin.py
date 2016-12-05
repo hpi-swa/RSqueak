@@ -176,7 +176,7 @@ def ensure_socket(w_socket):
 
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveResolverGetNameInfoHostResult(interp, s_frame, argcount):
+def primitiveResolverGetNameInfoHostResult(interp, s_frame, argcount):  # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -185,7 +185,7 @@ def primitiveResolverGetNameInfoHostResult(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveResolverGetNameInfoServiceSize(interp, s_frame, argcount):
+def primitiveResolverGetNameInfoServiceSize(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -194,7 +194,7 @@ def primitiveResolverGetNameInfoServiceSize(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveResolverGetNameInfoServiceResult(interp, s_frame, argcount):
+def primitiveResolverGetNameInfoServiceResult(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -203,7 +203,7 @@ def primitiveResolverGetNameInfoServiceResult(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveResolverStartAddressLookup(interp, s_frame, argcount):
+def primitiveResolverStartAddressLookup(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -212,7 +212,7 @@ def primitiveResolverStartAddressLookup(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveResolverGetAddressInfo(interp, s_frame, argcount):
+def primitiveResolverGetAddressInfo(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -221,7 +221,7 @@ def primitiveResolverGetAddressInfo(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveResolverError(interp, s_frame, argcount):
+def primitiveResolverError(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -230,7 +230,7 @@ def primitiveResolverError(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveResolverGetAddressInfoSize(interp, s_frame, argcount):
+def primitiveResolverGetAddressInfoSize(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -239,7 +239,7 @@ def primitiveResolverGetAddressInfoSize(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveResolverHostNameSize(interp, s_frame, argcount):
+def primitiveResolverHostNameSize(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -248,7 +248,7 @@ def primitiveResolverHostNameSize(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveResolverAbortLookup(interp, s_frame, argcount):
+def primitiveResolverAbortLookup(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -257,7 +257,7 @@ def primitiveResolverAbortLookup(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveResolverGetAddressInfoType(interp, s_frame, argcount):
+def primitiveResolverGetAddressInfoType(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -266,7 +266,7 @@ def primitiveResolverGetAddressInfoType(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveResolverAddressLookupResult(interp, s_frame, argcount):
+def primitiveResolverAddressLookupResult(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -275,7 +275,7 @@ def primitiveResolverAddressLookupResult(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveResolverGetAddressInfoFamily(interp, s_frame, argcount):
+def primitiveResolverGetAddressInfoFamily(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -284,7 +284,7 @@ def primitiveResolverGetAddressInfoFamily(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveResolverGetAddressInfoNext(interp, s_frame, argcount):
+def primitiveResolverGetAddressInfoNext(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -293,7 +293,7 @@ def primitiveResolverGetAddressInfoNext(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveResolverGetNameInfo(interp, s_frame, argcount):
+def primitiveResolverGetNameInfo(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -302,7 +302,7 @@ def primitiveResolverGetNameInfo(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveResolverGetNameInfoHostSize(interp, s_frame, argcount):
+def primitiveResolverGetNameInfoHostSize(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -311,7 +311,7 @@ def primitiveResolverGetNameInfoHostSize(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveResolverHostNameResult(interp, s_frame, argcount):
+def primitiveResolverHostNameResult(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -320,7 +320,7 @@ def primitiveResolverHostNameResult(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveResolverGetAddressInfoResult(interp, s_frame, argcount):
+def primitiveResolverGetAddressInfoResult(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -329,7 +329,7 @@ def primitiveResolverGetAddressInfoResult(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveResolverLocalAddress(interp, s_frame, argcount):
+def primitiveResolverLocalAddress(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -338,7 +338,7 @@ def primitiveResolverLocalAddress(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveResolverGetAddressInfoProtocol(interp, s_frame, argcount):
+def primitiveResolverGetAddressInfoProtocol(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -352,7 +352,7 @@ def primitiveHasSocketAccess(interp, s_frame, w_rcvr):
     return interp.space.w_true
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveSocketAddressSetPort(interp, s_frame, argcount):
+def primitiveSocketAddressSetPort(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -361,7 +361,7 @@ def primitiveSocketAddressSetPort(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveSocketAddressGetPort(interp, s_frame, argcount):
+def primitiveSocketAddressGetPort(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -370,7 +370,7 @@ def primitiveSocketAddressGetPort(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveSocketReceiveUDPDataBufCount(interp, s_frame, argcount):
+def primitiveSocketReceiveUDPDataBufCount(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -379,7 +379,7 @@ def primitiveSocketReceiveUDPDataBufCount(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveSocketSetOptions(interp, s_frame, argcount):
+def primitiveSocketSetOptions(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -388,7 +388,7 @@ def primitiveSocketSetOptions(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveSocketRemoteAddressSize(interp, s_frame, argcount):
+def primitiveSocketRemoteAddressSize(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -397,7 +397,7 @@ def primitiveSocketRemoteAddressSize(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveSocketConnectTo(interp, s_frame, argcount):
+def primitiveSocketConnectTo(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -406,7 +406,7 @@ def primitiveSocketConnectTo(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveSocketLocalAddressSize(interp, s_frame, argcount):
+def primitiveSocketLocalAddressSize(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -415,7 +415,7 @@ def primitiveSocketLocalAddressSize(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveSocketRemoteAddress(interp, s_frame, argcount):
+def primitiveSocketRemoteAddress(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -424,7 +424,7 @@ def primitiveSocketRemoteAddress(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveSocketLocalPort(interp, s_frame, argcount):
+def primitiveSocketLocalPort(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -433,7 +433,7 @@ def primitiveSocketLocalPort(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveSocketError(interp, s_frame, argcount):
+def primitiveSocketError(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -442,7 +442,7 @@ def primitiveSocketError(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveSocketBindTo(interp, s_frame, argcount):
+def primitiveSocketBindTo(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -451,7 +451,7 @@ def primitiveSocketBindTo(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveSocketAbortConnection(interp, s_frame, argcount):
+def primitiveSocketAbortConnection(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -460,7 +460,7 @@ def primitiveSocketAbortConnection(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveSocketListenWithBacklog(interp, s_frame, argcount):
+def primitiveSocketListenWithBacklog(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -469,7 +469,7 @@ def primitiveSocketListenWithBacklog(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveSocketGetOptions(interp, s_frame, argcount):
+def primitiveSocketGetOptions(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -478,7 +478,7 @@ def primitiveSocketGetOptions(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveSocketSendUDPDataBufCount(interp, s_frame, argcount):
+def primitiveSocketSendUDPDataBufCount(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -487,7 +487,7 @@ def primitiveSocketSendUDPDataBufCount(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveSocketLocalAddressResult(interp, s_frame, argcount):
+def primitiveSocketLocalAddressResult(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -496,7 +496,7 @@ def primitiveSocketLocalAddressResult(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveSocketLocalAddress(interp, s_frame, argcount):
+def primitiveSocketLocalAddress(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -505,7 +505,7 @@ def primitiveSocketLocalAddress(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveSocketListenWithOrWithoutBacklog(interp, s_frame, argcount):
+def primitiveSocketListenWithOrWithoutBacklog(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -514,7 +514,7 @@ def primitiveSocketListenWithOrWithoutBacklog(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveSocketAccept3Semaphores(interp, s_frame, argcount):
+def primitiveSocketAccept3Semaphores(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -523,7 +523,7 @@ def primitiveSocketAccept3Semaphores(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveSocketRemoteAddressResult(interp, s_frame, argcount):
+def primitiveSocketRemoteAddressResult(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -532,7 +532,7 @@ def primitiveSocketRemoteAddressResult(interp, s_frame, argcount):
         raise error.PrimitiveFailedError
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveSocketListenOnPortBacklogInterface(interp, s_frame, argcount):
+def primitiveSocketListenOnPortBacklogInterface(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError
@@ -550,7 +550,7 @@ def primitiveSocketCloseConnection(interp, s_frame, w_rcvr, w_handle):
     return interp.space.w_nil
 
 @SocketPlugin.expose_primitive(unwrap_spec=None)
-def primitiveSocketRemotePort(interp, s_frame, argcount):
+def primitiveSocketRemotePort(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
         raise error.PrimitiveFailedError

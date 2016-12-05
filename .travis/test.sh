@@ -5,7 +5,7 @@ case "${TEST_TYPE}" in
   default) testflag="-S" ;;
   quick) testflag="-Q" ;;
   slow) testflag="-S" ;;
-  coverage) testflag="-S --cov=rsqueakvm --cov-append" ;;
+  coverage) testflag="-v -S --cov=rsqueakvm --cov-append " ;;
   *)
     echo "Wrong TEST_TYPE value (${TEST_TYPE}), not executing tests"
     exit 0
