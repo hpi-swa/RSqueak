@@ -25,8 +25,7 @@ def stop_ui_process():
 def halt(interp, s_frame, w_rcvr):
     from rpython.rlib.debug import attach_gdb
     print s_frame.print_stack()
-    raise error.PrimitiveFailedError
-    # attach_gdb()
+    attach_gdb()
 
 @VMDebugging.expose_primitive(unwrap_spec=[object])
 def isRSqueak(interp, s_frame, w_rcvr):
