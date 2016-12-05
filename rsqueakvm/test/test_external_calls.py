@@ -357,8 +357,8 @@ def test_fileplugin_file_size(monkeypatch):
     fd = os.open(__file__, os.O_RDONLY)
     try:
         with py.test.raises(PrimitiveFailedError):
-            external_call("FilePlugin", "primitiveFileSetPosition", [None, -1, 32])
-            assert external_call("FilePlugin", "primitiveFileSize", [None, fd, 32]).value == os.fstat(fd).st_size
+            external_call("FilePlugin", "primitiveFileSize", [None, -1])
+        assert external_call("FilePlugin", "primitiveFileSize", [None, fd]).value == os.fstat(fd).st_size
     finally:
         os.close(fd)
 
