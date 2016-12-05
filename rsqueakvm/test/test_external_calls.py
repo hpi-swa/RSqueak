@@ -477,7 +477,6 @@ def test_misc_primitiveCompareString(monkeypatch):
     from rsqueakvm.plugins.misc_primitive_plugin import MiscPrimitivePlugin
     for p in ExternalPlugins:
         if p is MiscPrimitivePlugin:
-            import pdb; pdb.set_trace()
             monkeypatch.delitem(p.primitives, "primitiveCompareString")
             break
     try:
