@@ -174,32 +174,6 @@ def func(interp, s_frame, w_rcvr):
         w_class.as_class_get_shadow(interp.space).flush_method_caches()
     return w_rcvr
 
-@objectmodel.specialize.arg(0)
-def walk_gc_references(func, gcrefs):
-    from rpython.rlib import rgc
-    for gcref in gcrefs:
-        if gcref and not rgc.get_gcflag_extra(gcref):
-            try:
-                rgc.toggle_gcflag_extra(gcref)
-                func(gcref)
-                walk_gc_references(func, rgc.get_rpy_referents(gcref))
-            finally:
-                rgc.toggle_gcflag_extra(gcref)
-
-@objectmodel.specialize.arg(0)
-def walk_gc_objects(func):
-    from rpython.rlib import rgc
-    walk_gc_references(func, rgc.get_rpy_roots())
-
-@objectmodel.specialize.arg(0, 1)
-def walk_gc_objects_of_type(type, func):
-    from rpython.rlib import rgc
-    def check_type(gcref):
-        w_obj = rgc.try_cast_gcref_to_instance(type, gcref)
-        if w_obj:
-            func(w_obj)
-    walk_gc_objects(check_type)
-
 @expose_primitive(SYMBOL_FLUSH_CACHE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
     # No need to do this, method dictionaries invalidate their traces as needed
