@@ -14,7 +14,7 @@ from rpython.rtyper.lltypesystem import rffi
 from rpython.rlib.rbigint import rbigint
 from rpython.rlib.rarithmetic import r_uint
 
-from .util import create_space, copy_to_module, cleanup_module, InterpreterForTest
+from .util import create_space, copy_to_module, cleanup_module, InterpreterForTest, read_image
 
 IMAGENAME = "anImage.image"
 
@@ -440,3 +440,59 @@ def test_misc_primitiveIndexOfAscciiInString(monkeypatch):
             'MiscPrimitivePlugin',
             'primitiveIndexOfAsciiInString',
             [space.w_nil, space.wrap_char("f"), space.w("foo"), space.w(-1)])
+
+def test_misc_primitiveStringHash(monkeypatch):
+    space, interp, image, reader = read_image("Squeak4.3.image")
+    prim_res = interp.perform(space.w("123"), "hash").unwrap_long_untranslated(space)
+    from rsqueakvm.primitives.control import ExternalPlugins
+    from rsqueakvm.plugins.misc_primitive_plugin import MiscPrimitivePlugin
+    for p in ExternalPlugins:
+        if p is MiscPrimitivePlugin:
+            monkeypatch.delitem(p.primitives, "primitiveStringHash")
+            break
+    try:
+        st_res = interp.perform(space.w("123"), "hash").unwrap_long_untranslated(space)
+    finally:
+        monkeypatch.undo()
+    assert st_res == prim_res
+
+def test_misc_primitiveCompareString(monkeypatch):
+    space, interp, image, reader = read_image("Squeak4.3.image")
+    prim_res = []
+    st_res = []
+    for x,y,f in [
+            ("12", "1234", "="),
+            ("1234", "12", "="),
+            ("1234", "ab", "="),
+            ("1234", "0b", "="),
+            ("1234", "1234", "="),
+            ("12", "1234", "compare:"),
+            ("1234", "12", "compare:"),
+            ("1234", "ab", "compare:"),
+            ("1234", "0b", "compare:"),
+            ("1234", "1234", "compare:")]:
+        prim_res.append((x, y, f, interp.perform(space.w(x), f, w_arguments=[space.w(y)]) is space.w_true))
+
+    from rsqueakvm.primitives.control import ExternalPlugins
+    from rsqueakvm.plugins.misc_primitive_plugin import MiscPrimitivePlugin
+    for p in ExternalPlugins:
+        if p is MiscPrimitivePlugin:
+            import pdb; pdb.set_trace()
+            monkeypatch.delitem(p.primitives, "primitiveCompareString")
+            break
+    try:
+        for x,y,f in [
+                ("12", "1234", "="),
+                ("1234", "12", "="),
+                ("1234", "ab", "="),
+                ("1234", "0b", "="),
+                ("1234", "1234", "="),
+                ("12", "1234", "compare:"),
+                ("1234", "12", "compare:"),
+                ("1234", "ab", "compare:"),
+                ("1234", "0b", "compare:"),
+                ("1234", "1234", "compare:")]:
+            st_res.append((x, y, f, interp.perform(space.w(x), f, w_arguments=[space.w(y)]) is space.w_true))
+    finally:
+        monkeypatch.undo()
+    assert st_res == prim_res
