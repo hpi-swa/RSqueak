@@ -7,6 +7,10 @@
 omit =
     rsqueakvm/test/*
     rsqueakvm/util/logparser.py
+    rsqueakvm/util/system.py
+    rsqueakvm/util/dialog.py
+    rsqueakvm/util/shell.py
+    rsqueakvm/util/progress.py
     rsqueakvm/tools/*
     rsqueakvm/interpreter_debugging.py
     */__init__.py
