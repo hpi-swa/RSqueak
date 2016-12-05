@@ -19,7 +19,8 @@ baseline: spec
 						repository: 'http://source.squeak.org/VMMaker' ];
 				package: 'RSqueak'
 					with: [ spec
-						repository: 'github://HPI-SWA-Lab/RSqueak:master/repository' ];
+						repository: 'github://HPI-SWA-Lab/RSqueak:master/repository';
+						postLoadDoIt: #setRSqueakPreferences ];
 				package: 'TopazRuby'
 					with: [ spec
 						repository: 'github://HPI-SWA-Lab/RSqueak:master/repository' ];
