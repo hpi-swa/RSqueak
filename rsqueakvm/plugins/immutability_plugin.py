@@ -121,6 +121,24 @@ def primitiveImmutableFrom(interp, s_frame, w_cls, w_obj):
 
     raise PrimitiveFailedError
 
+@ImmutabilityPlugin.expose_primitive(unwrap_spec=None)
+def primitiveImmutableFromArgs(interp, s_frame, argcount):
+
+    w_arguments = s_frame.pop_and_return_n(argcount)[:]
+    w_cls = s_frame.pop()
+    space = interp.space
+    instance_kind = w_cls.as_class_get_shadow(space).get_instance_kind()
+
+    if instance_kind == POINTERS:
+        return W_PointersObject.immutable_subclass(space, w_cls, w_arguments)
+    # TBD:
+    # elif instance_kind == BYTES and isinstance(w_obj, W_BytesObject):
+    #     return W_BytesObject.immutable_subclass(space, w_cls, w_obj.bytes)
+    # elif instance_kind == WORDS and isinstance(w_obj, W_WordsObject):
+    #     return W_WordsObject.immutable_subclass(space, w_cls, w_obj.words)
+
+    raise PrimitiveFailedError
+
 
 @ImmutabilityPlugin.expose_primitive(unwrap_spec=[object])
 def primitiveIsImmutable(interp, s_frame, w_recv):
