@@ -110,8 +110,20 @@ def test_http_real():
     s = pysocket.socket(pysocket.AF_INET, pysocket.SOCK_STREAM)
     s.connect((pysocket.gethostbyname("www.google.com"), 443))
     w_handle = prim("primitiveCreate")
+
     prim("primitiveSetIntProperty", stack=[w_handle, w(1), w(2)])
     prim("primitiveSetStringProperty", stack=[w_handle, w(2), w("localhost:4443")])
+
+    assert prim("primitiveGetIntProperty", stack=[w_handle, w(0)]).value == 2
+    assert prim("primitiveGetIntProperty", stack=[w_handle, w(1)]).value == 0
+    assert prim("primitiveGetIntProperty", stack=[w_handle, w(2)]).value == 0
+    assert prim("primitiveGetIntProperty", stack=[w_handle, w(3)]).value == 0
+    assert prim("primitiveGetIntProperty", stack=[w_handle, w(1234)]).value == 0
+    assert prim("primitiveGetStringProperty", stack=[w_handle, w(0)]).unwrap_string(space) == "*"
+    assert prim("primitiveGetStringProperty", stack=[w_handle, w(1)]).unwrap_string(space) == ""
+    assert prim("primitiveGetStringProperty", stack=[w_handle, w(2)]).unwrap_string(space) == "localhost:4443"
+    assert prim("primitiveGetStringProperty", stack=[w_handle, w(1234)]).unwrap_string(space) == ""
+
     w_out = fix("outbuf1")
     w_result = prim("primitiveConnect",
                     stack=[
