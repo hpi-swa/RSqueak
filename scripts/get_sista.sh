@@ -27,9 +27,10 @@ curl -sLO "$COGURL"
 for i in sistaspurlinux*; do
     test -d $i && rm -rf $i
 done
+echo ${pkg}_${version}.tar.gz
 tar xzf ${pkg}_${version}.tar.gz
 rm ${pkg}_${version}.tar.gz
-mv products/${product} sista${words}_new
+mv products/${product} sista${words}_new || mv ${product} sista${words}_new
 rm -rf sista${words}
 rm -rf products
 mv sista${words}_new sista${words}

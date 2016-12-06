@@ -64,10 +64,13 @@ class BenchmarkWorker(object):
         extracode = EXTRACODE.get(vm, "")
         binary = getattr(self, "download_%s" % vm, lambda id: None)(commitid)
         image = IMAGES.get(vm, None)
-        if not binary or not image: return
+        if not binary or not image:
+            print "Could not execute binary %s with image %s" % (binary, image)
+            return
         for bm in BENCHMARKS:
             with open("run.st", "w") as f:
                 f.write("""
+                FileStream stderr nextPutAll: 'Running ...'; crlf.
                 Smalltalk specialObjectsArray at: 59 put: nil.
                 %s
                 [BenchmarkAutosizeSteadyStateSuite run: {
@@ -97,6 +100,8 @@ class BenchmarkWorker(object):
                     except Alarm:
                         print "Benchmark timeout"
                         pipe.kill()
+                        os.system("killall -9 %s" % binary)
+                    print out, err
                     match = OUTPUT_RE.search(out)
                     if match: tries_left = 0
                 except Exception, e:

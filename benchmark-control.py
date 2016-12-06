@@ -83,9 +83,21 @@ if __name__ == "__main__":
         if sys.argv[1] == "show":
             c.execute("SELECT * FROM %s WHERE %s=0;" % (JOB_TABLE, FLAG))
             print c.fetchall()
+        elif sys.argv[1] == "history":
+            c.execute("SELECT * FROM %s WHERE %s=1;" % (JOB_TABLE, FLAG))
+            print c.fetchall()
+        elif sys.argv[1] == "reset":
+            commitid = sys.argv[2]
+            print "Resetting benchmarks commit %s" % commitid
+            c.execute("""
+            UPDATE %s SET %s=0 WHERE %s='%s';
+            """ % (JOB_TABLE, FLAG, COMMITID, commitid))
+            c.execute("SELECT * FROM %s WHERE %s='%s';" % (JOB_TABLE, COMMITID, commitid))
+            print c.fetchall()
+            conn.commit()
         else:
             commitid = sys.argv[1]
-            print "Resetting benchmarks commit %s" % commitid
+            print "Deleting benchmarks commit %s" % commitid
             c.execute("DELETE FROM %s WHERE %s='%s'" % (JOB_TABLE, COMMITID, commitid))
             conn.commit()
         c.close()
