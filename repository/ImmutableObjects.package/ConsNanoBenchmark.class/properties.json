@@ -10,5 +10,5 @@
 	"name" : "ConsNanoBenchmark",
 	"pools" : [
 		 ],
-	"super" : "CollectionNanoBenchmark",
+	"super" : "SMarkCollectionNanoBenchmark",
 	"type" : "normal" }
