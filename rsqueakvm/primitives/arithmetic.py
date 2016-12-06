@@ -9,7 +9,7 @@ from rsqueakvm.primitives.constants import *
 
 from rpython.rlib import rfloat, jit
 from rpython.rlib.rbigint import rbigint, NULLRBIGINT, ONERBIGINT
-from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int, r_int64, is_valid_int
+from rpython.rlib.rarithmetic import intmask, r_uint, ovfcheck, ovfcheck_float_to_int, r_int64, is_valid_int, int_between
 from rpython.rlib.objectmodel import specialize
 
 combination_specs = [[int, int], [r_int64, r_int64], [rbigint, rbigint]]
@@ -191,7 +191,7 @@ def func(interp, s_frame, receiver, argument):
 @expose_primitive(BIT_SHIFT, unwrap_specs=[[int, int], [r_int64, int], [rbigint, int]])
 def func(interp, s_frame, receiver, shift):
     if isinstance(receiver, int):
-        if not (-constants.LONG_BIT < shift < constants.LONG_BIT):
+        if not (int_between(-constants.LONG_BIT + 1, shift, constants.LONG_BIT)):
             raise PrimitiveFailedError
     if shift > 0:
         if isinstance(receiver, int):
