@@ -1,15 +1,14 @@
 {
-	"category" : "ImmutableObjects-Structures",
+	"category" : "ImmutableObjects-ListNanos",
 	"classinstvars" : [
 		 ],
 	"classvars" : [
 		 ],
 	"commentStamp" : "",
 	"instvars" : [
-		"car",
-		"cdr" ],
-	"name" : "Cons",
+		 ],
+	"name" : "ConsNanoBenchmark",
 	"pools" : [
 		 ],
-	"super" : "SequenceableCollection",
+	"super" : "CollectionNanoBenchmark",
 	"type" : "normal" }
