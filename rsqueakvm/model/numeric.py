@@ -214,12 +214,11 @@ def calculate_exposed_size_for_big_int(value):
 
 class W_LargeIntegerBig(W_LargeInteger):
     """Large integer using rbigints"""
-    _attrs_ = ["value", "_exposed_size"]
     _immutable_fields_ = ["value?"]
     repr_classname = "W_LargeIntegerBig"
 
     def __init__(self, space, w_class, value, size=0):
-        W_LargeInteger.__init__(self, space, w_class, size)
+        W_LargeInteger.__init__(self, space, w_class)
         self._exposed_size = size
         self.value = value
 
@@ -305,12 +304,11 @@ class W_LargeIntegerBig(W_LargeInteger):
 
 
 class W_LargeIntegerWord(W_LargeInteger):
-    _attrs_ = ["value", "_exposed_size"]
     _immutable_fields_ = ["value?", "_exposed_size"]
     repr_classname = "W_LargeIntegerWord"
 
     def __init__(self, space, w_class, value, size):
-        W_LargeInteger.__init__(self, space, w_class, size)
+        W_LargeInteger.__init__(self, space, w_class)
         self._exposed_size = size
         self.value = value
 
