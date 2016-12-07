@@ -208,7 +208,8 @@ class SchedulerWrapper(Wrapper):
 
     def get_process_list(self, priority):
         lists = Wrapper(self.space, self.priority_list())
-        return LinkedListWrapper(self.space, lists.read(priority))
+        # priority is 1-indexed, we read with 0-indexed
+        return LinkedListWrapper(self.space, lists.read(priority - 1))
 
     def wake_highest_priority_process(self):
         w_lists = self.priority_list()
