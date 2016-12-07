@@ -349,7 +349,7 @@ class __extend__(ContextPartShadow):
 
     def _invokeObjectAsMethod(self, w_selector, argcount, interp, w_receiver):
         args_w = self.pop_and_return_n(argcount)
-        w_arguments = interp.space.wrap_list(args_w)
+        w_arguments = interp.space.wrap_list_unroll_safe(args_w)
         w_rcvr = self.pop()
         w_newarguments = [w_selector, w_arguments, w_rcvr]
         return self._sendSpecialSelector(interp, w_receiver, "runWithIn", w_newarguments)
