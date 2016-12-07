@@ -128,9 +128,10 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
             raise error.UnwrappingError
 
     def unwrap_rbigint(self, space):
-        if self.getclass(space).is_same_object(space.w_LargePositiveInteger):
+        w_class = self.getclass(space)
+        if w_class.is_same_object(space.w_LargePositiveInteger):
             return self.getrbigint()
-        elif self.getclass(space).is_same_object(space.w_LargeNegativeInteger):
+        elif w_class.is_same_object(space.w_LargeNegativeInteger):
             return self.getrbigint().neg()
         else:
             raise error.UnwrappingError

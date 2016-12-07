@@ -291,7 +291,7 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
         self.w_class = g_self.get_class()
 
     def getclass(self, space):
-        return self.w_class
+        return jit.promote(self.w_class)
 
     def guess_classname(self):
         if self.getclass(None).has_space():
