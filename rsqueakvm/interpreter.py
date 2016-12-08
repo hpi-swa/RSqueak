@@ -364,7 +364,6 @@ class Interpreter(object):
             # This is the toplevel frame. Execution ended.
             raise ReturnFromTopLevel(return_value, s_current_context)
         assert target_context
-        assert start_context is not target_context
 
         context = start_context
         for i in range(4):
@@ -404,6 +403,7 @@ class Interpreter(object):
             # This is the toplevel frame. Execution ended.
             raise ReturnFromTopLevel(return_value, s_current_context)
         target_context.push(return_value)
+        return target_context
 
     def step(self, context):
         if not objectmodel.we_are_translated():
