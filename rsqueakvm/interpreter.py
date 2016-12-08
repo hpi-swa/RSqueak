@@ -118,7 +118,11 @@ class StackOverflow(ContextSwitchException):
 class ProcessSwitch(ContextSwitchException):
     """This causes the interpreter to switch the executed context.
     Triggered when switching the process."""
+    _attrs_ = ["forced"]
     type = "Process Switch"
+    def __init__(self, s_new_context, forced=False):
+        ContextSwitchException.__init__(self, s_new_context)
+        self.forced = forced
 
 UNROLLING_BYTECODE_RANGES = unroll.unrolling_iterable(interpreter_bytecodes.BYTECODE_RANGES)
 
@@ -126,6 +130,9 @@ def get_printable_location(pc, self, method):
     bc = ord(method.bytes[pc])
     name = method.safe_identifier_string()
     return '(%s) [%d]: <%s>%s' % (name, pc, hex(bc), interpreter_bytecodes.BYTECODE_NAMES[bc])
+
+def resume_get_printable_location(pc, self, method):
+    return "resume: %s" % get_printable_location(pc, self, method)
 
 USE_SIGUSR1 = hasattr(rsignal, 'SIGUSR1')
 
@@ -147,6 +154,15 @@ class Interpreter(object):
         reds=['s_context'],
         virtualizables=['s_context'],
         get_printable_location=get_printable_location,
+        is_recursive=True
+    )
+
+    resume_driver = jit.JitDriver(
+        name=jit_driver_name + "_resume",
+        greens=['pc', 'self', 'method'],
+        reds=['s_context'],
+        # virtualizables=['s_context'],
+        get_printable_location=resume_get_printable_location,
         is_recursive=True
     )
 
@@ -211,6 +227,13 @@ class Interpreter(object):
         # This is the top-level loop and is not invoked recursively.
         s_context = w_active_context.as_context_get_shadow(self.space)
         while True:
+            method = s_context.w_method()
+            pc = s_context.pc()
+            self.resume_driver.jit_merge_point(
+                pc=pc,
+                self=self,
+                method=method,
+                s_context=s_context)
             s_sender = s_context.s_sender()
             try:
                 self.stack_frame(s_context, None)
@@ -220,6 +243,14 @@ class Interpreter(object):
                     e.print_trace()
                 self.process_switch_count += 1
                 s_context = e.s_new_context
+                if not e.forced:
+                    method = s_context.w_method()
+                    pc = s_context.pc()
+                    self.resume_driver.can_enter_jit(
+                        pc=pc,
+                        self=self,
+                        method=method,
+                        s_context=s_context)
             except StackOverflow, e:
                 if self.is_tracing() or self.trace_important:
                     e.print_trace()
@@ -228,9 +259,13 @@ class Interpreter(object):
             except LocalReturn, ret:
                 target = s_sender
                 s_context = self.unwind_context_chain(s_sender, target, ret.value(self.space), s_context)
+                if self.is_tracing() or self.trace_important:
+                    print "\n====== Local Return in top-level loop, contexts forced to heap at: %s" % s_context.short_str()
             except NonLocalReturn, ret:
                 target = s_sender if ret.arrived_at_target else ret.s_home_context.s_sender() # fine to force here
                 s_context = self.unwind_context_chain(s_sender, target, ret.value(self.space), s_context)
+                if self.is_tracing() or self.trace_important:
+                    print "\n====== Non Local Return in top-level loop, contexts forced to heap at: %s" % s_context.short_str()
             except NonVirtualReturn, ret:
                 if self.is_tracing() or self.trace_important:
                     ret.print_trace()
@@ -402,7 +437,7 @@ class Interpreter(object):
             self.next_wakeup_tick = 0
             semaphore = self.space.objtable["w_timerSemaphore"]
             if not semaphore.is_nil(self.space):
-                wrapper.SemaphoreWrapper(self.space, semaphore).signal(s_frame)
+                wrapper.SemaphoreWrapper(self.space, semaphore).signal(s_frame, forced=True)
         # We have no finalization process, so far.
         # We do not support external semaphores.
         # In cog, the method to add such a semaphore is only called in GC.

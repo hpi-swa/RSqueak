@@ -75,7 +75,7 @@ class ProcessWrapper(LinkWrapper):
         process_list = sched.get_process_list(priority)
         process_list.add_last_link(self.wrapped)
 
-    def transfer_to_self_from(self, s_old_frame):
+    def transfer_to_self_from(self, s_old_frame, forced=False):
         from rsqueakvm.interpreter import ProcessSwitch
         assert not self.is_active_process(), "trying to switch to already active process"
         new_proc = self.wrapped
@@ -87,9 +87,9 @@ class ProcessWrapper(LinkWrapper):
         w_new_active_context = self.suspended_context()
         self.store_suspended_context(self.space.w_nil)
         assert isinstance(w_new_active_context, W_PointersObject)
-        raise ProcessSwitch(w_new_active_context.as_context_get_shadow(self.space))
+        raise ProcessSwitch(w_new_active_context.as_context_get_shadow(self.space), forced=forced)
 
-    def resume(self, s_current_frame):
+    def resume(self, s_current_frame, forced=False):
         sched = scheduler(self.space)
         active_process = ProcessWrapper(self.space, sched.active_process())
         active_priority = active_process.priority()
@@ -97,7 +97,7 @@ class ProcessWrapper(LinkWrapper):
         if priority > active_priority:
             if not self.space.suppress_process_switch.is_set():
                 active_process.put_to_sleep()
-                self.transfer_to_self_from(s_current_frame)
+                self.transfer_to_self_from(s_current_frame, forced=forced)
         else:
             self.put_to_sleep()
 
@@ -231,13 +231,13 @@ class SemaphoreWrapper(LinkedListWrapper):
 
     excess_signals, store_excess_signals = make_int_getter_setter(2)
 
-    def signal(self, s_current_frame):
+    def signal(self, s_current_frame, forced=False):
         if self.is_empty_list():
             excess_signals = self.excess_signals()
             self.store_excess_signals(excess_signals + 1)
         else:
             w_process = self.remove_first_link_of_list()
-            ProcessWrapper(self.space, w_process).resume(s_current_frame)
+            ProcessWrapper(self.space, w_process).resume(s_current_frame, forced=forced)
 
     def wait(self, s_current_frame):
         excess = self.excess_signals()

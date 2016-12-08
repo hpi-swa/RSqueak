@@ -23,6 +23,10 @@ conftest.option = o
 
 from rpython.rlib import jit
 from rpython.jit.metainterp.test.test_ajit import LLJitMixin
+from rsqueakvm.util import system
+
+system.without_plugins = True
+
 from rsqueakvm.test.util import import_bytecodes, read_image
 from rsqueakvm import model, storage_contexts
 import targetrsqueak as rsqueak
@@ -79,7 +83,7 @@ def run_benchmark(imagename, benchmark, number=0, arg=""):
     return interp_run_benchmarks
 
 def run_code(imagename, code, as_benchmark=False):
-    from targetrsqueak import prebuilt_space as space, \
+    from rsqueakvm.main import prebuilt_space as space, \
             compile_code, create_context, execute_context
     interp = load(image_path(imagename), space=space)
     w_receiver = space.w_nil
@@ -121,10 +125,13 @@ def main():
     # code = "10000 timesRepeat: [ 0 makeStackDepth: 10 ]"
     # code = """ 1 to: 100000 do: [:i | (2147483647 bitXor: i) + 10 ]    """
     # code = "10000 timesRepeat: [ (2147483647 bitXor: 12) + 10 ]"
+    # code = """
+    #     | o |
+    #     o := Array with: (Array with: 'a' with: $b) with: (Array with: 'x' with: $y).
+    #     1 to: 10000 do: [:i | (o at: (i \\\\ 2) + 1) at: (i \\\\ 2) + 1].
+    # """
     code = """
-        | o |
-        o := Array with: (Array with: 'a' with: $b) with: (Array with: 'x' with: $y).
-        1 to: 10000 do: [:i | (o at: (i \\\\ 2) + 1) at: (i \\\\ 2) + 1].
+    1 to: 10000 do: [ '123' = '234' ].
     """
     # code = "1 to: 10000 do: [:i | (2147483647 bitXorLarge: i) + 10 ]"
     # code = "1 to: 10000 do: [:i | i ]"
