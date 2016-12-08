@@ -622,7 +622,7 @@ eci = ExternalCompilationInfo(
         int interrupt_key = 15 << 8;
         if (event->type == SDL_KEYDOWN) {
             if (((SDL_KeyboardEvent*)event)->keysym.sym == SDLK_PERIOD) {
-                if ((((SDL_KeyboardEvent*)event)->keysym.mod & KMOD_ALT) != 0) {
+                if ((((SDL_KeyboardEvent*)event)->keysym.mod & (KMOD_ALT|KMOD_GUI)) != 0) {
                     ((intptr_t*)userdata)[0] = 1;
                     return 0;
                 }
