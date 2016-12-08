@@ -369,7 +369,7 @@ class Interpreter(object):
         for i in range(4):
             if context is target_context:
                 break
-            context = _finish_context(context, target_context, return_value, s_current_context)
+            context = self._finish_context(context, target_context, return_value, s_current_context)
 
         if context is target_context:
             context.push(return_value)
@@ -389,10 +389,10 @@ class Interpreter(object):
         if not context:
             msg = "Context chain ended while trying to return\n%s\nfrom somewhere near or above or below\n%s\n(pc %s)\nto\n%s\n(pc %s)" % (
                     return_value.as_repr_string(),
-                    start_context.short_str(),
-                    start_context.pc(),
+                    context.short_str(),
+                    context.pc(),
                     target_context.short_str(),
-                    start_context.pc())
+                    target_context.pc())
             raise FatalError(msg)
         s_sender = context.s_sender()
         context._activate_unwind_context(self)
