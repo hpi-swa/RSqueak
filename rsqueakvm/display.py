@@ -143,6 +143,7 @@ class SDLDisplay(NullDisplay):
                 print RSDL.GetError()
                 assert False
         self.interrupt_flag = lltype.malloc(rffi.SIGNEDP.TO, 1, flavor='raw')
+        self.interrupt_flag[0] = 0
         ll_SetEventFilter(self.interrupt_flag)
 
     def has_interrupts_pending(self):
