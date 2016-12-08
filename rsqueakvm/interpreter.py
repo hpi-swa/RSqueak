@@ -431,8 +431,14 @@ class Interpreter(object):
         self.forced_interrupt_checks_count += 1
         now = self.time_now()
 
+        # Check for User Interrupt
+        if self.space.display().has_interrupts_pending():
+            w_interrupt_sema = self.space.objtable['w_interrupt_semaphore']
+            if w_interrupt_sema is not self.space.w_nil:
+                if w_interrupt_sema.getclass(self.space).is_same_object(self.space.w_Semaphore):
+                    wrapper.SemaphoreWrapper(self.space, w_interrupt_sema).signal(s_frame)
+
         # XXX the low space semaphore may be signaled here
-        # TODO: Check for User Interrupt
         if not self.next_wakeup_tick == 0 and now >= self.next_wakeup_tick:
             self.next_wakeup_tick = 0
             semaphore = self.space.objtable["w_timerSemaphore"]

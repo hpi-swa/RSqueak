@@ -76,6 +76,9 @@ class NullDisplay(object):
     def has_clipboard_text(self):
         return False
 
+    def has_interrupts_pending(self):
+        return False
+
     def is_headless(self):
         return True
 
@@ -111,7 +114,8 @@ class SDLDisplay(NullDisplay):
     _attrs_ = ["window", "title", "renderer", "screen_texture", "altf4quit",
                "screen_surface", "has_surface", "interrupt_key",
                "_defer_updates", "_deferred_events", "bpp", "pitch", "highdpi",
-               "software_renderer"]
+               "software_renderer", "interrupt_flag"]
+    _immutable_fields_ = ["interrupt_flag"]
 
     def __init__(self, title, highdpi, software_renderer, altf4quit):
         NullDisplay.__init__(self)
@@ -138,6 +142,14 @@ class SDLDisplay(NullDisplay):
             if RSDL.Init(RSDL.INIT_VIDEO) < 0:
                 print RSDL.GetError()
                 assert False
+        self.interrupt_flag = lltype.malloc(rffi.SIGNEDP.TO, 1, flavor='raw')
+        ll_SetEventFilter(self.interrupt_flag)
+
+    def has_interrupts_pending(self):
+        if self.interrupt_flag[0] != 0:
+            self.interrupt_flag[0] = 0
+            return True
+        return False
 
     def is_headless(self):
         return False
@@ -400,7 +412,7 @@ class SDLDisplay(NullDisplay):
         try:
             if RSDL.PollEvent(event) == 1:
                 event_type = r_uint(event.c_type)
-                if event_type in [RSDL.MOUSEBUTTONDOWN, RSDL.MOUSEBUTTONUP]:
+                if event_type in (RSDL.MOUSEBUTTONDOWN, RSDL.MOUSEBUTTONUP):
                     self.handle_mouse_button(event_type, event)
                     return self.get_next_mouse_event(time)
                 elif event_type == RSDL.MOUSEMOTION:
@@ -581,3 +593,47 @@ class SDLCursorClass(object):
         return bytes
 
 SDLCursor = SDLCursorClass()
+
+from rpython.translator.tool.cbuild import ExternalCompilationInfo
+from rsdl.eci import get_rsdl_compilation_info
+eci = ExternalCompilationInfo(
+    post_include_bits=["""
+    #ifndef __event_filter_h
+    #define __event_filter_h
+
+    #ifdef _WIN32
+    #define DLLEXPORT __declspec(dllexport)
+    #else
+    #define DLLEXPORT __attribute__((__visibility__("default")))
+    #endif
+
+    #ifdef __cplusplus
+    extern "C" {
+    #endif
+            DLLEXPORT int SetEventFilter(intptr_t* target);
+    #ifdef __cplusplus
+    }
+    #endif
+
+    #endif"""],
+    separate_module_sources=["""
+    int InterruptEventFilter(void* userdata, SDL_Event *event) {
+        int interrupt_key = 15 << 8;
+        if (event->type == SDL_KEYDOWN) {
+            if (((SDL_KeyboardEvent*)event)->keysym.sym == SDLK_PERIOD) {
+                if ((((SDL_KeyboardEvent*)event)->keysym.mod & KMOD_ALT) != 0) {
+                    ((intptr_t*)userdata)[0] = 1;
+                }
+            }
+        }
+        return 0;
+    }
+    int SetEventFilter(intptr_t* target) {
+        SDL_SetEventFilter(InterruptEventFilter, (void*)target);
+        return 0;
+    }
+    """]
+).merge(get_rsdl_compilation_info())
+
+ll_SetEventFilter = rffi.llexternal('SetEventFilter', [rffi.SIGNEDP], rffi.INT,
+                                    compilation_info=eci)
