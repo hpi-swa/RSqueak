@@ -258,7 +258,7 @@ class Interpreter(object):
                 s_context = e.s_new_context
             except LocalReturn, ret:
                 target = s_sender
-                s_context = self.unwind_context_chain(s_sender, target, ret.value(self.space), s_context)
+                s_context = self.unwind_context_chain_local(target, ret.value(self.space), s_context)
                 if self.is_tracing() or self.trace_important:
                     print "\n====== Local Return in top-level loop, contexts forced to heap at: %s" % s_context.short_str()
             except NonLocalReturn, ret:
@@ -357,27 +357,53 @@ class Interpreter(object):
 
         return fallbackContext
 
+    @jit.unroll_safe
     def unwind_context_chain(self, start_context, target_context, return_value,
                              s_current_context):
         if start_context is None:
             # This is the toplevel frame. Execution ended.
             raise ReturnFromTopLevel(return_value, s_current_context)
         assert target_context
+        assert start_context is not target_context
+
+        context = start_context
+        for i in range(4):
+            if context is target_context:
+                break
+            context = _finish_context(context, target_context, return_value, s_current_context)
+
+        if context is target_context:
+            context.push(return_value)
+            return context
+        else:
+            return self._unwind_context_chain(context, target_context, return_value, s_current_context)
+
+    def _unwind_context_chain(self, start_context, target_context, return_value,
+                             s_current_context):
         context = start_context
         while context is not target_context:
-            if not context:
-                msg = "Context chain ended while trying to return\n%s\nfrom\n%s\n(pc %s)\nto\n%s\n(pc %s)" % (
-                        return_value.as_repr_string(),
-                        start_context.short_str(),
-                        start_context.pc(),
-                        target_context.short_str(),
-                        start_context.pc())
-                raise FatalError(msg)
-            s_sender = context.s_sender()
-            context._activate_unwind_context(self)
-            context = s_sender
+            context = self._finish_context(context, target_context, return_value, s_current_context)
         context.push(return_value)
         return context
+
+    def _finish_context(self, context, target_context, return_value, s_current_context):
+        if not context:
+            msg = "Context chain ended while trying to return\n%s\nfrom somewhere near or above or below\n%s\n(pc %s)\nto\n%s\n(pc %s)" % (
+                    return_value.as_repr_string(),
+                    start_context.short_str(),
+                    start_context.pc(),
+                    target_context.short_str(),
+                    start_context.pc())
+            raise FatalError(msg)
+        s_sender = context.s_sender()
+        context._activate_unwind_context(self)
+        return s_sender
+
+    def unwind_context_chain_local(self, target_context, return_value, s_current_context):
+        if target_context is None:
+            # This is the toplevel frame. Execution ended.
+            raise ReturnFromTopLevel(return_value, s_current_context)
+        target_context.push(return_value)
 
     def step(self, context):
         if not objectmodel.we_are_translated():
