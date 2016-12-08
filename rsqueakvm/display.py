@@ -624,10 +624,11 @@ eci = ExternalCompilationInfo(
             if (((SDL_KeyboardEvent*)event)->keysym.sym == SDLK_PERIOD) {
                 if ((((SDL_KeyboardEvent*)event)->keysym.mod & KMOD_ALT) != 0) {
                     ((intptr_t*)userdata)[0] = 1;
+                    return 0;
                 }
             }
         }
-        return 0;
+        return 1;
     }
     int SetEventFilter(intptr_t* target) {
         SDL_SetEventFilter(InterruptEventFilter, (void*)target);
