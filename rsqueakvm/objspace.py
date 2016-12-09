@@ -54,6 +54,8 @@ class ConstantInterp(object):
 class ConstantVersion(object):
     import_from_mixin(ConstantMixin)
     default_value = Version()
+    def changed(self):
+        self.set(Version())
 
 def empty_object():
     return instantiate(W_PointersObject)
@@ -89,6 +91,7 @@ class ObjSpace(object):
 
         self.classtable = {}
         self.objtable = {}
+        self.objtable_version = ConstantVersion()
         self.system_attributes = {}
         self._system_attribute_version = ConstantVersion()
         self._executable_path = ConstantString()
@@ -141,7 +144,7 @@ class ObjSpace(object):
 
     def set_system_attribute(self, idx, value):
         self.system_attributes[idx] = value
-        self._system_attribute_version.set(Version())
+        self._system_attribute_version.changed()
 
     def populate_special_objects(self, specials):
         for name, idx in constants.objects_in_special_object_table.items():
@@ -189,9 +192,20 @@ class ObjSpace(object):
             if not name in self.objtable:
                 self.add_bootstrap_object(name, None)
 
-    @jit.elidable
     def special_object(self, which):
+        return self._pure_special_object(which, self.objtable_version.get())
+
+    @jit.elidable
+    def _pure_special_object(self, which, objtable_version):
         return self.objtable[which]
+
+    def special_object_set(self, which, w_val):
+        self.objtable[which] = w_val
+        self.objtable_version.changed()
+
+    @jit.elidable
+    def special_class(self, which, version):
+        return self.classtable[which]
 
     # ============= Methods for wrapping and unwrapping stuff =============
 

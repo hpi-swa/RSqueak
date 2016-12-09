@@ -60,7 +60,7 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
         if isinstance(self._get_strategy(), ClassShadow):
             return True
         elif self.has_class():
-            w_Metaclass = space.classtable["w_Metaclass"]
+            w_Metaclass = space.special_class("w_Metaclass")
             w_class = self.getclass(space)
             if w_Metaclass.is_same_object(w_class):
                 return True

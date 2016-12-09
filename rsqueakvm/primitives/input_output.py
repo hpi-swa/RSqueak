@@ -149,7 +149,8 @@ def func(interp, s_frame, argcount):
 
     if display.SDLCursor.set(w_bitmap.words, width, height, offx, offy,
                              mask_words=mask_words):
-        interp.space.objtable['w_cursor'] = w_rcvr
+        pass
+        # interp.space.special_object_set('w_cursor', w_rcvr) # nobody reads this
     # Don't fail if the Cursor could not be set.
     # It is surely annoying but no reason to not continue.
     s_frame.pop_n(argcount + 1)
@@ -162,10 +163,10 @@ def func(interp, s_frame, w_rcvr):
     if not isinstance(w_rcvr, W_PointersObject) or w_rcvr.size() < 4:
         raise PrimitiveFailedError
 
-    old_display = interp.space.objtable['w_display']
+    old_display = interp.space.objtable['w_display'] # don't specialize this
     if isinstance(old_display, W_DisplayBitmap):
         old_display.relinquish_display()
-    interp.space.objtable['w_display'] = w_rcvr
+    interp.space.objtable['w_display'] = w_rcvr # don't invalidate the cache on this
 
     form = wrapper.FormWrapper(interp.space, w_rcvr)
     form.take_over_display()
