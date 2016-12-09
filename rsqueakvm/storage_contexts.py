@@ -15,6 +15,8 @@ def fresh_virtualizable(x):
     return jit.hint(x, access_directly=True, fresh_virtualizable=True)
 
 class ContextState(object):
+    _attrs_ = ["name", "i"]
+    _immutable_fields_ = ["name", "i"]
     states = []
     def __init__(self, name):
         self.name = name
@@ -51,6 +53,15 @@ class ExtraContextAttributes(object):
         self._eargc = 0
 
 
+state_mask     = 0b00111111111111111111111111111111
+stackptr_mask  = 0b11000000001111111111111111111111
+pc_mask        = 0b11111111110000000000000000000000
+returned_pc    = 0b00000000001111111111111111111111
+state_shift    = 30
+stackptr_shift = 22
+pc_shift       = 0
+
+
 class ContextPartShadow(AbstractStrategy):
     """
     This Shadow handles the entire object storage on its own, ignoring the _storage
@@ -82,14 +93,6 @@ class ContextPartShadow(AbstractStrategy):
         'closure', '_w_receiver', '_w_method',
         'extra_data'
     ]
-
-    state_mask     = 0b00111111111111111111111111111111
-    stackptr_mask  = 0b11000000001111111111111111111111
-    pc_mask        = 0b11111111110000000000000000000000
-    returned_pc    = 0b00000000001111111111111111111111
-    state_shift    = 30
-    stackptr_shift = 22
-    pc_shift       = 0
 
     # ______________________________________________________________________
     # Initialization
@@ -162,11 +165,11 @@ class ContextPartShadow(AbstractStrategy):
 
     @always_inline
     def get_state(self):
-        return ContextState.states[(self._get_state_stackptr_pc() & ~self.state_mask) >> self.state_shift]
+        return ContextState.states[(self._get_state_stackptr_pc() & ~state_mask) >> state_shift]
 
     @always_inline
     def set_state(self, t):
-        self._state_stackptr_pc = (self._get_state_stackptr_pc() & self.state_mask) | (t.num() << self.state_shift)
+        self._state_stackptr_pc = (self._get_state_stackptr_pc() & state_mask) | (t.num() << state_shift)
         assert self.get_state() == t
 
     # ______________________________________________________________________
@@ -298,11 +301,13 @@ class ContextPartShadow(AbstractStrategy):
 
     @always_inline
     def stack_ptr(self):
-        return (self._get_state_stackptr_pc() & ~self.stackptr_mask) >> self.stackptr_shift
+        return (self._get_state_stackptr_pc() & ~stackptr_mask) >> stackptr_shift
 
     @always_inline
     def store_stack_ptr(self, ptr):
-        self._state_stackptr_pc = (self._get_state_stackptr_pc() & self.stackptr_mask) | (ptr << self.stackptr_shift)
+        assert ptr >= 0
+        assert ptr < 256
+        self._state_stackptr_pc = (self._get_state_stackptr_pc() & stackptr_mask) | (ptr << stackptr_shift)
         assert self.stack_ptr() == ptr
 
     def wrap_stackpointer(self):
@@ -312,7 +317,7 @@ class ContextPartShadow(AbstractStrategy):
 
     def store_unwrap_pc(self, w_pc):
         if w_pc.is_nil(self.space):
-            self.store_pc(self.returned_pc)
+            self.store_pc(returned_pc)
         else:
             pc = self.space.unwrap_int(w_pc)
             pc -= self.w_method().bytecodeoffset()
@@ -321,7 +326,7 @@ class ContextPartShadow(AbstractStrategy):
 
     def wrap_pc(self):
         pc = self.pc()
-        if pc == self.returned_pc:
+        if pc == returned_pc:
             return self.space.w_nil
         else:
             pc += 1
@@ -330,12 +335,13 @@ class ContextPartShadow(AbstractStrategy):
 
     @always_inline
     def pc(self):
-        return (self._get_state_stackptr_pc() & ~self.pc_mask) >> self.pc_shift
+        return (self._get_state_stackptr_pc() & ~pc_mask) >> pc_shift
 
     @always_inline
     def store_pc(self, newpc):
         assert newpc >= 0, "trying to store pc < 0"
-        self._state_stackptr_pc = (self._get_state_stackptr_pc() & self.pc_mask) | (newpc << self.pc_shift)
+        assert newpc <= returned_pc, "trying to store pc > returned_pc"
+        self._state_stackptr_pc = (self._get_state_stackptr_pc() & pc_mask) | (newpc << pc_shift)
         assert self.pc() == newpc
 
     # ______________________________________________________________________
@@ -417,11 +423,11 @@ class ContextPartShadow(AbstractStrategy):
     # === Other properties of Contexts ===
 
     def mark_returned(self):
-        self.store_pc(self.returned_pc)
+        self.store_pc(returned_pc)
         self.remove_s_sender()
 
     def is_returned(self):
-        return self.pc() == self.returned_pc and (not self.has_s_sender())
+        return self.pc() == returned_pc and (not self.has_s_sender())
 
     def external_stackpointer(self):
         return self.stackdepth() + self.stackstart()
@@ -432,7 +438,7 @@ class ContextPartShadow(AbstractStrategy):
 
     def fetch_next_bytecode(self):
         pc = jit.promote(self.pc())
-        assert pc >= 0, "fetching bytecode on returned method"
+        assert pc < returned_pc, "fetching bytecode on returned method"
         self.store_pc(pc + 1)
         return self.fetch_bytecode(pc)
 
