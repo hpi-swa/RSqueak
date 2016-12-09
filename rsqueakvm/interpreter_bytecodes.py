@@ -388,7 +388,7 @@ class __extend__(ContextPartShadow):
 
     def _doesNotUnderstand(self, w_selector, argcount, interp, receiver):
         arguments = self.pop_and_return_n(argcount)
-        w_message_class = self.space.classtable["w_Message"]
+        w_message_class = self.space.w_Message
         assert isinstance(w_message_class, W_PointersObject)
         s_message_class = w_message_class.as_class_get_shadow(self.space)
         w_message = s_message_class.new()
