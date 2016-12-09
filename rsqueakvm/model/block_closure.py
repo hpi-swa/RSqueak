@@ -38,6 +38,8 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
             w_from.post_become_one_way(w_to)
         self.store_all(space, ptrs)
 
+    empty_stack = []
+
     @jit.unroll_safe
     def __init__(self, space, w_outerctxt, startpc, numArgs, size, stack=None):
         W_AbstractObjectWithIdentityHash.__init__(self)
@@ -46,6 +48,8 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
         self._numArgs = numArgs
         if stack:
             self._stack = stack
+        elif size == 0:
+            self._stack = self.empty_stack
         else:
             self._stack = [space.w_nil] * size
         self._fillin_w_method(space)
