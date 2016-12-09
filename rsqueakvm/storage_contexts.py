@@ -5,7 +5,7 @@ from rsqueakvm.model.block_closure import W_BlockClosure
 from rsqueakvm.storage import AbstractStrategy, ShadowMixin
 
 from rpython.rlib import jit, objectmodel
-from rpython.rlib.objectmodel import import_from_mixin
+from rpython.rlib.objectmodel import import_from_mixin, always_inline
 from rpython.rlib.rstrategies import rstrategies as rstrat
 from rpython.tool.pairtype import extendabletype
 
@@ -66,9 +66,9 @@ class ContextPartShadow(AbstractStrategy):
     import_from_mixin(ShadowMixin)
 
     _attrs_ = ['_w_self', '_w_self_size',
-               'state',
+               '_state_stackptr_pc',
                # Core context data
-               '_s_sender', '_pc', '_temps_and_stack', '_stack_ptr',
+               '_s_sender', '_temps_and_stack',
                # MethodContext data
                'closure', '_w_receiver', '_w_method',
                # Extra data
@@ -77,11 +77,19 @@ class ContextPartShadow(AbstractStrategy):
 
     _virtualizable_ = [
         "_w_self", "_w_self_size",
-        'state',
-        '_s_sender', "_pc", "_temps_and_stack[*]", "_stack_ptr",
+        '_state_stackptr_pc',
+        '_s_sender', "_temps_and_stack[*]",
         'closure', '_w_receiver', '_w_method',
         'extra_data'
     ]
+
+    state_mask     = 0b00111111111111111111111111111111
+    stackptr_mask  = 0b11000000001111111111111111111111
+    pc_mask        = 0b11111111110000000000000000000000
+    returned_pc    = 0b00000000001111111111111111111111
+    state_shift    = 30
+    stackptr_shift = 22
+    pc_shift       = 0
 
     # ______________________________________________________________________
     # Initialization
@@ -91,6 +99,7 @@ class ContextPartShadow(AbstractStrategy):
         self = fresh_virtualizable(self)
         AbstractStrategy.__init__(self, space, w_self, size, w_class)
 
+        self._state_stackptr_pc = 0
         self._s_sender = jit.vref_None
         if w_self is not None:
             self._w_self_size = w_self.size()
@@ -147,11 +156,18 @@ class ContextPartShadow(AbstractStrategy):
         else:
             return self.extra_data._s_fallback
 
-    def get_state(self):
-        return ContextState.states[self.state]
+    @always_inline
+    def _get_state_stackptr_pc(self):
+        return jit.promote(self._state_stackptr_pc)
 
+    @always_inline
+    def get_state(self):
+        return ContextState.states[(self._get_state_stackptr_pc() & ~self.state_mask) >> self.state_shift]
+
+    @always_inline
     def set_state(self, t):
-        self.state = t.num()
+        self._state_stackptr_pc = (self._get_state_stackptr_pc() & self.state_mask) | (t.num() << self.state_shift)
+        assert self.get_state() == t
 
     # ______________________________________________________________________
     # Accessing object fields
@@ -280,11 +296,14 @@ class ContextPartShadow(AbstractStrategy):
     def stackdepth(self):
         return self.stack_ptr()
 
+    @always_inline
     def stack_ptr(self):
-        return self._stack_ptr
+        return (self._get_state_stackptr_pc() & ~self.stackptr_mask) >> self.stackptr_shift
 
+    @always_inline
     def store_stack_ptr(self, ptr):
-        self._stack_ptr = ptr
+        self._state_stackptr_pc = (self._get_state_stackptr_pc() & self.stackptr_mask) | (ptr << self.stackptr_shift)
+        assert self.stack_ptr() == ptr
 
     def wrap_stackpointer(self):
         return self.space.wrap_smallint_unsafe(self.stackdepth())
@@ -293,7 +312,7 @@ class ContextPartShadow(AbstractStrategy):
 
     def store_unwrap_pc(self, w_pc):
         if w_pc.is_nil(self.space):
-            self.store_pc(-1)
+            self.store_pc(self.returned_pc)
         else:
             pc = self.space.unwrap_int(w_pc)
             pc -= self.w_method().bytecodeoffset()
@@ -302,19 +321,22 @@ class ContextPartShadow(AbstractStrategy):
 
     def wrap_pc(self):
         pc = self.pc()
-        if pc == -1:
+        if pc == self.returned_pc:
             return self.space.w_nil
         else:
             pc += 1
             pc += self.w_method().bytecodeoffset()
             return self.space.wrap_smallint_unsafe(pc)
 
+    @always_inline
     def pc(self):
-        return self._pc
+        return (self._get_state_stackptr_pc() & ~self.pc_mask) >> self.pc_shift
 
+    @always_inline
     def store_pc(self, newpc):
-        assert newpc >= -1, "trying to store pc < -1"
-        self._pc = newpc
+        assert newpc >= 0, "trying to store pc < 0"
+        self._state_stackptr_pc = (self._get_state_stackptr_pc() & self.pc_mask) | (newpc << self.pc_shift)
+        assert self.pc() == newpc
 
     # ______________________________________________________________________
     # Specialized accessors
@@ -395,11 +417,11 @@ class ContextPartShadow(AbstractStrategy):
     # === Other properties of Contexts ===
 
     def mark_returned(self):
-        self.store_pc(-1)
+        self.store_pc(self.returned_pc)
         self.remove_s_sender()
 
     def is_returned(self):
-        return self.pc() == -1 and (not self.has_s_sender())
+        return self.pc() == self.returned_pc and (not self.has_s_sender())
 
     def external_stackpointer(self):
         return self.stackdepth() + self.stackstart()
@@ -475,15 +497,13 @@ class ContextPartShadow(AbstractStrategy):
         # do a pop and access the stack afterwards. Or better said, do a pop on
         # the empty stack and would hence nil out a temp. We cannot let this
         # happen.
-        # Problem: how do we tell the GC to collect outside self._stack_ptr?
+        # Problem: how do we tell the GC to collect outside self.stack_ptr()?
         #  self.stack_put(ptr, self.space.w_nil)
         assert ptr >= 0, "stack pointer got negative in pop"
         self.store_stack_ptr(ptr)
         return ret
 
     def push(self, w_v):
-        #assert self._stack_ptr >= self.tempsize()
-        #assert self._stack_ptr < self.stackend() - self.stackstart() + self.tempsize()
         ptr = jit.promote(self.stack_ptr())
         self.stack_put(ptr, w_v)
         self.store_stack_ptr(ptr + 1)
@@ -511,7 +531,6 @@ class ContextPartShadow(AbstractStrategy):
 
     @jit.unroll_safe
     def pop_n(self, n):
-        #assert n == 0 or self._stack_ptr - n >= self.tempsize()
         jit.promote(self.stack_ptr())
         while n > 0:
             n -= 1
