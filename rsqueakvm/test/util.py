@@ -124,13 +124,13 @@ class InterpreterForTest(interpreter.Interpreter):
         self._loop = True
         return interpreter.Interpreter.loop(self, w_active_context)
 
-    def stack_frame(self, s_new_frame, s_sender, may_context_switch=True, resuming_chain=None):
+    def stack_frame(self, s_new_frame, s_sender, may_context_switch=True):
         if not self._loop:
             # this test is done to not loop in test, but rather step just once where wanted
             # Unfortunately, we have to mimick some of the original behaviour.
             s_new_frame.store_s_sender(s_sender)
             return s_new_frame
-        return interpreter.Interpreter.stack_frame(self, s_new_frame, s_sender, may_context_switch, resuming_chain)
+        return interpreter.Interpreter.stack_frame(self, s_new_frame, s_sender, may_context_switch)
 
     # ============ Helpers for executing ============
 

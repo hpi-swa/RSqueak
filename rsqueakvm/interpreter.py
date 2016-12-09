@@ -124,17 +124,6 @@ class ProcessSwitch(ContextSwitchException):
         ContextSwitchException.__init__(self, s_new_context)
         self.forced = forced
 
-class ContextLink(object):
-    _attrs_ = ["_s_context", "_next"]
-    _immutable_fields_ = ["_s_context", "_next"]
-    def __init__(self, s_context, next):
-        self._s_context = s_context
-        self._next = next
-    def next(self):
-        return self._next
-    def s_context(self):
-        return self._s_context
-
 UNROLLING_BYTECODE_RANGES = unroll.unrolling_iterable(interpreter_bytecodes.BYTECODE_RANGES)
 
 def get_printable_location(pc, self, method):
@@ -234,15 +223,6 @@ class Interpreter(object):
                         self.space.w_LargeNegativeInteger.strategy = w_lni_class.strategy
                         self.space.w_LargeNegativeInteger._storage = w_lni_class._storage
 
-    @jit.unroll_safe
-    def build_resume_chain(self, s_context):
-        link = ContextLink(s_context, None)
-        for i in range(5):
-            s_context = s_context.s_sender()
-            if not s_context: break
-            link = ContextLink(s_context, link)
-        return link
-
     def loop(self, w_active_context):
         # This is the top-level loop and is not invoked recursively.
         s_context = w_active_context.as_context_get_shadow(self.space)
@@ -254,11 +234,9 @@ class Interpreter(object):
                 self=self,
                 method=method,
                 s_context=s_context)
-            resume_chain = self.build_resume_chain(s_context)
-            s_context = resume_chain.s_context()
             s_sender = s_context.s_sender()
             try:
-                self.stack_frame(s_context, None, True, resume_chain.next())
+                self.stack_frame(s_context, None)
                 raise Exception("loop_bytecodes left without raising...")
             except ProcessSwitch, e:
                 if self.is_tracing() or self.trace_important:
@@ -295,12 +273,12 @@ class Interpreter(object):
 
     # This is a wrapper around loop_bytecodes that cleanly enters/leaves the frame,
     # handles the stack overflow protection mechanism and handles/dispatches Returns.
-    def stack_frame(self, s_frame, s_sender, may_context_switch=True, resuming_chain=None):
+    def stack_frame(self, s_frame, s_sender, may_context_switch=True):
         if self.is_tracing():
             self.stack_depth += 1
         vref = s_frame.enter_virtual_frame(s_sender)
         try:
-            self.loop_bytecodes(s_frame, may_context_switch, resuming_chain=resuming_chain)
+            self.loop_bytecodes(s_frame, may_context_switch)
         except rstackovf.StackOverflow:
             rstackovf.check_stack_overflow()
             raise StackOverflow(s_frame)
@@ -331,7 +309,7 @@ class Interpreter(object):
                 self.stack_depth -= 1
             s_frame.leave_virtual_frame(vref, s_sender)
 
-    def loop_bytecodes(self, s_context, may_context_switch=True, resuming_chain=None):
+    def loop_bytecodes(self, s_context, may_context_switch=True):
         old_pc = 0
         if not jit.we_are_jitted() and may_context_switch:
             self.quick_check_for_interrupt(s_context)
@@ -342,23 +320,15 @@ class Interpreter(object):
                 if jit.we_are_jitted():
                     # Do the interrupt-check at the end of a loop, don't interrupt loops midway.
                     self.jitted_check_for_interrupt(s_context)
-                if resuming_chain is None:
-                    self.jit_driver.can_enter_jit(
-                        pc=pc, self=self, method=method,
-                        s_context=s_context)
-            old_pc = pc
-            if resuming_chain is None:
-                self.jit_driver.jit_merge_point(
+                self.jit_driver.can_enter_jit(
                     pc=pc, self=self, method=method,
                     s_context=s_context)
+            old_pc = pc
+            self.jit_driver.jit_merge_point(
+                pc=pc, self=self, method=method,
+                s_context=s_context)
             try:
-                if resuming_chain is not None:
-                    s_resuming = resuming_chain.s_context()
-                    nxt_resuming_chain = resuming_chain.next()
-                    resuming_chain = None
-                    self.stack_frame(s_resuming, s_context, True, nxt_resuming_chain)
-                else:
-                    self.step(s_context)
+                self.step(s_context)
             except FreshReturn, ret:
                 raise ret.exception
             except LocalReturn, ret:
