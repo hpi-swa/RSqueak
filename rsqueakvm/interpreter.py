@@ -300,7 +300,12 @@ class Interpreter(object):
             self.stack_depth += 1
         vref = s_frame.enter_virtual_frame(s_sender)
         try:
-            self.loop_bytecodes(s_frame, may_context_switch, resuming_chain=resuming_chain)
+            if resuming_chain is not None:
+                if self.is_tracing() or self.trace_important:
+                    print "\n====== Rebuilding stack: %s" % s_frame.short_str()
+                self.rebuild_loop_bytecodes(s_frame, resuming_chain)
+            else:
+                self.loop_bytecodes(s_frame, may_context_switch)
         except rstackovf.StackOverflow:
             rstackovf.check_stack_overflow()
             raise StackOverflow(s_frame)
@@ -331,7 +336,21 @@ class Interpreter(object):
                 self.stack_depth -= 1
             s_frame.leave_virtual_frame(vref, s_sender)
 
-    def loop_bytecodes(self, s_context, may_context_switch=True, resuming_chain=None):
+    def rebuild_loop_bytecodes(self, s_context, resuming_chain):
+        try:
+            self.stack_frame(resuming_chain.s_context(), s_context, True, resuming_chain.next())
+        except FreshReturn, ret:
+            raise ret.exception
+        except LocalReturn, ret:
+            s_context.push(ret.value(self.space))
+        except NonLocalReturn, ret:
+            if ret.arrived_at_target:
+                s_context.push(ret.value(self.space))
+            else:
+                raise ret
+        self.loop_bytecodes(s_context)
+
+    def loop_bytecodes(self, s_context, may_context_switch=True):
         old_pc = 0
         if not jit.we_are_jitted() and may_context_switch:
             self.quick_check_for_interrupt(s_context)
@@ -342,23 +361,15 @@ class Interpreter(object):
                 if jit.we_are_jitted():
                     # Do the interrupt-check at the end of a loop, don't interrupt loops midway.
                     self.jitted_check_for_interrupt(s_context)
-                if resuming_chain is None:
-                    self.jit_driver.can_enter_jit(
-                        pc=pc, self=self, method=method,
-                        s_context=s_context)
-            old_pc = pc
-            if resuming_chain is None:
-                self.jit_driver.jit_merge_point(
+                self.jit_driver.can_enter_jit(
                     pc=pc, self=self, method=method,
                     s_context=s_context)
+            old_pc = pc
+            self.jit_driver.jit_merge_point(
+                pc=pc, self=self, method=method,
+                s_context=s_context)
             try:
-                if resuming_chain is not None:
-                    s_resuming = resuming_chain.s_context()
-                    nxt_resuming_chain = resuming_chain.next()
-                    resuming_chain = None
-                    self.stack_frame(s_resuming, s_context, True, nxt_resuming_chain)
-                else:
-                    self.step(s_context)
+                self.step(s_context)
             except FreshReturn, ret:
                 raise ret.exception
             except LocalReturn, ret:
