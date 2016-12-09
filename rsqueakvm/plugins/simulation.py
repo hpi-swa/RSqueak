@@ -38,7 +38,7 @@ class SimulationPluginClass(Plugin):
         s_frame.pop() # remove receiver
 
         s_fallback = w_method.create_frame(interp.space, w_rcvr, w_arguments)
-        assert s_fallback.state is InactiveContext
+        assert s_fallback.get_state() is InactiveContext
         s_fallback.store_s_sender(s_frame)
         s_sim_frame = w_sim_method.create_frame(
             interp.space,

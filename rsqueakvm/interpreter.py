@@ -283,7 +283,7 @@ class Interpreter(object):
             rstackovf.check_stack_overflow()
             raise StackOverflow(s_frame)
         except LocalReturn, ret:
-            if s_frame.state is DirtyContext:
+            if s_frame.get_state() is DirtyContext:
                 s_new_sender = s_frame.s_sender()  # The sender has changed!
                 s_frame._activate_unwind_context(self)
                 raise NonVirtualReturn(s_new_sender, s_new_sender, ret.value(self.space))
@@ -291,7 +291,7 @@ class Interpreter(object):
                 s_frame._activate_unwind_context(self)
                 raise ret
         except NonLocalReturn, ret:
-            if s_frame.state is DirtyContext:
+            if s_frame.get_state() is DirtyContext:
                 s_new_sender = s_frame.s_sender()  # The sender has changed!
                 # To get the target context:
                 #  a) we can force the home_context.s_sender() here, we're spilling to the heap anyway

@@ -15,12 +15,17 @@ def fresh_virtualizable(x):
     return jit.hint(x, access_directly=True, fresh_virtualizable=True)
 
 class ContextState(object):
+    states = []
     def __init__(self, name):
         self.name = name
+        self.i = len(self.states)
+        self.states.append(self)
     def __str__(self):
         return self.name
     def __repr__(self):
         return self.name
+    def num(self):
+        return self.i
 InactiveContext = ContextState("InactiveContext")
 ActiveContext = ContextState("ActiveContext")
 DirtyContext = ContextState("DirtyContext")
@@ -92,7 +97,7 @@ class ContextPartShadow(AbstractStrategy):
         else:
             self._w_self_size = size
         self._w_self = w_self
-        self.state = InactiveContext
+        self.set_state(InactiveContext)
         self.store_pc(0)
 
         # From MethodContext
@@ -142,6 +147,12 @@ class ContextPartShadow(AbstractStrategy):
         else:
             return self.extra_data._s_fallback
 
+    def get_state(self):
+        return ContextState.states[self.state]
+
+    def set_state(self, t):
+        self.state = t.num()
+
     # ______________________________________________________________________
     # Accessing object fields
 
@@ -188,8 +199,8 @@ class ContextPartShadow(AbstractStrategy):
             assert isinstance(w_value, W_PointersObject), "trying to store non-pointer sender"
             if w_value.is_nil(self.space):
                 self.remove_s_sender()
-                if self.state is ActiveContext:
-                    self.state = DirtyContext
+                if self.get_state() is ActiveContext:
+                    self.set_state(DirtyContext)
             else:
                 self.store_s_sender(w_value.as_context_get_shadow(self.space))
             return
@@ -218,11 +229,11 @@ class ContextPartShadow(AbstractStrategy):
     def store_s_sender(self, s_sender):
         assert s_sender is not None, "trying to store None s_sender"
         self._s_sender = jit.non_virtual_ref(s_sender)
-        if self.state is ActiveContext:
-            self.state = DirtyContext
+        if self.get_state() is ActiveContext:
+            self.set_state(DirtyContext)
 
     def enter_virtual_frame(self, s_sender):
-        self.state = ActiveContext
+        self.set_state(ActiveContext)
         if self.has_s_sender() or s_sender is None:
             return jit.vref_None
         else:
@@ -230,7 +241,7 @@ class ContextPartShadow(AbstractStrategy):
             return self._s_sender
 
     def leave_virtual_frame(self, vref, ref):
-        self.state = InactiveContext
+        self.set_state(InactiveContext)
         if vref is not jit.vref_None:
             jit.virtual_ref_finish(vref, ref)
             if vref is self._s_sender:
@@ -267,7 +278,13 @@ class ContextPartShadow(AbstractStrategy):
                 self.push(self.space.w_nil)
 
     def stackdepth(self):
+        return self.stack_ptr()
+
+    def stack_ptr(self):
         return self._stack_ptr
+
+    def store_stack_ptr(self, ptr):
+        self._stack_ptr = ptr
 
     def wrap_stackpointer(self):
         return self.space.wrap_smallint_unsafe(self.stackdepth())
@@ -392,9 +409,9 @@ class ContextPartShadow(AbstractStrategy):
         return self._w_self_size
 
     def fetch_next_bytecode(self):
-        pc = jit.promote(self._pc)
+        pc = jit.promote(self.pc())
         assert pc >= 0, "fetching bytecode on returned method"
-        self._pc += 1
+        self.store_pc(pc + 1)
         return self.fetch_bytecode(pc)
 
     def fetch_bytecode(self, pc):
@@ -424,7 +441,7 @@ class ContextPartShadow(AbstractStrategy):
         stacksize = self.full_stacksize()
         self._temps_and_stack = [self.space.w_nil] * stacksize
         tempsize = self.tempsize()
-        self._stack_ptr = tempsize  # we point after the last element
+        self.store_stack_ptr(tempsize)  # we point after the last element
 
     def stack_get(self, index0):
         assert index0 >= 0, "trying to stack_get negative index"
@@ -437,7 +454,7 @@ class ContextPartShadow(AbstractStrategy):
 
     def stack(self):
         """NOT_RPYTHON""" # purely for testing
-        return self._temps_and_stack[self.tempsize():self._stack_ptr]
+        return self._temps_and_stack[self.tempsize():self.stack_ptr()]
 
     def pop(self):
         # HACK HACK HACK (3 times)
@@ -445,8 +462,8 @@ class ContextPartShadow(AbstractStrategy):
         # happens in strange code paths. So, there's typically only the receiver
         # at bottom, under the stack, or among the temps that could be around there,
         # so just hard return the receiver.
-        #assert self._stack_ptr > self.tempsize()
-        ptr = jit.promote(self._stack_ptr) - 1
+        #assert self.stack_ptr() > self.tempsize()
+        ptr = jit.promote(self.stack_ptr()) - 1
         if ptr < 0:
             ret = self.w_receiver()
         else:
@@ -461,15 +478,15 @@ class ContextPartShadow(AbstractStrategy):
         # Problem: how do we tell the GC to collect outside self._stack_ptr?
         #  self.stack_put(ptr, self.space.w_nil)
         assert ptr >= 0, "stack pointer got negative in pop"
-        self._stack_ptr = ptr
+        self.store_stack_ptr(ptr)
         return ret
 
     def push(self, w_v):
         #assert self._stack_ptr >= self.tempsize()
         #assert self._stack_ptr < self.stackend() - self.stackstart() + self.tempsize()
-        ptr = jit.promote(self._stack_ptr)
+        ptr = jit.promote(self.stack_ptr())
         self.stack_put(ptr, w_v)
-        self._stack_ptr = ptr + 1
+        self.store_stack_ptr(ptr + 1)
 
     @jit.unroll_safe
     def push_all(self, lst):
@@ -480,11 +497,11 @@ class ContextPartShadow(AbstractStrategy):
         return self.peek(0)
 
     def set_top(self, value, position=0):
-        ptr = self._stack_ptr - position - 1
+        ptr = self.stack_ptr() - position - 1
         self.stack_put(ptr, value)
 
     def peek(self, idx):
-        ptr = jit.promote(self._stack_ptr) - idx - 1
+        ptr = jit.promote(self.stack_ptr()) - idx - 1
         return self.stack_get(ptr)
 
     @jit.unroll_safe
@@ -495,12 +512,12 @@ class ContextPartShadow(AbstractStrategy):
     @jit.unroll_safe
     def pop_n(self, n):
         #assert n == 0 or self._stack_ptr - n >= self.tempsize()
-        jit.promote(self._stack_ptr)
+        jit.promote(self.stack_ptr())
         while n > 0:
             n -= 1
-            assert self._stack_ptr >= 1, "stack pointer reduced to < 1 in pop_n"
-            self._stack_ptr -= 1
-            self.stack_put(self._stack_ptr, self.space.w_nil)
+            assert self.stack_ptr() >= 1, "stack pointer reduced to < 1 in pop_n"
+            self.store_stack_ptr(self.stack_ptr() - 1)
+            self.stack_put(self.stack_ptr(), self.space.w_nil)
 
     @jit.unroll_safe
     def pop_and_return_n(self, n):
@@ -547,7 +564,7 @@ class ContextPartShadow(AbstractStrategy):
         retval += "\nArgs:----------------"
         argcount = self.w_method().argsize
         j = 0
-        for w_obj in self._temps_and_stack[:self._stack_ptr]:
+        for w_obj in self._temps_and_stack[:self.stack_ptr()]:
             if j == argcount:
                 retval += "\nTemps:---------------"
             if j == self.tempsize():

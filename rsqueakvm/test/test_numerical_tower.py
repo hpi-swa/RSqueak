@@ -35,7 +35,7 @@ def external_call(plugin, name, stack):
     w_description.atput0(space, 1, space.w(name))
     func = prim_holder.prim_table[EXTERNAL_CALL]
     s_frame = space.make_frame("not called", [w_description], space.w_nil, stack)[1]
-    s_frame._stack_ptr = len(stack)
+    s_frame.store_stack_ptr(len(stack))
     func(interp, s_frame, len(stack) - 1, s_frame.w_method())
     return s_frame.pop()
 

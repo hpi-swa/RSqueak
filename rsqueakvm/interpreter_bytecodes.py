@@ -439,7 +439,7 @@ class __extend__(ContextPartShadow):
         # THE ONLY EXCEPTION is when someone fiddled with our context chain, but
         # then we'll force everything to the heap, anyway.
         from rsqueakvm.interpreter import FreshReturn
-        if (self.home_is_self() or local_return) and (self.state is not DirtyContext):
+        if (self.home_is_self() or local_return) and (self.get_state() is not DirtyContext):
             from rsqueakvm.interpreter import LocalReturn
             raise FreshReturn(LocalReturn.make(self.space, return_value))
         else:
