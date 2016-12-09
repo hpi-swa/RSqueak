@@ -620,10 +620,15 @@ eci = ExternalCompilationInfo(
     separate_module_sources=["""
     int InterruptEventFilter(void* userdata, SDL_Event *event) {
         int interrupt_key = 15 << 8;
-        if (event->type == SDL_KEYDOWN) {
+        if (event->type == SDL_KEYDOWN || event->type == SDL_KEYUP) {
             if (((SDL_KeyboardEvent*)event)->keysym.sym == SDLK_PERIOD) {
                 if ((((SDL_KeyboardEvent*)event)->keysym.mod & (KMOD_ALT|KMOD_GUI)) != 0) {
-                    ((intptr_t*)userdata)[0] = 1;
+                    if (event->type == SDL_KEYUP) { // only keyup generates the interrupt
+                        ((intptr_t*)userdata)[0] = 1;
+                        // an interrupt flushes all pending events preceding it, so we don't
+                        // get spurious events processing when the debugger opens
+                        SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);
+                    }
                     return 0;
                 }
             }

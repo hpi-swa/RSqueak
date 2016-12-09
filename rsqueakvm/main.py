@@ -11,8 +11,11 @@ from rsqueakvm.util import system
 from rpython.rlib import jit, rpath, objectmodel, streamio
 
 # XXX: HACK: We have circular dependencies in some plugins ... :(
+PLUGINS_PATCHED = False
 for pluginpatch in PluginPatchScripts:
-    pluginpatch()
+    if not PLUGINS_PATCHED:
+        PLUGINS_PATCHED = True
+        pluginpatch()
 
 def _compile_time_version():
     if os.environ.get("APPVEYOR", None):
