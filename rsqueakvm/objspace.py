@@ -204,7 +204,7 @@ class ObjSpace(object):
         self.objtable_version.changed()
 
     @jit.elidable
-    def special_class(self, which, version):
+    def special_class(self, which):
         return self.classtable[which]
 
     # ============= Methods for wrapping and unwrapping stuff =============

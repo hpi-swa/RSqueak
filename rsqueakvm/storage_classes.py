@@ -53,7 +53,7 @@ class ClassShadow(AbstractCachingShadow):
             else:
                 self.store_pre_spur_classformat(w_self, n0, w_val)
         else:
-            if w_self.getclass(self.space).is_same_object(self.space.w_Metaclass):
+            if w_self.getclass(self.space).is_same_object(self.space.special_class("w_Metaclass")):
                 # In case of Metaclasses, the "instance" class is stored in the last field.
                 if n0 == self.size(w_self) - 1 and isinstance(w_val, W_PointersObject):
                     cl_shadow = w_val.as_class_get_shadow(self.space)
