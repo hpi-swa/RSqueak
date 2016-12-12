@@ -258,25 +258,7 @@ class BaseReaderStrategy(object):
         g_special_objects_array = self.chunks[self.specialobjectspointer].g_object
         g_special_objects_array.w_object = self.space.w_special_objects
         # Assign classes and objects that in special objects array that are already created.
-        self._assign_prebuilt_constants(constants.constant_objects_in_special_object_table_wo_types.items())
-
-    def _assign_prebuilt_constants(self, names_and_indices):
-        unrolling_names_and_indices = unroll.unrolling_iterable(names_and_indices)
-        for name, so_index in unrolling_names_and_indices:
-            w_object = getattr(self.space, "w_" + name)
-            g_object = None
-            try:
-                g_object = self.special_g_object(so_index)
-            except IndexError:
-                if name in ("LargeNegativeInteger", "ClassBinding", "Metaclass"):
-                    g_object = self.smalltalk_g_at(name)
-                if g_object is None:
-                    continue
-            if g_object.w_object is None:
-                g_object.w_object = w_object
-            else:
-                if not g_object.w_object.is_nil(self.space):
-                    raise Warning('Object found in multiple places in the special objects array')
+        self._assign_prebuilt_constants()
 
     def smalltalk_g_at(self, lookup_name):
         try:
@@ -403,6 +385,37 @@ class BaseReaderStrategy(object):
 
     def isbiginteger(self, g_object):
         return self.islargeinteger(g_object) and g_object.len_bytes() > constants.BYTES_PER_MACHINE_INT
+
+
+def make_assign_prebuilt_constants():
+    code = ["def _assign_prebuilt_constants(self):"]
+    for name, so_index in constants.constant_objects_in_special_object_table_wo_types.items():
+        code.extend([
+            "",
+            "    w_object = self.space.w_%s" % name,
+            "    g_object = None",
+            "    try:",
+            "        g_object = self.special_g_object(%d)" % so_index,
+            "    except IndexError:",
+        ])
+        if name in ("LargeNegativeInteger", "ClassBinding", "Metaclass"):
+            code.extend([
+                "        g_object = self.smalltalk_g_at('%s')" % name,
+            ])
+        else:
+            code.extend([
+                "        pass"
+            ])
+        code.extend([
+            "    if (g_object is not None) and (g_object.w_object is None):",
+            "        g_object.w_object = w_object",
+            "    elif (g_object is not None) and (not g_object.w_object.is_nil(self.space)):",
+            "        raise Warning('Object found in multiple places in the special objects array')"
+        ])
+    d = {}
+    exec compile("\n".join(code), __file__, 'exec') in d
+    return d["_assign_prebuilt_constants"]
+BaseReaderStrategy._assign_prebuilt_constants = make_assign_prebuilt_constants()
 
 
 class NonSpurReader(BaseReaderStrategy):
