@@ -57,9 +57,14 @@ def pytest_funcarg__spy(request):
 from .jittest.base import Trace
 def pytest_assertrepr_compare(op, left, right):
     if isinstance(left, Trace) and isinstance(right, Trace) and op == "==":
+        ltrace = [lop.name for lop in left.trace]
+        rtrace = [rop.name for rop in right.trace]
+        import difflib
         return (['Comparing Traces failed:'] +
+                list(difflib.unified_diff(ltrace, rtrace)) +
+                ["-------LEFT------"] +
                 [str(op) for op in left.trace] +
-                ["-----------------"] +
+                ["-------RIGHT-----"] +
                 [str(op) for op in right.trace])
 
 
