@@ -271,7 +271,7 @@ class BaseReaderStrategy(object):
             # modern image
             globals_g = g_smalltalk.pointers[0].pointers
             if len(globals_g) == 6:
-                bindings_g = globals_g[2]
+                bindings_g = globals_g[2].pointers
                 if len(bindings_g) == 2:
                     array_g = bindings_g[1].pointers
             elif len(globals_g) == 4:
