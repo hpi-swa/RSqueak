@@ -257,8 +257,6 @@ class Config(object):
                 self.interrupts = False
             elif arg in ["-S", "--no-storage"]:
                 self.space.strategy_factory.no_specialized_storage.activate()
-            elif arg in ["--hacks"]:
-                self.space.run_spy_hacks.activate()
             # Logging
             elif arg in ["-t", "--trace"]:
                 self.trace = True

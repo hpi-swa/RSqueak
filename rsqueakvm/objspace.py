@@ -77,7 +77,6 @@ class ObjSpace(object):
     def __init__(self):
         # This is a hack; see compile_code() in main.py
         self.suppress_process_switch = ConstantFlag()
-        self.run_spy_hacks = ConstantFlag()
         self.headless = ConstantFlag()
         self.highdpi = ConstantFlag(True)
         self.software_renderer = ConstantFlag(False)

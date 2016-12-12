@@ -788,19 +788,9 @@ class SqueakImage(object):
         self.w_asSymbol = self.find_symbol(space, reader, "asSymbol")
         self.lastWindowSize = reader.lastWindowSize
         self.version = reader.version
-        self.run_spy_hacks(space)
         self.startup_time = time.time()
         from rsqueakvm.plugins.simulation import SIMULATE_PRIMITIVE_SELECTOR
         self.w_simulatePrimitive = self.find_symbol(space, reader, SIMULATE_PRIMITIVE_SELECTOR)
-
-    def run_spy_hacks(self, space):
-        if not space.run_spy_hacks.is_set():
-            return
-        w_display = space.objtable["w_display"]
-        if w_display is not None and not w_display.is_nil(space):
-            if space.unwrap_int(w_display.fetch(space, 3)) < 8:
-                # non-native indexed color depth not well supported
-                w_display.store(space, 3, space.wrap_int(8))
 
     def find_symbol(self, space, reader, symbol):
         w_dnu = self.special(constants.SO_DOES_NOT_UNDERSTAND)
