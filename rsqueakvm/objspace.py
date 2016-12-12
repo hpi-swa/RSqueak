@@ -385,8 +385,11 @@ class ObjSpace(object):
 def add_special_properties():
     for n, i in constants.variables_in_special_object_table.items():
         def fun(name, idx):
-            setattr(ObjSpace, "w_" + name, property(
-                fget=lambda self: self.w_special_objects.fetch(self, idx),
-                fset=lambda self, w_obj: self.w_special_objects.store(self, idx, w_obj)))
+            def getter(s): return s.w_special_objects.fetch(s, idx)
+            getter.func_name = "w_" + name
+            def setter(s, w_obj): return s.w_special_objects.store(s, idx, w_obj)
+            setter.func_name = "set_w_" + name
+            setattr(ObjSpace, "w_" + name, getter)
+            setattr(ObjSpace, "set_w_" + name, setter)
         fun(n, i)
 add_special_properties()

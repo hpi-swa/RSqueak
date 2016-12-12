@@ -47,7 +47,7 @@ def func(interp, s_frame, w_receiver, flag):
 
 @expose_primitive(DRAW_RECTANGLE, unwrap_spec=[object, int, int, int, int])
 def func(interp, s_frame, w_rcvr, left, right, top, bottom):
-    if not interp.space.w_display.is_same_object(w_rcvr):
+    if not interp.space.w_display().is_same_object(w_rcvr):
         return interp.space.w_nil
     if not ((left <= right) and (top <= bottom)):
         return interp.space.w_nil
@@ -111,9 +111,9 @@ def func(interp, s_frame, w_rcvr, encoded_key):
 @expose_primitive(INTERRUPT_SEMAPHORE, unwrap_spec=[object, object])
 def func(interp, s_frame, w_rcvr, w_semaphore):
     if w_semaphore.getclass(interp.space).is_same_object(interp.space.w_Semaphore):
-        interp.space.w_interrupt_semaphore = w_semaphore
+        interp.space.set_w_interrupt_semaphore(w_semaphore)
     else:
-        interp.space.w_interrupt_semaphore = interp.space.w_nil
+        interp.space.set_w_interrupt_semaphore(interp.space.w_nil)
     return w_rcvr
 
 

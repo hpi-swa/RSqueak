@@ -167,7 +167,7 @@ def test_contextOn_do_():
 
 @skip('Hangs')
 def test_semaphore():
-    w_semaphore_cls = space.w_timerSemaphore.getclass(space)
+    w_semaphore_cls = space.w_timerSemaphore().getclass(space)
     w_sema = image.find_symbol(space, reader, "Semaphore")
     w_fork = image.find_symbol(space, reader, "fork")
     w_wait = image.find_symbol(space, reader, "wait")

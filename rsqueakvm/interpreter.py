@@ -433,7 +433,7 @@ class Interpreter(object):
 
         # Check for User Interrupt
         if self.space.display().has_interrupts_pending():
-            w_interrupt_sema = self.space.w_interrupt_semaphore
+            w_interrupt_sema = self.space.w_interrupt_semaphore()
             if w_interrupt_sema is not self.space.w_nil:
                 assert isinstance(w_interrupt_sema, W_PointersObject)
                 wrapper.SemaphoreWrapper(self.space, w_interrupt_sema).signal(s_frame, forced=True)
@@ -441,9 +441,9 @@ class Interpreter(object):
         # XXX the low space semaphore may be signaled here
         if not self.next_wakeup_tick == 0 and now >= self.next_wakeup_tick:
             self.next_wakeup_tick = 0
-            semaphore = self.space.w_timerSemaphore
+            semaphore = self.space.w_timerSemaphore()
             if not semaphore.is_nil(self.space):
-                assert isinstance(w_interrupt_sema, W_PointersObject)
+                assert isinstance(semaphore, W_PointersObject)
                 wrapper.SemaphoreWrapper(self.space, semaphore).signal(s_frame, forced=True)
         # We have no finalization process, so far.
         # We do not support external semaphores.

@@ -545,7 +545,7 @@ def test_signal_at_milliseconds():
     future = prim(MILLISECOND_CLOCK, [0]).value + 400
     sema = space.w_Semaphore.as_class_get_shadow(space).new()
     prim(SIGNAL_AT_MILLISECONDS, [space.w_nil, sema, future])
-    assert space.w_timerSemaphore is sema
+    assert space.w_timerSemaphore() is sema
 
 
 def test_primitive_utc_microseconds_clock():
@@ -559,7 +559,7 @@ def test_signal_at_utc_microseconds():
     future = start + r_int64(400 * 1000)
     sema = space.w_Semaphore.as_class_get_shadow(space).new()
     prim(SIGNAL_AT_UTC_MICROSECONDS, [space.w_nil, sema, future])
-    assert space.w_timerSemaphore is sema
+    assert space.w_timerSemaphore() is sema
 
 def test_seconds_clock():
     now = int(time.time())
@@ -578,14 +578,14 @@ def test_full_gc():
 
 def test_interrupt_semaphore():
     prim(INTERRUPT_SEMAPHORE, [1, space.w_true])
-    assert space.w_interrupt_semaphore.is_nil(space)
+    assert space.w_interrupt_semaphore().is_nil(space)
 
     class SemaphoreInst(W_Object):
         def getclass(self, space):
             return space.w_Semaphore
     w_semaphore = SemaphoreInst()
     prim(INTERRUPT_SEMAPHORE, [1, w_semaphore])
-    assert space.w_interrupt_semaphore is w_semaphore
+    assert space.w_interrupt_semaphore() is w_semaphore
 
 def test_load_inst_var():
     " try to test the LoadInstVar primitives a little "
@@ -856,7 +856,7 @@ def test_primitive_value_no_context_switch(monkeypatch):
         monkeypatch.undo()
 
 def test_primitive_be_display():
-    assert space.w_display is space.w_nil
+    assert space.w_display() is space.w_nil
     mock_display = W_PointersObject(space, space.w_Point, 4)
     w_wordbmp = W_WordsObject(space, space.w_Bitmap, 10)
     mock_display.store(space, 0, w_wordbmp)  # bitmap
@@ -864,7 +864,7 @@ def test_primitive_be_display():
     mock_display.store(space, 2, space.wrap_int(10))  # height
     mock_display.store(space, 3, space.wrap_int(1))  # depth
     prim(BE_DISPLAY, [mock_display])
-    assert space.w_display is mock_display
+    assert space.w_display() is mock_display
     w_bitmap = mock_display.fetch(space, 0)
     assert w_bitmap is not w_wordbmp
     assert isinstance(w_bitmap, W_DisplayBitmap)
@@ -877,7 +877,7 @@ def test_primitive_be_display():
     mock_display2.store(space, 2, space.wrap_int(10))  # height
     mock_display2.store(space, 3, space.wrap_int(1))  # depth
     prim(BE_DISPLAY, [mock_display2])
-    assert space.w_display is mock_display2
+    assert space.w_display() is mock_display2
     w_bitmap2 = mock_display.fetch(space, 0)
     assert isinstance(w_bitmap2, W_DisplayBitmap)
     assert w_bitmap.display() is w_bitmap2.display()
@@ -885,7 +885,7 @@ def test_primitive_be_display():
     assert sdldisplay.height == 10
 
     prim(BE_DISPLAY, [mock_display])
-    assert space.w_display is mock_display
+    assert space.w_display() is mock_display
     assert mock_display.fetch(space, 0) is w_bitmap
 
 # def test_primitive_force_display_update(monkeypatch):
