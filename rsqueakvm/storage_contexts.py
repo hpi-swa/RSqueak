@@ -6,6 +6,7 @@ from rsqueakvm.storage import AbstractStrategy, ShadowMixin
 
 from rpython.rlib import jit, objectmodel
 from rpython.rlib.objectmodel import import_from_mixin, always_inline
+from rpython.rlib.rarithmetic import r_uint, intmask
 from rpython.rlib.rstrategies import rstrategies as rstrat
 from rpython.tool.pairtype import extendabletype
 
@@ -54,8 +55,8 @@ class ExtraContextAttributes(object):
 
 
 state_mask     = 0b00111111111111111111111111111111
-stackptr_mask  = 0b11000000001111111111111111111111
-pc_mask        = 0b11111111110000000000000000000000
+stackptr_mask  = r_uint(0b11000000001111111111111111111111)
+pc_mask        = r_uint(0b11111111110000000000000000000000)
 returned_pc    = 0b00000000001111111111111111111111
 state_shift    = 30
 stackptr_shift = 22
@@ -301,13 +302,13 @@ class ContextPartShadow(AbstractStrategy):
 
     @always_inline
     def stack_ptr(self):
-        return (self._get_state_stackptr_pc() & ~stackptr_mask) >> stackptr_shift
+        return intmask((r_uint(self._get_state_stackptr_pc()) & ~stackptr_mask) >> stackptr_shift)
 
     @always_inline
     def store_stack_ptr(self, ptr):
         assert ptr >= 0
         assert ptr < 256
-        self._state_stackptr_pc = (self._get_state_stackptr_pc() & stackptr_mask) | (ptr << stackptr_shift)
+        self._state_stackptr_pc = intmask((r_uint(self._get_state_stackptr_pc()) & stackptr_mask) | (r_uint(ptr) << stackptr_shift))
         assert self.stack_ptr() == ptr
 
     def wrap_stackpointer(self):
@@ -335,13 +336,13 @@ class ContextPartShadow(AbstractStrategy):
 
     @always_inline
     def pc(self):
-        return (self._get_state_stackptr_pc() & ~pc_mask) >> pc_shift
+        return intmask((r_uint(self._get_state_stackptr_pc()) & ~pc_mask) >> pc_shift)
 
     @always_inline
     def store_pc(self, newpc):
         assert newpc >= 0, "trying to store pc < 0"
         assert newpc <= returned_pc, "trying to store pc > returned_pc"
-        self._state_stackptr_pc = (self._get_state_stackptr_pc() & pc_mask) | (newpc << pc_shift)
+        self._state_stackptr_pc = intmask((r_uint(self._get_state_stackptr_pc()) & pc_mask) | (r_uint(newpc) << pc_shift))
         assert self.pc() == newpc
 
     # ______________________________________________________________________
