@@ -15,7 +15,7 @@ from rsqueakvm.util.progress import Progress
 
 from rpython.rlib import objectmodel
 from rpython.rlib.rarithmetic import r_ulonglong, r_longlong, r_int, intmask, r_uint, r_uint32, r_int64
-from rpython.rlib import jit, rbigint
+from rpython.rlib import jit, rbigint, unroll
 
 if r_longlong is not r_int:
     r_uint64 = r_ulonglong
@@ -166,10 +166,6 @@ class ImageReader(object):
         return self.readerStrategy.g_class_of(chunk)
 
     @property
-    def special_w_objects(self):
-        return self.readerStrategy.special_w_objects
-
-    @property
     def compactclasses(self):
         return self.readerStrategy.compactclasses
 
@@ -235,7 +231,6 @@ class BaseReaderStrategy(object):
         self.assign_prebuilt_constants()
         self.init_w_objects()
         self.fillin_w_objects()
-        self.populate_special_objects()
         self.fillin_weak_w_objects()
         self.fillin_finalize()
 
@@ -260,29 +255,56 @@ class BaseReaderStrategy(object):
         chunk.as_g_object(jit.promote(self), self.space)  # initialize g_object
 
     def assign_prebuilt_constants(self):
+        g_special_objects_array = self.chunks[self.specialobjectspointer].g_object
+        g_special_objects_array.w_object = self.space.w_special_objects
         # Assign classes and objects that in special objects array that are already created.
-        self._assign_prebuilt_constants(constants.objects_in_special_object_table, self.space.objtable)
-        self._assign_prebuilt_constants(constants.classes_in_special_object_table, self.classtable())
+        self._assign_prebuilt_constants(constants.constant_objects_in_special_object_table_wo_types.items())
 
-    def classtable(self):
-        # this is overridden by AncientReader
-        return self.space.classtable
+    def _assign_prebuilt_constants(self, names_and_indices):
+        unrolling_names_and_indices = unroll.unrolling_iterable(names_and_indices)
+        for name, so_index in unrolling_names_and_indices:
+            w_object = getattr(self.space, "w_" + name)
+            g_object = None
+            try:
+                g_object = self.special_g_object(so_index)
+            except IndexError:
+                if name in ("LargeNegativeInteger", "ClassBinding", "Metaclass"):
+                    g_object = self.smalltalk_g_at(name)
+                if g_object is None:
+                    continue
+            if g_object.w_object is None:
+                g_object.w_object = w_object
+            else:
+                if not g_object.w_object.is_nil(self.space):
+                    raise Warning('Object found in multiple places in the special objects array')
 
-    def _assign_prebuilt_constants(self, names_and_indices, prebuilt_objects):
-        for name, so_index in names_and_indices.items():
-            name = "w_" + name
-            if name in prebuilt_objects:
-                try:
-                    w_object = prebuilt_objects[name]
-                    g_object = self.special_g_object(so_index)
-                    if g_object.w_object is None:
-                        g_object.w_object = w_object
-                    else:
-                        if not g_object.w_object.is_nil(self.space):
-                           raise Warning('Object found in multiple places in the special objects array')
-                except IndexError:
-                    # certain special objects might not yet be in the image's table
-                    pass
+    def smalltalk_g_at(self, lookup_name):
+        try:
+            g_smalltalk = self.special_g_object(constants.SO_SMALLTALK)
+        except IndexError:
+            # should be only in tests
+            return None
+        array_g = []
+        if len(g_smalltalk.pointers) == 1:
+            # modern image
+            globals_g = g_smalltalk.pointers[0].pointers
+            if len(globals_g) == 6:
+                bindings_g = globals_g[2]
+                if len(bindings_g) == 2:
+                    array_g = bindings_g[1].pointers
+            elif len(globals_g) == 4:
+                array_g = globals_g[1].pointers
+        elif len(g_smalltalk.pointers) == 2:
+            # old image
+            array_g = g_smalltalk.pointers[1].pointers
+        for g_assoc in array_g:
+            if len(g_assoc.pointers) == 2:
+                g_name = g_assoc.pointers[0]
+                if self.isbytes(g_name):
+                    name = "".join(g_name.get_bytes())
+                    if name == lookup_name:
+                        return g_assoc.pointers[1]
+        return None
 
     def special_g_object(self, index):
         # while python would raise an IndexError, after translation a nonexisting key results in a segfault...
@@ -301,7 +323,6 @@ class BaseReaderStrategy(object):
         for g in self.special_g_objects:
             self.init_w_object(g.chunk)
             self._progress.update()
-        self.special_w_objects = [g.w_object for g in self.special_g_objects]
         for chunk in self.chunks.itervalues():
             self.init_w_object(chunk)
             self._progress.update()
@@ -309,9 +330,6 @@ class BaseReaderStrategy(object):
     def init_w_object(self, chunk):
         init_w_objects_driver.jit_merge_point(self=self, chunk=chunk)
         chunk.g_object.init_w_object(self.space)
-
-    def populate_special_objects(self):
-        self.space.populate_special_objects(self.special_w_objects)
 
     def fillin_w_objects(self):
         self._progress.next_stage(len(self.chunks))
@@ -550,13 +568,7 @@ class NonSpurReader(BaseReaderStrategy):
 
 class AncientReader(NonSpurReader):
     """Reader strategy for pre-4.0 images"""
-
-    def classtable(self):
-        classtable = NonSpurReader.classtable(self)
-        classtable = classtable.copy()
-        # In non-modern images (pre 4.0), there was no BlockClosure class.
-        del classtable["w_BlockClosure"]
-        return classtable
+    pass
 
 class SpurReader(BaseReaderStrategy):
 
@@ -775,7 +787,6 @@ class SpurReader(BaseReaderStrategy):
 class SqueakImage(object):
     _immutable_fields_ = [
         "space",
-        "special_objects",
         "w_asSymbol",
         "version",
         "startup_time",
@@ -784,7 +795,6 @@ class SqueakImage(object):
 
     def __init__(self, reader):
         space = self.space = reader.space
-        self.special_objects = space.wrap_list(reader.special_w_objects)
         self.w_asSymbol = self.find_symbol(space, reader, "asSymbol")
         self.lastWindowSize = reader.lastWindowSize
         self.version = reader.version
@@ -793,7 +803,7 @@ class SqueakImage(object):
         self.w_simulatePrimitive = self.find_symbol(space, reader, SIMULATE_PRIMITIVE_SELECTOR)
 
     def find_symbol(self, space, reader, symbol):
-        w_dnu = self.special(constants.SO_DOES_NOT_UNDERSTAND)
+        w_dnu = space.w_doesNotUnderstand
         assert isinstance(w_dnu, W_BytesObject)
         assert space.unwrap_string(w_dnu) == "doesNotUnderstand:"
         w_Symbol = w_dnu.getclass(space)
@@ -811,10 +821,10 @@ class SqueakImage(object):
         return w_obj
 
     def special(self, index):
-        if index >= self.special_objects.size():
+        if index >= self.space.w_special_objects.size():
             return None
         else:
-            return self.special_objects.at0(self.space, index)
+            return self.space.w_special_objects.at0(self.space, index)
 
 # ____________________________________________________________
 
@@ -1067,7 +1077,7 @@ class SpurImageWriter(object):
             self.reserve(W_WordsObject(self.space, self.space.w_Bitmap, self.word_size * 8))
             self.hidden_roots = W_PointersObject(self.space, self.space.w_Array, 2**12 + 8)
             self.reserve(self.hidden_roots)
-            w_special_objects = self.image.special_objects
+            w_special_objects = self.space.w_special_objects
             for i in range(w_special_objects.size()):
                 w_obj = w_special_objects.fetch(self.space, i)
                 if isinstance(w_obj, W_SmallInteger):

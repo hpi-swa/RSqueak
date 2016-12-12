@@ -81,7 +81,7 @@ def test_ContextPart_jump():
                 0x87, 0x25, 0x7d, # Block rest (not executed)
            0xc9, 0x82, 0xc0, 0x40, 0x7c] # Send value and return
 
-    Association = space.classtable["w_Point"] # Wrong class, doesn't matter.
+    Association = space.w_Point # Wrong class, doesn't matter.
     assoc = W_PointersObject(space, Association, 2)
     assoc.store(space, 0, w('a'))
     assoc.store(space, 1, w(3))
@@ -115,7 +115,7 @@ def test_ContextPart_jump_nonlocal():
                     0xc9, 0x7d, # Send value and return
                0xc9, 0x82, 0xc0, 0x40, 0x7c] # Send value and return
 
-    Association = space.classtable["w_Point"] # Wrong class, doesn't matter.
+    Association = space.w_Point # Wrong class, doesn't matter.
     assoc = W_PointersObject(space, Association, 2)
     assoc.store(space, 0, w('a'))
     assoc.store(space, 1, space.w_nil)
@@ -146,7 +146,7 @@ def test_contextOn_do_():
         0xf1, 0x81, 0xc0, 0x7c # Send contextOn:do:
     ]
 
-    Association = space.classtable["w_Point"] # Wrong class, doesn't matter.
+    Association = space.w_Point # Wrong class, doesn't matter.
     ctxAssoc = W_PointersObject(space, Association, 2)
     ctxAssoc.store(space, 0, w('ctx'))
     ctxAssoc.store(space, 1, space.w_nil)
@@ -167,12 +167,12 @@ def test_contextOn_do_():
 
 @skip('Hangs')
 def test_semaphore():
-    w_semaphore_cls = space.objtable["w_timerSemaphore"].getclass(space)
+    w_semaphore_cls = space.w_timerSemaphore.getclass(space)
     w_sema = image.find_symbol(space, reader, "Semaphore")
     w_fork = image.find_symbol(space, reader, "fork")
     w_wait = image.find_symbol(space, reader, "wait")
     w_yield = image.find_symbol(space, reader, "yield")
-    w_processor = space.objtable["w_schedulerassociationpointer"]
+    w_processor = space.w_schedulerassociationpointer
     w_suspPrimOFail = image.find_symbol(space, reader, "suspendPrimitivelyOrFail")
 
     bytes = [
@@ -196,7 +196,7 @@ def test_semaphore():
         0x7C, # returnTop
     ]
 
-    Association = space.classtable["w_Point"] # Wrong class, doesn't matter.
+    Association = space.w_Point # Wrong class, doesn't matter.
     semaAssoc = W_PointersObject(space, Association, 2)
     semaAssoc.store(space, 0, w_sema)
     semaAssoc.store(space, 1, w_semaphore_cls)

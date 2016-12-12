@@ -277,18 +277,18 @@ def test_large_positive_integer_operation_times():
         assert isinstance(w_result, W_SmallInteger)
 
 def test_doesNotUnderstand():
-    w_dnu = interp.space.objtable["w_doesNotUnderstand"]
+    w_dnu = interp.space.w_doesNotUnderstand
     assert isinstance(w_dnu, W_BytesObject)
     assert w_dnu.unwrap_string(None) == "doesNotUnderstand:"
 
 def test_mustBeBoolean():
-    w_mbb = interp.space.objtable["w_mustBeBoolean"]
+    w_mbb = interp.space.w_mustBeBoolean
     assert isinstance(w_mbb, W_BytesObject)
     assert w_mbb.unwrap_string(None) == "mustBeBoolean"
 
 def test_Message():
     w_message_cls = interp.space.w_Message
-    assert w_message_cls is interp.space.classtable["w_Message"]
+    assert w_message_cls is interp.space.w_Message
     assert isinstance(w_message_cls, W_PointersObject)
     s_message_cls = w_message_cls.as_class_get_shadow(interp.space)
     assert s_message_cls.getname() == "Message"

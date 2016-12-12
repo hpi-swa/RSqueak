@@ -30,7 +30,7 @@ def perform_primitive(rcvr, w_selector, *args):
 
 def external_call(plugin, name, stack):
     stack = [space.w(o) for o in stack]
-    w_description = W_PointersObject(space, space.classtable['w_Array'], 2)
+    w_description = W_PointersObject(space, space.w_Array, 2)
     w_description.atput0(space, 0, space.w(plugin))
     w_description.atput0(space, 1, space.w(name))
     func = prim_holder.prim_table[EXTERNAL_CALL]

@@ -1024,7 +1024,7 @@ def test_raise_NonVirtualReturn_on_dirty_frame():
 def test_objectsAsMethods():
     w_foo = space.wrap_string("foo")
     w_foo_ = space.wrap_string("foo:")
-    w_runwithin = space.special_object("w_runWithIn")
+    w_runwithin = space.w_runWithIn
 
     w_holderclass = bootstrap_class(0)
     w_class = bootstrap_class(0)

@@ -179,7 +179,7 @@ def get_instances_array_trace(interp, w_class, some_instance=False):
     space = interp.space
     result_w = []
     seen_w = {}
-    roots = [interp.image.special_objects]
+    roots = [space.w_special_objects]
     pending = roots[:]
     while pending:
         w_obj = pending.pop()

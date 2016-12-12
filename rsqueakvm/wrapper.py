@@ -183,15 +183,14 @@ class AssociationWrapper(Wrapper):
 
     @staticmethod
     def build(space, w_assoc):
-        if (space.special_object("w_ClassBinding") and
-            w_assoc.getclass(space).is_same_object(space.special_object("w_ClassBinding"))):
+        if w_assoc.getclass(space).is_same_object(space.w_ClassBinding):
             return PromotingAssociationWrapper(space, w_assoc)
         else:
             return AssociationWrapper(space, w_assoc)
 
     @staticmethod
     def make_w_assoc(space, w_key, w_value):
-        w_association = space.special_object("w_schedulerassociationpointer")
+        w_association = space.w_schedulerassociationpointer
         w_association_class = w_association.getclass(space)
         w_new_association = w_association_class.as_class_get_shadow(space).new()
         w_new_association.store(space, 0, w_key)
@@ -221,7 +220,7 @@ class SchedulerWrapper(Wrapper):
         raise FatalError("Scheduler could not find a runnable process")
 
 def scheduler(space):
-    w_association = space.special_object("w_schedulerassociationpointer")
+    w_association = space.w_schedulerassociationpointer
     assert w_association is not None
     w_scheduler = AssociationWrapper(space, w_association).value()
     assert isinstance(w_scheduler, W_PointersObject)

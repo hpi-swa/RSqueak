@@ -60,6 +60,9 @@ class ConstantVersion(object):
 def empty_object():
     return instantiate(W_PointersObject)
 
+def empty_symbol():
+    return instantiate(W_BytesObject)
+
 class ForceHeadless(object):
     def __init__(self, space):
         self.space = space
@@ -72,8 +75,6 @@ class ForceHeadless(object):
             self.space.headless.deactivate()
 
 class ObjSpace(object):
-    _immutable_fields_ = ['objtable']
-
     def __init__(self):
         # This is a hack; see compile_code() in main.py
         self.suppress_process_switch = ConstantFlag()
@@ -88,9 +89,6 @@ class ObjSpace(object):
         self.uses_block_contexts = ConstantFlag()
         self.simulate_numeric_primitives = ConstantFlag()
 
-        self.classtable = {}
-        self.objtable = {}
-        self.objtable_version = ConstantVersion()
         self.system_attributes = {}
         self._system_attribute_version = ConstantVersion()
         self._executable_path = ConstantString()
@@ -99,14 +97,24 @@ class ObjSpace(object):
         self._display = ConstantObject()
         self.interp = ConstantInterp()
 
-        # Create the nil object.
-        # Circumvent the constructor because nil is already referenced there.
-        w_nil = empty_object()
-        self.add_bootstrap_object("w_nil", w_nil)
-
+        self.make_special_objects()
         self.strategy_factory = storage.StrategyFactory(self)
-        self.make_bootstrap_classes()
-        self.make_bootstrap_objects()
+
+    def make_special_objects(self):
+        # These are used in the interpreter bytecodes
+        self.w_minus_one = W_SmallInteger(-1)
+        self.w_zero = W_SmallInteger(0)
+        self.w_one = W_SmallInteger(1)
+        self.w_two = W_SmallInteger(2)
+        self.w_special_objects = empty_object()
+        # no add all of those special objects that we assume constant while the image is running
+        for name, (idx, t) in constants.constant_objects_in_special_object_table.items():
+            if t == "POINTERS":
+                setattr(self, "w_" + name, empty_object())
+            elif t == "BYTES":
+                setattr(self, "w_" + name, empty_symbol())
+            else:
+                assert False
 
     def runtime_setup(self, interp, exepath, argv, image_name, image_args_idx):
         self.interp.set(interp)
@@ -144,67 +152,6 @@ class ObjSpace(object):
     def set_system_attribute(self, idx, value):
         self.system_attributes[idx] = value
         self._system_attribute_version.changed()
-
-    def populate_special_objects(self, specials):
-        for name, idx in constants.objects_in_special_object_table.items():
-            name = "w_" + name
-            if not name in self.objtable or not self.objtable[name]:
-                try:
-                    self.objtable[name] = specials[idx]
-                except IndexError:
-                    # if it's not yet in the table, the interpreter has to fill
-                    # the gap later in populate_remaining_special_objects
-                    self.objtable[name] = None
-        self.classtable["w_Metaclass"] = self.w_SmallInteger.getclass(self).getclass(self)
-
-    def add_bootstrap_class(self, name, cls):
-        self.classtable[name] = cls
-        setattr(self, name, cls)
-
-    def make_bootstrap_classes(self):
-        names = [ "w_" + name for name in constants.classes_in_special_object_table.keys() ]
-        for name in names:
-            cls = empty_object()
-            self.add_bootstrap_class(name, cls)
-
-    def add_bootstrap_object(self, name, obj):
-        self.objtable[name] = obj
-        setattr(self, name, obj)
-
-    def make_bootstrap_object(self, name):
-        obj = empty_object()
-        self.add_bootstrap_object(name, obj)
-
-    def make_bootstrap_objects(self):
-        self.make_bootstrap_object("w_true")
-        self.make_bootstrap_object("w_false")
-        self.make_bootstrap_object("w_special_selectors")
-        self.add_bootstrap_object("w_minus_one", W_SmallInteger(-1))
-        self.add_bootstrap_object("w_zero", W_SmallInteger(0))
-        self.add_bootstrap_object("w_one", W_SmallInteger(1))
-        self.add_bootstrap_object("w_two", W_SmallInteger(2))
-
-        # Certain special objects are already created. The rest will be
-        # populated when the image is loaded, but prepare empty slots for them.
-        for name in constants.objects_in_special_object_table:
-            name = "w_" + name
-            if not name in self.objtable:
-                self.add_bootstrap_object(name, None)
-
-    def special_object(self, which):
-        return self._pure_special_object(which, self.objtable_version.get())
-
-    @jit.elidable
-    def _pure_special_object(self, which, objtable_version):
-        return self.objtable[which]
-
-    def special_object_set(self, which, w_val):
-        self.objtable[which] = w_val
-        self.objtable_version.changed()
-
-    @jit.elidable
-    def special_class(self, which):
-        return self.classtable[which]
 
     # ============= Methods for wrapping and unwrapping stuff =============
 
@@ -391,7 +338,7 @@ class ObjSpace(object):
 
     def smalltalk_at(self, string):
         """A helper to find a class by name in modern Squeak images"""
-        w_sd = self.special_object("w_smalltalkdict")
+        w_sd = self.w_smalltalkdict
         if w_sd.instsize() == 1:
             w_globals = w_sd.fetch(self, 0)
             if w_globals.instsize() == 6:
@@ -434,3 +381,12 @@ class ObjSpace(object):
         for i0 in range(numCopied):
             w_closure.atput0(self, i0, copiedValues[i0])
         return w_closure
+
+def add_special_properties():
+    for n, i in constants.variables_in_special_object_table.items():
+        def fun(name, idx):
+            setattr(ObjSpace, "w_" + name, property(
+                fget=lambda self: self.w_special_objects.fetch(self, idx),
+                fset=lambda self, w_obj: self.w_special_objects.store(self, idx, w_obj)))
+        fun(n, i)
+add_special_properties()

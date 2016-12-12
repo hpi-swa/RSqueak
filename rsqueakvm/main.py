@@ -417,8 +417,6 @@ def entry_point(argv):
                 trace=cfg.trace, trace_important=cfg.trace_important,
                 evented=not cfg.poll, interrupts=cfg.interrupts)
     space.runtime_setup(interp, cfg.exepath, argv, cfg.path, cfg.extra_arguments_idx)
-
-    interp.populate_remaining_special_objects()
     print_error("") # Line break after image-loading characters
 
     # Create context to be executed

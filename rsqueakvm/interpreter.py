@@ -8,6 +8,7 @@ from rsqueakvm.error import FatalError, Exit, SmalltalkException
 from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod, W_SpurCompiledMethod
 from rsqueakvm.model.numeric import W_SmallInteger
+from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.storage_contexts import ContextPartShadow, ActiveContext, InactiveContext, DirtyContext
 
@@ -195,33 +196,6 @@ class Interpreter(object):
         if not objectmodel.we_are_translated():
             if USE_SIGUSR1:
                 rsignal.pypysig_setflag(rsignal.SIGUSR1)
-
-    def populate_remaining_special_objects(self):
-        with objspace.ForceHeadless(self.space):
-            for name, idx in constants.objects_in_special_object_table.items():
-                name = "w_" + name
-                if name not in self.space.objtable or not self.space.objtable[name]:
-                    if name == "w_runWithIn":
-                        w_string = self.space.wrap_string("run:with:in:")
-                        self.space.objtable[name] = self.perform(w_string, selector="asSymbol")
-                        assert self.space.objtable[name]
-                    elif name == "w_ClassBinding":
-                        w_class_binding_class = self.space.smalltalk_at("ClassBinding")
-                        self.space.objtable[name] = w_class_binding_class
-                    else:
-                        raise Warning("don't know how to populate " + name + " in special objects table")
-            for name, idx in constants.classes_in_special_object_table.items():
-                name = "w_" + name
-                if self.space.classtable[name].getclass(self.space) is None:
-                    if name == "w_LargeNegativeInteger":
-                        w_lni_class = self.space.smalltalk_at("LargeNegativeInteger")
-                        if w_lni_class is None:
-                            raise NotImplementedError("cannot find LargeNegativeInteger class")
-                        from rsqueakvm.model.pointers import W_PointersObject
-                        assert isinstance(w_lni_class, W_PointersObject)
-                        self.space.w_LargeNegativeInteger.hash = w_lni_class.hash
-                        self.space.w_LargeNegativeInteger.strategy = w_lni_class.strategy
-                        self.space.w_LargeNegativeInteger._storage = w_lni_class._storage
 
     def loop(self, w_active_context):
         # This is the top-level loop and is not invoked recursively.
@@ -459,16 +433,17 @@ class Interpreter(object):
 
         # Check for User Interrupt
         if self.space.display().has_interrupts_pending():
-            w_interrupt_sema = self.space.objtable['w_interrupt_semaphore']
+            w_interrupt_sema = self.space.w_interrupt_semaphore
             if w_interrupt_sema is not self.space.w_nil:
-                if w_interrupt_sema.getclass(self.space).is_same_object(self.space.w_Semaphore):
-                    wrapper.SemaphoreWrapper(self.space, w_interrupt_sema).signal(s_frame)
+                assert isinstance(w_interrupt_sema, W_PointersObject)
+                wrapper.SemaphoreWrapper(self.space, w_interrupt_sema).signal(s_frame, forced=True)
 
         # XXX the low space semaphore may be signaled here
         if not self.next_wakeup_tick == 0 and now >= self.next_wakeup_tick:
             self.next_wakeup_tick = 0
-            semaphore = self.space.objtable["w_timerSemaphore"]
+            semaphore = self.space.w_timerSemaphore
             if not semaphore.is_nil(self.space):
+                assert isinstance(w_interrupt_sema, W_PointersObject)
                 wrapper.SemaphoreWrapper(self.space, semaphore).signal(s_frame, forced=True)
         # We have no finalization process, so far.
         # We do not support external semaphores.
@@ -502,7 +477,7 @@ class Interpreter(object):
             self.loop(w_frame)
         except ReturnFromTopLevel, e:
             if not self.space.headless.is_set():
-                w_cannotReturn = self.space.special_object("w_cannotReturn")
+                w_cannotReturn = self.space.w_cannotReturn
                 if w_cannotReturn is not None:
                     s_context = self.create_toplevel_context(
                         e.s_current_frame.w_self(),

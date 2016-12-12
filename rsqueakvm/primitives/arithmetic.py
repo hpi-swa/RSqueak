@@ -333,9 +333,9 @@ def func(interp, s_frame, w_arg):
 def func(interp, s_frame, w_delay, w_semaphore, ev_timestamp):
     if not w_semaphore.getclass(interp.space).is_same_object(
             interp.space.w_Semaphore):
-        interp.space.objtable["w_timerSemaphore"] = interp.space.w_nil
+        interp.space.w_timerSemaphore = interp.space.w_nil
     else:
-        interp.space.objtable["w_timerSemaphore"] = w_semaphore
+        interp.space.w_timerSemaphore = w_semaphore
     interp.next_wakeup_tick = event_time_to_microseconds(interp, ev_timestamp)
     return w_delay
 
@@ -360,8 +360,8 @@ def func(interp, s_frame, w_arg):
 def func(interp, s_frame, w_delay, w_semaphore, timestamp):
     if not w_semaphore.getclass(interp.space).is_same_object(
             interp.space.w_Semaphore):
-        interp.space.objtable["w_timerSemaphore"] = interp.space.w_nil
+        interp.space.w_timerSemaphore = interp.space.w_nil
     else:
-        interp.space.objtable["w_timerSemaphore"] = w_semaphore
+        interp.space.w_timerSemaphore = w_semaphore
     interp.next_wakeup_tick = timestamp
     return w_delay

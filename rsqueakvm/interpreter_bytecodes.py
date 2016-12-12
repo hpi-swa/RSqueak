@@ -359,14 +359,15 @@ class __extend__(ContextPartShadow):
         w_selector = self.space.get_special_selector(selector)
         return self._sendSelfSelector(w_selector, numargs, interp)
 
+    @objectmodel.specialize.arg(3)
     def _sendSpecialSelector(self, interp, receiver, special_selector, w_args=[]):
         space = jit.promote(self.space)
-        w_special_selector = space.special_object("w_" + special_selector)
+        w_special_selector = getattr(space, "w_" + special_selector)
         s_class = receiver.class_shadow(space)
 
         w_method = s_class.lookup(w_special_selector)
         if w_method is None:
-            w_method = s_class.lookup(space.special_object("w_doesNotUnderstand"))
+            w_method = s_class.lookup(space.w_doesNotUnderstand)
             if w_method is None:
                 s_class = receiver.class_shadow(self.space)
                 assert isinstance(s_class, ClassShadow)

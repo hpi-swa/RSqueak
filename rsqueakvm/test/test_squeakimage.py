@@ -823,7 +823,7 @@ def test_simple_spur_image_with_segments():
     r.read_all()
     assert r.stream.pos == len(image_1)
     assert r.space.is_spur.is_set() is True
-    theArray = r.space.objtable["w_schedulerassociationpointer"]
+    theArray = r.space.w_schedulerassociationpointer
     assert theArray.gethash() == 4000
     assert theArray.size() == 7
     assert theArray.fetch(r.space, 0).is_same_object(r.space.w_nil)

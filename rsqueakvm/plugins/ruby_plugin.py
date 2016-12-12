@@ -13,6 +13,8 @@ from rsqueakvm.plugins.plugin import Plugin, PluginStartupScripts
 from rsqueakvm.storage_classes import ClassShadow
 from rsqueakvm.storage import AbstractCachingShadow
 from rsqueakvm.primitives.constants import EXTERNAL_CALL
+from rsqueakvm import constants
+from rsqueakvm.objspace import ObjSpace, empty_object
 
 from topaz.objspace import ObjectSpace
 from topaz.objects.floatobject import W_FloatObject
@@ -36,19 +38,22 @@ try:
 except AttributeError:
     pass # this is fine
 
-
 RubyPlugin = Plugin()
 ruby_space = ObjectSpace(None)
 
+class RubyPluginConstantsClass(object):
+    _attrs_ = ["w_RubyPluginSend", "w_RubyObject"]
+RubyPluginConstants = RubyPluginConstantsClass()
+
 def startup(space, argv):
-    space.objtable["RubyPluginSend"] = space.wrap_list([
+    RubyPluginConstants.RubyPluginSend = space.wrap_list([
         space.wrap_string("RubyPlugin"),
         space.wrap_string("send")
     ])
     w_ruby_class = space.smalltalk_at("RubyObject")
     if w_ruby_class is None:
         w_ruby_class = space.w_nil.getclass(space)
-    space.objtable["RubyObject"] = w_ruby_class
+    RubyPluginConstants.RubyObject = w_ruby_class
     ruby_space.setup(argv[0])
 PluginStartupScripts.append(startup)
 
@@ -87,7 +92,7 @@ def unwrap(interp, w_object):
         if w_object.getclass(space).is_same_object(space.w_String):
             return ruby_space.newstr_fromstr(space.unwrap_string(w_object))
         else:
-            w_Symbol = space.special_object("w_doesNotUnderstand").getclass(space)
+            w_Symbol = space.w_doesNotUnderstand.getclass(space)
             if w_object.getclass(space).is_same_object(w_Symbol):
                 return ruby_space.newsymbol(space.unwrap_string(w_object))
     raise PrimitiveFailedError
@@ -133,7 +138,7 @@ class RubyClassShadow(ClassShadow):
     def lookup(self, w_selector):
         w_method = self._lookup(w_selector, self.wr_class.version)
         if w_method is None:
-            w_ro = self.space.special_object("RubyObject")
+            w_ro = RubyPluginConstants.RubyObject
             return w_ro.as_class_get_shadow(self.space).lookup(w_selector)
         return w_method
 
@@ -161,7 +166,7 @@ class RubyClassShadow(ClassShadow):
         w_cm.argsize = 0
         w_cm.bytes = []
         w_cm.literals = [
-            self.space.special_object("RubyPluginSend"),
+            RubyPluginConstants.RubyPluginSend,
             w_selector
         ]
         return w_cm
