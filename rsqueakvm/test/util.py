@@ -207,14 +207,16 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         proto_shadow = w_ProtoObjectClass.strategy
         proto_shadow.store_w_superclass(self.w_Class)
         # at this point, all classes that still lack a w_class are themselves metaclasses
-        # for nm, w_cls_obj in self.classtable.items():
-        #     if w_cls_obj.getclass(None) is None:
-        #         if w_cls_obj.strategy is None:
-        #             w_cls_obj._initialize_storage(self, self.w_Metaclass, 0)
-        #         elif w_cls_obj.strategy.w_class is None:
-        #             w_cls_obj.strategy.w_class = self.w_Metaclass
-        #         else:
-        #             import pdb; pdb.set_trace()
+        for nm, idx in constants.constant_objects_in_special_object_table_wo_types.items():
+            w_cls_obj = getattr(self, "w_" + nm)
+            if nm[0].isupper():
+                if w_cls_obj.getclass(None) is None:
+                    if w_cls_obj.strategy is None:
+                        w_cls_obj._initialize_storage(self, self.w_Metaclass, 0)
+                    elif w_cls_obj.strategy.w_class is None:
+                        w_cls_obj.strategy.w_class = self.w_Metaclass
+                    else:
+                        import pdb; pdb.set_trace()
 
     def patch_bootstrap_classes(self):
         # Create all classes in the class hierarchies of the classes in the special objects array.
