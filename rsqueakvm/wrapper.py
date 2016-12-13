@@ -228,7 +228,7 @@ class SchedulerWrapper(Wrapper):
         raise FatalError("Scheduler could not find a runnable process")
 
 def scheduler(space):
-    return SchedulerWrapper(space, w_scheduler(space.w_schedulerassociationpointer))
+    return SchedulerWrapper(space, w_scheduler(space, space.w_schedulerassociationpointer))
 
 @jit.elidable
 def w_scheduler(space, w_association):
