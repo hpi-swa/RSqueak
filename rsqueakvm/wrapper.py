@@ -202,13 +202,21 @@ class PromotingAssociationWrapper(AssociationWrapper):
         return jit.promote(self.read(1))
 
 class SchedulerWrapper(Wrapper):
-    priority_list = make_getter(0)
     active_process, store_active_process = make_getter_setter(1)
 
-    def get_process_list(self, priority):
+    @jit.elidable
+    def priority_list(self):
+        return self.read(0)
+
+    @jit.elidable
+    def get_w_process_list(self, priority):
         lists = Wrapper(self.space, self.priority_list())
         # priority is 1-indexed, we read with 0-indexed
-        return LinkedListWrapper(self.space, lists.read(priority - 1))
+        return lists.read(priority - 1)
+
+    def get_process_list(self, priority):
+        w_process_list = get_w_process_list(priority)
+        return LinkedListWrapper(self.space, w_process_list)
 
     def wake_highest_priority_process(self):
         w_lists = self.priority_list()
@@ -220,14 +228,16 @@ class SchedulerWrapper(Wrapper):
         raise FatalError("Scheduler could not find a runnable process")
 
 def scheduler(space):
-    w_association = space.w_schedulerassociationpointer
+    return SchedulerWrapper(space, w_scheduler(space.w_schedulerassociationpointer))
+
+@jit.elidable
+def w_scheduler(space, w_association):
     assert w_association is not None
     w_scheduler = AssociationWrapper(space, w_association).value()
     assert isinstance(w_scheduler, W_PointersObject)
-    return SchedulerWrapper(space, w_scheduler)
+    return w_scheduler
 
 class SemaphoreWrapper(LinkedListWrapper):
-
     excess_signals, store_excess_signals = make_int_getter_setter(2)
 
     def signal(self, s_current_frame, forced=False):
@@ -243,8 +253,8 @@ class SemaphoreWrapper(LinkedListWrapper):
         if excess > 0:
             self.store_excess_signals(excess - 1)
         else:
-            self.add_last_link(scheduler(self.space).active_process())
             new_proc = scheduler(self.space).wake_highest_priority_process()
+            self.add_last_link(scheduler(self.space).active_process())
             new_proc.transfer_to_self_from(s_current_frame)
 
 
@@ -310,17 +320,3 @@ class FormWrapper(Wrapper):
 
     def take_over_display(self):
         self.space.display().set_video_mode(self.width(), self.height(), self.depth())
-
-# XXX Wrappers below are not used yet.
-class OffsetWrapper(Wrapper):
-    offset_x  = make_int_getter(0)
-    offset_y  = make_int_setter(1)
-
-class MaskWrapper(Wrapper):
-    bits       = make_getter(0)
-    extend_x   = make_int_getter(1)
-    extend_y   = make_int_getter(2)
-    depth      = make_int_getter(3)
-
-class CursorWrapper(MaskWrapper):
-    offset   = make_getter(4)
