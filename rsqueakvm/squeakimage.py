@@ -388,8 +388,9 @@ class BaseReaderStrategy(object):
 
 
 def make_assign_prebuilt_constants():
+    items = sorted(constants.constant_objects_in_special_object_table_wo_types.items(), key=lambda t: t[1])
     code = ["def _assign_prebuilt_constants(self):"]
-    for name, so_index in constants.constant_objects_in_special_object_table_wo_types.items():
+    for name, so_index in items:
         code.extend([
             "",
             "    w_object = self.space.w_%s" % name,
@@ -407,10 +408,11 @@ def make_assign_prebuilt_constants():
                 "        pass"
             ])
         code.extend([
-            "    if (g_object is not None) and (g_object.w_object is None):",
-            "        g_object.w_object = w_object",
-            "    elif (g_object is not None) and (not g_object.w_object.is_nil(self.space)):",
-            "        raise Warning('Object found in multiple places in the special objects array')"
+            "    if g_object is not None:",
+            "        if g_object.w_object is None:",
+            "            g_object.w_object = w_object",
+            "        elif not g_object.w_object.is_nil(self.space):",
+            "            raise Warning('Object %s found in multiple places in the special objects array')" % name
         ])
     d = {}
     exec compile("\n".join(code), __file__, 'exec') in d
