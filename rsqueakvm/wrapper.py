@@ -204,19 +204,15 @@ class PromotingAssociationWrapper(AssociationWrapper):
 class SchedulerWrapper(Wrapper):
     active_process, store_active_process = make_getter_setter(1)
 
-    @jit.elidable
     def priority_list(self):
         return self.read(0)
 
-    @jit.elidable
-    def get_w_process_list(self, priority):
-        lists = Wrapper(self.space, self.priority_list())
+    def process_list(self, priority):
         # priority is 1-indexed, we read with 0-indexed
-        return lists.read(priority - 1)
+        return self.priority_list().fetch(self.space, priority - 1)
 
     def get_process_list(self, priority):
-        w_process_list = self.get_w_process_list(priority)
-        return LinkedListWrapper(self.space, w_process_list)
+        return LinkedListWrapper(self.space, self.process_list(priority))
 
     def wake_highest_priority_process(self):
         w_lists = self.priority_list()
