@@ -134,12 +134,13 @@ class ObjSpace(object):
             self.set_system_attribute(-i, argv[i])
         import platform
         from rsqueakvm.main import VERSION, BUILD_DATE
+        from rpython.rlib.compilerinfo import get_compiler_info
         self.set_system_attribute(0, self._executable_path.get())
         self.set_system_attribute(1001, platform.system())    # operating system
         self.set_system_attribute(1002, platform.version())   # operating system version
         self.set_system_attribute(1003, platform.processor())  # platform's processor type
         self.set_system_attribute(1004, VERSION)
-        self.set_system_attribute(1006, BUILD_DATE)
+        self.set_system_attribute(1006, "%s Compiler: %s" % (BUILD_DATE, get_compiler_info()))
         self.set_system_attribute(1007, "rsqueak")            # interpreter class (invented for Cog)
 
     def get_system_attribute(self, idx):
