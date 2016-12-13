@@ -136,3 +136,4 @@ if "--64bit" in sys.argv:
 ensure_32bit_environment_if_required()
 prepare_environment_variables()
 fix_nt()
+sys.dont_write_bytecode = True
