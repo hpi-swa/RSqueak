@@ -4,7 +4,7 @@ from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.block_closure import W_BlockClosure
 from rsqueakvm.storage import AbstractStrategy, ShadowMixin
 
-from rpython.rlib import jit, objectmodel
+from rpython.rlib import jit, objectmodel, unroll
 from rpython.rlib.objectmodel import import_from_mixin, always_inline
 from rpython.rlib.rarithmetic import r_uint, intmask
 from rpython.rlib.rstrategies import rstrategies as rstrat
@@ -126,28 +126,39 @@ class ContextPartShadow(AbstractStrategy):
 
     @jit.unroll_safe
     def _convert_storage_from(self, w_self, previous_strategy):
-        # Some fields have to be initialized before the rest,
-        # to ensure correct initialization.
         size = previous_strategy.size(w_self)
-        privileged_fields = self.fields_to_convert_first()
         storage = previous_strategy.fetch_all(w_self)
         self._initialize_storage(w_self, size)
-        for n0 in privileged_fields:
-            self.store(w_self, n0, storage[n0])
+
+        # Some fields have to be initialized before the rest,
+        # to ensure correct initialization.
+        if self.pure_is_block_context():
+            assert len(self.priviliged_block_fields) == 1
+            self.store(w_self, self.priviliged_block_fields[0], storage[self.priviliged_block_fields[0]])
+        else:
+            assert len(self.priviliged_method_fields) == 2
+            self.store(w_self, self.priviliged_method_fields[0], storage[self.priviliged_method_fields[0]])
+            self.store(w_self, self.priviliged_method_fields[1], storage[self.priviliged_method_fields[1]])
 
         # Now the temp size will be known.
         self.init_temps_and_stack()
 
         # After this, convert the rest of the fields.
         for n0 in range(size):
-            if n0 not in privileged_fields:
+            if not self.is_privileged_index(n0):
                 self.store(w_self, n0, storage[n0])
 
-    def fields_to_convert_first(self):
+    priviliged_block_fields = (constants.BLKCTX_HOME_INDEX,)
+    priviliged_method_fields = (constants.MTHDCTX_METHOD, constants.MTHDCTX_CLOSURE_OR_NIL)
+
+    def is_privileged_index(self, n0):
         if self.pure_is_block_context():
-            return [constants.BLKCTX_HOME_INDEX]
+            assert len(self.priviliged_block_fields) == 1
+            return n0 == self.priviliged_block_fields[0]
         else:
-            return [constants.MTHDCTX_METHOD, constants.MTHDCTX_CLOSURE_OR_NIL]
+            assert len(self.priviliged_method_fields) == 2
+            # we use | instead of || to generate only one guard
+            return (n0 == self.priviliged_method_fields[0]) | (n0 == self.priviliged_method_fields[1])
 
     def get_extra_data(self):
         if self.extra_data is None:
