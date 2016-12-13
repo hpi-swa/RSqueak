@@ -261,10 +261,14 @@ class BaseReaderStrategy(object):
         self._assign_prebuilt_constants()
 
     def smalltalk_g_at(self, lookup_name):
+        # first, try to find an association in the special objects array
+        g_object = self.lookup_in_assocs_g(self.special_g_objects, lookup_name)
+        if g_object is not None:
+            return g_object
         try:
             g_smalltalk = self.special_g_object(constants.SO_SMALLTALK)
         except IndexError:
-            # should be only in tests
+            # should be happen in some tests
             return None
         array_g = []
         if len(g_smalltalk.pointers) == 1:
@@ -279,8 +283,11 @@ class BaseReaderStrategy(object):
         elif len(g_smalltalk.pointers) == 2:
             # old image
             array_g = g_smalltalk.pointers[1].pointers
+        return self.lookup_in_assocs_g(array_g, lookup_name)
+
+    def lookup_in_assocs_g(self, array_g, lookup_name):
         for g_assoc in array_g:
-            if len(g_assoc.pointers) == 2:
+            if g_assoc.pointers and len(g_assoc.pointers) == 2:
                 g_name = g_assoc.pointers[0]
                 if self.isbytes(g_name):
                     name = "".join(g_name.get_bytes())
@@ -399,7 +406,7 @@ def make_assign_prebuilt_constants():
             "        g_object = self.special_g_object(%d)" % so_index,
             "    except IndexError:",
         ])
-        if name in ("LargeNegativeInteger", "ClassBinding", "Metaclass"):
+        if name in ("LargeNegativeInteger", "ClassBinding", "Metaclass", "Processor"):
             code.extend([
                 "        g_object = self.smalltalk_g_at('%s')" % name,
             ])
@@ -854,6 +861,8 @@ class GenericObject(object):
         self.reader = None
         self.filled_in = False
         self.filled_in_weak = False
+        self.pointers = None
+        self._format = 0
 
     def isinitialized(self):
         return self.reader is not None

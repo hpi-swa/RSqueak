@@ -228,14 +228,7 @@ class SchedulerWrapper(Wrapper):
         raise FatalError("Scheduler could not find a runnable process")
 
 def scheduler(space):
-    return SchedulerWrapper(space, w_scheduler(space, space.w_schedulerassociationpointer))
-
-@jit.elidable
-def w_scheduler(space, w_association):
-    assert w_association is not None
-    w_scheduler = AssociationWrapper(space, w_association).value()
-    assert isinstance(w_scheduler, W_PointersObject)
-    return w_scheduler
+    return SchedulerWrapper(space, space.w_Processor)
 
 class SemaphoreWrapper(LinkedListWrapper):
     excess_signals, store_excess_signals = make_int_getter_setter(2)

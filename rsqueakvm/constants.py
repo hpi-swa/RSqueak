@@ -160,6 +160,7 @@ constant_objects_in_special_object_table = {
     # ours, not in the table, but we'd like it to
     "ClassBinding": (SPECIAL_OBJECTS_SIZE + 30, "POINTERS"),
     "Metaclass": (SPECIAL_OBJECTS_SIZE + 31, "POINTERS"),
+    "Processor": (SPECIAL_OBJECTS_SIZE + 32, "POINTERS"),
 }
 
 variables_in_special_object_table = {
