@@ -444,7 +444,7 @@ class Interpreter(object):
             semaphore = self.space.w_timerSemaphore()
             if not semaphore.is_nil(self.space):
                 assert isinstance(semaphore, W_PointersObject)
-                wrapper.SemaphoreWrapper(self.space, semaphore).signal(s_frame, forced=True)
+                wrapper.SemaphoreWrapper(self.space, semaphore).signal(s_frame, forced=False)
         # We have no finalization process, so far.
         # We do not support external semaphores.
         # In cog, the method to add such a semaphore is only called in GC.
