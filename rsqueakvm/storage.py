@@ -104,11 +104,24 @@ class SimpleStorageStrategy(AbstractStrategy):
     def default_value(self):
         return self.space.w_nil
 
+class OptimizedConvertFromAllNilMixin(object):
+    @jit.unroll_safe
+    def _better_convert_storage_from(self, w_self, previous_strategy):
+        if isinstance(previous_strategy, AllNilStrategy):
+            my_nil = self._unwrap(self.space.w_nil)
+            self.set_storage(w_self, [my_nil] * previous_strategy.size(w_self))
+        else:
+            size = previous_strategy.size(w_self)
+            new_storage = [ self._unwrap(previous_strategy.fetch(w_self, i))
+                            for i in range(size) ]
+            self.set_storage(w_self, new_storage)
+
 @rstrat.strategy()
 class ListStrategy(SimpleStorageStrategy):
     _attrs_ = []
     repr_classname = "ListStrategy"
     import_from_mixin(rstrat.GenericStrategy)
+    import_from_mixin(OptimizedConvertFromAllNilMixin)
 
     def _wrap(self, w_value):
         if isinstance(w_value, W_SmallInteger):
@@ -135,7 +148,7 @@ class ListStrategy(SimpleStorageStrategy):
                 storage[index0] = W_MutableSmallInteger(w_value.value)
         else:
             storage[index0] = w_value
-
+ListStrategy._convert_storage_from = ListStrategy._better_convert_storage_from
 ListStrategy.instantiate_type = ListStrategy
 
 
@@ -240,17 +253,20 @@ WeakListStrategy.instantiate_type = WeakListStrategy
 class SmallIntegerOrNilStrategy(SimpleStorageStrategy):
     repr_classname = "SmallIntegerOrNilStrategy"
     import_from_mixin(rstrat.TaggingStrategy)
+    import_from_mixin(OptimizedConvertFromAllNilMixin)
     contained_type = W_SmallInteger
     def wrap(self, val): return self.space.wrap_smallint_unsafe(val)
     def unwrap(self, w_val): return self.space.unwrap_int(w_val)
     def wrapped_tagged_value(self): return self.space.w_nil
     def unwrapped_tagged_value(self): return constants.MAXINT
+SmallIntegerOrNilStrategy._convert_storage_from = SmallIntegerOrNilStrategy._better_convert_storage_from
 SmallIntegerOrNilStrategy.instantiate_type = SmallIntegerOrNilStrategy
 
 @rstrat.strategy(generalize=[ListStrategy])
 class CharacterOrNilStrategy(SimpleStorageStrategy):
     repr_classname = "CharacterOrNilStrategy"
     import_from_mixin(rstrat.TaggingStrategy)
+    import_from_mixin(OptimizedConvertFromAllNilMixin)
     contained_type = W_Character
     def wrap(self, val): return W_Character(val)
     def unwrap(self, w_val):
@@ -259,18 +275,21 @@ class CharacterOrNilStrategy(SimpleStorageStrategy):
         return w_val.value
     def wrapped_tagged_value(self): return self.space.w_nil
     def unwrapped_tagged_value(self): return constants.MAXINT
+CharacterOrNilStrategy._convert_storage_from = CharacterOrNilStrategy._better_convert_storage_from
 CharacterOrNilStrategy.instantiate_type = CharacterOrNilStrategy
 
 @rstrat.strategy(generalize=[ListStrategy])
 class FloatOrNilStrategy(SimpleStorageStrategy):
     repr_classname = "FloatOrNilStrategy"
     import_from_mixin(rstrat.TaggingStrategy)
+    import_from_mixin(OptimizedConvertFromAllNilMixin)
     contained_type = W_Float
     tag_float = sys.float_info.max
     def wrap(self, val): return self.space.wrap_float(val)
     def unwrap(self, w_val): return self.space.unwrap_float(w_val)
     def wrapped_tagged_value(self): return self.space.w_nil
     def unwrapped_tagged_value(self): return self.tag_float
+FloatOrNilStrategy._convert_storage_from = FloatOrNilStrategy._better_convert_storage_from
 FloatOrNilStrategy.instantiate_type = FloatOrNilStrategy
 
 @rstrat.strategy(generalize=[
