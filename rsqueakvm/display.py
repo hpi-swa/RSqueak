@@ -136,15 +136,18 @@ class SDLDisplay(NullDisplay):
 
     def _init_sdl(self):
         from rpython.rlib.objectmodel import we_are_translated
-        if we_are_translated():
-            assert RSDL.Init(RSDL.INIT_VIDEO) >= 0
-        else:
-            if RSDL.Init(RSDL.INIT_VIDEO) < 0:
-                print RSDL.GetError()
-                assert False
+        if RSDL.Init(RSDL.INIT_VIDEO) < 0:
+            print RSDL.GetError()
+            assert False
         self.interrupt_flag = lltype.malloc(rffi.SIGNEDP.TO, 1, flavor='raw')
         self.interrupt_flag[0] = 0
         ll_SetEventFilter(self.interrupt_flag)
+        RSDL.SetHint(RSDL.HINT_RENDER_VSYNC, "0") # do not wait for vsync
+        RSDL.SetHint(RSDL.HINT_RENDER_SCALE_QUALITY, "2") # try to scale with best quality
+        # SDL >= 2.0.4
+        # RSDL.SetHint(RSDL.HINT_VIDEO_X11_NET_WM_PING, "0") # disable WM_PING, so the WM does not think we're hung
+        if (RSDL.SetSwapInterval(-1) < 0): # try to allow late tearing (pushes frames faster)
+            RSDL.SetSwapInterval(0) # at least try to disable vsync
 
     def has_interrupts_pending(self):
         if self.interrupt_flag[0] != 0:
