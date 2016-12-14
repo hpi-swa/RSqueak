@@ -5,6 +5,7 @@ from rsqueakvm.primitives import constants, prim_table, prim_holder
 from rsqueakvm.storage_classes import ClassShadow
 from rsqueakvm.storage_contexts import ContextPartShadow, DirtyContext
 from rsqueakvm.util.bitmanipulation import splitter
+from rsqueakvm import constants
 
 from rpython.rlib import objectmodel, unroll, jit
 
@@ -189,7 +190,10 @@ class __extend__(ContextPartShadow):
         arraySize, popIntoArray = splitter[7, 1](descriptor)
         newArray = None
         if popIntoArray == 1:
-            newArray = interp.space.wrap_list(self.pop_and_return_n(arraySize))
+            if jit.we_are_jitted() & jit.isconstant(arraySize) & arraySize < constants.LITERAL_LIST_UNROLL_SIZE:
+                newArray = interp.space.wrap_list_unroll_safe(self.pop_and_return_n(arraySize))
+            else:
+                newArray = interp.space.wrap_list(self.pop_and_return_n(arraySize))
         else:
             newArray = interp.space.w_Array.as_class_get_shadow(interp.space).new(arraySize)
         self.push(newArray)
@@ -394,7 +398,7 @@ class __extend__(ContextPartShadow):
         s_message_class = w_message_class.as_class_get_shadow(self.space)
         w_message = s_message_class.new()
         w_message.store(self.space, 0, w_selector)
-        w_message.store(self.space, 1, self.space.wrap_list(arguments))
+        w_message.store(self.space, 1, self.space.wrap_list_unroll_safe(arguments))
         if interp.image.version.is_modern:
             w_message.store(self.space, 2, receiver.getclass(self.space))
         self.pop()  # The receiver, already known.

@@ -49,7 +49,7 @@ RubyPlugin = RubyPluginClass()
 ruby_space = ObjectSpace(None)
 
 def startup(space, argv):
-    RubyPlugin.w_ruby_plugin_send.set(space.wrap_list([
+    RubyPlugin.w_ruby_plugin_send.set(space.wrap_list_unroll_safe([
         space.wrap_string("RubyPlugin"),
         space.wrap_string("send")
     ]))
