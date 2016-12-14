@@ -66,35 +66,35 @@ def pytest_assertrepr_compare(op, left, right):
                   [str(op) for op in left.trace] +
                   ["-------RIGHT-----"] +
                   [str(op) for op in right.trace])
-    if os.environ.get("UPDATE_JITTESTS", None) == "1":
-        print "\n".join(answer)
-        import sys
-        sys.stdout.write("Should we accept the new version (y/N)? ")
-        if sys.stdin.readline().strip().upper() == "Y":
-            import traceback, re
-            stk = traceback.extract_stack()
-            stk.reverse()
-            for filename, lineno, funcname, text in stk:
-                if re.search("jittest/test_", filename):
-                    f = open(filename)
-                    contents = f.readlines()
-                    newline = "\r\n" if contents[0].endswith("\r\n") else "\n"
-                    while contents[lineno].strip() != str(left.trace[0]).strip():
-                        lineno += 1
-                    indent = (len(contents[lineno]) - len(contents[lineno].lstrip())) * " "
-                    contents[lineno:lineno + len(left.trace)] = [(indent + str(op) + newline) for op in right.trace]
-                    f.close()
-                    f = open(filename, "w")
-                    f.truncate(0)
-                    f.writelines(contents)
-                    f.close()
-                    break
-            del sys.exitfunc
-            sys.exit(os.system("%s \"%s\"" % (sys.executable, "\" \"".join(sys.argv))))
+        if os.environ.get("UPDATE_JITTESTS", None) == "1":
+            print "\n".join(answer)
+            import sys
+            sys.stdout.write("Should we accept the new version (y/N)? ")
+            if sys.stdin.readline().strip().upper() == "Y":
+                import traceback, re
+                stk = traceback.extract_stack()
+                stk.reverse()
+                for filename, lineno, funcname, text in stk:
+                    if re.search("jittest/test_", filename):
+                        f = open(filename)
+                        contents = f.readlines()
+                        newline = "\r\n" if contents[0].endswith("\r\n") else "\n"
+                        while contents[lineno].strip() != str(left.trace[0]).strip():
+                            lineno += 1
+                        indent = (len(contents[lineno]) - len(contents[lineno].lstrip())) * " "
+                        contents[lineno:lineno + len(left.trace)] = [(indent + str(op) + newline) for op in right.trace]
+                        f.close()
+                        f = open(filename, "w")
+                        f.truncate(0)
+                        f.writelines(contents)
+                        f.close()
+                        break
+                del sys.exitfunc
+                sys.exit(os.system("%s \"%s\"" % (sys.executable, "\" \"".join(sys.argv))))
+            else:
+                return answer
         else:
             return answer
-    else:
-        return answer
 
 # Disable image loading output during testing
 def fake_update(self, new_steps=-1):
