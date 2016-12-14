@@ -1,10 +1,10 @@
-from rsqueakvm.objspace import ConstantFlag
+from rsqueakvm.util.cells import QuasiConstant
 from rsqueakvm.plugins.vmdebugging.model import wrap_oplist, wrap_greenkey, wrap_debug_info
 
 from rpython.rlib.jit import JitHookInterface, Counters
 
 
-jit_iface_recursion = ConstantFlag()
+jit_iface_recursion = QuasiConstant(False)
 def make_hook(args, func):
     import inspect, re
     src = "\n".join([

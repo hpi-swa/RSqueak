@@ -7,55 +7,11 @@ from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.model.block_closure import W_BlockClosure
 from rsqueakvm.util.version import Version
+from rsqueakvm.util.cells import QuasiConstant
 
 from rpython.rlib import jit, rbigint, rarithmetic
 from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin, we_are_translated, always_inline
 from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32, int_between, is_valid_int, r_ulonglong, r_longlong, r_int64
-
-
-class ConstantMixin(object):
-    """Mixin for constant values that can be edited, but will be promoted
-    to a constant when jitting."""
-    _immutable_fields_ = ["value?"]
-
-    def __init__(self, initial_value=None):
-        if initial_value is None:
-            initial_value = self.default_value
-        self.value = initial_value
-
-    def set(self, value):
-        self.value = value
-
-    def get(self):
-        return self.value
-
-class ConstantFlag(object):
-    import_from_mixin(ConstantMixin)
-    default_value = False
-    def is_set(self):
-        return self.get()
-    def activate(self):
-        self.set(True)
-    def deactivate(self):
-        self.set(False)
-
-class ConstantString(object):
-    import_from_mixin(ConstantMixin)
-    default_value = ""
-
-class ConstantObject(object):
-    import_from_mixin(ConstantMixin)
-    default_value = None
-
-class ConstantInterp(object):
-    import_from_mixin(ConstantMixin)
-    default_value = None
-
-class ConstantVersion(object):
-    import_from_mixin(ConstantMixin)
-    default_value = Version()
-    def changed(self):
-        self.set(Version())
 
 def empty_object():
     return instantiate(W_PointersObject)
@@ -77,25 +33,28 @@ class ForceHeadless(object):
 class ObjSpace(object):
     def __init__(self):
         # This is a hack; see compile_code() in main.py
-        self.suppress_process_switch = ConstantFlag()
-        self.headless = ConstantFlag()
-        self.highdpi = ConstantFlag(True)
-        self.software_renderer = ConstantFlag(False)
-        self.no_display = ConstantFlag(False)
-        self.silent = ConstantFlag(False)
-        self.omit_printing_raw_bytes = ConstantFlag()
-        self.image_loaded = ConstantFlag()
-        self.is_spur = ConstantFlag()
-        self.uses_block_contexts = ConstantFlag()
-        self.simulate_numeric_primitives = ConstantFlag()
+        self.suppress_process_switch = QuasiConstant(False)
+        self.headless = QuasiConstant(False)
+        self.highdpi = QuasiConstant(True)
+        self.software_renderer = QuasiConstant(False)
+        self.no_display = QuasiConstant(False)
+        self.silent = QuasiConstant(False)
+        self.omit_printing_raw_bytes = QuasiConstant(False)
+        self.image_loaded = QuasiConstant(False)
+        self.is_spur = QuasiConstant(False)
+        self.uses_block_contexts = QuasiConstant(False)
+        self.simulate_numeric_primitives = QuasiConstant(False)
 
         self.system_attributes = {}
-        self._system_attribute_version = ConstantVersion()
-        self._executable_path = ConstantString()
-        self.title = ConstantString()
-        self.altf4quit = ConstantFlag()
-        self._display = ConstantObject()
-        self.interp = ConstantInterp()
+        self._system_attribute_version = QuasiConstant(Version())
+        self._executable_path = QuasiConstant("")
+        self.title = QuasiConstant("RSqueak")
+        self.altf4quit = QuasiConstant(False)
+
+        from rsqueakvm.display import NullDisplay
+        self._display = QuasiConstant(None, type=NullDisplay)
+        from rsqueakvm.interpreter import Interpreter
+        self.interp = QuasiConstant(None, type=Interpreter)
 
         self.make_special_objects()
         self.strategy_factory = storage.StrategyFactory(self)

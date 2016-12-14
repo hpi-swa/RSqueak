@@ -9,6 +9,7 @@ from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.model.compiled_methods import W_CompiledMethod
 from rsqueakvm.util.version import VersionMixin, elidable_for_version
+from rsqueakvm.util.cells import QuasiConstant
 
 from rpython.rlib import jit
 from rpython.rlib.objectmodel import import_from_mixin
@@ -305,9 +306,8 @@ AllNilStrategy.instantiate_type = AllNilStrategy
 class StrategyFactory(rstrat.StrategyFactory):
     _immutable_fields_ = ["space", "no_specialized_storage"]
     def __init__(self, space):
-        from rsqueakvm import objspace
         self.space = space
-        self.no_specialized_storage = objspace.ConstantFlag()
+        self.no_specialized_storage = QuasiConstant(False)
         self.singleton_nodes = {}
         rstrat.StrategyFactory.__init__(self, AbstractStrategy)
 
