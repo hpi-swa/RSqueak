@@ -13,7 +13,10 @@ class QuasiConstantMixin(object):
     def set(self, value):
         self.value = value
     def get(self):
-        return jit.promote(self.value)
+        if isinstance(self.value, str):
+            return jit.promote_string(self.value)
+        else:
+            return jit.promote(self.value)
     def is_set(self):
         return self.get()
     def activate(self):
@@ -30,5 +33,4 @@ class QuasiConstantMixin(object):
 def QuasiConstant(initial_value, type=object):
     class NewQuasiConst(object):
         import_from_mixin(QuasiConstantMixin)
-        def _freeze_(self): return True
     return NewQuasiConst(initial_value)
