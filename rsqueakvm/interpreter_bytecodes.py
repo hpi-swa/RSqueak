@@ -5,7 +5,7 @@ from rsqueakvm.primitives import constants, prim_table, prim_holder
 from rsqueakvm.storage_classes import ClassShadow
 from rsqueakvm.storage_contexts import ContextPartShadow, DirtyContext
 from rsqueakvm.util.bitmanipulation import splitter
-from rsqueakvm import constants
+from rsqueakvm import constants as vmconstants
 
 from rpython.rlib import objectmodel, unroll, jit
 
@@ -190,7 +190,7 @@ class __extend__(ContextPartShadow):
         arraySize, popIntoArray = splitter[7, 1](descriptor)
         newArray = None
         if popIntoArray == 1:
-            if jit.we_are_jitted() & jit.isconstant(arraySize) & arraySize < constants.LITERAL_LIST_UNROLL_SIZE:
+            if jit.we_are_jitted() & jit.isconstant(arraySize) & arraySize < vmconstants.LITERAL_LIST_UNROLL_SIZE:
                 newArray = interp.space.wrap_list_unroll_safe(self.pop_and_return_n(arraySize))
             else:
                 newArray = interp.space.wrap_list(self.pop_and_return_n(arraySize))
