@@ -60,7 +60,7 @@ def pytest_assertrepr_compare(op, left, right):
         ltrace = [lop.name for lop in left.trace]
         rtrace = [rop.name for rop in right.trace]
         import difflib
-        answer = (['Comparing Traces failed:'] +
+        answer = (['Comparing Traces failed (set UPDATE_JITTESTS=1 in your env and run again to auto-update):'] +
                   list(difflib.unified_diff(ltrace, rtrace)) +
                   ["-------LEFT------"] +
                   [str(op) for op in left.trace] +
