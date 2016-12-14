@@ -190,7 +190,7 @@ class __extend__(ContextPartShadow):
         arraySize, popIntoArray = splitter[7, 1](descriptor)
         newArray = None
         if popIntoArray == 1:
-            if jit.we_are_jitted() & jit.isconstant(arraySize) & arraySize < vmconstants.LITERAL_LIST_UNROLL_SIZE:
+            if jit.we_are_jitted() and jit.isconstant(arraySize) and arraySize < vmconstants.LITERAL_LIST_UNROLL_SIZE:
                 newArray = interp.space.wrap_list_unroll_safe(self.pop_and_return_n(arraySize))
             else:
                 newArray = interp.space.wrap_list(self.pop_and_return_n(arraySize))
