@@ -402,9 +402,6 @@ class __extend__(ContextPartShadow):
         if interp.image.version.is_modern:
             w_message.store(self.space, 2, receiver.getclass(self.space))
         self.pop()  # The receiver, already known.
-
-        if interp.space.headless.is_set():
-            self.exitFromHeadlessExecution("doesNotUnderstand:", w_message)
         return self._sendSpecialSelector(interp, receiver, "doesNotUnderstand", [w_message])
 
     def _mustBeBoolean(self, interp, receiver):

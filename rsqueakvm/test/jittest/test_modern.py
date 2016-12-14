@@ -909,3 +909,103 @@ i := n' classified: 'none' withStamp: nil notifying: nil logSource: false.
         guard_false(i302, descr=<Guard0xac68228>)
         jump(p0, p1, i2, p3, p4, p7, p8, p10, p13, i202, i204, p19, p278, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, i52, p74, p88, descr=TargetToken(179148208))
         """)
+
+    def test_dnu(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | c i |
+        Object
+            subclass: #MyA
+            instanceVariableNames: ''
+            classVariableNames: ''
+            poolDictionaries: ''
+            category: 'Test'.
+        c := Smalltalk at: #MyA  .
+        c compile: 'doesNotUnderstand: aMessage
+        ^ {aMessage selector. aMessage arguments. aMessage lookupClass}' classified: 'none' withStamp: nil notifying: nil logSource: false.
+
+        i := c new.
+        1 to: 100000 do: [:ignored | i foo ]
+        """)
+        self.assert_matches(traces[-1].loop, """
+        guard_not_invalidated(descr=<Guard0x9facdf0>)
+        i77 = int_le(i68, 100000)
+        guard_true(i77, descr=<Guard0x9f9cb60>)
+        p78 = force_token()
+        enter_portal_frame(4, 0)
+        leave_portal_frame(4)
+        i83 = int_add(i68, 1)
+        i85 = int_sub(i72, 1)
+        setfield_gc(ConstPtr(ptr86), i85, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
+        i88 = int_le(i85, 0)
+        guard_false(i88, descr=<Guard0x9facd88>)
+        jump(p0, p1, i2, p4, p5, p6, p8, p11, p13, i83, p21, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, i85, descr=TargetToken(166460720))
+        """)
+
+    def test_oam(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | c i |
+        Object
+            subclass: #MyOaM
+            instanceVariableNames: ''
+            classVariableNames: ''
+            poolDictionaries: ''
+            category: 'Test'.
+        c := Smalltalk at: #MyOaM.
+        c compile: 'run: aSelector with: someArgs in: aReceiver
+        ^ {aSelector. someArgs. aReceiver}' classified: 'none' withStamp: nil notifying: nil logSource: false.
+
+        Object
+            subclass: #MyA
+            instanceVariableNames: ''
+            classVariableNames: ''
+            poolDictionaries: ''
+            category: 'Test'.
+        c := Smalltalk at: #MyA.
+        c methodDict at: #oam put: (Smalltalk at: #MyOaM) new.
+        i := c new.
+        1 to: 100000 do: [:ignored | i oam ]
+        """)
+        self.assert_matches(traces[-1].loop, """
+        guard_not_invalidated(descr=<Guard0xafaeff8>)
+        i80 = int_le(i71, 100000)
+        guard_true(i80, descr=<Guard0xaea95c8>)
+        p81 = force_token()
+        enter_portal_frame(4, 0)
+        leave_portal_frame(4)
+        i86 = int_add(i71, 1)
+        i88 = int_sub(i75, 1)
+        setfield_gc(ConstPtr(ptr89), i88, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
+        i91 = int_le(i88, 0)
+        guard_false(i91, descr=<Guard0xafaf060>)
+        jump(p0, p1, i2, p4, p5, p6, p8, p11, p13, i86, p21, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, i88, descr=TargetToken(184206704))
+        """)
+
+    def test_literal_array(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | c i |
+        Object
+            subclass: #MyA
+            instanceVariableNames: ''
+            classVariableNames: ''
+            poolDictionaries: ''
+            category: 'Test'.
+        c := Smalltalk at: #MyA.
+        c compile: 'newLiteralArray
+        ^ {$c. 1. 12.0. self}' classified: 'none' withStamp: nil notifying: nil logSource: false.
+        i := c new.
+        1 to: 100000 do: [:ignored | i newLiteralArray ]
+        """)
+        self.assert_matches(traces[-1].loop, """
+        guard_not_invalidated(descr=<Guard0xb605748>)
+        i74 = int_le(i65, 100000)
+        guard_true(i74, descr=<Guard0xb608608>)
+        p75 = force_token()
+        enter_portal_frame(4, 0)
+        leave_portal_frame(4)
+        i80 = int_add(i65, 1)
+        i82 = int_sub(i69, 1)
+        setfield_gc(ConstPtr(ptr83), i82, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
+        i85 = int_le(i82, 0)
+        guard_false(i85, descr=<Guard0xb6057b0>)
+        jump(p0, p1, i2, p4, p5, p6, p8, p11, p13, i80, p21, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, i82, descr=TargetToken(189806080))
+        """)
