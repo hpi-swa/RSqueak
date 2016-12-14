@@ -127,18 +127,18 @@ class ContextPartShadow(AbstractStrategy):
     @jit.unroll_safe
     def _convert_storage_from(self, w_self, previous_strategy):
         size = previous_strategy.size(w_self)
-        storage = previous_strategy.fetch_all(w_self)
-        self._initialize_storage(w_self, size)
-
         # Some fields have to be initialized before the rest,
         # to ensure correct initialization.
         if self.pure_is_block_context():
-            assert len(self.priviliged_block_fields) == 1
-            self.store(w_self, self.priviliged_block_fields[0], storage[self.priviliged_block_fields[0]])
+            assert len(self.privileged_block_fields) == 1
+            self.store(w_self, self.privileged_block_fields[0],
+                       previous_strategy.fetch(w_self, self.privileged_block_fields[0]))
         else:
-            assert len(self.priviliged_method_fields) == 2
-            self.store(w_self, self.priviliged_method_fields[0], storage[self.priviliged_method_fields[0]])
-            self.store(w_self, self.priviliged_method_fields[1], storage[self.priviliged_method_fields[1]])
+            assert len(self.privileged_method_fields) == 2
+            self.store(w_self, self.privileged_method_fields[0],
+                       previous_strategy.fetch(w_self, self.privileged_method_fields[0]))
+            self.store(w_self, self.privileged_method_fields[1],
+                       previous_strategy.fetch(w_self, self.privileged_method_fields[1]))
 
         # Now the temp size will be known.
         self.init_temps_and_stack()
@@ -146,19 +146,22 @@ class ContextPartShadow(AbstractStrategy):
         # After this, convert the rest of the fields.
         for n0 in range(size):
             if not self.is_privileged_index(n0):
-                self.store(w_self, n0, storage[n0])
+                self.store(w_self, n0, previous_strategy.fetch(w_self, n0))
 
-    priviliged_block_fields = (constants.BLKCTX_HOME_INDEX,)
-    priviliged_method_fields = (constants.MTHDCTX_METHOD, constants.MTHDCTX_CLOSURE_OR_NIL)
+        # Finally, we can remove the storage that was there previously
+        self._initialize_storage(w_self, size)
+
+    privileged_block_fields = (constants.BLKCTX_HOME_INDEX,)
+    privileged_method_fields = (constants.MTHDCTX_METHOD, constants.MTHDCTX_CLOSURE_OR_NIL)
 
     def is_privileged_index(self, n0):
         if self.pure_is_block_context():
-            assert len(self.priviliged_block_fields) == 1
-            return n0 == self.priviliged_block_fields[0]
+            assert len(self.privileged_block_fields) == 1
+            return n0 == self.privileged_block_fields[0]
         else:
-            assert len(self.priviliged_method_fields) == 2
+            assert len(self.privileged_method_fields) == 2
             # we use | instead of || to generate only one guard
-            return (n0 == self.priviliged_method_fields[0]) | (n0 == self.priviliged_method_fields[1])
+            return (n0 == self.privileged_method_fields[0]) | (n0 == self.privileged_method_fields[1])
 
     def get_extra_data(self):
         if self.extra_data is None:
