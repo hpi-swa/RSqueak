@@ -89,7 +89,10 @@ def pytest_assertrepr_compare(op, left, right):
                     f.writelines(contents)
                     f.close()
                     break
-        sys.exit(os.system("%s \"%s\"" % (sys.executable, "\" \"".join(sys.argv))))
+            del sys.exitfunc
+            sys.exit(os.system("%s \"%s\"" % (sys.executable, "\" \"".join(sys.argv))))
+        else:
+            return answer
     else:
         return answer
 
