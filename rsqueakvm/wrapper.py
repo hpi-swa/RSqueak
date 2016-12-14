@@ -216,12 +216,14 @@ class SchedulerWrapper(Wrapper):
 
     def wake_highest_priority_process(self):
         w_lists = self.priority_list()
-        lists = Wrapper(self.space, w_lists)
-        for i in range(w_lists.size() - 1, -1, -1):
-            process_list = LinkedListWrapper(self.space, lists.read(i))
-            if not process_list.is_empty_list():
-                return ProcessWrapper(self.space, process_list.remove_first_link_of_list())
-        raise FatalError("Scheduler could not find a runnable process")
+        return ProcessWrapper(self.space, unwrapped_wake_highest_priority_process(self.space, w_lists))
+
+def unwrapped_wake_highest_priority_process(space, w_lists):
+    for i in range(w_lists.size() - 1, -1, -1):
+        process_list = LinkedListWrapper(space, w_lists.fetch(space, i))
+        if not process_list.is_empty_list():
+            return process_list.remove_first_link_of_list()
+    raise FatalError("Scheduler could not find a runnable process")
 
 def scheduler(space):
     return SchedulerWrapper(space, space.w_Processor)
