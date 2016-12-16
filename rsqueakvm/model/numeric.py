@@ -225,7 +225,7 @@ class W_LargeIntegerBig(W_LargeInteger):
     def fillin(self, space, g_self):
         W_AbstractObjectWithClassReference.fillin(self, space, g_self)
         bytes = g_self.get_bytes()
-        value = rbigint.rbigint.frombytes(bytes, 'little', False)
+        value = rbigint.rbigint.frombytes(''.join(bytes), 'little', False)
         if self.getclass(space).is_same_object(space.w_LargePositiveInteger):
             self.value = value
         else:
@@ -256,7 +256,7 @@ class W_LargeIntegerBig(W_LargeInteger):
             bytes[n0] = chr(space.unwrap_int(w_value))
         except ValueError: # when we try to put sth outside of chr range
             raise error.PrimitiveFailedError
-        value = rbigint.rbigint.frombytes(bytes, 'little', False)
+        value = rbigint.rbigint.frombytes(''.join(bytes), 'little', False)
         if self.getclass(space).is_same_object(space.w_LargePositiveInteger):
             self.value = value
         else:
@@ -318,7 +318,7 @@ class W_LargeIntegerWord(W_LargeInteger):
     def fillin(self, space, g_self):
         W_AbstractObjectWithClassReference.fillin(self, space, g_self)
         bytes = g_self.get_bytes()
-        value = rbigint.rbigint.frombytes(bytes, 'little', False)
+        value = rbigint.rbigint.frombytes(''.join(bytes), 'little', False)
         self.value = value.touint()
         self._exposed_size = len(bytes)
 
@@ -411,7 +411,7 @@ class W_SmallInteger(W_Object):
     def fillin(self, space, g_self):
         "This is only called for Large Integers that for us fit in SmallIntegers"
         bytes = g_self.get_bytes()
-        value = rbigint.rbigint.frombytes(bytes, 'little', False)
+        value = rbigint.rbigint.frombytes(''.join(bytes), 'little', False)
         w_prev_class = g_self.get_class()
         if not w_prev_class.is_same_object(space.w_LargePositiveInteger):
             value = value.neg()

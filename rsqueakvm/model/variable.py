@@ -143,7 +143,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
     @elidable_for_version_iff(0, cond=lambda self: jit.isconstant(self))
     def getrbigint(self):
         from rpython.rlib.rbigint import rbigint
-        return rbigint.frombytes(self.getbytes(), 'little', False)
+        return rbigint.frombytes(''.join(self.getbytes()), 'little', False)
 
     def selector_string(self):
         return "#" + self.unwrap_string(None)

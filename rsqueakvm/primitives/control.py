@@ -119,7 +119,8 @@ def find_plugins():
             # The plugin may have decided it doesn't want to be enabled
             disabled_plugin_names.append(pluginname)
             continue
-        reload(module) # always do a one-shot reload
+        if not hasattr(module, '_DO_NOT_RELOAD'):
+            reload(module) # always do a one-shot reload
         plugin = getattr(module, pluginname)
         plugin_names.append(pluginname)
         plugins.append(plugin)

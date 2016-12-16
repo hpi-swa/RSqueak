@@ -9,6 +9,7 @@ from rpython.config.translationoption import get_combined_translation_config
 from rpython.jit.codewriter.policy import JitPolicy
 from rpython.rlib import objectmodel
 
+from pypy.tool.ann_override import PyPyAnnotatorPolicy
 
 sys.setrecursionlimit(15000)
 
@@ -32,14 +33,17 @@ def target(driver, args):
     system.expose_options(driver.config)
     # We must not import this before the config was exposed
     from rsqueakvm.main import safe_entry_point
-    return safe_entry_point, None
+    return safe_entry_point, None, PyPyAnnotatorPolicy()
 
 def jitpolicy(self):
-    if "JitHooks" in system.optional_plugins:
-        from rsqueakvm.plugins.vmdebugging.hooks import jitiface
-        return JitPolicy(jitiface)
-    else:
-        return JitPolicy()
+    from pypy.module.pypyjit.policy import PyPyJitPolicy
+    from pypy.module.pypyjit.hooks import pypy_hooks
+    return PyPyJitPolicy(pypy_hooks)
+    # if "JitHooks" in system.optional_plugins:
+    #     from rsqueakvm.plugins.vmdebugging.hooks import jitiface
+    #     return JitPolicy(jitiface)
+    # else:
+    #     return JitPolicy()
 
 def parser(config):
     return to_optparse(config, useoptions=["rsqueak.*"])
@@ -65,7 +69,7 @@ if __name__ == '__main__':
         configargs, args = sys.argv[0:idx], sys.argv[idx:]
     else:
         configargs, args = [], sys.argv
-    f, _ = target(driver, configargs)
+    f, _, _ = target(driver, configargs)
     try:
         sys.exit(f(args))
     except SystemExit:

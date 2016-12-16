@@ -378,7 +378,7 @@ class BaseReaderStrategy(object):
         if not self.islargeinteger(g_object):
             return False
         bytes = g_object.get_bytes()
-        value = rbigint.rbigint.frombytes(bytes, 'little', False)
+        value = rbigint.rbigint.frombytes(''.join(bytes), 'little', False)
         if g_object.g_class != self.special_g_object_safe(constants.SO_LARGEPOSITIVEINTEGER_CLASS):
             value = value.neg()
         try:

@@ -226,7 +226,7 @@ class Shell(object):
                 w_result = None
                 try:
                     w_result = self._execute_code(code)
-                except:
+                except Exception as e:
                     print "Error: ", sys.exc_info()[0]
                     import pdb; pdb.set_trace()
                 if w_result:
