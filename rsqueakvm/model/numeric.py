@@ -288,7 +288,10 @@ class W_LargeIntegerBig(W_LargeInteger):
         return self.value.tolong()
 
     def unwrap_float(self, space):
-        return self.value.tofloat()
+        try:
+            return self.value.tofloat()
+        except OverflowError:
+            raise error.UnwrappingError
 
     def clone(self, space):
         return W_LargeIntegerBig(space, self.getclass(space), self.value, self.size())
