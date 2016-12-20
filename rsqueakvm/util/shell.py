@@ -19,6 +19,7 @@ autocompletions = {
             "numeric": None,
             "pointers": None,
             "variable": None,
+            "block_closure": None,
         },
         "plugins": None,
         "primitives": {
@@ -31,6 +32,7 @@ autocompletions = {
             "misc": None,
             "storage": None,
             "system": None,
+            "mirror": None,
         }
     }
 }
