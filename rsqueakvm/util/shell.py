@@ -176,7 +176,7 @@ class Shell(object):
             import rsqueakvm.interpreter_bytecodes
             reload(rsqueakvm.interpreter_bytecodes)
             reload(rsqueakvm.interpreter)
-            self.set_interp(interpreter.Interpreter(
+            self.set_interp(rsqueakvm.interpreter.Interpreter(
                 self.space, self.interp.image,
                 self.interp.trace, self.interp.trace_important,
                 self.interp.evented, self.interp.interrupts))
