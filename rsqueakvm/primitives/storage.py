@@ -9,7 +9,7 @@ from rsqueakvm.model.compiled_methods import (W_CompiledMethod,
 from rsqueakvm.model.numeric import W_SmallInteger
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.primitives import (expose_primitive, expose_also_as,
-                                  assert_pointers, index1_0)
+                                  assert_pointers, index1_0, assert_valid_index)
 from rsqueakvm.primitives.constants import *
 
 from rpython.rlib import jit, objectmodel
@@ -111,6 +111,7 @@ def func(interp, s_frame, w_rcvr, n0):
     "Fetches a fixed field from the object, and fails otherwise"
     s_class = w_rcvr.class_shadow(interp.space)
     w_cls = assert_pointers(w_rcvr)
+    n0 = assert_valid_index(interp.space, n0, w_rcvr)
     return primitive_fetch(interp, s_frame, w_rcvr, n0)
 
 @expose_primitive(INST_VAR_AT_PUT, unwrap_spec=[object, index1_0, object])
@@ -118,6 +119,7 @@ def func(interp, s_frame, w_rcvr, n0, w_value):
     "Stores a value into a fixed field from the object, and fails otherwise"
     s_class = w_rcvr.class_shadow(interp.space)
     w_rcvr = assert_pointers(w_rcvr)
+    n0 = assert_valid_index(interp.space, n0, w_rcvr)
     return primitive_store(interp, s_frame, w_rcvr, n0, w_value)
 
 @expose_primitive(CHARACTER_VALUE)
