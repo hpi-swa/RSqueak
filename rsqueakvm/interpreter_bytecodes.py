@@ -372,6 +372,7 @@ class __extend__(ContextPartShadow):
         w_method = s_class.lookup(w_special_selector)
         if w_method is None:
             w_method = s_class.lookup(space.w_doesNotUnderstand)
+            self.push(receiver) # need to put receiver back on stack
             if w_method is None:
                 s_class = receiver.class_shadow(self.space)
                 assert isinstance(s_class, ClassShadow)
