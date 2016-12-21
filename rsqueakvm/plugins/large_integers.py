@@ -2,10 +2,11 @@ from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.primitives import prim_table
 from rsqueakvm.primitives.constants import *
-from rsqueakvm.model.numeric import W_LargeInteger
+from rsqueakvm.model.numeric import W_LargeInteger, W_LargeIntegerBig, calculate_exposed_size_for_big_int
 from rsqueakvm.model.variable import W_BytesObject
 
 from rpython.rlib.rbigint import rbigint, NULLRBIGINT, _divrem
+from rpython.rlib import jit
 
 LargeIntegers = Plugin()
 
@@ -73,11 +74,24 @@ def primDigitCompare(interp, s_frame, rcvr, arg):
             res = 0
     return interp.space.wrap_int(res)
 
+@jit.elidable
+def minimum_bytelen_for(val):
+    bytelen = calculate_exposed_size_for_big_int(val) - 1
+    while True:
+        try:
+            # see if we have enough room
+            val.tobytes(bytelen, 'little', False)
+            return bytelen
+        except OverflowError:
+            bytelen += 1
+
 @LargeIntegers.expose_primitive(unwrap_spec=[object])
 def primNormalizePositive(interp, s_frame, w_rcvr):
     if isinstance(w_rcvr, W_BytesObject):
         # only bytes object may be denormalized
         return interp.space.wrap_rbigint(w_rcvr.unwrap_rbigint(interp.space))
+    elif isinstance(w_rcvr, W_LargeIntegerBig):
+        w_rcvr._exposed_size = minimum_bytelen_for(w_rcvr.value)
     return w_rcvr
 
 @LargeIntegers.expose_primitive(unwrap_spec=[object])
@@ -85,4 +99,6 @@ def primNormalizeNegative(interp, s_frame, w_rcvr):
     if isinstance(w_rcvr, W_BytesObject):
         # only bytes object may be denormalized
         return interp.space.wrap_rbigint(w_rcvr.unwrap_rbigint(interp.space))
+    elif isinstance(w_rcvr, W_LargeIntegerBig):
+        w_rcvr._exposed_size = minimum_bytelen_for(w_rcvr.value.abs())
     return w_rcvr

@@ -204,12 +204,6 @@ def calculate_exposed_size_for_big_int(value):
     bytelenval = value.abs()
     # XXX +0.05: heuristic hack float rounding errors
     return int(math.floor(bytelenval.log(256) + 0.05)) + 1
-    # TODO: check if this might be better
-    # try:
-    #     bytes = val.tobytes(bytelen, 'little', False)
-    # except OverflowError:
-    #     # round-off errors in math.log, might need an extra byte
-    #     bytes = val.tobytes(bytelen + 1, 'little', False)
 
 
 class W_LargeIntegerBig(W_LargeInteger):
