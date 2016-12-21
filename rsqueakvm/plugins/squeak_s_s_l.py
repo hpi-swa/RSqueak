@@ -91,7 +91,7 @@ PROP_SERVERNAME = 2
 class W_SSLHandle(W_AbstractObjectWithIdentityHash):
     _attrs_ = ["ctx", "ssl", "readbio", "writebio",
                "state", "servername", "peername", "certname", "certflags",
-               "loglevel", "wasclosed"]
+               "loglevel", "wasclosed", "wassetup"               ]
     _immutable_fields_ = ["ctx", "ssl", "readbio", "writebio"]
 
     def __init__(self):
@@ -104,6 +104,7 @@ class W_SSLHandle(W_AbstractObjectWithIdentityHash):
         self.servername = ""
         self.certname = ""
         self.wasclosed = False
+        self.wassetup = False
         self.readbio = ropenssl.libssl_BIO_new(ropenssl.libssl_BIO_s_mem())
         self.writebio = ropenssl.libssl_BIO_new(ropenssl.libssl_BIO_s_mem())
         ropenssl.libssl_BIO_set_close(self.readbio, BIO_CLOSE)
@@ -147,6 +148,7 @@ class W_SSLHandle(W_AbstractObjectWithIdentityHash):
         self.ssl = ropenssl.libssl_SSL_new(self.ctx)
         self.log("W_SSLHandle.setup: setting bios")
         ropenssl.libssl_SSL_set_bio(self.ssl, self.readbio, self.writebio)
+        self.wassetup = True
         return True
 
     def getclass(self, space):
@@ -157,6 +159,8 @@ class W_SSLHandle(W_AbstractObjectWithIdentityHash):
             self.wasclosed = True
             ropenssl.libssl_BIO_free(self.readbio)
             ropenssl.libssl_BIO_free(self.writebio)
+        if self.wassetup:
+            self.wassetup = False
             ropenssl.libssl_SSL_CTX_free(self.ctx)
             # ropenssl.libssl_SSL_free(self.ssl)
 
