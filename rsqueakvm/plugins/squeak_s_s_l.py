@@ -153,11 +153,12 @@ class W_SSLHandle(W_AbstractObjectWithIdentityHash):
         return space.w_SmallInteger
 
     def close(self):
-        self.wasclosed = True
-        ropenssl.libssl_BIO_free(self.readbio)
-        ropenssl.libssl_BIO_free(self.writebio)
-        ropenssl.libssl_SSL_CTX_free(self.ctx)
-        # ropenssl.libssl_SSL_free(self.ssl)
+        if not self.wasclosed:
+            self.wasclosed = True
+            ropenssl.libssl_BIO_free(self.readbio)
+            ropenssl.libssl_BIO_free(self.writebio)
+            ropenssl.libssl_SSL_CTX_free(self.ctx)
+            # ropenssl.libssl_SSL_free(self.ssl)
 
 def copy_bio_ssl(bio, w_dst, dstlen, loglevel):
     nbytes = ropenssl.libssl_BIO_ctrl_pending(bio)
