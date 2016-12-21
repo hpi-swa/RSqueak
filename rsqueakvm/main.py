@@ -248,9 +248,6 @@ class Config(object):
             elif arg in ["-j", "--jit"]:
                 jitarg, idx = get_parameter(argv, idx, arg)
                 jit.set_user_param(interpreter.Interpreter.jit_driver, jitarg)
-            elif arg in ["--reader-jit-args"]:
-                jitarg, idx = get_parameter(argv, idx, arg)
-                squeakimage.set_reader_user_param(jitarg)
             elif arg in ["-p", "--poll"]:
                 self.poll = True
             elif arg in ["-i", "--no-interrupts"]:
