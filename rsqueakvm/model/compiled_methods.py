@@ -416,9 +416,10 @@ class W_SpurCompiledMethod(W_CompiledMethod):
             self.update_primitive_index()
 
     def update_primitive_index(self):
-        assert self.bytes[0] == chr(139)
-        self._primitive = ord(self.bytes[1]) + (ord(self.bytes[2]) << 8)
-
+        if self.bytes[0] == chr(139): # we have a primitive call
+            self._primitive = ord(self.bytes[1]) + (ord(self.bytes[2]) << 8)
+        else:
+            self._primitive = 0
 
 class W_PreSpurCompiledMethod(W_CompiledMethod):
 
