@@ -190,6 +190,19 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         return 16 + self.islarge * 40 + self.argsize
 
     @jit.elidable_promote()
+    def end_pc(self):
+        from rsqueakvm.primitives import constants
+        from rsqueakvm.interpreter_bytecodes import RETURN_BYTECODES
+        primitive = self.primitive()
+        if primitive >=  256 and primitive <= 519:
+            return self.bytecodeoffset()
+        end_pc = 0
+        for pos, byte in enumerate(self.bytes):
+            if ord(byte) in RETURN_BYTECODES:
+                end_pc = pos
+        return end_pc
+
+    @jit.elidable_promote()
     def fetch_bytecode(self, pc):
         assert pc >= 0 and pc < len(self.bytes)
         return self.bytes[pc]
