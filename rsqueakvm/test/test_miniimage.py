@@ -50,8 +50,9 @@ def test_read_header():
 
 def test_read_all_header():
     reader = open_reader(space, "mini.image")
+    stream = reader.stream
     reader.read_header()
-    next = reader.stream.peek()
+    next = stream.peek()
     assert next != 0  # expects object header, which must not be 0x00000000
 
 def _test_all_pointers_are_valid(reader):
