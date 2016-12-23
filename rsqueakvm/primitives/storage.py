@@ -81,29 +81,9 @@ def func(interp, s_frame, w_from, w_to):
     if len(from_w) != len(to_w):
         raise PrimitiveFailedError
 
-    # TODO: make this fast (context-switch and stack-rebuilding?)
-    s_current = s_frame
-    while s_current.has_s_sender():
-        s_current.w_self()  # just for the side effect of creating the
-                            # ContextPart object
-        s_current = s_current.s_sender()
-
-    from rpython.rlib import rgc
-    roots = [gcref for gcref in rgc.get_rpy_roots() if gcref]
-    pending = roots[:]
-    while pending:
-        gcref = pending.pop()
-        if not rgc.get_gcflag_extra(gcref):
-            rgc.toggle_gcflag_extra(gcref)
-            w_obj = rgc.try_cast_gcref_to_instance(W_Object, gcref)
-            if w_obj is not None and w_obj.has_class():
-                w_obj.pointers_become_one_way(space, from_w, to_w)
-            pending.extend(rgc.get_rpy_referents(gcref))
-    while roots:
-        gcref = roots.pop()
-        if rgc.get_gcflag_extra(gcref):
-            rgc.toggle_gcflag_extra(gcref)
-            roots.extend(rgc.get_rpy_referents(gcref))
+    for w_obj in get_instances_array(interp, s_frame, store=False):
+        if w_obj.has_class():
+            w_obj.pointers_become_one_way(space, from_w, to_w)
     return w_from
 
 @expose_primitive(INST_VAR_AT, unwrap_spec=[object, index1_0])
