@@ -370,12 +370,12 @@ i := n' classified: 'none' withStamp: nil notifying: nil logSource: false.
         i150 = int_add(i69, 1),
         cond_call(i80, 6284336, p75, descr=<Callv 0 r EF=2 OS=121>),
         p153 = getarrayitem_gc_r(p88, 0, descr=<ArrayP 8>),
+        guard_nonnull_class(p153, ConstClass(W_PointersObject), descr=<Guard0xaf52454>)
         p98 = force_token()
         enter_portal_frame(4, 0),
         p99 = force_token()
         enter_portal_frame(4, 0),
         leave_portal_frame(4),
-        guard_class(p153, ConstClass(W_PointersObject), descr=<Guard0x9ee1c28>),
         p161 = getfield_gc_r(p153, descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>),
         guard_value(p161, ConstPtr(ptr162), descr=<Guard0x9ee1bc0>),
         p163 = getfield_gc_r(p153, descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst__storage 24>),
@@ -832,10 +832,11 @@ i := n' classified: 'none' withStamp: nil notifying: nil logSource: false.
         p214 = getfield_gc_r(ConstPtr(ptr213), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>)
         guard_value(p214, ConstPtr(ptr215), descr=<Guard0xac68770>)
         p217 = getarrayitem_gc_r(p88, 0, descr=<ArrayP 8>)
+        guard_nonnull_class(p217, ConstClass(W_LargeIntegerBig), descr=<Guard0xa8651e4>)
         p219 = getarrayitem_gc_r(p88, 1, descr=<ArrayP 8>)
+        guard_nonnull_class(p219, ConstClass(W_PointersObject), descr=<Guard0xa865218>)
         p220 = force_token()
         enter_portal_frame(4, 0)
-        guard_class(p217, 13820888, descr=<Guard0xaae4e30>)
         p224 = getfield_gc_r(p217, descr=<FieldP rsqueakvm.model.base.W_AbstractObjectWithClassReference.inst_w_class 24 pure>)
         guard_value(p224, ConstPtr(ptr225), descr=<Guard0xaae4de8>)
         p227 = getfield_gc_r(ConstPtr(ptr226), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>)
@@ -894,7 +895,6 @@ i := n' classified: 'none' withStamp: nil notifying: nil logSource: false.
         guard_not_invalidated(descr=<Guard0xaae4c38>)
         leave_portal_frame(4)
         leave_portal_frame(4)
-        guard_class(p219, ConstClass(W_PointersObject), descr=<Guard0xaae4bf0>)
         p288 = getfield_gc_r(p219, descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>)
         guard_value(p288, ConstPtr(ptr289), descr=<Guard0xac682f8>)
         p291 = getfield_gc_r(ConstPtr(ptr290), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>)
