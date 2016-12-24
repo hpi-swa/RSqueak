@@ -170,6 +170,7 @@ def func(interp, s_frame, argument_count):
     elif argument_count == 1:
         w_arg = s_frame.pop()
         interp.space.display().set_clipboard_text(interp.space.unwrap_string(w_arg))
+        return w_arg
 
 @expose_primitive(VM_PATH, unwrap_spec=[object])
 def func(interp, s_frame, w_receiver):
