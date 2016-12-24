@@ -36,6 +36,7 @@ chmod +x "${VM_LINUX_TARGET}" "${VM_OSX_TARGET}" "${VM_WIN_TARGET}"
 
 # Extract and set version for OS X bundle
 VERSION="$(${VM_OSX_TARGET} --git-version)"
+echo "Creating version bundle ${VERSION}"
 sed -i ".bak" "s/%VERSION%/${VERSION}/g" "${CONTENTS_DIR}/Info.plist"
 rm -f "${CONTENTS_DIR}/Info.plist.bak"
 
