@@ -163,12 +163,14 @@ def func(interp, s_frame, w_receiver):
 @expose_primitive(CLIPBOARD_TEXT)
 def func(interp, s_frame, argument_count):
     if argument_count == 0:
+        s_frame.pop() # rcvr
         if interp.space.display().has_clipboard_text():
             return interp.space.wrap_string(interp.space.display().get_clipboard_text())
         else:
             return interp.space.wrap_string("")
     elif argument_count == 1:
         w_arg = s_frame.pop()
+        s_frame.pop() # rcvr
         interp.space.display().set_clipboard_text(interp.space.unwrap_string(w_arg))
         return w_arg
 
