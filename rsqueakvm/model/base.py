@@ -232,14 +232,10 @@ class W_AbstractObjectWithIdentityHash(W_Object):
         raise NotImplementedError()
 
     def gethash(self):
-        hash = jit.promote(self.hash)
         if self.hash == self.UNASSIGNED_HASH:
-            self.hash = hash = self._compute_hash()
+            self.hash = hash = (intmask(self.hash_generator.genrand32()) % 2**22) + 1
             return hash
-        return hash
-
-    def _compute_hash(self):
-        return (intmask(self.hash_generator.genrand32()) % 2**22) + 1
+        return jit.promote(self.hash)
 
     def rehash(self):
         self.hash = self.UNASSIGNED_HASH

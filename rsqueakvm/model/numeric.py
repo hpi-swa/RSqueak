@@ -57,7 +57,7 @@ class W_AbstractFloat(W_AbstractObjectWithIdentityHash):
     def str_content(self):
         return "%f" % self.getvalue()
 
-    def _compute_hash(self):
+    def gethash(self):
         return (intmask(compute_hash(self.getvalue())) % 2**22) + 1
 
     def _become(self, w_other):
