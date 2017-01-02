@@ -246,7 +246,7 @@ class Config(object):
             elif arg in ["--simulate-numeric-primitives"]:
                 self.space.simulate_numeric_primitives.activate()
             # Cog compatibility by skipping single dash args (e.g. -nosound)
-            elif len(arg) > 2 and not arg.startswith('--'):
+            elif len(arg) > 2 and arg[0] == '-' and not arg.startswith('--'):
                 pass
             # Other
             elif arg in ["-j", "--jit"]:
