@@ -221,7 +221,8 @@ class Config(object):
                 self.space.highdpi.deactivate()
             elif arg == "--software-renderer":
                 self.space.software_renderer.activate()
-            elif arg == "--no-display":
+            # -nodisplay (Linux) and -headless (macOS) are used in Cog
+            elif arg in ["--no-display", "-nodisplay", "-headless"]:
                 self.space.no_display.activate()
             elif arg == "--silent":
                 self.space.silent.activate()
@@ -244,6 +245,9 @@ class Config(object):
                 self.shell = True
             elif arg in ["--simulate-numeric-primitives"]:
                 self.space.simulate_numeric_primitives.activate()
+            # Cog compatibility by skipping single dash args (e.g. -nosound)
+            elif len(arg) > 2 and not arg.startswith('--'):
+                pass
             # Other
             elif arg in ["-j", "--jit"]:
                 jitarg, idx = get_parameter(argv, idx, arg)
