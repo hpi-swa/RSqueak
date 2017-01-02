@@ -271,3 +271,6 @@ images/
 !rsqueakvm*
 !rsqueakvm/test/images*
 *.db
+.build/appdirs
+.build/rply
+.build/topaz
