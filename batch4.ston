@@ -1,0 +1,19 @@
+SmalltalkCISpec {
+  #testing : {
+    #defaultTimeout : 10,
+    #include : {
+      #categories : [
+        'SUnit-Extensions',
+        'SUnit-Kernel',
+        'SUnit-Tests',
+        'ShoutTests',
+        'SqueakSSL-Tests',
+        'SystemChangeNotification-Tests',
+        'Tests-*'
+      ]
+    },
+    #exclude : {
+      #classes : [ #SUnitTest, #TestValueWithinFix ]
+    }
+  }
+}

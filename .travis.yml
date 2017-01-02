@@ -1,0 +1,29 @@
+sudo: false
+dist: trusty
+language: smalltalk
+smalltalk: Squeak-trunk
+
+# Currently not working: https://github.com/hpi-swa/smalltalkCI/issues/185
+# smalltalk_config:
+#   - batch1.ston
+#   - batch2.ston
+#   - batch3.ston
+#   - batch4.ston
+env:
+  - SMALLTALK_CONFIG="batch1.ston"
+  - SMALLTALK_CONFIG="batch2.ston"
+  - SMALLTALK_CONFIG="batch3.ston"
+  - SMALLTALK_CONFIG="batch4.ston"
+  - SMALLTALK_CONFIG="batch5.ston"
+  - SMALLTALK_CONFIG="batch6.ston"
+
+os:
+  - linux
+#  - osx
+
+addons:
+  apt:
+    packages:
+    - libsdl2-2.0-0
+
+script: ./run.sh

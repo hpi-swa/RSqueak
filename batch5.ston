@@ -1,0 +1,12 @@
+SmalltalkCISpec {
+  #testing : {
+    #defaultTimeout : 10,
+    #categories : [
+      'ToolBuilder-*',
+      'ToolsTests-*',
+      'VersionNumberTests',
+      'WebClient-Tests',
+      'XML-Parser'
+    ]
+  }
+}

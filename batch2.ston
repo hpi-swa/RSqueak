@@ -1,0 +1,8 @@
+SmalltalkCISpec {
+  #testing : {
+    #defaultTimeout : 10,
+    #categories : [
+      'KernelTests-*'
+    ]
+  }
+}

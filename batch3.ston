@@ -1,0 +1,15 @@
+SmalltalkCISpec {
+  #testing : {
+    #defaultTimeout : 10,
+    #categories : [
+      'MorphicExtrasTests-*',
+      'MorphicTests-*',
+      'MultilingualTests-*',
+      'Nebraska-*',
+      'NetworkTests-*',
+      'Regex-Tests-Core',
+      'SMBase-domain',
+      'ST80-*'
+    ]
+  }
+}

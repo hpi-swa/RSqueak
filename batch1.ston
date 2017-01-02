@@ -1,0 +1,13 @@
+SmalltalkCISpec {
+  #testing : {
+    #defaultTimeout : 10,
+    #categories : [
+      'BalloonTests-*',
+      'Chronology-Tests',
+      'CollectionsTests-*',
+      'Etoys-Tests',
+      'GraphicsTests-*',
+      'HelpSystem-*'
+    ]
+  }
+}
