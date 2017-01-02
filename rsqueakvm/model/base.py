@@ -215,7 +215,6 @@ class W_AbstractObjectWithIdentityHash(W_Object):
     """Object with explicit hash (ie all except small
     ints and floats)."""
     _attrs_ = ['hash']
-    _immutable_fields_ = ['hash?']
     repr_classname = "W_AbstractObjectWithIdentityHash"
 
     hash_generator = rrandom.Random()
@@ -236,7 +235,7 @@ class W_AbstractObjectWithIdentityHash(W_Object):
         if self.hash == self.UNASSIGNED_HASH:
             self.hash = hash = (intmask(self.hash_generator.genrand32()) % 2**22) + 1
             return hash
-        return self.hash
+        return jit.promote(self.hash)
 
     def rehash(self):
         self.hash = self.UNASSIGNED_HASH
