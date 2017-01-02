@@ -6,9 +6,10 @@ else:
     system.translationconfig.set(continuation=True)
 
 from rsqueakvm.error import PrimitiveFailedError
+from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger
 from rsqueakvm.model.variable import W_BytesObject
-from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
+from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod, W_SpurCompiledMethod
 from rsqueakvm.plugins.plugin import Plugin, PluginStartupScripts
 from rsqueakvm.storage_classes import ClassShadow
@@ -16,13 +17,16 @@ from rsqueakvm.storage import AbstractCachingShadow
 from rsqueakvm.primitives.constants import EXTERNAL_CALL
 from rsqueakvm.util.cells import QuasiConstant
 
-from pypy.interpreter import main
 from pypy.objspace.std.boolobject import W_BoolObject as WP_BoolObject
 from pypy.objspace.std.intobject import W_IntObject as WP_IntObject
 from pypy.objspace.std.floatobject import W_FloatObject as WP_FloatObject
 from pypy.objspace.std.bytesobject import W_BytesObject as WP_BytesObject
 from pypy.objspace.std.noneobject import W_NoneObject as WP_NoneObject
 from pypy.objspace.std.listobject import W_ListObject as WP_ListObject
+from pypy.objspace.std.tupleobject import W_TupleObject as WP_TupleObject
+from pypy.objspace.std.typeobject import W_TypeObject as WP_TypeObject
+from pypy.interpreter.function import BuiltinFunction, Function, Method, StaticMethod, ClassMethod
+
 from pypy.module.__builtin__ import compiling as py_compiling
 
 from pypy.interpreter.baseobjspace import W_Root
@@ -31,6 +35,7 @@ from pypy.interpreter.error import OperationError
 from rpython.rlib import objectmodel, jit
 
 _DO_NOT_RELOAD = True
+PRINT_STRING = 'printString'
 
 
 def _new_pypy_objspace():
@@ -120,9 +125,9 @@ class PythonPluginClass(Plugin):
     def __init__(self):
         Plugin.__init__(self)
         self.w_python_object_class = QuasiConstant(
-            None, type=W_AbstractObjectWithIdentityHash)
+            None, type=W_PointersObject)
         self.w_python_plugin_send = QuasiConstant(
-            None, type=W_AbstractObjectWithIdentityHash)
+            None, type=W_PointersObject)
 PythonPlugin = PythonPluginClass()
 
 
@@ -140,32 +145,33 @@ PluginStartupScripts.append(startup)
 
 
 @objectmodel.specialize.argtype(0)
-def wrap(interp, wp_object):
+def wrap(space, wp_object):
     # import pdb; pdb.set_trace()
-    space = interp.space
     if isinstance(wp_object, WP_FloatObject):
         return space.wrap_float(py_space.float_w(wp_object))
-    elif isinstance(wp_object, WP_IntObject):
-        return space.wrap_int(py_space.int_w(wp_object))
     elif isinstance(wp_object, WP_BytesObject):
         return space.wrap_string(py_space.str_w(wp_object))
     elif isinstance(wp_object, WP_ListObject):
         return space.wrap_list(
-            [wrap(interp, item) for item in wp_object.getitems()])
+            [wrap(space, item) for item in wp_object.getitems()])
+    elif isinstance(wp_object, WP_TupleObject):
+        return space.wrap_list(
+            [wrap(space, item) for item in wp_object.tolist()])
     elif wp_object is None or isinstance(wp_object, WP_NoneObject):
         return space.w_nil
-    elif wp_object is WP_BoolObject.w_False:
-        return space.w_false
-    elif wp_object is WP_BoolObject.w_True:
-        return space.w_true
+    elif isinstance(wp_object, WP_IntObject):
+        # WP_BoolObject inherits from WP_IntObject
+        if wp_object is WP_BoolObject.w_False:
+            return space.w_false
+        elif wp_object is WP_BoolObject.w_True:
+            return space.w_true
+        return space.wrap_int(py_space.int_w(wp_object))
     else:
         return W_PythonObject(wp_object)
 
 
 @objectmodel.specialize.argtype(0)
-def unwrap(interp, w_object):
-    # import pdb; pdb.set_trace()
-    space = interp.space
+def unwrap(space, w_object):
     if isinstance(w_object, W_PythonObject):
         return w_object.wp_object
     elif isinstance(w_object, W_Float):
@@ -175,44 +181,65 @@ def unwrap(interp, w_object):
     elif isinstance(w_object, W_BytesObject):
         # if w_object.getclass(space).is_same_object(space.w_String):
         return py_space.newbytes(space.unwrap_string(w_object))
+    # import pdb; pdb.set_trace()
+    print 'Cannot unwrap %s' % w_object
     raise PrimitiveFailedError
 
 
-class W_PythonObject(W_AbstractObjectWithIdentityHash):
+class W_PythonObject(W_PointersObject):
     _attrs_ = ["wp_object", "s_class"]
     _immutable_fields_ = ["wp_object", "s_class?"]
     repr_classname = "W_PythonObject"
 
     def __init__(self, wp_object):
+        W_AbstractObjectWithIdentityHash.__init__(self)
         self.wp_object = wp_object
+        # self.w_pyID = None
         self.s_class = None
+
+    def at0(self, space, index0):
+        # import pdb; pdb.set_trace()
+        return space.w_nil
+
+    def atput0(self, space, index0, w_value):
+        # import pdb; pdb.set_trace()
+        pass
+
+    def fetch(self, space, n0):
+        # import pdb; pdb.set_trace()
+        return space.w_nil
+
+    def store(self, space, n0, w_value):
+        # import pdb; pdb.set_trace()
+        pass
 
     def getclass(self, space):
         return W_PythonObject(self.wp_object.getclass(py_space))
 
     def class_shadow(self, space):
         wp_class = py_space.type(self.wp_object)
-        return W_PythonObject.pure_class_shadow(space, wp_class)
+        return PythonClassShadow(space, self.wp_object, wp_class)
 
-    @staticmethod
-    @jit.elidable
-    def pure_class_shadow(space, wp_class):
-        return PythonClassShadowCache.setdefault(
-            wp_class, PythonClassShadow(space, wp_class))
+    # @staticmethod
+    # @jit.elidable
+    # def pure_class_shadow(space, wp_class):
+    #     return PythonClassShadowCache.setdefault(
+    #         wp_class, PythonClassShadow(space, wp_class))
 
     def is_same_object(self, other):
         return (isinstance(other, W_PythonObject) and
                 other.wp_object is self.wp_object)
 
-PythonClassShadowCache = {}
+# PythonClassShadowCache = {}
 
 
 class PythonClassShadow(ClassShadow):
-    _attrs_ = ["wp_class"]
+    _attrs_ = ["wp_object", "wp_class"]
     _immutable_fields_ = ["wp_class"]
 
-    def __init__(self, space, wp_class):
+    def __init__(self, space, wp_object, wp_class):
         assert isinstance(wp_class, W_Root)
+        self.wp_object = wp_object
         self.wp_class = wp_class
         self.name = wp_class.name
         AbstractCachingShadow.__init__(
@@ -223,19 +250,46 @@ class PythonClassShadow(ClassShadow):
 
     def lookup(self, w_selector):
         w_method = self.make_method(w_selector)
+        # import pdb; pdb.set_trace()
         if w_method is None:
             w_po = PythonPlugin.w_python_object_class.get()
             return w_po.as_class_get_shadow(self.space).lookup(w_selector)
         return w_method
 
     def make_method(self, w_selector):
+        # import pdb; pdb.set_trace()
         methodname = self.space.unwrap_string(w_selector)
         idx = methodname.find(":")
         if idx > 0:
             methodname = methodname[0:idx]
-        python_method = self.wp_class.lookup(methodname)
-        if python_method is None:
+
+        # import pdb; pdb.set_trace()
+
+        py_attr = None
+        # py_attr = True if methodname in ['pyID'] else None  # 'printString'
+        try:
+            if py_attr is None:
+                # check instance vars and methods
+                py_attr = py_space.getattr(self.wp_object, py_space.wrap(methodname))
+            if py_attr is None:
+                # check class vars and methods
+                py_attr = py_space.getattr(self.wp_class, py_space.wrap(methodname))
+        except OperationError:
+            pass
+        except Exception as e:
+            print 'Unable to create method %s: %s' % (methodname, e)
             return None
+        if py_attr is None:
+            # check builtins
+            if self.wp_class is py_space.type(py_space.builtin):
+                try:
+                    builtin_func = py_space.builtin.get(methodname)
+                    if builtin_func is None:
+                        return None
+                except OperationError:
+                    return None
+            else:
+                return None
         if self.space.is_spur.is_set():
             w_cm = objectmodel.instantiate(W_SpurCompiledMethod)
         else:
@@ -261,99 +315,217 @@ def eval(interp, s_frame, w_rcvr, source, cmd):
         wp_source = py_space.wrap(source)
         py_code = py_compiling.compile(py_space, wp_source, '<string>', cmd)
         retval = py_code.exec_code(py_space, py_globals, py_locals)
-        return wrap(interp, retval)
+        return wrap(interp.space, retval)
     except OperationError as operationerr:
         print operationerr.errorstr(py_space)
         raise PrimitiveFailedError
 
 
+@PythonPlugin.expose_primitive(unwrap_spec=[object])
+def asSmalltalk(interp, s_frame, w_rcvr):
+    # import pdb; pdb.set_trace()
+    if not isinstance(w_rcvr, W_PythonObject):
+        raise PrimitiveFailedError
+    return wrap(interp.space, w_rcvr.wp_object)
+
+
 @PythonPlugin.expose_primitive(unwrap_spec=[object, str])
 def getGlobal(interp, s_frame, w_rcvr, key):
-    return wrap(interp, py_globals.getitem(py_space.wrap(key)))
+    return wrap(interp.space, py_globals.getitem(py_space.wrap(key)))
 
 
 @PythonPlugin.expose_primitive(unwrap_spec=[object, str])
 def getLocal(interp, s_frame, w_rcvr, key):
-    return wrap(interp, py_locals.getitem(py_space.wrap(key)))
+    return wrap(interp.space, py_locals.getitem(py_space.wrap(key)))
 
 
-def _call_method(interp, wp_rcvr, methodname, args_w):
+def _call_method(space, wp_rcvr, methodname, args_w):
     args_w_len = len(args_w)
     if args_w_len == 1:
-        arg1 = unwrap(interp, args_w[0])
-        return wrap(interp, py_space.call_method(wp_rcvr, methodname, arg1))
+        arg1 = unwrap(space, args_w[0])
+        return wrap(space, py_space.call_method(wp_rcvr, methodname, arg1))
     elif args_w_len == 2:
-        arg1 = unwrap(interp, args_w[0])
-        arg2 = unwrap(interp, args_w[1])
-        return wrap(interp, py_space.call_method(wp_rcvr, methodname, arg1, arg2))
+        arg1 = unwrap(space, args_w[0])
+        arg2 = unwrap(space, args_w[1])
+        return wrap(space, py_space.call_method(wp_rcvr, methodname, arg1, arg2))
     elif args_w_len == 3:
-        arg1 = unwrap(interp, args_w[0])
-        arg2 = unwrap(interp, args_w[1])
-        arg3 = unwrap(interp, args_w[2])
-        return wrap(interp, py_space.call_method(wp_rcvr, methodname, arg1, arg2, arg3))
+        arg1 = unwrap(space, args_w[0])
+        arg2 = unwrap(space, args_w[1])
+        arg3 = unwrap(space, args_w[2])
+        return wrap(space, py_space.call_method(wp_rcvr, methodname, arg1, arg2, arg3))
     elif args_w_len == 4:
-        arg1 = unwrap(interp, args_w[0])
-        arg2 = unwrap(interp, args_w[1])
-        arg3 = unwrap(interp, args_w[2])
-        arg4 = unwrap(interp, args_w[3])
-        return wrap(interp, py_space.call_method(wp_rcvr, methodname, arg1, arg2, arg3, arg4))
+        arg1 = unwrap(space, args_w[0])
+        arg2 = unwrap(space, args_w[1])
+        arg3 = unwrap(space, args_w[2])
+        arg4 = unwrap(space, args_w[3])
+        return wrap(space, py_space.call_method(wp_rcvr, methodname, arg1, arg2, arg3, arg4))
     elif args_w_len == 5:
-        arg1 = unwrap(interp, args_w[0])
-        arg2 = unwrap(interp, args_w[1])
-        arg3 = unwrap(interp, args_w[2])
-        arg4 = unwrap(interp, args_w[3])
-        arg5 = unwrap(interp, args_w[4])
-        return wrap(interp, py_space.call_method(wp_rcvr, methodname, arg1, arg2, arg3, arg4, arg5))
+        arg1 = unwrap(space, args_w[0])
+        arg2 = unwrap(space, args_w[1])
+        arg3 = unwrap(space, args_w[2])
+        arg4 = unwrap(space, args_w[3])
+        arg5 = unwrap(space, args_w[4])
+        return wrap(space, py_space.call_method(wp_rcvr, methodname, arg1, arg2, arg3, arg4, arg5))
     elif args_w_len == 6:
-        arg1 = unwrap(interp, args_w[0])
-        arg2 = unwrap(interp, args_w[1])
-        arg3 = unwrap(interp, args_w[2])
-        arg4 = unwrap(interp, args_w[3])
-        arg5 = unwrap(interp, args_w[4])
-        arg6 = unwrap(interp, args_w[5])
-        return wrap(interp, py_space.call_method(wp_rcvr, methodname, arg1, arg2, arg3, arg4, arg5, arg6))
+        arg1 = unwrap(space, args_w[0])
+        arg2 = unwrap(space, args_w[1])
+        arg3 = unwrap(space, args_w[2])
+        arg4 = unwrap(space, args_w[3])
+        arg5 = unwrap(space, args_w[4])
+        arg6 = unwrap(space, args_w[5])
+        return wrap(space, py_space.call_method(wp_rcvr, methodname, arg1, arg2, arg3, arg4, arg5, arg6))
     elif args_w_len == 7:
-        arg1 = unwrap(interp, args_w[0])
-        arg2 = unwrap(interp, args_w[1])
-        arg3 = unwrap(interp, args_w[2])
-        arg4 = unwrap(interp, args_w[3])
-        arg5 = unwrap(interp, args_w[4])
-        arg6 = unwrap(interp, args_w[5])
-        arg7 = unwrap(interp, args_w[6])
-        return wrap(interp, py_space.call_method(wp_rcvr, methodname, arg1, arg2, arg3, arg4, arg5, arg6, arg7))
+        arg1 = unwrap(space, args_w[0])
+        arg2 = unwrap(space, args_w[1])
+        arg3 = unwrap(space, args_w[2])
+        arg4 = unwrap(space, args_w[3])
+        arg5 = unwrap(space, args_w[4])
+        arg6 = unwrap(space, args_w[5])
+        arg7 = unwrap(space, args_w[6])
+        return wrap(space, py_space.call_method(wp_rcvr, methodname, arg1, arg2, arg3, arg4, arg5, arg6, arg7))
     elif args_w_len == 8:
-        arg1 = unwrap(interp, args_w[0])
-        arg2 = unwrap(interp, args_w[1])
-        arg3 = unwrap(interp, args_w[2])
-        arg4 = unwrap(interp, args_w[3])
-        arg5 = unwrap(interp, args_w[4])
-        arg6 = unwrap(interp, args_w[5])
-        arg7 = unwrap(interp, args_w[6])
-        arg8 = unwrap(interp, args_w[7])
-        return wrap(interp, py_space.call_method(wp_rcvr, methodname, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8))
-    return wrap(interp, py_space.call_method(wp_rcvr, methodname))
+        arg1 = unwrap(space, args_w[0])
+        arg2 = unwrap(space, args_w[1])
+        arg3 = unwrap(space, args_w[2])
+        arg4 = unwrap(space, args_w[3])
+        arg5 = unwrap(space, args_w[4])
+        arg6 = unwrap(space, args_w[5])
+        arg7 = unwrap(space, args_w[6])
+        arg8 = unwrap(space, args_w[7])
+        return wrap(space, py_space.call_method(wp_rcvr, methodname, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8))
+    return wrap(space, py_space.call_method(wp_rcvr, methodname))
+
+
+def _call_function(space, wp_func, args_w):
+    args_w_len = len(args_w)
+    if args_w_len == 1:
+        arg1 = unwrap(space, args_w[0])
+        return wrap(space, py_space.call_function(wp_func, arg1))
+    elif args_w_len == 2:
+        arg1 = unwrap(space, args_w[0])
+        arg2 = unwrap(space, args_w[1])
+        return wrap(space, py_space.call_function(wp_func, arg1, arg2))
+    elif args_w_len == 3:
+        arg1 = unwrap(space, args_w[0])
+        arg2 = unwrap(space, args_w[1])
+        arg3 = unwrap(space, args_w[2])
+        return wrap(space, py_space.call_function(wp_func, arg1, arg2, arg3))
+    elif args_w_len == 4:
+        arg1 = unwrap(space, args_w[0])
+        arg2 = unwrap(space, args_w[1])
+        arg3 = unwrap(space, args_w[2])
+        arg4 = unwrap(space, args_w[3])
+        return wrap(space, py_space.call_function(wp_func, arg1, arg2, arg3, arg4))
+    elif args_w_len == 5:
+        arg1 = unwrap(space, args_w[0])
+        arg2 = unwrap(space, args_w[1])
+        arg3 = unwrap(space, args_w[2])
+        arg4 = unwrap(space, args_w[3])
+        arg5 = unwrap(space, args_w[4])
+        return wrap(space, py_space.call_function(wp_func, arg1, arg2, arg3, arg4, arg5))
+    elif args_w_len == 6:
+        arg1 = unwrap(space, args_w[0])
+        arg2 = unwrap(space, args_w[1])
+        arg3 = unwrap(space, args_w[2])
+        arg4 = unwrap(space, args_w[3])
+        arg5 = unwrap(space, args_w[4])
+        arg6 = unwrap(space, args_w[5])
+        return wrap(space, py_space.call_function(wp_func, arg1, arg2, arg3, arg4, arg5, arg6))
+    elif args_w_len == 7:
+        arg1 = unwrap(space, args_w[0])
+        arg2 = unwrap(space, args_w[1])
+        arg3 = unwrap(space, args_w[2])
+        arg4 = unwrap(space, args_w[3])
+        arg5 = unwrap(space, args_w[4])
+        arg6 = unwrap(space, args_w[5])
+        arg7 = unwrap(space, args_w[6])
+        return wrap(space, py_space.call_function(wp_func, arg1, arg2, arg3, arg4, arg5, arg6, arg7))
+    elif args_w_len == 8:
+        arg1 = unwrap(space, args_w[0])
+        arg2 = unwrap(space, args_w[1])
+        arg3 = unwrap(space, args_w[2])
+        arg4 = unwrap(space, args_w[3])
+        arg5 = unwrap(space, args_w[4])
+        arg6 = unwrap(space, args_w[5])
+        arg7 = unwrap(space, args_w[6])
+        arg8 = unwrap(space, args_w[7])
+        return wrap(space, py_space.call_function(wp_func, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8))
+    return wrap(space, py_space.call_function(wp_func))
+
 
 @PythonPlugin.expose_primitive(compiled_method=True)
 @jit.unroll_safe
 def send(interp, s_frame, argcount, w_method):
-    # import pdb; pdb.set_trace()
+    space = interp.space
     args_w = s_frame.peek_n(argcount)
-    w_literal2 = w_method.literalat0(interp.space, 2)
+    w_literal1 = w_method.literalat0(interp.space, 1)
     methodname = ""
-    if isinstance(w_literal2, W_BytesObject):
-        wp_rcvr = unwrap(interp, s_frame.peek(argcount))
+    if w_literal1 is PythonPlugin.w_python_plugin_send.get():
+        w_rcvr = s_frame.peek(argcount)
+        wp_rcvr = unwrap(space, w_rcvr)
+        w_literal2 = w_method.literalat0(interp.space, 2)
+        assert isinstance(w_literal2, W_BytesObject)
         methodname = interp.space.unwrap_string(w_literal2)
     elif argcount == 3:
         methodname = interp.space.unwrap_string(args_w[0])
-        wp_rcvr = unwrap(interp, args_w[1])
+        w_rcvr = args_w[1]
+        wp_rcvr = unwrap(space, w_rcvr)
         args_w = interp.space.unwrap_array(args_w[2])
     else:
         raise PrimitiveFailedError
     idx = methodname.find(":")
     if idx > 0:
         methodname = methodname[0:idx]
+    # import pdb; pdb.set_trace()
+    # if methodname == 'printString':
+    #     return space.wrap_string(wp_rcvr.getclass(py_space).getname(py_space))
+    # if methodname == 'pyID' and isinstance(w_rcvr, W_PythonObject):
+    #     if len(args_w) == 1:
+    #         w_rcvr.w_pyID = args_w[0]
+    #         return space.w_nil
+    #     else:
+    #         return w_rcvr.w_pyID
     try:
-        return _call_method(interp, wp_rcvr, methodname, args_w)
+        if wp_rcvr is py_space.builtin:
+            builtin = py_space.builtin.get(methodname)
+            if isinstance(builtin, BuiltinFunction):
+                return _call_function(space, builtin, args_w)
+            if isinstance(builtin, WP_TypeObject):
+                if methodname == 'tuple':
+                    return wrap(space, py_space.newtuple(
+                        [unwrap(space, x) for x in args_w]))
+                elif methodname == 'str':
+                    if len(args_w) > 0:
+                        return args_w[0]
+                    return interp.space.wrap_string('')
+                elif methodname == 'bool':
+                    if len(args_w) > 0:
+                        return args_w[0]
+                    return interp.space.w_false
+                elif methodname == 'int':
+                    if len(args_w) > 0:
+                        return args_w[0]
+                    return interp.space.wrap_int(0)
+                elif methodname == 'float':
+                    if len(args_w) > 0:
+                        return args_w[0]
+                    return interp.space.wrap_float(0)
+        else:
+            py_attr = py_space.getattr(wp_rcvr, py_space.wrap(methodname))
+            # Only allow to call certain types (e.g. don't allow __class__() atm)
+            if (isinstance(py_attr, Function) or
+                    isinstance(py_attr, Method) or
+                    isinstance(py_attr, StaticMethod) or
+                    isinstance(py_attr, ClassMethod)):
+                return _call_method(space, wp_rcvr, methodname, args_w)
+            else:
+                if len(args_w) == 1:
+                    py_space.setattr(wp_rcvr, py_space.wrap(methodname), unwrap(space, args_w[0]))
+                    return space.w_nil
+                else:
+                    return wrap(space, py_attr)
     except OperationError as operationerr:
         print operationerr.errorstr(py_space)
-        raise PrimitiveFailedError
+    except Exception as e:
+        print 'Unable to call %s on %s: %s' % (methodname, wp_rcvr, e)
+    raise PrimitiveFailedError
