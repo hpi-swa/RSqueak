@@ -211,15 +211,19 @@ class W_Object(object):
         return self.as_repr_string()
 
 
+hash_generator = rrandom.Random()
+def calculate_and_cache_hash(w_object):
+    w_object.hash = (intmask(hash_generator.genrand32()) % 2**22) + 1
+    return w_object.hash
+
+
 class W_AbstractObjectWithIdentityHash(W_Object):
     """Object with explicit hash (ie all except small
     ints and floats)."""
     _attrs_ = ['hash']
-    _immutable_fields_ = ['hash?']
     repr_classname = "W_AbstractObjectWithIdentityHash"
 
-    hash_generator = rrandom.Random()
-    UNASSIGNED_HASH = sys.maxint
+    UNASSIGNED_HASH = 0
     hash = UNASSIGNED_HASH  # default value
 
     def post_become_one_way(self, w_to):
@@ -233,10 +237,11 @@ class W_AbstractObjectWithIdentityHash(W_Object):
         raise NotImplementedError()
 
     def gethash(self):
-        if self.hash == self.UNASSIGNED_HASH:
-            self.hash = hash = (intmask(self.hash_generator.genrand32()) % 2**22) + 1
+        hash = jit.conditional_call_elidable(self.hash, calculate_and_cache_hash, self)
+        if jit.isconstant(self):
+            return jit.promote(hash)
+        else:
             return hash
-        return self.hash
 
     def rehash(self):
         self.hash = self.UNASSIGNED_HASH
