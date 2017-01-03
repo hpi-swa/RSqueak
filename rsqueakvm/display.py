@@ -143,7 +143,7 @@ class SDLDisplay(NullDisplay):
         self.interrupt_flag[0] = 0
         ll_SetEventFilter(self.interrupt_flag)
         RSDL.SetHint(RSDL.HINT_RENDER_VSYNC, "0") # do not wait for vsync
-        RSDL.SetHint(RSDL.HINT_RENDER_SCALE_QUALITY, "2") # try to scale with best quality
+        RSDL.SetHint(RSDL.HINT_RENDER_SCALE_QUALITY, "0") # nearest pixel sampling
         # SDL >= 2.0.4
         # RSDL.SetHint(RSDL.HINT_VIDEO_X11_NET_WM_PING, "0") # disable WM_PING, so the WM does not think we're hung
         if (RSDL.SetSwapInterval(-1) < 0): # try to allow late tearing (pushes frames faster)
