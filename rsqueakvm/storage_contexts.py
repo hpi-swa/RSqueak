@@ -509,6 +509,7 @@ class ContextPartShadow(AbstractStrategy):
         ptr = jit.promote(self.stack_ptr()) - 1
         if ptr < 0:
             ret = self.w_receiver()
+            ptr = 0
         else:
             ret = self.stack_get(ptr)
         #
