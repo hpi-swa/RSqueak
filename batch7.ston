@@ -1,0 +1,11 @@
+SmalltalkCISpec {
+  #testing : {
+    #defaultTimeout : 10,
+    #classes : [
+      #TraitFileOutTest,
+      #TraitMethodDescriptionTest,
+      #TraitSystemTest,
+      #TraitTest
+    ]
+  }
+}

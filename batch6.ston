@@ -1,8 +1,10 @@
 SmalltalkCISpec {
   #testing : {
     #defaultTimeout : 10,
-    #categories : [
-      'TraitsTests-*'
+    #classes : [
+      #ClassTraitsTest,
+      #PureBehaviorTest,
+      #TraitCompositionTest
     ]
   }
 }

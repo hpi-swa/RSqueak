@@ -16,6 +16,7 @@ env:
   - SMALLTALK_CONFIG="batch4.ston"
   - SMALLTALK_CONFIG="batch5.ston"
   - SMALLTALK_CONFIG="batch6.ston"
+  - SMALLTALK_CONFIG="batch7.ston"
 
 os:
   - linux
