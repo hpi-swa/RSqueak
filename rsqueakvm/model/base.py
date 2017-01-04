@@ -2,7 +2,7 @@ import sys
 
 from rsqueakvm import constants, error
 
-from rpython.rlib import jit, rrandom, signature
+from rpython.rlib import jit, rrandom, signature, objectmodel
 from rpython.rlib.rarithmetic import intmask
 
 
@@ -211,20 +211,19 @@ class W_Object(object):
         return self.as_repr_string()
 
 
-hash_generator = rrandom.Random()
-def calculate_and_cache_hash(w_object):
-    w_object.hash = (intmask(hash_generator.genrand32()) % 2**22) + 1
-    return w_object.hash
-
-
 class W_AbstractObjectWithIdentityHash(W_Object):
     """Object with explicit hash (ie all except small
     ints and floats)."""
     _attrs_ = ['hash']
+    _immutable_fields_ = ['hash?']
     repr_classname = "W_AbstractObjectWithIdentityHash"
 
     UNASSIGNED_HASH = 0
-    hash = UNASSIGNED_HASH  # default value
+    hash_generator = rrandom.Random()
+
+    def __init__(self):
+        W_Object.__init__(self)
+        self.rehash()
 
     def post_become_one_way(self, w_to):
         if isinstance(w_to, W_AbstractObjectWithIdentityHash):
@@ -237,15 +236,12 @@ class W_AbstractObjectWithIdentityHash(W_Object):
         raise NotImplementedError()
 
     def gethash(self):
-        hash = jit.conditional_call_elidable(self.hash, calculate_and_cache_hash, self)
-        if jit.isconstant(self):
-            return jit.promote(hash)
-        else:
-            return hash
+        return self.hash
 
+    @objectmodel.always_inline
     def rehash(self):
-        self.hash = self.UNASSIGNED_HASH
-        self.gethash()
+        self.hash = intmask(objectmodel.current_object_addr_as_int(self)) % 2**22 + 1
+        # self.hash = objectmodel.compute_identity_hash(self)
 
     def invariant(self):
         return isinstance(self.hash, int)
@@ -279,6 +275,7 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     w_class = None
 
     def __init__(self, space, w_class):
+        W_AbstractObjectWithIdentityHash.__init__(self)
         from rsqueakvm.model.pointers import W_PointersObject
         if w_class is not None:     # it's None only for testing and space generation
             assert isinstance(w_class, W_PointersObject)

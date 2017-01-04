@@ -92,6 +92,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
             lookup_class.as_class_get_shadow(space).flush_method_caches()
 
     def __init__(self, space, bytecount=0, header=0):
+        W_AbstractObjectWithIdentityHash.__init__(self)
         self.lookup_selector = "unknown%d" % self.gethash()
         self.bytes = ["\x00"] * bytecount
         self.setheader(space, header, initializing=True)
