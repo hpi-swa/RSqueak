@@ -38,6 +38,7 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
     repr_classname = "W_DisplayBitmap"
 
     def __init__(self, space, size, depth):
+        W_AbstractObjectWithIdentityHash.__init__(self)
         self._real_depth_buffer = lltype.malloc(rffi.CArray(rffi.UINT), size, flavor='raw')
         self._realsize = size
         self._depth = depth

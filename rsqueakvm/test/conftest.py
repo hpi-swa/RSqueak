@@ -62,9 +62,9 @@ def pytest_assertrepr_compare(op, left, right):
         import difflib
         answer = (['Comparing Traces failed (set UPDATE_JITTESTS=1 in your env and run again to auto-update):'] +
                   list(difflib.unified_diff(ltrace, rtrace)) +
-                  ["-------LEFT------"] +
+                  ["-------OLD------"] +
                   [str(op) for op in left.trace] +
-                  ["-------RIGHT-----"] +
+                  ["-------NEW------"] +
                   [str(op) for op in right.trace])
         if os.environ.get("UPDATE_JITTESTS", None) == "1":
             print "\n".join(answer)
