@@ -4,7 +4,7 @@ createMixedListOfSize: aNumber
 	| rng |
 	rng := Random seed: 36rSQUEAKSMALLTALK.
 	self 
-		consWith: [
+		vectorWith: [
 			| roll |
 			roll := 3 atRandom: rng.
 			roll = 1 ifTrue: [rng nextInt: aNumber] ifFalse: [
