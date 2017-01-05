@@ -7,6 +7,7 @@ env:
   - REPOSITORY=OpenSmalltalk/opensmalltalk-vm VM=cog
   - REPOSITORY=OpenSmalltalk/opensmalltalk-vm VM=stack
   - REPOSITORY=OpenSmalltalk/opensmalltalk-vm VM=sista
+  - REPOSITORY=OpenSmalltalk/opensmalltalk-vm VM=coldsista
   - REPOSITORY=OpenSmalltalk/opensmalltalk-vm VM=counters
   - REPOSITORY=OpenSmalltalk/opensmalltalk-vm VM=nocounters
 

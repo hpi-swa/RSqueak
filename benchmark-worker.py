@@ -100,7 +100,7 @@ class BenchmarkWorker(object):
                     except Alarm:
                         print "Benchmark timeout"
                         pipe.kill()
-                        os.system("killall -9 %s" % binary)
+                    os.system("killall -9 %s" % binary)
                     print out, err
                     match = OUTPUT_RE.search(out)
                     if match: tries_left = 0
@@ -159,13 +159,14 @@ class BenchmarkWorker(object):
             return "./stack32/squeak"
 
     def download_stack64(self, commitid):
-        if self._download_with_script("get_stacj64.sh", commitid):
+        if self._download_with_script("get_stack64.sh", commitid):
             return "./stack64/squeak"
 
     def download_sista(self, commitid):
         if self._download_with_script("get_sista.sh", commitid):
             return "./sista32/squeak"
     download_counters = download_sista
+    download_coldsista = download_sista
     download_nocounters = download_cog
 
     def _download_with_script(self, scriptname, commitid):

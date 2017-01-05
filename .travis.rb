@@ -25,7 +25,7 @@ repo.builds.each do |b|
     if b.jobs.select { |j| j.config["os"] == "linux" && j.config["env"] =~ /squeak\.cog\.spur/ }.all?(&:passed?)
       yesterdays_builds << b
     end
-  elsif ["sista", "counters", "nocounters"].include?(vm)
+  elsif ["sista", "coldista", "counters", "nocounters"].include?(vm)
     # if the linux spur builds worked, we're good to go
     if b.jobs.select { |j| j.config["os"] == "linux" && j.config["env"] =~ /squeak\.sista\.spur/ }.all?(&:passed?)
       yesterdays_builds << b

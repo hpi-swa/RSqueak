@@ -33,12 +33,22 @@ IMAGES = {
     "stack": "Spur32.image",
     "stack64": "Spur64.image",
     "sista": "Scorch.image", # VM with counters and Sista is enabled
+    "coldsista": "Scorch.image", # VM with counters and Sista is enabled, but flushed between iterations
     "counters": "Scorch.image", # VM with counters, but Sista is disabled
     "nocounters": "Scorch.image", # VM without counters
 }
 
 EXTRACODE = {
-    "sista": "Smalltalk specialObjectsArray at: 59 put: #conditionalBranchCounterTrippedOn:."
+    "sista": "Smalltalk specialObjectsArray at: 59 put: #conditionalBranchCounterTrippedOn:.",
+    "coldsista": """
+        Smalltalk specialObjectsArray at: 59 put: #conditionalBranchCounterTrippedOn:.
+        BenchmarkSuite recordResultsHook: [
+            Smalltalk specialObjectsArray at: 59 put: nil.
+            CompiledCode allSubInstances do: [:each |
+                SoDependencyMap default discardAndUninstallOptimizedCode: each].
+            Smalltalk specialObjectsArray at: 59 put: #conditionalBranchCounterTrippedOn:.
+        ].
+    """,
 }
 
 from benchmarks import BENCHMARKS
