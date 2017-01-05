@@ -8,7 +8,7 @@ if ( echo $0 | grep 64 ); then
 elif [[ "$(uname -m)" =~ "arm" ]]; then
     words=32
     pkg=cog_linux32ARMv6_squeak.cog.spur
-    product=sqcogspurlinuxht
+    product=sqcogspurlinuxhtRPi
 else
     words=32
     pkg=cog_linux32x86_squeak.cog.spur
