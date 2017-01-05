@@ -11,7 +11,7 @@ rm -rf Pharo*.changes
 #get latest Pharo 6 image
 wget --quiet -O - get.pharo.org/60+vm | bash
 
-cp pharo-vm/PharoV50.sources sista32/lib/squeak/*/
+cp pharo-vm/PharoV50.sources .
 
 #rename to the specified name
 mv Pharo.image $JOB_NAME.image

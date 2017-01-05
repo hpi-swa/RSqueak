@@ -92,7 +92,7 @@ class BenchmarkWorker(object):
                         shell=True,
                         stdout=subprocess.PIPE
                     )
-                    signal.alarm(20*60) # 20 minutes
+                    signal.alarm(60*60) # 60 minutes
                     try:
                         out, err = pipe.communicate()
                         errcode = pipe.wait()
@@ -101,7 +101,8 @@ class BenchmarkWorker(object):
                         print "Benchmark timeout"
                         pipe.kill()
                     os.system("killall -9 %s" % binary)
-                    print out, err
+                    os.system("killall -9 %s" % os.path.basename(binary))
+                    print err
                     match = OUTPUT_RE.search(out)
                     if match: tries_left = 0
                 except Exception, e:

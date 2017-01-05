@@ -44,8 +44,14 @@ EXTRACODE = {
         Smalltalk specialObjectsArray at: 59 put: #conditionalBranchCounterTrippedOn:.
         BenchmarkSuite recordResultsHook: [
             Smalltalk specialObjectsArray at: 59 put: nil.
-            CompiledCode allSubInstances do: [:each |
-                SoDependencyMap default discardAndUninstallOptimizedCode: each].
+            CompiledMethod allInstances do: [:each |
+              (each isOptimized and: [
+                    each metadata isCustomized ifNil: [false]])
+                ifTrue: [SoDependencyMap default uninstallMethod: each]].
+            FileStream stdout nextPutAll: 'recompiling ... '.
+            OpalCompiler recompileAll.
+            FileStream stdout nextPutAll: 'done'; cr.
+            SoDependencyMap default debugFlushAll.
             Smalltalk specialObjectsArray at: 59 put: #conditionalBranchCounterTrippedOn:.
         ].
     """,
