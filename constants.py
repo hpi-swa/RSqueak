@@ -41,17 +41,20 @@ IMAGES = {
 EXTRACODE = {
     "sista": "Smalltalk specialObjectsArray at: 59 put: #conditionalBranchCounterTrippedOn:.",
     "coldsista": """
+        Smalltalk at: #RunCount put: 0.
         Smalltalk specialObjectsArray at: 59 put: #conditionalBranchCounterTrippedOn:.
         BenchmarkSuite recordResultsHook: [
             Smalltalk specialObjectsArray at: 59 put: nil.
-            CompiledMethod allInstances do: [:each |
-              (each isOptimized and: [
-                    each metadata isCustomized ifNil: [false]])
-                ifTrue: [SoDependencyMap default uninstallMethod: each]].
-            FileStream stdout nextPutAll: 'recompiling ... '.
-            OpalCompiler recompileAll.
-            FileStream stdout nextPutAll: 'done'; cr.
-            SoDependencyMap default debugFlushAll.
+            ((Smalltalk at: #RunCount) \\\\ 4) == 0 ifTrue: [
+              CompiledMethod allInstances do: [:each |
+                (each isOptimized and: [
+                      each metadata isCustomized ifNil: [false]])
+                  ifTrue: [SoDependencyMap default uninstallMethod: each]].
+              FileStream stdout nextPutAll: 'recompiling ... '.
+              OpalCompiler recompileAll.
+              FileStream stdout nextPutAll: 'done'; cr.
+              SoDependencyMap default debugFlushAll].
+            Smalltalk at: #RunCount put: (Smalltalk at: #RunCount) + 1.
             Smalltalk specialObjectsArray at: 59 put: #conditionalBranchCounterTrippedOn:.
         ].
     """,
