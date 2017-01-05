@@ -5,6 +5,10 @@ if ( echo $0 | grep 64 ); then
     words=64
     pkg=cog_linux64x64_squeak.cog.spur
     product=sqcogspur64linuxht
+elif [[ "$(uname -m)" =~ "arm" ]]; then
+    words=32
+    pkg=cog_linux32ARMv6_squeak.cog.spur
+    product=sqcogspurlinuxht
 else
     words=32
     pkg=cog_linux32x86_squeak.cog.spur
