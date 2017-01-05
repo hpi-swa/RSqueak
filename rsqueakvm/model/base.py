@@ -211,6 +211,12 @@ class W_Object(object):
         return self.as_repr_string()
 
 
+def calculate_and_cache(w_object):
+    hash = intmask(objectmodel.compute_identity_hash(w_object)) % 2**22 + 1
+    w_object.hash = hash
+    return hash
+
+
 class W_AbstractObjectWithIdentityHash(W_Object):
     """Object with explicit hash (ie all except small
     ints and floats)."""
@@ -219,11 +225,7 @@ class W_AbstractObjectWithIdentityHash(W_Object):
     repr_classname = "W_AbstractObjectWithIdentityHash"
 
     UNASSIGNED_HASH = 0
-    hash_generator = rrandom.Random()
-
-    def __init__(self):
-        W_Object.__init__(self)
-        self.hash = UNASSIGNED_HASH
+    hash = UNASSIGNED_HASH  # default value
 
     def post_become_one_way(self, w_to):
         if isinstance(w_to, W_AbstractObjectWithIdentityHash):
@@ -236,9 +238,7 @@ class W_AbstractObjectWithIdentityHash(W_Object):
         raise NotImplementedError()
 
     def gethash(self):
-        if self.hash == self.UNASSIGNED_HASH:
-            return intmask(objectmodel.compute_identity_hash(self)) % 2**22 + 1
-        return self.hash
+        return jit.conditional_call_elidable(self.hash, calculate_and_cache, self)
 
     @objectmodel.always_inline
     def rehash(self):
