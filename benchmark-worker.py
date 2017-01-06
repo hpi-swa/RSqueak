@@ -11,7 +11,8 @@ import urllib2
 
 sys.path.insert(0, os.path.dirname(__file__))
 from constants import JOB_TABLE, COMMITID, FLAG, DBFILE, CODESPEED_URL, EXTRACODE, \
-    BENCHMARKS, ITERATIONS, OUTPUT_RE, BINARY_URL, BINARY_BASENAME, BRANCH, VM, IMAGES
+    BENCHMARKS, ITERATIONS, OUTPUT_RE, BINARY_URL, BINARY_BASENAME, BRANCH, VM, IMAGES, \
+    BENCHMARK_FIELD
 
 
 class Alarm(Exception):
@@ -46,28 +47,44 @@ class BenchmarkWorker(object):
 
     def run(self):
         self.c.execute("""
-        SELECT * FROM %s WHERE %s=0 LIMIT 1;
-        """ % (JOB_TABLE, FLAG))
+        SELECT * FROM %s WHERE %s=0 AND (%s NOT NULL) LIMIT 1;
+        """ % (JOB_TABLE, FLAG, BENCHMARK_FIELD))
         result = self.c.fetchone()
         if result:
             commitid = result[COMMITID]
             branch = result[BRANCH]
             vm = result[VM]
-            print "Running benchmarks for %s at %s on %s" % (vm, commitid, branch)
+            benchmark = result[BENCHMARK_FIELD]
+            print "Running %s for %s at %s on %s" % (benchmark, vm, commitid, branch)
             self.c.execute("""
-            UPDATE %s SET %s=1 WHERE %s='%s' AND %s='%s' AND %s='%s'
-            """ % (JOB_TABLE, FLAG, COMMITID, commitid, BRANCH, branch, VM, vm))
+            UPDATE %s SET %s=1 WHERE %s='%s' AND %s='%s' AND %s='%s' AND %s='%s'
+            """ % (JOB_TABLE, FLAG, COMMITID, commitid, BRANCH, branch, VM, vm, BENCHMARK_FIELD, benchmark))
             self.conn.commit()
-            self.execute(vm, commitid, branch)
+            self.execute(vm, commitid, branch, benchmark=[benchmark])
+        else:
+            self.c.execute("""
+            SELECT * FROM %s WHERE %s=0 LIMIT 1;
+            """ % (JOB_TABLE, FLAG))
+            result = self.c.fetchone()
+            if result:
+                commitid = result[COMMITID]
+                branch = result[BRANCH]
+                vm = result[VM]
+                print "Running benchmarks for %s at %s on %s" % (vm, commitid, branch)
+                self.c.execute("""
+                UPDATE %s SET %s=1 WHERE %s='%s' AND %s='%s' AND %s='%s'
+                """ % (JOB_TABLE, FLAG, COMMITID, commitid, BRANCH, branch, VM, vm))
+                self.conn.commit()
+                self.execute(vm, commitid, branch)
 
-    def execute(self, vm, commitid, branch):
+    def execute(self, vm, commitid, branch, benchmark=None):
         extracode = EXTRACODE.get(vm, "")
         binary = getattr(self, "download_%s" % vm, lambda id: None)(commitid)
         image = IMAGES.get(vm, None)
         if not binary or not image:
             print "Could not execute binary %s with image %s" % (binary, image)
             return
-        for bm in BENCHMARKS:
+        for bm in (benchmark or BENCHMARKS):
             with open("run.st", "w") as f:
                 f.write("""
                 FileStream stderr nextPutAll: 'Running ...'; crlf.
@@ -102,7 +119,7 @@ class BenchmarkWorker(object):
                         pipe.kill()
                     os.system("killall -9 %s" % binary)
                     os.system("killall -9 %s" % os.path.basename(binary))
-                    print err
+                    print out, err
                     match = OUTPUT_RE.search(out)
                     if match: tries_left = 0
                 except Exception, e:

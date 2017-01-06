@@ -5,7 +5,7 @@ import sqlite3
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
-from constants import QUEUE_PORT, JOB_TABLE, COMMITID, FLAG, BRANCH, DBFILE, VM
+from constants import QUEUE_PORT, JOB_TABLE, COMMITID, FLAG, BRANCH, DBFILE, VM, BENCHMARK_FIELD
 
 
 class BenchmarkQueue(BaseHTTPServer.BaseHTTPRequestHandler):
@@ -18,8 +18,8 @@ class BenchmarkQueue(BaseHTTPServer.BaseHTTPRequestHandler):
         """ % JOB_TABLE)
         if not c.fetchone():
             c.execute("""
-            CREATE TABLE %s (%s VARCHAR(255), %s VARCHAR(255), %s VARCHAR(255), %s BYTE);
-            """ % (JOB_TABLE, VM, COMMITID, BRANCH, FLAG))
+            CREATE TABLE %s (%s VARCHAR(255), %s VARCHAR(255), %s VARCHAR(255), %s BYTE, %s VARCHAR(255));
+            """ % (JOB_TABLE, VM, COMMITID, BRANCH, FLAG, BENCHMARK_FIELD))
             conn.commit()
         c.close()
         conn.close()

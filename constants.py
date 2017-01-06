@@ -12,6 +12,7 @@ COMMITID = "commitid"
 BRANCH = "branch"
 VM = "vm"
 FLAG = "done"
+BENCHMARK_FIELD = "benchmark"
 DBFILE = "benchmarks.db"
 CODESPEED_URL = 'http://speed.squeak.org/'
 BINARY_URL = "https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/commits/{}"
