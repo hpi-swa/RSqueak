@@ -25,7 +25,7 @@ if [ -n "$1" ]; then
     version=$1
     echo "Downloading version ${version}"
 else
-    version=$(curl -sL "https://${credentials}@api.bintray.com/packages/opensmalltalk/vm/cog" | grep -oP latest_version\"\:\"[0-9]+\" | grep -oP "[0-9]+")
+    version=$(curl -sL "https://${credentials}@api.bintray.com/packages/opensmalltalk/vm/cog" | grep -oE latest_version\"\:\"[0-9]+\" | grep -oE "[0-9]+")
     echo "Downloading latest Cog VM: ${version}"
 fi
 COGURL="https://${credentials}@dl.bintray.com/opensmalltalk/vm/${pkg}_${version}.tar.gz"
@@ -43,7 +43,10 @@ rm -rf products
 if [ "$(uname)" == "Darwin" ]; then
     mkdir cog${words}
     mv cog${words}_new cog${words}/Cog.app
-    ln -s $(pwd)/cog${words}/Cog.app/Contents/MacOS/Squeak cog${words}/squeak
+    cat <<EOF>> cog${words}/squeak
+#!/bin/bash
+$(pwd)/cog${words}/Cog.app/Contents/MacOS/Squeak $@
+EOF
 else
     mv cog${words}_new cog${words}
 fi

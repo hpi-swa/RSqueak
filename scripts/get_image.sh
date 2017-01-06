@@ -6,8 +6,8 @@ rm -f Squeak*.changes
 # A 32-bit Spur-Trunk image
 SQUEAK_SERVER="http://ftp.squeak.org/"
 SOURCE_FOLDER="sources_files"
-SQUEAK_WILDCARD="5.\d"
-folder=$(curl -s $SQUEAK_SERVER | grep "/</a>" | grep -o "href=\".*\"" | grep -P "$SQUEAK_WILDCARD" | tail -1)
+SQUEAK_WILDCARD="5.[0-9]"
+folder=$(curl -s $SQUEAK_SERVER | grep "/</a>" | grep -o "href=\".*\"" | grep -E "$SQUEAK_WILDCARD" | tail -1)
 folder=${folder#*=}
 folder=${folder#\"}
 folder=${folder%%\"}

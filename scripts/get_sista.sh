@@ -21,7 +21,7 @@ if [ -n "$1" ]; then
     version=$1
     echo "Downloading version ${version}"
 else
-    version=$(curl -sL "https://${credentials}@api.bintray.com/packages/opensmalltalk/vm/cog" | grep -oP latest_version\"\:\"[0-9]+\" | grep -oP "[0-9]+")
+    version=$(curl -sL "https://${credentials}@api.bintray.com/packages/opensmalltalk/vm/cog" | grep -oE latest_version\"\:\"[0-9]+\" | grep -oE "[0-9]+")
     echo "Downloading latest Cog/Sista VM: ${version}"
 fi
 COGURL="https://${credentials}@dl.bintray.com/opensmalltalk/vm/${pkg}_${version}.tar.gz"
@@ -40,7 +40,10 @@ rm -rf products
 if [ "$(uname)" == "Darwin" ]; then
     mkdir sista${words}
     mv sista${words}_new sista${words}/Sista.app
-    ln -s $(pwd)/sista${words}/Sista.app/Contents/MacOS/Squeak sista${words}/squeak
+    cat <<EOF>> sista${words}/squeak
+#!/bin/bash
+$(pwd)/sista${words}/Sista.app/Contents/MacOS/Squeak $@
+EOF
 else
     mv sista${words}_new sista${words}
 fi
