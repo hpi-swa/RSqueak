@@ -44,6 +44,7 @@ if [ "$(uname)" == "Darwin" ]; then
 #!/bin/bash
 $(pwd)/sista${words}/Sista.app/Contents/MacOS/Squeak $@
 EOF
+    chmod +x sista${words}/squeak
 else
     mv sista${words}_new sista${words}
 fi
