@@ -1,4 +1,6 @@
 import re
+import os
+import sys
 
 API_PORT = 8082
 QUEUE_PORT = 8083
@@ -16,7 +18,13 @@ BENCHMARK_FIELD = "benchmark"
 DBFILE = "benchmarks.db"
 CODESPEED_URL = 'http://speed.squeak.org/'
 BINARY_URL = "https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/commits/{}"
-BINARY_BASENAME = "rsqueak-x86-linux-jit-{}"
+
+if "linux" in sys.platform:
+    BINARY_BASENAME = "rsqueak-x86-linux-jit-{}"
+elif "darwin" in sys.platform:
+    BINARY_BASENAME = "rsqueak-x86-darwin-jit-{}"
+else:
+    raise NotImplementedError("platform unsupported")
 
 ITERATIONS = 100
 

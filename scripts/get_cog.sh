@@ -9,6 +9,10 @@ elif [[ "$(uname -m)" =~ "arm" ]]; then
     words=32
     pkg=cog_linux32ARMv6_squeak.cog.spur
     product=sqcogspurlinuxhtRPi
+elif [ "$(uname)" == "Darwin" ]; then
+    words=32
+    pkg=cog_macos32x86_squeak.cog.spur
+    product=CocoaFast.app
 else
     words=32
     pkg=cog_linux32x86_squeak.cog.spur
@@ -36,4 +40,10 @@ rm ${pkg}_${version}.tar.gz
 mv products/${product} cog${words}_new || mv ${product} cog${words}_new
 rm -rf cog${words}
 rm -rf products
-mv cog${words}_new cog${words}
+if [ "$(uname)" == "Darwin" ]; then
+    mkdir cog${words}
+    mv cog${words}_new cog${words}/Cog.app
+    ln -s $(pwd)/cog${words}/Cog.app/Contents/MacOS/Squeak cog${words}/squeak
+else
+    mv cog${words}_new cog${words}
+fi
