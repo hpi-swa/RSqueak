@@ -45,7 +45,7 @@ if [ "$(uname)" == "Darwin" ]; then
     mv cog${words}_new cog${words}/Cog.app
     cat <<EOF>> cog${words}/squeak
 #!/bin/bash
-$(pwd)/cog${words}/Cog.app/Contents/MacOS/Squeak $@
+$(pwd)/cog${words}/Cog.app/Contents/MacOS/Squeak \$@
 EOF
     chmod +x cog${words}/squeak
 else
