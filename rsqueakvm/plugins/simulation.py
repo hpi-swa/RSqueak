@@ -1,3 +1,5 @@
+from rpython.rlib import jit
+
 from rsqueakvm.error import SimulatedPrimitiveFailedError
 from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.model.compiled_methods import W_CompiledMethod
@@ -28,7 +30,7 @@ class SimulationPluginClass(Plugin):
         s_class = w_rcvr.class_shadow(interp.space)
         if not interp.image.w_simulatePrimitive or interp.image.w_simulatePrimitive.is_nil(interp.space):
             raise SimulatedPrimitiveFailedError("Primitive has failed and simulator selector not in image", w_name, s_class)
-        w_sim_method = s_class.lookup(interp.image.w_simulatePrimitive)
+        w_sim_method = jit.promote(s_class).lookup(interp.image.w_simulatePrimitive)
         if w_sim_method is None:
             raise SimulatedPrimitiveFailedError("Primitive has failed and no simulator method was found on this class", w_name, s_class)
         if not isinstance(w_sim_method, W_CompiledMethod):

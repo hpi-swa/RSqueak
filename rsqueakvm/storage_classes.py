@@ -341,6 +341,9 @@ class ClassShadow(AbstractCachingShadow):
         self.s_methoddict().methoddict[w_selector] = w_method
         if isinstance(w_method, W_CompiledMethod):
             w_method.compiledin_class = self.w_self()
+
+    def promote_if_neccessary(self):
+        return jit.promote(self)
 ClassShadow.instantiate_type = ClassShadow
 
 
@@ -429,4 +432,7 @@ class MethodDictionaryShadow(AbstractGenericShadow):
                         w_compiledmethod.set_lookup_class_and_name(self.s_class.w_self(), selector)
         if self.s_class:
             self.s_class.changed()
+
+    def promote_if_neccessary(self):
+        return jit.promote(self)
 MethodDictionaryShadow.instantiate_type = MethodDictionaryShadow

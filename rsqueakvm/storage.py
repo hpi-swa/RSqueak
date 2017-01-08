@@ -472,6 +472,9 @@ class CachedObjectShadow(AbstractCachingShadow):
     def store(self, w_self, n0, w_value):
         AbstractCachingShadow.store(self, w_self, n0, w_value)
         self.changed()
+
+    def promote_if_neccessary(self):
+        return jit.promote(self)
 CachedObjectShadow.instantiate_type = CachedObjectShadow
 
 

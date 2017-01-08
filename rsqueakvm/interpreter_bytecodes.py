@@ -315,7 +315,7 @@ class __extend__(ContextPartShadow):
     def _sendSelector(self, w_selector, argcount, interp, receiver,
                       receiverclassshadow, w_arguments=None, s_fallback=None):
         assert argcount >= 0
-        w_method = receiverclassshadow.lookup(w_selector)
+        w_method = jit.promote(receiverclassshadow).lookup(w_selector)
         if w_method is None:
             if w_arguments:
                 self.push_all(w_arguments)
@@ -369,7 +369,7 @@ class __extend__(ContextPartShadow):
         w_special_selector = getattr(space, "w_" + special_selector)
         s_class = receiver.class_shadow(space)
 
-        w_method = s_class.lookup(w_special_selector)
+        w_method = jit.promote(s_class).lookup(w_special_selector)
         if w_method is None:
             w_method = s_class.lookup(space.w_doesNotUnderstand)
             self.push(receiver) # need to put receiver back on stack
