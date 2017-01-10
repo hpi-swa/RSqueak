@@ -4,6 +4,7 @@ if "RubyPlugin" not in system.optional_plugins:
 else:
     system.translationconfig.set(continuation=True)
 
+from rsqueakvm.interpreter import ProcessSwitch
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger
 from rsqueakvm.model.variable import W_BytesObject
@@ -37,6 +38,33 @@ try:
     delattr(TopazInterpreter.jitdriver, "virtualizables")
 except AttributeError:
     pass # this is fine
+# END Patch-out virtualizables from Topaz so that translation works
+
+
+# Patch an interrupt counter check into the bytecode loop, so Squeak can interrupt Ruby
+class RubyProcessSwitchException(Exception):
+    def __init__(self, frame):
+        self.frame = frame
+
+jit_iface_recursion = [1000]
+def check_for_interrupts(frame):
+    jit_iface_recursion[0] = jit_iface_recursion[0] - 1
+    if jit_iface_recursion[0] <= 0:
+        jit_iface_recursion[0] = 1000
+        raise RubyProcessSwitchException(frame)
+
+oldjump = TopazInterpreter.jump
+def newjump(self, space, bytecode, frame, cur_pc, target_pc):
+    if target_pc < cur_pc: check_for_interrupts(frame)
+    return oldjump(self, space, bytecode, frame, cur_pc, target_pc)
+
+oldsend = ObjectSpace.send
+def newsend(self, w_receiver, name, args_w=None, block=None):
+    frame = self.getexecutioncontext().topframeref()
+    check_for_interrupts(frame)
+    return oldsend(self, w_receiver, name, args_w=None, block=None)
+# END: Patch an interrupt counter check into the bytecode loop, so Squeak can interrupt Ruby
+
 
 class RubyPluginClass(Plugin):
     _attrs_ = ["w_ruby_object_class", "w_ruby_plugin_send"]
@@ -52,6 +80,10 @@ def startup(space, argv):
     RubyPlugin.w_ruby_plugin_send.set(space.wrap_list_unroll_safe([
         space.wrap_string("RubyPlugin"),
         space.wrap_string("send")
+    ]))
+    RubyPlugin.w_ruby_plugin_resume.set(space.wrap_list_unroll_safe([
+        space.wrap_string("RubyPlugin"),
+        space.wrap_string("resumeFrame")
     ]))
     w_ruby_class = space.smalltalk_at("RubyObject")
     if w_ruby_class is None:
@@ -124,6 +156,7 @@ class W_RubyObject(W_AbstractObjectWithIdentityHash):
     def is_same_object(self, other):
         return isinstance(other, W_RubyObject) and (other.wr_object is self.wr_object)
 
+
 RubyClassShadowCache = {}
 
 
@@ -174,13 +207,99 @@ class RubyClassShadow(ClassShadow):
         ]
         return w_cm
 
-@RubyPlugin.expose_primitive(unwrap_spec=[object, str])
-def eval(interp, s_frame, w_rcvr, source):
+
+class W_RubyFrame(W_Object):
+    def __init__(self, suspended_frame): self.suspended_frame = suspended_frame
+    def getclass(self, space): return W_RubyObject(ruby_space.w_nil)
+    def class_shadow(self, space): return RubyFrameShadow()
+
+class RubyFrameShadow(ClassShadow):
+    def __init__(self, space):
+        AbstractCachingShadow.__init__(self, space, space.w_nil, 0, space.w_nil)
+    def lookup(self, w_selector): return make_resume_primitive_method()
+
+def make_ruby_resume_frame(interp, suspended_frame):
+    return ContextPartShadow.build_method_context(
+        interp.space,
+        make_resume_method(),
+        W_RubyFrame(suspended_frame)
+    )
+
+@jit.elidable
+def make_resume_primitive_method():
+    if self.space.is_spur.is_set():
+        w_cm = objectmodel.instantiate(W_SpurCompiledMethod)
+    else:
+        w_cm = objectmodel.instantiate(W_PreSpurCompiledMethod)
+    w_cm.header = 0
+    w_cm._primitive = EXTERNAL_CALL
+    w_cm.literalsize = 1
+    w_cm.islarge = False
+    w_cm._tempsize = 0
+    w_cm.argsize = 0
+    w_cm.bytes = []
+    w_cm.literals = [RubyPlugin.w_ruby_plugin_resume.get()]
+    return w_cm
+
+def make_resume_method():
+    if self.space.is_spur.is_set():
+        w_cm = objectmodel.instantiate(W_SpurCompiledMethod)
+    else:
+        w_cm = objectmodel.instantiate(W_PreSpurCompiledMethod)
+    w_cm.header = 0
+    w_cm._primitive = 0
+    w_cm.literalsize = 0
+    w_cm.islarge = False
+    w_cm._tempsize = 0
+    w_cm.argsize = 0
+    w_cm.bytes = [
+        112, # pushReceiverBytecode
+        201, # bytecodePrimValue, fails and causes a send #value, for which the
+             # W_RubyFrame which is pushed as receiver returns the
+             # make_resume_primitive_method
+    ]
+    w_cm.literals = []
+    return w_cm
+
+
+@objectmodel.specialize.arg(1)
+@objectmodel.specialize.argtype(2)
+def w_execute_ruby_frame(interp, func, frame=None):
+    if func is None:
+        assert frame is not None
+        oldpc = frame.last_instr
+        func = (lambda: wrap(
+            interp, TopazInterpreter().interpret(
+                ruby_space, sframe, sframe.bytecode, startpc=oldpc
+            )
+        ))
     try:
-        return wrap(interp, ruby_space.execute(source))
-    except RubyError as e:
+        return func()
+    except RubyProcessSwitchException as e:
+        suspended_frame = e.frame
+        raise ProcessSwitch(make_ruby_resume_frame(suspended_frame))
+    except (RubyError, RaiseReturn, RaiseBreak, Throw) as e:
+        if frame:
+            sframe = frame.backref()
+            if sframe is not None:
+                return w_execute_ruby_frame(None, frame=sframe)
         print_traceback(ruby_space, e.w_value)
         raise PrimitiveFailedError
+
+
+@RubyPlugin.expose_primitive(unwrap_spec=[object])
+def resumeFrame(interp, s_frame, w_ruby_frame):
+    assert isinstance(w_ruby_frame, W_RubyFrame)
+    return w_execute_ruby_frame(interp, None, w_rubyframe.frame)
+
+
+@RubyPlugin.expose_primitive(unwrap_spec=[object, str])
+def eval(interp, s_frame, w_rcvr, source):
+    return execute_ruby_frame(
+        interp,
+        lambda: wrap(interp, ruby_space.execute(source))
+    )
+
 
 @RubyPlugin.expose_primitive(compiled_method=True)
 @jit.unroll_safe
@@ -201,8 +320,7 @@ def send(interp, s_frame, argcount, w_method):
     if idx > 0:
         methodname = methodname[0:idx]
     args_rw = [unwrap(interp, w_arg) for w_arg in args_w]
-    try:
-        return wrap(interp, ruby_space.send(wr_rcvr, methodname, args_w=args_rw))
-    except RubyError as e:
-        print_traceback(ruby_space, e.w_value)
-        raise PrimitiveFailedError
+    return execute_ruby_frame(
+        interp,
+        lambda: wrap(interp, ruby_space.send(wr_rcvr, methodname, args_w=args_rw))
+    )
