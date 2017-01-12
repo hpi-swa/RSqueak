@@ -34,3 +34,14 @@ def QuasiConstant(initial_value, type=object):
     class NewQuasiConst(object):
         import_from_mixin(QuasiConstantMixin)
     return NewQuasiConst(initial_value)
+
+
+@specialize.arg(1)
+@specialize.argtype(0)
+def Cell(initial_value, type=object):
+    class NewCell(object):
+        _attrs_ = ["value"]
+        def __init__(self, value): self.value = value
+        def set(self, v): self.value = v
+        def get(self): return self.value
+    return NewCell(initial_value)
