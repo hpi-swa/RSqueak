@@ -372,6 +372,7 @@ class __extend__(ContextPartShadow):
         w_method = s_class.lookup(w_special_selector)
         if w_method is None:
             w_method = s_class.lookup(space.w_doesNotUnderstand)
+            self.push(receiver) # need to put receiver back on stack
             if w_method is None:
                 s_class = receiver.class_shadow(self.space)
                 assert isinstance(s_class, ClassShadow)
@@ -767,3 +768,17 @@ def initialize_bytecode_table():
 
 # this table is only used for creating named bytecodes in tests and printing
 BYTECODE_TABLE = initialize_bytecode_table()
+
+def initialize_return_bytecodes():
+    result = []
+    for entry in BYTECODE_RANGES:
+        if len(entry) == 2:
+            if entry[1].startswith('return'):
+                result.append(entry[0])
+        else:
+            if entry[2].startswith('return'):
+                result.extend(range(entry[0], entry[1]+1))
+    assert len(result) > 0
+    return result
+
+RETURN_BYTECODES = initialize_return_bytecodes()

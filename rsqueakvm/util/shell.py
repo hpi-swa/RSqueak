@@ -19,6 +19,7 @@ autocompletions = {
             "numeric": None,
             "pointers": None,
             "variable": None,
+            "block_closure": None,
         },
         "plugins": None,
         "primitives": {
@@ -31,6 +32,7 @@ autocompletions = {
             "misc": None,
             "storage": None,
             "system": None,
+            "mirror": None,
         }
     }
 }
@@ -175,7 +177,7 @@ class Shell(object):
             import rsqueakvm.interpreter_bytecodes
             reload(rsqueakvm.interpreter_bytecodes)
             reload(rsqueakvm.interpreter)
-            self.set_interp(interpreter.Interpreter(
+            self.set_interp(rsqueakvm.interpreter.Interpreter(
                 self.space, self.interp.image,
                 self.interp.trace, self.interp.trace_important,
                 self.interp.evented, self.interp.interrupts))

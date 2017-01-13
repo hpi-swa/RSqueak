@@ -509,6 +509,7 @@ class ContextPartShadow(AbstractStrategy):
         ptr = jit.promote(self.stack_ptr()) - 1
         if ptr < 0:
             ret = self.w_receiver()
+            ptr = 0
         else:
             ret = self.stack_get(ptr)
         #
@@ -645,7 +646,10 @@ class ContextPartShadow(AbstractStrategy):
         if not objectmodel.we_are_translated():
             if getattr(self.space, "testing", False):
                 return  # During Testing
+            do_exit = True
             import pdb; pdb.set_trace()
+            if not do_exit: # during debugging, we can change do_exit and go on
+                return
         print "== Receiver: %s" % self.w_receiver().as_repr_string()
         if isinstance(w_message, W_PointersObject):
             fields = w_message.fetch_all(self.space)

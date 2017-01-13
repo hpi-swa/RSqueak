@@ -9,7 +9,7 @@ from rsqueakvm.model.compiled_methods import (W_CompiledMethod,
 from rsqueakvm.model.numeric import W_SmallInteger
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.primitives import (expose_primitive, expose_also_as,
-                                  assert_pointers, index1_0)
+                                  assert_pointers, index1_0, assert_valid_inst_index)
 from rsqueakvm.primitives.constants import *
 
 from rpython.rlib import jit, objectmodel
@@ -81,29 +81,9 @@ def func(interp, s_frame, w_from, w_to):
     if len(from_w) != len(to_w):
         raise PrimitiveFailedError
 
-    # TODO: make this fast (context-switch and stack-rebuilding?)
-    s_current = s_frame
-    while s_current.has_s_sender():
-        s_current.w_self()  # just for the side effect of creating the
-                            # ContextPart object
-        s_current = s_current.s_sender()
-
-    from rpython.rlib import rgc
-    roots = [gcref for gcref in rgc.get_rpy_roots() if gcref]
-    pending = roots[:]
-    while pending:
-        gcref = pending.pop()
-        if not rgc.get_gcflag_extra(gcref):
-            rgc.toggle_gcflag_extra(gcref)
-            w_obj = rgc.try_cast_gcref_to_instance(W_Object, gcref)
-            if w_obj is not None and w_obj.has_class():
-                w_obj.pointers_become_one_way(space, from_w, to_w)
-            pending.extend(rgc.get_rpy_referents(gcref))
-    while roots:
-        gcref = roots.pop()
-        if rgc.get_gcflag_extra(gcref):
-            rgc.toggle_gcflag_extra(gcref)
-            roots.extend(rgc.get_rpy_referents(gcref))
+    for w_obj in get_instances_array(interp, s_frame, store=False):
+        if w_obj.has_class():
+            w_obj.pointers_become_one_way(space, from_w, to_w)
     return w_from
 
 @expose_primitive(INST_VAR_AT, unwrap_spec=[object, index1_0])
@@ -111,6 +91,7 @@ def func(interp, s_frame, w_rcvr, n0):
     "Fetches a fixed field from the object, and fails otherwise"
     s_class = w_rcvr.class_shadow(interp.space)
     w_cls = assert_pointers(w_rcvr)
+    n0 = assert_valid_inst_index(interp.space, n0, w_rcvr)
     return primitive_fetch(interp, s_frame, w_rcvr, n0)
 
 @expose_primitive(INST_VAR_AT_PUT, unwrap_spec=[object, index1_0, object])
@@ -118,6 +99,7 @@ def func(interp, s_frame, w_rcvr, n0, w_value):
     "Stores a value into a fixed field from the object, and fails otherwise"
     s_class = w_rcvr.class_shadow(interp.space)
     w_rcvr = assert_pointers(w_rcvr)
+    n0 = assert_valid_inst_index(interp.space, n0, w_rcvr)
     return primitive_store(interp, s_frame, w_rcvr, n0, w_value)
 
 @expose_primitive(CHARACTER_VALUE)

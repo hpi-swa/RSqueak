@@ -92,6 +92,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
             lookup_class.as_class_get_shadow(space).flush_method_caches()
 
     def __init__(self, space, bytecount=0, header=0):
+        W_AbstractObjectWithIdentityHash.__init__(self)
         self.lookup_selector = "unknown%d" % self.gethash()
         self.bytes = ["\x00"] * bytecount
         self.setheader(space, header, initializing=True)
@@ -188,6 +189,19 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         # From blue book: normal mc have place for 12 temps+maxstack
         # mc for methods with islarge flag turned on 32
         return 16 + self.islarge * 40 + self.argsize
+
+    @jit.elidable_promote()
+    def end_pc(self):
+        from rsqueakvm.primitives import constants
+        from rsqueakvm.interpreter_bytecodes import RETURN_BYTECODES
+        primitive = self.primitive()
+        if primitive >=  256 and primitive <= 519:
+            return self.bytecodeoffset()
+        end_pc = 0
+        for pos, byte in enumerate(self.bytes):
+            if ord(byte) in RETURN_BYTECODES:
+                end_pc = pos
+        return end_pc
 
     @jit.elidable_promote()
     def fetch_bytecode(self, pc):
@@ -416,9 +430,10 @@ class W_SpurCompiledMethod(W_CompiledMethod):
             self.update_primitive_index()
 
     def update_primitive_index(self):
-        assert self.bytes[0] == chr(139)
-        self._primitive = ord(self.bytes[1]) + (ord(self.bytes[2]) << 8)
-
+        if self.bytes[0] == chr(139): # we have a primitive call
+            self._primitive = ord(self.bytes[1]) + (ord(self.bytes[2]) << 8)
+        else:
+            self._primitive = 0
 
 class W_PreSpurCompiledMethod(W_CompiledMethod):
 

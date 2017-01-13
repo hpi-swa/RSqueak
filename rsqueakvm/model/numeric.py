@@ -195,21 +195,15 @@ class W_LargeInteger(W_AbstractObjectWithClassReference):
         return self.getclass(space).is_same_object(space.w_LargePositiveInteger)
 
 
-# this method is elidable so the jit won't look inside to notice that we're
-# setting an immutable field. This should be ok, because size is hopefully
-# requested rarely for these numbers.
 @jit.elidable
 def calculate_exposed_size_for_big_int(value):
     import math
     bytelenval = value.abs()
-    # XXX +0.05: heuristic hack float rounding errors
+    # +0.05: heuristic hack float rounding errors. This isn't always right, but
+    # often enough for reasonably small numbers. When it isn't and we end up in
+    # the normalize named primitive, we calculate the exposed_size again just
+    # much slower
     return int(math.floor(bytelenval.log(256) + 0.05)) + 1
-    # TODO: check if this might be better
-    # try:
-    #     bytes = val.tobytes(bytelen, 'little', False)
-    # except OverflowError:
-    #     # round-off errors in math.log, might need an extra byte
-    #     bytes = val.tobytes(bytelen + 1, 'little', False)
 
 
 class W_LargeIntegerBig(W_LargeInteger):
@@ -288,7 +282,10 @@ class W_LargeIntegerBig(W_LargeInteger):
         return self.value.tolong()
 
     def unwrap_float(self, space):
-        return self.value.tofloat()
+        try:
+            return self.value.tofloat()
+        except OverflowError:
+            raise error.UnwrappingError
 
     def clone(self, space):
         return W_LargeIntegerBig(space, self.getclass(space), self.value, self.size())

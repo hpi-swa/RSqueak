@@ -112,11 +112,12 @@ class W_SocketHandle(W_AbstractObjectWithIdentityHash):
         try:
             inet = rsocket.INETAddress(w_bytes.unwrap_string(None), port)
         except rsocket.GAIError:
-            inet = rsocket.INET6Address(w_bytes.unwrap_string(None), port)
-            self.family = rsocket.AF_INET6
-            self.make_socket()
-        except rsocket.GAIError:
-            raise error.PrimitiveFailedError
+            try:
+                inet = rsocket.INET6Address(w_bytes.unwrap_string(None), port)
+                self.family = rsocket.AF_INET6
+                self.make_socket()
+            except rsocket.GAIError:
+                raise error.PrimitiveFailedError
         self.socket.setblocking(True)
         try:
             self.socket.connect(inet)

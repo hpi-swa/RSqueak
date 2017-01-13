@@ -15,7 +15,7 @@ from rsqueakvm.util.progress import Progress
 
 from rpython.rlib import objectmodel
 from rpython.rlib.rarithmetic import r_ulonglong, r_longlong, r_int, intmask, r_uint, r_uint32, r_int64
-from rpython.rlib import jit, rbigint, unroll
+from rpython.rlib import jit, rbigint, unroll, rgc
 
 if r_longlong is not r_int:
     r_uint64 = r_ulonglong
@@ -91,21 +91,6 @@ image_versions_64bit = {
 #
 # Parser classes for Squeak image format.
 
-init_g_objects_driver = jit.JitDriver(name="init_g_objects", reds=['chunk'], greens=['self'])
-init_w_objects_driver = jit.JitDriver(name="init_w_objects", reds=['chunk'], greens=['self'])
-fillin_w_objects_driver = jit.JitDriver(name="fillin_w_objects", reds=['chunk'], greens=['self'])
-fillin_weak_w_objects_driver = jit.JitDriver(name="fillin_weak_w_objects", reds=['chunk'], greens=['self'])
-
-def set_reader_user_param(arg):
-    jit.set_user_param(init_g_objects_driver, arg)
-    jit.set_user_param(init_w_objects_driver, arg)
-    jit.set_user_param(fillin_w_objects_driver, arg)
-    jit.set_user_param(fillin_weak_w_objects_driver, arg)
-
-# Defaults for reading JIT
-set_reader_user_param("threshold=2,function_threshold=2,trace_eagerness=2,loop_longevity=100")
-
-
 class ImageReader(object):
     _immutable_fields_ = ["space", "stream", "version", "readerStrategy", "logging_enabled"]
 
@@ -147,12 +132,14 @@ class ImageReader(object):
         version.configure_stream(self.stream)
         self.version = version
         self.readerStrategy = self.choose_reader_strategy()
+        self.stream = None
         if not version.has_closures:
             self.space.uses_block_contexts.activate()
 
     def read_header(self):
         self.read_version()
         self.readerStrategy.continue_read_header()
+        self.lastWindowSize = self.readerStrategy.lastWindowSize
         self.readerStrategy.skip_to_body()
 
     def choose_reader_strategy(self):
@@ -176,10 +163,6 @@ class ImageReader(object):
     @property
     def chunklist(self):
         return self.readerStrategy.chunklist
-
-    @property
-    def lastWindowSize(self):
-        return self.readerStrategy.lastWindowSize
 
     @property
     def chunks(self):
@@ -229,8 +212,17 @@ class BaseReaderStrategy(object):
         # All chunks are read, now convert them to real objects.
         self.init_g_objects()
         self.assign_prebuilt_constants()
+        for chunk in self.chunklist:
+            if self.ispointers(chunk.g_object):
+                chunk.data = None
+            if chunk.g_object.filled_in:
+                chunk.data = None
+        self.chunks = {}
+        self.intcache = {}
+        rgc.collect()
         self.init_w_objects()
         self.fillin_w_objects()
+        rgc.collect()
         self.fillin_weak_w_objects()
         self.fillin_finalize()
 
@@ -251,8 +243,7 @@ class BaseReaderStrategy(object):
         self.special_g_objects = self.chunks[self.specialobjectspointer].g_object.pointers
 
     def init_g_object(self, chunk):
-        init_g_objects_driver.jit_merge_point(self=self, chunk=chunk)
-        chunk.as_g_object(jit.promote(self), self.space)  # initialize g_object
+        chunk.as_g_object(self, self.space)  # initialize g_object
 
     def assign_prebuilt_constants(self):
         g_special_objects_array = self.chunks[self.specialobjectspointer].g_object
@@ -308,40 +299,37 @@ class BaseReaderStrategy(object):
         return self.special_g_objects[index]
 
     def init_w_objects(self):
-        self._progress.next_stage(len(self.chunks))
+        self._progress.next_stage(len(self.chunklist))
         for g in self.special_g_objects:
             self.init_w_object(g.chunk)
             self._progress.update()
-        for chunk in self.chunks.itervalues():
+        for chunk in self.chunklist:
             self.init_w_object(chunk)
             self._progress.update()
 
     def init_w_object(self, chunk):
-        init_w_objects_driver.jit_merge_point(self=self, chunk=chunk)
         chunk.g_object.init_w_object(self.space)
 
     def fillin_w_objects(self):
-        self._progress.next_stage(len(self.chunks))
-        for chunk in self.chunks.itervalues():
+        self._progress.next_stage(len(self.chunklist))
+        for chunk in self.chunklist:
             self.fillin_w_object(chunk)
             self._progress.update()
 
     def fillin_w_object(self, chunk):
-        fillin_w_objects_driver.jit_merge_point(self=self, chunk=chunk)
         chunk.g_object.fillin(self.space)
 
     def fillin_weak_w_objects(self):
-        self._progress.next_stage(len(self.chunks))
-        for chunk in self.chunks.itervalues():
+        self._progress.next_stage(len(self.chunklist))
+        for chunk in self.chunklist:
             self.fillin_weak_w_object(chunk)
             self._progress.update()
 
     def fillin_weak_w_object(self, chunk):
-        fillin_weak_w_objects_driver.jit_merge_point(self=self, chunk=chunk)
         chunk.g_object.fillin_weak(self.space)
 
     def fillin_finalize(self):
-        for chunk in self.chunks.itervalues():
+        for chunk in self.chunklist:
             chunk.g_object.fillin_finalize(self.space)
 
     def len_bytes_of(self, chunk):
@@ -438,6 +426,8 @@ class NonSpurReader(BaseReaderStrategy):
             self.chunklist.append(chunk)
             self.chunks[pos + self.oldbaseaddress] = chunk
         self.stream.close()
+        self.stream = None
+        rgc.collect()
         return self.chunklist # return for testing
 
     def init_g_objects(self):
@@ -646,6 +636,7 @@ class SpurReader(BaseReaderStrategy):
             # address swizzle is in bytes, but bridgeSpan is in image words
             currentAddressSwizzle += (bridgeSpan * (8 if self.version.is_64bit else 4))
         self.stream.close()
+        self.stream = None
         return self.chunklist # return for testing
 
     def read_object(self):
@@ -749,7 +740,6 @@ class SpurReader(BaseReaderStrategy):
         """
         # the instantiate call circumvents the constructors
         # and makes empty objects
-        # timfel: sorted by likelyhood so the JIT can generate better checks
         if self.ischar(g_object):
             return objectmodel.instantiate(W_Character)
         elif self.isblockclosure(g_object):
@@ -862,14 +852,14 @@ class GenericObject(object):
         self.filled_in = False
         self.filled_in_weak = False
         self.pointers = None
-        self._format = 0
+        self.g_class = None
+        self.chunk = None
 
     def isinitialized(self):
         return self.reader is not None
 
     def initialize_int(self, value, reader, space):
         self.reader = reader
-        self.size = 0
         if value in reader.intcache:
             w_int = reader.intcache[value]
         else:
@@ -880,40 +870,52 @@ class GenericObject(object):
 
     def initialize_char(self, untagged_value, reader, space):
         self.reader = reader
-        self.size = 0
         self.w_object = W_Character(untagged_value)
         self.filled_in = True
 
     def initialize(self, chunk, reader, space):
         self.reader = reader
-        self.size = chunk.size
-        self.hash = chunk.hash
-        self._format = chunk.format
         self.chunk = chunk # for bytes, words and compiledmethod
-        self.init_class()
-        self.init_data(space)  # for pointers
+        self.init_pointers()
+        self.init_g_class()
         self.w_object = None
 
     @property
+    def size(self):
+        if self.chunk is None: return 0
+        return self.chunk.size
+
+    @property
+    def hash(self):
+        if self.chunk is None: return 0
+        return self.chunk.hash
+
+    @property
     def format(self):
-        return jit.promote(self._format)
+        if self.chunk is None: return 0
+        return self.chunk.format
 
     def __repr__(self):
         return "<GenericObject %s>" % ("uninitialized" if not self.isinitialized()
                 else self.w_object if hasattr(self, "w_object") and self.w_object
                 else "size=%d hash=%d format=%d" % (self.size, self.hash, self.format))
 
-    def init_class(self):
+    def init_g_class(self):
         self.g_class = self.reader.g_class_of(self.chunk)
 
-    def init_data(self, space):
+    def init_pointers(self):
+        space = self.reader.space
         if self.reader.ispointers(self):
-            self.pointers = self.reader.decode_pointers(self, space)
-            assert None not in self.pointers
+            ptrs = self.reader.decode_pointers(self, space)
+            assert None not in ptrs
         elif self.reader.iscompiledmethod(self):
             header = self.chunk.data[0] >> 1 # untag tagged int
             literalsize = self.reader.literal_count_of_method_header(header)
-            self.pointers = self.reader.decode_pointers(self, space, literalsize + 1)  # adjust +1 for the header
+            ptrs = self.reader.decode_pointers(self, space, literalsize + 1)  # adjust +1 for the header
+            assert None not in ptrs
+        else:
+            ptrs = None
+        self.pointers = ptrs
 
     def init_w_object(self, space):
         if self.w_object is None:
@@ -944,21 +946,22 @@ class GenericObject(object):
         if not self.filled_in:
             self.filled_in = True
             self.w_object.fillin(space, self)
+            self.chunk.data = None
 
     def fillin_weak(self, space):
         if not self.filled_in_weak and self.isweak():
             self.filled_in_weak = True
             self.w_object.fillin_weak(space, self)
+            self.chunk = None
 
     def fillin_finalize(self, space):
         self.w_object.fillin_finalize(space, self)
 
-    def get_g_pointers(self):
-        assert self.pointers is not None
-        return self.pointers
-
     def get_pointers(self):
-        return [g_object.w_object for g_object in self.get_g_pointers()]
+        assert self.pointers is not None
+        ptrs_g = [g_object.w_object for g_object in self.pointers]
+        self.pointers = None
+        return ptrs_g
 
     def get_class(self):
         w_class = self.g_class.w_object

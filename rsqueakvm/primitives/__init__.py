@@ -23,6 +23,13 @@ def assert_valid_index(space, n0, w_obj):
     # n0 cannot be negative
     return n0
 
+def assert_valid_inst_index(space, n0, w_obj):
+    if not int_between(0, n0, w_obj.size()):
+        raise PrimitiveFailedError()
+    # return the index, since from here on the annotator knows that
+    # n0 cannot be negative
+    return n0
+
 def assert_pointers(w_obj):
     if not (isinstance(w_obj, W_PointersObject) or isinstance(w_obj, W_Character)):
         raise PrimitiveFailedError

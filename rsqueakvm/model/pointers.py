@@ -38,7 +38,7 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
 
     def fillin_weak(self, space, g_self):
         assert g_self.isweak()  # when we get here, this is true
-        pointers = g_self.get_pointers()
+        pointers = self.fetch_all(space)
         storage_type = space.strategy_factory.strategy_type_for(pointers, weak=True)
         space.strategy_factory.switch_strategy(self, storage_type)
 

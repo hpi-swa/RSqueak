@@ -11,11 +11,11 @@ RSqueak/VM aims to be fully compatible with all Squeak versions, and currently s
 
 Why is RSqueak/VM made and how?
 
-RSqueak/VM is a research VM. It is written in RPython, a variant of Python that is amendable to static analysis that grew out of the PyPy project. RPython can be translated to C automatically (much like Slang), but unlike Slang allows much more dynamic and high-level object-oriented code to be used. It also automatically adds features to the C code such as garbage collection, multi-threading, or software-transactional memory. It also automatically adds a capable tracing JIT, which enables RSqueak/VM to surpass the standard Squeak VM (with Cog/Spur) on many benchmarks.
+RSqueak/VM is a research VM. It is written in RPython, a variant of Python that is amendable to static analysis that grew out of the PyPy project. RPython can be translated to C automatically (much like Slang), but unlike Slang allows much more dynamic and high-level object-oriented code to be used. It also automatically adds features to the C code such as garbage collection, multi-threading, or software-transactional memory. It also automatically adds a capable tracing JIT, which even enables RSqueak/VM to surpass the standard Squeak VM (with Cog/Spur) on some benchmarks.
 
 Why is the UI on RSqueak/VM so slow?
 
-You may have noticed that startup and general UI interaction is slower on RSqueak/VM than on the Squeak VM. There are two reasons for this:
+You may have noticed that startup and general UI interaction is slower on RSqueak/VM than on the Squeak VM. There are three (main) reasons for this:
     First, RSqueak/VM treats the image as an exchange format, rather than a memory format, and has to convert it into its internal representation during startup. This has the advantage that RSqueak/VM can support the different image formats that Squeak had over time.
     Second, RSqueak/VM does not have plugins for BitBlt and Balloon graphics, so all rendering that you see on the screen is entirely done in Smalltalk by running the Slang code included in VMMaker in pure Smalltalk. The fact the the image is useable at all is due to the aggressive optimizations the the JIT does to the Slang code, reaching somewhere between 5%-30% of native C performance for rendering.
     Third, RSqueak/VM''s JIT needs some time to warm up. You will notice that some actions are slower the first time, and get increasingly smoother. An extreme example is the "About Squeak" dialog: the first time it is opened, it may take up to 10 seconds to render. As you select other categories, you should notice that rendering speed improves, as does scrolling. After clicking around for a bit, try closing and re-opening the dialog. It should be faster now.

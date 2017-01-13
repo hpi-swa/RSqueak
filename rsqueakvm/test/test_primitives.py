@@ -1030,6 +1030,29 @@ def test_vm_parameters():
     with py.test.raises(PrimitiveFailedError):
         prim(VM_PARAMETERS, [None, 71])
 
+def test_clipboard(monkeypatch):
+    class FakeDisplay():
+        def __init__(self):
+            self.the_text = None
+        def has_clipboard_text(self):
+            return self.the_text is not None
+        def get_clipboard_text(self):
+            return self.the_text
+        def set_clipboard_text(self, txt):
+            self.the_text = txt
+    disp = FakeDisplay()
+    def display(): return disp
+    monkeypatch.setattr(space, "display", display)
+    try:
+        assert space.unwrap_string(prim(CLIPBOARD_TEXT, [None])) == ""
+        disp.the_text = "foobar"
+        assert disp.get_clipboard_text() == "foobar"
+        assert space.unwrap_string(prim(CLIPBOARD_TEXT, [None])) == "foobar"
+        assert space.unwrap_string(prim(CLIPBOARD_TEXT, [None, "copy"])) == "copy"
+        assert space.unwrap_string(prim(CLIPBOARD_TEXT, [None])) == "copy"
+    finally:
+        monkeypatch.undo()
+
 # The next cannot be tested untranslated :(
 # def test_primitive_byte_size_of_object():
 #     assert prim(BYTE_SIZE_OF_INSTANCE, [space.w_SmallInteger]).value is 0
