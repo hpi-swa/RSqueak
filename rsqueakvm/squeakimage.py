@@ -394,7 +394,7 @@ def make_assign_prebuilt_constants():
             "        g_object = self.special_g_object(%d)" % so_index,
             "    except IndexError:",
         ])
-        if name in ("LargeNegativeInteger", "ClassBinding", "Metaclass", "Processor"):
+        if name in ("LargeNegativeInteger", "ClassBinding", "Metaclass", "Processor", "ByteSymbol"):
             code.extend([
                 "        g_object = self.smalltalk_g_at('%s')" % name,
             ])
