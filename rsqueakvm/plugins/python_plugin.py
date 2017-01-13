@@ -11,7 +11,8 @@ from rsqueakvm.model.numeric import W_Float, W_SmallInteger
 from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.compiled_methods import (W_PreSpurCompiledMethod,
-                                              W_SpurCompiledMethod)
+                                              W_SpurCompiledMethod,
+                                              W_CompiledMethod)
 from rsqueakvm.plugins.plugin import Plugin, PluginStartupScripts
 from rsqueakvm.storage_classes import ClassShadow
 from rsqueakvm.storage import AbstractCachingShadow
@@ -74,6 +75,10 @@ class PythonPluginClass(Plugin):
     _attrs_ = [
         "w_python_object_class",
         "w_python_plugin_send",
+        "w_python_plugin_resume",
+        "w_python_resume_method",
+        "w_python_resume_primitive_method",
+        "w_python_class",
         "py_runner",
         "python_interrupt_counter",
         "current_source",
@@ -90,6 +95,14 @@ class PythonPluginClass(Plugin):
         self.w_python_object_class = QuasiConstant(
             None, type=W_PointersObject)
         self.w_python_plugin_send = QuasiConstant(
+            None, type=W_PointersObject)
+        self.w_python_plugin_resume = QuasiConstant(
+            None, type=W_PointersObject)
+        self.w_python_resume_method = QuasiConstant(
+            None, type=W_CompiledMethod)
+        self.w_python_resume_primitive_method = QuasiConstant(
+            None, type=W_CompiledMethod)
+        self.w_python_class = QuasiConstant(
             None, type=W_PointersObject)
 
     def start_new_python(self, source, cmd):
@@ -221,15 +234,73 @@ ExecutionContext.bytecode_trace = new_bytecode_trace
 ExecutionContext.bytecode_only_trace = new_bytecode_only_trace
 
 
+def make_resume_primitive_method(space):
+    if space.is_spur.is_set():
+        w_cm = objectmodel.instantiate(W_SpurCompiledMethod)
+    else:
+        w_cm = objectmodel.instantiate(W_PreSpurCompiledMethod)
+    w_cm.header = 0
+    w_cm._primitive = EXTERNAL_CALL
+    w_cm.literalsize = 1
+    w_cm.islarge = False
+    w_cm._tempsize = 0
+    w_cm.argsize = 0
+    w_cm.bytes = []
+    w_cm.literals = [PythonPlugin.w_python_plugin_resume.get()]
+    return w_cm
+
+
+def make_resume_method(space):
+    if space.is_spur.is_set():
+        w_cm = objectmodel.instantiate(W_SpurCompiledMethod)
+    else:
+        w_cm = objectmodel.instantiate(W_PreSpurCompiledMethod)
+    w_cm.header = 3
+    w_cm._primitive = 0
+    w_cm.literalsize = 3
+    w_cm.islarge = False
+    w_cm._tempsize = 0
+    w_cm.argsize = 0
+    w_cm.compiledin_class = PythonPlugin.w_python_class.get().getclass(space)
+    w_cm.lookup_selector = "fakeResumeFrame"
+    w_cm.bytes = [chr(b) for b in [
+        0x70,  # pushSelf
+        0xD0,  # send: primResume
+        0x87,  # pop
+        0x78,  # returnSelf
+    ]]
+    from rsqueakvm.wrapper import AssociationWrapper
+    w_cm.literals = [
+        space.wrap_symbol("primResume"),
+        space.wrap_symbol(w_cm.lookup_selector),
+        AssociationWrapper.make_w_assoc(
+            space,
+            space.wrap_symbol("Python class"),
+            w_cm.compiledin_class
+        )
+    ]
+    # import pdb; pdb.set_trace()
+    return w_cm
+
+
 def startup(space, argv):
     PythonPlugin.w_python_plugin_send.set(space.wrap_list_unroll_safe([
         space.wrap_string("PythonPlugin"),
         space.wrap_string("send")
     ]))
-    w_python_class = space.smalltalk_at("PythonObject")
-    if w_python_class is None:
-        w_python_class = space.w_nil.getclass(space)
-    PythonPlugin.w_python_object_class.set(w_python_class)
+    PythonPlugin.w_python_plugin_resume.set(space.wrap_list_unroll_safe([
+        space.wrap_string("PythonPlugin"),
+        space.wrap_string("resumePython")
+    ]))
+    PythonPlugin.w_python_class.set(
+        space.smalltalk_at("Python") or space.w_nil.getclass(space)
+    )
+    PythonPlugin.w_python_resume_method.set(make_resume_method(space))
+    PythonPlugin.w_python_resume_primitive_method.set(make_resume_primitive_method(space))
+    w_python_object_class = space.smalltalk_at("PythonObject")
+    if w_python_object_class is None:
+        w_python_object_class = space.w_nil.getclass(space)
+    PythonPlugin.w_python_object_class.set(w_python_object_class)
     py_space.startup()
 PluginStartupScripts.append(startup)
 
@@ -418,10 +489,25 @@ def eval(interp, s_frame, w_rcvr, source, cmd):
         raise PrimitiveFailedError
 
 
+def switch_to_smalltalk(interp, s_frame):
+    from rsqueakvm.interpreter import ProcessSwitch
+    from rsqueakvm.storage_contexts import ContextPartShadow
+    # import pdb; pdb.set_trace()
+    s_resume_frame = ContextPartShadow.build_method_context(
+        interp.space,
+        PythonPlugin.w_python_resume_method.get(),
+        PythonPlugin.w_python_class.get()
+    )
+    s_resume_frame.store_s_sender(s_frame)
+    raise ProcessSwitch(s_resume_frame)
+
+
 @PythonPlugin.expose_primitive(unwrap_spec=[object, str, str])
 def evalInThread(interp, s_frame, w_rcvr, source, cmd):
     # import pdb; pdb.set_trace()
     PythonPlugin.start_new_python(source, cmd)
+    # when we are here, the Python process has yielded
+    switch_to_smalltalk(interp, s_frame)
     # import pdb; pdb.set_trace()
     return interp.space.w_nil
 
@@ -431,6 +517,7 @@ def resumePython(interp, s_frame, w_rcvr):
     # import pdb; pdb.set_trace()
     print 'Smalltalk yield'
     PythonPlugin.resume_python()
+    switch_to_smalltalk(interp, s_frame)
     print 'Smalltalk continue'
     return interp.space.w_nil
 
