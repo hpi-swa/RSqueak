@@ -19,6 +19,7 @@ from rsqueakvm.storage import AbstractCachingShadow
 from rsqueakvm.primitives.constants import EXTERNAL_CALL
 from rsqueakvm.util.cells import QuasiConstant, Cell
 
+from pypy.interpreter.baseobjspace import W_Root as WP_Root
 from pypy.objspace.std.boolobject import W_BoolObject as WP_BoolObject
 from pypy.objspace.std.intobject import W_IntObject as WP_IntObject
 from pypy.objspace.std.floatobject import W_FloatObject as WP_FloatObject
@@ -43,18 +44,76 @@ from rpython.rlib import objectmodel, jit
 _DO_NOT_RELOAD = True
 PRINT_STRING = 'printString'
 
+from rpython.rlib.rstacklet import StackletThread
 
-class ProcessSwitchException(Exception):
-    def __init__(self, frame, pycode, next_instr, ec):
-        self.frame = frame
-        self.pycode = pycode
-        self.next_instr = next_instr
+
+class SThread(StackletThread):
+
+    def __init__(self, space, ec):
+        StackletThread.__init__(self)
+        self.space = space
         self.ec = ec
 
 
-class SimplePyCode(PyCode):
-    def __init__(self, code):
-        self.co_code = code
+class PythonRunner:
+    def __init__(self, source, cmd):
+        self.source = source
+        self.cmd = cmd
+        self.sthread = None
+        # self.h1 = Cell(None)
+        # self.h2 = Cell(None)
+
+    def start(self):
+        self.sthread = StackletThread()
+        self.h1 = self.sthread.new(new_stacklet_callback)
+
+    def resume(self):
+        self.sthread.switch(self.h1)
+
+    def run_python(self, h):
+        self.h2 = h
+        print 'Python start'
+        wp_source = py_space.wrap(self.source)
+        py_code = py_compiling.compile(py_space, wp_source, '<string>', self.cmd)
+        wp_result = py_code.exec_code(py_space, py_globals, py_locals)
+        PythonPlugin.wp_result.set(wp_result)
+        return h
+
+
+class PythonPluginClass(Plugin):
+    _attrs_ = [
+        "w_python_object_class",
+        "w_python_plugin_send",
+        "py_runner",
+        "python_interrupt_counter",
+        "current_source",
+        "current_cmd",
+    ]
+
+    def __init__(self):
+        Plugin.__init__(self)
+        self.py_runner = Cell(None, type=PythonRunner)
+        self.python_interrupt_counter = Cell(1000)
+        self.current_source = Cell('')
+        self.current_cmd = Cell('')
+        self.wp_result = Cell(None, type=WP_Root)
+        self.w_python_object_class = QuasiConstant(
+            None, type=W_PointersObject)
+        self.w_python_plugin_send = QuasiConstant(
+            None, type=W_PointersObject)
+
+    def start_new_python(self, source, cmd):
+        self.py_runner.set(PythonRunner(source, cmd))
+        self.py_runner.get().start()
+
+    def resume_python(self):
+        py_runner = self.py_runner.get()
+        if py_runner is None:
+            raise PrimitiveFailedError
+        py_runner.resume()
+
+
+PythonPlugin = PythonPluginClass()
 
 
 def _new_pypy_objspace():
@@ -127,7 +186,6 @@ def _new_pypy_objspace():
 py_space = _new_pypy_objspace()
 py_globals = py_space.newdict()
 py_locals = py_space.newdict()
-last_ProcessSwitchException = None
 
 # Patch-out virtualizables from Pypy so that translation works
 from pypy.module.pypyjit.interp_jit import PyFrame, PyPyJitDriver
@@ -138,132 +196,35 @@ try:
 except AttributeError:
     pass
 
-from rpython.rlib.rstacklet import StackletThread
-
-class SThread(StackletThread):
-
-    def __init__(self, space, ec):
-        StackletThread.__init__(self)
-        self.space = space
-        self.ec = ec
+from pypy.interpreter.executioncontext import ExecutionContext, TICK_COUNTER_STEP
 
 
-class PythonRunner:
-    def __init__(self, source, cmd):
-        self.source = source
-        self.cmd = cmd
-        self.sthread = None
-        # self.h1 = Cell(None)
-        # self.h2 = Cell(None)
+def check_for_interrupts():
+    new_pic = PythonPlugin.python_interrupt_counter.get() - 1
+    PythonPlugin.python_interrupt_counter.set(new_pic)
+    if new_pic <= 0:
+        PythonPlugin.python_interrupt_counter.set(1000)
+        py_runner = PythonPlugin.py_runner.get()
+        if py_runner:
+            print 'Python yield'
+            py_runner.sthread.switch(py_runner.h2)
+            print 'Python continue'
 
-    def start(self):
-        self.sthread = StackletThread()
-        self.h1 = self.sthread.new(new_stacklet_callback)
+old_bytecode_trace = ExecutionContext.bytecode_trace
+old_bytecode_only_trace = ExecutionContext.bytecode_only_trace
 
-    def resume(self):
-        self.sthread.switch(self.h1)
+@objectmodel.always_inline
+def new_bytecode_trace(self, frame, decr_by=TICK_COUNTER_STEP):
+    check_for_interrupts()
+    old_bytecode_trace(self, frame, decr_by)
 
-    def run_python(self, h):
-        self.h2 = h
-        print 'Python start'
-        wp_source = py_space.wrap(self.source)
-        py_code = py_compiling.compile(py_space, wp_source, '<string>', self.cmd)
-        retval = py_code.exec_code(py_space, py_globals, py_locals)
-        return h
+@objectmodel.always_inline
+def new_bytecode_only_trace(self, frame):
+    check_for_interrupts()
+    old_bytecode_only_trace(self, frame)
 
-
-class PythonPluginClass(Plugin):
-    _attrs_ = [
-        "w_python_object_class",
-        "w_python_plugin_send",
-        "py_runner",
-        "python_interrupt_counter",
-        "current_source",
-        "current_cmd",
-    ]
-
-    def __init__(self):
-        Plugin.__init__(self)
-        self.py_runner = Cell(None, type=PythonRunner)
-        self.python_interrupt_counter = Cell(1000)
-        self.current_source = Cell('')
-        self.current_cmd = Cell('')
-        self.w_python_object_class = QuasiConstant(
-            None, type=W_PointersObject)
-        self.w_python_plugin_send = QuasiConstant(
-            None, type=W_PointersObject)
-
-    def start_new_python(self, source, cmd):
-        self.py_runner.set(PythonRunner(source, cmd))
-        self.py_runner.get().start()
-
-    def resume_python(self):
-        py_runner = self.py_runner.get()
-        if py_runner is None:
-            raise PrimitiveFailedError
-        py_runner.resume()
-
-
-PythonPlugin = PythonPluginClass()
-
-
-# patch switch, we don't need kwargs and they don't work in Cells for some reason
-# old_switch = greenlet.switch
-# def new_switch(self, *args):
-#         "Switch execution to this greenlet, optionally passing the values "
-#         "given as argument(s).  Returns the value passed when switching back."
-#         return self.__switch('switch', (args, {}))
-# greenlet.switch = new_switch
-
-
-from rpython.rlib.rarithmetic import r_uint
-from rpython.rlib.jit import hint
-from pypy.module.pypyjit.interp_jit import pypyjitdriver
-from pypy.interpreter.pyopcode import ExitFrame, Yield
-
-old_dispatch = PyFrame.dispatch
-def new_dispatch(self, pycode, next_instr, ec):
-    self = hint(self, access_directly=True)
-    next_instr = r_uint(next_instr)
-    is_being_profiled = self.get_is_being_profiled()
-    try:
-        while True:
-            pypyjitdriver.jit_merge_point(ec=ec,
-                frame=self, next_instr=next_instr, pycode=pycode,
-                is_being_profiled=is_being_profiled)
-
-            new_pic = PythonPlugin.python_interrupt_counter.get() - 1
-            PythonPlugin.python_interrupt_counter.set(new_pic)
-            if new_pic <= 0:
-                PythonPlugin.python_interrupt_counter.set(1000)
-                print 'Python yield'
-                # import pdb; pdb.set_trace()
-
-                py_runner = PythonPlugin.py_runner.get()
-                py_runner.sthread.switch(py_runner.h2)
-                # sthread = PythonPlugin.sthread
-                # handle = PythonPlugin.rsqueak_sthread_h
-                # assert sthread is not None
-                # assert handle is not None
-                # assert not sthread.is_empty_handle(handle)
-                # sthread.switch(handle)
-                print 'Python continue'
-                # raise ProcessSwitchException(self, pycode, next_instr, ec)
-
-            co_code = pycode.co_code
-            self.valuestackdepth = hint(self.valuestackdepth, promote=True)
-            next_instr = self.handle_bytecode(co_code, next_instr, ec)
-            is_being_profiled = self.get_is_being_profiled()
-    except Yield:
-        self.last_exception = None
-        w_result = self.popvalue()
-        hint(self, force_virtualizable=True)
-        return w_result
-    except ExitFrame:
-        self.last_exception = None
-        return self.popvalue()
-
-PyFrame.dispatch = new_dispatch
+ExecutionContext.bytecode_trace = new_bytecode_trace
+ExecutionContext.bytecode_only_trace = new_bytecode_only_trace
 
 
 def startup(space, argv):
@@ -460,73 +421,26 @@ def eval(interp, s_frame, w_rcvr, source, cmd):
         # import pdb; pdb.set_trace()
         raise PrimitiveFailedError
 
-# def make_resume_frame(saved_state):
-#     ContextPartShadow.build_method_context("""
-#         store the saved python saved_state
-#         set the PC so when we return, we immediately go back into
-#         a primitive and resume the saved python state
-#     """)
 
-# @objectmodel.specialize.arg(0)
-# def execute_python(func):
-#     global last_ProcessSwitchException
-#     try:
-#         return func()
-#     except OperationError as operationerr:
-#         print operationerr.errorstr(py_space)
-#         # import pdb; pdb.set_trace()
-#         raise PrimitiveFailedError
-#     except ProcessSwitchException as e:
-#         print 'Python is giving away the CPU'
-#         last_ProcessSwitchException = e
-#         # raise ProcessSwitchException(make_resume_frame(saved_state))
-#     except Exception as e:
-#         print '[Unknown Exception] %s' % e
-#         # import pdb; pdb.set_trace()
-#         raise PrimitiveFailedError
-
-
-# @PythonPlugin.expose_primitive(unwrap_spec=[object])
-# def resumePythonBak(interp, s_frame, w_rcvr):
-#     global last_ProcessSwitchException
-#     if last_ProcessSwitchException is None:
-#         raise PrimitiveFailedError
-#     def resume_frame():
-#         # import pdb; pdb.set_trace()
-#         frame = last_ProcessSwitchException.frame
-#         pycode = last_ProcessSwitchException.pycode
-#         next_instr = last_ProcessSwitchException.next_instr
-#         ec = last_ProcessSwitchException.ec
-#         frame.dispatch(pycode, next_instr, ec)
-#     execute_python(resume_frame)
-#     return interp.space.w_nil
-
-
-# @PythonPlugin.expose_primitive(unwrap_spec=[object, str, str])
-# def syncEvalBak(interp, s_frame, w_rcvr, source, cmd):
-#     def func():
-#         # import pdb; pdb.set_trace()
-#         wp_source = py_space.wrap(source)
-#         py_code = py_compiling.compile(py_space, wp_source, '<string>', cmd)
-#         retval = py_code.exec_code(py_space, py_globals, py_locals)
-#         return retval
-#     execute_python(func)  # we are not interested in the result atm
-#     return interp.space.w_nil
-    
-    # try:
-    #     func()
-    # except OperationError as operationerr:
-    #     print operationerr.errorstr(py_space)
-    #     # import pdb; pdb.set_trace()
-    #     raise PrimitiveFailedError
-    # except ProcessSwitchException as e:
-    #     print 'Python is giving away the CPU'
-    #     saved_state = e.python_stacklet
-    #     raise ProcessSwitchException(make_resume_frame(saved_state))
-    # except Exception as e:
-    #     print '[Unknown Exception] %s' % e
-    #     # import pdb; pdb.set_trace()
-    #     raise PrimitiveFailedError
+@PythonPlugin.expose_primitive(unwrap_spec=[object, str, str])
+def evalWithTopFrame(interp, s_frame, w_rcvr, source, cmd):
+    try:
+        w_glob = py_space.newdict()
+        cur_frame = py_space.getexecutioncontext().gettopframe()
+        py_space.setitem(w_glob, py_space.wrap('topframe'), py_space.wrap(cur_frame))
+        # import pdb; pdb.set_trace()
+        wp_source = py_space.wrap(source)
+        py_code = py_compiling.compile(py_space, wp_source, '<string>', cmd)
+        retval = py_code.exec_code(py_space, py_globals, py_locals)
+        return wrap(interp.space, retval)
+    except OperationError as operationerr:
+        print operationerr.errorstr(py_space)
+        # import pdb; pdb.set_trace()
+        raise PrimitiveFailedError
+    except Exception as e:
+        print '[Unknown Exception] %s' % e
+        # import pdb; pdb.set_trace()
+        raise PrimitiveFailedError
 
 
 def new_stacklet_callback(h, arg):
@@ -557,51 +471,9 @@ def resumePython(interp, s_frame, w_rcvr):
     return interp.space.w_nil
 
 
-# @PythonPlugin.expose_primitive(unwrap_spec=[object, str, str])
-# def asyncEval(interp, s_frame, w_rcvr, source, cmd):
-#     def doAsyncCall(conn):
-#         try:
-#             # import pdb; pdb.set_trace()
-#             wp_source = py_space.wrap(source)
-#             py_code = py_compiling.compile(py_space, wp_source, '<string>', cmd)
-#             retval = py_code.exec_code(py_space, py_globals, py_locals)
-#             conn.send(wrap(interp.space, retval))
-#         except OperationError as operationerr:
-#             print operationerr.errorstr(py_space)
-#             # import pdb; pdb.set_trace()
-#             conn.send(PrimitiveFailedError)
-#         except Exception as e:
-#             print '[Unknown Exception] %s' % e
-#             # import pdb; pdb.set_trace()
-#             conn.send(PrimitiveFailedError)
-#         finally:
-#             conn.close()
-#     p = Process(target=doAsyncCall, args=(child_conn,))
-#     p.start()
-#     return interp.space.w_nil
-
-
-# @PythonPlugin.expose_primitive(unwrap_spec=[object])
-# def asyncReceive(interp, s_frame, w_rcvr):
-#     import pdb; pdb.set_trace()
-#     if parent_conn is None:
-#         raise PrimitiveFailedError
-#     if parent_conn.poll(2):
-#         return wrap(interp.space, parent_conn.recv())
-#     raise PrimitiveFailedError
-
-
-# @PythonPlugin.expose_primitive(unwrap_spec=[object, str])
-# def asyncSend(interp, s_frame, w_rcvr, msg):
-#     if parent_conn is None:
-#         raise PrimitiveFailedError
-#     parent_conn.send(msg)
-#     data = parent_conn.recv()
-#     if isinstance(data, list):
-#         return interp.space.wrap_list(data)
-#     if isinstance(data, int):
-#         return interp.space.wrap_int(data)
-#     return interp.space.wrap_string(data)
+@PythonPlugin.expose_primitive(unwrap_spec=[object])
+def lastResult(interp, s_frame, w_rcvr):
+    return wrap(interp.space, PythonPlugin.wp_result.get())
 
 
 @PythonPlugin.expose_primitive(unwrap_spec=[object])
