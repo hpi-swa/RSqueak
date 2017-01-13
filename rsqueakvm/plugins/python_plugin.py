@@ -48,10 +48,16 @@ class PythonRunner:
 
     def start(self):
         self.sthread = rstacklet.StackletThread()
-        self.h1 = self.sthread.new(new_stacklet_callback)
+        self.h1 = self.sthread.new(PythonRunner.new_stacklet_callback)
 
     def resume(self):
         self.sthread.switch(self.h1)
+
+    @staticmethod
+    def new_stacklet_callback(h, arg):
+        print 'new_stacklet_callback:', h, arg
+        # import pdb; pdb.set_trace()
+        return PythonPlugin.py_runner.get().run_python(h)
 
     def run_python(self, h):
         self.h2 = h
@@ -413,35 +419,7 @@ def eval(interp, s_frame, w_rcvr, source, cmd):
 
 
 @PythonPlugin.expose_primitive(unwrap_spec=[object, str, str])
-def evalWithTopFrame(interp, s_frame, w_rcvr, source, cmd):
-    try:
-        w_glob = py_space.newdict()
-        cur_frame = py_space.getexecutioncontext().gettopframe()
-        py_space.setitem(w_glob, py_space.wrap('topframe'),
-                         py_space.wrap(cur_frame))
-        # import pdb; pdb.set_trace()
-        wp_source = py_space.wrap(source)
-        py_code = py_compiling.compile(py_space, wp_source, '<string>', cmd)
-        retval = py_code.exec_code(py_space, w_glob, py_locals)
-        return wrap(interp.space, retval)
-    except OperationError as operationerr:
-        print operationerr.errorstr(py_space)
-        # import pdb; pdb.set_trace()
-        raise PrimitiveFailedError
-    except Exception as e:
-        print '[Unknown Exception] %s' % e
-        # import pdb; pdb.set_trace()
-        raise PrimitiveFailedError
-
-
-def new_stacklet_callback(h, arg):
-    print 'in switchbackonce_callback:', h, arg
-    # import pdb; pdb.set_trace()
-    return PythonPlugin.py_runner.get().run_python(h)
-
-
-@PythonPlugin.expose_primitive(unwrap_spec=[object, str, str])
-def syncEval(interp, s_frame, w_rcvr, source, cmd):
+def evalInThread(interp, s_frame, w_rcvr, source, cmd):
     # import pdb; pdb.set_trace()
     PythonPlugin.start_new_python(source, cmd)
     # import pdb; pdb.set_trace()
@@ -476,26 +454,6 @@ def getTopFrame(interp, s_frame, w_rcvr):
     topframe = py_space.getexecutioncontext().gettopframe()
     # assert? primfail?
     return W_PythonObject(topframe)
-
-
-@PythonPlugin.expose_primitive(unwrap_spec=[object])
-def getGlobalsPerFrame(interp, s_frame, w_rcvr):
-    cur_frame = py_space.getexecutioncontext().gettopframe()
-    # assert? primfail?
-    retval = []
-    while cur_frame is not None:
-        cur_w_globals = cur_frame.get_w_globals()
-        # import pdb; pdb.set_trace()
-        if (cur_w_globals is None or
-                not isinstance(cur_w_globals, W_DictMultiObject)):
-            continue
-        w_values = [wrap(interp.space, x) for x in cur_w_globals.values()]
-        w_values_without_pyobjects = [
-            x for x in w_values if not isinstance(x, W_PythonObject)]
-        retval.append(interp.space.wrap_list(w_values_without_pyobjects))
-        cur_frame = cur_frame.f_backref()
-    # import pdb; pdb.set_trace()
-    return interp.space.wrap_list(retval)
 
 
 @PythonPlugin.expose_primitive(unwrap_spec=[object, str])
