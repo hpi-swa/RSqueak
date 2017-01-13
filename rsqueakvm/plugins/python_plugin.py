@@ -5,14 +5,13 @@ else:
     system.translationconfig.set(thread=True)
     system.translationconfig.set(continuation=True)
 
-from multiprocessing import Process, Pipe
-
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger
 from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.model.pointers import W_PointersObject
-from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod, W_SpurCompiledMethod
+from rsqueakvm.model.compiled_methods import (W_PreSpurCompiledMethod,
+                                              W_SpurCompiledMethod)
 from rsqueakvm.plugins.plugin import Plugin, PluginStartupScripts
 from rsqueakvm.storage_classes import ClassShadow
 from rsqueakvm.storage import AbstractCachingShadow
@@ -20,39 +19,25 @@ from rsqueakvm.primitives.constants import EXTERNAL_CALL
 from rsqueakvm.util.cells import QuasiConstant, Cell
 
 from pypy.interpreter.baseobjspace import W_Root as WP_Root
+from pypy.interpreter.error import OperationError
+from pypy.interpreter.function import (BuiltinFunction, Function, Method,
+                                       StaticMethod, ClassMethod)
+from pypy.module.__builtin__ import compiling as py_compiling
 from pypy.objspace.std.boolobject import W_BoolObject as WP_BoolObject
-from pypy.objspace.std.intobject import W_IntObject as WP_IntObject
-from pypy.objspace.std.floatobject import W_FloatObject as WP_FloatObject
 from pypy.objspace.std.bytesobject import W_BytesObject as WP_BytesObject
-from pypy.objspace.std.noneobject import W_NoneObject as WP_NoneObject
+from pypy.objspace.std.dictmultiobject import W_DictMultiObject
+from pypy.objspace.std.floatobject import W_FloatObject as WP_FloatObject
+from pypy.objspace.std.intobject import W_IntObject as WP_IntObject
 from pypy.objspace.std.listobject import W_ListObject as WP_ListObject
+from pypy.objspace.std.noneobject import W_NoneObject as WP_NoneObject
 from pypy.objspace.std.tupleobject import W_TupleObject as WP_TupleObject
 from pypy.objspace.std.typeobject import W_TypeObject as WP_TypeObject
-from pypy.interpreter.function import BuiltinFunction, Function, Method, StaticMethod, ClassMethod
-from pypy.interpreter.pycode import PyCode
-
-from pypy.objspace.std.dictmultiobject import W_DictMultiObject
 
 
-from pypy.module.__builtin__ import compiling as py_compiling
-
-from pypy.interpreter.baseobjspace import W_Root
-from pypy.interpreter.error import OperationError
-
-from rpython.rlib import objectmodel, jit
+from rpython.rlib import objectmodel, jit, rstacklet
 
 _DO_NOT_RELOAD = True
 PRINT_STRING = 'printString'
-
-from rpython.rlib.rstacklet import StackletThread
-
-
-class SThread(StackletThread):
-
-    def __init__(self, space, ec):
-        StackletThread.__init__(self)
-        self.space = space
-        self.ec = ec
 
 
 class PythonRunner:
@@ -60,11 +45,9 @@ class PythonRunner:
         self.source = source
         self.cmd = cmd
         self.sthread = None
-        # self.h1 = Cell(None)
-        # self.h2 = Cell(None)
 
     def start(self):
-        self.sthread = StackletThread()
+        self.sthread = rstacklet.StackletThread()
         self.h1 = self.sthread.new(new_stacklet_callback)
 
     def resume(self):
@@ -74,7 +57,8 @@ class PythonRunner:
         self.h2 = h
         print 'Python start'
         wp_source = py_space.wrap(self.source)
-        py_code = py_compiling.compile(py_space, wp_source, '<string>', self.cmd)
+        py_code = py_compiling.compile(py_space, wp_source, '<string>',
+                                       self.cmd)
         wp_result = py_code.exec_code(py_space, py_globals, py_locals)
         PythonPlugin.wp_result.set(wp_result)
         return h
@@ -196,8 +180,6 @@ try:
 except AttributeError:
     pass
 
-from pypy.interpreter.executioncontext import ExecutionContext, TICK_COUNTER_STEP
-
 
 def check_for_interrupts():
     new_pic = PythonPlugin.python_interrupt_counter.get() - 1
@@ -210,13 +192,19 @@ def check_for_interrupts():
             py_runner.sthread.switch(py_runner.h2)
             print 'Python continue'
 
+
+from pypy.interpreter.executioncontext import (ExecutionContext,
+                                               TICK_COUNTER_STEP)
+
 old_bytecode_trace = ExecutionContext.bytecode_trace
 old_bytecode_only_trace = ExecutionContext.bytecode_only_trace
+
 
 @objectmodel.always_inline
 def new_bytecode_trace(self, frame, decr_by=TICK_COUNTER_STEP):
     check_for_interrupts()
     old_bytecode_trace(self, frame, decr_by)
+
 
 @objectmodel.always_inline
 def new_bytecode_only_trace(self, frame):
@@ -334,7 +322,7 @@ class PythonClassShadow(ClassShadow):
     _immutable_fields_ = ["wp_class"]
 
     def __init__(self, space, wp_object, wp_class):
-        assert isinstance(wp_class, W_Root)
+        assert isinstance(wp_class, WP_Root)
         self.wp_object = wp_object
         self.wp_class = wp_class
         self.name = wp_class.name
@@ -366,10 +354,12 @@ class PythonClassShadow(ClassShadow):
         try:
             if py_attr is None:
                 # check instance vars and methods
-                py_attr = py_space.getattr(self.wp_object, py_space.wrap(methodname))
+                py_attr = py_space.getattr(self.wp_object,
+                                           py_space.wrap(methodname))
             if py_attr is None:
                 # check class vars and methods
-                py_attr = py_space.getattr(self.wp_class, py_space.wrap(methodname))
+                py_attr = py_space.getattr(self.wp_class,
+                                           py_space.wrap(methodname))
         except OperationError:
             pass
         except Exception as e:
@@ -427,11 +417,12 @@ def evalWithTopFrame(interp, s_frame, w_rcvr, source, cmd):
     try:
         w_glob = py_space.newdict()
         cur_frame = py_space.getexecutioncontext().gettopframe()
-        py_space.setitem(w_glob, py_space.wrap('topframe'), py_space.wrap(cur_frame))
+        py_space.setitem(w_glob, py_space.wrap('topframe'),
+                         py_space.wrap(cur_frame))
         # import pdb; pdb.set_trace()
         wp_source = py_space.wrap(source)
         py_code = py_compiling.compile(py_space, wp_source, '<string>', cmd)
-        retval = py_code.exec_code(py_space, py_globals, py_locals)
+        retval = py_code.exec_code(py_space, w_glob, py_locals)
         return wrap(interp.space, retval)
     except OperationError as operationerr:
         print operationerr.errorstr(py_space)
@@ -453,11 +444,6 @@ def new_stacklet_callback(h, arg):
 def syncEval(interp, s_frame, w_rcvr, source, cmd):
     # import pdb; pdb.set_trace()
     PythonPlugin.start_new_python(source, cmd)
-    # import pdb; pdb.set_trace()
-    # sthread = SThread(py_space, py_space.getexecutioncontext())
-    # PythonPlugin.sthread.set(sthread)
-    # h = sthread.new(run_python)
-    # PythonPlugin.pypy_sthread_h.set(h)
     # import pdb; pdb.set_trace()
     return interp.space.w_nil
 
@@ -491,6 +477,7 @@ def getTopFrame(interp, s_frame, w_rcvr):
     # assert? primfail?
     return W_PythonObject(topframe)
 
+
 @PythonPlugin.expose_primitive(unwrap_spec=[object])
 def getGlobalsPerFrame(interp, s_frame, w_rcvr):
     cur_frame = py_space.getexecutioncontext().gettopframe()
@@ -499,7 +486,8 @@ def getGlobalsPerFrame(interp, s_frame, w_rcvr):
     while cur_frame is not None:
         cur_w_globals = cur_frame.get_w_globals()
         # import pdb; pdb.set_trace()
-        if cur_w_globals is None or not isinstance(cur_w_globals, W_DictMultiObject):
+        if (cur_w_globals is None or
+                not isinstance(cur_w_globals, W_DictMultiObject)):
             continue
         w_values = [wrap(interp.space, x) for x in cur_w_globals.values()]
         w_values_without_pyobjects = [
@@ -658,15 +646,6 @@ def send(interp, s_frame, argcount, w_method):
     idx = methodname.find(":")
     if idx > 0:
         methodname = methodname[0:idx]
-    # import pdb; pdb.set_trace()
-    # if methodname == 'printString':
-    #     return space.wrap_string(wp_rcvr.getclass(py_space).getname(py_space))
-    # if methodname == 'pyID' and isinstance(w_rcvr, W_PythonObject):
-    #     if len(args_w) == 1:
-    #         w_rcvr.w_pyID = args_w[0]
-    #         return space.w_nil
-    #     else:
-    #         return w_rcvr.w_pyID
     try:
         if wp_rcvr is py_space.builtin:
             builtin = py_space.builtin.get(methodname)
@@ -694,7 +673,7 @@ def send(interp, s_frame, argcount, w_method):
                     return interp.space.wrap_float(0)
         else:
             py_attr = py_space.getattr(wp_rcvr, py_space.wrap(methodname))
-            # Only allow to call certain types (e.g. don't allow __class__() atm)
+            # Only allow to call certain types (e.g. don't allow __class__())
             if (isinstance(py_attr, Function) or
                     isinstance(py_attr, Method) or
                     isinstance(py_attr, StaticMethod) or
@@ -702,7 +681,8 @@ def send(interp, s_frame, argcount, w_method):
                 return _call_method(space, wp_rcvr, methodname, args_w)
             else:
                 if len(args_w) == 1:
-                    py_space.setattr(wp_rcvr, py_space.wrap(methodname), unwrap(space, args_w[0]))
+                    py_space.setattr(wp_rcvr, py_space.wrap(methodname),
+                                     unwrap(space, args_w[0]))
                     return space.w_nil
                 else:
                     return wrap(space, py_attr)
