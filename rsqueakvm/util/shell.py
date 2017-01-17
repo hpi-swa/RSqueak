@@ -226,11 +226,12 @@ class Shell(object):
                     if n == method:
                         getattr(self, n)(code)
             else:
+                import traceback
                 w_result = None
                 try:
                     w_result = self._execute_code(code)
                 except Exception as e:
-                    print "Error: ", sys.exc_info()[0]
+                    print traceback.format_exc()
                     import pdb; pdb.set_trace()
                 if w_result:
                     self.last_result = w_result
