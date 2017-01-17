@@ -196,9 +196,9 @@ class ObjSpace(object):
         return w_inst
 
     def wrap_symbol(self, string):
-        w_inst = self.wrap_string(string)
-        w_inst.change_class(self, self.w_ByteSymbol)
-        return w_inst
+        with ForceHeadless(self):
+            return self.interp.get().perform(self.wrap_string(string),
+                                             "asSymbol")
 
     def wrap_char(self, c):
         # return self.w_charactertable.fetch(self, ord(c))

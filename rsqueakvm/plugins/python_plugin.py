@@ -39,20 +39,46 @@ from rpython.rlib import objectmodel, jit, rstacklet
 
 _DO_NOT_RELOAD = True
 PRINT_STRING = 'printString'
+PYTHON_BYTECODES_THRESHOLD = 10000
 
 
 class PythonRunner:
     def __init__(self, source, cmd):
         self.source = source
         self.cmd = cmd
+
+    def start(self):
+        raise NotImplementedError
+
+    def resume(self):
+        raise NotImplementedError
+
+    def return_to_smalltalk(self):
+        raise NotImplementedError
+
+    def run_python(self):
+        print 'Python start'
+        wp_source = py_space.wrap(self.source)
+        py_code = py_compiling.compile(py_space, wp_source, '<string>',
+                                       self.cmd)
+        wp_result = py_code.exec_code(py_space, py_globals, py_locals)
+        PythonPlugin.wp_result.set(wp_result)
+
+
+class PythonRunnerStacklet(PythonRunner):
+    def __init__(self, source, cmd):
+        PythonRunner.__init__(self, source, cmd)
         self.sthread = None
 
     def start(self):
         self.sthread = rstacklet.StackletThread()
-        self.h1 = self.sthread.new(PythonRunner.new_stacklet_callback)
+        self.h1 = self.sthread.new(PythonRunnerStacklet.new_stacklet_callback)
 
     def resume(self):
         self.sthread.switch(self.h1)
+
+    def return_to_smalltalk(self):
+        self.sthread.switch(self.h2)
 
     @staticmethod
     def new_stacklet_callback(h, arg):
@@ -62,13 +88,27 @@ class PythonRunner:
 
     def run_python(self, h):
         self.h2 = h
-        print 'Python start'
-        wp_source = py_space.wrap(self.source)
-        py_code = py_compiling.compile(py_space, wp_source, '<string>',
-                                       self.cmd)
-        wp_result = py_code.exec_code(py_space, py_globals, py_locals)
-        PythonPlugin.wp_result.set(wp_result)
+        PythonRunner.run_python(self)
         return h
+
+
+class PythonRunnerGreenlet(PythonRunner):
+    def start(self):
+        from greenlet import greenlet
+        self.greenlet = greenlet(PythonRunnerGreenlet.new_greenlet_callback)
+        self.resume()  # stacklets also start immediately
+
+    def resume(self):
+        self.greenlet.switch()
+
+    def return_to_smalltalk(self):
+        self.greenlet.parent.switch()
+
+    @staticmethod
+    def new_greenlet_callback():
+        print 'new_greenlet_callback'
+        # import pdb; pdb.set_trace()
+        return PythonPlugin.py_runner.get().run_python()
 
 
 class PythonPluginClass(Plugin):
@@ -88,7 +128,7 @@ class PythonPluginClass(Plugin):
     def __init__(self):
         Plugin.__init__(self)
         self.py_runner = Cell(None, type=PythonRunner)
-        self.python_interrupt_counter = Cell(1000)
+        self.python_interrupt_counter = Cell(PYTHON_BYTECODES_THRESHOLD)
         self.current_source = Cell('')
         self.current_cmd = Cell('')
         self.wp_result = Cell(None, type=WP_Root)
@@ -106,7 +146,12 @@ class PythonPluginClass(Plugin):
             None, type=W_PointersObject)
 
     def start_new_python(self, source, cmd):
-        self.py_runner.set(PythonRunner(source, cmd))
+        # import pdb; pdb.set_trace()
+        if objectmodel.we_are_translated():
+            cls = PythonRunnerStacklet
+        else:
+            cls = PythonRunnerGreenlet
+        self.py_runner.set(cls(source, cmd))
         self.py_runner.get().start()
 
     def resume_python(self):
@@ -204,11 +249,11 @@ def check_for_interrupts():
     new_pic = PythonPlugin.python_interrupt_counter.get() - 1
     PythonPlugin.python_interrupt_counter.set(new_pic)
     if new_pic <= 0:
-        PythonPlugin.python_interrupt_counter.set(1000)
+        PythonPlugin.python_interrupt_counter.set(PYTHON_BYTECODES_THRESHOLD)
         py_runner = PythonPlugin.py_runner.get()
         if py_runner:
             print 'Python yield'
-            py_runner.sthread.switch(py_runner.h2)
+            py_runner.return_to_smalltalk()
             print 'Python continue'
 
 
@@ -257,31 +302,35 @@ def make_resume_method(space):
         w_cm = objectmodel.instantiate(W_PreSpurCompiledMethod)
     w_cm.header = 3
     w_cm._primitive = 0
-    w_cm.literalsize = 3
+    w_cm.literalsize = 5
     w_cm.islarge = False
     w_cm._tempsize = 0
     w_cm.argsize = 0
     w_cm.compiledin_class = PythonPlugin.w_python_class.get().getclass(space)
     w_cm.lookup_selector = "fakeResumeFrame"
     w_cm.bytes = [chr(b) for b in [
+        0x41,  # pushLit: Processor
+        0xD0,  # send: yield
+        0x87,  # pop
         0x70,  # pushSelf
-        0xD0,  # send: primResume
+        0xD2,  # send: primResume
         0x87,  # pop
         0x78,  # returnSelf
     ]]
     from rsqueakvm.wrapper import AssociationWrapper
     w_cm.literals = [
+        space.wrap_symbol("yield"),
+        space.w_schedulerassociationpointer,
         space.wrap_symbol("primResume"),
         space.wrap_symbol(w_cm.lookup_selector),
         AssociationWrapper.make_w_assoc(
             space,
-            space.wrap_symbol("Python class"),
+            space.w_nil,  # wrap_symbol("Python class"),
             w_cm.compiledin_class
         )
     ]
     # import pdb; pdb.set_trace()
     return w_cm
-
 
 def startup(space, argv):
     PythonPlugin.w_python_plugin_send.set(space.wrap_list_unroll_safe([
@@ -489,37 +538,78 @@ def eval(interp, s_frame, w_rcvr, source, cmd):
         raise PrimitiveFailedError
 
 
-def switch_to_smalltalk(interp, s_frame):
+def switch_to_smalltalk(interp, s_frame, first_call=False):
     from rsqueakvm.interpreter import ProcessSwitch
     from rsqueakvm.storage_contexts import ContextPartShadow
-    # import pdb; pdb.set_trace()
+    print 'Switch to Smalltalk'
+    if PythonPlugin.wp_result.get() is not None:
+        print 'Python has finished and returned a result'
+        # we want evalInThread and resumePython to retun new frames,
+        # so we don't build up stack, but we also don't raise to the
+        # top-level loop all the time.
+        # For resuming, we obviously need a new frame, because that's
+        # how the Smalltalk scheduler knows how to continue back to Python.
+        # Unfortunately, a primitive can only EITHER always return a new
+        # frame OR a result. So when we get a result, we cannot simply
+        # return it. Instead, we need to build a frame that simply returns
+        # the result
+        if interp.space.is_spur.is_set():
+            w_cm = objectmodel.instantiate(W_SpurCompiledMethod)
+        else:
+            w_cm = objectmodel.instantiate(W_PreSpurCompiledMethod)
+        w_cm.header = 0
+        w_cm._primitive = 0
+        w_cm.literalsize = 3
+        w_cm.islarge = False
+        w_cm._tempsize = 0
+        w_cm.argsize = 0
+        w_cm.bytes = [chr(b) for b in [
+            0x20,  # push constant
+            0x7C,  # return stack top
+        ]]
+        w_cm.literals = [
+            wrap(interp.space, PythonPlugin.wp_result.get()),
+            interp.space.w_nil,
+            interp.space.w_nil
+        ]
+        return ContextPartShadow.build_method_context(
+            interp.space,
+            w_cm,
+            PythonPlugin.w_python_class.get()
+        )
+
     s_resume_frame = ContextPartShadow.build_method_context(
         interp.space,
         PythonPlugin.w_python_resume_method.get(),
         PythonPlugin.w_python_class.get()
     )
-    s_resume_frame.store_s_sender(s_frame)
-    raise ProcessSwitch(s_resume_frame)
+    # import pdb; pdb.set_trace()
+    # we go one up, because the s_frame.w_method() is our fake method
+    if first_call:
+        assert s_frame.w_method() is not PythonPlugin.w_python_resume_method.get()
+        s_resume_frame.store_s_sender(s_frame)
+    else:
+        assert s_frame.w_method() is PythonPlugin.w_python_resume_method.get()
+        s_resume_frame.store_s_sender(s_frame.s_sender())
+    interp.quick_check_for_interrupt(s_resume_frame, dec=PYTHON_BYTECODES_THRESHOLD)
+    # this will raise a ProcessSwitch if there are interrupts or timers ...
+    return s_resume_frame
 
 
-@PythonPlugin.expose_primitive(unwrap_spec=[object, str, str])
+@PythonPlugin.expose_primitive(unwrap_spec=[object, str, str], result_is_new_frame=True)
 def evalInThread(interp, s_frame, w_rcvr, source, cmd):
     # import pdb; pdb.set_trace()
     PythonPlugin.start_new_python(source, cmd)
     # when we are here, the Python process has yielded
-    switch_to_smalltalk(interp, s_frame)
-    # import pdb; pdb.set_trace()
-    return interp.space.w_nil
+    return switch_to_smalltalk(interp, s_frame, first_call=True)
 
 
-@PythonPlugin.expose_primitive(unwrap_spec=[object])
+@PythonPlugin.expose_primitive(unwrap_spec=[object], result_is_new_frame=True)
 def resumePython(interp, s_frame, w_rcvr):
     # import pdb; pdb.set_trace()
     print 'Smalltalk yield'
     PythonPlugin.resume_python()
-    switch_to_smalltalk(interp, s_frame)
-    print 'Smalltalk continue'
-    return interp.space.w_nil
+    return switch_to_smalltalk(interp, s_frame)
 
 
 @PythonPlugin.expose_primitive(unwrap_spec=[object])
