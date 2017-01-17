@@ -21,10 +21,14 @@ def elidable_for_version(numargs, promote='all'):
         else:
             elidable_func = jit.elidable(versioned_func)
         code = [
-            "def meth(self %s):" % argstr,
-            "    return elidable_func(self, self.version %s)" % argstr
+            "def meth(self %s):" % argstr
         ]
-        d = {"elidable_func": elidable_func}
+        if promote and (promote == 'all' or ("0" in promote.split(","))):
+            code.append("    self = jit.promote(self)")
+        code.append(
+            "    return elidable_func(self, self.version %s)" % argstr
+        )
+        d = {"elidable_func": elidable_func, "jit": jit}
         exec "\n".join(code) in d
         meth = d["meth"]
         meth.func_name = "constant_meth_" + func.func_name

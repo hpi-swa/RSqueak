@@ -387,7 +387,6 @@ class TestBasic(BaseJITTest):
         setfield_gc(ConstPtr(ptr71), i70, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 32>),
         i73 = int_le(i70, 0),
         guard_false(i73, descr=<Guard0x9c13130>),
-        i144 = arraylen_gc(p62, descr=<ArrayP 4>),
         jump(p0, p3, p4, i5, i6, p7, i8, i9, p11, p12, p13, p16, i141, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p44, p46, p62, p84, i142, p114, descr=TargetToken(154312720))]
         """)
 
@@ -683,24 +682,22 @@ class TestBasic(BaseJITTest):
         1 to: 10000 do: [:i | o extent ].
         """)
         self.assert_matches(traces[0].loop, """
-        guard_not_invalidated(descr=<Guard0x98fe0c0>)
-        i135 = int_le(i134, 10000)
-        guard_true(i135, descr=<Guard0x9906304>)
-        p98 = force_token()
-        enter_portal_frame(4, 0)
-        p99 = force_token()
-        enter_portal_frame(4, 0)
-        leave_portal_frame(4)
-        leave_portal_frame(4)
-        i136 = int_add(i134, 1)
-        i70 = int_sub(i61, 1),
-        setfield_gc(ConstPtr(ptr71), i70, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 32>),
-        i73 = int_le(i70, 0),
-        guard_false(i73, descr=<Guard0x9c13130>),
-        i137 = arraylen_gc(p71, descr=<ArrayP 4>)
-        i138 = arraylen_gc(p81, descr=<ArrayP 4>)
-        i139 = arraylen_gc(p98, descr=<ArrayS 4>)
-        jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, i136, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, p47, p71, p81, p73, p75, p98, p106, descr=TargetToken(160421980))
+        guard_not_invalidated(descr=<Guard0x36aab80>)
+        i103 = int_le(i94, 10000)
+        guard_true(i103, descr=<Guard0x2d60c80>)
+        p104 = force_token()
+        enter_portal_frame(1, 0)
+        p107 = force_token()
+        enter_portal_frame(1, 0)
+        leave_portal_frame(1)
+        leave_portal_frame(1)
+        i113 = int_add(i94, 1)
+        i115 = int_sub(i98, 1)
+        setfield_gc(ConstPtr(ptr116), i115, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
+        i118 = int_le(i115, 0)
+        guard_false(i118, descr=<Guard0x36aabe8>)
+        i120 = arraylen_gc(p63, descr=<ArrayP 8>)
+        jump(p0, p1, i2, p4, p5, p6, p8, p11, i113, p19, p21, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, p63, p65, p68, i115, descr=TargetToken(54856944))
         """)
 
     def test_very_large_integer_mul(self, spy, tmpdir):

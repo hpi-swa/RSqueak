@@ -2,7 +2,7 @@ from rsqueakvm import constants, error, wrapper
 from rsqueakvm.model.compiled_methods import W_CompiledMethod
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.block_closure import W_BlockClosure
-from rsqueakvm.storage import AbstractStrategy, ShadowMixin
+from rsqueakvm.storage import AbstractStrategy, ShadowMixin, StrategyMetaclass
 
 from rpython.rlib import jit, objectmodel, unroll
 from rpython.rlib.objectmodel import import_from_mixin, always_inline
@@ -33,7 +33,7 @@ InactiveContext = ContextState("InactiveContext")
 ActiveContext = ContextState("ActiveContext")
 DirtyContext = ContextState("DirtyContext")
 
-class ExtendableStrategyMetaclass(extendabletype, rstrat.StrategyMetaclass):
+class ExtendableStrategyMetaclass(extendabletype, StrategyMetaclass):
     pass
 
 
@@ -682,7 +682,7 @@ class __extend__(ContextPartShadow):
         ctx.store_w_home(s_home.w_self())
         ctx.store_initialip(pc)
         ctx.store_pc(pc)
-        w_self.store_strategy(ctx)
+        w_self._set_strategy(ctx)
         ctx.init_temps_and_stack()
         return ctx
 
@@ -918,7 +918,7 @@ class __extend__(ContextPartShadow):
         else:
             space = self.space
             w_self = W_PointersObject(space, space.w_MethodContext, self._w_self_size)
-            w_self.store_strategy(self)
+            w_self._set_strategy(self)
             self._w_self = w_self
             return w_self
 
@@ -939,5 +939,3 @@ class __extend__(ContextPartShadow):
     def method_str_method_context(self):
         block = '[] in ' if self.is_closure_context() else ''
         return '%s%s' % (block, self.w_method().get_identifier_string())
-
-ContextPartShadow.instantiate_type = ContextPartShadow
