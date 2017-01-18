@@ -35,12 +35,11 @@ def startup(space):
     w_python_class.set(
         space.smalltalk_at("Python") or space.w_nil.getclass(space)
     )
+    w_python_object_class.set(
+        space.smalltalk_at("PythonObject") or space.w_nil.getclass(space)
+    )
     w_python_resume_method.set(_make_resume_method(space))
 
-    python_object_class = space.smalltalk_at("PythonObject")
-    if python_object_class is None:
-        python_object_class = space.w_nil.getclass(space)
-    w_python_object_class.set(python_object_class)
     translating[0] = objectmodel.we_are_translated()
 
 
