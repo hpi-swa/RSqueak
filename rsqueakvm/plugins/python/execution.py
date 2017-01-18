@@ -41,11 +41,22 @@ class PythonLanguage(ForeignLanguage):
 
     def run(self):
         print 'Python start'
-        wp_source = gs.py_space.wrap(self.source)
-        py_code = py_compiling.compile(gs.py_space, wp_source, '<string>',
-                                       self.cmd)
-        result = py_code.exec_code(gs.py_space, gs.py_globals, gs.py_locals)
-        self.save_result(result)
+        try:
+            # ensure py_space has a fresh exectioncontext
+            gs.py_space.threadlocals.enter_thread(gs.py_space)
+
+            wp_source = gs.py_space.wrap(self.source)
+            py_code = py_compiling.compile(gs.py_space, wp_source, '<string>',
+                                           self.cmd)
+            result = py_code.exec_code(gs.py_space, gs.py_globals,
+                                       gs.py_locals)
+            self.save_result(result)
+        except OperationError as operationerr:
+            print operationerr.errorstr(gs.py_space)
+            self.handle_error(operationerr)
+        except Exception as e:
+            print 'Unknown error in Python thread: %s' % e
+            self.handle_error(e)
 
     def save_result(self, result):
         gs.wp_result.set(result)
@@ -97,10 +108,7 @@ class StackletLanguageRunner(AbstractLanguageRunner):
         self = global_execution_state.origin
         self.h2 = h
         global_execution_state.clear()
-        try:
-            self.language.run()
-        except OperationError as e:
-            self.language.handle_error(e)
+        self.language.run()
         global_execution_state.origin = self
         return self.h2
 

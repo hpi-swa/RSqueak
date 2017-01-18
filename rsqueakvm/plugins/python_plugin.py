@@ -90,10 +90,7 @@ def lastResult(interp, s_frame, w_rcvr):
 
 @PythonPlugin.expose_primitive(unwrap_spec=[object])
 def lastError(interp, s_frame, w_rcvr):
-    wp_error = global_state.wp_error.get()
-    if wp_error is None:
-        raise PrimitiveFailedError
-    return interp.space.wrap_string(wp_error.errorstr(py_space))
+    return wrap(interp.space, global_state.wp_error.get())
 
 
 @PythonPlugin.expose_primitive(unwrap_spec=[object])

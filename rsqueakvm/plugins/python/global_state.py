@@ -15,7 +15,7 @@ py_globals = py_space.newdict()
 py_locals = py_space.newdict()
 
 wp_result = Cell(None, type=WP_Root)
-wp_error = Cell(None, type=WP_Root)
+wp_error = Cell(None, type=Exception)
 
 w_python_resume_method = QuasiConstant(None, type=W_CompiledMethod)
 w_python_class = QuasiConstant(None, type=W_PointersObject)
