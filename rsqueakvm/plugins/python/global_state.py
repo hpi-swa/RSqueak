@@ -49,7 +49,7 @@ def _make_resume_method(space):
         w_cm = objectmodel.instantiate(W_SpurCompiledMethod)
     else:
         w_cm = objectmodel.instantiate(W_PreSpurCompiledMethod)
-    w_cm.header = 3
+    w_cm.header = 5
     w_cm._primitive = 0
     w_cm.literalsize = 5
     w_cm.islarge = False
