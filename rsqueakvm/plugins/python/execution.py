@@ -130,7 +130,8 @@ def switch_to_smalltalk(interp, s_frame, first_call=False):
     from rsqueakvm.plugins.python.utils import wrap
 
     print 'Switch to Smalltalk'
-    if gs.wp_result.get() is not None:
+    wp_result = gs.wp_result.get()
+    if wp_result is not None:
         print 'Python has finished and returned a result'
         # we want evalInThread and resumePython to retun new frames,
         # so we don't build up stack, but we also don't raise to the
@@ -156,10 +157,11 @@ def switch_to_smalltalk(interp, s_frame, first_call=False):
             0x7C,  # return stack top
         ]]
         w_cm.literals = [
-            wrap(interp.space, gs.wp_result.get()),
+            wrap(interp.space, wp_result),
             interp.space.w_nil,
             interp.space.w_nil
         ]
+        gs.wp_result.set(None)
         return ContextPartShadow.build_method_context(
             interp.space,
             w_cm,

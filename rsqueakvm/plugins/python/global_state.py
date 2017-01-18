@@ -64,6 +64,10 @@ def _make_resume_method(space):
         0xD2,  # send: primResume
         0x87,  # pop
         0x78,  # returnSelf
+        119,   # method flags and such
+        6,
+        3,
+        255,
     ]]
     from rsqueakvm.wrapper import AssociationWrapper
     w_cm.literals = [
