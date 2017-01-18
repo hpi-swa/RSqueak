@@ -111,9 +111,9 @@ class ProcessWrapper(LinkWrapper):
                 new_proc.transfer_to_self_from(s_current_frame)
         else:
             w_my_list = self.my_list()
-            if self.my_list().is_nil(self.space):
+            if w_my_list.is_nil(self.space):
                 raise PrimitiveFailedError
-            process_list = LinkedListWrapper(self.space, self.my_list())
+            process_list = LinkedListWrapper(self.space, w_my_list)
             process_list.remove(self.wrapped)
             self.store_my_list(self.space.w_nil)
 
