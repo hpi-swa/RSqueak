@@ -19,6 +19,14 @@ setup_osx() {
       ;;
     esac
 
+    if [[ "${PLUGINS}" = "PythonPlugin" ]]; then
+      # Comment out SDL_messagebox.h in SDL.h
+      # A wrong macro is applied to "const SDL_MessageBoxButtonData *buttons;"
+      # which breaks compilation at the end.
+      echo "Patching SDL.h for PythonPlugin"
+      sed -i.bak "/SDL_messagebox\.h/s/^/\/\/ /" "/usr/local/include/SDL2/SDL.h"
+    fi
+
     # todo: Squeak for jittests
 
     # Don't install coveralls on OS X, because it's too slow (see #116)
