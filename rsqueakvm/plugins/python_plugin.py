@@ -79,7 +79,8 @@ def resumePython(interp, s_frame, w_rcvr):
     from rsqueakvm.plugins.python import execution
     # import pdb; pdb.set_trace()
     print 'Smalltalk yield'
-    execution.resume_thread()
+    if not execution.resume_thread():
+        raise PrimitiveFailedError
     return execution.switch_to_smalltalk(interp, s_frame)
 
 
@@ -90,7 +91,10 @@ def lastResult(interp, s_frame, w_rcvr):
 
 @PythonPlugin.expose_primitive(unwrap_spec=[object])
 def lastError(interp, s_frame, w_rcvr):
-    return wrap(interp.space, global_state.wp_error.get())
+    wp_error = global_state.wp_error.get()
+    if wp_error is None:
+        raise PrimitiveFailedError
+    return interp.space.wrap_string(wp_error)
 
 
 @PythonPlugin.expose_primitive(unwrap_spec=[object])

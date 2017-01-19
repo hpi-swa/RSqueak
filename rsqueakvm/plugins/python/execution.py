@@ -2,7 +2,6 @@ from rsqueakvm.model.compiled_methods import (
     W_SpurCompiledMethod, W_PreSpurCompiledMethod)
 from rsqueakvm.plugins.python.constants import PYTHON_BYTECODES_THRESHOLD
 from rsqueakvm.plugins.python import global_state as gs
-from rsqueakvm.error import PrimitiveFailedError
 
 from rpython.rlib.rstacklet import StackletThread
 from rpython.rlib import objectmodel
@@ -25,9 +24,10 @@ def start_new_thread(source, cmd, translated):
 
 def resume_thread():
     runner = gs.py_runner.get()
-    if runner is None:
-        raise PrimitiveFailedError
+    if runner is None or not runner.resumable():
+        return False
     runner.resume()
+    return True
 
 
 class ForeignLanguage:
@@ -52,11 +52,13 @@ class PythonLanguage(ForeignLanguage):
                                        gs.py_locals)
             self.save_result(result)
         except OperationError as operationerr:
-            print operationerr.errorstr(gs.py_space)
-            self.handle_error(operationerr)
+            errorstr = operationerr.errorstr(gs.py_space)
+            print errorstr
+            self.handle_error(errorstr)
         except Exception as e:
-            print 'Unknown error in Python thread: %s' % e
-            self.handle_error(e)
+            errorstr = str(e)
+            print 'Unknown error in Python thread: %s' % errorstr
+            self.handle_error(errorstr)
 
     def save_result(self, result):
         gs.wp_result.set(result)
@@ -75,12 +77,16 @@ global_execution_state.clear()
 class AbstractLanguageRunner:
     def __init__(self, language):
         self.language = language
+        self._resumable = True
 
     def start(self):
         raise NotImplementedError
 
     def resume(self):
         raise NotImplementedError
+
+    def resumable(self):
+        return self._resumable
 
     def return_to_smalltalk(self):
         raise NotImplementedError
@@ -109,6 +115,7 @@ class StackletLanguageRunner(AbstractLanguageRunner):
         self.h2 = h
         global_execution_state.clear()
         self.language.run()
+        self._resumable = False
         global_execution_state.origin = self
         return self.h2
 
@@ -130,6 +137,7 @@ class GreenletLanguageRunner(AbstractLanguageRunner):
     def new_greenlet_callback():
         print 'new_greenlet_callback'
         self = global_execution_state.origin
+        self._resumable = False
         return self.language.run
 
 
