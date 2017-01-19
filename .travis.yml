@@ -21,31 +21,35 @@ env:
     - LIBRARY_PATH=$LIBRARY_PATH:$HOME/SDL2/lib
     - C_INCLUDE_PATH=$C_INCLUDE_PATH:$HOME/SDL2/include
   matrix:
-    - BUILD_ARCH=32bit TEST_TYPE=default
-    - BUILD_ARCH=32bit
-    - BUILD_ARCH=32bit TEST_TYPE=coverage
-    # - BUILD_ARCH=lldebug
-    - BUILD_ARCH=64bit TEST_TYPE=default
-    - BUILD_ARCH=64bit
-    - BUILD_ARCH=armv6
-    - BUILD_ARCH=armv7-a
-    - BUILD_ARCH=armv8-a
-    - BUILD_ARCH=64bit PLUGINS=DatabasePlugin
-    - BUILD_ARCH=64bit PLUGINS=RubyPlugin
+    # - BUILD_ARCH=32bit TEST_TYPE=default
+    # - BUILD_ARCH=32bit
+    # - BUILD_ARCH=32bit TEST_TYPE=coverage
+    # # - BUILD_ARCH=lldebug
+    # - BUILD_ARCH=64bit TEST_TYPE=default
+    # - BUILD_ARCH=64bit
+    # - BUILD_ARCH=armv6
+    # - BUILD_ARCH=armv7-a
+    # - BUILD_ARCH=armv8-a
+    # - BUILD_ARCH=64bit PLUGINS=DatabasePlugin
+    # - BUILD_ARCH=64bit PLUGINS=RubyPlugin
+    - BUILD_ARCH=64bit PLUGINS=PythonPlugin
 matrix:
   include:
+    # - os: osx
+    #   osx_image: xcode7.3
+    #   env: BUILD_ARCH=64bit TEST_TYPE=default
+    # - os: osx
+    #   osx_image: xcode7.3
+    #   env: BUILD_ARCH=64bit
+    # - os: osx
+    #   osx_image: xcode7.3
+    #   env: BUILD_ARCH=64bit PLUGINS=RubyPlugin
     - os: osx
       osx_image: xcode7.3
-      env: BUILD_ARCH=64bit TEST_TYPE=default
-    - os: osx
-      osx_image: xcode7.3
-      env: BUILD_ARCH=64bit
-    - os: osx
-      osx_image: xcode7.3
-      env: BUILD_ARCH=64bit PLUGINS=RubyPlugin
-  allow_failures:
-    - env: BUILD_ARCH=64bit PLUGINS=DatabasePlugin
-    - env: BUILD_ARCH=64bit PLUGINS=RubyPlugin
+      env: BUILD_ARCH=64bit PLUGINS=PythonPlugin
+  # allow_failures:
+  #   - env: BUILD_ARCH=64bit PLUGINS=DatabasePlugin
+  #   - env: BUILD_ARCH=64bit PLUGINS=RubyPlugin
   fast_finish: true
 install: .travis/install_requirements.sh
 script: .travis/build.sh
