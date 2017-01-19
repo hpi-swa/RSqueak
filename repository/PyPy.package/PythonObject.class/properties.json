@@ -1,0 +1,15 @@
+{
+	"category" : "PyPy",
+	"classinstvars" : [
+		"NextID",
+		"Code" ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"pyID" ],
+	"name" : "PythonObject",
+	"pools" : [
+		 ],
+	"super" : "Object",
+	"type" : "normal" }

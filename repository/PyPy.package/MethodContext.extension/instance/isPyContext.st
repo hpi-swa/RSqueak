@@ -1,0 +1,3 @@
+*PyPy
+isPyContext
+	^ false

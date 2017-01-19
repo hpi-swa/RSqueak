@@ -1,0 +1,14 @@
+{
+	"category" : "PyPy",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"pyFrame" ],
+	"name" : "PythonFakeMethodContext",
+	"pools" : [
+		 ],
+	"super" : "MethodContext",
+	"type" : "variable" }

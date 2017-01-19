@@ -1,0 +1,14 @@
+{
+	"category" : "PyPy",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "PythonDebugger",
+	"pools" : [
+		 ],
+	"super" : "Debugger",
+	"type" : "normal" }

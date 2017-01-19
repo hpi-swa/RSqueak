@@ -1,0 +1,14 @@
+{
+	"category" : "PyPy",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "PythonParser",
+	"pools" : [
+		 ],
+	"super" : "Parser",
+	"type" : "normal" }

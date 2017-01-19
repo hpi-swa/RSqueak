@@ -1,0 +1,18 @@
+{
+	"class" : {
+		"exploreFrames" : "fn 1/18/2017 17:34" },
+	"instance" : {
+		"appendPythonContexts:" : "fn 1/18/2017 18:59",
+		"contextForStack:" : "fn 1/16/2017 19:34",
+		"debuggerMap" : "fn 1/16/2017 20:23",
+		"expandStack" : "fn 1/16/2017 21:03",
+		"getPySource:" : "fn 1/18/2017 19:12",
+		"getPySourceContent:" : "fn 1/16/2017 19:57",
+		"getPySourceString:" : "fn 1/18/2017 19:33",
+		"isModeStyleable" : "fn 1/16/2017 20:27",
+		"newContext" : "fn 1/18/2017 17:43",
+		"pcRange" : "fn 1/18/2017 20:04",
+		"process:controller:context:" : "fn 1/16/2017 19:34",
+		"pyPCRange" : "fn 1/18/2017 20:15",
+		"selectedMessage" : "fn 1/16/2017 19:52",
+		"windowColorToUse" : "fn 1/18/2017 19:06" } }

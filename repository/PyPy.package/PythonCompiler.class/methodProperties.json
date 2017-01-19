@@ -1,0 +1,8 @@
+{
+	"class" : {
+		"extractPySelector:" : "fn 12/19/2016 02:57",
+		"parserClass" : "fn 12/25/2016 15:08" },
+	"instance" : {
+		"compile:in:notifying:ifFail:" : "fn 12/19/2016 14:09",
+		"evaluate:in:to:notifying:ifFail:logged:" : "fn 1/7/2017 15:01",
+		"pythonCompile:class:ifFail:" : "fn 12/19/2016 02:18" } }
