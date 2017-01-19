@@ -9,10 +9,8 @@ from rpython.config.translationoption import get_combined_translation_config
 from rpython.jit.codewriter.policy import JitPolicy
 from rpython.rlib import objectmodel
 
-from pypy.tool.ann_override import PyPyAnnotatorPolicy
 
 sys.setrecursionlimit(15000)
-
 
 def target(driver, args):
     driver.exe_name = "rsqueak"
@@ -33,17 +31,22 @@ def target(driver, args):
     system.expose_options(driver.config)
     # We must not import this before the config was exposed
     from rsqueakvm.main import safe_entry_point
-    return safe_entry_point, None, PyPyAnnotatorPolicy()
+    ann_policy = None
+    if "PythonPlugin" in system.optional_plugins:
+        from pypy.tool.ann_override import PyPyAnnotatorPolicy
+        ann_policy = PyPyAnnotatorPolicy()
+    return safe_entry_point, None, ann_policy
 
 def jitpolicy(self):
-    from pypy.module.pypyjit.policy import PyPyJitPolicy
-    from pypy.module.pypyjit.hooks import pypy_hooks
-    return PyPyJitPolicy(pypy_hooks)
-    # if "JitHooks" in system.optional_plugins:
-    #     from rsqueakvm.plugins.vmdebugging.hooks import jitiface
-    #     return JitPolicy(jitiface)
-    # else:
-    #     return JitPolicy()
+    if "PythonPlugin" in system.optional_plugins:
+        from pypy.module.pypyjit.policy import PyPyJitPolicy
+        from pypy.module.pypyjit.hooks import pypy_hooks
+        return PyPyJitPolicy(pypy_hooks)
+    elif "JitHooks" in system.optional_plugins:
+        from rsqueakvm.plugins.vmdebugging.hooks import jitiface
+        return JitPolicy(jitiface)
+    else:
+        return JitPolicy()
 
 def parser(config):
     return to_optparse(config, useoptions=["rsqueak.*"])
