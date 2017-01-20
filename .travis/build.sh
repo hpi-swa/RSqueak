@@ -8,6 +8,49 @@ if [[ "${TRAVIS_BRANCH}" != "master" ]] && [[ "${BUILD_ARCH}" = arm* ]]; then
     exit 0
 fi
 
+travis_wait() {
+  local timeout=100
+
+  local cmd="$@"
+
+  $cmd &
+  local cmd_pid=$!
+
+  travis_jigger $! $timeout $cmd &
+  local jigger_pid=$!
+  local result
+
+  {
+    wait $cmd_pid 2>/dev/null
+    result=$?
+    ps -p$jigger_pid &>/dev/null && kill $jigger_pid
+  }
+
+  echo -e "\nThe command $cmd exited with $result."
+  return $result
+}
+
+travis_jigger() {
+  # helper method for travis_wait()
+  local cmd_pid=$1
+  shift
+  local timeout=$1 # in minutes
+  shift
+  local count=0
+
+  # clear the line
+  echo -e "\n"
+
+  while [ $count -lt $timeout ]; do
+    count=$(($count + 1))
+    echo -ne "."
+    sleep 60
+  done
+
+  echo -e "\nTimeout (${timeout} minutes) reached. Terminating \"$@\"\n"
+  kill -9 $cmd_pid
+}
+
 case "$TRAVIS_OS_NAME" in
   linux)
     export SDL_VIDEODRIVER=dummy;
@@ -29,7 +72,7 @@ if [[ -n "${TEST_TYPE}" ]]; then
   SCRIPT_NAME="test.sh"
 fi
 
-"${BASE}/${SCRIPT_NAME}"
+travis_wait "${BASE}/${SCRIPT_NAME}"
 
 if [[ "${PLUGINS}" = *"database_plugin"* ]]; then
   "${BASE}/test_database_integration.sh"
