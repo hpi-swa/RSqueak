@@ -9,7 +9,7 @@ if [[ "${TRAVIS_BRANCH}" != "master" ]] && [[ "${BUILD_ARCH}" = arm* ]]; then
 fi
 
 travis_wait() {
-  local timeout=100
+  local timeout=110
 
   local cmd="$@"
 
