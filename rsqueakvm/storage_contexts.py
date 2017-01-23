@@ -800,8 +800,7 @@ class __extend__(ContextPartShadow):
     def build_method_context(space, w_method, w_receiver, arguments=[],
                              closure=None, s_fallback=None):
         w_method = jit.promote(w_method)
-        s_MethodContext = space.w_MethodContext.as_class_get_shadow(space)
-        size = w_method.compute_frame_size() + s_MethodContext.instsize()
+        size = w_method.compute_frame_size() + constants.MTHDCTX_TEMP_FRAME_START
 
         ctx = ContextPartShadow(space, None, size, space.w_MethodContext)
         if s_fallback is not None:
