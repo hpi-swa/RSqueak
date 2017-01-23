@@ -193,7 +193,7 @@ def func(interp, s_frame, receiver, shift):
     if isinstance(receiver, int):
         if not (int_between(-constants.LONG_BIT + 1, shift, constants.LONG_BIT)):
             raise PrimitiveFailedError
-    if shift > 0:
+    if shift >= 0:
         if isinstance(receiver, int):
             try:
                 if receiver >= 0:
@@ -206,8 +206,6 @@ def func(interp, s_frame, receiver, shift):
             return interp.space.wrap_rbigint(receiver.lshift(shift))
         else:
             raise PrimitiveFailedError # no point in trying
-    elif shift == 0:
-        return interp.space.wrap_int(receiver)
     else:
         shift = -shift
         if isinstance(receiver, int) or isinstance(receiver, r_int64):
