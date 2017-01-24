@@ -495,3 +495,39 @@ def test_misc_primitiveCompareString(monkeypatch):
     finally:
         monkeypatch.undo()
     assert st_res == prim_res
+
+
+def test_float_array_at(monkeypatch):
+    space, interp, image, reader = read_image("Squeak4.3.image")
+    prim_res = []
+    st_res = []
+
+
+    w_FloatArray = space.smalltalk_at("FloatArray")
+    w_ary = W_WordsObject(space, w_FloatArray, 1)
+
+    from rpython.rlib.longlong2float import singlefloat2uint, uint2singlefloat
+    from rpython.rlib.rarithmetic import r_singlefloat
+    w_ary.setword(0, singlefloat2uint(r_singlefloat(1.5)))
+
+    prim_res.append(interp.perform(w_ary, "at:", w_arguments=[space.w(1)]))
+    prim_res.append(interp.perform(w_ary, "at:put:", w_arguments=[space.w(1), space.w(12.5)]))
+    prim_res.append(interp.perform(w_ary, "at:", w_arguments=[space.w(1)]))
+    assert [space.unwrap_float(w) for w in prim_res] == [1.5, 12.5, 12.5]
+
+    from rsqueakvm.primitives.control import ExternalPlugins
+    from rsqueakvm.plugins.float_array_plugin import FloatArrayPlugin
+
+    for p in ExternalPlugins:
+        if p is FloatArrayPlugin:
+            monkeypatch.delitem(p.primitives, "primitiveAt")
+            monkeypatch.delitem(p.primitives, "primitiveAtPut")
+            break
+    try:
+        w_ary.setword(0, singlefloat2uint(r_singlefloat(1.5)))
+        st_res.append(interp.perform(w_ary, "at:", w_arguments=[space.w(1)]))
+        st_res.append(interp.perform(w_ary, "at:put:", w_arguments=[space.w(1), space.w(12.5)]))
+        st_res.append(interp.perform(w_ary, "at:", w_arguments=[space.w(1)]))
+        assert [space.unwrap_float(w) for w in st_res] == [1.5, 12.5, 12.5]
+    finally:
+        monkeypatch.undo()

@@ -245,6 +245,9 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         assert len(lst) == self.size()
         self.words = lst
 
+    def getwords(self):
+        return self.words
+
     def size(self):
         return len(self.words)
 
