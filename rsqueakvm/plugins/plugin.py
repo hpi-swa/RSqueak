@@ -28,6 +28,7 @@ class Plugin(object):
         return self.primitives.get(name, None)
 
     def expose_primitive(self,  wrap_func=None, **kwargs):
+        """NOT RPYTHON"""
         from rsqueakvm.primitives import wrap_primitive, unwrap_alternatives
         if not wrap_func:
             if kwargs.get('unwrap_specs', None):
