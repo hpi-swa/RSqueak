@@ -10,7 +10,7 @@ class TestBasic(BaseJITTest):
         0 to: 1000000000 do: [:t|nil].
         """)
         self.assert_matches(traces[0].loop, """
-        guard_not_invalidated(descr=<Guard0x910a1f0>),
+        guard_not_invalidated(descr=<Guard0x910a1f0>)
         i59 = int_le(i51, 1000000000),
         guard_true(i59, descr=<Guard0x3336290>),
         i60 = int_add(i51, 1),
@@ -29,7 +29,7 @@ class TestBasic(BaseJITTest):
         ^ i
         """)
         self.assert_matches(traces[0].loop, """
-        guard_not_invalidated(descr=<Guard0x8e3dc04>),
+        guard_not_invalidated(descr=<Guard0x8e3dc04>)
         i83 = int_le(i77, 10000),
         guard_true(i83, descr=<Guard0x8e3dc40>),
         i85 = int_add_ovf(i77, 1),
@@ -54,7 +54,7 @@ class TestBasic(BaseJITTest):
         ^ i
         """)
         self.assert_matches(traces[0].loop, """
-        guard_not_invalidated(descr=<Guard0x9730760>),
+        guard_not_invalidated(descr=<Guard0x9730760>)
         i71 = int_le(i64, 100000),
         guard_true(i71, descr=<Guard0x9730790>),
         i72 = int_add(i64, 1),
@@ -82,7 +82,7 @@ class TestBasic(BaseJITTest):
         ^ i
         """)
         self.assert_matches(traces[0].loop, """
-        guard_not_invalidated(descr=<Guard0x9730760>),
+        guard_not_invalidated(descr=<Guard0x9730760>)
         i72 = int_le(i64, 100000),
         guard_true(i72, descr=<Guard0x2e98590>),
         i73 = int_add(i64, 1),
@@ -104,7 +104,7 @@ class TestBasic(BaseJITTest):
             Display beDisplay. 1 to: 10000 do: [:i | Display fillWhite].
             """)
         self.assert_matches(traces[0].loop, """
-            i598 = int_le(2, i153),
+            i598 = int_le(2, i153)
             guard_false(i598, descr=<Guard0x37cba50>),
             i599 = getfield_gc_pure(p589, descr=<FieldS rsqueakvm.model.numeric.W_SmallInteger.inst_value 8>),
             i600 = int_add_ovf(i599, i162),
@@ -358,7 +358,7 @@ class TestBasic(BaseJITTest):
         1 to: 10000 do: [:i | p + p].
         """)
         self.assert_matches(traces[0].loop, """
-        guard_not_invalidated(descr=<Guard0x9730760>),
+        guard_not_invalidated(descr=<Guard0x9730760>)
         i68 = int_le(i61, 10000),
         guard_true(i68, descr=<Guard0x916d700>),
         i69 = int_add(i61, 1),
@@ -376,7 +376,7 @@ class TestBasic(BaseJITTest):
         1 to: 10000 do: [:i | p + p].
         """)
         self.assert_matches(traces[0].loop, """
-        guard_not_invalidated(descr=<Guard0x93168f8>),
+        guard_not_invalidated(descr=<Guard0x93168f8>)
         i129 = int_le(i123, 10000),
         guard_true(i129, descr=<Guard0x9316934>),
         p98 = force_token()
@@ -558,7 +558,7 @@ class TestBasic(BaseJITTest):
         1 to: 100000 do: [:i | li bitXorLarge: i].
         """)
         self.assert_matches(traces[0].loop, """
-        guard_not_invalidated(descr=<Guard0xac75cd0>),
+        guard_not_invalidated(descr=<Guard0xac75cd0>)
         i97 = int_le(i90, 100000),
         guard_true(i97, descr=<Guard0xac75ca0>),
         i100 = int_xor(i83, i90),
@@ -580,7 +580,7 @@ class TestBasic(BaseJITTest):
         """)
         if not IS_64BIT:
             self.assert_matches(traces[0].loop, """
-            guard_not_invalidated(descr=<Guard0xa11ad30>),
+            guard_not_invalidated(descr=<Guard0xa11ad30>)
             i72 = int_le(i65, 100000),
             guard_true(i72, descr=<Guard0xa11ad00>),
             i73 = int_and(i58, i65),
@@ -615,7 +615,7 @@ class TestBasic(BaseJITTest):
         """)
         if not IS_64BIT:
             self.assert_matches(traces[0].loop, """
-            guard_not_invalidated(descr=<Guard0xa11ad30>),
+            guard_not_invalidated(descr=<Guard0xa11ad30>)
             i72 = int_le(i65, 100000),
             guard_true(i72, descr=<Guard0xa11ad00>),
             i73 = int_or(i58, i65),
@@ -682,22 +682,21 @@ class TestBasic(BaseJITTest):
         1 to: 10000 do: [:i | o extent ].
         """)
         self.assert_matches(traces[0].loop, """
-        guard_not_invalidated(descr=<Guard0x36aab80>)
-        i103 = int_le(i94, 10000)
-        guard_true(i103, descr=<Guard0x2d60c80>)
-        p104 = force_token()
+        guard_not_invalidated(descr=<Guard0x2f64500>)
+        i95 = int_le(i86, 10000)
+        guard_true(i95, descr=<Guard0x2a66458>)
+        p96 = force_token()
         enter_portal_frame(1, 0)
-        p107 = force_token()
+        p99 = force_token()
         enter_portal_frame(1, 0)
         leave_portal_frame(1)
         leave_portal_frame(1)
-        i113 = int_add(i94, 1)
-        i115 = int_sub(i98, 1)
-        setfield_gc(ConstPtr(ptr116), i115, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
-        i118 = int_le(i115, 0)
-        guard_false(i118, descr=<Guard0x36aabe8>)
-        i120 = arraylen_gc(p63, descr=<ArrayP 8>)
-        jump(p0, p1, i2, p4, p5, p6, p8, p11, i113, p19, p21, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, p63, p65, p68, i115, descr=TargetToken(54856944))
+        i105 = int_add(i86, 1)
+        i107 = int_sub(i90, 1)
+        setfield_gc(ConstPtr(ptr108), i107, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
+        i110 = int_le(i107, 0)
+        guard_false(i110, descr=<Guard0x2f64568>)
+        jump(p0, p1, i2, p4, p5, p6, p8, p11, i105, p19, p21, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, p60, p62, i107, descr=TargetToken(47188672))
         """)
 
     def test_very_large_integer_mul(self, spy, tmpdir):
