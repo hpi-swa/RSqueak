@@ -20,10 +20,10 @@ def space_spur():
 
 def setup_module():
     space = space_v3()
-    w_Object     = space.classtable['w_Object']
-    w_Metaclass  = space.classtable['w_Metaclass']
-    w_MethodDict = space.classtable['w_MethodDict']
-    w_Array      = space.classtable['w_Array']
+    w_Object     = space.w_Object
+    w_Metaclass  = space.w_Metaclass
+    w_MethodDict = space.w_MethodDict
+    w_Array      = space.w_Array
     copy_to_module(locals(), __name__)
 
 def teardown_module():

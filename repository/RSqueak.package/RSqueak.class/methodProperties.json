@@ -1,0 +1,15 @@
+{
+	"class" : {
+		"breakIntoGdb" : "tfel 12/5/2016 14:51",
+		"debugPrint:" : "tfel 12/5/2016 14:54",
+		"disableJitlog" : "tfel 12/5/2016 14:57",
+		"disableProfiler" : "tfel 12/5/2016 14:57",
+		"enableJitlog:" : "tfel 12/5/2016 14:57",
+		"enableProfiler:withPeriod:" : "tfel 12/5/2016 14:56",
+		"isRSqueak" : "tfel 12/5/2016 14:52",
+		"isVMTranslated" : "tfel 12/5/2016 14:53",
+		"perform:with:" : "tfel 12/5/2016 14:53",
+		"privBreakIntoGdb" : "tfel 12/5/2016 14:51",
+		"stopUIProcess" : "tfel 12/5/2016 14:54" },
+	"instance" : {
+		 } }

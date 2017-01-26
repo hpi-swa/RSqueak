@@ -129,7 +129,7 @@ class Stream(object):
         return len(self.data)
 
     def close(self):
-        pass  # already closed
+        self.data = None
 
     def be_64bit(self):
         self.word_size = 8

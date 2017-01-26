@@ -75,7 +75,7 @@ class ProcessWrapper(LinkWrapper):
         process_list = sched.get_process_list(priority)
         process_list.add_last_link(self.wrapped)
 
-    def transfer_to_self_from(self, s_old_frame):
+    def transfer_to_self_from(self, s_old_frame, forced=False):
         from rsqueakvm.interpreter import ProcessSwitch
         assert not self.is_active_process(), "trying to switch to already active process"
         new_proc = self.wrapped
@@ -87,9 +87,9 @@ class ProcessWrapper(LinkWrapper):
         w_new_active_context = self.suspended_context()
         self.store_suspended_context(self.space.w_nil)
         assert isinstance(w_new_active_context, W_PointersObject)
-        raise ProcessSwitch(w_new_active_context.as_context_get_shadow(self.space))
+        raise ProcessSwitch(w_new_active_context.as_context_get_shadow(self.space), forced=forced)
 
-    def resume(self, s_current_frame):
+    def resume(self, s_current_frame, forced=False):
         sched = scheduler(self.space)
         active_process = ProcessWrapper(self.space, sched.active_process())
         active_priority = active_process.priority()
@@ -97,7 +97,7 @@ class ProcessWrapper(LinkWrapper):
         if priority > active_priority:
             if not self.space.suppress_process_switch.is_set():
                 active_process.put_to_sleep()
-                self.transfer_to_self_from(s_current_frame)
+                self.transfer_to_self_from(s_current_frame, forced=forced)
         else:
             self.put_to_sleep()
 
@@ -111,9 +111,9 @@ class ProcessWrapper(LinkWrapper):
                 new_proc.transfer_to_self_from(s_current_frame)
         else:
             w_my_list = self.my_list()
-            if self.my_list().is_nil(self.space):
+            if w_my_list.is_nil(self.space):
                 raise PrimitiveFailedError
-            process_list = LinkedListWrapper(self.space, self.my_list())
+            process_list = LinkedListWrapper(self.space, w_my_list)
             process_list.remove(self.wrapped)
             self.store_my_list(self.space.w_nil)
 
@@ -183,59 +183,69 @@ class AssociationWrapper(Wrapper):
 
     @staticmethod
     def build(space, w_assoc):
-        if (space.special_object("w_ClassBinding") and
-            w_assoc.getclass(space).is_same_object(space.special_object("w_ClassBinding"))):
+        if w_assoc.getclass(space).is_same_object(space.w_ClassBinding):
             return PromotingAssociationWrapper(space, w_assoc)
         else:
             return AssociationWrapper(space, w_assoc)
+
+    @staticmethod
+    def make_w_assoc(space, w_key, w_value):
+        w_association = space.w_schedulerassociationpointer
+        w_association_class = w_association.getclass(space)
+        w_new_association = w_association_class.as_class_get_shadow(space).new()
+        w_new_association.store(space, 0, w_key)
+        w_new_association.store(space, 1, w_value)
+        return w_new_association
 
 class PromotingAssociationWrapper(AssociationWrapper):
     def value(self):
         return jit.promote(self.read(1))
 
 class SchedulerWrapper(Wrapper):
-    priority_list = make_getter(0)
     active_process, store_active_process = make_getter_setter(1)
 
+    def priority_list(self):
+        return self.read(0)
+
+    def process_list(self, priority):
+        # priority is 1-indexed, we read with 0-indexed
+        return self.priority_list().fetch(self.space, priority - 1)
+
     def get_process_list(self, priority):
-        lists = Wrapper(self.space, self.priority_list())
-        return LinkedListWrapper(self.space, lists.read(priority))
+        return LinkedListWrapper(self.space, self.process_list(priority))
 
     def wake_highest_priority_process(self):
         w_lists = self.priority_list()
-        lists = Wrapper(self.space, w_lists)
-        for i in range(w_lists.size() - 1, -1, -1):
-            process_list = LinkedListWrapper(self.space, lists.read(i))
-            if not process_list.is_empty_list():
-                return ProcessWrapper(self.space, process_list.remove_first_link_of_list())
-        raise FatalError("Scheduler could not find a runnable process")
+        return ProcessWrapper(self.space, unwrapped_wake_highest_priority_process(self.space, w_lists))
+
+def unwrapped_wake_highest_priority_process(space, w_lists):
+    for i in range(w_lists.size() - 1, -1, -1):
+        process_list = LinkedListWrapper(space, w_lists.fetch(space, i))
+        if not process_list.is_empty_list():
+            return process_list.remove_first_link_of_list()
+    raise FatalError("Scheduler could not find a runnable process")
 
 def scheduler(space):
-    w_association = space.objtable["w_schedulerassociationpointer"]
-    assert w_association is not None
-    w_scheduler = AssociationWrapper(space, w_association).value()
-    assert isinstance(w_scheduler, W_PointersObject)
-    return SchedulerWrapper(space, w_scheduler)
+    return SchedulerWrapper(space, space.w_Processor)
 
 class SemaphoreWrapper(LinkedListWrapper):
-
     excess_signals, store_excess_signals = make_int_getter_setter(2)
 
-    def signal(self, s_current_frame):
+    def signal(self, s_current_frame, forced=False):
         if self.is_empty_list():
             excess_signals = self.excess_signals()
             self.store_excess_signals(excess_signals + 1)
         else:
             w_process = self.remove_first_link_of_list()
-            ProcessWrapper(self.space, w_process).resume(s_current_frame)
+            ProcessWrapper(self.space, w_process).resume(s_current_frame, forced=forced)
 
     def wait(self, s_current_frame):
         excess = self.excess_signals()
         if excess > 0:
             self.store_excess_signals(excess - 1)
         else:
-            self.add_last_link(scheduler(self.space).active_process())
             new_proc = scheduler(self.space).wake_highest_priority_process()
+            self.add_last_link(scheduler(self.space).active_process())
             new_proc.transfer_to_self_from(s_current_frame)
 
 
@@ -301,17 +311,3 @@ class FormWrapper(Wrapper):
 
     def take_over_display(self):
         self.space.display().set_video_mode(self.width(), self.height(), self.depth())
-
-# XXX Wrappers below are not used yet.
-class OffsetWrapper(Wrapper):
-    offset_x  = make_int_getter(0)
-    offset_y  = make_int_setter(1)
-
-class MaskWrapper(Wrapper):
-    bits       = make_getter(0)
-    extend_x   = make_int_getter(1)
-    extend_y   = make_int_getter(2)
-    depth      = make_int_getter(3)
-
-class CursorWrapper(MaskWrapper):
-    offset   = make_getter(4)

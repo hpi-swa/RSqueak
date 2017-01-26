@@ -1,0 +1,14 @@
+{
+	"category" : "RSqueak",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "RSqueak",
+	"pools" : [
+		 ],
+	"super" : "Object",
+	"type" : "normal" }

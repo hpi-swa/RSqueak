@@ -2,7 +2,7 @@ import sys
 
 from rsqueakvm import constants, error
 
-from rpython.rlib import jit, rrandom, signature
+from rpython.rlib import jit, rrandom, signature, objectmodel
 from rpython.rlib.rarithmetic import intmask
 
 
@@ -211,6 +211,12 @@ class W_Object(object):
         return self.as_repr_string()
 
 
+def calculate_and_cache(w_object):
+    hash = intmask(objectmodel.compute_identity_hash(w_object)) % 2**22 + 1
+    w_object.hash = hash
+    return hash
+
+
 class W_AbstractObjectWithIdentityHash(W_Object):
     """Object with explicit hash (ie all except small
     ints and floats)."""
@@ -218,8 +224,7 @@ class W_AbstractObjectWithIdentityHash(W_Object):
     _immutable_fields_ = ['hash?']
     repr_classname = "W_AbstractObjectWithIdentityHash"
 
-    hash_generator = rrandom.Random()
-    UNASSIGNED_HASH = sys.maxint
+    UNASSIGNED_HASH = 0
     hash = UNASSIGNED_HASH  # default value
 
     def post_become_one_way(self, w_to):
@@ -233,14 +238,11 @@ class W_AbstractObjectWithIdentityHash(W_Object):
         raise NotImplementedError()
 
     def gethash(self):
-        if self.hash == self.UNASSIGNED_HASH:
-            self.hash = hash = (intmask(self.hash_generator.genrand32()) % 2**22) + 1
-            return hash
-        return self.hash
+        return jit.conditional_call_elidable(self.hash, calculate_and_cache, self)
 
+    @objectmodel.always_inline
     def rehash(self):
-        self.hash = self.UNASSIGNED_HASH
-        self.gethash()
+        self.hash = intmask(objectmodel.compute_identity_hash(self)) % 2**22 + 1
 
     def invariant(self):
         return isinstance(self.hash, int)
@@ -274,6 +276,7 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     w_class = None
 
     def __init__(self, space, w_class):
+        W_AbstractObjectWithIdentityHash.__init__(self)
         from rsqueakvm.model.pointers import W_PointersObject
         if w_class is not None:     # it's None only for testing and space generation
             assert isinstance(w_class, W_PointersObject)
@@ -291,7 +294,7 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
         self.w_class = g_self.get_class()
 
     def getclass(self, space):
-        return self.w_class
+        return jit.promote(self.w_class)
 
     def guess_classname(self):
         if self.getclass(None).has_space():

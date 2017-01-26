@@ -19,6 +19,7 @@ autocompletions = {
             "numeric": None,
             "pointers": None,
             "variable": None,
+            "block_closure": None,
         },
         "plugins": None,
         "primitives": {
@@ -31,6 +32,7 @@ autocompletions = {
             "misc": None,
             "storage": None,
             "system": None,
+            "mirror": None,
         }
     }
 }
@@ -76,6 +78,7 @@ class Shell(object):
         self.space = space
         self.methods = {}
         self.w_rcvr = self.space.w_nil
+        self.last_result = None
         space.headless.activate()
 
     def set_interp(self, interp):
@@ -174,7 +177,7 @@ class Shell(object):
             import rsqueakvm.interpreter_bytecodes
             reload(rsqueakvm.interpreter_bytecodes)
             reload(rsqueakvm.interpreter)
-            self.set_interp(interpreter.Interpreter(
+            self.set_interp(rsqueakvm.interpreter.Interpreter(
                 self.space, self.interp.image,
                 self.interp.trace, self.interp.trace_important,
                 self.interp.evented, self.interp.interrupts))
@@ -223,20 +226,15 @@ class Shell(object):
                     if n == method:
                         getattr(self, n)(code)
             else:
+                import traceback
                 w_result = None
                 try:
                     w_result = self._execute_code(code)
                 except:
-                    if hasattr(sys, 'ps1') or not sys.stderr.isatty():
-                        # we are in interactive mode or we don't have a tty-like
-                        # device, so we call the default hook
-                        sys.__excepthook__(type, value, tb)
-                    else:
-                        import pdb, traceback
-                        _type, value, tb = sys.exc_info()
-                        traceback.print_exception(_type, value, tb)
-                        pdb.post_mortem(tb)
+                    print traceback.format_exc()
+                    import pdb; pdb.set_trace()
                 if w_result:
+                    self.last_result = w_result
                     print w_result.as_repr_string().replace('\r', '\n')
 
     def _execute_code(self, code):

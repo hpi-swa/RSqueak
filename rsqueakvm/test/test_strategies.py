@@ -6,7 +6,7 @@ from .util import create_space_interp, copy_to_module, cleanup_module
 
 def setup_module():
     space, interp = create_space_interp()
-    class_Array = space.classtable["w_Array"]
+    class_Array = space.w_Array
     w_nil = space.w_nil
     copy_to_module(locals(), __name__)
 

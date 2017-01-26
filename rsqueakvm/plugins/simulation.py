@@ -2,6 +2,7 @@ from rsqueakvm.error import SimulatedPrimitiveFailedError
 from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.model.compiled_methods import W_CompiledMethod
 from rsqueakvm.storage_contexts import InactiveContext
+from rsqueakvm import constants
 
 # If an EXTERNAL_CALL for the given moduleName and functionName is not found,
 # the SimulationPlugin is used to enable the image simulating that primitive.
@@ -37,14 +38,20 @@ class SimulationPluginClass(Plugin):
         s_frame.pop() # remove receiver
 
         s_fallback = w_method.create_frame(interp.space, w_rcvr, w_arguments)
-        assert s_fallback.state is InactiveContext
+        assert s_fallback.get_state() is InactiveContext
         s_fallback.store_s_sender(s_frame)
         s_sim_frame = w_sim_method.create_frame(
             interp.space,
             w_rcvr,
             [w_name, interp.space.wrap_list_unroll_safe(w_arguments)],
             s_fallback=s_fallback)
-        interp.stack_frame(s_sim_frame, s_frame)
+        # We make interrupt checks unlikely inside the simulation
+        oldinterrupt_check_ctr = interp.interrupt_check_counter
+        interp.interrupt_check_counter = constants.MAXINT
+        try:
+            interp.stack_frame(s_sim_frame, s_frame)
+        finally:
+            interp.interrupt_check_counter = oldinterrupt_check_ctr -  1
 
     def simulate(self, w_name, signature, interp, s_frame, argcount, w_method):
         self._simulate(w_name, interp, s_frame, argcount, w_method)

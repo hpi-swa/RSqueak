@@ -993,9 +993,9 @@ def test_frame_dirty_if_active():
     w_frame, s_frame = new_frame(bytes)
     s_frame.store_w_receiver(w_frame)
     s_frame.push(w_frame)
-    s_frame.state = storage_contexts.ActiveContext
+    s_frame.set_state(storage_contexts.ActiveContext)
     step_in_interp(s_frame)
-    assert s_frame.state is storage_contexts.DirtyContext
+    assert s_frame.get_state() is storage_contexts.DirtyContext
 
 def test_frame_not_dirty_if_inactive():
     bytes = reduce(operator.add, map(chr, [0x84, 0xc0, 0x00]))
@@ -1003,10 +1003,10 @@ def test_frame_not_dirty_if_inactive():
     w_other_frame, s_other_frame = new_frame("")
     s_frame.store_w_receiver(w_other_frame)
     s_frame.push(w_frame)
-    s_frame.state = storage_contexts.ActiveContext
+    s_frame.set_state(storage_contexts.ActiveContext)
     step_in_interp(s_frame)
-    assert s_frame.state is storage_contexts.ActiveContext
-    assert s_other_frame.state is storage_contexts.InactiveContext
+    assert s_frame.get_state() is storage_contexts.ActiveContext
+    assert s_other_frame.get_state() is storage_contexts.InactiveContext
 
 def test_raise_NonVirtualReturn_on_dirty_frame():
     bytes = reduce(operator.add, map(chr, [0x84, 0xc0, 0x00])) + returnTopFromMethodBytecode
@@ -1024,7 +1024,7 @@ def test_raise_NonVirtualReturn_on_dirty_frame():
 def test_objectsAsMethods():
     w_foo = space.wrap_string("foo")
     w_foo_ = space.wrap_string("foo:")
-    w_runwithin = space.special_object("w_runWithIn")
+    w_runwithin = space.w_runWithIn
 
     w_holderclass = bootstrap_class(0)
     w_class = bootstrap_class(0)

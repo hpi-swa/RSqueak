@@ -122,47 +122,66 @@ SO_TRANSLATEDMETHOD_CLASS = 40
 SO_FINALIZATION_SEMPAHORE = 41
 SO_LARGENEGATIVEINTEGER_CLASS = 42
 SO_RUN_WITH_IN = 49
+SO_JIT_HOOK = 58 # really selectorCounterTripped
+SO_JIT_HOOK_RCVR = 59 # really selectorTrap
 
-# XXX more missing?
-classes_in_special_object_table = {
-    "Bitmap": SO_BITMAP_CLASS,
-    "SmallInteger": SO_SMALLINTEGER_CLASS,
-    "String": SO_STRING_CLASS,
-    "Array": SO_ARRAY_CLASS,
-    "Float": SO_FLOAT_CLASS,
-    "MethodContext": SO_METHODCONTEXT_CLASS,
-    "BlockContext": SO_BLOCKCONTEXT_CLASS,
-    "BlockClosure": SO_BLOCKCLOSURE_CLASS,
-    "Point": SO_POINT_CLASS,
-    "LargePositiveInteger": SO_LARGEPOSITIVEINTEGER_CLASS,
-    "Message": SO_MESSAGE_CLASS,
-    "CompiledMethod": SO_COMPILEDMETHOD_CLASS,
-    "Semaphore": SO_SEMAPHORE_CLASS,
-    "Character": SO_CHARACTER_CLASS,
-    "ByteArray": SO_BYTEARRAY_CLASS,
-    "Process": SO_PROCESS_CLASS,
-#    "PseudoContext" : SO_PSEUDOCONTEXT_CLASS,
-#    "TranslatedMethod" : SO_TRANSLATEDMETHOD_CLASS,
-    "LargeNegativeInteger" : SO_LARGENEGATIVEINTEGER_CLASS,
+constant_objects_in_special_object_table = {
+    "nil": (SO_NIL, "POINTERS"),
+    "true": (SO_TRUE, "POINTERS"),
+    "false": (SO_FALSE, "POINTERS"),
+    "charactertable": (SO_CHARACTER_TABLE_ARRAY, "POINTERS"),
+    "schedulerassociationpointer": (SO_SCHEDULERASSOCIATIONPOINTER, "POINTERS"),
+    "special_selectors": (SO_SPECIAL_SELECTORS_ARRAY, "POINTERS"),
+    "smalltalkdict": (SO_SMALLTALK, "POINTERS"),
+    "doesNotUnderstand": (SO_DOES_NOT_UNDERSTAND, "BYTES"),
+    "mustBeBoolean": (SO_MUST_BE_BOOLEAN, "BYTES"),
+    "runWithIn": (SO_RUN_WITH_IN, "BYTES"),
+    "cannotReturn": (SO_CANNOT_RETURN, "BYTES"),
+    # classes
+    "Bitmap": (SO_BITMAP_CLASS, "POINTERS"),
+    "SmallInteger": (SO_SMALLINTEGER_CLASS, "POINTERS"),
+    "String": (SO_STRING_CLASS, "POINTERS"),
+    "Array": (SO_ARRAY_CLASS, "POINTERS"),
+    "Float": (SO_FLOAT_CLASS, "POINTERS"),
+    "MethodContext": (SO_METHODCONTEXT_CLASS, "POINTERS"),
+    "BlockContext": (SO_BLOCKCONTEXT_CLASS, "POINTERS"),
+    "BlockClosure": (SO_BLOCKCLOSURE_CLASS, "POINTERS"),
+    "Point": (SO_POINT_CLASS, "POINTERS"),
+    "LargePositiveInteger": (SO_LARGEPOSITIVEINTEGER_CLASS, "POINTERS"),
+    "Message": (SO_MESSAGE_CLASS, "POINTERS"),
+    "CompiledMethod": (SO_COMPILEDMETHOD_CLASS, "POINTERS"),
+    "Semaphore": (SO_SEMAPHORE_CLASS, "POINTERS"),
+    "Character": (SO_CHARACTER_CLASS, "POINTERS"),
+    "ByteArray": (SO_BYTEARRAY_CLASS, "POINTERS"),
+    "Process": (SO_PROCESS_CLASS, "POINTERS"),
+#    "PseudoContext" : (SO_PSEUDOCONTEXT_CLASS, "POINTERS"),
+#    "TranslatedMethod" : (SO_TRANSLATEDMETHOD_CLASS, "POINTERS"),
+    "LargeNegativeInteger" : (SO_LARGENEGATIVEINTEGER_CLASS, "POINTERS"),
+    # ours, not in the table, but we'd like it to
+    "ClassBinding": (SPECIAL_OBJECTS_SIZE + 30, "POINTERS"),
+    "Metaclass": (SPECIAL_OBJECTS_SIZE + 31, "POINTERS"),
+    "Processor": (SPECIAL_OBJECTS_SIZE + 32, "POINTERS"),
+    "ByteSymbol": (SPECIAL_OBJECTS_SIZE + 33, "POINTERS")
 }
 
-objects_in_special_object_table = {
-    "nil": SO_NIL,
-    "true": SO_TRUE,
-    "false": SO_FALSE,
-    "charactertable": SO_CHARACTER_TABLE_ARRAY,
-    "schedulerassociationpointer": SO_SCHEDULERASSOCIATIONPOINTER,
-    "special_selectors": SO_SPECIAL_SELECTORS_ARRAY,
-    "smalltalkdict": SO_SMALLTALK,
+variables_in_special_object_table = {
     "display": SO_DISPLAY_OBJECT,
-    "doesNotUnderstand": SO_DOES_NOT_UNDERSTAND,
-    "mustBeBoolean": SO_MUST_BE_BOOLEAN,
     "interrupt_semaphore": SO_USER_INTERRUPT_SEMAPHORE,
     "timerSemaphore": SO_TIMER_SEMAPHORE,
-    "runWithIn": SO_RUN_WITH_IN,
-    "cannotReturn": SO_CANNOT_RETURN,
-    "ClassBinding": SPECIAL_OBJECTS_SIZE + 30, # doesn't exist, but we'd like it to
+    "jit_hook_selector": SO_JIT_HOOK,
+    "jit_hook_receiver": SO_JIT_HOOK_RCVR
 }
+
+def init_special_objects_mapping(constant_objects_in_special_object_table):
+    d = {}
+    for name, (idx, t) in constant_objects_in_special_object_table.items():
+        d[name] = idx
+    return d
+constant_objects_in_special_object_table_wo_types = init_special_objects_mapping(constant_objects_in_special_object_table)
+objects_in_special_object_table = {}
+objects_in_special_object_table.update(constant_objects_in_special_object_table_wo_types)
+objects_in_special_object_table.update(variables_in_special_object_table)
+
 
 from rpython.rlib.rarithmetic import LONG_BIT
 TAGGED_MAXINT = 2 ** (LONG_BIT - 2) - 1
@@ -240,6 +259,7 @@ def decode_alternate_compiled_method_header(header):
 #
 
 INTERRUPT_COUNTER_SIZE = 10000
+LITERAL_LIST_UNROLL_SIZE = 7 # up to which size the wrapping of literal arrays in methods is unrolled
 CompileTime = time.time()
 
 SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX = 1

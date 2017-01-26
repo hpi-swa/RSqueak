@@ -71,7 +71,7 @@ def func(interp, s_frame, w_rcvr, w_into):
     try:
         ary = interp.space.display().get_next_event(time=interp.event_time_now())
     except display.SqueakInterrupt, e:
-        w_interrupt_sema = interp.space.objtable['w_interrupt_semaphore']
+        w_interrupt_sema = interp.space.w_interrupt_semaphore()
         if w_interrupt_sema is not interp.space.w_nil:
             assert_class(interp, w_interrupt_sema, interp.space.w_Semaphore)
             wrapper.SemaphoreWrapper(interp.space, w_interrupt_sema).signal(s_frame)
@@ -147,9 +147,8 @@ def func(interp, s_frame, argcount):
     offx = -offx
     offy = -offy
 
-    if display.SDLCursor.set(w_bitmap.words, width, height, offx, offy,
-                             mask_words=mask_words):
-        interp.space.objtable['w_cursor'] = w_rcvr
+    display.SDLCursor.set(w_bitmap.words, width, height, offx, offy,
+                          mask_words=mask_words)
     # Don't fail if the Cursor could not be set.
     # It is surely annoying but no reason to not continue.
     s_frame.pop_n(argcount + 1)
@@ -162,10 +161,10 @@ def func(interp, s_frame, w_rcvr):
     if not isinstance(w_rcvr, W_PointersObject) or w_rcvr.size() < 4:
         raise PrimitiveFailedError
 
-    old_display = interp.space.objtable['w_display']
+    old_display = interp.space.w_display()
     if isinstance(old_display, W_DisplayBitmap):
         old_display.relinquish_display()
-    interp.space.objtable['w_display'] = w_rcvr
+    interp.space.set_w_display(w_rcvr)
 
     form = wrapper.FormWrapper(interp.space, w_rcvr)
     form.take_over_display()

@@ -251,7 +251,7 @@ def test_snapshotPrimitive(tmpdir):
         return interp.perform(receiver, selector, w_selector, list(args))
     space.simulate_numeric_primitives.activate()
     space.set_system_attribute(constants.SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, newname)
-    w_result = perform(space.special_object("w_smalltalkdict"), "snapshotPrimitive")
+    w_result = perform(space.w_smalltalkdict, "snapshotPrimitive")
     assert w_result is space.w_false
     space2, interp2, image2, reader2 = read_image(newname)
     for f,n in {
@@ -262,7 +262,7 @@ def test_snapshotPrimitive(tmpdir):
             'w_doesNotUnderstand',
             'w_mustBeBoolean'
     ]:
-        assert space.unwrap_string(space.objtable[f]) == space2.unwrap_string(space2.objtable[f])
+        assert space.unwrap_string(getattr(space, f)) == space2.unwrap_string(getattr(space2, f))
 
 def test_convert_words_to_bytes():
     sourcecode = """primitiveChangeClassTo: anObject

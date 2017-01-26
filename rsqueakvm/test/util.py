@@ -55,7 +55,6 @@ def read_image(image_filename, space=None, cached=True):
         image = reader.create_image()
         image_cache[image_filename] = (space, reader, image)
     interp = InterpreterForTest(space, image)
-    interp.populate_remaining_special_objects()
     return space, interp, image, reader
 
 def create_space(bootstrap = bootstrap_by_default):
@@ -107,8 +106,6 @@ def import_bytecodes(module_name):
 class TestImage():
     def __init__(self, space):
         self.version = squeakimage.ImageVersion(0, False, False, False, False, False)
-        if space.w_Array.strategy:
-            self.special_objects = space.wrap_list([i for i in space.objtable.values() if i])
 
 # This interpreter allows fine grained control of the interpretation
 # by manually stepping through the bytecodes, if _loop is set to False.
@@ -173,7 +170,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
                                       w_superclass=w_superclass,
                                       w_metaclass=w_metaclass,
                                       name=name[2:])
-            self.add_bootstrap_class(name, w_class)
+            setattr(self, name, w_class)
             return w_class
 
         #   A complete minimal setup (including Behavior) would look like this
@@ -200,24 +197,26 @@ class BootstrappedObjSpace(objspace.ObjSpace):
             ["w_Metaclass",        "w_ClassDescription"],
             ]
         define_core_cls("w_ProtoObjectClass", None, None)
-        w_ProtoObjectClass = self.classtable["w_ProtoObjectClass"]
+        w_ProtoObjectClass = self.w_ProtoObjectClass
         define_core_cls("w_ProtoObject", None, w_ProtoObjectClass)
         for (cls_nm, super_cls_nm) in cls_nm_tbl:
             meta_nm = cls_nm + "Class"
             meta_super_nm = super_cls_nm + "Class"
-            w_metacls = define_core_cls(meta_nm, self.classtable[meta_super_nm], None)
-            define_core_cls(cls_nm, self.classtable[super_cls_nm], w_metacls)
+            w_metacls = define_core_cls(meta_nm, getattr(self, meta_super_nm), None)
+            define_core_cls(cls_nm, getattr(self, super_cls_nm), w_metacls)
         proto_shadow = w_ProtoObjectClass.strategy
         proto_shadow.store_w_superclass(self.w_Class)
         # at this point, all classes that still lack a w_class are themselves metaclasses
-        for nm, w_cls_obj in self.classtable.items():
-            if w_cls_obj.getclass(None) is None:
-                if w_cls_obj.strategy is None:
-                    w_cls_obj._initialize_storage(self, self.w_Metaclass, 0)
-                elif w_cls_obj.strategy.w_class is None:
-                    w_cls_obj.strategy.w_class = self.w_Metaclass
-                else:
-                    import pdb; pdb.set_trace()
+        for nm, idx in constants.constant_objects_in_special_object_table_wo_types.items():
+            w_cls_obj = getattr(self, "w_" + nm)
+            if nm[0].isupper():
+                if w_cls_obj.getclass(None) is None:
+                    if w_cls_obj.strategy is None:
+                        w_cls_obj._initialize_storage(self, self.w_Metaclass, 0)
+                    elif w_cls_obj.strategy.w_class is None:
+                        w_cls_obj.strategy.w_class = self.w_Metaclass
+                    else:
+                        import pdb; pdb.set_trace()
 
     def patch_bootstrap_classes(self):
         # Create all classes in the class hierarchies of the classes in the special objects array.
@@ -225,21 +224,21 @@ class BootstrappedObjSpace(objspace.ObjSpace):
             meta_nm = cls_nm + "Class"
             meta_super_nm = supercls_nm + "Class"
             w_meta_cls = self.bootstrap_class(0,   # XXX
-                                         self.classtable[meta_super_nm],
+                                         getattr(self, meta_super_nm),
                                          self.w_Metaclass,
                                          name=meta_nm[2:])
-            self.add_bootstrap_class(meta_nm, w_meta_cls)
+            setattr(self, meta_nm, w_meta_cls)
             return w_meta_cls
         def define_cls(cls_nm, supercls_nm, instvarsize=0, format=storage_classes.POINTERS, varsized=False):
             assert cls_nm.startswith("w_")
             w_meta_cls = create_metaclass(cls_nm, supercls_nm)
             w_cls = self.bootstrap_class(instvarsize,
-                                         self.classtable[supercls_nm],
+                                         getattr(self, supercls_nm),
                                          w_meta_cls,
                                          format=format,
                                          varsized=varsized,
                                          name=cls_nm[2:])
-            self.add_bootstrap_class(cls_nm, w_cls)
+            setattr(self, cls_nm, w_cls)
             return w_cls
         define_cls("w_Magnitude", "w_Object")
         define_cls("w_Number", "w_Magnitude")
@@ -267,11 +266,11 @@ class BootstrappedObjSpace(objspace.ObjSpace):
             w_meta_cls = create_metaclass(cls_nm, supercls_nm)
 
             # Now patch up the existing class object
-            w_cls = self.classtable[cls_nm]
+            w_cls = getattr(self, cls_nm)
             assert w_cls, "This class should have been created in ObjSpace!"
             self.patch_class(w_cls,
                         instvarsize,
-                        self.classtable[supercls_nm],
+                        getattr(self, supercls_nm),
                         w_meta_cls,
                         format=format,
                         varsized=varsized,
@@ -301,8 +300,11 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         patch_bootstrap_object(self.w_true, self.w_True, 0)
         patch_bootstrap_object(self.w_false, self.w_False, 0)
         patch_bootstrap_object(self.w_special_selectors, self.w_Array, len(constants.SPECIAL_SELECTORS) * 2)
-        self.add_bootstrap_object(
-            "w_schedulerassociationpointer",
+        special_objects_w = [self.w_nil] * (constants.SPECIAL_OBJECTS_SIZE * 2)
+        for name, idx in constants.constant_objects_in_special_object_table_wo_types.items():
+            special_objects_w[idx] = getattr(self, "w_" + name)
+        self.w_special_objects = self.wrap_list(special_objects_w)
+        self.w_schedulerassociationpointer = (
             self.wrap_list([ # assoc
                 self.w_nil,
                 self.wrap_list([ # scheduler

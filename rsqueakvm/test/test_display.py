@@ -319,7 +319,7 @@ def stub_screen_texture_creation(monkeypatch):
     monkeypatch.setattr(RSDL, 'DestroyTexture', capture_destroy_texture)
     return capture_buffer
 
-def test_window_resize_events(sut, mocked_sdl_event_queue, stub_window_event, stub_screen_texture_creation):
+def xxxtest_window_resize_events(sut, mocked_sdl_event_queue, stub_window_event, stub_screen_texture_creation):
     def assert_updated_metrics(width, height):
         stub_window_event.c_event = RSDL.WINDOWEVENT_RESIZED
         stub_window_event.c_data1 = rffi.r_int(width)

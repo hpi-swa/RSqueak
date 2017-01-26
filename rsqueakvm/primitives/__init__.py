@@ -23,6 +23,13 @@ def assert_valid_index(space, n0, w_obj):
     # n0 cannot be negative
     return n0
 
+def assert_valid_inst_index(space, n0, w_obj):
+    if not int_between(0, n0, w_obj.size()):
+        raise PrimitiveFailedError()
+    # return the index, since from here on the annotator knows that
+    # n0 cannot be negative
+    return n0
+
 def assert_pointers(w_obj):
     if not (isinstance(w_obj, W_PointersObject) or isinstance(w_obj, W_Character)):
         raise PrimitiveFailedError
@@ -94,7 +101,6 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
             def wrapped(interp, s_frame, argument_count_m1, w_method=None):
                 argument_count = argument_count_m1 + 1 # to account for the rcvr
                 if argument_count != len_unwrap_spec:
-                    print "unexpected argcount %d in %s" % (argument_count, func.func_name)
                     raise PrimitiveFailedError
                 if s_frame.stackdepth() < len_unwrap_spec:
                     raise PrimitiveFailedError()
@@ -157,8 +163,7 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
         return wrapped
     return decorator
 
-def expose_primitive(code, wrap_func=None, **kwargs):
-    # heuristics to give it a nice name
+def primitive_name_from_code(code):
     name = None
     for key, value in globals().iteritems():
         if isinstance(value, int) and value == code and key == key.upper():
@@ -167,6 +172,11 @@ def expose_primitive(code, wrap_func=None, **kwargs):
                 name = "unknown"
             else:
                 name = key
+    return name
+
+def expose_primitive(code, wrap_func=None, **kwargs):
+    # heuristics to give it a nice name
+    name = primitive_name_from_code(code)
     if not wrap_func:
         if kwargs.get('unwrap_specs', None):
             wrap_func = unwrap_alternatives
@@ -189,6 +199,28 @@ def expose_also_as(*codes):
             assert code not in prim_table
             prim_table[code] = wrapped
             prim_table_implemented_only.append((code, wrapped))
+        return wrapped
+    return decorator
+
+def expose_alternative_primitive(code, **kwargs):
+    original = prim_table[code]
+    assert original
+    def decorator(func):
+        alternative = wrap_primitive(**kwargs)(func)
+        def wrapped(interp, s_frame, argument_count, w_method=None):
+            try:
+                return original(interp, s_frame, argument_count, w_method=w_method)
+            except PrimitiveFailedError:
+                return alternative(interp, s_frame, argument_count, w_method=w_method)
+        wrapped.func_name = "wrapped_alternative_%s" % func.func_name
+        prim_table[code] = wrapped
+        replaced_original = False
+        for idx, pair in enumerate(prim_table_implemented_only):
+            if pair[0] == code:
+                prim_table_implemented_only[idx] = (code, wrapped)
+                replaced_original = True
+                break
+        assert replaced_original
         return wrapped
     return decorator
 
@@ -230,6 +262,7 @@ from rsqueakvm.primitives import input_output
 from rsqueakvm.primitives import misc
 from rsqueakvm.primitives import storage
 from rsqueakvm.primitives import system
+from rsqueakvm.primitives import mirror
 
 # ___________________________________________________________________________
 # PrimitiveLoadInstVar

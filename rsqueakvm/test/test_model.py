@@ -270,7 +270,7 @@ def test_word_atput():
     b = W_WordsObject(space, None, 1)
     b.atput0(space, 0, i)
     assert 100 == b.getword(0)
-    i = space.classtable['w_LargePositiveInteger'].as_class_get_shadow(space).new(4)
+    i = space.w_LargePositiveInteger.as_class_get_shadow(space).new(4)
     i.atput0(space, 3, space.wrap_int(192))
     b.atput0(space, 0, i)
     assert b.getword(0) == 3221225472

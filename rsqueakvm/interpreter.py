@@ -4,9 +4,12 @@ import sys
 sys.setrecursionlimit(1000000)
 
 from rsqueakvm import constants, wrapper, objspace, interpreter_bytecodes
-from rsqueakvm.error import FatalError
+from rsqueakvm.error import FatalError, Exit, SmalltalkException
+from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod, W_SpurCompiledMethod
 from rsqueakvm.model.numeric import W_SmallInteger
+from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.storage_contexts import ContextPartShadow, ActiveContext, InactiveContext, DirtyContext
 
 from rpython.rlib import jit, rstackovf, unroll, objectmodel, rsignal
@@ -116,7 +119,11 @@ class StackOverflow(ContextSwitchException):
 class ProcessSwitch(ContextSwitchException):
     """This causes the interpreter to switch the executed context.
     Triggered when switching the process."""
+    _attrs_ = ["forced"]
     type = "Process Switch"
+    def __init__(self, s_new_context, forced=False):
+        ContextSwitchException.__init__(self, s_new_context)
+        self.forced = forced
 
 UNROLLING_BYTECODE_RANGES = unroll.unrolling_iterable(interpreter_bytecodes.BYTECODE_RANGES)
 
@@ -125,8 +132,12 @@ def get_printable_location(pc, self, method):
     name = method.safe_identifier_string()
     return '(%s) [%d]: <%s>%s' % (name, pc, hex(bc), interpreter_bytecodes.BYTECODE_NAMES[bc])
 
+def resume_get_printable_location(pc, self, method):
+    return "resume: %s" % get_printable_location(pc, self, method)
+
 USE_SIGUSR1 = hasattr(rsignal, 'SIGUSR1')
 
+jit_driver_name = "rsqueakjit"
 
 class Interpreter(object):
     _immutable_fields_ = ["space",
@@ -139,10 +150,20 @@ class Interpreter(object):
                           "trace"]
 
     jit_driver = jit.JitDriver(
+        name=jit_driver_name,
         greens=['pc', 'self', 'method'],
         reds=['s_context'],
         virtualizables=['s_context'],
         get_printable_location=get_printable_location,
+        is_recursive=True
+    )
+
+    resume_driver = jit.JitDriver(
+        name=jit_driver_name + "_resume",
+        greens=['pc', 'self', 'method'],
+        reds=['s_context'],
+        # virtualizables=['s_context'],
+        get_printable_location=resume_get_printable_location,
         is_recursive=True
     )
 
@@ -167,7 +188,6 @@ class Interpreter(object):
         # === Initialize mutable variables
         self.interrupt_check_counter = self.interrupt_counter_size
         self.next_wakeup_tick = 0
-        self.trace_proxy = objspace.ConstantFlag()
         self.stack_depth = 0
         self.process_switch_count = 0
         self.forced_interrupt_checks_count = 0
@@ -177,37 +197,17 @@ class Interpreter(object):
             if USE_SIGUSR1:
                 rsignal.pypysig_setflag(rsignal.SIGUSR1)
 
-    def populate_remaining_special_objects(self):
-        with objspace.ForceHeadless(self.space):
-            for name, idx in constants.objects_in_special_object_table.items():
-                name = "w_" + name
-                if name not in self.space.objtable or not self.space.objtable[name]:
-                    if name == "w_runWithIn":
-                        w_string = self.space.wrap_string("run:with:in:")
-                        self.space.objtable[name] = self.perform(w_string, selector="asSymbol")
-                        assert self.space.objtable[name]
-                    elif name == "w_ClassBinding":
-                        w_class_binding_class = self.space.smalltalk_at("ClassBinding")
-                        self.space.objtable[name] = w_class_binding_class
-                    else:
-                        raise Warning("don't know how to populate " + name + " in special objects table")
-            for name, idx in constants.classes_in_special_object_table.items():
-                name = "w_" + name
-                if self.space.classtable[name].getclass(self.space) is None:
-                    if name == "w_LargeNegativeInteger":
-                        w_lni_class = self.space.smalltalk_at("LargeNegativeInteger")
-                        if w_lni_class is None:
-                            raise NotImplementedError("cannot find LargeNegativeInteger class")
-                        from rsqueakvm.model.pointers import W_PointersObject
-                        assert isinstance(w_lni_class, W_PointersObject)
-                        self.space.w_LargeNegativeInteger.hash = w_lni_class.hash
-                        self.space.w_LargeNegativeInteger.strategy = w_lni_class.strategy
-                        self.space.w_LargeNegativeInteger._storage = w_lni_class._storage
-
     def loop(self, w_active_context):
         # This is the top-level loop and is not invoked recursively.
         s_context = w_active_context.as_context_get_shadow(self.space)
         while True:
+            method = s_context.w_method()
+            pc = s_context.pc()
+            self.resume_driver.jit_merge_point(
+                pc=pc,
+                self=self,
+                method=method,
+                s_context=s_context)
             s_sender = s_context.s_sender()
             try:
                 self.stack_frame(s_context, None)
@@ -217,6 +217,14 @@ class Interpreter(object):
                     e.print_trace()
                 self.process_switch_count += 1
                 s_context = e.s_new_context
+                if not e.forced:
+                    method = s_context.w_method()
+                    pc = s_context.pc()
+                    self.resume_driver.can_enter_jit(
+                        pc=pc,
+                        self=self,
+                        method=method,
+                        s_context=s_context)
             except StackOverflow, e:
                 if self.is_tracing() or self.trace_important:
                     e.print_trace()
@@ -224,10 +232,14 @@ class Interpreter(object):
                 s_context = e.s_new_context
             except LocalReturn, ret:
                 target = s_sender
-                s_context = self.unwind_context_chain(s_sender, target, ret.value(self.space), s_context)
+                s_context = self.unwind_context_chain_local(target, ret.value(self.space), s_context)
+                if self.is_tracing() or self.trace_important:
+                    print "\n====== Local Return in top-level loop, contexts forced to heap at: %s" % s_context.short_str()
             except NonLocalReturn, ret:
                 target = s_sender if ret.arrived_at_target else ret.s_home_context.s_sender() # fine to force here
                 s_context = self.unwind_context_chain(s_sender, target, ret.value(self.space), s_context)
+                if self.is_tracing() or self.trace_important:
+                    print "\n====== Non Local Return in top-level loop, contexts forced to heap at: %s" % s_context.short_str()
             except NonVirtualReturn, ret:
                 if self.is_tracing() or self.trace_important:
                     ret.print_trace()
@@ -245,7 +257,7 @@ class Interpreter(object):
             rstackovf.check_stack_overflow()
             raise StackOverflow(s_frame)
         except LocalReturn, ret:
-            if s_frame.state is DirtyContext:
+            if s_frame.get_state() is DirtyContext:
                 s_new_sender = s_frame.s_sender()  # The sender has changed!
                 s_frame._activate_unwind_context(self)
                 raise NonVirtualReturn(s_new_sender, s_new_sender, ret.value(self.space))
@@ -253,7 +265,7 @@ class Interpreter(object):
                 s_frame._activate_unwind_context(self)
                 raise ret
         except NonLocalReturn, ret:
-            if s_frame.state is DirtyContext:
+            if s_frame.get_state() is DirtyContext:
                 s_new_sender = s_frame.s_sender()  # The sender has changed!
                 # To get the target context:
                 #  a) we can force the home_context.s_sender() here, we're spilling to the heap anyway
@@ -319,27 +331,53 @@ class Interpreter(object):
 
         return fallbackContext
 
+    @jit.unroll_safe
     def unwind_context_chain(self, start_context, target_context, return_value,
                              s_current_context):
         if start_context is None:
             # This is the toplevel frame. Execution ended.
             raise ReturnFromTopLevel(return_value, s_current_context)
         assert target_context
+
+        context = start_context
+        for i in range(4):
+            if context is target_context:
+                break
+            context = self._finish_context(context, target_context, return_value, s_current_context)
+
+        if context is target_context:
+            context.push(return_value)
+            return context
+        else:
+            return self._unwind_context_chain(context, target_context, return_value, s_current_context)
+
+    def _unwind_context_chain(self, start_context, target_context, return_value,
+                             s_current_context):
         context = start_context
         while context is not target_context:
-            if not context:
-                msg = "Context chain ended while trying to return\n%s\nfrom\n%s\n(pc %s)\nto\n%s\n(pc %s)" % (
-                        return_value.as_repr_string(),
-                        start_context.short_str(),
-                        start_context.pc(),
-                        target_context.short_str(),
-                        start_context.pc())
-                raise FatalError(msg)
-            s_sender = context.s_sender()
-            context._activate_unwind_context(self)
-            context = s_sender
+            context = self._finish_context(context, target_context, return_value, s_current_context)
         context.push(return_value)
         return context
+
+    def _finish_context(self, context, target_context, return_value, s_current_context):
+        if not context:
+            msg = "Context chain ended while trying to return\n%s\nfrom somewhere near or above or below\n%s\n(pc %s)\nto\n%s\n(pc %s)" % (
+                    return_value.as_repr_string(),
+                    context.short_str(),
+                    context.pc(),
+                    target_context.short_str(),
+                    target_context.pc())
+            raise FatalError(msg)
+        s_sender = context.s_sender()
+        context._activate_unwind_context(self)
+        return s_sender
+
+    def unwind_context_chain_local(self, target_context, return_value, s_current_context):
+        if target_context is None:
+            # This is the toplevel frame. Execution ended.
+            raise ReturnFromTopLevel(return_value, s_current_context)
+        target_context.push(return_value)
+        return target_context
 
     def step(self, context):
         if not objectmodel.we_are_translated():
@@ -393,13 +431,20 @@ class Interpreter(object):
         self.forced_interrupt_checks_count += 1
         now = self.time_now()
 
+        # Check for User Interrupt
+        if self.space.display().has_interrupts_pending():
+            w_interrupt_sema = self.space.w_interrupt_semaphore()
+            if w_interrupt_sema is not self.space.w_nil:
+                assert isinstance(w_interrupt_sema, W_PointersObject)
+                wrapper.SemaphoreWrapper(self.space, w_interrupt_sema).signal(s_frame, forced=True)
+
         # XXX the low space semaphore may be signaled here
-        # TODO: Check for User Interrupt
         if not self.next_wakeup_tick == 0 and now >= self.next_wakeup_tick:
             self.next_wakeup_tick = 0
-            semaphore = self.space.objtable["w_timerSemaphore"]
+            semaphore = self.space.w_timerSemaphore()
             if not semaphore.is_nil(self.space):
-                wrapper.SemaphoreWrapper(self.space, semaphore).signal(s_frame)
+                assert isinstance(semaphore, W_PointersObject)
+                wrapper.SemaphoreWrapper(self.space, semaphore).signal(s_frame, forced=False)
         # We have no finalization process, so far.
         # We do not support external semaphores.
         # In cog, the method to add such a semaphore is only called in GC.
@@ -432,7 +477,7 @@ class Interpreter(object):
             self.loop(w_frame)
         except ReturnFromTopLevel, e:
             if not self.space.headless.is_set():
-                w_cannotReturn = self.space.special_object("w_cannotReturn")
+                w_cannotReturn = self.space.w_cannotReturn
                 if w_cannotReturn is not None:
                     s_context = self.create_toplevel_context(
                         e.s_current_frame.w_self(),
@@ -440,6 +485,14 @@ class Interpreter(object):
                         w_arguments=[e.object])
                     return self.loop(s_context.w_self())
             return e.object
+
+    def perform_headless(self, w_receiver, w_selector, w_arguments):
+        with objspace.ForceHeadless(self.space):
+            try:
+                return self.perform(w_receiver, w_selector=w_selector, w_arguments=w_arguments)
+            except Exit, SmalltalkException:
+                pass
+        return w_receiver
 
     def perform(self, w_receiver, selector="", w_selector=None, w_arguments=[]):
         s_frame = self.create_toplevel_context(w_receiver, selector, w_selector, w_arguments)

@@ -7,52 +7,17 @@ from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.model.block_closure import W_BlockClosure
 from rsqueakvm.util.version import Version
+from rsqueakvm.util.cells import QuasiConstant
 
 from rpython.rlib import jit, rbigint, rarithmetic
 from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin, we_are_translated, always_inline
 from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32, int_between, is_valid_int, r_ulonglong, r_longlong, r_int64
 
-
-class ConstantMixin(object):
-    """Mixin for constant values that can be edited, but will be promoted
-    to a constant when jitting."""
-    _immutable_fields_ = ["value?"]
-
-    def __init__(self, initial_value=None):
-        if initial_value is None:
-            initial_value = self.default_value
-        self.value = initial_value
-
-    def set(self, value):
-        self.value = value
-
-    def get(self):
-        return self.value
-
-class ConstantFlag(object):
-    import_from_mixin(ConstantMixin)
-    default_value = False
-    def is_set(self):
-        return self.get()
-    def activate(self):
-        self.set(True)
-    def deactivate(self):
-        self.set(False)
-
-class ConstantString(object):
-    import_from_mixin(ConstantMixin)
-    default_value = ""
-
-class ConstantObject(object):
-    import_from_mixin(ConstantMixin)
-    default_value = None
-
-class ConstantVersion(object):
-    import_from_mixin(ConstantMixin)
-    default_value = Version()
-
 def empty_object():
     return instantiate(W_PointersObject)
+
+def empty_symbol():
+    return instantiate(W_BytesObject)
 
 class ForceHeadless(object):
     def __init__(self, space):
@@ -66,42 +31,52 @@ class ForceHeadless(object):
             self.space.headless.deactivate()
 
 class ObjSpace(object):
-    _immutable_fields_ = ['objtable']
-
     def __init__(self):
         # This is a hack; see compile_code() in main.py
-        self.suppress_process_switch = ConstantFlag()
-        self.run_spy_hacks = ConstantFlag()
-        self.headless = ConstantFlag()
-        self.highdpi = ConstantFlag(True)
-        self.software_renderer = ConstantFlag(False)
-        self.no_display = ConstantFlag(False)
-        self.silent = ConstantFlag(False)
-        self.omit_printing_raw_bytes = ConstantFlag()
-        self.image_loaded = ConstantFlag()
-        self.is_spur = ConstantFlag()
-        self.uses_block_contexts = ConstantFlag()
-        self.simulate_numeric_primitives = ConstantFlag()
+        self.suppress_process_switch = QuasiConstant(False)
+        self.headless = QuasiConstant(False)
+        self.highdpi = QuasiConstant(True)
+        self.software_renderer = QuasiConstant(False)
+        self.no_display = QuasiConstant(False)
+        self.silent = QuasiConstant(False)
+        self.omit_printing_raw_bytes = QuasiConstant(False)
+        self.image_loaded = QuasiConstant(False)
+        self.is_spur = QuasiConstant(False)
+        self.uses_block_contexts = QuasiConstant(False)
+        self.simulate_numeric_primitives = QuasiConstant(False)
 
-        self.classtable = {}
-        self.objtable = {}
         self.system_attributes = {}
-        self._system_attribute_version = ConstantVersion()
-        self._executable_path = ConstantString()
-        self.title = ConstantString()
-        self.altf4quit = ConstantFlag()
-        self._display = ConstantObject()
+        self._system_attribute_version = QuasiConstant(Version())
+        self._executable_path = QuasiConstant("")
+        self.title = QuasiConstant("RSqueak")
+        self.altf4quit = QuasiConstant(False)
 
-        # Create the nil object.
-        # Circumvent the constructor because nil is already referenced there.
-        w_nil = empty_object()
-        self.add_bootstrap_object("w_nil", w_nil)
+        from rsqueakvm.display import NullDisplay
+        self._display = QuasiConstant(None, type=NullDisplay)
+        from rsqueakvm.interpreter import Interpreter
+        self.interp = QuasiConstant(None, type=Interpreter)
 
+        self.make_special_objects()
         self.strategy_factory = storage.StrategyFactory(self)
-        self.make_bootstrap_classes()
-        self.make_bootstrap_objects()
 
-    def runtime_setup(self, exepath, argv, image_name, image_args_idx):
+    def make_special_objects(self):
+        # These are used in the interpreter bytecodes
+        self.w_minus_one = W_SmallInteger(-1)
+        self.w_zero = W_SmallInteger(0)
+        self.w_one = W_SmallInteger(1)
+        self.w_two = W_SmallInteger(2)
+        self.w_special_objects = empty_object()
+        # no add all of those special objects that we assume constant while the image is running
+        for name, (idx, t) in constants.constant_objects_in_special_object_table.items():
+            if t == "POINTERS":
+                setattr(self, "w_" + name, empty_object())
+            elif t == "BYTES":
+                setattr(self, "w_" + name, empty_symbol())
+            else:
+                assert False
+
+    def runtime_setup(self, interp, exepath, argv, image_name, image_args_idx):
+        self.interp.set(interp)
         fullpath = exepath
         self._executable_path.set(fullpath)
         for i in range(image_args_idx, len(argv)):
@@ -118,12 +93,13 @@ class ObjSpace(object):
             self.set_system_attribute(-i, argv[i])
         import platform
         from rsqueakvm.main import VERSION, BUILD_DATE
+        from rpython.rlib.compilerinfo import get_compiler_info
         self.set_system_attribute(0, self._executable_path.get())
         self.set_system_attribute(1001, platform.system())    # operating system
         self.set_system_attribute(1002, platform.version())   # operating system version
         self.set_system_attribute(1003, platform.processor())  # platform's processor type
         self.set_system_attribute(1004, VERSION)
-        self.set_system_attribute(1006, BUILD_DATE)
+        self.set_system_attribute(1006, "%s Compiler: %s" % (BUILD_DATE, get_compiler_info()))
         self.set_system_attribute(1007, "rsqueak")            # interpreter class (invented for Cog)
 
     def get_system_attribute(self, idx):
@@ -135,57 +111,7 @@ class ObjSpace(object):
 
     def set_system_attribute(self, idx, value):
         self.system_attributes[idx] = value
-        self._system_attribute_version.set(Version())
-
-    def populate_special_objects(self, specials):
-        for name, idx in constants.objects_in_special_object_table.items():
-            name = "w_" + name
-            if not name in self.objtable or not self.objtable[name]:
-                try:
-                    self.objtable[name] = specials[idx]
-                except IndexError:
-                    # if it's not yet in the table, the interpreter has to fill
-                    # the gap later in populate_remaining_special_objects
-                    self.objtable[name] = None
-        self.classtable["w_Metaclass"] = self.w_SmallInteger.getclass(self).getclass(self)
-
-    def add_bootstrap_class(self, name, cls):
-        self.classtable[name] = cls
-        setattr(self, name, cls)
-
-    def make_bootstrap_classes(self):
-        names = [ "w_" + name for name in constants.classes_in_special_object_table.keys() ]
-        for name in names:
-            cls = empty_object()
-            self.add_bootstrap_class(name, cls)
-
-    def add_bootstrap_object(self, name, obj):
-        self.objtable[name] = obj
-        setattr(self, name, obj)
-
-    def make_bootstrap_object(self, name):
-        obj = empty_object()
-        self.add_bootstrap_object(name, obj)
-
-    def make_bootstrap_objects(self):
-        self.make_bootstrap_object("w_true")
-        self.make_bootstrap_object("w_false")
-        self.make_bootstrap_object("w_special_selectors")
-        self.add_bootstrap_object("w_minus_one", W_SmallInteger(-1))
-        self.add_bootstrap_object("w_zero", W_SmallInteger(0))
-        self.add_bootstrap_object("w_one", W_SmallInteger(1))
-        self.add_bootstrap_object("w_two", W_SmallInteger(2))
-
-        # Certain special objects are already created. The rest will be
-        # populated when the image is loaded, but prepare empty slots for them.
-        for name in constants.objects_in_special_object_table:
-            name = "w_" + name
-            if not name in self.objtable:
-                self.add_bootstrap_object(name, None)
-
-    @jit.elidable
-    def special_object(self, which):
-        return self.objtable[which]
+        self._system_attribute_version.changed()
 
     # ============= Methods for wrapping and unwrapping stuff =============
 
@@ -269,6 +195,11 @@ class ObjSpace(object):
         w_inst.setbytes(list(string))
         return w_inst
 
+    def wrap_symbol(self, string):
+        w_inst = self.wrap_string(string)
+        w_inst.change_class(self, self.w_ByteSymbol)
+        return w_inst
+
     def wrap_char(self, c):
         # return self.w_charactertable.fetch(self, ord(c))
         return W_Character(ord(c))
@@ -341,9 +272,12 @@ class ObjSpace(object):
     def executable_path(self):
         return self._executable_path.get()
 
+    def get_image_name(self):
+        return self.get_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX)
+
     def window_title(self):
         title = self.title.get()
-        imgpath = self.get_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX)
+        imgpath = self.get_image_name()
         if len(title) == 0:
             title = "RSqueak (%s)" % imgpath
         else:
@@ -369,7 +303,7 @@ class ObjSpace(object):
 
     def smalltalk_at(self, string):
         """A helper to find a class by name in modern Squeak images"""
-        w_sd = self.special_object("w_smalltalkdict")
+        w_sd = self.w_smalltalkdict
         if w_sd.instsize() == 1:
             w_globals = w_sd.fetch(self, 0)
             if w_globals.instsize() == 6:
@@ -412,3 +346,15 @@ class ObjSpace(object):
         for i0 in range(numCopied):
             w_closure.atput0(self, i0, copiedValues[i0])
         return w_closure
+
+def add_special_properties():
+    for n, i in constants.variables_in_special_object_table.items():
+        def fun(name, idx):
+            def getter(s): return s.w_special_objects.fetch(s, idx)
+            getter.func_name = "w_" + name
+            def setter(s, w_obj): return s.w_special_objects.store(s, idx, w_obj)
+            setter.func_name = "set_w_" + name
+            setattr(ObjSpace, "w_" + name, getter)
+            setattr(ObjSpace, "set_w_" + name, setter)
+        fun(n, i)
+add_special_properties()

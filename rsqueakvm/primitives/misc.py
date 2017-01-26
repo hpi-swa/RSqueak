@@ -47,7 +47,7 @@ def func(interp, s_frame, w_receiver, flag):
 
 @expose_primitive(DRAW_RECTANGLE, unwrap_spec=[object, int, int, int, int])
 def func(interp, s_frame, w_rcvr, left, right, top, bottom):
-    if not interp.space.objtable['w_display'].is_same_object(w_rcvr):
+    if not interp.space.w_display().is_same_object(w_rcvr):
         return interp.space.w_nil
     if not ((left <= right) and (top <= bottom)):
         return interp.space.w_nil
@@ -83,7 +83,7 @@ def func(interp, s_frame, w_rcvr, w_new):
 
 @expose_primitive(SPECIAL_OBJECTS_ARRAY, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    return interp.image.special_objects
+    return interp.space.w_special_objects
 
 def fake_bytes_left(interp):
     from rsqueakvm.util.platform_calls import get_memory_usage
@@ -111,9 +111,9 @@ def func(interp, s_frame, w_rcvr, encoded_key):
 @expose_primitive(INTERRUPT_SEMAPHORE, unwrap_spec=[object, object])
 def func(interp, s_frame, w_rcvr, w_semaphore):
     if w_semaphore.getclass(interp.space).is_same_object(interp.space.w_Semaphore):
-        interp.space.objtable['w_interrupt_semaphore'] = w_semaphore
+        interp.space.set_w_interrupt_semaphore(w_semaphore)
     else:
-        interp.space.objtable['w_interrupt_semaphore'] = interp.space.w_nil
+        interp.space.set_w_interrupt_semaphore(interp.space.w_nil)
     return w_rcvr
 
 
@@ -163,13 +163,16 @@ def func(interp, s_frame, w_receiver):
 @expose_primitive(CLIPBOARD_TEXT)
 def func(interp, s_frame, argument_count):
     if argument_count == 0:
+        s_frame.pop() # rcvr
         if interp.space.display().has_clipboard_text():
             return interp.space.wrap_string(interp.space.display().get_clipboard_text())
         else:
             return interp.space.wrap_string("")
     elif argument_count == 1:
         w_arg = s_frame.pop()
+        s_frame.pop() # rcvr
         interp.space.display().set_clipboard_text(interp.space.unwrap_string(w_arg))
+        return w_arg
 
 @expose_primitive(VM_PATH, unwrap_spec=[object])
 def func(interp, s_frame, w_receiver):

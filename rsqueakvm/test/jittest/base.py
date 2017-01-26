@@ -52,7 +52,7 @@ class BaseJITTest(object):
         logfile = str(tmpdir.join("x.pypylog"))
         print logfile
         proc = spy.popen(
-            "--reader-jit-args", "off", "--silent", "-r", code.replace("\n", "\r\n"), self.test_image,
+            "--silent", "-r", code.replace("\n", "\r\n"), self.test_image,
             cwd=str(tmpdir),
             env={"PYPYLOG": "jit:%s" % logfile,
                  "SDL_VIDEODRIVER": "dummy"}

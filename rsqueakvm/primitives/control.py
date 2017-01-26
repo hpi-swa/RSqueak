@@ -33,11 +33,8 @@ def func(interp, s_frame, argcount):
 def func(interp, s_frame, w_arg, w_rcvr):
     return interp.space.wrap_bool(w_arg.is_same_object(w_rcvr))
 
-@expose_primitive(CLASS, unwrap_spec=None)
-def func(interp, s_frame, argcount):
-    w_obj = s_frame.pop()
-    if argcount == 1:
-        s_frame.pop()  # receiver, e.g. ContextPart>>objectClass:
+@expose_primitive(CLASS, unwrap_spec=[object])
+def func(interp, s_frame, w_obj):
     return w_obj.getclass(interp.space)
 
 @expose_primitive(BYTES_LEFT, unwrap_spec=[object])
@@ -53,7 +50,8 @@ def func(interp, s_frame, w_rcvr):
 def func(interp, s_frame, w_rcvr):
     if interp.space.headless.is_set():
         s_frame.exitFromHeadlessExecution("EXIT_TO_DEBUGGER")
-    raise PrimitiveNotYetWrittenError()
+    from rpython.rlib.debug import attach_gdb
+    attach_gdb()
 
 @expose_primitive(CHANGE_CLASS, unwrap_spec=[object, object], no_result=True)
 def func(interp, s_frame, w_rcvr, w_arg):
@@ -90,26 +88,43 @@ def func(interp, s_frame, w_rcvr, w_arg):
 
 def find_plugins():
     import os, sys
+    from rsqueakvm.util import system
+
+    if system.without_plugins:
+        print "Plugins have been disabled"
+        return  [], []
+
     enabled_plugins = []
     files = os.listdir(os.path.join(os.path.dirname(__file__), "..", "plugins"))
     plugins = []
     plugin_names = []
+    disabled_plugin_names = []
+
+    # special...
+    if "JitHooks" not in system.optional_plugins:
+        disabled_plugin_names.append("JitHooks")
+
     for filename in files:
         if "_" not in filename or filename.startswith("_") or not filename.endswith(".py"):
             continue
         modulename = filename.replace(".py", "")
+        pluginname = "".join([f.capitalize() for f in modulename.split("_")])
+        if pluginname in system.disabled_plugins:
+            disabled_plugin_names.append(pluginname)
+            continue
         try:
             module = getattr(getattr(
                 __import__("rsqueakvm.plugins.%s" % modulename), "plugins"), modulename)
         except LookupError as e:
             # The plugin may have decided it doesn't want to be enabled
+            disabled_plugin_names.append(pluginname)
             continue
         reload(module) # always do a one-shot reload
-        pluginname = "".join([f.capitalize() for f in modulename.split("_")])
         plugin = getattr(module, pluginname)
         plugin_names.append(pluginname)
         plugins.append(plugin)
     print "Building with\n\t" + "\n\t".join(plugin_names)
+    print "Disabled plugins\n\t" + "\n\t".join(disabled_plugin_names)
     return plugin_names, plugins
 ExternalPluginNames, ExternalPlugins = find_plugins()
 
@@ -139,9 +154,10 @@ def func(interp, s_frame, argcount, w_method):
         raise PrimitiveFailedError
     signature = (space.unwrap_string(w_modulename), space.unwrap_string(w_functionname))
 
-    for i, p in enumerate(ExternalPluginNames):
-        if signature[0] == p:
-            return ExternalPlugins[i].call(signature[1], interp, s_frame, argcount, w_method)
+    if len(ExternalPluginNames) > 0:
+        for i, p in enumerate(ExternalPluginNames):
+            if signature[0] == p:
+                return ExternalPlugins[i].call(signature[1], interp, s_frame, argcount, w_method)
 
     # If all else fails, try to simulate
     from rsqueakvm.plugins.simulation import SimulationPlugin
@@ -157,32 +173,6 @@ def func(interp, s_frame, w_rcvr):
         w_class = assert_pointers(w_class)
         w_class.as_class_get_shadow(interp.space).flush_method_caches()
     return w_rcvr
-
-@objectmodel.specialize.arg(0)
-def walk_gc_references(func, gcrefs):
-    from rpython.rlib import rgc
-    for gcref in gcrefs:
-        if gcref and not rgc.get_gcflag_extra(gcref):
-            try:
-                rgc.toggle_gcflag_extra(gcref)
-                func(gcref)
-                walk_gc_references(func, rgc.get_rpy_referents(gcref))
-            finally:
-                rgc.toggle_gcflag_extra(gcref)
-
-@objectmodel.specialize.arg(0)
-def walk_gc_objects(func):
-    from rpython.rlib import rgc
-    walk_gc_references(func, rgc.get_rpy_roots())
-
-@objectmodel.specialize.arg(0, 1)
-def walk_gc_objects_of_type(type, func):
-    from rpython.rlib import rgc
-    def check_type(gcref):
-        w_obj = rgc.try_cast_gcref_to_instance(type, gcref)
-        if w_obj:
-            func(w_obj)
-    walk_gc_objects(check_type)
 
 @expose_primitive(SYMBOL_FLUSH_CACHE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
@@ -266,7 +256,7 @@ def func(interp, s_frame, w_block_ctx, args_w):
 def func(interp, s_frame, argcount):
     arguments_w = s_frame.pop_and_return_n(argcount - 1)
     w_selector = s_frame.pop()
-    w_rcvr = s_frame.top()
+    w_rcvr = s_frame.top() # rcvr is removed in _sendSelector
     return s_frame._sendSelector(
         w_selector, argcount - 1, interp, w_rcvr,
         w_rcvr.class_shadow(interp.space), w_arguments=arguments_w)
@@ -275,10 +265,20 @@ def func(interp, s_frame, argcount):
                   unwrap_spec=[object, object, list],
                   no_result=True, clean_stack=False)
 def func(interp, s_frame, w_rcvr, w_selector, w_arguments):
-    s_frame.pop_n(2)  # removing our arguments
+    s_frame.pop_n(2)  # removing our arguments, rcvr is removed in _sendSelector
     return s_frame._sendSelector(w_selector, len(w_arguments), interp, w_rcvr,
                                  w_rcvr.class_shadow(interp.space),
                                  w_arguments=w_arguments)
+
+@expose_primitive(PERFORM_IN_SUPERCLASS,
+                  unwrap_spec=[object, object, object, list, object],
+                  no_result=True, clean_stack=False)
+def func(interp, s_frame, w_context, w_rcvr, w_selector, arguments_w, w_class):
+    raise PrimitiveNotYetWrittenError
+    s_frame.pop_n(4)  # removing our arguments, rcvr is removed in _sendSelector
+    return s_frame._sendSelector(w_selector, len(arguments_w), interp, w_rcvr,
+                                 w_class.as_class_get_shadow(interp.space),
+                                 w_arguments=arguments_w)
 
 @expose_primitive(WITH_ARGS_EXECUTE_METHOD,
                   result_is_new_frame=True, unwrap_spec=[object, list, object])
@@ -363,11 +363,11 @@ def model_sizeof(model):
 class Entry(ExtRegistryEntry):
     _about_ = model_sizeof
 
-    def compute_result_annotation(self, s_model):
+    def compute_result_annotation(self, s_model): # pragma: no cover
         from rpython.annotator.model import SomeInteger
         return SomeInteger(nonneg=True, knowntype=int)
 
-    def specialize_call(self, hop):
+    def specialize_call(self, hop): # pragma: no cover
         from rpython.rtyper.lltypesystem import lltype
         from rpython.memory.lltypelayout import sizeof
         modelrepr = hop.rtyper.getrepr(hop.args_s[0])
@@ -392,7 +392,7 @@ class Entry(ExtRegistryEntry):
         return hop.inputconst(lltype.Signed, sz)
 
 @expose_primitive(BYTE_SIZE_OF_INSTANCE)
-def func(interp, s_frame, argcount):
+def func(interp, s_frame, argcount): # pragma: no cover
     from rpython.memory.lltypelayout import sizeof
     from rsqueakvm.storage_classes import POINTERS,\
         WEAK_POINTERS, WORDS, BYTES, COMPILED_METHOD,\

@@ -1,4 +1,5 @@
 import os
+from rsqueakvm.util.system import IS_WINDOWS
 
 DATA = [
     '\x0a', ' ' * 10,
@@ -98,6 +99,8 @@ DATA = [
     '\xe2\x94\x94\xe2\x96\x80\x6d', ' ' * 11,
 ]
 
+if IS_WINDOWS:
+    DATA = list(''.join(DATA).decode("utf-8").encode("ascii", "replace").replace("?", "#"))
 
 class Progress(object):
 

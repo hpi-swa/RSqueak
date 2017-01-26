@@ -3,7 +3,7 @@ from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.variable import W_WordsObject
 from rsqueakvm.util import system
 
-from rpython.rlib import jit
+from rpython.rlib import jit, rgc
 from rpython.rtyper.lltypesystem import lltype, rffi
 from rpython.rlib.rarithmetic import r_uint
 
@@ -38,6 +38,7 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
     repr_classname = "W_DisplayBitmap"
 
     def __init__(self, space, size, depth):
+        W_AbstractObjectWithIdentityHash.__init__(self)
         self._real_depth_buffer = lltype.malloc(rffi.CArray(rffi.UINT), size, flavor='raw')
         self._realsize = size
         self._depth = depth
@@ -155,6 +156,7 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
         # TODO - implement _become() for this class. Impossible due to _immutable_fields_?
         return False
 
+    @rgc.must_be_light_finalizer
     def __del__(self):
         lltype.free(self._real_depth_buffer, flavor='raw')
 

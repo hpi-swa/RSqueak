@@ -185,17 +185,8 @@ class W_MutableFloat(W_AbstractFloat):
 
 
 class W_LargeInteger(W_AbstractObjectWithClassReference):
-    _attrs_ = ["_exposed_size"]
-    _immutable_fields_ = ["_exposed_size"]
     repr_classname = "W_LargeInteger"
     bytes_per_slot = 1
-
-    def __init__(self, space, w_class, size):
-        W_AbstractObjectWithClassReference.__init__(self, space, w_class)
-        self._exposed_size = size
-
-    def size(self):
-        return self._exposed_size
 
     def is_array_object(self):
         return True
@@ -204,14 +195,25 @@ class W_LargeInteger(W_AbstractObjectWithClassReference):
         return self.getclass(space).is_same_object(space.w_LargePositiveInteger)
 
 
+@jit.elidable
+def calculate_exposed_size_for_big_int(value):
+    import math
+    bytelenval = value.abs()
+    # +0.05: heuristic hack float rounding errors. This isn't always right, but
+    # often enough for reasonably small numbers. When it isn't and we end up in
+    # the normalize named primitive, we calculate the exposed_size again just
+    # much slower
+    return int(math.floor(bytelenval.log(256) + 0.05)) + 1
+
+
 class W_LargeIntegerBig(W_LargeInteger):
     """Large integer using rbigints"""
-    _attrs_ = ["value"]
     _immutable_fields_ = ["value?"]
     repr_classname = "W_LargeIntegerBig"
 
     def __init__(self, space, w_class, value, size=0):
-        W_LargeInteger.__init__(self, space, w_class, size)
+        W_LargeInteger.__init__(self, space, w_class)
+        self._exposed_size = size
         self.value = value
 
     def fillin(self, space, g_self):
@@ -228,36 +230,13 @@ class W_LargeIntegerBig(W_LargeInteger):
         return self.value.str()
 
     def size(self):
-        if jit.isconstant(self):
-            self.calculate_exposed_size_for_big_int_once()
-            return self._exposed_size
-        else:
-            return self.calculate_exposed_size_for_big_int_call()
-
-    # this method is elidable so the jit won't look inside to notice that we're
-    # setting an immutable field. This should be ok, because size is hopefully
-    # requested rarely for these numbers.
-    @jit.elidable
-    def calculate_exposed_size_for_big_int_call(self):
-        if self._exposed_size == 0:
-            import math
-            bytelenval = self.value.abs()
-            # XXX +0.05: heuristic hack float rounding errors
-            bytelen = int(math.floor(bytelenval.log(256) + 0.05)) + 1
-            # TODO: check if this might be better
-            # try:
-            #     bytes = val.tobytes(bytelen, 'little', False)
-            # except OverflowError:
-            #     # round-off errors in math.log, might need an extra byte
-            #     bytes = val.tobytes(bytelen + 1, 'little', False)
-            self._exposed_size = bytelen
-        return self._exposed_size
-
-    # if self is a constant, we just ensure we calculate the exposed_size without a
-    # residual call in the trace, if it isn't we always insert the call
-    @jit.not_in_trace
-    def calculate_exposed_size_for_big_int_once(self):
-        self.calculate_exposed_size_for_big_int_call()
+        sz = jit.conditional_call_elidable(
+            self._exposed_size,
+            calculate_exposed_size_for_big_int,
+            self.value)
+        if not jit.isconstant(self):
+            self._exposed_size = sz
+        return sz
 
     def unwrap_string(self, space):
         return self.value.abs().tobytes(self.size(), 'little', False)
@@ -303,7 +282,10 @@ class W_LargeIntegerBig(W_LargeInteger):
         return self.value.tolong()
 
     def unwrap_float(self, space):
-        return self.value.tofloat()
+        try:
+            return self.value.tofloat()
+        except OverflowError:
+            raise error.UnwrappingError
 
     def clone(self, space):
         return W_LargeIntegerBig(space, self.getclass(space), self.value, self.size())
@@ -319,13 +301,16 @@ class W_LargeIntegerBig(W_LargeInteger):
 
 
 class W_LargeIntegerWord(W_LargeInteger):
-    _attrs_ = ["value"]
-    _immutable_fields_ = ["value?"]
+    _immutable_fields_ = ["value?", "_exposed_size"]
     repr_classname = "W_LargeIntegerWord"
 
     def __init__(self, space, w_class, value, size):
-        W_LargeInteger.__init__(self, space, w_class, size)
+        W_LargeInteger.__init__(self, space, w_class)
+        self._exposed_size = size
         self.value = value
+
+    def size(self):
+        return self._exposed_size
 
     def fillin(self, space, g_self):
         W_AbstractObjectWithClassReference.fillin(self, space, g_self)

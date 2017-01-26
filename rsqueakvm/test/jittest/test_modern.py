@@ -328,26 +328,25 @@ i := n' classified: 'none' withStamp: nil notifying: nil logSource: false.
         """)
         self.assert_matches(traces[0].loop,
         """
-        guard_not_invalidated(descr=<Guard0xd7bd2fc>)
-        i133 = int_lt(i76, i58)
-        guard_true(i133, descr=<Guard0xd96b630>)
-        i134 = int_mul_ovf(i76, i70)
-        guard_no_overflow(descr=<Guard0xd96b614>)
-        i135 = int_add_ovf(i66, i134)
-        guard_no_overflow(descr=<Guard0xd96b5dc>)
-        i136 = int_add(i76, 1)
-        cond_call(i101, 137066992, p96, descr=<Callv 0 r EF=2 OS=121>)
-        p98 = force_token()
-        enter_portal_frame(0, 0)
-        i137 = int_add_ovf(i135, i130)
-        guard_no_overflow(descr=<Guard0xd7bd2d0>)
-        leave_portal_frame(0)
-        i70 = int_sub(i61, 1),
-        setfield_gc(ConstPtr(ptr71), i70, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 32>),
-        i73 = int_le(i70, 0),
-        guard_false(i73, descr=<Guard0x9c13130>),
-        i139 = arraylen_gc(p64, descr=<ArrayS 4>)
-        jump(p0, p1, i2, p3, p6, p7, i8, i9, p10, p11, i13, p14, p17, i135, i136, p23, i137, p31, p33, p35, p37, p39, p41, p43, p45, p47, p49, i58, p64, i70, i66, p85, p92, p96, i101, p78, i130, p123, p104, descr=TargetToken(227905452))
+        guard_not_invalidated(descr=<Guard0x4ab0498>)
+        i102 = int_lt(i66, i49)
+        guard_true(i102, descr=<Guard0x65a22a8>)
+        i103 = int_mul_ovf(i66, i60)
+        guard_no_overflow(descr=<Guard0x65a2260>)
+        i104 = int_add_ovf(i56, i103)
+        guard_no_overflow(descr=<Guard0x65a2218>)
+        i106 = int_add(i66, 1)
+        p107 = force_token()
+        enter_portal_frame(1, 0)
+        i110 = int_add_ovf(i104, i92)
+        guard_no_overflow(descr=<Guard0x65a2188>)
+        leave_portal_frame(1)
+        i113 = int_sub(i98, 1)
+        setfield_gc(ConstPtr(ptr114), i113, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
+        i116 = int_le(i113, 0)
+        guard_false(i116, descr=<Guard0x4ab0430>)
+        i118 = arraylen_gc(p54, descr=<ArrayS 8>)
+        jump(p0, p1, i2, p4, p5, p6, p8, p11, i104, i106, p17, i110, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, i49, p54, i60, i56, p77, p87, i92, i113, descr=TargetToken(106653920))
         """)
 
     def test_global_class_access(self, spy, tmpdir):
@@ -368,14 +367,13 @@ i := n' classified: 'none' withStamp: nil notifying: nil logSource: false.
         i148 = int_add_ovf(i59, i147),
         guard_no_overflow(descr=<Guard0x9fda140>),
         i150 = int_add(i69, 1),
-        cond_call(i80, 6284336, p75, descr=<Callv 0 r EF=2 OS=121>),
         p153 = getarrayitem_gc_r(p88, 0, descr=<ArrayP 8>),
+        guard_nonnull_class(p153, ConstClass(W_PointersObject), descr=<Guard0xaf52454>)
         p98 = force_token()
         enter_portal_frame(4, 0),
         p99 = force_token()
         enter_portal_frame(4, 0),
         leave_portal_frame(4),
-        guard_class(p153, ConstClass(W_PointersObject), descr=<Guard0x9ee1c28>),
         p161 = getfield_gc_r(p153, descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>),
         guard_value(p161, ConstPtr(ptr162), descr=<Guard0x9ee1bc0>),
         p163 = getfield_gc_r(p153, descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst__storage 24>),
@@ -738,9 +736,11 @@ i := n' classified: 'none' withStamp: nil notifying: nil logSource: false.
         p143 = getfield_gc_r(ConstPtr(ptr142), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst__storage 24>)
         p145 = getarrayitem_gc_r(p143, 1, descr=<ArrayP 8>)
         guard_nonnull_class(p145, ConstClass(W_PointersObject), descr=<Guard0xb8c9f68>)
-        i148 = call_i(ConstClass(W_LargeIntegerBig.calculate_exposed_size_for_big_int_call), p13, descr=<Calli 8 r EF=4>)
+        i146 = getfield_gc_i(p11, descr=<FieldS rsqueakvm.model.numeric.W_LargeIntegerBig.inst__exposed_size 40>)
+        i148 = cond_call_value_i(i146, ConstClass(calculate_exposed_size_for_big_int), p69, descr=<Calli 8 r EF=4>)
         guard_no_exception(descr=<Guard0xba3a020>)
         p150 = getfield_gc_r(ConstPtr(ptr149), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>)
+        setfield_gc(p11, i148, descr=<FieldS rsqueakvm.model.numeric.W_LargeIntegerBig.inst__exposed_size 40>)
         guard_value(p150, ConstPtr(ptr151), descr=<Guard0xba3a088>)
         p152 = getfield_gc_r(p150, descr=<FieldP rsqueakvm.storage.AbstractCachingShadow.inst_version 32 pure>)
         guard_value(p152, ConstPtr(ptr153), descr=<Guard0xb8d6770>)
@@ -802,105 +802,455 @@ i := n' classified: 'none' withStamp: nil notifying: nil logSource: false.
         """)
         self.assert_matches(traces[0].loop,
         """
-        guard_not_invalidated(descr=<Guard0xac687d8>)
-        i189 = int_lt(i69, i52)
-        guard_true(i189, descr=<Guard0xaae5028>)
-        p190 = getfield_gc_r(p8, descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>)
-        guard_value(p190, ConstPtr(ptr191), descr=<Guard0xac688a8>)
-        p192 = getfield_gc_r(p8, descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst__storage 24>)
-        i194 = getarrayitem_gc_i(p192, 0, descr=<ArrayS 8>)
-        i196 = int_eq(i194, 9223372036854775807)
-        guard_false(i196, descr=<Guard0xaae4fe0>)
-        i198 = getarrayitem_gc_i(p192, 2, descr=<ArrayS 8>)
-        i200 = int_eq(i198, 9223372036854775807)
-        guard_false(i200, descr=<Guard0xaae4f98>)
-        i201 = int_mul_ovf(i69, i198)
-        guard_no_overflow(descr=<Guard0xaae4f50>)
-        i202 = int_add_ovf(i194, i201)
-        guard_no_overflow(descr=<Guard0xaae4f08>)
-        i204 = int_add(i69, 1)
-        p205 = getfield_gc_r(p74, descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>)
-        guard_nonnull_class(p205, ConstClass(ContextPartShadow), descr=<Guard0xac68840>)
-        i207 = ptr_eq(p205, p0)
-        guard_false(i207, descr=<Guard0xaae4e78>)
-        p208 = getfield_gc_r(p205, descr=<FieldP rsqueakvm.storage_contexts.ContextPartShadow.vable_token 16>)
-        i210 = ptr_ne(p208, ConstPtr(null))
-        cond_call(i210, 6279296, p205, descr=<Callv 0 r EF=2 OS=121>)
-        p212 = getfield_gc_r(p205, descr=<FieldP rsqueakvm.storage_contexts.ContextPartShadow.inst__w_receiver 64>)
+        guard_not_invalidated(descr=<Guard0x4965f68>)
+        i176 = int_lt(i66, i49)
+        guard_true(i176, descr=<Guard0x6454848>)
+        p177 = getfield_gc_r(p6, descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 24>)
+        guard_value(p177, ConstPtr(ptr178), descr=<Guard0x48e6020>)
+        p179 = getfield_gc_r(p6, descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst__storage 16>)
+        i181 = getarrayitem_gc_i(p179, 0, descr=<ArrayS 8>)
+        i183 = int_eq(i181, 9223372036854775807)
+        guard_false(i183, descr=<Guard0x6454890>)
+        i185 = getarrayitem_gc_i(p179, 2, descr=<ArrayS 8>)
+        i187 = int_eq(i185, 9223372036854775807)
+        guard_false(i187, descr=<Guard0x64548d8>)
+        i188 = int_mul_ovf(i66, i185)
+        guard_no_overflow(descr=<Guard0x6454920>)
+        i189 = int_add_ovf(i181, i188)
+        guard_no_overflow(descr=<Guard0x6454968>)
+        i191 = int_add(i66, 1)
+        p193 = getfield_gc_r(ConstPtr(ptr192), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 24>)
+        guard_value(p193, ConstPtr(ptr194), descr=<Guard0x48e6088>)
+        p196 = getarrayitem_gc_r(p77, 0, descr=<ArrayP 8>)
+        guard_nonnull_class(p196, ConstClass(W_LargeIntegerBig), descr=<Guard0x48e6708>)
+        p199 = getarrayitem_gc_r(p77, 1, descr=<ArrayP 8>)
+        guard_nonnull_class(p199, ConstClass(W_PointersObject), descr=<Guard0x48e66a0>)
+        p201 = force_token()
+        enter_portal_frame(1, 0)
+        p204 = getfield_gc_r(p196, descr=<FieldP rsqueakvm.model.base.W_AbstractObjectWithClassReference.inst_w_class 16 pure>)
+        guard_value(p204, ConstPtr(ptr205), descr=<Guard0x6454c38>)
+        p207 = getfield_gc_r(ConstPtr(ptr206), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 24>)
+        guard_value(p207, ConstPtr(ptr208), descr=<Guard0x48e6638>)
+        p209 = force_token()
+        enter_portal_frame(1, 0)
+        p213 = getfield_gc_r(ConstPtr(ptr212), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 24>)
+        guard_value(p213, ConstPtr(ptr214), descr=<Guard0x48e65d0>)
+        p216 = getfield_gc_r(ConstPtr(ptr215), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst__storage 16>)
+        p218 = getarrayitem_gc_r(p216, 1, descr=<ArrayP 8>)
+        guard_nonnull_class(p218, ConstClass(W_PointersObject), descr=<Guard0x48e6568>)
+        i220 = getfield_gc_i(p196, descr=<FieldS rsqueakvm.model.numeric.W_LargeIntegerBig.inst__exposed_size 32>)
+        p221 = getfield_gc_r(p196, descr=<FieldP rsqueakvm.model.numeric.W_LargeIntegerBig.inst_value 40 pure>)
+        i223 = cond_call_value_i(i220, ConstClass(calculate_exposed_size_for_big_int), p221, descr=<Calli 8 r EF=4>)
+        guard_no_exception(descr=<Guard0x48e6498>)
+        p225 = getfield_gc_r(ConstPtr(ptr224), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 24>)
+        setfield_gc(p196, i223, descr=<FieldS rsqueakvm.model.numeric.W_LargeIntegerBig.inst__exposed_size 32>)
+        guard_value(p225, ConstPtr(ptr226), descr=<Guard0x48e6430>)
+        p227 = getfield_gc_r(p225, descr=<FieldP rsqueakvm.storage.AbstractCachingShadow.inst_version 32 pure>)
+        guard_value(p227, ConstPtr(ptr228), descr=<Guard0x6454ba8>)
+        p229 = getfield_gc_r(p218, descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 24>)
+        guard_value(p229, ConstPtr(ptr230), descr=<Guard0x48e63c8>)
+        p231 = getfield_gc_r(p229, descr=<FieldP rsqueakvm.storage.AbstractStrategy.inst_w_class 8 pure>)
+        guard_value(p231, ConstPtr(ptr232), descr=<Guard0x6454b60>)
+        p234 = getfield_gc_r(ConstPtr(ptr233), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 24>)
+        guard_value(p234, ConstPtr(ptr235), descr=<Guard0x48e6360>)
+        p236 = force_token()
+        enter_portal_frame(1, 0)
+        i240 = int_lt(i223, 0)
+        guard_false(i240, descr=<Guard0x6454b18>)
+        p241 = new_array_clear(i223, descr=<ArrayU 1>)
+        p243 = getfield_gc_r(ConstPtr(ptr242), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 24>)
+        guard_value(p243, ConstPtr(ptr244), descr=<Guard0x48e62f8>)
+        leave_portal_frame(1)
+        p246 = force_token()
+        enter_portal_frame(1, 0)
+        p250 = getfield_gc_r(ConstPtr(ptr249), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 24>)
+        guard_value(p250, ConstPtr(ptr251), descr=<Guard0x48e6290>)
+        p252 = force_token()
+        enter_portal_frame(1, 0)
+        leave_portal_frame(1)
+        i257 = int_sub(i223, 1)
+        i258 = int_le(i223, i257)
+        guard_false(i258, descr=<Guard0x6454ad0>)
+        p259 = force_token()
+        p260 = new_with_vtable(descr=<SizeDescr 56>)
+        p261 = new_with_vtable(descr=<SizeDescr 8>)
+        setfield_gc(p260, p261, descr=<FieldP rsqueakvm.model.variable.W_BytesObject.inst_version 40 pure>)
+        setfield_gc(p260, ConstPtr(ptr262), descr=<FieldP rsqueakvm.model.base.W_AbstractObjectWithClassReference.inst_w_class 16 pure>)
+        setfield_gc(p0, p259, descr=<FieldP rsqueakvm.storage_contexts.ContextPartShadow.vable_token 16>)
+        setfield_gc(p260, 0, descr=<FieldS rsqueakvm.model.base.W_AbstractObjectWithIdentityHash.inst_hash 8>)
+        setfield_gc(p260, p241, descr=<FieldP rsqueakvm.model.variable.W_BytesObject.inst_bytes 32>)
+        call_may_force_n(ConstClass(_replace_from_to_trampoline__v124___simple_call__function__), 0, i257, 0, p260, p196, descr=<Callv 0 iiirr EF=7>)
+        guard_not_forced(descr=<Guard0x63ea4f0>)
+        guard_no_exception(descr=<Guard0x6454a88>)
+        guard_not_invalidated(descr=<Guard0x6454a40>)
+        leave_portal_frame(1)
+        leave_portal_frame(1)
+        p269 = getfield_gc_r(p199, descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 24>)
+        guard_value(p269, ConstPtr(ptr270), descr=<Guard0x48e61c0>)
+        p272 = getfield_gc_r(ConstPtr(ptr271), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 24>)
+        guard_value(p272, ConstPtr(ptr273), descr=<Guard0x48e6158>)
+        p274 = getfield_gc_r(p199, descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst__storage 16>)
+        leave_portal_frame(1)
+        i277 = getfield_gc_i(ConstPtr(ptr276), descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
+        i279 = int_sub(i277, 1)
+        setfield_gc(ConstPtr(ptr280), i279, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
+        setarrayitem_gc(p274, 0, p260, descr=<ArrayP 8>)
+        i283 = int_le(i279, 0)
+        guard_false(i283, descr=<Guard0x48e60f0>)
+        jump(p0, p1, i2, p4, p5, p6, p8, p11, i189, i191, p17, p260, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, i49, p77, p72, descr=TargetToken(104558688))
+        """)
+
+    def test_dnu(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | c i |
+        Object
+            subclass: #MyA
+            instanceVariableNames: ''
+            classVariableNames: ''
+            poolDictionaries: ''
+            category: 'Test'.
+        c := Smalltalk at: #MyA  .
+        c compile: 'doesNotUnderstand: aMessage
+        ^ {aMessage selector. aMessage arguments. aMessage lookupClass}' classified: 'none' withStamp: nil notifying: nil logSource: false.
+
+        i := c new.
+        1 to: 100000 do: [:ignored | i foo ]
+        """)
+        self.assert_matches(traces[-1].loop, """
+        guard_not_invalidated(descr=<Guard0x9facdf0>)
+        i77 = int_le(i68, 100000)
+        guard_true(i77, descr=<Guard0x9f9cb60>)
+        p78 = force_token()
+        enter_portal_frame(4, 0)
+        leave_portal_frame(4)
+        i83 = int_add(i68, 1)
+        i85 = int_sub(i72, 1)
+        setfield_gc(ConstPtr(ptr86), i85, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
+        i88 = int_le(i85, 0)
+        guard_false(i88, descr=<Guard0x9facd88>)
+        jump(p0, p1, i2, p4, p5, p6, p8, p11, p13, i83, p21, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, i85, descr=TargetToken(166460720))
+        """)
+
+    def test_oam(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | c i |
+        Object
+            subclass: #MyOaM
+            instanceVariableNames: ''
+            classVariableNames: ''
+            poolDictionaries: ''
+            category: 'Test'.
+        c := Smalltalk at: #MyOaM.
+        c compile: 'run: aSelector with: someArgs in: aReceiver
+        ^ {aSelector. someArgs. aReceiver}' classified: 'none' withStamp: nil notifying: nil logSource: false.
+
+        Object
+            subclass: #MyA
+            instanceVariableNames: ''
+            classVariableNames: ''
+            poolDictionaries: ''
+            category: 'Test'.
+        c := Smalltalk at: #MyA.
+        c methodDict at: #oam put: (Smalltalk at: #MyOaM) new.
+        i := c new.
+        1 to: 100000 do: [:ignored | i oam ]
+        """)
+        self.assert_matches(traces[-1].loop, """
+        guard_not_invalidated(descr=<Guard0xafaeff8>)
+        i80 = int_le(i71, 100000)
+        guard_true(i80, descr=<Guard0xaea95c8>)
+        p81 = force_token()
+        enter_portal_frame(4, 0)
+        leave_portal_frame(4)
+        i86 = int_add(i71, 1)
+        i88 = int_sub(i75, 1)
+        setfield_gc(ConstPtr(ptr89), i88, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
+        i91 = int_le(i88, 0)
+        guard_false(i91, descr=<Guard0xafaf060>)
+        jump(p0, p1, i2, p4, p5, p6, p8, p11, p13, i86, p21, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, i88, descr=TargetToken(184206704))
+        """)
+
+    def test_literal_array(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | c i |
+        Object
+            subclass: #MyA
+            instanceVariableNames: ''
+            classVariableNames: ''
+            poolDictionaries: ''
+            category: 'Test'.
+        c := Smalltalk at: #MyA.
+        c compile: 'newLiteralArray
+        ^ {$c. 1. 12.0. self}' classified: 'none' withStamp: nil notifying: nil logSource: false.
+        i := c new.
+        1 to: 100000 do: [:ignored | i newLiteralArray ]
+        """)
+        self.assert_matches(traces[-1].loop, """
+        guard_not_invalidated(descr=<Guard0xb605748>)
+        i74 = int_le(i65, 100000)
+        guard_true(i74, descr=<Guard0xb608608>)
+        p75 = force_token()
+        enter_portal_frame(4, 0)
+        leave_portal_frame(4)
+        i80 = int_add(i65, 1)
+        i82 = int_sub(i69, 1)
+        setfield_gc(ConstPtr(ptr83), i82, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
+        i85 = int_le(i82, 0)
+        guard_false(i85, descr=<Guard0xb6057b0>)
+        jump(p0, p1, i2, p4, p5, p6, p8, p11, p13, i80, p21, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, i82, descr=TargetToken(189806080))
+        """)
+
+    def test_identity_hash_known_object(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | c |
+        Object
+            subclass: #MyA
+            instanceVariableNames: ''
+            classVariableNames: ''
+            poolDictionaries: ''
+            category: 'Test'.
+        c := (Smalltalk at: #MyA) new.
+        1 to: 10000 do: [:i | c identityHash ].
+        """)
+        # important: there shouldn't be a getfield inst_hash before the cond_call to calculate the hash
+        self.assert_matches(traces[-1].loop, """
+        guard_not_invalidated(descr=<Guard0x36c5880>)
+        i67 = int_le(i58, 10000)
+        guard_true(i67, descr=<Guard0x3de4ec0>)
+        i69 = cond_call_value_i(i54, ConstClass(calculate_and_cache), p11, descr=<Calli 8 r EF=5>)
+        guard_no_exception(descr=<Guard0x36c58e8>)
+        guard_not_invalidated(descr=<Guard0x3de4f08>)
+        i71 = int_add(i58, 1)
+        i73 = int_sub(i62, 1)
+        setfield_gc(ConstPtr(ptr74), i73, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
+        i76 = int_le(i73, 0)
+        guard_false(i76, descr=<Guard0x36c5950>)
+        jump(p0, p1, i2, p4, p5, p6, p8, p11, i71, p19, p21, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, i54, i73, descr=TargetToken(86285936))
+        """)
+
+    def test_identity_hash_fresh_object(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | c coll s |
+        Object
+            subclass: #MyA
+            instanceVariableNames: ''
+            classVariableNames: ''
+            poolDictionaries: ''
+            category: 'Test'.
+        c := Smalltalk at: #MyA.
+        coll := OrderedCollection new.
+        1 to: 10000 do: [:ignored | coll add: c new].
+        1 to: 10000 do: [:i | (coll at: i) identityHash ].
+        """)
+        # important: there shouldn't be a setfield inst_hash or an abort, just a getfield for the hash value and a cond_call
+        self.assert_matches(traces[-1].loop, """
+        guard_not_invalidated(descr=<Guard0x3addaf0>)
+        i116 = int_le(i107, 10000)
+        guard_true(i116, descr=<Guard0x3c28a88>)
+        p117 = force_token()
+        enter_portal_frame(1, 0)
+        i120 = int_add_ovf(i107, i71)
+        guard_no_overflow(descr=<Guard0x3c28a40>)
+        i122 = int_sub(i120, 1)
+        i123 = int_gt(i122, i78)
+        guard_false(i123, descr=<Guard0x3c289f8>)
+        i125 = int_sub(i122, 1)
+        i126 = uint_lt(i125, i91)
+        guard_true(i126, descr=<Guard0x3c289b0>)
+        i128 = int_lt(i125, 0)
+        guard_false(i128, descr=<Guard0x3c28968>)
+        p129 = getarrayitem_gc_r(p90, i125, descr=<ArrayP 8>)
+        guard_nonnull_class(p129, ConstClass(W_PointersObject), descr=<Guard0x3adda88>)
+        leave_portal_frame(1)
+        p132 = getfield_gc_r(p129, descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>)
+        guard_value(p132, ConstPtr(ptr133), descr=<Guard0x3add9b8>)
+        i134 = getfield_gc_i(p129, descr=<FieldS rsqueakvm.model.base.W_AbstractObjectWithIdentityHash.inst_hash 8 pure>)
+        i136 = cond_call_value_i(i134, ConstClass(calculate_and_cache), p129, descr=<Calli 8 r EF=5>)
+        guard_no_exception(descr=<Guard0x3add8e8>)
+        guard_not_invalidated(descr=<Guard0x3c288d8>)
+        i138 = int_add(i107, 1)
+        i140 = int_sub(i111, 1)
+        setfield_gc(ConstPtr(ptr141), i140, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
+        i143 = int_le(i140, 0)
+        guard_false(i143, descr=<Guard0x3add880>)
+        i145 = arraylen_gc(p67, descr=<ArrayP 8>)
+        jump(p0, p1, i2, p4, p5, p6, p8, p11, p13, p15, p17, i138, p25, p27, p29, p31, p33, p35, p37, p39, p41, p67, p69, i71, p76, i78, p81, i91, p90, i140, descr=TargetToken(90449984))
+        """)
+
+    def test_nested_closure_loop_call(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        1 to: 2000 do: [:a |
+            (1 to: 1000) do: [:b |
+                b abs.
+            ]
+        ].
+        """)
+        # important: there should be two loops, with the outer calling the inner, and in between an entry bridge to the inner loop abs call
+        self.assert_matches(traces[-3].loop, """
+        guard_not_invalidated(descr=<Guard0x4f86cb8>)
+        i106 = int_lt(i66, i49)
+        guard_true(i106, descr=<Guard0x6a78f98>)
+        i107 = int_mul_ovf(i66, i60)
+        guard_no_overflow(descr=<Guard0x6a78f50>)
+        i108 = int_add_ovf(i56, i107)
+        guard_no_overflow(descr=<Guard0x6a78ec0>)
+        i110 = int_add(i66, 1)
+        p111 = force_token()
+        enter_portal_frame(1, 0)
+        p114 = force_token()
+        enter_portal_frame(1, 0)
+        i118 = int_lt(i108, 0)
+        guard_false(i118, descr=<Guard0x6a79070>)
+        leave_portal_frame(1)
+        leave_portal_frame(1)
+        i122 = int_sub(i102, 1)
+        setfield_gc(ConstPtr(ptr123), i122, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
+        i125 = int_le(i122, 0)
+        guard_false(i125, descr=<Guard0x4f87198>)
+        i127 = arraylen_gc(p54, descr=<ArrayS 8>)
+        jump(p0, p1, i2, p4, p5, p6, p8, p11, i108, i110, p17, p25, p27, p29, p31, p33, p35, p37, p39, p41, p43, i49, p54, i60, i56, i122, descr=TargetToken(111727328))
+        """)
+        assert len(traces[-2].setup) > 0
+        self.assert_matches(traces[-1].loop, """
+        guard_not_invalidated(descr=<Guard0x3db9268>)
+        i212 = int_le(i203, 2000)
+        guard_true(i212, descr=<Guard0x5929c88>)
         p214 = getfield_gc_r(ConstPtr(ptr213), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>)
-        guard_value(p214, ConstPtr(ptr215), descr=<Guard0xac68770>)
-        p217 = getarrayitem_gc_r(p88, 0, descr=<ArrayP 8>)
-        p219 = getarrayitem_gc_r(p88, 1, descr=<ArrayP 8>)
-        p220 = force_token()
-        enter_portal_frame(4, 0)
-        guard_class(p217, 13820888, descr=<Guard0xaae4e30>)
-        p224 = getfield_gc_r(p217, descr=<FieldP rsqueakvm.model.base.W_AbstractObjectWithClassReference.inst_w_class 24 pure>)
-        guard_value(p224, ConstPtr(ptr225), descr=<Guard0xaae4de8>)
-        p227 = getfield_gc_r(ConstPtr(ptr226), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>)
-        guard_value(p227, ConstPtr(ptr228), descr=<Guard0xac686a0>)
-        p229 = force_token()
-        enter_portal_frame(4, 0)
-        p233 = getfield_gc_r(ConstPtr(ptr232), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>)
-        guard_value(p233, ConstPtr(ptr234), descr=<Guard0xac68638>)
-        p236 = getfield_gc_r(ConstPtr(ptr235), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst__storage 24>)
-        p238 = getarrayitem_gc_r(p236, 1, descr=<ArrayP 8>)
-        guard_nonnull_class(p238, ConstClass(W_PointersObject), descr=<Guard0xac685d0>)
-        i241 = call_i(ConstClass(W_LargeIntegerBig.calculate_exposed_size_for_big_int_call), p217, descr=<Calli 8 r EF=4>)
-        guard_no_exception(descr=<Guard0xac68360>)
-        p243 = getfield_gc_r(ConstPtr(ptr242), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>)
-        guard_value(p243, ConstPtr(ptr244), descr=<Guard0xac68568>)
-        p245 = getfield_gc_r(p243, descr=<FieldP rsqueakvm.storage.AbstractCachingShadow.inst_version 32 pure>)
-        guard_value(p245, ConstPtr(ptr246), descr=<Guard0xaae4da0>)
-        p247 = getfield_gc_r(p238, descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>)
-        guard_value(p247, ConstPtr(ptr248), descr=<Guard0xac68500>)
-        p249 = getfield_gc_r(p247, descr=<FieldP rsqueakvm.storage.AbstractStrategy.inst_w_class 8 pure>)
-        guard_value(p249, ConstPtr(ptr250), descr=<Guard0xaae4d58>)
-        p252 = getfield_gc_r(ConstPtr(ptr251), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>)
-        guard_value(p252, ConstPtr(ptr253), descr=<Guard0xac68498>)
-        p254 = force_token()
-        enter_portal_frame(4, 0)
-        i258 = int_lt(i241, 0)
-        guard_false(i258, descr=<Guard0xaae4d10>)
-        p259 = new_array_clear(i241, descr=<ArrayU 1>)
-        p261 = getfield_gc_r(ConstPtr(ptr260), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>)
-        guard_value(p261, ConstPtr(ptr262), descr=<Guard0xac68430>)
-        leave_portal_frame(4)
+        guard_value(p214, ConstPtr(ptr215), descr=<Guard0x3db9610>)
+        p217 = getfield_gc_r(ConstPtr(ptr216), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>)
+        guard_value(p217, ConstPtr(ptr218), descr=<Guard0x3db95a8>)
+        p219 = force_token()
+        enter_portal_frame(1, 0)
+        p223 = getfield_gc_r(ConstPtr(ptr222), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>)
+        guard_value(p223, ConstPtr(ptr224), descr=<Guard0x3db9540>)
+        p226 = getfield_gc_r(ConstPtr(ptr225), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst__storage 24>)
+        p228 = getarrayitem_gc_r(p226, 1, descr=<ArrayP 8>)
+        guard_nonnull_class(p228, ConstClass(W_PointersObject), descr=<Guard0x3db94d8>)
+        p230 = getfield_gc_r(p228, descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>)
+        guard_value(p230, ConstPtr(ptr231), descr=<Guard0x3db9470>)
+        p232 = getfield_gc_r(p230, descr=<FieldP rsqueakvm.storage.AbstractStrategy.inst_w_class 8 pure>)
+        guard_value(p232, ConstPtr(ptr233), descr=<Guard0x5929c40>)
+        p235 = getfield_gc_r(ConstPtr(ptr234), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>)
+        guard_value(p235, ConstPtr(ptr236), descr=<Guard0x3db9408>)
+        p237 = force_token()
+        enter_portal_frame(1, 0)
+        p241 = getfield_gc_r(ConstPtr(ptr240), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>)
+        guard_value(p241, ConstPtr(ptr242), descr=<Guard0x3db93a0>)
+        p243 = getfield_gc_r(p241, descr=<FieldP rsqueakvm.storage.AbstractCachingShadow.inst_version 32 pure>)
+        guard_value(p243, ConstPtr(ptr244), descr=<Guard0x5929bf8>)
+        p246 = getfield_gc_r(ConstPtr(ptr245), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>)
+        guard_value(p246, ConstPtr(ptr247), descr=<Guard0x3db9338>)
+        p248 = force_token()
+        enter_portal_frame(1, 0)
+        leave_portal_frame(1)
+        leave_portal_frame(1)
+        leave_portal_frame(1)
+        p254 = getfield_gc_r(p1, descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>)
+        guard_nonnull_class(p254, ConstClass(ContextPartShadow), descr=<Guard0x3db92d0>)
+        i256 = ptr_eq(p254, p0)
+        guard_true(i256, descr=<Guard0x5929b68>)
+        p257 = force_token()
+        enter_portal_frame(1, 0)
+        p260 = force_token()
+        enter_portal_frame(1, 0)
+        leave_portal_frame(1)
         p264 = force_token()
-        enter_portal_frame(4, 0)
-        p268 = getfield_gc_r(ConstPtr(ptr267), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>)
-        guard_value(p268, ConstPtr(ptr269), descr=<Guard0xac683c8>)
-        p270 = force_token()
-        enter_portal_frame(4, 0)
-        leave_portal_frame(4)
-        i275 = int_sub(i241, 1)
-        i276 = int_le(i241, i275)
-        guard_false(i276, descr=<Guard0xaae4cc8>)
+        enter_portal_frame(1, 0)
+        p267 = force_token()
+        enter_portal_frame(1, 0)
+        leave_portal_frame(1)
+        leave_portal_frame(1)
+        i273 = int_sub(i207, 1)
+        setfield_gc(ConstPtr(ptr274), i273, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
+        i276 = int_le(i273, 0)
+        guard_false(i276, descr=<Guard0x3db9198>)
         p277 = force_token()
-        p278 = new_with_vtable(descr=<SizeDescr 64>)
-        p279 = new_with_vtable(descr=<SizeDescr 8>)
-        setfield_gc(p278, p279, descr=<FieldP rsqueakvm.model.variable.W_BytesObject.inst_version 48 pure>)
-        setfield_gc(p278, ConstPtr(ptr280), descr=<FieldP rsqueakvm.model.base.W_AbstractObjectWithClassReference.inst_w_class 24 pure>)
-        setfield_gc(p278, 9223372036854775807, descr=<FieldS rsqueakvm.model.base.W_AbstractObjectWithIdentityHash.inst_hash 8 pure>)
+        p278 = new_with_vtable(descr=<SizeDescr 96>)
+        p279 = new_with_vtable(descr=<SizeDescr 24>)
+        setfield_gc(p279, p257, descr=<FieldP JitVirtualRef.virtual_token 8>)
+        setfield_gc(p279, ConstPtr(null), descr=<FieldP JitVirtualRef.forced 16>)
+        p281 = new_array_clear(17, descr=<ArrayP 8>)
+        p282 = new_with_vtable(descr=<SizeDescr 88>)
+        setfield_gc(p282, 0, descr=<FieldS rsqueakvm.model.base.W_AbstractObjectWithIdentityHash.inst_hash 8 pure>)
+        setfield_gc(p282, 1, descr=<FieldS rsqueakvm.model.block_closure.W_BlockClosure.inst__numArgs 24 pure>)
+        setfield_gc(p282, ConstPtr(ptr285), descr=<FieldP rsqueakvm.model.block_closure.W_BlockClosure.inst__stack 32 pure>)
+        setfield_gc(p282, 47, descr=<FieldS rsqueakvm.model.block_closure.W_BlockClosure.inst__startpc 40 pure>)
+        setfield_gc(p282, ConstPtr(ptr287), descr=<FieldP rsqueakvm.model.block_closure.W_BlockClosure.inst__w_method 48 pure>)
+        setfield_gc(p282, p1, descr=<FieldP rsqueakvm.model.block_closure.W_BlockClosure.inst__w_outerContext 56 pure>)
+        setfield_gc(p282, p6, descr=<FieldP rsqueakvm.model.block_closure.W_BlockClosure.inst__w_receiver 64 pure>)
+        setfield_gc(p282, ConstPtr(ptr288), descr=<FieldP rsqueakvm.model.block_closure.W_BlockClosure.inst_version 72 pure>)
+        setarrayitem_gc(p281, 0, p282, descr=<ArrayP 8>)
+        p290 = new_with_vtable(descr=<SizeDescr 16>)
+        setfield_gc(p290, 1, descr=<FieldS rsqueakvm.model.numeric.W_SmallInteger.inst_value 8 pure>)
+        setarrayitem_gc(p281, 1, p290, descr=<ArrayP 8>)
+        p293 = new_with_vtable(descr=<SizeDescr 16>)
+        setfield_gc(p293, 1, descr=<FieldS rsqueakvm.model.numeric.W_SmallInteger.inst_value 8 pure>)
+        setarrayitem_gc(p281, 2, p293, descr=<ArrayP 8>)
+        p296 = new_with_vtable(descr=<SizeDescr 16>)
+        setfield_gc(p296, 1000, descr=<FieldS rsqueakvm.model.numeric.W_SmallInteger.inst_value 8 pure>)
+        setarrayitem_gc(p281, 3, p296, descr=<ArrayP 8>)
+        p299 = new_with_vtable(descr=<SizeDescr 16>)
+        setfield_gc(p299, 1, descr=<FieldS rsqueakvm.model.numeric.W_SmallInteger.inst_value 8 pure>)
+        setarrayitem_gc(p281, 4, p299, descr=<ArrayP 8>)
+        setarrayitem_gc(p281, 5, ConstPtr(ptr303), descr=<ArrayP 8>)
+        setarrayitem_gc(p281, 6, ConstPtr(ptr305), descr=<ArrayP 8>)
+        setarrayitem_gc(p281, 7, ConstPtr(ptr307), descr=<ArrayP 8>)
+        setarrayitem_gc(p281, 8, ConstPtr(ptr309), descr=<ArrayP 8>)
+        setarrayitem_gc(p281, 9, ConstPtr(ptr311), descr=<ArrayP 8>)
+        setarrayitem_gc(p281, 10, ConstPtr(ptr313), descr=<ArrayP 8>)
+        setarrayitem_gc(p281, 11, ConstPtr(ptr315), descr=<ArrayP 8>)
+        setarrayitem_gc(p281, 12, ConstPtr(ptr317), descr=<ArrayP 8>)
+        setarrayitem_gc(p281, 13, ConstPtr(ptr319), descr=<ArrayP 8>)
+        setarrayitem_gc(p281, 14, ConstPtr(ptr321), descr=<ArrayP 8>)
+        setarrayitem_gc(p281, 15, ConstPtr(ptr323), descr=<ArrayP 8>)
+        setarrayitem_gc(p281, 16, ConstPtr(ptr325), descr=<ArrayP 8>)
+        p326 = new_with_vtable(descr=<SizeDescr 40>)
+        setfield_gc(p326, 0, descr=<FieldS rsqueakvm.model.base.W_AbstractObjectWithIdentityHash.inst_hash 8 pure>)
+        p329 = new_array(3, descr=<ArrayS 8>)
+        setarrayitem_gc(p329, 0, 1, descr=<ArrayS 8>)
+        setarrayitem_gc(p329, 1, 1000, descr=<ArrayS 8>)
+        setarrayitem_gc(p329, 2, 1, descr=<ArrayS 8>)
+        setfield_gc(p326, p329, descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst__storage 24>)
+        setfield_gc(p326, ConstPtr(ptr336), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>)
+        setfield_gc(p278, ConstPtr(ptr337), descr=<FieldP rsqueakvm.storage.AbstractStrategy.inst_w_class 8 pure>)
         setfield_gc(p0, p277, descr=<FieldP rsqueakvm.storage_contexts.ContextPartShadow.vable_token 16>)
-        setfield_gc(p278, p259, descr=<FieldP rsqueakvm.model.variable.W_BytesObject.inst_bytes 40>)
-        call_may_force_n(ConstClass(_replace_from_to_trampoline__v77___simple_call__function__r), 0, i275, 0, p278, p217, descr=<Callv 0 iiirr EF=7>)
-        guard_not_forced(descr=<Guard0xaaf2640>)
-        guard_no_exception(descr=<Guard0xaae4c80>)
-        guard_not_invalidated(descr=<Guard0xaae4c38>)
-        leave_portal_frame(4)
-        leave_portal_frame(4)
-        guard_class(p219, ConstClass(W_PointersObject), descr=<Guard0xaae4bf0>)
-        p288 = getfield_gc_r(p219, descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>)
-        guard_value(p288, ConstPtr(ptr289), descr=<Guard0xac682f8>)
-        p291 = getfield_gc_r(ConstPtr(ptr290), descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst_strategy 32>)
-        guard_value(p291, ConstPtr(ptr292), descr=<Guard0xac68290>)
-        p293 = getfield_gc_r(p219, descr=<FieldP rsqueakvm.model.pointers.W_PointersObject.inst__storage 24>)
-        leave_portal_frame(4)
-        i296 = getfield_gc_i(ConstPtr(ptr295), descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
-        i298 = int_sub(i296, 1)
-        setfield_gc(ConstPtr(ptr299), i298, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
-        setarrayitem_gc(p293, 0, p278, descr=<ArrayP 8>)
-        i302 = int_le(i298, 0)
-        guard_false(i302, descr=<Guard0xac68228>)
-        jump(p0, p1, i2, p3, p4, p7, p8, p10, p13, i202, i204, p19, p278, p27, p29, p31, p33, p35, p37, p39, p41, p43, p45, i52, p74, p88, descr=TargetToken(179148208))
+        setfield_gc(p278, p279, descr=<FieldP rsqueakvm.storage_contexts.ContextPartShadow.inst__s_sender 24>)
+        setfield_gc(p278, 1090519045, descr=<FieldU rsqueakvm.storage_contexts.ContextPartShadow.inst__state_stackptr_pc 32>)
+        setfield_gc(p278, p281, descr=<FieldP rsqueakvm.storage_contexts.ContextPartShadow.inst__temps_and_stack 40>)
+        setfield_gc(p278, ConstPtr(ptr339), descr=<FieldP rsqueakvm.storage_contexts.ContextPartShadow.inst__w_method 48>)
+        setfield_gc(p278, p326, descr=<FieldP rsqueakvm.storage_contexts.ContextPartShadow.inst__w_receiver 56>)
+        setfield_gc(p278, ConstPtr(null), descr=<FieldP rsqueakvm.storage_contexts.ContextPartShadow.inst__w_self 64>)
+        setfield_gc(p278, 23, descr=<FieldS rsqueakvm.storage_contexts.ContextPartShadow.inst__w_self_size 72>)
+        setfield_gc(p278, ConstPtr(null), descr=<FieldP rsqueakvm.storage_contexts.ContextPartShadow.inst_closure 80>)
+        setfield_gc(p278, ConstPtr(null), descr=<FieldP rsqueakvm.storage_contexts.ContextPartShadow.inst_extra_data 88>)
+        call_assembler_n(p278, descr=<Loop2>)
+        guard_not_forced(descr=<Guard0x8c514b0>)
+        keepalive(p278)
+        p345 = guard_exception(13592624, descr=<Guard0x3db90c8>)
+        i346 = ptr_eq(p278, p0)
+        guard_false(i346, descr=<Guard0x3db9130>)
+        p347 = getfield_gc_r(p278, descr=<FieldP rsqueakvm.storage_contexts.ContextPartShadow.vable_token 16>)
+        i349 = ptr_ne(p347, ConstPtr(null))
+        cond_call(i349, 6397552, p278, descr=<Callv 0 r EF=2 OS=121>)
+        i351 = getfield_gc_i(p278, descr=<FieldU rsqueakvm.storage_contexts.ContextPartShadow.inst__state_stackptr_pc 32>)
+        guard_value(i351, 1090519067, descr=<Guard0x3db8f28>)
+        guard_not_invalidated(descr=<Guard0x5929da8>)
+        p353 = getfield_gc_r(p278, descr=<FieldP rsqueakvm.storage_contexts.ContextPartShadow.inst_closure 80>)
+        guard_isnull(p353, descr=<Guard0x5929df0>)
+        p354 = getfield_gc_r(p278, descr=<FieldP rsqueakvm.storage_contexts.ContextPartShadow.inst__w_method 48>)
+        guard_value(p354, ConstPtr(ptr355), descr=<Guard0x3db9b58>)
+        setfield_gc(p278, ConstPtr(null), descr=<FieldP rsqueakvm.storage_contexts.ContextPartShadow.inst__s_sender 24>)
+        setfield_gc(p278, 1094713343, descr=<FieldU rsqueakvm.storage_contexts.ContextPartShadow.inst__state_stackptr_pc 32>)
+        guard_class(p345, 13592624, descr=<Guard0x3db9bc0>)
+        p359 = getfield_gc_r(p345, descr=<FieldP rsqueakvm.interpreter.WrappedLocalReturn.inst_w_value 8 pure>)
+        setfield_gc(p278, 20971519, descr=<FieldU rsqueakvm.storage_contexts.ContextPartShadow.inst__state_stackptr_pc 32>)
+        setfield_gc(p279, ConstPtr(null), descr=<FieldP JitVirtualRef.virtual_token 8>)
+        guard_nonnull(p359, descr=<Guard0x3db9c28>)
+        i362 = int_add(i203, 1)
+        i364 = getfield_gc_i(ConstPtr(ptr363), descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
+        i366 = int_sub(i364, 1)
+        setfield_gc(ConstPtr(ptr367), i366, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
+        i369 = int_le(i366, 0)
+        guard_false(i369, descr=<Guard0x3db9c90>)
+        jump(p0, p1, i2, p4, p5, p6, p8, i362, p17, p19, p21, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, i366, descr=TargetToken(92840368))
         """)

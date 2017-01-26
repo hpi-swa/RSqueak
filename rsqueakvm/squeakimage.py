@@ -15,7 +15,7 @@ from rsqueakvm.util.progress import Progress
 
 from rpython.rlib import objectmodel
 from rpython.rlib.rarithmetic import r_ulonglong, r_longlong, r_int, intmask, r_uint, r_uint32, r_int64
-from rpython.rlib import jit, rbigint
+from rpython.rlib import jit, rbigint, unroll, rgc
 
 if r_longlong is not r_int:
     r_uint64 = r_ulonglong
@@ -91,21 +91,6 @@ image_versions_64bit = {
 #
 # Parser classes for Squeak image format.
 
-init_g_objects_driver = jit.JitDriver(name="init_g_objects", reds=['chunk'], greens=['self'])
-init_w_objects_driver = jit.JitDriver(name="init_w_objects", reds=['chunk'], greens=['self'])
-fillin_w_objects_driver = jit.JitDriver(name="fillin_w_objects", reds=['chunk'], greens=['self'])
-fillin_weak_w_objects_driver = jit.JitDriver(name="fillin_weak_w_objects", reds=['chunk'], greens=['self'])
-
-def set_reader_user_param(arg):
-    jit.set_user_param(init_g_objects_driver, arg)
-    jit.set_user_param(init_w_objects_driver, arg)
-    jit.set_user_param(fillin_w_objects_driver, arg)
-    jit.set_user_param(fillin_weak_w_objects_driver, arg)
-
-# Defaults for reading JIT
-set_reader_user_param("threshold=2,function_threshold=2,trace_eagerness=2,loop_longevity=100")
-
-
 class ImageReader(object):
     _immutable_fields_ = ["space", "stream", "version", "readerStrategy", "logging_enabled"]
 
@@ -147,12 +132,14 @@ class ImageReader(object):
         version.configure_stream(self.stream)
         self.version = version
         self.readerStrategy = self.choose_reader_strategy()
+        self.stream = None
         if not version.has_closures:
             self.space.uses_block_contexts.activate()
 
     def read_header(self):
         self.read_version()
         self.readerStrategy.continue_read_header()
+        self.lastWindowSize = self.readerStrategy.lastWindowSize
         self.readerStrategy.skip_to_body()
 
     def choose_reader_strategy(self):
@@ -166,10 +153,6 @@ class ImageReader(object):
         return self.readerStrategy.g_class_of(chunk)
 
     @property
-    def special_w_objects(self):
-        return self.readerStrategy.special_w_objects
-
-    @property
     def compactclasses(self):
         return self.readerStrategy.compactclasses
 
@@ -180,10 +163,6 @@ class ImageReader(object):
     @property
     def chunklist(self):
         return self.readerStrategy.chunklist
-
-    @property
-    def lastWindowSize(self):
-        return self.readerStrategy.lastWindowSize
 
     @property
     def chunks(self):
@@ -233,9 +212,17 @@ class BaseReaderStrategy(object):
         # All chunks are read, now convert them to real objects.
         self.init_g_objects()
         self.assign_prebuilt_constants()
+        for chunk in self.chunklist:
+            if self.ispointers(chunk.g_object):
+                chunk.data = None
+            if chunk.g_object.filled_in:
+                chunk.data = None
+        self.chunks = {}
+        self.intcache = {}
+        rgc.collect()
         self.init_w_objects()
         self.fillin_w_objects()
-        self.populate_special_objects()
+        rgc.collect()
         self.fillin_weak_w_objects()
         self.fillin_finalize()
 
@@ -256,33 +243,48 @@ class BaseReaderStrategy(object):
         self.special_g_objects = self.chunks[self.specialobjectspointer].g_object.pointers
 
     def init_g_object(self, chunk):
-        init_g_objects_driver.jit_merge_point(self=self, chunk=chunk)
-        chunk.as_g_object(jit.promote(self), self.space)  # initialize g_object
+        chunk.as_g_object(self, self.space)  # initialize g_object
 
     def assign_prebuilt_constants(self):
+        g_special_objects_array = self.chunks[self.specialobjectspointer].g_object
+        g_special_objects_array.w_object = self.space.w_special_objects
         # Assign classes and objects that in special objects array that are already created.
-        self._assign_prebuilt_constants(constants.objects_in_special_object_table, self.space.objtable)
-        self._assign_prebuilt_constants(constants.classes_in_special_object_table, self.classtable())
+        self._assign_prebuilt_constants()
 
-    def classtable(self):
-        # this is overridden by AncientReader
-        return self.space.classtable
+    def smalltalk_g_at(self, lookup_name):
+        # first, try to find an association in the special objects array
+        g_object = self.lookup_in_assocs_g(self.special_g_objects, lookup_name)
+        if g_object is not None:
+            return g_object
+        try:
+            g_smalltalk = self.special_g_object(constants.SO_SMALLTALK)
+        except IndexError:
+            # should be happen in some tests
+            return None
+        array_g = []
+        if len(g_smalltalk.pointers) == 1:
+            # modern image
+            globals_g = g_smalltalk.pointers[0].pointers
+            if len(globals_g) == 6:
+                bindings_g = globals_g[2].pointers
+                if len(bindings_g) == 2:
+                    array_g = bindings_g[1].pointers
+            elif len(globals_g) == 4:
+                array_g = globals_g[1].pointers
+        elif len(g_smalltalk.pointers) == 2:
+            # old image
+            array_g = g_smalltalk.pointers[1].pointers
+        return self.lookup_in_assocs_g(array_g, lookup_name)
 
-    def _assign_prebuilt_constants(self, names_and_indices, prebuilt_objects):
-        for name, so_index in names_and_indices.items():
-            name = "w_" + name
-            if name in prebuilt_objects:
-                try:
-                    w_object = prebuilt_objects[name]
-                    g_object = self.special_g_object(so_index)
-                    if g_object.w_object is None:
-                        g_object.w_object = w_object
-                    else:
-                        if not g_object.w_object.is_nil(self.space):
-                           raise Warning('Object found in multiple places in the special objects array')
-                except IndexError:
-                    # certain special objects might not yet be in the image's table
-                    pass
+    def lookup_in_assocs_g(self, array_g, lookup_name):
+        for g_assoc in array_g:
+            if g_assoc.pointers and len(g_assoc.pointers) == 2:
+                g_name = g_assoc.pointers[0]
+                if self.isbytes(g_name):
+                    name = "".join(g_name.get_bytes())
+                    if name == lookup_name:
+                        return g_assoc.pointers[1]
+        return None
 
     def special_g_object(self, index):
         # while python would raise an IndexError, after translation a nonexisting key results in a segfault...
@@ -297,44 +299,37 @@ class BaseReaderStrategy(object):
         return self.special_g_objects[index]
 
     def init_w_objects(self):
-        self._progress.next_stage(len(self.chunks))
+        self._progress.next_stage(len(self.chunklist))
         for g in self.special_g_objects:
             self.init_w_object(g.chunk)
             self._progress.update()
-        self.special_w_objects = [g.w_object for g in self.special_g_objects]
-        for chunk in self.chunks.itervalues():
+        for chunk in self.chunklist:
             self.init_w_object(chunk)
             self._progress.update()
 
     def init_w_object(self, chunk):
-        init_w_objects_driver.jit_merge_point(self=self, chunk=chunk)
         chunk.g_object.init_w_object(self.space)
 
-    def populate_special_objects(self):
-        self.space.populate_special_objects(self.special_w_objects)
-
     def fillin_w_objects(self):
-        self._progress.next_stage(len(self.chunks))
-        for chunk in self.chunks.itervalues():
+        self._progress.next_stage(len(self.chunklist))
+        for chunk in self.chunklist:
             self.fillin_w_object(chunk)
             self._progress.update()
 
     def fillin_w_object(self, chunk):
-        fillin_w_objects_driver.jit_merge_point(self=self, chunk=chunk)
         chunk.g_object.fillin(self.space)
 
     def fillin_weak_w_objects(self):
-        self._progress.next_stage(len(self.chunks))
-        for chunk in self.chunks.itervalues():
+        self._progress.next_stage(len(self.chunklist))
+        for chunk in self.chunklist:
             self.fillin_weak_w_object(chunk)
             self._progress.update()
 
     def fillin_weak_w_object(self, chunk):
-        fillin_weak_w_objects_driver.jit_merge_point(self=self, chunk=chunk)
         chunk.g_object.fillin_weak(self.space)
 
     def fillin_finalize(self):
-        for chunk in self.chunks.itervalues():
+        for chunk in self.chunklist:
             chunk.g_object.fillin_finalize(self.space)
 
     def len_bytes_of(self, chunk):
@@ -387,6 +382,39 @@ class BaseReaderStrategy(object):
         return self.islargeinteger(g_object) and g_object.len_bytes() > constants.BYTES_PER_MACHINE_INT
 
 
+def make_assign_prebuilt_constants():
+    items = sorted(constants.constant_objects_in_special_object_table_wo_types.items(), key=lambda t: t[1])
+    code = ["def _assign_prebuilt_constants(self):"]
+    for name, so_index in items:
+        code.extend([
+            "",
+            "    w_object = self.space.w_%s" % name,
+            "    g_object = None",
+            "    try:",
+            "        g_object = self.special_g_object(%d)" % so_index,
+            "    except IndexError:",
+        ])
+        if name in ("LargeNegativeInteger", "ClassBinding", "Metaclass", "Processor", "ByteSymbol"):
+            code.extend([
+                "        g_object = self.smalltalk_g_at('%s')" % name,
+            ])
+        else:
+            code.extend([
+                "        pass"
+            ])
+        code.extend([
+            "    if g_object is not None:",
+            "        if g_object.w_object is None:",
+            "            g_object.w_object = w_object",
+            "        elif not g_object.w_object.is_nil(self.space):",
+            "            raise Warning('Object %s found in multiple places in the special objects array')" % name
+        ])
+    d = {}
+    exec compile("\n".join(code), __file__, 'exec') in d
+    return d["_assign_prebuilt_constants"]
+BaseReaderStrategy._assign_prebuilt_constants = make_assign_prebuilt_constants()
+
+
 class NonSpurReader(BaseReaderStrategy):
 
     def read_body(self):
@@ -398,6 +426,8 @@ class NonSpurReader(BaseReaderStrategy):
             self.chunklist.append(chunk)
             self.chunks[pos + self.oldbaseaddress] = chunk
         self.stream.close()
+        self.stream = None
+        rgc.collect()
         return self.chunklist # return for testing
 
     def init_g_objects(self):
@@ -550,13 +580,7 @@ class NonSpurReader(BaseReaderStrategy):
 
 class AncientReader(NonSpurReader):
     """Reader strategy for pre-4.0 images"""
-
-    def classtable(self):
-        classtable = NonSpurReader.classtable(self)
-        classtable = classtable.copy()
-        # In non-modern images (pre 4.0), there was no BlockClosure class.
-        del classtable["w_BlockClosure"]
-        return classtable
+    pass
 
 class SpurReader(BaseReaderStrategy):
 
@@ -612,6 +636,7 @@ class SpurReader(BaseReaderStrategy):
             # address swizzle is in bytes, but bridgeSpan is in image words
             currentAddressSwizzle += (bridgeSpan * (8 if self.version.is_64bit else 4))
         self.stream.close()
+        self.stream = None
         return self.chunklist # return for testing
 
     def read_object(self):
@@ -715,7 +740,6 @@ class SpurReader(BaseReaderStrategy):
         """
         # the instantiate call circumvents the constructors
         # and makes empty objects
-        # timfel: sorted by likelyhood so the JIT can generate better checks
         if self.ischar(g_object):
             return objectmodel.instantiate(W_Character)
         elif self.isblockclosure(g_object):
@@ -775,7 +799,6 @@ class SpurReader(BaseReaderStrategy):
 class SqueakImage(object):
     _immutable_fields_ = [
         "space",
-        "special_objects",
         "w_asSymbol",
         "version",
         "startup_time",
@@ -784,26 +807,15 @@ class SqueakImage(object):
 
     def __init__(self, reader):
         space = self.space = reader.space
-        self.special_objects = space.wrap_list(reader.special_w_objects)
         self.w_asSymbol = self.find_symbol(space, reader, "asSymbol")
         self.lastWindowSize = reader.lastWindowSize
         self.version = reader.version
-        self.run_spy_hacks(space)
         self.startup_time = time.time()
         from rsqueakvm.plugins.simulation import SIMULATE_PRIMITIVE_SELECTOR
         self.w_simulatePrimitive = self.find_symbol(space, reader, SIMULATE_PRIMITIVE_SELECTOR)
 
-    def run_spy_hacks(self, space):
-        if not space.run_spy_hacks.is_set():
-            return
-        w_display = space.objtable["w_display"]
-        if w_display is not None and not w_display.is_nil(space):
-            if space.unwrap_int(w_display.fetch(space, 3)) < 8:
-                # non-native indexed color depth not well supported
-                w_display.store(space, 3, space.wrap_int(8))
-
     def find_symbol(self, space, reader, symbol):
-        w_dnu = self.special(constants.SO_DOES_NOT_UNDERSTAND)
+        w_dnu = space.w_doesNotUnderstand
         assert isinstance(w_dnu, W_BytesObject)
         assert space.unwrap_string(w_dnu) == "doesNotUnderstand:"
         w_Symbol = w_dnu.getclass(space)
@@ -821,7 +833,10 @@ class SqueakImage(object):
         return w_obj
 
     def special(self, index):
-        return self.special_objects.at0(self.space, index)
+        if index >= self.space.w_special_objects.size():
+            return None
+        else:
+            return self.space.w_special_objects.at0(self.space, index)
 
 # ____________________________________________________________
 
@@ -836,13 +851,15 @@ class GenericObject(object):
         self.reader = None
         self.filled_in = False
         self.filled_in_weak = False
+        self.pointers = None
+        self.g_class = None
+        self.chunk = None
 
     def isinitialized(self):
         return self.reader is not None
 
     def initialize_int(self, value, reader, space):
         self.reader = reader
-        self.size = 0
         if value in reader.intcache:
             w_int = reader.intcache[value]
         else:
@@ -853,40 +870,52 @@ class GenericObject(object):
 
     def initialize_char(self, untagged_value, reader, space):
         self.reader = reader
-        self.size = 0
         self.w_object = W_Character(untagged_value)
         self.filled_in = True
 
     def initialize(self, chunk, reader, space):
         self.reader = reader
-        self.size = chunk.size
-        self.hash = chunk.hash
-        self._format = chunk.format
         self.chunk = chunk # for bytes, words and compiledmethod
-        self.init_class()
-        self.init_data(space)  # for pointers
+        self.init_pointers()
+        self.init_g_class()
         self.w_object = None
 
     @property
+    def size(self):
+        if self.chunk is None: return 0
+        return self.chunk.size
+
+    @property
+    def hash(self):
+        if self.chunk is None: return 0
+        return self.chunk.hash
+
+    @property
     def format(self):
-        return jit.promote(self._format)
+        if self.chunk is None: return 0
+        return self.chunk.format
 
     def __repr__(self):
         return "<GenericObject %s>" % ("uninitialized" if not self.isinitialized()
                 else self.w_object if hasattr(self, "w_object") and self.w_object
                 else "size=%d hash=%d format=%d" % (self.size, self.hash, self.format))
 
-    def init_class(self):
+    def init_g_class(self):
         self.g_class = self.reader.g_class_of(self.chunk)
 
-    def init_data(self, space):
+    def init_pointers(self):
+        space = self.reader.space
         if self.reader.ispointers(self):
-            self.pointers = self.reader.decode_pointers(self, space)
-            assert None not in self.pointers
+            ptrs = self.reader.decode_pointers(self, space)
+            assert None not in ptrs
         elif self.reader.iscompiledmethod(self):
             header = self.chunk.data[0] >> 1 # untag tagged int
             literalsize = self.reader.literal_count_of_method_header(header)
-            self.pointers = self.reader.decode_pointers(self, space, literalsize + 1)  # adjust +1 for the header
+            ptrs = self.reader.decode_pointers(self, space, literalsize + 1)  # adjust +1 for the header
+            assert None not in ptrs
+        else:
+            ptrs = None
+        self.pointers = ptrs
 
     def init_w_object(self, space):
         if self.w_object is None:
@@ -917,21 +946,22 @@ class GenericObject(object):
         if not self.filled_in:
             self.filled_in = True
             self.w_object.fillin(space, self)
+            self.chunk.data = None
 
     def fillin_weak(self, space):
         if not self.filled_in_weak and self.isweak():
             self.filled_in_weak = True
             self.w_object.fillin_weak(space, self)
+            self.chunk = None
 
     def fillin_finalize(self, space):
         self.w_object.fillin_finalize(space, self)
 
-    def get_g_pointers(self):
-        assert self.pointers is not None
-        return self.pointers
-
     def get_pointers(self):
-        return [g_object.w_object for g_object in self.get_g_pointers()]
+        assert self.pointers is not None
+        ptrs_g = [g_object.w_object for g_object in self.pointers]
+        self.pointers = None
+        return ptrs_g
 
     def get_class(self):
         w_class = self.g_class.w_object
@@ -1074,7 +1104,7 @@ class SpurImageWriter(object):
             self.reserve(W_WordsObject(self.space, self.space.w_Bitmap, self.word_size * 8))
             self.hidden_roots = W_PointersObject(self.space, self.space.w_Array, 2**12 + 8)
             self.reserve(self.hidden_roots)
-            w_special_objects = self.image.special_objects
+            w_special_objects = self.space.w_special_objects
             for i in range(w_special_objects.size()):
                 w_obj = w_special_objects.fetch(self.space, i)
                 if isinstance(w_obj, W_SmallInteger):

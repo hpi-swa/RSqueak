@@ -257,6 +257,12 @@ def test_at():
     w_obj.store(space, 0, foo)
     assert prim(AT, [w_obj, 1]) == foo
 
+def test_mirror_at():
+    w_obj = W_Float(1.1)
+    foo = wrap(1)
+    w_obj.store(space, 0, foo)
+    assert prim(AT, [space.w_nil, w_obj, 1]) == foo
+
 def test_invalid_at():
     w_obj = bootstrap_class(0).as_class_get_shadow(space).new()
     prim_fails(AT, [w_obj, 1])
@@ -264,6 +270,11 @@ def test_invalid_at():
 def test_at_put():
     w_obj = bootstrap_class(0, varsized=1).as_class_get_shadow(space).new(1)
     assert prim(AT_PUT, [w_obj, 1, 22]).value == 22
+    assert prim(AT, [w_obj, 1]).value == 22
+
+def test_miror_at_put():
+    w_obj = bootstrap_class(0, varsized=1).as_class_get_shadow(space).new(1)
+    assert prim(AT_PUT, [space.w_nil, w_obj, 1, 22]).value == 22
     assert prim(AT, [w_obj, 1]).value == 22
 
 def test_at_and_at_put_bytes():
@@ -281,7 +292,7 @@ def test_invalid_at_put():
 def test_integer_at_put():
     w_obj = bootstrap_class(0, format=storage_classes.WORDS).as_class_get_shadow(space).new(1)
     assert prim(INTEGER_AT_PUT, [w_obj, 1, 22]).value == 22
-    assert prim(AT, [w_obj, 1]).value == 22
+    assert prim(INTEGER_AT, [w_obj, 1]).value == 22
     with py.test.raises(PrimitiveFailedError):
         assert prim(INTEGER_AT_PUT, [w_obj, 1, "112"])
     with py.test.raises(PrimitiveFailedError):
@@ -294,6 +305,12 @@ def test_size():
     assert prim(SIZE, [w_obj]).value == 0
     w_obj = bootstrap_class(3, varsized=True).as_class_get_shadow(space).new(5)
     assert prim(SIZE, [w_obj]).value == 5
+
+def test_mirror_size():
+    w_obj = bootstrap_class(0, varsized=True).as_class_get_shadow(space).new(0)
+    assert prim(SIZE, [space.w_nil, w_obj]).value == 0
+    w_obj = bootstrap_class(3, varsized=True).as_class_get_shadow(space).new(5)
+    assert prim(SIZE, [space.w_nil, w_obj]).value == 5
 
 def test_size_of_compiled_method():
     literalsize = 3
@@ -312,6 +329,14 @@ def test_string_at_put():
     for i in range(len(exp)):
         assert prim(STRING_AT, [test_str, i]) == wrap(exp[i])
 
+def test_short_at():
+    assert prim(SHORT_AT, ["foobar", 2]).value == (ord("o") | (ord("b") << 8))
+
+def test_short_at_put():
+    test_str = wrap("foobar")
+    prim(SHORT_AT_PUT, [test_str, 1, (ord("o") | (ord("b") << 8))])
+    assert test_str.unwrap_string(space) == "obobar"
+
 def test_invalid_object_at():
     prim_fails(OBJECT_AT, ["q", constants.CHARACTER_VALUE_INDEX+2])
 
@@ -327,7 +352,7 @@ def test_string_at_put():
         assert prim(STRING_AT, [test_str, i]) == wrap(exp[i-1])
 
 def test_new():
-    w_Object = space.classtable['w_Object']
+    w_Object = space.w_Object
     w_res = prim(NEW, [w_Object])
     assert w_res.getclass(space).is_same_object(w_Object)
 
@@ -340,21 +365,27 @@ def test_new_with_arg():
     assert w_res.size() == 20
 
 def test_new_with_arg_for_non_variable_sized():
-    prim_fails(NEW_WITH_ARG, [space.classtable['w_ArrayedCollection'], 10])
+    prim_fails(NEW_WITH_ARG, [space.w_ArrayedCollection, 10])
 
 def test_new_with_arg_for_non_variable_sized0():
-    w_res = prim(NEW_WITH_ARG, [space.classtable['w_ArrayedCollection'], 0])
-    assert w_res.getclass(space).is_same_object(space.classtable['w_ArrayedCollection'])
+    w_res = prim(NEW_WITH_ARG, [space.w_ArrayedCollection, 0])
+    assert w_res.getclass(space).is_same_object(space.w_ArrayedCollection)
     assert w_res.size() == 0
 
 def test_invalid_new_with_arg():
-    w_Object = space.classtable['w_Object']
+    w_Object = space.w_Object
     prim_fails(NEW_WITH_ARG, [w_Object, 20])
 
 def test_inst_var_at():
     # n.b.: 1-based indexing!
     w_v = prim(INST_VAR_AT,
                ["q", constants.CHARACTER_VALUE_INDEX+1])
+    assert w_v.value == ord("q")
+
+def test_mirror_inst_var_at():
+    # n.b.: 1-based indexing!
+    w_v = prim(INST_VAR_AT,
+               [space.w_nil, "q", constants.CHARACTER_VALUE_INDEX+1])
     assert w_v.value == ord("q")
 
 def test_inst_var_at_invalid():
@@ -369,6 +400,15 @@ def test_inst_var_at_put():
     assert prim(INST_VAR_AT, [w_q, vidx]).is_nil(space)
     assert prim(INST_VAR_AT_PUT, [w_q, vidx, ordq]).value == ordq
     assert prim(INST_VAR_AT, [w_q, vidx]).value == ordq
+
+def test_mirror_inst_var_at_put():
+    # n.b.: 1-based indexing!
+    w_q = space.w_Character.as_class_get_shadow(space).new()
+    vidx = constants.CHARACTER_VALUE_INDEX+1
+    ordq = ord("q")
+    assert prim(INST_VAR_AT, [space.w_nil, w_q, vidx]).is_nil(space)
+    assert prim(INST_VAR_AT_PUT, [space.w_nil, w_q, vidx, ordq]).value == ordq
+    assert prim(INST_VAR_AT, [space.w_nil, w_q, vidx]).value == ordq
 
 def test_inst_var_at_put_invalid():
     # n.b.: 1-based indexing! (and an invalid index)
@@ -401,7 +441,9 @@ def test_slot_at_put_invalid():
 
 def test_class():
     assert prim(CLASS, ["string"]).is_same_object(space.w_String)
+    assert prim(CLASS, [space.w_nil, "string"]).is_same_object(space.w_String)
     assert prim(CLASS, [1]).is_same_object(space.w_SmallInteger)
+    assert prim(CLASS, [space.w_nil, 1]).is_same_object(space.w_SmallInteger)
 
 def test_as_oop():
     # I checked potato, and that returns the hash for as_oop
@@ -433,6 +475,8 @@ def test_boolean():
     assert prim(GREATEROREQUAL, [3,4]).is_same_object(space.w_false)
     assert prim(EQUAL, [2,2]).is_same_object(space.w_true)
     assert prim(NOTEQUAL, [2,2]).is_same_object(space.w_false)
+    assert prim(EQUIVALENT, [2,2]).is_same_object(space.w_true)
+    assert prim(EQUIVALENT, [space.w_nil,2,2]).is_same_object(space.w_true)
 
 def test_float_boolean():
     assert prim(FLOAT_LESSTHAN, [1.0,2.0]).is_same_object(space.w_true)
@@ -501,7 +545,7 @@ def test_signal_at_milliseconds():
     future = prim(MILLISECOND_CLOCK, [0]).value + 400
     sema = space.w_Semaphore.as_class_get_shadow(space).new()
     prim(SIGNAL_AT_MILLISECONDS, [space.w_nil, sema, future])
-    assert space.objtable["w_timerSemaphore"] is sema
+    assert space.w_timerSemaphore() is sema
 
 
 def test_primitive_utc_microseconds_clock():
@@ -515,7 +559,7 @@ def test_signal_at_utc_microseconds():
     future = start + r_int64(400 * 1000)
     sema = space.w_Semaphore.as_class_get_shadow(space).new()
     prim(SIGNAL_AT_UTC_MICROSECONDS, [space.w_nil, sema, future])
-    assert space.objtable["w_timerSemaphore"] is sema
+    assert space.w_timerSemaphore() is sema
 
 def test_seconds_clock():
     now = int(time.time())
@@ -534,14 +578,14 @@ def test_full_gc():
 
 def test_interrupt_semaphore():
     prim(INTERRUPT_SEMAPHORE, [1, space.w_true])
-    assert space.objtable["w_interrupt_semaphore"].is_nil(space)
+    assert space.w_interrupt_semaphore().is_nil(space)
 
     class SemaphoreInst(W_Object):
         def getclass(self, space):
             return space.w_Semaphore
     w_semaphore = SemaphoreInst()
     prim(INTERRUPT_SEMAPHORE, [1, w_semaphore])
-    assert space.objtable["w_interrupt_semaphore"] is w_semaphore
+    assert space.w_interrupt_semaphore() is w_semaphore
 
 def test_load_inst_var():
     " try to test the LoadInstVar primitives a little "
@@ -812,7 +856,7 @@ def test_primitive_value_no_context_switch(monkeypatch):
         monkeypatch.undo()
 
 def test_primitive_be_display():
-    assert space.objtable["w_display"] is None
+    assert space.w_display() is space.w_nil
     mock_display = W_PointersObject(space, space.w_Point, 4)
     w_wordbmp = W_WordsObject(space, space.w_Bitmap, 10)
     mock_display.store(space, 0, w_wordbmp)  # bitmap
@@ -820,7 +864,7 @@ def test_primitive_be_display():
     mock_display.store(space, 2, space.wrap_int(10))  # height
     mock_display.store(space, 3, space.wrap_int(1))  # depth
     prim(BE_DISPLAY, [mock_display])
-    assert space.objtable["w_display"] is mock_display
+    assert space.w_display() is mock_display
     w_bitmap = mock_display.fetch(space, 0)
     assert w_bitmap is not w_wordbmp
     assert isinstance(w_bitmap, W_DisplayBitmap)
@@ -833,7 +877,7 @@ def test_primitive_be_display():
     mock_display2.store(space, 2, space.wrap_int(10))  # height
     mock_display2.store(space, 3, space.wrap_int(1))  # depth
     prim(BE_DISPLAY, [mock_display2])
-    assert space.objtable["w_display"] is mock_display2
+    assert space.w_display() is mock_display2
     w_bitmap2 = mock_display.fetch(space, 0)
     assert isinstance(w_bitmap2, W_DisplayBitmap)
     assert w_bitmap.display() is w_bitmap2.display()
@@ -841,7 +885,7 @@ def test_primitive_be_display():
     assert sdldisplay.height == 10
 
     prim(BE_DISPLAY, [mock_display])
-    assert space.objtable["w_display"] is mock_display
+    assert space.w_display() is mock_display
     assert mock_display.fetch(space, 0) is w_bitmap
 
 # def test_primitive_force_display_update(monkeypatch):
@@ -935,6 +979,77 @@ def test_numericbitblt(monkeypatch):
 
     try:
         assert prim(BITBLT_COPY_BITS, ["myReceiver"]).str_content() == "'myReceiver'"
+    finally:
+        monkeypatch.undo()
+
+def test_vm_loaded_modules():
+    loaded = []
+    idx = 0
+    while True:
+        w_result = prim(VM_LOADED_MODULES, [space.w_nil, idx])
+        idx += 1
+        if w_result is space.w_nil:
+            break
+        assert isinstance(w_result, W_BytesObject)
+        loaded.append(w_result.unwrap_string(space))
+    assert "LargeIntegers" in loaded
+    assert "SocketPlugin" in loaded
+    assert "SqueakSSL" in loaded
+
+def test_idle_for_microseconds():
+    import time
+    t0 = time.time()
+    prim(IDLE_FOR_MICROSECONDS, [None, 1 * 1000 * 1000])
+    assert time.time() - t0 >= 1
+
+def test_fullscreen(monkeypatch):
+    is_fs = {'value': None}
+    class FakeDisplay(): pass
+    disp = FakeDisplay()
+    def display():
+        return disp
+    def set_full_screen(bool):
+        is_fs['value'] = bool
+    monkeypatch.setattr(space, "display", display)
+    setattr(disp, "set_full_screen", set_full_screen)
+    try:
+        prim(SET_FULL_SCREEN, [None, True])
+        assert is_fs['value'] == True
+        prim(SET_FULL_SCREEN, [None, False])
+        assert is_fs['value'] == False
+    finally:
+        monkeypatch.undo()
+
+def test_vm_parameters():
+    params = space.unwrap_array(prim(VM_PARAMETERS, [None]))
+    assert space.unwrap_int(params[2]) != 0, "byte-size young space cannot be 0"
+    assert space.unwrap_int(params[8]) != 0, "total ms in full GCs cannot be 0"
+    assert space.unwrap_int(params[41]) == 1, "we have 'stack-tables' because we do JIT"
+    param = space.unwrap_int(prim(VM_PARAMETERS, [None, 42]))
+    assert param == 1, "we are stack-like"
+    with py.test.raises(PrimitiveFailedError):
+        prim(VM_PARAMETERS, [None, 71])
+
+def test_clipboard(monkeypatch):
+    class FakeDisplay():
+        def __init__(self):
+            self.the_text = None
+        def has_clipboard_text(self):
+            return self.the_text is not None
+        def get_clipboard_text(self):
+            return self.the_text
+        def set_clipboard_text(self, txt):
+            self.the_text = txt
+    disp = FakeDisplay()
+    def display(): return disp
+    monkeypatch.setattr(space, "display", display)
+    try:
+        assert space.unwrap_string(prim(CLIPBOARD_TEXT, [None])) == ""
+        disp.the_text = "foobar"
+        assert disp.get_clipboard_text() == "foobar"
+        assert space.unwrap_string(prim(CLIPBOARD_TEXT, [None])) == "foobar"
+        assert space.unwrap_string(prim(CLIPBOARD_TEXT, [None, "copy"])) == "copy"
+        assert space.unwrap_string(prim(CLIPBOARD_TEXT, [None])) == "copy"
     finally:
         monkeypatch.undo()
 

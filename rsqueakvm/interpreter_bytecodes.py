@@ -5,6 +5,7 @@ from rsqueakvm.primitives import constants, prim_table, prim_holder
 from rsqueakvm.storage_classes import ClassShadow
 from rsqueakvm.storage_contexts import ContextPartShadow, DirtyContext
 from rsqueakvm.util.bitmanipulation import splitter
+from rsqueakvm import constants as vmconstants
 
 from rpython.rlib import objectmodel, unroll, jit
 
@@ -189,7 +190,10 @@ class __extend__(ContextPartShadow):
         arraySize, popIntoArray = splitter[7, 1](descriptor)
         newArray = None
         if popIntoArray == 1:
-            newArray = interp.space.wrap_list(self.pop_and_return_n(arraySize))
+            if jit.we_are_jitted() and jit.isconstant(arraySize) and arraySize < vmconstants.LITERAL_LIST_UNROLL_SIZE:
+                newArray = interp.space.wrap_list_unroll_safe(self.pop_and_return_n(arraySize))
+            else:
+                newArray = interp.space.wrap_list(self.pop_and_return_n(arraySize))
         else:
             newArray = interp.space.w_Array.as_class_get_shadow(interp.space).new(arraySize)
         self.push(newArray)
@@ -349,7 +353,7 @@ class __extend__(ContextPartShadow):
 
     def _invokeObjectAsMethod(self, w_selector, argcount, interp, w_receiver):
         args_w = self.pop_and_return_n(argcount)
-        w_arguments = interp.space.wrap_list(args_w)
+        w_arguments = interp.space.wrap_list_unroll_safe(args_w)
         w_rcvr = self.pop()
         w_newarguments = [w_selector, w_arguments, w_rcvr]
         return self._sendSpecialSelector(interp, w_receiver, "runWithIn", w_newarguments)
@@ -359,14 +363,16 @@ class __extend__(ContextPartShadow):
         w_selector = self.space.get_special_selector(selector)
         return self._sendSelfSelector(w_selector, numargs, interp)
 
+    @objectmodel.specialize.arg(3)
     def _sendSpecialSelector(self, interp, receiver, special_selector, w_args=[]):
         space = jit.promote(self.space)
-        w_special_selector = space.special_object("w_" + special_selector)
+        w_special_selector = getattr(space, "w_" + special_selector)
         s_class = receiver.class_shadow(space)
 
         w_method = s_class.lookup(w_special_selector)
         if w_method is None:
-            w_method = s_class.lookup(space.special_object("w_doesNotUnderstand"))
+            w_method = s_class.lookup(space.w_doesNotUnderstand)
+            self.push(receiver) # need to put receiver back on stack
             if w_method is None:
                 s_class = receiver.class_shadow(self.space)
                 assert isinstance(s_class, ClassShadow)
@@ -388,18 +394,15 @@ class __extend__(ContextPartShadow):
 
     def _doesNotUnderstand(self, w_selector, argcount, interp, receiver):
         arguments = self.pop_and_return_n(argcount)
-        w_message_class = self.space.classtable["w_Message"]
+        w_message_class = self.space.w_Message
         assert isinstance(w_message_class, W_PointersObject)
         s_message_class = w_message_class.as_class_get_shadow(self.space)
         w_message = s_message_class.new()
         w_message.store(self.space, 0, w_selector)
-        w_message.store(self.space, 1, self.space.wrap_list(arguments))
+        w_message.store(self.space, 1, self.space.wrap_list_unroll_safe(arguments))
         if interp.image.version.is_modern:
             w_message.store(self.space, 2, receiver.getclass(self.space))
         self.pop()  # The receiver, already known.
-
-        if interp.space.headless.is_set():
-            self.exitFromHeadlessExecution("doesNotUnderstand:", w_message)
         return self._sendSpecialSelector(interp, receiver, "doesNotUnderstand", [w_message])
 
     def _mustBeBoolean(self, interp, receiver):
@@ -439,7 +442,7 @@ class __extend__(ContextPartShadow):
         # THE ONLY EXCEPTION is when someone fiddled with our context chain, but
         # then we'll force everything to the heap, anyway.
         from rsqueakvm.interpreter import FreshReturn
-        if (self.home_is_self() or local_return) and (self.state is not DirtyContext):
+        if (self.home_is_self() or local_return) and (self.get_state() is not DirtyContext):
             from rsqueakvm.interpreter import LocalReturn
             raise FreshReturn(LocalReturn.make(self.space, return_value))
         else:
@@ -765,3 +768,17 @@ def initialize_bytecode_table():
 
 # this table is only used for creating named bytecodes in tests and printing
 BYTECODE_TABLE = initialize_bytecode_table()
+
+def initialize_return_bytecodes():
+    result = []
+    for entry in BYTECODE_RANGES:
+        if len(entry) == 2:
+            if entry[1].startswith('return'):
+                result.append(entry[0])
+        else:
+            if entry[2].startswith('return'):
+                result.extend(range(entry[0], entry[1]+1))
+    assert len(result) > 0
+    return result
+
+RETURN_BYTECODES = initialize_return_bytecodes()

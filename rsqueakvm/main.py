@@ -11,8 +11,11 @@ from rsqueakvm.util import system
 from rpython.rlib import jit, rpath, objectmodel, streamio
 
 # XXX: HACK: We have circular dependencies in some plugins ... :(
+PLUGINS_PATCHED = False
 for pluginpatch in PluginPatchScripts:
-    pluginpatch()
+    if not PLUGINS_PATCHED:
+        PLUGINS_PATCHED = True
+        pluginpatch()
 
 def _compile_time_version():
     if os.environ.get("APPVEYOR", None):
@@ -151,7 +154,13 @@ def get_int_parameter(argv, idx, arg):
 def print_error(str):
     os.write(2, str + os.linesep)
 
-prebuilt_space = objspace.ObjSpace()
+def make_initial_space():
+    prebuilt_space = objspace.ObjSpace()
+    if "JitHooks" in system.optional_plugins:
+        from rsqueakvm.plugins.vmdebugging.hooks import jitiface
+        jitiface.space = prebuilt_space
+    return prebuilt_space
+prebuilt_space = make_initial_space()
 
 def safe_entry_point(argv):
     try:
@@ -212,7 +221,8 @@ class Config(object):
                 self.space.highdpi.deactivate()
             elif arg == "--software-renderer":
                 self.space.software_renderer.activate()
-            elif arg == "--no-display":
+            # -nodisplay (Linux) and -headless (macOS) are used in Cog
+            elif arg in ["--no-display", "-nodisplay", "-headless"]:
                 self.space.no_display.activate()
             elif arg == "--silent":
                 self.space.silent.activate()
@@ -235,21 +245,19 @@ class Config(object):
                 self.shell = True
             elif arg in ["--simulate-numeric-primitives"]:
                 self.space.simulate_numeric_primitives.activate()
+            # Cog compatibility by skipping single dash args (e.g. -nosound)
+            elif len(arg) > 2 and arg[0] == '-' and not arg.startswith('--'):
+                pass
             # Other
             elif arg in ["-j", "--jit"]:
                 jitarg, idx = get_parameter(argv, idx, arg)
                 jit.set_user_param(interpreter.Interpreter.jit_driver, jitarg)
-            elif arg in ["--reader-jit-args"]:
-                jitarg, idx = get_parameter(argv, idx, arg)
-                squeakimage.set_reader_user_param(jitarg)
             elif arg in ["-p", "--poll"]:
                 self.poll = True
             elif arg in ["-i", "--no-interrupts"]:
                 self.interrupts = False
             elif arg in ["-S", "--no-storage"]:
                 self.space.strategy_factory.no_specialized_storage.activate()
-            elif arg in ["--hacks"]:
-                self.space.run_spy_hacks.activate()
             # Logging
             elif arg in ["-t", "--trace"]:
                 self.trace = True
@@ -409,9 +417,7 @@ def entry_point(argv):
     interp = interpreter.Interpreter(space, image,
                 trace=cfg.trace, trace_important=cfg.trace_important,
                 evented=not cfg.poll, interrupts=cfg.interrupts)
-    space.runtime_setup(cfg.exepath, argv, cfg.path, cfg.extra_arguments_idx)
-
-    interp.populate_remaining_special_objects()
+    space.runtime_setup(interp, cfg.exepath, argv, cfg.path, cfg.extra_arguments_idx)
     print_error("") # Line break after image-loading characters
 
     # Create context to be executed

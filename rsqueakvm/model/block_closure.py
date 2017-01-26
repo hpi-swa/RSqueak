@@ -15,13 +15,15 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
         "_w_outerContext",
         "_startpc",
         "_numArgs", "_stack",
-        "_w_method" ]
+        "_w_method",
+        "_w_receiver" ]
     _immutable_fields_ = [
         "version?",
         "_w_outerContext",
         "_startpc",
         "_numArgs", "_stack",
-        "_w_method" ]
+        "_w_method",
+        "_w_receiver" ]
     objectmodel.import_from_mixin(VersionMixin)
 
     def pointers_become_one_way(self, space, from_w, to_w):
@@ -38,6 +40,8 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
             w_from.post_become_one_way(w_to)
         self.store_all(space, ptrs)
 
+    empty_stack = []
+
     @jit.unroll_safe
     def __init__(self, space, w_outerctxt, startpc, numArgs, size, stack=None):
         W_AbstractObjectWithIdentityHash.__init__(self)
@@ -46,9 +50,12 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
         self._numArgs = numArgs
         if stack:
             self._stack = stack
+        elif size == 0:
+            self._stack = self.empty_stack
         else:
             self._stack = [space.w_nil] * size
         self._fillin_w_method(space)
+        self._fillin_w_receiver(space)
 
     def fillin(self, space, g_self):
         W_AbstractObjectWithIdentityHash.fillin(self, space, g_self)
@@ -68,10 +75,15 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
 
     def fillin_finalize(self, space, g_self):
         self._fillin_w_method(space)
+        self._fillin_w_receiver(space)
 
     @objectmodel.always_inline
     def _fillin_w_method(self, space):
         self._w_method = self._w_outerContext.fetch(space, constants.MTHDCTX_METHOD)
+
+    @objectmodel.always_inline
+    def _fillin_w_receiver(self, space):
+        self._w_receiver = self._w_outerContext.fetch(space, constants.MTHDCTX_RECEIVER)
 
     def getclass(self, space):
         return space.w_BlockClosure
@@ -118,6 +130,9 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
     def w_method(self):
         return self._w_method
 
+    def w_receiver(self):
+        return self._w_receiver
+
     def store(self, space, index0, w_value):
         if index0 >= constants.BLKCLSR_SIZE:
             self.atput0(space, index0 - constants.BLKCLSR_SIZE, w_value)
@@ -126,6 +141,7 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
             if index0 == constants.BLKCLSR_OUTER_CONTEXT:
                 self._w_outerContext = w_value
                 self._fillin_w_method(space)
+                self._fillin_w_receiver(space)
             elif index0 == constants.BLKCLSR_STARTPC:
                 self._startpc = space.unwrap_int(w_value)
             elif index0 == constants.BLKCLSR_NUMARGS:
@@ -163,11 +179,9 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
 
     def create_frame(self, space, arguments=[]):
         from rsqueakvm import storage_contexts
-        s_outerContext = self.w_outerContext().as_context_get_shadow(space)
-        assert not s_outerContext.pure_is_block_context()
         w_method = self.w_method()
         assert isinstance(w_method, W_CompiledMethod)
-        w_receiver = s_outerContext.w_receiver()
+        w_receiver = self.w_receiver()
         return storage_contexts.ContextPartShadow.build_method_context(
             space,
             w_method,

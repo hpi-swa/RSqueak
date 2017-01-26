@@ -275,9 +275,10 @@ def test_read_normal_spur_header():
     objbytes = ints2str(joinbits([48, 0, n_slots], [22, 2, 8]),
             joinbits([10, 0, 2, 0], [22, 2, 5, 3])) + ints2str(0) * n_slots
     r = imagereader_mock(SPUR_VERSION_HEADER + objbytes)
+    stream = r.stream
     r.read_version()
     r.readerStrategy.oldbaseaddress = 0
-    r.stream.reset_count()
+    stream.reset_count()
     actualChunk, pos = r.readerStrategy.read_object()
     expectedChunk = squeakimage.ImageChunk(size=n_slots, format=2, classid=10,
             hash=48, data=[0] * n_slots)
@@ -290,9 +291,10 @@ def test_read_long_spur_header():
             joinbits([55, 0, 255], [22, 2, 8]),
             joinbits([10, 0, 2, 0], [22, 2, 5, 3])) + ints2str(0) * n_slots
     r = imagereader_mock(SPUR_VERSION_HEADER + objbytes)
+    stream = r.stream
     r.read_version()
     r.readerStrategy.oldbaseaddress = 0
-    r.stream.reset_count()
+    stream.reset_count()
     actualChunk, pos = r.readerStrategy.read_object()
     expectedChunk = squeakimage.ImageChunk(size=n_slots, format=2, classid=10,
             hash=55, data=[0] * n_slots)
@@ -311,10 +313,11 @@ def test_object_format_spur(monkeypatch):
         objbytes = ints2str(joinbits([0, 0, length], [22, 2, 8]),
                 joinbits([classid, 0, format, 0], [22, 2, 5, 3])) + body
         r = imagereader_mock(SPUR_VERSION_HEADER + objbytes)
+        stream = r.stream
         r.read_version()
         monkeypatch.setattr(r.readerStrategy, 'g_class_of',
                 lambda chunk: g_class_mock)
-        r.stream.reset_count()
+        stream.reset_count()
         chunk, pos = r.readerStrategy.read_object()
         g_object = squeakimage.GenericObject()
         g_object.initialize(chunk, r.readerStrategy, r.space)
@@ -568,8 +571,9 @@ def test_simple_image():
                + ("\x00" * (header_size - (9 * word_size))))
     r = imagereader_mock(image_1)
     # does not raise
+    stream = r.stream
     r.read_header()
-    assert r.stream.pos == len(image_1)
+    assert stream.pos == len(image_1)
 
     image_2 = (SIMPLE_VERSION_HEADER_LE  # 1
                + pack("<i", header_size)  # 2 64 byte header
@@ -583,9 +587,10 @@ def test_simple_image():
                + pack("<i", 0)           # 9 no extra memory
                + ("\x00" * (header_size - (9 * word_size))))
     r = imagereader_mock(image_2)
+    stream = r.stream
     # does not raise
     r.read_header()
-    assert r.stream.pos == len(image_2)
+    assert stream.pos == len(image_2)
     assert r.space.is_spur.is_set() is False
 
 def test_simple_image64(monkeypatch):
@@ -608,9 +613,10 @@ def test_simple_image64(monkeypatch):
                + pack(">q", 0)           # 9 no extra memory
                + ("\x00" * (header_size - (9 * word_size))))
     r = imagereader_mock(image_1)
+    stream = r.stream
     # does not raise
     r.read_header()
-    assert r.stream.pos == len(image_1)
+    assert stream.pos == len(image_1)
 
     image_2 = (pack("<Q", 68002)         # 1 version
                + pack("<q", header_size)  # 2 64 byte header
@@ -625,9 +631,10 @@ def test_simple_image64(monkeypatch):
                + pack("<q", 0)           # 9 no extra memory
                + ("\x00" * (header_size - (9 * word_size))))
     r = imagereader_mock(image_2)
+    stream = r.stream
     # does not raise
     r.read_header()
-    assert r.stream.pos == len(image_2)
+    assert stream.pos == len(image_2)
     assert r.space.is_spur.is_set() is False
 
 def spur_hdr_qword(n_slots, hash, format, classid):
@@ -721,15 +728,17 @@ def simple_spur_image(pack, spur_hdr, version):
 def test_simple_spur_image():
     image = simple_spur_image(pack_be, spur_hdr_big_endian, SPUR_VERSION_HEADER)
     r = imagereader_mock(image)
+    stream = r.stream
     r.read_all()  # does not raise
-    assert r.stream.pos == len(image)
+    assert stream.pos == len(image)
     assert r.space.is_spur.is_set() is True
 
 def test_simple_spur_image_little_endian():
     image_le = simple_spur_image(pack_le, spur_hdr_little_endian, SPUR_VERSION_HEADER_LE)
     r = imagereader_mock(image_le)
+    stream = r.stream
     r.read_all()  # does not raise
-    assert r.stream.pos == len(image_le)
+    assert stream.pos == len(image_le)
     assert r.space.is_spur.is_set() is True
 
 def test_simple_spur_image_with_segments():
@@ -819,11 +828,12 @@ def test_simple_spur_image_with_segments():
                + ("\x00" * (header_size - (14 * word_size)))
                + body)
     r = imagereader_mock(image_1)
+    stream = r.stream
     # does not raise
     r.read_all()
-    assert r.stream.pos == len(image_1)
+    assert stream.pos == len(image_1)
     assert r.space.is_spur.is_set() is True
-    theArray = r.space.objtable["w_schedulerassociationpointer"]
+    theArray = r.space.w_schedulerassociationpointer
     assert theArray.gethash() == 4000
     assert theArray.size() == 7
     assert theArray.fetch(r.space, 0).is_same_object(r.space.w_nil)

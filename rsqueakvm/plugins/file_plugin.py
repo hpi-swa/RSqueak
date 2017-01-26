@@ -49,14 +49,6 @@ else:
 #should we implement primitiveDirectoryEntry ?
 #should we implement primitiveHasFileAccess ?
 
-@FilePlugin.expose_primitive(unwrap_spec=[object])
-def primitiveFileStdioHandles(interp, s_frame, w_rcvr):
-    return interp.space.wrap_list(
-        interp.space.wrap_int(0),
-        interp.space.wrap_int(1),
-        interp.space.wrap_int(2)
-    )
-
 @FilePlugin.expose_primitive(unwrap_spec=[object, str])
 def primitiveFileDelete(interp, s_frame, w_rcvr, file_path):
     # we actually should ask the security plugin function sCDFfn for permissions
@@ -118,8 +110,8 @@ def primitiveDirectoryLookup(interp, s_frame, w_file_directory, full_path, index
     w_dirFlag = space.w_true if stat.S_IFDIR & file_info.st_mode else space.w_false
     w_fileSize = space.wrap_int(rarithmetic.intmask(file_info.st_size))
 
-    return space.wrap_list([w_name, w_creationTime, w_modificationTime,
-                            w_dirFlag, w_fileSize])
+    return space.wrap_list_unroll_safe([w_name, w_creationTime, w_modificationTime,
+                                        w_dirFlag, w_fileSize])
 
 @FilePlugin.expose_primitive(unwrap_spec=[object, str, object])
 def primitiveFileOpen(interp, s_frame, w_rcvr, file_path, w_writeable_flag):
@@ -203,7 +195,7 @@ def primitiveFileStdioHandles(interp, s_frame, w_rcvr):
     # This primitive may give an error-code...
     # return an array with stdin, stdout, stderr
     space = interp.space
-    return space.wrap_list([space.wrap_int(fd) for fd in std_fds])
+    return space.wrap_list_unroll_safe([space.wrap_int(fd) for fd in std_fds])
 
 @FilePlugin.expose_primitive(unwrap_spec=[object, int, object, index1_0, int])
 def primitiveFileWrite(interp, s_frame, w_rcvr, fd, content, start, count):

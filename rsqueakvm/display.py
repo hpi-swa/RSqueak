@@ -76,6 +76,9 @@ class NullDisplay(object):
     def has_clipboard_text(self):
         return False
 
+    def has_interrupts_pending(self):
+        return False
+
     def is_headless(self):
         return True
 
@@ -111,7 +114,8 @@ class SDLDisplay(NullDisplay):
     _attrs_ = ["window", "title", "renderer", "screen_texture", "altf4quit",
                "screen_surface", "has_surface", "interrupt_key",
                "_defer_updates", "_deferred_events", "bpp", "pitch", "highdpi",
-               "software_renderer"]
+               "software_renderer", "interrupt_flag"]
+    _immutable_fields_ = ["interrupt_flag"]
 
     def __init__(self, title, highdpi, software_renderer, altf4quit):
         NullDisplay.__init__(self)
@@ -132,12 +136,24 @@ class SDLDisplay(NullDisplay):
 
     def _init_sdl(self):
         from rpython.rlib.objectmodel import we_are_translated
-        if we_are_translated():
-            assert RSDL.Init(RSDL.INIT_VIDEO) >= 0
-        else:
-            if RSDL.Init(RSDL.INIT_VIDEO) < 0:
-                print RSDL.GetError()
-                assert False
+        if RSDL.Init(RSDL.INIT_VIDEO) < 0:
+            print RSDL.GetError()
+            assert False
+        self.interrupt_flag = lltype.malloc(rffi.SIGNEDP.TO, 1, flavor='raw')
+        self.interrupt_flag[0] = 0
+        ll_SetEventFilter(self.interrupt_flag)
+        RSDL.SetHint(RSDL.HINT_RENDER_VSYNC, "0") # do not wait for vsync
+        RSDL.SetHint(RSDL.HINT_RENDER_SCALE_QUALITY, "0") # nearest pixel sampling
+        # SDL >= 2.0.4
+        # RSDL.SetHint(RSDL.HINT_VIDEO_X11_NET_WM_PING, "0") # disable WM_PING, so the WM does not think we're hung
+        if (RSDL.SetSwapInterval(-1) < 0): # try to allow late tearing (pushes frames faster)
+            RSDL.SetSwapInterval(0) # at least try to disable vsync
+
+    def has_interrupts_pending(self):
+        if self.interrupt_flag[0] != 0:
+            self.interrupt_flag[0] = 0
+            return True
+        return False
 
     def is_headless(self):
         return False
@@ -400,7 +416,7 @@ class SDLDisplay(NullDisplay):
         try:
             if RSDL.PollEvent(event) == 1:
                 event_type = r_uint(event.c_type)
-                if event_type in [RSDL.MOUSEBUTTONDOWN, RSDL.MOUSEBUTTONUP]:
+                if event_type in (RSDL.MOUSEBUTTONDOWN, RSDL.MOUSEBUTTONUP):
                     self.handle_mouse_button(event_type, event)
                     return self.get_next_mouse_event(time)
                 elif event_type == RSDL.MOUSEMOTION:
@@ -581,3 +597,53 @@ class SDLCursorClass(object):
         return bytes
 
 SDLCursor = SDLCursorClass()
+
+from rpython.translator.tool.cbuild import ExternalCompilationInfo
+from rsdl.eci import get_rsdl_compilation_info
+eci = ExternalCompilationInfo(
+    post_include_bits=["""
+    #ifndef __event_filter_h
+    #define __event_filter_h
+
+    #ifdef _WIN32
+    #define DLLEXPORT __declspec(dllexport)
+    #else
+    #define DLLEXPORT __attribute__((__visibility__("default")))
+    #endif
+
+    #ifdef __cplusplus
+    extern "C" {
+    #endif
+            DLLEXPORT int SetEventFilter(intptr_t* target);
+    #ifdef __cplusplus
+    }
+    #endif
+
+    #endif"""],
+    separate_module_sources=["""
+    int InterruptEventFilter(void* userdata, SDL_Event *event) {
+        int interrupt_key = 15 << 8;
+        if (event->type == SDL_KEYDOWN || event->type == SDL_KEYUP) {
+            if (((SDL_KeyboardEvent*)event)->keysym.sym == SDLK_PERIOD) {
+                if ((((SDL_KeyboardEvent*)event)->keysym.mod & (KMOD_ALT|KMOD_GUI)) != 0) {
+                    if (event->type == SDL_KEYUP) { // only keyup generates the interrupt
+                        ((intptr_t*)userdata)[0] = 1;
+                        // an interrupt flushes all pending events preceding it, so we don't
+                        // get spurious events processing when the debugger opens
+                        SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);
+                    }
+                    return 0;
+                }
+            }
+        }
+        return 1;
+    }
+    int SetEventFilter(intptr_t* target) {
+        SDL_SetEventFilter(InterruptEventFilter, (void*)target);
+        return 0;
+    }
+    """]
+).merge(get_rsdl_compilation_info())
+
+ll_SetEventFilter = rffi.llexternal('SetEventFilter', [rffi.SIGNEDP], rffi.INT,
+                                    compilation_info=eci)
