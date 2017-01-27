@@ -40,6 +40,9 @@ class W_Object(object):
         space, as memory representation varies depending on PyPy translation."""
         return self.size() * self.bytes_per_slot
 
+    def safe_getclass(self, space):
+        return self.getclass(space)
+
     def getclass(self, space):
         """Return Squeak class."""
         raise NotImplementedError()
@@ -279,6 +282,9 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
         # The class data will be initialized lazily, after the initial fillin-sequence is over.
         # Don't construct the ClassShadow here, yet!
         self.w_class = g_self.get_class()
+
+    def safe_getclass(self, space):
+        return self.w_class
 
     def getclass(self, space):
         return jit.promote(self.w_class)

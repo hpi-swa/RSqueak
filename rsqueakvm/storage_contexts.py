@@ -82,6 +82,7 @@ class ContextPartShadow(AbstractStrategy):
                # Core context data
                '_s_sender', '_temps_and_stack',
                # MethodContext data
+               'blockmethod',
                'closure', '_w_receiver', '_w_method',
                # Extra data
                'extra_data'
@@ -91,6 +92,7 @@ class ContextPartShadow(AbstractStrategy):
         "_w_self", "_w_self_size",
         '_state_stackptr_pc',
         '_s_sender', "_temps_and_stack[*]",
+        'blockmethod',
         'closure', '_w_receiver', '_w_method',
         'extra_data'
     ]
@@ -114,6 +116,7 @@ class ContextPartShadow(AbstractStrategy):
         self.store_pc(0)
 
         # From MethodContext
+        self.blockmethod = None
         self.closure = None
         self._w_method = None
         self._w_receiver = None
@@ -817,14 +820,32 @@ class __extend__(ContextPartShadow):
     def initialize_temps(self, space, arguments):
         argc = len(arguments)
         for i0 in range(argc):
-            self.settemp(i0, arguments[i0])
+            w_arg = arguments[i0]
+            if isinstance(w_arg, W_BlockClosure) and self.blockmethod is None:
+                # If our first argument is a block, we use its home method to
+                # distinguish the context from others that receive a different
+                # block argument to the same method (e.g. so that all the
+                # collection methods are specialized based on where the block
+                # that was passed in came from
+                self.blockmethod = w_arg.w_method()
+            self.settemp(i0, w_arg)
         closure = self.closure
         if closure:
             startpc = jit.promote(closure.startpc())
             pc = startpc - self.w_method().bytecodeoffset() - 1
             self.store_pc(pc)
             for i0 in range(closure.varsize()):
-                self.settemp(i0+argc, closure.at0(space, i0))
+                w_obj = closure.at0(space, i0)
+                if isinstance(w_obj, W_BlockClosure) and self.blockmethod is None:
+                    # for some methods (see Collection>>do: or detect:ifNone:)
+                    # the user code passes in a block, and the block closure
+                    # captures that block and is then called in a loop. So if we
+                    # activate the block passed in from detect:ifNone: in the
+                    # loop, we really want to specialize on the first temp of
+                    # that block, which represents the block passed in from user
+                    # code into detect:ifNone:
+                    self.blockmethod = w_obj.w_method()
+                self.settemp(i0+argc, w_obj)
 
     # === Accessing object fields ===
 

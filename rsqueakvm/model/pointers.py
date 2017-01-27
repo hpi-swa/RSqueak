@@ -44,6 +44,9 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
         from rsqueakvm.storage import WeakListStrategy
         return isinstance(self.strategy, WeakListStrategy)
 
+    def safe_getclass(self, space):
+        return self.strategy.getclass()
+
     def getclass(self, space):
         return jit.promote(self.strategy.promoted().getclass())
 
