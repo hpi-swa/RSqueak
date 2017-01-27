@@ -51,19 +51,18 @@ class PythonLanguage(ForeignLanguage):
             result = py_code.exec_code(gs.py_space, gs.py_globals,
                                        gs.py_locals)
             self.save_result(result)
-        except OperationError as operationerr:
-            errorstr = operationerr.errorstr(gs.py_space)
-            print errorstr
-            self.handle_error(errorstr)
+        except OperationError as e:
+            print e.errorstr(gs.py_space)
+            self.handle_error(e.get_w_value(gs.py_space))
         except Exception as e:
-            errorstr = str(e)
-            print 'Unknown error in Python thread: %s' % errorstr
-            self.handle_error(errorstr)
+            print 'Unknown error in Python thread: %s' % e
 
     def save_result(self, result):
+        gs.wp_error.set(None)  # unset last error
         gs.wp_result.set(result)
 
     def handle_error(self, error):
+        gs.wp_result.set(None)  # unset last result
         gs.wp_error.set(error)
 
 
