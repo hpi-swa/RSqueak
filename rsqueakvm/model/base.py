@@ -210,7 +210,6 @@ class W_AbstractObjectWithIdentityHash(W_Object):
     """Object with explicit hash (ie all except small
     ints and floats)."""
     _attrs_ = ['hash']
-    _immutable_fields_ = ['hash?']
     repr_classname = "W_AbstractObjectWithIdentityHash"
 
     UNASSIGNED_HASH = 0
