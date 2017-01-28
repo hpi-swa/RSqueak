@@ -142,46 +142,11 @@ class GreenletLanguageRunner(AbstractLanguageRunner):
 
 def switch_to_smalltalk(interp, s_frame, first_call=False):
     from rsqueakvm.storage_contexts import ContextPartShadow
-    from rsqueakvm.plugins.python.utils import wrap
 
     print 'Switch to Smalltalk'
     wp_result = gs.wp_result.get()
     if wp_result is not None:
-        print 'Python has finished and returned a result'
-        # we want evalInThread and resumePython to retun new frames,
-        # so we don't build up stack, but we also don't raise to the
-        # top-level loop all the time.
-        # For resuming, we obviously need a new frame, because that's
-        # how the Smalltalk scheduler knows how to continue back to Python.
-        # Unfortunately, a primitive can only EITHER always return a new
-        # frame OR a result. So when we get a result, we cannot simply
-        # return it. Instead, we need to build a frame that simply returns
-        # the result
-        if interp.space.is_spur.is_set():
-            w_cm = objectmodel.instantiate(W_SpurCompiledMethod)
-        else:
-            w_cm = objectmodel.instantiate(W_PreSpurCompiledMethod)
-        w_cm.header = 0
-        w_cm._primitive = 0
-        w_cm.literalsize = 3
-        w_cm.islarge = False
-        w_cm._tempsize = 0
-        w_cm.argsize = 0
-        w_cm.bytes = [chr(b) for b in [
-            0x20,  # push constant
-            0x7C,  # return stack top
-        ]]
-        w_cm.literals = [
-            wrap(interp.space, wp_result),
-            interp.space.w_nil,
-            interp.space.w_nil
-        ]
-        gs.wp_result.set(None)
-        return ContextPartShadow.build_method_context(
-            interp.space,
-            w_cm,
-            gs.w_python_class.get()
-        )
+        return _handle_result(interp.space, wp_result)
 
     resume_method = gs.w_python_resume_method.get()
     s_resume_frame = ContextPartShadow.build_method_context(
@@ -191,8 +156,8 @@ def switch_to_smalltalk(interp, s_frame, first_call=False):
     )
     # import pdb; pdb.set_trace()
     # we go one up, because the s_frame.w_method() is our fake method
-    if first_call:
-        assert s_frame.w_method() is not resume_method
+    if first_call or s_frame.w_method() is not resume_method:
+        # assert s_frame.w_method() is not resume_method
         s_resume_frame.store_s_sender(s_frame)
     else:
         assert s_frame.w_method() is resume_method
@@ -201,3 +166,36 @@ def switch_to_smalltalk(interp, s_frame, first_call=False):
                                      dec=PYTHON_BYTECODES_THRESHOLD)
     # this will raise a ProcessSwitch if there are interrupts or timers ...
     return s_resume_frame
+
+
+def _handle_result(space, wp_result):
+    from rsqueakvm.storage_contexts import ContextPartShadow
+    from rsqueakvm.plugins.python.utils import wrap
+    print 'Python has finished and returned a result'
+    # we want evalInThread and resumePython to retun new frames,
+    # so we don't build up stack, but we also don't raise to the
+    # top-level loop all the time.
+    # For resuming, we obviously need a new frame, because that's
+    # how the Smalltalk scheduler knows how to continue back to Python.
+    # Unfortunately, a primitive can only EITHER always return a new
+    # frame OR a result. So when we get a result, we cannot simply
+    # return it. Instead, we need to build a frame that simply returns
+    # the result
+    if space.is_spur.is_set():
+        w_cm = objectmodel.instantiate(W_SpurCompiledMethod)
+    else:
+        w_cm = objectmodel.instantiate(W_PreSpurCompiledMethod)
+    w_cm.header = 0
+    w_cm._primitive = 0
+    w_cm.literalsize = 3
+    w_cm.islarge = False
+    w_cm._tempsize = 0
+    w_cm.argsize = 0
+    w_cm.bytes = [chr(b) for b in [
+        0x20,  # push constant
+        0x7C,  # return stack top
+    ]]
+    w_cm.literals = [wrap(space, wp_result), space.w_nil, space.w_nil]
+    gs.wp_result.set(None)
+    return ContextPartShadow.build_method_context(
+        space, w_cm, gs.w_python_class.get())
