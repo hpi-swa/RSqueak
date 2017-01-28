@@ -15,7 +15,9 @@ py_locals = py_space.newdict()
 
 wp_result = Cell(None, type=WP_Root)
 wp_error = Cell(None, type=WP_Root)
+
 restart_frame = Cell(False, type=bool)
+restart_frame_code = Cell(None, type=WP_Root)
 
 w_python_resume_method = QuasiConstant(None, type=W_CompiledMethod)
 w_python_class = QuasiConstant(None, type=W_PointersObject)

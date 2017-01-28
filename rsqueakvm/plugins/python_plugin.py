@@ -121,6 +121,19 @@ def setRestartFrame(interp, s_frame, w_rcvr):
 
 
 @PythonPlugin.expose_primitive(unwrap_spec=[object, str])
+def restartFrameWith(interp, s_frame, w_rcvr, source):
+    wp_source = py_space.wrap(source)
+    try:
+        py_code = py_compiling.compile(py_space, wp_source, '<string>', 'exec')
+    except:
+        print 'Failed to compile new frame'
+        raise PrimitiveFailedError
+    global_state.restart_frame.set(True)
+    global_state.restart_frame_code.set(py_code)
+    return interp.space.w_true
+
+
+@PythonPlugin.expose_primitive(unwrap_spec=[object, str])
 def getGlobal(interp, s_frame, w_rcvr, key):
     # import pdb; pdb.set_trace()
     return wrap(interp.space, py_globals.getitem(py_space.wrap(key)))
