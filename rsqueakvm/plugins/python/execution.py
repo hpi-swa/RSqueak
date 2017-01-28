@@ -38,6 +38,7 @@ class PythonLanguage(ForeignLanguage):
     def __init__(self, source, cmd):
         self.source = source
         self.cmd = cmd
+        self._resumable = True
 
     def run(self):
         print 'Python start'
@@ -56,6 +57,8 @@ class PythonLanguage(ForeignLanguage):
             self.handle_error(e.get_w_value(gs.py_space))
         except Exception as e:
             print 'Unknown error in Python thread: %s' % e
+
+        self._resumable = False
 
     def save_result(self, result):
         gs.wp_error.set(None)  # unset last error
@@ -76,7 +79,6 @@ global_execution_state.clear()
 class AbstractLanguageRunner:
     def __init__(self, language):
         self.language = language
-        self._resumable = True
 
     def start(self):
         raise NotImplementedError
@@ -85,7 +87,7 @@ class AbstractLanguageRunner:
         raise NotImplementedError
 
     def resumable(self):
-        return self._resumable
+        return self.language._resumable
 
     def return_to_smalltalk(self):
         raise NotImplementedError
@@ -114,7 +116,6 @@ class StackletLanguageRunner(AbstractLanguageRunner):
         self.h2 = h
         global_execution_state.clear()
         self.language.run()
-        self._resumable = False
         global_execution_state.origin = self
         return self.h2
 
@@ -136,7 +137,6 @@ class GreenletLanguageRunner(AbstractLanguageRunner):
     def new_greenlet_callback():
         print 'new_greenlet_callback'
         self = global_execution_state.origin
-        self._resumable = False
         return self.language.run
 
 

@@ -77,11 +77,13 @@ def evalInThread(interp, s_frame, w_rcvr, source, cmd):
 @PythonPlugin.expose_primitive(unwrap_spec=[object], result_is_new_frame=True)
 def resumePython(interp, s_frame, w_rcvr):
     from rsqueakvm.plugins.python import execution
-    # import pdb; pdb.set_trace()
     print 'Smalltalk yield'
+    # import pdb; pdb.set_trace()
+    first_call = global_state.restart_frame.get()
     if not execution.resume_thread():
         raise PrimitiveFailedError
-    return execution.switch_to_smalltalk(interp, s_frame)
+    return execution.switch_to_smalltalk(interp, s_frame,
+                                         first_call=first_call)
 
 
 @PythonPlugin.expose_primitive(unwrap_spec=[object])
@@ -111,6 +113,13 @@ def getTopFrame(interp, s_frame, w_rcvr):
     topframe = py_space.getexecutioncontext().gettopframe()
     # assert? primfail?
     return model.W_PythonObject(topframe)
+
+
+@PythonPlugin.expose_primitive(unwrap_spec=[object])
+def setRestartFrame(interp, s_frame, w_rcvr):
+    # import pdb; pdb.set_trace()
+    global_state.restart_frame.set(True)
+    return interp.space.w_true
 
 
 @PythonPlugin.expose_primitive(unwrap_spec=[object, str])
