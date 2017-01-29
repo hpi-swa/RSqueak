@@ -146,7 +146,7 @@ def restartFrameWith(interp, s_frame, w_rcvr, source, cmd):
 
 
 @PythonPlugin.expose_primitive(unwrap_spec=[object, object, str, str])
-def restartSpecificFrame(interp, s_frame, w_rcvr, frame, source, cmd):
+def restartSpecificFrame(interp, s_frame, w_rcvr, w_frame, source, cmd):
     py_code = None
     if source:
         wp_source = py_space.wrap(source)
@@ -156,6 +156,9 @@ def restartSpecificFrame(interp, s_frame, w_rcvr, frame, source, cmd):
         except:
             print 'Failed to compile new frame'
             raise PrimitiveFailedError
+    frame = None
+    if isinstance(w_frame, model.W_PythonObject):
+        frame = w_frame.wp_object
     global_state.py_frame_restart_info.set(
         global_state.PyFrameRestartInfo(frame=frame, code=py_code))
     return interp.space.w_true
