@@ -13,8 +13,8 @@ python_interrupt_counter = Cell(PYTHON_BYTECODES_THRESHOLD)
 
 
 class RestartException(OperationError):
-    def __init__(self, code):
-        self.pycode = code
+    def __init__(self, py_frame_restart_info):
+        self.py_frame_restart_info = py_frame_restart_info
 
 
 def _return_to_smalltalk():
@@ -33,19 +33,17 @@ def check_for_interrupts():
         _return_to_smalltalk()
 
 
-def handle_restart_frame(py_frame):
-    gs.restart_frame.set(False)
-    py_code = gs.restart_frame_code.get()
-    # import pdb; pdb.set_trace()
-    if py_code:
-        gs.restart_frame_code.set(None)
-    raise RestartException(py_code)
+def check_frame_restart_info(py_frame):
+    py_frame_restart_info = gs.py_frame_restart_info.get()
+    if py_frame_restart_info:
+        gs.py_frame_restart_info.set(None)
+        # import pdb; pdb.set_trace()
+        raise RestartException(py_frame_restart_info)
 
 
 def smalltalk_check(self):
     check_for_interrupts()
-    if gs.restart_frame.get():
-        return handle_restart_frame(self)
+    check_frame_restart_info(self)
     return -1  # Let bytecode loop continue as normal
 
 old_execute_frame = PyFrame.execute_frame
@@ -57,7 +55,10 @@ def new_execute_frame(self, w_inputvalue=None, operr=None):
             return old_execute_frame(self, w_inputvalue, operr)
         except RestartException as e:
             # import pdb; pdb.set_trace()
-            self.reset(e.pycode)
+            frame = e.py_frame_restart_info.frame
+            if frame is not None and frame is not self:
+                raise RestartException(e.py_frame_restart_info)
+            self.reset(e.py_frame_restart_info.pycode)
 
 old_init_frame = PyFrame.__init__
 
@@ -83,10 +84,7 @@ def new_handle_operation_error(self, ec, operr, attach_tb=True):
     print "Python error caught"
     _return_to_smalltalk()
     # import pdb; pdb.set_trace()
-
-    if gs.restart_frame.get():
-        return handle_restart_frame(self)
-
+    check_frame_restart_info(self)
     return old_handle_operation_error(self, ec, operr, attach_tb)
 
 

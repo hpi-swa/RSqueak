@@ -127,20 +127,37 @@ def getTopFrame(interp, s_frame, w_rcvr):
 @PythonPlugin.expose_primitive(unwrap_spec=[object])
 def restartFrame(interp, s_frame, w_rcvr):
     # import pdb; pdb.set_trace()
-    global_state.restart_frame.set(True)
+    global_state.py_frame_restart_info.set(
+        global_state.PyFrameRestartInfo())
     return interp.space.w_true
 
 
-@PythonPlugin.expose_primitive(unwrap_spec=[object, str])
-def restartFrameWith(interp, s_frame, w_rcvr, source):
+@PythonPlugin.expose_primitive(unwrap_spec=[object, str, str])
+def restartFrameWith(interp, s_frame, w_rcvr, source, cmd):
     wp_source = py_space.wrap(source)
     try:
-        py_code = py_compiling.compile(py_space, wp_source, '<string>', 'exec')
+        py_code = py_compiling.compile(py_space, wp_source, '<string>', cmd)
     except:
         print 'Failed to compile new frame'
         raise PrimitiveFailedError
-    global_state.restart_frame.set(True)
-    global_state.restart_frame_code.set(py_code)
+    global_state.py_frame_restart_info.set(
+        global_state.PyFrameRestartInfo(code=py_code))
+    return interp.space.w_true
+
+
+@PythonPlugin.expose_primitive(unwrap_spec=[object, object, str, str])
+def restartSpecificFrame(interp, s_frame, w_rcvr, frame, source, cmd):
+    py_code = None
+    if source:
+        wp_source = py_space.wrap(source)
+        try:
+            py_code = py_compiling.compile(py_space, wp_source, '<string>',
+                                           cmd)
+        except:
+            print 'Failed to compile new frame'
+            raise PrimitiveFailedError
+    global_state.py_frame_restart_info.set(
+        global_state.PyFrameRestartInfo(frame=frame, code=py_code))
     return interp.space.w_true
 
 

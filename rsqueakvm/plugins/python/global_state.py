@@ -8,15 +8,19 @@ from pypy.interpreter.baseobjspace import W_Root as WP_Root
 from rpython.rlib import objectmodel
 
 
+class PyFrameRestartInfo():
+    def __init__(self, frame=None, code=None):
+        self.frame = frame
+        self.pycode = code
+
+
 py_space = new_pypy_objspace()
 py_globals = py_space.newdict()
 py_locals = py_space.newdict()
+py_frame_restart_info = Cell(None, type=PyFrameRestartInfo)
 
 wp_result = Cell(None, type=WP_Root)
 wp_error = Cell(None, type=WP_Root)
-
-restart_frame = Cell(False, type=bool)
-restart_frame_code = Cell(None, type=WP_Root)
 
 w_python_resume_method = QuasiConstant(None, type=W_CompiledMethod)
 w_python_class = QuasiConstant(None, type=W_PointersObject)
