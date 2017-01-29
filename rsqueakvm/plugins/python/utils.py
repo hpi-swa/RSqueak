@@ -1,5 +1,5 @@
 import time
-from os.path import dirname
+import os
 
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger
@@ -110,8 +110,18 @@ def call_function(space, wp_func, args_w):
     return wrap(space, py_space.call_function(wp_func))
 
 
+def rdirname(path):
+    splitpaths = path.split(os.sep)
+    splitlen = len(splitpaths)
+    if splitlen >= 2:
+        splitlen = splitlen - 1
+        assert splitlen >= 0
+        return os.sep.join(splitpaths[0:splitlen])
+    return path
+
+
 def persist_pysource(space, source):
-    basedir = dirname(space.get_image_name())
+    basedir = rdirname(space.get_image_name())
     filename = 'source_%s.spy' % time.time()
     filepath = rpath.rjoin(basedir, filename)
     f = streamio.open_file_as_stream(filepath, mode="w")
