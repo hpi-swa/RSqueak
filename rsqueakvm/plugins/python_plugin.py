@@ -13,7 +13,7 @@ from rsqueakvm.plugins.python.global_state import (
     py_space, py_globals, py_locals)
 from rsqueakvm.plugins.python.patching import patch_pypy
 from rsqueakvm.plugins.python.utils import (wrap, unwrap, call_function,
-                                            call_method)
+                                            call_method, persist_pysource)
 
 from pypy.interpreter.error import OperationError
 from pypy.interpreter.function import (BuiltinFunction, Function, Method,
@@ -48,8 +48,9 @@ PluginStartupScripts.append(startup)
 def eval(interp, s_frame, w_rcvr, source, cmd):
     try:
         # import pdb; pdb.set_trace()
+        filename = persist_pysource(interp.space, source)
         wp_source = py_space.wrap(source)
-        py_code = py_compiling.compile(py_space, wp_source, '<string>', cmd)
+        py_code = py_compiling.compile(py_space, wp_source, filename, cmd)
         retval = py_code.exec_code(py_space, py_globals, py_locals)
         return wrap(interp.space, retval)
     except OperationError as operationerr:
@@ -68,8 +69,9 @@ def evalInThread(interp, s_frame, w_rcvr, source, cmd):
     from rsqueakvm.plugins.python import execution
 
     # import pdb; pdb.set_trace()
-    execution.start_new_thread(source, cmd,
-                               translated=PythonPlugin.we_are_translated())
+    execution.start_new_thread(
+        source, persist_pysource(interp.space, source), cmd,
+        translated=PythonPlugin.we_are_translated())
     # when we are here, the Python process has yielded
     return execution.switch_to_smalltalk(interp, s_frame, first_call=True)
 
@@ -134,9 +136,10 @@ def restartFrame(interp, s_frame, w_rcvr):
 
 @PythonPlugin.expose_primitive(unwrap_spec=[object, str, str])
 def restartFrameWith(interp, s_frame, w_rcvr, source, cmd):
+    filename = persist_pysource(interp.space, source)
     wp_source = py_space.wrap(source)
     try:
-        py_code = py_compiling.compile(py_space, wp_source, '<string>', cmd)
+        py_code = py_compiling.compile(py_space, wp_source, filename, cmd)
     except:
         print 'Failed to compile new frame'
         raise PrimitiveFailedError
@@ -147,12 +150,12 @@ def restartFrameWith(interp, s_frame, w_rcvr, source, cmd):
 
 @PythonPlugin.expose_primitive(unwrap_spec=[object, object, str, str])
 def restartSpecificFrame(interp, s_frame, w_rcvr, w_frame, source, cmd):
+    filename = persist_pysource(interp.space, source)
     py_code = None
     if source:
         wp_source = py_space.wrap(source)
         try:
-            py_code = py_compiling.compile(py_space, wp_source, '<string>',
-                                           cmd)
+            py_code = py_compiling.compile(py_space, wp_source, filename, cmd)
         except:
             print 'Failed to compile new frame'
             raise PrimitiveFailedError

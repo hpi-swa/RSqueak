@@ -10,13 +10,13 @@ from pypy.interpreter.error import OperationError
 from pypy.module.__builtin__ import compiling as py_compiling
 
 
-def start_new_thread(source, cmd, translated):
+def start_new_thread(source, filename, cmd, translated):
     # import pdb; pdb.set_trace()
     if translated:
         cls = StackletLanguageRunner
     else:
         cls = GreenletLanguageRunner
-    language = PythonLanguage(source, cmd)
+    language = PythonLanguage(source, filename, cmd)
     runner = cls(language)
     gs.py_runner.set(runner)
     runner.start()
@@ -36,8 +36,9 @@ class ForeignLanguage:
 
 
 class PythonLanguage(ForeignLanguage):
-    def __init__(self, source, cmd):
+    def __init__(self, source, filename, cmd):
         self.source = source
+        self.filename = filename
         self.cmd = cmd
         self._resumable = True
 
@@ -48,8 +49,8 @@ class PythonLanguage(ForeignLanguage):
             gs.py_space.threadlocals.enter_thread(gs.py_space)
 
             wp_source = gs.py_space.wrap(self.source)
-            py_code = py_compiling.compile(gs.py_space, wp_source, '<string>',
-                                           self.cmd)
+            py_code = py_compiling.compile(gs.py_space, wp_source,
+                                           self.filename, self.cmd)
             result = py_code.exec_code(gs.py_space, gs.py_globals,
                                        gs.py_locals)
             self.save_result(result)
