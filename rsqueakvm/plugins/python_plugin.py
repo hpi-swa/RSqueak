@@ -85,6 +85,17 @@ def resumePython(interp, s_frame, w_rcvr):
 
 
 @PythonPlugin.expose_primitive(unwrap_spec=[object])
+def simpleResume(interp, s_frame, w_rcvr):
+    # For shell development/debugging
+    from rsqueakvm.plugins.python import execution
+    print 'Smalltalk simple yield'
+    # import pdb; pdb.set_trace()
+    if not execution.resume_thread():
+        return interp.space.w_false
+    return interp.space.w_true
+
+
+@PythonPlugin.expose_primitive(unwrap_spec=[object])
 def lastResult(interp, s_frame, w_rcvr):
     return wrap(interp.space, global_state.wp_result.get())
 
@@ -114,7 +125,7 @@ def getTopFrame(interp, s_frame, w_rcvr):
 
 
 @PythonPlugin.expose_primitive(unwrap_spec=[object])
-def setRestartFrame(interp, s_frame, w_rcvr):
+def restartFrame(interp, s_frame, w_rcvr):
     # import pdb; pdb.set_trace()
     global_state.restart_frame.set(True)
     return interp.space.w_true

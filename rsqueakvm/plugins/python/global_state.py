@@ -1,5 +1,4 @@
-from rsqueakvm.model.compiled_methods import (
-    W_CompiledMethod, W_SpurCompiledMethod, W_PreSpurCompiledMethod)
+from rsqueakvm.model.compiled_methods import W_CompiledMethod
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.plugins.python.py_objspace import new_pypy_objspace
 from rsqueakvm.util.cells import QuasiConstant, Cell

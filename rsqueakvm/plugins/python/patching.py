@@ -11,6 +11,11 @@ from rsqueakvm.plugins.python.patched_dispatch_bytecode import (
 python_interrupt_counter = Cell(PYTHON_BYTECODES_THRESHOLD)
 
 
+class RestartException(Exception):
+    def __init__(self, code):
+        self.pycode = code
+
+
 def _return_to_smalltalk():
     runner = gs.py_runner.get()
     if runner:
@@ -30,10 +35,10 @@ def check_for_interrupts():
 def handle_restart_frame(py_frame):
     gs.restart_frame.set(False)
     py_code = gs.restart_frame_code.get()
+    # import pdb; pdb.set_trace()
     if py_code:
         gs.restart_frame_code.set(None)
-    py_frame.reset(py_code)
-    return 0  # Restart by setting next_instr to 0
+    raise RestartException(py_code)
 
 
 def smalltalk_check(self):
@@ -41,6 +46,33 @@ def smalltalk_check(self):
     if gs.restart_frame.get():
         return handle_restart_frame(self)
     return -1  # Let bytecode loop continue as normal
+
+old_execute_frame = PyFrame.execute_frame
+
+
+def new_execute_frame(self, w_inputvalue=None, operr=None):
+    while True:
+        try:
+            return old_execute_frame(self, w_inputvalue, operr)
+        except RestartException as e:
+            # import pdb; pdb.set_trace()
+            self.reset(e.pycode)
+
+old_init_frame = PyFrame.__init__
+
+
+def __init__frame(self, space, code, w_globals, outer_func):
+    self.w_globals = w_globals
+    self.outer_func = outer_func
+    old_init_frame(self, space, code, w_globals, outer_func)
+
+
+def reset_frame(self, new_py_code=None):
+    # w_inputvalue missing, see execute_frame
+    if new_py_code is None:
+        new_py_code = self.pycode
+    self.__init__(self.space, new_py_code, self.w_globals, self.outer_func)
+    self.last_instr = -1
 
 old_handle_operation_error = PyFrame.handle_operation_error
 
@@ -56,20 +88,6 @@ def new_handle_operation_error(self, ec, operr, attach_tb=True):
 
     return old_handle_operation_error(self, ec, operr, attach_tb)
 
-old_init_frame = PyFrame.__init__
-
-
-def __init__frame(self, space, code, w_globals, outer_func):
-    self.w_globals = w_globals
-    self.outer_func = outer_func
-    old_init_frame(self, space, code, w_globals, outer_func)
-
-
-def reset_frame(self, new_py_code=None):
-    if new_py_code is None:
-        new_py_code = self.pycode
-    self.__init__(self.space, new_py_code, self.w_globals, self.outer_func)
-
 
 def patch_pypy():
     # Patch-out virtualizables from Pypy so that translation works
@@ -84,5 +102,6 @@ def patch_pypy():
     PyFrame.dispatch_bytecode = dispatch_bytecode
 
     PyFrame.__init__ = __init__frame
-    PyFrame.handle_operation_error = new_handle_operation_error
+    PyFrame.execute_frame = new_execute_frame
     PyFrame.reset = reset_frame
+    PyFrame.handle_operation_error = new_handle_operation_error
