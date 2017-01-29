@@ -2,6 +2,7 @@ from rsqueakvm.util.cells import Cell
 from rsqueakvm.plugins.python import global_state as gs
 from rsqueakvm.plugins.python.constants import PYTHON_BYTECODES_THRESHOLD
 
+from pypy.interpreter.error import OperationError
 from pypy.module.pypyjit.interp_jit import PyFrame, PyPyJitDriver
 
 from rsqueakvm.plugins.python.patched_dispatch_bytecode import (
@@ -11,7 +12,7 @@ from rsqueakvm.plugins.python.patched_dispatch_bytecode import (
 python_interrupt_counter = Cell(PYTHON_BYTECODES_THRESHOLD)
 
 
-class RestartException(Exception):
+class RestartException(OperationError):
     def __init__(self, code):
         self.pycode = code
 
