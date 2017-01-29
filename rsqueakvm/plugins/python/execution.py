@@ -25,9 +25,10 @@ def start_new_thread(source, cmd, translated):
 def resume_thread():
     runner = gs.py_runner.get()
     if runner is None or not runner.resumable():
+        print "No runner to resume with"
         return False
     runner.resume()
-    return True
+    return gs.wp_error.get() is None
 
 
 class ForeignLanguage:
