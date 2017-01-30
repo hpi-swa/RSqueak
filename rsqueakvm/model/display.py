@@ -124,6 +124,7 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
             if stop <= start:
                 return
             self.force_words(start, stop)
+            self.display().flip(force=True)
 
     def force_words(self, start, stop):
         if self.is_headless(): return
