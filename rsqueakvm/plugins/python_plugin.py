@@ -21,7 +21,6 @@ from pypy.interpreter.function import (BuiltinFunction, Function, Method,
 from pypy.module.__builtin__ import compiling as py_compiling
 from pypy.objspace.std.typeobject import W_TypeObject as WP_TypeObject
 
-
 from rpython.rlib import jit, objectmodel
 
 
@@ -67,7 +66,9 @@ def eval(interp, s_frame, w_rcvr, source, cmd):
                                result_is_new_frame=True)
 def evalInThread(interp, s_frame, w_rcvr, source, cmd):
     from rsqueakvm.plugins.python import execution
-
+    # Reset error and state
+    global_state.wp_result.set(None)
+    global_state.wp_error.set(None)
     # import pdb; pdb.set_trace()
     execution.start_new_thread(
         source, persist_pysource(interp.space, source), cmd,
@@ -122,7 +123,8 @@ def asSmalltalk(interp, s_frame, w_rcvr):
 def getTopFrame(interp, s_frame, w_rcvr):
     # import pdb; pdb.set_trace()
     topframe = py_space.getexecutioncontext().gettopframe()
-    # assert? primfail?
+    if topframe is None:
+        raise PrimitiveFailedError
     return model.W_PythonObject(topframe)
 
 
