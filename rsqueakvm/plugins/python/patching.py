@@ -84,11 +84,11 @@ old_handle_operation_error = PyFrame.handle_operation_error
 
 
 def new_handle_operation_error(self, ec, operr, attach_tb=True):
-    if not isinstance(operr, RestartException):
-        gs.wp_error.set(operr.get_w_value(gs.py_space))
-        print "Python error caught"
-    else:
-        print "RestartException skipped"
+    if isinstance(operr, RestartException):
+        print "Re-raising RestartException"
+        raise operr
+    gs.wp_error.set(operr.get_w_value(gs.py_space))
+    print "Python error caught"
     _return_to_smalltalk()
     # import pdb; pdb.set_trace()
     check_frame_restart_info(self)
