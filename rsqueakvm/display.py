@@ -440,11 +440,8 @@ class SDLDisplay(NullDisplay):
 
     def get_next_event(self, time=0):
         if len(self._deferred_events) > 0:
-            deferred = self._deferred_events.pop()
-            return deferred
-
-        event = lltype.malloc(RSDL.Event, flavor="raw")
-        try:
+            return self._deferred_events.pop()
+        with lltype.scoped_alloc(RSDL.Event) as event:
             if RSDL.PollEvent(event) == 1:
                 event_type = r_uint(event.c_type)
                 if event_type in (RSDL.MOUSEBUTTONDOWN, RSDL.MOUSEBUTTONUP):
@@ -476,22 +473,12 @@ class SDLDisplay(NullDisplay):
                     return self.get_next_key_event(EventKeyUp, time)
                 elif event_type == RSDL.WINDOWEVENT:
                     self.handle_windowevent(event_type, event)
-                #     self.screen = RSDL.GetVideoSurface()
-                #     self._deferred_events.append([EventTypeWindow, time, WindowEventPaint,
-                #                             0, 0, int(self.screen.c_w), int(self.screen.c_h), 0])
-                #     return [EventTypeWindow, time, WindowEventMetricChange,
-                #             0, 0, int(self.screen.c_w), int(self.screen.c_h), 0]
-                # elif c_type == RSDL.VIDEOEXPOSE:
-                #     self._deferred_events([EventTypeWindow, time, WindowEventPaint,
-                #                             0, 0, int(self.screen.c_w), int(self.screen.c_h), 0])
-                #     return [EventTypeWindow, time, WindowEventActivated, 0, 0, 0, 0, 0]
                 elif event_type == RSDL.QUIT:
                     if self.altf4quit: # we want to quit hard
-                        print "Alt+F4 quit option is on, exiting hard."
-                        raise Exception
+                        from rsqueakvm.util.dialog import ask_question
+                        if ask_question("Quit Squeak without saving?"):
+                            raise Exception
                     return [EventTypeWindow, time, WindowEventClose, 0, 0, 0, 0, 0]
-        finally:
-            lltype.free(event, flavor='raw')
         return [EventTypeNone, 0, 0, 0, 0, 0, 0, 0]
 
     def is_control_key(self, key_ord):
