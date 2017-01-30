@@ -16,6 +16,10 @@ class RestartException(OperationError):
     def __init__(self, py_frame_restart_info):
         self.py_frame_restart_info = py_frame_restart_info
 
+    def _compute_value(self, space):
+        print '_compute_value called in RestartException'
+        return None
+
 
 def _return_to_smalltalk():
     runner = gs.py_runner.get()
@@ -80,8 +84,11 @@ old_handle_operation_error = PyFrame.handle_operation_error
 
 
 def new_handle_operation_error(self, ec, operr, attach_tb=True):
-    gs.wp_error.set(operr.get_w_value(gs.py_space))
-    print "Python error caught"
+    if not isinstance(operr, RestartException):
+        gs.wp_error.set(operr.get_w_value(gs.py_space))
+        print "Python error caught"
+    else:
+        print "RestartException skipped"
     _return_to_smalltalk()
     # import pdb; pdb.set_trace()
     check_frame_restart_info(self)
