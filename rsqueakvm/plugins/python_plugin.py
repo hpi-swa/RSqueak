@@ -108,7 +108,7 @@ def lastError(interp, s_frame, w_rcvr):
     wp_error = global_state.wp_error.get()
     if wp_error is None:
         raise PrimitiveFailedError
-    return model.W_PythonObject(wp_error)
+    return wrap(interp.space, wp_error)
 
 
 @PythonPlugin.expose_primitive(unwrap_spec=[object])
@@ -125,7 +125,7 @@ def getTopFrame(interp, s_frame, w_rcvr):
     topframe = py_space.getexecutioncontext().gettopframe()
     if topframe is None:
         raise PrimitiveFailedError
-    return model.W_PythonObject(topframe)
+    return wrap(interp.space, topframe)
 
 
 @PythonPlugin.expose_primitive(unwrap_spec=[object])
@@ -241,7 +241,8 @@ def send(interp, s_frame, argcount, w_method):
         print 'Unable to call %s on %s: %s' % (methodname, wp_rcvr, e)
         raise PrimitiveFailedError
     if w_result is None:
-        print "Unable to get result in send primitive"
+        print "Result failure in send primitive (type: %s, methodname: %s)" % (
+            py_space.type(wp_rcvr), methodname)
         raise PrimitiveFailedError
     s_frame.pop_n(argcount + 1)
     return w_result
