@@ -165,6 +165,10 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
 class W_32BitDisplayBitmap(W_DisplayBitmap):
     repr_classname = "W_32BitDisplayBitmap"
 
+    # def force_rectange_to_screen(self, left, right, top, bottom):
+    #     if self.pixelbuffer_words > 0:
+    #         self.display().force_32bit_texture_to_screen(left, right, top, bottom, self._real_depth_buffer)
+
     def force_words(self, start, stop):
         if self.is_headless(): return
         if (start >= 0 and stop > start and self.size() > stop and

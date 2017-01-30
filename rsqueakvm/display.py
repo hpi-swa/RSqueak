@@ -245,6 +245,37 @@ class SDLDisplay(NullDisplay):
             return
         RSDL.RenderPresent(self.renderer)
 
+    # def force_32bit_texture_to_screen(self, left, right, top, bottom, pixels):
+    #     from rsqueakvm.constants import BYTES_PER_WORD
+    #     assert self.depth == 32
+    #     left = max(left - 1, 0)
+    #     top = max(top - 1, 0)
+    #     with lltype.scoped_alloc(RSDL.Rect) as rect:
+    #         rect.c_x = rffi.r_int(left)
+    #         rect.c_y = rffi.r_int(top)
+    #         rect.c_w = rffi.r_int(right - left)
+    #         rect.c_h = rffi.r_int(bottom - top)
+    #         pitch = rffi.r_int(self.width * 4) # 4 bytes per pixel
+    #         start = left + top * self.width / (BYTES_PER_WORD / 4)
+    #         ec = RSDL.UpdateTexture(
+    #             self.screen_texture,
+    #             rect,
+    #             rffi.cast(rffi.VOIDP, rffi.ptradd(pixels, start)),
+    #             pitch # pitch includes the padding between rows
+    #         )
+    #         if ec != 0:
+    #             print RSDL.GetError()
+    #             return
+    #         ec = RSDL.RenderCopy(
+    #             self.renderer,
+    #             self.screen_texture,
+    #             rect,
+    #             rect)
+    #         if ec != 0:
+    #             print RSDL.GetError()
+    #             return
+    #     RSDL.RenderPresent(self.renderer)
+
     def set_squeak_colormap(self, surface):
         # TODO: fix this up from the image
         colors = lltype.malloc(rffi.CArray(RSDL.Color), 4, flavor='raw')
