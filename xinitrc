@@ -10,4 +10,5 @@ if grep hpi.uni-potsdam.de /etc/resolv.conf > /dev/null 2>&1; then
     xterm -e "bash -c 'while true; do ssh -Rlocalhost:9093:localhost:8082 -N lively-kernel.org; sleep 30; done'" &
 fi
 xterm -e python benchmark-control.py &
+xterm -e python benchmark-api.py &
 twm
