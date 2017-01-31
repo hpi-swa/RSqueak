@@ -195,6 +195,11 @@ class ObjSpace(object):
         w_inst.setbytes(list(string))
         return w_inst
 
+    def wrap_symbol(self, string):
+        w_inst = self.wrap_string(string)
+        w_inst.change_class(self, self.w_ByteSymbol)
+        return w_inst
+
     def wrap_char(self, c):
         # return self.w_charactertable.fetch(self, ord(c))
         return W_Character(ord(c))
