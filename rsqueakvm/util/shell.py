@@ -78,6 +78,7 @@ class Shell(object):
         self.space = space
         self.methods = {}
         self.w_rcvr = self.space.w_nil
+        self.last_result = None
         space.headless.activate()
 
     def set_interp(self, interp):
@@ -225,13 +226,15 @@ class Shell(object):
                     if n == method:
                         getattr(self, n)(code)
             else:
+                import traceback
                 w_result = None
                 try:
                     w_result = self._execute_code(code)
                 except:
-                    print "Error: ", sys.exc_info()[0]
+                    print traceback.format_exc()
                     import pdb; pdb.set_trace()
                 if w_result:
+                    self.last_result = w_result
                     print w_result.as_repr_string().replace('\r', '\n')
 
     def _execute_code(self, code):

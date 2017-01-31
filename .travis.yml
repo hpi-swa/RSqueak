@@ -30,7 +30,7 @@ env:
     - BUILD_ARCH=armv6
     - BUILD_ARCH=armv7-a
     - BUILD_ARCH=armv8-a
-    - BUILD_ARCH=64bit PLUGINS=DatabasePlugin
+    # - BUILD_ARCH=64bit PLUGINS=DatabasePlugin
     - BUILD_ARCH=64bit PLUGINS=RubyPlugin
 matrix:
   include:
@@ -44,7 +44,7 @@ matrix:
       osx_image: xcode7.3
       env: BUILD_ARCH=64bit PLUGINS=RubyPlugin
   allow_failures:
-    - env: BUILD_ARCH=64bit PLUGINS=DatabasePlugin
+    # - env: BUILD_ARCH=64bit PLUGINS=DatabasePlugin
     - env: BUILD_ARCH=64bit PLUGINS=RubyPlugin
   fast_finish: true
 install: .travis/install_requirements.sh
