@@ -40,8 +40,10 @@ yesterdays_builds.group_by do |b|
 end.each_pair do |branch, builds|
   last_build = builds.first
   commitdate = last_build.commit.committed_at
-  commitver = ("%4s%2s%2s%2s%2s" % [commitdate.year, commitdate.month, commitdate.day,
-                                    commitdate.hour, commitdate.min]).gsub(" ", "0")
+  if commitdate
+    commitver = ("%4s%2s%2s%2s%2s" % [commitdate.year, commitdate.month, commitdate.day,
+                                      commitdate.hour, commitdate.min]).gsub(" ", "0")
+  end
   Net::HTTP.start(CODESPEED.host, CODESPEED.port) do |http|
 
     req = Net::HTTP::Post.new(CODESPEED.path)
