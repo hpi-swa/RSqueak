@@ -1,6 +1,7 @@
 import readline
 import re
 import sys
+import os
 import inspect
 from rpython.rlib import objectmodel, unroll
 from rsqueakvm.error import Exit
@@ -65,11 +66,15 @@ def completer(text, state, completions=None):
 
 
 def untranslated_cmd(func):
-    if objectmodel.we_are_translated():
-        def m(s, c): return
-        return m
-    else:
-        return cmd(func)
+    msg = "The !%s command is not available after translation." % func.__name__
+    cmdfunc = cmd(func)
+    def m(s, c):
+        if objectmodel.we_are_translated():
+            print msg
+            return
+        else:
+            return cmdfunc(s, c)
+    return m
 
 
 class Shell(object):
@@ -101,7 +106,7 @@ class Shell(object):
     @cmd
     def q(self, code):
         "!q for quitting"
-        exit(0)
+        os._exit(0)
 
     @untranslated_cmd
     def pdb(self, code):
@@ -189,7 +194,16 @@ class Shell(object):
     def raw_input(self, delim):
         self.set_readline()
         try:
-            return raw_input(delim).strip()
+            if not objectmodel.we_are_translated():
+                return raw_input(delim).strip()
+
+            os.write(1, delim)
+            line = []
+            c = os.read(0, 1)
+            while c != "\n":
+                line.append(c)
+                c = os.read(0, 1)
+            return "".join(line).strip()
         finally:
             self.reset_readline()
 
@@ -203,7 +217,8 @@ class Shell(object):
             srcline = ""
             while srcline != "!!":
                 srcline = self.raw_input("%s| " % parts[1])
-                if srcline: # don't record method source as history
+                if srcline and not objectmodel.we_are_translated():
+                    # don't record method source as history
                     readline.remove_history_item(
                         readline.get_current_history_length() - 1
                     )
@@ -220,19 +235,24 @@ class Shell(object):
         print "You're in a Smalltalk REPL. Type `!exit' to quit, !help for help."
         while True:
             code = self.raw_input("$ ")
+            print code
             if code.startswith("!"):
                 method = code[1:].split(" ")[0]
-                for n in unroll.unrolling_iterable(COMMANDS):
+                for n in UNROLLING_COMMANDS:
                     if n == method:
                         getattr(self, n)(code)
             else:
-                import traceback
+                if not objectmodel.we_are_translated():
+                    import traceback
                 w_result = None
                 try:
                     w_result = self._execute_code(code)
                 except:
-                    print traceback.format_exc()
-                    import pdb; pdb.set_trace()
+                    if not objectmodel.we_are_translated():
+                        print traceback.format_exc()
+                        import pdb; pdb.set_trace()
+                    else:
+                        print "Error"
                 if w_result:
                     self.last_result = w_result
                     print w_result.as_repr_string().replace('\r', '\n')
@@ -241,14 +261,15 @@ class Shell(object):
         from rsqueakvm.main import compile_code, execute_context
         w_selector = self.methods.get(code, None)
         if not w_selector:
-            sys.stdout.write("Compiling code... ")
-            sys.stdout.flush()
+            os.write(1, "Compiling code... ")
             w_selector = self.interp.perform(
                 self.space.wrap_string(compile_code(self.interp, self.w_rcvr, "^ %s" % code)),
                 "asSymbol")
             self.methods[code] = w_selector
             print "...done."
-            sys.stdout.flush()
         s_frame = self.interp.create_toplevel_context(
             self.w_rcvr, w_selector=w_selector, w_arguments=[])
         return execute_context(self.interp, s_frame)
+
+
+UNROLLING_COMMANDS = unroll.unrolling_iterable(COMMANDS)
