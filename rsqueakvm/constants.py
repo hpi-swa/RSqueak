@@ -161,6 +161,7 @@ constant_objects_in_special_object_table = {
     "ClassBinding": (SPECIAL_OBJECTS_SIZE + 30, "FIXED"),
     "Metaclass": (SPECIAL_OBJECTS_SIZE + 31, "FIXED"),
     "Processor": (SPECIAL_OBJECTS_SIZE + 32, "FIXED"),
+    "ByteSymbol": (SPECIAL_OBJECTS_SIZE + 33, "FIXED")
 }
 
 variables_in_special_object_table = {
