@@ -7,7 +7,8 @@ QUEUE_PORT = 8083
 CONTROL_PORT = 8084
 BENCHMARK_MACHINES = [
     "http://fb12ce8ws06:%s" % QUEUE_PORT,
-    "http://timfelgentreff.no-ip.org:%s" % QUEUE_PORT
+    "http://172.16.48.40:%s" % QUEUE_PORT,
+    "http://172.16.24.214:%s" % QUEUE_PORT
 ]
 JOB_TABLE = "jobs"
 COMMITID = "commitid"
@@ -26,7 +27,7 @@ elif "darwin" in sys.platform:
 else:
     raise NotImplementedError("platform unsupported")
 
-ITERATIONS = 100
+ITERATIONS = 500
 
 OUTPUT_RE = re.compile(r"([a-zA-Z0-9]+) time: iterations=[0-9]+ runtime: ([0-9\.]+)ms \+/\-([0-9\.]+)")
 

@@ -10,7 +10,7 @@ Utilities setAuthorInitials: 'benchmarkerCI'.
 	do: [:n | n resume: true].
 [(Installer squeak
 	project: 'VMMaker')
-	install: 'VMMaker.oscog'] on: Warning do: [:n | n resume: true].
+	install: 'VMMaker.rsqueak'] on: Warning do: [:n | n resume: true].
 (Installer swasource
 	project: 'BenchmarkRunner')
 	install: 'Benchmark';
