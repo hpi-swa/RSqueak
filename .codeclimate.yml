@@ -1,0 +1,27 @@
+---
+engines:
+  duplication:
+    enabled: true
+    config:
+      languages:
+      - python
+  fixme:
+    enabled: true
+  radon:
+    enabled: true
+  pep8:
+    enabled: true
+ratings:
+  paths:
+  - "**.py"
+exclude_paths:
+  - "rsqueakvm/util/**/*"
+  - "rsqueakvm/util/*"
+  - "rsqueakvm/tools/**/*"
+  - "rsqueakvm/tools/*"
+  - "rsqueakvm/test/**/*"
+  - "rsqueakvm/test/*"
+  - "repository/**/*"
+  - "repository/*"
+  - "scripts/**/*"
+  - "scripts/*"

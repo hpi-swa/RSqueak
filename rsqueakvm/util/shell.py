@@ -78,12 +78,16 @@ def untranslated_cmd(func):
 
 
 class Shell(object):
-    def __init__(self, interp, space):
+    def __init__(self, interp, space, code=None):
         self.set_interp(interp)
         self.space = space
         self.methods = {}
         self.w_rcvr = self.space.w_nil
         self.last_result = None
+        if not code:
+            self.current_code = []
+        else:
+            self.current_code = [code]
         space.headless.activate()
 
     def set_interp(self, interp):
@@ -116,6 +120,10 @@ class Shell(object):
     @cmd
     def help(self, code):
         "!help to print this help"
+        print "Empty lines and lines that start and end with '\"' are skipped."
+        print "Lines that do not start with ! are run as Smalltalk."
+        print
+        print "In addition, the following commands are available:"
         for h in HELP:
             print h
 
@@ -129,6 +137,26 @@ class Shell(object):
         else:
             print "Error in command syntax"
         return
+
+    @cmd
+    def load(self, code):
+        "!load Filename to read and execute a file"
+        from rpython.rlib.streamio import open_file_as_stream
+        code = code.split(" ", 1)
+        if len(code) != 2:
+            print "Error in command syntax"
+            return
+        path = code[1]
+        try:
+            f = open_file_as_stream(path, buffering=0)
+        except OSError as e:
+            os.write(2, "%s -- %s (LoadError)\n" % (os.strerror(e.errno), path))
+            return
+        try:
+            source = f.readall()
+        finally:
+            f.close()
+        self.current_code = [line.strip() for line in source.split("\n")]
 
     @untranslated_cmd
     def reload(self, code):
@@ -192,6 +220,8 @@ class Shell(object):
         print "Reloaded %s" % code
 
     def raw_input(self, delim):
+        if len(self.current_code) > 0:
+            return self.current_code.pop(0)
         self.set_readline()
         try:
             if not objectmodel.we_are_translated():
@@ -235,12 +265,15 @@ class Shell(object):
         print "You're in a Smalltalk REPL. Type `!exit' to quit, !help for help."
         while True:
             code = self.raw_input("$ ")
-            print code
             if code.startswith("!"):
                 method = code[1:].split(" ")[0]
                 for n in UNROLLING_COMMANDS:
                     if n == method:
                         getattr(self, n)(code)
+            elif len(code) == 0:
+                pass
+            elif code.startswith('"') and code.endswith('"'):
+                pass
             else:
                 if not objectmodel.we_are_translated():
                     import traceback
