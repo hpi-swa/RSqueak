@@ -70,9 +70,8 @@ def _become(space, w_rcvr, w_new):
             w_rights.append(w_right)
         else:
             for i in range(len(w_lefts)):
-                if not w_lefts[i].become(w_rights[i]):
-                    raise PrimitiveFailedError
-            raise PrimitiveFailedError
+                w_lefts[i].become(w_rights[i])
+            raise PrimitiveFailedError()
 
 @expose_primitive(BECOME, unwrap_spec=[object, object])
 def func(interp, s_frame, w_rcvr, w_new):

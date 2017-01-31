@@ -10,7 +10,7 @@ from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod
 from rsqueakvm.model.display import W_DisplayBitmap
 from rsqueakvm.model.numeric import (W_Float, W_SmallInteger,
                                      W_LargeIntegerWord, W_LargeIntegerBig)
-from rsqueakvm.model.pointers import W_PointersObject, W_FixedPointersObject
+from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm import primitives
@@ -43,10 +43,7 @@ class MockFrame(W_PointersObject):
     def __init__(self, space, stack):
         size = 6 + len(stack) + 6
         self._initialize_storage(space, space.w_BlockContext, size)
-        for i, v in enumerate(stack):
-            if not isinstance(v, W_Object):
-                stack[i] = space.w(v)
-        self.store_all(space, [space.w_nil] * 6 + stack + [space.w_nil] * 6)
+        self.store_all(space, [None] * 6 + stack + [space.w_nil] * 6)
         s_self = self.as_context_get_shadow(space)
         s_self.reset_stack()
         s_self.push_all(stack)
@@ -860,7 +857,7 @@ def test_primitive_value_no_context_switch(monkeypatch):
 
 def test_primitive_be_display():
     assert space.w_display() is space.w_nil
-    mock_display = W_FixedPointersObject(space, space.w_Point, 4)
+    mock_display = W_PointersObject(space, space.w_Point, 4)
     w_wordbmp = W_WordsObject(space, space.w_Bitmap, 10)
     mock_display.store(space, 0, w_wordbmp)  # bitmap
     mock_display.store(space, 1, space.wrap_int(32))  # width
@@ -874,7 +871,7 @@ def test_primitive_be_display():
     sdldisplay = w_bitmap.display()
     assert isinstance(sdldisplay, display.SDLDisplay)
 
-    mock_display2 = W_FixedPointersObject(space, space.w_Point, 4)
+    mock_display2 = W_PointersObject(space, space.w_Point, 4)
     mock_display2.store(space, 0, W_WordsObject(space, space.w_Bitmap, 10))  # bitmap
     mock_display2.store(space, 1, space.wrap_int(32))  # width
     mock_display2.store(space, 2, space.wrap_int(10))  # height
@@ -892,7 +889,7 @@ def test_primitive_be_display():
     assert mock_display.fetch(space, 0) is w_bitmap
 
 # def test_primitive_force_display_update(monkeypatch):
-#     mock_display = W_FixedPointersObject(space, space.w_Point, 4)
+#     mock_display = W_PointersObject(space, space.w_Point, 4)
 #     w_wordbmp = W_WordsObject(space, space.w_Array, 10)
 #     mock_display.store(space, 0, w_wordbmp)  # bitmap
 #     mock_display.store(space, 1, space.wrap_int(32))  # width

@@ -115,7 +115,7 @@ def test_compiledin_class():
     assert classshadow.lookup(w_foo).compiled_in() is w_super
 
 def new_object(size=0):
-    return W_PointersObject(space, space.w_Array, size)
+    return W_PointersObject(space, None, size)
 
 def test_compiledin_class_assoc():
     val = bootstrap_class(0)
@@ -189,7 +189,7 @@ def test_compiledmethod_atput0_not_aligned():
 
 def test_is_same_object(w_o1=None, w_o2=None):
     if w_o1 is None:
-        w_o1 = W_PointersObject(space, space.w_Array, 0)
+        w_o1 = W_PointersObject(space, None, 0)
     if w_o2 is None:
         w_o2 = w_o1
     assert w_o1.is_same_object(w_o2)
@@ -197,9 +197,9 @@ def test_is_same_object(w_o1=None, w_o2=None):
 
 def test_not_is_same_object(w_o1=None,w_o2=None):
     if w_o1 is None:
-        w_o1 = W_PointersObject(space, space.w_Array, 0)
+        w_o1 = W_PointersObject(space, None, 0)
     if w_o2 is None:
-        w_o2 = W_PointersObject(space, space.w_Array, 0)
+        w_o2 = W_PointersObject(space, None,0)
     assert not w_o1.is_same_object(w_o2)
     assert not w_o2.is_same_object(w_o1)
     w_o2 = W_SmallInteger(2)
@@ -267,7 +267,7 @@ def test_become_with_shadow():
 
 def test_word_atput():
     i = W_SmallInteger(100)
-    b = W_WordsObject(space, space.w_Array, 1)
+    b = W_WordsObject(space, None, 1)
     b.atput0(space, 0, i)
     assert 100 == b.getword(0)
     i = space.w_LargePositiveInteger.as_class_get_shadow(space).new(4)
@@ -276,7 +276,7 @@ def test_word_atput():
     assert b.getword(0) == 3221225472
 
 def test_word_at():
-    b = W_WordsObject(space, space.w_Array, 1)
+    b = W_WordsObject(space, None, 1)
     b.setword(0, 100)
     r = b.at0(space, 0)
     assert isinstance(r, W_SmallInteger)
@@ -354,7 +354,7 @@ def test_large_positive_integer_1word_at_put():
     assert hex(r_uint(target.unwrap_long_untranslated(space))) == hex(r_uint(source.unwrap_long_untranslated(space)))
 
 def test_BytesObject_short_at():
-    target = W_BytesObject(space, space.w_Array, 4)
+    target = W_BytesObject(space, None, 4)
     target.setchar(0, chr(0x00))
     target.setchar(1, chr(0x01))
     target.setchar(2, chr(0x10))
@@ -363,7 +363,7 @@ def test_BytesObject_short_at():
     assert target.short_at0(space, 1).value == intmask(0xffff8110)
 
 def test_BytesObject_short_atput():
-    target = W_BytesObject(space, space.w_Array, 4)
+    target = W_BytesObject(space, None, 4)
     target.short_atput0(space, 0, space.wrap_int(0x0100))
     if not constants.IS_64BIT:
         target.short_atput0(space, 1, space.wrap_int(intmask(0xffff8110)))
@@ -376,7 +376,7 @@ def test_BytesObject_short_atput():
     assert target.getchar(3) == chr(0x81)
 
 def test_WordsObject_short_at():
-    target = W_WordsObject(space, space.w_Array, 2)
+    target = W_WordsObject(space, None, 2)
     target.setword(0, r_uint(0x00018000))
     target.setword(1, r_uint(0x80010111))
     assert target.short_at0(space, 0).value == intmask(0xffff8000)
@@ -385,7 +385,7 @@ def test_WordsObject_short_at():
     assert target.short_at0(space, 3).value == intmask(0xffff8001)
 
 def test_WordsObject_short_atput():
-    target = W_WordsObject(space, space.w_Array, 2)
+    target = W_WordsObject(space, None, 2)
     target.short_atput0(space, 0, space.wrap_int(0x0100))
     if not constants.IS_64BIT:
         target.short_atput0(space, 1, space.wrap_int(-1))

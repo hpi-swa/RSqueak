@@ -54,10 +54,12 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
     # === Object access
 
     def at0(self, space, index0):
+        self = jit.promote(self)
         val = self.getword(index0)
         return space.wrap_int(r_uint(val))
 
     def atput0(self, space, index0, w_value):
+        self = jit.promote(self)
         word = space.unwrap_uint(w_value)
         self.setword(index0, word)
 
@@ -88,7 +90,7 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
     # === Graphics
 
     def display(self):
-        return self._display
+        return jit.promote(self._display)
 
     def is_headless(self):
         return self._display.is_headless()
@@ -222,7 +224,7 @@ class W_MappingDisplayBitmap(W_DisplayBitmap):
 
     repr_classname = "W_MappingDisplayBitmap"
     _attrs_ = ['words_per_line', 'bits_in_last_word', 'pitch']
-    _immutable_fields_ = ['bits_in_last_word?', 'pitch?']
+    _immutable_fields_ = ['words_per_line?', 'bits_in_last_word?', 'pitch?']
 
     def __init__(self, space, size, depth):
         assert depth in [1, 2, 4]

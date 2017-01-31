@@ -2,13 +2,15 @@ from rsqueakvm import constants, error
 from rsqueakvm.model.base import W_Object
 from rsqueakvm.model.compiled_methods import W_CompiledMethod, W_PreSpurCompiledMethod, W_SpurCompiledMethod
 from rsqueakvm.model.numeric import W_MutableFloat, W_SmallInteger, W_LargeIntegerWord, W_LargeIntegerBig
-from rsqueakvm.model.pointers import W_PointersObject, W_FixedPointersObject
+from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.storage import AbstractCachingShadow, AbstractGenericShadow
 from rsqueakvm.util.version import elidable_for_version, Version
 
 from rpython.rlib import jit
 from rpython.rlib.rbigint import NULLRBIGINT
+
+import pdb
 
 POINTERS = 0
 BYTES = 1
@@ -53,7 +55,7 @@ class ClassShadow(AbstractCachingShadow):
         else:
             if w_self.getclass(self.space).is_same_object(self.space.w_Metaclass):
                 # In case of Metaclasses, the "instance" class is stored in the last field.
-                if n0 == self.size(w_self) - 1 and isinstance(w_val, W_FixedPointersObject):
+                if n0 == self.size(w_self) - 1 and isinstance(w_val, W_PointersObject):
                     cl_shadow = w_val.as_class_get_shadow(self.space)
                     self.name = "%s class" % cl_shadow.getname()
                     self.changed()
@@ -171,7 +173,7 @@ class ClassShadow(AbstractCachingShadow):
             self._s_superclass = None
             self.changed()
         else:
-            assert isinstance(w_class, W_FixedPointersObject)
+            assert isinstance(w_class, W_PointersObject)
             s_new_superclass = w_class.as_class_get_shadow(self.space)
             if superclass is s_new_superclass:
                 return
@@ -251,11 +253,7 @@ class ClassShadow(AbstractCachingShadow):
         return w_new
 
     def make_pointers_object(self, w_cls, size):
-        if self.isvariable():
-            return W_PointersObject(self.space, w_cls, size)
-        else:
-            assert size == self.instsize()
-            return W_FixedPointersObject(self.space, w_cls, size)
+        return W_PointersObject(self.space, w_cls, size)
 
     @elidable_for_version(0)
     def get_instance_kind(self):
@@ -332,8 +330,8 @@ class ClassShadow(AbstractCachingShadow):
     def initialize_methoddict(self):
         "NOT_RPYTHON"     # this is only for testing.
         if self._s_methoddict is None:
-            w_methoddict = W_PointersObject(self.space, self.space.w_Array, 2)
-            w_methoddict.store(self.space, constants.METHODDICT_VALUES_INDEX, W_PointersObject(self.space, self.space.w_Array, 0))
+            w_methoddict = W_PointersObject(self.space, None, 2)
+            w_methoddict.store(self.space, constants.METHODDICT_VALUES_INDEX, W_PointersObject(self.space, None, 0))
             self.store_s_methoddict(w_methoddict.as_methoddict_get_shadow(self.space))
 
     def installmethod(self, w_selector, w_method):
@@ -343,6 +341,7 @@ class ClassShadow(AbstractCachingShadow):
         self.s_methoddict().methoddict[w_selector] = w_method
         if isinstance(w_method, W_CompiledMethod):
             w_method.compiledin_class = self.w_self()
+ClassShadow.instantiate_type = ClassShadow
 
 
 class MethodDictionaryShadow(AbstractGenericShadow):
@@ -430,3 +429,4 @@ class MethodDictionaryShadow(AbstractGenericShadow):
                         w_compiledmethod.set_lookup_class_and_name(self.s_class.w_self(), selector)
         if self.s_class:
             self.s_class.changed()
+MethodDictionaryShadow.instantiate_type = MethodDictionaryShadow

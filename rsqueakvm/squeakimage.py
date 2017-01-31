@@ -6,7 +6,7 @@ from rsqueakvm.model.character import W_Character
 from rsqueakvm.model.compiled_methods import W_CompiledMethod, W_PreSpurCompiledMethod, W_SpurCompiledMethod
 from rsqueakvm.model.display import W_DisplayBitmap
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargeIntegerWord, W_LargeIntegerBig, W_LargeInteger
-from rsqueakvm.model.pointers import W_PointersObject, W_FixedPointersObject
+from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.block_closure import W_BlockClosure
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.util import stream, system
@@ -528,8 +528,6 @@ class NonSpurReader(BaseReaderStrategy):
             return objectmodel.instantiate(W_Character)
         elif self.isblockclosure(g_object):
             return objectmodel.instantiate(W_BlockClosure)
-        elif self.isfixed(g_object):
-            return objectmodel.instantiate(W_FixedPointersObject)
         elif self.ispointers(g_object):
             return objectmodel.instantiate(W_PointersObject)
         elif g_object.format == 5:
@@ -566,9 +564,6 @@ class NonSpurReader(BaseReaderStrategy):
     def isblockclosure(self, g_object):
         g_closure = self.special_g_object_safe(constants.SO_BLOCKCLOSURE_CLASS)
         return self.ispointers(g_object) and g_object.g_class == g_closure
-
-    def isfixed(self, g_object):
-        return g_object.format == 1
 
     def ispointers(self, g_object):
         return g_object.format < 5
@@ -749,8 +744,6 @@ class SpurReader(BaseReaderStrategy):
             return objectmodel.instantiate(W_Character)
         elif self.isblockclosure(g_object):
             return objectmodel.instantiate(W_BlockClosure)
-        elif self.isfixed(g_object):
-            return objectmodel.instantiate(W_FixedPointersObject)
         elif self.ispointers(g_object):
             return objectmodel.instantiate(W_PointersObject)
         elif self.isfloat(g_object):
@@ -779,9 +772,6 @@ class SpurReader(BaseReaderStrategy):
     def isblockclosure(self, g_object):
         g_closure = self.special_g_object_safe(constants.SO_BLOCKCLOSURE_CLASS)
         return self.ispointers(g_object) and g_closure == g_object.g_class
-
-    def isfixed(self, g_object):
-        return g_object.format == 1
 
     def ispointers(self, g_object):
         return g_object.format < 6

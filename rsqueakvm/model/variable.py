@@ -69,8 +69,9 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         return len(self.bytes)
 
     def str_content(self):
-        if self.getclass(None).space().omit_printing_raw_bytes.is_set():
-            return "<omitted>"
+        if self.getclass(None).has_space():
+            if self.getclass(None).space().omit_printing_raw_bytes.is_set():
+                return "<omitted>"
         return "'%s'" % ''.join([\
             char if ord(char) < 128 else (r'\x%s' % hex(ord(char))[2:]) for char in \
             (self.unwrap_string(None).replace('\r', '\n'))])

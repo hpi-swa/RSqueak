@@ -3,7 +3,7 @@ import os
 from rsqueakvm import display, wrapper
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.display import W_DisplayBitmap
-from rsqueakvm.model.pointers import W_PointersObject, W_FixedPointersObject
+from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_WordsObject
 from rsqueakvm.primitives import expose_primitive, assert_class, index1_0
 from rsqueakvm.primitives.constants import *
@@ -57,7 +57,7 @@ def func(interp, s_frame, _):
 @expose_primitive(MOUSE_POINT, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
     x, y = interp.space.display().mouse_point()
-    w_point = W_FixedPointersObject(interp.space, interp.space.w_Point, 0)
+    w_point = W_PointersObject(interp.space, interp.space.w_Point, 2)
     w_point.store(interp.space, 0, interp.space.wrap_int(x))
     w_point.store(interp.space, 1, interp.space.wrap_int(y))
     return w_point
