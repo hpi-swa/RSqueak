@@ -34,6 +34,7 @@ eci = ExternalCompilationInfo(
             #include <sys/resource.h>
             #define DLLEXPORT __attribute__((__visibility__("default")))
             #endif
+
             DLLEXPORT int RSqueakOpenFileDialog(char* szFile, int len) {
                 char const * const filter = "*.image";
                 const char * file = tinyfd_openFileDialog("", "", 1, &filter, 0, 0);
@@ -42,29 +43,28 @@ eci = ExternalCompilationInfo(
                 }
                 return (file == 0) ? 0: 1;
             }
+
             DLLEXPORT int RSqueakAskQuestion(const char* question) {
-                return tinyfd_messageBox("RSqueak", question, "yesno", "question");
+                return tinyfd_messageBox("RSqueak", question, "yesno", "question", 1);
             }
             """]
 )
 
 
-def external_code():
-    if not system.IS_ARM and (system.IS_WINDOWS or system.IS_LINUX or system.IS_DARWIN):
-        return (rffi.llexternal('RSqueakOpenFileDialog',
-                                [rffi.CCHARP, rffi.INT], rffi.INT,
-                                compilation_info=eci),
-                rffi.llexternal('RSqueakAskQuestion',
-                                [rffi.CCHARP], rffi.INT,
-                                compilation_info=eci))
-    else:
-        # unsupported system
-        return (lambda x, y: _Default, lambda x: True)
-__llget_file, __llask_question = external_code()
+if not system.IS_ARM and (system.IS_WINDOWS or system.IS_LINUX or system.IS_DARWIN):
+    __llget_file = rffi.llexternal('RSqueakOpenFileDialog',
+                                   [rffi.CCHARP, rffi.INT], rffi.INT,
+                                   compilation_info=eci)
+    __llask_question = rffi.llexternal('RSqueakAskQuestion',
+                                       [rffi.CCHARP], rffi.INT,
+                                       compilation_info=eci)
+else:
+    def __llget_file(x, y): return _Default
+    def __llask_question(x): return 1
 
 
 def get_file():
-    with scoped_str2charp("".join(["\0"] * 260)) as charp:
+    with rffi.scoped_str2charp("".join(["\0"] * 260)) as charp:
         res = __llget_file(charp, 260)
         if res == 1:
             return rffi.charp2str(charp)
@@ -72,7 +72,7 @@ def get_file():
 
 
 def ask_question(string):
-    with scoped_view_charp(string) as charp:
+    with rffi.scoped_view_charp(string) as charp:
         res = __llask_question(charp)
         return res == 1
     return True
