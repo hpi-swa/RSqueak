@@ -110,7 +110,8 @@ class Shell(object):
     @cmd
     def q(self, code):
         "!q for quitting"
-        os._exit(0)
+        from rpython.rlib.nonconst import NonConstant
+        os._exit(NonConstant(0))
 
     @untranslated_cmd
     def pdb(self, code):
