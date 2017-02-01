@@ -1,4 +1,7 @@
-import readline
+try:
+    import readline
+except ImportError:
+    pass
 import re
 import sys
 import os

@@ -1,6 +1,6 @@
 from rsqueakvm import storage
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger
-from rsqueakvm.model.pointers import W_PointersObject, W_FixedPointersObject
+from rsqueakvm.model.pointers import W_PointersObject
 
 from .util import create_space_interp, copy_to_module, cleanup_module
 
@@ -31,18 +31,10 @@ def float_arr(size):
     a.store(space, 0, space.wrap_float(1.2))
     return a
 
-def pt(x, y):
-    w_point = W_FixedPointersObject(space, space.w_Point, 2)
-    w_point.store(interp.space, 0, space.w(x))
-    w_point.store(interp.space, 1, space.w(y))
-    return w_point
-
 def check_arr(arr, expected):
     for i in range(arr.size()):
         w_val = arr.fetch(space, i)
         if expected[i] == w_nil:
-            assert w_val.is_nil(space)
-        elif expected[i] == None:
             assert w_val.is_nil(space)
         elif isinstance(expected[i], int):
             assert isinstance(w_val, W_SmallInteger)
@@ -208,87 +200,3 @@ def test_Float_store_SmallInt_to_List():
     a.store(space, 1, space.wrap_int(2))
     assert isinstance(a.strategy, storage.ListStrategy)
     check_arr(a, [1.2, 2, w_nil, w_nil, w_nil])
-
-def test_maps_are_constant():
-    a = pt(None, None)
-    check_arr(a, [None, None])
-    b = pt(None, None)
-    check_arr(b, [None, None])
-    assert a.strategy is b.strategy
-    a.store(space, 1, space.wrap_int(2))
-    b.store(space, 1, space.wrap_int(24))
-    assert a.strategy is b.strategy
-    a.store(space, 1, space.w_nil)
-    assert a.strategy is not b.strategy
-    b.store(space, 1, space.wrap_float(1.1))
-    assert a.strategy is b.strategy
-    a.store(space, 1, space.wrap_int(12))
-    assert a.strategy is b.strategy
-
-def test_store_SmallInt_uses_smallint_map():
-    a = pt(None, None)
-    check_arr(a, [None, None])
-    assert isinstance(a.strategy, storage.MapStrategy)
-    assert a.strategy.getprev() is None
-    a.store(space, 1, space.wrap_int(2))
-    check_arr(a, [None, 2])
-    assert isinstance(a.strategy, storage.IntMapStorageNode)
-    assert a.strategy.index == 1
-    assert isinstance(a.strategy.prev, storage.MapStrategy)
-    assert a.strategy.prev.getprev() is None
-
-def test_object_map_does_not_change_to_int():
-    a = pt(1.2, 2.2)
-    check_arr(a, [1.2, 2.2])
-    assert isinstance(a.strategy, storage.ObjectMapStorageNode)
-    assert isinstance(a.strategy.prev, storage.ObjectMapStorageNode)
-    assert isinstance(a.strategy.prev.prev, storage.MapStrategy)
-    a.store(space, 1, space.wrap_int(2))
-    check_arr(a, [1.2, 2])
-    assert isinstance(a.strategy, storage.ObjectMapStorageNode)
-    assert isinstance(a.strategy.prev, storage.ObjectMapStorageNode)
-    assert isinstance(a.strategy.prev.prev, storage.MapStrategy)
-    assert a.strategy.index == 1
-
-def test_store_SmallInt_uses_sorted_smallint_map_then_removes_it():
-    a = pt(None, None)
-    a.store(space, 1, space.wrap_int(2))
-    a.store(space, 0, space.wrap_int(3))
-    check_arr(a, [3, 2])
-    assert isinstance(a.strategy, storage.IntMapStorageNode)
-    assert a.strategy.index == 1
-    assert isinstance(a.strategy.prev, storage.IntMapStorageNode)
-    assert a.strategy.prev.index == 0
-    assert isinstance(a.strategy.prev.prev, storage.MapStrategy)
-    assert a.strategy.prev.prev.getprev() is None
-    a.store(space, 1, space.w_nil)
-    assert isinstance(a.strategy, storage.ObjectMapStorageNode)
-    assert a.strategy.index == 1
-    assert isinstance(a.strategy.prev, storage.IntMapStorageNode)
-    assert a.strategy.prev.index == 0
-    assert isinstance(a.strategy.prev.prev, storage.MapStrategy)
-    assert a.strategy.prev.prev.getprev() is None
-    a.store(space, 1, space.wrap_int(2))
-    assert isinstance(a.strategy, storage.ObjectMapStorageNode)
-    assert a.strategy.index == 1
-    assert isinstance(a.strategy.prev, storage.IntMapStorageNode)
-    assert a.strategy.prev.index == 0
-    assert isinstance(a.strategy.prev.prev, storage.MapStrategy)
-    assert a.strategy.prev.prev.getprev() is None
-    a.store(space, 1, space.wrap_float(1.1))
-    assert isinstance(a.strategy, storage.ObjectMapStorageNode)
-    assert a.strategy.index == 1
-    assert isinstance(a.strategy.prev, storage.IntMapStorageNode)
-    assert a.strategy.prev.index == 0
-    assert a.strategy.prev.prev.getprev() is None
-    a.store(space, 0, space.wrap_float(3.3))
-    assert isinstance(a.strategy, storage.ObjectMapStorageNode)
-    assert a.strategy.index == 1
-    assert isinstance(a.strategy.prev, storage.ObjectMapStorageNode)
-    assert a.strategy.prev.index == 0
-    assert a.strategy.prev.prev.getprev() is None
-
-def test_map_strategies_are_singletons():
-    assert storage.MapStrategy._is_singleton
-    for c in space.strategy_factory._collect_subclasses(storage.MapStrategy):
-        assert c._is_singleton

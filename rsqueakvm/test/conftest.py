@@ -3,13 +3,6 @@ import py, os, subprocess
 def pytest_addoption(parser):
     group = parser.getgroup("RSqueak test options")
     group.addoption(
-        "--update", "-U",
-        dest="update-jit-tests",
-        action="store_true",
-        default=False,
-        help="Ask if we should update the JIT fixtures"
-    )
-    group.addoption(
         "--quick", "-Q",
         dest="execute-quick-tests",
         action="store_false",
@@ -50,16 +43,12 @@ class _Executor_(object):
     def popen(self, *args, **kwargs):
         return subprocess.Popen(self.all_arguments(list(args)), **kwargs)
 
-UPDATE_JIT_TESTS = False
-
 # The 'jit' parameter is used in tests under jittest/
 def pytest_funcarg__spy(request):
     val = request.config.getvalue("rsqueak-binary")
     if not val:
         py.test.skip("Provide --jit parameter to execute jit tests")
     jitarg = request.config.getvalue("jitargs")
-    global UPDATE_JIT_TESTS
-    UPDATE_JIT_TESTS = request.config.getvalue("update-jit-tests")
     if not jitarg:
         return _Executor_(py.path.local(val))
     else:
@@ -71,14 +60,13 @@ def pytest_assertrepr_compare(op, left, right):
         ltrace = [lop.name for lop in left.trace]
         rtrace = [rop.name for rop in right.trace]
         import difflib
-        answer = (['Comparing Traces failed (use -U / --update when running to auto-update):'] +
+        answer = (['Comparing Traces failed (set UPDATE_JITTESTS=1 in your env and run again to auto-update):'] +
+                  list(difflib.unified_diff(ltrace, rtrace)) +
                   ["-------OLD------"] +
                   [str(op) for op in left.trace] +
                   ["-------NEW------"] +
-                  [str(op) for op in right.trace] +
-                  ["-------DIFF-----"] +
-                  list(difflib.unified_diff(ltrace, rtrace)))
-        if UPDATE_JIT_TESTS:
+                  [str(op) for op in right.trace])
+        if os.environ.get("UPDATE_JITTESTS", None) == "1":
             print "\n".join(answer)
             import sys
             sys.stdout.write("Should we accept the new version (y/N)? ")
@@ -88,25 +76,21 @@ def pytest_assertrepr_compare(op, left, right):
                 stk.reverse()
                 for filename, lineno, funcname, text in stk:
                     if re.search("jittest/test_", filename):
-                        try:
-                            lno = lineno
-                            f = open(filename)
-                            contents = f.readlines()
-                            newline = "\r\n" if contents[0].endswith("\r\n") else "\n"
-                            while contents[lno].strip() != str(left.trace[0]).strip():
-                                lno += 1
-                            indent = (len(contents[lno]) - len(contents[lno].lstrip())) * " "
-                            contents[lno:lno + len(left.trace)] = [(indent + str(op) + newline) for op in right.trace]
-                            f.close()
-                            f = open(filename, "w")
-                            f.truncate(0)
-                            f.writelines(contents)
-                            f.close()
-                            break
-                        except Exception:
-                            import pdb; pdb.set_trace()
+                        f = open(filename)
+                        contents = f.readlines()
+                        newline = "\r\n" if contents[0].endswith("\r\n") else "\n"
+                        while contents[lineno].strip() != str(left.trace[0]).strip():
+                            lineno += 1
+                        indent = (len(contents[lineno]) - len(contents[lineno].lstrip())) * " "
+                        contents[lineno:lineno + len(left.trace)] = [(indent + str(op) + newline) for op in right.trace]
+                        f.close()
+                        f = open(filename, "w")
+                        f.truncate(0)
+                        f.writelines(contents)
+                        f.close()
+                        break
                 del sys.exitfunc
-                os._exit(os.system("%s \"%s\"" % (sys.executable, "\" \"".join(sys.argv))))
+                sys.exit(os.system("%s \"%s\"" % (sys.executable, "\" \"".join(sys.argv))))
             else:
                 return answer
         else:

@@ -103,8 +103,8 @@ class W_Object(object):
 
     def class_shadow(self, space):
         """Return internal representation of Squeak class."""
-        w_class = self.getclass(space)
-        return jit.promote(w_class.as_class_get_shadow(space))
+        w_class = jit.promote(self.getclass(space))
+        return w_class.as_class_get_shadow(space)
 
     def is_same_object(self, other):
         """Compare object identity. This should be used instead of directly
@@ -137,9 +137,20 @@ class W_Object(object):
     def clone(self, space):
         raise NotImplementedError
 
+    def has_class(self):
+        """All Smalltalk objects should have classes. Unfortuantely for
+        bootstrapping the metaclass-cycle and during testing, that is not
+        true for some W_PointersObjects"""
+        return True
+
     def classname(self, space):
         """Get the name of the class of the receiver"""
-        return self.class_shadow(space).getname()
+        name = None
+        if self.has_class():
+            name = self.class_shadow(space).getname()
+        if not name:
+            name = "?"
+        return name
 
     def is_positive(self, space):
         raise error.UnwrappingError("Got unexpected class in is_positive")
@@ -262,6 +273,7 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
     """Objects with arbitrary class (ie not CompiledMethod, SmallInteger or
     Float)."""
     _attrs_ = ['w_class']
+    _immutable_fields_ = ['w_class?']
     repr_classname = "W_AbstractObjectWithClassReference"
     w_class = None
 
@@ -290,8 +302,12 @@ class W_AbstractObjectWithClassReference(W_AbstractObjectWithIdentityHash):
         return jit.promote(self.w_class)
 
     def guess_classname(self):
-        class_shadow = self.class_shadow(self.getclass(None).space())
-        return class_shadow.name
+        if self.getclass(None).has_space():
+            class_shadow = self.class_shadow(self.getclass(None).space())
+            return class_shadow.name
+        else:
+            # We cannot access the class during the initialization sequence.
+            return "?? (class not initialized)"
 
     def change_class(self, space, w_class):
         self.w_class = w_class
