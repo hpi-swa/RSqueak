@@ -70,10 +70,11 @@ def getPyCode(source, filename, cmd):
         py_code = py_compiling.compile(py_space, py_space.wrap(source),
                                        filename, cmd)
         assert isinstance(py_code, PyCode)
-        if len(py_code.co_consts_w) == 1:
+        co_consts_w_len = len(py_code.co_consts_w)
+        if co_consts_w_len >= 1:
+            if co_consts_w_len > 1:
+                print "More than 1 const produced: %s" % co_consts_w_len
             return py_code.co_consts_w[0]
-        else:
-            print "More than 1 const produced: %s" % len(py_code.co_consts_w)
     except OperationError as e:
         # import pdb; pdb.set_trace()
         print 'Failed to compile new frame: %s' % e.errorstr(py_space)
