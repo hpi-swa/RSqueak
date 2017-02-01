@@ -230,10 +230,10 @@ def send(interp, s_frame, argcount, w_method):
         raise PrimitiveFailedError
     except Exception as e:
         print 'Unable to call %s on %s: %s' % (methodname, wp_rcvr, e)
-        raise PrimitiveFailedError
+        return space.w_nil
     if w_result is None:
         print "Result failure in send primitive (type: %s, methodname: %s)" % (
             py_space.type(wp_rcvr), methodname)
-        raise PrimitiveFailedError
+        return space.w_nil
     s_frame.pop_n(argcount + 1)
     return w_result
