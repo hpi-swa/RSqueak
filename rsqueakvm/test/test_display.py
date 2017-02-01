@@ -269,10 +269,22 @@ def test_keyboard_chords(sut, mocked_sdl_event_queue, stub_events, stub_mod_stat
     mocked_sdl_event_queue.append(a_down)
     sqADown = sut.get_next_event()
     # A entered
+    if system.IS_LINUX:
+        # on linux, we don't get this
+        a_stroke = stub_events.malloc(RSDL.TextInputEvent)
+        a_stroke.c_type = RSDL.TEXTINPUT
+        rffi.str2chararray('a\x00', a_stroke.c_text, RSDL.TEXTINPUTEVENT_TEXT_SIZE)
+        mocked_sdl_event_queue.append(a_stroke)
     sqAStroke = sut.get_next_event()
     # repeat A
     mocked_sdl_event_queue.append(a_down)
     sqADown2 = sut.get_next_event()
+    if system.IS_LINUX:
+        # on linux, we don't get this
+        a_stroke = stub_events.malloc(RSDL.TextInputEvent)
+        a_stroke.c_type = RSDL.TEXTINPUT
+        rffi.str2chararray('a\x00', a_stroke.c_text, RSDL.TEXTINPUTEVENT_TEXT_SIZE)
+        mocked_sdl_event_queue.append(a_stroke)
     sqAStroke2 = sut.get_next_event()
     # A up
     a_up = stub_events.malloc(RSDL.KeyboardEvent)
