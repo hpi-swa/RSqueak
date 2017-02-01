@@ -1,4 +1,3 @@
-import time
 import os
 
 from rsqueakvm.error import PrimitiveFailedError
@@ -15,7 +14,7 @@ from pypy.objspace.std.listobject import W_ListObject as WP_ListObject
 from pypy.objspace.std.noneobject import W_NoneObject as WP_NoneObject
 from pypy.objspace.std.tupleobject import W_TupleObject as WP_TupleObject
 
-from rpython.rlib import objectmodel, rpath, streamio
+from rpython.rlib import objectmodel
 
 
 @objectmodel.specialize.argtype(0)
@@ -118,13 +117,3 @@ def rdirname(path):
         assert splitlen >= 0
         return os.sep.join(splitpaths[0:splitlen])
     return path
-
-
-def persist_pysource(space, source):
-    basedir = rdirname(space.get_image_name())
-    filename = 'source_%s.spy' % time.time()
-    filepath = rpath.rjoin(basedir, filename)
-    f = streamio.open_file_as_stream(filepath, mode="w")
-    f.write(source)
-    f.close()
-    return filepath

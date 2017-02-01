@@ -13,7 +13,7 @@ from rsqueakvm.plugins.python.global_state import (
     py_space, py_globals, py_locals)
 from rsqueakvm.plugins.python.patching import patch_pypy
 from rsqueakvm.plugins.python.utils import (wrap, unwrap, call_function,
-                                            call_method, persist_pysource)
+                                            call_method)
 
 from pypy.interpreter.error import OperationError
 from pypy.interpreter.function import (BuiltinFunction, Function, Method,
@@ -43,11 +43,10 @@ def startup(space, argv):
 PluginStartupScripts.append(startup)
 
 
-@PythonPlugin.expose_primitive(unwrap_spec=[object, str, str])
-def eval(interp, s_frame, w_rcvr, source, cmd):
+@PythonPlugin.expose_primitive(unwrap_spec=[object, str, str, str])
+def eval(interp, s_frame, w_rcvr, source, filename, cmd):
     try:
         # import pdb; pdb.set_trace()
-        filename = persist_pysource(interp.space, source)
         wp_source = py_space.wrap(source)
         py_code = py_compiling.compile(py_space, wp_source, filename, cmd)
         retval = py_code.exec_code(py_space, py_globals, py_locals)
@@ -62,17 +61,16 @@ def eval(interp, s_frame, w_rcvr, source, cmd):
         raise PrimitiveFailedError
 
 
-@PythonPlugin.expose_primitive(unwrap_spec=[object, str, str],
+@PythonPlugin.expose_primitive(unwrap_spec=[object, str, str, str],
                                result_is_new_frame=True)
-def evalInThread(interp, s_frame, w_rcvr, source, cmd):
+def evalInThread(interp, s_frame, w_rcvr, source, filename, cmd):
     from rsqueakvm.plugins.python import execution
     # Reset error and state
     global_state.wp_result.set(None)
     global_state.wp_error.set(None)
     # import pdb; pdb.set_trace()
     execution.start_new_thread(
-        source, persist_pysource(interp.space, source), cmd,
-        translated=PythonPlugin.we_are_translated())
+        source, filename, cmd, translated=PythonPlugin.we_are_translated())
     # when we are here, the Python process has yielded
     return execution.switch_to_smalltalk(interp, s_frame, first_call=True)
 
@@ -136,9 +134,8 @@ def restartFrame(interp, s_frame, w_rcvr):
     return interp.space.w_true
 
 
-@PythonPlugin.expose_primitive(unwrap_spec=[object, str, str])
-def restartFrameWith(interp, s_frame, w_rcvr, source, cmd):
-    filename = persist_pysource(interp.space, source)
+@PythonPlugin.expose_primitive(unwrap_spec=[object, str, str, str])
+def restartFrameWith(interp, s_frame, w_rcvr, source, filename, cmd):
     wp_source = py_space.wrap(source)
     try:
         py_code = py_compiling.compile(py_space, wp_source, filename, cmd)
@@ -150,9 +147,9 @@ def restartFrameWith(interp, s_frame, w_rcvr, source, cmd):
     return interp.space.w_true
 
 
-@PythonPlugin.expose_primitive(unwrap_spec=[object, object, str, str])
-def restartSpecificFrame(interp, s_frame, w_rcvr, w_frame, source, cmd):
-    filename = persist_pysource(interp.space, source)
+@PythonPlugin.expose_primitive(unwrap_spec=[object, object, str, str, str])
+def restartSpecificFrame(interp, s_frame, w_rcvr, w_frame, source, filename,
+                         cmd):
     py_code = None
     if source:
         wp_source = py_space.wrap(source)
