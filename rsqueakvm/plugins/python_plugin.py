@@ -139,8 +139,8 @@ def restartFrameWith(interp, s_frame, w_rcvr, source, filename, cmd):
     wp_source = py_space.wrap(source)
     try:
         py_code = py_compiling.compile(py_space, wp_source, filename, cmd)
-    except:
-        print 'Failed to compile new frame'
+    except Exception as e:
+        print 'Failed to compile new frame: %s' % e
         raise PrimitiveFailedError
     global_state.py_frame_restart_info.set(
         global_state.PyFrameRestartInfo(code=py_code))
@@ -155,8 +155,8 @@ def restartSpecificFrame(interp, s_frame, w_rcvr, w_frame, source, filename,
         wp_source = py_space.wrap(source)
         try:
             py_code = py_compiling.compile(py_space, wp_source, filename, cmd)
-        except:
-            print 'Failed to compile new frame'
+        except Exception as e:
+            print 'Failed to compile new frame: %s' % e
             raise PrimitiveFailedError
     frame = None
     if isinstance(w_frame, model.W_PythonObject):
