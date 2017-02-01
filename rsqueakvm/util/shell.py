@@ -1,6 +1,7 @@
 import readline
 import re
 import sys
+import os
 import inspect
 from rpython.rlib import objectmodel, unroll
 from rsqueakvm.error import Exit
@@ -65,20 +66,28 @@ def completer(text, state, completions=None):
 
 
 def untranslated_cmd(func):
-    if objectmodel.we_are_translated():
-        def m(s, c): return
-        return m
-    else:
-        return cmd(func)
+    msg = "The !%s command is not available after translation." % func.__name__
+    cmdfunc = cmd(func)
+    def m(s, c):
+        if objectmodel.we_are_translated():
+            print msg
+            return
+        else:
+            return cmdfunc(s, c)
+    return m
 
 
 class Shell(object):
-    def __init__(self, interp, space):
+    def __init__(self, interp, space, code=None):
         self.set_interp(interp)
         self.space = space
         self.methods = {}
         self.w_rcvr = self.space.w_nil
         self.last_result = None
+        if not code:
+            self.current_code = []
+        else:
+            self.current_code = [code]
         space.headless.activate()
 
     def set_interp(self, interp):
@@ -101,7 +110,8 @@ class Shell(object):
     @cmd
     def q(self, code):
         "!q for quitting"
-        exit(0)
+        from rpython.rlib.nonconst import NonConstant
+        os._exit(NonConstant(0))
 
     @untranslated_cmd
     def pdb(self, code):
@@ -111,6 +121,10 @@ class Shell(object):
     @cmd
     def help(self, code):
         "!help to print this help"
+        print "Empty lines and lines that start and end with '\"' are skipped."
+        print "Lines that do not start with ! are run as Smalltalk."
+        print
+        print "In addition, the following commands are available:"
         for h in HELP:
             print h
 
@@ -124,6 +138,26 @@ class Shell(object):
         else:
             print "Error in command syntax"
         return
+
+    @cmd
+    def load(self, code):
+        "!load Filename to read and execute a file"
+        from rpython.rlib.streamio import open_file_as_stream
+        code = code.split(" ", 1)
+        if len(code) != 2:
+            print "Error in command syntax"
+            return
+        path = code[1]
+        try:
+            f = open_file_as_stream(path, buffering=0)
+        except OSError as e:
+            os.write(2, "%s -- %s (LoadError)\n" % (os.strerror(e.errno), path))
+            return
+        try:
+            source = f.readall()
+        finally:
+            f.close()
+        self.current_code = [line.strip() for line in source.split("\n")]
 
     @untranslated_cmd
     def reload(self, code):
@@ -187,9 +221,20 @@ class Shell(object):
         print "Reloaded %s" % code
 
     def raw_input(self, delim):
+        if len(self.current_code) > 0:
+            return self.current_code.pop(0)
         self.set_readline()
         try:
-            return raw_input(delim).strip()
+            if not objectmodel.we_are_translated():
+                return raw_input(delim).strip()
+
+            os.write(1, delim)
+            line = []
+            c = os.read(0, 1)
+            while c != "\n":
+                line.append(c)
+                c = os.read(0, 1)
+            return "".join(line).strip()
         finally:
             self.reset_readline()
 
@@ -203,7 +248,8 @@ class Shell(object):
             srcline = ""
             while srcline != "!!":
                 srcline = self.raw_input("%s| " % parts[1])
-                if srcline: # don't record method source as history
+                if srcline and not objectmodel.we_are_translated():
+                    # don't record method source as history
                     readline.remove_history_item(
                         readline.get_current_history_length() - 1
                     )
@@ -222,17 +268,25 @@ class Shell(object):
             code = self.raw_input("$ ")
             if code.startswith("!"):
                 method = code[1:].split(" ")[0]
-                for n in unroll.unrolling_iterable(COMMANDS):
+                for n in UNROLLING_COMMANDS:
                     if n == method:
                         getattr(self, n)(code)
+            elif len(code) == 0:
+                pass
+            elif code.startswith('"') and code.endswith('"'):
+                pass
             else:
-                import traceback
+                if not objectmodel.we_are_translated():
+                    import traceback
                 w_result = None
                 try:
                     w_result = self._execute_code(code)
-                except Exception as e:
-                    print traceback.format_exc()
-                    import pdb; pdb.set_trace()
+                except:
+                    if not objectmodel.we_are_translated():
+                        print traceback.format_exc()
+                        import pdb; pdb.set_trace()
+                    else:
+                        print "Error"
                 if w_result:
                     self.last_result = w_result
                     print w_result.as_repr_string().replace('\r', '\n')
@@ -241,14 +295,15 @@ class Shell(object):
         from rsqueakvm.main import compile_code, execute_context
         w_selector = self.methods.get(code, None)
         if not w_selector:
-            sys.stdout.write("Compiling code... ")
-            sys.stdout.flush()
+            os.write(1, "Compiling code... ")
             w_selector = self.interp.perform(
                 self.space.wrap_string(compile_code(self.interp, self.w_rcvr, "^ %s" % code)),
                 "asSymbol")
             self.methods[code] = w_selector
             print "...done."
-            sys.stdout.flush()
         s_frame = self.interp.create_toplevel_context(
             self.w_rcvr, w_selector=w_selector, w_arguments=[])
         return execute_context(self.interp, s_frame)
+
+
+UNROLLING_COMMANDS = unroll.unrolling_iterable(COMMANDS)

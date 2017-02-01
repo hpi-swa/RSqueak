@@ -421,7 +421,13 @@ def entry_point(argv):
     print_error("") # Line break after image-loading characters
 
     # Create context to be executed
-    if cfg.code or cfg.selector:
+    if cfg.shell:
+        from rsqueakvm.util.shell import Shell
+        code = cfg.code
+        cfg = None
+        Shell(interp, space, code=code).run()
+        return 0
+    elif cfg.code or cfg.selector:
         if not cfg.have_number:
             w_receiver = space.w_nil
         else:
@@ -435,14 +441,6 @@ def entry_point(argv):
         else:
             create_process(interp, s_frame)
             context = active_context(space)
-    elif cfg.shell:
-        if objectmodel.we_are_translated():
-            print "Not possible after translation"
-            return -1
-        from rsqueakvm.util.shell import Shell
-        cfg = None
-        Shell(interp, space).run()
-        return 0
     else:
         context = active_context(space)
 
