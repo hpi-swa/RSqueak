@@ -3,7 +3,7 @@ import random
 
 from rsqueakvm import storage_classes, constants, wrapper
 from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod, W_SpurCompiledMethod
-from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.model.pointers import W_PointersObject, W_FixedPointersObject
 from rsqueakvm.model.variable import W_BytesObject
 
 from .util import create_space, copy_to_module, cleanup_module
@@ -60,7 +60,7 @@ def build_smalltalk_class(name, format, w_superclass=None,
                                                w_Metaclass)
     w_methoddict = build_methoddict(methods)
     size = constants.CLASS_NAME_INDEX + 1
-    w_class = W_PointersObject(space, w_classofclass, size)
+    w_class = W_FixedPointersObject(space, w_classofclass, size)
     w_class.store(space, constants.CLASS_SUPERCLASS_INDEX, w_superclass)
     w_class.store(space, constants.CLASS_METHODDICT_INDEX, w_methoddict)
     w_class.store(space, constants.CLASS_FORMAT_INDEX, space.wrap_int(format))

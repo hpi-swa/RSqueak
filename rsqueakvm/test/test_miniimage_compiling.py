@@ -113,10 +113,12 @@ def test_become():
     testBecome
       | p1 p2 a |
       p1 := 1@2.
-      p2 := #(3 4 5).
+      p2 := OrderedCollection new.
+      p2 add: 3; add: 4; add: 5.
       a := p1 -> p2.
       (1@2 = a key)        ifFalse: [^1].
-      (#(3 4 5) = a value) ifFalse: [^2].
+      (#(3 4 5) = a value asArray)
+                           ifFalse: [^2].
       (p1 -> p2 = a)       ifFalse: [^3].
       (p1 == a key)        ifFalse: [^4].
       (p2 == a value)      ifFalse: [^5].

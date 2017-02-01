@@ -235,7 +235,7 @@ def expose_alternative_primitive(code, **kwargs):
 # arguments, an interp and an argument_count
 # completes, and returns a result, or throws a PrimitiveFailedError.
 def make_simulation(code):
-    p_code = jit.promote(code)
+    p_code = code
     @wrap_primitive(clean_stack=False, no_result=True, compiled_method=True)
     def try_simulation(interp, s_frame, argument_count, w_method=None):
         if interp.space.simulate_numeric_primitives.is_set():

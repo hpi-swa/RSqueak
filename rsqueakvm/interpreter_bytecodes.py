@@ -365,7 +365,7 @@ class __extend__(ContextPartShadow):
 
     @objectmodel.specialize.arg(3)
     def _sendSpecialSelector(self, interp, receiver, special_selector, w_args=[]):
-        space = jit.promote(self.space)
+        space = self.space
         w_special_selector = getattr(space, "w_" + special_selector)
         s_class = receiver.class_shadow(space)
 

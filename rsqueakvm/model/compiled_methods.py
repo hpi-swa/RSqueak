@@ -288,7 +288,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         literals = self.literals
         if literals and len(literals) > 0:
             w_literal = literals[-1]
-            if isinstance(w_literal, W_PointersObject) and w_literal.has_space():
+            if isinstance(w_literal, W_PointersObject):
                 space = w_literal.space()  # Not pretty to steal the space from another object.
                 compiledin_class = None
                 if w_literal.is_class(space):
@@ -380,7 +380,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 
     def guess_containing_classname(self):
         w_class = self.compiled_in()
-        if w_class and w_class.has_space():
+        if w_class:
             # Not pretty to steal the space from another object.
             return w_class.as_class_get_shadow(w_class.space()).getname()
         return "? (no compiledin-info)"

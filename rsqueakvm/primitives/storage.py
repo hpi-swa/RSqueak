@@ -82,8 +82,7 @@ def func(interp, s_frame, w_from, w_to):
         raise PrimitiveFailedError
 
     for w_obj in get_instances_array(interp, s_frame, store=False):
-        if w_obj.has_class():
-            w_obj.pointers_become_one_way(space, from_w, to_w)
+        w_obj.pointers_become_one_way(space, from_w, to_w)
     return w_from
 
 @expose_primitive(INST_VAR_AT, unwrap_spec=[object, index1_0])
@@ -142,7 +141,7 @@ def get_instances_array_gc(interp, w_class=None):
             rgc.toggle_gcflag_extra(gcref)
             w_obj = rgc.try_cast_gcref_to_instance(W_Object, gcref)
 
-            if w_obj is not None and w_obj.has_class():
+            if w_obj is not None:
                 w_cls = w_obj.getclass(space)
                 if w_cls is not None:
                     # XXX: should not return SmallFloat64 on Spur64...
@@ -167,17 +166,16 @@ def get_instances_array_trace(interp, w_class, some_instance=False):
         w_obj = pending.pop()
         if w_obj and not seen_w.get(w_obj, False):
             seen_w[w_obj] = True
-            if w_obj.has_class():
-                w_cls = w_obj.getclass(space)
-                if w_cls is not None:
-                    # XXX: should not return SmallFloat64 on Spur64...
-                    if ((not w_cls.is_same_object(space.w_SmallInteger)) and
-                        (not (space.is_spur.is_set() and w_cls.is_same_object(space.w_Character))) and
-                        (w_class is None or w_cls.is_same_object(w_class))):
-                        if some_instance:
-                            return [w_obj]
-                        else:
-                            result_w.append(w_obj)
+            w_cls = w_obj.getclass(space)
+            if w_cls is not None:
+                # XXX: should not return SmallFloat64 on Spur64...
+                if ((not w_cls.is_same_object(space.w_SmallInteger)) and
+                    (not (space.is_spur.is_set() and w_cls.is_same_object(space.w_Character))) and
+                    (w_class is None or w_cls.is_same_object(w_class))):
+                    if some_instance:
+                        return [w_obj]
+                    else:
+                        result_w.append(w_obj)
             pending.extend(_trace_pointers(interp.space, w_obj))
     return result_w
 
