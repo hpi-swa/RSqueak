@@ -6,6 +6,9 @@ from rsqueakvm.plugins.python.model import W_PythonObject
 from rsqueakvm.plugins.python.global_state import py_space
 from rsqueakvm.model.variable import W_BytesObject
 
+from pypy.interpreter.error import OperationError
+from pypy.interpreter.pycode import PyCode
+from pypy.module.__builtin__ import compiling as py_compiling
 from pypy.objspace.std.boolobject import W_BoolObject as WP_BoolObject
 from pypy.objspace.std.bytesobject import W_BytesObject as WP_BytesObject
 from pypy.objspace.std.floatobject import W_FloatObject as WP_FloatObject
@@ -57,6 +60,24 @@ def unwrap(space, w_object):
     # import pdb; pdb.set_trace()
     print 'Cannot unwrap %s' % w_object
     raise PrimitiveFailedError
+
+
+def getPyCode(source, filename, cmd):
+    # source = 'def __dummy__():\n%s\n' % '\n'.join(
+    #     ['    %s' % line for line in source.split('\n')])
+    print 'Trying to patch:\n%s' % source
+    try:
+        py_code = py_compiling.compile(py_space, py_space.wrap(source),
+                                       filename, cmd)
+        assert isinstance(py_code, PyCode)
+        if len(py_code.co_consts_w) == 1:
+            return py_code.co_consts_w[0]
+        else:
+            print "More than 1 const produced: %s" % len(py_code.co_consts_w)
+    except OperationError as e:
+        # import pdb; pdb.set_trace()
+        print 'Failed to compile new frame: %s' % e.errorstr(py_space)
+    return None
 
 
 def call_method(space, wp_rcvr, methodname, args_w):

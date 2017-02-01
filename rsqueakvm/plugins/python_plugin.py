@@ -13,7 +13,7 @@ from rsqueakvm.plugins.python.global_state import (
     py_space, py_globals, py_locals)
 from rsqueakvm.plugins.python.patching import patch_pypy
 from rsqueakvm.plugins.python.utils import (wrap, unwrap, call_function,
-                                            call_method)
+                                            call_method, getPyCode)
 
 from pypy.interpreter.error import OperationError
 from pypy.interpreter.function import (BuiltinFunction, Function, Method,
@@ -136,12 +136,9 @@ def restartFrame(interp, s_frame, w_rcvr):
 
 @PythonPlugin.expose_primitive(unwrap_spec=[object, str, str, str])
 def restartFrameWith(interp, s_frame, w_rcvr, source, filename, cmd):
-    wp_source = py_space.wrap(source)
-    try:
-        py_code = py_compiling.compile(py_space, wp_source, filename, cmd)
-    except Exception as e:
-        print 'Failed to compile new frame: %s' % e
-        raise PrimitiveFailedError
+    py_code = getPyCode(source, filename, cmd)
+    if py_code is None:
+        return interp.space.w_false  # Raising prim error causes crashes
     global_state.py_frame_restart_info.set(
         global_state.PyFrameRestartInfo(code=py_code))
     return interp.space.w_true
@@ -150,17 +147,14 @@ def restartFrameWith(interp, s_frame, w_rcvr, source, filename, cmd):
 @PythonPlugin.expose_primitive(unwrap_spec=[object, object, str, str, str])
 def restartSpecificFrame(interp, s_frame, w_rcvr, w_frame, source, filename,
                          cmd):
-    py_code = None
-    if source:
-        wp_source = py_space.wrap(source)
-        try:
-            py_code = py_compiling.compile(py_space, wp_source, filename, cmd)
-        except Exception as e:
-            print 'Failed to compile new frame: %s' % e
-            raise PrimitiveFailedError
     frame = None
     if isinstance(w_frame, model.W_PythonObject):
         frame = w_frame.wp_object
+    py_code = None
+    if source:
+        py_code = getPyCode(source, filename, cmd)
+        if py_code is None:
+            return interp.space.w_false  # Raising prim error causes crashes
     global_state.py_frame_restart_info.set(
         global_state.PyFrameRestartInfo(frame=frame, code=py_code))
     return interp.space.w_true
