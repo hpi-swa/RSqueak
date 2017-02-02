@@ -1,4 +1,7 @@
-import readline
+try:
+    import readline
+except ImportError:
+    pass # Win32
 import re
 import sys
 import os
