@@ -1,5 +1,5 @@
 overrides
 contextForStack: aContext
-	(aContext method literalAt: 3) = #primResume
+	aContext method selector = #resumeFrame
 		ifFalse: [ ^ aContext ]. "Normal MethodContext"
-	^ self appendPythonContexts: aContext
+	^ self class appendPythonContexts: aContext

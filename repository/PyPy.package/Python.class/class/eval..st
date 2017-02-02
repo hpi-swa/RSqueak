@@ -1,4 +1,6 @@
 helpers
 eval: aString
-	[ ^ self primEval: aString cmd: 'eval' ] on: Error
+	| filename |
+	filename := self persistPyCode: aString.
+	[ ^ self primEval: aString filename: filename cmd: 'eval' ] on: Error
 		do: [ self error: 'Failed to eval: ''', aString, '''' ]

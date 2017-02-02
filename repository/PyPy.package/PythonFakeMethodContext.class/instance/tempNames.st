@@ -4,4 +4,4 @@ tempNames
 	 variables, which are strings."
 
 	self pyFrame ifNil: [^ #()].
-	^ self pyFrame f_globals keys
+	^ self pyFrame f_locals keys

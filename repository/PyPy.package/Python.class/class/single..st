@@ -1,3 +1,3 @@
 helpers
 single: aString
-	^ self primEval: aString cmd: 'single'
+	^ self primEval: aString filename: '<string>' cmd: 'single'

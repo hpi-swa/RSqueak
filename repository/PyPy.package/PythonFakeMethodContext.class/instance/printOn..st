@@ -2,8 +2,12 @@ as yet unclassified
 printOn: aStream
 	self pyFrame
 		ifNil: [  aStream nextPutAll: 'Unknown pyFrame' ]
-		ifNotNil: [ | lineno name |
+		ifNotNil: [ | line lineno filename currentPath |
+			line := PythonDebugger getSignature: pyFrame f_code.
 			lineno := pyFrame f_lineno.
-			name := pyFrame f_code co_filename.
-			aStream nextPutAll: lineno asString, ' @ ',  name ].
+			filename := pyFrame f_code co_filename.
+			currentPath := FileDirectory default pathName.
+			(filename startsWith: currentPath) ifTrue: [
+				filename := filename allButFirst: currentPath size + 1].
+			aStream nextPutAll: line, ' (line ' , lineno asString, ' in ', filename, ')' ].
 	
