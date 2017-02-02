@@ -13,19 +13,25 @@ if [[ -n "$PLUGINS" ]]; then
   plugins_suffix="-${PLUGINS}"
 fi
 
+if [ "$TRAVIS_BRANCH" == "master" ]; then
+    JITTESTS_FAIL=false
+else
+    JITTESTS_FAIL=true
+fi
+
 case "$BUILD_ARCH" in
   32bit)
     python .build/build.py --batch --32bit -- $plugins
     exitcode=$?
     cp rsqueak rsqueak-x86-${UNAME}$plugins_suffix-jit-$TRAVIS_COMMIT || true
-    # python .build/jittests.py --32bit
+    python .build/jittests.py --32bit || $JITTESTS_FAIL
     $EX rm -rf .build/pypy/rpython/_cache
     ;;
   64bit)
     python .build/build.py --batch --64bit -- $plugins
     exitcode=$?
     cp rsqueak rsqueak-x86_64-${UNAME}$plugins_suffix-jit-$TRAVIS_COMMIT || true
-    # python .build/jittests.py --64bit
+    python .build/jittests.py --64bit || $JITTESTS_FAIL
     $EX rm -rf .build/pypy/rpython/_cache
     ;;
   lldebug)
