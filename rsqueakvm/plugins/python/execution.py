@@ -1,6 +1,5 @@
 from rsqueakvm.model.compiled_methods import (
     W_SpurCompiledMethod, W_PreSpurCompiledMethod)
-from rsqueakvm.plugins.python.constants import PYTHON_BYTECODES_THRESHOLD
 from rsqueakvm.plugins.python import global_state as gs
 
 from rpython.rlib.rstacklet import StackletThread
@@ -145,7 +144,7 @@ class GreenletLanguageRunner(AbstractLanguageRunner):
 def switch_to_smalltalk(interp, s_frame, first_call=False):
     from rsqueakvm.storage_contexts import ContextPartShadow
 
-    print 'Switch to Smalltalk'
+    # print 'Switch to Smalltalk'
     wp_result = gs.wp_result.get()
     if wp_result is not None:
         return _handle_result(interp.space, wp_result)
@@ -165,7 +164,7 @@ def switch_to_smalltalk(interp, s_frame, first_call=False):
         assert s_frame.w_method() is resume_method
         s_resume_frame.store_s_sender(s_frame.s_sender())
     interp.quick_check_for_interrupt(s_resume_frame,
-                                     dec=PYTHON_BYTECODES_THRESHOLD)
+                                     dec=interp.interrupt_counter_size)
     # this will raise a ProcessSwitch if there are interrupts or timers ...
     return s_resume_frame
 

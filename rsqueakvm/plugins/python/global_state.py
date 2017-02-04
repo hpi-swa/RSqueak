@@ -4,8 +4,19 @@ from rsqueakvm.plugins.python.py_objspace import new_pypy_objspace
 from rsqueakvm.util.cells import QuasiConstant, Cell
 
 from pypy.interpreter.baseobjspace import W_Root as WP_Root
+from pypy.interpreter.error import OperationError
+from pypy.interpreter.executioncontext import PeriodicAsyncAction
 
 from rpython.rlib import objectmodel
+
+
+class RestartException(OperationError):
+    def __init__(self, py_frame_restart_info):
+        self.py_frame_restart_info = py_frame_restart_info
+
+    def _compute_value(self, space):
+        print '_compute_value called in RestartException'
+        return None
 
 
 class PyFrameRestartInfo():
@@ -14,7 +25,26 @@ class PyFrameRestartInfo():
         self.pycode = code
 
 
+class SwitchToSmalltalkAction(PeriodicAsyncAction):
+    def perform(self, ec=None, frame=None):
+        # import pdb; pdb.set_trace()
+        runner = py_runner.get()
+        if runner:
+            # print 'Python yield'
+            runner.return_to_smalltalk()
+            # print 'Python continue'
+        # Handle py_frame_restart_info if set
+        restart_info = py_frame_restart_info.get()
+        if restart_info:
+            py_frame_restart_info.set(None)
+            # import pdb; pdb.set_trace()
+            raise RestartException(restart_info)
+
+
 py_space = new_pypy_objspace()
+switch_action = SwitchToSmalltalkAction(py_space)
+py_space.actionflag.register_periodic_action(switch_action,
+                                             use_bytecode_counter=True)
 py_globals = py_space.newdict()
 py_locals = py_space.newdict()
 py_frame_restart_info = Cell(None, type=PyFrameRestartInfo)

@@ -78,7 +78,7 @@ def evalInThread(interp, s_frame, w_rcvr, source, filename, cmd):
 @PythonPlugin.expose_primitive(unwrap_spec=[object], result_is_new_frame=True)
 def resumePython(interp, s_frame, w_rcvr):
     from rsqueakvm.plugins.python import execution
-    print 'Smalltalk yield'
+    # print 'Smalltalk yield'
     # import pdb; pdb.set_trace()
     if not execution.resume_thread():
         raise PrimitiveFailedError
