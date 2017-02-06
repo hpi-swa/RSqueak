@@ -14,15 +14,15 @@ def __init__frame(self, space, code, w_globals, outer_func):
 
 
 def new_execute_frame(self, w_inputvalue=None, operr=None):
-    while True:
-        try:
-            return old_execute_frame(self, w_inputvalue, operr)
-        except gs.RestartException as e:
-            # import pdb; pdb.set_trace()
-            frame = e.py_frame_restart_info.frame
-            if frame is not None and frame is not self:
-                raise gs.RestartException(e.py_frame_restart_info)
-            self.reset(e.py_frame_restart_info.pycode)
+    try:
+        return old_execute_frame(self, w_inputvalue, operr)
+    except gs.RestartException as e:
+        # import pdb; pdb.set_trace()
+        frame = e.py_frame_restart_info.frame
+        if frame is not None and frame is not self:
+            raise gs.RestartException(e.py_frame_restart_info)
+        self.reset(e.py_frame_restart_info.pycode)
+        return new_execute_frame(self, w_inputvalue, operr)
 
 
 def new_handle_operation_error(self, ec, operr, attach_tb=True):
