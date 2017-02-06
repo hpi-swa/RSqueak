@@ -1,9 +1,9 @@
 import os
 
 from rsqueakvm.plugins.plugin import Plugin
-from rsqueakvm.util.system import IS_WINDOWS
+from rsqueakvm.util.system import IS_WINDOWS, IS_SPHINX
 
-if not IS_WINDOWS:
+if not IS_WINDOWS and not IS_SPHINX:
     raise LookupError
 
 
