@@ -160,17 +160,6 @@ def restartSpecificFrame(interp, s_frame, w_rcvr, w_frame, source, filename,
     return interp.space.w_true
 
 
-@PythonPlugin.expose_primitive(unwrap_spec=[object, str])
-def getGlobal(interp, s_frame, w_rcvr, key):
-    # import pdb; pdb.set_trace()
-    return wrap(interp.space, py_globals.getitem(py_space.wrap(key)))
-
-
-@PythonPlugin.expose_primitive(unwrap_spec=[object, str])
-def getLocal(interp, s_frame, w_rcvr, key):
-    return wrap(interp.space, py_locals.getitem(py_space.wrap(key)))
-
-
 @PythonPlugin.expose_primitive(compiled_method=True)
 @jit.unroll_safe
 def send(interp, s_frame, argcount, w_method):
