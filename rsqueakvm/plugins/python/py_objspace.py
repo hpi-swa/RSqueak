@@ -15,11 +15,6 @@ def new_pypy_objspace():
     translating = sys.argv[0] != '.build/run.py'  # make better
     pypy_config = get_pypy_config(translating=translating)
 
-    from pypy.config.pypyoption import enable_allworkingmodules
-    enable_allworkingmodules(pypy_config)
-    from pypy.config.pypyoption import enable_translationmodules
-    enable_translationmodules(pypy_config)
-
     # disable dispensable modules (to save compile time)
     pypy_config.objspace.usemodules.micronumpy = False
     pypy_config.objspace.usemodules.cppyy = False
@@ -29,6 +24,11 @@ def new_pypy_objspace():
 
     # disabling cffi backend for now, it also causes an undefined symbol error
     pypy_config.objspace.usemodules._cffi_backend = False
+
+    from pypy.config.pypyoption import enable_allworkingmodules
+    enable_allworkingmodules(pypy_config)
+    from pypy.config.pypyoption import enable_translationmodules
+    enable_translationmodules(pypy_config)
 
     # pypy_config.translation.check_str_without_nul = True
 
