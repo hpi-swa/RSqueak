@@ -11,7 +11,7 @@ def new_pypy_objspace():
     # if 'pypy_getudir' not in Module.interpleveldefs:
     #     Module.interpleveldefs['pypy_getudir'] = 'foo'
 
-    from pypy.config.pypyoption import get_pypy_config
+    from pypy.config.pypyoption import get_pypy_config, set_pypy_opt_level
     translating = sys.argv[0] != '.build/run.py'  # make better
     pypy_config = get_pypy_config(translating=translating)
 
@@ -41,6 +41,9 @@ def new_pypy_objspace():
 
     # Enable immutable (and fast) module.Module
     pypy_config.objspace.std.suggest(withcelldict=True)
+
+    # Enable more optimizations for PyPy's jit
+    set_pypy_opt_level(pypy_config, 'jit')
 
     # Copy over some options that should be the same in both configs
     pypy_config.translation.make_jobs = system.translationconfig.make_jobs
