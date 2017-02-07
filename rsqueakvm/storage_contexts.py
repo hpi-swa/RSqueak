@@ -495,8 +495,8 @@ class ContextPartShadow(AbstractStrategy):
         assert index0 >= 0, "trying to stack_put at negative index"
         self._temps_and_stack[index0] = w_val
 
+    @objectmodel.not_rpython # this is only for testing.
     def stack(self):
-        """NOT_RPYTHON""" # purely for testing
         return self._temps_and_stack[self.tempsize():self.stack_ptr()]
 
     def pop(self):
