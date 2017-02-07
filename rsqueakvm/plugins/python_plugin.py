@@ -9,16 +9,14 @@ from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.plugins.plugin import Plugin, PluginStartupScripts
 from rsqueakvm.plugins.python import model, global_state
-from rsqueakvm.plugins.python.global_state import (
-    py_space, py_globals, py_locals)
+from rsqueakvm.plugins.python.global_state import py_space
 from rsqueakvm.plugins.python.patching import patch_pypy
-from rsqueakvm.plugins.python.utils import (wrap, unwrap, call_function,
-                                            call_method, getPyCode)
+from rsqueakvm.plugins.python.utils import (
+    wrap, unwrap, call_function, call_method, getPyCode, _run_eval_string)
 
 from pypy.interpreter.error import OperationError
 from pypy.interpreter.function import (BuiltinFunction, Function, Method,
                                        StaticMethod, ClassMethod)
-from pypy.module.__builtin__ import compiling as py_compiling
 from pypy.objspace.std.typeobject import W_TypeObject as WP_TypeObject
 
 from rpython.rlib import jit, objectmodel
@@ -47,9 +45,7 @@ PluginStartupScripts.append(startup)
 def eval(interp, s_frame, w_rcvr, source, filename, cmd):
     try:
         # import pdb; pdb.set_trace()
-        wp_source = py_space.wrap(source)
-        py_code = py_compiling.compile(py_space, wp_source, filename, cmd)
-        retval = py_code.exec_code(py_space, py_globals, py_locals)
+        retval = _run_eval_string(source, filename, cmd)
         return wrap(interp.space, retval)
     except OperationError as operationerr:
         print operationerr.errorstr(py_space)

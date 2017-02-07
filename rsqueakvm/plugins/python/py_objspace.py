@@ -35,6 +35,9 @@ def new_pypy_objspace():
 
     pypy_config.objspace.usemodules.pyexpat = False
 
+    # Enable immutable (and fast) module.Module
+    pypy_config.objspace.std.suggest(withcelldict=True)
+
     # Copy over some options that should be the same in both configs
     pypy_config.translation.make_jobs = system.translationconfig.make_jobs
     if system.translationconfig.output is not None:
@@ -66,4 +69,5 @@ def new_pypy_objspace():
     # Set sys.executable in PyPy -- some modules rely upon this existing.
     py_space.setattr(w_sys, py_space.wrap("executable"),
                      py_space.wrap(os.path.abspath(sys.argv[0])))
+
     return py_space

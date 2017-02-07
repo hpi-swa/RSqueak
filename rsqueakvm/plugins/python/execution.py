@@ -1,12 +1,12 @@
 from rsqueakvm.model.compiled_methods import (
     W_SpurCompiledMethod, W_PreSpurCompiledMethod)
 from rsqueakvm.plugins.python import global_state as gs
+from rsqueakvm.plugins.python.utils import _run_eval_string
 
 from rpython.rlib.rstacklet import StackletThread
 from rpython.rlib import objectmodel
 
 from pypy.interpreter.error import OperationError
-from pypy.module.__builtin__ import compiling as py_compiling
 
 
 def start_new_thread(source, filename, cmd, translated):
@@ -47,12 +47,8 @@ class PythonLanguage(ForeignLanguage):
             # ensure py_space has a fresh exectioncontext
             gs.py_space.threadlocals.enter_thread(gs.py_space)
 
-            wp_source = gs.py_space.wrap(self.source)
-            py_code = py_compiling.compile(gs.py_space, wp_source,
-                                           self.filename, self.cmd)
-            result = py_code.exec_code(gs.py_space, gs.py_globals,
-                                       gs.py_locals)
-            self.save_result(result)
+            retval = _run_eval_string(self.source, self.filename, self.cmd)
+            self.save_result(retval)
         except OperationError as e:
             print e.errorstr(gs.py_space)
             self.handle_error(e.get_w_value(gs.py_space))

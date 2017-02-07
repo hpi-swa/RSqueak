@@ -1,5 +1,3 @@
-import os
-
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger
 from rsqueakvm.plugins.python.model import W_PythonObject
@@ -7,17 +5,39 @@ from rsqueakvm.plugins.python.global_state import py_space
 from rsqueakvm.model.variable import W_BytesObject
 
 from pypy.interpreter.error import OperationError
+from pypy.interpreter.main import compilecode, ensure__main__
+from pypy.interpreter.module import Module
 from pypy.interpreter.pycode import PyCode
 from pypy.module.__builtin__ import compiling as py_compiling
-from pypy.objspace.std.boolobject import W_BoolObject as WP_BoolObject
 from pypy.objspace.std.bytesobject import W_BytesObject as WP_BytesObject
 from pypy.objspace.std.floatobject import W_FloatObject as WP_FloatObject
 from pypy.objspace.std.intobject import W_IntObject as WP_IntObject
 from pypy.objspace.std.listobject import W_ListObject as WP_ListObject
-from pypy.objspace.std.noneobject import W_NoneObject as WP_NoneObject
 from pypy.objspace.std.tupleobject import W_TupleObject as WP_TupleObject
 
 from rpython.rlib import objectmodel
+
+
+def _run_eval_string(source, filename, cmd):
+    # Adopted from PyPy's main.py
+    try:
+        w = py_space.wrap
+
+        pycode = compilecode(py_space, w(source), filename or '<string>', cmd)
+
+        mainmodule = ensure__main__(py_space)
+        assert isinstance(mainmodule, Module)
+        w_globals = mainmodule.w_dict
+
+        py_space.setitem(w_globals, w('__builtins__'), py_space.builtin)
+        if filename is not None:
+            py_space.setitem(w_globals, w('__file__'), w(filename))
+
+        return pycode.exec_code(py_space, w_globals, w_globals)
+
+    except OperationError as operationerr:
+        operationerr.record_interpreter_traceback()
+        raise
 
 
 @objectmodel.specialize.argtype(0)
@@ -135,13 +155,3 @@ def call_function(space, wp_func, args_w):
         return wrap(space, py_space.call_function(wp_func,
                                                   arg1, arg2, arg3, arg4))
     return wrap(space, py_space.call_function(wp_func))
-
-
-def rdirname(path):
-    splitpaths = path.split(os.sep)
-    splitlen = len(splitpaths)
-    if splitlen >= 2:
-        splitlen = splitlen - 1
-        assert splitlen >= 0
-        return os.sep.join(splitpaths[0:splitlen])
-    return path

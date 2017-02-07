@@ -45,8 +45,6 @@ py_space = new_pypy_objspace()
 switch_action = SwitchToSmalltalkAction(py_space)
 py_space.actionflag.register_periodic_action(switch_action,
                                              use_bytecode_counter=True)
-py_globals = py_space.newdict()
-py_locals = py_space.newdict()
 py_frame_restart_info = Cell(None, type=PyFrameRestartInfo)
 
 wp_result = Cell(None, type=WP_Root)
