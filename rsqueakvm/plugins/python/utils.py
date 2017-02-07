@@ -33,13 +33,13 @@ def wrap(space, wp_object):
     elif isinstance(wp_object, WP_TupleObject):
         return space.wrap_list(
             [wrap(space, item) for item in wp_object.tolist()])
-    elif wp_object is None or isinstance(wp_object, WP_NoneObject):
+    elif wp_object is None or wp_object is py_space.w_None:
         return space.w_nil
     elif isinstance(wp_object, WP_IntObject):
         # WP_BoolObject inherits from WP_IntObject
-        if wp_object is WP_BoolObject.w_False:
+        if wp_object is py_space.w_False:
             return space.w_false
-        elif wp_object is WP_BoolObject.w_True:
+        elif wp_object is py_space.w_True:
             return space.w_true
         return space.wrap_int(py_space.int_w(wp_object))
     else:
@@ -50,6 +50,12 @@ def wrap(space, wp_object):
 def unwrap(space, w_object):
     if isinstance(w_object, W_PythonObject):
         return w_object.wp_object
+    elif w_object is None or w_object is space.w_nil:
+        return py_space.w_None
+    elif w_object is space.w_true:
+        return py_space.w_True
+    elif w_object is space.w_false:
+        return py_space.w_False
     elif isinstance(w_object, W_Float):
         return py_space.newfloat(space.unwrap_float(w_object))
     elif isinstance(w_object, W_SmallInteger):
