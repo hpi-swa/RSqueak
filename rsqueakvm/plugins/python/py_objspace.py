@@ -15,25 +15,29 @@ def new_pypy_objspace():
     translating = sys.argv[0] != '.build/run.py'  # make better
     pypy_config = get_pypy_config(translating=translating)
 
+    from pypy.config.pypyoption import enable_allworkingmodules
+    enable_allworkingmodules(pypy_config)
+    from pypy.config.pypyoption import enable_translationmodules
+    enable_translationmodules(pypy_config)
+
+    # disable dispensable modules (to save compile time)
+    pypy_config.objspace.usemodules.micronumpy = False
+    pypy_config.objspace.usemodules.cppyy = False
+
     # cpyext causes a lot of "Undefined symbols for architecture x86_64" errors
     pypy_config.objspace.usemodules.cpyext = False
 
     # disabling cffi backend for now, it also causes an undefined symbol error
     pypy_config.objspace.usemodules._cffi_backend = False
 
-    from pypy.config.pypyoption import enable_allworkingmodules
-    from pypy.config.pypyoption import enable_translationmodules
-    enable_allworkingmodules(pypy_config)
-    enable_translationmodules(pypy_config)
-
     # pypy_config.translation.check_str_without_nul = True
 
     # ensures pypy_hooks has a .space
     pypy_config.objspace.usemodules.pypyjit = True
 
+    # rstacklets are required
     pypy_config.translation.continuation = True
-
-    pypy_config.objspace.usemodules.pyexpat = False
+    pypy_config.objspace.usemodules._continuation = True
 
     # Enable immutable (and fast) module.Module
     pypy_config.objspace.std.suggest(withcelldict=True)
