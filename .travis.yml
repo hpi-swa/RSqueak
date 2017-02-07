@@ -20,7 +20,7 @@ env:
     - PATH=$PATH:$HOME/SDL2/bin
     - LIBRARY_PATH=$LIBRARY_PATH:$HOME/SDL2/lib
     - C_INCLUDE_PATH=$C_INCLUDE_PATH:$HOME/SDL2/include
-  # matrix:
+  matrix:
     # - BUILD_ARCH=32bit TEST_TYPE=default
     # - BUILD_ARCH=32bit
     # - BUILD_ARCH=32bit TEST_TYPE=coverage
@@ -32,7 +32,7 @@ env:
     # - BUILD_ARCH=armv8-a
     # - BUILD_ARCH=64bit PLUGINS=DatabasePlugin
     # - BUILD_ARCH=64bit PLUGINS=RubyPlugin
-    # - BUILD_ARCH=64bit PLUGINS=PythonPlugin
+    - BUILD_ARCH=64bit PLUGINS=PythonPlugin
 matrix:
   include:
     # - os: osx
