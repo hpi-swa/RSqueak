@@ -15,8 +15,8 @@ WRITE_OPERATIONS = [
     # W_PointersObject
     'pointers_become_one_way',
     # W_BytesObject / W_WordsObject
-    'setchar', 'short_atput0', 'setwords', 'convert_to_bytes_layout',
-    'setbytes', 'mutate'
+    'setchar', 'short_atput0', 'setword', 'setwords',
+    'convert_to_bytes_layout', 'setbytes', 'mutate'
 ]
 
 
