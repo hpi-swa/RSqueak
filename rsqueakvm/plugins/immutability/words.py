@@ -4,8 +4,6 @@ from rsqueakvm.model.base import W_AbstractObjectWithClassReference
 from rsqueakvm.model.variable import W_WordsObject
 from rsqueakvm.plugins.immutability import immutable_class
 
-from rpython.rlib import jit
-
 
 @immutable_class
 class W_Immutable_WordsObject(W_WordsObject):
@@ -23,7 +21,6 @@ class W_Immutable_WordsObject(W_WordsObject):
         W_AbstractObjectWithClassReference.__init__(self, space, w_cls)
         self.immutable_words = words
 
-    @jit.elidable
     def _words(self):
         """
         `W_WordsObject._words(self)` override.

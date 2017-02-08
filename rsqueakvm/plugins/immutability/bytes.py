@@ -4,8 +4,6 @@ from rsqueakvm.model.base import W_AbstractObjectWithClassReference
 from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.plugins.immutability import immutable_class
 
-from rpython.rlib import jit
-
 
 @immutable_class
 class W_Immutable_BytesObject(W_BytesObject):
@@ -23,7 +21,6 @@ class W_Immutable_BytesObject(W_BytesObject):
         W_AbstractObjectWithClassReference.__init__(self, space, w_cls)
         self.immutable_bytes = bytes
 
-    @jit.elidable
     def _bytes(self):
         """
         `W_BytesObject._bytes(self)` override.
