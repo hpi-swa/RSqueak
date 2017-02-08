@@ -40,6 +40,7 @@ def new_pypy_objspace():
     # rstacklets are required
     pypy_config.translation.continuation = True
     pypy_config.objspace.usemodules._continuation = True
+    pypy_config.objspace.usemodules.thread = True
 
     # Enable immutable (and fast) module.Module
     pypy_config.objspace.std.suggest(withcelldict=True)
