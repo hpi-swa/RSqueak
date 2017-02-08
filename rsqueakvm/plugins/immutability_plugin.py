@@ -1,6 +1,7 @@
 """
-Documentation goes here.
-
+This plug-in implements immutable objects.\n
+Immutable objects can be created as copy of existing objects
+or from a list of arguments.
 """
 
 from rsqueakvm.error import PrimitiveFailedError
