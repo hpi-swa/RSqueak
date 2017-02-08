@@ -15,9 +15,9 @@ from rpython.rlib import objectmodel
 
 
 class W_PythonObject(W_PointersObject):
-    _attrs_ = ["wp_object", "s_class"]
-    _immutable_fields_ = ["wp_object", "s_class?"]
-    repr_classname = "W_PythonObject"
+    _attrs_ = ['wp_object', 's_class']
+    _immutable_fields_ = ['wp_object', 's_class?']
+    repr_classname = 'W_PythonObject'
 
     def __init__(self, wp_object):
         W_AbstractObjectWithIdentityHash.__init__(self)
@@ -60,8 +60,8 @@ class W_PythonObject(W_PointersObject):
 
 
 class PythonClassShadow(ClassShadow):
-    _attrs_ = ["wp_object", "wp_class"]
-    _immutable_fields_ = ["wp_class"]
+    _attrs_ = ['wp_object', 'wp_class']
+    _immutable_fields_ = ['wp_class']
 
     def __init__(self, space, wp_object, wp_class):
         assert isinstance(wp_class, WP_Root)
@@ -85,7 +85,7 @@ class PythonClassShadow(ClassShadow):
     def make_method(self, w_selector):
         # import pdb; pdb.set_trace()
         methodname = self.space.unwrap_string(w_selector)
-        idx = methodname.find(":")
+        idx = methodname.find(':')
         if idx > 0:
             methodname = methodname[0:idx]
 

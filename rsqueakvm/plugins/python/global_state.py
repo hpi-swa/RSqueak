@@ -62,15 +62,15 @@ translating = [True]
 
 def startup(space):
     w_python_plugin_send.set(space.wrap_list_unroll_safe([
-        space.wrap_string("PythonPlugin"),
-        space.wrap_string("send")
+        space.wrap_string('PythonPlugin'),
+        space.wrap_string('send')
     ]))
-    python_class = space.smalltalk_at("Python")
+    python_class = space.smalltalk_at('Python')
     w_python_class.set(
         python_class or space.w_nil.getclass(space)
     )
     w_python_object_class.set(
-        space.smalltalk_at("PythonObject") or space.w_nil.getclass(space)
+        space.smalltalk_at('PythonObject') or space.w_nil.getclass(space)
     )
     resume_method_symbol = space.wrap_symbol('resumeFrame')
     python_cls_cls_s = python_class.getclass(space).as_class_get_shadow(space)

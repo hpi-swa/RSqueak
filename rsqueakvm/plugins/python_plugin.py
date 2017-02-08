@@ -1,5 +1,5 @@
 from rsqueakvm.util import system
-if "PythonPlugin" not in system.optional_plugins:
+if 'PythonPlugin' not in system.optional_plugins:
     raise LookupError
 else:
     system.translationconfig.set(thread=True)
@@ -167,7 +167,7 @@ def send(interp, s_frame, argcount, w_method):
     w_selector_name = w_method.literalat0(space, 2)
     assert isinstance(w_selector_name, W_BytesObject)
     methodname = space.unwrap_string(w_selector_name)
-    idx = methodname.find(":")
+    idx = methodname.find(':')
     if idx > 0:
         methodname = methodname[0:idx]
     w_result = None
@@ -218,7 +218,7 @@ def send(interp, s_frame, argcount, w_method):
         print 'Unable to call %s on %s: %s' % (methodname, wp_rcvr, e)
         return space.w_nil
     if w_result is None:
-        print "Result failure in send primitive (type: %s, methodname: %s)" % (
+        print 'Result failure in send primitive (type: %s, methodname: %s)' % (
             py_space.type(wp_rcvr), methodname)
         return space.w_nil
     s_frame.pop_n(argcount + 1)

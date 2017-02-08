@@ -29,10 +29,10 @@ def new_execute_frame(self, w_inputvalue=None, operr=None):
 
 def new_handle_operation_error(self, ec, operr, attach_tb=True):
     if isinstance(operr, gs.RestartException):
-        print "Re-raising RestartException"
+        print 'Re-raising RestartException'
         raise operr
     gs.wp_error.set(operr.get_w_value(gs.py_space))
-    print "Python error caught"
+    print 'Python error caught'
     # import pdb; pdb.set_trace()
     gs.switch_action.perform()
     return old_handle_operation_error(self, ec, operr, attach_tb)
@@ -42,8 +42,8 @@ def patch_pypy():
     # Patch-out virtualizables from Pypy so that translation works
     try:
         # TODO: what if first delattr fails?
-        delattr(PyFrame, "_virtualizable_")
-        delattr(PyPyJitDriver, "virtualizables")
+        delattr(PyFrame, '_virtualizable_')
+        delattr(PyPyJitDriver, 'virtualizables')
     except AttributeError:
         pass
 

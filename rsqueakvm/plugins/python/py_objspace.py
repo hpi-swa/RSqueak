@@ -19,7 +19,7 @@ def new_pypy_objspace():
     pypy_config.objspace.usemodules.micronumpy = False
     pypy_config.objspace.usemodules.cppyy = False
 
-    # cpyext causes a lot of "Undefined symbols for architecture x86_64" errors
+    # cpyext causes a lot of 'Undefined symbols for architecture x86_64' errors
     pypy_config.objspace.usemodules.cpyext = False
 
     # disabling cffi backend for now, it also causes an undefined symbol error
@@ -50,7 +50,7 @@ def new_pypy_objspace():
     if system.translationconfig.output is not None:
         pypy_config.translation.output = system.translationconfig.output
 
-    # merge_configs(config, pypy_config, "RSqueak", "PyPy")
+    # merge_configs(config, pypy_config, 'RSqueak', 'PyPy')
 
     # PyPy needs threads
     pypy_config.translation.thread = True
@@ -63,18 +63,18 @@ def new_pypy_objspace():
 
     # equivalent to the hack in app_main.py of PyPy, albiet interp-level.
     w_sys = py_space.sys
-    w_modnames = w_sys.get("builtin_module_names")
-    w_in = py_space.contains(w_modnames, py_space.wrap("__pypy__"))
+    w_modnames = w_sys.get('builtin_module_names')
+    w_in = py_space.contains(w_modnames, py_space.wrap('__pypy__'))
     if not py_space.is_true(w_in):
-        rl = py_space.sys.get("setrecursionlimit")
+        rl = py_space.sys.get('setrecursionlimit')
         py_space.call(rl, py_space.newlist([py_space.wrap(5000)]))
 
     # Should always be able to import Python modules in CWD.
-    w_sys_path = py_space.getattr(w_sys, py_space.wrap("path"))
-    py_space.call_method(w_sys_path, 'append', py_space.wrap("."))
+    w_sys_path = py_space.getattr(w_sys, py_space.wrap('path'))
+    py_space.call_method(w_sys_path, 'append', py_space.wrap('.'))
 
     # Set sys.executable in PyPy -- some modules rely upon this existing.
-    py_space.setattr(w_sys, py_space.wrap("executable"),
+    py_space.setattr(w_sys, py_space.wrap('executable'),
                      py_space.wrap(os.path.abspath(sys.argv[0])))
 
     return py_space
