@@ -28,8 +28,7 @@ def primitiveIsImmutable(interp, s_frame, w_recv):
     :param interp: The interpreter proxy.
     :param s_frame: The stack frame.
     :param w_recv: The receiver object.
-    :returns: Return w_true if w_recv is immutable object. Returns w_false otherwise.
-    :raises: *nothing*
+    :returns: w_true if w_recv is immutable object, otherwise w_false.
     """
     if w_recv.is_immutable():
         return interp.space.w_true

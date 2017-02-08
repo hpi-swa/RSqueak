@@ -1,3 +1,5 @@
+"""Immutable W_PointersObject Implementation."""
+
 from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.storage_classes import ClassShadow

@@ -1,3 +1,5 @@
+"""Utility functions for ImmutabilityPlugin."""
+
 from rsqueakvm.model.base import W_Object
 
 WRITE_OPERATIONS = [
@@ -14,11 +16,11 @@ WRITE_OPERATIONS = [
 
 def immutable_class(cls):
     """
-    This function does something.
+    This function decorates classes, so that `is_immutable` returns `True` and
+    all `WRITE_OPERATIONS` are implemented as NoOps.
 
-    :param cls: The class.
-    :returns:  int -- the return code.
-    :raises: AttributeError, KeyError
+    :param cls: The target class.
+    :returns:  The decorated class.
 
     """
     def is_immutable(self):
@@ -34,6 +36,7 @@ def immutable_class(cls):
 
 
 def patch_w_object():
+    """Add `W_Object.is_immutable` which by default returns `False`."""
     def is_immutable(self):
         return False
     W_Object.is_immutable = is_immutable
