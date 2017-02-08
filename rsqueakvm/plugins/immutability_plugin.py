@@ -77,18 +77,19 @@ def primitiveImmutableFromArgs(interp, s_frame, argcount):
     """
     if argcount == 0:
         raise PrimitiveFailedError
-    w_arguments = s_frame.pop_and_return_n(argcount)[:]
-    w_first_arg = w_arguments[0]
+    w_args = s_frame.pop_and_return_n(argcount)[:]
     w_cls = s_frame.pop()
     space = interp.space
     instance_kind = w_cls.as_class_get_shadow(space).get_instance_kind()
 
     if instance_kind == POINTERS:
-        cls = select_immutable_pointers_class(w_arguments)
-        return cls(space, w_cls, w_arguments)
-    elif instance_kind == BYTES and isinstance(w_first_arg, W_BytesObject):
-        return W_Immutable_BytesObject(space, w_cls, w_first_arg.bytes)
-    elif instance_kind == WORDS and isinstance(w_first_arg, W_WordsObject):
-        return W_Immutable_WordsObject(space, w_cls, w_first_arg.words)
+        cls = select_immutable_pointers_class(w_args)
+        return cls(space, w_cls, w_args)
+    elif (instance_kind == BYTES and
+          len(w_args) == 1 and isinstance(w_args[0], W_BytesObject)):
+        return W_Immutable_BytesObject(space, w_cls, w_args[0].bytes)
+    elif (instance_kind == WORDS and
+          len(w_args) == 1 and isinstance(w_args[0], W_WordsObject)):
+        return W_Immutable_WordsObject(space, w_cls, w_args[0].words)
 
     raise PrimitiveFailedError
