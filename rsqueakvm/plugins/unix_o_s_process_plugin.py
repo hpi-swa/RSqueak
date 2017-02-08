@@ -3,9 +3,9 @@ import os
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.primitives import index1_0
-from rsqueakvm.util.system import IS_WINDOWS
+from rsqueakvm.util.system import IS_WINDOWS, IS_SPHINX
 
-if IS_WINDOWS:
+if IS_WINDOWS and not IS_SPHINX:
     raise LookupError
 
 UnixOSProcessPlugin = Plugin()
