@@ -28,6 +28,14 @@ rsqueakvm.plugins.file_plugin module
     :undoc-members:
     :show-inheritance:
 
+rsqueakvm.plugins.immutability_plugin module
+--------------------------------------------
+
+.. automodule:: rsqueakvm.plugins.immutability_plugin
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 rsqueakvm.plugins.large_integers module
 ---------------------------------------
 
