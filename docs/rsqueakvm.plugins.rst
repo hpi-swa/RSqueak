@@ -7,6 +7,7 @@ Subpackages
 .. toctree::
 
     rsqueakvm.plugins.database
+    rsqueakvm.plugins.immutability
     rsqueakvm.plugins.vmdebugging
 
 Submodules
