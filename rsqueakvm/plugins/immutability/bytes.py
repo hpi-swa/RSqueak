@@ -13,7 +13,7 @@ class W_Immutable_BytesObject(W_BytesObject):
     _immutable_fields_ = ['immutable_bytes']
     repr_classname = '%s_Immutable' % W_BytesObject.repr_classname
 
-    def __init__(self, space, w_cls, bytes_w):
+    def __init__(self, space, w_cls, bytes):
         """
         Initialize immutable bytes object and store its bytes in
         `self.immutable_bytes` slot.
@@ -21,7 +21,7 @@ class W_Immutable_BytesObject(W_BytesObject):
         because there is no need to `self.mutate()` and set `self.bytes`.
         """
         W_AbstractObjectWithClassReference.__init__(self, space, w_cls)
-        self.immutable_bytes = bytes_w
+        self.immutable_bytes = bytes
 
     @jit.elidable
     def _bytes(self):

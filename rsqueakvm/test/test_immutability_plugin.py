@@ -36,9 +36,9 @@ def test_W_Immutable_BytesObject():
     assert w_ibytes.is_immutable()
     assert w_ibytes.getclass(space).is_same_object(w_class)
     assert w_ibytes.size() == 20
-    assert w_ibytes.getchar(3) == "\x00"
-    w_ibytes.setchar(3, "\xAA")
-    assert w_ibytes.getchar(3) == "\x00"
+    assert w_ibytes.getchar(3) == '\x00'
+    w_ibytes.setchar(3, '\xAA')
+    assert w_ibytes.getchar(3) == '\x00'
     py.test.raises(IndexError, lambda: w_ibytes.getchar(20))
 
 

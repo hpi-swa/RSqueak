@@ -13,7 +13,7 @@ class W_Immutable_WordsObject(W_WordsObject):
     _immutable_fields_ = ['immutable_words']
     repr_classname = '%s_Immutable' % W_WordsObject.repr_classname
 
-    def __init__(self, space, w_cls, words_w):
+    def __init__(self, space, w_cls, words):
         """
         Initialize immutable words object and store its words in
         `self.immutable_words` slot.
@@ -21,7 +21,7 @@ class W_Immutable_WordsObject(W_WordsObject):
         called, because there is no need to initialize `self.words`.
         """
         W_AbstractObjectWithClassReference.__init__(self, space, w_cls)
-        self.immutable_words = words_w
+        self.immutable_words = words
 
     @jit.elidable
     def _words(self):

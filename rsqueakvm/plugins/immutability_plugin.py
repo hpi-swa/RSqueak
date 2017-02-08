@@ -6,7 +6,7 @@ or from a list of arguments. The package `ImmutableObjects`, located in
 `/repository`, needs to be loaded in the image.
 """
 
-from rsqueakvm.error import PrimitiveFailedError
+from rsqueakvm.error import PrimitiveFailedError, UnwrappingError
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.plugins.immutability import patch_w_object
 from rsqueakvm.plugins.immutability.bytes import W_Immutable_BytesObject
@@ -78,7 +78,6 @@ def primitiveImmutableFromArgs(interp, s_frame, argcount):
     if argcount == 0:
         raise PrimitiveFailedError
     w_args = s_frame.pop_and_return_n(argcount)[:]
-    w_first_arg = w_args[0]
     w_cls = s_frame.pop()
     space = interp.space
     instance_kind = w_cls.as_class_get_shadow(space).get_instance_kind()
@@ -86,11 +85,17 @@ def primitiveImmutableFromArgs(interp, s_frame, argcount):
     if instance_kind == POINTERS:
         cls = select_immutable_pointers_class(w_args)
         return cls(space, w_cls, w_args)
-    elif (instance_kind == BYTES and
-          len(w_args) == 1 and isinstance(w_first_arg, W_BytesObject)):
-        return W_Immutable_BytesObject(space, w_cls, w_first_arg.bytes)
-    elif (instance_kind == WORDS and
-          len(w_args) == 1 and isinstance(w_first_arg, W_WordsObject)):
-        return W_Immutable_WordsObject(space, w_cls, w_first_arg.words)
+    elif instance_kind == BYTES:
+        try:
+            bytes = [chr(interp.space.unwrap_uint(b)) for b in w_args]
+        except (ValueError, TypeError, UnwrappingError):
+            raise PrimitiveFailedError
+        return W_Immutable_BytesObject(space, w_cls, bytes)
+    elif instance_kind == WORDS:
+        try:
+            words = [interp.space.unwrap_uint(b) for b in w_args]
+        except UnwrappingError:
+            raise PrimitiveFailedError
+        return W_Immutable_WordsObject(space, w_cls, words)
 
     raise PrimitiveFailedError
