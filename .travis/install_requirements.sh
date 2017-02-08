@@ -112,6 +112,14 @@ presetup_linux() {
 	 libffi-dev \
 	 zlib1g-dev \
 	 $PACKAGES
+
+    if [[ "${PLUGINS}" = "PythonPlugin" ]]; then
+      # Comment out SDL_messagebox.h in SDL.h
+      # A wrong macro is applied to "const SDL_MessageBoxButtonData *buttons;"
+      # which breaks compilation at the end.
+      echo "Patching SDL.h for PythonPlugin"
+      sudo sed -i.bak "/SDL_messagebox\.h/s/^/\/\/ /" "/usr/include/SDL2/SDL.h"
+    fi
 }
 
 setup_linux() {
@@ -129,7 +137,7 @@ setup_linux() {
     	arm*)
 			"${BASE}/setup_arm.sh"
 			;;
-	esac
+	  esac
 }
 
 # Only build arm on master
