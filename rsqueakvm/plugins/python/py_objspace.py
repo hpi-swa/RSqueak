@@ -25,8 +25,10 @@ def new_pypy_objspace():
     # disabling cffi backend for now, it also causes an undefined symbol error
     pypy_config.objspace.usemodules._cffi_backend = False
 
-    from pypy.config.pypyoption import enable_allworkingmodules
-    enable_allworkingmodules(pypy_config)
+    # disabled to save compile time
+    # from pypy.config.pypyoption import enable_allworkingmodules
+    # enable_allworkingmodules(pypy_config)
+
     from pypy.config.pypyoption import enable_translationmodules
     enable_translationmodules(pypy_config)
 
