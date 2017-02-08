@@ -1,4 +1,4 @@
-as yet unclassified
+instance creation
 car: anObject cdr: anotherObject
 
 	<primitive: 'primitiveImmutableFromArgs' module: 'ImmutabilityPlugin'>
