@@ -7,7 +7,7 @@ from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.storage import AbstractCachingShadow, AbstractGenericShadow
 from rsqueakvm.util.version import elidable_for_version, Version
 
-from rpython.rlib import jit
+from rpython.rlib import jit, objectmodel
 from rpython.rlib.rbigint import NULLRBIGINT
 
 import pdb
@@ -317,8 +317,8 @@ class ClassShadow(AbstractCachingShadow):
     # _______________________________________________________________
     # Methods used only in testing
 
+    @objectmodel.not_rpython # this is only for testing.
     def inherits_from(self, s_superclass):
-        "NOT_RPYTHON"     # this is only for testing.
         classshadow = self
         while classshadow is not None:
             if classshadow is s_superclass:
@@ -327,15 +327,15 @@ class ClassShadow(AbstractCachingShadow):
         else:
             return False
 
+    @objectmodel.not_rpython # this is only for testing.
     def initialize_methoddict(self):
-        "NOT_RPYTHON"     # this is only for testing.
         if self._s_methoddict is None:
             w_methoddict = W_PointersObject(self.space, None, 2)
             w_methoddict.store(self.space, constants.METHODDICT_VALUES_INDEX, W_PointersObject(self.space, None, 0))
             self.store_s_methoddict(w_methoddict.as_methoddict_get_shadow(self.space))
 
+    @objectmodel.not_rpython # this is only for testing.
     def installmethod(self, w_selector, w_method):
-        "NOT_RPYTHON"     # this is only for testing.
         assert not isinstance(w_selector, str)
         self.initialize_methoddict()
         self.s_methoddict().methoddict[w_selector] = w_method

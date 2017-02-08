@@ -6,6 +6,7 @@ from rsqueakvm.model.character import W_Character
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.primitives.constants import *
+from rsqueakvm.util.system import IS_SPHINX
 
 from rpython.rlib import unroll, jit, objectmodel
 from rpython.rlib.rarithmetic import int_between, r_int64
@@ -254,15 +255,16 @@ del i
 prim_table_implemented_only = []
 
 # import for side effects
-from rsqueakvm.primitives import arithmetic
-from rsqueakvm.primitives import array_stream
-from rsqueakvm.primitives import block_closure
-from rsqueakvm.primitives import control
-from rsqueakvm.primitives import input_output
-from rsqueakvm.primitives import misc
-from rsqueakvm.primitives import storage
-from rsqueakvm.primitives import system
-from rsqueakvm.primitives import mirror
+if not IS_SPHINX:
+    from rsqueakvm.primitives import arithmetic
+    from rsqueakvm.primitives import array_stream
+    from rsqueakvm.primitives import block_closure
+    from rsqueakvm.primitives import control
+    from rsqueakvm.primitives import input_output
+    from rsqueakvm.primitives import misc
+    from rsqueakvm.primitives import storage
+    from rsqueakvm.primitives import system
+    from rsqueakvm.primitives import mirror
 
 # ___________________________________________________________________________
 # PrimitiveLoadInstVar

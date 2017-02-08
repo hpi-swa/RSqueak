@@ -2,7 +2,7 @@ import sys
 import os
 import platform
 
-from rpython.config.config import OptionDescription, Option, BoolOption, \
+from rpython.config.config import OptionDescription, BoolOption, \
     IntOption, StrOption, ArbitraryOption, FloatOption, DEFAULT_OPTION_NAME
 from rpython.config.translationoption import get_combined_translation_config
 
@@ -14,6 +14,7 @@ IS_64BIT = "64bit" in platform.architecture()[0]
 IS_CYGWIN = "cygwin" == sys.platform
 IS_DARWIN = "darwin" == sys.platform
 IS_ARM = "--platform=arm" in sys.argv
+IS_SPHINX = "sphinx" in sys.modules
 
 if IS_WINDOWS and (not any(arg.startswith("-Ojit") for arg in sys.argv)):
     # XXX: Ugly hack to enable compiling with -O2 on Windows, where
