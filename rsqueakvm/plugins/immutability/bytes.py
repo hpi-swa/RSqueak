@@ -17,6 +17,8 @@ class W_Immutable_BytesObject(W_BytesObject):
         """
         Initialize immutable bytes object and store its bytes in
         `self.immutable_bytes` slot.
+        `W_BytesObject.__init__(self, space, w_class, size)` not called,
+        because there is no need to `self.mutate()` and set `self.bytes`.
         """
         W_AbstractObjectWithClassReference.__init__(self, space, w_cls)
         self.immutable_bytes = bytes_w

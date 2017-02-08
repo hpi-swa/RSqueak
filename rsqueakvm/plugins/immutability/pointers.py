@@ -33,7 +33,10 @@ class W_AbstractImmutable_PointersObject(W_PointersObject):
     def __init__(self, space, w_cls):
         """
         Initialize immutable pointers object, but avoid initializing storage
-        and reuse `self.strategy` slot to store class shadow.
+        by calling `W_AbstractObjectWithIdentityHash.__init__(self)` instead of
+        `W_PointersObject.__init__(self)`.
+        Additionally, reuse `self.strategy` slot to store class shadow.
+
         """
         W_AbstractObjectWithIdentityHash.__init__(self)
         self.strategy = w_cls.as_class_get_shadow(space)
@@ -50,11 +53,11 @@ class W_AbstractImmutable_PointersObject(W_PointersObject):
 
     def size(self):
         """:raises: NotImplementedError"""
-        raise NotImplementedError
+        raise NotImplementedError('abstract base class')
 
     def fetch(self, space, n0):
         """:raises: NotImplementedError"""
-        raise NotImplementedError
+        raise NotImplementedError('abstract base class')
 
 
 class W_Immutable_PointersObject(W_AbstractImmutable_PointersObject):

@@ -17,6 +17,8 @@ class W_Immutable_WordsObject(W_WordsObject):
         """
         Initialize immutable words object and store its words in
         `self.immutable_words` slot.
+        `W_Immutable_WordsObject.__init__(self, space, w_class, size)` not
+        called, because there is no need to initialize `self.words`.
         """
         W_AbstractObjectWithClassReference.__init__(self, space, w_cls)
         self.immutable_words = words_w
