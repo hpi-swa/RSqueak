@@ -18,13 +18,6 @@ rsqueakvm.plugins.immutability.pointers module
     :members:
     :show-inheritance:
 
-rsqueakvm.plugins.immutability.utils module
--------------------------------------------
-
-.. automodule:: rsqueakvm.plugins.immutability.utils
-    :members:
-    :show-inheritance:
-
 rsqueakvm.plugins.immutability.words module
 -------------------------------------------
 
