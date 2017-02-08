@@ -64,7 +64,8 @@ class W_Immutable_PointersObject(W_AbstractImmutable_PointersObject):
     """`W_PointersObject` subclass with immutable storage of variable size."""
     _immutable_fields_ = ['_storage[*]']
     repr_classname = '%s_Immutable_N' % W_PointersObject.repr_classname
-    erase, unerase = rerased.new_erasing_pair('storage_eraser')
+    erase, unerase = map(
+        staticmethod, rerased.new_erasing_pair('storage_eraser'))
 
     def __init__(self, space, w_cls, pointers_w):
         W_AbstractImmutable_PointersObject.__init__(self, space, w_cls)
