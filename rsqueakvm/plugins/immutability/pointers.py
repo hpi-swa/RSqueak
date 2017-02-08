@@ -13,8 +13,8 @@ Unrolling iterable of `POINTERS_CLASSES`.
 
 from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.plugins.immutability import immutable_class
 from rsqueakvm.storage_classes import ClassShadow
-from rsqueakvm.plugins.immutability.utils import immutable_class
 
 from rpython.rlib import rerased
 from rpython.rlib.unroll import unrolling_iterable

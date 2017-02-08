@@ -7,16 +7,14 @@ or from a list of arguments. The package `ImmutableObjects`, located in
 """
 
 from rsqueakvm.error import PrimitiveFailedError
-from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
-from rsqueakvm.plugins.immutability.utils import patch_w_object
-
-from rsqueakvm.storage_classes import BYTES, POINTERS, WORDS
-
+from rsqueakvm.plugins.immutability import patch_w_object
 from rsqueakvm.plugins.immutability.bytes import W_Immutable_BytesObject
 from rsqueakvm.plugins.immutability.pointers import (
     select_immutable_pointers_class)
 from rsqueakvm.plugins.immutability.words import W_Immutable_WordsObject
+from rsqueakvm.plugins.plugin import Plugin
+from rsqueakvm.storage_classes import BYTES, POINTERS, WORDS
 
 
 ImmutabilityPlugin = Plugin()

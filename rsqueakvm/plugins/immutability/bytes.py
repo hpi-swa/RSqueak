@@ -2,7 +2,7 @@
 
 from rsqueakvm.model.base import W_AbstractObjectWithClassReference
 from rsqueakvm.model.variable import W_BytesObject
-from rsqueakvm.plugins.immutability.utils import immutable_class
+from rsqueakvm.plugins.immutability import immutable_class
 
 from rpython.rlib import jit
 
