@@ -21,8 +21,11 @@ def new_execute_frame(self, w_inputvalue=None, operr=None):
         frame = e.py_frame_restart_info.frame
         if frame is not None and frame is not self:
             raise gs.RestartException(e.py_frame_restart_info)
-        self.reset(e.py_frame_restart_info.pycode)
-        return new_execute_frame(self, w_inputvalue, operr)
+        # Generate and execute new frame
+        new_frame = PyFrame(self.space,
+                            e.py_frame_restart_info.pycode or self.pycode,
+                            self.w_globals, self.outer_func)
+        return new_execute_frame(new_frame, w_inputvalue, operr)
 
 
 def new_handle_operation_error(self, ec, operr, attach_tb=True):
@@ -36,14 +39,6 @@ def new_handle_operation_error(self, ec, operr, attach_tb=True):
     return old_handle_operation_error(self, ec, operr, attach_tb)
 
 
-def reset_frame(self, new_py_code=None):
-    # w_inputvalue missing, see execute_frame
-    if new_py_code is None:
-        new_py_code = self.pycode
-    self.__init__(self.space, new_py_code, self.w_globals, self.outer_func)
-    self.last_instr = -1
-
-
 def patch_pypy():
     # Patch-out virtualizables from Pypy so that translation works
     try:
@@ -55,5 +50,4 @@ def patch_pypy():
 
     PyFrame.__init__ = __init__frame
     PyFrame.execute_frame = new_execute_frame
-    PyFrame.reset = reset_frame
     PyFrame.handle_operation_error = new_handle_operation_error
