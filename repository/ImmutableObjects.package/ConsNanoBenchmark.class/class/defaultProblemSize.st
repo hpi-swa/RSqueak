@@ -1,4 +1,4 @@
-as yet unclassified
+defaults
 defaultProblemSize
 
 	^ 1000
