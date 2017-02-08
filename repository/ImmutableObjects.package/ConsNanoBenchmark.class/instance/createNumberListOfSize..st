@@ -1,4 +1,4 @@
-as yet unclassified
+benchmark hooks
 createNumberListOfSize: aNumber
 
 	| rng |

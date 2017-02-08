@@ -1,4 +1,4 @@
-as yet unclassified
+set up
 vector: aVector with: aBlock through: aNumber
 
 	^ aNumber = 0

@@ -1,4 +1,4 @@
-as yet unclassified
+set up
 consWith: aBlock through: aNumber
 
 	^ aNumber = 0
