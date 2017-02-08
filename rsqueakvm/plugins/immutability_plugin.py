@@ -1,7 +1,9 @@
 """
-This plug-in implements immutable objects.\n
+RSqueak/VM plugin which provides support for immutable objects.
+
 Immutable objects can be created as copy of existing objects
-or from a list of arguments.
+or from a list of arguments. The package `ImmutableObjects`, located in
+`/repository`, needs to be loaded in the image.
 """
 
 from rsqueakvm.error import PrimitiveFailedError
@@ -24,12 +26,12 @@ patch_w_object()
 @ImmutabilityPlugin.expose_primitive(unwrap_spec=[object])
 def primitiveIsImmutable(interp, s_frame, w_recv):
     """
-    Tests if w_recv is immutable.
+    Tests if `w_recv` is an immutable object.
 
     :param interp: The interpreter proxy.
     :param s_frame: The stack frame.
     :param w_recv: The receiver object.
-    :returns: w_true if w_recv is immutable object, otherwise w_false.
+    :returns: `w_true` if `w_recv` is immutable object, otherwise `w_false`.
     """
     if w_recv.is_immutable():
         return interp.space.w_true
@@ -39,13 +41,13 @@ def primitiveIsImmutable(interp, s_frame, w_recv):
 @ImmutabilityPlugin.expose_primitive(unwrap_spec=[object, object])
 def primitiveImmutableFrom(interp, s_frame, w_cls, w_obj):
     """
-    Creates an immutable copy of a Smalltalk object.
+    Creates an immutable copy of a given Smalltalk object.
 
     :param interp: The interpreter proxy.
     :param s_frame: The stack frame.
     :param w_cls: The imutable objects target class.
     :param w_obj: The Smalltalk object to produce an immutable copy from.
-    :returns: Immutable copy of w_obj with class w_cls.
+    :returns: An immutable copy of `w_obj` with class `w_cls`.
     :raises: PrimitiveFailedError
     """
     space = interp.space
@@ -66,12 +68,13 @@ def primitiveImmutableFrom(interp, s_frame, w_cls, w_obj):
 @ImmutabilityPlugin.expose_primitive(unwrap_spec=None)
 def primitiveImmutableFromArgs(interp, s_frame, argcount):
     """
-    Creates an immutable object with class and arguments from stack frame.
+    Returns an immutable instance of the receiver (which is a class) with
+    all fields initialized with the arguments given.
 
     :param interp: The interpreter proxy.
     :param s_frame: The stack frame.
     :param argcount: The number of arguments.
-    :returns: Immutable object with class and arguments from stack frame.
+    :returns: An immutable object.
     :raises: PrimitiveFailedError
     """
     w_arguments = s_frame.pop_and_return_n(argcount)[:]

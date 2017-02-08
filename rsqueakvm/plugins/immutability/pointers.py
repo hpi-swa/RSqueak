@@ -1,4 +1,15 @@
-"""Immutable W_PointersObject Implementation."""
+"""
+Immutable W_PointersObject Implementation.
+
+.. data:: POINTERS_CLASSES
+A list of all immutable W_PointersObject subclasses. The position of each class
+in the list correlates to its number of storage slots (`0` no storage, `1` has
+one storage slot, ...). The last class in the list is an immutable
+W_PointersObject subclass with variable storage size.
+
+.. data:: POINTERS_CLASS_ITER
+Unrolling iterable of `POINTERS_CLASSES`.
+"""
 
 from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.pointers import W_PointersObject
@@ -13,32 +24,41 @@ STORAGE_ATTR_TEMPLATE = "storage_%d"
 
 @immutable_class
 class W_AbstractImmutable_PointersObject(W_PointersObject):
+    """Abstract `W_PointersObject` subclass for immutable pointers objects."""
     _attrs_ = []
     _immutable_fields_ = []
     repr_classname = ('%s_AbstractImmutable' %
                       W_PointersObject.repr_classname)
 
     def __init__(self, space, w_cls):
+        """
+        Initialize immutable pointers object, but avoid initializing storage
+        and reuse `self.strategy` slot to store class shadow.
+        """
         W_AbstractObjectWithIdentityHash.__init__(self)
-        # reuse strategy var to store cls
         self.strategy = w_cls.as_class_get_shadow(space)
 
     def getclass(self, space):
+        """:returns: Class from class shadow stored in `self.strategy` slot."""
         return self.strategy.w_self()
 
     def class_shadow(self, space):
+        """:returns: Class shadow stored in `self.strategy` slot."""
         class_shadow = self.strategy
         assert isinstance(class_shadow, ClassShadow)
         return class_shadow
 
     def size(self):
+        """:raises: NotImplementedError"""
         raise NotImplementedError
 
     def fetch(self, space, n0):
+        """:raises: NotImplementedError"""
         raise NotImplementedError
 
 
 class W_Immutable_PointersObject(W_AbstractImmutable_PointersObject):
+    """`W_PointersObject` subclass with immutable storage of variable size."""
     _immutable_fields_ = ['_storage[*]']
     repr_classname = '%s_Immutable_N' % W_PointersObject.repr_classname
     erase, unerase = rerased.new_erasing_pair('storage_eraser')
@@ -54,11 +74,18 @@ class W_Immutable_PointersObject(W_AbstractImmutable_PointersObject):
         return self.unerase(self._storage)[n0]
 
 
-def generate_fixed_w_pointersobject_class(n_storage):
+def generate_fixed_immutable_subclass(n_storage):
+    """
+    Generate `W_PointersObject` subclass with immutable storage of fixed size.
+
+    :param n_storage: Number of storage slots.
+    :returns: Immutable `W_PointersObject` subclass with fixed slots.
+    """
     storage_iter = unrolling_iterable(range(n_storage))
     cls_name = '%s_Immutable_%s' % (W_PointersObject.repr_classname, n_storage)
 
     class W_FixedImmutable_PointersObject(W_AbstractImmutable_PointersObject):
+        """`W_PointersObject` subclass with immutable storage of fixed size."""
         _storages_ = [(STORAGE_ATTR_TEMPLATE % x) for x in storage_iter]
         _attrs_ = _storages_
         _immutable_fields_ = _storages_
@@ -83,17 +110,24 @@ def generate_fixed_w_pointersobject_class(n_storage):
 
     return W_FixedImmutable_PointersObject
 
-pointers_classes = []
+POINTERS_CLASSES = []
 for n_storage in range(0, 10):
-    pointers_classes.append(generate_fixed_w_pointersobject_class(n_storage))
-pointers_classes.append(W_Immutable_PointersObject)
-pointers_class_iter = unrolling_iterable(enumerate(pointers_classes))
+    POINTERS_CLASSES.append(generate_fixed_immutable_subclass(n_storage))
+POINTERS_CLASSES.append(W_Immutable_PointersObject)
+POINTERS_CLASS_ITER = unrolling_iterable(enumerate(POINTERS_CLASSES))
 
 
 def select_immutable_pointers_class(storage):
+    """
+    Select immutable `W_PointersObject` subclass for a given pointers storage.
+    If there is no immutable `W_PointersObject` subclass with the right fixed
+    storage size, it returns the immutable subclass with variable storage size.
+
+    :param storage: Pointers to store.
+    :returns: Immutable `W_PointersObject` subclass.
+    """
     length = len(storage)
-    for i, cls in pointers_class_iter:
+    for i, cls in POINTERS_CLASS_ITER:
         if i == length:
             return cls
-    # otherwise:
-    return pointers_classes[-1]
+    return W_Immutable_PointersObject

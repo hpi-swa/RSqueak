@@ -1,4 +1,10 @@
-"""Utility functions for ImmutabilityPlugin."""
+"""
+Utility functions for ImmutabilityPlugin.
+
+.. data:: WRITE_OPERATIONS
+A list of all write operations to be stubbed out by `immutable_class(cls)`
+decorator.
+"""
 
 from rsqueakvm.model.base import W_Object
 

@@ -9,18 +9,33 @@ from rpython.rlib import jit
 
 @immutable_class
 class W_Immutable_BytesObject(W_BytesObject):
+    """`W_BytesObject` subclass with immutable bytes."""
     _immutable_fields_ = ['immutable_bytes']
     repr_classname = '%s_Immutable' % W_BytesObject.repr_classname
 
     def __init__(self, space, w_cls, bytes_w):
+        """
+        Initialize immutable bytes object and store its bytes in
+        `self.immutable_bytes` slot.
+        """
         W_AbstractObjectWithClassReference.__init__(self, space, w_cls)
         self.immutable_bytes = bytes_w
 
     @jit.elidable
     def _bytes(self):
+        """
+        `W_BytesObject._bytes(self)` override.
+
+        :returns: bytes from `self.immutable_bytes` slot.
+        """
         return self.immutable_bytes
 
     def _version(self):
+        """
+        `W_BytesObject._version(self)` override.
+
+        :returns: `None`.
+        """
         return None
 
     """
