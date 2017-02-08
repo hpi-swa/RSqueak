@@ -17,14 +17,13 @@ def new_execute_frame(self, w_inputvalue=None, operr=None):
     try:
         return old_execute_frame(self, w_inputvalue, operr)
     except gs.RestartException as e:
-        # import pdb; pdb.set_trace()
         frame = e.py_frame_restart_info.frame
         if frame is not None and frame is not self:
             raise gs.RestartException(e.py_frame_restart_info)
         # Generate and execute new frame
-        new_frame = PyFrame(self.space,
-                            e.py_frame_restart_info.pycode or self.pycode,
-                            self.w_globals, self.outer_func)
+        new_frame = gs.py_space.FrameClass(
+            self.space, e.py_frame_restart_info.pycode or self.pycode,
+            self.w_globals, self.outer_func)
         return new_execute_frame(new_frame, w_inputvalue, operr)
 
 

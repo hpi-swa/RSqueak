@@ -99,7 +99,11 @@ def getPyCode(source, filename, cmd):
         co_consts_w_len = len(py_code.co_consts_w)
         if co_consts_w_len >= 1:
             if co_consts_w_len > 1:
-                print "More than 1 const produced: %s" % co_consts_w_len
+                print 'More than 1 const produced: %s' % co_consts_w_len
+            first_consts_w = py_code.co_consts_w[0]
+            if not isinstance(first_consts_w, PyCode):
+                print 'First const is not a PyCode'
+                return py_code
             return py_code.co_consts_w[0]
     except OperationError as e:
         # import pdb; pdb.set_trace()

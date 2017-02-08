@@ -132,6 +132,7 @@ def restartFrame(interp, s_frame, w_rcvr):
 
 @PythonPlugin.expose_primitive(unwrap_spec=[object, str, str, str])
 def restartFrameWith(interp, s_frame, w_rcvr, source, filename, cmd):
+    # import pdb; pdb.set_trace()
     py_code = getPyCode(source, filename, cmd)
     if py_code is None:
         return interp.space.w_false  # Raising prim error causes crashes
