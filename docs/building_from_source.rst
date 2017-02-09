@@ -39,7 +39,7 @@ libraries for everything. The easiest way to ensure that is to use a chroot, but
 you can also install the `:i386` versions of the SDL2 dependencies for your
 distro.
 
-Mac OS X
+macOS
 ---------
 
 To compile RSqueak/VM for 32-bit, run
