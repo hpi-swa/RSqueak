@@ -140,6 +140,56 @@ def test_primImmutableFrom_float():
             'primitiveImmutableFrom',
             [w_float_cls, w_float_obj])
 
-def test_primImmutableFromArgs():
-    # stub
-    assert space.w_true == space.w_true
+def test_primImmutableFromArgs_bytes():
+    placeholder1 = space.w(1)
+    placeholder2 = space.w(2)
+    w_bytes_cls = bootstrap_class(0, format=storage_classes.BYTES)
+    w_ibytes_obj = external_call(space,
+        'ImmutabilityPlugin',
+        'primitiveImmutableFromArgs',
+        [w_bytes_cls, placeholder1, placeholder2])
+    assert w_ibytes_obj.is_immutable();
+    assert w_ibytes_obj.getclass(space).is_same_object(w_bytes_cls)
+    assert w_ibytes_obj.getchar(0) == '\x01'
+    assert w_ibytes_obj.getchar(1) == '\x02'
+    w_ibytes_obj.setchar(0, placeholder2)
+    assert w_ibytes_obj.getchar(0) == '\x01'
+
+def test_primImmutableFromArgs_pointers():
+    placeholder1 = space.w(1)
+    placeholder2 = space.w(2)
+    w_pointers_cls = bootstrap_class(0)
+    w_ipointers_obj = external_call(space,
+        'ImmutabilityPlugin',
+        'primitiveImmutableFromArgs',
+        [w_pointers_cls, placeholder1, placeholder2])
+    assert w_ipointers_obj.is_immutable();
+    assert w_ipointers_obj.getclass(space).is_same_object(w_pointers_cls)
+    assert w_ipointers_obj.fetch(space, 0) is placeholder1
+    assert w_ipointers_obj.fetch(space, 1) is placeholder2
+    w_ipointers_obj.store(space, 0, placeholder2)
+    assert w_ipointers_obj.fetch(space, 0) is placeholder1
+
+def test_primImmutableFromArgs_words():
+    placeholder1 = space.w(1)
+    placeholder2 = space.w(2)
+    w_words_cls = bootstrap_class(0, format=storage_classes.WORDS)
+    w_iwords_obj = external_call(space,
+        'ImmutabilityPlugin',
+        'primitiveImmutableFromArgs',
+        [w_words_cls, placeholder1, placeholder2])
+    assert w_iwords_obj.is_immutable();
+    assert w_iwords_obj.getclass(space).is_same_object(w_words_cls)
+    assert w_iwords_obj.getword(0) == 1
+    assert w_iwords_obj.getword(1) == 2
+    w_iwords_obj.setword(0, placeholder2)
+    assert w_iwords_obj.getword(0) == 1
+
+def test_primImmutableFromArgs_float():
+    w_float_cls = bootstrap_class(0, format=storage_classes.FLOAT)
+    w_float_obj = w_float_cls.as_class_get_shadow(space).new(20)
+    with py.test.raises(PrimitiveFailedError):
+        external_call(space,
+            'ImmutabilityPlugin',
+            'primitiveImmutableFromArgs',
+            [w_float_cls, space.w(1)])
