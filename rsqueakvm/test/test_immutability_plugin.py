@@ -8,7 +8,7 @@ from rsqueakvm.plugins.immutability.pointers import (
 from rsqueakvm.plugins.immutability.words import W_Immutable_WordsObject
 from rsqueakvm.model.pointers import W_PointersObject
 
-from .util import create_space, cleanup_module
+from .util import create_space, cleanup_module, external_call
 
 
 def test_space():
@@ -72,3 +72,9 @@ def test_W_Immutable_WordsObject():
     w_iwords.setword(3, 42)
     assert w_iwords.getword(3) == 0
     py.test.raises(AssertionError, lambda: w_iwords.getword(20))
+
+def test_primIsImmutable():
+    assert external_call(space,
+        'ImmutabilityPlugin',
+        'primitiveIsImmutable',
+        [space.w("foo")]) == space.w_false
