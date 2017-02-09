@@ -21,6 +21,7 @@ class W_Immutable_WordsObject(W_WordsObject):
         W_AbstractObjectWithClassReference.__init__(self, space, w_cls)
         self.immutable_words = words
 
+    # No need to make this jit.elidable, jit can prove return val is constant.
     def _words(self):
         """
         `W_WordsObject._words(self)` override.

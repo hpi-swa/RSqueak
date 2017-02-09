@@ -21,6 +21,7 @@ class W_Immutable_BytesObject(W_BytesObject):
         W_AbstractObjectWithClassReference.__init__(self, space, w_cls)
         self.immutable_bytes = bytes
 
+    # No need to make this jit.elidable, jit can prove return val is constant.
     def _bytes(self):
         """
         `W_BytesObject._bytes(self)` override.
