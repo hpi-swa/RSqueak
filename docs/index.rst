@@ -10,6 +10,9 @@ RSqueak/VM's documentation
    :maxdepth: 2
    :caption: Contents:
 
+   building_from_source
+   development
+
 .. toctree::
    :maxdepth: 4
 
