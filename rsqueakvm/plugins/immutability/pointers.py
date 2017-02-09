@@ -9,6 +9,13 @@ W_PointersObject subclass with variable storage size.
 
 .. data:: POINTERS_CLASS_ITER
 Unrolling iterable of `POINTERS_CLASSES`.
+
+.. data:: STORAGE_ATTR_TEMPLATE
+Storage attribute template.
+
+.. data:: MAX_FIXED_SLOTS
+Number of immutable subclasses with fixed number of slots to generate.
+
 """
 
 from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
@@ -20,6 +27,8 @@ from rpython.rlib import rerased
 from rpython.rlib.unroll import unrolling_iterable
 
 STORAGE_ATTR_TEMPLATE = "storage_%d"
+
+MAX_FIXED_SLOTS = 9
 
 
 @immutable_class
@@ -115,7 +124,7 @@ def generate_fixed_immutable_subclass(n_storage):
     return W_FixedImmutable_PointersObject
 
 POINTERS_CLASSES = []
-for n_storage in range(0, 10):
+for n_storage in range(0, MAX_FIXED_SLOTS + 1):
     POINTERS_CLASSES.append(generate_fixed_immutable_subclass(n_storage))
 POINTERS_CLASSES.append(W_Immutable_PointersObject)
 POINTERS_CLASS_ITER = unrolling_iterable(enumerate(POINTERS_CLASSES))
