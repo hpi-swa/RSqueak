@@ -196,3 +196,25 @@ def test_primImmutableFromArgs_float():
             'ImmutabilityPlugin',
             'primitiveImmutableFromArgs',
             [w_float_cls, space.w(1)])
+
+def test_primImmutableFromArgs_no_args():
+    w_pointers_cls = bootstrap_class(0)
+    with py.test.raises(PrimitiveFailedError):
+        external_call(space,
+            'ImmutabilityPlugin',
+            'primitiveImmutableFromArgs',
+            [w_pointers_cls])
+
+def test_primImmutableFromArgs_mismatch():
+    w_bytes_cls = bootstrap_class(0, format=storage_classes.BYTES)
+    w_words_cls = bootstrap_class(0, format=storage_classes.WORDS)
+    with py.test.raises(PrimitiveFailedError):
+        external_call(space,
+            'ImmutabilityPlugin',
+            'primitiveImmutableFromArgs',
+            [w_bytes_cls, space.w("foo")])
+    with py.test.raises(PrimitiveFailedError):
+        external_call(space,
+            'ImmutabilityPlugin',
+            'primitiveImmutableFromArgs',
+            [w_words_cls, space.w("foo")])
