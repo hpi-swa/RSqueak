@@ -44,6 +44,9 @@ extensions = ['sphinx.ext.autodoc',
     # 'sphinx.ext.githubpages'
 ]
 
+# Do not include full module names in member list
+add_module_names = False
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
