@@ -7,6 +7,7 @@ Subpackages
 .. toctree::
 
     rsqueakvm.plugins.database
+    rsqueakvm.plugins.immutability
     rsqueakvm.plugins.vmdebugging
 
 Submodules
@@ -24,6 +25,14 @@ rsqueakvm.plugins.file_plugin module
 ------------------------------------
 
 .. automodule:: rsqueakvm.plugins.file_plugin
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+rsqueakvm.plugins.immutability_plugin module
+--------------------------------------------
+
+.. automodule:: rsqueakvm.plugins.immutability_plugin
     :members:
     :undoc-members:
     :show-inheritance:

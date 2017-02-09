@@ -4,8 +4,6 @@ from rsqueakvm.util.version import Version, elidable_for_version_iff
 
 from rpython.rlib import jit
 from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32, r_int64
-from rpython.rlib.objectmodel import we_are_translated, always_inline, specialize
-from rpython.rtyper.lltypesystem import lltype, rffi
 
 
 class W_BytesObject(W_AbstractObjectWithClassReference):
@@ -38,7 +36,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
             raise error.PrimitiveFailedError
 
     def getchar(self, n0):
-        return self.bytes[n0]
+        return self._bytes()[n0]
 
     def setchar(self, n0, character):
         assert isinstance(character, str)
@@ -66,7 +64,13 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         self.setchar(byte_index0 + 1, chr(byte1))
 
     def size(self):
-        return len(self.bytes)
+        return len(self._bytes())
+
+    def _bytes(self):
+        return self.bytes
+
+    def _version(self):
+        return self.version
 
     def str_content(self):
         if self.getclass(None).has_space():
@@ -77,14 +81,14 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
             (self.unwrap_string(None).replace('\r', '\n'))])
 
     def unwrap_string(self, space):
-        return self._pure_as_string(self.version)
+        return self._pure_as_string(self._version())
 
     @jit.elidable
     def _pure_as_string(self, version):
-        return "".join(self.bytes)
+        return "".join(self._bytes())
 
     def getbytes(self):
-        return self.bytes
+        return self._bytes()
 
     @jit.dont_look_inside
     def setbytes(self, lst):
@@ -143,7 +147,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
     @elidable_for_version_iff(0, cond=lambda self: jit.isconstant(self))
     def getrbigint(self):
         from rpython.rlib.rbigint import rbigint
-        return rbigint.frombytes(''.join(self.getbytes()), 'little', False)
+        return rbigint.frombytes(''.join(self._bytes()), 'little', False)
 
     def selector_string(self):
         return "#" + self.unwrap_string(None)
@@ -151,7 +155,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
     def invariant(self):
         if not W_AbstractObjectWithClassReference.invariant(self):
             return False
-        for c in self.bytes:
+        for c in self._bytes():
             if not isinstance(c, str) or len(c) != 1:
                 return False
         return True
@@ -159,7 +163,7 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
     def clone(self, space):
         size = self.size()
         w_result = W_BytesObject(space, self.getclass(space), size)
-        w_result.bytes = list(self.bytes)
+        w_result.bytes = list(self._bytes())
         return w_result
 
     def is_array_object(self):
@@ -197,7 +201,7 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
 
     def getword(self, n):
         assert self.size() > n >= 0
-        return self.words[n]
+        return self._words()[n]
 
     def setword(self, n, word):
         self.words[n] = r_uint(word)
@@ -247,13 +251,16 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
         self.words = lst
 
     def size(self):
-        return len(self.words)
+        return len(self._words())
+
+    def _words(self):
+        return self.words
 
     @jit.look_inside_iff(lambda self, space: jit.isconstant(self.size()))
     def unwrap_string(self, space):
         # OH GOD! TODO: Make this sane!
         res = []
-        for word in self.words:
+        for word in self._words():
             res += [chr((word & r_uint(0x000000ff)) >>  0),
                     chr((word & r_uint(0x0000ff00)) >>  8),
                     chr((word & r_uint(0x00ff0000)) >> 16),
@@ -262,12 +269,12 @@ class W_WordsObject(W_AbstractObjectWithClassReference):
 
     def invariant(self):
         return (W_AbstractObjectWithClassReference.invariant(self) and
-                isinstance(self.words, list))
+                isinstance(self._words(), list))
 
     def clone(self, space):
         size = self.size()
         w_result = W_WordsObject(space, self.getclass(space), size)
-        w_result.words = list(self.words)
+        w_result.words = list(self._words())
         return w_result
 
     def is_array_object(self):

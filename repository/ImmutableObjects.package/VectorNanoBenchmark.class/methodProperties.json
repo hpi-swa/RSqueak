@@ -1,0 +1,11 @@
+{
+	"class" : {
+		"defaultProblemSize" : "jc 1/5/2017 16:29" },
+	"instance" : {
+		"classUnderBenching" : "jc 1/5/2017 16:30",
+		"createCharacterListOfSize:" : "jc 1/5/2017 17:01",
+		"createMixedListOfSize:" : "jc 1/5/2017 17:02",
+		"createNumberListOfSize:" : "jc 1/5/2017 17:04",
+		"createObjectListOfSize:" : "jc 1/5/2017 17:05",
+		"vector:with:through:" : "jc 1/5/2017 16:57",
+		"vectorWith:through:" : "jc 1/5/2017 16:54" } }

@@ -4,7 +4,7 @@ set -ex
 readonly BASE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 presetup_osx() {
-    echo "OS X Pre-setup"
+    echo "macOS Pre-setup"
 }
 
 setup_osx() {
@@ -29,7 +29,7 @@ setup_osx() {
 
     # todo: Squeak for jittests
 
-    # Don't install coveralls on OS X, because it's too slow (see #116)
+    # Don't install coveralls on macOS, because it's too slow (see #116)
     # curl -L -O https://bootstrap.pypa.io/get-pip.py
     # sudo python get-pip.py
     # sudo pip install coveralls pytest-cov

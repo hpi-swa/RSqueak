@@ -1,0 +1,14 @@
+{
+	"category" : "ImmutableObjects-Tests",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "ImmutableWordsObjectTest",
+	"pools" : [
+		 ],
+	"super" : "ImmutableObjectTest",
+	"type" : "normal" }

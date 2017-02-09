@@ -1,0 +1,4 @@
+*ImmutableObjects
+isImmutable
+
+	^ self primIsImmutable

@@ -426,12 +426,14 @@ class SDLDisplay(NullDisplay):
                     return self.get_next_mouse_wheel_event(time, event)
                 elif event_type == RSDL.KEYDOWN:
                     self.handle_keyboard_event(event_type, event)
-                    if not self.is_modifier_key(self.key) and (
-                            self.is_control_key(self.key)
-                            or RSDL.GetModState() & ~RSDL.KMOD_SHIFT != 0):
-                        # no TEXTINPUT event for this key will follow
-                        # but Squeak needs a KeyStroke anyway
-                        self._deferred_events.append(self.get_next_key_event(EventKeyChar, time))
+                    if not self.is_modifier_key(self.key):
+                        # no TEXTINPUT event for this key will follow, but
+                        # Squeak needs a KeyStroke anyway
+                        if ((system.IS_LINUX and self.is_control_key(self.key)) or
+                            (not system.IS_LINUX and
+                             (self.is_control_key(self.key) or
+                              RSDL.GetModState() & ~RSDL.KMOD_SHIFT != 0))):
+                            self._deferred_events.append(self.get_next_key_event(EventKeyChar, time))
                     self.fix_key_code_case()
                     return self.get_next_key_event(EventKeyDown, time)
                 elif event_type == RSDL.TEXTINPUT:

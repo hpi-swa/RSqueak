@@ -1,0 +1,14 @@
+{
+	"category" : "ImmutableObjects-Structures",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "Vector",
+	"pools" : [
+		 ],
+	"super" : "ArrayedCollection",
+	"type" : "variable" }
