@@ -20,26 +20,30 @@ def mock(space, stack, context = None):
     for i in range(len(stack)):
         frame.as_context_get_shadow(space).push(stack[i])
     interp = InterpreterForTest(space)
-    interp.space.set_system_attribute(constants.SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, IMAGENAME)
+    interp.space.set_system_attribute(
+        constants.SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX,
+        IMAGENAME)
     return interp, frame, len(stack)
 
 def _prim(space, code, stack, context = None):
     interp, w_frame, argument_count = mock(space, stack, context)
-    prim_table[code](interp, w_frame.as_context_get_shadow(space), argument_count-1, context and context.as_context_get_shadow(space).w_method())
+    prim_table[code](interp,
+                     w_frame.as_context_get_shadow(space),
+                     argument_count-1,
+                     context and context.as_context_get_shadow(space).w_method())
     res = w_frame.as_context_get_shadow(space).pop()
     s_frame = w_frame.as_context_get_shadow(space)
-    assert not s_frame.stackdepth() - s_frame.tempsize()  # check args are consumed
+    assert not s_frame.stackdepth()-s_frame.tempsize() # check args are consumed
     return res
-
-def prim(code, stack, context = None):
-    return _prim(space, code, stack, context)
 
 def external_call(space, module_name, method_name, stack):
     stack = [space.w(o) for o in stack]
     w_description = W_PointersObject(space, space.w_Array, 2)
     w_description.atput0(space, 0, space.w(module_name))
     w_description.atput0(space, 1, space.w(method_name))
-    context = space.make_frame("<not called>", [w_description], stack[0], stack[1:])[0]
+    context = space.make_frame("<not called>",
+                               [w_description],
+                               stack[0], stack[1:])[0]
     return _prim(space, EXTERNAL_CALL, stack, context)
 
 

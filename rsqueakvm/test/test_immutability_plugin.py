@@ -139,3 +139,7 @@ def test_primImmutableFrom_float():
             'ImmutabilityPlugin',
             'primitiveImmutableFrom',
             [w_float_cls, w_float_obj])
+
+def test_primImmutableFromArgs():
+    # stub
+    assert space.w_true == space.w_true
