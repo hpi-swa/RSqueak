@@ -10,5 +10,5 @@
 	"name" : "PythonTheme",
 	"pools" : [
 		 ],
-	"super" : "SqueakTheme",
+	"super" : "UserInterfaceTheme",
 	"type" : "normal" }

@@ -1,0 +1,3 @@
+colors
+focusedLabelColor
+	^ self textColor
