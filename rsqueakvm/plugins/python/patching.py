@@ -1,8 +1,7 @@
 from rsqueakvm.plugins.python import global_state as gs
 
-from pypy.module.pypyjit.interp_jit import PyFrame, PyPyJitDriver
 from pypy.interpreter.pyopcode import SApplicationException
-
+from pypy.module.pypyjit.interp_jit import PyFrame, PyPyJitDriver
 from pypy.tool.stdlib_opcode import bytecode_spec
 
 opcodedesc = bytecode_spec.opcodedesc
@@ -32,17 +31,50 @@ def new_execute_frame(self, w_inputvalue=None, operr=None):
         return new_execute_frame(new_frame, w_inputvalue, operr)
 
 
-def get_exception(self, handlerposition):
-    "Retrieve exception to catch"
-    next_opcode = ord(self.pycode.co_code[handlerposition + 1])
+def block_handles_exception(self, block, operr_type):
+    "Returns True if block is able to handle operr_type"
+    current_opcode = ord(self.pycode.co_code[block.handlerposition])
+    if current_opcode == opcodedesc.POP_TOP.index:
+        # Check for catch all `except` statement
+        jump_pos = block.handlerposition - 3
+        if jump_pos < 0:  # This cannot succeed
+            return False
+        prev_opcode = ord(self.pycode.co_code[jump_pos])
+        if prev_opcode == opcodedesc.JUMP_FORWARD.index:
+            return True
+    elif current_opcode != opcodedesc.DUP_TOP.index:
+        print "Unknown case; expected DUP_TOP"
+        return True  # unknown, so assume it handles exception
+    next_opcode_idx = block.handlerposition + 1
+    next_opcode = ord(self.pycode.co_code[next_opcode_idx])
     if next_opcode == opcodedesc.LOAD_GLOBAL.index:
-        global_index = ord(self.pycode.co_code[handlerposition + 2])
-        return self._load_global(self.getname_u(global_index))
+        # check for multiple LOAD_GLOBALs
+        while next_opcode == opcodedesc.LOAD_GLOBAL.index:
+            global_index = ord(self.pycode.co_code[next_opcode_idx + 1])
+            exception = self._load_global(self.getname_u(global_index))
+            if gs.py_space.exception_match(operr_type,
+                                           w_check_class=exception):
+                return True
+            next_opcode_idx = next_opcode_idx + 3
+            next_opcode = ord(self.pycode.co_code[next_opcode_idx])
+        return False
     elif next_opcode == opcodedesc.LOAD_NAME.index:
-        if self.getorcreatedebug().w_locals is self.get_w_globals():
-            global_index = ord(self.pycode.co_code[handlerposition + 2])
-            return self._load_global(self.getname_u(global_index))
-    return None
+        # check for multiple LOAD_NAMEs
+        while next_opcode == opcodedesc.LOAD_NAME.index:
+            nameindex = ord(self.pycode.co_code[next_opcode_idx + 1])
+            if self.getorcreatedebug().w_locals is not self.get_w_globals():
+                varname = self.getname_u(nameindex)
+                exception = self.space.finditem_str(
+                    self.getorcreatedebug().w_locals, varname)
+            else:  # fall-back
+                exception = self._load_global(self.getname_u(nameindex))
+            if gs.py_space.exception_match(operr_type,
+                                           w_check_class=exception):
+                return True
+            next_opcode_idx = next_opcode_idx + 3
+            next_opcode = ord(self.pycode.co_code[next_opcode_idx])
+        return False
+    return False
 
 
 def has_exception_handler(self, operr):
@@ -51,11 +83,10 @@ def has_exception_handler(self, operr):
     while frame is not None:
         block = frame.lastblock
         while block is not None:
-            if (block.handling_mask & SApplicationException.kind) != 0:
-                block_exc = get_exception(frame, block.handlerposition)
-                if block_exc is not None:
-                    if gs.py_space.exception_match(operr.w_type, block_exc):
-                        return True
+            # block needs to be an ExceptBlock and able to handle operr
+            if ((block.handling_mask & SApplicationException.kind) != 0 and
+                    frame.block_handles_exception(block, operr.w_type)):
+                return True
             block = block.previous
         frame = frame.f_backref()
     return False
@@ -65,7 +96,6 @@ def new_handle_operation_error(self, ec, operr, attach_tb=True):
     if isinstance(operr, gs.RestartException):
         print 'Re-raising RestartException'
         raise operr
-
     if not self.has_exception_handler(operr):
         # import pdb; pdb.set_trace()
         gs.wp_error.set(operr.get_w_value(gs.py_space))
@@ -75,7 +105,7 @@ def new_handle_operation_error(self, ec, operr, attach_tb=True):
 
 
 def patch_pypy():
-    # Patch-out virtualizables from Pypy so that translation works
+    # Patch-out virtualizables from PyPy so that translation works
     try:
         # TODO: what if first delattr fails?
         delattr(PyFrame, '_virtualizable_')
@@ -85,6 +115,6 @@ def patch_pypy():
 
     PyFrame.__init__ = __init__frame
     PyFrame.execute_frame = new_execute_frame
-    PyFrame.get_exception = get_exception
+    PyFrame.block_handles_exception = block_handles_exception
     PyFrame.has_exception_handler = has_exception_handler
     PyFrame.handle_operation_error = new_handle_operation_error
