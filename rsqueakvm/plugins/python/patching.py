@@ -4,6 +4,8 @@ from pypy.interpreter.pyopcode import SApplicationException
 from pypy.module.pypyjit.interp_jit import PyFrame, PyPyJitDriver
 from pypy.tool.stdlib_opcode import bytecode_spec
 
+from rpython.rlib.rarithmetic import intmask
+
 opcodedesc = bytecode_spec.opcodedesc
 
 old_init_frame = PyFrame.__init__
@@ -36,9 +38,9 @@ def block_handles_exception(self, block, operr_type):
     current_opcode = ord(self.pycode.co_code[block.handlerposition])
     if current_opcode == opcodedesc.POP_TOP.index:
         # Check for catch all `except` statement
-        jump_pos = block.handlerposition - 3
-        if jump_pos < 0:  # This cannot succeed
+        if block.handlerposition < 3:  # This cannot succeed, see next line
             return False
+        jump_pos = intmask(block.handlerposition) - 3
         prev_opcode = ord(self.pycode.co_code[jump_pos])
         if prev_opcode == opcodedesc.JUMP_FORWARD.index:
             return True

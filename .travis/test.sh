@@ -1,11 +1,17 @@
 #!/bin/sh
 set -ex
 
+testscript="unittests.py"
+
 case "${TEST_TYPE}" in
-  default) testflag="-S" ;;
-  quick) testflag="-Q" ;;
-  slow) testflag="-S" ;;
-  coverage) testflag="-v -S --cov=rsqueakvm --cov-append " ;;
+  default) testflag="-s -S" ;;
+  quick) testflag="-s -Q" ;;
+  slow) testflag="-s -S" ;;
+  coverage) testflag="-s -v -S --cov=rsqueakvm --cov-append " ;;
+  plugin)
+    testscript="plugintests.py"
+    testflag="--plugin=${TEST_PLUGIN}"
+    ;;
   *)
     echo "Wrong TEST_TYPE value (${TEST_TYPE}), not executing tests"
     exit 0
@@ -22,4 +28,4 @@ if [[ "${TRAVIS_OS_NAME}" == "osx" ]] && [[ "${BUILD_ARCH}" == "64bit" ]]; then
   ex="pypy"
 fi
 
-${ex} .build/unittests.py -s ${testflag}
+${ex} ".build/${testscript}" ${testflag}
