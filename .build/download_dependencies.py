@@ -146,9 +146,12 @@ else:
     pass
 
 
-if __name__ == '__main__':
+def main():
     for url, dir_or_tuple in DEPS:
         if type(dir_or_tuple) is tuple:
             download_and_extract(url, dir_or_tuple[0], callback=dir_or_tuple[1])
         else:
             download_and_extract(url, dir_or_tuple)
+
+if __name__ == '__main__':
+    main()

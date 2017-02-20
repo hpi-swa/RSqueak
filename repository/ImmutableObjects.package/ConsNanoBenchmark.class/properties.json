@@ -1,0 +1,14 @@
+{
+	"category" : "ImmutableObjects-ListNanos",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "ConsNanoBenchmark",
+	"pools" : [
+		 ],
+	"super" : "SMarkCollectionNanoBenchmark",
+	"type" : "normal" }

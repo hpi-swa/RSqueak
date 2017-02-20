@@ -1,5 +1,5 @@
 from rsqueakvm.util import system
-if "RubyPlugin" not in system.optional_plugins:
+if "RubyPlugin" not in system.optional_plugins and not system.IS_SPHINX:
     raise LookupError
 else:
     system.translationconfig.set(continuation=True)

@@ -1,0 +1,15 @@
+{
+	"category" : "ImmutableObjects-Structures",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"car",
+		"cdr" ],
+	"name" : "Cons",
+	"pools" : [
+		 ],
+	"super" : "SequenceableCollection",
+	"type" : "normal" }

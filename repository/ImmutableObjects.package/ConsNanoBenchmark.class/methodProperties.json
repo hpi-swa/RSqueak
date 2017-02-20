@@ -1,0 +1,10 @@
+{
+	"class" : {
+		"defaultProblemSize" : "jc 1/5/2017 16:25" },
+	"instance" : {
+		"classUnderBenching" : "topa 12/6/2016 16:16",
+		"consWith:through:" : "jc 1/5/2017 16:51",
+		"createCharacterListOfSize:" : "jc 1/5/2017 16:51",
+		"createMixedListOfSize:" : "jc 1/5/2017 16:51",
+		"createNumberListOfSize:" : "jc 1/5/2017 16:51",
+		"createObjectListOfSize:" : "jc 1/5/2017 16:51" } }
