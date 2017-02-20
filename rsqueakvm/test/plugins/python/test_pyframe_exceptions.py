@@ -57,10 +57,68 @@ except (ValueError, ZeroDivisionError):
 """)
 
 
-def test_catch_all_exception():
+def test_catch_all_exceptions():
     assert check_for_exception_handler("""
 try:
     1/0
 except:
+    pass
+""")
+
+
+def test_catch_variable_exception():
+    assert check_for_exception_handler("""
+ex = IndexError
+if True:
+    ex = ZeroDivisionError
+try:
+    1/0
+except ex:
+    pass
+""")
+
+
+def test_catch_variable_exception_fail():
+    assert not check_for_exception_handler("""
+ex = ZeroDivisionError
+if True:
+    ex = IndexError
+try:
+    1/0
+except ex:
+    pass
+""")
+
+
+def test_catch_multiple_variable_exceptions():
+    assert check_for_exception_handler("""
+ex = (ValueError, ZeroDivisionError)
+try:
+    1/0
+except ex:
+    pass
+""")
+
+
+def test_catch_nested_exceptions():
+    assert check_for_exception_handler("""
+try:
+    try:
+        1/0
+    except ValueError:
+        pass
+except ZeroDivisionError:
+    pass
+""")
+
+
+def test_catch_nested_exceptions_fail():
+    assert not check_for_exception_handler("""
+try:
+    try:
+        1/0
+    except ValueError:
+        pass
+except IndexError:
     pass
 """)
