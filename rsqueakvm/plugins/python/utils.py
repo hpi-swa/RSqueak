@@ -23,17 +23,17 @@ from rpython.rlib import objectmodel
 def _run_eval_string(source, filename, cmd):
     # Adopted from PyPy's main.py
     try:
-        w = py_space.wrap
+        ws = py_space.newbytes
 
-        pycode = compilecode(py_space, w(source), filename or '<string>', cmd)
+        pycode = compilecode(py_space, ws(source), filename or '<string>', cmd)
 
         mainmodule = ensure__main__(py_space)
         assert isinstance(mainmodule, Module)
         w_globals = mainmodule.w_dict
 
-        py_space.setitem(w_globals, w('__builtins__'), py_space.builtin)
+        py_space.setitem(w_globals, ws('__builtins__'), py_space.builtin)
         if filename is not None:
-            py_space.setitem(w_globals, w('__file__'), w(filename))
+            py_space.setitem(w_globals, ws('__file__'), ws(filename))
 
         return pycode.exec_code(py_space, w_globals, w_globals)
 
