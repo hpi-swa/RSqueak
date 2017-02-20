@@ -1,3 +1,5 @@
+import os
+
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger
 from rsqueakvm.plugins.python.model import W_PythonObject
@@ -159,3 +161,15 @@ def call_function(space, wp_func, args_w):
         return wrap(space, py_space.call_function(wp_func,
                                                   arg1, arg2, arg3, arg4))
     return wrap(space, py_space.call_function(wp_func))
+
+
+def entry_point(argv):
+    filename = argv[-1]
+    if not os.path.isfile(filename):
+        print 'File "%s" does not exist.' % filename
+        return 1
+    with open(filename, 'r') as f:
+        runstring = f.read()
+        # import pdb; pdb.set_trace()
+        _run_eval_string(runstring, '<string>', 'exec')
+    return 0
