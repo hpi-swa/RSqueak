@@ -1,0 +1,15 @@
+{
+	"category" : "ImmutableObjects-Tests",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"aField",
+		"anotherField" ],
+	"name" : "ImmMixedPointersClass",
+	"pools" : [
+		 ],
+	"super" : "Object",
+	"type" : "variable" }

@@ -1,5 +1,5 @@
 from rsqueakvm.util import system
-if "DatabasePlugin" not in system.optional_plugins:
+if "DatabasePlugin" not in system.optional_plugins and not system.IS_SPHINX:
     raise LookupError
 
 import platform

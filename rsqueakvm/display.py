@@ -426,12 +426,14 @@ class SDLDisplay(NullDisplay):
                     return self.get_next_mouse_wheel_event(time, event)
                 elif event_type == RSDL.KEYDOWN:
                     self.handle_keyboard_event(event_type, event)
-                    if not self.is_modifier_key(self.key) and (
-                            self.is_control_key(self.key)
-                            or RSDL.GetModState() & ~RSDL.KMOD_SHIFT != 0):
-                        # no TEXTINPUT event for this key will follow
-                        # but Squeak needs a KeyStroke anyway
-                        self._deferred_events.append(self.get_next_key_event(EventKeyChar, time))
+                    if not self.is_modifier_key(self.key):
+                        # no TEXTINPUT event for this key will follow, but
+                        # Squeak needs a KeyStroke anyway
+                        if ((system.IS_LINUX and self.is_control_key(self.key)) or
+                            (not system.IS_LINUX and
+                             (self.is_control_key(self.key) or
+                              RSDL.GetModState() & ~RSDL.KMOD_SHIFT != 0))):
+                            self._deferred_events.append(self.get_next_key_event(EventKeyChar, time))
                     self.fix_key_code_case()
                     return self.get_next_key_event(EventKeyDown, time)
                 elif event_type == RSDL.TEXTINPUT:
@@ -596,54 +598,56 @@ class SDLCursorClass(object):
                 bytes[idx] = rffi.r_uchar(0)
         return bytes
 
-SDLCursor = SDLCursorClass()
+import sys
+if 'sphinx' not in sys.modules:
+    SDLCursor = SDLCursorClass()
 
-from rpython.translator.tool.cbuild import ExternalCompilationInfo
-from rsdl.eci import get_rsdl_compilation_info
-eci = ExternalCompilationInfo(
-    post_include_bits=["""
-    #ifndef __event_filter_h
-    #define __event_filter_h
+    from rpython.translator.tool.cbuild import ExternalCompilationInfo
+    from rsdl.eci import get_rsdl_compilation_info
+    eci = ExternalCompilationInfo(
+        post_include_bits=["""
+        #ifndef __event_filter_h
+        #define __event_filter_h
 
-    #ifdef _WIN32
-    #define DLLEXPORT __declspec(dllexport)
-    #else
-    #define DLLEXPORT __attribute__((__visibility__("default")))
-    #endif
+        #ifdef _WIN32
+        #define DLLEXPORT __declspec(dllexport)
+        #else
+        #define DLLEXPORT __attribute__((__visibility__("default")))
+        #endif
 
-    #ifdef __cplusplus
-    extern "C" {
-    #endif
-            DLLEXPORT int SetEventFilter(intptr_t* target);
-    #ifdef __cplusplus
-    }
-    #endif
+        #ifdef __cplusplus
+        extern "C" {
+        #endif
+                DLLEXPORT int SetEventFilter(intptr_t* target);
+        #ifdef __cplusplus
+        }
+        #endif
 
-    #endif"""],
-    separate_module_sources=["""
-    int InterruptEventFilter(void* userdata, SDL_Event *event) {
-        int interrupt_key = 15 << 8;
-        if (event->type == SDL_KEYDOWN || event->type == SDL_KEYUP) {
-            if (((SDL_KeyboardEvent*)event)->keysym.sym == SDLK_PERIOD) {
-                if ((((SDL_KeyboardEvent*)event)->keysym.mod & (KMOD_ALT|KMOD_GUI)) != 0) {
-                    if (event->type == SDL_KEYUP) { // only keyup generates the interrupt
-                        ((intptr_t*)userdata)[0] = 1;
-                        // an interrupt flushes all pending events preceding it, so we don't
-                        // get spurious events processing when the debugger opens
-                        SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);
+        #endif"""],
+        separate_module_sources=["""
+        int InterruptEventFilter(void* userdata, SDL_Event *event) {
+            int interrupt_key = 15 << 8;
+            if (event->type == SDL_KEYDOWN || event->type == SDL_KEYUP) {
+                if (((SDL_KeyboardEvent*)event)->keysym.sym == SDLK_PERIOD) {
+                    if ((((SDL_KeyboardEvent*)event)->keysym.mod & (KMOD_ALT|KMOD_GUI)) != 0) {
+                        if (event->type == SDL_KEYUP) { // only keyup generates the interrupt
+                            ((intptr_t*)userdata)[0] = 1;
+                            // an interrupt flushes all pending events preceding it, so we don't
+                            // get spurious events processing when the debugger opens
+                            SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);
+                        }
+                        return 0;
                     }
-                    return 0;
                 }
             }
+            return 1;
         }
-        return 1;
-    }
-    int SetEventFilter(intptr_t* target) {
-        SDL_SetEventFilter(InterruptEventFilter, (void*)target);
-        return 0;
-    }
-    """]
-).merge(get_rsdl_compilation_info())
+        int SetEventFilter(intptr_t* target) {
+            SDL_SetEventFilter(InterruptEventFilter, (void*)target);
+            return 0;
+        }
+        """]
+    ).merge(get_rsdl_compilation_info())
 
-ll_SetEventFilter = rffi.llexternal('SetEventFilter', [rffi.SIGNEDP], rffi.INT,
-                                    compilation_info=eci)
+    ll_SetEventFilter = rffi.llexternal('SetEventFilter', [rffi.SIGNEDP], rffi.INT,
+                                        compilation_info=eci)

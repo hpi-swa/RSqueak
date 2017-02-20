@@ -74,15 +74,15 @@ def test_bytes_object():
 
 def test_word_object():
     w_class = bootstrap_class(0, format=storage_classes.WORDS)
-    w_bytes = w_class.as_class_get_shadow(space).new(20)
-    assert w_bytes.getclass(space).is_same_object(w_class)
-    assert w_bytes.size() == 20
+    w_words = w_class.as_class_get_shadow(space).new(20)
+    assert w_words.getclass(space).is_same_object(w_class)
+    assert w_words.size() == 20
     assert w_class.as_class_get_shadow(space).instsize() == 0
-    assert w_bytes.getword(3) == 0
-    w_bytes.setword(3, 42)
-    assert w_bytes.getword(3) == 42
-    assert w_bytes.getword(0) == 0
-    py.test.raises(AssertionError, lambda: w_bytes.getword(20))
+    assert w_words.getword(3) == 0
+    w_words.setword(3, 42)
+    assert w_words.getword(3) == 42
+    assert w_words.getword(0) == 0
+    py.test.raises(AssertionError, lambda: w_words.getword(20))
 
 def test_method_lookup():
     class mockmethod(object):

@@ -1,0 +1,12 @@
+{
+	"class" : {
+		 },
+	"instance" : {
+		"append:" : "topa 12/5/2016 16:30",
+		"filter:" : "topa 12/5/2016 16:31",
+		"findf:ifNone:" : "topa 12/5/2016 17:32",
+		"foldl:withInit:" : "topa 12/5/2016 17:13",
+		"foldr:withInit:" : "topa 12/5/2016 16:53",
+		"isCons" : "topa 12/5/2016 16:26",
+		"map:" : "topa 12/5/2016 16:22",
+		"reverse:" : "topa 12/5/2016 16:40" } }

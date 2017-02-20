@@ -1,0 +1,17 @@
+{
+	"category" : "ImmutableObjects-Tests",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"aField",
+		"anotherField",
+		"someVar1",
+		"someVar2" ],
+	"name" : "ImmJustFixedPointersClass",
+	"pools" : [
+		 ],
+	"super" : "Object",
+	"type" : "normal" }
