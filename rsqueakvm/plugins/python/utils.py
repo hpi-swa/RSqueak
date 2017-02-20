@@ -1,7 +1,6 @@
 import os
 
 from rsqueakvm.error import PrimitiveFailedError
-from rsqueakvm.main import safe_entry_point
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger
 from rsqueakvm.plugins.python.model import W_PythonObject
 from rsqueakvm.plugins.python.global_state import py_space
@@ -165,6 +164,7 @@ def call_function(space, wp_func, args_w):
 
 
 def entry_point(argv):
+    from rsqueakvm.main import safe_entry_point
     if '--python' in argv:
         filename = argv[-1]
         if not os.path.isfile(filename):
