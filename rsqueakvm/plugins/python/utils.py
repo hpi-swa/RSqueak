@@ -1,6 +1,7 @@
 import os
 
 from rsqueakvm.error import PrimitiveFailedError
+from rsqueakvm.main import safe_entry_point
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger
 from rsqueakvm.plugins.python.model import W_PythonObject
 from rsqueakvm.plugins.python.global_state import py_space
@@ -164,12 +165,14 @@ def call_function(space, wp_func, args_w):
 
 
 def entry_point(argv):
-    filename = argv[-1]
-    if not os.path.isfile(filename):
-        print 'File "%s" does not exist.' % filename
-        return 1
-    with open(filename, 'r') as f:
-        runstring = f.read()
-        # import pdb; pdb.set_trace()
-        _run_eval_string(runstring, '<string>', 'exec')
-    return 0
+    if '--python' in argv:
+        filename = argv[-1]
+        if not os.path.isfile(filename):
+            print 'File "%s" does not exist.' % filename
+            return 1
+        with open(filename, 'r') as f:
+            runstring = f.read()
+            # import pdb; pdb.set_trace()
+            _run_eval_string(runstring, '<string>', 'exec')
+        return 0
+    return safe_entry_point(argv)
