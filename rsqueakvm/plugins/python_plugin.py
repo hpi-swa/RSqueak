@@ -12,7 +12,7 @@ from rsqueakvm.plugins.python import model, global_state
 from rsqueakvm.plugins.python.global_state import py_space
 from rsqueakvm.plugins.python.patching import patch_pypy
 from rsqueakvm.plugins.python.utils import (
-    wrap, unwrap, call_function, call_method, getPyCode, _run_eval_string)
+    wrap, unwrap, call_function, call_method, get_pycode, _run_eval_string)
 
 from pypy.interpreter.error import OperationError
 from pypy.interpreter.function import (BuiltinFunction, Function, Method,
@@ -133,7 +133,7 @@ def restartFrame(interp, s_frame, w_rcvr):
 @PythonPlugin.expose_primitive(unwrap_spec=[object, str, str, str])
 def restartFrameWith(interp, s_frame, w_rcvr, source, filename, cmd):
     # import pdb; pdb.set_trace()
-    py_code = getPyCode(source, filename, cmd)
+    py_code = get_pycode(source, filename, cmd)
     if py_code is None:
         return interp.space.w_false  # Raising prim error causes crashes
     global_state.py_frame_restart_info.set(
@@ -149,7 +149,7 @@ def restartSpecificFrame(interp, s_frame, w_rcvr, w_frame, source, filename,
         frame = w_frame.wp_object
     py_code = None
     if source:
-        py_code = getPyCode(source, filename, cmd)
+        py_code = get_pycode(source, filename, cmd)
         if py_code is None:
             return interp.space.w_false  # Raising prim error causes crashes
     global_state.py_frame_restart_info.set(

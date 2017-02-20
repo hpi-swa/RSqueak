@@ -90,7 +90,7 @@ def unwrap(space, w_object):
     raise PrimitiveFailedError
 
 
-def getPyCode(source, filename, cmd):
+def get_pycode(source, filename, cmd):
     # source = 'def __dummy__():\n%s\n' % '\n'.join(
     #     ['    %s' % line for line in source.split('\n')])
     print 'Trying to patch:\n%s' % source
