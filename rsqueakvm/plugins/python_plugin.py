@@ -105,7 +105,7 @@ def restartSpecificFrame(interp, s_frame, w_rcvr, w_frame, source, filename,
         frame = w_frame.wp_object
     py_code = None
     if source:
-        py_code = utils.get_pycode(source, filename, cmd)
+        py_code = utils.get_restart_pycode(source, filename, cmd)
         if py_code is None:
             return interp.space.w_false  # Raising prim error causes crashes
     global_state.py_frame_restart_info.set(

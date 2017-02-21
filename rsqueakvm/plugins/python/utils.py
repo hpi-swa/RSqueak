@@ -114,14 +114,14 @@ def unwrap(space, w_object):
     raise PrimitiveFailedError
 
 
-def get_pycode(source, filename, cmd):
-    # source = 'def __dummy__():\n%s\n' % '\n'.join(
-    #     ['    %s' % line for line in source.split('\n')])
+def get_restart_pycode(source, filename='<string>', cmd='exec'):
     print 'Trying to patch:\n%s' % source
     try:
         py_code = py_compiling.compile(py_space, py_space.newbytes(source),
                                        filename, cmd)
         assert isinstance(py_code, PyCode)
+        if cmd == 'eval':
+            return py_code
         co_consts_w_len = len(py_code.co_consts_w)
         if co_consts_w_len >= 1:
             if co_consts_w_len > 1:
@@ -130,7 +130,7 @@ def get_pycode(source, filename, cmd):
             if not isinstance(first_consts_w, PyCode):
                 print 'First const is not a PyCode'
                 return py_code
-            return py_code.co_consts_w[0]
+            return first_consts_w
     except OperationError as e:
         # import pdb; pdb.set_trace()
         print 'Failed to compile new frame: %s' % e.errorstr(py_space)
