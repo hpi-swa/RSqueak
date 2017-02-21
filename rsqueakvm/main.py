@@ -251,7 +251,18 @@ class Config(object):
             # Other
             elif arg in ["-j", "--jit"]:
                 jitarg, idx = get_parameter(argv, idx, arg)
-                jit.set_user_param(interpreter.Interpreter.jit_driver, jitarg)
+                # Work around TraceLimitTooHigh by setting any trace_limit explicitly
+                parts = jitarg.split(",")
+                limitidx = -1
+                for i, s in enumerate(parts):
+                    if "trace_limit" in s:
+                        limitidx = i
+                        break
+                if limitidx >= 0:
+                    limit = parts.pop(limitidx)
+                    jit.set_param(interpreter.Interpreter.jit_driver, "trace_limit", int(limit.split("=")[1]))
+                if len(parts) > 0:
+                    jit.set_user_param(interpreter.Interpreter.jit_driver, ",".join(parts))
             elif arg in ["-p", "--poll"]:
                 self.poll = True
             elif arg in ["-i", "--no-interrupts"]:
@@ -316,11 +327,8 @@ class Config(object):
                     path = filename
                     break
         if path is None:
-            if not system.IS_ARM and (system.IS_WINDOWS or system.IS_LINUX or system.IS_DARWIN):
-                from rsqueakvm.util import dialog
-                path = dialog.get_file()
-            else:
-                path = "Squeak.image"
+            from rsqueakvm.util.dialog import get_file
+            path = get_file()
         self.path = rpath.rabspath(path)
 
     def sanitize(self):
@@ -388,6 +396,8 @@ class Config(object):
 
 def entry_point(argv):
     jit.set_param(None, "trace_limit", 1000000)
+    jit.set_param(None, "threshold", 8209) # just above 2**!3, prime
+    jit.set_param(None, "function_threshold", 9221) # slightly more than above, also prime
     # == Main execution parameters
     space = prebuilt_space
     cfg = Config(space, argv)

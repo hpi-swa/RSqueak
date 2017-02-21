@@ -319,6 +319,17 @@ class ObjSpace(object):
                                     return w_assoc.fetch(self, 1)
                             except UnwrappingError:
                                 pass
+            elif w_globals.instsize() == 4:
+                w_array = w_globals.fetch(self, 1)
+                size = w_array.varsize()
+                for i in range(size):
+                    w_assoc = w_array.fetch(self, i)
+                    if w_assoc.instsize() == 2:
+                        try:
+                            if self.unwrap_string(w_assoc.fetch(self, 0)) == string:
+                                return w_assoc.fetch(self, 1)
+                        except UnwrappingError:
+                            pass
         elif w_sd.instsize() == 2:
             w_array = w_sd.fetch(self, 1)
             size = w_array.varsize()

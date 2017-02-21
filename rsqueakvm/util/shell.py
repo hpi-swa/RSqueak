@@ -119,10 +119,11 @@ class Shell(object):
         else:
             os._exit(0)
 
-    @untranslated_cmd
-    def pdb(self, code):
-        "!pdb to drop to python shell"
-        import pdb; pdb.set_trace()
+    @cmd
+    def db(self, code):
+        "!db to drop to pdb (untranslated) or gdb (translated)"
+        from rpython.rlib.debug import attach_gdb
+        attach_gdb()
 
     @cmd
     def help(self, code):

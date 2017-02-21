@@ -127,13 +127,27 @@ class ProcessSwitch(ContextSwitchException):
 
 UNROLLING_BYTECODE_RANGES = unroll.unrolling_iterable(interpreter_bytecodes.BYTECODE_RANGES)
 
-def get_printable_location(pc, self, method):
+def get_printable_location(pc, self, method, w_class, blockmethod):
     bc = ord(method.bytes[pc])
     name = method.safe_identifier_string()
-    return '(%s) [%d]: <%s>%s' % (name, pc, hex(bc), interpreter_bytecodes.BYTECODE_NAMES[bc])
+    classname = "???"
+    if isinstance(w_class, W_PointersObject):
+        s_class = w_class.strategy
+        from rsqueakvm.storage_classes import ClassShadow
+        if isinstance(s_class, ClassShadow):
+            classname = s_class.getname()
+    if blockmethod is None:
+        return '%s(%s) [%d]: <%s>%s' % (classname, name, pc, hex(bc), interpreter_bytecodes.BYTECODE_NAMES[bc])
+    else:
+        blockname = blockmethod.safe_identifier_string()
+        return '%s(%s): (%s) [%d]: <%s>%s' % (classname, name, blockname, pc, hex(bc), interpreter_bytecodes.BYTECODE_NAMES[bc])
 
-def resume_get_printable_location(pc, self, method):
-    return "resume: %s" % get_printable_location(pc, self, method)
+def resume_get_printable_location(pc, self, method, w_class):
+    return "resume: %s" % get_printable_location(pc, self, method, w_class, None)
+
+# def confirm_enter_jit(pc, self, method, w_class, s_context):
+#     print get_printable_location(pc, self, method, w_class)
+#     return False
 
 USE_SIGUSR1 = hasattr(rsignal, 'SIGUSR1')
 
@@ -151,7 +165,7 @@ class Interpreter(object):
 
     jit_driver = jit.JitDriver(
         name=jit_driver_name,
-        greens=['pc', 'self', 'method'],
+        greens=['pc', 'self', 'method', 'w_class', 'blockmethod'],
         reds=['s_context'],
         virtualizables=['s_context'],
         get_printable_location=get_printable_location,
@@ -160,7 +174,7 @@ class Interpreter(object):
 
     resume_driver = jit.JitDriver(
         name=jit_driver_name + "_resume",
-        greens=['pc', 'self', 'method'],
+        greens=['pc', 'self', 'method', 'w_class'],
         reds=['s_context'],
         # virtualizables=['s_context'],
         get_printable_location=resume_get_printable_location,
@@ -207,6 +221,7 @@ class Interpreter(object):
                 pc=pc,
                 self=self,
                 method=method,
+                w_class=self.getreceiverclass(s_context),
                 s_context=s_context)
             s_sender = s_context.s_sender()
             try:
@@ -224,6 +239,7 @@ class Interpreter(object):
                         pc=pc,
                         self=self,
                         method=method,
+                        w_class=self.getreceiverclass(s_context),
                         s_context=s_context)
             except StackOverflow, e:
                 if self.is_tracing() or self.trace_important:
@@ -283,6 +299,12 @@ class Interpreter(object):
                 self.stack_depth -= 1
             s_frame.leave_virtual_frame(vref, s_sender)
 
+    def getreceiverclass(self, s_context):
+        return s_context.w_receiver().safe_getclass(self.space)
+
+    def getblockmethod(self, s_context):
+        return s_context.blockmethod
+
     def loop_bytecodes(self, s_context, may_context_switch=True):
         old_pc = 0
         if not jit.we_are_jitted() and may_context_switch:
@@ -296,10 +318,14 @@ class Interpreter(object):
                     self.jitted_check_for_interrupt(s_context)
                 self.jit_driver.can_enter_jit(
                     pc=pc, self=self, method=method,
+                    w_class=self.getreceiverclass(s_context),
+                    blockmethod=self.getblockmethod(s_context),
                     s_context=s_context)
             old_pc = pc
             self.jit_driver.jit_merge_point(
                 pc=pc, self=self, method=method,
+                w_class=self.getreceiverclass(s_context),
+                blockmethod=self.getblockmethod(s_context),
                 s_context=s_context)
             try:
                 self.step(s_context)

@@ -5,6 +5,15 @@ from rsqueakvm.model.compiled_methods import W_CompiledMethod
 from rsqueakvm.util.version import VersionMixin
 
 from rpython.rlib import jit, objectmodel
+from rpython.rlib.rarithmetic import r_uint, intmask
+
+
+pc_mask     = r_uint(0b11111111110000000000000000000000)
+stack_mask  = r_uint(0b11110000111111111111111111111111)
+args_mask   = r_uint(0b00001111111111111111111111111111)
+pc_shift    = 0
+stack_shift = 24
+args_shift  = 28
 
 
 class W_BlockClosure(W_AbstractObjectWithIdentityHash):
@@ -13,15 +22,15 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
     _attrs_ = [
         "version",
         "_w_outerContext",
-        "_startpc",
-        "_numArgs", "_stack",
+        "_startpc_stacklen_args",
+        "_stack",
         "_w_method",
         "_w_receiver" ]
     _immutable_fields_ = [
         "version?",
         "_w_outerContext",
-        "_startpc",
-        "_numArgs", "_stack",
+        "_startpc_stacklen_args",
+        "_stack",
         "_w_method",
         "_w_receiver" ]
     objectmodel.import_from_mixin(VersionMixin)
@@ -45,21 +54,23 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
     @jit.unroll_safe
     def __init__(self, space, w_outerctxt, startpc, numArgs, size, stack=None):
         W_AbstractObjectWithIdentityHash.__init__(self)
+        self._startpc_stacklen_args = r_uint(0)
         self._w_outerContext = w_outerctxt
-        self._startpc = startpc
-        self._numArgs = numArgs
+        self.set_startpc(startpc)
+        self.set_numArgs(numArgs)
         if stack:
-            self._stack = stack
+            self.set_stack(stack)
         elif size == 0:
-            self._stack = self.empty_stack
+            self.set_stack(self.empty_stack)
         else:
-            self._stack = [space.w_nil] * size
+            self.set_stack([space.w_nil] * size)
         self._fillin_w_method(space)
         self._fillin_w_receiver(space)
 
     def fillin(self, space, g_self):
         W_AbstractObjectWithIdentityHash.fillin(self, space, g_self)
-        self._stack = [space.w_nil] * len(g_self.pointers)
+        self._startpc_stacklen_args = r_uint(0)
+        self.set_stack([space.w_nil] * len(g_self.pointers))
         for i, g_obj in enumerate(g_self.pointers):
             g_obj.fillin(space)
             if i >= constants.BLKCLSR_SIZE:
@@ -67,9 +78,9 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
             elif i == constants.BLKCLSR_OUTER_CONTEXT:
                 self._w_outerContext = g_obj.w_object
             elif i == constants.BLKCLSR_STARTPC:
-                self._startpc = space.unwrap_int(g_obj.w_object)
+                self.set_startpc(space.unwrap_int(g_obj.w_object))
             elif i == constants.BLKCLSR_NUMARGS:
-                self._numArgs = space.unwrap_int(g_obj.w_object)
+                self.set_numArgs(space.unwrap_int(g_obj.w_object))
             else:
                 assert False
 
@@ -92,7 +103,7 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
         return constants.BLKCLSR_SIZE
 
     def varsize(self):
-        return len(self._stack)
+        return self.get_stacksize()
 
     def size(self):
         return self.instsize() + self.varsize()
@@ -121,11 +132,25 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
     def w_outerContext(self):
         return self._w_outerContext
 
+    def get_stacksize(self):
+        return intmask((jit.promote(self._startpc_stacklen_args) & ~stack_mask) >> stack_shift)
+
+    def set_stack(self, lst):
+        self._stack = lst
+        ln = len(lst)
+        self._startpc_stacklen_args = (self._startpc_stacklen_args & stack_mask) | (r_uint(ln) << stack_shift)
+
     def startpc(self):
-        return self._startpc
+        return intmask((jit.promote(self._startpc_stacklen_args) & ~pc_mask) >> pc_shift)
+
+    def set_startpc(self, pc):
+        self._startpc_stacklen_args = (self._startpc_stacklen_args & pc_mask) | (r_uint(pc) << pc_shift)
 
     def numArgs(self):
-        return self._numArgs
+        return intmask((jit.promote(self._startpc_stacklen_args) & ~args_mask) >> args_shift)
+
+    def set_numArgs(self, numArgs):
+        self._startpc_stacklen_args = (self._startpc_stacklen_args & args_mask) | (r_uint(numArgs) << args_shift)
 
     def w_method(self):
         return self._w_method
@@ -143,9 +168,9 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
                 self._fillin_w_method(space)
                 self._fillin_w_receiver(space)
             elif index0 == constants.BLKCLSR_STARTPC:
-                self._startpc = space.unwrap_int(w_value)
+                self.set_startpc(space.unwrap_int(w_value))
             elif index0 == constants.BLKCLSR_NUMARGS:
-                self._numArgs = space.unwrap_int(w_value)
+                self.set_numArgs(space.unwrap_int(w_value))
             else:
                 assert False
 
@@ -166,9 +191,8 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
         if not isinstance(w_other, W_BlockClosure):
             raise error.PrimitiveFailedError
         self.changed() # aborts trace
-        self._numArgs, w_other._numArgs = w_other._numArgs, self._numArgs
         self._w_outerContext, w_other._w_outerContext = w_other._w_outerContext, self._w_outerContext
-        self._startpc, w_other._startpc = w_other._startpc, self._startpc
+        self._startpc_stacklen_args, w_other._startpc_stacklen_args = w_other._startpc_stacklen_args, self._startpc_stacklen_args
         self._stack, w_other._stack = w_other._stack, self._stack
         W_AbstractObjectWithIdentityHash._become(self, w_other)
 
