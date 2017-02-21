@@ -6,8 +6,8 @@ from rsqueakvm.plugins.python.model import W_PythonObject
 from rsqueakvm.plugins.python.global_state import py_space
 from rsqueakvm.model.variable import W_BytesObject
 
+from pypy.interpreter import eval, module
 from pypy.interpreter.error import OperationError
-from pypy.interpreter.main import compilecode, ensure__main__
 from pypy.interpreter.module import Module
 from pypy.interpreter.pycode import PyCode
 from pypy.module.__builtin__ import compiling as py_compiling
@@ -18,6 +18,30 @@ from pypy.objspace.std.listobject import W_ListObject as WP_ListObject
 from pypy.objspace.std.tupleobject import W_TupleObject as WP_TupleObject
 
 from rpython.rlib import objectmodel
+
+
+def ensure__main__(space):
+    # Adopted from PyPy's main.py
+    w_main = space.newbytes('__main__')
+    w_modules = space.sys.get('modules')
+    try:
+        return space.getitem(w_modules, w_main)
+    except OperationError as e:
+        if not e.match(space, space.w_KeyError):
+            raise
+    mainmodule = module.Module(space, w_main)
+    space.setitem(w_modules, w_main, mainmodule)
+    return mainmodule
+
+
+def compilecode(space, source, filename, cmd='exec'):
+    # Adopted from PyPy's main.py
+    ws = space.newbytes
+    w_code = space.builtin.call(
+        'compile', ws(source), ws(filename), ws(cmd),
+        space.newint(0), space.newint(0))
+    pycode = space.interp_w(eval.Code, w_code)
+    return pycode
 
 
 def _run_eval_string(source, filename, cmd):
@@ -173,6 +197,6 @@ def entry_point(argv):
         with open(filename, 'r') as f:
             runstring = f.read()
             # import pdb; pdb.set_trace()
-            _run_eval_string(runstring, '<string>', 'exec')
+            _run_eval_string(runstring, filename, 'exec')
         return 0
     return safe_entry_point(argv)
