@@ -73,9 +73,6 @@ class ModernJITTest(BaseJITTest):
     image_name = "Squeak4.3.image"
     test_image = image_path(image_name)
 
-    def run(self, spy, tmpdir, code):
-        # first loop is from compiling, skip that
-        return BaseJITTest.run(self, spy, tmpdir, code)[1:]
 
 class Parser(oparser.OpParser):
     def get_descr(self, poss_descr, allow_invent):
