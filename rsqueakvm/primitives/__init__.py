@@ -4,7 +4,7 @@ from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.base import W_Object
 from rsqueakvm.model.character import W_Character
 from rsqueakvm.model.pointers import W_PointersObject
-from rsqueakvm.model.variable import W_BytesObject
+from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.primitives.constants import *
 from rsqueakvm.util.system import IS_SPHINX
 
@@ -41,6 +41,7 @@ def assert_pointers(w_obj):
 index1_0 = object()
 char = object()
 bytelist = object()
+wordlist = object()
 uint = object()
 positive_uint = object()
 
@@ -132,6 +133,10 @@ def wrap_primitive(unwrap_spec=None, no_result=False,
                         if not isinstance(w_arg, W_BytesObject):
                             raise PrimitiveFailedError
                         args += (w_arg.getbytes(), )
+                    elif spec is wordlist:
+                        if not isinstance(w_arg, W_WordsObject):
+                            raise PrimitiveFailedError
+                        args += (w_arg.getwords(), )
                     elif spec is list:
                         args += (interp.space.unwrap_array(w_arg), )
                     elif spec is char:

@@ -49,6 +49,9 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
     def has_class(self):
         return self.getclass(None) is not None
 
+    def safe_getclass(self, space):
+        return self.strategy.getclass()
+
     def getclass(self, space):
         if self._get_strategy() is None:
             return None

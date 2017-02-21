@@ -113,13 +113,17 @@ class Shell(object):
     @cmd
     def q(self, code):
         "!q for quitting"
-        from rpython.rlib.nonconst import NonConstant
-        os._exit(NonConstant(0))
+        if objectmodel.we_are_translated():
+            from rpython.rlib.nonconst import NonConstant
+            os._exit(NonConstant(0))
+        else:
+            os._exit(0)
 
-    @untranslated_cmd
-    def pdb(self, code):
-        "!pdb to drop to python shell"
-        import pdb; pdb.set_trace()
+    @cmd
+    def db(self, code):
+        "!db to drop to pdb (untranslated) or gdb (translated)"
+        from rpython.rlib.debug import attach_gdb
+        attach_gdb()
 
     @cmd
     def help(self, code):

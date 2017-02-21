@@ -38,6 +38,11 @@ COMPACT_CLASSES_ARRAY = 28
 # The image data can optionally start after this fixed offset.
 POSSIBLE_IMAGE_OFFSET = 512
 
+UNROLLING_CONSTANTS = unroll.unrolling_iterable(sorted(
+    constants.constant_objects_in_special_object_table_wo_types.items(),
+    key=lambda t: t[1]
+))
+
 class ImageVersion(object):
     _immutable_fields_ = [
         "magic", "is_big_endian", "is_64bit", "has_closures",
@@ -381,38 +386,19 @@ class BaseReaderStrategy(object):
     def isbiginteger(self, g_object):
         return self.islargeinteger(g_object) and g_object.len_bytes() > constants.BYTES_PER_MACHINE_INT
 
-
-def make_assign_prebuilt_constants():
-    items = sorted(constants.constant_objects_in_special_object_table_wo_types.items(), key=lambda t: t[1])
-    code = ["def _assign_prebuilt_constants(self):"]
-    for name, so_index in items:
-        code.extend([
-            "",
-            "    w_object = self.space.w_%s" % name,
-            "    g_object = None",
-            "    try:",
-            "        g_object = self.special_g_object(%d)" % so_index,
-            "    except IndexError:",
-        ])
-        if name in ("LargeNegativeInteger", "ClassBinding", "Metaclass", "Processor", "ByteSymbol"):
-            code.extend([
-                "        g_object = self.smalltalk_g_at('%s')" % name,
-            ])
-        else:
-            code.extend([
-                "        pass"
-            ])
-        code.extend([
-            "    if g_object is not None:",
-            "        if g_object.w_object is None:",
-            "            g_object.w_object = w_object",
-            "        elif not g_object.w_object.is_nil(self.space):",
-            "            raise Warning('Object %s found in multiple places in the special objects array')" % name
-        ])
-    d = {}
-    exec compile("\n".join(code), __file__, 'exec') in d
-    return d["_assign_prebuilt_constants"]
-BaseReaderStrategy._assign_prebuilt_constants = make_assign_prebuilt_constants()
+    def _assign_prebuilt_constants(self):
+        for name, so_index in UNROLLING_CONSTANTS:
+            w_object = getattr(self.space, "w_%s" % name)
+            g_object = None
+            try:
+                g_object = self.special_g_object(so_index)
+            except IndexError:
+                g_object = self.smalltalk_g_at(name)
+            if g_object is not None:
+                if g_object.w_object is None:
+                    g_object.w_object = w_object
+                elif not g_object.w_object.is_nil(self.space):
+                    raise Warning('Object %s found in multiple places in the special objects array' % name)
 
 
 class NonSpurReader(BaseReaderStrategy):

@@ -13,53 +13,83 @@ else:
     lfiles = [str(this_dir.join("tinyfiledialogs/tinyfiledialogs.c"))]
 
 eci = ExternalCompilationInfo(
-        include_dirs=[this_dir],
-        link_files=lfiles,
-        separate_module_sources=["""
-            #include <string.h>
-            #ifdef _WIN32
-            #include <windows.h>
-            #include <Commdlg.h>
-            #ifndef _tinyfd
-            #define _tinyfd
-            #include "tinyfiledialogs/tinyfiledialogs.c"
-            #endif
-            #define DLLEXPORT __declspec(dllexport)
-            #else
-            #ifndef _tinyfd
-            #define _tinyfd
-            #include "tinyfiledialogs/tinyfiledialogs.h"
-            #endif
-            #include <sys/time.h>
-            #include <sys/resource.h>
-            #define DLLEXPORT __attribute__((__visibility__("default")))
-            #endif
-            DLLEXPORT int RSqueakOpenFileDialog_linux(char* szFile, int len) {
-                char const * const filter = "*.image";
-                const char * file = tinyfd_openFileDialog("", "", 1, &filter, 0, 0);
-                if (file != 0) {
-                    strncpy(szFile, file, len - 1);
-                }
-                return (file == 0) ? 0: 1;
-            }
-            """]
+    include_dirs=[this_dir],
+    link_files=lfiles,
+    post_include_bits=["""
+    #ifndef __rsqueak_dialog_h
+    #define __rsqueak_dialog_h
+
+    #ifdef _WIN32
+    #define DLLEXPORT __declspec(dllexport)
+    #else
+    #define DLLEXPORT __attribute__((__visibility__("default")))
+    #endif
+
+    #ifdef __cplusplus
+    extern "C" {
+    #endif
+            DLLEXPORT int RSqueakOpenFileDialog(char* szFile, int len);
+            DLLEXPORT int RSqueakAskQuestion(const char* question);
+    #ifdef __cplusplus
+    }
+    #endif
+    #endif
+    """],
+    separate_module_sources=["""
+    #include <string.h>
+    #ifdef _WIN32
+    #include <windows.h>
+    #include <Commdlg.h>
+    #ifndef _tinyfd
+    #define _tinyfd
+    #include "tinyfiledialogs/tinyfiledialogs.c"
+    #endif
+    #define DLLEXPORT __declspec(dllexport)
+    #else
+    #ifndef _tinyfd
+    #define _tinyfd
+    #include "tinyfiledialogs/tinyfiledialogs.h"
+    #endif
+    #include <sys/time.h>
+    #include <sys/resource.h>
+    #define DLLEXPORT __attribute__((__visibility__("default")))
+    #endif
+
+    DLLEXPORT int RSqueakOpenFileDialog(char* szFile, int len) {
+        char const * const filter = "*.image";
+        const char * file = tinyfd_openFileDialog("", "", 1, &filter, 0, 0);
+        if (file != 0) {
+            strncpy(szFile, file, len - 1);
+        }
+        return (file == 0) ? 0: 1;
+    }
+
+    DLLEXPORT int RSqueakAskQuestion(const char* question) {
+        return tinyfd_messageBox("RSqueak", question, "yesno", "question", 1);
+    }
+    """]
 )
 
-__llget_file = rffi.llexternal('RSqueakOpenFileDialog_linux',
-                               [rffi.CCHARP, rffi.INT], rffi.INT,
-                               compilation_info=eci)
-def tiny_get_file():
-    charp = rffi.str2charp("".join(["\0"] * 260))
-    res = __llget_file(charp, 260)
-    if res == 1:
-        path = rffi.charp2str(charp)
-        rffi.free_charp(charp)
-        return path
-    else:
-        rffi.free_charp(charp)
+
+if not system.IS_ARM and (system.IS_WINDOWS or system.IS_LINUX or system.IS_DARWIN):
+    __llget_file = rffi.llexternal('RSqueakOpenFileDialog',
+                                   [rffi.CCHARP, rffi.INT], rffi.INT,
+                                   compilation_info=eci)
+    __llask_question = rffi.llexternal('RSqueakAskQuestion',
+                                       [rffi.CCHARP], rffi.INT,
+                                       compilation_info=eci)
+    def get_file():
+        with rffi.scoped_str2charp("".join(["\0"] * 260)) as charp:
+            res = __llget_file(charp, 260)
+            if res == 1:
+                return rffi.charp2str(charp)
         return _Default
 
-def get_file():
-    return tiny_get_file()
-
-
+    def ask_question(string):
+        with rffi.scoped_view_charp(string) as charp:
+            res = __llask_question(charp)
+            return res == 1
+        return True
+else:
+    def get_file(): return _Default
+    def ask_question(string): return True

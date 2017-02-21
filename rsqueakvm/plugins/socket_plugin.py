@@ -47,6 +47,26 @@ class SocketPluginClass(Plugin):
         Plugin.__init__(self)
         self.last_lookup = Cell(None)
 
+    # cannot overload call (plugins are PBCs) so we decorate the decorator
+    def expose_primitive(self, wrap_func=None, **kwargs):
+        """NOT RPYTHON"""
+        original_decorator = Plugin.expose_primitive(self, wrap_func=wrap_func, **kwargs)
+        def decorator(func):
+            original_decorator(func)
+            wrapped = self.primitives[func.func_name]
+            def catchall(interp, s_frame, argcount, w_method=None):
+                try:
+                    return wrapped(interp, s_frame, argcount, w_method=w_method)
+                except rsocket.SocketError as e:
+                    print "!!!SOCKET ERROR!!!"
+                    print e.get_msg()
+                    print "!!!SOCKET ERROR!!!"
+                    raise error.PrimitiveFailedError
+            catchall.func_name = "catchall_" + wrapped.func_name
+            self.primitives[func.func_name] = catchall
+            return func
+        return decorator
+
     def set_last_lookup(self, v):
         self.last_lookup.set(v)
 

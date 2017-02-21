@@ -245,6 +245,37 @@ class SDLDisplay(NullDisplay):
             return
         RSDL.RenderPresent(self.renderer)
 
+    # def force_32bit_texture_to_screen(self, left, right, top, bottom, pixels):
+    #     from rsqueakvm.constants import BYTES_PER_WORD
+    #     assert self.depth == 32
+    #     left = max(left - 1, 0)
+    #     top = max(top - 1, 0)
+    #     with lltype.scoped_alloc(RSDL.Rect) as rect:
+    #         rect.c_x = rffi.r_int(left)
+    #         rect.c_y = rffi.r_int(top)
+    #         rect.c_w = rffi.r_int(right - left)
+    #         rect.c_h = rffi.r_int(bottom - top)
+    #         pitch = rffi.r_int(self.width * 4) # 4 bytes per pixel
+    #         start = left + top * self.width / (BYTES_PER_WORD / 4)
+    #         ec = RSDL.UpdateTexture(
+    #             self.screen_texture,
+    #             rect,
+    #             rffi.cast(rffi.VOIDP, rffi.ptradd(pixels, start)),
+    #             pitch # pitch includes the padding between rows
+    #         )
+    #         if ec != 0:
+    #             print RSDL.GetError()
+    #             return
+    #         ec = RSDL.RenderCopy(
+    #             self.renderer,
+    #             self.screen_texture,
+    #             rect,
+    #             rect)
+    #         if ec != 0:
+    #             print RSDL.GetError()
+    #             return
+    #     RSDL.RenderPresent(self.renderer)
+
     def set_squeak_colormap(self, surface):
         # TODO: fix this up from the image
         colors = lltype.malloc(rffi.CArray(RSDL.Color), 4, flavor='raw')
@@ -409,11 +440,8 @@ class SDLDisplay(NullDisplay):
 
     def get_next_event(self, time=0):
         if len(self._deferred_events) > 0:
-            deferred = self._deferred_events.pop()
-            return deferred
-
-        event = lltype.malloc(RSDL.Event, flavor="raw")
-        try:
+            return self._deferred_events.pop()
+        with lltype.scoped_alloc(RSDL.Event) as event:
             if RSDL.PollEvent(event) == 1:
                 event_type = r_uint(event.c_type)
                 if event_type in (RSDL.MOUSEBUTTONDOWN, RSDL.MOUSEBUTTONUP):
@@ -445,22 +473,12 @@ class SDLDisplay(NullDisplay):
                     return self.get_next_key_event(EventKeyUp, time)
                 elif event_type == RSDL.WINDOWEVENT:
                     self.handle_windowevent(event_type, event)
-                #     self.screen = RSDL.GetVideoSurface()
-                #     self._deferred_events.append([EventTypeWindow, time, WindowEventPaint,
-                #                             0, 0, int(self.screen.c_w), int(self.screen.c_h), 0])
-                #     return [EventTypeWindow, time, WindowEventMetricChange,
-                #             0, 0, int(self.screen.c_w), int(self.screen.c_h), 0]
-                # elif c_type == RSDL.VIDEOEXPOSE:
-                #     self._deferred_events([EventTypeWindow, time, WindowEventPaint,
-                #                             0, 0, int(self.screen.c_w), int(self.screen.c_h), 0])
-                #     return [EventTypeWindow, time, WindowEventActivated, 0, 0, 0, 0, 0]
                 elif event_type == RSDL.QUIT:
                     if self.altf4quit: # we want to quit hard
-                        print "Alt+F4 quit option is on, exiting hard."
-                        raise Exception
+                        from rsqueakvm.util.dialog import ask_question
+                        if ask_question("Quit Squeak without saving?"):
+                            raise Exception
                     return [EventTypeWindow, time, WindowEventClose, 0, 0, 0, 0, 0]
-        finally:
-            lltype.free(event, flavor='raw')
         return [EventTypeNone, 0, 0, 0, 0, 0, 0, 0]
 
     def is_control_key(self, key_ord):
