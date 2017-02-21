@@ -8,11 +8,10 @@ else:
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.plugins.plugin import Plugin, PluginStartupScripts
-from rsqueakvm.plugins.python import model, global_state
+from rsqueakvm.plugins.python import model, global_state, utils
 from rsqueakvm.plugins.python.global_state import py_space
 from rsqueakvm.plugins.python.patching import patch_pypy
-from rsqueakvm.plugins.python.utils import (
-    wrap, unwrap, call_function, call_method, get_pycode, _run_eval_string)
+from rsqueakvm.plugins.python.utils import wrap, unwrap
 
 from pypy.interpreter.error import OperationError
 from pypy.interpreter.function import (BuiltinFunction, Function, Method,
@@ -41,29 +40,13 @@ def startup(space, argv):
 PluginStartupScripts.append(startup)
 
 
-@PythonPlugin.expose_primitive(unwrap_spec=[object, str, str, str])
-def eval(interp, s_frame, w_rcvr, source, filename, cmd):
-    try:
-        # import pdb; pdb.set_trace()
-        retval = _run_eval_string(source, filename, cmd)
-        return wrap(interp.space, retval)
-    except OperationError as operr:
-        print operr.errorstr(py_space)
-        # import pdb; pdb.set_trace()
-        return wrap(interp.space, operr.get_w_value(py_space))
-    except Exception as e:
-        print '[Unknown Exception] %s' % e
-        # import pdb; pdb.set_trace()
-        raise PrimitiveFailedError
-
-
 @PythonPlugin.expose_primitive(unwrap_spec=[object, str, str, str],
                                result_is_new_frame=True)
-def evalInThread(interp, s_frame, w_rcvr, source, filename, cmd):
+def eval(interp, s_frame, w_rcvr, source, filename, cmd):
     from rsqueakvm.plugins.python import execution
     # Reset error and state
     global_state.wp_result.set(None)
-    global_state.wp_error.set(None)
+    global_state.wp_operror.set(None)
     # import pdb; pdb.set_trace()
     execution.start_new_thread(
         source, filename, cmd, translated=PythonPlugin.we_are_translated())
@@ -99,18 +82,10 @@ def lastResult(interp, s_frame, w_rcvr):
 
 @PythonPlugin.expose_primitive(unwrap_spec=[object])
 def lastError(interp, s_frame, w_rcvr):
-    wp_error = global_state.wp_error.get()
-    if wp_error is None:
+    operr = global_state.wp_operror.get()
+    if operr is None:
         raise PrimitiveFailedError
-    return wrap(interp.space, wp_error)
-
-
-@PythonPlugin.expose_primitive(unwrap_spec=[object])
-def asSmalltalk(interp, s_frame, w_rcvr):
-    # import pdb; pdb.set_trace()
-    if not isinstance(w_rcvr, model.W_PythonObject):
-        raise PrimitiveFailedError
-    return wrap(interp.space, w_rcvr.wp_object)
+    return wrap(interp.space, utils.operr_to_pylist(operr))
 
 
 @PythonPlugin.expose_primitive(unwrap_spec=[object])
@@ -122,25 +97,6 @@ def getTopFrame(interp, s_frame, w_rcvr):
     return wrap(interp.space, topframe)
 
 
-@PythonPlugin.expose_primitive(unwrap_spec=[object])
-def restartFrame(interp, s_frame, w_rcvr):
-    # import pdb; pdb.set_trace()
-    global_state.py_frame_restart_info.set(
-        global_state.PyFrameRestartInfo())
-    return interp.space.w_true
-
-
-@PythonPlugin.expose_primitive(unwrap_spec=[object, str, str, str])
-def restartFrameWith(interp, s_frame, w_rcvr, source, filename, cmd):
-    # import pdb; pdb.set_trace()
-    py_code = get_pycode(source, filename, cmd)
-    if py_code is None:
-        return interp.space.w_false  # Raising prim error causes crashes
-    global_state.py_frame_restart_info.set(
-        global_state.PyFrameRestartInfo(code=py_code))
-    return interp.space.w_true
-
-
 @PythonPlugin.expose_primitive(unwrap_spec=[object, object, str, str, str])
 def restartSpecificFrame(interp, s_frame, w_rcvr, w_frame, source, filename,
                          cmd):
@@ -149,7 +105,7 @@ def restartSpecificFrame(interp, s_frame, w_rcvr, w_frame, source, filename,
         frame = w_frame.wp_object
     py_code = None
     if source:
-        py_code = get_pycode(source, filename, cmd)
+        py_code = utils.get_pycode(source, filename, cmd)
         if py_code is None:
             return interp.space.w_false  # Raising prim error causes crashes
     global_state.py_frame_restart_info.set(
@@ -175,7 +131,7 @@ def send(interp, s_frame, argcount, w_method):
         if wp_rcvr is py_space.builtin:
             builtin = py_space.builtin.get(methodname)
             if isinstance(builtin, BuiltinFunction):
-                w_result = call_function(space, builtin, args_w)
+                w_result = utils.call_function(space, builtin, args_w)
             if isinstance(builtin, WP_TypeObject):
                 if methodname == 'tuple':
                     w_result = wrap(space, py_space.newtuple(
@@ -203,7 +159,8 @@ def send(interp, s_frame, argcount, w_method):
                     isinstance(py_attr, Method) or
                     isinstance(py_attr, StaticMethod) or
                     isinstance(py_attr, ClassMethod)):
-                w_result = call_method(space, wp_rcvr, methodname, args_w)
+                w_result = utils.call_method(
+                    space, wp_rcvr, methodname, args_w)
             else:
                 if len(args_w) == 1:
                     py_space.setattr(wp_rcvr, py_space.newbytes(methodname),

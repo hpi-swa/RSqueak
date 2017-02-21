@@ -100,7 +100,7 @@ def new_handle_operation_error(self, ec, operr, attach_tb=True):
         raise operr
     if not self.has_exception_handler(operr):
         # import pdb; pdb.set_trace()
-        gs.wp_error.set(operr.get_w_value(gs.py_space))
+        gs.wp_operror.set(operr)
         print 'Python error caught'
         gs.switch_action.perform()
     return old_handle_operation_error(self, ec, operr, attach_tb)

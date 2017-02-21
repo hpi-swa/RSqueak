@@ -1,7 +1,7 @@
 from rsqueakvm.model.compiled_methods import (
     W_SpurCompiledMethod, W_PreSpurCompiledMethod)
 from rsqueakvm.plugins.python import global_state as gs
-from rsqueakvm.plugins.python.utils import _run_eval_string
+from rsqueakvm.plugins.python.utils import _run_eval_string, operr_to_pylist
 
 from rpython.rlib.rstacklet import StackletThread
 from rpython.rlib import objectmodel
@@ -27,7 +27,7 @@ def resume_thread():
         print 'No runner to resume with'
         return False
     runner.resume()
-    return gs.wp_error.get() is None
+    return gs.wp_operror.get() is None
 
 
 class ForeignLanguage:
@@ -55,15 +55,15 @@ class PythonLanguage(ForeignLanguage):
         except OperationError as operr:
             # operr was not handled by users, because they pressed proceed.
             # save Python error as result instead.
-            self.save_result(operr.get_w_value(gs.py_space))
+            self.save_result(operr_to_pylist(operr))
         except Exception as e:
             print 'Unknown error in Python thread: %s' % e
         finally:
             self._resumable = False
 
     def save_result(self, result):
-        gs.wp_error.set(None)  # unset last error
         gs.wp_result.set(result)
+        gs.wp_operror.set(None)  # unset last error
 
 
 class GlobalState:
@@ -143,7 +143,7 @@ def switch_to_smalltalk(interp, s_frame, first_call=False):
     # print 'Switch to Smalltalk'
     wp_result = gs.wp_result.get()
     if wp_result is not None:
-        return _handle_result(interp.space, wp_result)
+        return _create_return_frame(interp.space, wp_result)
 
     resume_method = gs.w_python_resume_method.get()
     s_resume_frame = ContextPartShadow.build_method_context(
@@ -165,11 +165,11 @@ def switch_to_smalltalk(interp, s_frame, first_call=False):
     return s_resume_frame
 
 
-def _handle_result(space, wp_result):
+def _create_return_frame(space, wp_result):
     from rsqueakvm.storage_contexts import ContextPartShadow
     from rsqueakvm.plugins.python.utils import wrap
     print 'Python has finished and returned a result'
-    # we want evalInThread and resumePython to retun new frames,
+    # we want evalInThread and resumePython to return new frames,
     # so we don't build up stack, but we also don't raise to the
     # top-level loop all the time.
     # For resuming, we obviously need a new frame, because that's
@@ -182,17 +182,21 @@ def _handle_result(space, wp_result):
         w_cm = objectmodel.instantiate(W_SpurCompiledMethod)
     else:
         w_cm = objectmodel.instantiate(W_PreSpurCompiledMethod)
+    w_python_class = gs.w_python_class.get()
     w_cm.header = 0
     w_cm._primitive = 0
     w_cm.literalsize = 3
     w_cm.islarge = False
     w_cm._tempsize = 0
     w_cm.argsize = 0
+    w_cm.compiledin_class = w_python_class.getclass(space)
+    w_cm.lookup_selector = 'fakeReturnResult'
     w_cm.bytes = [chr(b) for b in [
         0x20,  # push constant
         0x7C,  # return stack top
     ]]
-    w_cm.literals = [wrap(space, wp_result), space.w_nil, space.w_nil]
+    w_cm.literals = [wrap(space, wp_result), space.w_nil,
+                     w_cm.compiledin_class]
     gs.wp_result.set(None)
     return ContextPartShadow.build_method_context(
-        space, w_cm, gs.w_python_class.get())
+        space, w_cm, w_python_class)

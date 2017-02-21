@@ -187,6 +187,14 @@ def call_function(space, wp_func, args_w):
     return wrap(space, py_space.call_function(wp_func))
 
 
+def operr_to_pylist(operr):
+    assert isinstance(operr, OperationError)
+    wp_exception = py_space.wrap(operr.w_type.getname(py_space))
+    wp_value = operr.get_w_value(py_space)
+    wp_traceback = py_space.wrap(operr.get_traceback())
+    return py_space.newlist([wp_exception, wp_value, wp_traceback])
+
+
 def entry_point(argv):
     from rsqueakvm.main import safe_entry_point
     if '--python' in argv:
