@@ -67,17 +67,17 @@ def new_pypy_objspace():
     # equivalent to the hack in app_main.py of PyPy, albiet interp-level.
     w_sys = py_space.sys
     w_modnames = w_sys.get('builtin_module_names')
-    w_in = py_space.contains(w_modnames, py_space.wrap('__pypy__'))
+    w_in = py_space.contains(w_modnames, py_space.newbytes('__pypy__'))
     if not py_space.is_true(w_in):
         rl = py_space.sys.get('setrecursionlimit')
-        py_space.call(rl, py_space.newlist([py_space.wrap(5000)]))
+        py_space.call(rl, py_space.newlist([py_space.newint(5000)]))
 
     # Should always be able to import Python modules in CWD.
-    w_sys_path = py_space.getattr(w_sys, py_space.wrap('path'))
-    py_space.call_method(w_sys_path, 'append', py_space.wrap('.'))
+    w_sys_path = py_space.getattr(w_sys, py_space.newbytes('path'))
+    py_space.call_method(w_sys_path, 'append', py_space.newbytes('.'))
 
     # Set sys.executable in PyPy -- some modules rely upon this existing.
-    py_space.setattr(w_sys, py_space.wrap('executable'),
-                     py_space.wrap(os.path.abspath(sys.argv[0])))
+    py_space.setattr(w_sys, py_space.newbytes('executable'),
+                     py_space.newbytes(os.path.abspath(sys.argv[0])))
 
     return py_space

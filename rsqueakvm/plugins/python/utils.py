@@ -49,7 +49,7 @@ def _run_eval_string(source, filename, cmd):
     try:
         ws = py_space.newbytes
 
-        pycode = compilecode(py_space, ws(source), filename or '<string>', cmd)
+        pycode = compilecode(py_space, source, filename or '<string>', cmd)
 
         mainmodule = ensure__main__(py_space)
         assert isinstance(mainmodule, Module)
@@ -119,7 +119,7 @@ def get_pycode(source, filename, cmd):
     #     ['    %s' % line for line in source.split('\n')])
     print 'Trying to patch:\n%s' % source
     try:
-        py_code = py_compiling.compile(py_space, py_space.wrap(source),
+        py_code = py_compiling.compile(py_space, py_space.newbytes(source),
                                        filename, cmd)
         assert isinstance(py_code, PyCode)
         co_consts_w_len = len(py_code.co_consts_w)

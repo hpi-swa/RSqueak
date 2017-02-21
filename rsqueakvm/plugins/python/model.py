@@ -97,11 +97,11 @@ class PythonClassShadow(ClassShadow):
             if py_attr is None:
                 # check instance vars and methods
                 py_attr = py_space.getattr(self.wp_object,
-                                           py_space.wrap(methodname))
+                                           py_space.newbytes(methodname))
             if py_attr is None:
                 # check class vars and methods
                 py_attr = py_space.getattr(self.wp_class,
-                                           py_space.wrap(methodname))
+                                           py_space.newbytes(methodname))
         except OperationError:
             pass
         except Exception as e:
