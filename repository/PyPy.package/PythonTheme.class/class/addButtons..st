@@ -10,9 +10,9 @@ addButtons: theme
 		set: #font for: #PluggableButtonMorph to: [Preferences standardButtonFont];
 		set: #textColor for: #PluggableButtonMorph to: self textColor;
 
-		set: #selectionModifier for: #PluggableButtonMorph to: [ [:c | c adjustBrightness: 0.1] ];
-		set: #hoverModifier for: #PluggableButtonMorph to: [ [:c | c adjustBrightness: 0.1] ];
-		set: #feedbackModifier for: #PluggableButtonMorph to: [ [:c | c adjustBrightness: 0.3] ].
+		set: #selectionModifier for: #PluggableButtonMorph to: [ [:c | c adjustBrightness: 0.2] ];
+		set: #hoverModifier for: #PluggableButtonMorph to: [ [:c | c adjustBrightness: 0.4] ];
+		set: #feedbackModifier for: #PluggableButtonMorph to: [ [:c | c adjustBrightness: 0.6] ].
 	
 	"And the plus-version."
 	theme

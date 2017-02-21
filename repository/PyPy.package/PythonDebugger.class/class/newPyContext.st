@@ -1,5 +1,5 @@
 as yet unclassified
-newContext
+newPyContext
 	^ PythonFakeMethodContext
 			sender: nil
 			receiver: PythonObject

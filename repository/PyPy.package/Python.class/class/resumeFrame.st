@@ -1,6 +1,7 @@
-system primitives
+special methods
 resumeFrame
 	"Magic method that is called by vm (cached in vm)"
 	Processor yield.
-	self primLastError ifNotNil: [ :e | self openDebuggerWithPythonFrames: e ].
-	self primResume
+	[ ^ self primResume ] on: Error do: [
+		self openDebuggerWithPythonFrames.
+		^ self resumeFrame ]

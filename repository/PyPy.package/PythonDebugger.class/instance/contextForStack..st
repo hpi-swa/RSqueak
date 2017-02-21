@@ -2,4 +2,4 @@ overrides
 contextForStack: aContext
 	aContext method selector = #resumeFrame
 		ifFalse: [ ^ aContext ]. "Normal MethodContext"
-	^ self class appendPythonContexts: aContext
+	^ self class prependPythonContexts: aContext

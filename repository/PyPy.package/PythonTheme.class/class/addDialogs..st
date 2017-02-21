@@ -18,10 +18,10 @@ addDialogs: theme
 		set: #font for: #DialogWindow to: [Preferences standardSystemFont];
 		set: #textColor for: #DialogWindow to: self textColor;
 		
-		set: #okColor for: #DialogWindow to: (Color r: 0.49 g: 0.749 b: 0.49);
-		set: #cancelColor for: #DialogWindow to: (Color r: 1 g: 0.6 b: 0.588);
-		set: #buttonColor for: #DialogWindow to: (Color r: 0.658 g: 0.678 b: 0.78) twiceLighter;
-		set: #selectionModifier for: #DialogWindow to: [ [:c | Color orange muchLighter ] ].
+		set: #okColor for: #DialogWindow to: self green;
+		set: #cancelColor for: #DialogWindow to: self red;
+		set: #buttonColor for: #DialogWindow to: (self backgroundColor adjustBrightness: 0.2);
+		set: #selectionModifier for: #DialogWindow to: [ [:c | c adjustBrightness: 0.1 ] ].
 	
 	"The List Chooser is a dialog, too."
 	theme
