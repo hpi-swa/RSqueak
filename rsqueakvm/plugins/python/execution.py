@@ -47,23 +47,23 @@ class PythonLanguage(ForeignLanguage):
             # ensure py_space has a fresh exectioncontext
             gs.py_space.threadlocals.enter_thread(gs.py_space)
 
+            # switch back to Squeak before executing Python code
+            gs.switch_action.perform()
+
             retval = _run_eval_string(self.source, self.filename, self.cmd)
             self.save_result(retval)
-        except OperationError as e:
-            print e.errorstr(gs.py_space)
-            self.handle_error(e.get_w_value(gs.py_space))
+        except OperationError as operr:
+            # operr was not handled by users, because they pressed proceed.
+            # save Python error as result instead.
+            self.save_result(operr.get_w_value(gs.py_space))
         except Exception as e:
             print 'Unknown error in Python thread: %s' % e
-
-        self._resumable = False
+        finally:
+            self._resumable = False
 
     def save_result(self, result):
         gs.wp_error.set(None)  # unset last error
         gs.wp_result.set(result)
-
-    def handle_error(self, error):
-        gs.wp_result.set(None)  # unset last result
-        gs.wp_error.set(error)
 
 
 class GlobalState:

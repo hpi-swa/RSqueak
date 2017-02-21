@@ -47,10 +47,10 @@ def eval(interp, s_frame, w_rcvr, source, filename, cmd):
         # import pdb; pdb.set_trace()
         retval = _run_eval_string(source, filename, cmd)
         return wrap(interp.space, retval)
-    except OperationError as operationerr:
-        print operationerr.errorstr(py_space)
+    except OperationError as operr:
+        print operr.errorstr(py_space)
         # import pdb; pdb.set_trace()
-        raise PrimitiveFailedError
+        return wrap(interp.space, operr.get_w_value(py_space))
     except Exception as e:
         print '[Unknown Exception] %s' % e
         # import pdb; pdb.set_trace()
@@ -218,8 +218,9 @@ def send(interp, s_frame, argcount, w_method):
         print 'Unable to call %s on %s: %s' % (methodname, wp_rcvr, e)
         return space.w_nil
     if w_result is None:
-        print 'Result failure in send primitive (type: %s, methodname: %s)' % (
-            py_space.type(wp_rcvr), methodname)
+        # import pdb; pdb.set_trace()
+        print ('Result failure in send primitive (wp_rcvr: %s, methodname: %s)'
+               % (wp_rcvr, methodname))
         return space.w_nil
     s_frame.pop_n(argcount + 1)
     return w_result

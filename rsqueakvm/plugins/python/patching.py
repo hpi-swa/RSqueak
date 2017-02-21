@@ -14,9 +14,9 @@ old_handle_operation_error = PyFrame.handle_operation_error
 
 
 def __init__frame(self, space, code, w_globals, outer_func):
+    old_init_frame(self, space, code, w_globals, outer_func)
     self.w_globals = w_globals
     self.outer_func = outer_func
-    old_init_frame(self, space, code, w_globals, outer_func)
 
 
 def new_execute_frame(self, w_inputvalue=None, operr=None):
