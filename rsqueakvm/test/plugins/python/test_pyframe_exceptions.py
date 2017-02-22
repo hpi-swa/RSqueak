@@ -1,4 +1,4 @@
-from rsqueakvm.plugins.python.global_state import py_space
+from rsqueakvm.plugins.python.global_state import py_space, wp_operror
 from rsqueakvm.plugins.python.patching import patch_pypy
 
 from pypy.interpreter.error import OperationError
@@ -7,7 +7,7 @@ from pypy.interpreter.main import compilecode
 patch_pypy()
 
 
-def check_for_exception_handler(code):
+def has_exception_handler(code):
     pycode = compilecode(py_space, code, '<string>', 'exec')
     py_frame = py_space.FrameClass(py_space, pycode, py_space.newdict(), None)
     try:
@@ -18,7 +18,7 @@ def check_for_exception_handler(code):
 
 
 def test_simple_exception():
-    assert check_for_exception_handler("""
+    assert has_exception_handler("""
 try:
     1/0
 except ZeroDivisionError:
@@ -27,11 +27,11 @@ except ZeroDivisionError:
 
 
 def test_simple_fail_exception():
-    assert not check_for_exception_handler("""1/0""")
+    assert not has_exception_handler("""1/0""")
 
 
 def test_raised_exception():
-    assert check_for_exception_handler("""
+    assert has_exception_handler("""
 try:
     raise Exception
 except Exception:
@@ -40,7 +40,7 @@ except Exception:
 
 
 def test_multiple_exceptions():
-    assert check_for_exception_handler("""
+    assert has_exception_handler("""
 try:
     list()[1]
 except (ValueError, IndexError):
@@ -49,7 +49,7 @@ except (ValueError, IndexError):
 
 
 def test_multiple_exceptions_fail():
-    assert not check_for_exception_handler("""
+    assert not has_exception_handler("""
 try:
     list()[1]
 except (ValueError, ZeroDivisionError):
@@ -58,7 +58,7 @@ except (ValueError, ZeroDivisionError):
 
 
 def test_catch_all_exceptions():
-    assert check_for_exception_handler("""
+    assert has_exception_handler("""
 try:
     1/0
 except:
@@ -67,7 +67,7 @@ except:
 
 
 def test_catch_variable_exception():
-    assert check_for_exception_handler("""
+    assert has_exception_handler("""
 ex = IndexError
 if True:
     ex = ZeroDivisionError
@@ -79,7 +79,7 @@ except ex:
 
 
 def test_catch_variable_exception_fail():
-    assert not check_for_exception_handler("""
+    assert not has_exception_handler("""
 ex = ZeroDivisionError
 if True:
     ex = IndexError
@@ -91,7 +91,7 @@ except ex:
 
 
 def test_catch_multiple_variable_exceptions():
-    assert check_for_exception_handler("""
+    assert has_exception_handler("""
 ex = (ValueError, ZeroDivisionError)
 try:
     1/0
@@ -101,7 +101,7 @@ except ex:
 
 
 def test_catch_nested_exceptions():
-    assert check_for_exception_handler("""
+    assert has_exception_handler("""
 try:
     try:
         1/0
@@ -113,7 +113,7 @@ except ZeroDivisionError:
 
 
 def test_catch_nested_exceptions_fail():
-    assert not check_for_exception_handler("""
+    assert not has_exception_handler("""
 try:
     try:
         1/0
@@ -122,3 +122,18 @@ try:
 except IndexError:
     pass
 """)
+
+
+# def test_getattr_exception():
+#     pycode = compilecode(py_space, """
+# class A(object):
+#     def __getattr__(self, name):
+#         if name == 'x':
+#             raise AttributeError
+
+# a = A()
+# getattr(a, 'x', 5)
+# """, '<string>', 'exec')
+#     py_frame = py_space.FrameClass(py_space, pycode, py_space.newdict(), None)
+#     py_frame.run()
+#     assert wp_operror.get() is None
