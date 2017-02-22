@@ -49,6 +49,7 @@ py_frame_restart_info = Cell(None, type=PyFrameRestartInfo)
 
 wp_result = Cell(None, type=WP_Root)
 wp_operror = Cell(None, type=WP_Root)
+break_on_exception = Cell(True)
 
 w_python_resume_method = QuasiConstant(None, type=W_CompiledMethod)
 w_python_class = QuasiConstant(None, type=W_PointersObject)

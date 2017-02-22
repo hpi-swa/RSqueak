@@ -98,7 +98,7 @@ def new_handle_operation_error(self, ec, operr, attach_tb=True):
     if isinstance(operr, gs.RestartException):
         print 'Re-raising RestartException'
         raise operr
-    if not self.has_exception_handler(operr):
+    if gs.break_on_exception.get() and not self.has_exception_handler(operr):
         # import pdb; pdb.set_trace()
         gs.wp_operror.set(operr)
         print 'Python error caught'

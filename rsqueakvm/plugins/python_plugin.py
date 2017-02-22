@@ -77,6 +77,17 @@ def lastError(interp, s_frame, w_rcvr):
     return wrap(interp.space, utils.operr_to_pylist(operr))
 
 
+@PythonPlugin.expose_primitive(clean_stack=False)
+def breakOnException(interp, s_frame, argcount):
+    if argcount == 0:
+        return interp.space.wrap_bool(global_state.break_on_exception.get())
+    if argcount != 1:
+        raise PrimitiveFailedError
+    state = s_frame.pop() is interp.space.w_true
+    global_state.break_on_exception.set(state)
+    return interp.space.wrap_bool(state)
+
+
 @PythonPlugin.expose_primitive(unwrap_spec=[object])
 def getTopFrame(interp, s_frame, w_rcvr):
     # import pdb; pdb.set_trace()
