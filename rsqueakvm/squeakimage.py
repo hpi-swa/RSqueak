@@ -957,14 +957,14 @@ class GenericObject(object):
     def get_hash(self):
         return self.chunk.hash
 
+    @objectmodel.not_rpython
     def as_string(self):
-        """NOT RPYTHON"""
         return "".join([chr(c) for bytes in
             [splitter[8,8,8,8](w) for w in self.chunk.data]
             for c in bytes if c != 0])
 
+    @objectmodel.not_rpython
     def classname(self):
-        """NOT RPYTHON"""
         return self.g_class.pointers[6].as_string()
 
 

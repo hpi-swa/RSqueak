@@ -48,8 +48,8 @@ class SocketPluginClass(Plugin):
         self.last_lookup = Cell(None)
 
     # cannot overload call (plugins are PBCs) so we decorate the decorator
+    @objectmodel.not_rpython
     def expose_primitive(self, wrap_func=None, **kwargs):
-        """NOT RPYTHON"""
         original_decorator = Plugin.expose_primitive(self, wrap_func=wrap_func, **kwargs)
         def decorator(func):
             original_decorator(func)

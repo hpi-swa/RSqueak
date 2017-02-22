@@ -5,7 +5,7 @@ import platform
 from rpython.config.config import OptionDescription, BoolOption, \
     IntOption, StrOption, ArbitraryOption, FloatOption, DEFAULT_OPTION_NAME
 from rpython.config.translationoption import get_combined_translation_config
-
+from rpython.rlib.objectmodel import not_rpython
 
 IS_POSIX = os.name == "posix"
 IS_WINDOWS = os.name == "nt"
@@ -24,8 +24,8 @@ if IS_WINDOWS and (not any(arg.startswith("-Ojit") for arg in sys.argv)):
         return uname
     platform.uname = win32uname
 
+@not_rpython
 def translation_options():
-    """NOT RPYTHON"""
     return OptionDescription(
         "rsqueak", "RSqueak Options", [
             StrOption(
@@ -48,8 +48,8 @@ def translation_options():
         ]
     )
 
+@not_rpython
 def expose_options(config):
-    """NOT RPYTHON"""
     for name in translation_options().getpaths():
         globals()[name] = getattr(config.rsqueak, name)
     globals()["translationconfig"] = config.translation
