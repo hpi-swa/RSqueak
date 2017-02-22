@@ -65,17 +65,6 @@ def resumePython(interp, s_frame, w_rcvr):
 
 
 @PythonPlugin.expose_primitive(unwrap_spec=[object])
-def simpleResume(interp, s_frame, w_rcvr):
-    # For shell development/debugging
-    from rsqueakvm.plugins.python import execution
-    print 'Smalltalk simple yield'
-    # import pdb; pdb.set_trace()
-    if not execution.resume_thread():
-        return interp.space.w_false
-    return interp.space.w_true
-
-
-@PythonPlugin.expose_primitive(unwrap_spec=[object])
 def lastResult(interp, s_frame, w_rcvr):
     return wrap(interp.space, global_state.wp_result.get())
 
