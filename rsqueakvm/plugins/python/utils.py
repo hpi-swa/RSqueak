@@ -48,7 +48,7 @@ def wrap(space, wp_object):
     if isinstance(wp_object, WP_FloatObject):
         return space.wrap_float(py_space.float_w(wp_object))
     elif isinstance(wp_object, WP_BytesObject):
-        return space.wrap_string(py_space.str_w(wp_object))
+        return space.wrap_string(py_space.text_w(wp_object))
     elif isinstance(wp_object, WP_ListObject):
         return space.wrap_list(
             [wrap(space, item) for item in wp_object.getitems()])

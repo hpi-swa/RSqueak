@@ -8,7 +8,7 @@ patch_pypy()
 
 
 def check_for_exception_handler(code):
-    pycode = compilecode(py_space, py_space.wrap(code), '<string>', 'exec')
+    pycode = compilecode(py_space, code, '<string>', 'exec')
     py_frame = py_space.FrameClass(py_space, pycode, py_space.newdict(), None)
     try:
         py_frame.dispatch_bytecode(pycode.co_code, 0,
