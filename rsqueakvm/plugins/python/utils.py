@@ -6,8 +6,8 @@ from rsqueakvm.plugins.python.model import W_PythonObject
 from rsqueakvm.plugins.python.global_state import py_space
 from rsqueakvm.model.variable import W_BytesObject
 
-from pypy.interpreter import eval, module
 from pypy.interpreter.error import OperationError
+from pypy.interpreter.main import ensure__main__, compilecode
 from pypy.interpreter.module import Module
 from pypy.interpreter.pycode import PyCode
 from pypy.module.__builtin__ import compiling as py_compiling
@@ -20,34 +20,10 @@ from pypy.objspace.std.tupleobject import W_TupleObject as WP_TupleObject
 from rpython.rlib import objectmodel
 
 
-def ensure__main__(space):
-    # Adopted from PyPy's main.py
-    w_main = space.newbytes('__main__')
-    w_modules = space.sys.get('modules')
-    try:
-        return space.getitem(w_modules, w_main)
-    except OperationError as e:
-        if not e.match(space, space.w_KeyError):
-            raise
-    mainmodule = module.Module(space, w_main)
-    space.setitem(w_modules, w_main, mainmodule)
-    return mainmodule
-
-
-def compilecode(space, source, filename, cmd='exec'):
-    # Adopted from PyPy's main.py
-    ws = space.newbytes
-    w_code = space.builtin.call(
-        'compile', ws(source), ws(filename), ws(cmd),
-        space.newint(0), space.newint(0))
-    pycode = space.interp_w(eval.Code, w_code)
-    return pycode
-
-
 def _run_eval_string(source, filename, cmd):
     # Adopted from PyPy's main.py
     try:
-        ws = py_space.newbytes
+        ws = py_space.newtext
 
         pycode = compilecode(py_space, source, filename or '<string>', cmd)
 
@@ -108,7 +84,7 @@ def unwrap(space, w_object):
         return py_space.newint(space.unwrap_int(w_object))
     elif isinstance(w_object, W_BytesObject):
         # if w_object.getclass(space).is_same_object(space.w_String):
-        return py_space.newbytes(space.unwrap_string(w_object))
+        return py_space.newtext(space.unwrap_string(w_object))
     # import pdb; pdb.set_trace()
     print 'Cannot unwrap %s' % w_object
     raise PrimitiveFailedError
@@ -117,7 +93,7 @@ def unwrap(space, w_object):
 def get_restart_pycode(source, filename='<string>', cmd='exec'):
     print 'Trying to patch:\n%s' % source
     try:
-        py_code = py_compiling.compile(py_space, py_space.newbytes(source),
+        py_code = py_compiling.compile(py_space, py_space.newtext(source),
                                        filename, cmd)
         assert isinstance(py_code, PyCode)
         if cmd == 'eval':
@@ -189,7 +165,7 @@ def call_function(space, wp_func, args_w):
 
 def operr_to_pylist(operr):
     assert isinstance(operr, OperationError)
-    wp_exception = py_space.newbytes(operr.w_type.getname(py_space))
+    wp_exception = py_space.newtext(operr.w_type.getname(py_space))
     wp_value = operr.get_w_value(py_space)
     # wp_traceback = operr.get_traceback() or py_space.w_None
     return py_space.newlist([wp_exception, wp_value])  # wp_traceback])

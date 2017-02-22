@@ -153,7 +153,7 @@ def send(interp, s_frame, argcount, w_method):
                         w_result = args_w[0]
                     w_result = space.wrap_float(0)
         else:
-            py_attr = py_space.getattr(wp_rcvr, py_space.newbytes(methodname))
+            py_attr = py_space.getattr(wp_rcvr, py_space.newtext(methodname))
             # Only allow to call certain types (e.g. don't allow __class__())
             if (isinstance(py_attr, Function) or
                     isinstance(py_attr, Method) or
@@ -163,7 +163,7 @@ def send(interp, s_frame, argcount, w_method):
                     space, wp_rcvr, methodname, args_w)
             else:
                 if len(args_w) == 1:
-                    py_space.setattr(wp_rcvr, py_space.newbytes(methodname),
+                    py_space.setattr(wp_rcvr, py_space.newtext(methodname),
                                      unwrap(space, args_w[0]))
                     w_result = space.w_nil
                 else:
