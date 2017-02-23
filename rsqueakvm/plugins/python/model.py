@@ -45,7 +45,7 @@ class W_PythonObject(W_PointersObject):
         return W_PythonObject(self.wp_object.getclass(py_space))
 
     def getclass(self, space):
-        self.safe_getclass(space)
+        return self.safe_getclass(space)
 
     def class_shadow(self, space):
         wp_class = py_space.type(self.wp_object)
