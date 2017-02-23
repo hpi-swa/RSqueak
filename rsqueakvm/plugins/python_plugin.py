@@ -130,28 +130,7 @@ def send(interp, s_frame, argcount, w_method):
     try:
         if wp_rcvr is py_space.builtin:
             builtin = py_space.builtin.get(methodname)
-            if isinstance(builtin, BuiltinFunction):
-                w_result = utils.call_function(space, builtin, args_w)
-            if isinstance(builtin, WP_TypeObject):
-                if methodname == 'tuple':
-                    w_result = wrap(space, py_space.newtuple(
-                        [unwrap(space, x) for x in args_w]))
-                elif methodname == 'str':
-                    if len(args_w) > 0:
-                        w_result = args_w[0]
-                    w_result = space.wrap_string('')
-                elif methodname == 'bool':
-                    if len(args_w) > 0:
-                        w_result = args_w[0]
-                    w_result = space.w_false
-                elif methodname == 'int':
-                    if len(args_w) > 0:
-                        w_result = args_w[0]
-                    w_result = space.wrap_int(0)
-                elif methodname == 'float':
-                    if len(args_w) > 0:
-                        w_result = args_w[0]
-                    w_result = space.wrap_float(0)
+            w_result = utils.call_function(space, builtin, args_w)
         else:
             py_attr = py_space.getattr(wp_rcvr, py_space.newtext(methodname))
             # Only allow to call certain types (e.g. don't allow __class__())
