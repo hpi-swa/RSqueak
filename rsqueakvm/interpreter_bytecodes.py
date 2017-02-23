@@ -341,8 +341,14 @@ class __extend__(ContextPartShadow):
                 pass  # ignore this error and fall back to the Smalltalk version
         if not w_arguments:
             w_arguments = self.pop_and_return_n(argcount)
-        s_frame = w_method.create_frame(interp.space, receiver, w_arguments,
-                                        s_fallback=s_fallback)
+        try:
+            s_frame = w_method.create_frame(interp.space, receiver, w_arguments,
+                                            s_fallback=s_fallback)
+        except MemoryError:
+            interp.signal_memory_error(self)
+            # if the low space semaphore isn't set, we die
+            print "RSqueak/VM ran out of memory, and no low space semaphore was set!"
+            raise SystemExit
         self.pop()  # receiver
 
         # ######################################################################

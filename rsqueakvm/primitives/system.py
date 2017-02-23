@@ -129,6 +129,8 @@ def func(interp, s_frame, argcount):
     vm_w_params[2] = interp.space.wrap_int(1)  # must be 1 for VM Stats view to work
     vm_w_params[8] = interp.space.wrap_int(1)  # must be 1 for VM Stats view to work
 
+    vm_w_params[25] = interp.space.wrap_int(interp.interrupt_counter_size) # check for interrupts roughly every N bytecodes
+
     vm_w_params[41] = interp.space.wrap_int(1)  # We are a "stack-like" VM - number of stack tables
 
     if objectmodel.we_are_translated():

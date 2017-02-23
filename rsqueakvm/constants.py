@@ -168,6 +168,7 @@ variables_in_special_object_table = {
     "display": SO_DISPLAY_OBJECT,
     "interrupt_semaphore": SO_USER_INTERRUPT_SEMAPHORE,
     "timerSemaphore": SO_TIMER_SEMAPHORE,
+    "low_space_semaphore": SO_LOW_SPACE_SEMAPHORE,
     "jit_hook_selector": SO_JIT_HOOK,
     "jit_hook_receiver": SO_JIT_HOOK_RCVR
 }
