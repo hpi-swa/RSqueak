@@ -41,8 +41,11 @@ class W_PythonObject(W_PointersObject):
         # import pdb; pdb.set_trace()
         pass
 
-    def getclass(self, space):
+    def safe_getclass(self, space):
         return W_PythonObject(self.wp_object.getclass(py_space))
+
+    def getclass(self, space):
+        self.safe_getclass(space)
 
     def class_shadow(self, space):
         wp_class = py_space.type(self.wp_object)
