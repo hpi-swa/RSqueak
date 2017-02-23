@@ -33,7 +33,11 @@ class SwitchToSmalltalkAction(PeriodicAsyncAction):
             # print 'Python yield'
             runner.return_to_smalltalk()
             # print 'Python continue'
-        # Handle py_frame_restart_info if set
+
+        # operror has been in Smalltalk land, clear it now to allow resuming
+        wp_operror.set(None)
+
+        # handle py_frame_restart_info if set
         restart_info = py_frame_restart_info.get()
         if restart_info:
             py_frame_restart_info.set(None)
