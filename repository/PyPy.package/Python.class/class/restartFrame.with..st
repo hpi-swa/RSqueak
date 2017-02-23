@@ -4,4 +4,4 @@ restartFrame: pyFrame with: aSource
 		primRestartSpecificFrame: pyFrame
 		source: aSource
 		filename: pyFrame f_code co_filename
-		cmd: 'exec'
+		cmd: (self cmdFor: aSource)
