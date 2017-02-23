@@ -1,5 +1,6 @@
 from rsqueakvm.plugins.python import global_state as gs
 
+from pypy.interpreter.pycode import PyCode, default_magic
 from pypy.interpreter.pyopcode import SApplicationException
 from pypy.module.pypyjit.interp_jit import PyFrame, PyPyJitDriver
 from pypy.tool.stdlib_opcode import bytecode_spec
@@ -11,6 +12,10 @@ opcodedesc = bytecode_spec.opcodedesc
 old_init_frame = PyFrame.__init__
 old_execute_frame = PyFrame.execute_frame
 old_handle_operation_error = PyFrame.handle_operation_error
+old_init_pycode = PyCode.__init__
+
+ATTRIBUTE_ERROR_FORBIDDEN_NAMES = ['getattr']
+STOP_ITERATION_FORBIDDEN_NAMES = ['next']
 
 
 def __init__frame(self, space, code, w_globals, outer_func):
@@ -82,7 +87,16 @@ def block_handles_exception(self, block, operr_type):
 def has_exception_handler(self, operr):
     "Returns True if this frame or one of his parents are able to handle operr"
     frame = self
+    error_type = operr.w_type.getname(gs.py_space)
+    forbidden_names = []
+    if error_type == 'AttributeError':
+        forbidden_names = ATTRIBUTE_ERROR_FORBIDDEN_NAMES
+    elif error_type == 'StopIteration':
+        forbidden_names = STOP_ITERATION_FORBIDDEN_NAMES
     while frame is not None:
+        for name in forbidden_names:
+            if name in frame.pycode._co_names:
+                return True
         block = frame.lastblock
         while block is not None:
             # block needs to be an ExceptBlock and able to handle operr
@@ -106,6 +120,17 @@ def new_handle_operation_error(self, ec, operr, attach_tb=True):
     return old_handle_operation_error(self, ec, operr, attach_tb)
 
 
+def __init__pycode(self, space, argcount, nlocals, stacksize, flags,
+                   code, consts, names, varnames, filename,
+                   name, firstlineno, lnotab, freevars, cellvars,
+                   hidden_applevel=False, magic=default_magic):
+    self._co_names = names
+    old_init_pycode(self, space, argcount, nlocals, stacksize, flags,
+                    code, consts, names, varnames, filename,
+                    name, firstlineno, lnotab, freevars, cellvars,
+                    hidden_applevel, magic)
+
+
 def patch_pypy():
     # Patch-out virtualizables from PyPy so that translation works
     try:
@@ -120,3 +145,6 @@ def patch_pypy():
     PyFrame.block_handles_exception = block_handles_exception
     PyFrame.has_exception_handler = has_exception_handler
     PyFrame.handle_operation_error = new_handle_operation_error
+
+    PyCode.__init__ = __init__pycode
+    PyCode._immutable_fields_.append('_co_names[*]')

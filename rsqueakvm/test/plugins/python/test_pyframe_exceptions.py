@@ -17,11 +17,27 @@ def has_exception_handler(code):
         return py_frame.has_exception_handler(operr)
 
 
+def no_error_caught(code, cmd):
+    pycode = compilecode(py_space, code, '<string>', cmd)
+    py_frame = py_space.FrameClass(py_space, pycode, py_space.newdict(), None)
+    py_frame.run()
+    return wp_operror.get() is None
+
+
 def test_simple_exception():
     assert has_exception_handler("""
 try:
     1/0
 except ZeroDivisionError:
+    pass
+""")
+
+
+def test_simple_exception_with_as():
+    assert has_exception_handler("""
+try:
+    1/0
+except ZeroDivisionError as e:
     pass
 """)
 
@@ -43,7 +59,7 @@ def test_multiple_exceptions():
     assert has_exception_handler("""
 try:
     list()[1]
-except (ValueError, IndexError):
+except (ValueError, IndexError) as e:
     pass
 """)
 
@@ -124,16 +140,17 @@ except IndexError:
 """)
 
 
-# def test_getattr_exception():
-#     pycode = compilecode(py_space, """
-# class A(object):
-#     def __getattr__(self, name):
-#         if name == 'x':
-#             raise AttributeError
+def test_getattr_exception():
+    assert no_error_caught("""
+class A(object):
+    def __getattr__(self, name):
+        if name == 'x':
+            raise AttributeError
 
-# a = A()
-# getattr(a, 'x', 5)
-# """, '<string>', 'exec')
-#     py_frame = py_space.FrameClass(py_space, pycode, py_space.newdict(), None)
-#     py_frame.run()
-#     assert wp_operror.get() is None
+a = A()
+getattr(a, 'x', 5)
+""", 'exec')
+
+
+def test_next_exception():
+    assert no_error_caught('next(iter([]), 42)', 'eval')
