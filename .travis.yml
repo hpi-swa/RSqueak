@@ -32,7 +32,7 @@ env:
     # - BUILD_ARCH=armv8-a
     # - BUILD_ARCH=64bit PLUGINS=DatabasePlugin
     # - BUILD_ARCH=64bit PLUGINS=RubyPlugin
-    - BUILD_ARCH=64bit TEST_TYPE=plugin TEST_PLUGIN=python
+    - BUILD_ARCH=64bit TEST_TYPE=plugin PLUGINS=PythonPlugin PLUGIN_DIR=python
     - BUILD_ARCH=64bit PLUGINS=PythonPlugin
 matrix:
   include:

@@ -12,7 +12,7 @@ def new_pypy_objspace():
     #     Module.interpleveldefs['pypy_getudir'] = 'foo'
 
     from pypy.config.pypyoption import get_pypy_config, set_pypy_opt_level
-    translating = sys.argv[0] != '.build/run.py'  # make better
+    translating = sys.argv[0] == '.build/build.py'  # make better
     pypy_config = get_pypy_config(translating=translating)
 
     # disable dispensable modules (to save compile time)

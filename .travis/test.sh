@@ -10,7 +10,7 @@ case "${TEST_TYPE}" in
   coverage) testflag="-s -v -S --cov=rsqueakvm --cov-append " ;;
   plugin)
     testscript="plugintests.py"
-    testflag="--plugin=${TEST_PLUGIN}"
+    testflag="--plugins=${PLUGINS} --plugin-dir=${PLUGIN_DIR}"
     ;;
   *)
     echo "Wrong TEST_TYPE value (${TEST_TYPE}), not executing tests"
