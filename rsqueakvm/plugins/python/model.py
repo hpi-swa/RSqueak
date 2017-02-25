@@ -5,8 +5,8 @@ from rsqueakvm.storage import AbstractCachingShadow
 from rsqueakvm.primitives.constants import EXTERNAL_CALL
 from rsqueakvm.model.compiled_methods import (
     W_PreSpurCompiledMethod, W_SpurCompiledMethod)
-from rsqueakvm.plugins.python.global_state import (
-    py_space, w_python_object_class, w_python_plugin_send)
+from rsqueakvm.plugins.python import global_state as gs
+from rsqueakvm.plugins.python.global_state import py_space
 
 from pypy.interpreter.baseobjspace import W_Root as WP_Root
 from pypy.interpreter.error import OperationError
@@ -82,7 +82,7 @@ class PythonClassShadow(ClassShadow):
         # import pdb; pdb.set_trace()
         if w_method is not None:
             return w_method
-        w_po = w_python_object_class.get()
+        w_po = gs.w_python_object_class.get()
         return w_po.as_class_get_shadow(self.space).lookup(w_selector)
 
     def make_method(self, w_selector):
@@ -125,15 +125,16 @@ class PythonClassShadow(ClassShadow):
             w_cm = objectmodel.instantiate(W_SpurCompiledMethod)
         else:
             w_cm = objectmodel.instantiate(W_PreSpurCompiledMethod)
-        w_cm.header = 0
         w_cm._primitive = EXTERNAL_CALL
         w_cm.literalsize = 2
         w_cm.islarge = False
         w_cm._tempsize = 0
         w_cm.argsize = 0
+        w_cm.compiledin_class = gs.w_python_class.get()
+        w_cm.lookup_selector = 'fakePythonSend'
         w_cm.bytes = []
         w_cm.literals = [
-            w_python_plugin_send.get(),
+            gs.w_python_plugin_send.get(),
             w_selector
         ]
         return w_cm

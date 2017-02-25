@@ -35,7 +35,11 @@ def _run_eval_string(source, filename, cmd):
         if filename is not None:
             py_space.setitem(w_globals, ws('__file__'), ws(filename))
 
-        return pycode.exec_code(py_space, w_globals, w_globals)
+        retval = pycode.exec_code(py_space, w_globals, w_globals)
+        if eval:
+            return retval
+        else:
+            return
 
     except OperationError as operationerr:
         operationerr.record_interpreter_traceback()
