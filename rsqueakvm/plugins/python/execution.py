@@ -1,6 +1,7 @@
 from rsqueakvm.model.compiled_methods import (
     W_SpurCompiledMethod, W_PreSpurCompiledMethod)
 from rsqueakvm.plugins.python import global_state as gs
+from rsqueakvm.plugins.python.model import W_PythonObject
 from rsqueakvm.plugins.python.utils import _run_eval_string, operr_to_pylist
 
 from rpython.rlib.rstacklet import StackletThread
@@ -167,7 +168,6 @@ def switch_to_smalltalk(interp, s_frame, first_call=False):
 
 def _create_return_frame(space, wp_result):
     from rsqueakvm.storage_contexts import ContextPartShadow
-    from rsqueakvm.plugins.python.utils import wrap
     print 'Python has finished and returned a result'
     # we want evalInThread and resumePython to return new frames,
     # so we don't build up stack, but we also don't raise to the
@@ -195,7 +195,7 @@ def _create_return_frame(space, wp_result):
         0x20,  # push constant
         0x7C,  # return stack top
     ]]
-    w_cm.literals = [wrap(space, wp_result), space.w_nil,
+    w_cm.literals = [W_PythonObject(wp_result), space.w_nil,
                      w_cm.compiledin_class]
     gs.wp_result.set(None)
     return ContextPartShadow.build_method_context(

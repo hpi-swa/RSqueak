@@ -47,7 +47,7 @@ def _run_eval_string(source, filename, cmd):
 
 
 @objectmodel.specialize.argtype(0)
-def wrap(space, wp_object):
+def python_to_smalltalk(space, wp_object):
     # import pdb; pdb.set_trace()
     if isinstance(wp_object, WP_FloatObject):
         return space.wrap_float(py_space.float_w(wp_object))
@@ -55,10 +55,10 @@ def wrap(space, wp_object):
         return space.wrap_string(py_space.text_w(wp_object))
     elif isinstance(wp_object, WP_ListObject):
         return space.wrap_list(
-            [wrap(space, item) for item in wp_object.getitems()])
+            [python_to_smalltalk(space, x) for x in wp_object.getitems()])
     elif isinstance(wp_object, WP_TupleObject):
         return space.wrap_list(
-            [wrap(space, item) for item in wp_object.tolist()])
+            [python_to_smalltalk(space, x) for x in wp_object.tolist()])
     elif wp_object is None or wp_object is py_space.w_None:
         return space.w_nil
     elif isinstance(wp_object, WP_IntObject):
@@ -68,12 +68,12 @@ def wrap(space, wp_object):
         elif wp_object is py_space.w_True:
             return space.w_true
         return space.wrap_int(py_space.int_w(wp_object))
-    else:
-        return W_PythonObject(wp_object)
+    print 'Cannot convert %s to Smalltalk' % wp_object
+    raise PrimitiveFailedError
 
 
 @objectmodel.specialize.argtype(0)
-def unwrap(space, w_object):
+def smalltalk_to_python(space, w_object):
     if isinstance(w_object, W_PythonObject):
         return w_object.wp_object
     elif w_object is None or w_object is space.w_nil:
@@ -90,7 +90,7 @@ def unwrap(space, w_object):
         # if w_object.getclass(space).is_same_object(space.w_String):
         return py_space.newtext(space.unwrap_string(w_object))
     # import pdb; pdb.set_trace()
-    print 'Cannot unwrap %s' % w_object
+    print 'Cannot convert %s to Python' % w_object
     raise PrimitiveFailedError
 
 
@@ -120,51 +120,48 @@ def get_restart_pycode(source, filename='<string>', cmd='exec'):
 def call_method(space, wp_rcvr, methodname, args_w):
     args_w_len = len(args_w)
     if args_w_len == 1:
-        arg1 = unwrap(space, args_w[0])
-        return wrap(space, py_space.call_method(wp_rcvr, methodname, arg1))
+        arg1 = smalltalk_to_python(space, args_w[0])
+        return py_space.call_method(wp_rcvr, methodname, arg1)
     elif args_w_len == 2:
-        arg1 = unwrap(space, args_w[0])
-        arg2 = unwrap(space, args_w[1])
-        return wrap(space, py_space.call_method(wp_rcvr, methodname,
-                                                arg1, arg2))
+        arg1 = smalltalk_to_python(space, args_w[0])
+        arg2 = smalltalk_to_python(space, args_w[1])
+        return py_space.call_method(wp_rcvr, methodname, arg1, arg2)
     elif args_w_len == 3:
-        arg1 = unwrap(space, args_w[0])
-        arg2 = unwrap(space, args_w[1])
-        arg3 = unwrap(space, args_w[2])
-        return wrap(space, py_space.call_method(wp_rcvr, methodname,
-                                                arg1, arg2, arg3))
+        arg1 = smalltalk_to_python(space, args_w[0])
+        arg2 = smalltalk_to_python(space, args_w[1])
+        arg3 = smalltalk_to_python(space, args_w[2])
+        return py_space.call_method(wp_rcvr, methodname, arg1, arg2, arg3)
     elif args_w_len == 4:
-        arg1 = unwrap(space, args_w[0])
-        arg2 = unwrap(space, args_w[1])
-        arg3 = unwrap(space, args_w[2])
-        arg4 = unwrap(space, args_w[3])
-        return wrap(space, py_space.call_method(wp_rcvr, methodname,
-                                                arg1, arg2, arg3, arg4))
-    return wrap(space, py_space.call_method(wp_rcvr, methodname))
+        arg1 = smalltalk_to_python(space, args_w[0])
+        arg2 = smalltalk_to_python(space, args_w[1])
+        arg3 = smalltalk_to_python(space, args_w[2])
+        arg4 = smalltalk_to_python(space, args_w[3])
+        return py_space.call_method(wp_rcvr, methodname,
+                                    arg1, arg2, arg3, arg4)
+    return py_space.call_method(wp_rcvr, methodname)
 
 
 def call_function(space, wp_func, args_w):
     args_w_len = len(args_w)
     if args_w_len == 1:
-        arg1 = unwrap(space, args_w[0])
-        return wrap(space, py_space.call_function(wp_func, arg1))
+        arg1 = smalltalk_to_python(space, args_w[0])
+        return py_space.call_function(wp_func, arg1)
     elif args_w_len == 2:
-        arg1 = unwrap(space, args_w[0])
-        arg2 = unwrap(space, args_w[1])
-        return wrap(space, py_space.call_function(wp_func, arg1, arg2))
+        arg1 = smalltalk_to_python(space, args_w[0])
+        arg2 = smalltalk_to_python(space, args_w[1])
+        return py_space.call_function(wp_func, arg1, arg2)
     elif args_w_len == 3:
-        arg1 = unwrap(space, args_w[0])
-        arg2 = unwrap(space, args_w[1])
-        arg3 = unwrap(space, args_w[2])
-        return wrap(space, py_space.call_function(wp_func, arg1, arg2, arg3))
+        arg1 = smalltalk_to_python(space, args_w[0])
+        arg2 = smalltalk_to_python(space, args_w[1])
+        arg3 = smalltalk_to_python(space, args_w[2])
+        return py_space.call_function(wp_func, arg1, arg2, arg3)
     elif args_w_len == 4:
-        arg1 = unwrap(space, args_w[0])
-        arg2 = unwrap(space, args_w[1])
-        arg3 = unwrap(space, args_w[2])
-        arg4 = unwrap(space, args_w[3])
-        return wrap(space, py_space.call_function(wp_func,
-                                                  arg1, arg2, arg3, arg4))
-    return wrap(space, py_space.call_function(wp_func))
+        arg1 = smalltalk_to_python(space, args_w[0])
+        arg2 = smalltalk_to_python(space, args_w[1])
+        arg3 = smalltalk_to_python(space, args_w[2])
+        arg4 = smalltalk_to_python(space, args_w[3])
+        return py_space.call_function(wp_func, arg1, arg2, arg3, arg4)
+    return py_space.call_function(wp_func)
 
 
 def operr_to_pylist(operr):
