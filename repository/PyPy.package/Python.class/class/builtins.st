@@ -1,4 +1,3 @@
 special objects
 builtins
-
-	^ PythonBuiltins ifNil: [PythonBuiltins := self eval: '__builtins__']
+	^ self fromObjectCache: '__builtins__'

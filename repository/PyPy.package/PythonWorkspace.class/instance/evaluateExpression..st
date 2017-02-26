@@ -1,3 +1,3 @@
 as yet unclassified
 evaluateExpression: selection
-	^ Python run: selection
+	^ Python prun: selection asString

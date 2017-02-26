@@ -1,8 +1,8 @@
 explorer
 explorerContents
-	^ self allAttributes asOrderedCollection collect: [:each | | value |
-		value := self perform: each.
+	^ self allAttributes asOrderedCollection collect: [ :attrName | | value |
+		value := Python builtins getattr: self attrName: attrName.
 		ObjectExplorerWrapper
 			with: value
-			name: each
-			model: self]
+			name: attrName
+			model: self ]

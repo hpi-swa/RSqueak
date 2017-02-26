@@ -10,7 +10,13 @@ sys.path = ["', Smalltalk image imagePath, '",
 	"', Smalltalk image imagePath, '/pypy/lib-python/2.7/plat-darwin",
 	"', Smalltalk image imagePath, '/pypy/lib-python/2.7/plat-mac",
 	"', Smalltalk image imagePath, '/pypy/lib-python/2.7/plat-mac/lib-scriptpackages",
-	"." ]'.
+	"." ]
+def _isExpression(x):
+	try:
+		compile(x, "<string>", "eval")
+		return True
+	except SyntaxError:
+		return False'.
 	"Pythonize all Python classes"
 	self withAllSubclasses do: [ :ea | ea pythonize ].
 	"Install PythonBuiltins (failing atm)"

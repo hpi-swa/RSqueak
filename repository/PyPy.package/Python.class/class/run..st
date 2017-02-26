@@ -1,5 +1,5 @@
-helpers
+execution
 run: pyCode
-	(self evaluable: pyCode)
+	(self isExpression: pyCode)
 		ifTrue: [ [^ self eval: pyCode ] on: Error do: [] ].
 	^ self exec: pyCode

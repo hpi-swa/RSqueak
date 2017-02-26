@@ -1,3 +1,3 @@
 helpers
 isCallable: aPyString
-	^ self eval: 'callable(', aPyString ,')'
+	^ (self eval: 'callable(', aPyString ,')') asSmalltalk

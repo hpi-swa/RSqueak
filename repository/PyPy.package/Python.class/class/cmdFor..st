@@ -1,5 +1,5 @@
 helpers
 cmdFor: aPySource
-	(self evaluable: aPySource)
+	(self isExpression: aPySource)
 		ifTrue: [ ^ 'eval' ]
 		ifFalse: [ ^ 'exec' ]

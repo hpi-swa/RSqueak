@@ -4,6 +4,5 @@ fieldList
 	| keys |
 	keys := OrderedCollection new.
 	keys add: 'self'.
-	keys add: 'class'.
 	keys addAll: object allAttributes.
 	^ keys

@@ -1,3 +1,3 @@
 special objects
 type
-	^ Python eval: 'type'
+	^ self fromObjectCache: 'type'
