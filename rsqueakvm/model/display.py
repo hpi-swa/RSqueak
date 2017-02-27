@@ -114,20 +114,24 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
         self.pixelbuffer_words = 0
 
     def flush_to_screen(self):
-        self.display().flip()
+        self.display().flip(0, self.pixelbuffer_words)
         self.display().render()
 
     def word_from_pixel(self, x, y):
-        return (x - 1 + (y - 1) * self.display().width) / self.pixel_per_word()
+        return (x + y * self.display().width) / self.pixel_per_word()
 
     def force_rectange_to_screen(self, left, right, top, bottom):
         if self.pixelbuffer_words > 0:
+            width = self.display().width
             start = max(self.word_from_pixel(left, top), 0)
             stop = min(self.word_from_pixel(right, bottom), self.size() - 1)
             if stop <= start:
                 return
             self.force_words(start, stop)
-            self.display().flip()
+            self.display().flip(
+                left + top * width,
+                right + bottom * width
+            )
 
     def force_words(self, start, stop):
         if self.is_headless(): return
@@ -166,6 +170,7 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
     def repr_content(self):
         return "len=%d depth=%d %s" % (self.size(), self._depth, self.str_content())
 
+
 class W_32BitDisplayBitmap(W_DisplayBitmap):
     repr_classname = "W_32BitDisplayBitmap"
 
@@ -188,12 +193,14 @@ class W_32BitDisplayBitmap(W_DisplayBitmap):
 
     def force_rectange_to_screen(self, left, right, top, bottom):
         if self.pixelbuffer_words > 0:
-            self.display().flip()
-
+            width = self.display().width
+            self.display().flip(
+                left + top * width,
+                right + bottom * width
+            )
 
 
 class W_16BitDisplayBitmap(W_DisplayBitmap):
-
     repr_classname = "W_16BitDisplayBitmap"
 
     def set_pixelbuffer_word(self, n, word):
@@ -214,6 +221,7 @@ class W_16BitDisplayBitmap(W_DisplayBitmap):
                 ((msb & mask) << 11)
             )
         self.pixelbuffer()[n] = rffi.r_uint(lsb | (msb << 16))
+
 
 class W_8BitDisplayBitmap(W_DisplayBitmap):
 

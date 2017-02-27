@@ -458,18 +458,19 @@ class Interpreter(object):
         display = self.space.display()
         if display:
             display.render()
+
         # parallel to Interpreter>>#checkForInterrupts
         # 1. profiling is done using rvmprof
         # 2. use the same time value as the primitive UTC_MICROSECOND_CLOCK
         now = self.time_now()
-        # 3. adjust the check counter size, we want to land between 100ms and 400ms
+        # 3. adjust the check counter size, we want to land between 20ms and 100ms
         diff = now - self.last_check
-        if diff < 100000 and self.interrupt_counter_size != constants.MAXINT:
+        if diff < 20000 and self.interrupt_counter_size != constants.MAXINT:
             try:
                 self.interrupt_counter_size = ovfcheck(self.interrupt_counter_size * 2)
             except OverflowError:
                 self.interrupt_counter_size = constants.MAXINT
-        elif diff > 400000 and self.interrupt_counter_size > 100:
+        elif diff > 100000 and self.interrupt_counter_size > 100:
             self.interrupt_counter_size = max(self.interrupt_counter_size / 2, 100)
         self.last_check = now
         self.forced_interrupt_checks_count += 1

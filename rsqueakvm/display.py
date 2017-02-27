@@ -76,7 +76,10 @@ class NullDisplay(object):
     def get_next_event(self, time=0):
         return [EventTypeNone, 0, 0, 0, 0, 0, 0, 0]
 
-    def flip(self, force=False):
+    def flip(self, start, stop):
+        pass
+
+    def render(self):
         pass
 
     def has_clipboard_text(self):
@@ -232,9 +235,17 @@ class SDLDisplay(NullDisplay):
     def defer_updates(self, flag):
         self._defer_updates = flag
 
-    def flip(self):
-        nbytes = rffi.r_size_t(self.width * self.height * self.bpp)
-        rffi.c_memcpy(PIXELVOIDPP[0], self.screen_surface.c_pixels, nbytes)
+    def flip(self, start, stop):
+        size = self.width * self.height * self.bpp
+        offset = start * self.bpp
+        if offset >= size:
+            return
+        if start >= stop:
+            return
+        nbytes = rffi.r_size_t(min((stop - start) * self.bpp, size - offset))
+        pixbuf = rffi.ptradd(PIXELVOIDPP[0], offset)
+        surfacebuf = rffi.ptradd(self.screen_surface.c_pixels, offset)
+        rffi.c_memcpy(pixbuf, surfacebuf, nbytes)
         self._texture_dirty = True
 
     def render(self):
