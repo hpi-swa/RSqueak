@@ -35,6 +35,10 @@ if os.name == "nt" and (not os.environ.get("APPVEYOR", None)):
 
 if __name__ == "__main__":
     target = os.path.join(os.path.dirname(__file__), "..", "targetrsqueak.py")
+    if '--quick' in sys.argv:
+        assert len(sys.argv) == 2
+        sys.argv.pop()
+        sys.argv.extend(['--no-translation-jit', '--', '--without_plugins'])
     if '--' in sys.argv:
       sys.argv[sys.argv.index('--')] = target
     else:
