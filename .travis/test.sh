@@ -17,4 +17,4 @@ case "${BUILD_ARCH}" in
   *) ;;
 esac
 
-pypy ".build/${testscript}" -s ${testflag}
+pypy ".build/unittests.py" -s ${testflag}
