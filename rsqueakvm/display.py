@@ -39,7 +39,7 @@ WindowEventPaint = 5
 WindowEventStinks = 6
 
 MINIMUM_DEPTH = 8
-
+DEPTH_TO_MAP_TO = 32
 
 class SqueakInterrupt(Exception):
     pass
@@ -178,7 +178,7 @@ class SDLDisplay(NullDisplay):
             return
         assert d in [1, 2, 4, 8, 16, 32]
         if d < MINIMUM_DEPTH:
-            d = MINIMUM_DEPTH
+            d = DEPTH_TO_MAP_TO
         self.width = intmask(w)
         self.height = intmask(h)
         self.depth = intmask(d)

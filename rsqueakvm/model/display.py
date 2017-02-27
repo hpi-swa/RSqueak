@@ -231,7 +231,7 @@ class W_8BitDisplayBitmap(W_DisplayBitmap):
             (word << 24)
         )
 
-BITS = r_uint(32)
+
 class W_MappingDisplayBitmap(W_DisplayBitmap):
 
     repr_classname = "W_MappingDisplayBitmap"
@@ -245,19 +245,22 @@ class W_MappingDisplayBitmap(W_DisplayBitmap):
     def word_from_pixel(self, x, y):
         word = W_DisplayBitmap.word_from_pixel(self, x, y)
         if self._depth == 1:
-            return word / 8
+            return word / 32
         elif self._depth == 2:
-            return word / 4
+            return word / 16
         elif self._depth == 4:
-            return word / 2
+            return word / 8
         else:
             assert False
 
+    def display_words_per_word(self):
+        return self.display().depth / self._depth
+
     def take_over_display(self):
-        pitch = r_uint(self.display().pitch)  # The pitch is different from the width input to SDL!
+        pitch = r_uint(self.display().pitch)  # The pitch may be different from the width input to SDL!
         self.pitch = pitch
-        self.bits_in_last_word = pitch % BITS
-        self.words_per_line = r_uint((pitch - self.bits_in_last_word) / BITS)
+        self.bits_in_last_word = pitch % 32
+        self.words_per_line = r_uint((pitch - self.bits_in_last_word) / 32)
         if self.bits_in_last_word > 0:
             self.words_per_line += 1
         W_DisplayBitmap.take_over_display(self)
@@ -266,23 +269,35 @@ class W_MappingDisplayBitmap(W_DisplayBitmap):
     def set_pixelbuffer_word(self, n, word):
         n = r_uint(n)
         if ((n+1) % self.words_per_line) == 0 and self.bits_in_last_word > 0:
-            # This is the last word on the line. A few bits are cut off.
+            # This is the last word on the line. A few bits may be cut off.
             bits = self.bits_in_last_word
         else:
-            bits = BITS
-
+            bits = 32
+        buf = self.pixelbuffer()
         word = r_uint(word)
-        pos = self.compute_pos(n)
-        buf = rffi.ptradd(self.display().get_plain_pixelbuffer(), pos)
         depth = r_uint(self._depth)
-        rshift = BITS - depth
+        shift = 32 - depth
+        display_words_per_word = 32 / depth
+        pixelmask = ((r_uint(1) << depth) - 1) << shift
+        table = PIXEL_LOOKUP_TABLE[depth - 1]
+        assert table is not None
         for i in range(bits / depth):
-            pixel = word >> rshift
-            buf[i] = rffi.cast(rffi.CHAR, pixel)
-            word <<= depth
+            pixel = (word & pixelmask) >> (shift - i)
+            buf[n * display_words_per_word + i] = rffi.r_uint(table[pixel])
+            pixelmask >>= depth
 
-    def compute_pos(self, n):
-        word_on_line = n % self.words_per_line
-        y = r_uint((n - word_on_line) / self.words_per_line)
-        x = word_on_line * BITS / r_uint(self._depth)
-        return y * self.pitch + x
+    # def setword(self, n, word):
+    #     W_DisplayBitmap.setword(self, n, word)
+    #     if self.pixelbuffer_words > 0:
+    #         self.set_pixelbuffer_word(n, word)
+    #         self.display().flip()
+
+
+PIXEL_LOOKUP_1BIT = [0xffffffff, 0xff000000]
+PIXEL_LOOKUP_2BIT = [0xff000000, 0xff848484, 0xffc6c6c6, 0xffffffff]
+PIXEL_LOOKUP_4BIT = [
+    0xff000000, 0xff000084, 0xff008400, 0xff008484,
+    0xff840000, 0xff840084, 0xff848400, 0xff848484,
+    0xffc6c6c6, 0xff0000ff, 0xff00ff00, 0xff00ffff,
+    0xffff0000, 0xffff00ff, 0xffffff00, 0xffffffff]
+PIXEL_LOOKUP_TABLE = [PIXEL_LOOKUP_1BIT, PIXEL_LOOKUP_2BIT, None, PIXEL_LOOKUP_4BIT]
