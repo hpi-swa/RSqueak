@@ -4,13 +4,13 @@ python:
 sudo: required
 dist: trusty
 group: edge
-notifications:
-  irc:
-    channels:
-      - chat.freenode.net/#rsqueak
-    use_notice: true
-    skip_join: true
-  slack: mp2016h:7AUemvDdkxof6Shbu514mDyX
+# notifications:
+#   irc:
+#     channels:
+#       - chat.freenode.net/#rsqueak
+#     use_notice: true
+#     skip_join: true
+#   slack: mp2016h:7AUemvDdkxof6Shbu514mDyX
 branches:
   except:
     - /^v[0-9]/  # Ignore version tags
