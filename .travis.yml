@@ -1,4 +1,5 @@
-language: cpp
+language: python
+python: pypy-5.3.1
 sudo: required
 dist: trusty
 group: edge
@@ -36,12 +37,15 @@ matrix:
   include:
     - os: osx
       osx_image: xcode7.3
+      language: cpp
       env: BUILD_ARCH=64bit TEST_TYPE=default
     - os: osx
       osx_image: xcode7.3
+      language: cpp
       env: BUILD_ARCH=64bit
     - os: osx
       osx_image: xcode7.3
+      language: cpp
       env: BUILD_ARCH=64bit PLUGINS=RubyPlugin
   allow_failures:
     # - env: BUILD_ARCH=64bit PLUGINS=DatabasePlugin

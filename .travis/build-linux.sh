@@ -21,21 +21,21 @@ fi
 
 case "$BUILD_ARCH" in
   32bit)
-    python .build/build.py --batch --32bit -- $plugins
+    pypy .build/build.py --batch --32bit -- $plugins
     exitcode=$?
     cp rsqueak rsqueak-x86-${UNAME}$plugins_suffix-jit-$TRAVIS_COMMIT || true
-    python .build/jittests.py --32bit || $JITTESTS_FAIL
+    pypy .build/jittests.py --32bit || $JITTESTS_FAIL
     $EX rm -rf .build/pypy/rpython/_cache
     ;;
   64bit)
-    python .build/build.py --batch --64bit -- $plugins
+    pypy .build/build.py --batch --64bit -- $plugins
     exitcode=$?
     cp rsqueak rsqueak-x86_64-${UNAME}$plugins_suffix-jit-$TRAVIS_COMMIT || true
-    python .build/jittests.py --64bit || $JITTESTS_FAIL
+    pypy .build/jittests.py --64bit || $JITTESTS_FAIL
     $EX rm -rf .build/pypy/rpython/_cache
     ;;
   lldebug)
-    python .build/build.py --lldebug -Ojit
+    pypy .build/build.py --lldebug -Ojit
     exitcode=$?
     cp rsqueak rsqueak-x86-${UNAME}-dbg-$TRAVIS_COMMIT || true
     $EX rm -rf .build/pypy/rpython/_cache

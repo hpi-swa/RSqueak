@@ -17,9 +17,4 @@ case "${BUILD_ARCH}" in
   *) ;;
 esac
 
-ex="python"
-if [[ "${TRAVIS_OS_NAME}" == "osx" ]] && [[ "${BUILD_ARCH}" == "64bit" ]]; then
-  ex="pypy"
-fi
-
-${ex} .build/unittests.py -s ${testflag}
+pypy ".build/${testscript}" -s ${testflag}
