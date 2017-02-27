@@ -34,7 +34,7 @@ def from_words_object(w_obj, form):
 
 class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
     _attrs_ = ['pixelbuffer_words', '_real_depth_buffer', '_realsize', '_display', '_depth']
-    _immutable_fields_ = ['pixelbuffer_words?', '_real_depth_buffer', '_realsize', '_display', '_depth']
+    _immutable_fields_ = ['pixelbuffer_words?', '_real_depth_buffer?', '_realsize', '_display', '_depth']
     repr_classname = "W_DisplayBitmap"
 
     def __init__(self, space, size, depth):
@@ -160,7 +160,8 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
 
     @rgc.must_be_light_finalizer
     def __del__(self):
-        lltype.free(self._real_depth_buffer, flavor='raw')
+        if self.pixelbuffer_words == 0:
+            lltype.free(self._real_depth_buffer, flavor='raw')
 
     def repr_content(self):
         return "len=%d depth=%d %s" % (self.size(), self._depth, self.str_content())
@@ -180,11 +181,6 @@ class W_32BitDisplayBitmap(W_DisplayBitmap):
         assert self.pixelbuffer_words == 0
         self._real_depth_buffer = lltype.malloc(rffi.CArray(rffi.UINT), self.size(), flavor='raw')
         self._copy_pixelbuffer_to_own()
-
-    @rgc.must_be_light_finalizer
-    def __del__(self):
-        if self.pixelbuffer_words == 0:
-            lltype.free(self._real_depth_buffer, flavor='raw')
 
     def _copy_pixelbuffer_to_own(self):
         for i in range(self.size()):
