@@ -14,6 +14,9 @@ setup_osx() {
       64bit)
       # brew update
 
+      # Use PyPy2 v5.4.0
+      brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/c5a201f49c9da47d4771ebc544d10b3f9c579021/Formula/pypy.rb
+
       brew install sdl2
       ;;
     esac
