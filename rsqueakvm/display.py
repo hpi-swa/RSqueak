@@ -41,6 +41,12 @@ WindowEventStinks = 6
 MINIMUM_DEPTH = 8
 DEPTH_TO_MAP_TO = 32
 
+PIXELVOIDPP = lltype.malloc(rffi.VOIDPP.TO, 1,
+                            flavor='raw', zero=True, immortal=True)
+PITCHINTP = lltype.malloc(rffi.INTP.TO, 1,
+                          flavor='raw', zero=True, immortal=True)
+
+
 class SqueakInterrupt(Exception):
     pass
 
@@ -227,14 +233,20 @@ class SDLDisplay(NullDisplay):
     def flip(self, force=False):
         if self._defer_updates and not force:
             return
-        ec = RSDL.UpdateTexture(
+
+        ec = RSDL.LockTexture(
             self.screen_texture,
             lltype.nullptr(RSDL.Rect),
-            self.screen_surface.c_pixels,
-            self.screen_surface.c_pitch)
+            PIXELVOIDPP,
+            PITCHINTP)
         if ec != 0:
             print RSDL.GetError()
             return
+
+        nbytes = rffi.r_size_t(self.width * self.height * self.bpp)
+        rffi.c_memcpy(PIXELVOIDPP[0], self.screen_surface.c_pixels, nbytes)
+        RSDL.UnlockTexture(self.screen_texture)
+
         ec = RSDL.RenderCopy(
             self.renderer,
             self.screen_texture,
