@@ -120,7 +120,7 @@ class SDLDisplay(NullDisplay):
     _attrs_ = ["window", "title", "renderer", "screen_texture", "altf4quit",
                "screen_surface", "has_surface", "interrupt_key",
                "_defer_updates", "_deferred_events", "bpp", "pitch", "highdpi",
-               "software_renderer", "interrupt_flag"]
+               "software_renderer", "interrupt_flag", "_texture_dirty"]
     _immutable_fields_ = ["interrupt_flag"]
 
     def __init__(self, title, highdpi, software_renderer, altf4quit):
@@ -139,6 +139,7 @@ class SDLDisplay(NullDisplay):
         self.interrupt_key = 15 << 8  # pushing all four meta keys, of which we support three...
         self._deferred_events = []
         self._defer_updates = False
+        self._texture_dirty = True
 
     def _init_sdl(self):
         from rpython.rlib.objectmodel import we_are_translated
@@ -205,6 +206,7 @@ class SDLDisplay(NullDisplay):
         if not self.screen_texture:
             print "Could not create screen texture"
             raise RuntimeError(RSDL.GetError())
+        self.lock()
         self.screen_surface = RSDL.CreateRGBSurface(0, w, h, d, 0, 0, 0, 0)
         assert self.screen_surface, RSDL.GetError()
         self.bpp = intmask(self.screen_surface.c_format.c_BytesPerPixel)
@@ -230,23 +232,18 @@ class SDLDisplay(NullDisplay):
     def defer_updates(self, flag):
         self._defer_updates = flag
 
-    def flip(self, force=False):
-        if self._defer_updates and not force:
-            return
-
-        ec = RSDL.LockTexture(
-            self.screen_texture,
-            lltype.nullptr(RSDL.Rect),
-            PIXELVOIDPP,
-            PITCHINTP)
-        if ec != 0:
-            print RSDL.GetError()
-            return
-
+    def flip(self):
         nbytes = rffi.r_size_t(self.width * self.height * self.bpp)
         rffi.c_memcpy(PIXELVOIDPP[0], self.screen_surface.c_pixels, nbytes)
-        RSDL.UnlockTexture(self.screen_texture)
+        self._texture_dirty = True
 
+    def render(self):
+        if self._defer_updates:
+            return
+        if not self._texture_dirty:
+            return
+        self._texture_dirty = False
+        self.unlock()
         ec = RSDL.RenderCopy(
             self.renderer,
             self.screen_texture,
@@ -256,6 +253,20 @@ class SDLDisplay(NullDisplay):
             print RSDL.GetError()
             return
         RSDL.RenderPresent(self.renderer)
+        self.lock()
+
+    def lock(self):
+        ec = RSDL.LockTexture(
+            self.screen_texture,
+            lltype.nullptr(RSDL.Rect),
+            PIXELVOIDPP,
+            PITCHINTP)
+        if ec != 0:
+            print RSDL.GetError()
+            return
+
+    def unlock(self):
+        RSDL.UnlockTexture(self.screen_texture)
 
     def set_squeak_colormap(self, surface):
         # TODO: fix this up from the image

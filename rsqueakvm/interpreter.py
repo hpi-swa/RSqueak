@@ -455,6 +455,9 @@ class Interpreter(object):
             wrapper.SemaphoreWrapper(self.space, w_low_space_sema).signal(s_frame, forced=True)
 
     def check_for_interrupts(self, s_frame):
+        display = self.space.display()
+        if display:
+            display.render()
         # parallel to Interpreter>>#checkForInterrupts
         # 1. profiling is done using rvmprof
         # 2. use the same time value as the primitive UTC_MICROSECOND_CLOCK

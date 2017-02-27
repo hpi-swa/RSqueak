@@ -115,6 +115,7 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
 
     def flush_to_screen(self):
         self.display().flip()
+        self.display().render()
 
     def word_from_pixel(self, x, y):
         return (x - 1 + (y - 1) * self.display().width) / self.pixel_per_word()
@@ -126,7 +127,7 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
             if stop <= start:
                 return
             self.force_words(start, stop)
-            self.display().flip(force=True)
+            self.display().flip()
 
     def force_words(self, start, stop):
         if self.is_headless(): return
@@ -191,7 +192,7 @@ class W_32BitDisplayBitmap(W_DisplayBitmap):
 
     def force_rectange_to_screen(self, left, right, top, bottom):
         if self.pixelbuffer_words > 0:
-            self.display().flip(force=True)
+            self.display().flip()
 
 
 
@@ -285,12 +286,6 @@ class W_MappingDisplayBitmap(W_DisplayBitmap):
             pixel = (word & pixelmask) >> (shift - i)
             buf[n * display_words_per_word + i] = rffi.r_uint(table[pixel])
             pixelmask >>= depth
-
-    # def setword(self, n, word):
-    #     W_DisplayBitmap.setword(self, n, word)
-    #     if self.pixelbuffer_words > 0:
-    #         self.set_pixelbuffer_word(n, word)
-    #         self.display().flip()
 
 
 PIXEL_LOOKUP_1BIT = [0xffffffff, 0xff000000]
