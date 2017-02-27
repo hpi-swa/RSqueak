@@ -236,13 +236,12 @@ class SDLDisplay(NullDisplay):
         self._defer_updates = flag
 
     def flip(self, start, stop):
-        size = self.width * self.height * self.bpp
         offset = start * self.bpp
-        if offset >= size:
+        assert offset >= 0:
+        remaining_size = (self.width * self.height * self.bpp) - offset
+        if remaining_size <= 0 or start <= stop:
             return
-        if start >= stop:
-            return
-        nbytes = rffi.r_size_t(min((stop - start) * self.bpp, size - offset))
+        nbytes = rffi.r_size_t(min((stop - start) * self.bpp, remaining_size))
         pixbuf = rffi.ptradd(PIXELVOIDPP[0], offset)
         surfacebuf = rffi.ptradd(self.screen_surface.c_pixels, offset)
         rffi.c_memcpy(pixbuf, surfacebuf, nbytes)

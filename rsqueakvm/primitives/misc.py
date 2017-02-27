@@ -52,6 +52,10 @@ def func(interp, s_frame, w_rcvr, left, right, top, bottom):
     if not ((left <= right) and (top <= bottom)):
         return interp.space.w_nil
     form = wrapper.FormWrapper(interp.space, w_rcvr)
+    left = max(0, left)
+    right = max(0, right)
+    top = max(0, top)
+    bottom = max(0, bottom)
     form.get_display_bitmap().force_rectange_to_screen(left, right, top, bottom)
     return w_rcvr
 
