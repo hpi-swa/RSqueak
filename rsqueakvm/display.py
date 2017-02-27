@@ -237,9 +237,10 @@ class SDLDisplay(NullDisplay):
 
     def flip(self, start, stop):
         offset = start * self.bpp
-        assert offset >= 0:
+        if offset < 0 or start <= stop:
+            return
         remaining_size = (self.width * self.height * self.bpp) - offset
-        if remaining_size <= 0 or start <= stop:
+        if remaining_size <= 0:
             return
         nbytes = rffi.r_size_t(min((stop - start) * self.bpp, remaining_size))
         pixbuf = rffi.ptradd(PIXELVOIDPP[0], offset)
