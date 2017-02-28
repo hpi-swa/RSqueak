@@ -13,7 +13,6 @@ from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.storage_contexts import ContextPartShadow, ActiveContext, InactiveContext, DirtyContext
 
 from rpython.rlib import jit, rstackovf, unroll, objectmodel, rsignal
-from rpython.rlib.rarithmetic import ovfcheck
 
 
 class ReturnFromTopLevel(Exception):
@@ -161,6 +160,7 @@ class Interpreter(object):
                           "evented",
                           "interrupts",
                           "trace_important",
+                          "interrupt_counter_size",
                           "trace"]
 
     jit_driver = jit.JitDriver(
@@ -197,7 +197,6 @@ class Interpreter(object):
             self.interrupt_counter_size = int(os.environ["SPY_ICS"])
         except KeyError:
             self.interrupt_counter_size = constants.INTERRUPT_COUNTER_SIZE
-        self.last_check = self.time_now()
         self.trace = trace
 
         # === Initialize mutable variables
@@ -430,9 +429,9 @@ class Interpreter(object):
             return
         # Normally, the tick counter is decremented by 1 for every message send.
         # Since we don't know how many messages are called during this trace, we
-        # just divide by 12**2 and make sure it's always at least 1
+        # just divide by 10**2 and make sure it's always at least 1
         trace_length = jit.current_trace_length()
-        decr_by = int(trace_length >> 12 | 1)
+        decr_by = int(trace_length >> 10 | 1)
         self.quick_check_for_interrupt(s_frame, decr_by)
 
     def quick_check_for_interrupt(self, s_frame, dec=1):
@@ -448,38 +447,24 @@ class Interpreter(object):
         if poll == rsignal.SIGUSR1:
             print s_frame.print_stack()
 
-    def signal_memory_error(self, s_frame):
-        w_low_space_sema = self.space.w_low_space_semaphore()
-        if w_low_space_sema is not self.space.w_nil:
-            assert isinstance(w_low_space_sema, W_PointersObject)
-            wrapper.SemaphoreWrapper(self.space, w_low_space_sema).signal(s_frame, forced=True)
-
     def check_for_interrupts(self, s_frame):
         # parallel to Interpreter>>#checkForInterrupts
-        # 1. profiling is done using rvmprof
-        # 2. use the same time value as the primitive UTC_MICROSECOND_CLOCK
-        now = self.time_now()
-        # 3. adjust the check counter size, we want to land between 100ms and 400ms
-        diff = now - self.last_check
-        if diff < 100000 and self.interrupt_counter_size != constants.MAXINT:
-            try:
-                self.interrupt_counter_size = ovfcheck(self.interrupt_counter_size * 2)
-            except OverflowError:
-                self.interrupt_counter_size = constants.MAXINT
-        elif diff > 400000 and self.interrupt_counter_size > 100:
-            self.interrupt_counter_size = max(self.interrupt_counter_size / 2, 100)
-        self.last_check = now
-        self.forced_interrupt_checks_count += 1
 
-        # 4. check for User Interrupt
+        # Profiling is skipped
+        # We don't adjust the check counter size
+
+        # use the same time value as the primitive UTC_MICROSECOND_CLOCK
+        self.forced_interrupt_checks_count += 1
+        now = self.time_now()
+
+        # Check for User Interrupt
         if self.space.display().has_interrupts_pending():
             w_interrupt_sema = self.space.w_interrupt_semaphore()
             if w_interrupt_sema is not self.space.w_nil:
                 assert isinstance(w_interrupt_sema, W_PointersObject)
                 wrapper.SemaphoreWrapper(self.space, w_interrupt_sema).signal(s_frame, forced=True)
 
-        # 5. the low space semaphore is signalled in ClassShadow#new
-        # 6. signal the timer
+        # XXX the low space semaphore may be signaled here
         if not self.next_wakeup_tick == 0 and now >= self.next_wakeup_tick:
             self.next_wakeup_tick = 0
             semaphore = self.space.w_timerSemaphore()
