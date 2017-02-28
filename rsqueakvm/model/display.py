@@ -116,10 +116,9 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
     def flush_to_screen(self):
         self.make_dirty()
         self.display().render()
-        self.make_dirty() # do it twice for macOS
 
     def make_dirty(self):
-        self.display().flip(0, 0, self.display().width, self.display().height)
+        self.display().flip(0, 0, self.display().width, self.display().height, self.display().screen_surface.c_pixels)
 
     def word_from_pixel(self, x, y):
         return (x + y * self.display().width) / self.pixel_per_word()
@@ -131,7 +130,7 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
             if stop <= start:
                 return
             self.force_words(start, stop)
-            self.display().flip(left, top, right, bottom)
+            self.display().flip(left, top, right, bottom, self.display().screen_surface.c_pixels)
 
     def force_words(self, start, stop):
         if self.is_headless(): return
@@ -174,27 +173,12 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
 class W_32BitDisplayBitmap(W_DisplayBitmap):
     repr_classname = "W_32BitDisplayBitmap"
 
-    def take_over_display(self):
-        if self.pixelbuffer_words == 0:
-            W_DisplayBitmap.take_over_display(self)
-            assert self.pixelbuffer_words == self.size()
-            lltype.free(self._real_depth_buffer, flavor='raw')
-            self._real_depth_buffer = self.pixelbuffer()
-
-    def relinquish_display(self):
-        W_DisplayBitmap.relinquish_display(self)
-        assert self.pixelbuffer_words == 0
-        self._real_depth_buffer = lltype.malloc(rffi.CArray(rffi.UINT), self.size(), flavor='raw')
-        self._copy_pixelbuffer_to_own()
-
-    def _copy_pixelbuffer_to_own(self):
-        for i in range(self.size()):
-            self.setword(i, self.pixelbuffer()[i])
+    def make_dirty(self):
+        self.display().flip(0, 0, self.display().width, self.display().height, rffi.cast(rffi.VOIDPP, self._real_depth_buffer))
 
     def force_rectange_to_screen(self, left, right, top, bottom):
         if self.pixelbuffer_words > 0:
-            width = self.display().width
-            self.display().flip(left, top, right, bottom)
+            self.display().flip(left, top, right, bottom, rffi.cast(rffi.VOIDPP, self._real_depth_buffer))
 
 
 class W_16BitDisplayBitmap(W_DisplayBitmap):

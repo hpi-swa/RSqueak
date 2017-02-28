@@ -235,8 +235,8 @@ class SDLDisplay(NullDisplay):
     def defer_updates(self, flag):
         self._defer_updates = flag
 
-    def flip(self, x, y, x2, y2):
-        self.copy_pixels(x + y * self.width, x2 + y2 * self.width)
+    def flip(self, x, y, x2, y2, source):
+        self.copy_pixels(x + y * self.width, x2 + y2 * self.width, source)
         self.record_damage(x, y, x2 - x, y2 - y)
         self._texture_dirty = True
 
@@ -258,7 +258,7 @@ class SDLDisplay(NullDisplay):
         self.reset_damage()
         self.lock()
 
-    def copy_pixels(self, start, stop):
+    def copy_pixels(self, start, stop, source):
         offset = start * self.bpp
         assert offset >= 0
         remaining_size = (self.width * self.height * self.bpp) - offset
@@ -266,7 +266,7 @@ class SDLDisplay(NullDisplay):
             return
         nbytes = rffi.r_size_t(min((stop - start) * self.bpp, remaining_size))
         pixbuf = rffi.ptradd(PIXELVOIDPP[0], offset)
-        surfacebuf = rffi.ptradd(self.screen_surface.c_pixels, offset)
+        surfacebuf = rffi.ptradd(source, offset)
         rffi.c_memcpy(pixbuf, surfacebuf, nbytes)
 
     def record_damage(self, x, y, w, h):
