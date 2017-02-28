@@ -81,7 +81,7 @@ class NullDisplay(object):
     def flip(self, x, y, x2, y2):
         pass
 
-    def render(self):
+    def render(self, force=False):
         pass
 
     def has_clipboard_text(self):
@@ -276,8 +276,8 @@ class SDLDisplay(NullDisplay):
     def record_damage(self, x, y, w, h):
         FLIP_RECT.c_x = rffi.r_int(x)
         FLIP_RECT.c_y = rffi.r_int(y)
-        FLIP_RECT.c_w = rffi.r_int(w)
-        FLIP_RECT.c_h = rffi.r_int(h)
+        FLIP_RECT.c_w = rffi.r_int(min(w + 1, self.width - x))
+        FLIP_RECT.c_h = rffi.r_int(min(h + 1, self.height - y))
         RSDL.UnionRect(FLIP_RECT, RENDER_RECT, RENDER_RECT)
 
     def reset_damage(self):
