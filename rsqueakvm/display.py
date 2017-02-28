@@ -177,13 +177,10 @@ class SDLDisplay(NullDisplay):
         flags = RSDL.WINDOW_RESIZABLE
         if self.highdpi:
             flags |= RSDL.WINDOW_ALLOW_HIGHDPI
-        if self.software_renderer:
-            flags |= RSDL.RENDERER_SOFTWARE
         self.window = RSDL.CreateWindow(self.title, x, y, width, height, flags)
-        # https://wiki.libsdl.org/SDL_CreateRenderer#flags: "Note that providing
-        # no flags gives priority to available SDL_RENDERER_ACCELERATED
-        # renderers."
-        self.renderer = RSDL.CreateRenderer(self.window, -1, 0)
+        # Use software renderer for now to avoid problems w/ duplicate buffers
+        self.renderer = RSDL.CreateRenderer(self.window, -1,
+                                            RSDL.RENDERER_SOFTWARE)
 
     def set_video_mode(self, w, h, d):
         if not (w > 0 and h > 0):
@@ -244,10 +241,9 @@ class SDLDisplay(NullDisplay):
         self._texture_dirty = True
 
     def render(self, force=False):
-        if self._defer_updates and not force:
-            return
-        if not self._texture_dirty:
-            return
+        if not force:
+            if self._defer_updates or not self._texture_dirty:
+                return
         self._texture_dirty = False
         self.unlock()
         ec = RSDL.RenderCopy(
