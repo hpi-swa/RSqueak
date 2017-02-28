@@ -41,10 +41,8 @@ WindowEventStinks = 6
 MINIMUM_DEPTH = 8
 DEPTH_TO_MAP_TO = 32
 
-PIXELVOIDPP = lltype.malloc(rffi.VOIDPP.TO, 1,
-                            flavor='raw', zero=True, immortal=True)
-PITCHINTP = lltype.malloc(rffi.INTP.TO, 1,
-                          flavor='raw', zero=True, immortal=True)
+RECT_DELTA = lltype.malloc(RSDL.Rect, flavor='raw', zero=True, immortal=True)
+RECT_NULLPTR = lltype.nullptr(RSDL.Rect)
 
 
 class SqueakInterrupt(Exception):
@@ -76,10 +74,7 @@ class NullDisplay(object):
     def get_next_event(self, time=0):
         return [EventTypeNone, 0, 0, 0, 0, 0, 0, 0]
 
-    def flip(self, start, stop):
-        pass
-
-    def render(self):
+    def flip(self, left=0, right=0, top=0, bottom=0, complete=False):
         pass
 
     def has_clipboard_text(self):
@@ -120,11 +115,11 @@ class NullDisplay(object):
 
 
 class SDLDisplay(NullDisplay):
-    _attrs_ = ["window", "title", "renderer", "screen_texture", "altf4quit",
-               "screen_surface", "has_surface", "interrupt_key",
-               "_defer_updates", "_deferred_events", "bpp", "pitch", "highdpi",
-               "software_renderer", "interrupt_flag", "_texture_dirty"]
-    _immutable_fields_ = ["interrupt_flag"]
+    _attrs_ = ['window', 'title', 'renderer', 'screen_texture', 'altf4quit',
+               'screen_surface', 'has_surface', 'interrupt_key',
+               '_defer_updates', '_deferred_events', 'bpp', 'pitch', 'highdpi',
+               'software_renderer', 'interrupt_flag']
+    _immutable_fields_ = ['interrupt_flag']
 
     def __init__(self, title, highdpi, software_renderer, altf4quit):
         NullDisplay.__init__(self)
@@ -142,7 +137,6 @@ class SDLDisplay(NullDisplay):
         self.interrupt_key = 15 << 8  # pushing all four meta keys, of which we support three...
         self._deferred_events = []
         self._defer_updates = False
-        self._texture_dirty = True
 
     def _init_sdl(self):
         from rpython.rlib.objectmodel import we_are_translated
@@ -209,7 +203,6 @@ class SDLDisplay(NullDisplay):
         if not self.screen_texture:
             print "Could not create screen texture"
             raise RuntimeError(RSDL.GetError())
-        self.lock()
         self.screen_surface = RSDL.CreateRGBSurface(0, w, h, d, 0, 0, 0, 0)
         assert self.screen_surface, RSDL.GetError()
         self.bpp = intmask(self.screen_surface.c_format.c_BytesPerPixel)
@@ -235,49 +228,45 @@ class SDLDisplay(NullDisplay):
     def defer_updates(self, flag):
         self._defer_updates = flag
 
-    def flip(self, start, stop):
-        offset = start * self.bpp
-        if offset < 0 or start <= stop:
-            return
-        remaining_size = (self.width * self.height * self.bpp) - offset
-        if remaining_size <= 0:
-            return
-        nbytes = rffi.r_size_t(min((stop - start) * self.bpp, remaining_size))
-        pixbuf = rffi.ptradd(PIXELVOIDPP[0], offset)
-        surfacebuf = rffi.ptradd(self.screen_surface.c_pixels, offset)
-        rffi.c_memcpy(pixbuf, surfacebuf, nbytes)
-        self._texture_dirty = True
+    def flip(self, left=0, right=0, top=0, bottom=0, complete=False):
+        # Current not in use, because we don't have a RPython BitBlt Plugin:
+        # if self._defer_updates and not force:
+        #     return
 
-    def render(self):
-        if self._defer_updates:
+        offset = (left + top * self.width) * self.bpp
+        if offset < 0:
             return
-        if not self._texture_dirty:
+        elif offset == 0:
+            surfacebuf = self.screen_surface.c_pixels
+        else:
+            surfacebuf = rffi.ptradd(self.screen_surface.c_pixels, offset)
+
+        if complete:
+            rect = RECT_NULLPTR
+        else:
+            # off-by-one to prevent pixel inaccuracies
+            RECT_DELTA.c_x = rffi.r_int(max(left - 1, 0))
+            RECT_DELTA.c_y = rffi.r_int(max(top - 1, 0))
+            RECT_DELTA.c_w = rffi.r_int(min(right - left + 1, self.width))
+            RECT_DELTA.c_h = rffi.r_int(min(bottom - top + 1, self.height))
+            rect = RECT_DELTA
+        ec = RSDL.UpdateTexture(
+            self.screen_texture,
+            rect,
+            surfacebuf,
+            self.screen_surface.c_pitch)
+        if ec != 0:
+            print RSDL.GetError()
             return
-        self._texture_dirty = False
-        self.unlock()
         ec = RSDL.RenderCopy(
             self.renderer,
             self.screen_texture,
-            lltype.nullptr(RSDL.Rect),
-            lltype.nullptr(RSDL.Rect))
+            RECT_NULLPTR,
+            RECT_NULLPTR)
         if ec != 0:
             print RSDL.GetError()
             return
         RSDL.RenderPresent(self.renderer)
-        self.lock()
-
-    def lock(self):
-        ec = RSDL.LockTexture(
-            self.screen_texture,
-            lltype.nullptr(RSDL.Rect),
-            PIXELVOIDPP,
-            PITCHINTP)
-        if ec != 0:
-            print RSDL.GetError()
-            return
-
-    def unlock(self):
-        RSDL.UnlockTexture(self.screen_texture)
 
     def set_squeak_colormap(self, surface):
         # TODO: fix this up from the image
