@@ -24,7 +24,7 @@ def func(interp, s_frame, w_rcvr, time_mu_s):
 
 @expose_primitive(FORCE_DISPLAY_UPDATE, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
-    interp.space.display().render()
+    interp.space.display().render(force=True)
     return w_rcvr
 
 @expose_primitive(SET_FULL_SCREEN, unwrap_spec=[object, bool])

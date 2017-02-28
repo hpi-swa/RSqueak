@@ -45,6 +45,8 @@ PIXELVOIDPP = lltype.malloc(rffi.VOIDPP.TO, 1,
                             flavor='raw', zero=True, immortal=True)
 PITCHINTP = lltype.malloc(rffi.INTP.TO, 1,
                           flavor='raw', zero=True, immortal=True)
+FLIP_RECT = lltype.malloc(RSDL.Rect, flavor='raw', zero=True, immortal=True)
+RENDER_RECT = lltype.malloc(RSDL.Rect, flavor='raw', zero=True, immortal=True)
 
 
 class SqueakInterrupt(Exception):
@@ -76,7 +78,7 @@ class NullDisplay(object):
     def get_next_event(self, time=0):
         return [EventTypeNone, 0, 0, 0, 0, 0, 0, 0]
 
-    def flip(self, start, stop):
+    def flip(self, x, y, x2, y2):
         pass
 
     def render(self):
@@ -216,6 +218,7 @@ class SDLDisplay(NullDisplay):
         if d == MINIMUM_DEPTH:
             self.set_squeak_colormap(self.screen_surface)
         self.pitch = self.width * self.bpp
+        self.reset_damage()
 
     def set_full_screen(self, flag):
         if flag:
@@ -235,20 +238,13 @@ class SDLDisplay(NullDisplay):
     def defer_updates(self, flag):
         self._defer_updates = flag
 
-    def flip(self, start, stop):
-        offset = start * self.bpp
-        assert offset >= 0:
-        remaining_size = (self.width * self.height * self.bpp) - offset
-        if remaining_size <= 0 or start <= stop:
-            return
-        nbytes = rffi.r_size_t(min((stop - start) * self.bpp, remaining_size))
-        pixbuf = rffi.ptradd(PIXELVOIDPP[0], offset)
-        surfacebuf = rffi.ptradd(self.screen_surface.c_pixels, offset)
-        rffi.c_memcpy(pixbuf, surfacebuf, nbytes)
+    def flip(self, x, y, x2, y2):
+        self.copy_pixels(x + y * self.width, x2 + y2 * self.width)
+        self.record_damage(x, y, x2 - x, y2 - y)
         self._texture_dirty = True
 
-    def render(self):
-        if self._defer_updates:
+    def render(self, force=False):
+        if self._defer_updates and not force:
             return
         if not self._texture_dirty:
             return
@@ -257,13 +253,40 @@ class SDLDisplay(NullDisplay):
         ec = RSDL.RenderCopy(
             self.renderer,
             self.screen_texture,
+            # RENDER_RECT,
+            # RENDER_RECT)
             lltype.nullptr(RSDL.Rect),
             lltype.nullptr(RSDL.Rect))
         if ec != 0:
             print RSDL.GetError()
             return
         RSDL.RenderPresent(self.renderer)
+        self.reset_damage()
         self.lock()
+
+    def copy_pixels(self, start, stop):
+        offset = start * self.bpp
+        assert offset >= 0
+        remaining_size = (self.width * self.height * self.bpp) - offset
+        if remaining_size <= 0 or start <= stop:
+            return
+        nbytes = rffi.r_size_t(min((stop - start) * self.bpp, remaining_size))
+        pixbuf = rffi.ptradd(PIXELVOIDPP[0], offset)
+        surfacebuf = rffi.ptradd(self.screen_surface.c_pixels, offset)
+        rffi.c_memcpy(pixbuf, surfacebuf, nbytes)
+
+    def record_damage(self, x, y, w, h):
+        FLIP_RECT.c_x = rffi.r_int(x)
+        FLIP_RECT.c_y = rffi.r_int(y)
+        FLIP_RECT.c_w = rffi.r_int(w)
+        FLIP_RECT.c_h = rffi.r_int(h)
+        RSDL.UnionRect(FLIP_RECT, RENDER_RECT, RENDER_RECT)
+
+    def reset_damage(self):
+        RENDER_RECT.c_x = rffi.r_int(0)
+        RENDER_RECT.c_y = rffi.r_int(0)
+        RENDER_RECT.c_w = rffi.r_int(0)
+        RENDER_RECT.c_h = rffi.r_int(0)
 
     def lock(self):
         ec = RSDL.LockTexture(

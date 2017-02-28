@@ -114,7 +114,7 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
         self.pixelbuffer_words = 0
 
     def flush_to_screen(self):
-        self.display().flip(0, self.pixelbuffer_words)
+        self.display().flip(0, 0, self.display().width, self.display().height)
         self.display().render()
 
     def word_from_pixel(self, x, y):
@@ -122,16 +122,12 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
 
     def force_rectange_to_screen(self, left, right, top, bottom):
         if self.pixelbuffer_words > 0:
-            width = self.display().width
             start = max(self.word_from_pixel(left, top), 0)
             stop = min(self.word_from_pixel(right, bottom), self.size() - 1)
             if stop <= start:
                 return
             self.force_words(start, stop)
-            self.display().flip(
-                left + top * width,
-                right + bottom * width
-            )
+            self.display().flip(left, top, right, bottom)
 
     def force_words(self, start, stop):
         if self.is_headless(): return
@@ -194,10 +190,7 @@ class W_32BitDisplayBitmap(W_DisplayBitmap):
     def force_rectange_to_screen(self, left, right, top, bottom):
         if self.pixelbuffer_words > 0:
             width = self.display().width
-            self.display().flip(
-                left + top * width,
-                right + bottom * width
-            )
+            self.display().flip(left, top, right, bottom)
 
 
 class W_16BitDisplayBitmap(W_DisplayBitmap):
