@@ -114,8 +114,12 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
         self.pixelbuffer_words = 0
 
     def flush_to_screen(self):
-        self.display().flip(0, 0, self.display().width, self.display().height)
+        self.make_dirty()
         self.display().render()
+        self.make_dirty() # do it twice for macOS
+
+    def make_dirty(self):
+        self.display().flip(0, 0, self.display().width, self.display().height)
 
     def word_from_pixel(self, x, y):
         return (x + y * self.display().width) / self.pixel_per_word()
