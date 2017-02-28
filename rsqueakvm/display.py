@@ -55,7 +55,7 @@ class SqueakInterrupt(Exception):
 
 class NullDisplay(object):
     _attrs_ = ["button", "mouse_position", "key", "width", "height", "depth",
-               "pitch"]
+               "pitch", "screen_surface"]
 
     def __init__(self):
         self.button = 0
@@ -65,6 +65,7 @@ class NullDisplay(object):
         self.height = 0
         self.depth = 32
         self.pitch = 0
+        self.screen_surface = lltype.nullptr(RSDL.Surface)
 
     def defer_updates(self, flag):
         pass
@@ -78,7 +79,7 @@ class NullDisplay(object):
     def get_next_event(self, time=0):
         return [EventTypeNone, 0, 0, 0, 0, 0, 0, 0]
 
-    def flip(self, x, y, x2, y2):
+    def flip(self, x, y, x2, y2, source):
         pass
 
     def render(self, force=False):

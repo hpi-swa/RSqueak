@@ -174,11 +174,11 @@ class W_32BitDisplayBitmap(W_DisplayBitmap):
     repr_classname = "W_32BitDisplayBitmap"
 
     def make_dirty(self):
-        self.display().flip(0, 0, self.display().width, self.display().height, rffi.cast(rffi.VOIDPP, self._real_depth_buffer))
+        self.display().flip(0, 0, self.display().width, self.display().height, rffi.cast(rffi.VOIDP, self._real_depth_buffer))
 
     def force_rectange_to_screen(self, left, right, top, bottom):
         if self.pixelbuffer_words > 0:
-            self.display().flip(left, top, right, bottom, rffi.cast(rffi.VOIDPP, self._real_depth_buffer))
+            self.display().flip(left, top, right, bottom, rffi.cast(rffi.VOIDP, self._real_depth_buffer))
 
 
 class W_16BitDisplayBitmap(W_DisplayBitmap):
