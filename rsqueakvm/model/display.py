@@ -33,13 +33,18 @@ def from_words_object(w_obj, form):
 
 
 class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
-    _attrs_ = ['pixelbuffer_words', '_real_depth_buffer', '_realsize', '_display', '_depth']
-    _immutable_fields_ = ['pixelbuffer_words?', '_real_depth_buffer?', '_realsize', '_display', '_depth']
-    repr_classname = "W_DisplayBitmap"
+    _attrs_ = [
+        'pixelbuffer_words', '_real_depth_buffer', '_realsize',
+        '_display', '_depth']
+    _immutable_fields_ = [
+        'pixelbuffer_words?', '_real_depth_buffer?', '_realsize', '_display',
+        '_depth']
+    repr_classname = 'W_DisplayBitmap'
 
     def __init__(self, space, size, depth):
         W_AbstractObjectWithIdentityHash.__init__(self)
-        self._real_depth_buffer = lltype.malloc(rffi.CArray(rffi.UINT), size, flavor='raw')
+        self._real_depth_buffer = lltype.malloc(
+            rffi.CArray(rffi.UINT), size, flavor='raw')
         self._realsize = size
         self._depth = depth
         self._display = space.display()
@@ -49,7 +54,7 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
         return space.w_Bitmap
 
     def guess_classname(self):
-        return "Bitmap"
+        return 'Bitmap'
 
     # === Object access
 
@@ -71,7 +76,7 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
                     chr((self.getword(i) & r_uint(0x0000ff00)) >> 8),
                     chr((self.getword(i) & r_uint(0x00ff0000)) >> 16),
                     chr((self.getword(i) & r_uint(0xff000000)) >> 24)]
-        return "".join(res)
+        return ''.join(res)
 
     def getword(self, n):
         assert self.size() > n >= 0
@@ -106,8 +111,10 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
         return constants.BYTES_PER_WORD / (self.display().depth / 8)
 
     def take_over_display(self):
-        # Make sure FrameWrapper.take_over_display() is called first for the correct Frame object.
-        self.pixelbuffer_words = self.display().width * self.display().height / self.pixel_per_word()
+        """Make sure FrameWrapper.take_over_display() is called first for the
+           correct Frame object."""
+        pixels = self.display().width * self.display().height
+        self.pixelbuffer_words = pixels / self.pixel_per_word()
         self.update_from_buffer()
 
     def relinquish_display(self):
@@ -129,12 +136,14 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
             self.display().flip(left, right, top, bottom)
 
     def force_words(self, start, stop):
-        if self.is_headless(): return
+        if self.is_headless():
+            return
         for i in range(stop - start):
             self.set_pixelbuffer_word(i + start, self.getword(i + start))
 
     def update_from_buffer(self):
-        if self.is_headless(): return
+        if self.is_headless():
+            return
         if self.pixelbuffer_words > 0:
             for i in range(self.size()):
                 self.set_pixelbuffer_word(i, self.getword(i))
@@ -154,7 +163,8 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
         return True
 
     def can_become(self, w_other):
-        # TODO - implement _become() for this class. Impossible due to _immutable_fields_?
+        """TODO - implement _become() for this class.
+           Impossible due to _immutable_fields_?"""
         return False
 
     @rgc.must_be_light_finalizer
@@ -163,11 +173,12 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
             lltype.free(self._real_depth_buffer, flavor='raw')
 
     def repr_content(self):
-        return "len=%d depth=%d %s" % (self.size(), self._depth, self.str_content())
+        return 'len=%d depth=%d %s' % (
+            self.size(), self._depth, self.str_content())
 
 
 class W_32BitDisplayBitmap(W_DisplayBitmap):
-    repr_classname = "W_32BitDisplayBitmap"
+    repr_classname = 'W_32BitDisplayBitmap'
 
     def take_over_display(self):
         if self.pixelbuffer_words == 0:
@@ -179,7 +190,8 @@ class W_32BitDisplayBitmap(W_DisplayBitmap):
     def relinquish_display(self):
         W_DisplayBitmap.relinquish_display(self)
         assert self.pixelbuffer_words == 0
-        self._real_depth_buffer = lltype.malloc(rffi.CArray(rffi.UINT), self.size(), flavor='raw')
+        self._real_depth_buffer = lltype.malloc(
+            rffi.CArray(rffi.UINT), self.size(), flavor='raw')
         self._copy_pixelbuffer_to_own()
 
     def _copy_pixelbuffer_to_own(self):
@@ -192,7 +204,7 @@ class W_32BitDisplayBitmap(W_DisplayBitmap):
 
 
 class W_16BitDisplayBitmap(W_DisplayBitmap):
-    repr_classname = "W_16BitDisplayBitmap"
+    repr_classname = 'W_16BitDisplayBitmap'
 
     def set_pixelbuffer_word(self, n, word):
         mask = 0b11111
@@ -216,7 +228,7 @@ class W_16BitDisplayBitmap(W_DisplayBitmap):
 
 class W_8BitDisplayBitmap(W_DisplayBitmap):
 
-    repr_classname = "W_8BitDisplayBitmap"
+    repr_classname = 'W_8BitDisplayBitmap'
 
     def set_pixelbuffer_word(self, n, word):
         # Invert the byte-order.
@@ -230,7 +242,7 @@ class W_8BitDisplayBitmap(W_DisplayBitmap):
 
 class W_MappingDisplayBitmap(W_DisplayBitmap):
 
-    repr_classname = "W_MappingDisplayBitmap"
+    repr_classname = 'W_MappingDisplayBitmap'
     _attrs_ = ['words_per_line', 'bits_in_last_word', 'pitch']
     _immutable_fields_ = ['words_per_line?', 'bits_in_last_word?', 'pitch?']
 
@@ -253,7 +265,8 @@ class W_MappingDisplayBitmap(W_DisplayBitmap):
         return self.display().depth / self._depth
 
     def take_over_display(self):
-        pitch = r_uint(self.display().pitch)  # The pitch may be different from the width input to SDL!
+        # The pitch may be different from the width input to SDL!
+        pitch = r_uint(self.display().pitch)
         self.pitch = pitch
         self.bits_in_last_word = pitch % 32
         self.words_per_line = r_uint((pitch - self.bits_in_last_word) / 32)
@@ -264,7 +277,7 @@ class W_MappingDisplayBitmap(W_DisplayBitmap):
     @jit.unroll_safe
     def set_pixelbuffer_word(self, n, word):
         n = r_uint(n)
-        if ((n+1) % self.words_per_line) == 0 and self.bits_in_last_word > 0:
+        if ((n + 1) % self.words_per_line) == 0 and self.bits_in_last_word > 0:
             # This is the last word on the line. A few bits may be cut off.
             bits = self.bits_in_last_word
         else:
@@ -290,4 +303,5 @@ PIXEL_LOOKUP_4BIT = [
     0xff840000, 0xff840084, 0xff848400, 0xff848484,
     0xffc6c6c6, 0xff0000ff, 0xff00ff00, 0xff00ffff,
     0xffff0000, 0xffff00ff, 0xffffff00, 0xffffffff]
-PIXEL_LOOKUP_TABLE = [PIXEL_LOOKUP_1BIT, PIXEL_LOOKUP_2BIT, None, PIXEL_LOOKUP_4BIT]
+PIXEL_LOOKUP_TABLE = [
+    PIXEL_LOOKUP_1BIT, PIXEL_LOOKUP_2BIT, None, PIXEL_LOOKUP_4BIT]
