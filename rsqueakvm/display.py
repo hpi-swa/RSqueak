@@ -253,10 +253,8 @@ class SDLDisplay(NullDisplay):
         ec = RSDL.RenderCopy(
             self.renderer,
             self.screen_texture,
-            # RENDER_RECT,
-            # RENDER_RECT)
-            lltype.nullptr(RSDL.Rect),
-            lltype.nullptr(RSDL.Rect))
+            RENDER_RECT,
+            RENDER_RECT)
         if ec != 0:
             print RSDL.GetError()
             return
@@ -268,7 +266,7 @@ class SDLDisplay(NullDisplay):
         offset = start * self.bpp
         assert offset >= 0
         remaining_size = (self.width * self.height * self.bpp) - offset
-        if remaining_size <= 0 or start <= stop:
+        if remaining_size <= 0 or start >= stop:
             return
         nbytes = rffi.r_size_t(min((stop - start) * self.bpp, remaining_size))
         pixbuf = rffi.ptradd(PIXELVOIDPP[0], offset)
