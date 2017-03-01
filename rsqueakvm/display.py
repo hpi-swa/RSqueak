@@ -27,6 +27,11 @@ EventTypeWindow = 5
 EventTypeComplex = 6
 EventTypeMouseWheel = 7
 
+EventDragTypeEnter = 1
+EventDragTypeMove = 2
+EventDragTypeLeave = 3
+EventDragTypeDrop = 4
+
 EventKeyChar = 0
 EventKeyDown = 1
 EventKeyUp = 2
@@ -92,6 +97,9 @@ class NullDisplay(object):
     def has_clipboard_text(self):
         return False
 
+    def get_dropped_filename(self):
+        return None
+
     def has_interrupts_pending(self):
         return False
 
@@ -128,7 +136,7 @@ class NullDisplay(object):
 
 class SDLDisplay(NullDisplay):
     _attrs_ = ["window", "title", "renderer", "screen_texture", "altf4quit",
-               "interrupt_key",
+               "interrupt_key", "_dropped_file",
                "_defer_updates", "_deferred_events", "bpp", "pitch", "highdpi",
                "software_renderer", "interrupt_flag", "_texture_dirty"]
     _immutable_fields_ = ["interrupt_flag"]
@@ -149,6 +157,7 @@ class SDLDisplay(NullDisplay):
         self.insert_padding_event()
         self._defer_updates = False
         self._texture_dirty = True
+        self._dropped_file = None
 
     def _init_sdl(self):
         from rpython.rlib.objectmodel import we_are_translated
@@ -387,6 +396,23 @@ class SDLDisplay(NullDisplay):
                                 h=intmask(window_event.c_data2),
                                 d=self.depth)
 
+    def get_dropevent(self, time, c_type, event):
+        drop_event = rffi.cast(RSDL.DropEvent, event)
+        path = rffi.charp2str(drop_event.c_file)
+        btn, mods = self.get_mouse_event_buttons_and_mods()
+        self._dropped_file = path
+        lltype.free(drop_event.c_file)
+        return [EventTypeDragDropFiles,
+                time,
+                EventDragTypeDrop,
+                int(self.mouse_position[0]),
+                int(self.mouse_position[1]),
+                mods,
+                1]
+
+    def get_dropped_filename(self):
+        return self._dropped_file
+
     def get_mouse_event_buttons_and_mods(self):
         mods = self.get_modifier_mask(3)
         btn = self.button
@@ -472,6 +498,8 @@ class SDLDisplay(NullDisplay):
                     self.queue_event(self.get_next_key_event(EventKeyUp, time))
                 elif event_type == RSDL.WINDOWEVENT:
                     self.handle_windowevent(event_type, event)
+                elif event_type == RSDL.DROPFILE:
+                    self.queue_event(self.get_dropevent(time, event_type, event))
                 elif event_type == RSDL.QUIT:
                     if self.altf4quit: # we want to quit hard
                         from rsqueakvm.util.dialog import ask_question
