@@ -38,8 +38,8 @@ WindowEventActivated = 4
 WindowEventPaint = 5
 WindowEventStinks = 6
 
-MINIMUM_DEPTH = 8
-DEPTH_TO_MAP_TO = 32
+MINIMUM_DEPTH = 16
+BELOW_MINIMUM_DEPTH = 32
 
 PIXELVOIDPP = lltype.malloc(rffi.VOIDPP.TO, 1,
                             flavor='raw', zero=True, immortal=True)
@@ -47,6 +47,11 @@ PITCHINTP = lltype.malloc(rffi.INTP.TO, 1,
                           flavor='raw', zero=True, immortal=True)
 FLIP_RECT = lltype.malloc(RSDL.Rect, flavor='raw', zero=True, immortal=True)
 RENDER_RECT = lltype.malloc(RSDL.Rect, flavor='raw', zero=True, immortal=True)
+
+DEPTH_TO_PIXELFORMAT = {
+    16: RSDL.PIXELFORMAT_ARGB1555,
+    32: RSDL.PIXELFORMAT_ARGB8888
+}
 
 
 class SqueakInterrupt(Exception):
@@ -78,7 +83,7 @@ class NullDisplay(object):
     def get_next_event(self, time=0):
         return [EventTypeNone, 0, 0, 0, 0, 0, 0, 0]
 
-    def flip(self, x, y, x2, y2):
+    def flip(self, pixels, x, y, x2, y2):
         pass
 
     def render(self, force=False):
@@ -123,7 +128,7 @@ class NullDisplay(object):
 
 class SDLDisplay(NullDisplay):
     _attrs_ = ["window", "title", "renderer", "screen_texture", "altf4quit",
-               "screen_surface", "has_surface", "interrupt_key",
+               "interrupt_key",
                "_defer_updates", "_deferred_events", "bpp", "pitch", "highdpi",
                "software_renderer", "interrupt_flag", "_texture_dirty"]
     _immutable_fields_ = ["interrupt_flag"]
@@ -139,8 +144,6 @@ class SDLDisplay(NullDisplay):
         self.window = lltype.nullptr(RSDL.WindowPtr.TO)
         self.renderer = lltype.nullptr(RSDL.RendererPtr.TO)
         self.screen_texture = lltype.nullptr(RSDL.TexturePtr.TO)
-        self.screen_surface = lltype.nullptr(RSDL.Surface)
-        self.has_surface = False
         self.interrupt_key = 15 << 8  # pushing all four meta keys, of which we support three...
         self._deferred_events = []
         self._defer_updates = False
@@ -185,9 +188,9 @@ class SDLDisplay(NullDisplay):
     def set_video_mode(self, w, h, d):
         if not (w > 0 and h > 0):
             return
-        assert d in [1, 2, 4, 8, 16, 32]
+        assert d in (1, 2, 4, 8, 16, 32)
         if d < MINIMUM_DEPTH:
-            d = DEPTH_TO_MAP_TO
+            d = BELOW_MINIMUM_DEPTH
         self.width = intmask(w)
         self.height = intmask(h)
         self.depth = intmask(d)
@@ -198,22 +201,20 @@ class SDLDisplay(NullDisplay):
                                             height=h)
         if self.screen_texture != lltype.nullptr(RSDL.TexturePtr.TO):
             RSDL.DestroyTexture(self.screen_texture)
-        if self.screen_surface != lltype.nullptr(RSDL.Surface):
-            RSDL.FreeSurface(self.screen_surface)
-        self.has_surface = True
         self.screen_texture = RSDL.CreateTexture(
                 self.renderer,
-                RSDL.PIXELFORMAT_ARGB8888, RSDL.TEXTUREACCESS_STREAMING,
+                DEPTH_TO_PIXELFORMAT[d], RSDL.TEXTUREACCESS_STREAMING,
                 w, h)
         if not self.screen_texture:
             print "Could not create screen texture"
             raise RuntimeError(RSDL.GetError())
         self.lock()
-        self.screen_surface = RSDL.CreateRGBSurface(0, w, h, d, 0, 0, 0, 0)
-        assert self.screen_surface, RSDL.GetError()
-        self.bpp = intmask(self.screen_surface.c_format.c_BytesPerPixel)
-        if d == MINIMUM_DEPTH:
-            self.set_squeak_colormap(self.screen_surface)
+        if d == 16:
+            self.bpp = 2
+        elif d == 32:
+            self.bpp = 4
+        else:
+            assert False
         self.pitch = self.width * self.bpp
         self.reset_damage()
 
@@ -226,17 +227,11 @@ class SDLDisplay(NullDisplay):
     def set_title(self, title):
         RSDL.SetWindowTitle(self.window, title)
 
-    def get_pixelbuffer(self):
-        return jit.promote(rffi.cast(RSDL.Uint32P, self.get_plain_pixelbuffer()))
-
-    def get_plain_pixelbuffer(self):
-        return self.screen_surface.c_pixels
-
     def defer_updates(self, flag):
         self._defer_updates = flag
 
-    def flip(self, x, y, x2, y2):
-        self.copy_pixels(x + y * self.width, x2 + y2 * self.width)
+    def flip(self, pixels, x, y, x2, y2):
+        self.copy_pixels(pixels, x + y * self.width, x2 + y2 * self.width)
         self.record_damage(x, y, x2 - x, y2 - y)
         self._texture_dirty = True
 
@@ -258,7 +253,7 @@ class SDLDisplay(NullDisplay):
         self.reset_damage()
         self.lock()
 
-    def copy_pixels(self, start, stop):
+    def copy_pixels(self, pixels, start, stop):
         offset = start * self.bpp
         assert offset >= 0
         remaining_size = (self.width * self.height * self.bpp) - offset
@@ -266,7 +261,7 @@ class SDLDisplay(NullDisplay):
             return
         nbytes = rffi.r_size_t(min((stop - start) * self.bpp, remaining_size))
         pixbuf = rffi.ptradd(PIXELVOIDPP[0], offset)
-        surfacebuf = rffi.ptradd(self.screen_surface.c_pixels, offset)
+        surfacebuf = rffi.ptradd(rffi.cast(rffi.VOIDP, pixels), offset)
         rffi.c_memcpy(pixbuf, surfacebuf, nbytes)
 
     def record_damage(self, x, y, w, h):
@@ -294,28 +289,6 @@ class SDLDisplay(NullDisplay):
 
     def unlock(self):
         RSDL.UnlockTexture(self.screen_texture)
-
-    def set_squeak_colormap(self, surface):
-        # TODO: fix this up from the image
-        colors = lltype.malloc(rffi.CArray(RSDL.Color), 4, flavor='raw')
-        colors[0].c_r = rffi.r_uchar(255)
-        colors[0].c_g = rffi.r_uchar(255)
-        colors[0].c_b = rffi.r_uchar(255)
-        colors[0].c_a = rffi.r_uchar(255)
-        colors[1].c_r = rffi.r_uchar(0)
-        colors[1].c_g = rffi.r_uchar(0)
-        colors[1].c_b = rffi.r_uchar(0)
-        colors[1].c_a = rffi.r_uchar(255)
-        colors[2].c_r = rffi.r_uchar(128)
-        colors[2].c_g = rffi.r_uchar(128)
-        colors[2].c_b = rffi.r_uchar(128)
-        colors[2].c_a = rffi.r_uchar(255)
-        colors[3].c_r = rffi.r_uchar(255)
-        colors[3].c_g = rffi.r_uchar(255)
-        colors[3].c_b = rffi.r_uchar(255)
-        colors[3].c_a = rffi.r_uchar(255)
-        RSDL.SetPaletteColors(surface.c_format.c_palette, rffi.cast(RSDL.ColorPtr, colors), 0, 4)
-        lltype.free(colors, flavor='raw')
 
     def handle_mouse_button(self, c_type, event):
         b = rffi.cast(RSDL.MouseButtonEventPtr, event)

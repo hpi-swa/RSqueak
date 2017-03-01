@@ -66,6 +66,7 @@ COMPILED_METHOD_FULL_FRAME_SIZE = 56
 COMPILED_METHOD_SMALL_FRAME_SIZE = 16
 LITERAL_START = 1  # index of the first literal after the method header
 BYTES_PER_WORD = 4
+BITS_PER_WORD = BYTES_PER_WORD * 8
 WORDS_IN_FLOAT = 2  # Fixed number of word-slots in a Squeak Float object
 INTERP_PROXY_MAJOR = 1
 INTERP_PROXY_MINOR = 13

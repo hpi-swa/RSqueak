@@ -62,6 +62,13 @@ def func(interp, s_frame, w_rcvr):
     w_point.store(interp.space, 1, interp.space.wrap_int(y))
     return w_point
 
+@expose_primitive(TEST_DISPLAY_DEPTH, unwrap_spec=[object, int])
+def func(interp, s_frame, w_rcvr, depth):
+    if depth in [1,2,4,8,16,32]:
+        return interp.space.w_true
+    else:
+        return interp.space.w_false
+
 @expose_primitive(GET_NEXT_EVENT, unwrap_spec=[object, object])
 @jit.unroll_safe
 @jit.look_inside
