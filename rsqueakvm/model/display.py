@@ -226,7 +226,7 @@ PIXEL_LOOKUP_4BIT = [
 ]
 # String streamContents: [:s |
 #       Color indexedColors
-#               do: [:ea | s nextPutAll: '0x'; nextPutAll: ea printHtmlString]
+#               do: [:ea | s nextPutAll: '0xFF'; nextPutAll: ea printHtmlString]
 #               separatedBy: [s nextPutAll: ', ']]
 PIXEL_LOOKUP_8BIT = [
     0xFFFFFFFF, 0xFF000000, 0xFFFFFFFF, 0xFF7F7F7F, 0xFFFF0000, 0xFF00FF00,
