@@ -1,11 +1,11 @@
 from rsqueakvm import constants, error
+from rsqueakvm.display import BELOW_MINIMUM_DEPTH
 from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.variable import W_WordsObject
-from rsqueakvm.util import system
 
 from rpython.rlib import jit, rgc
-from rpython.rtyper.lltypesystem import lltype, rffi
 from rpython.rlib.rarithmetic import r_uint
+from rpython.rtyper.lltypesystem import lltype, rffi
 
 
 def from_words_object(w_obj, form):
@@ -16,7 +16,7 @@ def from_words_object(w_obj, form):
     if not w_class.is_same_object(space.w_Bitmap):
         raise error.WrappingError
 
-    if depth in (1,2,4,8):
+    if depth in (1, 2, 4, 8):
         w_display_bitmap = W_MappingDisplayBitmap(space, size, depth)
     elif depth == 16:
         w_display_bitmap = W_16BitDisplayBitmap(space, size, depth)
@@ -32,13 +32,18 @@ def from_words_object(w_obj, form):
 
 
 class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
-    _attrs_ = ['is_display', '_squeak_pixel_buffer', '_realsize', '_display', '_depth']
-    _immutable_fields_ = ['is_display?', '_squeak_pixel_buffer', '_realsize', '_display', '_depth']
-    repr_classname = "W_DisplayBitmap"
+    _attrs_ = [
+        'is_display', '_squeak_pixel_buffer', '_realsize', '_display',
+        '_depth']
+    _immutable_fields_ = [
+        'is_display?', '_squeak_pixel_buffer', '_realsize', '_display',
+        '_depth']
+    repr_classname = 'W_DisplayBitmap'
 
     def __init__(self, space, size, depth):
         W_AbstractObjectWithIdentityHash.__init__(self)
-        self._squeak_pixel_buffer = lltype.malloc(rffi.CArray(rffi.UINT), size, flavor='raw')
+        self._squeak_pixel_buffer = lltype.malloc(
+            rffi.CArray(rffi.UINT), size, flavor='raw')
         self._realsize = size
         self._depth = depth
         self._display = space.display()
@@ -48,7 +53,7 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
         return space.w_Bitmap
 
     def guess_classname(self):
-        return "Bitmap"
+        return 'Bitmap'
 
     # === Object access
 
@@ -70,7 +75,7 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
                     chr((self.getword(i) & r_uint(0x0000ff00)) >> 8),
                     chr((self.getword(i) & r_uint(0x00ff0000)) >> 16),
                     chr((self.getword(i) & r_uint(0xff000000)) >> 24)]
-        return "".join(res)
+        return ''.join(res)
 
     def getword(self, n):
         assert self.size() > n >= 0
@@ -98,7 +103,8 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
         self.is_display = False
 
     def flush_to_screen(self):
-        self.force_rectange_to_screen(0, self.display().width, 0, self.display().height)
+        self.force_rectange_to_screen(0, self.display().width,
+                                      0, self.display().height)
         self.display().render()
 
     # === Misc
@@ -116,18 +122,21 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
         return True
 
     def can_become(self, w_other):
-        # TODO - implement _become() for this class. Impossible due to _immutable_fields_?
+        """TODO implement _become() for this class.
+        Impossible due to _immutable_fields_?"""
         return False
 
     def repr_content(self):
-        return "len=%d depth=%d %s" % (self.size(), self._depth, self.str_content())
+        return 'len=%d depth=%d %s' % (
+            self.size(), self._depth, self.str_content())
 
 
 class W_DirectDisplayBitmap(W_DisplayBitmap):
-    repr_classname = "W_DirectDisplayBitmap"
+    repr_classname = 'W_DirectDisplayBitmap'
 
     def force_rectange_to_screen(self, left, right, top, bottom):
-        self.display().flip(self._squeak_pixel_buffer, left, top, right, bottom)
+        self.display().flip(self._squeak_pixel_buffer,
+                            left, top, right, bottom)
 
     @rgc.must_be_light_finalizer
     def __del__(self):
@@ -135,11 +144,11 @@ class W_DirectDisplayBitmap(W_DisplayBitmap):
 
 
 class W_32BitDisplayBitmap(W_DirectDisplayBitmap):
-    repr_classname = "W_32BitDisplayBitmap"
+    repr_classname = 'W_32BitDisplayBitmap'
 
 
 class W_16BitDisplayBitmap(W_DirectDisplayBitmap):
-    repr_classname = "W_16BitDisplayBitmap"
+    repr_classname = 'W_16BitDisplayBitmap'
 
     def swap_pixels(self, word):
         return (
@@ -154,16 +163,20 @@ class W_16BitDisplayBitmap(W_DirectDisplayBitmap):
         return self.swap_pixels(W_DirectDisplayBitmap.getword(self, n))
 
 
-from rsqueakvm.display import BELOW_MINIMUM_DEPTH
 class W_MappingDisplayBitmap(W_DisplayBitmap):
-    repr_classname = "W_MappingDisplayBitmap"
-    _attrs_ = ['mapping_factor', '_sdl_pixel_buffer', 'words_per_line', 'bits_in_last_word', 'pitch']
-    _immutable_fields_ = ['_sdl_pixel_buffer', 'mapping_factor', 'words_per_line?', 'bits_in_last_word?', 'pitch?']
+    repr_classname = 'W_MappingDisplayBitmap'
+    _attrs_ = [
+        'mapping_factor', '_sdl_pixel_buffer', 'words_per_line',
+        'bits_in_last_word', 'pitch']
+    _immutable_fields_ = [
+        '_sdl_pixel_buffer', 'mapping_factor', 'words_per_line?',
+        'bits_in_last_word?', 'pitch?']
 
     def __init__(self, space, size, depth):
         W_DisplayBitmap.__init__(self, space, size, depth)
         self.mapping_factor = BELOW_MINIMUM_DEPTH / self._depth
-        self._sdl_pixel_buffer = lltype.malloc(rffi.CArray(rffi.UINT), size * self.mapping_factor, flavor='raw')
+        self._sdl_pixel_buffer = lltype.malloc(
+            rffi.CArray(rffi.UINT), size * self.mapping_factor, flavor='raw')
 
     @rgc.must_be_light_finalizer
     def __del__(self):
@@ -176,10 +189,12 @@ class W_MappingDisplayBitmap(W_DisplayBitmap):
 
     def take_over_display(self):
         W_DisplayBitmap.take_over_display(self)
-        pitch = r_uint(self.display().pitch)  # The pitch may be different from the width input to SDL!
+        # The pitch may be different from the width input to SDL!
+        pitch = r_uint(self.display().pitch)
         self.pitch = pitch
         self.bits_in_last_word = pitch % BELOW_MINIMUM_DEPTH
-        self.words_per_line = r_uint((pitch - self.bits_in_last_word) / constants.BITS_PER_WORD)
+        self.words_per_line = r_uint(
+            (pitch - self.bits_in_last_word) / constants.BITS_PER_WORD)
         if self.bits_in_last_word > 0:
             self.words_per_line += 1
         for i in range(self.size()):
@@ -188,7 +203,7 @@ class W_MappingDisplayBitmap(W_DisplayBitmap):
     @jit.unroll_safe
     def set_pixelbuffer_word(self, n, word):
         n = r_uint(n)
-        if ((n+1) % self.words_per_line) == 0 and self.bits_in_last_word > 0:
+        if ((n + 1) % self.words_per_line) == 0 and self.bits_in_last_word > 0:
             # This is the last word on the line. A few bits may be cut off.
             bits = self.bits_in_last_word
         else:
@@ -197,7 +212,7 @@ class W_MappingDisplayBitmap(W_DisplayBitmap):
         word = r_uint(word)
         depth = r_uint(self._depth)
         shift = constants.BITS_PER_WORD - depth
-        display_words_per_word =  BELOW_MINIMUM_DEPTH / depth
+        display_words_per_word = BELOW_MINIMUM_DEPTH / depth
         pixelmask = ((r_uint(1) << depth) - 1) << shift
         table = PIXEL_LOOKUP_TABLE[depth - 1]
         assert table is not None
@@ -226,7 +241,7 @@ PIXEL_LOOKUP_4BIT = [
 ]
 # String streamContents: [:s |
 #       Color indexedColors
-#               do: [:ea | s nextPutAll: '0xFF'; nextPutAll: ea printHtmlString]
+#               do: [:ea|s nextPutAll: '0xFF'; nextPutAll: ea printHtmlString]
 #               separatedBy: [s nextPutAll: ', ']]
 PIXEL_LOOKUP_8BIT = [
     0xFFFFFFFF, 0xFF000000, 0xFFFFFFFF, 0xFF7F7F7F, 0xFFFF0000, 0xFF00FF00,
