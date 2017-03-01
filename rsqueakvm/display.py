@@ -146,6 +146,7 @@ class SDLDisplay(NullDisplay):
         self.screen_texture = lltype.nullptr(RSDL.TexturePtr.TO)
         self.interrupt_key = 15 << 8  # pushing all four meta keys, of which we support three...
         self._deferred_events = []
+        self.insert_padding_event()
         self._defer_updates = False
         self._texture_dirty = True
 
@@ -430,12 +431,15 @@ class SDLDisplay(NullDisplay):
                 0,
                 0]
 
+    def insert_padding_event(self):
+        self._deferred_events.append([EventTypeNone, 0, 0, 0, 0, 0, 0, 0])
+
     def get_next_event(self, time=0):
         if len(self._deferred_events) > 0:
             return self._deferred_events.pop()
         # we always return one None event between every event, so we poll only
         # half of the time
-        self._deferred_events.append([EventTypeNone, 0, 0, 0, 0, 0, 0, 0])
+        self.insert_padding_event()
         with lltype.scoped_alloc(RSDL.Event) as event:
             if RSDL.PollEvent(event) == 1:
                 event_type = r_uint(event.c_type)
@@ -457,6 +461,7 @@ class SDLDisplay(NullDisplay):
                              (self.is_control_key(self.key) or
                               RSDL.GetModState() & ~RSDL.KMOD_SHIFT != 0))):
                             self._deferred_events.append(self.get_next_key_event(EventKeyChar, time))
+                            self.insert_padding_event()
                     self.fix_key_code_case()
                     return self.get_next_key_event(EventKeyDown, time)
                 elif event_type == RSDL.TEXTINPUT:

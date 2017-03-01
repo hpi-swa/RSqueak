@@ -413,39 +413,21 @@ def test_display_bitmap():
     target.setword(0, r_uint(0xFF00FF00))
     assert bin(target.getword(0)) == bin(0xFF00FF00)
 
-    buf = target.pixelbuffer()
+    buf = target._sdl_pixel_buffer
     for i in xrange(2, 8):
-        assert buf[i] == 0x0
+        assert buf[i] == 0xffffffff
 
     target.force_rectange_to_screen(0, 31, 0, 9)
-
-    if constants.IS_64BIT: return # XXX: The below stuff isn't working right...
-    buf = target.pixelbuffer()
-    for i in xrange(2):
-        assert buf[i] == 0x01010101
-    for i in xrange(2, 4):
-        assert buf[i] == 0x0
-    for i in xrange(4, 6):
-        assert buf[i] == 0x01010101
-    for i in xrange(6, 8):
-        assert buf[i] == 0x0
-
-def test_display_offset_computation_even():
-    dbitmap = W_MappingDisplayBitmap(space, 200, 1)
-    dbitmap.pitch = 64
-    dbitmap.words_per_line = 2
-    assert dbitmap.compute_pos(0) == 0
-    assert dbitmap.compute_pos(1) == 32
-    assert dbitmap.compute_pos(2) == 64
-
-def test_display_offset_computation_uneven():
-    dbitmap = W_MappingDisplayBitmap(space, 200, 1)
-    dbitmap.pitch = 67
-    dbitmap.words_per_line = 2
-    assert dbitmap.compute_pos(0) == 0
-    assert dbitmap.compute_pos(1) == 32
-    assert dbitmap.compute_pos(2) == 67
-    assert dbitmap.compute_pos(3) == 67 + 32
+    # now we have 8 pixels black, 8 white, 8 black, 8 white
+    buf = target._sdl_pixel_buffer
+    for i in xrange(8):
+        assert buf[i] == 0xff000000
+    for i in xrange(9, 16):
+        assert buf[i] == 0xffffffff
+    for i in xrange(17, 24):
+        assert buf[i] == 0xff000000
+    for i in xrange(25, 32):
+        assert buf[i] == 0xffffffff
 
 def test_weak_pointers():
     w_cls = bootstrap_class(2)

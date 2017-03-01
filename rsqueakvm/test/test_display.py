@@ -76,7 +76,13 @@ def stub_mod_state(monkeypatch):
 
 @pytest.fixture
 def sut():
-    return display.SDLDisplay("test", True, False, False)
+    d = display.SDLDisplay("test", True, False, False)
+    def get_next_event(time=0):
+        # skip the none-event we always insert
+        display.SDLDisplay.get_next_event(d, time)
+        return display.SDLDisplay.get_next_event(d, time)
+    d.get_next_event = get_next_event
+    return d
 
 def assert_keyevent_array(actual, expected_char_code=None,
         expected_key_event_type=None, expected_modifiers=None):
