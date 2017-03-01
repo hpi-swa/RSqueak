@@ -56,7 +56,7 @@ def _usage(argv):
             Squeak arguments are passed on to the Squeak image rather than being processed.
 
           General:
-            --no-highdpi           - Disable High-DPI support (default: on).
+            --highdpi              - Enable High-DPI support (default: off).
             --software-renderer    - Use software renderer (default: off).
             --no-display           - Use dummy display (default: off).
             -h|--help              - Output this message and exit.
@@ -217,8 +217,8 @@ class Config(object):
             elif arg in ["--git-version"]:
                 print GIT_VERSION
                 raise error.CleanExit()
-            elif arg == "--no-highdpi":
-                self.space.highdpi.deactivate()
+            elif arg == "--highdpi":
+                self.space.highdpi.activate()
             elif arg == "--software-renderer":
                 self.space.software_renderer.activate()
             # -nodisplay (Linux) and -headless (macOS) are used in Cog

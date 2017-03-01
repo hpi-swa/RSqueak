@@ -4,7 +4,7 @@ from rsqueakvm import constants, wrapper
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.display import W_DisplayBitmap
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
-from rsqueakvm.primitives import expose_primitive, uint
+from rsqueakvm.primitives import expose_primitive, uint, index1_0
 from rsqueakvm.primitives.constants import *
 from rsqueakvm.primitives.storage import get_instances_array
 
@@ -45,13 +45,17 @@ def func(interp, s_frame, w_receiver, flag):
     sdldisplay.defer_updates(flag)
     return w_receiver
 
-@expose_primitive(DRAW_RECTANGLE, unwrap_spec=[object, int, int, int, int])
+@expose_primitive(DRAW_RECTANGLE, unwrap_spec=[object, index1_0, index1_0, index1_0, index1_0])
 def func(interp, s_frame, w_rcvr, left, right, top, bottom):
     if not interp.space.w_display().is_same_object(w_rcvr):
         return interp.space.w_nil
     if not ((left <= right) and (top <= bottom)):
         return interp.space.w_nil
     form = wrapper.FormWrapper(interp.space, w_rcvr)
+    left = max(0, left)
+    right = max(0, right)
+    top = max(0, top)
+    bottom = max(0, bottom)
     form.get_display_bitmap().force_rectange_to_screen(left, right, top, bottom)
     return w_rcvr
 
