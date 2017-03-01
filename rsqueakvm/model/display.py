@@ -202,7 +202,7 @@ class W_MappingDisplayBitmap(W_DisplayBitmap):
         table = PIXEL_LOOKUP_TABLE[depth - 1]
         assert table is not None
         for i in range(bits / depth):
-            pixel = (word & pixelmask) >> (shift - i)
+            pixel = (word & pixelmask) >> (shift - i * depth)
             buf[n * display_words_per_word + i] = rffi.r_uint(table[pixel])
             pixelmask >>= depth
 
