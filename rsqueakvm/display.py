@@ -338,7 +338,7 @@ class SDLDisplay(NullDisplay):
             key = key_constants.SHIFT
         elif sym == RSDL.K_LCTRL or sym == RSDL.K_RCTRL:
             key = key_constants.CTRL
-        elif not system.IS_DARWIN and (sym == RSDL.K_LALT or sym == RSDL.K_RALT):
+        elif sym == RSDL.K_LALT or sym == RSDL.K_RALT:
             key = key_constants.COMMAND
         elif system.IS_DARWIN and (sym == RSDL.K_LGUI or sym == RSDL.K_RGUI):
             key = key_constants.COMMAND
@@ -531,8 +531,13 @@ class SDLDisplay(NullDisplay):
             modifier |= CtrlKeyBit
         if mod & RSDL.KMOD_SHIFT != 0:
             modifier |= ShiftKeyBit
-        if not system.IS_DARWIN and (mod & RSDL.KMOD_ALT != 0):
-            modifier |= CommandKeyBit
+        if mod & RSDL.KMOD_CAPS != 0:
+            modifier |= ShiftKeyBit
+        if mod & RSDL.KMOD_ALT != 0:
+            if not system.IS_DARWIN:
+                modifier |= CommandKeyBit
+            else:
+                modifier |= OptionKeyBit
         if mod & RSDL.KMOD_GUI != 0:
             modifier |= CommandKeyBit
         return intmask(modifier << shift)
