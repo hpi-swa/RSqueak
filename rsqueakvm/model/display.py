@@ -231,19 +231,21 @@ class W_MappingDisplayBitmap(W_DisplayBitmap):
         self.display().flip(self._sdl_pixel_buffer, left, top, right, bottom)
 
 
-PIXEL_LOOKUP_1BIT = [0xffffffff, 0xff000000]
-PIXEL_LOOKUP_2BIT = [0xff000000, 0xff848484, 0xffc6c6c6, 0xffffffff]
-PIXEL_LOOKUP_4BIT = [
+PIXEL_LOOKUP_1BIT = [r_uint(i) for i in [0xffffffff, 0xff000000]]
+PIXEL_LOOKUP_2BIT = [r_uint(i) for i in [
+    0xff000000, 0xff848484, 0xffc6c6c6, 0xffffffff
+]]
+PIXEL_LOOKUP_4BIT = [r_uint(i) for i in [
     0xff000000, 0xff000084, 0xff008400, 0xff008484,
     0xff840000, 0xff840084, 0xff848400, 0xff848484,
     0xffc6c6c6, 0xff0000ff, 0xff00ff00, 0xff00ffff,
     0xffff0000, 0xffff00ff, 0xffffff00, 0xffffffff
-]
+]]
 # String streamContents: [:s |
 #       Color indexedColors
 #               do: [:ea|s nextPutAll: '0xFF'; nextPutAll: ea printHtmlString]
 #               separatedBy: [s nextPutAll: ', ']]
-PIXEL_LOOKUP_8BIT = [
+PIXEL_LOOKUP_8BIT = [r_uint(i) for i in [
     0xFFFFFFFF, 0xFF000000, 0xFFFFFFFF, 0xFF7F7F7F, 0xFFFF0000, 0xFF00FF00,
     0xFF0000FF, 0xFF00FFFF, 0xFFFFFF00, 0xFFFF00FF, 0xFF1F1F1F, 0xFF3F3F3F,
     0xFF5F5F5F, 0xFF9F9F9F, 0xFFBFBFBF, 0xFFDFDFDF, 0xFF070707, 0xFF0F0F0F,
@@ -287,7 +289,8 @@ PIXEL_LOOKUP_8BIT = [
     0xFFFF6598, 0xFFFF9898, 0xFFFFCB98, 0xFFFFFF98, 0xFFFF00CB, 0xFFFF32CB,
     0xFFFF65CB, 0xFFFF98CB, 0xFFFFCBCB, 0xFFFFFFCB, 0xFFFF00FF, 0xFFFF32FF,
     0xFFFF65FF, 0xFFFF98FF, 0xFFFFCBFF, 0xFFFFFFFF
-]
+]]
+
 PIXEL_LOOKUP_TABLE = [
     PIXEL_LOOKUP_1BIT,
     PIXEL_LOOKUP_2BIT,
