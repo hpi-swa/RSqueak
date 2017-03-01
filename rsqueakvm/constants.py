@@ -66,6 +66,7 @@ COMPILED_METHOD_FULL_FRAME_SIZE = 56
 COMPILED_METHOD_SMALL_FRAME_SIZE = 16
 LITERAL_START = 1  # index of the first literal after the method header
 BYTES_PER_WORD = 4
+BITS_PER_WORD = BYTES_PER_WORD * 8
 WORDS_IN_FLOAT = 2  # Fixed number of word-slots in a Squeak Float object
 INTERP_PROXY_MAJOR = 1
 INTERP_PROXY_MINOR = 13
@@ -168,6 +169,7 @@ variables_in_special_object_table = {
     "display": SO_DISPLAY_OBJECT,
     "interrupt_semaphore": SO_USER_INTERRUPT_SEMAPHORE,
     "timerSemaphore": SO_TIMER_SEMAPHORE,
+    "low_space_semaphore": SO_LOW_SPACE_SEMAPHORE,
     "jit_hook_selector": SO_JIT_HOOK,
     "jit_hook_receiver": SO_JIT_HOOK_RCVR
 }

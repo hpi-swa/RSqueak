@@ -39,12 +39,15 @@ matrix:
   include:
     # - os: osx
     #   osx_image: xcode7.3
+    #   language: cpp
     #   env: BUILD_ARCH=64bit TEST_TYPE=default
     # - os: osx
     #   osx_image: xcode7.3
+    #   language: cpp
     #   env: BUILD_ARCH=64bit
     # - os: osx
     #   osx_image: xcode7.3
+    #   language: cpp
     #   env: BUILD_ARCH=64bit PLUGINS=RubyPlugin
     - os: osx
       osx_image: xcode7.3

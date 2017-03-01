@@ -23,4 +23,4 @@ case "${BUILD_ARCH}" in
   *) ;;
 esac
 
-pypy ".build/${testscript}" ${testflag}
+pypy ".build/${testscript}" -s ${testflag}

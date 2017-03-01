@@ -3,6 +3,7 @@ from rsqueakvm.model.base import W_AbstractObjectWithClassReference
 from rsqueakvm.util.version import Version, elidable_for_version_iff
 
 from rpython.rlib import jit
+from rpython.rlib.objectmodel import not_rpython
 from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32, r_int64
 
 
@@ -140,8 +141,8 @@ class W_BytesObject(W_AbstractObjectWithClassReference):
         else:
             raise error.UnwrappingError
 
+    @not_rpython
     def unwrap_long_untranslated(self, space):
-        "NOT RPYTHON"
         return self.unwrap_rbigint(space).tolong()
 
     @elidable_for_version_iff(0, cond=lambda self: jit.isconstant(self))

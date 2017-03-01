@@ -185,7 +185,7 @@ def test_fileplugin_filewrite_bitmap(monkeypatch):
     monkeypatch.setattr(os, "write", write)
 
     content = W_DisplayBitmap(space, 1, 32)
-    content._real_depth_buffer[0] = rffi.r_uint(1633837924)
+    content._squeak_pixel_buffer[0] = rffi.r_uint(1633837924)
     try:
         stack = [space.w(1), space.w(1), content, space.w(1), space.w(1)]
         w_c = external_call(space,

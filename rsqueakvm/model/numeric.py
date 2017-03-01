@@ -6,7 +6,7 @@ from rsqueakvm.model.base import W_Object, W_AbstractObjectWithIdentityHash, W_A
 from rpython.rlib import longlong2float, jit
 from rpython.rlib.rarithmetic import intmask, r_uint32, r_uint, ovfcheck, r_int64, r_ulonglong
 from rpython.rlib.rstruct.ieee import float_unpack, float_pack
-from rpython.rlib.objectmodel import compute_hash, specialize
+from rpython.rlib.objectmodel import compute_hash, not_rpython
 from rpython.rlib import rbigint
 from rpython.rlib.rerased import new_static_erasing_pair
 
@@ -277,8 +277,8 @@ class W_LargeIntegerBig(W_LargeInteger):
     def unwrap_rbigint(self, space):
         return self.value
 
+    @not_rpython
     def unwrap_long_untranslated(self, space):
-        "NOT RPYTHON"
         return self.value.tolong()
 
     def unwrap_float(self, space):
@@ -370,8 +370,8 @@ class W_LargeIntegerWord(W_LargeInteger):
         else:
             return rbig
 
+    @not_rpython
     def unwrap_long_untranslated(self, space):
-        "NOT RPYTHON"
         if self.is_positive(space):
             return long(self.value)
         else:
@@ -435,8 +435,8 @@ class W_SmallInteger(W_Object):
     def unwrap_rbigint(self, space):
         return rbigint.rbigint.fromint(self.value)
 
+    @not_rpython
     def unwrap_long_untranslated(self, space):
-        "NOT RPYTHON"
         return self.value
 
     def unwrap_float(self, space):

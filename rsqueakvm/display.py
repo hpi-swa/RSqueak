@@ -1,7 +1,8 @@
+import sys
+
 from rpython.rlib.rarithmetic import r_uint, intmask
 from rpython.rtyper.lltypesystem import lltype, rffi
 # from rpython.rlib.runicode import unicode_encode_utf_8
-from rpython.rlib import jit
 
 from rsdl import RSDL
 from rsqueakvm.util import system
@@ -27,6 +28,11 @@ EventTypeWindow = 5
 EventTypeComplex = 6
 EventTypeMouseWheel = 7
 
+EventDragTypeEnter = 1
+EventDragTypeMove = 2
+EventDragTypeLeave = 3
+EventDragTypeDrop = 4
+
 EventKeyChar = 0
 EventKeyDown = 1
 EventKeyUp = 2
@@ -38,7 +44,20 @@ WindowEventActivated = 4
 WindowEventPaint = 5
 WindowEventStinks = 6
 
-MINIMUM_DEPTH = 8
+MINIMUM_DEPTH = 16
+BELOW_MINIMUM_DEPTH = 32
+
+PIXELVOIDPP = lltype.malloc(rffi.VOIDPP.TO, 1,
+                            flavor='raw', zero=True, immortal=True)
+PITCHINTP = lltype.malloc(rffi.INTP.TO, 1,
+                          flavor='raw', zero=True, immortal=True)
+FLIP_RECT = lltype.malloc(RSDL.Rect, flavor='raw', zero=True, immortal=True)
+RENDER_RECT = lltype.malloc(RSDL.Rect, flavor='raw', zero=True, immortal=True)
+
+DEPTH_TO_PIXELFORMAT = {
+    16: RSDL.PIXELFORMAT_ARGB1555,
+    32: RSDL.PIXELFORMAT_ARGB8888
+}
 
 
 class SqueakInterrupt(Exception):
@@ -46,8 +65,8 @@ class SqueakInterrupt(Exception):
 
 
 class NullDisplay(object):
-    _attrs_ = ["button", "mouse_position", "key", "width", "height", "depth",
-               "pitch"]
+    _attrs_ = ['button', 'mouse_position', 'key', 'width', 'height', 'depth',
+               'pitch']
 
     def __init__(self):
         self.button = 0
@@ -62,19 +81,25 @@ class NullDisplay(object):
         pass
 
     def get_pixelbuffer(self):
-        raise RuntimeError("Code path should not be reached")
+        raise RuntimeError('Code path should not be reached')
 
     def get_plain_pixelbuffer(self):
-        raise RuntimeError("Code path should not be reached")
+        raise RuntimeError('Code path should not be reached')
 
     def get_next_event(self, time=0):
         return [EventTypeNone, 0, 0, 0, 0, 0, 0, 0]
 
-    def flip(self, force=False):
+    def flip(self, pixels, x, y, x2, y2):
+        pass
+
+    def render(self, force=False):
         pass
 
     def has_clipboard_text(self):
         return False
+
+    def get_dropped_filename(self):
+        return None
 
     def has_interrupts_pending(self):
         return False
@@ -112,9 +137,9 @@ class NullDisplay(object):
 
 class SDLDisplay(NullDisplay):
     _attrs_ = ["window", "title", "renderer", "screen_texture", "altf4quit",
-               "screen_surface", "has_surface", "interrupt_key",
-               "_defer_updates", "_deferred_events", "bpp", "pitch", "highdpi",
-               "software_renderer", "interrupt_flag"]
+               "interrupt_key", "_dropped_file", "_defer_updates",
+               "_deferred_events", "bpp", "pitch", "highdpi",
+               "software_renderer", "interrupt_flag", "_texture_dirty"]
     _immutable_fields_ = ["interrupt_flag"]
 
     def __init__(self, title, highdpi, software_renderer, altf4quit):
@@ -128,26 +153,32 @@ class SDLDisplay(NullDisplay):
         self.window = lltype.nullptr(RSDL.WindowPtr.TO)
         self.renderer = lltype.nullptr(RSDL.RendererPtr.TO)
         self.screen_texture = lltype.nullptr(RSDL.TexturePtr.TO)
-        self.screen_surface = lltype.nullptr(RSDL.Surface)
-        self.has_surface = False
-        self.interrupt_key = 15 << 8  # pushing all four meta keys, of which we support three...
+        # pushing all four meta keys, of which we support three...
+        self.interrupt_key = 15 << 8
         self._deferred_events = []
+        self.insert_padding_event()
         self._defer_updates = False
+        self._texture_dirty = True
+        self._dropped_file = None
 
     def _init_sdl(self):
-        from rpython.rlib.objectmodel import we_are_translated
         if RSDL.Init(RSDL.INIT_VIDEO) < 0:
             print RSDL.GetError()
             assert False
         self.interrupt_flag = lltype.malloc(rffi.SIGNEDP.TO, 1, flavor='raw')
         self.interrupt_flag[0] = 0
         ll_SetEventFilter(self.interrupt_flag)
-        RSDL.SetHint(RSDL.HINT_RENDER_VSYNC, "0") # do not wait for vsync
-        RSDL.SetHint(RSDL.HINT_RENDER_SCALE_QUALITY, "0") # nearest pixel sampling
+        # do not wait for vsync
+        RSDL.SetHint(RSDL.HINT_RENDER_VSYNC, '0')
+        # nearest pixel sampling
+        RSDL.SetHint(RSDL.HINT_RENDER_SCALE_QUALITY, '0')
         # SDL >= 2.0.4
-        # RSDL.SetHint(RSDL.HINT_VIDEO_X11_NET_WM_PING, "0") # disable WM_PING, so the WM does not think we're hung
-        if (RSDL.SetSwapInterval(-1) < 0): # try to allow late tearing (pushes frames faster)
-            RSDL.SetSwapInterval(0) # at least try to disable vsync
+        # disable WM_PING, so the WM does not think we're hung
+        # RSDL.SetHint(RSDL.HINT_VIDEO_X11_NET_WM_PING, '0')
+
+        # try to allow late tearing (pushes frames faster)
+        if (RSDL.SetSwapInterval(-1) < 0):
+            RSDL.SetSwapInterval(0)  # at least try to disable vsync
 
     def has_interrupts_pending(self):
         if self.interrupt_flag[0] != 0:
@@ -165,20 +196,17 @@ class SDLDisplay(NullDisplay):
         flags = RSDL.WINDOW_RESIZABLE
         if self.highdpi:
             flags |= RSDL.WINDOW_ALLOW_HIGHDPI
-        if self.software_renderer:
-            flags |= RSDL.RENDERER_SOFTWARE
         self.window = RSDL.CreateWindow(self.title, x, y, width, height, flags)
-        # https://wiki.libsdl.org/SDL_CreateRenderer#flags: "Note that providing
-        # no flags gives priority to available SDL_RENDERER_ACCELERATED
-        # renderers."
-        self.renderer = RSDL.CreateRenderer(self.window, -1, 0)
+        # Use software renderer for now to avoid problems w/ duplicate buffers
+        self.renderer = RSDL.CreateRenderer(self.window, -1,
+                                            RSDL.RENDERER_SOFTWARE)
 
     def set_video_mode(self, w, h, d):
         if not (w > 0 and h > 0):
             return
-        assert d in [1, 2, 4, 8, 16, 32]
+        assert d in (1, 2, 4, 8, 16, 32)
         if d < MINIMUM_DEPTH:
-            d = MINIMUM_DEPTH
+            d = BELOW_MINIMUM_DEPTH
         self.width = intmask(w)
         self.height = intmask(h)
         self.depth = intmask(d)
@@ -189,114 +217,95 @@ class SDLDisplay(NullDisplay):
                                             height=h)
         if self.screen_texture != lltype.nullptr(RSDL.TexturePtr.TO):
             RSDL.DestroyTexture(self.screen_texture)
-        if self.screen_surface != lltype.nullptr(RSDL.Surface):
-            RSDL.FreeSurface(self.screen_surface)
-        self.has_surface = True
         self.screen_texture = RSDL.CreateTexture(
-                self.renderer,
-                RSDL.PIXELFORMAT_ARGB8888, RSDL.TEXTUREACCESS_STREAMING,
-                w, h)
+            self.renderer,
+            DEPTH_TO_PIXELFORMAT[d], RSDL.TEXTUREACCESS_STREAMING,
+            w, h)
         if not self.screen_texture:
-            print "Could not create screen texture"
+            print 'Could not create screen texture'
             raise RuntimeError(RSDL.GetError())
-        self.screen_surface = RSDL.CreateRGBSurface(0, w, h, d, 0, 0, 0, 0)
-        assert self.screen_surface, RSDL.GetError()
-        self.bpp = intmask(self.screen_surface.c_format.c_BytesPerPixel)
-        if d == MINIMUM_DEPTH:
-            self.set_squeak_colormap(self.screen_surface)
+        self.lock()
+        if d == 16:
+            self.bpp = 2
+        elif d == 32:
+            self.bpp = 4
+        else:
+            assert False
         self.pitch = self.width * self.bpp
+        self.reset_damage()
 
     def set_full_screen(self, flag):
         if flag:
-            RSDL.SetWindowFullscreen(self.window, RSDL.WINDOW_FULLSCREEN_DESKTOP)
+            RSDL.SetWindowFullscreen(self.window,
+                                     RSDL.WINDOW_FULLSCREEN_DESKTOP)
         else:
             RSDL.SetWindowFullscreen(self.window, 0)
 
     def set_title(self, title):
         RSDL.SetWindowTitle(self.window, title)
 
-    def get_pixelbuffer(self):
-        return jit.promote(rffi.cast(RSDL.Uint32P, self.get_plain_pixelbuffer()))
-
-    def get_plain_pixelbuffer(self):
-        return self.screen_surface.c_pixels
-
     def defer_updates(self, flag):
         self._defer_updates = flag
 
-    def flip(self, force=False):
-        if self._defer_updates and not force:
-            return
-        ec = RSDL.UpdateTexture(
-            self.screen_texture,
-            lltype.nullptr(RSDL.Rect),
-            self.screen_surface.c_pixels,
-            self.screen_surface.c_pitch)
-        if ec != 0:
-            print RSDL.GetError()
-            return
+    def flip(self, pixels, x, y, x2, y2):
+        self.copy_pixels(pixels, x + y * self.width, x2 + y2 * self.width)
+        self.record_damage(x, y, x2 - x, y2 - y)
+        self._texture_dirty = True
+
+    def render(self, force=False):
+        if not force:
+            if self._defer_updates or not self._texture_dirty:
+                return
+        self._texture_dirty = False
+        self.unlock()
         ec = RSDL.RenderCopy(
             self.renderer,
             self.screen_texture,
-            lltype.nullptr(RSDL.Rect),
-            lltype.nullptr(RSDL.Rect))
+            RENDER_RECT,
+            RENDER_RECT)
         if ec != 0:
             print RSDL.GetError()
             return
         RSDL.RenderPresent(self.renderer)
+        self.reset_damage()
+        self.lock()
 
-    # def force_32bit_texture_to_screen(self, left, right, top, bottom, pixels):
-    #     from rsqueakvm.constants import BYTES_PER_WORD
-    #     assert self.depth == 32
-    #     left = max(left - 1, 0)
-    #     top = max(top - 1, 0)
-    #     with lltype.scoped_alloc(RSDL.Rect) as rect:
-    #         rect.c_x = rffi.r_int(left)
-    #         rect.c_y = rffi.r_int(top)
-    #         rect.c_w = rffi.r_int(right - left)
-    #         rect.c_h = rffi.r_int(bottom - top)
-    #         pitch = rffi.r_int(self.width * 4) # 4 bytes per pixel
-    #         start = left + top * self.width / (BYTES_PER_WORD / 4)
-    #         ec = RSDL.UpdateTexture(
-    #             self.screen_texture,
-    #             rect,
-    #             rffi.cast(rffi.VOIDP, rffi.ptradd(pixels, start)),
-    #             pitch # pitch includes the padding between rows
-    #         )
-    #         if ec != 0:
-    #             print RSDL.GetError()
-    #             return
-    #         ec = RSDL.RenderCopy(
-    #             self.renderer,
-    #             self.screen_texture,
-    #             rect,
-    #             rect)
-    #         if ec != 0:
-    #             print RSDL.GetError()
-    #             return
-    #     RSDL.RenderPresent(self.renderer)
+    def copy_pixels(self, pixels, start, stop):
+        offset = start * self.bpp
+        assert offset >= 0
+        remaining_size = (self.width * self.height * self.bpp) - offset
+        if remaining_size <= 0 or start >= stop:
+            return
+        nbytes = rffi.r_size_t(min((stop - start) * self.bpp, remaining_size))
+        pixbuf = rffi.ptradd(PIXELVOIDPP[0], offset)
+        surfacebuf = rffi.ptradd(rffi.cast(rffi.VOIDP, pixels), offset)
+        rffi.c_memcpy(pixbuf, surfacebuf, nbytes)
 
-    def set_squeak_colormap(self, surface):
-        # TODO: fix this up from the image
-        colors = lltype.malloc(rffi.CArray(RSDL.Color), 4, flavor='raw')
-        colors[0].c_r = rffi.r_uchar(255)
-        colors[0].c_g = rffi.r_uchar(255)
-        colors[0].c_b = rffi.r_uchar(255)
-        colors[0].c_a = rffi.r_uchar(255)
-        colors[1].c_r = rffi.r_uchar(0)
-        colors[1].c_g = rffi.r_uchar(0)
-        colors[1].c_b = rffi.r_uchar(0)
-        colors[1].c_a = rffi.r_uchar(255)
-        colors[2].c_r = rffi.r_uchar(128)
-        colors[2].c_g = rffi.r_uchar(128)
-        colors[2].c_b = rffi.r_uchar(128)
-        colors[2].c_a = rffi.r_uchar(255)
-        colors[3].c_r = rffi.r_uchar(255)
-        colors[3].c_g = rffi.r_uchar(255)
-        colors[3].c_b = rffi.r_uchar(255)
-        colors[3].c_a = rffi.r_uchar(255)
-        RSDL.SetPaletteColors(surface.c_format.c_palette, rffi.cast(RSDL.ColorPtr, colors), 0, 4)
-        lltype.free(colors, flavor='raw')
+    def record_damage(self, x, y, w, h):
+        FLIP_RECT.c_x = rffi.r_int(x)
+        FLIP_RECT.c_y = rffi.r_int(y)
+        FLIP_RECT.c_w = rffi.r_int(min(w + 1, self.width - x))
+        FLIP_RECT.c_h = rffi.r_int(min(h + 1, self.height - y))
+        RSDL.UnionRect(FLIP_RECT, RENDER_RECT, RENDER_RECT)
+
+    def reset_damage(self):
+        RENDER_RECT.c_x = rffi.r_int(0)
+        RENDER_RECT.c_y = rffi.r_int(0)
+        RENDER_RECT.c_w = rffi.r_int(0)
+        RENDER_RECT.c_h = rffi.r_int(0)
+
+    def lock(self):
+        ec = RSDL.LockTexture(
+            self.screen_texture,
+            lltype.nullptr(RSDL.Rect),
+            PIXELVOIDPP,
+            PITCHINTP)
+        if ec != 0:
+            print RSDL.GetError()
+            return
+
+    def unlock(self):
+        RSDL.UnlockTexture(self.screen_texture)
 
     def handle_mouse_button(self, c_type, event):
         b = rffi.cast(RSDL.MouseButtonEventPtr, event)
@@ -345,7 +354,7 @@ class SDLDisplay(NullDisplay):
             key = key_constants.SHIFT
         elif sym == RSDL.K_LCTRL or sym == RSDL.K_RCTRL:
             key = key_constants.CTRL
-        elif not system.IS_DARWIN and (sym == RSDL.K_LALT or sym == RSDL.K_RALT):
+        elif sym == RSDL.K_LALT or sym == RSDL.K_RALT:
             key = key_constants.COMMAND
         elif system.IS_DARWIN and (sym == RSDL.K_LGUI or sym == RSDL.K_RGUI):
             key = key_constants.COMMAND
@@ -364,10 +373,10 @@ class SDLDisplay(NullDisplay):
         elif sym == RSDL.K_PRINTSCREEN:
             key = key_constants.PRINT
         else:
-            key = rffi.cast(rffi.INT, sym) # use SDL's keycode
+            key = rffi.cast(rffi.INT, sym)  # use SDL's keycode
             # this is the lowercase ascii-value for the most common keys
         # elif char != 0:
-        #     chars = unicode_encode_utf_8(unichr(char), 1, "ignore")
+        #     chars = unicode_encode_utf_8(unichr(char), 1, 'ignore')
         #     if len(chars) == 1:
         #         asciivalue = ord(chars[0])
         #         if asciivalue >= 32:
@@ -377,12 +386,14 @@ class SDLDisplay(NullDisplay):
         else:
             self.key = intmask(key)
         interrupt = self.interrupt_key
-        if (interrupt & 0xFF == self.key and interrupt >> 8 == self.get_modifier_mask(0)):
+        if (interrupt & 0xFF == self.key and
+                interrupt >> 8 == self.get_modifier_mask(0)):
             raise SqueakInterrupt
 
     def handle_textinput_event(self, event):
         textinput = rffi.cast(RSDL.TextInputEventPtr, event)
-        self.key = ord(rffi.charp2str(rffi.cast(rffi.CCHARP, textinput.c_text))[0])
+        self.key = ord(
+            rffi.charp2str(rffi.cast(rffi.CCHARP, textinput.c_text))[0])
         # XXX: textinput.c_text could contain multiple characters
         #      so probably multiple Squeak events must be emitted
         #      moreover, this is UTF-8 so umlauts etc. have to be decoded
@@ -393,6 +404,23 @@ class SDLDisplay(NullDisplay):
             self.set_video_mode(w=intmask(window_event.c_data1),
                                 h=intmask(window_event.c_data2),
                                 d=self.depth)
+
+    def get_dropevent(self, time, c_type, event):
+        drop_event = rffi.cast(RSDL.DropEventPtr, event)
+        path = rffi.charp2str(drop_event.c_file)
+        btn, mods = self.get_mouse_event_buttons_and_mods()
+        self._dropped_file = path
+        lltype.free(drop_event.c_file, flavor='raw')
+        return [EventTypeDragDropFiles,
+                time,
+                EventDragTypeDrop,
+                int(self.mouse_position[0]),
+                int(self.mouse_position[1]),
+                mods,
+                1]
+
+    def get_dropped_filename(self):
+        return self._dropped_file
 
     def get_mouse_event_buttons_and_mods(self):
         mods = self.get_modifier_mask(3)
@@ -439,62 +467,90 @@ class SDLDisplay(NullDisplay):
                 0]
 
     def get_next_event(self, time=0):
-        if len(self._deferred_events) > 0:
-            return self._deferred_events.pop()
+        if self.has_queued_events():
+            return self.dequeue_event()
+        got_event = False
         with lltype.scoped_alloc(RSDL.Event) as event:
-            if RSDL.PollEvent(event) == 1:
+            while RSDL.PollEvent(event) == 1:
+                got_event = True
                 event_type = r_uint(event.c_type)
                 if event_type in (RSDL.MOUSEBUTTONDOWN, RSDL.MOUSEBUTTONUP):
                     self.handle_mouse_button(event_type, event)
-                    return self.get_next_mouse_event(time)
+                    self.queue_event(self.get_next_mouse_event(time))
                 elif event_type == RSDL.MOUSEMOTION:
                     self.handle_mouse_move(event_type, event)
-                    return self.get_next_mouse_event(time)
+                    self.queue_event(self.get_next_mouse_event(time))
                 elif event_type == RSDL.MOUSEWHEEL:
-                    return self.get_next_mouse_wheel_event(time, event)
+                    self.queue_event(self.get_next_mouse_wheel_event(time, event))
                 elif event_type == RSDL.KEYDOWN:
                     self.handle_keyboard_event(event_type, event)
+                    later = None
                     if not self.is_modifier_key(self.key):
                         # no TEXTINPUT event for this key will follow, but
                         # Squeak needs a KeyStroke anyway
-                        if ((system.IS_LINUX and self.is_control_key(self.key)) or
+                        if ((system.IS_LINUX and
+                            self.is_control_key(self.key)) or
                             (not system.IS_LINUX and
                              (self.is_control_key(self.key) or
                               RSDL.GetModState() & ~RSDL.KMOD_SHIFT != 0))):
-                            self._deferred_events.append(self.get_next_key_event(EventKeyChar, time))
+                            later = self.get_next_key_event(EventKeyChar, time)
                     self.fix_key_code_case()
-                    return self.get_next_key_event(EventKeyDown, time)
+                    self.queue_event(self.get_next_key_event(EventKeyDown, time))
+                    if later:
+                        self.insert_padding_event()
+                        self.queue_event(later)
                 elif event_type == RSDL.TEXTINPUT:
                     self.handle_textinput_event(event)
-                    return self.get_next_key_event(EventKeyChar, time)
+                    self.queue_event(self.get_next_key_event(EventKeyChar, time))
                 elif event_type == RSDL.KEYUP:
                     self.handle_keyboard_event(event_type, event)
                     self.fix_key_code_case()
-                    return self.get_next_key_event(EventKeyUp, time)
+                    self.queue_event(self.get_next_key_event(EventKeyUp, time))
                 elif event_type == RSDL.WINDOWEVENT:
                     self.handle_windowevent(event_type, event)
+                elif event_type == RSDL.DROPFILE:
+                    self.queue_event(self.get_dropevent(time, event_type, event))
                 elif event_type == RSDL.QUIT:
-                    if self.altf4quit: # we want to quit hard
+                    if self.altf4quit:  # we want to quit hard
                         from rsqueakvm.util.dialog import ask_question
-                        if ask_question("Quit Squeak without saving?"):
+                        if ask_question('Quit Squeak without saving?'):
                             raise Exception
-                    return [EventTypeWindow, time, WindowEventClose, 0, 0, 0, 0, 0]
+                    self.queue_event([
+                        EventTypeWindow, time, WindowEventClose, 0, 0, 0, 0, 0
+                    ])
+                self.insert_padding_event()
+        if got_event:
+            return self.dequeue_event()
         return [EventTypeNone, 0, 0, 0, 0, 0, 0, 0]
+
+    def has_queued_events(self):
+        return len(self._deferred_events) > 0
+
+    def queue_event(self, evt):
+        self._deferred_events.append(evt)
+
+    def dequeue_event(self):
+        return self._deferred_events.pop(0)
+
+    def insert_padding_event(self):
+        # we always return one None event between every event, so we poll only
+        # half of the time
+        self.queue_event([EventTypeNone, 0, 0, 0, 0, 0, 0, 0])
 
     def is_control_key(self, key_ord):
         key_ord = key_ord
         return key_ord < 32 or key_ord in [
-                key_constants.DELETE,
-                key_constants.NUMLOCK,
-                key_constants.SCROLLLOCK
-                ]
+            key_constants.DELETE,
+            key_constants.NUMLOCK,
+            key_constants.SCROLLLOCK
+        ]
 
     def is_modifier_key(self, key_ord):
         return key_ord in [
-                key_constants.COMMAND,
-                key_constants.CTRL,
-                key_constants.SHIFT
-                ]
+            key_constants.COMMAND,
+            key_constants.CTRL,
+            key_constants.SHIFT
+        ]
 
     def fix_key_code_case(self):
         if self.key <= 255:
@@ -504,12 +560,12 @@ class SDLDisplay(NullDisplay):
 
     # Old style event handling
     def pump_events(self):
-        event = lltype.malloc(RSDL.Event, flavor="raw")
+        event = lltype.malloc(RSDL.Event, flavor='raw')
         try:
             if RSDL.PollEvent(event) == 1:
                 c_type = r_uint(event.c_type)
                 if (c_type == r_uint(RSDL.MOUSEBUTTONDOWN) or
-                    c_type == r_uint(RSDL.MOUSEBUTTONUP)):
+                        c_type == r_uint(RSDL.MOUSEBUTTONUP)):
                     self.handle_mouse_button(c_type, event)
                     return
                 elif c_type == r_uint(RSDL.MOUSEMOTION):
@@ -519,7 +575,7 @@ class SDLDisplay(NullDisplay):
                     return
                 elif c_type == r_uint(RSDL.QUIT):
                     from rsqueakvm.error import Exit
-                    raise Exit("Window closed")
+                    raise Exit('Window closed')
         finally:
             lltype.free(event, flavor='raw')
 
@@ -531,8 +587,13 @@ class SDLDisplay(NullDisplay):
             modifier |= CtrlKeyBit
         if mod & RSDL.KMOD_SHIFT != 0:
             modifier |= ShiftKeyBit
-        if not system.IS_DARWIN and (mod & RSDL.KMOD_ALT != 0):
-            modifier |= CommandKeyBit
+        if mod & RSDL.KMOD_CAPS != 0:
+            modifier |= ShiftKeyBit
+        if mod & RSDL.KMOD_ALT != 0:
+            if not system.IS_DARWIN:
+                modifier |= CommandKeyBit
+            else:
+                modifier |= OptionKeyBit
         if mod & RSDL.KMOD_GUI != 0:
             modifier |= CommandKeyBit
         return intmask(modifier << shift)
@@ -571,7 +632,7 @@ class SDLDisplay(NullDisplay):
 
 class SDLCursorClass(object):
     """Cursor modification not yet implemented in RSDL2?"""
-    _attrs_ = ["cursor", "has_cursor", "has_display"]
+    _attrs_ = ['cursor', 'has_cursor', 'has_display']
 
     instance = None
 
@@ -597,16 +658,16 @@ class SDLCursorClass(object):
                 self.has_cursor = True
                 RSDL.SetCursor(self.cursor)
             finally:
-                lltype.free(mask, flavor="raw")
+                lltype.free(mask, flavor='raw')
         finally:
-            lltype.free(data, flavor="raw")
+            lltype.free(data, flavor='raw')
         return True
 
     def cursor_words_to_bytes(self, bytenum, words):
-        """In Squeak, only the upper 16bits of the cursor form seem to count (I'm
-        guessing because the code was ported over from 16-bit machines), so this
-        ignores the lower 16-bits of each word."""
-        bytes = lltype.malloc(RSDL.Uint8P.TO, bytenum, flavor="raw")
+        """In Squeak, only the upper 16bits of the cursor form seem to count
+        (I'm guessing because the code was ported over from 16-bit machines),
+        so this ignores the lower 16-bits of each word."""
+        bytes = lltype.malloc(RSDL.Uint8P.TO, bytenum, flavor='raw')
         if words:
             for idx, word in enumerate(words):
                 bytes[idx * 2] = rffi.r_uchar((word >> 24) & 0xff)
@@ -616,7 +677,6 @@ class SDLCursorClass(object):
                 bytes[idx] = rffi.r_uchar(0)
         return bytes
 
-import sys
 if 'sphinx' not in sys.modules:
     SDLCursor = SDLCursorClass()
 
@@ -667,5 +727,5 @@ if 'sphinx' not in sys.modules:
         """]
     ).merge(get_rsdl_compilation_info())
 
-    ll_SetEventFilter = rffi.llexternal('SetEventFilter', [rffi.SIGNEDP], rffi.INT,
-                                        compilation_info=eci)
+    ll_SetEventFilter = rffi.llexternal('SetEventFilter', [rffi.SIGNEDP],
+                                        rffi.INT, compilation_info=eci)

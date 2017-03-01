@@ -48,9 +48,8 @@ def cmd(func):
     autocompletions["!%s" % func.__name__] = None
     return func
 
-
+@objectmodel.not_rpython
 def completer(text, state, completions=None):
-    "NOT RPYTHON"
     if not completions:
         completions = autocompletions
     matches = 0
