@@ -406,11 +406,11 @@ class SDLDisplay(NullDisplay):
                                 d=self.depth)
 
     def get_dropevent(self, time, c_type, event):
-        drop_event = rffi.cast(RSDL.DropEvent, event)
+        drop_event = rffi.cast(RSDL.DropEventPtr, event)
         path = rffi.charp2str(drop_event.c_file)
         btn, mods = self.get_mouse_event_buttons_and_mods()
         self._dropped_file = path
-        lltype.free(drop_event.c_file)
+        lltype.free(drop_event.c_file, flavor='raw')
         return [EventTypeDragDropFiles,
                 time,
                 EventDragTypeDrop,
