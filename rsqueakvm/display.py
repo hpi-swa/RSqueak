@@ -431,28 +431,25 @@ class SDLDisplay(NullDisplay):
                 0,
                 0]
 
-    def insert_padding_event(self):
-        self._deferred_events.append([EventTypeNone, 0, 0, 0, 0, 0, 0, 0])
-
     def get_next_event(self, time=0):
-        if len(self._deferred_events) > 0:
-            return self._deferred_events.pop()
-        # we always return one None event between every event, so we poll only
-        # half of the time
-        self.insert_padding_event()
+        if self.has_queued_events():
+            return self.dequeue_event()
+        got_event = False
         with lltype.scoped_alloc(RSDL.Event) as event:
-            if RSDL.PollEvent(event) == 1:
+            while RSDL.PollEvent(event) == 1:
+                got_event = True
                 event_type = r_uint(event.c_type)
                 if event_type in (RSDL.MOUSEBUTTONDOWN, RSDL.MOUSEBUTTONUP):
                     self.handle_mouse_button(event_type, event)
-                    return self.get_next_mouse_event(time)
+                    self.queue_event(self.get_next_mouse_event(time))
                 elif event_type == RSDL.MOUSEMOTION:
                     self.handle_mouse_move(event_type, event)
-                    return self.get_next_mouse_event(time)
+                    self.queue_event(self.get_next_mouse_event(time))
                 elif event_type == RSDL.MOUSEWHEEL:
-                    return self.get_next_mouse_wheel_event(time, event)
+                    self.queue_event(self.get_next_mouse_wheel_event(time, event))
                 elif event_type == RSDL.KEYDOWN:
                     self.handle_keyboard_event(event_type, event)
+                    later = None
                     if not self.is_modifier_key(self.key):
                         # no TEXTINPUT event for this key will follow, but
                         # Squeak needs a KeyStroke anyway
@@ -460,17 +457,19 @@ class SDLDisplay(NullDisplay):
                             (not system.IS_LINUX and
                              (self.is_control_key(self.key) or
                               RSDL.GetModState() & ~RSDL.KMOD_SHIFT != 0))):
-                            self._deferred_events.append(self.get_next_key_event(EventKeyChar, time))
-                            self.insert_padding_event()
+                            later = self.get_next_key_event(EventKeyChar, time)
                     self.fix_key_code_case()
-                    return self.get_next_key_event(EventKeyDown, time)
+                    self.queue_event(self.get_next_key_event(EventKeyDown, time))
+                    if later:
+                        self.insert_padding_event()
+                        self.queue_event(later)
                 elif event_type == RSDL.TEXTINPUT:
                     self.handle_textinput_event(event)
-                    return self.get_next_key_event(EventKeyChar, time)
+                    self.queue_event(self.get_next_key_event(EventKeyChar, time))
                 elif event_type == RSDL.KEYUP:
                     self.handle_keyboard_event(event_type, event)
                     self.fix_key_code_case()
-                    return self.get_next_key_event(EventKeyUp, time)
+                    self.queue_event(self.get_next_key_event(EventKeyUp, time))
                 elif event_type == RSDL.WINDOWEVENT:
                     self.handle_windowevent(event_type, event)
                 elif event_type == RSDL.QUIT:
@@ -478,8 +477,25 @@ class SDLDisplay(NullDisplay):
                         from rsqueakvm.util.dialog import ask_question
                         if ask_question("Quit Squeak without saving?"):
                             raise Exception
-                    return [EventTypeWindow, time, WindowEventClose, 0, 0, 0, 0, 0]
+                    self.queue_event([EventTypeWindow, time, WindowEventClose, 0, 0, 0, 0, 0])
+                self.insert_padding_event()
+        if got_event:
+            return self.dequeue_event()
         return [EventTypeNone, 0, 0, 0, 0, 0, 0, 0]
+
+    def has_queued_events(self):
+        return len(self._deferred_events) > 0
+
+    def queue_event(self, evt):
+        self._deferred_events.append(evt)
+
+    def dequeue_event(self):
+        return self._deferred_events.pop(0)
+
+    def insert_padding_event(self):
+        # we always return one None event between every event, so we poll only
+        # half of the time
+        self.queue_event([EventTypeNone, 0, 0, 0, 0, 0, 0, 0])
 
     def is_control_key(self, key_ord):
         key_ord = key_ord
