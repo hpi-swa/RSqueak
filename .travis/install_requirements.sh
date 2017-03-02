@@ -113,6 +113,7 @@ setup_linux() {
     if [[ "${BUILD_ARCH}" = "32bit" ]]; then
       export CFLAGS="-m32"
       export CXXFLAGS="-m32"
+      export LDFLAGS="-m32"
     fi
     ./configure; make; sudo make install
     popd > /dev/null
