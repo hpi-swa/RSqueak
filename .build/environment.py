@@ -22,7 +22,6 @@ def load_config():
             cp.add_section("Linux")
             cp.set("Linux", "Python32Bit", pathjoin(dirname(__file__), "pypy-linux32", "bin", "pypy"))
             cp.set("Linux", "pygame_cffi", pathjoin(dirname(__file__), "pygame_cffi"))
-            cp.set("Linux", "SDL32bit", pathjoin(dirname(__file__), "SDL32bit"))
             cp.add_section("Windows")
             cp.set("Windows", "Python32Bit", pathjoin(dirname(__file__), "pypy-win32", "pypy.exe"))
             cp.set("Windows", "SDL", pathjoin(dirname(__file__), "SDL"))
@@ -51,13 +50,11 @@ def ensure_32bit_environment_if_required():
             py = cp.get("Linux", "Python32Bit")
             print "Have to switch to 32-bit Python in %s." % py
             print "If this doesn't work, make sure you have the following 32-bit packages installed (Ubuntu 14.10 names):"
-            print "\tlibffi6:i386 libffi-dev:i386 libffi-dev libc6:i386 libc6-dev-i386 libbz2-1.0:i386 libexpat1:i386 zlib1g:i386 libssl1.0.0:i386 libgcrypt11:i386 libtinfo5:i386 libsdl1.2-dev:i386 gcc-multilib"
+            print "\tlibffi6:i386 libffi-dev:i386 libffi-dev libc6:i386 libc6-dev-i386 libbz2-1.0:i386 libexpat1:i386 zlib1g:i386 libssl1.0.0:i386 libgcrypt11:i386 libtinfo5:i386 gcc-multilib"
             print "If you cannot install these, consider setting up a 32-bit chroot."
             os.environ["CC"] = os.getenv("CC", "cc") + " -m32"
             os.environ["CFLAGS"] = os.getenv("CFLAGS", "") + " -m32"
             os.environ["PYTHONPATH"] = os.getenv("PYTHONPATH", "") + ":" + cp.get("Linux", "pygame_cffi")
-            if cp.has_option("Linux", "SDL32bit"):
-                os.environ["SDL_PREFIX"] = cp.get("Linux", "SDL32bit")
             child = subprocess.Popen([py] + sys.argv)
         elif "darwin" == sys.platform and "64bit" in platform.architecture()[0]:
             if not os.environ.get("VERSIONER_PYTHON_PREFER_32_BIT"):
