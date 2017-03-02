@@ -21,14 +21,6 @@ setup_osx() {
       ;;
     esac
 
-    if [[ "${PLUGINS}" = "PythonPlugin" ]]; then
-      # Comment out SDL_messagebox.h in SDL.h
-      # A wrong macro is applied to "const SDL_MessageBoxButtonData *buttons;"
-      # which breaks compilation at the end.
-      echo "Patching SDL.h for PythonPlugin"
-      sed -i.bak "/SDL_messagebox\.h/s/^/\/\/ /" "/usr/local/include/SDL2/SDL.h"
-    fi
-
     # todo: Squeak for jittests
 
     # Don't install coveralls on macOS, because it's too slow (see #116)
@@ -55,6 +47,7 @@ presetup_linux() {
 	    libffi-dev:i386 \
 	    libffi6:i386 \
 	    libfreetype6:i386 \
+	    g++-multilib \
 	    libgcrypt11:i386 \
 	    libgl1-mesa-dev:i386 \
 	    mesa-common-dev:i386 \
@@ -75,12 +68,10 @@ presetup_linux() {
 	64bit)
 	    PACKAGES="
 	    libfreetype6:i386 \
-	    libsdl2-dev \
 	    "
 	    ;;
 	arm*)
 	    PACKAGES="
-	    libsdl2-dev \
 	    gcc-arm-linux-gnueabi \
 	    gcc-arm-linux-gnueabihf \
 	    qemu-system \
@@ -114,18 +105,21 @@ presetup_linux() {
 	 libffi-dev \
 	 zlib1g-dev \
 	 $PACKAGES
-
-    if [[ "${PLUGINS}" = "PythonPlugin" ]]; then
-      # Comment out SDL_messagebox.h in SDL.h
-      # A wrong macro is applied to "const SDL_MessageBoxButtonData *buttons;"
-      # which breaks compilation at the end.
-      echo "Patching SDL.h for PythonPlugin"
-      sudo sed -i.bak "/SDL_messagebox\.h/s/^/\/\/ /" "/usr/include/SDL2/SDL.h"
-    fi
 }
 
 setup_linux() {
-    # on Linux, libsdl2 is installed through our dependencies stuff
+    # Build and install SDL2 2.0.5 from source
+    wget https://www.libsdl.org/release/SDL2-2.0.5.tar.gz
+    tar xzf SDL2-2.0.5.tar.gz
+    pushd "./SDL2-2.0.5" > /dev/null
+    if [[ "${BUILD_ARCH}" = "32bit" ]]; then
+      export CFLAGS="-m32"
+      export CXXFLAGS="-m32"
+      export LDFLAGS="-m32"
+    fi
+    ./configure; make; sudo make install
+    popd > /dev/null
+
     wget http://squeakvm.org/unix/release/Squeak-4.10.2.2614-linux_i386.tar.gz
     tar xzvf Squeak-4.10*.tar.gz
     rm Squeak-4.10*.tar.gz
@@ -167,6 +161,14 @@ python .build/download_dependencies.py || true
 setup_$TRAVIS_OS_NAME
 
 load_test_images
+
+if [[ "${PLUGINS}" = "PythonPlugin" ]]; then
+  # Comment out SDL_messagebox.h in SDL.h
+  # A wrong macro is applied to "const SDL_MessageBoxButtonData *buttons;"
+  # which breaks compilation at the end.
+  echo "Patching SDL.h for PythonPlugin"
+  sudo sed -i.bak "/SDL_messagebox\.h/s/^/\/\/ /" "/usr/local/include/SDL2/SDL.h"
+fi
 
 if [[ -d ".build/sqpyte" ]]; then
   # Make sqlite/sqpyte for DatabasePlugin
