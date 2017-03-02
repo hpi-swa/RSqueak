@@ -1,5 +1,6 @@
 import sys
 
+from rpython.rlib.unroll import unrolling_iterable
 from rpython.rlib.rarithmetic import r_uint, intmask
 from rpython.rtyper.lltypesystem import lltype, rffi
 # from rpython.rlib.runicode import unicode_encode_utf_8
@@ -43,6 +44,10 @@ WindowEventIconise = 3
 WindowEventActivated = 4
 WindowEventPaint = 5
 WindowEventStinks = 6
+
+DISABLED_EVENTS = unrolling_iterable([
+    "FINGERDOWN", "FINGERUP", "FINGERMOTION", "TEXTEDITING"
+])
 
 MINIMUM_DEPTH = 16
 BELOW_MINIMUM_DEPTH = 32
@@ -175,7 +180,8 @@ class SDLDisplay(NullDisplay):
         # SDL >= 2.0.4
         # disable WM_PING, so the WM does not think we're hung
         # RSDL.SetHint(RSDL.HINT_VIDEO_X11_NET_WM_PING, '0')
-
+        for eventname in DISABLED_EVENTS:
+            RSDL.EventState(getattr(RSDL, eventname), RSDL.IGNORE)
         # try to allow late tearing (pushes frames faster)
         if (RSDL.SetSwapInterval(-1) < 0):
             RSDL.SetSwapInterval(0)  # at least try to disable vsync
