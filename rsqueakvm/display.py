@@ -238,7 +238,7 @@ class SDLDisplay(NullDisplay):
         else:
             assert False
         self.pitch = self.width * self.bpp
-        self.reset_damage()
+        self.full_damage()
 
     def set_full_screen(self, flag):
         if flag:
@@ -299,6 +299,12 @@ class SDLDisplay(NullDisplay):
         RENDER_RECT.c_y = rffi.r_int(0)
         RENDER_RECT.c_w = rffi.r_int(0)
         RENDER_RECT.c_h = rffi.r_int(0)
+
+    def full_damage(self):
+        RENDER_RECT.c_x = rffi.r_int(0)
+        RENDER_RECT.c_y = rffi.r_int(0)
+        RENDER_RECT.c_w = rffi.r_int(self.width)
+        RENDER_RECT.c_h = rffi.r_int(self.height)
 
     def lock(self):
         ec = RSDL.LockTexture(
@@ -524,6 +530,9 @@ class SDLDisplay(NullDisplay):
                     self.queue_event([
                         EventTypeWindow, time, WindowEventClose, 0, 0, 0, 0, 0
                     ])
+                elif event_type in (RSDL.RENDER_TARGETS_RESET, RSDL.RENDER_DEVICE_RESET):
+                    self.full_damage()
+                    self.render(force=True)
                 self.insert_padding_event()
         if got_event:
             return self.dequeue_event()
