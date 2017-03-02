@@ -1,5 +1,6 @@
 import sys
 
+from rpython.rlib.unroll import unrolling_iterable
 from rpython.rlib.rarithmetic import r_uint, intmask
 from rpython.rtyper.lltypesystem import lltype, rffi
 # from rpython.rlib.runicode import unicode_encode_utf_8
@@ -43,6 +44,10 @@ WindowEventIconise = 3
 WindowEventActivated = 4
 WindowEventPaint = 5
 WindowEventStinks = 6
+
+DISABLED_EVENTS = unrolling_iterable([
+    "FINGERDOWN", "FINGERUP", "FINGERMOTION", "TEXTEDITING"
+])
 
 MINIMUM_DEPTH = 16
 BELOW_MINIMUM_DEPTH = 32
@@ -175,7 +180,8 @@ class SDLDisplay(NullDisplay):
         # SDL >= 2.0.4
         # disable WM_PING, so the WM does not think we're hung
         # RSDL.SetHint(RSDL.HINT_VIDEO_X11_NET_WM_PING, '0')
-
+        for eventname in DISABLED_EVENTS:
+            RSDL.EventState(getattr(RSDL, eventname), RSDL.IGNORE)
         # try to allow late tearing (pushes frames faster)
         if (RSDL.SetSwapInterval(-1) < 0):
             RSDL.SetSwapInterval(0)  # at least try to disable vsync
@@ -232,7 +238,7 @@ class SDLDisplay(NullDisplay):
         else:
             assert False
         self.pitch = self.width * self.bpp
-        self.reset_damage()
+        self.full_damage()
 
     def set_full_screen(self, flag):
         if flag:
@@ -293,6 +299,12 @@ class SDLDisplay(NullDisplay):
         RENDER_RECT.c_y = rffi.r_int(0)
         RENDER_RECT.c_w = rffi.r_int(0)
         RENDER_RECT.c_h = rffi.r_int(0)
+
+    def full_damage(self):
+        RENDER_RECT.c_x = rffi.r_int(0)
+        RENDER_RECT.c_y = rffi.r_int(0)
+        RENDER_RECT.c_w = rffi.r_int(self.width)
+        RENDER_RECT.c_h = rffi.r_int(self.height)
 
     def lock(self):
         ec = RSDL.LockTexture(
@@ -518,6 +530,9 @@ class SDLDisplay(NullDisplay):
                     self.queue_event([
                         EventTypeWindow, time, WindowEventClose, 0, 0, 0, 0, 0
                     ])
+                elif event_type in (RSDL.RENDER_TARGETS_RESET, RSDL.RENDER_DEVICE_RESET):
+                    self.full_damage()
+                    self.render(force=True)
                 self.insert_padding_event()
         if got_event:
             return self.dequeue_event()
