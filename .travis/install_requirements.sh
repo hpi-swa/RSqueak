@@ -109,7 +109,7 @@ setup_linux() {
     wget https://www.libsdl.org/release/SDL2-2.0.5.tar.gz
     tar xzf SDL2-2.0.5.tar.gz
     pushd "./SDL2-2.0.5" > /dev/null
-    ./configure; make; make install
+    ./configure; make; sudo make install
     popd > /dev/null
 
     wget http://squeakvm.org/unix/release/Squeak-4.10.2.2614-linux_i386.tar.gz
