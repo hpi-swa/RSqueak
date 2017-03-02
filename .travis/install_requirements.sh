@@ -45,6 +45,7 @@ presetup_linux() {
 	    libffi-dev:i386 \
 	    libffi6:i386 \
 	    libfreetype6:i386 \
+	    g++-multilib \
 	    libgcrypt11:i386 \
 	    libgl1-mesa-dev:i386 \
 	    mesa-common-dev:i386 \
@@ -109,6 +110,10 @@ setup_linux() {
     wget https://www.libsdl.org/release/SDL2-2.0.5.tar.gz
     tar xzf SDL2-2.0.5.tar.gz
     pushd "./SDL2-2.0.5" > /dev/null
+    if [[ "${BUILD_ARCH}" = "32bit" ]]; then
+      export CFLAGS="-m32"
+      export CXXFLAGS="-m32"
+    fi
     ./configure; make; sudo make install
     popd > /dev/null
 
