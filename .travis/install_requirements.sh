@@ -65,12 +65,10 @@ presetup_linux() {
 	64bit)
 	    PACKAGES="
 	    libfreetype6:i386 \
-	    libsdl2-dev \
 	    "
 	    ;;
 	arm*)
 	    PACKAGES="
-	    libsdl2-dev \
 	    gcc-arm-linux-gnueabi \
 	    gcc-arm-linux-gnueabihf \
 	    qemu-system \
@@ -107,7 +105,13 @@ presetup_linux() {
 }
 
 setup_linux() {
-    # on Linux, libsdl2 is installed through our dependencies stuff
+    # Build and install SDL2 2.0.5 from source
+    wget https://www.libsdl.org/release/SDL2-2.0.5.tar.gz
+    tar xzf SDL2-2.0.5.tar.gz
+    pushd "./SDL2-2.0.5" > /dev/null
+    ./configure; make; make install
+    popd > /dev/null
+
     wget http://squeakvm.org/unix/release/Squeak-4.10.2.2614-linux_i386.tar.gz
     tar xzvf Squeak-4.10*.tar.gz
     rm Squeak-4.10*.tar.gz
