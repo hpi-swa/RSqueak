@@ -3,9 +3,7 @@ set -ex
 
 readonly BASE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-presetup_osx() {
-    echo "macOS Pre-setup"
-}
+export OPTIONS=""
 
 setup_osx() {
     case "${BUILD_ARCH}" in
@@ -18,16 +16,9 @@ setup_osx() {
       brew install sdl2
       ;;
     esac
-
-    # todo: Squeak for jittests
-
-    # Don't install coveralls on macOS, because it's too slow (see #116)
-    # curl -L -O https://bootstrap.pypa.io/get-pip.py
-    # sudo python get-pip.py
-    # sudo pip install coveralls pytest-cov
 }
 
-presetup_linux() {
+setup_linux() {
     sudo dpkg --add-architecture i386
     sudo apt-add-repository multiverse
     sudo apt-add-repository universe
@@ -62,6 +53,7 @@ presetup_linux() {
 	    libxt-dev:i386 \
 	    zlib1g:i386 \
 	    "
+	    export OPTIONS="--32bit"
 	    ;;
 	64bit)
 	    PACKAGES="
@@ -103,35 +95,10 @@ presetup_linux() {
 	 libffi-dev \
 	 zlib1g-dev \
 	 $PACKAGES
-}
 
-setup_linux() {
-    # Build and install SDL2 2.0.5 from source
-    wget https://www.libsdl.org/release/SDL2-2.0.5.tar.gz
-    tar xzf SDL2-2.0.5.tar.gz
-    pushd "./SDL2-2.0.5" > /dev/null
-    if [[ "${BUILD_ARCH}" = "32bit" ]]; then
-      export CFLAGS="-m32"
-      export CXXFLAGS="-m32"
-      export LDFLAGS="-m32"
+    if [[ "${BUILD_ARCH}" = arm* ]]; then
+	"${BASE}/setup_arm.sh"
     fi
-    ./configure; make; sudo make install
-    popd > /dev/null
-
-    wget http://squeakvm.org/unix/release/Squeak-4.10.2.2614-linux_i386.tar.gz
-    tar xzvf Squeak-4.10*.tar.gz
-    rm Squeak-4.10*.tar.gz
-    ln -s $PWD/Squeak-4.10*/bin/squeak .build/squeak
-    case "${BUILD_ARCH}" in
-    	32bit)
-		    # also install coveralls
-			export PATH=.build/pypy-linux32/bin/:$PATH
-			pip install coveralls
-			;;
-    	arm*)
-			"${BASE}/setup_arm.sh"
-			;;
-	esac
 }
 
 # Only build arm on master
@@ -139,9 +106,8 @@ if [[ "${TRAVIS_BRANCH}" != "master" ]] && [[ "${BUILD_ARCH}" = arm* ]]; then
     exit 0
 fi
 
-presetup_$TRAVIS_OS_NAME
-python .build/download_dependencies.py || true
 setup_$TRAVIS_OS_NAME
+python .build/download_dependencies.py $OPTIONS
 
 if [[ -d ".build/sqpyte" ]]; then
   # Make sqlite/sqpyte for DatabasePlugin

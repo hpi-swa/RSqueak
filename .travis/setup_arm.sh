@@ -31,3 +31,4 @@ pushd $SB2
 sb2-init -c `which qemu-arm` $SB2NAME $TOOLS_DIR/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin/arm-linux-gnueabihf-gcc
 sb2-config -d rasp
 popd
+sb2 -t rasp python .build/download_dependencies.py
