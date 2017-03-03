@@ -31,3 +31,5 @@ pushd $SB2
 sb2-init -c `which qemu-arm` $SB2NAME $TOOLS_DIR/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin/arm-linux-gnueabihf-gcc
 sb2-config -d rasp
 popd
+pushd .build/SDL32bit
+sb2 -t rasp ./configure --prefix=$PWD --host arm-unknown-linux
