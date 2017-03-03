@@ -177,9 +177,10 @@ class SDLDisplay(NullDisplay):
         RSDL.SetHint(RSDL.HINT_RENDER_VSYNC, '0')
         # nearest pixel sampling
         RSDL.SetHint(RSDL.HINT_RENDER_SCALE_QUALITY, '0')
-        # SDL >= 2.0.4
         # disable WM_PING, so the WM does not think we're hung
-        # RSDL.SetHint(RSDL.HINT_VIDEO_X11_NET_WM_PING, '0')
+        RSDL.SetHint(RSDL.HINT_VIDEO_X11_NET_WM_PING, '0')
+        # Ctrl-Click on Mac is right click
+        RSDL.SetHint(RSDL.HINT_MAC_CTRL_CLICK_EMULATE_RIGHT_CLICK, '1')
         for eventname in DISABLED_EVENTS:
             RSDL.EventState(getattr(RSDL, eventname), RSDL.IGNORE)
         # try to allow late tearing (pushes frames faster)

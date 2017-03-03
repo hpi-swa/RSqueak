@@ -115,9 +115,9 @@ cp, config = load_config()
 ensure_32bit_environment_if_required()
 if "linux" in sys.platform:
     if "64bit" in platform.architecture()[0]:
-        if cp.has_option("Linux", "SDL64"):
+        if cp.get("Linux", "SDL64", None):
             os.environ["SDL_PREFIX"] = cp.get("Linux", "SDL64")
-    elif cp.has_option("Linux", "SDL32"):
+    elif cp.get("Linux", "SDL32", None):
         os.environ["SDL_PREFIX"] = cp.get("Linux", "SDL32")
 if "--64bit" in sys.argv:
     sys.argv.remove("--64bit")
