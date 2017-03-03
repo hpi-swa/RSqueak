@@ -112,7 +112,7 @@ def windows():
     return os.name == "nt"
 
 def local_windows():
-    return windows() and os.getenv("APPVEYOR") is None
+    return windows() and not ci()
 
 def linux():
     return "linux" in sys.platform
@@ -125,6 +125,15 @@ def linux64x32():
 
 def linux32():
     return (linux() and "32bit" in platform.architecture()[0]) or linux64x32()
+
+def local_linux64():
+    return linux64() and not ci()
+
+def local_linux32():
+    return linux32() and not ci()
+
+def ci():
+    return os.getenv("TRAVIS", None) or os.getenv("APPVEYOR", None)
 
 def pypywin32(directory):
     buildpypy32("pypy.exe", directory)
@@ -158,7 +167,7 @@ def buildsdl(directory, args=None):
     with Chdir(directory):
         retval = os.system("""
         ./configure --prefix=%s %s >../sdl2build.log 2>&1;
-        make >> ../sdl2build.log 2>&1;
+        make -j4 >> ../sdl2build.log 2>&1;
         make install >> ../sdl2build.log 2>&1
         """ % (directory, args))
         if retval != 0:
@@ -169,10 +178,6 @@ def buildsdl(directory, args=None):
             SDL64 variables in the buildconfig.ini to point to the right place,
             or remove it, if SDL is installed globally
             """
-        if os.getenv("TRAVIS", None):
-            with open("../sdl2build.log") as f:
-                print f.read()
-
 
 DEPS = [
     Dependency("https://bitbucket.org/pypy/pypy/get/default.zip", "pypy"),
@@ -191,8 +196,8 @@ DEPS = [
 
     Dependency("https://bitbucket.org/pypy/pypy/downloads/pypy-4.0.1-linux.tar.bz2", "Linux/pypybin", test=linux32, callback=pypylinux32),
     Dependency("https://github.com/CTPUG/pygame_cffi/archive/master.zip", "Linux/pygame_cffi", test=linux32),
-    Dependency("http://libsdl.org/release/SDL2-2.0.5.tar.gz", "Linux/SDL32", test=linux32, callback=buildsdl32),
-    Dependency("http://libsdl.org/release/SDL2-2.0.5.tar.gz", "Linux/SDL64", test=linux64, callback=buildsdl),
+    Dependency("http://libsdl.org/release/SDL2-2.0.5.tar.gz", "Linux/SDL32", test=local_linux32, callback=buildsdl32),
+    Dependency("http://libsdl.org/release/SDL2-2.0.5.tar.gz", "Linux/SDL64", test=local_linux64, callback=buildsdl),
 ]
 
 
