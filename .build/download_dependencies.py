@@ -169,6 +169,10 @@ def buildsdl(directory, args=None):
             SDL64 variables in the buildconfig.ini to point to the right place,
             or remove it, if SDL is installed globally
             """
+        if os.getenv("TRAVIS", None):
+            with open("../sdl2build.log") as f:
+                print f.read()
+
 
 DEPS = [
     Dependency("https://bitbucket.org/pypy/pypy/get/default.zip", "pypy"),

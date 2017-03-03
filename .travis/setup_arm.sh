@@ -25,7 +25,7 @@ sudo qemu-debootstrap --no-check-gpg --include=fakeroot,build-essential --arch=a
 schroot -c rpi -- uname -m
 sudo su -c "echo \"deb ${MIRROR} jessie main contrib rpi\" > ${SB2}/etc/apt/sources.list"
 schroot -c rpi -u root -- apt-get update
-schroot -c rpi -u root -- apt-get --allow-unauthenticated install -qq -y build-essential python libffi-dev libsdl2-dev libpulse-dev libssl-dev
+schroot -c rpi -u root -- apt-get --allow-unauthenticated install -qq -y build-essential python libffi-dev libsdl2-dev libpulse-dev libssl-dev ca-certificates
 schroot -c rpi -- python .build/download_dependencies.py
 # sb2
 pushd $SB2
