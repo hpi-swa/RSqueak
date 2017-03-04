@@ -12,6 +12,7 @@ def stub_sdl(monkeypatch):
     monkeypatch.setattr(RSDL, "Init", lambda *args: 0)
     monkeypatch.setattr(RSDL, "Quit", lambda: 0)
     monkeypatch.setattr(RSDL, "LockTexture", lambda a,b,c,d: 0)
+    monkeypatch.setattr(RSDL, "UnlockTexture", lambda a: 0)
 
 @pytest.fixture
 def mocked_sdl_event_queue(monkeypatch):
