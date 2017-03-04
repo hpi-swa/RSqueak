@@ -84,6 +84,7 @@ setup_linux() {
 	    libexpat1:i386 \
 	    libtinfo5:i386 \
 	    "
+	    export OPTIONS="--32bit"
 	    ;;
     esac
 
