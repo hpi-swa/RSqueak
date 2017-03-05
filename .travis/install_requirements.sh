@@ -62,8 +62,33 @@ setup_linux() {
 	    ;;
 	arm*)
 	    PACKAGES="
+	    debootstrap \
+	    g++-multilib \
 	    gcc-arm-linux-gnueabi \
 	    gcc-arm-linux-gnueabihf \
+	    gcc-multilib \
+	    libasound2-dev:i386 \
+	    libbz2-1.0:i386 \
+	    libc6-dev-i386 \
+	    libc6:i386 \
+	    libexpat1:i386 \
+	    libffi-dev:i386 \
+	    libffi6:i386 \
+	    libfreetype6:i386 \
+	    libgcrypt11:i386 \
+	    libgl1-mesa-dev:i386 \
+	    libgl1-mesa-dri:i386 \
+	    libgl1-mesa-glx:i386 \
+	    libglapi-mesa:i386 \
+	    libglu1-mesa-dev:i386 \
+	    libglu1-mesa:i386 \
+	    libssl-dev:i386 \
+	    libssl1.0.0:i386 \
+	    libstdc++6:i386 \
+	    libtinfo5:i386 \
+	    libxext-dev:i386 \
+	    libxt-dev:i386 \
+	    mesa-common-dev:i386 \
 	    qemu-system \
 	    qemu-system-arm \
 	    qemu-user \
@@ -71,19 +96,7 @@ setup_linux() {
 	    sbuild \
 	    schroot \
 	    scratchbox2 \
-	    debootstrap \
 	    zlib1g:i386 \
-	    libstdc++6:i386 \
-	    libffi-dev:i386 \
-	    libffi6:i386 \
-	    libssl1.0.0:i386 \
-	    libssl-dev:i386 \
-	    libbz2-1.0:i386 \
-	    libc6-dev-i386 \
-	    libc6:i386 \
-	    libexpat1:i386 \
-	    libtinfo5:i386 \
-	    libsdl2-dev:i386 \
 	    "
 	    export OPTIONS="--32bit"
 	    ;;
