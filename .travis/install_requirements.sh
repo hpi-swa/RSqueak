@@ -83,6 +83,7 @@ setup_linux() {
 	    libc6:i386 \
 	    libexpat1:i386 \
 	    libtinfo5:i386 \
+	    libsdl2-dev:i386 \
 	    "
 	    ;;
     esac
