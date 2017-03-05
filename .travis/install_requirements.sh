@@ -85,6 +85,7 @@ setup_linux() {
 	    libtinfo5:i386 \
 	    libsdl2-dev:i386 \
 	    "
+	    export OPTIONS="--32bit"
 	    ;;
     esac
 
