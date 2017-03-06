@@ -13,9 +13,12 @@ from rsqueakvm.util.cells import QuasiConstant
 
 from rpython.rlib import jit
 from rpython.rlib.objectmodel import import_from_mixin
-from rpython.rlib.rarithmetic import int_between
+from rpython.rlib.rarithmetic import int_between, intmask
 from rpython.rlib.rstrategies import rstrategies as rstrat
 from rpython.rlib.unroll import unrolling_iterable
+from rpython.rlib import longlong2float
+from rpython.rtyper.lltypesystem import rffi, lltype
+
 
 """
 A note on terminology:
@@ -410,14 +413,12 @@ class MapStorageNode(MapStrategy):
             return new_node
 
 
-class IntMapStorageNode(MapStorageNode):
-    # we inline up to three integer fields on the object and the rest in a intFields array
+class UnboxedAttributeNode(MapStorageNode):
+    # we inline up to three long fields on the object and the rest in a
+    # intFields array
     used_fields = "intFields"
-    repr_classname = "MapStrategy (int)"
-
-    @staticmethod
-    def correct_type(w_self, w_value):
-        return isinstance(w_value, W_SmallInteger)
+    repr_classname = "MapStrategy (unboxed)"
+    nan_tag = longlong2float.longlong2float(longlong2float.nan_encoded_zero + 42)
 
     def storage_list_position(self):
         p = self.pos - _NUMBER_OF_INT_FIELDS
@@ -435,7 +436,7 @@ class IntMapStorageNode(MapStorageNode):
         length = self.length()
         if length > 0:
             if storage is None or len(storage) < length:
-                new_storage = [0] * self.size_estimate()
+                new_storage = [0.0] * self.size_estimate()
                 if storage is not None:
                     for i, value in enumerate(storage):
                         new_storage[i] = value
@@ -451,12 +452,12 @@ class IntMapStorageNode(MapStorageNode):
             res = w_self._intField3
         else:
             res = w_self._intFields[self.storage_list_position()]
-        return self.space.wrap_smallint_unsafe(res)
+        return self.map_wrap(res)
 
     def __write__(self, w_self, index0, w_value):
         assert isinstance(w_self, W_FixedPointersObject)
         assert index0 == self.index
-        unwrapped = self.space.unwrap_int(w_value)
+        unwrapped = self.map_unwrap(w_value)
         if self.pos == 0:
             w_self._intField1 = unwrapped
         elif self.pos == 1:
@@ -465,6 +466,42 @@ class IntMapStorageNode(MapStorageNode):
             w_self._intField3 = unwrapped
         else:
             w_self._intFields[self.storage_list_position()] = unwrapped
+
+
+class IntMapStorageNode(UnboxedAttributeNode):
+    repr_classname = "MapStrategy (int)"
+
+    @staticmethod
+    def correct_type(w_self, w_value):
+        return isinstance(w_value, W_SmallInteger)
+
+    def map_unwrap(self, w_value):
+        return longlong2float.longlong2float(
+            rffi.cast(lltype.SignedLongLong, self.space.unwrap_int(w_value))
+        )
+
+    def map_wrap(self, value):
+        if value is self.nan_tag:
+            return self.space.w_nil
+        return self.space.wrap_smallint_unsafe(
+            intmask(longlong2float.float2longlong(value))
+        )
+
+
+class FloatMapStorageNode(UnboxedAttributeNode):
+    repr_classname = "MapStrategy (int)"
+
+    @staticmethod
+    def correct_type(w_self, w_value):
+        return isinstance(w_value, W_Float)
+
+    def map_unwrap(self, w_value):
+        return self.space.unwrap_float(w_value)
+
+    def map_wrap(self, value):
+        if value is self.nan_tag:
+            return self.space.w_nil
+        return self.space.wrap_float(value)
 
 
 class ObjectMapStorageNode(MapStorageNode):
@@ -622,10 +659,17 @@ class SmallIntegerOrNilStrategy(SimpleStorageStrategy):
     import_from_mixin(rstrat.TaggingStrategy)
     import_from_mixin(OptimizedConvertFromAllNilMixin)
     contained_type = W_SmallInteger
-    def wrap(self, val): return self.space.wrap_smallint_unsafe(val)
-    def unwrap(self, w_val): return self.space.unwrap_int(w_val)
+    tag_float = longlong2float.longlong2float(longlong2float.nan_encoded_zero + 42)
+    def wrap(self, val):
+        return self.space.wrap_smallint_unsafe(
+            intmask(longlong2float.float2longlong(val))
+        )
+    def unwrap(self, w_val):
+        return longlong2float.longlong2float(
+            rffi.cast(lltype.SignedLongLong, self.space.unwrap_int(w_val))
+        )
     def wrapped_tagged_value(self): return self.space.w_nil
-    def unwrapped_tagged_value(self): return constants.MAXINT
+    def unwrapped_tagged_value(self): return self.tag_float
 SmallIntegerOrNilStrategy._convert_storage_from = SmallIntegerOrNilStrategy._better_convert_storage_from
 
 @rstrat.strategy(generalize=[ListStrategy])
@@ -649,7 +693,7 @@ class FloatOrNilStrategy(SimpleStorageStrategy):
     import_from_mixin(rstrat.TaggingStrategy)
     import_from_mixin(OptimizedConvertFromAllNilMixin)
     contained_type = W_Float
-    tag_float = sys.float_info.max
+    tag_float = longlong2float.longlong2float(longlong2float.nan_encoded_zero + 42)
     def wrap(self, val): return self.space.wrap_float(val)
     def unwrap(self, w_val): return self.space.unwrap_float(w_val)
     def wrapped_tagged_value(self): return self.space.w_nil
