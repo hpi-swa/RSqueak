@@ -62,6 +62,7 @@ setup_linux() {
 	    ;;
 	arm*)
 	    PACKAGES="
+	    libsdl2-dev \
 	    gcc-arm-linux-gnueabi \
 	    gcc-arm-linux-gnueabihf \
 	    qemu-system \
@@ -84,6 +85,7 @@ setup_linux() {
 	    libexpat1:i386 \
 	    libtinfo5:i386 \
 	    "
+	    export OPTIONS="--32bit"
 	    ;;
     esac
 

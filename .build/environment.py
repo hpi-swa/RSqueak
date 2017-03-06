@@ -115,10 +115,11 @@ cp, config = load_config()
 ensure_32bit_environment_if_required()
 if "linux" in sys.platform:
     if "64bit" in platform.architecture()[0]:
-        if cp.get("Linux", "SDL64", None):
-            os.environ["SDL_PREFIX"] = cp.get("Linux", "SDL64")
-    elif cp.get("Linux", "SDL32", None):
-        os.environ["SDL_PREFIX"] = cp.get("Linux", "SDL32")
+        sdlpath = cp.get("Linux", "SDL64", None)
+    else:
+        sdlpath = cp.get("Linux", "SDL32", None)
+    if sdlpath and os.path.exists(os.path.join(sdlpath, "bin/sdl2-config")):
+        os.environ["SDL_PREFIX"] = sdlpath
 if "--64bit" in sys.argv:
     sys.argv.remove("--64bit")
 prepare_environment_variables()

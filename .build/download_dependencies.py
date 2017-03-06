@@ -126,12 +126,6 @@ def linux64x32():
 def linux32():
     return (linux() and "32bit" in platform.architecture()[0]) or linux64x32()
 
-def local_linux64():
-    return linux64() and not ci()
-
-def local_linux32():
-    return linux32() and not ci()
-
 def ci():
     return os.getenv("TRAVIS", None) or os.getenv("APPVEYOR", None)
 
@@ -196,8 +190,8 @@ DEPS = [
 
     Dependency("https://bitbucket.org/pypy/pypy/downloads/pypy-4.0.1-linux.tar.bz2", "Linux/pypybin", test=linux32, callback=pypylinux32),
     Dependency("https://github.com/CTPUG/pygame_cffi/archive/master.zip", "Linux/pygame_cffi", test=linux32),
-    Dependency("http://libsdl.org/release/SDL2-2.0.5.tar.gz", "Linux/SDL32", test=local_linux32, callback=buildsdl32),
-    Dependency("http://libsdl.org/release/SDL2-2.0.5.tar.gz", "Linux/SDL64", test=local_linux64, callback=buildsdl),
+    Dependency("http://libsdl.org/release/SDL2-2.0.5.tar.gz", "Linux/SDL32", test=linux32, callback=buildsdl32),
+    Dependency("http://libsdl.org/release/SDL2-2.0.5.tar.gz", "Linux/SDL64", test=linux64, callback=buildsdl),
 ]
 
 

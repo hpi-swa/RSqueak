@@ -413,10 +413,15 @@ class SDLDisplay(NullDisplay):
 
     def handle_windowevent(self, c_type, event):
         window_event = rffi.cast(RSDL.WindowEventPtr, event)
-        if r_uint(window_event.c_event) == RSDL.WINDOWEVENT_RESIZED:
-            self.set_video_mode(w=intmask(window_event.c_data1),
-                                h=intmask(window_event.c_data2),
-                                d=self.depth)
+        if r_uint(window_event.c_event) in (RSDL.WINDOWEVENT_RESIZED,
+                                            RSDL.WINDOWEVENT_SIZE_CHANGED,
+                                            RSDL.WINDOWEVENT_EXPOSED):
+            neww = intmask(window_event.c_data1)
+            newh = intmask(window_event.c_data2)
+            if neww != self.width or newh != self.height:
+                self.set_video_mode(w=neww, h=newh, d=self.depth)
+            self.full_damage()
+            self.render(force=True)
 
     def get_dropevent(self, time, c_type, event):
         drop_event = rffi.cast(RSDL.DropEventPtr, event)
