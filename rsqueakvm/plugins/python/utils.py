@@ -16,6 +16,7 @@ from pypy.objspace.std.floatobject import W_FloatObject as WP_FloatObject
 from pypy.objspace.std.intobject import W_IntObject as WP_IntObject
 from pypy.objspace.std.listobject import W_ListObject as WP_ListObject
 from pypy.objspace.std.tupleobject import W_TupleObject as WP_TupleObject
+from pypy.objspace.std.unicodeobject import W_UnicodeObject as WP_UnicodeObject
 
 from rpython.rlib import objectmodel
 
@@ -53,7 +54,8 @@ def python_to_smalltalk(space, wp_object):
     # import pdb; pdb.set_trace()
     if isinstance(wp_object, WP_FloatObject):
         return space.wrap_float(py_space.float_w(wp_object))
-    elif isinstance(wp_object, WP_BytesObject):
+    elif (isinstance(wp_object, WP_BytesObject) or
+            isinstance(wp_object, WP_UnicodeObject)):
         return space.wrap_string(py_space.text_w(wp_object))
     elif isinstance(wp_object, WP_ListObject):
         return space.wrap_list(

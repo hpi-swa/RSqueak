@@ -29,10 +29,12 @@ class SwitchToSmalltalkAction(PeriodicAsyncAction):
     def perform(self, ec=None, frame=None):
         # import pdb; pdb.set_trace()
         runner = py_runner.get()
-        if runner:
-            # print 'Python yield'
-            runner.return_to_smalltalk()
-            # print 'Python continue'
+        if not runner:
+            return
+
+        # print 'Python yield'
+        runner.return_to_smalltalk()
+        # print 'Python continue'
 
         # operror has been in Smalltalk land, clear it now to allow resuming
         wp_operror.set(None)

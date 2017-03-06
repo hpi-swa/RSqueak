@@ -24,7 +24,7 @@ def start_new_thread(source, filename, cmd, translated):
 
 def resume_thread():
     runner = gs.py_runner.get()
-    if runner is None or not runner.resumable():
+    if runner is None:
         print 'No runner to resume with'
         return False
     runner.resume()
@@ -40,7 +40,6 @@ class PythonLanguage(ForeignLanguage):
         self.source = source
         self.filename = filename
         self.cmd = cmd
-        self._resumable = True
 
     def run(self):
         print 'Python start'
@@ -60,7 +59,7 @@ class PythonLanguage(ForeignLanguage):
         except Exception as e:
             print 'Unknown error in Python thread: %s' % e
         finally:
-            self._resumable = False
+            gs.py_runner.set(None)
 
     def save_result(self, result):
         gs.wp_result.set(result)
@@ -83,9 +82,6 @@ class AbstractLanguageRunner:
 
     def resume(self):
         raise NotImplementedError
-
-    def resumable(self):
-        return self.language._resumable
 
     def return_to_smalltalk(self):
         raise NotImplementedError
