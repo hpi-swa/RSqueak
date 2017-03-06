@@ -22,10 +22,10 @@ def func(interp, s_frame, w_rcvr, time_mu_s):
     interp.interrupt_check_counter = 0
     interp.quick_check_for_interrupt(s_frame, dec=0)
 
-# @expose_primitive(FORCE_DISPLAY_UPDATE, unwrap_spec=[object])
-# def func(interp, s_frame, w_rcvr):
-#     interp.space.display().flip(force=True)
-#     return w_rcvr
+@expose_primitive(FORCE_DISPLAY_UPDATE, unwrap_spec=[object])
+def func(interp, s_frame, w_rcvr):
+    interp.space.display().render(force=True)
+    return w_rcvr
 
 @expose_primitive(SET_FULL_SCREEN, unwrap_spec=[object, bool])
 def func(interp, s_frame, w_rcvr, flag):
@@ -128,6 +128,8 @@ def func(interp, s_frame, argcount):
 
     vm_w_params[2] = interp.space.wrap_int(1)  # must be 1 for VM Stats view to work
     vm_w_params[8] = interp.space.wrap_int(1)  # must be 1 for VM Stats view to work
+
+    vm_w_params[25] = interp.space.wrap_int(interp.interrupt_counter_size) # check for interrupts roughly every N bytecodes
 
     vm_w_params[41] = interp.space.wrap_int(1)  # We are a "stack-like" VM - number of stack tables
 

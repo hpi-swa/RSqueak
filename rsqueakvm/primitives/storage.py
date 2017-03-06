@@ -55,7 +55,10 @@ def func(interp, s_frame, w_cls):
     s_class = w_cls.as_class_get_shadow(interp.space)
     if s_class.isvariable():
         raise PrimitiveFailedError()
-    return s_class.new()
+    try:
+        return s_class.new()
+    except MemoryError:
+        raise PrimitiveFailedError
 
 @expose_primitive(NEW_WITH_ARG, unwrap_spec=[object, int])
 def func(interp, s_frame, w_cls, size):

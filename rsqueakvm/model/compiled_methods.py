@@ -3,7 +3,7 @@ from rsqueakvm.model.base import W_Object, W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.pointers import W_PointersObject
 
 from rpython.rlib import jit
-from rpython.rlib.objectmodel import import_from_mixin, we_are_translated
+from rpython.rlib.objectmodel import not_rpython, we_are_translated
 
 
 class CompiledMethodHeader(object):
@@ -129,8 +129,8 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         if index == len(self.literals):
             self.compiledin_class = None
 
+    @not_rpython # Only for testing, not safe.
     def setliterals(self, literals):
-        """NOT RPYTHON""" # Only for testing, not safe.
         self.literals = literals
         self.compiledin_class = None
 

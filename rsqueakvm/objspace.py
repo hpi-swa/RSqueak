@@ -40,7 +40,7 @@ class ObjSpace(object):
         # This is a hack; see compile_code() in main.py
         self.suppress_process_switch = QuasiConstant(False)
         self.headless = QuasiConstant(False)
-        self.highdpi = QuasiConstant(True)
+        self.highdpi = QuasiConstant(False)
         self.software_renderer = QuasiConstant(False)
         self.no_display = QuasiConstant(False)
         self.silent = QuasiConstant(False)

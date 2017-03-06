@@ -3,31 +3,22 @@ set -ex
 
 readonly BASE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-presetup_osx() {
-    echo "OS X Pre-setup"
-}
+export OPTIONS=""
 
 setup_osx() {
     case "${BUILD_ARCH}" in
       64bit)
       # brew update
 
-      # Use Pypy2 v5.4.0
+      # Use PyPy2 v5.4.0
       brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/c5a201f49c9da47d4771ebc544d10b3f9c579021/Formula/pypy.rb
-      
+
       brew install sdl2
       ;;
     esac
-
-    # todo: Squeak for jittests
-
-    # Don't install coveralls on OS X, because it's too slow (see #116)
-    # curl -L -O https://bootstrap.pypa.io/get-pip.py
-    # sudo python get-pip.py
-    # sudo pip install coveralls pytest-cov
 }
 
-presetup_linux() {
+setup_linux() {
     sudo dpkg --add-architecture i386
     sudo apt-add-repository multiverse
     sudo apt-add-repository universe
@@ -45,6 +36,7 @@ presetup_linux() {
 	    libffi-dev:i386 \
 	    libffi6:i386 \
 	    libfreetype6:i386 \
+	    g++-multilib \
 	    libgcrypt11:i386 \
 	    libgl1-mesa-dev:i386 \
 	    mesa-common-dev:i386 \
@@ -61,16 +53,15 @@ presetup_linux() {
 	    libxt-dev:i386 \
 	    zlib1g:i386 \
 	    "
+	    export OPTIONS="--32bit"
 	    ;;
 	64bit)
 	    PACKAGES="
 	    libfreetype6:i386 \
-	    libsdl2-dev \
 	    "
 	    ;;
 	arm*)
 	    PACKAGES="
-	    libsdl2-dev \
 	    gcc-arm-linux-gnueabi \
 	    gcc-arm-linux-gnueabihf \
 	    qemu-system \
@@ -104,24 +95,10 @@ presetup_linux() {
 	 libffi-dev \
 	 zlib1g-dev \
 	 $PACKAGES
-}
 
-setup_linux() {
-    # on Linux, libsdl2 is installed through our dependencies stuff
-    wget http://squeakvm.org/unix/release/Squeak-4.10.2.2614-linux_i386.tar.gz
-    tar xzvf Squeak-4.10*.tar.gz
-    rm Squeak-4.10*.tar.gz
-    ln -s $PWD/Squeak-4.10*/bin/squeak .build/squeak
-    case "${BUILD_ARCH}" in
-    	32bit)
-		    # also install coveralls
-			export PATH=.build/pypy-linux32/bin/:$PATH
-			pip install coveralls
-			;;
-    	arm*)
-			"${BASE}/setup_arm.sh"
-			;;
-	esac
+    if [[ "${BUILD_ARCH}" = arm* ]]; then
+	"${BASE}/setup_arm.sh"
+    fi
 }
 
 # Only build arm on master
@@ -129,9 +106,8 @@ if [[ "${TRAVIS_BRANCH}" != "master" ]] && [[ "${BUILD_ARCH}" = arm* ]]; then
     exit 0
 fi
 
-presetup_$TRAVIS_OS_NAME
-python .build/download_dependencies.py || true
 setup_$TRAVIS_OS_NAME
+python .build/download_dependencies.py $OPTIONS
 
 if [[ -d ".build/sqpyte" ]]; then
   # Make sqlite/sqpyte for DatabasePlugin

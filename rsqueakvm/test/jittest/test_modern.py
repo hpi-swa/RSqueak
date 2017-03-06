@@ -1074,18 +1074,18 @@ i := n' classified: 'none' withStamp: nil notifying: nil logSource: false.
         """)
         # important: there shouldn't be a getfield inst_hash before the cond_call to calculate the hash
         self.assert_matches(traces[-1].loop, """
-        guard_not_invalidated(descr=<Guard0x36c5880>)
-        i67 = int_le(i58, 10000)
-        guard_true(i67, descr=<Guard0x3de4ec0>)
-        i69 = cond_call_value_i(i54, ConstClass(calculate_and_cache), p11, descr=<Calli 8 r EF=5>)
-        guard_no_exception(descr=<Guard0x36c58e8>)
-        guard_not_invalidated(descr=<Guard0x3de4f08>)
-        i71 = int_add(i58, 1)
-        i73 = int_sub(i62, 1)
-        setfield_gc(ConstPtr(ptr74), i73, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
-        i76 = int_le(i73, 0)
-        guard_false(i76, descr=<Guard0x36c5950>)
-        jump(p0, p1, i2, p4, p5, p6, p8, p11, i71, p19, p21, p23, p25, p27, p29, p31, p33, p35, p37, p39, p41, i54, i73, descr=TargetToken(86285936))
+        guard_not_invalidated(descr=<Guard0x55d2d85d95a8>)
+        i73 = int_le(i64, 10000)
+        guard_true(i73, descr=<Guard0x55d2da18c0f8>)
+        i74 = getfield_gc_i(p12, descr=<FieldS rsqueakvm.model.base.W_AbstractObjectWithIdentityHash.inst_hash 8>)
+        i76 = cond_call_value_i(i74, ConstClass(calculate_and_cache), p12, descr=<Calli 8 r EF=5>)
+        guard_no_exception(descr=<Guard0x55d2d85d9610>)
+        i78 = int_add(i64, 1)
+        i80 = int_sub(i68, 1)
+        setfield_gc(ConstPtr(ptr81), i80, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
+        i83 = int_le(i80, 0)
+        guard_false(i83, descr=<Guard0x55d2d85d9678>)
+        jump(p0, p1, i2, p4, p6, p7, p9, p12, i78, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p47, i80, descr=TargetToken(94364117135856))
         """)
 
     def test_identity_hash_fresh_object(self, spy, tmpdir):
@@ -1138,7 +1138,7 @@ i := n' classified: 'none' withStamp: nil notifying: nil logSource: false.
 
     def test_nested_closure_loop_call(self, spy, tmpdir):
         traces = self.run(spy, tmpdir, """
-        1 to: 2000 do: [:a |
+        1 to: 10000 do: [:a |
             (1 to: 1000) do: [:b |
                 b abs.
             ]

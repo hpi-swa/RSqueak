@@ -1,0 +1,14 @@
+{
+	"category" : "ImmutableObjects-Tests",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "ImmJustVariablePointersClass",
+	"pools" : [
+		 ],
+	"super" : "Object",
+	"type" : "variable" }

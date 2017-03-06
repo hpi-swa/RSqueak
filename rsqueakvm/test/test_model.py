@@ -74,15 +74,15 @@ def test_bytes_object():
 
 def test_word_object():
     w_class = bootstrap_class(0, format=storage_classes.WORDS)
-    w_bytes = w_class.as_class_get_shadow(space).new(20)
-    assert w_bytes.getclass(space).is_same_object(w_class)
-    assert w_bytes.size() == 20
+    w_words = w_class.as_class_get_shadow(space).new(20)
+    assert w_words.getclass(space).is_same_object(w_class)
+    assert w_words.size() == 20
     assert w_class.as_class_get_shadow(space).instsize() == 0
-    assert w_bytes.getword(3) == 0
-    w_bytes.setword(3, 42)
-    assert w_bytes.getword(3) == 42
-    assert w_bytes.getword(0) == 0
-    py.test.raises(AssertionError, lambda: w_bytes.getword(20))
+    assert w_words.getword(3) == 0
+    w_words.setword(3, 42)
+    assert w_words.getword(3) == 42
+    assert w_words.getword(0) == 0
+    py.test.raises(AssertionError, lambda: w_words.getword(20))
 
 def test_method_lookup():
     class mockmethod(object):
@@ -413,39 +413,111 @@ def test_display_bitmap():
     target.setword(0, r_uint(0xFF00FF00))
     assert bin(target.getword(0)) == bin(0xFF00FF00)
 
-    buf = target.pixelbuffer()
+    buf = target._sdl_pixel_buffer
     for i in xrange(2, 8):
-        assert buf[i] == 0x0
+        assert buf[i] == 0xffffffff
 
     target.force_rectange_to_screen(0, 31, 0, 9)
+    # now we have 8 pixels black, 8 white, 8 black, 8 white
+    buf = target._sdl_pixel_buffer
+    for i in xrange(8):
+        assert buf[i] == 0xff000000
+    for i in xrange(9, 16):
+        assert buf[i] == 0xffffffff
+    for i in xrange(17, 24):
+        assert buf[i] == 0xff000000
+    for i in xrange(25, 32):
+        assert buf[i] == 0xffffffff
 
-    if constants.IS_64BIT: return # XXX: The below stuff isn't working right...
-    buf = target.pixelbuffer()
+def test_display_bitmap2():
+    size = 10
+    space.display().set_video_mode(32, size, 2)
+    target = W_MappingDisplayBitmap(space, size, 2)
+    for idx in range(size):
+        target.setword(idx, r_uint(0))
+    target.take_over_display()
+
+    target.setword(0, r_uint(0xFF00))
+    assert bin(target.getword(0)) == bin(0xFF00)
+    target.setword(0, r_uint(0x00FF00FF))
+    assert bin(target.getword(0)) == bin(0x00FF00FF)
+    target.setword(0, r_uint(0xFF00FF00))
+    assert bin(target.getword(0)) == bin(0xFF00FF00)
+
+    buf = target._sdl_pixel_buffer
+    # for i in xrange(2, 8):
+    #     assert buf[i] == 0xff000000
+
+    target.force_rectange_to_screen(0, 31, 0, 9)
+    # now we have 4 pixels white, 4 black, 4 white, 4 black
+    buf = target._sdl_pixel_buffer
+    for i in xrange(4):
+        assert buf[i] == 0xffffffff
+    for i in xrange(5, 8):
+        assert buf[i] == 0xff000000
+    for i in xrange(9, 12):
+        assert buf[i] == 0xffffffff
+    for i in xrange(13, 16):
+        assert buf[i] == 0xff000000
+
+def test_display_bitmap4():
+    size = 10
+    space.display().set_video_mode(32, size, 4)
+    target = W_MappingDisplayBitmap(space, size, 4)
+    for idx in range(size):
+        target.setword(idx, r_uint(0))
+    target.take_over_display()
+
+    target.setword(0, r_uint(0xFF00))
+    assert bin(target.getword(0)) == bin(0xFF00)
+    target.setword(0, r_uint(0x00FF00FF))
+    assert bin(target.getword(0)) == bin(0x00FF00FF)
+    target.setword(0, r_uint(0xFF00FF00))
+    assert bin(target.getword(0)) == bin(0xFF00FF00)
+
+    buf = target._sdl_pixel_buffer
+    # for i in xrange(2, 8):
+    #     assert buf[i] == 0xff000000
+
+    target.force_rectange_to_screen(0, 31, 0, 9)
+    # now we have 2 pixels white, 2 black, 2 white, 2 black
+    buf = target._sdl_pixel_buffer
     for i in xrange(2):
-        assert buf[i] == 0x01010101
-    for i in xrange(2, 4):
-        assert buf[i] == 0x0
-    for i in xrange(4, 6):
-        assert buf[i] == 0x01010101
-    for i in xrange(6, 8):
-        assert buf[i] == 0x0
+        assert buf[i] == 0xffffffff
+    for i in xrange(3, 4):
+        assert buf[i] == 0xff000000
+    for i in xrange(5, 6):
+        assert buf[i] == 0xffffffff
+    for i in xrange(7, 8):
+        assert buf[i] == 0xff000000
 
-def test_display_offset_computation_even():
-    dbitmap = W_MappingDisplayBitmap(space, 200, 1)
-    dbitmap.pitch = 64
-    dbitmap.words_per_line = 2
-    assert dbitmap.compute_pos(0) == 0
-    assert dbitmap.compute_pos(1) == 32
-    assert dbitmap.compute_pos(2) == 64
+def test_display_bitmap8():
+    size = 10
+    space.display().set_video_mode(32, size, 8)
+    target = W_MappingDisplayBitmap(space, size, 8)
+    for idx in range(size):
+        target.setword(idx, r_uint(0))
+    target.take_over_display()
 
-def test_display_offset_computation_uneven():
-    dbitmap = W_MappingDisplayBitmap(space, 200, 1)
-    dbitmap.pitch = 67
-    dbitmap.words_per_line = 2
-    assert dbitmap.compute_pos(0) == 0
-    assert dbitmap.compute_pos(1) == 32
-    assert dbitmap.compute_pos(2) == 67
-    assert dbitmap.compute_pos(3) == 67 + 32
+    target.setword(0, r_uint(0xFF00))
+    assert bin(target.getword(0)) == bin(0xFF00)
+    target.setword(0, r_uint(0x00FF00FF))
+    assert bin(target.getword(0)) == bin(0x00FF00FF)
+    target.setword(0, r_uint(0xFF00FF00))
+    assert bin(target.getword(0)) == bin(0xFF00FF00)
+
+    buf = target._sdl_pixel_buffer
+    # for i in xrange(2, 8):
+    #     assert buf[i] == 0xff000000
+
+    target.setword(0, r_uint(0xFF01FF01))
+    target.force_rectange_to_screen(0, 31, 0, 9)
+    # now we have 1 pixels white, 1 black, 1 white, 1 black
+    buf = target._sdl_pixel_buffer
+    assert buf[0] == 0xffffffff
+    assert buf[1] == 0xff000000
+    assert buf[2] == 0xffffffff
+    assert buf[3] == 0xff000000
 
 def test_weak_pointers():
     w_cls = bootstrap_class(2)

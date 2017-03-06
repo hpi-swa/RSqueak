@@ -1,5 +1,5 @@
 from rsqueakvm.util import system
-if "TailcallPlugin" not in system.optional_plugins:
+if "TailcallPlugin" not in system.optional_plugins and not system.IS_SPHINX:
     raise LookupError
 
 from rsqueakvm.error import PrimitiveFailedError

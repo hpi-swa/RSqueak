@@ -91,5 +91,5 @@ if not system.IS_ARM and (system.IS_WINDOWS or system.IS_LINUX or system.IS_DARW
             return res == 1
         return True
 else:
-    def get_file(x, y): return _Default
-    def ask_question(x): return True
+    def get_file(): return _Default
+    def ask_question(string): return True

@@ -1,4 +1,5 @@
 from rpython.rlib import jit
+from rpython.rlib.objectmodel import not_rpython
 
 from rsqueakvm import error
 
@@ -27,8 +28,8 @@ class Plugin(object):
     def _find_prim(self, name):
         return self.primitives.get(name, None)
 
+    @not_rpython
     def expose_primitive(self,  wrap_func=None, **kwargs):
-        """NOT RPYTHON"""
         from rsqueakvm.primitives import wrap_primitive, unwrap_alternatives
         if not wrap_func:
             if kwargs.get('unwrap_specs', None):
