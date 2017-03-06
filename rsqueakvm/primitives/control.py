@@ -258,7 +258,7 @@ def func(interp, s_frame, argcount):
     w_selector = s_frame.pop()
     w_rcvr = s_frame.top() # rcvr is removed in _sendSelector
     return s_frame._sendSelector(
-        w_selector, argcount - 1, interp, w_rcvr,
+        jit.promote(w_selector), argcount - 1, interp, w_rcvr,
         w_rcvr.class_shadow(interp.space), w_arguments=arguments_w)
 
 @expose_primitive(PERFORM_WITH_ARGS,
@@ -266,7 +266,8 @@ def func(interp, s_frame, argcount):
                   no_result=True, clean_stack=False)
 def func(interp, s_frame, w_rcvr, w_selector, w_arguments):
     s_frame.pop_n(2)  # removing our arguments, rcvr is removed in _sendSelector
-    return s_frame._sendSelector(w_selector, len(w_arguments), interp, w_rcvr,
+    return s_frame._sendSelector(jit.promote(w_selector), len(w_arguments),
+                                 interp, w_rcvr,
                                  w_rcvr.class_shadow(interp.space),
                                  w_arguments=w_arguments)
 
