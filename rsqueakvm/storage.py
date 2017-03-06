@@ -138,7 +138,9 @@ class ListStrategy(SimpleStorageStrategy):
     import_from_mixin(OptimizedConvertFromAllNilMixin)
 
     def _wrap(self, w_value):
-        if isinstance(w_value, W_SmallInteger):
+        if w_value is None:
+            return self.space.w_nil
+        elif isinstance(w_value, W_SmallInteger):
             assert isinstance(w_value, W_MutableSmallInteger)
             return self.space.wrap_smallint_unsafe(w_value.value)
         else:
@@ -147,6 +149,8 @@ class ListStrategy(SimpleStorageStrategy):
     def _unwrap(self, w_value):
         if isinstance(w_value, W_SmallInteger):
             return W_MutableSmallInteger(w_value.value)
+        elif w_value is self.space.w_nil:
+            return None
         else:
             return w_value
 
