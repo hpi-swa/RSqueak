@@ -77,7 +77,7 @@ def lastError(interp, s_frame, w_rcvr):
 
 
 @PythonPlugin.expose_primitive(clean_stack=False)
-def breakOnException(interp, s_frame, argcount):
+def breakOnExceptions(interp, s_frame, argcount):
     if argcount == 0:
         return interp.space.wrap_bool(global_state.break_on_exception.get())
     if argcount != 1:
@@ -137,28 +137,23 @@ def send(interp, s_frame, argcount, w_method):
         methodname = methodname[0:idx]
     wp_result = None
     try:
-        if wp_rcvr is py_space.builtin:
-            builtin = py_space.builtin.get(methodname)
-            wp_result = utils.call_function(space, builtin, args_w)
+        py_attr = py_space.getattr(wp_rcvr, py_space.newtext(methodname))
+        if (isinstance(py_attr, Function) or
+                isinstance(py_attr, Method) or
+                isinstance(py_attr, StaticMethod) or
+                isinstance(py_attr, ClassMethod)):
+            wp_result = utils.call_method(
+                space, wp_rcvr, methodname, args_w)
         else:
-            py_attr = py_space.getattr(wp_rcvr, py_space.newtext(methodname))
-            # Only allow to call certain types (e.g. don't allow __class__())
-            if (isinstance(py_attr, Function) or
-                    isinstance(py_attr, Method) or
-                    isinstance(py_attr, StaticMethod) or
-                    isinstance(py_attr, ClassMethod)):
-                wp_result = utils.call_method(
-                    space, wp_rcvr, methodname, args_w)
+            if len(args_w) == 1:
+                wp_value = utils.smalltalk_to_python(space, args_w[0])
+                py_space.setattr(wp_rcvr, py_space.newtext(methodname),
+                                 wp_value)
+                wp_result = py_space.w_None
             else:
-                if len(args_w) == 1:
-                    wp_value = utils.smalltalk_to_python(space, args_w[0])
-                    py_space.setattr(wp_rcvr, py_space.newtext(methodname),
-                                     wp_value)
-                    wp_result = py_space.w_None
-                else:
-                    wp_result = py_attr
+                wp_result = py_attr
     except OperationError as operationerr:
-        print operationerr.errorstr(py_space)
+        print 'Operror in send (%s)' % operationerr.errorstr(py_space)
         raise PrimitiveFailedError
     except Exception as e:
         print 'Unable to call %s on %s: %s' % (methodname, wp_rcvr, e)
