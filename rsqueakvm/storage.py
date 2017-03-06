@@ -473,12 +473,13 @@ class ObjectMapStorageNode(MapStorageNode):
         MapStorageNode.update_storage(self, w_self)
         storage = self.get_storage(w_self)
         length = self.length()
-        if storage is None or len(storage) < length:
-            new_storage = [None] * self.size_estimate()
-            if storage is not None:
-                for i, value in enumerate(storage):
-                    new_storage[i] = value
-            self.set_storage(w_self, new_storage)
+        if length > 0:
+            if storage is None or len(storage) < length:
+                new_storage = [None] * self.size_estimate()
+                if storage is not None:
+                    for i, value in enumerate(storage):
+                        new_storage[i] = value
+                self.set_storage(w_self, new_storage)
 
     def read(self, w_self, index0):
         assert isinstance(w_self, W_FixedPointersObject)
