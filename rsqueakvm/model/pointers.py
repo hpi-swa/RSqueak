@@ -252,9 +252,9 @@ class W_FixedPointersObject(W_PointersObject):
         W_PointersObject.fillin(self, space, g_self)
 
     def _init_inline_fields(self):
-        self._intField1 = 0.0
-        self._intField2 = 0.0
-        self._intField3 = 0.0
+        self._intField1 = 0
+        self._intField2 = 0
+        self._intField3 = 0
         self._intFields = None
         self._field1 = None
         self._field2 = None
