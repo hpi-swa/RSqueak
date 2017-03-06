@@ -190,15 +190,26 @@ class MapStrategy(AbstractStrategy):
     repr_classname = "MapStrategy (base)"
     import_from_mixin(rstrat.SafeIndexingMixin)
 
+    @jit.unroll_safe
     def _initialize_storage(self, w_self, initial_size):
         self.set_storage(w_self, None)
+        node = self
+        while node is not None:
+            node.update_storage(w_self)
+            node = node.getprev()
 
     @jit.unroll_safe
     def _convert_storage_from(self, w_self, previous_strategy):
         assert isinstance(previous_strategy, MapStrategy)
         storage = previous_strategy.fetch_all(w_self)
-        for i, w_value in enumerate(storage):
+        self.store_all(w_self, storage)
+
+    def store_all(self, w_self, elements):
+        for i, w_value in enumerate(elements):
             w_self._get_strategy().store(w_self, i, w_value)
+
+    def update_storage(self, w_self):
+        pass
 
     def instantiate(self, w_self, w_class):
         return self.strategy_factory().strategy_singleton_instance(MapStrategy, w_class)
@@ -725,6 +736,7 @@ class StrategyFactory(rstrat.StrategyFactory):
         node = self.transitions.get(key, None)
         if node is None:
             self.transitions[key] = node = strategy_node_class(self.space, prev, index0, w_class)
+            self.singleton_nodes[(MapStrategy, w_class)] = node
         return node
 
     def instantiate_strategy(self, strategy_type, w_class, w_self=None, initial_size=0):
