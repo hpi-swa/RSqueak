@@ -44,11 +44,21 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
         from rsqueakvm.storage import WeakListStrategy
         return isinstance(self.strategy, WeakListStrategy)
 
+    def elidable_strategy(self):
+        if jit.isconstant(self):
+            return self._pure_strategy()
+        else:
+            return self.strategy.promoted(self)
+
+    @jit.elidable
+    def _pure_strategy(self):
+        return self.strategy
+
     def safe_getclass(self, space):
-        return self.strategy.getclass()
+        return self.strategy.promoted(self).getclass()
 
     def getclass(self, space):
-        return jit.promote(self.strategy.promoted(self).getclass())
+        return jit.promote(self.elidable_strategy().getclass())
 
     def is_class(self, space):
         from rsqueakvm.storage_classes import ClassShadow
@@ -78,7 +88,7 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
                 isinstance(self.getclass(None).strategy, storage_classes.ClassShadow))
 
     def space(self):
-        return self.strategy.space
+        return self.elidable_strategy().space
 
     def __str__(self):
         if self.strategy.provides_getname:
@@ -143,20 +153,20 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
         self.store(space, index0 + self.instsize(), w_value)
 
     def fetch(self, space, n0):
-        return self.strategy.promoted(self).fetch(self, n0)
+        return self.elidable_strategy().fetch(self, n0)
 
     def store(self, space, n0, w_value):
-        return self.strategy.promoted(self).store(self, n0, w_value)
+        return self.elidable_strategy().store(self, n0, w_value)
 
     def size(self):
-        return self.strategy.size(self)
+        return self.elidable_strategy().size(self)
 
     def instsize(self):
         return self.class_shadow(self.space()).instsize()
 
     @objectmodel.specialize.arg(2)
     def as_special_get_shadow(self, space, TheClass):
-        shadow = self.strategy
+        shadow = self.elidable_strategy()
         if not isinstance(shadow, TheClass):
             shadow = space.strategy_factory.switch_strategy(self, TheClass)
         assert isinstance(shadow, TheClass)
