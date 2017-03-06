@@ -28,7 +28,9 @@ def _run_eval_string(source, filename, cmd):
         pycode = compilecode(py_space, source, filename or '<string>', cmd)
 
         mainmodule = ensure__main__(py_space)
-        assert isinstance(mainmodule, Module)
+        if not isinstance(mainmodule, Module):
+            print 'mainmodule not an instance of Module.'
+            return
         w_globals = mainmodule.w_dict
 
         py_space.setitem(w_globals, ws('__builtins__'), py_space.builtin)
@@ -99,7 +101,9 @@ def get_restart_pycode(source, filename='<string>', cmd='exec'):
     try:
         py_code = py_compiling.compile(py_space, py_space.newtext(source),
                                        filename, cmd)
-        assert isinstance(py_code, PyCode)
+        if not isinstance(py_code, PyCode):
+            print 'py_code not an instance of PyCode'
+            return
         if cmd == 'eval':
             return py_code
         co_consts_w_len = len(py_code.co_consts_w)
@@ -114,7 +118,7 @@ def get_restart_pycode(source, filename='<string>', cmd='exec'):
     except OperationError as e:
         # import pdb; pdb.set_trace()
         print 'Failed to compile new frame: %s' % e.errorstr(py_space)
-    return None
+    return
 
 
 def call_method(space, wp_rcvr, methodname, args_w):
@@ -165,7 +169,8 @@ def call_function(space, wp_func, args_w):
 
 
 def operr_to_pylist(operr):
-    assert isinstance(operr, OperationError)
+    if not isinstance(operr, OperationError):
+        return
     wp_exception = py_space.newtext(operr.w_type.getname(py_space))
     wp_value = operr.get_w_value(py_space)
     # wp_traceback = operr.get_traceback() or py_space.w_None

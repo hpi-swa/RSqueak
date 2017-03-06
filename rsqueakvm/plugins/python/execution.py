@@ -158,7 +158,8 @@ def switch_to_smalltalk(interp, s_frame, first_call=False):
         # assert s_frame.w_method() is not resume_method
         s_resume_frame.store_s_sender(s_frame)
     else:
-        assert s_frame.w_method() is resume_method
+        if s_frame.w_method() is not resume_method:
+            print 'Unexpected s_frame found.'
         s_resume_frame.store_s_sender(s_frame.s_sender())
     interp.quick_check_for_interrupt(s_resume_frame,
                                      dec=interp.interrupt_counter_size)
@@ -168,7 +169,7 @@ def switch_to_smalltalk(interp, s_frame, first_call=False):
 
 def _create_return_frame(space, wp_result):
     from rsqueakvm.storage_contexts import ContextPartShadow
-    print 'Python has finished and returned a result'
+    print 'Python has finished and returned a result.'
     # we want evalInThread and resumePython to return new frames,
     # so we don't build up stack, but we also don't raise to the
     # top-level loop all the time.

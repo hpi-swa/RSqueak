@@ -128,7 +128,9 @@ def send(interp, s_frame, argcount, w_method):
     args_w = s_frame.peek_n(argcount)
     wp_rcvr = utils.smalltalk_to_python(space, s_frame.peek(argcount))
     w_selector_name = w_method.literalat0(space, 2)
-    assert isinstance(w_selector_name, W_BytesObject)
+    if not isinstance(w_selector_name, W_BytesObject):
+        print 'w_selector_name not an instance of W_BytesObject'
+        raise PrimitiveFailedError
     methodname = space.unwrap_string(w_selector_name)
     idx = methodname.find(':')
     if idx > 0:

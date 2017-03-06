@@ -48,8 +48,7 @@ class W_PythonObject(W_PointersObject):
         return self.safe_getclass(space)
 
     def class_shadow(self, space):
-        wp_class = py_space.type(self.wp_object)
-        return PythonClassShadow(space, self.wp_object, wp_class)
+        return PythonClassShadow(space, self.wp_object)
 
     # @staticmethod
     # @jit.elidable
@@ -66,9 +65,9 @@ class PythonClassShadow(ClassShadow):
     _attrs_ = ['wp_object', 'wp_class']
     _immutable_fields_ = ['wp_class']
 
-    def __init__(self, space, wp_object, wp_class):
-        assert isinstance(wp_class, WP_Root)
+    def __init__(self, space, wp_object):
         self.wp_object = wp_object
+        wp_class = py_space.type(self.wp_object)
         self.wp_class = wp_class
         self.name = wp_class.name
         AbstractCachingShadow.__init__(
