@@ -48,7 +48,7 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
         return self.strategy.getclass()
 
     def getclass(self, space):
-        return jit.promote(self.strategy.promoted().getclass())
+        return jit.promote(self.strategy.promoted(self).getclass())
 
     def is_class(self, space):
         from rsqueakvm.storage_classes import ClassShadow
@@ -143,10 +143,10 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
         self.store(space, index0 + self.instsize(), w_value)
 
     def fetch(self, space, n0):
-        return self.strategy.promoted().fetch(self, n0)
+        return self.strategy.promoted(self).fetch(self, n0)
 
     def store(self, space, n0, w_value):
-        return self.strategy.promoted().store(self, n0, w_value)
+        return self.strategy.promoted(self).store(self, n0, w_value)
 
     def size(self):
         return self.strategy.size(self)

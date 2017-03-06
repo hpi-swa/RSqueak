@@ -96,8 +96,10 @@ class AbstractStrategy(object):
             size = self.size(w_self)
             new_strategy = self.strategy_factory().instantiate_strategy(self.instantiate_type, w_class, w_self, size)
         return new_strategy
-    def promoted(self):
+    def promoted(self, w_self):
         if self._is_singleton:
+            return jit.promote(self)
+        elif jit.isconstant(w_self):
             return jit.promote(self)
         else:
             return self
