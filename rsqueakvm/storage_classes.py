@@ -251,7 +251,7 @@ class ClassShadow(AbstractCachingShadow):
         return w_new
 
     def make_pointers_object(self, w_cls, size):
-        if self.isvariable():
+        if self.isvariable() or size > 16:
             return W_PointersObject(self.space, w_cls, size)
         else:
             assert size == self.instsize()

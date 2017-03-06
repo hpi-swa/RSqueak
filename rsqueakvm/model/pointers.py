@@ -218,8 +218,8 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
 
     def clone(self, space):
         my_pointers = self.fetch_all(space)
-        w_result = self.__class__(space, self.getclass(space),
-                                  len(my_pointers))
+        w_result = W_PointersObject(space, self.getclass(space),
+                                    len(my_pointers))
         w_result.store_all(space, my_pointers)
         return w_result
 
@@ -272,3 +272,10 @@ class W_FixedPointersObject(W_PointersObject):
         W_PointersObject._become(self, w_other)
         self._swap_inline_fields(w_other)
         self._size, w_other._size = w_other._size, self._size
+
+    def clone(self, space):
+        my_pointers = self.fetch_all(space)
+        w_result = W_FixedPointersObject(space, self.getclass(space),
+                                         len(my_pointers))
+        w_result.store_all(space, my_pointers)
+        return w_result
