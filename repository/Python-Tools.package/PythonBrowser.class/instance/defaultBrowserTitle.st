@@ -1,0 +1,3 @@
+overrides
+defaultBrowserTitle
+	^ 'Python Browser'

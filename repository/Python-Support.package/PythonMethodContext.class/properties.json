@@ -1,0 +1,14 @@
+{
+	"category" : "Python-Support",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"pyFrame" ],
+	"name" : "PythonMethodContext",
+	"pools" : [
+		 ],
+	"super" : "MethodContext",
+	"type" : "variable" }

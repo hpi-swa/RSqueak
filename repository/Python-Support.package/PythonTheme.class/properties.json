@@ -1,0 +1,14 @@
+{
+	"category" : "Python-Support",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "PythonTheme",
+	"pools" : [
+		 ],
+	"super" : "UserInterfaceTheme",
+	"type" : "normal" }

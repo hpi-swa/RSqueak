@@ -1,0 +1,14 @@
+{
+	"category" : "Python-Support",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "PythonPluggableTextSpec",
+	"pools" : [
+		 ],
+	"super" : "PluggableTextSpec",
+	"type" : "normal" }

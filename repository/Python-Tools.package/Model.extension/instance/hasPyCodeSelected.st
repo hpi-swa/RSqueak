@@ -1,0 +1,3 @@
+*Python-Tools
+hasPyCodeSelected
+	^ false

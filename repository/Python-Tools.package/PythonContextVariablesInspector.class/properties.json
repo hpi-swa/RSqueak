@@ -1,0 +1,14 @@
+{
+	"category" : "Python-Tools",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "PythonContextVariablesInspector",
+	"pools" : [
+		 ],
+	"super" : "ContextVariablesInspector",
+	"type" : "normal" }

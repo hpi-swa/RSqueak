@@ -1,0 +1,14 @@
+{
+	"category" : "Python-Core",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "PythonExamples",
+	"pools" : [
+		 ],
+	"super" : "Object",
+	"type" : "normal" }

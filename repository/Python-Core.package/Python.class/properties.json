@@ -1,0 +1,15 @@
+{
+	"category" : "Python-Core",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		"ObjectCache",
+		"VMSpeaksPython" ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "Python",
+	"pools" : [
+		 ],
+	"super" : "Object",
+	"type" : "normal" }

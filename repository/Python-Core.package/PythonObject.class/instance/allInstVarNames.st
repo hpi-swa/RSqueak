@@ -1,0 +1,3 @@
+overrides
+allInstVarNames
+	^ self allAttributes

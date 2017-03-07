@@ -1,0 +1,14 @@
+{
+	"category" : "Python-Tools",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "PythonObjectExplorer",
+	"pools" : [
+		 ],
+	"super" : "ObjectExplorer",
+	"type" : "normal" }

@@ -1,0 +1,14 @@
+{
+	"category" : "Python-Support",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "PythonPluggableCodePaneSpec",
+	"pools" : [
+		 ],
+	"super" : "PluggableCodePaneSpec",
+	"type" : "normal" }

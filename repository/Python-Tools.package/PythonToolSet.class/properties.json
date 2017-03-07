@@ -1,0 +1,14 @@
+{
+	"category" : "Python-Tools",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "PythonToolSet",
+	"pools" : [
+		 ],
+	"super" : "StandardToolSet",
+	"type" : "normal" }

@@ -1,0 +1,15 @@
+{
+	"category" : "Python-Core",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		"NextID",
+		"PyMethodDict" ],
+	"commentStamp" : "",
+	"instvars" : [
+		"pyID" ],
+	"name" : "PythonObject",
+	"pools" : [
+		 ],
+	"super" : "Object",
+	"type" : "normal" }
