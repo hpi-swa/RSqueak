@@ -1,3 +1,0 @@
-colors
-builtinConstColor
-	^ self numberColor

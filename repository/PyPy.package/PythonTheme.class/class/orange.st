@@ -1,4 +1,0 @@
-monokai
-orange
-
-	^ self argumentColor

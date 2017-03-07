@@ -1,3 +1,0 @@
-*PyPy
-isPython
-	^ false

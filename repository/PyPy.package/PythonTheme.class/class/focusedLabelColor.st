@@ -1,3 +1,0 @@
-colors
-focusedLabelColor
-	^ self textColor

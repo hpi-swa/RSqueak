@@ -1,4 +1,0 @@
-monokai
-magenta
-
-	^ self keywordColor

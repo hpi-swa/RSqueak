@@ -1,3 +1,0 @@
-overrides
-allInstVarNames
-	^ self allAttributes
