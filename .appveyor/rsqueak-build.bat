@@ -36,7 +36,7 @@ if %buildscript%==jittests.py (
 
 @echo on
 set SDL_VIDEODRIVER=dummy
-C:\Python27\python %~dp0\..\.build\%buildscript% %buildargs%
+%~dp0\..\.build\pypy-win32\pypy.exe %~dp0\..\.build\%buildscript% %buildargs%
 if %ERRORLEVEL% GEQ 1 EXIT /B 1
 
 if %buildscript%==build.py (

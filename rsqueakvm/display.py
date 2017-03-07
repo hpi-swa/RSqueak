@@ -177,9 +177,10 @@ class SDLDisplay(NullDisplay):
         RSDL.SetHint(RSDL.HINT_RENDER_VSYNC, '0')
         # nearest pixel sampling
         RSDL.SetHint(RSDL.HINT_RENDER_SCALE_QUALITY, '0')
-        # SDL >= 2.0.4
         # disable WM_PING, so the WM does not think we're hung
-        # RSDL.SetHint(RSDL.HINT_VIDEO_X11_NET_WM_PING, '0')
+        RSDL.SetHint(RSDL.HINT_VIDEO_X11_NET_WM_PING, '0')
+        # Ctrl-Click on Mac is right click
+        RSDL.SetHint(RSDL.HINT_MAC_CTRL_CLICK_EMULATE_RIGHT_CLICK, '1')
         for eventname in DISABLED_EVENTS:
             RSDL.EventState(getattr(RSDL, eventname), RSDL.IGNORE)
         # try to allow late tearing (pushes frames faster)
@@ -412,10 +413,15 @@ class SDLDisplay(NullDisplay):
 
     def handle_windowevent(self, c_type, event):
         window_event = rffi.cast(RSDL.WindowEventPtr, event)
-        if r_uint(window_event.c_event) == RSDL.WINDOWEVENT_RESIZED:
-            self.set_video_mode(w=intmask(window_event.c_data1),
-                                h=intmask(window_event.c_data2),
-                                d=self.depth)
+        if r_uint(window_event.c_event) in (RSDL.WINDOWEVENT_RESIZED,
+                                            RSDL.WINDOWEVENT_SIZE_CHANGED,
+                                            RSDL.WINDOWEVENT_EXPOSED):
+            neww = intmask(window_event.c_data1)
+            newh = intmask(window_event.c_data2)
+            if neww != self.width or newh != self.height:
+                self.set_video_mode(w=neww, h=newh, d=self.depth)
+            self.full_damage()
+            self.render(force=True)
 
     def get_dropevent(self, time, c_type, event):
         drop_event = rffi.cast(RSDL.DropEventPtr, event)
