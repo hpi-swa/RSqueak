@@ -472,13 +472,10 @@ class ContextPartShadow(AbstractStrategy):
 
     def full_stacksize(self):
         if not self.pure_is_block_context():
-            # Magic numbers... Takes care of cases where reflective
-            # code writes more than actual stack size
             method = self.w_method()
             assert isinstance(method, W_CompiledMethod), "context method is not a W_CompiledMethod"
-            stacksize = method.compute_frame_size()
+            stacksize = method.frame_size()
         else:
-            # TODO why not use method.compute_frame_size for BlockContext too?
             stacksize = self.stacksize()  # no temps
         return stacksize
 
@@ -804,7 +801,7 @@ class __extend__(ContextPartShadow):
     def build_method_context(space, w_method, w_receiver, arguments=[],
                              closure=None, s_fallback=None):
         w_method = jit.promote(w_method)
-        size = w_method.compute_frame_size() + constants.MTHDCTX_TEMP_FRAME_START
+        size = w_method.frame_size() + constants.MTHDCTX_TEMP_FRAME_START
 
         ctx = ContextPartShadow(space, None, size, space.w_MethodContext)
         if s_fallback is not None:

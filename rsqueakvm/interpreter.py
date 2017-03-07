@@ -410,17 +410,26 @@ class Interpreter(object):
         if not objectmodel.we_are_translated():
             if USE_SIGUSR1:
                 self.check_sigusr(context)
+            stackdepth_pre = context.stackdepth()
 
         bytecode = context.fetch_next_bytecode()
         for entry in UNROLLING_BYTECODE_RANGES:
-            if len(entry) == 2:
-                bc, methname = entry
+            if len(entry) == 3:
+                bc, methname, _ = entry
                 if bytecode == bc:
-                    return getattr(context, methname)(self, bytecode)
+                    result = getattr(context, methname)(self, bytecode)
+                    if not objectmodel.we_are_translated():
+                        stackdepth_after = context.stackdepth()
+                        assert context.last_effect == (stackdepth_after - stackdepth_pre)
+                    return result
             else:
-                start, stop, methname = entry
+                start, stop, methname, _ = entry
                 if start <= bytecode <= stop:
-                    return getattr(context, methname)(self, bytecode)
+                    result = getattr(context, methname)(self, bytecode)
+                    if not objectmodel.we_are_translated():
+                        stackdepth_after = context.stackdepth()
+                        assert context.last_effect == (stackdepth_after - stackdepth_pre)
+                    return result
         assert 0, "unreachable"
 
     # ============== Methods for handling user interrupts ==============

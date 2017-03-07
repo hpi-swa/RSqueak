@@ -37,9 +37,10 @@ def bytecode_implementation(parameter_bytes=0):
                 i = i + 1
             # This is a good place to step through bytecodes.
 
-            self.debug_bytecode(interp)
+            self.debug_bytecode(interp, current_bytecode, parameters)
             return actual_implementation_method(self, interp, current_bytecode, *parameters)
         bytecode_implementation_wrapper.func_name = actual_implementation_method.func_name
+        bytecode_implementation_wrapper.parameter_bytes = parameter_bytes
         return bytecode_implementation_wrapper
     return bytecode_implementation_decorator
 
@@ -658,93 +659,105 @@ class __extend__(ContextPartShadow):
     bytecodePrimPointX = make_send_selector_bytecode("x", 0)
     bytecodePrimPointY = make_send_selector_bytecode("y", 0)
 
-    def debug_bytecode(self, interp):
-        # Hook used in interpreter_debugging
-        pass
+    def debug_bytecode(self, interp, current_bytecode, parameters):
+        if not objectmodel.we_are_translated():
+            self.last_effect = _compute_effect_of_bytecode(
+                current_bytecode,
+                BYTECODE_EFFECTS[current_bytecode],
+                parameters[0] if len(parameters) > 0 else 0
+            )
 
+
+SEND_EFFECT_LITERAL = 0xff
+SEND_EFFECT_SHIFT5 = 0xfe
+SEND_EFFECT_SHIFT6 = 0xfd
+ARRAY_EFFECT = 0xfc
+CLOSURE_EFFECT = 0xfb
+ANYTHING_EFFECT = 0xfa
+# bytecode or bytecode range, name, stack effect, arguments
 BYTECODE_RANGES = [
-            (  0,  15, "pushReceiverVariableBytecode"),
-            ( 16,  31, "pushTemporaryVariableBytecode"),
-            ( 32,  63, "pushLiteralConstantBytecode"),
-            ( 64,  95, "pushLiteralVariableBytecode"),
-            ( 96, 103, "storeAndPopReceiverVariableBytecode"),
-            (104, 111, "storeAndPopTemporaryVariableBytecode"),
-            (112, "pushReceiverBytecode"),
-            (113, "pushConstantTrueBytecode"),
-            (114, "pushConstantFalseBytecode"),
-            (115, "pushConstantNilBytecode"),
-            (116, "pushConstantMinusOneBytecode"),
-            (117, "pushConstantZeroBytecode"),
-            (118, "pushConstantOneBytecode"),
-            (119, "pushConstantTwoBytecode"),
-            (120, "returnReceiverBytecode"),
-            (121, "returnTrueBytecode"),
-            (122, "returnFalseBytecode"),
-            (123, "returnNilBytecode"),
-            (124, "returnTopFromMethodBytecode"),
-            (125, "returnTopFromBlockBytecode"),
-            (126, "unknownBytecode"),
-            (127, "unknownBytecode"),
-            (128, "extendedPushBytecode"),
-            (129, "extendedStoreBytecode"),
-            (130, "extendedStoreAndPopBytecode"),
-            (131, "singleExtendedSendBytecode"),
-            (132, "doubleExtendedDoAnythingBytecode"),
-            (133, "singleExtendedSuperBytecode"),
-            (134, "secondExtendedSendBytecode"),
-            (135, "popStackBytecode"),
-            (136, "duplicateTopBytecode"),
-            (137, "pushActiveContextBytecode"),
-            (138, "pushNewArrayBytecode"),
-            (139, "callPrimitiveBytecode"),
-            (140, "pushRemoteTempLongBytecode"),
-            (141, "storeRemoteTempLongBytecode"),
-            (142, "storeAndPopRemoteTempLongBytecode"),
-            (143, "pushClosureCopyCopiedValuesBytecode"),
-            (144, 151, "shortUnconditionalJumpBytecode"),
-            (152, 159, "shortConditionalJumpBytecode"),
-            (160, 167, "longUnconditionalJumpBytecode"),
-            (168, 171, "longJumpIfTrueBytecode"),
-            (172, 175, "longJumpIfFalseBytecode"),
-            (176, "bytecodePrimAdd"),
-            (177, "bytecodePrimSubtract"),
-            (178, "bytecodePrimLessThan"),
-            (179, "bytecodePrimGreaterThan"),
-            (180, "bytecodePrimLessOrEqual"),
-            (181, "bytecodePrimGreaterOrEqual"),
-            (182, "bytecodePrimEqual"),
-            (183, "bytecodePrimNotEqual"),
-            (184, "bytecodePrimMultiply"),
-            (185, "bytecodePrimDivide"),
-            (186, "bytecodePrimMod"),
-            (187, "bytecodePrimMakePoint"),
-            (188, "bytecodePrimBitShift"),
-            (189, "bytecodePrimDiv"),
-            (190, "bytecodePrimBitAnd"),
-            (191, "bytecodePrimBitOr"),
-            (192, "bytecodePrimAt"),
-            (193, "bytecodePrimAtPut"),
-            (194, "bytecodePrimSize"),
-            (195, "bytecodePrimNext"),
-            (196, "bytecodePrimNextPut"),
-            (197, "bytecodePrimAtEnd"),
-            (198, "bytecodePrimEquivalent"),
-            (199, "bytecodePrimClass"),
-            (200, "bytecodePrimBlockCopy"),
-            (201, "bytecodePrimValue"),
-            (202, "bytecodePrimValueWithArg"),
-            (203, "bytecodePrimDo"),
-            (204, "bytecodePrimNew"),
-            (205, "bytecodePrimNewWithArg"),
-            (206, "bytecodePrimPointX"),
-            (207, "bytecodePrimPointY"),
-            (208, 255, "sendLiteralSelectorBytecode"),
+            (  0,  15, "pushReceiverVariableBytecode", +1),
+            ( 16,  31, "pushTemporaryVariableBytecode", +1),
+            ( 32,  63, "pushLiteralConstantBytecode", +1),
+            ( 64,  95, "pushLiteralVariableBytecode", +1),
+            ( 96, 103, "storeAndPopReceiverVariableBytecode", -1),
+            (104, 111, "storeAndPopTemporaryVariableBytecode", -1),
+            (112, "pushReceiverBytecode", +1),
+            (113, "pushConstantTrueBytecode", +1),
+            (114, "pushConstantFalseBytecode", +1),
+            (115, "pushConstantNilBytecode", +1),
+            (116, "pushConstantMinusOneBytecode", +1),
+            (117, "pushConstantZeroBytecode", +1),
+            (118, "pushConstantOneBytecode", +1),
+            (119, "pushConstantTwoBytecode", +1),
+            (120, "returnReceiverBytecode", 0),
+            (121, "returnTrueBytecode", 0),
+            (122, "returnFalseBytecode", 0),
+            (123, "returnNilBytecode", 0),
+            (124, "returnTopFromMethodBytecode", -1),
+            (125, "returnTopFromBlockBytecode", -1),
+            (126, "unknownBytecode", 0),
+            (127, "unknownBytecode", 0),
+            (128, "extendedPushBytecode", +1),
+            (129, "extendedStoreBytecode", 0),
+            (130, "extendedStoreAndPopBytecode", -1),
+            (131, "singleExtendedSendBytecode", SEND_EFFECT_SHIFT5),
+            (132, "doubleExtendedDoAnythingBytecode", ANYTHING_EFFECT),
+            (133, "singleExtendedSuperBytecode", SEND_EFFECT_SHIFT5),
+            (134, "secondExtendedSendBytecode", SEND_EFFECT_SHIFT6),
+            (135, "popStackBytecode", -1),
+            (136, "duplicateTopBytecode", +1),
+            (137, "pushActiveContextBytecode", +1),
+            (138, "pushNewArrayBytecode", ARRAY_EFFECT),
+            (139, "callPrimitiveBytecode", 0),
+            (140, "pushRemoteTempLongBytecode", +1),
+            (141, "storeRemoteTempLongBytecode", 0),
+            (142, "storeAndPopRemoteTempLongBytecode", -1),
+            (143, "pushClosureCopyCopiedValuesBytecode", CLOSURE_EFFECT),
+            (144, 151, "shortUnconditionalJumpBytecode", 0),
+            (152, 159, "shortConditionalJumpBytecode", -1),
+            (160, 167, "longUnconditionalJumpBytecode", 0),
+            (168, 171, "longJumpIfTrueBytecode", -1),
+            (172, 175, "longJumpIfFalseBytecode", -1),
+            (176, "bytecodePrimAdd", -1),
+            (177, "bytecodePrimSubtract", -1),
+            (178, "bytecodePrimLessThan", -1),
+            (179, "bytecodePrimGreaterThan", -1),
+            (180, "bytecodePrimLessOrEqual", -1),
+            (181, "bytecodePrimGreaterOrEqual", -1),
+            (182, "bytecodePrimEqual", -1),
+            (183, "bytecodePrimNotEqual", -1),
+            (184, "bytecodePrimMultiply", -1),
+            (185, "bytecodePrimDivide", -1),
+            (186, "bytecodePrimMod", -1),
+            (187, "bytecodePrimMakePoint", -1),
+            (188, "bytecodePrimBitShift", -1),
+            (189, "bytecodePrimDiv", -1),
+            (190, "bytecodePrimBitAnd", -1),
+            (191, "bytecodePrimBitOr", -1),
+            (192, "bytecodePrimAt", -1),
+            (193, "bytecodePrimAtPut", -2),
+            (194, "bytecodePrimSize", 0),
+            (195, "bytecodePrimNext", 0),
+            (196, "bytecodePrimNextPut", -1),
+            (197, "bytecodePrimAtEnd", 0),
+            (198, "bytecodePrimEquivalent", -1),
+            (199, "bytecodePrimClass", 0),
+            (200, "bytecodePrimBlockCopy", -1),
+            (201, "bytecodePrimValue", 0),
+            (202, "bytecodePrimValueWithArg", -1),
+            (203, "bytecodePrimDo", -1),
+            (204, "bytecodePrimNew", 0),
+            (205, "bytecodePrimNewWithArg", -1),
+            (206, "bytecodePrimPointX", 0),
+            (207, "bytecodePrimPointY", 0),
+            (208, 255, "sendLiteralSelectorBytecode", SEND_EFFECT_LITERAL),
             ]
 
 def initialize_bytecode_names():
     result = [None] * 256
     for entry in BYTECODE_RANGES:
-        if len(entry) == 2:
+        if len(entry) == 3:
             result[entry[0]] = entry[1]
         else:
             for arg, pos in enumerate(range(entry[0], entry[1]+1)):
@@ -756,23 +769,28 @@ BYTECODE_NAMES = initialize_bytecode_names()
 
 def initialize_bytecode_table():
     result = [None] * 256
+    args = [None] * 256
     for entry in BYTECODE_RANGES:
-        if len(entry) == 2:
+        if len(entry) == 3:
+            idx = 1
             positions = [entry[0]]
         else:
+            idx = 2
             positions = range(entry[0], entry[1]+1)
         for pos in positions:
-            result[pos] = getattr(ContextPartShadow, entry[-1])
+            result[pos] = getattr(ContextPartShadow, entry[idx])
+            args[pos] = result[pos].parameter_bytes
     assert None not in result
-    return result
+    assert None not in args
+    return result, args
 
 # this table is only used for creating named bytecodes in tests and printing
-BYTECODE_TABLE = initialize_bytecode_table()
+BYTECODE_TABLE, BYTECODE_ARGUMENT_COUNT = initialize_bytecode_table()
 
 def initialize_return_bytecodes():
     result = []
     for entry in BYTECODE_RANGES:
-        if len(entry) == 2:
+        if len(entry) == 3:
             if entry[1].startswith('return'):
                 result.append(entry[0])
         else:
@@ -782,3 +800,101 @@ def initialize_return_bytecodes():
     return result
 
 RETURN_BYTECODES = initialize_return_bytecodes()
+
+def initialize_conditional_jump_bytecodes():
+    result = []
+    cond_jump_bytecodes = ( "shortConditionalJumpBytecode",
+                            "longJumpIfTrueBytecode",
+                            "longJumpIfFalseBytecode" )
+    for entry in BYTECODE_RANGES:
+        if len(entry) == 3:
+            if entry[1] in cond_jump_bytecodes:
+                result.append(entry[0])
+        else:
+            if entry[2] in cond_jump_bytecodes:
+                result.extend(range(entry[0], entry[1]+1))
+    assert len(result) > 0
+    return result
+
+CONDITIONAL_JUMP_BYTECODES = initialize_conditional_jump_bytecodes()
+
+
+def initialize_bytecode_effects():
+    result = [None] * 256
+    for entry in BYTECODE_RANGES:
+        if len(entry) == 3:
+            positions = [entry[0]]
+        else:
+            positions = range(entry[0], entry[1]+1)
+        for pos in positions:
+            result[pos] = entry[-1]
+    assert None not in result
+    return result
+
+BYTECODE_EFFECTS = initialize_bytecode_effects()
+
+
+def compute_frame_size(bytecode):
+    return _compute_frame_size(bytecode, 0)
+
+
+def _compute_frame_size(bytecode, offset):
+    size = 0
+    max_size = 0
+    idx = offset
+    while idx < len(bytecode):
+        byte = ord(bytecode[idx])
+        parameters = BYTECODE_ARGUMENT_COUNT[byte]
+        if parameters > 0:
+            parameter_1 = ord(bytecode[idx + 1])
+        else:
+            parameter_1 = 0
+        if byte in CONDITIONAL_JUMP_BYTECODES:
+            if parameters == 0:
+                jump = (byte & 7) + 1
+            elif parameters == 1:
+                jump = ((byte & 3) << 8) + parameter_1
+            else:
+                assert False
+            szA = _compute_frame_size(bytecode, idx + parameters + 1)
+            szB = _compute_frame_size(bytecode, idx + parameters + 1 + jump)
+            return max_size + max(szA, szB)
+        elif byte in RETURN_BYTECODES:
+            return max_size
+        else:
+            effect = BYTECODE_EFFECTS[byte]
+            size += _compute_effect_of_bytecode(byte, effect, parameter_1)
+            max_size = max(size, max_size)
+            idx += parameters + 1
+    return size
+
+
+def _compute_effect_of_bytecode(byte, effect, parameter_1):
+    if effect == ARRAY_EFFECT:
+        arraySize, popIntoArray = splitter[7, 1](parameter_1)
+        if popIntoArray == 1:
+            return -arraySize + 1
+    elif effect == SEND_EFFECT_SHIFT5:
+        argcount = parameter_1 >> 5
+        return -argcount - 1 + 1
+    elif effect == SEND_EFFECT_SHIFT6:
+        argcount = parameter_1 >> 6
+        return -argcount - 1 + 1
+    elif effect == SEND_EFFECT_LITERAL:
+        argcount = ((byte >> 4) & 3) - 1
+        return -argcount - 1 + 1
+    elif effect == CLOSURE_EFFECT:
+        numArgs, numCopied = splitter[4, 4](descriptor)
+        return -numCopied + 1
+    elif effect == ANYTHING_EFFECT:
+        opType = parameter_1 >> 5
+        if opType in (0, 1): # send
+            return -(parameter_1 & 31) - 1 + 1
+        elif opType in (2, 3, 4): # push
+            return 1
+        elif opType in (5, 7): # top
+            return 0
+        elif opType == 6: # pop
+            return -1
+    else:
+        return effect

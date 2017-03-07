@@ -58,7 +58,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
                 # Main method content
                 "bytes", "literals",
                 # Additional info about the method
-                "lookup_selector", "compiledin_class", "lookup_class" ]
+                "lookup_selector", "compiledin_class", "lookup_class", "_frame_size" ]
     lookup_selector = "<unknown>"
     lookup_class = None
 
@@ -95,6 +95,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         W_AbstractObjectWithIdentityHash.__init__(self)
         self.lookup_selector = "unknown%d" % self.gethash()
         self.bytes = ["\x00"] * bytecount
+        self._frame_size = 0
         self.setheader(space, header, initializing=True)
         self.post_init()
 
@@ -140,10 +141,12 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 
     def setbytes(self, bytes):
         self.bytes = bytes
+        self.update_frame_size()
 
     def setchar(self, index0, character):
         assert index0 >= 0
         self.bytes[index0] = character
+        self.update_frame_size()
 
     # === Getters ===
 
@@ -185,7 +188,14 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         return self._primitive
 
     @jit.elidable_promote()
-    def compute_frame_size(self):
+    def frame_size(self):
+        return self._frame_size
+
+    def update_frame_size(self):
+        from rsqueakvm.interpreter_bytecodes import compute_frame_size
+        self._frame_size = compute_frame_size(self.getbytes()) + self.argsize + self._tempsize
+
+    def squeak_frame_size(self):
         # From blue book: normal mc have place for 12 temps+maxstack
         # mc for methods with islarge flag turned on 32
         return 16 + self.islarge * 40 + self.argsize
@@ -309,6 +319,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         self._primitive, w_other._primitive = w_other._primitive, self._primitive
         self.literals, w_other.literals = w_other.literals, self.literals
         self._tempsize, w_other._tempsize = w_other._tempsize, self._tempsize
+        self._frame_size, w_other._frame_size = w_other._frame_size, self._frame_size
         self.bytes, w_other.bytes = w_other.bytes, self.bytes
         self.header, w_other.header = w_other.header, self.header
         self.literalsize, w_other.literalsize = w_other.literalsize, self.literalsize
@@ -326,6 +337,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def clone(self, space):
         copy = self.__class__(space, 0, self.getheader())
         copy.bytes = list(self.bytes)
+        copy._frame_size = self._frame_size
         copy.literals = list(self.literals)
         copy.compiledin_class = self.compiledin_class
         copy.lookup_selector = self.lookup_selector
@@ -362,14 +374,17 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         return self.get_identifier_string()
 
     def bytecode_string(self, markBytecode=0):
-        from rsqueakvm.interpreter_bytecodes import BYTECODE_TABLE
+        from rsqueakvm.interpreter_bytecodes import BYTECODE_TABLE, BYTECODE_ARGUMENT_COUNT
         retval = "Bytecode:------------"
         j = 1
-        for i in self.bytes:
+        idx = 0
+        while idx < len(self.bytes):
+            i = self.bytes[idx]
             retval += '\n'
             retval += '->' if j is markBytecode else '  '
             retval += ('%0.2i: 0x%0.2x(%0.3i) ' % (j, ord(i), ord(i))) + BYTECODE_TABLE[ord(i)].__name__
-            j += 1
+            idx += BYTECODE_ARGUMENT_COUNT[ord(i)] + 1
+            j += BYTECODE_ARGUMENT_COUNT[ord(i)] + 1
         retval += "\n---------------------"
         return retval
 

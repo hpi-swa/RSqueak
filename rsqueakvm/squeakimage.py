@@ -1050,7 +1050,7 @@ class SpurImageWriter(object):
         if obj.getclass(self.space).is_same_object(self.space.w_MethodContext):
             w_method = obj.fetch(self.space, constants.MTHDCTX_METHOD)
             if not w_method.is_nil(self.space):
-                w_method.compute_frame_size()
+                w_method.squeak_frame_size()
         elif obj.getclass(self.space).is_same_object(self.space.w_BlockContext):
             w_home = obj.fetch(self.space, constants.BLKCTX_HOME_INDEX)
             return self.frame_size_for(w_home)
