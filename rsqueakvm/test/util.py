@@ -132,11 +132,10 @@ def import_bytecodes(module_name):
             opcode = entry[0] + n
             assert entry[0] <= opcode <= entry[1]
             return chr(opcode)
-        setattr(mod, name, get_opcode_chr)
+        setattr(mod, entry[2], get_opcode_chr)
     for entry in interpreter_bytecodes.BYTECODE_RANGES:
-        name = entry[-1]
-        if len(entry) == 2:     # no range
-            setattr(mod, name, chr(entry[0]))
+        if len(entry) == 3:     # no range
+            setattr(mod, entry[1], chr(entry[0]))
         else:
             make_getter(entry)
 
@@ -435,6 +434,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         if literals is None:
             literals = [W_PointersObject(self, None, 2)]
         w_method.setliterals(literals)
+        w_method.update_frame_size()
         return w_method
 
     def make_frame(self, bytes, literals=None, receiver=None, args=[]):

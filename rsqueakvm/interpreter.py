@@ -571,6 +571,7 @@ class Interpreter(object):
         w_method.setbytes([chr(131), chr(len(w_arguments) << 5 + 0), chr(124)])  #returnTopFromMethodBytecode
         w_method.set_lookup_class_and_name(w_receiver.getclass(self.space),
                                            "Interpreter.perform")
+        w_method.set_frame_size(len(w_arguments) + 1)
         s_frame = ContextPartShadow.build_method_context(self.space, w_method,
                                                          w_receiver)
         s_frame.push(w_receiver)

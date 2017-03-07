@@ -97,7 +97,7 @@ def func(interp, s_frame, argcount, w_method):
 
 @expose_primitive(SNAPSHOT, clean_stack=False, no_result=True)
 def func(interp, s_frame, argcount):
-    s_frame.pop_n(argcount)
+    s_frame.pop_n(argcount + 1)
     s_frame.push(interp.space.w_true)
     # leaving true on the frame as return value for resuming image
     from rsqueakvm.squeakimage import SpurImageWriter

@@ -191,6 +191,9 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def frame_size(self):
         return self._frame_size
 
+    def set_frame_size(self, size):
+        self._frame_size = size
+
     def update_frame_size(self):
         from rsqueakvm.interpreter_bytecodes import compute_frame_size
         self._frame_size = compute_frame_size(self.getbytes()) + self.argsize + self._tempsize

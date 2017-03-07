@@ -801,22 +801,19 @@ def initialize_return_bytecodes():
 
 RETURN_BYTECODES = initialize_return_bytecodes()
 
-def initialize_conditional_jump_bytecodes():
+def initialize_jump_bytecodes():
     result = []
-    cond_jump_bytecodes = ( "shortConditionalJumpBytecode",
-                            "longJumpIfTrueBytecode",
-                            "longJumpIfFalseBytecode" )
     for entry in BYTECODE_RANGES:
         if len(entry) == 3:
-            if entry[1] in cond_jump_bytecodes:
+            if "Jump" in entry[1]:
                 result.append(entry[0])
         else:
-            if entry[2] in cond_jump_bytecodes:
+            if "Jump" in entry[2]:
                 result.extend(range(entry[0], entry[1]+1))
     assert len(result) > 0
     return result
 
-CONDITIONAL_JUMP_BYTECODES = initialize_conditional_jump_bytecodes()
+JUMP_BYTECODES = initialize_jump_bytecodes()
 
 
 def initialize_bytecode_effects():
@@ -845,28 +842,33 @@ def _compute_frame_size(bytecode, offset):
     while idx < len(bytecode):
         byte = ord(bytecode[idx])
         parameters = BYTECODE_ARGUMENT_COUNT[byte]
+        effect = BYTECODE_EFFECTS[byte]
         if parameters > 0:
             parameter_1 = ord(bytecode[idx + 1])
         else:
             parameter_1 = 0
-        if byte in CONDITIONAL_JUMP_BYTECODES:
+        if byte in JUMP_BYTECODES:
             if parameters == 0:
                 jump = (byte & 7) + 1
             elif parameters == 1:
-                jump = ((byte & 3) << 8) + parameter_1
+                if effect == 0:
+                    # UnconditionalJump
+                    jump = (((byte & 7) - 4) << 8) + parameter_1
+                else:
+                    jump = ((byte & 3) << 8) + parameter_1
             else:
                 assert False
-            szA = _compute_frame_size(bytecode, idx + parameters + 1)
-            szB = _compute_frame_size(bytecode, idx + parameters + 1 + jump)
-            return max_size + max(szA, szB)
+            if jump > 0:
+                szA = _compute_frame_size(bytecode, idx + parameters + 1)
+                szB = _compute_frame_size(bytecode, idx + parameters + 1 + jump)
+                return max_size + max(szA, szB)
         elif byte in RETURN_BYTECODES:
             return max_size
         else:
-            effect = BYTECODE_EFFECTS[byte]
             size += _compute_effect_of_bytecode(byte, effect, parameter_1)
             max_size = max(size, max_size)
-            idx += parameters + 1
-    return size
+        idx += parameters + 1
+    return max_size
 
 
 def _compute_effect_of_bytecode(byte, effect, parameter_1):
@@ -874,6 +876,8 @@ def _compute_effect_of_bytecode(byte, effect, parameter_1):
         arraySize, popIntoArray = splitter[7, 1](parameter_1)
         if popIntoArray == 1:
             return -arraySize + 1
+        else:
+            return 1
     elif effect == SEND_EFFECT_SHIFT5:
         argcount = parameter_1 >> 5
         return -argcount - 1 + 1
@@ -884,7 +888,7 @@ def _compute_effect_of_bytecode(byte, effect, parameter_1):
         argcount = ((byte >> 4) & 3) - 1
         return -argcount - 1 + 1
     elif effect == CLOSURE_EFFECT:
-        numArgs, numCopied = splitter[4, 4](descriptor)
+        numArgs, numCopied = splitter[4, 4](parameter_1)
         return -numCopied + 1
     elif effect == ANYTHING_EFFECT:
         opType = parameter_1 >> 5
@@ -896,5 +900,7 @@ def _compute_effect_of_bytecode(byte, effect, parameter_1):
             return 0
         elif opType == 6: # pop
             return -1
+        else:
+            assert False
     else:
         return effect
