@@ -2,6 +2,7 @@
 set -ex
 
 readonly BASE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly BUILD_DIR="${BASE}/../.build"
 readonly TEST_IMAGES_BASE="${TRAVIS_BUILD_DIR}/rsqueakvm/test/images/"
 readonly TEST_IMAGES_BASE_URL="https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/testing/images/"
 
@@ -135,7 +136,14 @@ if [[ "${PLUGINS}" = "PythonPlugin" ]]; then
   # A wrong macro is applied to "const SDL_MessageBoxButtonData *buttons;"
   # which breaks compilation at the end.
   echo "Patching SDL.h for PythonPlugin"
-  sudo sed -i.bak "/SDL_messagebox\.h/s/^/\/\/ /" "/usr/local/include/SDL2/SDL.h"
+  SDLH_PATH="/usr/local/include/SDL2/SDL.h"
+  [[ ! -f "${SDLH_PATH}" ]] && SDLH_PATH="${BUILD_DIR}/SDL32bit/SDL.h"
+  [[ ! -f "${SDLH_PATH}" ]] && SDLH_PATH="${BUILD_DIR}/SDL64bit/SDL.h"
+  if [[ ! -f "${SDLH_PATH}" ]]; then
+    print "SDL.h not found."
+    exit 1
+  fi
+  sudo sed -i.bak "/SDL_messagebox\.h/s/^/\/\/ /" "${SDLH_PATH}"
 fi
 
 if [[ -d ".build/sqpyte" ]]; then
