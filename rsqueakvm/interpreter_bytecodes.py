@@ -561,14 +561,10 @@ class __extend__(ContextPartShadow):
     def unknownBytecode(self, interp, current_bytecode):
         raise error.MissingBytecode("unknownBytecode")
 
-    @bytecode_implementation()
+    @bytecode_implementation(parameter_bytes=2)
     def callPrimitiveBytecode(self, interp, current_bytecode):
         if not interp.image.version.is_spur:
             raise error.MissingBytecode("unknownBytecode")
-        else:
-            # skip next two bytes which belong to this bytecode
-            # then continue with the next bytecodes (fallback code)
-            self._jump(2)
 
     # ====== Jump bytecodes ======
 
