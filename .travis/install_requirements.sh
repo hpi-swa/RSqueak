@@ -131,21 +131,6 @@ python .build/download_dependencies.py $OPTIONS
 
 load_test_images
 
-if [[ "${PLUGINS}" = "PythonPlugin" ]]; then
-  # Comment out SDL_messagebox.h in SDL.h
-  # A wrong macro is applied to "const SDL_MessageBoxButtonData *buttons;"
-  # which breaks compilation at the end.
-  echo "Patching SDL.h for PythonPlugin"
-  SDLH_PATH="/usr/local/include/SDL2/SDL.h"
-  [[ ! -f "${SDLH_PATH}" ]] && SDLH_PATH="${BUILD_DIR}/SDL32bit/include/SDL.h"
-  [[ ! -f "${SDLH_PATH}" ]] && SDLH_PATH="${BUILD_DIR}/SDL64bit/include/SDL.h"
-  if [[ ! -f "${SDLH_PATH}" ]]; then
-    print "SDL.h not found."
-    exit 1
-  fi
-  sudo sed -i.bak "/SDL_messagebox\.h/s/^/\/\/ /" "${SDLH_PATH}"
-fi
-
 if [[ -d ".build/sqpyte" ]]; then
   # Make sqlite/sqpyte for DatabasePlugin
   pushd ".build/sqpyte" > /dev/null

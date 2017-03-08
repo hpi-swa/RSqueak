@@ -19,6 +19,10 @@ def new_pypy_objspace():
     pypy_config.objspace.usemodules.micronumpy = False
     pypy_config.objspace.usemodules.cppyy = False
 
+    # avoid macro problems with curses and SDL2
+    # TODO(fniephaus): should be reenabled for pyrepl support
+    pypy_config.objspace.usemodules._minimal_curses = False
+
     # cpyext causes a lot of 'Undefined symbols for architecture x86_64' errors
     pypy_config.objspace.usemodules.cpyext = False
 
