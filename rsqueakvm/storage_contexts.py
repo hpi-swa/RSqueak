@@ -311,8 +311,9 @@ class ContextPartShadow(AbstractStrategy):
             assert size >= 0, "trying to store negative stackpointer"
             self.pop_n(depth - size)
         else:
-            for i in range(depth, size):
-                self.push(self.space.w_nil)
+            self.store_stack_ptr(size)
+            # for i in range(depth, size):
+            #     self.push(self.space.w_nil)
 
     def stackdepth(self):
         return self.stack_ptr()

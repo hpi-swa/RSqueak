@@ -105,6 +105,7 @@ def create_method(tempsize=3,argsize=2, bytes="abcde"):
     w_m._tempsize = tempsize
     w_m.argsize = argsize
     w_m.literalsize = 2
+    w_m.update_frame_size()
     return w_m
 
 def methodcontext(w_sender=None, pc=13, stackpointer=0, stacksize=5,

@@ -419,8 +419,10 @@ class BootstrappedObjSpace(objspace.ObjSpace):
     # ============ Helpers for executing ============
 
     def wrap_frame(self, s_frame):
-        # Add a toplevel frame around s_frame to properly return.
-        toplevel_frame = self.make_method([0x7c]).create_frame(self, self.w(0), [])
+        # Add a toplevel frame around s_frame to properly return, with one push
+        # bytecode (that we skip) so we have enough room on the stack
+        toplevel_frame = self.make_method([112, 0x7c]).create_frame(self, self.w(0), [])
+        toplevel_frame.store_pc(1)
         s_frame.store_s_sender(toplevel_frame)
 
     def make_method(self, bytes, literals=None, numargs=0):

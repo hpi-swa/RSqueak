@@ -562,7 +562,7 @@ class __extend__(ContextPartShadow):
         raise error.MissingBytecode("unknownBytecode")
 
     @bytecode_implementation(parameter_bytes=2)
-    def callPrimitiveBytecode(self, interp, current_bytecode):
+    def callPrimitiveBytecode(self, interp, current_bytecode, i, j):
         if not interp.image.version.is_spur:
             raise error.MissingBytecode("unknownBytecode")
 
@@ -828,14 +828,18 @@ BYTECODE_EFFECTS = initialize_bytecode_effects()
 
 
 def compute_frame_size(bytecode):
-    return _compute_frame_size(bytecode, 0)
+    return _compute_frame_size(bytecode, 0)[0]
 
 
-def _compute_frame_size(bytecode, offset):
+def _compute_frame_size(bytecode, offset, stop=-1):
     size = 0
     max_size = 0
     idx = offset
-    while idx < len(bytecode):
+    if stop == -1:
+        stop = len(bytecode)
+    else:
+        stop = min(stop, len(bytecode))
+    while idx < stop:
         byte = ord(bytecode[idx])
         parameters = BYTECODE_ARGUMENT_COUNT[byte]
         effect = BYTECODE_EFFECTS[byte]
@@ -843,6 +847,7 @@ def _compute_frame_size(bytecode, offset):
             parameter_1 = ord(bytecode[idx + 1])
         else:
             parameter_1 = 0
+        idx += parameters
         if byte in JUMP_BYTECODES:
             if parameters == 0:
                 jump = (byte & 7) + 1
@@ -855,16 +860,38 @@ def _compute_frame_size(bytecode, offset):
             else:
                 assert False
             if jump > 0:
-                szA = _compute_frame_size(bytecode, idx + parameters + 1)
-                szB = _compute_frame_size(bytecode, idx + parameters + 1 + jump)
-                return max_size + max(szA, szB)
+                nextpc = idx + 1
+                szA, idxA = _compute_frame_size(bytecode, nextpc, stop=nextpc + jump)
+                if idxA >= nextpc + jump:
+                    # branch A ran over to branch B. just continue
+                    max_size = max_size + szA
+                    idx = idxA
+                else:
+                    # Branch A returned before reaching branch B's jump target.
+                    # We continue calculating with branch B.
+                    szB, idxB = _compute_frame_size(bytecode, nextpc + jump)
+                    return max_size + max(szA, szB), idxB
         elif byte in RETURN_BYTECODES:
-            return max_size
+            return max_size, idx
+        elif effect == CLOSURE_EFFECT:
+            size += _compute_effect_of_bytecode(byte, effect, parameter_1)
+            if idx > len(bytecode) - 2:
+                # parameter bytes missing, 0 size closure
+                max_size = max(size, max_size)
+            else:
+                assert parameters == 3
+                j, i = ord(bytecode[idx - 1]), ord(bytecode[idx])
+                numArgs, numCopied = splitter[4, 4](parameter_1)
+                blockSize = (j << 8) | i
+                nextpc = idx + 1
+                szBlock, _ = _compute_frame_size(bytecode, nextpc, stop=nextpc + blockSize)
+                szBlock += numArgs + numCopied
+                max_size = max(max(size, max_size), szBlock)
         else:
             size += _compute_effect_of_bytecode(byte, effect, parameter_1)
             max_size = max(size, max_size)
-        idx += parameters + 1
-    return max_size
+        idx += 1
+    return max_size, idx
 
 
 def _compute_effect_of_bytecode(byte, effect, parameter_1):
