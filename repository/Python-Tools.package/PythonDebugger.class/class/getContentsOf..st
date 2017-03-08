@@ -1,4 +1,4 @@
-pysource
+pySource
 getContentsOf: aFileName
 	| stream data |
 	stream := StandardFileStream oldFileNamed: aFileName.

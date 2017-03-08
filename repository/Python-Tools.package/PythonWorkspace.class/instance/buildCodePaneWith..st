@@ -4,11 +4,9 @@ buildCodePaneWith: builder
 	textSpec := builder pluggableCodePaneSpec new.
 	textSpec 
 		model: self;
-		getText: #expression; 
-		editText: #expression:;
-		help: #helpText;
+		getText: #contents; 
+		setText: #contents:notifying:; 
 		selection: #contentsSelection; 
 		menu: #codePaneMenu:shifted:;
-		askBeforeDiscardingEdits: false;
 		stylerClass: PythonTextStyler.
 	^textSpec

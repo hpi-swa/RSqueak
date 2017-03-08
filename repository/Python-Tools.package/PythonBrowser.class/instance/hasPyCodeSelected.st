@@ -4,4 +4,5 @@ hasPyCodeSelected
 	class := self selectedClassOrMetaClass.
 	selector := self selectedMessageName.
 	class isPython ifFalse: [^ false].
+	selector ifNil: [ ^ true ].
 	^ class pyMethodDict includesKey: selector

@@ -1,4 +1,4 @@
-pysource
+pySource
 filterPySource: aString lineno: scopeStart
 	| lines indentSize end |
 	lines := aString lines.

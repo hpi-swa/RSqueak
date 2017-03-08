@@ -14,14 +14,15 @@ buildCodePaneWith: builder
 		browseButtons frame: self optionalButtonsFrame.
 		top children add: browseButtons].
 
-	textSpec := PythonPluggableCodePaneSpec new.
+	textSpec := builder pluggableCodePaneSpec new.
 	textSpec 
 		model: self;
 		getText: #contents; 
 		setText: #contents:notifying:; 
 		selection: #contentsSelection; 
 		menu: #codePaneMenu:shifted:;
-		frame: self textFrame.
+		frame: self textFrame;
+		stylerClass: PythonTextStyler.
 	top children add: textSpec.
 
 	self wantsAnnotationPane ifTrue: [

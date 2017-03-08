@@ -1,4 +1,4 @@
-pysource
+pySource
 getPySource: aContext
 	| pyCode filename contents |
 	pyCode := aContext pyFrame f_code.

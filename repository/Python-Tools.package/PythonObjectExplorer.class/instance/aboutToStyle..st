@@ -1,5 +1,5 @@
-overrides
+as yet unclassified
 aboutToStyle: aStyler
 	(super aboutToStyle: aStyler) ifFalse: [ ^ false ].
-	aStyler isPythonCode: self hasPyContextSelected.
+	aStyler isPythonCode: true.
 	^ true

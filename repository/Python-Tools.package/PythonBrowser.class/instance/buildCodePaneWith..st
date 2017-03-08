@@ -7,13 +7,14 @@ buildCodePaneWith: builder
 		buttonSpec := self buildOptionalButtonsWith: builder.
 		buttonSpec frame: self optionalButtonsFrame.
 		top children add: buttonSpec].
-	textSpec := PythonPluggableCodePaneSpec new.
+	textSpec := builder pluggableCodePaneSpec new.
 	textSpec 
 		model: self;
 		getText: #contents; 
 		setText: #contents:notifying:; 
 		selection: #contentsSelection; 
-		menu: #codePaneMenu:shifted:.
+		menu: #codePaneMenu:shifted:;
+		stylerClass: PythonTextStyler.
 	self wantsAnnotationPane ifTrue: [
 		top ifNil: [
 			top := builder pluggablePanelSpec new.

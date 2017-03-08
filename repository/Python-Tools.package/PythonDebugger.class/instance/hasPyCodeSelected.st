@@ -1,3 +1,0 @@
-overrides
-hasPyCodeSelected
-	^ self hasPyContextSelected

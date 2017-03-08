@@ -1,4 +1,4 @@
-pysource
+pySource
 scopeEndIn: aString startingAt: aLineno
 	| lines currentIndentSize end |
 	lines := aString lines allButFirst: aLineno.

@@ -1,3 +1,0 @@
-*Python-Tools
-hasPyCodeSelected
-	^ false

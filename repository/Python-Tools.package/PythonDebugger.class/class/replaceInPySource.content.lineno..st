@@ -1,4 +1,4 @@
-pysource
+pySource
 replaceInPySource: oldContent content: aString lineno: aLineno
 	| lines end indentSize newLines |
 	lines := oldContent lines.

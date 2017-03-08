@@ -2,7 +2,8 @@
 	"class" : {
 		 },
 	"instance" : {
-		"buildCodePaneWith:" : "fn 3/7/2017 17:27",
+		"aboutToStyle:" : "fn 3/8/2017 14:26",
+		"buildCodePaneWith:" : "fn 3/8/2017 12:50",
 		"contentsIsString" : "fn 12/23/2016 11:11",
 		"fieldList" : "fn 2/23/2017 23:10",
 		"isPython" : "fn 3/7/2017 14:33",

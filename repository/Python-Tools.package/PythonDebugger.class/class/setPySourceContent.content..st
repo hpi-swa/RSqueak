@@ -1,4 +1,4 @@
-pysource
+pySource
 setPySourceContent: pyCode content: aString
 	| filename oldContents newContents stream |
 	filename := pyCode co_filename asSmalltalk.

@@ -1,0 +1,3 @@
+overrides
+defaultStylerClass
+	^ PythonTextStyler

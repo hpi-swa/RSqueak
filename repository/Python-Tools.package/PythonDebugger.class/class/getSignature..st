@@ -1,4 +1,4 @@
-pysource
+pySource
 getSignature: pyCode
 	| filename content |
 	filename := pyCode co_filename asSmalltalk.

@@ -1,4 +1,4 @@
-as yet unclassified
+utilities
 exploreFrames
 	| currentFrame result frameInfo |
 	currentFrame := Python primGetTopFrame.

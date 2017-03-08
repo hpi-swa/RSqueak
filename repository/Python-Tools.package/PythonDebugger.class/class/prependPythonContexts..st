@@ -1,4 +1,4 @@
-as yet unclassified
+pyContext
 prependPythonContexts: aContext
 	| currentPyFrame newFrames |
 	currentPyFrame := Python primGetTopFrame.
