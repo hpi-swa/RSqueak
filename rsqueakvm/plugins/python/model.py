@@ -1,5 +1,4 @@
 from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
-from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.storage_classes import ClassShadow
 from rsqueakvm.storage import AbstractCachingShadow
 from rsqueakvm.primitives.constants import EXTERNAL_CALL
@@ -8,13 +7,12 @@ from rsqueakvm.model.compiled_methods import (
 from rsqueakvm.plugins.python import global_state as gs
 from rsqueakvm.plugins.python.global_state import py_space
 
-from pypy.interpreter.baseobjspace import W_Root as WP_Root
 from pypy.interpreter.error import OperationError
 
 from rpython.rlib import objectmodel
 
 
-class W_PythonObject(W_PointersObject):
+class W_PythonObject(W_AbstractObjectWithIdentityHash):
     _attrs_ = ['wp_object', 's_class']
     _immutable_fields_ = ['wp_object', 's_class?']
     repr_classname = 'W_PythonObject'

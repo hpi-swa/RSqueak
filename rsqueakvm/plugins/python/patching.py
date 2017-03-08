@@ -114,9 +114,13 @@ def new_handle_operation_error(self, ec, operr, attach_tb=True):
         raise operr
     if gs.break_on_exception.get() and not self.has_exception_handler(operr):
         # import pdb; pdb.set_trace()
-        gs.wp_operror.set(operr)
-        print 'Python error caught'
-        gs.switch_action.perform()
+        language = ec.current_language
+        if language is None:
+            print 'Unable to handle error, no language found.'
+        else:
+            language.set_error(operr)
+            print 'Python error caught'
+            gs.switch_action.perform(ec, self)
     return old_handle_operation_error(self, ec, operr, attach_tb)
 
 

@@ -17,7 +17,7 @@ from pypy.interpreter.error import OperationError
 from pypy.interpreter.function import (Function, Method, StaticMethod,
                                        ClassMethod)
 
-from rpython.rlib import jit, objectmodel
+from rpython.rlib import jit
 
 
 _DO_NOT_RELOAD = True
@@ -26,9 +26,7 @@ patch_pypy()
 
 
 class PythonPluginClass(Plugin):
-
-    def we_are_translated(self):
-        return objectmodel.we_are_translated()
+    pass
 
 PythonPlugin = PythonPluginClass()
 
@@ -43,35 +41,35 @@ PluginStartupScripts.append(startup)
                                result_is_new_frame=True)
 def eval(interp, s_frame, w_rcvr, source, filename, cmd):
     from rsqueakvm.plugins.python import execution
-    # Reset error and state
-    global_state.wp_result.set(None)
-    global_state.wp_operror.set(None)
     # import pdb; pdb.set_trace()
-    execution.start_new_thread(
-        source, filename, cmd, translated=PythonPlugin.we_are_translated())
+    language = execution.W_PythonLanguage(source, filename, cmd)
+    language.start()
     # when we are here, the Python process has yielded
-    return execution.switch_to_smalltalk(interp, s_frame, first_call=True)
+    return language.switch_to_smalltalk(interp, s_frame, first_call=True)
 
 
-@PythonPlugin.expose_primitive(unwrap_spec=[object], result_is_new_frame=True)
-def resumePython(interp, s_frame, w_rcvr):
+@PythonPlugin.expose_primitive(unwrap_spec=[object, object],
+                               result_is_new_frame=True)
+def resume(interp, s_frame, w_rcvr, language):
     from rsqueakvm.plugins.python import execution
     # print 'Smalltalk yield'
     # import pdb; pdb.set_trace()
-    if not execution.resume_thread():
+    if not isinstance(language, execution.W_ForeignLanguage):
         raise PrimitiveFailedError
-    return execution.switch_to_smalltalk(interp, s_frame)
-
-
-@PythonPlugin.expose_primitive(unwrap_spec=[object])
-def lastResult(interp, s_frame, w_rcvr):
-    return W_PythonObject(global_state.wp_result.get())
+    if not language.resume():
+        raise PrimitiveFailedError
+    return language.switch_to_smalltalk(interp, s_frame)
 
 
 @PythonPlugin.expose_primitive(unwrap_spec=[object])
 def lastError(interp, s_frame, w_rcvr):
-    operr = global_state.wp_operror.get()
+    language = py_space.getexecutioncontext().current_language
+    if language is None:
+        print 'language was None in lastError'
+        raise PrimitiveFailedError
+    operr = language.get_error()
     if operr is None:
+        print 'operr was None in lastError'
         raise PrimitiveFailedError
     return W_PythonObject(utils.operr_to_pylist(operr))
 
@@ -116,8 +114,7 @@ def restartSpecificFrame(interp, s_frame, w_rcvr, w_frame, source, filename,
 def asSmalltalk(interp, s_frame, w_rcvr):
     if not isinstance(w_rcvr, model.W_PythonObject):
         raise PrimitiveFailedError
-    w_result = utils.python_to_smalltalk(interp.space, w_rcvr.wp_object)
-    return w_result
+    return utils.python_to_smalltalk(interp.space, w_rcvr.wp_object)
 
 
 @PythonPlugin.expose_primitive(compiled_method=True)

@@ -84,3 +84,9 @@ def test_smalltalk():
     assert isinstance(res, W_PointersObject)
     assert res.getclass(space) is space.w_Array
     assert res.size() == 4
+
+
+def test_error():
+    x = get_python_result('1/0', 'eval')
+    assert len(x) == 2
+    assert x[0] == 'ZeroDivisionError'

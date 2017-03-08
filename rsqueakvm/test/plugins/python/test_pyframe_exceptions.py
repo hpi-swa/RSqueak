@@ -1,4 +1,4 @@
-from rsqueakvm.plugins.python.global_state import py_space, wp_operror
+from rsqueakvm.plugins.python.global_state import py_space
 from rsqueakvm.plugins.python.patching import patch_pypy
 
 from pypy.interpreter.error import OperationError
@@ -21,7 +21,8 @@ def no_error_caught(code, cmd):
     pycode = compilecode(py_space, code, '<string>', cmd)
     py_frame = py_space.FrameClass(py_space, pycode, py_space.newdict(), None)
     py_frame.run()
-    return wp_operror.get() is None
+    language = py_space.getexecutioncontext().current_language
+    return language is not None and language.wp_operror is None
 
 
 def test_simple_exception():
