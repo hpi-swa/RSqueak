@@ -5,11 +5,10 @@ from rsqueakvm.plugins.python import global_state as gs
 from rsqueakvm.plugins.python.model import W_PythonObject
 from rsqueakvm.plugins.python.utils import _run_eval_string, operr_to_pylist
 
-from rpython.rlib import objectmodel
+from rpython.rlib import objectmodel, rstacklet
 
 from pypy.interpreter.error import OperationError
 from pypy.interpreter.executioncontext import ExecutionContext
-from pypy.module._continuation.interp_continuation import build_sthread
 
 
 ExecutionContext.current_language = None
@@ -196,9 +195,14 @@ class StackletLanguageRunner(AbstractLanguageRunner):
 
     def __init__(self, language):
         AbstractLanguageRunner.__init__(self, language)
-        self.sthread = build_sthread(gs.py_space)
+        self.sthread = self.ensure_sthread()
         self.language_handle = self.sthread.get_null_handle()
         self.smalltalk_handle = self.sthread.get_null_handle()
+
+    def ensure_sthread(self):
+        if self.sthread is None:
+            self.sthread = rstacklet.StackletThread()
+        return self.sthread
 
     def start_thread(self):
         global_execution_state.origin = self
@@ -230,7 +234,7 @@ class StackletLanguageRunner(AbstractLanguageRunner):
         self.smalltalk_handle = h
         global_execution_state.clear()
         self.language().run()
-        # global_execution_state.origin = self
+        global_execution_state.origin = self
         return self.smalltalk_handle  # return to Smalltalk when done
 
 
