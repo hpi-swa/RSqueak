@@ -1,49 +1,29 @@
-from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
-from rsqueakvm.storage_classes import ClassShadow
-from rsqueakvm.storage import AbstractCachingShadow
+from rsqueakvm.plugins.foreign_language import model as fl_model
+from rsqueakvm.plugins.python import global_state as gs
+from rsqueakvm.plugins.python.global_state import py_space
 from rsqueakvm.primitives.constants import EXTERNAL_CALL
 from rsqueakvm.model.compiled_methods import (
     W_PreSpurCompiledMethod, W_SpurCompiledMethod)
-from rsqueakvm.plugins.python import global_state as gs
-from rsqueakvm.plugins.python.global_state import py_space
+from rsqueakvm.storage import AbstractCachingShadow
 
 from pypy.interpreter.error import OperationError
 
 from rpython.rlib import objectmodel
 
 
-class W_PythonObject(W_AbstractObjectWithIdentityHash):
+class W_PythonObject(fl_model.W_ForeignLanguageObject):
     _attrs_ = ['wp_object', 's_class']
     _immutable_fields_ = ['wp_object', 's_class?']
     repr_classname = 'W_PythonObject'
 
     def __init__(self, wp_object):
-        W_AbstractObjectWithIdentityHash.__init__(self)
+        fl_model.W_ForeignLanguageObject.__init__(self)
         self.wp_object = wp_object
         # self.w_pyID = None
         self.s_class = None
 
-    def at0(self, space, index0):
-        # import pdb; pdb.set_trace()
-        return space.w_nil
-
-    def atput0(self, space, index0, w_value):
-        # import pdb; pdb.set_trace()
-        pass
-
-    def fetch(self, space, n0):
-        # import pdb; pdb.set_trace()
-        return space.w_nil
-
-    def store(self, space, n0, w_value):
-        # import pdb; pdb.set_trace()
-        pass
-
-    def safe_getclass(self, space):
-        return W_PythonObject(self.wp_object.getclass(py_space))
-
     def getclass(self, space):
-        return self.safe_getclass(space)
+        return W_PythonObject(self.wp_object.getclass(py_space))
 
     def class_shadow(self, space):
         return PythonClassShadow(space, self.wp_object)
@@ -59,7 +39,7 @@ class W_PythonObject(W_AbstractObjectWithIdentityHash):
                 other.wp_object is self.wp_object)
 
 
-class PythonClassShadow(ClassShadow):
+class PythonClassShadow(fl_model.ForeignLanguageClassShadow):
     _attrs_ = ['wp_object', 'wp_class']
     _immutable_fields_ = ['wp_class']
 
@@ -71,16 +51,8 @@ class PythonClassShadow(ClassShadow):
         AbstractCachingShadow.__init__(
             self, space, space.w_nil, 0, space.w_nil)
 
-    def changed(self):
-        pass  # Changes to Python classes are handled in Python land
-
-    def lookup(self, w_selector):
-        w_method = self.make_method(w_selector)
-        # import pdb; pdb.set_trace()
-        if w_method is not None:
-            return w_method
-        w_po = gs.w_python_object_class.get()
-        return w_po.as_class_get_shadow(self.space).lookup(w_selector)
+    def fallback_class(self):
+        return gs.w_python_object_class.get()
 
     def make_method(self, w_selector):
         # import pdb; pdb.set_trace()

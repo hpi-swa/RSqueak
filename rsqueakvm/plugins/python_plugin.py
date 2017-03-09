@@ -7,9 +7,11 @@ else:
 
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.variable import W_BytesObject
+from rsqueakvm.plugins.foreign_language.model import W_ForeignLanguage
 from rsqueakvm.plugins.plugin import Plugin, PluginStartupScripts
 from rsqueakvm.plugins.python import model, global_state, utils
 from rsqueakvm.plugins.python.global_state import py_space
+from rsqueakvm.plugins.python.language import W_PythonLanguage
 from rsqueakvm.plugins.python.model import W_PythonObject
 from rsqueakvm.plugins.python.patching import patch_pypy
 
@@ -40,9 +42,8 @@ PluginStartupScripts.append(startup)
 @PythonPlugin.expose_primitive(unwrap_spec=[object, str, str, str],
                                result_is_new_frame=True)
 def eval(interp, s_frame, w_rcvr, source, filename, cmd):
-    from rsqueakvm.plugins.python import execution
     # import pdb; pdb.set_trace()
-    language = execution.W_PythonLanguage(source, filename, cmd)
+    language = W_PythonLanguage(source, filename, cmd)
     language.start()
     # when we are here, the Python process has yielded
     return language.switch_to_smalltalk(interp, s_frame, first_call=True)
@@ -51,10 +52,9 @@ def eval(interp, s_frame, w_rcvr, source, filename, cmd):
 @PythonPlugin.expose_primitive(unwrap_spec=[object, object],
                                result_is_new_frame=True)
 def resume(interp, s_frame, w_rcvr, language):
-    from rsqueakvm.plugins.python import execution
     # print 'Smalltalk yield'
     # import pdb; pdb.set_trace()
-    if not isinstance(language, execution.W_ForeignLanguage):
+    if not isinstance(language, W_ForeignLanguage):
         raise PrimitiveFailedError
     if not language.resume():
         raise PrimitiveFailedError
@@ -67,11 +67,11 @@ def lastError(interp, s_frame, w_rcvr):
     if language is None:
         print 'language was None in lastError'
         raise PrimitiveFailedError
-    operr = language.get_error()
-    if operr is None:
-        print 'operr was None in lastError'
+    w_error = language.get_error()
+    if w_error is None:
+        print 'w_error was None in lastError'
         raise PrimitiveFailedError
-    return W_PythonObject(utils.operr_to_pylist(operr))
+    return w_error
 
 
 @PythonPlugin.expose_primitive(clean_stack=False)
@@ -150,7 +150,6 @@ def send(interp, s_frame, argcount, w_method):
             else:
                 wp_result = py_attr
     except OperationError as operr:
-        print 'Operror in send (%s)' % operr.errorstr(py_space)
         return W_PythonObject(utils.operr_to_pylist(operr))
     except Exception as e:
         print 'Unable to call %s on %s: %s' % (methodname, wp_rcvr, e)

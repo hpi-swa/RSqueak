@@ -1,13 +1,12 @@
 from rsqueakvm.error import Exit
 from rsqueakvm.model.compiled_methods import W_CompiledMethod
 from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.plugins.foreign_language import global_state as fl_gs
 from rsqueakvm.plugins.python.py_objspace import new_pypy_objspace
 from rsqueakvm.util.cells import QuasiConstant, Cell
 
 from pypy.interpreter.error import OperationError
 from pypy.interpreter.executioncontext import PeriodicAsyncAction
-
-from rpython.rlib import objectmodel
 
 
 class RestartException(OperationError):
@@ -44,7 +43,7 @@ class SwitchToSmalltalkAction(PeriodicAsyncAction):
         # print 'Python continue'
 
         # operror has been in Smalltalk land, clear it now to allow resuming
-        language.set_error(None)
+        language.reset_error()
 
         # handle py_frame_restart_info if set
         restart_info = py_frame_restart_info.get()
@@ -68,22 +67,14 @@ w_python_class = QuasiConstant(None, type=W_PointersObject)
 w_python_object_class = QuasiConstant(None, type=W_PointersObject)
 w_python_plugin_send = QuasiConstant(None, type=W_PointersObject)
 
-translating = [True]
-
 
 def startup(space):
+    fl_gs.startup(space)
+
     w_python_plugin_send.set(space.wrap_list_unroll_safe([
         space.wrap_string('PythonPlugin'),
         space.wrap_string('send')
     ]))
-
-    foreign_language_class = space.smalltalk_at('ForeignLanguage')
-    if foreign_language_class is None:
-        # disable plugin?
-        error_msg = 'ForeignLanguage class not found.'
-        print error_msg
-        raise Exit(error_msg)
-    w_foreign_language_class.set(foreign_language_class)
 
     python_class = space.smalltalk_at('Python')
     if python_class is None:
@@ -110,5 +101,3 @@ def startup(space):
         print error_msg
         raise Exit(error_msg)
     w_python_resume_method.set(resume_method)
-
-    translating[0] = objectmodel.we_are_translated()

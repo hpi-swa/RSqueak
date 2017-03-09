@@ -22,7 +22,7 @@ def no_error_caught(code, cmd):
     py_frame = py_space.FrameClass(py_space, pycode, py_space.newdict(), None)
     py_frame.run()
     language = py_space.getexecutioncontext().current_language
-    return language is not None and language.wp_operror is None
+    return language is not None and language.get_error() is None
 
 
 def test_simple_exception():
