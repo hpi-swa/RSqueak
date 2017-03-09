@@ -446,7 +446,7 @@ class SDLDisplay(NullDisplay):
         if btn == RedButtonBit:
             if mods & CtrlKeyBit:
                 btn = BlueButtonBit
-            elif mods & CommandKeyBit:
+            elif mods & (CommandKeyBit | OptionKeyBit):
                 btn = YellowButtonBit
         return (btn, mods)
 
