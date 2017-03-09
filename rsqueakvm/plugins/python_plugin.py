@@ -149,9 +149,9 @@ def send(interp, s_frame, argcount, w_method):
                 wp_result = py_space.w_None
             else:
                 wp_result = py_attr
-    except OperationError as operationerr:
-        print 'Operror in send (%s)' % operationerr.errorstr(py_space)
-        raise PrimitiveFailedError
+    except OperationError as operr:
+        print 'Operror in send (%s)' % operr.errorstr(py_space)
+        return W_PythonObject(utils.operr_to_pylist(operr))
     except Exception as e:
         print 'Unable to call %s on %s: %s' % (methodname, wp_rcvr, e)
         raise PrimitiveFailedError
