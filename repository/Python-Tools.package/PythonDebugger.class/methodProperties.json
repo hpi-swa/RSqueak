@@ -1,6 +1,6 @@
 {
 	"class" : {
-		"exploreFrames" : "fn 1/18/2017 17:34",
+		"exploreFrames" : "fn 3/9/2017 15:20",
 		"filterPySource:lineno:" : "fn 2/2/2017 00:01",
 		"getContentsOf:" : "fn 2/1/2017 22:37",
 		"getPySource:" : "fn 3/6/2017 10:25",
@@ -8,12 +8,12 @@
 		"indent:by:" : "fn 2/1/2017 22:41",
 		"indentSize:" : "fn 2/1/2017 22:36",
 		"newPyContext" : "fn 3/7/2017 13:48",
-		"prependPythonContexts:" : "fn 3/6/2017 10:19",
+		"prependPythonContexts:" : "fn 3/9/2017 15:19",
 		"replaceInPySource:content:lineno:" : "fn 2/2/2017 00:05",
 		"scopeEndIn:startingAt:" : "fn 2/1/2017 22:36",
 		"setPySourceContent:content:" : "fn 3/6/2017 10:26" },
 	"instance" : {
-		"aboutToStyle:" : "fn 3/8/2017 14:25",
+		"aboutToStyle:" : "fn 3/8/2017 22:05",
 		"buildCodePaneWith:" : "fn 3/8/2017 12:50",
 		"contents:notifying:" : "fn 3/6/2017 19:17",
 		"contextForStack:" : "fn 2/21/2017 12:48",

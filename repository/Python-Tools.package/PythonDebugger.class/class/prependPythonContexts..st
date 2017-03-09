@@ -4,7 +4,7 @@ prependPythonContexts: aContext
 	currentPyFrame := Python primGetTopFrame.
 	currentPyFrame ifNil: [ ^ aContext ].
 	newFrames := OrderedCollection new.
-	[ currentPyFrame notNil ]
+	[ currentPyFrame notNone ]
 		whileTrue: [ | newCtx |
 			newCtx := self newPyContext.
 			newCtx pyFrame: currentPyFrame.

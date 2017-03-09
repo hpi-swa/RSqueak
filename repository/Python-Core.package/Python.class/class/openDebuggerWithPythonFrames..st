@@ -2,7 +2,7 @@ system primitives
 openDebuggerWithPythonFrames: pyError
 	| resumeCtx error |
 	resumeCtx := thisContext sender.
-	[ resumeCtx method selector = #resumeFrame
+	[ resumeCtx method selector = #resume:
 		and: [ resumeCtx closure isNil ] ]
 			whileFalse: [
 			resumeCtx := resumeCtx sender.

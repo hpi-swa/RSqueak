@@ -1,0 +1,14 @@
+{
+	"category" : "Python-Core",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "ForeignLanguage",
+	"pools" : [
+		 ],
+	"super" : "Object",
+	"type" : "normal" }

@@ -3,7 +3,7 @@ exploreFrames
 	| currentFrame result frameInfo |
 	currentFrame := Python primGetTopFrame.
 	result := OrderedCollection new.
-	[ currentFrame notNil ] whileTrue: [
+	[ currentFrame notNone ] whileTrue: [
 		frameInfo := IdentityDictionary new
 			add: #f_lineno->(currentFrame f_lineno);
 			add: #co_name->(currentFrame f_code co_name);
