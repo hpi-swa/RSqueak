@@ -15,15 +15,16 @@ class Cell(object):
     def get(self): return self.value
 
 
-class MiscPrimitivePluginClass(Plugin):
+class MiscPrimitivePlugin(Plugin):
     _attrs_ = ["ascii_order"]
     _immutable_fields_ = ["ascii_order"]
+
     def __init__(self):
         Plugin.__init__(self)
         self.ascii_order = Cell(None)
 
 
-MiscPrimitivePlugin = MiscPrimitivePluginClass()
+plugin = MiscPrimitivePlugin()
 
 
 @jit.look_inside_iff(lambda bytes, start: jit.isconstant(len(bytes)) and jit.isconstant(start))
@@ -37,10 +38,12 @@ def _bytesHashLoop(bytes, start):
                   & 16383) * 16384)) & r_uint(0x0FFFFFFF)
     return intmask(hash)
 
-@MiscPrimitivePlugin.expose_primitive(unwrap_spec=[object, bytelist, uint])
+
+@plugin.expose_primitive(unwrap_spec=[object, bytelist, uint])
 def primitiveStringHash(interp, s_frame, w_rcvr, thebytes, initialHash):
     hash = r_uint(initialHash) & r_uint(0xFFFFFFF)
     return interp.space.wrap_smallint_unsafe(_bytesHashLoop(thebytes, hash))
+
 
 @jit.look_inside_iff(lambda thechar, thebytes, start: jit.isconstant(thechar) and jit.isconstant(len(thebytes)) and jit.isconstant(start))
 def _indexOfLoop(thechar, thebytes, start):
@@ -53,18 +56,22 @@ def _indexOfLoop(thechar, thebytes, start):
             return 0
         start += 1
 
-@MiscPrimitivePlugin.expose_primitive(unwrap_spec=[object, char, bytelist, index1_0])
+
+@plugin.expose_primitive(unwrap_spec=[object, char, bytelist, index1_0])
 def primitiveIndexOfAsciiInString(interp, s_frame, w_rcvr, thechar, thebytes, start):
     if start < 0:
         raise PrimitiveFailedError
     return interp.space.wrap_smallint_unsafe(_indexOfLoop(thechar, thebytes, start))
 
 ascii_oder = [chr(i) for i in range(256)]
+
+
 def is_ascii_order(w_order):
     if w_order.getbytes() == ascii_oder:
         return True
     else:
         return False
+
 
 def compare_collated(string1, string2, order):
     len1 = len(string1)
@@ -84,6 +91,7 @@ def compare_collated(string1, string2, order):
     else:
         return 3
 
+
 def compare_ascii(string1, string2):
     len1 = len(string1)
     len2 = len(string2)
@@ -102,7 +110,8 @@ def compare_ascii(string1, string2):
     else:
         return 3
 
-@MiscPrimitivePlugin.expose_primitive(unwrap_spec=[object, bytelist, bytelist, object])
+
+@plugin.expose_primitive(unwrap_spec=[object, bytelist, bytelist, object])
 def primitiveCompareString(interp, s_frame, w_rcvr, string1, string2, w_order):
     # the first few times we do this, we spent the time to scan the order so we
     # can eventually cache the ascii order object and do ascii comparisons

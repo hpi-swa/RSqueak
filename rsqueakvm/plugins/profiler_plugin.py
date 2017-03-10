@@ -1,19 +1,22 @@
 import os
 
+from rsqueakvm.error import PrimitiveFailedError
+from rsqueakvm.model.compiled_methods import W_CompiledMethod
+from rsqueakvm.plugins.plugin import Plugin
+from rsqueakvm.primitives import expose_primitive, expose_also_as
+from rsqueakvm.primitives.constants import (
+    VM_CLEAR_PROFILE, VM_DUMP_PROFILE, VM_START_PROFILING, VM_STOP_PROFILING)
 from rsqueakvm.util import system
 
 from rpython.rlib import rvmprof, jit
 from rpython.rlib.rjitlog import rjitlog
 
-from rsqueakvm.error import PrimitiveFailedError
-from rsqueakvm.model.compiled_methods import W_CompiledMethod
-from rsqueakvm.plugins.plugin import Plugin, PluginPatchScripts
-from rsqueakvm.primitives import expose_primitive, expose_also_as
-from rsqueakvm.primitives.constants import (VM_CLEAR_PROFILE, VM_DUMP_PROFILE,
-                                            VM_START_PROFILING, VM_STOP_PROFILING)
 
+class ProfilerPlugin(Plugin):
+    def startup(self, space, argv):
+        patch_interpreter()
 
-ProfilerPlugin = Plugin()
+plugin = ProfilerPlugin()
 
 # ____________________________________________________________
 
@@ -26,8 +29,6 @@ def patch_interpreter():
     _my_stack_frame = _decorator(Interpreter.stack_frame)
     Interpreter.stack_frame = _my_stack_frame
     print "Interpreter was patched for vmprof"
-# XXX: We cannot patch the interpreter here, so we use this hacked
-PluginPatchScripts.append(patch_interpreter)
 
 def _safe(s):
     if len(s) > 200:
@@ -49,7 +50,7 @@ patch_compiled_method()
 
 # ____________________________________________________________
 
-@ProfilerPlugin.expose_primitive(unwrap_spec=[object, int, float])
+@plugin.expose_primitive(unwrap_spec=[object, int, float])
 @jit.dont_look_inside
 def enableProfiler(interp, s_frame, w_rcvr, fileno, period):
     try:
@@ -59,7 +60,7 @@ def enableProfiler(interp, s_frame, w_rcvr, fileno, period):
         raise PrimitiveFailedError
     return w_rcvr
 
-@ProfilerPlugin.expose_primitive(unwrap_spec=[object])
+@plugin.expose_primitive(unwrap_spec=[object])
 @jit.dont_look_inside
 def disableProfiler(interp, s_frame, w_rcvr):
     try:
@@ -69,7 +70,7 @@ def disableProfiler(interp, s_frame, w_rcvr):
         raise PrimitiveFailedError
     return w_rcvr
 
-@ProfilerPlugin.expose_primitive(unwrap_spec=[object, int])
+@plugin.expose_primitive(unwrap_spec=[object, int])
 @jit.dont_look_inside
 def enableJitlog(interp, s_frame, w_rcvr, fileno):
     try:
@@ -79,7 +80,7 @@ def enableJitlog(interp, s_frame, w_rcvr, fileno):
         raise PrimitiveFailedError
     return w_rcvr
 
-@ProfilerPlugin.expose_primitive(unwrap_spec=[object])
+@plugin.expose_primitive(unwrap_spec=[object])
 @jit.dont_look_inside
 def disableJitlog(interp, s_frame, w_rcvr):
     rjitlog.disable_jitlog()

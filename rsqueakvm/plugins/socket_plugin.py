@@ -4,10 +4,10 @@ import sys
 from rsqueakvm import error
 from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.variable import W_BytesObject
-from rsqueakvm.plugins.plugin import Plugin, PluginStartupScripts
+from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.util.system import IS_WINDOWS
 
-from rpython.rlib import rsocket, _rsocket_rffi, jit, objectmodel
+from rpython.rlib import rsocket, _rsocket_rffi, objectmodel
 
 
 if IS_WINDOWS:
@@ -34,18 +34,17 @@ ResolverReady = 1
 ResolverBusy = 2
 ResolverError = 3
 
-def startup(space, argv):
-    from rpython.rlib.rsocket import rsocket_startup
-    rsocket_startup()
-PluginStartupScripts.append(startup)
 
-
-class SocketPluginClass(Plugin):
+class SocketPlugin(Plugin):
     _attrs_ = ["fds", "sockets", "last_lookup"]
 
     def __init__(self):
         Plugin.__init__(self)
         self.last_lookup = Cell(None)
+
+    def startup(self, space, argv):
+        from rpython.rlib.rsocket import rsocket_startup
+        rsocket_startup()
 
     # cannot overload call (plugins are PBCs) so we decorate the decorator
     @objectmodel.not_rpython
@@ -79,7 +78,7 @@ class SocketPluginClass(Plugin):
 
 if "--shell" in sys.argv:
     def wrappedcall(self, name, interp, s_frame, argcount, w_method):
-        import sys, time
+        import time
         # sys.stdout.write("%s(%s): " % (name, s_frame.peek_n(argcount)))
         print name
         if "Socket" in name:
@@ -87,16 +86,17 @@ if "--shell" in sys.argv:
         r = Plugin.call(self, name, interp, s_frame, argcount, w_method)
         # print r
         return r
-    SocketPluginClass.call = wrappedcall
+    SocketPlugin.call = wrappedcall
 
 
-SocketPlugin = SocketPluginClass()
+plugin = SocketPlugin()
 InvalidSocket = -1
 Unconnected = 0
 WaitingForConnection = 1
 Connected = 2
 OtherEndClosed = 3
 ThisEndClosed = 4
+
 
 class W_SocketHandle(W_AbstractObjectWithIdentityHash):
     _attrs_ = ["socket", "state", "family", "socketType"]
@@ -196,7 +196,7 @@ def ensure_socket(w_socket):
         return w_socket
 
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveResolverGetNameInfoHostResult(interp, s_frame, argcount):  # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -205,7 +205,7 @@ def primitiveResolverGetNameInfoHostResult(interp, s_frame, argcount):  # pragma
         print "Missing Socket primitive primitiveResolverGetNameInfoHostResult"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveResolverGetNameInfoServiceSize(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -214,7 +214,7 @@ def primitiveResolverGetNameInfoServiceSize(interp, s_frame, argcount): # pragma
         print "Missing Socket primitive primitiveResolverGetNameInfoServiceSize"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveResolverGetNameInfoServiceResult(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -223,7 +223,7 @@ def primitiveResolverGetNameInfoServiceResult(interp, s_frame, argcount): # prag
         print "Missing Socket primitive primitiveResolverGetNameInfoServiceResult"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveResolverStartAddressLookup(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -232,7 +232,7 @@ def primitiveResolverStartAddressLookup(interp, s_frame, argcount): # pragma: no
         print "Missing Socket primitive primitiveResolverStartAddressLookup"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveResolverGetAddressInfo(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -241,7 +241,7 @@ def primitiveResolverGetAddressInfo(interp, s_frame, argcount): # pragma: no cov
         print "Missing Socket primitive primitiveResolverGetAddressInfo"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveResolverError(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -250,7 +250,7 @@ def primitiveResolverError(interp, s_frame, argcount): # pragma: no cover
         print "Missing Socket primitive primitiveResolverError"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveResolverGetAddressInfoSize(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -259,7 +259,7 @@ def primitiveResolverGetAddressInfoSize(interp, s_frame, argcount): # pragma: no
         print "Missing Socket primitive primitiveResolverGetAddressInfoSize"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveResolverHostNameSize(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -268,7 +268,7 @@ def primitiveResolverHostNameSize(interp, s_frame, argcount): # pragma: no cover
         print "Missing Socket primitive primitiveResolverHostNameSize"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveResolverAbortLookup(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -277,7 +277,7 @@ def primitiveResolverAbortLookup(interp, s_frame, argcount): # pragma: no cover
         print "Missing Socket primitive primitiveResolverAbortLookup"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveResolverGetAddressInfoType(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -286,7 +286,7 @@ def primitiveResolverGetAddressInfoType(interp, s_frame, argcount): # pragma: no
         print "Missing Socket primitive primitiveResolverGetAddressInfoType"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveResolverAddressLookupResult(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -295,7 +295,7 @@ def primitiveResolverAddressLookupResult(interp, s_frame, argcount): # pragma: n
         print "Missing Socket primitive primitiveResolverAddressLookupResult"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveResolverGetAddressInfoFamily(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -304,7 +304,7 @@ def primitiveResolverGetAddressInfoFamily(interp, s_frame, argcount): # pragma: 
         print "Missing Socket primitive primitiveResolverGetAddressInfoFamily"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveResolverGetAddressInfoNext(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -313,7 +313,7 @@ def primitiveResolverGetAddressInfoNext(interp, s_frame, argcount): # pragma: no
         print "Missing Socket primitive primitiveResolverGetAddressInfoNext"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveResolverGetNameInfo(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -322,7 +322,7 @@ def primitiveResolverGetNameInfo(interp, s_frame, argcount): # pragma: no cover
         print "Missing Socket primitive primitiveResolverGetNameInfo"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveResolverGetNameInfoHostSize(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -331,7 +331,7 @@ def primitiveResolverGetNameInfoHostSize(interp, s_frame, argcount): # pragma: n
         print "Missing Socket primitive primitiveResolverGetNameInfoHostSize"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveResolverHostNameResult(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -340,7 +340,7 @@ def primitiveResolverHostNameResult(interp, s_frame, argcount): # pragma: no cov
         print "Missing Socket primitive primitiveResolverHostNameResult"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveResolverGetAddressInfoResult(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -349,7 +349,7 @@ def primitiveResolverGetAddressInfoResult(interp, s_frame, argcount): # pragma: 
         print "Missing Socket primitive primitiveResolverGetAddressInfoResult"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveResolverLocalAddress(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -358,7 +358,7 @@ def primitiveResolverLocalAddress(interp, s_frame, argcount): # pragma: no cover
         print "Missing Socket primitive primitiveResolverLocalAddress"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveResolverGetAddressInfoProtocol(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -367,12 +367,12 @@ def primitiveResolverGetAddressInfoProtocol(interp, s_frame, argcount): # pragma
         print "Missing Socket primitive primitiveResolverGetAddressInfoProtocol"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=[object])
+@plugin.expose_primitive(unwrap_spec=[object])
 def primitiveHasSocketAccess(interp, s_frame, w_rcvr):
     # if security plugin forbids it, this should return false
     return interp.space.w_true
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveSocketAddressSetPort(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -381,7 +381,7 @@ def primitiveSocketAddressSetPort(interp, s_frame, argcount): # pragma: no cover
         print "Missing Socket primitive primitiveSocketAddressSetPort"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveSocketAddressGetPort(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -390,7 +390,7 @@ def primitiveSocketAddressGetPort(interp, s_frame, argcount): # pragma: no cover
         print "Missing Socket primitive primitiveSocketAddressGetPort"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveSocketReceiveUDPDataBufCount(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -399,7 +399,7 @@ def primitiveSocketReceiveUDPDataBufCount(interp, s_frame, argcount): # pragma: 
         print "Missing Socket primitive primitiveSocketReceiveUDPDataBufCount"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveSocketSetOptions(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -408,7 +408,7 @@ def primitiveSocketSetOptions(interp, s_frame, argcount): # pragma: no cover
         print "Missing Socket primitive primitiveSocketSetOptions"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveSocketRemoteAddressSize(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -417,7 +417,7 @@ def primitiveSocketRemoteAddressSize(interp, s_frame, argcount): # pragma: no co
         print "Missing Socket primitive primitiveSocketRemoteAddressSize"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveSocketConnectTo(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -426,7 +426,7 @@ def primitiveSocketConnectTo(interp, s_frame, argcount): # pragma: no cover
         print "Missing Socket primitive primitiveSocketConnectTo"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveSocketLocalAddressSize(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -435,7 +435,7 @@ def primitiveSocketLocalAddressSize(interp, s_frame, argcount): # pragma: no cov
         print "Missing Socket primitive primitiveSocketLocalAddressSize"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveSocketRemoteAddress(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -444,7 +444,7 @@ def primitiveSocketRemoteAddress(interp, s_frame, argcount): # pragma: no cover
         print "Missing Socket primitive primitiveSocketRemoteAddress"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveSocketLocalPort(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -453,7 +453,7 @@ def primitiveSocketLocalPort(interp, s_frame, argcount): # pragma: no cover
         print "Missing Socket primitive primitiveSocketLocalPort"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveSocketError(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -462,7 +462,7 @@ def primitiveSocketError(interp, s_frame, argcount): # pragma: no cover
         print "Missing Socket primitive primitiveSocketError"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveSocketBindTo(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -471,7 +471,7 @@ def primitiveSocketBindTo(interp, s_frame, argcount): # pragma: no cover
         print "Missing Socket primitive primitiveSocketBindTo"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveSocketAbortConnection(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -480,7 +480,7 @@ def primitiveSocketAbortConnection(interp, s_frame, argcount): # pragma: no cove
         print "Missing Socket primitive primitiveSocketAbortConnection"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveSocketListenWithBacklog(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -489,7 +489,7 @@ def primitiveSocketListenWithBacklog(interp, s_frame, argcount): # pragma: no co
         print "Missing Socket primitive primitiveSocketListenWithBacklog"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveSocketGetOptions(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -498,7 +498,7 @@ def primitiveSocketGetOptions(interp, s_frame, argcount): # pragma: no cover
         print "Missing Socket primitive primitiveSocketGetOptions"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveSocketSendUDPDataBufCount(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -507,7 +507,7 @@ def primitiveSocketSendUDPDataBufCount(interp, s_frame, argcount): # pragma: no 
         print "Missing Socket primitive primitiveSocketSendUDPDataBufCount"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveSocketLocalAddressResult(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -516,7 +516,7 @@ def primitiveSocketLocalAddressResult(interp, s_frame, argcount): # pragma: no c
         print "Missing Socket primitive primitiveSocketLocalAddressResult"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveSocketLocalAddress(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -525,7 +525,7 @@ def primitiveSocketLocalAddress(interp, s_frame, argcount): # pragma: no cover
         print "Missing Socket primitive primitiveSocketLocalAddress"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveSocketListenWithOrWithoutBacklog(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -534,7 +534,7 @@ def primitiveSocketListenWithOrWithoutBacklog(interp, s_frame, argcount): # prag
         print "Missing Socket primitive primitiveSocketListenWithOrWithoutBacklog"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveSocketAccept3Semaphores(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -543,7 +543,7 @@ def primitiveSocketAccept3Semaphores(interp, s_frame, argcount): # pragma: no co
         print "Missing Socket primitive primitiveSocketAccept3Semaphores"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveSocketRemoteAddressResult(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -552,7 +552,7 @@ def primitiveSocketRemoteAddressResult(interp, s_frame, argcount): # pragma: no 
         print "Missing Socket primitive primitiveSocketRemoteAddressResult"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveSocketListenOnPortBacklogInterface(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -561,7 +561,7 @@ def primitiveSocketListenOnPortBacklogInterface(interp, s_frame, argcount): # pr
         print "Missing Socket primitive primitiveSocketListenOnPortBacklogInterface"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=[object, object])
+@plugin.expose_primitive(unwrap_spec=[object, object])
 def primitiveSocketCloseConnection(interp, s_frame, w_rcvr, w_handle):
     w_socket = ensure_socket(w_handle)
     try:
@@ -570,7 +570,7 @@ def primitiveSocketCloseConnection(interp, s_frame, w_rcvr, w_handle):
         raise error.PrimitiveFailedError
     return interp.space.w_nil
 
-@SocketPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveSocketRemotePort(interp, s_frame, argcount): # pragma: no cover
     if not objectmodel.we_are_translated():
         import pdb; pdb.set_trace()
@@ -579,20 +579,20 @@ def primitiveSocketRemotePort(interp, s_frame, argcount): # pragma: no cover
         print "Missing Socket primitive primitiveSocketRemotePort"
         raise error.PrimitiveFailedError
 
-@SocketPlugin.expose_primitive(unwrap_spec=[object, int, int, int, int, int, int, int])
+@plugin.expose_primitive(unwrap_spec=[object, int, int, int, int, int, int, int])
 def primitiveSocketCreate3Semaphores(interp, s_frame, w_rcvr, netType, socketType, rcvBufSize, sendBufSize, sema, readSema, writeSema):
     if netType == 0: # undefined
         netType = rsocket.AF_INET
     return W_SocketHandle(netType, socketType)
 
-@SocketPlugin.expose_primitive(unwrap_spec=[object, object])
+@plugin.expose_primitive(unwrap_spec=[object, object])
 def primitiveSocketConnectionStatus(interp, s_frame, w_rcvr, w_socket):
     if not isinstance(w_socket, W_SocketHandle):
         return interp.space.wrap_int(InvalidSocket)
     else:
         return interp.space.wrap_int(w_socket.state)
 
-@SocketPlugin.expose_primitive(unwrap_spec=[object, object, object, int])
+@plugin.expose_primitive(unwrap_spec=[object, object, object, int])
 def primitiveSocketConnectToPort(interp, s_frame, w_rcvr, w_handle, w_hostaddr, port):
     w_socket = ensure_socket(w_handle)
     if not isinstance(w_hostaddr, W_BytesObject):
@@ -600,11 +600,11 @@ def primitiveSocketConnectToPort(interp, s_frame, w_rcvr, w_handle, w_hostaddr, 
     w_socket.connect(w_hostaddr, port)
     return interp.space.w_nil
 
-@SocketPlugin.expose_primitive(unwrap_spec=[object, object])
+@plugin.expose_primitive(unwrap_spec=[object, object])
 def primitiveSocketSendDone(interp, s_frame, w_rcvr, fd):
     return interp.space.w_true
 
-@SocketPlugin.expose_primitive(unwrap_spec=[object, object, str, int, int])
+@plugin.expose_primitive(unwrap_spec=[object, object, str, int, int])
 def primitiveSocketSendDataBufCount(interp, s_frame, w_rcvr, w_handle, data, start, count):
     w_socket = ensure_socket(w_handle)
     s = start - 1
@@ -617,7 +617,7 @@ def primitiveSocketSendDataBufCount(interp, s_frame, w_rcvr, w_handle, data, sta
     res = w_socket.send(data[s:e])
     return interp.space.wrap_int(res)
 
-@SocketPlugin.expose_primitive(unwrap_spec=[object, object])
+@plugin.expose_primitive(unwrap_spec=[object, object])
 def primitiveSocketReceiveDataAvailable(interp, s_frame, w_rcvr, w_handle):
     w_socket = ensure_socket(w_handle)
     if w_socket.can_read():
@@ -625,7 +625,7 @@ def primitiveSocketReceiveDataAvailable(interp, s_frame, w_rcvr, w_handle):
     else:
         return interp.space.w_false
 
-@SocketPlugin.expose_primitive(unwrap_spec=[object, object, object, int, int])
+@plugin.expose_primitive(unwrap_spec=[object, object, object, int, int])
 def primitiveSocketReceiveDataBufCount(interp, s_frame, w_rcvr, w_handle, w_target, start, count):
     w_socket = ensure_socket(w_handle)
     if start + count - 1 > w_target.size():
@@ -640,7 +640,7 @@ def primitiveSocketReceiveDataBufCount(interp, s_frame, w_rcvr, w_handle, w_targ
         w_target.setchar(idx + start - 1, char)
     return interp.space.wrap_int(len(data))
 
-@SocketPlugin.expose_primitive(unwrap_spec=[object, object])
+@plugin.expose_primitive(unwrap_spec=[object, object])
 def primitiveSocketDestroy(interp, s_frame, w_rcvr, w_handle):
     w_socket = ensure_socket(w_handle)
     try:
@@ -649,15 +649,15 @@ def primitiveSocketDestroy(interp, s_frame, w_rcvr, w_handle):
         raise error.PrimitiveFailedError
     return interp.space.wrap_int(w_socket.state)
 
-@SocketPlugin.expose_primitive(unwrap_spec=[object, object])
+@plugin.expose_primitive(unwrap_spec=[object, object])
 def primitiveInitializeNetwork(interp, s_frame, w_rcvr, w_semaphore):
     return w_rcvr
 
-@SocketPlugin.expose_primitive(unwrap_spec=[object])
+@plugin.expose_primitive(unwrap_spec=[object])
 def primitiveResolverStatus(interp, s_frame, w_rcvr):
     return interp.space.wrap_int(ResolverReady)
 
-@SocketPlugin.expose_primitive(unwrap_spec=[object, str])
+@plugin.expose_primitive(unwrap_spec=[object, str])
 def primitiveResolverStartNameLookup(interp, s_frame, w_rcvr, hostname):
     try:
         host = rsocket.INETAddress(hostname, 80).get_host()
@@ -667,7 +667,7 @@ def primitiveResolverStartNameLookup(interp, s_frame, w_rcvr, hostname):
         SocketPlugin.set_last_lookup(None)
     return interp.space.w_nil
 
-@SocketPlugin.expose_primitive(unwrap_spec=[object])
+@plugin.expose_primitive(unwrap_spec=[object])
 def primitiveResolverNameLookupResult(interp, s_frame, w_rcvr):
     inet = SocketPlugin.get_last_lookup()
     if inet is None:

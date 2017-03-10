@@ -240,8 +240,8 @@ def make_simulation(code):
     @wrap_primitive(clean_stack=False, no_result=True, compiled_method=True)
     def try_simulation(interp, s_frame, argument_count, w_method=None):
         if interp.space.simulate_numeric_primitives.is_set():
-            from rsqueakvm.plugins.simulation import SimulationPlugin
-            return SimulationPlugin.simulateNumeric(p_code, interp, s_frame, argument_count, w_method)
+            from rsqueakvm.plugins.simulation import simulationPlugin
+            return simulationPlugin.simulateNumeric(p_code, interp, s_frame, argument_count, w_method)
         else:
             raise PrimitiveFailedError
     return try_simulation
