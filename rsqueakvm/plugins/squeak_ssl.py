@@ -44,7 +44,8 @@ for k, v in ropenssl.rffi_platform.configure(CConfig).items():
 
 class SqueakSSL(Plugin):
 
-    def startup(self, space, argv):
+    @staticmethod
+    def startup(space, argv):
         ropenssl.init_ssl()
         ropenssl.init_digests()
 

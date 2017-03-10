@@ -13,7 +13,7 @@ from rpython.rlib.rjitlog import rjitlog
 
 
 class ProfilerPlugin(Plugin):
-    def startup(self, space, argv):
+    def patch(self):
         patch_interpreter()
 
 plugin = ProfilerPlugin()
@@ -30,16 +30,19 @@ def patch_interpreter():
     Interpreter.stack_frame = _my_stack_frame
     print "Interpreter was patched for vmprof"
 
+
 def _safe(s):
     if len(s) > 200:
         s = s[:197] + '...'
     return s.replace(':', ';')
+
 
 def _get_full_name(w_cm):
     # must not be longer than 255 chars
     return "st:%s:0:/img" % _safe(w_cm.safe_identifier_string())
 
 rvmprof.register_code_object_class(W_CompiledMethod, _get_full_name)
+
 
 def patch_compiled_method():
     def _my_post_init(self):
@@ -49,6 +52,7 @@ def patch_compiled_method():
 patch_compiled_method()
 
 # ____________________________________________________________
+
 
 @plugin.expose_primitive(unwrap_spec=[object, int, float])
 @jit.dont_look_inside
@@ -60,6 +64,7 @@ def enableProfiler(interp, s_frame, w_rcvr, fileno, period):
         raise PrimitiveFailedError
     return w_rcvr
 
+
 @plugin.expose_primitive(unwrap_spec=[object])
 @jit.dont_look_inside
 def disableProfiler(interp, s_frame, w_rcvr):
@@ -70,6 +75,7 @@ def disableProfiler(interp, s_frame, w_rcvr):
         raise PrimitiveFailedError
     return w_rcvr
 
+
 @plugin.expose_primitive(unwrap_spec=[object, int])
 @jit.dont_look_inside
 def enableJitlog(interp, s_frame, w_rcvr, fileno):
@@ -79,6 +85,7 @@ def enableJitlog(interp, s_frame, w_rcvr, fileno):
         print e.msg
         raise PrimitiveFailedError
     return w_rcvr
+
 
 @plugin.expose_primitive(unwrap_spec=[object])
 @jit.dont_look_inside

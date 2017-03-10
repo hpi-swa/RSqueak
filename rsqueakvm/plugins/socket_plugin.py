@@ -5,7 +5,7 @@ from rsqueakvm import error
 from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.plugins.plugin import Plugin
-from rsqueakvm.util.system import IS_WINDOWS
+from rsqueakvm.util.system import IS_SHELL, IS_WINDOWS
 
 from rpython.rlib import rsocket, _rsocket_rffi, objectmodel
 
@@ -42,7 +42,8 @@ class SocketPlugin(Plugin):
         Plugin.__init__(self)
         self.last_lookup = Cell(None)
 
-    def startup(self, space, argv):
+    @staticmethod
+    def startup(space, argv):
         from rpython.rlib.rsocket import rsocket_startup
         rsocket_startup()
 
@@ -76,7 +77,7 @@ class SocketPlugin(Plugin):
         return isinstance(w_int, W_SocketHandle)
 
 
-if "--shell" in sys.argv:
+if IS_SHELL:
     def wrappedcall(self, name, interp, s_frame, argcount, w_method):
         import time
         # sys.stdout.write("%s(%s): " % (name, s_frame.peek_n(argcount)))

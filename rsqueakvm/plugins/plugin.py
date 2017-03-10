@@ -1,6 +1,6 @@
 from rsqueakvm import error
 from rsqueakvm.util import system
-from rsqueakvm.plugins import registry
+from rsqueakvm.plugins import PluginRegistry
 
 from rpython.rlib import jit
 from rpython.rlib.objectmodel import not_rpython
@@ -19,7 +19,7 @@ class Plugin(object):
         if self.is_enabled():
             self.setup()
 
-        registry.add(self)
+        PluginRegistry.add(self)
 
     def name(self):
         return self.__class__.__name__
@@ -32,11 +32,18 @@ class Plugin(object):
             return (self.name() in system.optional_plugins or system.IS_SPHINX)
         return True  # enabled by default
 
+    @not_rpython
     def setup(self):
         "Called when enabled during instantiation."
         pass
 
-    def startup(self, space, argv):
+    @not_rpython
+    def patch(self):
+        "Called once in the beginning of `main.py` to patch interpreter."
+        pass
+
+    @staticmethod
+    def startup(space, argv):
         "Called after image has been loaded and space has been set up."
         pass
 

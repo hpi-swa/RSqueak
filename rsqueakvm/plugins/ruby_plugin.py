@@ -42,7 +42,8 @@ class RubyPlugin(Plugin):
         system.translationconfig.set(continuation=True)
         setup_topaz()
 
-    def startup(self, space, argv):
+    @staticmethod
+    def startup(space, argv):
         RubyPlugin.w_ruby_plugin_send.set(space.wrap_list_unroll_safe([
             space.wrap_string("RubyPlugin"),
             space.wrap_string("send")

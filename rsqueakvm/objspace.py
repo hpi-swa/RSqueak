@@ -85,9 +85,8 @@ class ObjSpace(object):
         self.image_loaded.activate()
         self.init_system_attributes(argv)
 
-        from rsqueakvm.plugins import registry
-        for plugin in registry.enabled_plugins():
-            plugin.startup(self, argv)
+        from rsqueakvm.plugins import PluginRegistry
+        [p.startup(self, argv) for p in PluginRegistry.enabled_plugins]
 
     def init_system_attributes(self, argv):
         for i in xrange(1, len(argv)):

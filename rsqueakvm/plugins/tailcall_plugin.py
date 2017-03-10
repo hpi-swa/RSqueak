@@ -8,11 +8,11 @@ class TailcallPlugin(Plugin):
     def setup(self):
         _patch_contexts()
 
-    def startup(self, space, argv):
+    def patch(self):
         _patch_interpreter()
 
     def is_optional(self):
-        True
+        return True
 
 
 def _patch_contexts():
@@ -46,6 +46,7 @@ def _patch_interpreter():
             for i in range(0, len(old_s_frame._temps_and_stack)):
                 old_s_frame._temps_and_stack[i] = s_frame._temps_and_stack[i]
             old_s_frame._stack_ptr = old_s_frame.tempsize()
+            import pdb; pdb.set_trace()
             old_s_frame.initialize_temps(self.space, w_arguments)
         else:
             return original_stack_frame(self, s_frame, old_s_frame)

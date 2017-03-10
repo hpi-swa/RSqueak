@@ -4,10 +4,17 @@ import time
 from rsqueakvm import interpreter, squeakimage, objspace, wrapper, error
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject
+from rsqueakvm.plugins import PluginRegistry
 from rsqueakvm.plugins.simulation import SIMULATE_PRIMITIVE_SELECTOR
 from rsqueakvm.util import system
 
 from rpython.rlib import jit, rpath, objectmodel, streamio
+
+# XXX: HACK: We have circular dependencies in some plugins ... :(
+PLUGINS_PATCHED = False
+if not PLUGINS_PATCHED:
+    PLUGINS_PATCHED = True
+    [p.patch() for p in PluginRegistry.enabled_plugins]
 
 
 def _compile_time_version():
