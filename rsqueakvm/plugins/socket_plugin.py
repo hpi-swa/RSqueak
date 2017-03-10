@@ -661,15 +661,15 @@ def primitiveResolverStatus(interp, s_frame, w_rcvr):
 def primitiveResolverStartNameLookup(interp, s_frame, w_rcvr, hostname):
     try:
         host = rsocket.INETAddress(hostname, 80).get_host()
-        SocketPlugin.set_last_lookup(host)
+        plugin.set_last_lookup(host)
     except rsocket.GAIError, e:
         print "SocketError: %s" % e.get_msg()
-        SocketPlugin.set_last_lookup(None)
+        plugin.set_last_lookup(None)
     return interp.space.w_nil
 
 @plugin.expose_primitive(unwrap_spec=[object])
 def primitiveResolverNameLookupResult(interp, s_frame, w_rcvr):
-    inet = SocketPlugin.get_last_lookup()
+    inet = plugin.get_last_lookup()
     if inet is None:
         return interp.space.w_nil
     else:

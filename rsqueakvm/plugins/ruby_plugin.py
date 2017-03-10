@@ -53,8 +53,6 @@ class RubyPlugin(Plugin):
         RubyPlugin.w_ruby_object_class.set(w_ruby_class)
         ruby_space.setup(argv[0])
 
-plugin = RubyPlugin()
-
 
 def setup_topaz():
     global ruby_space
@@ -185,6 +183,9 @@ class RubyClassShadow(ClassShadow):
         ]
         return w_cm
 
+plugin = RubyPlugin()
+
+
 @plugin.expose_primitive(unwrap_spec=[object, str])
 def eval(interp, s_frame, w_rcvr, source):
     try:
@@ -192,6 +193,7 @@ def eval(interp, s_frame, w_rcvr, source):
     except RubyError as e:
         print_traceback(ruby_space, e.w_value)
         raise PrimitiveFailedError
+
 
 @plugin.expose_primitive(compiled_method=True)
 @jit.unroll_safe

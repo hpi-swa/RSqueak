@@ -118,11 +118,11 @@ def primitiveCompareString(interp, s_frame, w_rcvr, string1, string2, w_order):
     # natively.
     if not isinstance(w_order, W_BytesObject):
         raise PrimitiveFailedError
-    w_cached_ascii_order = MiscPrimitivePlugin.ascii_order.get()
+    w_cached_ascii_order = plugin.ascii_order.get()
     if w_cached_ascii_order is None:
         if is_ascii_order(w_order):
             w_cached_ascii_order = w_order
-            MiscPrimitivePlugin.ascii_order.set(w_order)
+            plugin.ascii_order.set(w_order)
     if w_cached_ascii_order is w_order:
         return interp.space.wrap_smallint_unsafe(compare_ascii(string1, string2))
     return interp.space.wrap_smallint_unsafe(compare_collated(string1, string2, w_order.getbytes()))
