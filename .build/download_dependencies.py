@@ -181,7 +181,7 @@ DEPS = [
 
     Dependency("https://github.com/alex/rply/archive/master.zip", "rply", test=plugin("RubyPlugin")),
     Dependency("https://github.com/ActiveState/appdirs/archive/master.zip", "appdirs", test=plugin("RubyPlugin")),
-    Dependency("https://github.com/topazproject/topaz/archive/tim/features.zip", "topaz", test=plugin("RubyPlugin")),
+    Dependency("https://github.com/topazproject/topaz/archive/master.zip", "topaz", test=plugin("RubyPlugin")),
 
     Dependency("https://bitbucket.org/pypy/pypy/downloads/pypy-4.0.1-win32.zip", "Windows/pypybin", test=windows, callback=pypywin32),
     Dependency("http://libsdl.org/release/SDL2-devel-2.0.5-VC.zip", "Windows/SDL", test=windows),

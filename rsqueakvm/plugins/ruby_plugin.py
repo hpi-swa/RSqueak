@@ -27,6 +27,7 @@ from rpython.rlib import objectmodel, jit
 
 ruby_space = None
 
+
 class RubyPlugin(Plugin):
     _attrs_ = ["w_ruby_object_class", "w_ruby_plugin_send"]
 
@@ -44,14 +45,14 @@ class RubyPlugin(Plugin):
 
     @staticmethod
     def startup(space, argv):
-        RubyPlugin.w_ruby_plugin_send.set(space.wrap_list_unroll_safe([
+        plugin.w_ruby_plugin_send.set(space.wrap_list_unroll_safe([
             space.wrap_string("RubyPlugin"),
             space.wrap_string("send")
         ]))
         w_ruby_class = space.smalltalk_at("RubyObject")
         if w_ruby_class is None:
             w_ruby_class = space.w_nil.getclass(space)
-        RubyPlugin.w_ruby_object_class.set(w_ruby_class)
+        plugin.w_ruby_object_class.set(w_ruby_class)
         ruby_space.setup(argv[0])
 
 
