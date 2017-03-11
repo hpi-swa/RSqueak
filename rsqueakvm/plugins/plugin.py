@@ -1,21 +1,51 @@
+from rsqueakvm import error
+from rsqueakvm.util import system
+from rsqueakvm.plugins import PluginRegistry
+
 from rpython.rlib import jit
 from rpython.rlib.objectmodel import not_rpython
 
-from rsqueakvm import error
-
-
-# A place to put plugin patches
-PluginPatchScripts = []
-
-
-# A place to put plugin start functions that take space and argv as argument
-PluginStartupScripts = []
-
 
 class Plugin(object):
+
     def __init__(self):
+        if self.__class__ is Plugin:
+            raise ValueError('Forbidden to instantiate Plugin(), '
+                             'instantiate subclass instead.')
+
         self.primitives = {}
         self.userdata = {}
+
+        if self.is_enabled():
+            self.setup()
+
+        PluginRegistry.add(self)
+
+    def name(self):
+        return self.__class__.__name__
+
+    def is_optional(self):
+        return False
+
+    def is_enabled(self):
+        if self.is_optional():
+            return (self.name() in system.optional_plugins or system.IS_SPHINX)
+        return True  # enabled by default
+
+    @not_rpython
+    def setup(self):
+        "Called when enabled during instantiation."
+        pass
+
+    @not_rpython
+    def patch(self):
+        "Called once in the beginning of `main.py` to patch interpreter."
+        pass
+
+    @staticmethod
+    def startup(space, argv):
+        "Called after image has been loaded and space has been set up."
+        pass
 
     def call(self, name, interp, s_frame, argcount, w_method):
         func = self._find_prim(name)
@@ -29,7 +59,7 @@ class Plugin(object):
         return self.primitives.get(name, None)
 
     @not_rpython
-    def expose_primitive(self,  wrap_func=None, **kwargs):
+    def expose_primitive(self, wrap_func=None, **kwargs):
         from rsqueakvm.primitives import wrap_primitive, unwrap_alternatives
         if not wrap_func:
             if kwargs.get('unwrap_specs', None):

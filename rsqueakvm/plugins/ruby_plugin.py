@@ -1,64 +1,74 @@
 from rsqueakvm.util import system
-if "RubyPlugin" not in system.optional_plugins and not system.IS_SPHINX:
-    raise LookupError
-else:
-    system.translationconfig.set(continuation=True)
-
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger
 from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
-from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod, W_SpurCompiledMethod
-from rsqueakvm.plugins.plugin import Plugin, PluginStartupScripts
+from rsqueakvm.model.compiled_methods import (
+    W_PreSpurCompiledMethod, W_SpurCompiledMethod)
+from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.storage_classes import ClassShadow
 from rsqueakvm.storage import AbstractCachingShadow
 from rsqueakvm.primitives.constants import EXTERNAL_CALL
-from rsqueakvm import constants
 from rsqueakvm.util.cells import QuasiConstant
 
-from topaz.objspace import ObjectSpace
-from topaz.objects.floatobject import W_FloatObject
-from topaz.objects.intobject import W_FixnumObject
-from topaz.objects.stringobject import W_StringObject
-from topaz.objects.symbolobject import W_SymbolObject
-from topaz.objects.nilobject import W_NilObject
-from topaz.objects.boolobject import W_TrueObject, W_FalseObject
-from topaz.objects.exceptionobject import W_SystemExit
-from topaz.error import RubyError, print_traceback
+try:
+    from topaz.objspace import ObjectSpace
+    from topaz.objects.floatobject import W_FloatObject
+    from topaz.objects.intobject import W_FixnumObject
+    from topaz.objects.stringobject import W_StringObject
+    from topaz.objects.symbolobject import W_SymbolObject
+    from topaz.objects.nilobject import W_NilObject
+    from topaz.objects.boolobject import W_TrueObject, W_FalseObject
+    from topaz.error import RubyError, print_traceback
+except ImportError:
+    pass
 
 from rpython.rlib import objectmodel, jit
 
+ruby_space = None
 
-# Patch-out virtualizables from Topaz so that translation works
-from topaz.frame import Frame as TopazFrame
-from topaz.interpreter import Interpreter as TopazInterpreter
-try:
-    delattr(TopazFrame, "_virtualizable_")
-    delattr(TopazInterpreter.jitdriver, "virtualizables")
-except AttributeError:
-    pass # this is fine
-
-class RubyPluginClass(Plugin):
+class RubyPlugin(Plugin):
     _attrs_ = ["w_ruby_object_class", "w_ruby_plugin_send"]
+
     def __init__(self):
         Plugin.__init__(self)
         self.w_ruby_object_class = QuasiConstant(None, type=W_AbstractObjectWithIdentityHash)
         self.w_ruby_plugin_send = QuasiConstant(None, type=W_AbstractObjectWithIdentityHash)
-RubyPlugin = RubyPluginClass()
 
-ruby_space = ObjectSpace(None)
+    def is_optional(self):
+        return True
 
-def startup(space, argv):
-    RubyPlugin.w_ruby_plugin_send.set(space.wrap_list_unroll_safe([
-        space.wrap_string("RubyPlugin"),
-        space.wrap_string("send")
-    ]))
-    w_ruby_class = space.smalltalk_at("RubyObject")
-    if w_ruby_class is None:
-        w_ruby_class = space.w_nil.getclass(space)
-    RubyPlugin.w_ruby_object_class.set(w_ruby_class)
-    ruby_space.setup(argv[0])
-PluginStartupScripts.append(startup)
+    def setup(self):
+        system.translationconfig.set(continuation=True)
+        setup_topaz()
+
+    @staticmethod
+    def startup(space, argv):
+        RubyPlugin.w_ruby_plugin_send.set(space.wrap_list_unroll_safe([
+            space.wrap_string("RubyPlugin"),
+            space.wrap_string("send")
+        ]))
+        w_ruby_class = space.smalltalk_at("RubyObject")
+        if w_ruby_class is None:
+            w_ruby_class = space.w_nil.getclass(space)
+        RubyPlugin.w_ruby_object_class.set(w_ruby_class)
+        ruby_space.setup(argv[0])
+
+
+def setup_topaz():
+    global ruby_space
+    # Patch-out virtualizables from Topaz so that translation works
+    from topaz.frame import Frame as TopazFrame
+    from topaz.interpreter import Interpreter as TopazInterpreter
+    try:
+        delattr(TopazFrame, "_virtualizable_")
+        delattr(TopazInterpreter.jitdriver, "virtualizables")
+    except AttributeError:
+        pass  # this is fine
+
+    ruby_space = ObjectSpace(None)
+
+plugin = RubyPlugin()
 
 
 @objectmodel.specialize.argtype(0)
@@ -82,6 +92,7 @@ def wrap(interp, wr_object):
     else:
         return W_RubyObject(wr_object)
 
+
 @objectmodel.specialize.argtype(0)
 def unwrap(interp, w_object):
     space = interp.space
@@ -99,6 +110,7 @@ def unwrap(interp, w_object):
             if w_object.getclass(space).is_same_object(w_Symbol):
                 return ruby_space.newsymbol(space.unwrap_string(w_object))
     raise PrimitiveFailedError
+
 
 class W_RubyObject(W_AbstractObjectWithIdentityHash):
     _attrs_ = ["wr_object", "s_class"]
@@ -136,12 +148,12 @@ class RubyClassShadow(ClassShadow):
         AbstractCachingShadow.__init__(self, space, space.w_nil, 0, space.w_nil)
 
     def changed(self):
-        pass # Changes to Ruby classes are handled in Ruby land
+        pass  # Changes to Ruby classes are handled in Ruby land
 
     def lookup(self, w_selector):
         w_method = self._lookup(w_selector, self.wr_class.version)
         if w_method is None:
-            w_ro = RubyPlugin.w_ruby_object_class.get()
+            w_ro = plugin.w_ruby_object_class.get()
             return w_ro.as_class_get_shadow(self.space).lookup(w_selector)
         return w_method
 
@@ -169,12 +181,13 @@ class RubyClassShadow(ClassShadow):
         w_cm.argsize = 0
         w_cm.bytes = []
         w_cm.literals = [
-            RubyPlugin.w_ruby_plugin_send.get(),
+            plugin.w_ruby_plugin_send.get(),
             w_selector
         ]
         return w_cm
 
-@RubyPlugin.expose_primitive(unwrap_spec=[object, str])
+
+@plugin.expose_primitive(unwrap_spec=[object, str])
 def eval(interp, s_frame, w_rcvr, source):
     try:
         return wrap(interp, ruby_space.execute(source))
@@ -182,7 +195,8 @@ def eval(interp, s_frame, w_rcvr, source):
         print_traceback(ruby_space, e.w_value)
         raise PrimitiveFailedError
 
-@RubyPlugin.expose_primitive(compiled_method=True)
+
+@plugin.expose_primitive(compiled_method=True)
 @jit.unroll_safe
 def send(interp, s_frame, argcount, w_method):
     args_w = s_frame.peek_n(argcount)

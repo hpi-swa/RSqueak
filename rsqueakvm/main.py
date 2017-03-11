@@ -4,18 +4,18 @@ import time
 from rsqueakvm import interpreter, squeakimage, objspace, wrapper, error
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject
+from rsqueakvm.plugins import PluginRegistry
 from rsqueakvm.plugins.simulation import SIMULATE_PRIMITIVE_SELECTOR
-from rsqueakvm.plugins.plugin import PluginPatchScripts
 from rsqueakvm.util import system
 
 from rpython.rlib import jit, rpath, objectmodel, streamio
 
 # XXX: HACK: We have circular dependencies in some plugins ... :(
 PLUGINS_PATCHED = False
-for pluginpatch in PluginPatchScripts:
-    if not PLUGINS_PATCHED:
-        PLUGINS_PATCHED = True
-        pluginpatch()
+if not PLUGINS_PATCHED:
+    PLUGINS_PATCHED = True
+    [p.patch() for p in PluginRegistry.enabled_plugins]
+
 
 def _compile_time_version():
     if os.environ.get("APPVEYOR", None):
@@ -239,7 +239,7 @@ class Config(object):
             elif arg in ["-P", "--process"]:
                 self.headless = False
             elif arg in ["-u", "--stop-ui"]:
-                from rsqueakvm.plugins.v_m_debugging import stop_ui_process
+                from rsqueakvm.plugins.vm_debugging import stop_ui_process
                 stop_ui_process()
             elif arg == "--shell":
                 self.shell = True

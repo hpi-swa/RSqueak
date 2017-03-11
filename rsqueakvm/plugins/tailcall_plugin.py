@@ -1,18 +1,23 @@
-from rsqueakvm.util import system
-if "TailcallPlugin" not in system.optional_plugins and not system.IS_SPHINX:
-    raise LookupError
-
-from rsqueakvm.error import PrimitiveFailedError
-from rsqueakvm.plugins.plugin import Plugin, PluginPatchScripts
+from rsqueakvm.plugins.plugin import Plugin
 
 from rpython.rlib import jit
 
-TailcallPlugin = Plugin()
+
+class TailcallPlugin(Plugin):
+
+    def setup(self):
+        _patch_contexts()
+
+    def patch(self):
+        _patch_interpreter()
+
+    def is_optional(self):
+        return True
 
 
 def _patch_contexts():
-    from rsqueakvm.storage_contexts import ContextPartShadow, ExtraContextAttributes
-    from rsqueakvm.model.compiled_methods import W_CompiledMethod
+    from rsqueakvm.storage_contexts import (
+        ContextPartShadow, ExtraContextAttributes)
 
     def is_tailcall_context(self):
         return jit.promote(self.get_extra_data()._is_tailcall_context)
@@ -28,7 +33,6 @@ def _patch_contexts():
         self._is_tailcall_context = False
     ExtraContextAttributes.__init__ = init_with_tailcallmarker
 
-_patch_contexts()
 
 def _patch_interpreter():
     from rsqueakvm.interpreter import Interpreter
@@ -41,20 +45,24 @@ def _patch_interpreter():
             old_s_frame.store_pc(0)
             for i in range(0, len(old_s_frame._temps_and_stack)):
                 old_s_frame._temps_and_stack[i] = s_frame._temps_and_stack[i]
-            old_s_frame._stack_ptr =old_s_frame.tempsize()
+            old_s_frame._stack_ptr = old_s_frame.tempsize()
+            import pdb; pdb.set_trace()
             old_s_frame.initialize_temps(self.space, w_arguments)
         else:
-            return original_stack_frame(self, s_frame, old_s_frame)    
+            return original_stack_frame(self, s_frame, old_s_frame)
     Interpreter.stack_frame = stack_frame
 
-PluginPatchScripts.append(_patch_interpreter)
 
-@TailcallPlugin.expose_primitive(unwrap_spec=[object])
+plugin = TailcallPlugin()
+
+
+@plugin.expose_primitive(unwrap_spec=[object])
 def primitiveMarkTailcallContext(interp, s_frame, w_recv):
     s_frame.set_is_tailcall_context()
     return w_recv
 
-@TailcallPlugin.expose_primitive(unwrap_spec=[object])
+
+@plugin.expose_primitive(unwrap_spec=[object])
 def primitiveIsTailcallContext(interp, s_frame, w_recv):
     return s_frame.is_tailcall_context()
 

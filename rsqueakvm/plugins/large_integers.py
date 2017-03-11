@@ -2,13 +2,18 @@ from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.primitives import prim_table
 from rsqueakvm.primitives.constants import *
-from rsqueakvm.model.numeric import W_LargeInteger, W_LargeIntegerBig, calculate_exposed_size_for_big_int
+from rsqueakvm.model.numeric import (
+    W_LargeIntegerBig, calculate_exposed_size_for_big_int)
 from rsqueakvm.model.variable import W_BytesObject
 
-from rpython.rlib.rbigint import rbigint, NULLRBIGINT, _divrem
+from rpython.rlib.rbigint import rbigint, _divrem
 from rpython.rlib import jit
 
-LargeIntegers = Plugin()
+
+class LargeIntegers(Plugin):
+    pass
+
+plugin = LargeIntegers()
 
 bitops = {
     'primDigitBitAnd': BIT_AND,
@@ -22,22 +27,26 @@ for name, primitive in bitops.items():
         def func(interp, s_frame, argcount):
             return primfunc(interp, s_frame, argcount)
         func.func_name = name
-        LargeIntegers.expose_primitive(clean_stack=False, no_result=True)(func)
+        plugin.expose_primitive(clean_stack=False, no_result=True)(func)
     make_func(name, primitive)
 
-@LargeIntegers.expose_primitive(unwrap_spec=[rbigint, rbigint])
+
+@plugin.expose_primitive(unwrap_spec=[rbigint, rbigint])
 def primDigitAdd(interp, s_frame, rcvr, arg):
     return interp.space.wrap_rbigint(rcvr.add(arg))
 
-@LargeIntegers.expose_primitive(unwrap_spec=[rbigint, rbigint])
+
+@plugin.expose_primitive(unwrap_spec=[rbigint, rbigint])
 def primDigitSubtract(interp, s_frame, rcvr, arg):
     return interp.space.wrap_rbigint(rcvr.sub(arg))
 
-@LargeIntegers.expose_primitive(unwrap_spec=[rbigint, rbigint, object])
+
+@plugin.expose_primitive(unwrap_spec=[rbigint, rbigint, object])
 def primDigitMultiplyNegative(interp, s_frame, rcvr, arg, neg):
     return interp.space.wrap_rbigint(rcvr.mul(arg))
 
-@LargeIntegers.expose_primitive(unwrap_spec=[rbigint, rbigint, object])
+
+@plugin.expose_primitive(unwrap_spec=[rbigint, rbigint, object])
 def primDigitDivNegative(interp, s_frame, rcvr, arg, neg):
     try:
         quo, rem = _divrem(rcvr, arg)
@@ -48,7 +57,9 @@ def primDigitDivNegative(interp, s_frame, rcvr, arg, neg):
         interp.space.wrap_rbigint(rem)
     ])
 
-@LargeIntegers.expose_primitive(unwrap_specs=[[int, int], [object, int], [rbigint, rbigint]])
+
+@plugin.expose_primitive(unwrap_specs=[[int, int], [object, int],
+                         [rbigint, rbigint]])
 def primDigitCompare(interp, s_frame, rcvr, arg):
     # the C code is different than the fallback!! The C code does a normal
     # compare for small integers, and if the first isn't but the second is an
@@ -74,6 +85,7 @@ def primDigitCompare(interp, s_frame, rcvr, arg):
             res = 0
     return interp.space.wrap_int(res)
 
+
 @jit.elidable
 def minimum_bytelen_for(val):
     bytelen = calculate_exposed_size_for_big_int(val) - 1
@@ -85,7 +97,8 @@ def minimum_bytelen_for(val):
         except OverflowError:
             bytelen += 1
 
-@LargeIntegers.expose_primitive(unwrap_spec=[object])
+
+@plugin.expose_primitive(unwrap_spec=[object])
 def primNormalizePositive(interp, s_frame, w_rcvr):
     if isinstance(w_rcvr, W_BytesObject):
         # only bytes object may be denormalized
@@ -94,7 +107,8 @@ def primNormalizePositive(interp, s_frame, w_rcvr):
         w_rcvr._exposed_size = minimum_bytelen_for(w_rcvr.value)
     return w_rcvr
 
-@LargeIntegers.expose_primitive(unwrap_spec=[object])
+
+@plugin.expose_primitive(unwrap_spec=[object])
 def primNormalizeNegative(interp, s_frame, w_rcvr):
     if isinstance(w_rcvr, W_BytesObject):
         # only bytes object may be denormalized

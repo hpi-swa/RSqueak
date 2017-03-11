@@ -17,11 +17,15 @@ from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.storage_classes import BYTES, POINTERS, WORDS
 
 
-ImmutabilityPlugin = Plugin()
-patch_w_object()
+class ImmutabilityPlugin(Plugin):
+    def setup(self):
+        patch_w_object()
 
 
-@ImmutabilityPlugin.expose_primitive(unwrap_spec=[object])
+plugin = ImmutabilityPlugin()
+
+
+@plugin.expose_primitive(unwrap_spec=[object])
 def primitiveIsImmutable(interp, s_frame, w_recv):
     """
     Tests if `w_recv` is an immutable object.
@@ -36,7 +40,7 @@ def primitiveIsImmutable(interp, s_frame, w_recv):
     return interp.space.w_false
 
 
-@ImmutabilityPlugin.expose_primitive(unwrap_spec=[object, object])
+@plugin.expose_primitive(unwrap_spec=[object, object])
 def primitiveImmutableFrom(interp, s_frame, w_cls, w_obj):
     """
     Creates an immutable copy of a given Smalltalk object.
@@ -63,7 +67,7 @@ def primitiveImmutableFrom(interp, s_frame, w_cls, w_obj):
     raise PrimitiveFailedError
 
 
-@ImmutabilityPlugin.expose_primitive(unwrap_spec=None)
+@plugin.expose_primitive(unwrap_spec=None)
 def primitiveImmutableFromArgs(interp, s_frame, argcount):
     """
     Returns an immutable instance of the receiver (which is a class) with

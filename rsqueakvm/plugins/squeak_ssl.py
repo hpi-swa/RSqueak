@@ -1,7 +1,7 @@
 from rsqueakvm import error
 from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
 from rsqueakvm.primitives import index1_0
-from rsqueakvm.plugins.plugin import Plugin, PluginStartupScripts
+from rsqueakvm.plugins.plugin import Plugin
 
 from rpython.rlib import ropenssl
 from rpython.rlib.objectmodel import we_are_translated, specialize
@@ -42,13 +42,14 @@ for k, v in ropenssl.rffi_platform.configure(CConfig).items():
     globals()[k] = v
 
 
-def startup(space, argv):
-    ropenssl.init_ssl()
-    ropenssl.init_digests()
-PluginStartupScripts.append(startup)
+class SqueakSSL(Plugin):
 
+    @staticmethod
+    def startup(space, argv):
+        ropenssl.init_ssl()
+        ropenssl.init_digests()
 
-SqueakSSL = Plugin()
+plugin = SqueakSSL()
 SSL_VERSION = 2
 
 # SSL connection states
@@ -186,11 +187,11 @@ def _debug_in_interpreter():
             pdb.set_trace()
 
 
-@SqueakSSL.expose_primitive(unwrap_spec=[object])
+@plugin.expose_primitive(unwrap_spec=[object])
 def primitiveCreate(interp, s_frame, w_rcvr):
     return W_SSLHandle()
 
-@SqueakSSL.expose_primitive(unwrap_spec=[object, object])
+@plugin.expose_primitive(unwrap_spec=[object, object])
 def primitiveDestroy(interp, s_frame, w_rcvr, w_handle):
     _debug_in_interpreter()
     if not isinstance(w_handle, W_SSLHandle):
@@ -198,7 +199,7 @@ def primitiveDestroy(interp, s_frame, w_rcvr, w_handle):
     w_handle.close()
     return interp.space.wrap_int(1)
 
-@SqueakSSL.expose_primitive(unwrap_spec=[object, object, str, index1_0, int, object])
+@plugin.expose_primitive(unwrap_spec=[object, object, str, index1_0, int, object])
 def primitiveEncrypt(interp, s_frame, w_rcvr, w_handle, src, start, srclen, w_dst):
     _debug_in_interpreter()
     if (not isinstance(w_handle, W_SSLHandle) or
@@ -219,7 +220,7 @@ def primitiveEncrypt(interp, s_frame, w_rcvr, w_handle, src, start, srclen, w_ds
     c = copy_bio_ssl(w_handle.writebio, w_dst, dstlen, w_handle.loglevel)
     return interp.space.wrap_int(c)
 
-@SqueakSSL.expose_primitive(unwrap_spec=[object, object, str, index1_0, int, object])
+@plugin.expose_primitive(unwrap_spec=[object, object, str, index1_0, int, object])
 def primitiveDecrypt(interp, s_frame, w_rcvr, w_handle, src, start, srclen, w_dst):
     _debug_in_interpreter()
     if (not isinstance(w_handle, W_SSLHandle) or
@@ -243,7 +244,7 @@ def primitiveDecrypt(interp, s_frame, w_rcvr, w_handle, src, start, srclen, w_ds
             w_dst.setchar(idx, buf.raw[idx])
     return interp.space.wrap_int(nbytes)
 
-@SqueakSSL.expose_primitive(unwrap_spec=[object, object, int, str])
+@plugin.expose_primitive(unwrap_spec=[object, object, int, str])
 def primitiveSetStringProperty(interp, s_frame, w_rcvr, w_handle, propid, value):
     if not isinstance(w_handle, W_SSLHandle):
         return interp.space.wrap_int(0)
@@ -256,7 +257,7 @@ def primitiveSetStringProperty(interp, s_frame, w_rcvr, w_handle, propid, value)
         return interp.space.wrap_int(0)
     return interp.space.wrap_int(1)
 
-@SqueakSSL.expose_primitive(unwrap_spec=[object, object, int])
+@plugin.expose_primitive(unwrap_spec=[object, object, int])
 def primitiveGetStringProperty(interp, s_frame, w_rcvr, w_handle, propid):
     if not isinstance(w_handle, W_SSLHandle):
         return interp.space.w_nil
@@ -272,7 +273,7 @@ def primitiveGetStringProperty(interp, s_frame, w_rcvr, w_handle, propid):
         r = ""
     return interp.space.wrap_string(r)
 
-@SqueakSSL.expose_primitive(unwrap_spec=[object, object, int, int])
+@plugin.expose_primitive(unwrap_spec=[object, object, int, int])
 def primitiveSetIntProperty(interp, s_frame, w_rcvr, w_handle, propid, value):
     if not isinstance(w_handle, W_SSLHandle):
         return interp.space.wrap_int(0)
@@ -283,7 +284,7 @@ def primitiveSetIntProperty(interp, s_frame, w_rcvr, w_handle, propid, value):
         return interp.space.wrap_int(0)
     return interp.space.wrap_int(1)
 
-@SqueakSSL.expose_primitive(unwrap_spec=[object, object, int])
+@plugin.expose_primitive(unwrap_spec=[object, object, int])
 def primitiveGetIntProperty(interp, s_frame, w_rcvr, w_handle, propid):
     if not isinstance(w_handle, W_SSLHandle):
         return interp.space.wrap_int(0)
@@ -298,7 +299,7 @@ def primitiveGetIntProperty(interp, s_frame, w_rcvr, w_handle, propid):
         r = 0
     return interp.space.wrap_int(r)
 
-@SqueakSSL.expose_primitive(unwrap_spec=[object, object, str, index1_0, int, object])
+@plugin.expose_primitive(unwrap_spec=[object, object, str, index1_0, int, object])
 def primitiveConnect(interp, s_frame, w_rcvr, w_handle, src, start, srclen, w_dst):
     _debug_in_interpreter()
     if (not isinstance(w_handle, W_SSLHandle) or

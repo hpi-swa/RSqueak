@@ -92,8 +92,8 @@ def func(interp, s_frame, w_rcvr, w_into):
 def func(interp, s_frame, argcount, w_method):
     w_name = interp.space.wrap_string("primitiveCopyBits")
     signature = ("BitBltPlugin", "primitiveCopyBits")
-    from rsqueakvm.plugins.simulation import SimulationPlugin
-    return SimulationPlugin.simulate(w_name, signature, interp, s_frame, argcount, w_method)
+    from rsqueakvm.plugins.simulation import simulationPlugin
+    return simulationPlugin.simulate(w_name, signature, interp, s_frame, argcount, w_method)
 
 @expose_primitive(SNAPSHOT, clean_stack=False, no_result=True)
 def func(interp, s_frame, argcount):

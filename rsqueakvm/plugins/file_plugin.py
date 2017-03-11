@@ -10,17 +10,20 @@ from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.primitives import index1_0
 from rsqueakvm.util.system import IS_WINDOWS
 
-from rpython.rlib import jit, rarithmetic
+from rpython.rlib import rarithmetic
 from rpython.rlib.rarithmetic import r_uint
 
 
-FilePlugin = Plugin()
+class FilePlugin(Plugin):
+    pass
+
+plugin = FilePlugin()
 os.stat_float_times(False)
 
 try:
     std_fds = [sys.stdin.fileno(),
-           sys.stdout.fileno(),
-           sys.stderr.fileno()]
+               sys.stdout.fileno(),
+               sys.stderr.fileno()]
 except ValueError:
     std_fds = [0, 1, 2]
 
@@ -49,7 +52,7 @@ else:
 #should we implement primitiveDirectoryEntry ?
 #should we implement primitiveHasFileAccess ?
 
-@FilePlugin.expose_primitive(unwrap_spec=[object, str])
+@plugin.expose_primitive(unwrap_spec=[object, str])
 def primitiveFileDelete(interp, s_frame, w_rcvr, file_path):
     # we actually should ask the security plugin function sCDFfn for permissions
     try:
@@ -58,11 +61,11 @@ def primitiveFileDelete(interp, s_frame, w_rcvr, file_path):
         raise PrimitiveFailedError
     return w_rcvr
 
-@FilePlugin.expose_primitive(unwrap_spec=[object])
+@plugin.expose_primitive(unwrap_spec=[object])
 def primitiveDirectoryDelimitor(interp, s_frame, w_rcvr):
     return interp.space.wrap_char(os.path.sep)
 
-@FilePlugin.expose_primitive(unwrap_spec=[object, str])
+@plugin.expose_primitive(unwrap_spec=[object, str])
 def primitiveDirectoryCreate(interp, s_frame, w_rcvr, dir_path):
     # we actually should ask the security plugin function sCCPfn for permissions
     try:
@@ -71,7 +74,7 @@ def primitiveDirectoryCreate(interp, s_frame, w_rcvr, dir_path):
         raise PrimitiveFailedError
     return w_rcvr
 
-@FilePlugin.expose_primitive(unwrap_spec=[object, str])
+@plugin.expose_primitive(unwrap_spec=[object, str])
 def primitiveDirectoryDelete(interp, s_frame, w_rcvr, dir_path):
     # we actually should ask the security plugin function sCDPfn for permissions
     try:
@@ -80,7 +83,7 @@ def primitiveDirectoryDelete(interp, s_frame, w_rcvr, dir_path):
         raise PrimitiveFailedError
     return w_rcvr
 
-@FilePlugin.expose_primitive(unwrap_spec=[object, str, index1_0])
+@plugin.expose_primitive(unwrap_spec=[object, str, index1_0])
 def primitiveDirectoryLookup(interp, s_frame, w_file_directory, full_path, index):
     if full_path == '':
         contents = os.listdir(os.path.sep)
@@ -113,7 +116,7 @@ def primitiveDirectoryLookup(interp, s_frame, w_file_directory, full_path, index
     return space.wrap_list_unroll_safe([w_name, w_creationTime, w_modificationTime,
                                         w_dirFlag, w_fileSize])
 
-@FilePlugin.expose_primitive(unwrap_spec=[object, str, object])
+@plugin.expose_primitive(unwrap_spec=[object, str, object])
 def primitiveFileOpen(interp, s_frame, w_rcvr, file_path, w_writeable_flag):
     space = interp.space
     file_missing = not os.path.exists(file_path)
@@ -133,7 +136,7 @@ def primitiveFileOpen(interp, s_frame, w_rcvr, file_path, w_writeable_flag):
         raise PrimitiveFailedError()
     return space.wrap_int(file_descriptor)
 
-@FilePlugin.expose_primitive(unwrap_spec=[object, int])
+@plugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveFileClose(interp, s_frame, w_rcvr, fd):
     try:
         os.close(fd)
@@ -141,7 +144,7 @@ def primitiveFileClose(interp, s_frame, w_rcvr, fd):
         raise PrimitiveFailedError()
     return w_rcvr
 
-@FilePlugin.expose_primitive(unwrap_spec=[object, int])
+@plugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveFileAtEnd(interp, s_frame, w_rcvr, fd):
     file_info = os.fstat(fd)
     if os.lseek(fd, 0, os.SEEK_CUR) >= file_info.st_size:
@@ -149,7 +152,7 @@ def primitiveFileAtEnd(interp, s_frame, w_rcvr, fd):
     else:
         return interp.space.w_false
 
-@FilePlugin.expose_primitive(unwrap_spec=[object, int, object, index1_0, int])
+@plugin.expose_primitive(unwrap_spec=[object, int, object, index1_0, int])
 def primitiveFileRead(interp, s_frame, w_rcvr, fd, target, start, count):
     if not isinstance(target, W_BytesObject):
         raise PrimitiveFailedError
@@ -165,7 +168,7 @@ def primitiveFileRead(interp, s_frame, w_rcvr, fd, target, start, count):
         target.setchar(start + i, contents[i])
     return space.wrap_int(len_read)
 
-@FilePlugin.expose_primitive(unwrap_spec=[object, int])
+@plugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveFileGetPosition(interp, s_frame, w_rcvr, fd):
     try:
         pos = r_uint(os.lseek(fd, 0, os.SEEK_CUR))
@@ -174,7 +177,7 @@ def primitiveFileGetPosition(interp, s_frame, w_rcvr, fd):
     else:
         return interp.space.wrap_int(pos)
 
-@FilePlugin.expose_primitive(unwrap_spec=[object, int, int])
+@plugin.expose_primitive(unwrap_spec=[object, int, int])
 def primitiveFileSetPosition(interp, s_frame, w_rcvr, fd, position):
     try:
         os.lseek(fd, position, os.SEEK_SET)
@@ -182,7 +185,7 @@ def primitiveFileSetPosition(interp, s_frame, w_rcvr, fd, position):
         raise PrimitiveFailedError
     return w_rcvr
 
-@FilePlugin.expose_primitive(unwrap_spec=[object, int])
+@plugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveFileSize(interp, s_frame, w_rcvr, fd):
     try:
         file_info = os.fstat(fd)
@@ -190,14 +193,14 @@ def primitiveFileSize(interp, s_frame, w_rcvr, fd):
         raise PrimitiveFailedError
     return interp.space.wrap_int(r_uint(file_info.st_size))
 
-@FilePlugin.expose_primitive(unwrap_spec=[object])
+@plugin.expose_primitive(unwrap_spec=[object])
 def primitiveFileStdioHandles(interp, s_frame, w_rcvr):
     # This primitive may give an error-code...
     # return an array with stdin, stdout, stderr
     space = interp.space
     return space.wrap_list_unroll_safe([space.wrap_int(fd) for fd in std_fds])
 
-@FilePlugin.expose_primitive(unwrap_spec=[object, int, object, index1_0, int])
+@plugin.expose_primitive(unwrap_spec=[object, int, object, index1_0, int])
 def primitiveFileWrite(interp, s_frame, w_rcvr, fd, content, start, count):
     size = content.size()
     if isinstance(content, W_WordsObject):
@@ -227,7 +230,7 @@ def primitiveFileWrite(interp, s_frame, w_rcvr, fd, content, start, count):
     else:
         return space.wrap_int(r_uint(written / element_size))
 
-@FilePlugin.expose_primitive(unwrap_spec=[object, int, int])
+@plugin.expose_primitive(unwrap_spec=[object, int, int])
 def primitiveFileTruncate(interp, s_frame, w_rcvr, fd, position):
     try:
         ftruncate(fd, position)
@@ -235,7 +238,7 @@ def primitiveFileTruncate(interp, s_frame, w_rcvr, fd, position):
         raise PrimitiveFailedError
     return w_rcvr
 
-@FilePlugin.expose_primitive(unwrap_spec=[object, str, str, str])
+@plugin.expose_primitive(unwrap_spec=[object, str, str, str])
 def primitiveDirectorySetMacTypeAndCreator(interp, s_frame, w_rcvr, filename, type, creator):
     # TODO: this is a stub. "MacOS.SetCreatorAndType" is not available in my pypy build
     return w_rcvr
@@ -248,6 +251,6 @@ def smalltalk_timestamp(space, sec_since_epoch):
     sec_since_1901 = r_uint(sec_since_epoch + secs_between_1901_and_1970)
     return space.wrap_int(sec_since_1901)
 
-@FilePlugin.expose_primitive(unwrap_spec=[object, int])
+@plugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveFileFlush(interp, s_frame, w_rcvr, fd):
     return w_rcvr

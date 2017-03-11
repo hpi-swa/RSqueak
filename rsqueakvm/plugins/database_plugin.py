@@ -1,7 +1,3 @@
-from rsqueakvm.util import system
-if "DatabasePlugin" not in system.optional_plugins and not system.IS_SPHINX:
-    raise LookupError
-
 import platform
 
 from rsqueakvm.plugins.database import dbm
@@ -9,6 +5,21 @@ from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.primitives.constants import *
 from rsqueakvm.plugins.database.model import W_DBObject, BLOB
+
+interpreter = CConfig = None
+
+
+class DatabasePlugin(Plugin):
+
+    def setup(self):
+        global interpreter, CConfig
+        interpreter, CConfig = _import_sqpyte()
+        _patch_class_shadow()
+
+    def is_optional(self):
+        return True
+
+plugin = DatabasePlugin()
 
 
 def _import_sqpyte():
@@ -19,7 +30,6 @@ def _import_sqpyte():
         return interpreter, CConfig
     except (ImportError, AssertionError):
         return None, None
-interpreter, CConfig = _import_sqpyte()
 
 
 def _patch_class_shadow():
@@ -43,13 +53,9 @@ def _patch_class_shadow():
     ClassShadow.make_pointers_object = db_make_pointers_object
     ClassShadow.inherits_from_dbobject = elidable_for_version(0)(
         inherits_from_dbobject)
-_patch_class_shadow()
 
 
-DatabasePlugin = Plugin()
-
-
-@DatabasePlugin.expose_primitive(unwrap_spec=[object, str, bool])
+@plugin.expose_primitive(unwrap_spec=[object, str, bool])
 def primitiveSQLConnect(interp, s_frame, w_rcvr, filename, sqpyte):
     if interpreter is None:
         raise PrimitiveFailedError('sqpyte not found')
@@ -60,7 +66,7 @@ def primitiveSQLConnect(interp, s_frame, w_rcvr, filename, sqpyte):
     return interp.space.wrap_int(db_handle)
 
 
-@DatabasePlugin.expose_primitive(clean_stack=False)
+@plugin.expose_primitive(clean_stack=False)
 def primitiveSQLExecute(interp, s_frame, argcount):
     if not 2 <= argcount <= 3:
         raise PrimitiveFailedError(
@@ -80,24 +86,24 @@ def primitiveSQLExecute(interp, s_frame, argcount):
     return space.wrap_int(cursor_handle)
 
 
-@DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
+@plugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveSQLNext(interp, s_frame, w_rcvr, cursor_handle):
     return dbm.cursor(cursor_handle).next(interp.space)
 
 
-@DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
+@plugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveSQLColumnCount(interp, s_frame, w_rcvr, cursor_handle):
     return interp.space.wrap_int(dbm.cursor(cursor_handle).column_count)
 
 
-@DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
+@plugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveSQLColumnNames(interp, s_frame, w_rcvr, cursor_handle):
     return interp.space.wrap_list([
         interp.space.wrap_string(c) for c in
         dbm.cursor(cursor_handle).column_names])
 
 
-@DatabasePlugin.expose_primitive(unwrap_spec=[object, int, int])
+@plugin.expose_primitive(unwrap_spec=[object, int, int])
 def primitiveSQLColumnName(interp, s_frame, w_rcvr, cursor_handle, index):
     if index < 1:
         raise PrimitiveFailedError('Index must be >= 1')
@@ -107,12 +113,12 @@ def primitiveSQLColumnName(interp, s_frame, w_rcvr, cursor_handle, index):
         dbm.cursor(cursor_handle).column_names[index - 1])
 
 
-@DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
+@plugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveSQLClose(interp, s_frame, w_rcvr, db_handle):
     return interp.space.wrap_bool(dbm.close(db_handle))
 
 
-@DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
+@plugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveSQLModeSwitch(interp, s_frame, w_rcvr, mode):
     if interpreter is None:
         raise PrimitiveFailedError('sqpyte not found')
@@ -125,25 +131,25 @@ def primitiveSQLModeSwitch(interp, s_frame, w_rcvr, mode):
     return interp.space.w_nil
 
 
-@DatabasePlugin.expose_primitive(unwrap_spec=[object, str])
+@plugin.expose_primitive(unwrap_spec=[object, str])
 def primitiveSetDBFile(interp, s_frame, w_rcvr, db_file_name):
     dbm.db_file_name = db_file_name
     return interp.space.w_nil
 
 
-@DatabasePlugin.expose_primitive(unwrap_spec=[object])
+@plugin.expose_primitive(unwrap_spec=[object])
 def primitiveCloseDBObject(interp, s_frame, w_rcvr):
     return interp.space.wrap_bool(dbm.connection().close())
 
 
-@DatabasePlugin.expose_primitive(unwrap_spec=[object, str, object])
+@plugin.expose_primitive(unwrap_spec=[object, str, object])
 def primitiveDBObjectExecute(interp, s_frame, w_rcvr, sql, args):
     cursor_handle = dbm.execute(
         interp.space, dbm.connection(), sql, interp.space.unwrap_array(args))
     return interp.space.wrap_int(cursor_handle)
 
 
-@DatabasePlugin.expose_primitive(unwrap_spec=[object])
+@plugin.expose_primitive(unwrap_spec=[object])
 def primitiveSQLAllInstances(interp, s_frame, w_class):
     class_name = w_class.classname(interp.space).split(' ')[0]
     handle = dbm.connection()
@@ -152,7 +158,7 @@ def primitiveSQLAllInstances(interp, s_frame, w_class):
     return interp.space.wrap_int(cursor_handle)
 
 
-@DatabasePlugin.expose_primitive(unwrap_spec=[object, int])
+@plugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveSQLNextObject(interp, s_frame, w_rcvr, cursor_handle):
     if CConfig is None:
         raise PrimitiveFailedError('sqpyte not found')
