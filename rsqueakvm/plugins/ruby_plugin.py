@@ -68,6 +68,8 @@ def setup_topaz():
 
     ruby_space = ObjectSpace(None)
 
+plugin = RubyPlugin()
+
 
 @objectmodel.specialize.argtype(0)
 def wrap(interp, wr_object):
@@ -146,12 +148,12 @@ class RubyClassShadow(ClassShadow):
         AbstractCachingShadow.__init__(self, space, space.w_nil, 0, space.w_nil)
 
     def changed(self):
-        pass # Changes to Ruby classes are handled in Ruby land
+        pass  # Changes to Ruby classes are handled in Ruby land
 
     def lookup(self, w_selector):
         w_method = self._lookup(w_selector, self.wr_class.version)
         if w_method is None:
-            w_ro = RubyPlugin.w_ruby_object_class.get()
+            w_ro = plugin.w_ruby_object_class.get()
             return w_ro.as_class_get_shadow(self.space).lookup(w_selector)
         return w_method
 
@@ -179,12 +181,10 @@ class RubyClassShadow(ClassShadow):
         w_cm.argsize = 0
         w_cm.bytes = []
         w_cm.literals = [
-            RubyPlugin.w_ruby_plugin_send.get(),
+            plugin.w_ruby_plugin_send.get(),
             w_selector
         ]
         return w_cm
-
-plugin = RubyPlugin()
 
 
 @plugin.expose_primitive(unwrap_spec=[object, str])
