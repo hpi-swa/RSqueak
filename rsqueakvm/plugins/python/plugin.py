@@ -2,11 +2,14 @@ from rsqueakvm.error import Exit, PrimitiveFailedError
 from rsqueakvm.plugins.foreign_language.plugin import ForeignLanguagePlugin
 from rsqueakvm.util import system
 
-from rsqueakvm.plugins import python
-from rsqueakvm.plugins.python.model import W_PythonObject
-from rsqueakvm.plugins.python.language import W_PythonLanguage
-from rsqueakvm.plugins.python.patching import patch_pypy
-from rsqueakvm.plugins.python.utils import python_to_smalltalk
+try:
+    from rsqueakvm.plugins import python
+    from rsqueakvm.plugins.python.model import W_PythonObject
+    from rsqueakvm.plugins.python.language import W_PythonLanguage
+    from rsqueakvm.plugins.python.patching import patch_pypy
+    from rsqueakvm.plugins.python.utils import python_to_smalltalk
+except ImportError:
+    pass
 
 
 class PythonPlugin(ForeignLanguagePlugin):

@@ -2,11 +2,14 @@ from rsqueakvm.error import Exit, PrimitiveFailedError
 from rsqueakvm.plugins.foreign_language.plugin import ForeignLanguagePlugin
 from rsqueakvm.util import system
 
-from rsqueakvm.plugins import ruby
-from rsqueakvm.plugins.ruby.model import W_RubyObject
-from rsqueakvm.plugins.ruby.language import W_RubyLanguage
-from rsqueakvm.plugins.ruby.patching import patch_topaz
-from rsqueakvm.plugins.ruby.utils import ruby_to_smalltalk
+try:
+    from rsqueakvm.plugins import ruby
+    from rsqueakvm.plugins.ruby.model import W_RubyObject
+    from rsqueakvm.plugins.ruby.language import W_RubyLanguage
+    from rsqueakvm.plugins.ruby.patching import patch_topaz
+    from rsqueakvm.plugins.ruby.utils import ruby_to_smalltalk
+except ImportError:
+    pass
 
 
 class RubyPlugin(ForeignLanguagePlugin):

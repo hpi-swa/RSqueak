@@ -10,8 +10,8 @@ try:
     from rsqueakvm.plugins.python.model import W_PythonObject
 
     from pypy.interpreter.error import OperationError
-    from pypy.interpreter.function import (Function, Method, StaticMethod,
-                                           ClassMethod)
+    from pypy.interpreter.function import (
+        Function, Method, StaticMethod, ClassMethod)
 except ImportError:
     pass
 
