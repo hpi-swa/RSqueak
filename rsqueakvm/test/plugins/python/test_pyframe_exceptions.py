@@ -1,4 +1,4 @@
-from rsqueakvm.plugins.python import py_space
+from rsqueakvm.plugins.python.objspace import py_space
 from rsqueakvm.plugins.python.patching import patch_pypy
 
 from pypy.interpreter.error import OperationError

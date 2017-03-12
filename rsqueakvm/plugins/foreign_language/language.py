@@ -1,7 +1,10 @@
-from rsqueakvm.plugins.foreign_language import runner, w_foreign_language_class
+from rsqueakvm.error import Exit
+from rsqueakvm.plugins.foreign_language import runner
 from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.compiled_methods import (
     W_PreSpurCompiledMethod, W_SpurCompiledMethod)
+from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.util.cells import QuasiConstant
 
 from pypy.interpreter.executioncontext import ExecutionContext
 
@@ -16,6 +19,9 @@ class W_ForeignLanguage(W_AbstractObjectWithIdentityHash):
         '_runner', '_done', 'w_result', 'w_error', '_break_on_exceptions']
     repr_classname = 'W_ForeignLanguage'
 
+    w_foreign_class = QuasiConstant(None, type=W_PointersObject)
+    w_foreign_resume = QuasiConstant(None, type=W_PointersObject)
+
     def __init__(self, break_on_exceptions=True):
         W_AbstractObjectWithIdentityHash.__init__(self)
         self._done = False
@@ -26,6 +32,22 @@ class W_ForeignLanguage(W_AbstractObjectWithIdentityHash):
             self._runner = runner.StackletLanguageRunner(self)
         else:
             self._runner = runner.GreenletLanguageRunner(self)
+
+    @staticmethod
+    def load_special_objects(cls, language_name, space):
+        foreign_class = space.smalltalk_at(language_name)
+        if foreign_class is None:
+            # disable plugin?
+            raise Exit('%s class not found.' % language_name)
+        cls.w_foreign_class.set(foreign_class)
+
+        resume_method_symbol = space.wrap_symbol('resume:')
+        foreign_cls_cls_s = foreign_class.getclass(
+            space).as_class_get_shadow(space)
+        resume_method = foreign_cls_cls_s.lookup(resume_method_symbol)
+        if resume_method is None:
+            raise Exit('%s class>>resume: method not found.' % language_name)
+        cls.w_foreign_resume.set(resume_method)
 
     # W_AbstractObjectWithIdentityHash overrides
 
@@ -46,7 +68,7 @@ class W_ForeignLanguage(W_AbstractObjectWithIdentityHash):
         pass
 
     def getclass(self, space):
-        return w_foreign_language_class.get()
+        return self.foreign_class()
 
     # Abstract methods
 
@@ -62,13 +84,21 @@ class W_ForeignLanguage(W_AbstractObjectWithIdentityHash):
     def set_current(self):
         raise NotImplementedError
 
-    def resume_class(self):
-        raise NotImplementedError
+    # Helpers
+
+    def run_safe(self):
+        try:
+            self.run()
+        except Exception as e:
+            print 'Unknown error in thread: %s' % e
+        finally:
+            self._done = True
+
+    def foreign_class(self):
+        return self.w_foreign_class.get()
 
     def resume_method(self):
-        raise NotImplementedError
-
-    # Helpers
+        return self.w_foreign_resume.get()
 
     def start(self):
         self.runner().start()
@@ -83,9 +113,6 @@ class W_ForeignLanguage(W_AbstractObjectWithIdentityHash):
 
     def runner(self):
         return self._runner
-
-    def mark_done(self):
-        self._done = True
 
     def is_done(self):
         return self._done
@@ -114,7 +141,7 @@ class W_ForeignLanguage(W_AbstractObjectWithIdentityHash):
         s_resume_frame = ContextPartShadow.build_method_context(
             interp.space,
             self.resume_method(),
-            self.resume_class(),
+            self.foreign_class(),
             [self]
         )
         # import pdb; pdb.set_trace()
@@ -147,7 +174,7 @@ class W_ForeignLanguage(W_AbstractObjectWithIdentityHash):
             w_cm = objectmodel.instantiate(W_SpurCompiledMethod)
         else:
             w_cm = objectmodel.instantiate(W_PreSpurCompiledMethod)
-        w_resume_class = self.resume_class()
+        w_resume_class = self.foreign_class()
         w_cm.header = 0
         w_cm._primitive = 0
         w_cm.literalsize = 3

@@ -1,14 +1,8 @@
-from rsqueakvm.plugins import ruby
 from rsqueakvm.plugins.foreign_language.model import (
     W_ForeignLanguageObject, ForeignLanguageClassShadow)
-from rsqueakvm.plugins.ruby import ruby_space
-from rsqueakvm.primitives.constants import EXTERNAL_CALL
-from rsqueakvm.model.compiled_methods import (
-    W_PreSpurCompiledMethod, W_SpurCompiledMethod)
-from rsqueakvm.storage import AbstractCachingShadow
+from rsqueakvm.plugins.ruby.objspace import ruby_space
 
-from rpython.rlib import objectmodel, jit
-
+from rpython.rlib import jit
 
 RubyClassShadowCache = {}
 
@@ -49,33 +43,12 @@ class RubyClassShadow(ForeignLanguageClassShadow):
     def __init__(self, space, wr_class):
         self.wr_class = wr_class
         self.name = wr_class.name
-        AbstractCachingShadow.__init__(
-            self, space, space.w_nil, 0, space.w_nil)
+        ForeignLanguageClassShadow.__init__(self, space)
 
-    def fallback_class(self):
-        return ruby.w_ruby_object_class.get()
-
-    def make_method(self, w_selector):
+    def method_exists(self, w_selector):
         methodname = self.space.unwrap_string(w_selector)
         idx = methodname.find(':')
         if idx > 0:
             methodname = methodname[0:idx]
         ruby_method = self.wr_class.find_method(ruby_space, methodname)
-        if ruby_method is None:
-            return None
-        if self.space.is_spur.is_set():
-            w_cm = objectmodel.instantiate(W_SpurCompiledMethod)
-        else:
-            w_cm = objectmodel.instantiate(W_PreSpurCompiledMethod)
-        w_cm.header = 0
-        w_cm._primitive = EXTERNAL_CALL
-        w_cm.literalsize = 2
-        w_cm.islarge = False
-        w_cm._tempsize = 0
-        w_cm.argsize = 0
-        w_cm.bytes = []
-        w_cm.literals = [
-            ruby.w_ruby_plugin_send.get(),
-            w_selector
-        ]
-        return w_cm
+        return ruby_method is not None

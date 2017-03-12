@@ -1,7 +1,7 @@
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger
-from rsqueakvm.plugins.ruby import ruby_space
 from rsqueakvm.plugins.ruby.model import W_RubyObject
+from rsqueakvm.plugins.ruby.objspace import ruby_space
 from rsqueakvm.model.variable import W_BytesObject
 
 from topaz.objects.floatobject import W_FloatObject as WR_FloatObject

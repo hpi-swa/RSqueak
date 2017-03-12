@@ -1,12 +1,13 @@
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.variable import W_BytesObject
-from rsqueakvm.plugins.ruby.plugin import RubyPlugin
+from rsqueakvm.plugins.ruby import RubyPlugin
 
 from rpython.rlib import jit
 
 try:
-    from rsqueakvm.plugins.ruby import ruby_space, utils
     from rsqueakvm.plugins.ruby.model import W_RubyObject
+    from rsqueakvm.plugins.ruby.objspace import ruby_space
+    from rsqueakvm.plugins.ruby.utils import smalltalk_to_ruby
 
     from topaz.error import RubyError, print_traceback
 except ImportError:
@@ -32,8 +33,8 @@ def send(interp, s_frame, argcount, w_method):
     # import pdb; pdb.set_trace()
     space = interp.space
     args_w = s_frame.peek_n(argcount)
-    args_rw = [utils.smalltalk_to_ruby(space, w_arg) for w_arg in args_w]
-    wr_rcvr = utils.smalltalk_to_ruby(space, s_frame.peek(argcount))
+    args_rw = [smalltalk_to_ruby(space, w_arg) for w_arg in args_w]
+    wr_rcvr = smalltalk_to_ruby(space, s_frame.peek(argcount))
     w_selector_name = w_method.literalat0(space, 2)
     if not isinstance(w_selector_name, W_BytesObject):
         print 'w_selector_name not an instance of W_BytesObject'

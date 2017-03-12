@@ -2,8 +2,8 @@ import os
 
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger
-from rsqueakvm.plugins.python import py_space
 from rsqueakvm.plugins.python.model import W_PythonObject
+from rsqueakvm.plugins.python.objspace import py_space
 from rsqueakvm.model.variable import W_BytesObject
 
 from pypy.interpreter.argument import Arguments

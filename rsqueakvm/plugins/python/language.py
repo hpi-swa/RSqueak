@@ -1,7 +1,6 @@
 from rsqueakvm.plugins.foreign_language.language import W_ForeignLanguage
-from rsqueakvm.plugins.python import (
-    py_space, w_python_class, w_python_resume_method)
 from rsqueakvm.plugins.python.model import W_PythonObject
+from rsqueakvm.plugins.python.objspace import py_space
 from rsqueakvm.plugins.python.utils import _run_eval_string, operr_to_pylist
 
 from pypy.interpreter.error import OperationError
@@ -32,10 +31,6 @@ class W_PythonLanguage(W_ForeignLanguage):
             # operr was not handled by users, because they pressed proceed.
             # save Python error as result instead.
             self.set_result(operr_to_pylist(operr))
-        except Exception as e:
-            print 'Unknown error in Python thread: %s' % e
-        finally:
-            self.mark_done()
 
     def set_current(self):
         ec = py_space.getexecutioncontext()
@@ -46,9 +41,3 @@ class W_PythonLanguage(W_ForeignLanguage):
 
     def set_error(self, wp_operr):
         self.w_error = W_PythonObject(operr_to_pylist(wp_operr))
-
-    def resume_class(self):
-        return w_python_class.get()
-
-    def resume_method(self):
-        return w_python_resume_method.get()

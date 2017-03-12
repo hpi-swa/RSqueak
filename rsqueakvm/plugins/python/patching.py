@@ -1,4 +1,4 @@
-from rsqueakvm.plugins.python import py_space, switch_action
+from rsqueakvm.plugins.python.objspace import py_space, switch_action
 from rsqueakvm.plugins.python.switching import RestartException
 
 from pypy.interpreter.pycode import PyCode, default_magic

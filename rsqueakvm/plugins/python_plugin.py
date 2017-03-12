@@ -1,7 +1,6 @@
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.variable import W_BytesObject
-from rsqueakvm.plugins.python import set_py_frame_restart_info
-from rsqueakvm.plugins.python.plugin import PythonPlugin
+from rsqueakvm.plugins.python import PythonPlugin
 
 from rpython.rlib import jit
 
@@ -39,7 +38,7 @@ def restartSpecificFrame(interp, s_frame, w_rcvr, w_frame, source, filename,
         py_code = utils.get_restart_pycode(source, filename, cmd)
         if py_code is None:
             return interp.space.w_false  # Raising prim error causes crashes
-    set_py_frame_restart_info(frame, py_code)
+    PythonPlugin.set_py_frame_restart_info(frame, py_code)
     return interp.space.w_true
 
 

@@ -8,7 +8,7 @@ class SwitchToSmalltalkAction(PeriodicAsyncAction):
         PeriodicAsyncAction.__init__(self, py_space)
 
     def perform(self, ec, frame):
-        from rsqueakvm.plugins.python import py_frame_restart_info
+        from rsqueakvm.plugins.python import PythonPlugin
 
         # import pdb; pdb.set_trace()
         language = ec.current_language
@@ -26,9 +26,9 @@ class SwitchToSmalltalkAction(PeriodicAsyncAction):
         language.reset_error()
 
         # handle py_frame_restart_info if set
-        restart_info = py_frame_restart_info.get()
+        restart_info = PythonPlugin.py_frame_restart_info.get()
         if restart_info is not None:
-            py_frame_restart_info.set(None)
+            PythonPlugin.py_frame_restart_info.set(None)
             # import pdb; pdb.set_trace()
             raise RestartException(restart_info)
 

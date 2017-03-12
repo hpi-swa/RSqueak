@@ -1,3 +1,4 @@
+from rsqueakvm.plugins.python.switching import SwitchToSmalltalkAction
 from rsqueakvm.util import system
 
 
@@ -85,3 +86,8 @@ def new_pypy_objspace():
                      py_space.newtext(os.path.abspath(sys.argv[0])))
 
     return py_space
+
+py_space = new_pypy_objspace()
+switch_action = SwitchToSmalltalkAction(py_space)
+py_space.actionflag.register_periodic_action(
+    switch_action, use_bytecode_counter=True)
