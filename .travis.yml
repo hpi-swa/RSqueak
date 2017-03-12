@@ -29,9 +29,9 @@ env:
     # - BUILD_ARCH=armv7-a
     # - BUILD_ARCH=armv8-a
     # - BUILD_ARCH=64bit PLUGINS=DatabasePlugin
-    # - BUILD_ARCH=64bit PLUGINS=RubyPlugin
     - BUILD_ARCH=64bit TEST_TYPE=plugin PLUGINS=PythonPlugin PLUGIN_DIR=python
     - BUILD_ARCH=64bit PLUGINS=PythonPlugin
+    - BUILD_ARCH=64bit PLUGINS=RubyPlugin
 matrix:
   include:
     # - os: osx
@@ -42,14 +42,14 @@ matrix:
     #   osx_image: xcode7.3
     #   language: cpp
     #   env: BUILD_ARCH=64bit
-    # - os: osx
-    #   osx_image: xcode7.3
-    #   language: cpp
-    #   env: BUILD_ARCH=64bit PLUGINS=RubyPlugin
     - os: osx
       osx_image: xcode7.3
       language: cpp
       env: BUILD_ARCH=64bit PLUGINS=PythonPlugin
+    - os: osx
+      osx_image: xcode7.3
+      language: cpp
+      env: BUILD_ARCH=64bit PLUGINS=RubyPlugin
   # allow_failures:
   #   - env: BUILD_ARCH=64bit PLUGINS=DatabasePlugin
   #   - env: BUILD_ARCH=64bit PLUGINS=RubyPlugin
