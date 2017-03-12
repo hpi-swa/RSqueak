@@ -16,8 +16,6 @@ class W_PythonLanguage(W_ForeignLanguage):
         self.source = source
         self.filename = filename
         self.cmd = cmd
-        self.w_result = None
-        self.w_error = None
 
     def run(self):
         print 'Python start'

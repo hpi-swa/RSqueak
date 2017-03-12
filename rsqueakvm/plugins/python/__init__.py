@@ -13,7 +13,6 @@ py_space.actionflag.register_periodic_action(
 
 py_frame_restart_info = Cell(None, type=PyFrameRestartInfo)
 
-w_foreign_language_class = QuasiConstant(None, type=W_PointersObject)
 w_python_resume_method = QuasiConstant(None, type=W_CompiledMethod)
 w_python_class = QuasiConstant(None, type=W_PointersObject)
 w_python_object_class = QuasiConstant(None, type=W_PointersObject)

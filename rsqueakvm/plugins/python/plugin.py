@@ -1,13 +1,12 @@
-from rsqueakvm.error import Exit
-from rsqueakvm.plugins import plugin
+from rsqueakvm.error import Exit, PrimitiveFailedError
 from rsqueakvm.plugins.foreign_language.plugin import ForeignLanguagePlugin
 from rsqueakvm.util import system
 
 from rsqueakvm.plugins import python
-from rsqueakvm.plugins.python import model, utils
+from rsqueakvm.plugins.python.model import W_PythonObject
 from rsqueakvm.plugins.python.language import W_PythonLanguage
 from rsqueakvm.plugins.python.patching import patch_pypy
-from rsqueakvm.plugins.python.switching import PyFrameRestartInfo
+from rsqueakvm.plugins.python.utils import python_to_smalltalk
 
 
 class PythonPlugin(ForeignLanguagePlugin):
@@ -44,23 +43,25 @@ class PythonPlugin(ForeignLanguagePlugin):
             space).as_class_get_shadow(space)
         resume_method = python_cls_cls_s.lookup(resume_method_symbol)
         if resume_method is None:
-            raise Exit('Python class>>resumeFrame method not found.')
+            raise Exit('Python class>>resume: method not found.')
         python.w_python_resume_method.set(resume_method)
 
         python.py_space.startup()
 
     @staticmethod
-    def set_frame_restart_info(frame, py_code):
-        plugin.py_frame_restart_info = PyFrameRestartInfo(frame, py_code)
-
-    @staticmethod
-    def w_language_class():
-        return W_PythonLanguage
+    def new_w_language(space, args_w):
+        if len(args_w) != 4:
+            raise PrimitiveFailedError
+        source = space.unwrap_string(args_w[0])
+        filename = space.unwrap_string(args_w[1])
+        cmd = space.unwrap_string(args_w[2])
+        break_on_exceptions = args_w[3] is space.w_true
+        return W_PythonLanguage(source, filename, cmd, break_on_exceptions)
 
     @staticmethod
     def w_object_class():
-        return model.W_PythonObject
+        return W_PythonObject
 
     @staticmethod
     def to_w_object(space, foreign_object):
-        return utils.python_to_smalltalk(space, foreign_object.wp_object)
+        return python_to_smalltalk(space, foreign_object.wp_object)

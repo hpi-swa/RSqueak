@@ -6,7 +6,7 @@ from rsqueakvm.plugins.python.plugin import PythonPlugin
 from rpython.rlib import jit
 
 try:
-    from rsqueakvm.plugins.python import model, py_space, utils
+    from rsqueakvm.plugins.python import py_space, utils
     from rsqueakvm.plugins.python.model import W_PythonObject
 
     from pypy.interpreter.error import OperationError
@@ -32,7 +32,7 @@ def getTopFrame(interp, s_frame, w_rcvr):
 def restartSpecificFrame(interp, s_frame, w_rcvr, w_frame, source, filename,
                          cmd):
     frame = None
-    if isinstance(w_frame, model.W_PythonObject):
+    if isinstance(w_frame, W_PythonObject):
         frame = w_frame.wp_object
     py_code = None
     if source:

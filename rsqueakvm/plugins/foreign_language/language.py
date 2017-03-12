@@ -19,6 +19,8 @@ class W_ForeignLanguage(W_AbstractObjectWithIdentityHash):
     def __init__(self, break_on_exceptions=True):
         W_AbstractObjectWithIdentityHash.__init__(self)
         self._done = False
+        self.w_result = None
+        self.w_error = None
         self._break_on_exceptions = break_on_exceptions
         if objectmodel.we_are_translated():
             self._runner = runner.StackletLanguageRunner(self)
@@ -131,7 +133,7 @@ class W_ForeignLanguage(W_AbstractObjectWithIdentityHash):
 
     def _create_return_frame(self, space):
         from rsqueakvm.storage_contexts import ContextPartShadow
-        print 'Python has finished and returned a result.'
+        print 'Language has finished and returned a result.'
         # we want evalInThread and resumePython to return new frames,
         # so we don't build up stack, but we also don't raise to the
         # top-level loop all the time.

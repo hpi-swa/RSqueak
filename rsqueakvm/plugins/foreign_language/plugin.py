@@ -12,7 +12,7 @@ class ForeignLanguagePlugin(Plugin):
     # Abstract methods
 
     @staticmethod
-    def w_language_class():
+    def new_w_language(space, args_w):
         raise NotImplementedError
 
     @staticmethod
@@ -34,17 +34,17 @@ class ForeignLanguagePlugin(Plugin):
     # Default primitives
 
     def register_default_primitives(self):
-        @self.expose_primitive(unwrap_spec=[object, str, str, str, bool],
-                               result_is_new_frame=True)
-        def eval(interp, s_frame, w_rcvr, source, filename, cmd,
-                 break_on_exceptions):
+        @self.expose_primitive(result_is_new_frame=True)
+        def eval(interp, s_frame, argcount):
             # import pdb; pdb.set_trace()
-            language = self.w_language_class()(
-                source, filename, cmd, break_on_exceptions)
+            args_w = s_frame.peek_n(argcount)
+            language = self.new_w_language(interp.space, args_w)
             language.start()
             # when we are here, the foreign language process has yielded
-            return language.switch_to_smalltalk(interp, s_frame,
-                                                first_call=True)
+            frame = language.switch_to_smalltalk(interp, s_frame,
+                                                 first_call=True)
+            s_frame.pop_n(argcount + 1)
+            return frame
 
         @self.expose_primitive(unwrap_spec=[object, object],
                                result_is_new_frame=True)
