@@ -1,9 +1,10 @@
 from rsqueakvm.model.base import W_Object
 from rsqueakvm.model.numeric import W_SmallInteger
 from rsqueakvm.model.pointers import W_PointersObject
-from rsqueakvm.plugins.python import global_state as gs
+from rsqueakvm.plugins.python import py_space
 from rsqueakvm.plugins.python.model import W_PythonObject
 from rsqueakvm.plugins.python.patching import patch_pypy
+from rsqueakvm.plugins.python.plugin import PythonPlugin
 from rsqueakvm.test.util import create_space, cleanup_module, read_image
 
 
@@ -33,7 +34,7 @@ def setup_module():
     w = space.w
     space.runtime_setup(interp, '', [], '', 0)
     space.headless.activate()
-    gs.startup(space)
+    PythonPlugin.startup(space, [])
 
 
 def teardown_module():
@@ -52,7 +53,7 @@ def get_python_result(code, cmd='eval'):
         ^ Python %s: '%s'""" % (name, cmd, code)
     w_res = add_method_and_call(sourcecode, name)
     assert isinstance(w_res, W_PythonObject)
-    return gs.py_space.unwrap(w_res.wp_object)
+    return py_space.unwrap(w_res.wp_object)
 
 
 def get_smalltalk_result(code, cmd='eval'):

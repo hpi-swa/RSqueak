@@ -1,91 +1,25 @@
-from rsqueakvm.util import system
-if 'PythonPlugin' not in system.optional_plugins:
-    raise LookupError
-else:
-    system.translationconfig.set(thread=True)
-    system.translationconfig.set(continuation=True)
-
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.variable import W_BytesObject
-from rsqueakvm.plugins.foreign_language.model import W_ForeignLanguage
-from rsqueakvm.plugins.plugin import Plugin, PluginStartupScripts
-from rsqueakvm.plugins.python import model, global_state, utils
-from rsqueakvm.plugins.python.global_state import py_space
-from rsqueakvm.plugins.python.language import W_PythonLanguage
-from rsqueakvm.plugins.python.model import W_PythonObject
-from rsqueakvm.plugins.python.patching import patch_pypy
-
-from pypy.interpreter.error import OperationError
-from pypy.interpreter.function import (Function, Method, StaticMethod,
-                                       ClassMethod)
+from rsqueakvm.plugins.python import set_py_frame_restart_info
+from rsqueakvm.plugins.python.plugin import PythonPlugin
 
 from rpython.rlib import jit
 
+try:
+    from rsqueakvm.plugins.python import model, py_space, utils
+    from rsqueakvm.plugins.python.model import W_PythonObject
 
-_DO_NOT_RELOAD = True
-
-patch_pypy()
-
-
-class PythonPluginClass(Plugin):
+    from pypy.interpreter.error import OperationError
+    from pypy.interpreter.function import (Function, Method, StaticMethod,
+                                           ClassMethod)
+except ImportError:
     pass
 
-PythonPlugin = PythonPluginClass()
+
+plugin = PythonPlugin()
 
 
-def startup(space, argv):
-    global_state.startup(space)
-    py_space.startup()
-PluginStartupScripts.append(startup)
-
-
-@PythonPlugin.expose_primitive(unwrap_spec=[object, str, str, str],
-                               result_is_new_frame=True)
-def eval(interp, s_frame, w_rcvr, source, filename, cmd):
-    # import pdb; pdb.set_trace()
-    language = W_PythonLanguage(source, filename, cmd)
-    language.start()
-    # when we are here, the Python process has yielded
-    return language.switch_to_smalltalk(interp, s_frame, first_call=True)
-
-
-@PythonPlugin.expose_primitive(unwrap_spec=[object, object],
-                               result_is_new_frame=True)
-def resume(interp, s_frame, w_rcvr, language):
-    # print 'Smalltalk yield'
-    # import pdb; pdb.set_trace()
-    if not isinstance(language, W_ForeignLanguage):
-        raise PrimitiveFailedError
-    if not language.resume():
-        raise PrimitiveFailedError
-    return language.switch_to_smalltalk(interp, s_frame)
-
-
-@PythonPlugin.expose_primitive(unwrap_spec=[object])
-def lastError(interp, s_frame, w_rcvr):
-    language = py_space.getexecutioncontext().current_language
-    if language is None:
-        print 'language was None in lastError'
-        raise PrimitiveFailedError
-    w_error = language.get_error()
-    if w_error is None:
-        print 'w_error was None in lastError'
-        raise PrimitiveFailedError
-    return w_error
-
-
-@PythonPlugin.expose_primitive(clean_stack=False)
-def breakOnExceptions(interp, s_frame, argcount):
-    if argcount == 0:
-        return interp.space.wrap_bool(global_state.break_on_exception.get())
-    if argcount != 1:
-        raise PrimitiveFailedError
-    state = s_frame.pop() is interp.space.w_true
-    global_state.break_on_exception.set(state)
-    return interp.space.wrap_bool(state)
-
-
-@PythonPlugin.expose_primitive(unwrap_spec=[object])
+@plugin.expose_primitive(unwrap_spec=[object])
 def getTopFrame(interp, s_frame, w_rcvr):
     # import pdb; pdb.set_trace()
     topframe = py_space.getexecutioncontext().gettopframe()
@@ -94,7 +28,7 @@ def getTopFrame(interp, s_frame, w_rcvr):
     return W_PythonObject(topframe)
 
 
-@PythonPlugin.expose_primitive(unwrap_spec=[object, object, str, str, str])
+@plugin.expose_primitive(unwrap_spec=[object, object, str, str, str])
 def restartSpecificFrame(interp, s_frame, w_rcvr, w_frame, source, filename,
                          cmd):
     frame = None
@@ -105,19 +39,11 @@ def restartSpecificFrame(interp, s_frame, w_rcvr, w_frame, source, filename,
         py_code = utils.get_restart_pycode(source, filename, cmd)
         if py_code is None:
             return interp.space.w_false  # Raising prim error causes crashes
-    global_state.py_frame_restart_info.set(
-        global_state.PyFrameRestartInfo(frame=frame, code=py_code))
+    set_py_frame_restart_info(frame, py_code)
     return interp.space.w_true
 
 
-@PythonPlugin.expose_primitive(unwrap_spec=[object])
-def asSmalltalk(interp, s_frame, w_rcvr):
-    if not isinstance(w_rcvr, model.W_PythonObject):
-        raise PrimitiveFailedError
-    return utils.python_to_smalltalk(interp.space, w_rcvr.wp_object)
-
-
-@PythonPlugin.expose_primitive(compiled_method=True)
+@plugin.expose_primitive(compiled_method=True)
 @jit.unroll_safe
 def send(interp, s_frame, argcount, w_method):
     # import pdb; pdb.set_trace()

@@ -1,4 +1,5 @@
-from rsqueakvm.plugins.python import global_state as gs
+from rsqueakvm.plugins.python import py_space, switch_action
+from rsqueakvm.plugins.python.switching import RestartException
 
 from pypy.interpreter.pycode import PyCode, default_magic
 from pypy.interpreter.pyopcode import SApplicationException
@@ -27,12 +28,12 @@ def __init__frame(self, space, code, w_globals, outer_func):
 def new_execute_frame(self, w_inputvalue=None, operr=None):
     try:
         return old_execute_frame(self, w_inputvalue, operr)
-    except gs.RestartException as e:
+    except RestartException as e:
         frame = e.py_frame_restart_info.frame
         if frame is not None and frame is not self:
-            raise gs.RestartException(e.py_frame_restart_info)
+            raise RestartException(e.py_frame_restart_info)
         # Generate and execute new frame
-        new_frame = gs.py_space.FrameClass(
+        new_frame = py_space.FrameClass(
             self.space, e.py_frame_restart_info.pycode or self.pycode,
             self.w_globals, self.outer_func)
         return new_execute_frame(new_frame, w_inputvalue, operr)
@@ -59,8 +60,7 @@ def block_handles_exception(self, block, operr_type):
         while next_opcode == opcodedesc.LOAD_GLOBAL.index:
             global_index = ord(self.pycode.co_code[next_opcode_idx + 1])
             exception = self._load_global(self.getname_u(global_index))
-            if gs.py_space.exception_match(operr_type,
-                                           w_check_class=exception):
+            if py_space.exception_match(operr_type, w_check_class=exception):
                 return True
             next_opcode_idx = next_opcode_idx + 3
             next_opcode = ord(self.pycode.co_code[next_opcode_idx])
@@ -75,8 +75,7 @@ def block_handles_exception(self, block, operr_type):
                     self.getorcreatedebug().w_locals, varname)
             else:  # fall-back
                 exception = self._load_global(self.getname_u(nameindex))
-            if gs.py_space.exception_match(operr_type,
-                                           w_check_class=exception):
+            if py_space.exception_match(operr_type, w_check_class=exception):
                 return True
             next_opcode_idx = next_opcode_idx + 3
             next_opcode = ord(self.pycode.co_code[next_opcode_idx])
@@ -87,7 +86,7 @@ def block_handles_exception(self, block, operr_type):
 def has_exception_handler(self, operr):
     "Returns True if this frame or one of his parents are able to handle operr"
     frame = self
-    error_type = operr.w_type.getname(gs.py_space)
+    error_type = operr.w_type.getname(py_space)
     forbidden_names = []
     if error_type == 'AttributeError':
         forbidden_names = ATTRIBUTE_ERROR_FORBIDDEN_NAMES
@@ -109,18 +108,16 @@ def has_exception_handler(self, operr):
 
 
 def new_handle_operation_error(self, ec, operr, attach_tb=True):
-    if isinstance(operr, gs.RestartException):
+    if isinstance(operr, RestartException):
         print 'Re-raising RestartException'
         raise operr
-    if gs.break_on_exception.get() and not self.has_exception_handler(operr):
+    language = ec.current_language
+    if (language is not None and language.break_on_exceptions() and
+            not self.has_exception_handler(operr)):
         # import pdb; pdb.set_trace()
-        language = ec.current_language
-        if language is None:
-            print 'Unable to handle error, no language found.'
-        else:
-            language.set_error(operr)
-            print 'Python error caught'
-            gs.switch_action.perform(ec, self)
+        language.set_error(operr)
+        print 'Python error caught'
+        switch_action.perform(ec, self)
     return old_handle_operation_error(self, ec, operr, attach_tb)
 
 

@@ -1,6 +1,7 @@
-from rsqueakvm.plugins.foreign_language import model as fl_model
-from rsqueakvm.plugins.python import global_state as gs
-from rsqueakvm.plugins.python.global_state import py_space
+from rsqueakvm.plugins import python
+from rsqueakvm.plugins.foreign_language.model import (
+    W_ForeignLanguageObject, ForeignLanguageClassShadow)
+from rsqueakvm.plugins.python import py_space
 from rsqueakvm.primitives.constants import EXTERNAL_CALL
 from rsqueakvm.model.compiled_methods import (
     W_PreSpurCompiledMethod, W_SpurCompiledMethod)
@@ -11,13 +12,13 @@ from pypy.interpreter.error import OperationError
 from rpython.rlib import objectmodel
 
 
-class W_PythonObject(fl_model.W_ForeignLanguageObject):
+class W_PythonObject(W_ForeignLanguageObject):
     _attrs_ = ['wp_object', 's_class']
     _immutable_fields_ = ['wp_object', 's_class?']
     repr_classname = 'W_PythonObject'
 
     def __init__(self, wp_object):
-        fl_model.W_ForeignLanguageObject.__init__(self)
+        W_ForeignLanguageObject.__init__(self)
         self.wp_object = wp_object
         # self.w_pyID = None
         self.s_class = None
@@ -39,7 +40,7 @@ class W_PythonObject(fl_model.W_ForeignLanguageObject):
                 other.wp_object is self.wp_object)
 
 
-class PythonClassShadow(fl_model.ForeignLanguageClassShadow):
+class PythonClassShadow(ForeignLanguageClassShadow):
     _attrs_ = ['wp_object', 'wp_class']
     _immutable_fields_ = ['wp_class']
 
@@ -52,7 +53,7 @@ class PythonClassShadow(fl_model.ForeignLanguageClassShadow):
             self, space, space.w_nil, 0, space.w_nil)
 
     def fallback_class(self):
-        return gs.w_python_object_class.get()
+        return python.w_python_object_class.get()
 
     def make_method(self, w_selector):
         # import pdb; pdb.set_trace()
@@ -99,11 +100,11 @@ class PythonClassShadow(fl_model.ForeignLanguageClassShadow):
         w_cm.islarge = False
         w_cm._tempsize = 0
         w_cm.argsize = 0
-        w_cm.compiledin_class = gs.w_python_class.get()
+        w_cm.compiledin_class = python.w_python_class.get()
         w_cm.lookup_selector = 'fakePythonSend'
         w_cm.bytes = []
         w_cm.literals = [
-            gs.w_python_plugin_send.get(),
+            python.w_python_plugin_send.get(),
             w_selector
         ]
         return w_cm
