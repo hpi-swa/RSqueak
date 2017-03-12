@@ -65,8 +65,7 @@ def send(interp, s_frame, argcount, w_method):
                 isinstance(py_attr, Method) or
                 isinstance(py_attr, StaticMethod) or
                 isinstance(py_attr, ClassMethod)):
-            wp_result = utils.call_method(
-                space, wp_rcvr, methodname, args_w)
+            wp_result = utils.call_method(space, wp_rcvr, methodname, args_w)
         else:
             if len(args_w) == 1:
                 wp_value = utils.smalltalk_to_python(space, args_w[0])

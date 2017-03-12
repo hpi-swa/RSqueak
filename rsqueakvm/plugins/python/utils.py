@@ -6,6 +6,7 @@ from rsqueakvm.plugins.python import py_space
 from rsqueakvm.plugins.python.model import W_PythonObject
 from rsqueakvm.model.variable import W_BytesObject
 
+from pypy.interpreter.argument import Arguments
 from pypy.interpreter.error import OperationError
 from pypy.interpreter.main import ensure__main__, compilecode
 from pypy.interpreter.module import Module
@@ -123,51 +124,11 @@ def get_restart_pycode(source, filename='<string>', cmd='exec'):
     return
 
 
-def call_method(space, wp_rcvr, methodname, args_w):
-    args_w_len = len(args_w)
-    if args_w_len == 1:
-        arg1 = smalltalk_to_python(space, args_w[0])
-        return py_space.call_method(wp_rcvr, methodname, arg1)
-    elif args_w_len == 2:
-        arg1 = smalltalk_to_python(space, args_w[0])
-        arg2 = smalltalk_to_python(space, args_w[1])
-        return py_space.call_method(wp_rcvr, methodname, arg1, arg2)
-    elif args_w_len == 3:
-        arg1 = smalltalk_to_python(space, args_w[0])
-        arg2 = smalltalk_to_python(space, args_w[1])
-        arg3 = smalltalk_to_python(space, args_w[2])
-        return py_space.call_method(wp_rcvr, methodname, arg1, arg2, arg3)
-    elif args_w_len == 4:
-        arg1 = smalltalk_to_python(space, args_w[0])
-        arg2 = smalltalk_to_python(space, args_w[1])
-        arg3 = smalltalk_to_python(space, args_w[2])
-        arg4 = smalltalk_to_python(space, args_w[3])
-        return py_space.call_method(wp_rcvr, methodname,
-                                    arg1, arg2, arg3, arg4)
-    return py_space.call_method(wp_rcvr, methodname)
-
-
-def call_function(space, wp_func, args_w):
-    args_w_len = len(args_w)
-    if args_w_len == 1:
-        arg1 = smalltalk_to_python(space, args_w[0])
-        return py_space.call_function(wp_func, arg1)
-    elif args_w_len == 2:
-        arg1 = smalltalk_to_python(space, args_w[0])
-        arg2 = smalltalk_to_python(space, args_w[1])
-        return py_space.call_function(wp_func, arg1, arg2)
-    elif args_w_len == 3:
-        arg1 = smalltalk_to_python(space, args_w[0])
-        arg2 = smalltalk_to_python(space, args_w[1])
-        arg3 = smalltalk_to_python(space, args_w[2])
-        return py_space.call_function(wp_func, arg1, arg2, arg3)
-    elif args_w_len == 4:
-        arg1 = smalltalk_to_python(space, args_w[0])
-        arg2 = smalltalk_to_python(space, args_w[1])
-        arg3 = smalltalk_to_python(space, args_w[2])
-        arg4 = smalltalk_to_python(space, args_w[3])
-        return py_space.call_function(wp_func, arg1, arg2, arg3, arg4)
-    return py_space.call_function(wp_func)
+def call_method(space, wp_obj, methodname, args_w):
+    # use call_args() to allow variable # of args_w (this disables speed hacks)
+    w_meth = py_space.getattr(wp_obj, py_space.newtext(methodname))
+    args = Arguments(py_space, [smalltalk_to_python(space, a) for a in args_w])
+    return py_space.call_args(w_meth, args)
 
 
 def operr_to_pylist(operr):
