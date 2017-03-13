@@ -263,7 +263,7 @@ class ContextPartShadow(AbstractStrategy):
             return
         else:
             # XXX later should store tail out of known context part as well
-            raise error.WrapperException("Index in context out of bounds")
+            return
 
     # === Sender ===
 
