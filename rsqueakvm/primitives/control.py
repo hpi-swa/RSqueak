@@ -11,6 +11,7 @@ from rsqueakvm.primitives.constants import *
 from rsqueakvm.primitives.misc import fake_bytes_left
 
 from rpython.rlib import jit, objectmodel
+from rpython.rlib.unroll import unrolling_iterable
 from rpython.rtyper.extregistry import ExtRegistryEntry
 
 
@@ -90,10 +91,10 @@ def func(interp, s_frame, w_rcvr, w_arg):
 
 ExternalPluginNames, ExternalPlugins = get_plugins()
 
+plugins = unrolling_iterable(zip(ExternalPluginNames, ExternalPlugins))
 
 @expose_primitive(EXTERNAL_CALL, clean_stack=False, no_result=True,
                   compiled_method=True)
-@jit.unroll_safe
 def func(interp, s_frame, argcount, w_method):
     space = interp.space
     w_description = w_method.literalat0(space, 1)
@@ -116,10 +117,9 @@ def func(interp, s_frame, argcount, w_method):
         raise PrimitiveFailedError
     signature = (space.unwrap_string(w_modulename), space.unwrap_string(w_functionname))
 
-    if len(ExternalPluginNames) > 0:
-        for i, p in enumerate(ExternalPluginNames):
-            if signature[0] == p:
-                return ExternalPlugins[i].call(signature[1], interp, s_frame, argcount, w_method)
+    for name, plugin in plugins:
+        if signature[0] == name:
+            return plugin.call(signature[1], interp, s_frame, argcount, w_method)
 
     # If all else fails, try to simulate
     from rsqueakvm.plugins.simulation import simulationPlugin
