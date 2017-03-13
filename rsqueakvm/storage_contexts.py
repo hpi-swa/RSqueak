@@ -528,8 +528,9 @@ class ContextPartShadow(AbstractStrategy):
         ptr = jit.promote(self.stack_ptr())
         self.stack_put(ptr, w_v)
         self.store_stack_ptr(ptr + 1)
-        if not jit.we_are_jitted():
-            self.w_method().update_frame_size(ptr + 1)
+        if objectmodel.we_are_translated():
+            if not jit.we_are_jitted():
+                self.w_method().update_frame_size(ptr + 1)
 
     @jit.unroll_safe
     def push_all(self, lst):
