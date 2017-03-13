@@ -195,6 +195,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def update_frame_size(self, size):
         self._frame_size = max(self._frame_size, size)
 
+    @jit.elidable_promote()
     def squeak_frame_size(self):
         # From blue book: normal mc have place for 12 temps+maxstack
         # mc for methods with islarge flag turned on 32
@@ -427,7 +428,6 @@ class W_SpurCompiledMethod(W_CompiledMethod):
         self.initialize_literals(decoded_header.number_of_literals, space,
                 initializing)
         self.argsize = decoded_header.number_of_arguments
-        self._frame_size = self.argsize
         self._tempsize = decoded_header.number_of_temporaries
         self.islarge = decoded_header.large_frame
         self.compiledin_class = None
@@ -435,6 +435,7 @@ class W_SpurCompiledMethod(W_CompiledMethod):
             self.update_primitive_index()
         else:
             self._primitive = 0
+        self._frame_size = self.argsize + self._tempsize
 
     def setbytes(self, bytes):
         W_CompiledMethod.setbytes(self, bytes)
@@ -460,8 +461,8 @@ class W_PreSpurCompiledMethod(W_CompiledMethod):
         self.initialize_literals(
                 decoded_header.number_of_literals, space, initializing)
         self.argsize = decoded_header.number_of_arguments
-        self._frame_size = self.argsize
         self._tempsize = decoded_header.number_of_temporaries
         self._primitive = decoded_header.primitive_index
         self.islarge = decoded_header.large_frame
         self.compiledin_class = None
+        self._frame_size = self.argsize + self._tempsize

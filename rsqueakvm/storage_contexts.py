@@ -487,21 +487,19 @@ class ContextPartShadow(AbstractStrategy):
 
     def stack_get(self, index0):
         assert index0 >= 0, "trying to stack_get negative index"
+        if not jit.we_are_jitted():
+            self.update_stacksize(index0)
         return self._temps_and_stack[index0] or self.space.w_nil
+
+    def update_stacksize(self, index0):
+        while len(self._temps_and_stack) <= index0:
+            self._temps_and_stack.append(None)
 
     def stack_put(self, index0, w_val):
         assert w_val is not None, "trying to put None on the stack"
         assert index0 >= 0, "trying to stack_put at negative index"
         if not jit.we_are_jitted():
-            self.slow_stack_put(index0, w_val)
-        else:
-            self._temps_and_stack[index0] = w_val
-
-    def slow_stack_put(self, index0, w_val):
-        if self._w_self_size <= index0 + constants.MTHDCTX_TEMP_FRAME_START:
-            self._w_self_size = index0 + constants.MTHDCTX_TEMP_FRAME_START
-        while len(self._temps_and_stack) <= index0:
-            self._temps_and_stack.append(None)
+            self.update_stacksize(index0)
         self._temps_and_stack[index0] = w_val
 
     @objectmodel.not_rpython # this is only for testing.
@@ -813,7 +811,7 @@ class __extend__(ContextPartShadow):
     def build_method_context(space, w_method, w_receiver, arguments=[],
                              closure=None, s_fallback=None):
         w_method = jit.promote(w_method)
-        size = w_method.frame_size() + constants.MTHDCTX_TEMP_FRAME_START
+        size = w_method.squeak_frame_size() + constants.MTHDCTX_TEMP_FRAME_START
 
         ctx = ContextPartShadow(space, None, size, space.w_MethodContext)
         if s_fallback is not None:
