@@ -304,7 +304,7 @@ class Interpreter(object):
         return s_context.w_receiver().safe_getclass(self.space)
 
     def getblockmethod(self, s_context):
-        return s_context.blockmethod
+        return s_context.blockmethod()
 
     def loop_bytecodes(self, s_context, may_context_switch=True):
         old_pc = 0

@@ -1,4 +1,5 @@
 from rsqueakvm import constants, error, wrapper
+from rsqueakvm.model.base import W_Object
 from rsqueakvm.model.compiled_methods import W_CompiledMethod
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.block_closure import W_BlockClosure
@@ -37,7 +38,7 @@ class ExtendableStrategyMetaclass(extendabletype, StrategyMetaclass):
     pass
 
 
-class ExtraContextAttributes(object):
+class ExtraContextAttributes(W_Object):
     _attrs_ = [
         # Cache for allInstances
         'instances_w',
@@ -45,6 +46,8 @@ class ExtraContextAttributes(object):
         '_s_fallback',
         # Dynamically extended stack space
         '_overflow_stack',
+        # Home method of first block argument
+        'blockmethod',
         # From block-context
         '_w_home', '_initialip', '_eargc']
 
@@ -55,6 +58,7 @@ class ExtraContextAttributes(object):
         self._initialip = 0
         self._eargc = 0
         self._overflow_stack = []
+        self.blockmethod = None
 
 
 state_mask     = r_uint(0b00111111111111111111111111111111)
@@ -85,19 +89,17 @@ class ContextPartShadow(AbstractStrategy):
                # Core context data
                '_s_sender', '_temps_and_stack',
                # MethodContext data
-               'blockmethod',
                'closure', '_w_receiver', '_w_method',
                # Extra data
-               'extra_data'
+               'extra_data_or_blockmethod'
                ]
 
     _virtualizable_ = [
         "_w_self",
         '_state_stackptr_pc',
         '_s_sender', "_temps_and_stack[*]",
-        'blockmethod',
         'closure', '_w_receiver', '_w_method',
-        'extra_data'
+        'extra_data_or_blockmethod'
     ]
 
     # ______________________________________________________________________
@@ -115,12 +117,11 @@ class ContextPartShadow(AbstractStrategy):
         self.store_pc(0)
 
         # From MethodContext
-        self.blockmethod = None
         self.closure = None
         self._w_method = None
         self._w_receiver = None
         # Extra data
-        self.extra_data = None
+        self.extra_data_or_blockmethod = None
 
     def _initialize_storage(self, w_self, initial_size):
         # The context object holds all of its storage itself.
@@ -166,15 +167,25 @@ class ContextPartShadow(AbstractStrategy):
             return (n0 == self.privileged_method_fields[0]) | (n0 == self.privileged_method_fields[1])
 
     def get_extra_data(self):
-        if self.extra_data is None:
-            self.extra_data = ExtraContextAttributes()
-        return self.extra_data
+        extra_data = self.extra_data_or_blockmethod
+        if extra_data is None or not isinstance(extra_data, ExtraContextAttributes):
+            new_extra_data = ExtraContextAttributes()
+            new_extra_data.blockmethod = extra_data
+            extra_data = self.extra_data_or_blockmethod = new_extra_data
+        assert isinstance(extra_data, ExtraContextAttributes)
+        return extra_data
+
+    def extra_data(self):
+        extra_data = self.extra_data_or_blockmethod
+        if isinstance(extra_data, ExtraContextAttributes):
+            return extra_data
+        return None
 
     def get_fallback(self):
-        if self.extra_data is None:
+        if self.extra_data() is None:
             return None
         else:
-            return self.extra_data._s_fallback
+            return self.get_extra_data()._s_fallback
 
     @always_inline
     def _get_state_stackptr_pc(self):
@@ -859,18 +870,35 @@ class __extend__(ContextPartShadow):
         ctx.initialize_temps(space, arguments)
         return ctx
 
+    def blockmethod(self):
+        w_bm = self.extra_data_or_blockmethod
+        if isinstance(w_bm, ExtraContextAttributes):
+            w_bm = w_bm.blockmethod
+        if w_bm is None:
+            return None
+        assert isinstance(w_bm, W_CompiledMethod)
+        return w_bm
+
+    def set_blockmethod(self, w_obj):
+        assert isinstance(w_obj, W_CompiledMethod)
+        w_bm = self.extra_data_or_blockmethod
+        if isinstance(w_bm, ExtraContextAttributes):
+            w_bm.blockmethod = w_obj
+        else:
+            self.extra_data_or_blockmethod = w_obj
+
     @jit.unroll_safe
     def initialize_temps(self, space, arguments):
         argc = len(arguments)
         for i0 in range(argc):
             w_arg = arguments[i0]
-            if isinstance(w_arg, W_BlockClosure) and self.blockmethod is None:
+            if isinstance(w_arg, W_BlockClosure) and self.blockmethod() is None:
                 # If our first argument is a block, we use its home method to
                 # distinguish the context from others that receive a different
                 # block argument to the same method (e.g. so that all the
                 # collection methods are specialized based on where the block
                 # that was passed in came from
-                self.blockmethod = w_arg.w_method()
+                self.set_blockmethod(w_arg.w_method())
             self.settemp(i0, w_arg)
         closure = self.closure
         if closure:
@@ -879,7 +907,7 @@ class __extend__(ContextPartShadow):
             self.store_pc(pc)
             for i0 in range(closure.varsize()):
                 w_obj = closure.at0(space, i0)
-                if isinstance(w_obj, W_BlockClosure) and self.blockmethod is None:
+                if isinstance(w_obj, W_BlockClosure) and self.blockmethod() is None:
                     # for some methods (see Collection>>do: or detect:ifNone:)
                     # the user code passes in a block, and the block closure
                     # captures that block and is then called in a loop. So if we
@@ -887,7 +915,7 @@ class __extend__(ContextPartShadow):
                     # loop, we really want to specialize on the first temp of
                     # that block, which represents the block passed in from user
                     # code into detect:ifNone:
-                    self.blockmethod = w_obj.w_method()
+                    self.set_blockmethod(w_obj.w_method())
                 self.settemp(i0+argc, w_obj)
 
     # === Accessing object fields ===
