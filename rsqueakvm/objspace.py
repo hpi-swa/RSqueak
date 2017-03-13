@@ -52,9 +52,9 @@ class ObjSpace(object):
         self.altf4quit = QuasiConstant(False)
 
         from rsqueakvm.display import NullDisplay
-        self._display = QuasiConstant(None, type=NullDisplay)
+        self._display = QuasiConstant(None, cls=NullDisplay)
         from rsqueakvm.interpreter import Interpreter
-        self.interp = QuasiConstant(None, type=Interpreter)
+        self.interp = QuasiConstant(None, cls=Interpreter)
 
         self.make_special_objects()
         self.strategy_factory = storage.StrategyFactory(self)
