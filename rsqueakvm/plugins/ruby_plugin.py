@@ -33,8 +33,8 @@ class RubyPlugin(Plugin):
 
     def __init__(self):
         Plugin.__init__(self)
-        self.w_ruby_object_class = QuasiConstant(None, type=W_AbstractObjectWithIdentityHash)
-        self.w_ruby_plugin_send = QuasiConstant(None, type=W_AbstractObjectWithIdentityHash)
+        self.w_ruby_object_class = QuasiConstant(None, cls=W_AbstractObjectWithIdentityHash)
+        self.w_ruby_plugin_send = QuasiConstant(None, cls=W_AbstractObjectWithIdentityHash)
 
     def is_optional(self):
         return True
