@@ -41,13 +41,14 @@ def teardown_module():
 
 class MockFrame(W_PointersObject):
     def __init__(self, space, stack):
-        w_home_frame, s_home_frame = space.make_frame([])
         size = 6 + len(stack) + 6
+        w_home_frame, s_home_frame = space.make_frame([], args=[space.w_nil] * size)
         self._initialize_storage(space, space.w_BlockContext, size)
         for i, v in enumerate(stack):
             if not isinstance(v, W_Object):
                 stack[i] = space.w(v)
         self.store_all(space, [space.w_nil] * 6 + stack + [space.w_nil] * 6)
+        self.store(space, constants.BLKCTX_HOME_INDEX, w_home_frame)
         s_self = self.as_context_get_shadow(space)
         s_self.reset_stack()
         s_self.push_all(stack)
@@ -56,7 +57,10 @@ class MockFrame(W_PointersObject):
 
     def as_context_get_shadow(self, space):
         if not isinstance(self.strategy, storage_contexts.ContextPartShadow):
-            self.strategy = storage_contexts.ContextPartShadow(space, self, self.size(), space.w_BlockContext)
+            strategy = storage_contexts.ContextPartShadow(space, self, self.size(), space.w_BlockContext)
+            strategy.store(self, constants.BLKCTX_HOME_INDEX,
+                           self.fetch(self, constants.BLKCTX_HOME_INDEX))
+            self.strategy = strategy
             self.strategy.init_temps_and_stack()
         return self.strategy
 

@@ -80,7 +80,7 @@ class ContextPartShadow(AbstractStrategy):
     __metaclass__ = ExtendableStrategyMetaclass
     import_from_mixin(ShadowMixin)
 
-    _attrs_ = ['_w_self', '_w_self_size',
+    _attrs_ = ['_w_self',
                '_state_stackptr_pc',
                # Core context data
                '_s_sender', '_temps_and_stack',
@@ -92,7 +92,7 @@ class ContextPartShadow(AbstractStrategy):
                ]
 
     _virtualizable_ = [
-        "_w_self", "_w_self_size",
+        "_w_self",
         '_state_stackptr_pc',
         '_s_sender', "_temps_and_stack[*]",
         'blockmethod',
@@ -110,10 +110,6 @@ class ContextPartShadow(AbstractStrategy):
 
         self._state_stackptr_pc = r_uint(0)
         self._s_sender = jit.vref_None
-        if w_self is not None:
-            self._w_self_size = w_self.size()
-        else:
-            self._w_self_size = size
         self._w_self = w_self
         self.set_state(InactiveContext)
         self.store_pc(0)
@@ -203,7 +199,7 @@ class ContextPartShadow(AbstractStrategy):
             return False
 
     def size(self, ignored_w_self):
-        return self._w_self_size
+        return self.external_size()
 
     def fetch(self, ignored_w_self, n0):
         if self.pure_is_block_context():
@@ -454,7 +450,21 @@ class ContextPartShadow(AbstractStrategy):
 
     def stackend(self):
         # XXX this is incorrect when there is subclassing
-        return self._w_self_size
+        return self.external_size()
+
+    def external_size(self):
+        """
+        The size of this context pointer object, as it would be seen by Squeak.
+        There is possibly less _temps_and_stack allocated, if the code
+        dynamically stores more than that, we overflow into
+        the get_extra_data()._overflow_stack and update the size to use for
+        _temps_and_stack in the w_method, so the next time _temps_and_stack will
+        be the right size (see update_stacksize and its callers)
+        """
+        if self.pure_is_block_context():
+            return ContextPartShadow.size_context_for_home(self.s_home())
+        else:
+            return ContextPartShadow.size_context_for_method(self.w_method())
 
     def fetch_next_bytecode(self):
         pc = jit.promote(self.pc())
@@ -702,8 +712,12 @@ class __extend__(ContextPartShadow):
     # === Initialization ===
 
     @staticmethod
+    def size_context_for_home(s_home):
+        return s_home.own_size() - s_home.tempsize()
+
+    @staticmethod
     def build_block_context(space, s_home, argcnt, pc):
-        size = s_home.own_size() - s_home.tempsize()
+        size = ContextPartShadow.size_context_for_home(s_home)
         w_self = W_PointersObject(space, space.w_BlockContext, size)
 
         ctx = ContextPartShadow(space, w_self, size, space.w_BlockContext)
@@ -826,10 +840,14 @@ class __extend__(ContextPartShadow):
     # === Initialization ===
 
     @staticmethod
+    def size_context_for_method(w_method):
+        return w_method.squeak_frame_size() + constants.MTHDCTX_TEMP_FRAME_START
+
+    @staticmethod
     def build_method_context(space, w_method, w_receiver, arguments=[],
                              closure=None, s_fallback=None):
         w_method = jit.promote(w_method)
-        size = w_method.squeak_frame_size() + constants.MTHDCTX_TEMP_FRAME_START
+        size = ContextPartShadow.size_context_for_method(w_method)
 
         ctx = ContextPartShadow(space, None, size, space.w_MethodContext)
         if s_fallback is not None:
@@ -963,7 +981,7 @@ class __extend__(ContextPartShadow):
             return self._w_self
         else:
             space = self.space
-            w_self = W_PointersObject(space, space.w_MethodContext, self._w_self_size)
+            w_self = W_PointersObject(space, space.w_MethodContext, self.external_size())
             w_self._set_strategy(self)
             self._w_self = w_self
             return w_self
