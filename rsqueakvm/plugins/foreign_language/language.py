@@ -14,13 +14,33 @@ from rpython.rlib import objectmodel
 ExecutionContext.current_language = None
 
 
+class ForeignLanguageMeta(type):
+    def __new__(cls, name, bases, attrs):
+        # import pdb; pdb.set_trace()
+
+        if name != 'W_ForeignLanguage':
+            w_foreign_class = QuasiConstant(None, cls=W_PointersObject)
+            w_foreign_resume = QuasiConstant(None, cls=W_PointersObject)
+
+            def foreign_class(self):
+                return w_foreign_class.get()
+
+            def resume_method(self):
+                return w_foreign_resume.get()
+
+            attrs['w_foreign_class'] = w_foreign_class
+            attrs['w_foreign_resume'] = w_foreign_resume
+            attrs['foreign_class'] = foreign_class
+            attrs['resume_method'] = resume_method
+
+        return type.__new__(cls, name, bases, attrs)
+
+
 class W_ForeignLanguage(W_AbstractObjectWithIdentityHash):
+    __metaclass__ = ForeignLanguageMeta
     _attrs_ = [
         '_runner', '_done', 'w_result', 'w_error', '_break_on_exceptions']
     repr_classname = 'W_ForeignLanguage'
-
-    w_foreign_class = QuasiConstant(None, type=W_PointersObject)
-    w_foreign_resume = QuasiConstant(None, type=W_PointersObject)
 
     def __init__(self, break_on_exceptions=True):
         W_AbstractObjectWithIdentityHash.__init__(self)
@@ -93,12 +113,6 @@ class W_ForeignLanguage(W_AbstractObjectWithIdentityHash):
             print 'Unknown error in thread: %s' % e
         finally:
             self._done = True
-
-    def foreign_class(self):
-        return self.w_foreign_class.get()
-
-    def resume_method(self):
-        return self.w_foreign_resume.get()
 
     def start(self):
         self.runner().start()

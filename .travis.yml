@@ -50,6 +50,10 @@ matrix:
       osx_image: xcode7.3
       language: cpp
       env: BUILD_ARCH=64bit PLUGINS=RubyPlugin
+    - os: osx
+      osx_image: xcode7.3
+      language: cpp
+      env: BUILD_ARCH=64bit PLUGINS=PythonPluginRubyPlugin
   # allow_failures:
   #   - env: BUILD_ARCH=64bit PLUGINS=DatabasePlugin
   #   - env: BUILD_ARCH=64bit PLUGINS=RubyPlugin

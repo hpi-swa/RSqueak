@@ -8,6 +8,7 @@ from rsqueakvm.storage_classes import AbstractCachingShadow, ClassShadow
 from rsqueakvm.util.cells import QuasiConstant
 
 from rpython.rlib import objectmodel
+from rpython.rlib.rstrategies.rstrategies import StrategyMetaclass
 
 
 class W_ForeignLanguageObject(W_AbstractObjectWithIdentityHash):
@@ -41,13 +42,22 @@ class W_ForeignLanguageObject(W_AbstractObjectWithIdentityHash):
         raise NotImplementedError
 
 
-class ForeignLanguageClassShadow(ClassShadow):
-    _attrs_ = []
-    _immutable_fields_ = []
+class ForeignLanguageClassShadowMeta(StrategyMetaclass):
+    def __new__(cls, name, bases, attrs):
+        # import pdb; pdb.set_trace()
+        if name != 'ForeignLanguageClassShadow':
+            attrs['w_plugin_send'] = QuasiConstant(None, cls=W_PointersObject)
+            attrs['w_foreign_class'] = QuasiConstant(
+                None, cls=W_PointersObject)
+            attrs['w_foreign_object_class'] = QuasiConstant(
+                None, cls=W_PointersObject)
 
-    w_plugin_send = QuasiConstant(None, type=W_PointersObject)
-    w_foreign_class = QuasiConstant(None, type=W_PointersObject)
-    w_foreign_object_class = QuasiConstant(None, type=W_PointersObject)
+        return type.__new__(cls, name, bases, attrs)
+
+
+class ForeignLanguageClassShadow(ClassShadow):
+    __metaclass__ = ForeignLanguageClassShadowMeta
+    _attrs_ = []
 
     def __init__(self, space):
         AbstractCachingShadow.__init__(
