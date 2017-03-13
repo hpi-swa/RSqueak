@@ -46,6 +46,7 @@ def send(interp, s_frame, argcount, w_method):
 
     try:
         wr_result = ruby_space.send(wr_rcvr, methodname, args_w=args_rw)
+        s_frame.pop_n(argcount + 1)
         return W_RubyObject(wr_result)
     except RubyError as e:
         print_traceback(ruby_space, e.w_value)
