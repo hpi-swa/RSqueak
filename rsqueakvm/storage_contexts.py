@@ -43,6 +43,8 @@ class ExtraContextAttributes(object):
         'instances_w',
         # Fallback for failed primitives
         '_s_fallback',
+        # Dynamically extended stack space
+        '_overflow_stack',
         # From block-context
         '_w_home', '_initialip', '_eargc']
 
@@ -52,6 +54,7 @@ class ExtraContextAttributes(object):
         self._w_home = None
         self._initialip = 0
         self._eargc = 0
+        self._overflow_stack = []
 
 
 state_mask     = r_uint(0b00111111111111111111111111111111)
@@ -487,24 +490,42 @@ class ContextPartShadow(AbstractStrategy):
 
     def stack_get(self, index0):
         assert index0 >= 0, "trying to stack_get negative index"
-        if not jit.we_are_jitted():
-            self.update_stacksize(index0)
+        if self.update_stacksize(index0):
+            return self.overflow_stack_get(index0)
         return self._temps_and_stack[index0] or self.space.w_nil
 
-    def update_stacksize(self, index0):
-        while len(self._temps_and_stack) <= index0:
-            self._temps_and_stack.append(None)
+    def overflow_stack_get(self, index0):
+        overflow_index = index0 - len(self._temps_and_stack)
+        return self.get_extra_data()._overflow_stack[overflow_index] or self.space.w_nil
 
     def stack_put(self, index0, w_val):
         assert w_val is not None, "trying to put None on the stack"
         assert index0 >= 0, "trying to stack_put at negative index"
-        if not jit.we_are_jitted():
-            self.update_stacksize(index0)
+        if self.update_stacksize(index0):
+            return self.overflow_stack_put(index0, w_val)
         self._temps_and_stack[index0] = w_val
+
+    def overflow_stack_put(self, index0, w_val):
+        overflow_index = index0 - len(self._temps_and_stack)
+        self.get_extra_data()._overflow_stack[overflow_index] = w_val
+
+    @jit.unroll_safe
+    def update_stacksize(self, index0):
+        stacksize = len(self._temps_and_stack)
+        if stacksize <= index0:
+            self.w_method().update_frame_size(index0 + 1)
+            overflow_stack = self.get_extra_data()._overflow_stack
+            overflow_index = index0 - stacksize
+            while len(overflow_stack) <= overflow_index:
+                overflow_stack.append(None)
+            return True
+        return False
 
     @objectmodel.not_rpython # this is only for testing.
     def stack(self):
-        return self._temps_and_stack[self.tempsize():self.stack_ptr()]
+        stacksize = len(self._temps_and_stack)
+        return (self._temps_and_stack[self.tempsize():stacksize] +
+                self.get_extra_data()._overflow_stack[self.tempsize() - stacksize:self.stack_ptr()])
 
     def pop(self):
         # HACK HACK HACK (3 times)
@@ -536,9 +557,6 @@ class ContextPartShadow(AbstractStrategy):
         ptr = jit.promote(self.stack_ptr())
         self.stack_put(ptr, w_v)
         self.store_stack_ptr(ptr + 1)
-        if objectmodel.we_are_translated():
-            if not jit.we_are_jitted():
-                self.w_method().update_frame_size(ptr + 1)
 
     @jit.unroll_safe
     def push_all(self, lst):

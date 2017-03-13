@@ -41,6 +41,7 @@ def teardown_module():
 
 class MockFrame(W_PointersObject):
     def __init__(self, space, stack):
+        w_home_frame, s_home_frame = space.make_frame([])
         size = 6 + len(stack) + 6
         self._initialize_storage(space, space.w_BlockContext, size)
         for i, v in enumerate(stack):
@@ -51,6 +52,7 @@ class MockFrame(W_PointersObject):
         s_self.reset_stack()
         s_self.push_all(stack)
         s_self.store_expected_argument_count(0)
+        s_self.store_w_home(w_home_frame)
 
     def as_context_get_shadow(self, space):
         if not isinstance(self.strategy, storage_contexts.ContextPartShadow):
