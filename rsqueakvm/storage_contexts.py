@@ -492,6 +492,16 @@ class ContextPartShadow(AbstractStrategy):
     def stack_put(self, index0, w_val):
         assert w_val is not None, "trying to put None on the stack"
         assert index0 >= 0, "trying to stack_put at negative index"
+        if not jit.we_are_jitted():
+            self.slow_stack_put(index0, w_val)
+        else:
+            self._temps_and_stack[index0] = w_val
+
+    def slow_stack_put(self, index0, w_val):
+        if self._w_self_size <= index0 + constants.MTHDCTX_TEMP_FRAME_START:
+            self._w_self_size = index0 + constants.MTHDCTX_TEMP_FRAME_START
+        while len(self._temps_and_stack) <= index0:
+            self._temps_and_stack.append(None)
         self._temps_and_stack[index0] = w_val
 
     @objectmodel.not_rpython # this is only for testing.

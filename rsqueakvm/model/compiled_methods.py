@@ -190,10 +190,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 
     @jit.elidable_promote()
     def frame_size(self):
-        if not jit.we_are_jitted():
-            return self.squeak_frame_size()
-        else:
-            return self._frame_size
+        return self._frame_size
 
     def update_frame_size(self, size):
         self._frame_size = max(self._frame_size, size)
@@ -430,6 +427,7 @@ class W_SpurCompiledMethod(W_CompiledMethod):
         self.initialize_literals(decoded_header.number_of_literals, space,
                 initializing)
         self.argsize = decoded_header.number_of_arguments
+        self._frame_size = self.argsize
         self._tempsize = decoded_header.number_of_temporaries
         self.islarge = decoded_header.large_frame
         self.compiledin_class = None
@@ -462,6 +460,7 @@ class W_PreSpurCompiledMethod(W_CompiledMethod):
         self.initialize_literals(
                 decoded_header.number_of_literals, space, initializing)
         self.argsize = decoded_header.number_of_arguments
+        self._frame_size = self.argsize
         self._tempsize = decoded_header.number_of_temporaries
         self._primitive = decoded_header.primitive_index
         self.islarge = decoded_header.large_frame
