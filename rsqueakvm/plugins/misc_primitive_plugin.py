@@ -2,17 +2,10 @@ from rsqueakvm.primitives import index1_0, bytelist, char, uint
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.plugins.plugin import Plugin
+from rsqueakvm.util.cells import Cell
 
 from rpython.rlib.rarithmetic import r_uint, intmask
 from rpython.rlib import jit
-
-
-class Cell(object):
-    _attrs_ = ["value"]
-    _immutable_fields_ = ["value?"]
-    def __init__(self, value): self.value = value
-    def set(self, v): self.value = v
-    def get(self): return self.value
 
 
 class MiscPrimitivePlugin(Plugin):

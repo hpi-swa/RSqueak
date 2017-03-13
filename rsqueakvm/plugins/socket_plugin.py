@@ -1,10 +1,10 @@
 import errno
-import sys
 
 from rsqueakvm import error
 from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.plugins.plugin import Plugin
+from rsqueakvm.util.cells import Cell
 from rsqueakvm.util.system import IS_SHELL, IS_WINDOWS
 
 from rpython.rlib import rsocket, _rsocket_rffi, objectmodel
@@ -22,12 +22,6 @@ else:
     def non_blocking_recv(self, count):
         return self.socket.recv(count, _rsocket_rffi.MSG_DONTWAIT)
 
-
-class Cell(object):
-    _attrs_ = ["value"]
-    def __init__(self, value): self.value = value
-    def set(self, v): self.value = v
-    def get(self): return self.value
 
 ResolverUninitialized = 0
 ResolverReady = 1
