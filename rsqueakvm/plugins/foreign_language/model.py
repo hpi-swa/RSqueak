@@ -7,11 +7,30 @@ from rsqueakvm.primitives.constants import EXTERNAL_CALL
 from rsqueakvm.storage_classes import AbstractCachingShadow, ClassShadow
 from rsqueakvm.util.cells import QuasiConstant
 
-from rpython.rlib import objectmodel
+from rpython.rlib import jit, objectmodel
 from rpython.rlib.rstrategies.rstrategies import StrategyMetaclass
 
 
+class W_ForeignLanguageObjectMeta(type):
+    def __new__(cls, name, bases, attrs):
+        # import pdb; pdb.set_trace()
+        if name != 'W_ForeignLanguageObject':
+            class_shadow_cache = {}
+
+            @jit.elidable
+            def pure_class_shadow(self, space):
+                wf_class = self.getforeignclass(space)
+                shadow = self.make_class_shadow(space)
+                return class_shadow_cache.setdefault(wf_class, shadow)
+
+            attrs['class_shadow_cache'] = class_shadow_cache
+            attrs['pure_class_shadow'] = pure_class_shadow
+
+        return type.__new__(cls, name, bases, attrs)
+
+
 class W_ForeignLanguageObject(W_AbstractObjectWithIdentityHash):
+    __metaclass__ = W_ForeignLanguageObjectMeta
     _attrs_ = []
     _immutable_fields_ = []
     repr_classname = 'W_ForeignLanguageObject'
@@ -35,10 +54,16 @@ class W_ForeignLanguageObject(W_AbstractObjectWithIdentityHash):
     def getclass(self, space):
         raise NotImplementedError
 
-    def class_shadow(self, space):
+    def getforeignclass(self, space):
         raise NotImplementedError
 
+    def class_shadow(self, space):
+        return self.pure_class_shadow(space)
+
     def is_same_object(self, other):
+        raise NotImplementedError
+
+    def make_class_shadow(self, space):
         raise NotImplementedError
 
 
@@ -57,11 +82,13 @@ class ForeignLanguageClassShadowMeta(StrategyMetaclass):
 
 class ForeignLanguageClassShadow(ClassShadow):
     __metaclass__ = ForeignLanguageClassShadowMeta
-    _attrs_ = []
+    _attrs_ = ['w_specific_class']
+    _immutable_fields_ = ['w_specific_class?']
 
     def __init__(self, space):
         AbstractCachingShadow.__init__(
             self, space, space.w_nil, 0, space.w_nil)
+        self.w_specific_class = None
 
     @staticmethod
     def load_special_objects(cls, language_name, space):
@@ -87,10 +114,23 @@ class ForeignLanguageClassShadow(ClassShadow):
         pass  # Changes to foreign classes are not handled in Smalltalk
 
     def lookup(self, w_selector):
+        if self.w_specific_class:
+            lookup_cls = self.w_specific_class
+        else:
+            lookup_cls = self.w_foreign_object_class.get()
+        w_cm = lookup_cls.as_class_get_shadow(self.space).lookup(w_selector)
+        if w_cm is not None:
+            return w_cm
         if self.method_exists(w_selector):
             return self.make_method(w_selector)
-        return self.w_foreign_object_class.get().as_class_get_shadow(
-            self.space).lookup(w_selector)
+        # try underscore fallback
+        methodname = w_selector.unwrap_string(self.space)
+        if len(methodname) > 1 and methodname[0] == '_':
+            w_fallback_selector = self.space.wrap_symbol(methodname[1:])
+            if self.method_exists(w_fallback_selector):
+                return self.make_method(w_fallback_selector)
+
+        return None  # triggers a MNU
 
     # Abstract methods
 
@@ -98,6 +138,9 @@ class ForeignLanguageClassShadow(ClassShadow):
         raise NotImplementedError
 
     # Helpers
+    def set_specific_class(self, w_class):
+        self.w_specific_class = w_class
+
     def make_method(self, w_selector):
         if self.space.is_spur.is_set():
             w_cm = objectmodel.instantiate(W_SpurCompiledMethod)

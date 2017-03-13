@@ -2,10 +2,6 @@ from rsqueakvm.plugins.foreign_language.model import (
     W_ForeignLanguageObject, ForeignLanguageClassShadow)
 from rsqueakvm.plugins.ruby.objspace import ruby_space
 
-from rpython.rlib import jit
-
-RubyClassShadowCache = {}
-
 
 class W_RubyObject(W_ForeignLanguageObject):
     _attrs_ = ['wr_object', 's_class']
@@ -21,19 +17,15 @@ class W_RubyObject(W_ForeignLanguageObject):
     def getclass(self, space):
         return W_RubyObject(self.wr_object.getclass(ruby_space))
 
-    def class_shadow(self, space):
-        wr_class = ruby_space.getclass(self.wr_object)
-        return W_RubyObject.pure_class_shadow(space, wr_class)
-
-    @staticmethod
-    @jit.elidable
-    def pure_class_shadow(space, wr_class):
-        return RubyClassShadowCache.setdefault(
-            wr_class, RubyClassShadow(space, wr_class))
+    def getforeignclass(self, space):
+        return ruby_space.getclass(self.wr_object)
 
     def is_same_object(self, other):
         return (isinstance(other, W_RubyObject) and
                 other.wr_object is self.wr_object)
+
+    def make_class_shadow(self, space):
+        return RubyClassShadow(space, self.getforeignclass(space))
 
 
 class RubyClassShadow(ForeignLanguageClassShadow):

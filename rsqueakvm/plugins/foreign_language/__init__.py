@@ -1,5 +1,6 @@
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.plugins.foreign_language.language import W_ForeignLanguage
+from rsqueakvm.plugins.foreign_language.model import W_ForeignLanguageObject
 from rsqueakvm.plugins.plugin import Plugin
 
 
@@ -69,3 +70,9 @@ class ForeignLanguagePlugin(Plugin):
             if not isinstance(w_rcvr, self.w_object_class()):
                 raise PrimitiveFailedError
             return self.to_w_object(interp.space, w_rcvr)
+
+        @self.expose_primitive(unwrap_spec=[object, object])
+        def registerSpecificClass(interp, s_frame, w_rcvr, language_obj):
+            if not isinstance(language_obj, W_ForeignLanguageObject):
+                raise PrimitiveFailedError
+            language_obj.class_shadow(interp.space).set_specific_class(w_rcvr)
