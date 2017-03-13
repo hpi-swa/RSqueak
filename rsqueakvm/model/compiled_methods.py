@@ -59,6 +59,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
                 "bytes", "literals",
                 # Additional info about the method
                 "lookup_selector", "compiledin_class", "lookup_class", "_frame_size" ]
+    _immutable_fields_ = ["_frame_size?"]
     lookup_selector = "<unknown>"
     lookup_class = None
 
@@ -141,12 +142,12 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 
     def setbytes(self, bytes):
         self.bytes = bytes
-        self.update_frame_size()
+        self._frame_size = 0
 
     def setchar(self, index0, character):
         assert index0 >= 0
         self.bytes[index0] = character
-        self.update_frame_size()
+        self._frame_size = 0
 
     # === Getters ===
 
@@ -189,14 +190,13 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 
     @jit.elidable_promote()
     def frame_size(self):
-        return self._frame_size
+        if not jit.we_are_jitted():
+            return self.squeak_frame_size()
+        else:
+            return self._frame_size
 
-    def set_frame_size(self, size):
-        self._frame_size = size
-
-    def update_frame_size(self):
-        from rsqueakvm.interpreter_bytecodes import compute_frame_size
-        self._frame_size = compute_frame_size(self.getbytes()) + self.argsize + self._tempsize
+    def update_frame_size(self, size):
+        self._frame_size = max(self._frame_size, size)
 
     def squeak_frame_size(self):
         # From blue book: normal mc have place for 12 temps+maxstack
@@ -380,17 +380,15 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         return self.get_identifier_string()
 
     def bytecode_string(self, markBytecode=0):
-        from rsqueakvm.interpreter_bytecodes import BYTECODE_TABLE, BYTECODE_ARGUMENT_COUNT
+        from rsqueakvm.interpreter_bytecodes import BYTECODE_TABLE
         retval = "Bytecode:------------"
-        j = 1
-        idx = 0
-        while idx < len(self.bytes):
+        j = 0
+        while j < len(self.bytes):
             i = self.bytes[idx]
             retval += '\n'
-            retval += '->' if j is markBytecode else '  '
-            retval += ('%0.2i: 0x%0.2x(%0.3i) ' % (j, ord(i), ord(i))) + BYTECODE_TABLE[ord(i)].__name__
-            idx += BYTECODE_ARGUMENT_COUNT[ord(i)] + 1
-            j += BYTECODE_ARGUMENT_COUNT[ord(i)] + 1
+            retval += '->' if j + 1 is markBytecode else '  '
+            retval += ('%0.2i: 0x%0.2x(%0.3i) ' % (j + 1, ord(i), ord(i))) + BYTECODE_TABLE[ord(i)].__name__
+            j += 1
         retval += "\n---------------------"
         return retval
 

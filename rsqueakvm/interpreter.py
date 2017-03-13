@@ -410,26 +410,17 @@ class Interpreter(object):
         if not objectmodel.we_are_translated():
             if USE_SIGUSR1:
                 self.check_sigusr(context)
-            stackdepth_pre = context.stackdepth()
 
         bytecode = context.fetch_next_bytecode()
         for entry in UNROLLING_BYTECODE_RANGES:
-            if len(entry) == 3:
-                bc, methname, _ = entry
+            if len(entry) == 2:
+                bc, methname = entry
                 if bytecode == bc:
-                    result = getattr(context, methname)(self, bytecode)
-                    if not objectmodel.we_are_translated():
-                        stackdepth_after = context.stackdepth()
-                        assert context.last_effect == (stackdepth_after - stackdepth_pre)
-                    return result
+                    return getattr(context, methname)(self, bytecode)
             else:
-                start, stop, methname, _ = entry
+                start, stop, methname = entry
                 if start <= bytecode <= stop:
-                    result = getattr(context, methname)(self, bytecode)
-                    if not objectmodel.we_are_translated():
-                        stackdepth_after = context.stackdepth()
-                        assert context.last_effect == (stackdepth_after - stackdepth_pre)
-                    return result
+                    return getattr(context, methname)(self, bytecode)
         assert 0, "unreachable"
 
     # ============== Methods for handling user interrupts ==============
@@ -571,7 +562,6 @@ class Interpreter(object):
         w_method.setbytes([chr(131), chr(len(w_arguments) << 5 + 0), chr(124)])  #returnTopFromMethodBytecode
         w_method.set_lookup_class_and_name(w_receiver.getclass(self.space),
                                            "Interpreter.perform")
-        w_method.set_frame_size(len(w_arguments) + 1)
         s_frame = ContextPartShadow.build_method_context(self.space, w_method,
                                                          w_receiver)
         s_frame.push(w_receiver)

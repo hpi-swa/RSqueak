@@ -132,7 +132,6 @@ def test_create_frame():
     w_method.islarge = 1
     w_method.argsize = 2
     w_method._tempsize = 8
-    w_method.update_frame_size()
     s_frame = w_method.create_frame(space, w("receiver"), [w("foo"), w("bar")])
     w_frame = s_frame.w_self()
     assert s_frame.w_receiver().unwrap_string(None) == "receiver"
@@ -146,7 +145,7 @@ def test_create_frame():
     assert s_frame.fetch_next_bytecode() == ord("l")
 
 def test_push_pop():
-    _, frame = new_frame("ppp")
+    _, frame = new_frame("")
     frame.push(w(12))
     frame.push(w(34))
     frame.push(w(56))
@@ -450,11 +449,9 @@ def sendBytecodesTest(w_class, w_object, bytecodes):
         w_method.bytes = pushConstantOneBytecode + bytecode
         literals = fakeliterals(space, "foo")
         w_foo = literals[0]
-        w_method.update_frame_size()
         shadow.installmethod(w_foo, w_method)
-        w_frame, s_frame = new_frame(pushConstantOneBytecode + bytecodes)
+        w_frame, s_frame = new_frame(bytecodes)
         s_frame.w_method().setliterals(literals)
-        s_frame.store_pc(1) # skip over the push One bytecode, we push the object next
         s_frame.push(w_object)
         w_active_context = step_in_interp(s_frame)
         s_active_context = w_active_context.as_context_get_shadow(space)
@@ -484,7 +481,6 @@ def test_fibWithArgument():
     method._tempsize = 1
     literals = fakeliterals(space, "fib:")
     method.setliterals(literals)
-    method.update_frame_size()
     shadow.installmethod(literals[0], method)
     w_object = shadow.new()
     w_frame, s_frame = new_frame(sendLiteralSelectorBytecode(16) + returnTopFromMethodBytecode)
@@ -622,7 +618,6 @@ def test_callPrimitiveAndPush_fallback():
     w_method.argsize = 1
     w_method._tempsize = 1
     w_method.literalsize = 1
-    w_method.update_frame_size()
     w_symbol = fakesymbol("+")
     shadow.installmethod(w_symbol, w_method)
     # slightly evil
@@ -639,15 +634,12 @@ def test_callPrimitiveAndPush_fallback():
     assert s_active_context.stack() == []
 
 def test_bytecodePrimBool():
-    w_frame, s_frame = new_frame(
-        pushConstantOneBytecode * 7 + # just for frame size
-        bytecodePrimLessThan +
-        bytecodePrimGreaterThan +
-        bytecodePrimLessOrEqual +
-        bytecodePrimGreaterOrEqual +
-        bytecodePrimEqual +
-        bytecodePrimNotEqual)
-    s_frame.store_pc(7) # skip pushing constants
+    w_frame, s_frame = new_frame(bytecodePrimLessThan +
+                             bytecodePrimGreaterThan +
+                             bytecodePrimLessOrEqual +
+                             bytecodePrimGreaterOrEqual +
+                             bytecodePrimEqual +
+                             bytecodePrimNotEqual)
     for i in range(6):
         s_frame.push(space.w_one)
         s_frame.push(space.w_two)
@@ -671,7 +663,6 @@ def test_singleExtendedSuperBytecode(bytecode=singleExtendedSuperBytecode + chr(
     # which does a call to its super
     meth1 = W_PreSpurCompiledMethod(space, 2)
     meth1.bytes = pushReceiverBytecode + bytecode
-    meth1.update_frame_size()
     literals = fakeliterals(space, "foo")
     foo = literals[0]
     meth1.setliterals(literals)
@@ -680,7 +671,6 @@ def test_singleExtendedSuperBytecode(bytecode=singleExtendedSuperBytecode + chr(
     meth2 = W_PreSpurCompiledMethod(space, 2)
     meth2.bytes = pushReceiverBytecode + bytecode
     meth2.setliterals(fakeliterals(space, foo))
-    meth2.update_frame_size()
     w_super.as_class_get_shadow(space).installmethod(foo, meth2)
     meth3 = W_PreSpurCompiledMethod(space, 0)
     w_supersuper.as_class_get_shadow(space).installmethod(foo, meth3)
@@ -887,8 +877,7 @@ def test_bc_objectAtAndAtPut():
 
 # Closure Bytecodes
 def test_bc_pushNewArrayBytecode(bytecode=pushNewArrayBytecode):
-    w_frame, s_frame = new_frame("ppp" + bytecode + chr(0x83))
-    s_frame.store_pc(3) # skip over pushes, they are just for frame size
+    w_frame, s_frame = new_frame(bytecode + chr(0x83))
     s_frame.push(w(fakeliterals(space, "egg")))
     s_frame.push(w(fakeliterals(space, "bar")))
     s_frame.push(w(fakeliterals(space, "baz")))
@@ -900,8 +889,7 @@ def test_bc_pushNewArrayBytecode(bytecode=pushNewArrayBytecode):
     assert space.unwrap_array(array.at0(space, 2)) == fakeliterals(space, "baz")
 
 def test_bc_pushNewArrayBytecode_noPopIntoArray(bytecode=pushNewArrayBytecode):
-    w_frame, s_frame = new_frame("pp" + bytecode + chr(0x02))
-    s_frame.store_pc(2) # skip over pushes, they are just for frame size
+    w_frame, s_frame = new_frame(bytecode + chr(0x02))
     s_frame.push(w("egg"))
     s_frame.push(w("bar"))
     step_in_interp(s_frame)
@@ -927,8 +915,7 @@ def test_bc_pushRemoteTempLongBytecode(bytecode=pushRemoteTempLongBytecode):
 
 def setupTempArrayAndContext(bytecode):
     # both indizes are 0-relative
-    w_frame, s_frame = new_frame("pp" + bytecode + chr(2) + chr(1))
-    s_frame.store_pc(2) # skip over pushes, they are just for frame size
+    w_frame, s_frame = new_frame(bytecode + chr(2) + chr(1))
     s_frame.push(w(fakeliterals(space, "english")))
     s_frame.push(w(fakeliterals(space, "bar")))
     temp_array = space.w_Array.as_class_get_shadow(interp.space).new(3)
@@ -963,8 +950,7 @@ def test_bc_pushClosureCopyCopied0ValuesBytecode(bytecode=pushClosureCopyCopiedV
         assert closure.w_outerContext() is s_frame._w_self
 
 def test_bc_pushClosureCopyCopied2ValuesBytecode(bytecode=pushClosureCopyCopiedValuesBytecode):
-    w_frame, s_frame = new_frame("pp" + bytecode + chr(0x23) + chr(0) + chr(0))
-    s_frame.store_pc(2) # skip over pushes, they are just for frame size
+    w_frame, s_frame = new_frame(bytecode + chr(0x23) + chr(0) + chr(0))
     s_frame.push(w("english"))
     s_frame.push(w("bar"))
     pc = s_frame.pc()
@@ -1004,8 +990,7 @@ def test_blockclosure_return():
 
 def test_frame_dirty_if_active():
     bytes = reduce(operator.add, map(chr, [0x84, 0xc0, 0x00]))
-    w_frame, s_frame = new_frame("p" + bytes)
-    s_frame.store_pc(1)
+    w_frame, s_frame = new_frame(bytes)
     s_frame.store_w_receiver(w_frame)
     s_frame.push(w_frame)
     s_frame.set_state(storage_contexts.ActiveContext)
@@ -1014,8 +999,7 @@ def test_frame_dirty_if_active():
 
 def test_frame_not_dirty_if_inactive():
     bytes = reduce(operator.add, map(chr, [0x84, 0xc0, 0x00]))
-    w_frame, s_frame = new_frame("p" + bytes)
-    s_frame.store_pc(1)
+    w_frame, s_frame = new_frame(bytes)
     w_other_frame, s_other_frame = new_frame("")
     s_frame.store_w_receiver(w_other_frame)
     s_frame.push(w_frame)
@@ -1026,8 +1010,7 @@ def test_frame_not_dirty_if_inactive():
 
 def test_raise_NonVirtualReturn_on_dirty_frame():
     bytes = reduce(operator.add, map(chr, [0x84, 0xc0, 0x00])) + returnTopFromMethodBytecode
-    w_frame, s_frame = new_frame("p" + bytes)
-    s_frame.store_pc(1)
+    w_frame, s_frame = new_frame(bytes)
     s_frame.store_w_receiver(w_frame)
     s_frame.push(w_frame)
 

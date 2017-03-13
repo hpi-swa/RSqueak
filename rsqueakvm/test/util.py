@@ -132,10 +132,11 @@ def import_bytecodes(module_name):
             opcode = entry[0] + n
             assert entry[0] <= opcode <= entry[1]
             return chr(opcode)
-        setattr(mod, entry[2], get_opcode_chr)
+        setattr(mod, name, get_opcode_chr)
     for entry in interpreter_bytecodes.BYTECODE_RANGES:
-        if len(entry) == 3:     # no range
-            setattr(mod, entry[1], chr(entry[0]))
+        name = entry[-1]
+        if len(entry) == 2:     # no range
+            setattr(mod, name, chr(entry[0]))
         else:
             make_getter(entry)
 
@@ -419,10 +420,8 @@ class BootstrappedObjSpace(objspace.ObjSpace):
     # ============ Helpers for executing ============
 
     def wrap_frame(self, s_frame):
-        # Add a toplevel frame around s_frame to properly return, with one push
-        # bytecode (that we skip) so we have enough room on the stack
-        toplevel_frame = self.make_method([112, 0x7c]).create_frame(self, self.w(0), [])
-        toplevel_frame.store_pc(1)
+        # Add a toplevel frame around s_frame to properly return.
+        toplevel_frame = self.make_method([0x7c]).create_frame(self, self.w(0), [])
         s_frame.store_s_sender(toplevel_frame)
 
     def make_method(self, bytes, literals=None, numargs=0):
@@ -436,7 +435,6 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         if literals is None:
             literals = [W_PointersObject(self, None, 2)]
         w_method.setliterals(literals)
-        w_method.update_frame_size()
         return w_method
 
     def make_frame(self, bytes, literals=None, receiver=None, args=[]):

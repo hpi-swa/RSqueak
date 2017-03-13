@@ -696,8 +696,8 @@ def test_directory_delimitor():
     assert space.unwrap_char_as_byte(w_c) == os.path.sep
 
 def test_primitive_closure_copyClosure():
-    w_frame, s_frame = new_frame("pppppppp<never called, but used for method generation>")
-    w_outer_frame, s_initial_context = new_frame("pppppppp<never called, but used for method generation>")
+    w_frame, s_frame = new_frame("<never called, but used for method generation>")
+    w_outer_frame, s_initial_context = new_frame("<never called, but used for method generation>")
     w_block = prim(CLOSURE_COPY_WITH_COPIED_VALUES, map(wrap,
                     [w_outer_frame, 2, [wrap(1), wrap(2)]]), w_frame)
     assert not w_block.is_nil(space)
@@ -721,7 +721,7 @@ def test_primitive_closure_copyClosure():
 #     prim_fails(STRING_REPLACE, [['a', 'b'], 1, 4, "ccccc", 1])
 
 def build_up_closure_environment(args, copiedValues=[]):
-    w_frame, s_initial_context = new_frame("pppppppp<never called, but used for method generation>")
+    w_frame, s_initial_context = new_frame("<never called, but used for method generation>")
 
     size_arguments = len(args)
     closure = space.newClosure(w_frame, 4, #pc
@@ -775,7 +775,7 @@ def test_primitive_some_object():
 
 def test_primitive_next_object():
     someInstances = map(space.wrap_list, [[2], [3]])
-    w_frame, s_context = new_frame("pppppppp<never called, but needed for method generation>")
+    w_frame, s_context = new_frame("<never called, but needed for method generation>")
 
     s_context.push(space.w_nil)
     interp = InterpreterForTest(space)
@@ -791,7 +791,7 @@ def test_primitive_next_object():
 
 def test_primitive_next_instance():
     someInstances = map(space.wrap_list, [[2], [3]])
-    w_frame, s_context = new_frame("pppppppp<never called, but needed for method generation>")
+    w_frame, s_context = new_frame("<never called, but needed for method generation>")
 
     s_context.push(space.w_Array)
     interp = InterpreterForTest(space)
@@ -807,7 +807,7 @@ def test_primitive_next_instance():
 
 def test_primitive_next_instance_wo_some_instance_in_same_frame():
     someInstances = map(space.wrap_list, [[2], [3]])
-    w_frame, s_context = new_frame("pppppppp<never called, but needed for method generation>")
+    w_frame, s_context = new_frame("<never called, but needed for method generation>")
 
     s_context.push(space.w_Array)
     interp = InterpreterForTest(space)
@@ -831,7 +831,7 @@ def test_primitive_value_no_context_switch(monkeypatch):
     def step(s_frame):
         raise Stepping
 
-    w_frame, s_initial_context = new_frame("pppppppp<never called, but used for method generation>")
+    w_frame, s_initial_context = new_frame("<never called, but used for method generation>")
 
     closure = space.newClosure(w_frame, 4, 0, [])
     s_frame = w_frame.as_context_get_shadow(space)
