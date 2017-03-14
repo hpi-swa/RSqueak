@@ -222,8 +222,18 @@ class MapStrategy(AbstractStrategy):
         storage_node_type = MapStorageNode.type_for(w_self, w_value)
         new_node = w_self._get_strategy().add_node(storage_node_type, index0, w_self)
         assert isinstance(new_node, MapStorageNode)
+        self.log_set_storage(w_self, w_self._get_strategy(), new_node)
         w_self._set_strategy(new_node)
         new_node.store(w_self, index0, w_value)
+
+    def log_set_storage(self, w_self, old_node, new_node):
+        if self.strategy_factory().logger.active:
+            common_node = old_node.common_base(new_node)
+            if old_node is not common_node:
+                self.strategy_factory().log(w_self, common_node, old_node)
+
+    def common_base(self, other):
+        return self
 
     def size(self, w_self):
         return w_self.size()
@@ -301,6 +311,18 @@ class MapStorageNode(MapStrategy):
     def logname(self):
         return "%sIdx%dPos%d" % (self.repr_classname, self.index, self.pos)
 
+    def common_base(self, other):
+        node = other
+        while isinstance(node, MapStorageNode) and node.index > self.index:
+            node = node.getprev()
+        last_base = base = self
+        while base:
+            if base is node:
+                return base
+            last_base = base
+            base = base.getprev()
+        return last_base
+
     def getprev(self):
         return self.prev
 
@@ -347,6 +369,7 @@ class MapStorageNode(MapStrategy):
             ).add_node(
                 MapStorageNode.type_for(w_self, w_value), index0, w_self
             )
+            self.log_set_storage(w_self, strategy, new_node)
             w_self._set_strategy(new_node)
             new_node.store(w_self, index0, w_value)
         else:
@@ -763,6 +786,10 @@ class StrategyFactory(rstrat.StrategyFactory):
         old_strategy_str = old_strategy.logname() if old_strategy else ""
         classname = w_self.guess_classname() if image_loaded else ""
         element_classname = new_element.guess_classname() if new_element and image_loaded else ""
+        if isinstance(new_strategy, MapStrategy):
+            new_strategy_str += classname
+        if isinstance(old_strategy, MapStrategy):
+            old_strategy_str += classname
         if image_loaded:
             cause = "Switched" if old_strategy else "Initialized"
         else:
