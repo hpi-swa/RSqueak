@@ -247,6 +247,7 @@ class MapStrategy(AbstractStrategy):
 
     def add_node(self, strategy_cls, index0, w_self):
         new_node = self.strategy_factory().get_transition(self, strategy_cls, index0, self.getclass())
+        self.strategy_factory().log(w_self, new_node, self)
         assert isinstance(new_node, MapStorageNode)
         new_node.update_storage(w_self)
         return new_node
