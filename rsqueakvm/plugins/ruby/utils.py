@@ -4,6 +4,7 @@ from rsqueakvm.plugins.ruby.model import W_RubyObject
 from rsqueakvm.plugins.ruby.objspace import ruby_space
 from rsqueakvm.model.variable import W_BytesObject
 
+from topaz.objects.arrayobject import W_ArrayObject as WR_ArrayObject
 from topaz.objects.floatobject import W_FloatObject as WR_FloatObject
 from topaz.objects.intobject import W_FixnumObject as WR_FixnumObject
 from topaz.objects.stringobject import W_StringObject as WR_StringObject
@@ -30,6 +31,10 @@ def ruby_to_smalltalk(space, wr_object):
         return space.w_true
     elif isinstance(wr_object, WR_SymbolObject):
         return space.wrap_symbol(ruby_space.str_w(wr_object))
+    elif isinstance(wr_object, WR_ArrayObject):
+        return space.wrap_list(
+            [ruby_to_smalltalk(space, x) for x in
+                wr_object.listview(ruby_space)])
     print 'Cannot convert %s to Smalltalk' % wr_object
     raise PrimitiveFailedError
 

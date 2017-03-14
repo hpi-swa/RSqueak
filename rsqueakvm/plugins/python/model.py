@@ -35,8 +35,8 @@ class PythonClassShadow(ForeignLanguageClassShadow):
     _immutable_fields_ = ['wp_class']
 
     def __init__(self, space, wp_class, wp_object):
-        self.wp_object = wp_object
         self.wp_class = wp_class
+        self.wp_object = wp_object
         self.name = wp_class.name
         ForeignLanguageClassShadow.__init__(self, space)
 

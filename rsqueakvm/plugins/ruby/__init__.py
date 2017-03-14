@@ -3,8 +3,9 @@ from rsqueakvm.plugins.foreign_language import ForeignLanguagePlugin
 from rsqueakvm.util import system
 
 try:
-    from rsqueakvm.plugins.ruby.model import W_RubyObject, RubyClassShadow
     from rsqueakvm.plugins.ruby.language import W_RubyLanguage
+    from rsqueakvm.plugins.ruby.model import W_RubyObject, RubyClassShadow
+    from rsqueakvm.plugins.ruby.objspace import ruby_space
     from rsqueakvm.plugins.ruby.patching import patch_topaz
     from rsqueakvm.plugins.ruby.utils import ruby_to_smalltalk
     IMPORT_FAILED = False
@@ -33,6 +34,7 @@ class RubyPlugin(ForeignLanguagePlugin):
         ForeignLanguagePlugin.load_special_objects(
             space, RubyPlugin.language_name,
             W_RubyLanguage, RubyClassShadow)
+        ruby_space.setup(argv[0])
 
     @staticmethod
     def new_w_language(space, args_w):
