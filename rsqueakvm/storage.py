@@ -189,7 +189,7 @@ class MapStrategy(AbstractStrategy):
     the normal map transition mechanism (add_node, find_node, remove_node).
     """
     _attrs_ = []
-    repr_classname = "MapStrategy (base)"
+    repr_classname = "BaseMapStrategy"
     import_from_mixin(rstrat.SafeIndexingMixin)
 
     def _initialize_storage(self, w_self, initial_size):
@@ -277,7 +277,7 @@ class MapStorageNode(MapStrategy):
     # array
     __metaclass__ = MapNodesMetaclass
 
-    repr_classname = "MapStrategy (abstract node)"
+    repr_classname = "AbstractMapStrategyNode"
 
     @staticmethod
     @jit.unroll_safe
@@ -397,6 +397,7 @@ class MapStorageNode(MapStrategy):
         else:
             assert self.index < index0
             new_node = self.strategy_factory().get_transition(self, strategy_cls, index0, self.getclass())
+            self.strategy_factory().log(w_self, new_node, self)
             assert isinstance(new_node, MapStorageNode)
             new_node.update_storage(w_self)
             return new_node
@@ -405,7 +406,7 @@ class MapStorageNode(MapStrategy):
 class IntMapStorageNode(MapStorageNode):
     # we inline up to three integer fields on the object and the rest in a intFields array
     used_fields = "intFields"
-    repr_classname = "MapStrategy (int)"
+    repr_classname = "IntMapStrategyNode"
 
     @staticmethod
     def correct_type(w_self, w_value):
@@ -461,7 +462,7 @@ class IntMapStorageNode(MapStorageNode):
 
 class ObjectMapStorageNode(MapStorageNode):
     used_fields = "erased_storage"
-    repr_classname = "MapStrategy (object)"
+    repr_classname = "ObjectMapStrategyNode"
 
     @staticmethod
     def correct_type(w_self, w_value):
