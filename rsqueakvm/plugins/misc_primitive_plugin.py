@@ -14,7 +14,7 @@ class MiscPrimitivePlugin(Plugin):
 
     def __init__(self):
         Plugin.__init__(self)
-        self.ascii_order = QuasiConstant(None, type=W_BytesObject)
+        self.ascii_order = QuasiConstant(None, cls=W_BytesObject)
 
 
 plugin = MiscPrimitivePlugin()
