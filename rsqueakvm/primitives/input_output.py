@@ -3,7 +3,7 @@ import os
 from rsqueakvm import display, wrapper
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.display import W_DisplayBitmap
-from rsqueakvm.model.pointers import W_PointersObject, W_FixedPointersObject
+from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_WordsObject
 from rsqueakvm.primitives import expose_primitive, assert_class, index1_0
 from rsqueakvm.primitives.constants import *

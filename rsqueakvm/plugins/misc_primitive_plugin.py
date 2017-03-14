@@ -2,7 +2,7 @@ from rsqueakvm.primitives import index1_0, bytelist, char, uint
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.plugins.plugin import Plugin
-from rsqueakvm.util.cells import Cell, QuasiConstant
+from rsqueakvm.util.cells import QuasiConstant
 
 from rpython.rlib.rarithmetic import r_uint, intmask
 from rpython.rlib import jit
