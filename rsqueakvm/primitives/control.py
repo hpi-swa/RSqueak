@@ -4,11 +4,14 @@ from rsqueakvm.model.compiled_methods import W_CompiledMethod
 from rsqueakvm.model.numeric import W_Float, W_LargeInteger, W_LargeIntegerBig
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
-from rsqueakvm.primitives import expose_primitive, assert_pointers, assert_class
+from rsqueakvm.plugins import get_plugins
+from rsqueakvm.primitives import (
+    expose_primitive, assert_pointers, assert_class)
 from rsqueakvm.primitives.constants import *
 from rsqueakvm.primitives.misc import fake_bytes_left
 
 from rpython.rlib import jit, objectmodel
+from rpython.rlib.unroll import unrolling_iterable
 from rpython.rtyper.extregistry import ExtRegistryEntry
 
 
@@ -86,52 +89,12 @@ def func(interp, s_frame, w_rcvr, w_arg):
         # TODO: this should also work to change bytes to words and such
         raise PrimitiveNotYetWrittenError
 
-def find_plugins():
-    import os, sys
-    from rsqueakvm.util import system
+ExternalPluginNames, ExternalPlugins = get_plugins()
 
-    if system.without_plugins:
-        print "Plugins have been disabled"
-        return  [], []
-
-    enabled_plugins = []
-    files = os.listdir(os.path.join(os.path.dirname(__file__), "..", "plugins"))
-    plugins = []
-    plugin_names = []
-    disabled_plugin_names = []
-
-    # special...
-    if "JitHooks" not in system.optional_plugins:
-        disabled_plugin_names.append("JitHooks")
-
-    for filename in files:
-        if "_" not in filename or filename.startswith("_") or not filename.endswith(".py"):
-            continue
-        modulename = filename.replace(".py", "")
-        pluginname = "".join([f.capitalize() for f in modulename.split("_")])
-        if pluginname in system.disabled_plugins:
-            disabled_plugin_names.append(pluginname)
-            continue
-        try:
-            module = getattr(getattr(
-                __import__("rsqueakvm.plugins.%s" % modulename), "plugins"), modulename)
-        except LookupError as e:
-            # The plugin may have decided it doesn't want to be enabled
-            disabled_plugin_names.append(pluginname)
-            continue
-        reload(module) # always do a one-shot reload
-        plugin = getattr(module, pluginname)
-        plugin_names.append(pluginname)
-        plugins.append(plugin)
-    print "Building with\n\t" + "\n\t".join(plugin_names)
-    print "Disabled plugins\n\t" + "\n\t".join(disabled_plugin_names)
-    return plugin_names, plugins
-ExternalPluginNames, ExternalPlugins = find_plugins()
-
+plugins = unrolling_iterable(zip(ExternalPluginNames, ExternalPlugins))
 
 @expose_primitive(EXTERNAL_CALL, clean_stack=False, no_result=True,
                   compiled_method=True)
-@jit.unroll_safe
 def func(interp, s_frame, argcount, w_method):
     space = interp.space
     w_description = w_method.literalat0(space, 1)
@@ -154,14 +117,13 @@ def func(interp, s_frame, argcount, w_method):
         raise PrimitiveFailedError
     signature = (space.unwrap_string(w_modulename), space.unwrap_string(w_functionname))
 
-    if len(ExternalPluginNames) > 0:
-        for i, p in enumerate(ExternalPluginNames):
-            if signature[0] == p:
-                return ExternalPlugins[i].call(signature[1], interp, s_frame, argcount, w_method)
+    for name, plugin in plugins:
+        if signature[0] == name:
+            return plugin.call(signature[1], interp, s_frame, argcount, w_method)
 
     # If all else fails, try to simulate
-    from rsqueakvm.plugins.simulation import SimulationPlugin
-    return SimulationPlugin.simulate(w_functionname, signature, interp,
+    from rsqueakvm.plugins.simulation import simulationPlugin
+    return simulationPlugin.simulate(w_functionname, signature, interp,
                                      s_frame, argcount, w_method)
 
 @expose_primitive(COMPILED_METHOD_FLUSH_CACHE, unwrap_spec=[object])

@@ -1,13 +1,11 @@
 try:
     import readline
 except ImportError:
-    pass # Win32
+    pass  # Win32
 import re
-import sys
 import os
 import inspect
 from rpython.rlib import objectmodel, unroll
-from rsqueakvm.error import Exit
 
 
 COMMANDS = []
@@ -48,12 +46,13 @@ def cmd(func):
     autocompletions["!%s" % func.__name__] = None
     return func
 
+
 @objectmodel.not_rpython
 def completer(text, state, completions=None):
     if not completions:
         completions = autocompletions
     matches = 0
-    for k,v in completions.items():
+    for k, v in completions.items():
         pk = "%s." % k
         if k.find(text) == 0:
             if matches == state:
@@ -187,12 +186,12 @@ class Shell(object):
             reload(modmod)
             newclasses = inspect.getmembers(
                 modmod, lambda x: inspect.isclass(x) and inspect.getmodule(x) is modmod)
-            for k,v in oldclasses:
-                setattr(modmod, k, v) # patch old classes into module again
+            for k, v in oldclasses:
+                setattr(modmod, k, v)  # patch old classes into module again
             oldclasses = dict(oldclasses)
-            for classname,klass in newclasses:
+            for classname, klass in newclasses:
                 methods = inspect.getmembers(klass, lambda x: inspect.ismethod(x))
-                for methodname,method in methods:
+                for methodname, method in methods:
                     if methodname.startswith("__"):
                         continue
                     # define new method in module
@@ -261,7 +260,7 @@ class Shell(object):
                     )
                 methodsrc.append(srcline)
             from rsqueakvm.main import compile_code
-            methodsrc.pop() # remove trailing !!
+            methodsrc.pop()  # remove trailing !!
             compile_code(self.interp, w_cls,
                          "\r\n".join(methodsrc),
                          isclass=True, make_selector=False)

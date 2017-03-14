@@ -5,10 +5,13 @@ from rsqueakvm.plugins.plugin import Plugin
 from rsqueakvm.util.system import IS_WINDOWS
 
 
-DropPlugin = Plugin()
+class DropPlugin(Plugin):
+    pass
+
+plugin = DropPlugin()
 
 
-@DropPlugin.expose_primitive(unwrap_spec=[object, int])
+@plugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveDropRequestFileName(interp, s_frame, w_rcvr, index):
     path = interp.space.display().get_dropped_filename()
     if path is None:
@@ -17,7 +20,7 @@ def primitiveDropRequestFileName(interp, s_frame, w_rcvr, index):
         return interp.space.wrap_string(path)
 
 
-@DropPlugin.expose_primitive(unwrap_spec=[object, int])
+@plugin.expose_primitive(unwrap_spec=[object, int])
 def primitiveDropRequestFileHandle(interp, s_frame, w_rcvr, index):
     path = interp.space.display().get_dropped_filename()
     if path is None:

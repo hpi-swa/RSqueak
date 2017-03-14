@@ -1,4 +1,4 @@
-from rsqueakvm import constants, wrapper, display, storage
+from rsqueakvm import constants, display, storage
 from rsqueakvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, SYSTEM_ATTRIBUTE_IMAGE_ARGS_INDEX, IS_64BIT
 from rsqueakvm.error import WrappingError, UnwrappingError
 from rsqueakvm.model.character import W_Character
@@ -9,9 +9,9 @@ from rsqueakvm.model.block_closure import W_BlockClosure
 from rsqueakvm.util.version import Version
 from rsqueakvm.util.cells import QuasiConstant
 
-from rpython.rlib import jit, rbigint, rarithmetic
+from rpython.rlib import jit, rbigint
 from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin, we_are_translated, always_inline
-from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32, int_between, is_valid_int, r_ulonglong, r_longlong, r_int64
+from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32, is_valid_int, r_ulonglong, r_longlong, r_int64
 
 def empty_variable_object():
     return instantiate(W_PointersObject)
@@ -59,9 +59,9 @@ class ObjSpace(object):
         self.altf4quit = QuasiConstant(False)
 
         from rsqueakvm.display import NullDisplay
-        self._display = QuasiConstant(None, type=NullDisplay)
+        self._display = QuasiConstant(None, cls=NullDisplay)
         from rsqueakvm.interpreter import Interpreter
-        self.interp = QuasiConstant(None, type=Interpreter)
+        self.interp = QuasiConstant(None, cls=Interpreter)
 
         self.make_special_objects()
         self.strategy_factory = storage.StrategyFactory(self)
@@ -93,9 +93,9 @@ class ObjSpace(object):
         self.set_system_attribute(SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, image_name)
         self.image_loaded.activate()
         self.init_system_attributes(argv)
-        from rsqueakvm.plugins.plugin import PluginStartupScripts
-        for func in PluginStartupScripts:
-            func(self, argv)
+
+        from rsqueakvm.plugins import PluginRegistry
+        [p.startup(self, argv) for p in PluginRegistry.enabled_plugins]
 
     def init_system_attributes(self, argv):
         for i in xrange(1, len(argv)):

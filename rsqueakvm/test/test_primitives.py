@@ -983,8 +983,8 @@ def test_numericbitblt(monkeypatch):
         assert signature[1] == "primitiveCopyBits"
         return "ok"
 
-    from rsqueakvm.plugins.simulation import SimulationPlugin
-    monkeypatch.setattr(SimulationPlugin, "simulate", simulate)
+    from rsqueakvm.plugins.simulation import simulationPlugin
+    monkeypatch.setattr(simulationPlugin, "simulate", simulate)
 
     try:
         assert prim(BITBLT_COPY_BITS, ["myReceiver"]).str_content() == "'myReceiver'"

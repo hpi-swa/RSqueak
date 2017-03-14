@@ -22,7 +22,7 @@ from rsqueakvm import constants
 
 SIMULATE_PRIMITIVE_SELECTOR = 'simulatePrimitive:args:'
 
-class SimulationPluginClass(Plugin):
+class SimulationPlugin(Plugin):
     def _simulate(self, w_name, interp, s_frame, argcount, w_method):
         w_rcvr = s_frame.peek(argcount)
         s_class = w_rcvr.class_shadow(interp.space)
@@ -59,4 +59,4 @@ class SimulationPluginClass(Plugin):
     def simulateNumeric(self, code, interp, s_frame, argcount, w_method):
         self._simulate(interp.space.wrap_int(code), interp, s_frame, argcount, w_method)
 
-SimulationPlugin = SimulationPluginClass()
+simulationPlugin = SimulationPlugin()
