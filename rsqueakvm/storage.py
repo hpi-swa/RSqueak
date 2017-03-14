@@ -62,11 +62,13 @@ class AbstractStrategy(object):
         self.w_class = w_class
     def getname(self):
         raise NotImplementedError("Abstract class")
+    def logname(self):
+        return self.repr_classname
     def __repr__(self):
         if self.provides_getname:
-            return "<%s %s>" % (self.repr_classname, self.getname())
+            return "<%s %s>" % (self.logname(), self.getname())
         else:
-            return "<%s>" % self.repr_classname
+            return "<%s>" % self.logname()
     def strategy_factory(self):
         return self.space.strategy_factory
     def _convert_storage_from_AllNilStrategy(self, w_self, all_nil_storage):
@@ -296,8 +298,8 @@ class MapStorageNode(MapStrategy):
         self.w_class = w_class
         self._size_estimate = max(self.length() * NUM_DIGITS_POW2, 0)
 
-    def __repr__(self):
-        return "<%s index:%d;pos:%d>" % (self.repr_classname, self.index, self.pos)
+    def logname(self):
+        return "%sIdx%dPos%d" % (self.repr_classname, self.index, self.pos)
 
     def getprev(self):
         return self.prev
@@ -757,8 +759,8 @@ class StrategyFactory(rstrat.StrategyFactory):
         # Gather information to be logged
         image_loaded = self.space.image_loaded.is_set()
         size = new_strategy.size(w_self)
-        new_strategy_str = new_strategy.repr_classname
-        old_strategy_str = old_strategy.repr_classname if old_strategy else ""
+        new_strategy_str = new_strategy.logname()
+        old_strategy_str = old_strategy.logname() if old_strategy else ""
         classname = w_self.guess_classname() if image_loaded else ""
         element_classname = new_element.guess_classname() if new_element and image_loaded else ""
         if image_loaded:
