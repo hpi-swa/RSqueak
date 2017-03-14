@@ -57,7 +57,7 @@ def func(interp, s_frame, _):
 @expose_primitive(MOUSE_POINT, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
     x, y = interp.space.display().mouse_point()
-    w_point = W_FixedPointersObject(interp.space, interp.space.w_Point, 0)
+    w_point = interp.space.w_Point.as_class_get_shadow(interp.space).new()
     w_point.store(interp.space, 0, interp.space.wrap_int(x))
     w_point.store(interp.space, 1, interp.space.wrap_int(y))
     return w_point

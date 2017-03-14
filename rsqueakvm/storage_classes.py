@@ -53,7 +53,7 @@ class ClassShadow(AbstractCachingShadow):
         else:
             if w_self.getclass(self.space).is_same_object(self.space.w_Metaclass):
                 # In case of Metaclasses, the "instance" class is stored in the last field.
-                if n0 == self.size(w_self) - 1 and isinstance(w_val, W_FixedPointersObject):
+                if n0 == self.size(w_self) - 1 and isinstance(w_val, W_PointersObject):
                     cl_shadow = w_val.as_class_get_shadow(self.space)
                     self.name = "%s class" % cl_shadow.getname()
                     self.changed()
@@ -171,7 +171,7 @@ class ClassShadow(AbstractCachingShadow):
             self._s_superclass = None
             self.changed()
         else:
-            assert isinstance(w_class, W_FixedPointersObject)
+            assert isinstance(w_class, W_PointersObject)
             s_new_superclass = w_class.as_class_get_shadow(self.space)
             if superclass is s_new_superclass:
                 return
@@ -251,7 +251,9 @@ class ClassShadow(AbstractCachingShadow):
         return w_new
 
     def make_pointers_object(self, w_cls, size):
-        if self.isvariable() or size > 16:
+        if (not self.space.use_maps.is_set() or
+            self.space.maps_limit.get() < size or
+            self.isvariable()):
             return W_PointersObject(self.space, w_cls, size)
         else:
             assert size == self.instsize()

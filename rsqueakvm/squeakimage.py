@@ -356,6 +356,11 @@ class BaseReaderStrategy(object):
                 bytes.append(chr((each >> 24) & 0xff))
         return bytes
 
+    def isfixed(self, g_object):
+        return (self.space.use_maps.is_set() and
+                g_object.format == 1 and
+                len(g_object.pointers) <= self.space.maps_limit.get())
+
     def isfloat(self, g_object):
         return self.iswords(g_object) and self.space.w_Float.is_same_object(g_object.g_class.w_object)
 
@@ -552,9 +557,6 @@ class NonSpurReader(BaseReaderStrategy):
     def isblockclosure(self, g_object):
         g_closure = self.special_g_object_safe(constants.SO_BLOCKCLOSURE_CLASS)
         return self.ispointers(g_object) and g_object.g_class == g_closure
-
-    def isfixed(self, g_object):
-        return g_object.format == 1
 
     def ispointers(self, g_object):
         return g_object.format < 5
@@ -765,9 +767,6 @@ class SpurReader(BaseReaderStrategy):
     def isblockclosure(self, g_object):
         g_closure = self.special_g_object_safe(constants.SO_BLOCKCLOSURE_CLASS)
         return self.ispointers(g_object) and g_closure == g_object.g_class
-
-    def isfixed(self, g_object):
-        return g_object.format == 1
 
     def ispointers(self, g_object):
         return g_object.format < 6

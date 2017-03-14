@@ -99,6 +99,10 @@ def _usage(argv):
                                  Disables non-cooperative scheduling.
             -S|--no-storage    - Disable specialized storage strategies.
                                  Always use generic ListStrategy. Probably slower.
+            -M|--no-maps       - Disable Self-style maps for small fixed pointer
+                                 objects and revert to storage strategies.
+            --maps-limit <num> - Number of fields an object can have to be
+                                 eligible for use with maps.
             --hacks            - Enable Spy hacks. Set display color depth to 8
 
           Logging:
@@ -269,6 +273,11 @@ class Config(object):
                 self.interrupts = False
             elif arg in ["-S", "--no-storage"]:
                 self.space.strategy_factory.no_specialized_storage.activate()
+            elif arg in ["-M", "--no-maps"]:
+                self.space.use_maps.deactivate()
+            elif arg in ["--maps-limit"]:
+                limit, idx = get_int_parameter(argv, idx, arg)
+                self.space.maps_limit.set(limit)
             # Logging
             elif arg in ["-t", "--trace"]:
                 self.trace = True

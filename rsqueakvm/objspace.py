@@ -49,6 +49,8 @@ class ObjSpace(object):
         self.is_spur = QuasiConstant(False)
         self.uses_block_contexts = QuasiConstant(False)
         self.simulate_numeric_primitives = QuasiConstant(False)
+        self.use_maps = QuasiConstant(True)
+        self.maps_limit = QuasiConstant(16)
 
         self.system_attributes = {}
         self._system_attribute_version = QuasiConstant(Version())
