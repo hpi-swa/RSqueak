@@ -216,11 +216,10 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 
     @jit.elidable_promote()
     def fetch_bytecode(self, pc):
-        # assert pc >= 0 and pc < len(self.bytes)
         try:
             return self.bytes[pc]
         except IndexError:
-            return chr(0)
+            return chr(120) # returnReceiverBytecode
 
     def compiled_in(self):
         # This method cannot be constant/elidable. Looking up the compiledin-class from
