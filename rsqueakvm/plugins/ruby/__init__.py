@@ -14,6 +14,13 @@ try:
 
     IMPORT_FAILED = False
 except ImportError as e:
+    try:
+        __import__('topaz')
+        # if topaz can be imported, then there must be a problem in the plugin
+        import pdb
+        pdb.set_trace()
+    except:
+        pass
     IMPORT_FAILED = True
 
 

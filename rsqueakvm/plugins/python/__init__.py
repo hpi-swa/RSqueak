@@ -19,6 +19,13 @@ try:
 
     IMPORT_FAILED = False
 except ImportError:
+    try:
+        __import__('pypy')
+        # if pypy can be imported, then there must be a problem in the plugin
+        import pdb
+        pdb.set_trace()
+    except:
+        pass
     IMPORT_FAILED = True
 
 
