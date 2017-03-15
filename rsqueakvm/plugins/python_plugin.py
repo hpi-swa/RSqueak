@@ -1,30 +1,12 @@
-from rsqueakvm.error import PrimitiveFailedError
-from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.plugins.python import PythonPlugin
 
-from rpython.rlib import jit
-
 try:
-    from rsqueakvm.plugins.python import py_space, utils
+    from rsqueakvm.plugins.python import utils
     from rsqueakvm.plugins.python.model import W_PythonObject
-
-    from pypy.interpreter.error import OperationError
-    from pypy.interpreter.function import (
-        Function, Method, StaticMethod, ClassMethod)
 except ImportError:
     pass
 
-
 plugin = PythonPlugin()
-
-
-@plugin.expose_primitive(unwrap_spec=[object])
-def getTopFrame(interp, s_frame, w_rcvr):
-    # import pdb; pdb.set_trace()
-    topframe = py_space.getexecutioncontext().gettopframe()
-    if topframe is None:
-        raise PrimitiveFailedError
-    return W_PythonObject(topframe)
 
 
 @plugin.expose_primitive(unwrap_spec=[object, object, str, str, str])
@@ -40,48 +22,3 @@ def restartSpecificFrame(interp, s_frame, w_rcvr, w_frame, source, filename,
             return interp.space.w_false  # Raising prim error causes crashes
     PythonPlugin.set_py_frame_restart_info(frame, py_code)
     return interp.space.w_true
-
-
-@plugin.expose_primitive(compiled_method=True)
-@jit.unroll_safe
-def send(interp, s_frame, argcount, w_method):
-    # import pdb; pdb.set_trace()
-    space = interp.space
-    args_w = s_frame.peek_n(argcount)
-    wp_rcvr = utils.smalltalk_to_python(space, s_frame.peek(argcount))
-    w_selector_name = w_method.literalat0(space, 2)
-    if not isinstance(w_selector_name, W_BytesObject):
-        print 'w_selector_name not an instance of W_BytesObject'
-        raise PrimitiveFailedError
-    methodname = space.unwrap_string(w_selector_name)
-    idx = methodname.find(':')
-    if idx > 0:
-        methodname = methodname[0:idx]
-    wp_result = None
-    try:
-        py_attr = py_space.getattr(wp_rcvr, py_space.newtext(methodname))
-        if (isinstance(py_attr, Function) or
-                isinstance(py_attr, Method) or
-                isinstance(py_attr, StaticMethod) or
-                isinstance(py_attr, ClassMethod)):
-            wp_result = utils.call_method(space, wp_rcvr, methodname, args_w)
-        else:
-            if len(args_w) == 1:
-                wp_value = utils.smalltalk_to_python(space, args_w[0])
-                py_space.setattr(wp_rcvr, py_space.newtext(methodname),
-                                 wp_value)
-                wp_result = py_space.w_None
-            else:
-                wp_result = py_attr
-    except OperationError as operr:
-        return W_PythonObject(utils.operr_to_pylist(operr))
-    except Exception as e:
-        print 'Unable to call %s on %s: %s' % (methodname, wp_rcvr, e)
-        raise PrimitiveFailedError
-    if wp_result is None:
-        # import pdb; pdb.set_trace()
-        print ('Result failure in send primitive (wp_rcvr: %s, methodname: %s)'
-               % (wp_rcvr, methodname))
-        raise PrimitiveFailedError
-    s_frame.pop_n(argcount + 1)
-    return W_PythonObject(wp_result)

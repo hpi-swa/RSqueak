@@ -6,7 +6,6 @@ from rsqueakvm.plugins.python.model import W_PythonObject
 from rsqueakvm.plugins.python.objspace import py_space
 from rsqueakvm.model.variable import W_BytesObject
 
-from pypy.interpreter.argument import Arguments
 from pypy.interpreter.error import OperationError
 from pypy.interpreter.main import ensure__main__, compilecode
 from pypy.interpreter.module import Module
@@ -122,13 +121,6 @@ def get_restart_pycode(source, filename='<string>', cmd='exec'):
         # import pdb; pdb.set_trace()
         print 'Failed to compile new frame: %s' % e.errorstr(py_space)
     return
-
-
-def call_method(space, wp_obj, methodname, args_w):
-    # use call_args() to allow variable # of args_w (this disables speed hacks)
-    w_meth = py_space.getattr(wp_obj, py_space.newtext(methodname))
-    args = Arguments(py_space, [smalltalk_to_python(space, a) for a in args_w])
-    return py_space.call_args(w_meth, args)
 
 
 def operr_to_pylist(operr):

@@ -1,7 +1,10 @@
 from rsqueakvm.error import PrimitiveFailedError
+from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.plugins.foreign_language.language import W_ForeignLanguage
 from rsqueakvm.plugins.foreign_language.model import W_ForeignLanguageObject
 from rsqueakvm.plugins.plugin import Plugin
+
+from rpython.rlib import jit
 
 
 class ForeignLanguagePlugin(Plugin):
@@ -24,6 +27,10 @@ class ForeignLanguagePlugin(Plugin):
     @staticmethod
     def w_object_class():
         raise NotImplementedError
+
+    @staticmethod
+    def top_w_frame():
+        raise PrimitiveFailedError
 
     @staticmethod
     def to_w_object(foreign_object):
@@ -55,6 +62,21 @@ class ForeignLanguagePlugin(Plugin):
                 raise PrimitiveFailedError
             return language.switch_to_smalltalk(interp, s_frame)
 
+        @self.expose_primitive(compiled_method=True)
+        @jit.unroll_safe
+        def send(interp, s_frame, argcount, w_method):
+            # import pdb; pdb.set_trace()
+            space = interp.space
+            args_w = s_frame.peek_n(argcount)
+            w_rcvr = s_frame.peek(argcount)
+            w_selector_name = w_method.literalat0(space, 2)
+            if not isinstance(w_selector_name, W_BytesObject):
+                raise PrimitiveFailedError
+            method_name = space.unwrap_string(w_selector_name)
+            w_result = self.perform_send(space, w_rcvr, method_name, args_w)
+            s_frame.pop_n(argcount + 1)
+            return w_result
+
         @self.expose_primitive(unwrap_spec=[object, object])
         def lastError(interp, s_frame, w_rcvr, language):
             if not isinstance(language, W_ForeignLanguage):
@@ -64,6 +86,10 @@ class ForeignLanguagePlugin(Plugin):
                 print 'w_error was None in lastError'
                 raise PrimitiveFailedError
             return w_error
+
+        @self.expose_primitive(unwrap_spec=[object])
+        def getTopFrame(interp, s_frame, w_rcvr):
+            return self.top_w_frame()
 
         @self.expose_primitive(unwrap_spec=[object])
         def asSmalltalk(interp, s_frame, w_rcvr):

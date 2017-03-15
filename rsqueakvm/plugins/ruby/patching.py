@@ -1,3 +1,4 @@
+from topaz.executioncontext import ExecutionContext as TopazExecutionContext
 from topaz.frame import Frame as TopazFrame
 from topaz.interpreter import Interpreter as TopazInterpreter
 
@@ -42,3 +43,4 @@ def patch_topaz():
         pass  # this is fine
 
     TopazInterpreter.handle_bytecode = new_handle_bytecode
+    TopazExecutionContext.current_language = None

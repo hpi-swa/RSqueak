@@ -3,6 +3,7 @@ from rsqueakvm.plugins.python.switching import RestartException
 
 from pypy.interpreter.pycode import PyCode, default_magic
 from pypy.interpreter.pyopcode import SApplicationException
+from pypy.interpreter.executioncontext import ExecutionContext
 from pypy.module.pypyjit.interp_jit import PyFrame, PyPyJitDriver
 from pypy.tool.stdlib_opcode import bytecode_spec
 
@@ -140,6 +141,8 @@ def patch_pypy():
         delattr(PyPyJitDriver, 'virtualizables')
     except AttributeError:
         pass
+
+    ExecutionContext.current_language = None
 
     PyFrame.__init__ = __init__frame
     PyFrame.execute_frame = new_execute_frame

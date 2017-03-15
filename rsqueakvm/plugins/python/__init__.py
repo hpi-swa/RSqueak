@@ -4,13 +4,19 @@ from rsqueakvm.util.cells import Cell
 from rsqueakvm.util.system import translationconfig
 
 try:
+    from rsqueakvm.plugins.python import utils
     from rsqueakvm.plugins.python.model import (
         W_PythonObject, PythonClassShadow)
     from rsqueakvm.plugins.python.language import W_PythonLanguage
     from rsqueakvm.plugins.python.objspace import py_space
     from rsqueakvm.plugins.python.patching import patch_pypy
     from rsqueakvm.plugins.python.switching import PyFrameRestartInfo
-    from rsqueakvm.plugins.python.utils import python_to_smalltalk
+
+    from pypy.interpreter.argument import Arguments
+    from pypy.interpreter.error import OperationError
+    from pypy.interpreter.function import (
+        Function, Method, StaticMethod, ClassMethod)
+
     IMPORT_FAILED = False
 except ImportError:
     IMPORT_FAILED = True
@@ -56,8 +62,54 @@ class PythonPlugin(ForeignLanguagePlugin):
         return W_PythonObject
 
     @staticmethod
+    def perform_send(space, w_rcvr, attrname, args_w):
+        wp_rcvr = utils.smalltalk_to_python(space, w_rcvr)
+        idx = attrname.find(':')
+        if idx > 0:
+            attrname = attrname[0:idx]
+        wp_result = None
+        try:
+            py_attr = py_space.getattr(wp_rcvr, py_space.newtext(attrname))
+            if (isinstance(py_attr, Function) or
+                    isinstance(py_attr, Method) or
+                    isinstance(py_attr, StaticMethod) or
+                    isinstance(py_attr, ClassMethod)):
+                args_wp = [utils.smalltalk_to_python(space, a) for a in args_w]
+                # use call_args() to allow variable number of args_w
+                # (but this disables speed hacks in Pypy)
+                w_meth = py_space.getattr(wp_rcvr, py_space.newtext(attrname))
+                args = Arguments(py_space, args_wp)
+                wp_result = py_space.call_args(w_meth, args)
+            else:
+                if len(args_w) == 1:
+                    wp_value = utils.smalltalk_to_python(space, args_w[0])
+                    py_space.setattr(wp_rcvr, py_space.newtext(attrname),
+                                     wp_value)
+                    wp_result = py_space.w_None
+                else:
+                    wp_result = py_attr
+        except OperationError as operr:
+            return W_PythonObject(utils.operr_to_pylist(operr))
+        except Exception as e:
+            print 'Unable to call %s on %s: %s' % (attrname, wp_rcvr, e)
+            raise PrimitiveFailedError
+        if wp_result is None:
+            # import pdb; pdb.set_trace()
+            print ('No result in send primitive (wp_rcvr: %s, attrname: %s)'
+                   % (wp_rcvr, attrname))
+            raise PrimitiveFailedError
+        return W_PythonObject(wp_result)
+
+    @staticmethod
+    def top_w_frame():
+        topframe = py_space.getexecutioncontext().gettopframe()
+        if topframe is None:
+            raise PrimitiveFailedError
+        return W_PythonObject(topframe)
+
+    @staticmethod
     def to_w_object(space, foreign_object):
-        return python_to_smalltalk(space, foreign_object.wp_object)
+        return utils.python_to_smalltalk(space, foreign_object.wp_object)
 
     @staticmethod
     def set_py_frame_restart_info(frame, py_code):
