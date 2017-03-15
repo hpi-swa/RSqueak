@@ -8,9 +8,9 @@ openDebuggerWithPythonFrames: pyError
 			resumeCtx := resumeCtx sender.
 			resumeCtx ifNil: [ ^ self error: 'resumeCtx not found' ] ].
 	error := pyError asSmalltalk.
-	PythonDebugger
+	ForeignLanguage
 		openOn: Processor activeProcess
-		context: (PythonDebugger prependPythonContexts: resumeCtx)
+		context: (ForeignLanguage prependPythonContexts: resumeCtx)
 		label: error first, ': ', error second
 		contents: nil
 		fullView: true

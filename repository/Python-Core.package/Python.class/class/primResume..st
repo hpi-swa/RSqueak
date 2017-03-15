@@ -1,4 +1,4 @@
 experimental
-primResume: aPyRunner
+primResume: aPyLanguage
 	<primitive: 'resume' module: 'PythonPlugin'>
 	self primitiveFailed

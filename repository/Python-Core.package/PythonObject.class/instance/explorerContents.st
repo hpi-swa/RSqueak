@@ -1,6 +1,6 @@
 explorer
 explorerContents
-	^ self allAttributes asOrderedCollection collect: [ :attrName | | value |
+	^ self allInstVarNames asOrderedCollection collect: [ :attrName | | value |
 		value := Python builtins getattr: self attrName: attrName.
 		ObjectExplorerWrapper
 			with: value

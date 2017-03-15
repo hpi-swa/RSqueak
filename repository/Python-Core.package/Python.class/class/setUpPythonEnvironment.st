@@ -1,5 +1,6 @@
 overrides
 setUpPythonEnvironment
+	self load: 'sys'.
 	self exec: '
 import sys
 sys.path = ["', Smalltalk image imagePath, '",
@@ -17,4 +18,5 @@ def _isExpression(x):
 		return True
 	except SyntaxError:
 		return False'.
+	self load: 're'.
 	self setUpPygments

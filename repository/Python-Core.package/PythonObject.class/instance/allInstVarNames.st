@@ -1,3 +1,3 @@
 overrides
 allInstVarNames
-	^ self allAttributes
+	^ (Python builtins dir: self) asSmalltalk

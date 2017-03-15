@@ -1,3 +1,3 @@
 execution
 exec: aString
-	^ self primEval: aString filename: '<string>' cmd: 'exec'
+	^ self exec: aString breakOnExceptions: self breakOnExceptions

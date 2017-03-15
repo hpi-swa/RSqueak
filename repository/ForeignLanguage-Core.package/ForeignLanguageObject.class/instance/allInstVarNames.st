@@ -1,0 +1,3 @@
+abstract
+allInstVarNames
+	self subclassResponsibility

@@ -1,0 +1,3 @@
+styling
+sourceCodeTemplate
+	self subclassResponsibility

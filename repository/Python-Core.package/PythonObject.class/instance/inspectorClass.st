@@ -1,3 +1,0 @@
-inspector
-inspectorClass
-	^ PythonInspector

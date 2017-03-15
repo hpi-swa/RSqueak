@@ -1,0 +1,3 @@
+inspecting
+openForeignLanguageBrowser
+	ForeignLanguageBrowser open

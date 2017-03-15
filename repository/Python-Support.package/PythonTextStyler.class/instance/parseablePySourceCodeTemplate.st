@@ -1,3 +1,0 @@
-overrides
-parseablePySourceCodeTemplate
-	^ PythonObject sourceCodeTemplate

@@ -1,19 +1,21 @@
 overrides
 setUpPygments
-	| breakOnExceptions |
-	breakOnExceptions := self primBreakOnExceptions.
-	self primBreakOnExceptions: false.
+	self load: 'pygments' breakOnExceptions: false.
 	self exec: '
-import re
-import pygments
-import pygments.lexers
-import pygments.formatters
-_pygments_lexer_python = pygments.lexers.get_lexer_by_name(
-	"python", encoding="utf-8", stripnl=False, ensurenl=False)
-_pygments_lexer_smalltalk = pygments.lexers.get_lexer_by_name(
-	"smalltalk", encoding="utf-8", stripnl=False, ensurenl=False)
-_pygments_formatter = pygments.formatters.get_formatter_by_name(
-	"html", encoding="utf-8", style="colorful", nowrap=True, noclasses=True, lineseparator="<br>")
-def _pygments_highlight(code):
-	return re.sub("<br>$", "", pygments.highlight(code, _pygments_lexer_python, _pygments_formatter))'.
-	self primBreakOnExceptions: breakOnExceptions.
+try:
+	import pygments.lexers
+	import pygments.formatters
+	_pygments_lexer_python = pygments.lexers.get_lexer_by_name(
+		"python", encoding="utf-8", stripnl=False, ensurenl=False)
+	_pygments_lexer_ruby = pygments.lexers.get_lexer_by_name(
+		"ruby", encoding="utf-8", stripnl=False, ensurenl=False)
+	_pygments_lexer_smalltalk = pygments.lexers.get_lexer_by_name(
+		"smalltalk", encoding="utf-8", stripnl=False, ensurenl=False)
+	_pygments_formatter = pygments.formatters.get_formatter_by_name(
+		"html", encoding="utf-8", style="colorful", nowrap=True, noclasses=True, lineseparator="<br>")
+	def _pygments_highlight(code, lexer=_pygments_lexer_python):
+		return re.sub("<br>$", "", pygments.highlight(code, lexer, _pygments_formatter))
+except ImportError:
+	def _pygments_highlight(code):
+		return code
+' breakOnExceptions: false.

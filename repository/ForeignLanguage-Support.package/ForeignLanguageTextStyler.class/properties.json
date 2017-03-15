@@ -1,0 +1,14 @@
+{
+	"category" : "ForeignLanguage-Support",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"languageSymbol" ],
+	"name" : "ForeignLanguageTextStyler",
+	"pools" : [
+		 ],
+	"super" : "SHTextStylerST80",
+	"type" : "normal" }

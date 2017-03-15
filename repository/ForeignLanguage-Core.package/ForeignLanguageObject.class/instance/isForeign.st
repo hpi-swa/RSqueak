@@ -1,0 +1,3 @@
+helpers
+isForeign
+	^ true

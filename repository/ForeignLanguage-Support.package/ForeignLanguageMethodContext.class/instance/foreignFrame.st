@@ -1,0 +1,4 @@
+accessing
+foreignFrame
+
+	^ foreignFrame

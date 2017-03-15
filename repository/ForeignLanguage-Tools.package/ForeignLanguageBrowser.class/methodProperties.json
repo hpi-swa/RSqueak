@@ -1,0 +1,23 @@
+{
+	"class" : {
+		 },
+	"instance" : {
+		"aboutToStyle:" : "fn 3/13/2017 17:18",
+		"addModelItemsToWindowMenu:" : "fn 3/14/2017 00:45",
+		"buildCodePaneWith:" : "fn 3/13/2017 17:12",
+		"currentLanguageSymbol" : "fn 3/14/2017 00:51",
+		"defaultBrowserTitle" : "fn 3/14/2017 11:16",
+		"defaultStylerClass" : "fn 3/13/2017 17:12",
+		"defineMessageFrom:notifying:" : "fn 3/7/2017 11:42",
+		"doItReceiver" : "fn 3/8/2017 11:32",
+		"isForeign" : "fn 3/13/2017 17:45",
+		"isPython" : "fn 3/13/2017 17:45",
+		"isRuby" : "fn 3/13/2017 17:46",
+		"isSmalltalk" : "fn 3/14/2017 00:57",
+		"labelString" : "fn 3/14/2017 00:46",
+		"languageSymbol" : "fn 3/14/2017 00:59",
+		"languageSymbol:" : "fn 3/14/2017 00:42",
+		"selectLanguage:" : "fn 3/14/2017 00:56",
+		"selectedMessage" : "fn 3/7/2017 11:31",
+		"systemCategoryList" : "fn 3/14/2017 00:58",
+		"validateMessageSource:forSelector:inClass:" : "fn 3/13/2017 17:46" } }

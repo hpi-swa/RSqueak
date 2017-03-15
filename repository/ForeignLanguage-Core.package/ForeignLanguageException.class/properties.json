@@ -1,0 +1,14 @@
+{
+	"category" : "ForeignLanguage-Core",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"action" ],
+	"name" : "ForeignLanguageException",
+	"pools" : [
+		 ],
+	"super" : "Exception",
+	"type" : "normal" }

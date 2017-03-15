@@ -1,0 +1,3 @@
+browsing
+openClassBrowser
+	ForeignLanguageBrowser open

@@ -1,4 +1,4 @@
 inspector
 hasContentsInExplorer
 
-	^ self allAttributes notEmpty
+	^ self allInstVarNames notEmpty

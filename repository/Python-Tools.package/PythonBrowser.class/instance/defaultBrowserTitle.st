@@ -1,3 +1,0 @@
-overrides
-defaultBrowserTitle
-	^ 'Python Browser'

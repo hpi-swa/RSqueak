@@ -1,3 +1,4 @@
 overrides
 allInstances
-	^ Python eval: self name, '.instances.values()'
+	^ super allInstances"
+	^ Python eval: self name, '.instances.values()'"

@@ -11,5 +11,5 @@
 	"name" : "PythonObject",
 	"pools" : [
 		 ],
-	"super" : "Object",
+	"super" : "ForeignLanguageObject",
 	"type" : "normal" }

@@ -1,0 +1,3 @@
+helpers
+vmSpeaksLanguage
+	self subclassResponsibility

@@ -6,7 +6,7 @@ pythonize: t instVars: f clsVars: d
 	initSignature := 'self'.
 	instVars do: [ :ea | initSignature := initSignature, ', ', ea, '=None'].
 
-	pySuperclass := (self superclass = Object
+	pySuperclass := (self superclass = ForeignLanguageObject
 		ifTrue: [ 'object' ]
 		ifFalse: [ self superclass name asString ]).
 	code := 'class ', t asString, '(', pySuperclass, '):', String cr.

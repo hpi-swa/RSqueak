@@ -3,6 +3,7 @@
 	"classinstvars" : [
 		 ],
 	"classvars" : [
+		"BreakOnExceptions",
 		"ObjectCache",
 		"VMSpeaksPython" ],
 	"commentStamp" : "",
@@ -11,5 +12,5 @@
 	"name" : "Python",
 	"pools" : [
 		 ],
-	"super" : "Object",
+	"super" : "ForeignLanguage",
 	"type" : "normal" }

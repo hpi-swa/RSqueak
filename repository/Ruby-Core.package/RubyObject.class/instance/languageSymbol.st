@@ -1,0 +1,3 @@
+overrides
+languageSymbol
+	^ #Ruby

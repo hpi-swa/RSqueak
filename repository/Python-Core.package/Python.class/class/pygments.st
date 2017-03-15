@@ -1,3 +1,3 @@
 special objects
 pygments
-	^ self eval: 'pygments'
+	^ self fromObjectCache: 'pygments'

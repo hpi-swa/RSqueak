@@ -1,5 +1,5 @@
 overrides
 new
-	Python vmSpeaksPython ifFalse: [ ^ super new ].
+	Python vmSpeaksLanguage ifFalse: [ ^ super new ].
 	^ self withAll: #()
 		
