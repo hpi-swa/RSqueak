@@ -59,7 +59,6 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
                 "bytes", "literals",
                 # Additional info about the method
                 "lookup_selector", "compiledin_class", "lookup_class", "_frame_size" ]
-    _immutable_fields_ = ["_frame_size?"]
     lookup_selector = "<unknown>"
     lookup_class = None
 
