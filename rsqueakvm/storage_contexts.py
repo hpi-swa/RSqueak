@@ -505,7 +505,7 @@ class ContextPartShadow(AbstractStrategy):
     def init_temps_and_stack(self):
         self = fresh_virtualizable(self)
         stacksize = self.full_stacksize()
-        self._temps_and_stack = [None] * stacksize
+        self._temps_and_stack = [self.space.w_nil] * stacksize
         tempsize = self.tempsize()
         self.store_stack_ptr(tempsize)  # we point after the last element
 
@@ -513,7 +513,7 @@ class ContextPartShadow(AbstractStrategy):
         assert index0 >= 0, "trying to stack_get negative index"
         if self.update_stacksize(index0):
             return self.overflow_stack_get(index0)
-        return self._temps_and_stack[index0] or self.space.w_nil
+        return self._temps_and_stack[index0]
 
     def overflow_stack_get(self, index0):
         overflow_index = index0 - len(self._temps_and_stack)
@@ -655,7 +655,6 @@ class ContextPartShadow(AbstractStrategy):
         argcount = self.w_method().argsize
         j = 0
         for w_obj in self._temps_and_stack[:self.stack_ptr()]:
-            w_obj = self.space.w_nil if w_obj is None else w_obj
             if j == argcount:
                 retval += "\nTemps:---------------"
             if j == self.tempsize():
