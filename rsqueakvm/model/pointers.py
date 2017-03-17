@@ -2,7 +2,7 @@ from rsqueakvm import constants, error
 from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.numeric import W_SmallInteger
 
-from rpython.rlib import objectmodel, jit
+from rpython.rlib import objectmodel, jit, unroll
 from rpython.rlib.rarithmetic import intmask
 from rpython.rlib.rstrategies import rstrategies as rstrat
 
@@ -234,16 +234,11 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
         return w_result
 
 
-# when changing this constant, also change the read and __write__ methods in
-# IntMapStorageNode in storage.py (or generalize those methods to compile with
-# getattrs)
-_NUMBER_OF_INT_FIELDS = 3
-_NUMBER_OF_INLINE_FIELDS = 2
 class W_FixedPointersObject(W_PointersObject):
     """My instances represent only those pointers objects that have a fixed number
     of fields and no variable sized parts"""
-    _attrs_ = ['_field1', '_field2', '_intField1', '_intField2', '_intField3', '_intFields', '_size']
-    _immutable_attrs_ = ['_intFields?', '_size?']
+    _attrs_ = ['_size']
+    _immutable_attrs_ = ['_size?']
 
     def __init__(self, space, w_class, size, weak=False):
         self._init_inline_fields()
@@ -262,26 +257,10 @@ class W_FixedPointersObject(W_PointersObject):
         W_PointersObject.fillin(self, space, g_self)
 
     def _init_inline_fields(self):
-        self._intField1 = 0
-        self._intField2 = 0
-        self._intField3 = 0
-        self._intFields = None
-        self._field1 = None
-        self._field2 = None
+        raise NotImplementedError
 
     def _swap_inline_fields(self, w_other):
-        self._intField1, w_other._intField1 = w_other._intField1, self._intField1
-        self._intField2, w_other._intField2 = w_other._intField2, self._intField2
-        self._intField3, w_other._intField3 = w_other._intField3, self._intField3
-        self._intFields, w_other._intFields = w_other._intFields, self._intFields
-        self._field1, w_other._field1 = w_other._field1, self._field1
-        self._field2, w_other._field2 = w_other._field2, self._field2
-
-    def _become(self, w_other):
-        assert isinstance(w_other, W_FixedPointersObject)
-        W_PointersObject._become(self, w_other)
-        self._swap_inline_fields(w_other)
-        self._size, w_other._size = w_other._size, self._size
+        raise NotImplementedError
 
     def clone(self, space):
         my_pointers = self.fetch_all(space)
@@ -289,3 +268,46 @@ class W_FixedPointersObject(W_PointersObject):
                                          len(my_pointers))
         w_result.store_all(space, my_pointers)
         return w_result
+
+
+def generate_fixed_pointers_objects(n):
+    name = "W_FixedPointersObject%d" % n
+    storage_iter = unroll.unrolling_iterable(range(n))
+
+    class W_FixedPointersObject(W_AbstractFixedPointersObject):
+        repr_classname = name
+        _attrs_ = [INLINE_FIELD_TEMPLATE % x for x in storage_iter]
+
+        def init_inline_fields(self):
+            for i in storage_iter:
+                setattr(self, INLINE_FIELD_TEMPLATE % x, None)
+
+        def _swap_inline_fields(self, w_other):
+            for i in storage_iter:
+                field = INLINE_FIELD_TEMPLATE % x
+                other = getattr(other, field)
+                setattr(other, field, getattr(self, field))
+                setattr(self, field, other)
+
+        def _become(self, w_other):
+            if not isinstance(w_other, self.__class__):
+                raise error.PrimitiveFailedError
+            W_PointersObject._become(self, w_other)
+            self._swap_inline_fields(w_other)
+            self._size, w_other._size = w_other._size, self._size
+
+    W_FixedPointersObject.__name__ = name
+    return W_FixedPointersObject
+
+
+FIXED_POINTERS_CLASSES = []
+NUMBER_OF_INLINE_FIELDS = 7
+INLINE_FIELDS_ITER = unrolling_iterable(range(NUMBER_OF_INLINE_FIELDS))
+INLINE_FIELD_TEMPLATE = "_field%d"
+for n in range(NUMBER_OF_INLINE_FIELDS):
+    FIXED_POINTERS_CLASSES.append(generate_fixed_pointers_objects(n))
+POINTERS_CLASSES.append(W_PointersObject)
+POINTERS_CLASS_ITER = unrolling_iterable(enumerate(POINTERS_CLASSES))
+
+
+def W_FixedPointersObject(space, w_class, size):

@@ -5,17 +5,17 @@ import sys
 from rsqueakvm import constants
 from rsqueakvm.model.character import W_Character
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_MutableSmallInteger
-from rsqueakvm.model.pointers import W_PointersObject, _NUMBER_OF_INT_FIELDS, _NUMBER_OF_INLINE_FIELDS, W_FixedPointersObject
+from rsqueakvm.model.pointers import W_PointersObject, \
+    W_AbstractFixedPointersObject, INLINE_FIELDS_ITER, INLINE_FIELD_TEMPLATE
 from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.model.compiled_methods import W_CompiledMethod
 from rsqueakvm.util.version import VersionMixin, elidable_for_version
 from rsqueakvm.util.cells import QuasiConstant
 
-from rpython.rlib import jit
+from rpython.rlib import jit, rerased
 from rpython.rlib.objectmodel import import_from_mixin
 from rpython.rlib.rarithmetic import int_between
 from rpython.rlib.rstrategies import rstrategies as rstrat
-from rpython.rlib.unroll import unrolling_iterable
 
 """
 A note on terminology:
@@ -174,7 +174,7 @@ ListStrategy._convert_storage_from = ListStrategy._better_convert_storage_from
 
 
 class MapStrategy(AbstractStrategy):
-    """This strategy is used for W_FixedPointersObject which only have indexable
+    """This strategy is used for W_AbstractFixedPointersObject which only have indexable
     fields.  We guess these are 'normal' objects with some different named
     fields, for which the storage strategies hardly make sense (except maybe if
     they are always all nil or things like points where they are all integers).
@@ -238,9 +238,6 @@ class MapStrategy(AbstractStrategy):
     def size(self, w_self):
         return w_self.size()
 
-    # maps interface
-    used_fields = "none"
-
     def getprev(self):
         return None
 
@@ -261,7 +258,6 @@ class MapStrategy(AbstractStrategy):
         new_node = self.strategy_factory().get_transition(self, strategy_cls, index0, self.getclass())
         self.strategy_factory().log(w_self, new_node, self)
         assert isinstance(new_node, MapStorageNode)
-        new_node.update_storage(w_self)
         return new_node
 
 
@@ -280,8 +276,8 @@ NUM_DIGITS_POW2 = 1 << NUM_DIGITS
 
 
 class MapStorageNode(MapStrategy):
-    _attrs_ = ["_size_estimate", "prev", "index", "pos"]
-    _immutable_fields_ = ["prev", "index", "pos"]
+    _attrs_ = ["prev", "index"]
+    _immutable_fields_ = ["prev", "index"]
 
     # disable the custom erase/unerase pairs that normally each strategy
     # subclass gets via the custom Metaclass. For maps, all Nodes share the same
@@ -304,12 +300,10 @@ class MapStorageNode(MapStrategy):
         self.space = space
         self.prev = prev
         self.index = index
-        self.pos = self.compute_position()
         self.w_class = w_class
-        self._size_estimate = max(self.length() * NUM_DIGITS_POW2, 0)
 
     def logname(self):
-        return "%sIdx%dPos%d" % (self.repr_classname, self.index, self.pos)
+        return "%sIdx%d" % (self.repr_classname, self.index)
 
     def common_base(self, other):
         node = other
@@ -327,27 +321,7 @@ class MapStorageNode(MapStrategy):
         return self.prev
 
     def length(self):
-        return self.pos + 1
-
-    @jit.elidable
-    def size_estimate(self):
-        return self._size_estimate >> NUM_DIGITS
-
-    def update_storage(self, w_self):
-        # we use shifting in the size_estimates to propagate sizes only slowly
-        # through the map in case there a very few instances with many fields
-        # set, but many instances that only use a few fields.
-        if not jit.we_are_jitted():
-            self._propagate_size_estimates()
-
-    def _propagate_size_estimates(self):
-        node = self.getprev()
-        while node is not None:
-            if node.used_fields == self.used_fields:
-                assert isinstance(node, MapStorageNode)
-                node._size_estimate = self._size_estimate + node.size_estimate() - self.size_estimate()
-                return
-            node = node.getprev()
+        return self.index + 1
 
     def read(self, w_self, index0):
         raise NotImplementedError
@@ -374,15 +348,6 @@ class MapStorageNode(MapStrategy):
             new_node.store(w_self, index0, w_value)
         else:
             self.__write__(w_self, index0, w_value)
-
-    def compute_position(self):
-        node = self.getprev()
-        n = 0
-        while node is not None:
-            if self.used_fields == node.used_fields:
-                n += 1
-            node = node.getprev()
-        return n
 
     def fetch(self, w_self, index0):
         self = jit.promote(self)
@@ -424,118 +389,56 @@ class MapStorageNode(MapStrategy):
             new_node = self.strategy_factory().get_transition(self, strategy_cls, index0, self.getclass())
             self.strategy_factory().log(w_self, new_node, self)
             assert isinstance(new_node, MapStorageNode)
-            new_node.update_storage(w_self)
             return new_node
+
+class MapStorageNodeMixin(object):
+    def read(self, w_self, index0):
+        assert isinstance(w_self, W_AbstractFixedPointersObject)
+        for i in INLINE_FIELDS_ITER:
+            if self.index == i:
+                res = self.unerase(getattr(w_self, INLINE_FIELD_TEMPLATE % i))
+                return self._wrap_unerased(res)
+
+    def __write__(self, w_self, index0, w_value):
+        assert isinstance(w_self, W_AbstractFixedPointersObject)
+        assert index0 == self.index
+        erased = self.erase(self._unwrap_unerased(w_value))
+        for i in INLINE_FIELDS_ITER:
+            if self.index == i:
+                setattr(w_self, INLINE_FIELD_TEMPLATE % i, erase)
 
 
 class IntMapStorageNode(MapStorageNode):
     # we inline up to three integer fields on the object and the rest in a intFields array
-    used_fields = "intFields"
     repr_classname = "IntMapStrategyNode"
+    erase, unerase = rerased.new_erasing_pair("int")
+    import_from_mixin(MapStorageNodeMixin)
 
     @staticmethod
     def correct_type(w_self, w_value):
         return isinstance(w_value, W_SmallInteger)
 
-    def storage_list_position(self):
-        p = self.pos - _NUMBER_OF_INT_FIELDS
-        assert p >= 0
-        return p
+    def _wrap_unerased(self, value):
+        return self.space.wrap_smallint_unsafe(value)
 
-    def length(self):
-        return self.pos - (_NUMBER_OF_INT_FIELDS - 1)
-
-    @jit.unroll_safe
-    def update_storage(self, w_self):
-        MapStorageNode.update_storage(self, w_self)
-        assert isinstance(w_self, W_FixedPointersObject)
-        storage = w_self._intFields
-        length = self.length()
-        if length > 0:
-            if storage is None or len(storage) < length:
-                new_storage = [0] * self.size_estimate()
-                if storage is not None:
-                    for i, value in enumerate(storage):
-                        new_storage[i] = value
-                w_self._intFields = new_storage
-
-    def read(self, w_self, index0):
-        assert isinstance(w_self, W_FixedPointersObject)
-        if self.pos == 0:
-            res = w_self._intField1
-        elif self.pos == 1:
-            res = w_self._intField2
-        elif self.pos == 2:
-            res = w_self._intField3
-        else:
-            res = w_self._intFields[self.storage_list_position()]
-        return self.space.wrap_smallint_unsafe(res)
-
-    def __write__(self, w_self, index0, w_value):
-        assert isinstance(w_self, W_FixedPointersObject)
-        assert index0 == self.index
-        unwrapped = self.space.unwrap_int(w_value)
-        if self.pos == 0:
-            w_self._intField1 = unwrapped
-        elif self.pos == 1:
-            w_self._intField2 = unwrapped
-        elif self.pos == 2:
-            w_self._intField3 = unwrapped
-        else:
-            w_self._intFields[self.storage_list_position()] = unwrapped
+    def _unwrap_unerased(self, w_value):
+        return self.space.unwrap_int(w_value)
 
 
 class ObjectMapStorageNode(MapStorageNode):
-    used_fields = "erased_storage"
     repr_classname = "ObjectMapStrategyNode"
+    erase, unerase = rerased.new_erasing_pair("object")
+    import_from_mixin(MapStorageNodeMixin)
 
     @staticmethod
     def correct_type(w_self, w_value):
         return True
 
-    def storage_list_position(self):
-        p = self.pos - _NUMBER_OF_INLINE_FIELDS
-        assert p >= 0
-        return p
+    def _wrap_unerased(self, value):
+        return value
 
-    def length(self):
-        return self.pos - (_NUMBER_OF_INLINE_FIELDS - 1)
-
-    @jit.unroll_safe
-    def update_storage(self, w_self):
-        MapStorageNode.update_storage(self, w_self)
-        storage = self.get_storage(w_self)
-        length = self.length()
-        if length > 0:
-            if storage is None or len(storage) < length:
-                new_storage = [None] * self.size_estimate()
-                if storage is not None:
-                    for i, value in enumerate(storage):
-                        new_storage[i] = value
-                self.set_storage(w_self, new_storage)
-
-    def read(self, w_self, index0):
-        assert isinstance(w_self, W_FixedPointersObject)
-        if self.pos == 0:
-            w_res = w_self._field1
-        elif self.pos == 1:
-            w_res = w_self._field2
-        else:
-            w_res = self.get_storage(w_self)[self.storage_list_position()]
-        if w_res is None:
-            return self.space.w_nil
-        else:
-            return w_res
-
-    def __write__(self, w_self, index0, w_value):
-        assert isinstance(w_self, W_FixedPointersObject)
-        assert index0 == self.index
-        if self.pos == 0:
-            w_self._field1 = w_value
-        elif self.pos == 1:
-            w_self._field2 = w_value
-        else:
-            self.get_storage(w_self)[self.storage_list_position()] = w_value
+    def _unwrap_unerased(self, w_value):
+        return value
 
 
 class ListEntry(object):
@@ -764,7 +667,7 @@ class StrategyFactory(rstrat.StrategyFactory):
             return WeakListStrategy
         if self.no_specialized_storage.is_set():
             return ListStrategy
-        if isinstance(w_self, W_FixedPointersObject):
+        if isinstance(w_self, W_AbstractFixedPointersObject):
             return MapStrategy
         return rstrat.StrategyFactory.strategy_type_for(self, objects)
 
@@ -773,7 +676,7 @@ class StrategyFactory(rstrat.StrategyFactory):
             return WeakListStrategy
         if self.no_specialized_storage.is_set():
             return ListStrategy
-        if isinstance(w_self, W_FixedPointersObject):
+        if isinstance(w_self, W_AbstractFixedPointersObject):
             return MapStrategy
         return AllNilStrategy
 
