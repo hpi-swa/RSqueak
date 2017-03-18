@@ -85,7 +85,7 @@ def block_handles_exception(self, block, operr_type):
 
 
 def has_exception_handler(self, operr):
-    "Returns True if this frame or one of his parents are able to handle operr"
+    "Returns True if this frame or one of its parents are able to handle operr"
     frame = self
     error_type = operr.w_type.getname(py_space)
     forbidden_names = []
