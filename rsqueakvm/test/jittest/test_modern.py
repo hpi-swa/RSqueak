@@ -1251,3 +1251,63 @@ i := n' classified: 'none' withStamp: nil notifying: nil logSource: false.
         guard_false(i335, descr=<Guard0x5557b0fb07d8>)
         jump(p0, p1, i2, p4, p6, p7, p9, i328, p18, p20, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p324, i332, descr=TargetToken(93835149719440))
         """)
+
+    def test_loop_unrolling(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | c instance |
+        Object
+            subclass: #MyA
+            instanceVariableNames: ''
+            classVariableNames: ''
+            poolDictionaries: ''
+            category: 'Test'.
+        c := Smalltalk at: #MyA.
+        c compile: 'oneIterLoop
+1 to: 1 do: [:i | ].' classified: 'none' withStamp: nil notifying: nil logSource: false.
+        instance := c new.
+        1 to: 100000 do: [:i | instance oneIterLoop ].
+        """)
+        self.assert_matches(traces[-1].loop, """
+        guard_not_invalidated(descr=<Guard0x4a522f8>)
+        i74 = int_le(i65, 100000)
+        guard_true(i74, descr=<Guard0x4f28a88>)
+        p75 = force_token()
+        enter_portal_frame(1, 0)
+        leave_portal_frame(1)
+        i80 = int_add(i65, 1)
+        i82 = int_sub(i69, 1)
+        setfield_gc(ConstPtr(ptr83), i82, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
+        i85 = int_le(i82, 0)
+        guard_false(i85, descr=<Guard0x4a52360>)
+        jump(p0, p1, i2, p4, p6, p7, p9, p12, p14, i80, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p47, i82, descr=TargetToken(83088416))
+        """)
+
+    def test_loop_unrolling2(self, spy, tmpdir):
+        traces = self.run(spy, tmpdir, """
+        | c instance |
+        Object
+            subclass: #MyA
+            instanceVariableNames: ''
+            classVariableNames: ''
+            poolDictionaries: ''
+            category: 'Test'.
+        c := Smalltalk at: #MyA.
+        c compile: 'twoIterLoop
+1 to: 2 do: [:i | ].' classified: 'none' withStamp: nil notifying: nil logSource: false.
+        instance := c new.
+        1 to: 100000 do: [:i | instance twoIterLoop ].
+        """)
+        self.assert_matches(traces[-1].loop, """
+        guard_not_invalidated(descr=<Guard0x4a522f8>)
+        i74 = int_le(i65, 100000)
+        guard_true(i74, descr=<Guard0x4f28a88>)
+        p75 = force_token()
+        enter_portal_frame(1, 0)
+        leave_portal_frame(1)
+        i80 = int_add(i65, 1)
+        i82 = int_sub(i69, 1)
+        setfield_gc(ConstPtr(ptr83), i82, descr=<FieldS rsqueakvm.interpreter.Interpreter.inst_interrupt_check_counter 24>)
+        i85 = int_le(i82, 0)
+        guard_false(i85, descr=<Guard0x4a52360>)
+        jump(p0, p1, i2, p4, p6, p7, p9, p12, p14, i80, p22, p24, p26, p28, p30, p32, p34, p36, p38, p40, p42, p47, i82, descr=TargetToken(83088416))
+        """)
