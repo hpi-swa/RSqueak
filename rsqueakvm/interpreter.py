@@ -136,7 +136,7 @@ class Optargs(object):
 
 UNROLLING_BYTECODE_RANGES = unroll.unrolling_iterable(interpreter_bytecodes.BYTECODE_RANGES)
 
-def get_printable_location(pc, jump_back_pc, unrollings, self, method, w_class, blockmethod):
+def get_printable_location(pc, jump_back_pc, unrollings, frame_size, self, method, w_class, blockmethod):
     bc = ord(method.bytes[pc])
     name = method.safe_identifier_string()
     classname = "???"
@@ -151,8 +151,8 @@ def get_printable_location(pc, jump_back_pc, unrollings, self, method, w_class, 
         blockname = blockmethod.safe_identifier_string()
         return '%s(%s): (%s) [%d]: <%s>%s' % (classname, name, blockname, pc, hex(bc), interpreter_bytecodes.BYTECODE_NAMES[bc])
 
-def resume_get_printable_location(pc, self, method, w_class):
-    return "resume: %s" % get_printable_location(pc, 0, 0, self, method, w_class, None)
+def resume_get_printable_location(pc, frame_size, self, method, w_class):
+    return "resume: %s" % get_printable_location(pc, 0, 0, frame_size, self, method, w_class, None)
 
 # def confirm_enter_jit(pc, self, method, w_class, s_context):
 #     print get_printable_location(pc, self, method, w_class)
@@ -174,7 +174,8 @@ class Interpreter(object):
 
     jit_driver = jit.JitDriver(
         name=jit_driver_name,
-        greens=['pc', 'jump_back_pc', 'unrollings', 'self', 'method', 'w_class', 'blockmethod'],
+        greens=['pc', 'jump_back_pc', 'unrollings', 'frame_size', 'self',
+                'method', 'w_class', 'blockmethod'],
         reds=['s_context'],
         virtualizables=['s_context'],
         get_printable_location=get_printable_location,
@@ -183,7 +184,7 @@ class Interpreter(object):
 
     resume_driver = jit.JitDriver(
         name=jit_driver_name + "_resume",
-        greens=['pc', 'self', 'method', 'w_class'],
+        greens=['pc', 'frame_size', 'self', 'method', 'w_class'],
         reds=['s_context'],
         # virtualizables=['s_context'],
         get_printable_location=resume_get_printable_location,
@@ -230,6 +231,7 @@ class Interpreter(object):
             pc = s_context.pc()
             self.resume_driver.jit_merge_point(
                 pc=pc,
+                frame_size=method.frame_size(),
                 self=self,
                 method=method,
                 w_class=self.getreceiverclass(s_context),
@@ -249,6 +251,7 @@ class Interpreter(object):
                     self.resume_driver.can_enter_jit(
                         pc=pc,
                         self=self,
+                        frame_size=method.frame_size(),
                         method=method,
                         w_class=self.getreceiverclass(s_context),
                         s_context=s_context)
@@ -339,6 +342,7 @@ class Interpreter(object):
                             pc=pc,
                             jump_back_pc=jump_back_pc,
                             unrollings=unrollings,
+                            frame_size=method.frame_size(),
                             self=self, method=method,
                             w_class=self.getreceiverclass(s_context),
                             blockmethod=self.getblockmethod(s_context),
@@ -363,6 +367,7 @@ class Interpreter(object):
                 pc=pc,
                 jump_back_pc=jump_back_pc,
                 unrollings=unrollings,
+                frame_size=method.frame_size(),
                 self=self, method=method,
                 w_class=self.getreceiverclass(s_context),
                 blockmethod=self.getblockmethod(s_context),

@@ -142,12 +142,10 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 
     def setbytes(self, bytes):
         self.bytes = bytes
-        self._frame_size = 0
 
     def setchar(self, index0, character):
         assert index0 >= 0
         self.bytes[index0] = character
-        self._frame_size = 0
 
     # === Getters ===
 
@@ -188,12 +186,12 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def primitive(self):
         return self._primitive
 
-    @jit.elidable_promote()
     def frame_size(self):
         return self._frame_size
 
     def update_frame_size(self, size):
-        self._frame_size = max(self._frame_size, size)
+        if self._frame_size < size:
+            self._frame_size = size
 
     @jit.elidable_promote()
     def squeak_frame_size(self):
@@ -323,6 +321,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         self.literals, w_other.literals = w_other.literals, self.literals
         self._tempsize, w_other._tempsize = w_other._tempsize, self._tempsize
         self._frame_size, w_other._frame_size = w_other._frame_size, self._frame_size
+        self.version, w_other.version = w_other.version, self.version
         self.bytes, w_other.bytes = w_other.bytes, self.bytes
         self.header, w_other.header = w_other.header, self.header
         self.literalsize, w_other.literalsize = w_other.literalsize, self.literalsize
@@ -434,7 +433,7 @@ class W_SpurCompiledMethod(W_CompiledMethod):
             self.update_primitive_index()
         else:
             self._primitive = 0
-        self._frame_size = self.argsize + self._tempsize
+        self.update_frame_size(self.argsize + self._tempsize)
 
     def setbytes(self, bytes):
         W_CompiledMethod.setbytes(self, bytes)
@@ -464,4 +463,4 @@ class W_PreSpurCompiledMethod(W_CompiledMethod):
         self._primitive = decoded_header.primitive_index
         self.islarge = decoded_header.large_frame
         self.compiledin_class = None
-        self._frame_size = self.argsize + self._tempsize
+        self.update_frame_size(self.argsize + self._tempsize)
