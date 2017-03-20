@@ -532,7 +532,9 @@ class ContextPartShadow(AbstractStrategy):
 
     def has_overflow_stack(self):
         extra_data = self.extra_data()
-        return extra_data and extra_data._overflow_stack is not None
+        if extra_data:
+            return extra_data._overflow_stack is not None
+        return False
 
     @jit.unroll_safe
     def update_stacksize(self, index0):
