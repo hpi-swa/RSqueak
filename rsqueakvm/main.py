@@ -111,7 +111,6 @@ def _usage(argv):
                                  objects and revert to storage strategies.
             --maps-limit <num> - Number of fields an object can have to be
                                  eligible for use with maps.
-            --hacks            - Enable Spy hacks. Set display color depth to 8
 
           Logging:
             -t|--trace       - Output a trace of each message, primitive,
