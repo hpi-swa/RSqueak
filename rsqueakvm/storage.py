@@ -116,8 +116,11 @@ class SimpleStorageStrategy(AbstractStrategy):
     """
     repr_classname = "SimpleStorageStrategy"
     _attrs_ = []
-    import_from_mixin(rstrat.UnsafeIndexingMixin)
 
+    def check_index_fetch(self, w_self, index0):
+        assert index0 >= 0
+    def check_index_store(self, w_self, index0):
+        assert index0 >= 0
     def default_value(self):
         return self.space.w_nil
 

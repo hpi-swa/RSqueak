@@ -22,6 +22,7 @@ def assert_valid_index(space, n0, w_obj):
         raise PrimitiveFailedError()
     # return the index, since from here on the annotator knows that
     # n0 cannot be negative
+    assert n0 >= 0
     return n0
 
 def assert_valid_inst_index(space, n0, w_obj):
