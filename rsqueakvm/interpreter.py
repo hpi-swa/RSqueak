@@ -208,7 +208,7 @@ class Interpreter(object):
             self.interrupt_counter_size = constants.INTERRUPT_COUNTER_SIZE
         self.last_check = self.time_now()
         self.trace = trace
-        self.optargs = optargs
+        self.optargs = optargs or Optargs()
 
         # === Initialize mutable variables
         self.interrupt_check_counter = self.interrupt_counter_size
