@@ -11,7 +11,6 @@ class W_RubyObject(W_ForeignLanguageObject):
     def __init__(self, wr_object):
         W_ForeignLanguageObject.__init__(self)
         self.wr_object = wr_object
-        # self.w_pyID = None
         self.s_class = None
 
     def getclass(self, space):

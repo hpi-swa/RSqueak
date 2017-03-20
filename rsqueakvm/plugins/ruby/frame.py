@@ -11,6 +11,12 @@ class WR_FrameObject(WR_BaseObject):
     def __init__(self, frame_object):
         self.frame_object = frame_object
 
+    @classdef.method('inspect')
+    @classdef.method('to_s')
+    def method_to_s(self, space):
+        return space.newstr_fromstr(
+            'Wrapped topaz frame (%s)' % self.frame_object)
+
     @classdef.method('get_previous')
     def method_get_previous(self, space):
         previous = self.frame_object.backref()
@@ -33,7 +39,7 @@ class WR_FrameObject(WR_BaseObject):
             if not isinstance(prev_wr_frame, WR_FrameObject):
                 return space.w_nil
             prev_frame = prev_wr_frame.frame_object
-        return space.newstr_fromstr(self.frame_object.get_lineno(prev_frame))
+        return space.newint(self.frame_object.get_lineno(prev_frame))
 
     @classdef.method('get_code_name')
     def method_get_code_name(self, space):

@@ -18,10 +18,9 @@ class W_PythonLanguage(W_ForeignLanguage):
 
     def run(self):
         print 'Python start'
+        # ensure py_space has a fresh exectioncontext
+        must_leave = py_space.threadlocals.try_enter_thread(py_space)
         try:
-            # ensure py_space has a fresh exectioncontext
-            py_space.threadlocals.enter_thread(py_space)
-
             # switch back to Squeak before executing Python code
             self.runner().return_to_smalltalk()
 
@@ -31,6 +30,9 @@ class W_PythonLanguage(W_ForeignLanguage):
             # operr was not handled by users, because they pressed proceed.
             # save Python error as result instead.
             self.set_result(operr_to_pylist(operr))
+        finally:
+            if must_leave:
+                py_space.threadlocals.leave_thread(py_space)
 
     def set_current(self):
         ec = py_space.getexecutioncontext()

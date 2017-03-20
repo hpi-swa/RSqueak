@@ -1,4 +1,3 @@
-from rsqueakvm.error import Exit
 from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.compiled_methods import (
     W_PreSpurCompiledMethod, W_SpurCompiledMethod)
@@ -99,13 +98,12 @@ class ForeignLanguageClassShadow(ClassShadow):
 
         foreign_class = space.smalltalk_at(language_name)
         if foreign_class is None:
-            # disable plugin?
-            raise Exit('%s class not found.' % language_name)
+            print '%s class not found.' % language_name
         cls.w_foreign_class.set(foreign_class)
 
         foreign_object_class = space.smalltalk_at('%sObject' % language_name)
         if foreign_object_class is None:
-            raise Exit('%sObject class not found.' % language_name)
+            print '%sObject class not found.' % language_name
         cls.w_foreign_object_class.set(foreign_object_class)
 
     # Overrides

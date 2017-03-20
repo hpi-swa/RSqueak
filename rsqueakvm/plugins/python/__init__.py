@@ -1,4 +1,5 @@
 from rsqueakvm.error import PrimitiveFailedError
+from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.plugins.foreign_language import ForeignLanguagePlugin
 from rsqueakvm.util.cells import Cell
 from rsqueakvm.util.system import translationconfig
@@ -42,6 +43,10 @@ class PythonPlugin(ForeignLanguagePlugin):
             return False
         return ForeignLanguagePlugin.is_enabled(self)
 
+    def is_operational(self):
+        return (W_PythonLanguage.w_foreign_class.get() is not None and
+                PythonClassShadow.w_foreign_class.get() is not None)
+
     def setup(self):
         translationconfig.set(thread=True)
         translationconfig.set(continuation=True)
@@ -58,9 +63,16 @@ class PythonPlugin(ForeignLanguagePlugin):
     def new_w_language(space, args_w):
         if len(args_w) != 4:
             raise PrimitiveFailedError
-        source = space.unwrap_string(args_w[0])
-        filename = space.unwrap_string(args_w[1])
-        cmd = space.unwrap_string(args_w[2])
+        source_w = args_w[0]
+        filename_w = args_w[1]
+        cmd_w = args_w[2]
+        if (not isinstance(source_w, W_BytesObject) or
+                not isinstance(filename_w, W_BytesObject) or
+                not isinstance(cmd_w, W_BytesObject)):
+            raise PrimitiveFailedError
+        source = space.unwrap_string(source_w)
+        filename = space.unwrap_string(filename_w)
+        cmd = space.unwrap_string(cmd_w)
         break_on_exceptions = args_w[3] is space.w_true
         return W_PythonLanguage(source, filename, cmd, break_on_exceptions)
 

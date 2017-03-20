@@ -1,4 +1,3 @@
-from rsqueakvm.error import Exit
 from rsqueakvm.plugins.foreign_language import runner
 from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.compiled_methods import (
@@ -6,12 +5,7 @@ from rsqueakvm.model.compiled_methods import (
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.util.cells import QuasiConstant
 
-from pypy.interpreter.executioncontext import ExecutionContext
-
 from rpython.rlib import objectmodel
-
-
-ExecutionContext.current_language = None
 
 
 class ForeignLanguageMeta(type):
@@ -58,7 +52,7 @@ class W_ForeignLanguage(W_AbstractObjectWithIdentityHash):
         foreign_class = space.smalltalk_at(language_name)
         if foreign_class is None:
             # disable plugin?
-            raise Exit('%s class not found.' % language_name)
+            print '%s class not found.' % language_name
         cls.w_foreign_class.set(foreign_class)
 
         resume_method_symbol = space.wrap_symbol('resume:')
@@ -66,7 +60,7 @@ class W_ForeignLanguage(W_AbstractObjectWithIdentityHash):
             space).as_class_get_shadow(space)
         resume_method = foreign_cls_cls_s.lookup(resume_method_symbol)
         if resume_method is None:
-            raise Exit('%s class>>resume: method not found.' % language_name)
+            print '%s class>>resume: method not found.' % language_name
         cls.w_foreign_resume.set(resume_method)
 
     # W_AbstractObjectWithIdentityHash overrides

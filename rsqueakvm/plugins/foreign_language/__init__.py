@@ -20,6 +20,9 @@ class ForeignLanguagePlugin(Plugin):
 
     # Abstract methods
 
+    def is_operational(self):
+        raise NotImplementedError
+
     @staticmethod
     def new_w_language(space, args_w):
         raise NotImplementedError
@@ -41,6 +44,8 @@ class ForeignLanguagePlugin(Plugin):
     def register_default_primitives(self):
         @self.expose_primitive(result_is_new_frame=True)
         def eval(interp, s_frame, argcount):
+            if not self.is_operational():
+                raise PrimitiveFailedError
             # import pdb; pdb.set_trace()
             args_w = s_frame.peek_n(argcount)
             language = self.new_w_language(interp.space, args_w)

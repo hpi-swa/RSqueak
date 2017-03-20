@@ -6,20 +6,25 @@ from topaz.error import RubyError
 
 
 class W_RubyLanguage(W_ForeignLanguage):
-    _attrs_ = ['source']
+    _attrs_ = ['source', 'filepath']
     repr_classname = 'W_RubyLanguage'
 
-    def __init__(self, source, break_on_exceptions=True):
+    def __init__(self, source, filepath='-e', break_on_exceptions=True):
         W_ForeignLanguage.__init__(self, break_on_exceptions)
         self.source = source
+        self.filepath = filepath
 
     def run(self):
         print 'Ruby start'
+        must_leave = ruby_space.threadlocals.try_enter_thread()
         try:
-            retval = ruby_space.execute(self.source)
+            retval = ruby_space.execute(self.source, filepath=self.filepath)
             self.set_result(retval)
         except RubyError as e:
             self.set_result(e.w_value)
+        finally:
+            if must_leave:
+                ruby_space.threadlocals.leave_thread()
 
     def set_current(self):
         ec = ruby_space.getexecutioncontext()

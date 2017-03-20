@@ -1,4 +1,5 @@
 from rsqueakvm.error import PrimitiveFailedError
+from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.plugins.foreign_language import ForeignLanguagePlugin
 from rsqueakvm.util import system
 
@@ -35,6 +36,10 @@ class RubyPlugin(ForeignLanguagePlugin):
             return False
         return ForeignLanguagePlugin.is_enabled(self)
 
+    def is_operational(self):
+        return (W_RubyLanguage.w_foreign_class.get() is not None and
+                RubyClassShadow.w_foreign_class.get() is not None)
+
     def setup(self):
         system.translationconfig.set(thread=True)
         system.translationconfig.set(continuation=True)
@@ -49,11 +54,17 @@ class RubyPlugin(ForeignLanguagePlugin):
 
     @staticmethod
     def new_w_language(space, args_w):
-        if len(args_w) != 2:
+        if (len(args_w) != 3):
             raise PrimitiveFailedError
-        source = space.unwrap_string(args_w[0])
-        break_on_exceptions = args_w[1] is space.w_true
-        return W_RubyLanguage(source, break_on_exceptions)
+        source_w = args_w[0]
+        filepath_w = args_w[1]
+        if (not isinstance(source_w, W_BytesObject) or
+                not isinstance(filepath_w, W_BytesObject)):
+            raise PrimitiveFailedError
+        source = space.unwrap_string(source_w)
+        filepath = space.unwrap_string(filepath_w)
+        break_on_exceptions = args_w[2] is space.w_true
+        return W_RubyLanguage(source, filepath, break_on_exceptions)
 
     @staticmethod
     def w_object_class():
