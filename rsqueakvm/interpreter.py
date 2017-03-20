@@ -338,15 +338,16 @@ class Interpreter(object):
                             # Do the interrupt-check at the end of a loop, don't
                             # interrupt loops midway.
                             self.jitted_check_for_interrupt(s_context)
-                        self.jit_driver.can_enter_jit(
-                            pc=pc,
-                            jump_back_pc=jump_back_pc,
-                            unrollings=unrollings,
-                            frame_size=method.frame_size(),
-                            self=self, method=method,
-                            w_class=self.getreceiverclass(s_context),
-                            blockmethod=self.getblockmethod(s_context),
-                            s_context=s_context)
+                        if not s_context.has_overflow_stack():
+                            self.jit_driver.can_enter_jit(
+                                pc=pc,
+                                jump_back_pc=jump_back_pc,
+                                unrollings=unrollings,
+                                frame_size=method.frame_size(),
+                                self=self, method=method,
+                                w_class=self.getreceiverclass(s_context),
+                                blockmethod=self.getblockmethod(s_context),
+                                s_context=s_context)
                 else:
                     jump_back_pc = old_pc
                     unrollings = 1

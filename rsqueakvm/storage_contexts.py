@@ -57,7 +57,7 @@ class ExtraContextAttributes(W_Object):
         self._w_home = None
         self._initialip = 0
         self._eargc = 0
-        self._overflow_stack = []
+        self._overflow_stack = None
         self.blockmethod = None
 
 
@@ -530,15 +530,23 @@ class ContextPartShadow(AbstractStrategy):
         overflow_index = index0 - len(self._temps_and_stack)
         self.get_extra_data()._overflow_stack[overflow_index] = w_val
 
+    def has_overflow_stack(self):
+        extra_data = self.extra_data()
+        return extra_data and extra_data._overflow_stack is not None
+
     @jit.unroll_safe
     def update_stacksize(self, index0):
         stacksize = len(self._temps_and_stack)
         if stacksize <= index0:
             self.w_method().update_frame_size(index0 + 1)
-            overflow_stack = self.get_extra_data()._overflow_stack
+            extra_data = self.get_extra_data()
+            overflow_stack = extra_data._overflow_stack
             overflow_index = index0 - stacksize
-            while len(overflow_stack) <= overflow_index:
-                overflow_stack.append(None)
+            if overflow_stack is None:
+                extra_data._overflow_stack = [None] * (overflow_index + 1)
+            else:
+                while len(overflow_stack) <= overflow_index:
+                    overflow_stack.append(None)
             return True
         return False
 
