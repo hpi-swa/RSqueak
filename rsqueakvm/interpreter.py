@@ -228,10 +228,11 @@ class Interpreter(object):
         s_context = w_active_context.as_context_get_shadow(self.space)
         while True:
             method = s_context.w_method()
+            frame_size = method.frame_size()
             pc = s_context.pc()
             self.resume_driver.jit_merge_point(
                 pc=pc,
-                frame_size=method.frame_size(),
+                frame_size=frame_size,
                 self=self,
                 method=method,
                 w_class=self.getreceiverclass(s_context),
@@ -251,7 +252,7 @@ class Interpreter(object):
                     self.resume_driver.can_enter_jit(
                         pc=pc,
                         self=self,
-                        frame_size=method.frame_size(),
+                        frame_size=frame_size,
                         method=method,
                         w_class=self.getreceiverclass(s_context),
                         s_context=s_context)
@@ -326,6 +327,7 @@ class Interpreter(object):
         if not jit.we_are_jitted() and may_context_switch:
             self.quick_check_for_interrupt(s_context)
         method = s_context.w_method()
+        frame_size = method.frame_size()
         while True:
             pc = s_context.pc()
             if pc < old_pc:
@@ -343,7 +345,7 @@ class Interpreter(object):
                                 pc=pc,
                                 jump_back_pc=jump_back_pc,
                                 unrollings=unrollings,
-                                frame_size=method.frame_size(),
+                                frame_size=frame_size,
                                 self=self, method=method,
                                 w_class=self.getreceiverclass(s_context),
                                 blockmethod=self.getblockmethod(s_context),
@@ -368,7 +370,7 @@ class Interpreter(object):
                 pc=pc,
                 jump_back_pc=jump_back_pc,
                 unrollings=unrollings,
-                frame_size=method.frame_size(),
+                frame_size=frame_size,
                 self=self, method=method,
                 w_class=self.getreceiverclass(s_context),
                 blockmethod=self.getblockmethod(s_context),

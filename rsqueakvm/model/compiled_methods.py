@@ -104,6 +104,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         W_AbstractObjectWithIdentityHash.fillin(self, space, g_self)
         self.lookup_selector = "unknown%d" % self.gethash()
         self.bytes = [] # make sure the attribute is defined
+        self._frame_size = 0
         # Implicitly sets the header, including self.literalsize
         for i, w_object in enumerate(g_self.get_pointers()):
             self.literalatput0(space, i, w_object, initializing=True)
