@@ -93,6 +93,14 @@ def _usage(argv):
 
           Other:
             -j|--jit <jitargs> - jitargs will be passed to the jit config.
+            -o|--opt <optargs> - custom optimization heuristics for the RSqueak
+                                 interpreter. Comma-separated list of:
+                                     max_squeak_unroll_count (default: 1)
+                                         How many extra times we should try
+                                         to unroll loops.
+                                     squeak_unroll_trace_limit (default: 32000)
+                                         Trace length after which we should not
+                                         unroll any more Squeak loops.
             -p|--poll          - Actively poll for events. Try this if the
                                  image is not responding well.
             -i|--no-interrupts - Disable timer interrupt.
@@ -205,6 +213,7 @@ class Config(object):
         self.extra_arguments_idx = len(argv)
         self.log_image_loading = False
         self.shell = False
+        self.optargs = interpreter.Optargs()
 
     def parse_args(self, argv, skip_bad=False):
         idx = 1
@@ -267,6 +276,17 @@ class Config(object):
                     jit.set_param(interpreter.Interpreter.jit_driver, "trace_limit", int(limit.split("=")[1]))
                 if len(parts) > 0:
                     jit.set_user_param(interpreter.Interpreter.jit_driver, ",".join(parts))
+            elif arg in ["-o", "--opt"]:
+                optarg, idx = get_parameter(argv, idx, arg)
+                parts = optarg.split(",")
+                for part in parts:
+                    key, value = part.split("=")
+                    if "max_squeak_unroll_count" == key:
+                        self.optargs.max_squeak_unroll_count = int(value)
+                    elif "squeak_unroll_trace_limit" == key:
+                        self.optargs.squeak_unroll_trace_limit == int(value)
+                    else:
+                        raise Exception("Wrong argument to %s: %s" % (arg, part))
             elif arg in ["-p", "--poll"]:
                 self.poll = True
             elif arg in ["-i", "--no-interrupts"]:
@@ -435,7 +455,8 @@ def entry_point(argv):
     image = squeakimage.ImageReader(space, stream, cfg.log_image_loading).create_image()
     interp = interpreter.Interpreter(space, image,
                 trace=cfg.trace, trace_important=cfg.trace_important,
-                evented=not cfg.poll, interrupts=cfg.interrupts)
+                evented=not cfg.poll, interrupts=cfg.interrupts,
+                optargs=cfg.optargs)
     space.runtime_setup(interp, cfg.exepath, argv, cfg.path, cfg.extra_arguments_idx)
     print_error("") # Line break after image-loading characters
 
