@@ -335,7 +335,6 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         self.literals, w_other.literals = w_other.literals, self.literals
         self._tempsize, w_other._tempsize = w_other._tempsize, self._tempsize
         self._frame_size, w_other._frame_size = w_other._frame_size, self._frame_size
-        self.version, w_other.version = w_other.version, self.version
         self.bytes, w_other.bytes = w_other.bytes, self.bytes
         self.header, w_other.header = w_other.header, self.header
         self.literalsize, w_other.literalsize = w_other.literalsize, self.literalsize

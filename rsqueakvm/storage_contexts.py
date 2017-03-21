@@ -555,8 +555,10 @@ class ContextPartShadow(AbstractStrategy):
     @objectmodel.not_rpython # this is only for testing.
     def stack(self):
         stacksize = len(self._temps_and_stack)
-        return (self._temps_and_stack[self.tempsize():stacksize] +
-                self.get_extra_data()._overflow_stack[self.tempsize() - stacksize:self.stack_ptr()])
+        stack = self._temps_and_stack[self.tempsize():stacksize]
+        if self.has_overflow_stack():
+            stack.extend(self.get_extra_data()._overflow_stack[self.tempsize() - stacksize:self.stack_ptr()])
+        return stack
 
     def pop(self):
         # HACK HACK HACK (3 times)
