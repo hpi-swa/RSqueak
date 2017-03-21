@@ -1,6 +1,7 @@
 from rsqueakvm import constants, error
 from rsqueakvm.model.base import W_Object, W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.model.variable import W_BytesObject
 
 from rpython.rlib import jit
 from rpython.rlib.objectmodel import not_rpython, we_are_translated
@@ -105,9 +106,12 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         self.lookup_selector = "unknown%d" % self.gethash()
         self.bytes = [] # make sure the attribute is defined
         self._frame_size = 0
+        for g_obj in g_self.pointers:
+            g_obj.fillin(space)
         # Implicitly sets the header, including self.literalsize
         for i, w_object in enumerate(g_self.get_pointers()):
             self.literalatput0(space, i, w_object, initializing=True)
+        self.update_selector_from_literals()
         self.setbytes(g_self.get_bytes()[self.bytecodeoffset():])
         self.post_init()
 
@@ -293,6 +297,15 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
             self.setchar(index0, chr(space.unwrap_int(w_value)))
 
     # === Misc ===
+
+    def update_selector_from_literals(self):
+        # Second-to-last of the literals is either the symbol selector or an
+        # object the selector in the second slot
+        literals = self.literals
+        if literals and len(literals) > 1:
+            w_symbol = literals[-2]
+            if isinstance(w_symbol, W_BytesObject):
+                self.lookup_selector = "".join(w_symbol.getbytes())
 
     def update_compiledin_class_from_literals(self):
         # (Blue book, p 607) Last of the literals is either the containing class
