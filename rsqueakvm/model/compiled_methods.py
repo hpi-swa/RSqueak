@@ -404,18 +404,24 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def get_identifier_string(self):
         return "%s >> #%s" % (self.guess_containing_classname(), self.lookup_selector)
 
-    def safe_identifier_string(self):
-        if not we_are_translated():
-            return self.get_identifier_string()
-        # This has the same functionality as get_identifier_string, but without calling any
-        # methods in order to avoid side effects that prevent translation.
+    def safe_class_string(self):
         w_class = self.safe_compiled_in()
         if isinstance(w_class, W_PointersObject):
             from rsqueakvm.storage_classes import ClassShadow
             s_class = w_class.strategy
             if isinstance(s_class, ClassShadow):
-                return "%s >> #%s" % (s_class.getname(), self.lookup_selector)
-        return "#%s" % self.lookup_selector
+                return s_class.getname()
+        return "UnknownClass"
+
+    def safe_method_string(self):
+        return self.lookup_selector
+
+    def safe_identifier_string(self):
+        if not we_are_translated():
+            return self.get_identifier_string()
+        # This has the same functionality as get_identifier_string, but without calling any
+        # methods in order to avoid side effects that prevent translation.
+        return "%s >> #%s" % (self.safe_class_string(), self.safe_method_string())
 
 
 class W_SpurCompiledMethod(W_CompiledMethod):
