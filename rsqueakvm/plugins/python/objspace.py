@@ -4,6 +4,8 @@ import sys
 from rsqueakvm.plugins.python.switching import SwitchToSmalltalkAction
 from rsqueakvm.util import system
 
+from pypy.module.sys.initpath import pypy_find_stdlib
+
 
 def new_pypy_objspace():
     # This module is reloaded, but pypy_getudir has already been deleted
@@ -26,9 +28,9 @@ def new_pypy_objspace():
     # disabling cffi backend for now, it also causes an undefined symbol error
     pypy_config.objspace.usemodules._cffi_backend = False
 
-    # disabled to save compile time
-    # from pypy.config.pypyoption import enable_allworkingmodules
-    # enable_allworkingmodules(pypy_config)
+    # disable to save compile time
+    from pypy.config.pypyoption import enable_allworkingmodules
+    enable_allworkingmodules(pypy_config)
 
     from pypy.config.pypyoption import enable_translationmodules
     enable_translationmodules(pypy_config)
@@ -80,6 +82,9 @@ def new_pypy_objspace():
     # Set sys.executable in PyPy -- some modules rely upon this existing.
     py_space.setattr(w_sys, py_space.newtext('executable'),
                      py_space.newtext(os.path.abspath(sys.argv[0])))
+
+    # Set sys.(prefix|exec_prefix) in PyPy
+    pypy_find_stdlib(py_space, sys.argv[0])
 
     return py_space
 
