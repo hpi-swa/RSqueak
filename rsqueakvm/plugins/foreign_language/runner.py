@@ -50,16 +50,16 @@ class StackletLanguageRunner(AbstractLanguageRunner):
         if not self._is_valid_handle(self.language_handle):
             print 'language_handle not valid'
             return
-        self.sthread.switch(self.language_handle)
+        self.language_handle = self.sthread.switch(self.language_handle)
 
     def return_to_smalltalk(self):
         if not self._is_valid_handle(self.smalltalk_handle):
             print 'smalltalk_handle not valid'
             return
-        self.sthread.switch(self.smalltalk_handle)
+        self.smalltalk_handle = self.sthread.switch(self.smalltalk_handle)
 
     def _is_valid_handle(self, h):
-        if (self.sthread.is_empty_handle(h) or
+        if (h is None or self.sthread.is_empty_handle(h) or
                 h == self.sthread.get_null_handle()):
             return False
         return True
