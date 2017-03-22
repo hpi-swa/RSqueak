@@ -36,16 +36,14 @@ def has_exception_handler(self, error):
     "Returns True if this frame or one of its parents are able to handle operr"
     frame = self
     while frame is not None:
-        if not isinstance(frame, TopazFrame):  # only TopazFrames have blocks
-            print '%s is not a topaz `Frame`.' % frame
-            return True
-        block = frame.lastblock
-        while block is not None:
-            # block needs to be an ExceptBlock and able to handle operr
-            if ((block.handling_mask & ApplicationException.kind) != 0 and
-                    frame.block_handles_exception(block, error.w_value)):
-                return True
-            block = block.lastblock
+        if isinstance(frame, TopazFrame):  # skip BaseFrames
+            block = frame.lastblock
+            while block is not None:
+                # block needs to be an ExceptBlock and able to handle operr
+                if ((block.handling_mask & ApplicationException.kind) != 0 and
+                        frame.block_handles_exception(block, error.w_value)):
+                    return True
+                block = block.lastblock
         frame = frame.backref()
     return False
 
