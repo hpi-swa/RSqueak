@@ -4,4 +4,4 @@ single: aString
 		primEval: aString
 		filename: '<string>'
 		cmd: 'single'
-		breakOnExceptions: self breakOnExceptions
+		breakOnExceptions: false

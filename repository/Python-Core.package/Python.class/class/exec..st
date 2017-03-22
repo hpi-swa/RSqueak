@@ -1,3 +1,3 @@
 execution
 exec: aString
-	^ self exec: aString breakOnExceptions: self breakOnExceptions
+	^ self exec: aString breakOnExceptions: false

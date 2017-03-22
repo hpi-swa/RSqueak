@@ -1,0 +1,3 @@
+debugging
+getForeignFrames: topForeignFrame
+	self subclassResponsibility

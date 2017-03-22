@@ -4,11 +4,16 @@
 		"windowTitlePrefix" : "fn 3/14/2017 00:48" },
 	"instance" : {
 		"aboutToStyle:" : "fn 3/13/2017 17:51",
-		"addModelItemsToWindowMenu:" : "fn 3/14/2017 00:47",
+		"addModelItemsToWindowMenu:" : "fn 3/21/2017 23:10",
+		"breakOnExceptions" : "fn 3/21/2017 23:07",
+		"breakOnExceptions:" : "fn 3/21/2017 23:06",
+		"breakOnExceptionsText" : "fn 3/21/2017 23:11",
 		"buildCodePaneWith:" : "fn 3/13/2017 17:51",
-		"evaluateExpression:" : "fn 3/14/2017 18:31",
+		"evaluateExpression:" : "fn 3/21/2017 23:16",
 		"isForeign" : "fn 3/14/2017 18:32",
-		"labelString" : "fn 3/14/2017 00:49",
+		"labelString" : "fn 3/22/2017 09:51",
+		"languageClass" : "fn 3/16/2017 22:40",
 		"languageSymbol" : "fn 3/14/2017 01:00",
 		"languageSymbol:" : "fn 3/13/2017 18:02",
-		"selectLanguage:" : "fn 3/14/2017 00:48" } }
+		"selectLanguage:" : "fn 3/14/2017 00:48",
+		"toggleBreakOnExceptions" : "fn 3/22/2017 09:47" } }

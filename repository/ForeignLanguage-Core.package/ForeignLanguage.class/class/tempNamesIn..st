@@ -1,0 +1,3 @@
+debugging
+tempNamesIn: foreignFrame
+	self subclassResponsibility

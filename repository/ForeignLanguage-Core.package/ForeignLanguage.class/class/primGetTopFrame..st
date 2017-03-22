@@ -1,0 +1,3 @@
+system primitives
+primGetTopFrame: languageProcess
+	self subclassResponsibility

@@ -1,0 +1,3 @@
+source code
+fileExtension
+	self subclassResponsibility

@@ -1,7 +1,7 @@
 as yet unclassified
 testScopeEndInStartingAt
 	| d input |
-	d := ForeignLanguage.
+	d := Python.
 	input := '
 a = 2
 def foo():

@@ -14,7 +14,10 @@ try:
 	_pygments_formatter = pygments.formatters.get_formatter_by_name(
 		"html", encoding="utf-8", style="colorful", nowrap=True, noclasses=True, lineseparator="<br>")
 	def _pygments_highlight(code, lexer=_pygments_lexer_python):
-		return re.sub("<br>$", "", pygments.highlight(code, lexer, _pygments_formatter))
+		try:
+			return re.sub("<br>$", "", pygments.highlight(code, lexer, _pygments_formatter))
+		except:
+			return code
 except ImportError:
 	def _pygments_highlight(code):
 		return code

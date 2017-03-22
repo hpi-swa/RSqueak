@@ -2,6 +2,6 @@ execution
 pexec: aString
 	^ self
 		primEval: aString
-		filename: (self persistPyCode: aString)
+		filename: (self persistEvalCode: aString)
 		cmd: 'exec'
-		breakOnExceptions: self breakOnExceptions
+		breakOnExceptions: false

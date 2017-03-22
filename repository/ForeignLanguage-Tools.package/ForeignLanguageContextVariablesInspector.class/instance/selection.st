@@ -1,10 +1,10 @@
 overrides
 selection
-	self object isPython ifFalse: [ ^ super selection ].
+	self object isForeign ifFalse: [ ^ super selection ].
 	selectionIndex = 0 ifTrue: [^ ''].
 	selectionIndex = 1 ifTrue: [^ object ].
 	selectionIndex = 2 ifTrue: [^ object symbolic].
 	selectionIndex = 3 ifTrue: [^ object headerDescription].
-	object isPython ifTrue: [
-		^ object foreignFrame f_locals values at: selectionIndex - 3].
+	Smalltalk at: object languageSymbol ifPresent: [ :cls |
+		^ cls tempVariableAt: selectionIndex - 3 in: object foreignFrame ].
 	^ 'Unexpected selection'

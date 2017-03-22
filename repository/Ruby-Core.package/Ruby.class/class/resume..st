@@ -1,7 +1,7 @@
 special methods
-resume: aRbLanguage
+resume: rbProcess
 	"Magic method that is called by vm (cached in vm)"
 	Processor yield.
-	[ ^ self primResume: aRbLanguage ] on: Error do: [
-		self checkForException: aRbLanguage.
-		^ self resume: aRbLanguage ]
+	[ ^ self primResume: rbProcess ] on: Error do: [
+		self checkForException: rbProcess.
+		^ self resume: rbProcess ]

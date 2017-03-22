@@ -1,6 +1,7 @@
 overrides
 pcRange
-	"Answer the indices in the source code for the method corresponding to 
-	the selected context's program counter value."
-	self selectedContext isForeign ifFalse: [ ^ super pcRange ].
-	^ self pyPCRange
+	| ctx |
+	ctx := self selectedContext.
+	ctx isForeign ifFalse: [ ^ super pcRange ].
+	Smalltalk at: ctx languageSymbol ifPresent: [ :cls |
+		^ cls pcRange: ctx foreignFrame ].

@@ -1,7 +1,7 @@
 special methods
-resume: aPyLanguage
+resume: pyProcess
 	"Magic method that is called by vm (cached in vm)"
 	Processor yield.
-	[ ^ self primResume: aPyLanguage ] on: Error do: [
-		self checkForException: aPyLanguage.
-		^ self resume: aPyLanguage ]
+	[ ^ self primResume: pyProcess ] on: Error do: [
+		self checkForException: pyProcess.
+		^ self resume: pyProcess ]

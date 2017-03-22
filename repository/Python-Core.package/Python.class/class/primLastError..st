@@ -1,4 +1,4 @@
 system primitives
-primLastError: aPyLanguage
+primLastError: pyProcess
 	<primitive: 'lastError' module: 'PythonPlugin'>
 	^ nil

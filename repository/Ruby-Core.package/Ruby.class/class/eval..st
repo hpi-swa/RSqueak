@@ -1,3 +1,3 @@
 execution
 eval: aString
-	^ self primEval: aString breakOnExceptions: true
+	^ self eval: aString filePath: '-e'

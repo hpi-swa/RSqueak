@@ -1,12 +1,13 @@
 {
 	"class" : {
-		 },
+		"newFor:" : "fn 3/16/2017 13:34" },
 	"instance" : {
 		"foreignFrame" : "fn 3/14/2017 01:28",
 		"foreignFrame:" : "fn 3/14/2017 01:28",
 		"isForeign" : "fn 3/14/2017 01:29",
+		"languageClass" : "fn 3/16/2017 22:39",
 		"languageSymbol" : "fn 3/14/2017 01:32",
-		"printOn:" : "fn 3/14/2017 01:30",
+		"printOn:" : "fn 3/16/2017 22:40",
 		"sender:" : "fn 1/16/2017 21:54",
 		"setSender:receiver:method:arguments:" : "fn 1/18/2017 17:38",
-		"tempNames" : "fn 3/14/2017 01:28" } }
+		"tempNames" : "fn 3/16/2017 22:44" } }

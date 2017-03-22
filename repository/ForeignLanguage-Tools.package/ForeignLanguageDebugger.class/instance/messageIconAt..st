@@ -4,6 +4,6 @@ messageIconAt: anIndex
 	Browser showMessageIcons
 		ifFalse: [^ nil].
 	context := contextStack at: anIndex.
-	context isForeign
-		ifTrue: [ ^ ToolIcons iconNamed: context languageSymbol ]
-		ifFalse: [ ^ super messageIconAt: anIndex ]
+	^ context isForeign
+		ifTrue: [ ToolIcons iconNamed: context languageSymbol ]
+		ifFalse: [ super messageIconAt: anIndex ]

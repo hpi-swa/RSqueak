@@ -4,4 +4,5 @@ selectedMessage
 	| aContext |
 	aContext := self selectedContext.
 	aContext isForeign ifFalse: [ ^ super selectedMessage ].
-	^ self class getPySource: aContext
+	Smalltalk at: aContext languageSymbol ifPresent: [ :cls |
+		^ cls getSource: aContext foreignFrame ]
