@@ -8,7 +8,7 @@ try:
     from rsqueakvm.plugins.python import utils
     from rsqueakvm.plugins.python.model import (
         W_PythonObject, PythonClassShadow)
-    from rsqueakvm.plugins.python.objspace import py_space
+    from rsqueakvm.plugins.python.objspace import initialize_py_space, py_space
     from rsqueakvm.plugins.python.patching import patch_pypy
     from rsqueakvm.plugins.python.process import W_PythonProcess
     from rsqueakvm.plugins.python.switching import PyFrameRestartInfo
@@ -57,6 +57,7 @@ class PythonPlugin(ForeignLanguagePlugin):
         ForeignLanguagePlugin.load_special_objects(
             space, PythonPlugin.language_name,
             W_PythonProcess, PythonClassShadow)
+        initialize_py_space(space, argv)
         py_space.startup()
 
     @staticmethod

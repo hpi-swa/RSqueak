@@ -21,8 +21,8 @@ def no_error_caught(code, cmd):
     pycode = compilecode(py_space, code, '<string>', cmd)
     py_frame = py_space.FrameClass(py_space, pycode, py_space.newdict(), None)
     py_frame.run()
-    language = py_space.current_language.get()
-    return language is not None and language.get_error() is None
+    process = py_space.current_python_process.get()
+    return process is not None and process.get_error() is None
 
 
 def test_simple_exception():

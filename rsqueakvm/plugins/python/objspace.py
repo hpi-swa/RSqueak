@@ -4,8 +4,6 @@ import sys
 from rsqueakvm.plugins.python.switching import SwitchToSmalltalkAction
 from rsqueakvm.util import system
 
-from pypy.module.sys.initpath import pypy_find_stdlib
-
 
 def new_pypy_objspace():
     # This module is reloaded, but pypy_getudir has already been deleted
@@ -65,8 +63,10 @@ def new_pypy_objspace():
     # encapsulate it inside the entry point with a closure.
     from pypy.objspace.std import StdObjSpace as PyStdObjSpace
 
-    py_space = PyStdObjSpace(pypy_config)
+    return PyStdObjSpace(pypy_config)
 
+
+def initialize_py_space(space, argv):
     # equivalent to the hack in app_main.py of PyPy, albiet interp-level.
     w_sys = py_space.sys
     w_modnames = w_sys.get('builtin_module_names')
@@ -79,14 +79,22 @@ def new_pypy_objspace():
     w_sys_path = py_space.getattr(w_sys, py_space.newtext('path'))
     py_space.call_method(w_sys_path, 'append', py_space.newtext('.'))
 
-    # Set sys.executable in PyPy -- some modules rely upon this existing.
+    # Determine image_path for sys.prefix
+    splitpaths = space.get_image_name().split(os.sep)
+    splitlen = len(splitpaths)
+    # The dance below makes translation work. os.path.dirname breaks :(
+    image_path = splitpaths[0] if splitlen > 0 else ''
+    if splitlen > 2:
+        splitlen = splitlen - 1
+        assert splitlen >= 0
+        image_path = os.sep.join(splitpaths[0:splitlen])
+    w_prefix = py_space.newtext(image_path)
+
+    # Set attributes on sys in PyPy -- some modules rely upon this existing.
     py_space.setattr(w_sys, py_space.newtext('executable'),
-                     py_space.newtext(os.path.abspath(sys.argv[0])))
-
-    # Set sys.(prefix|exec_prefix) in PyPy
-    pypy_find_stdlib(py_space, sys.argv[0])
-
-    return py_space
+                     py_space.newtext(space.executable_path()))
+    py_space.setattr(w_sys, py_space.newtext('prefix'), w_prefix)
+    py_space.setattr(w_sys, py_space.newtext('exec_prefix'), w_prefix)
 
 
 py_space = new_pypy_objspace()
