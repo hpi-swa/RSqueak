@@ -10,8 +10,25 @@ old_handle_bytecode = TopazInterpreter.handle_bytecode
 old_handle_ruby_error = TopazInterpreter.handle_ruby_error
 old_getexecutioncontext = TopazObjectSpace.getexecutioncontext
 
-SWITCH_COUNTER_SIZE = 1000
-switch_counter = [SWITCH_COUNTER_SIZE]
+
+class InterruptCounter:
+    counter_size = 1000
+
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self._counter = self.counter_size
+
+    def triggers(self):
+        self._counter -= 1
+        if self._counter <= 0:
+            self._counter = self.counter_size
+            return True
+        return False
+
+
+interrupt_counter = InterruptCounter()
 
 
 def switch_to_smalltalk(ruby_process):
@@ -52,10 +69,8 @@ def has_exception_handler(self, error):
 
 
 def new_handle_bytecode(self, space, pc, frame, bytecode):
-    if switch_counter[0] <= 0:
-        switch_counter[0] = SWITCH_COUNTER_SIZE
+    if interrupt_counter.triggers():
         switch_to_smalltalk(space.current_ruby_process.get())
-    switch_counter[0] -= 1
     return old_handle_bytecode(self, space, pc, frame, bytecode)
 
 
