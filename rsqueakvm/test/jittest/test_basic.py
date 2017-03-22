@@ -7,7 +7,7 @@ from rsqueakvm.util.system import IS_64BIT
 class TestBasic(BaseJITTest):
     def test_while_loop(self, spy, tmpdir):
         traces = self.run(spy, tmpdir, """
-        0 to: 1000000000 do: [:t|nil].
+        0 to: 10000 do: [:t|nil].
         """)
         self.assert_matches(traces[0].loop, """
         guard_not_invalidated(descr=<Guard0x910a1f0>)
