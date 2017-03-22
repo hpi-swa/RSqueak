@@ -543,7 +543,7 @@ def result_string(w_result):
 
 def compile_code(interp, w_receiver, code, isclass=False, make_selector=True):
     if make_selector:
-        selector = "DoIt%d\r\n" % int(time.time())
+        selector = "DoIt%d\r\n" % (int(time.time()) + len(code))
     else:
         selector = ""
     space = interp.space
