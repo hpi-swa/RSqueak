@@ -1,10 +1,12 @@
+from rsqueakvm.plugins.python.language import W_PythonLanguage
 from rsqueakvm.plugins.python.objspace import py_space, switch_action
 from rsqueakvm.plugins.python.switching import RestartException
+from rsqueakvm.util.cells import QuasiConstant
 
 from pypy.interpreter.pycode import PyCode, default_magic
 from pypy.interpreter.pyopcode import SApplicationException
-from pypy.interpreter.executioncontext import ExecutionContext
 from pypy.module.pypyjit.interp_jit import PyFrame, PyPyJitDriver
+from pypy.objspace.std import StdObjSpace as PyStdObjSpace
 from pypy.tool.stdlib_opcode import bytecode_spec
 
 from rpython.rlib.rarithmetic import intmask
@@ -15,6 +17,7 @@ old_init_frame = PyFrame.__init__
 old_execute_frame = PyFrame.execute_frame
 old_handle_operation_error = PyFrame.handle_operation_error
 old_init_pycode = PyCode.__init__
+old_getexecutioncontext = PyStdObjSpace.getexecutioncontext
 
 ATTRIBUTE_ERROR_FORBIDDEN_NAMES = ['getattr']
 STOP_ITERATION_FORBIDDEN_NAMES = ['next']
@@ -112,7 +115,7 @@ def new_handle_operation_error(self, ec, operr, attach_tb=True):
     if isinstance(operr, RestartException):
         print 'Re-raising RestartException'
         raise operr
-    language = ec.current_language
+    language = self.space.current_language.get()
     if (language is not None and language.break_on_exceptions() and
             not self.has_exception_handler(operr)):
         # import pdb; pdb.set_trace()
@@ -133,6 +136,13 @@ def __init__pycode(self, space, argcount, nlocals, stacksize, flags,
                     hidden_applevel, magic)
 
 
+def new_getexecutioncontext(self):
+    current_language = self.current_language.get()
+    if current_language is not None:
+        return current_language.ec
+    return old_getexecutioncontext(self)
+
+
 def patch_pypy():
     # Patch-out virtualizables from PyPy so that translation works
     try:
@@ -142,8 +152,6 @@ def patch_pypy():
     except AttributeError:
         pass
 
-    ExecutionContext.current_language = None
-
     PyFrame.__init__ = __init__frame
     PyFrame.execute_frame = new_execute_frame
     PyFrame.block_handles_exception = block_handles_exception
@@ -152,3 +160,6 @@ def patch_pypy():
 
     PyCode.__init__ = __init__pycode
     PyCode._immutable_fields_.append('_co_names[*]')
+
+    PyStdObjSpace.current_language = QuasiConstant(None, W_PythonLanguage)
+    PyStdObjSpace.getexecutioncontext = new_getexecutioncontext

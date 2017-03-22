@@ -5,7 +5,6 @@ from rsqueakvm.util import system
 
 try:
     from rsqueakvm.plugins.ruby import utils
-    from rsqueakvm.plugins.ruby.frame import WR_FrameObject
     from rsqueakvm.plugins.ruby.language import W_RubyLanguage
     from rsqueakvm.plugins.ruby.model import W_RubyObject, RubyClassShadow
     from rsqueakvm.plugins.ruby.objspace import ruby_space
@@ -89,13 +88,6 @@ class RubyPlugin(ForeignLanguagePlugin):
                    % (wr_rcvr, methodname))
             raise PrimitiveFailedError
         return W_RubyObject(wr_result)
-
-    @staticmethod
-    def top_w_frame():
-        topframe = ruby_space.getexecutioncontext().gettoprubyframe()
-        if topframe is None:
-            raise PrimitiveFailedError
-        return W_RubyObject(WR_FrameObject(topframe))
 
     @staticmethod
     def to_w_object(space, foreign_object):

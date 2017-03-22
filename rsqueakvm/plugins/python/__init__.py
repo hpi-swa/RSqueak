@@ -120,13 +120,6 @@ class PythonPlugin(ForeignLanguagePlugin):
         return W_PythonObject(wp_result)
 
     @staticmethod
-    def top_w_frame():
-        topframe = py_space.getexecutioncontext().gettopframe()
-        if topframe is None:
-            raise PrimitiveFailedError
-        return W_PythonObject(topframe)
-
-    @staticmethod
     def to_w_object(space, foreign_object):
         return utils.python_to_smalltalk(space, foreign_object.wp_object)
 

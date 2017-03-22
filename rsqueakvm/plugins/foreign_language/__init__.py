@@ -32,10 +32,6 @@ class ForeignLanguagePlugin(Plugin):
         raise NotImplementedError
 
     @staticmethod
-    def top_w_frame():
-        raise PrimitiveFailedError
-
-    @staticmethod
     def to_w_object(foreign_object):
         raise NotImplementedError
 
@@ -92,9 +88,11 @@ class ForeignLanguagePlugin(Plugin):
                 raise PrimitiveFailedError
             return w_error
 
-        @self.expose_primitive(unwrap_spec=[object])
-        def getTopFrame(interp, s_frame, w_rcvr):
-            return self.top_w_frame()
+        @self.expose_primitive(unwrap_spec=[object, object])
+        def getTopFrame(interp, s_frame, w_rcvr, language):
+            if not isinstance(language, W_ForeignLanguage):
+                raise PrimitiveFailedError
+            return language.top_w_frame()
 
         @self.expose_primitive(unwrap_spec=[object])
         def asSmalltalk(interp, s_frame, w_rcvr):

@@ -11,7 +11,7 @@ class SwitchToSmalltalkAction(PeriodicAsyncAction):
         from rsqueakvm.plugins.python import PythonPlugin
 
         # import pdb; pdb.set_trace()
-        language = ec.current_language
+        language = ec.space.current_language.get()
         if language is None:
             return
         runner = language.runner()
