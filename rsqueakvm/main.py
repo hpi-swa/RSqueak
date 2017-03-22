@@ -66,6 +66,8 @@ def _usage(argv):
           Execution:
             -r|--run <code>  - Code will be compiled and executed in
                                headless mode, result printed.
+            -rr <code>       - Code will be compiled and executed in
+                               headless mode, twice, the second result printed.
             -m|--method <selector>
                              - Selector will be sent to nil in
                                headless mode, result printed.
@@ -206,6 +208,7 @@ class Config(object):
         self.selector = None
         self.code = ""
         self.run_file = False
+        self.run_twice = False
         self.number = 0
         self.have_number = False
         self.stringarg = None
@@ -246,6 +249,9 @@ class Config(object):
             # Execution
             elif arg in ["-r", "--run"]:
                 self.code, idx = get_parameter(argv, idx, arg)
+            elif arg == "-rr":
+                self.code, idx = get_parameter(argv, idx, arg)
+                self.run_twice = True
             elif arg in ["--run-file"]:
                 self.run_file = True
             elif arg in ["-m", "--method"]:
@@ -508,7 +514,12 @@ def entry_point(argv):
                     interp, w_receiver, "FileStream startUp: true")
                 with objspace.ForceHeadless(space):
                     interp.perform(w_receiver, selector)
-            cfg.selector = compile_code(interp, w_receiver, cfg.code)
+            if cfg.run_twice:
+                selector = compile_code(interp, w_receiver, cfg.code)
+                cfg.selector = compile_code(
+                    interp, w_receiver, "^ self %s; %s" % (selector, selector))
+            else:
+                cfg.selector = compile_code(interp, w_receiver, cfg.code)
         s_frame = create_context(interp, w_receiver, cfg.selector, cfg.stringarg)
         if cfg.headless:
             space.headless.activate()
