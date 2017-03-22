@@ -32,7 +32,7 @@ class W_PythonProcess(W_ForeignLanguageProcess):
             self.set_result(operr_to_pylist(operr))
 
     def set_current(self):
-        py_space.current_language.set(self)
+        py_space.current_python_process.set(self)
 
     def set_result(self, wp_result):
         self.w_result = W_PythonObject(wp_result)

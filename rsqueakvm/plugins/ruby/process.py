@@ -27,7 +27,7 @@ class W_RubyProcess(W_ForeignLanguageProcess):
             self.set_result(e.w_value)
 
     def set_current(self):
-        ruby_space.current_language.set(self)
+        ruby_space.current_ruby_process.set(self)
 
     def set_result(self, wr_result):
         self.w_result = W_RubyObject(wr_result)

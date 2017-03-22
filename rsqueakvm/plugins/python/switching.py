@@ -11,10 +11,10 @@ class SwitchToSmalltalkAction(PeriodicAsyncAction):
         from rsqueakvm.plugins.python import PythonPlugin
 
         # import pdb; pdb.set_trace()
-        language = ec.space.current_language.get()
-        if language is None:
+        process = self.space.current_python_process.get()
+        if process is None:
             return
-        runner = language.runner()
+        runner = process.runner()
         if runner is None:
             return
 
@@ -23,7 +23,7 @@ class SwitchToSmalltalkAction(PeriodicAsyncAction):
         # print 'Python continue'
 
         # operror has been in Smalltalk land, clear it now to allow resuming
-        language.reset_error()
+        process.reset_error()
 
         # handle py_frame_restart_info if set
         restart_info = PythonPlugin.py_frame_restart_info.get()

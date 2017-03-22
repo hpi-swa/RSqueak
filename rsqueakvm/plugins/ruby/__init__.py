@@ -51,7 +51,7 @@ class RubyPlugin(ForeignLanguagePlugin):
         ruby_space.setup(argv[0])
 
     @staticmethod
-    def new_w_language_process(space, args_w):
+    def new_language_process(space, args_w):
         if (len(args_w) != 3):
             raise PrimitiveFailedError
         source_w = args_w[0]

@@ -24,7 +24,7 @@ class ForeignLanguagePlugin(Plugin):
         raise NotImplementedError
 
     @staticmethod
-    def new_w_language_process(space, args_w):
+    def new_language_process(space, args_w):
         raise NotImplementedError
 
     @staticmethod
@@ -44,24 +44,24 @@ class ForeignLanguagePlugin(Plugin):
                 raise PrimitiveFailedError
             # import pdb; pdb.set_trace()
             args_w = s_frame.peek_n(argcount)
-            language = self.new_w_language_process(interp.space, args_w)
-            language.start()
+            language_process = self.new_language_process(interp.space, args_w)
+            language_process.start()
             # when we are here, the foreign language process has yielded
-            frame = language.switch_to_smalltalk(interp, s_frame,
-                                                 first_call=True)
+            frame = language_process.switch_to_smalltalk(
+                interp, s_frame, first_call=True)
             s_frame.pop_n(argcount + 1)
             return frame
 
         @self.expose_primitive(unwrap_spec=[object, object],
                                result_is_new_frame=True)
-        def resume(interp, s_frame, w_rcvr, language):
+        def resume(interp, s_frame, w_rcvr, language_process):
             # print 'Smalltalk yield'
             # import pdb; pdb.set_trace()
-            if not isinstance(language, W_ForeignLanguageProcess):
+            if not isinstance(language_process, W_ForeignLanguageProcess):
                 raise PrimitiveFailedError
-            if not language.resume():
+            if not language_process.resume():
                 raise PrimitiveFailedError
-            return language.switch_to_smalltalk(interp, s_frame)
+            return language_process.switch_to_smalltalk(interp, s_frame)
 
         @self.expose_primitive(compiled_method=True)
         @jit.unroll_safe
@@ -79,20 +79,20 @@ class ForeignLanguagePlugin(Plugin):
             return w_result
 
         @self.expose_primitive(unwrap_spec=[object, object])
-        def lastError(interp, s_frame, w_rcvr, language):
-            if not isinstance(language, W_ForeignLanguageProcess):
+        def lastError(interp, s_frame, w_rcvr, language_process):
+            if not isinstance(language_process, W_ForeignLanguageProcess):
                 raise PrimitiveFailedError
-            w_error = language.get_error()
+            w_error = language_process.get_error()
             if w_error is None:
                 print 'w_error was None in lastError'
                 raise PrimitiveFailedError
             return w_error
 
         @self.expose_primitive(unwrap_spec=[object, object])
-        def getTopFrame(interp, s_frame, w_rcvr, language):
-            if not isinstance(language, W_ForeignLanguageProcess):
+        def getTopFrame(interp, s_frame, w_rcvr, language_process):
+            if not isinstance(language_process, W_ForeignLanguageProcess):
                 raise PrimitiveFailedError
-            return language.top_w_frame()
+            return language_process.top_w_frame()
 
         @self.expose_primitive(unwrap_spec=[object])
         def asSmalltalk(interp, s_frame, w_rcvr):

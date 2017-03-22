@@ -14,11 +14,11 @@ SWITCH_COUNTER_SIZE = 1000
 switch_counter = [SWITCH_COUNTER_SIZE]
 
 
-def switch_to_smalltalk(language):
+def switch_to_smalltalk(ruby_process):
     # import pdb; pdb.set_trace()
-    if language is None:
+    if ruby_process is None:
         return
-    runner = language.runner()
+    runner = ruby_process.runner()
     if runner is None:
         return
 
@@ -27,7 +27,7 @@ def switch_to_smalltalk(language):
     # print 'Ruby continue'
 
     # error has been in Smalltalk land, clear it now to allow resuming
-    language.reset_error()
+    ruby_process.reset_error()
 
 
 def block_handles_exception(self, block, error_type):
@@ -54,25 +54,25 @@ def has_exception_handler(self, error):
 def new_handle_bytecode(self, space, pc, frame, bytecode):
     if switch_counter[0] <= 0:
         switch_counter[0] = SWITCH_COUNTER_SIZE
-        switch_to_smalltalk(space.current_language.get())
+        switch_to_smalltalk(space.current_ruby_process.get())
     switch_counter[0] -= 1
     return old_handle_bytecode(self, space, pc, frame, bytecode)
 
 
 def new_handle_ruby_error(self, space, pc, frame, bytecode, error):
-    language = space.current_language.get()
+    language = space.current_ruby_process.get()
     if (language is not None and language.break_on_exceptions() and
             not frame.has_exception_handler(error)):
         language.set_error(error.w_value)
         print 'Ruby error caught'
-        switch_to_smalltalk(space.current_language.get())
+        switch_to_smalltalk(space.current_ruby_process.get())
     return old_handle_ruby_error(self, space, pc, frame, bytecode, error)
 
 
 def new_getexecutioncontext(self):
-    current_language = self.current_language.get()
-    if current_language is not None:
-        return current_language.ec
+    current_ruby_process = self.current_ruby_process.get()
+    if current_ruby_process is not None:
+        return current_ruby_process.ec
     return old_getexecutioncontext(self)
 
 
@@ -89,5 +89,5 @@ def patch_topaz():
     TopazInterpreter.handle_bytecode = new_handle_bytecode
     TopazInterpreter.handle_ruby_error = new_handle_ruby_error
 
-    TopazObjectSpace.current_language = QuasiConstant(None, W_RubyProcess)
+    TopazObjectSpace.current_ruby_process = QuasiConstant(None, W_RubyProcess)
     TopazObjectSpace.getexecutioncontext = new_getexecutioncontext

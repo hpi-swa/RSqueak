@@ -115,7 +115,7 @@ def new_handle_operation_error(self, ec, operr, attach_tb=True):
     if isinstance(operr, RestartException):
         print 'Re-raising RestartException'
         raise operr
-    language = self.space.current_language.get()
+    language = self.space.current_python_process.get()
     if (language is not None and language.break_on_exceptions() and
             not self.has_exception_handler(operr)):
         # import pdb; pdb.set_trace()
@@ -137,9 +137,9 @@ def __init__pycode(self, space, argcount, nlocals, stacksize, flags,
 
 
 def new_getexecutioncontext(self):
-    current_language = self.current_language.get()
-    if current_language is not None:
-        return current_language.ec
+    current_python_process = self.current_python_process.get()
+    if current_python_process is not None:
+        return current_python_process.ec
     return old_getexecutioncontext(self)
 
 
@@ -161,5 +161,5 @@ def patch_pypy():
     PyCode.__init__ = __init__pycode
     PyCode._immutable_fields_.append('_co_names[*]')
 
-    PyStdObjSpace.current_language = QuasiConstant(None, W_PythonProcess)
+    PyStdObjSpace.current_python_process = QuasiConstant(None, W_PythonProcess)
     PyStdObjSpace.getexecutioncontext = new_getexecutioncontext

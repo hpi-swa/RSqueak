@@ -60,7 +60,7 @@ class PythonPlugin(ForeignLanguagePlugin):
         py_space.startup()
 
     @staticmethod
-    def new_w_language_process(space, args_w):
+    def new_language_process(space, args_w):
         if len(args_w) != 4:
             raise PrimitiveFailedError
         source_w = args_w[0]
