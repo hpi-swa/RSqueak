@@ -1,4 +1,3 @@
-from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.plugins.foreign_language.process import W_ForeignLanguageProcess
 from rsqueakvm.plugins.ruby.frame import WR_FrameObject
 from rsqueakvm.plugins.ruby.model import W_RubyObject
@@ -22,23 +21,17 @@ class W_RubyProcess(W_ForeignLanguageProcess):
         print 'Ruby start'
         try:
             retval = ruby_space.execute(self.source, filepath=self.filepath)
-            self.set_result(retval)
+            self.set_result(W_RubyObject(retval))
         except RubyError as e:
-            self.set_result(e.w_value)
+            self.set_result(W_RubyObject(e.w_value))
 
     def set_current(self):
         ruby_space.current_ruby_process.set(self)
 
-    def set_result(self, wr_result):
-        self.w_result = W_RubyObject(wr_result)
-
-    def set_error(self, wr_error):
-        self.w_error = W_RubyObject(wr_error)
-
-    def top_w_frame(self):
+    def w_top_frame(self):
         if self.ec is None:
-            raise PrimitiveFailedError
+            return None
         topframe = self.ec.gettoprubyframe()
         if topframe is None:
-            raise PrimitiveFailedError
+            return None
         return W_RubyObject(WR_FrameObject(topframe))

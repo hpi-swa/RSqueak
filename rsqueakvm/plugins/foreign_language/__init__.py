@@ -92,7 +92,10 @@ class ForeignLanguagePlugin(Plugin):
         def getTopFrame(interp, s_frame, w_rcvr, language_process):
             if not isinstance(language_process, W_ForeignLanguageProcess):
                 raise PrimitiveFailedError
-            return language_process.top_w_frame()
+            w_top_frame = language_process.w_top_frame()
+            if w_top_frame is None:
+                raise PrimitiveFailedError
+            return w_top_frame
 
         @self.expose_primitive(unwrap_spec=[object])
         def asSmalltalk(interp, s_frame, w_rcvr):

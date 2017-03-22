@@ -1,3 +1,4 @@
+from rsqueakvm.plugins.ruby.model import W_RubyObject
 from rsqueakvm.plugins.ruby.process import W_RubyProcess
 from rsqueakvm.util.cells import QuasiConstant
 
@@ -78,7 +79,7 @@ def new_handle_ruby_error(self, space, pc, frame, bytecode, error):
     language = space.current_ruby_process.get()
     if (language is not None and language.break_on_exceptions() and
             not frame.has_exception_handler(error)):
-        language.set_error(error.w_value)
+        language.set_error(W_RubyObject(error.w_value))
         print 'Ruby error caught'
         switch_to_smalltalk(space.current_ruby_process.get())
     return old_handle_ruby_error(self, space, pc, frame, bytecode, error)

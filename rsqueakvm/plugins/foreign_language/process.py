@@ -1,4 +1,3 @@
-from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.plugins.foreign_language import runner
 from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.compiled_methods import (
@@ -90,17 +89,11 @@ class W_ForeignLanguageProcess(W_AbstractObjectWithIdentityHash):
     def run(self):
         raise NotImplementedError
 
-    def set_result(self, result):
-        raise NotImplementedError
-
-    def set_error(self, error):
-        raise NotImplementedError
-
     def set_current(self):
         raise NotImplementedError
 
-    def top_w_frame(self):
-        raise PrimitiveFailedError
+    def w_top_frame(self):
+        raise NotImplementedError
 
     # Helpers
 
@@ -136,8 +129,14 @@ class W_ForeignLanguageProcess(W_AbstractObjectWithIdentityHash):
     def get_result(self):
         return self.w_result
 
+    def set_result(self, w_result):
+        self.w_result = w_result
+
     def get_error(self):
         return self.w_error
+
+    def set_error(self, w_error):
+        self.w_error = w_error
 
     def reset_error(self):
         self.w_error = None

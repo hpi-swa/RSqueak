@@ -109,7 +109,7 @@ class PythonPlugin(ForeignLanguagePlugin):
                 else:
                     wp_result = py_attr
         except OperationError as operr:
-            return W_PythonObject(utils.operr_to_pylist(operr))
+            return utils.operr_to_w_object(operr)
         except Exception as e:
             print 'Unable to call %s on %s: %s' % (attrname, wp_rcvr, e)
             raise PrimitiveFailedError

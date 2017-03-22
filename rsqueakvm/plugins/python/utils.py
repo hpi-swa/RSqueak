@@ -123,13 +123,13 @@ def get_restart_pycode(source, filename='<string>', cmd='exec'):
     return
 
 
-def operr_to_pylist(operr):
+def operr_to_w_object(operr):
     if not isinstance(operr, OperationError):
         return
     wp_exception = py_space.newtext(operr.w_type.getname(py_space))
     wp_value = operr.get_w_value(py_space)
     # wp_traceback = operr.get_traceback() or py_space.w_None
-    return py_space.newlist([wp_exception, wp_value])  # wp_traceback])
+    return W_PythonObject(py_space.newlist([wp_exception, wp_value]))
 
 
 def entry_point(argv):

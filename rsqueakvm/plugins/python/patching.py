@@ -1,6 +1,7 @@
 from rsqueakvm.plugins.python.objspace import py_space, switch_action
 from rsqueakvm.plugins.python.process import W_PythonProcess
 from rsqueakvm.plugins.python.switching import RestartException
+from rsqueakvm.plugins.python.utils import operr_to_w_object
 from rsqueakvm.util.cells import QuasiConstant
 
 from pypy.interpreter.pycode import PyCode, default_magic
@@ -119,7 +120,7 @@ def new_handle_operation_error(self, ec, operr, attach_tb=True):
     if (language is not None and language.break_on_exceptions() and
             not self.has_exception_handler(operr)):
         # import pdb; pdb.set_trace()
-        language.set_error(operr)
+        language.set_error(operr_to_w_object(operr))
         print 'Python error caught'
         switch_action.perform(ec, self)
     return old_handle_operation_error(self, ec, operr, attach_tb)
