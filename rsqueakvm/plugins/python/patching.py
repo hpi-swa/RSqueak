@@ -1,5 +1,5 @@
-from rsqueakvm.plugins.python.language import W_PythonLanguage
 from rsqueakvm.plugins.python.objspace import py_space, switch_action
+from rsqueakvm.plugins.python.process import W_PythonProcess
 from rsqueakvm.plugins.python.switching import RestartException
 from rsqueakvm.util.cells import QuasiConstant
 
@@ -161,5 +161,5 @@ def patch_pypy():
     PyCode.__init__ = __init__pycode
     PyCode._immutable_fields_.append('_co_names[*]')
 
-    PyStdObjSpace.current_language = QuasiConstant(None, W_PythonLanguage)
+    PyStdObjSpace.current_language = QuasiConstant(None, W_PythonProcess)
     PyStdObjSpace.getexecutioncontext = new_getexecutioncontext

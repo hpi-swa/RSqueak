@@ -5,10 +5,10 @@ from rsqueakvm.util import system
 
 try:
     from rsqueakvm.plugins.ruby import utils
-    from rsqueakvm.plugins.ruby.language import W_RubyLanguage
     from rsqueakvm.plugins.ruby.model import W_RubyObject, RubyClassShadow
     from rsqueakvm.plugins.ruby.objspace import ruby_space
     from rsqueakvm.plugins.ruby.patching import patch_topaz
+    from rsqueakvm.plugins.ruby.process import W_RubyProcess
 
     from topaz.error import RubyError, print_traceback
 
@@ -19,8 +19,8 @@ except ImportError as e:
         # if topaz can be imported, then there must be a problem in the plugin
         import pdb
         pdb.set_trace()
-    except:
-        pass
+    except Exception as e:
+        print e
     IMPORT_FAILED = True
 
 
@@ -36,7 +36,7 @@ class RubyPlugin(ForeignLanguagePlugin):
         return ForeignLanguagePlugin.is_enabled(self)
 
     def is_operational(self):
-        return (W_RubyLanguage.w_foreign_class.get() is not None and
+        return (W_RubyProcess.w_foreign_class.get() is not None and
                 RubyClassShadow.w_foreign_class.get() is not None)
 
     def setup(self):
@@ -47,12 +47,11 @@ class RubyPlugin(ForeignLanguagePlugin):
     @staticmethod
     def startup(space, argv):
         ForeignLanguagePlugin.load_special_objects(
-            space, RubyPlugin.language_name,
-            W_RubyLanguage, RubyClassShadow)
+            space, RubyPlugin.language_name, W_RubyProcess, RubyClassShadow)
         ruby_space.setup(argv[0])
 
     @staticmethod
-    def new_w_language(space, args_w):
+    def new_w_language_process(space, args_w):
         if (len(args_w) != 3):
             raise PrimitiveFailedError
         source_w = args_w[0]
@@ -63,7 +62,7 @@ class RubyPlugin(ForeignLanguagePlugin):
         source = space.unwrap_string(source_w)
         filepath = space.unwrap_string(filepath_w)
         break_on_exceptions = args_w[2] is space.w_true
-        return W_RubyLanguage(source, filepath, break_on_exceptions)
+        return W_RubyProcess(source, filepath, break_on_exceptions)
 
     @staticmethod
     def w_object_class():

@@ -1,5 +1,5 @@
 from rsqueakvm.error import PrimitiveFailedError
-from rsqueakvm.plugins.foreign_language.language import W_ForeignLanguage
+from rsqueakvm.plugins.foreign_language.process import W_ForeignLanguageProcess
 from rsqueakvm.plugins.ruby.frame import WR_FrameObject
 from rsqueakvm.plugins.ruby.model import W_RubyObject
 from rsqueakvm.plugins.ruby.objspace import ruby_space
@@ -8,12 +8,12 @@ from topaz.error import RubyError
 from topaz.executioncontext import ExecutionContext
 
 
-class W_RubyLanguage(W_ForeignLanguage):
+class W_RubyProcess(W_ForeignLanguageProcess):
     _attrs_ = ['source', 'filepath', 'ec']
-    repr_classname = 'W_RubyLanguage'
+    repr_classname = 'W_RubyProcess'
 
     def __init__(self, source, filepath='-e', break_on_exceptions=True):
-        W_ForeignLanguage.__init__(self, break_on_exceptions)
+        W_ForeignLanguageProcess.__init__(self, break_on_exceptions)
         self.source = source
         self.filepath = filepath
         self.ec = ExecutionContext()

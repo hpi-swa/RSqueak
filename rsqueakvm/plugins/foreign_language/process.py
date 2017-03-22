@@ -9,11 +9,11 @@ from rsqueakvm.util.cells import QuasiConstant
 from rpython.rlib import objectmodel
 
 
-class ForeignLanguageMeta(type):
+class ForeignLanguageProcessMeta(type):
     def __new__(cls, name, bases, attrs):
         # import pdb; pdb.set_trace()
 
-        if name != 'W_ForeignLanguage':
+        if name != 'W_ForeignLanguageProcess':
             w_foreign_class = QuasiConstant(None, cls=W_PointersObject)
             w_foreign_resume = QuasiConstant(None, cls=W_PointersObject)
 
@@ -31,11 +31,11 @@ class ForeignLanguageMeta(type):
         return type.__new__(cls, name, bases, attrs)
 
 
-class W_ForeignLanguage(W_AbstractObjectWithIdentityHash):
-    __metaclass__ = ForeignLanguageMeta
+class W_ForeignLanguageProcess(W_AbstractObjectWithIdentityHash):
+    __metaclass__ = ForeignLanguageProcessMeta
     _attrs_ = [
         '_runner', '_done', 'w_result', 'w_error', '_break_on_exceptions']
-    repr_classname = 'W_ForeignLanguage'
+    repr_classname = 'W_ForeignLanguageProcess'
 
     def __init__(self, break_on_exceptions=True):
         W_AbstractObjectWithIdentityHash.__init__(self)

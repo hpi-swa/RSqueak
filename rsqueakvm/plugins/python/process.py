@@ -1,5 +1,5 @@
 from rsqueakvm.error import PrimitiveFailedError
-from rsqueakvm.plugins.foreign_language.language import W_ForeignLanguage
+from rsqueakvm.plugins.foreign_language.process import W_ForeignLanguageProcess
 from rsqueakvm.plugins.python.model import W_PythonObject
 from rsqueakvm.plugins.python.objspace import py_space
 from rsqueakvm.plugins.python.utils import _run_eval_string, operr_to_pylist
@@ -7,12 +7,12 @@ from rsqueakvm.plugins.python.utils import _run_eval_string, operr_to_pylist
 from pypy.interpreter.error import OperationError
 
 
-class W_PythonLanguage(W_ForeignLanguage):
+class W_PythonProcess(W_ForeignLanguageProcess):
     _attrs_ = ['source', 'filename', 'cmd', 'ec']
-    repr_classname = 'W_PythonLanguage'
+    repr_classname = 'W_PythonProcess'
 
     def __init__(self, source, filename, cmd, break_on_exceptions=True):
-        W_ForeignLanguage.__init__(self, break_on_exceptions)
+        W_ForeignLanguageProcess.__init__(self, break_on_exceptions)
         self.source = source
         self.filename = filename
         self.cmd = cmd

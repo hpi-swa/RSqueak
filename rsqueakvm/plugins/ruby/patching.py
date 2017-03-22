@@ -1,4 +1,4 @@
-from rsqueakvm.plugins.ruby.language import W_RubyLanguage
+from rsqueakvm.plugins.ruby.process import W_RubyProcess
 from rsqueakvm.util.cells import QuasiConstant
 
 from topaz.frame import Frame as TopazFrame
@@ -89,5 +89,5 @@ def patch_topaz():
     TopazInterpreter.handle_bytecode = new_handle_bytecode
     TopazInterpreter.handle_ruby_error = new_handle_ruby_error
 
-    TopazObjectSpace.current_language = QuasiConstant(None, W_RubyLanguage)
+    TopazObjectSpace.current_language = QuasiConstant(None, W_RubyProcess)
     TopazObjectSpace.getexecutioncontext = new_getexecutioncontext

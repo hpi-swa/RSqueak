@@ -1,7 +1,7 @@
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.variable import W_BytesObject
-from rsqueakvm.plugins.foreign_language.language import W_ForeignLanguage
 from rsqueakvm.plugins.foreign_language.model import W_ForeignLanguageObject
+from rsqueakvm.plugins.foreign_language.process import W_ForeignLanguageProcess
 from rsqueakvm.plugins.plugin import Plugin
 
 from rpython.rlib import jit
@@ -24,7 +24,7 @@ class ForeignLanguagePlugin(Plugin):
         raise NotImplementedError
 
     @staticmethod
-    def new_w_language(space, args_w):
+    def new_w_language_process(space, args_w):
         raise NotImplementedError
 
     @staticmethod
@@ -44,7 +44,7 @@ class ForeignLanguagePlugin(Plugin):
                 raise PrimitiveFailedError
             # import pdb; pdb.set_trace()
             args_w = s_frame.peek_n(argcount)
-            language = self.new_w_language(interp.space, args_w)
+            language = self.new_w_language_process(interp.space, args_w)
             language.start()
             # when we are here, the foreign language process has yielded
             frame = language.switch_to_smalltalk(interp, s_frame,
@@ -57,7 +57,7 @@ class ForeignLanguagePlugin(Plugin):
         def resume(interp, s_frame, w_rcvr, language):
             # print 'Smalltalk yield'
             # import pdb; pdb.set_trace()
-            if not isinstance(language, W_ForeignLanguage):
+            if not isinstance(language, W_ForeignLanguageProcess):
                 raise PrimitiveFailedError
             if not language.resume():
                 raise PrimitiveFailedError
@@ -80,7 +80,7 @@ class ForeignLanguagePlugin(Plugin):
 
         @self.expose_primitive(unwrap_spec=[object, object])
         def lastError(interp, s_frame, w_rcvr, language):
-            if not isinstance(language, W_ForeignLanguage):
+            if not isinstance(language, W_ForeignLanguageProcess):
                 raise PrimitiveFailedError
             w_error = language.get_error()
             if w_error is None:
@@ -90,7 +90,7 @@ class ForeignLanguagePlugin(Plugin):
 
         @self.expose_primitive(unwrap_spec=[object, object])
         def getTopFrame(interp, s_frame, w_rcvr, language):
-            if not isinstance(language, W_ForeignLanguage):
+            if not isinstance(language, W_ForeignLanguageProcess):
                 raise PrimitiveFailedError
             return language.top_w_frame()
 
