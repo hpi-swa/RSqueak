@@ -130,6 +130,16 @@ class Optargs(object):
     _attrs_ = ["max_squeak_unroll_count", "squeak_unroll_trace_limit"]
     _immutable_fields_ = ["max_squeak_unroll_count", "squeak_unroll_trace_limit"]
     def __init__(self):
+        """
+        - max_squeak_unroll_count: How many times to unroll a loop before
+          JIT'ing. The default (2) was chosen because it "felt right".
+        - squeak_unroll_trace_limit: After how many operations we should never
+          unroll. This tries to avoid trace_too_long aborts, and should kind of
+          be synchronized with the default trace_limit. Imagine you have a long
+          loop, and you unroll it twice, then we're at 86k ops with the default
+          of 32k ops. This is alreay quite a long trace, we don't want to blow
+          it up too much.
+        """
         self.max_squeak_unroll_count = 2
         self.squeak_unroll_trace_limit = 32000
 

@@ -168,12 +168,13 @@ class ContextPartShadow(AbstractStrategy):
 
     def get_extra_data(self):
         extra_data = self.extra_data_or_blockmethod
-        if extra_data is None or not isinstance(extra_data, ExtraContextAttributes):
+        if isinstance(extra_data, ExtraContextAttributes):
+            return extra_data
+        else:
             new_extra_data = ExtraContextAttributes()
             new_extra_data.blockmethod = extra_data
-            extra_data = self.extra_data_or_blockmethod = new_extra_data
-        assert isinstance(extra_data, ExtraContextAttributes)
-        return extra_data
+            self.extra_data_or_blockmethod = new_extra_data
+            return new_extra_data
 
     def extra_data(self):
         extra_data = self.extra_data_or_blockmethod
@@ -885,10 +886,9 @@ class __extend__(ContextPartShadow):
         w_bm = self.extra_data_or_blockmethod
         if isinstance(w_bm, ExtraContextAttributes):
             w_bm = w_bm.blockmethod
-        if w_bm is None:
-            return None
-        assert isinstance(w_bm, W_CompiledMethod)
-        return w_bm
+        if isinstance(w_bm, W_CompiledMethod):
+            return w_bm
+        return None
 
     def set_blockmethod(self, w_obj):
         assert isinstance(w_obj, W_CompiledMethod)

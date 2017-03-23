@@ -68,6 +68,10 @@ def _usage(argv):
                                headless mode, result printed.
             -rr <code>       - Code will be compiled and executed in
                                headless mode, twice, the second result printed.
+                               This is a workaround for making jittests and
+                               benchmarking easier, because do-its are not JIT'ed
+                               right now, due to the dynamic frame size
+                               calculation.
             -m|--method <selector>
                              - Selector will be sent to nil in
                                headless mode, result printed.

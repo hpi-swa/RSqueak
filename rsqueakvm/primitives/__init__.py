@@ -20,10 +20,9 @@ def assert_class(interp, w_obj, w_class):
 def assert_valid_index(space, n0, w_obj):
     if not int_between(0, n0, w_obj.varsize()):
         raise PrimitiveFailedError()
-    # return the index, since from here on the annotator knows that
-    # n0 cannot be negative
-    assert n0 >= 0
-    return n0
+    else: # n0 cannot be negative due to the if condition. help the annotator.
+        assert n0 >= 0
+        return n0
 
 def assert_valid_inst_index(space, n0, w_obj):
     if not int_between(0, n0, w_obj.size()):

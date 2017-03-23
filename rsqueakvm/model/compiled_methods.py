@@ -392,8 +392,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         from rsqueakvm.interpreter_bytecodes import BYTECODE_TABLE
         retval = "Bytecode:------------"
         j = 0
-        while j < len(self.bytes):
-            i = self.bytes[idx]
+        for i in self.bytes:
             retval += '\n'
             retval += '->' if j + 1 is markBytecode else '  '
             retval += ('%0.2i: 0x%0.2x(%0.3i) ' % (j + 1, ord(i), ord(i))) + BYTECODE_TABLE[ord(i)].__name__
@@ -408,10 +407,10 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 
     def guess_containing_classname(self):
         w_class = self.compiled_in()
-        if w_class:
-            # Not pretty to steal the space from another object.
-            return w_class.as_class_get_shadow(w_class.space()).getname()
-        return "? (no compiledin-info)"
+        if w_class is None:
+            return "? (no compiledin-info)"
+        # Not pretty to steal the space from another object.
+        return w_class.as_class_get_shadow(w_class.space()).getname()
 
     def get_identifier_string(self):
         return "%s >> #%s" % (self.guess_containing_classname(), self.lookup_selector)
