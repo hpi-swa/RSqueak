@@ -726,7 +726,7 @@ if 'sphinx' not in sys.modules:
         separate_module_sources=["""
         int InterruptEventFilter(void* userdata, SDL_Event *event) {
             int interrupt_key = 15 << 8;
-            if (event->type == SDL_KEYDOWN || event->type == SDL_KEYUP) {
+            if (event->type == SDL_KEYUP) {
                 if (((SDL_KeyboardEvent*)event)->keysym.sym == SDLK_PERIOD) {
                     if ((((SDL_KeyboardEvent*)event)->keysym.mod & (KMOD_ALT|KMOD_GUI)) != 0) {
                         if (event->type == SDL_KEYUP) { // only keyup generates the interrupt
