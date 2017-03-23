@@ -7,13 +7,16 @@ from topaz.interpreter import (
     ApplicationException, Interpreter as TopazInterpreter)
 from topaz.objspace import ObjectSpace as TopazObjectSpace
 
+from rpython.rlib import jit
+
 old_handle_bytecode = TopazInterpreter.handle_bytecode
 old_handle_ruby_error = TopazInterpreter.handle_ruby_error
+old_jump = TopazInterpreter.jump
 old_getexecutioncontext = TopazObjectSpace.getexecutioncontext
 
 
 class InterruptCounter:
-    counter_size = 1000
+    counter_size = 10000
 
     def __init__(self):
         self.reset()
@@ -21,8 +24,8 @@ class InterruptCounter:
     def reset(self):
         self._counter = self.counter_size
 
-    def triggers(self):
-        self._counter -= 1
+    def triggers(self, decr_by=1):
+        self._counter -= decr_by
         if self._counter <= 0:
             self._counter = self.counter_size
             return True
@@ -70,7 +73,7 @@ def has_exception_handler(self, error):
 
 
 def new_handle_bytecode(self, space, pc, frame, bytecode):
-    if interrupt_counter.triggers():
+    if not jit.we_are_jitted() and interrupt_counter.triggers():
         switch_to_smalltalk(space.current_ruby_process.get())
     return old_handle_bytecode(self, space, pc, frame, bytecode)
 
@@ -83,6 +86,15 @@ def new_handle_ruby_error(self, space, pc, frame, bytecode, error):
         print 'Ruby error caught'
         switch_to_smalltalk(space.current_ruby_process.get())
     return old_handle_ruby_error(self, space, pc, frame, bytecode, error)
+
+
+def new_jump(self, space, bytecode, frame, cur_pc, target_pc):
+    if target_pc < cur_pc and jit.we_are_jitted():
+        trace_length = jit.current_trace_length()
+        decr_by = int(trace_length >> 12 | 1)
+        if interrupt_counter.triggers(decr_by=decr_by):
+            switch_to_smalltalk(space.current_ruby_process.get())
+    return old_jump(self, space, bytecode, frame, cur_pc, target_pc)
 
 
 def new_getexecutioncontext(self):
@@ -104,6 +116,7 @@ def patch_topaz():
     TopazFrame.block_handles_exception = block_handles_exception
     TopazInterpreter.handle_bytecode = new_handle_bytecode
     TopazInterpreter.handle_ruby_error = new_handle_ruby_error
+    TopazInterpreter.jump = new_jump
 
     TopazObjectSpace.current_ruby_process = QuasiConstant(None, W_RubyProcess)
     TopazObjectSpace.getexecutioncontext = new_getexecutioncontext
