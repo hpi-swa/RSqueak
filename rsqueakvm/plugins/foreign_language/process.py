@@ -160,14 +160,26 @@ class W_ForeignLanguageProcess(W_AbstractObjectWithIdentityHash):
             [self]
         )
         # import pdb; pdb.set_trace()
-        # we go one up, because the s_frame.w_method() is our fake method
-        if first_call or s_frame.w_method() is not self.resume_method():
-            # assert s_frame.w_method() is not resume_method
+        if first_call:  # attach s_frame with resume method for the first time
             s_resume_frame.store_s_sender(s_frame)
+        elif s_frame.w_method() is self.resume_method():
+            if s_frame.closure is None:
+                resume_frame = s_frame
+            else:
+                # up up, because there is an #on:do: in between
+                resume_frame = s_frame.s_sender().s_sender()
+            # Ensure #resume: method with closure = nil
+            if (resume_frame.w_method() is self.resume_method() and
+                    resume_frame.closure is None):
+                # instead of chaining resume frames, store original sender
+                s_resume_frame.store_s_sender(resume_frame.s_sender())
+            else:
+                print ('Unexpected resume_frame found:\n%s' %
+                       s_frame.print_stack())
+                s_resume_frame.store_s_sender(s_frame)
         else:
-            if s_frame.w_method() is not self.resume_method():
-                print 'Unexpected s_frame found.'
-            s_resume_frame.store_s_sender(s_frame.s_sender())
+            print 'Unexpected s_frame found:\n%s' % s_frame.print_stack()
+            s_resume_frame.store_s_sender(s_frame)
         interp.quick_check_for_interrupt(s_resume_frame,
                                          dec=interp.interrupt_counter_size)
         # this will raise a ProcessSwitch if there are interrupts or timers ...
