@@ -234,9 +234,14 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
         return w_result
 
 
-# when changing this constant, also change the read and __write__ methods in
-# IntMapStorageNode in storage.py (or generalize those methods to compile with
-# getattrs)
+# When changing these constants, also change the read and __write__ methods in
+# IntMapStorageNode in storage.py (or generalize those methods, while you're at
+# it). The numbers for these fields where chosen semi-randomly. Ranges (which
+# are used in iterations when doing ((1 to: 2) do: []) have 3 integer fields, so
+# three seemed like a good number here. Collections often have two integer
+# fields and one or two pointer objects. Rectangles have two Points, Points two
+# integer fields. I didn't want to go too large to not waste so much
+# memory. More measurements would probably be required.
 _NUMBER_OF_INT_FIELDS = 3
 _NUMBER_OF_INLINE_FIELDS = 2
 class W_FixedPointersObject(W_PointersObject):

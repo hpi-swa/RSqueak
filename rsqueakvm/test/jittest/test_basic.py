@@ -7,7 +7,7 @@ from rsqueakvm.util.system import IS_64BIT
 class TestBasic(BaseJITTest):
     def test_while_loop(self, spy, tmpdir):
         traces = self.run(spy, tmpdir, """
-        0 to: 1000000000 do: [:t|nil].
+        0 to: 10000 do: [:t|nil].
         """)
         self.assert_matches(traces[0].loop, """
         guard_not_invalidated(descr=<Guard0x910a1f0>)
@@ -375,7 +375,7 @@ class TestBasic(BaseJITTest):
         p := 1@2.
         1 to: 10000 do: [:i | p + p].
         """)
-        self.assert_matches(traces[0].loop, """
+        self.assert_matches(traces[1].loop, """
         guard_not_invalidated(descr=<Guard0x93168f8>)
         i129 = int_le(i123, 10000),
         guard_true(i129, descr=<Guard0x9316934>),
@@ -681,7 +681,7 @@ class TestBasic(BaseJITTest):
         o := (10@10 corner: 100@100).
         1 to: 10000 do: [:i | o extent ].
         """)
-        self.assert_matches(traces[0].loop, """
+        self.assert_matches(traces[1].loop, """
         guard_not_invalidated(descr=<Guard0x2f64500>)
         i95 = int_le(i86, 10000)
         guard_true(i95, descr=<Guard0x2a66458>)

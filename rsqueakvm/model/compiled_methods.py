@@ -1,6 +1,7 @@
 from rsqueakvm import constants, error
 from rsqueakvm.model.base import W_Object, W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.model.variable import W_BytesObject
 
 from rpython.rlib import jit
 from rpython.rlib.objectmodel import not_rpython, we_are_translated
@@ -105,9 +106,12 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         self.lookup_selector = "unknown%d" % self.gethash()
         self.bytes = [] # make sure the attribute is defined
         self._frame_size = 0
+        for g_obj in g_self.pointers:
+            g_obj.fillin(space)
         # Implicitly sets the header, including self.literalsize
         for i, w_object in enumerate(g_self.get_pointers()):
             self.literalatput0(space, i, w_object, initializing=True)
+        self.update_selector_from_literals()
         self.setbytes(g_self.get_bytes()[self.bytecodeoffset():])
         self.post_init()
 
@@ -294,6 +298,15 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 
     # === Misc ===
 
+    def update_selector_from_literals(self):
+        # Second-to-last of the literals is either the symbol selector or an
+        # object the selector in the second slot
+        literals = self.literals
+        if literals and len(literals) > 1:
+            w_symbol = literals[-2]
+            if isinstance(w_symbol, W_BytesObject):
+                self.lookup_selector = "".join(w_symbol.getbytes())
+
     def update_compiledin_class_from_literals(self):
         # (Blue book, p 607) Last of the literals is either the containing class
         # or an association with compiledin as a class
@@ -322,7 +335,6 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         self.literals, w_other.literals = w_other.literals, self.literals
         self._tempsize, w_other._tempsize = w_other._tempsize, self._tempsize
         self._frame_size, w_other._frame_size = w_other._frame_size, self._frame_size
-        self.version, w_other.version = w_other.version, self.version
         self.bytes, w_other.bytes = w_other.bytes, self.bytes
         self.header, w_other.header = w_other.header, self.header
         self.literalsize, w_other.literalsize = w_other.literalsize, self.literalsize
@@ -380,8 +392,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         from rsqueakvm.interpreter_bytecodes import BYTECODE_TABLE
         retval = "Bytecode:------------"
         j = 0
-        while j < len(self.bytes):
-            i = self.bytes[idx]
+        for i in self.bytes:
             retval += '\n'
             retval += '->' if j + 1 is markBytecode else '  '
             retval += ('%0.2i: 0x%0.2x(%0.3i) ' % (j + 1, ord(i), ord(i))) + BYTECODE_TABLE[ord(i)].__name__
@@ -396,26 +407,32 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 
     def guess_containing_classname(self):
         w_class = self.compiled_in()
-        if w_class:
-            # Not pretty to steal the space from another object.
-            return w_class.as_class_get_shadow(w_class.space()).getname()
-        return "? (no compiledin-info)"
+        if w_class is None:
+            return "? (no compiledin-info)"
+        # Not pretty to steal the space from another object.
+        return w_class.as_class_get_shadow(w_class.space()).getname()
 
     def get_identifier_string(self):
         return "%s >> #%s" % (self.guess_containing_classname(), self.lookup_selector)
+
+    def safe_class_string(self):
+        w_class = self.safe_compiled_in()
+        if isinstance(w_class, W_PointersObject):
+            from rsqueakvm.storage_classes import ClassShadow
+            s_class = w_class.strategy
+            if isinstance(s_class, ClassShadow):
+                return s_class.getname()
+        return "UnknownClass"
+
+    def safe_method_string(self):
+        return self.lookup_selector
 
     def safe_identifier_string(self):
         if not we_are_translated():
             return self.get_identifier_string()
         # This has the same functionality as get_identifier_string, but without calling any
         # methods in order to avoid side effects that prevent translation.
-        w_class = self.safe_compiled_in()
-        if isinstance(w_class, W_PointersObject):
-            from rsqueakvm.storage_classes import ClassShadow
-            s_class = w_class.strategy
-            if isinstance(s_class, ClassShadow):
-                return "%s >> #%s" % (s_class.getname(), self.lookup_selector)
-        return "#%s" % self.lookup_selector
+        return "%s >> #%s" % (self.safe_class_string(), self.safe_method_string())
 
 
 class W_SpurCompiledMethod(W_CompiledMethod):

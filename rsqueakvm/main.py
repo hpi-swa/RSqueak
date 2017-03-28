@@ -66,6 +66,12 @@ def _usage(argv):
           Execution:
             -r|--run <code>  - Code will be compiled and executed in
                                headless mode, result printed.
+            -rr <code>       - Code will be compiled and executed in
+                               headless mode, twice, the second result printed.
+                               This is a workaround for making jittests and
+                               benchmarking easier, because do-its are not JIT'ed
+                               right now, due to the dynamic frame size
+                               calculation.
             -m|--method <selector>
                              - Selector will be sent to nil in
                                headless mode, result printed.
@@ -79,6 +85,9 @@ def _usage(argv):
                                synthetic high-prio Process.
             -u|--stop-ui     - Only with -m or -r. Try to stop UI-process at
                                startup. Can help benchmarking.
+            --run-file       - Run the .st file supplied as first argument. No
+                               display will be created, but stdin/stdout will
+                               be connected so terminal input/output will work.
             --shell          - Stop after loading the image. Any code typed is
                                compiled an run.
             --simulate-numeric-primitives
@@ -201,6 +210,8 @@ class Config(object):
         self.got_lone_path = False
         self.selector = None
         self.code = ""
+        self.run_file = False
+        self.run_twice = False
         self.number = 0
         self.have_number = False
         self.stringarg = None
@@ -241,6 +252,11 @@ class Config(object):
             # Execution
             elif arg in ["-r", "--run"]:
                 self.code, idx = get_parameter(argv, idx, arg)
+            elif arg == "-rr":
+                self.code, idx = get_parameter(argv, idx, arg)
+                self.run_twice = True
+            elif arg in ["--run-file"]:
+                self.run_file = True
             elif arg in ["-m", "--method"]:
                 self.selector, idx = get_parameter(argv, idx, arg)
             elif arg in ["-n", "--number"]:
@@ -361,6 +377,30 @@ class Config(object):
 
     def sanitize(self):
         self.ensure_path()
+        if self.run_file:
+            if self.code:
+                raise error.Exit("Cannot handle both --run-file and -r.")
+            try:
+                codefile = self.argv[self.extra_arguments_idx]
+            except IndexError:
+                raise error.Exit("Cannot handle --run-file without a file argument.")
+            try:
+                f = streamio.open_file_as_stream(codefile, mode="r", buffering=0)
+            except OSError as e:
+                raise error.Exit("Cannot read %s" % codefile)
+            try:
+                source = list(f.readall())
+            finally:
+                f.close()
+            if len(source) == 0:
+                raise error.Exit("Empty source file given")
+            idx = len(source) - 1
+            assert idx > 0
+            while source[idx].isspace():
+                idx -= 1
+            if source[idx] == "!":
+                source[idx] = " "
+            self.code = "".join(source)
         if self.code and self.selector:
             raise error.Exit("Cannot handle both -r and -m.")
 
@@ -472,7 +512,17 @@ def entry_point(argv):
         else:
             w_receiver = space.wrap_int(cfg.number)
         if cfg.code:
-            cfg.selector = compile_code(interp, w_receiver, cfg.code)
+            if cfg.run_file: # connect the stdio streams
+                selector = compile_code(
+                    interp, w_receiver, "FileStream startUp: true")
+                with objspace.ForceHeadless(space):
+                    interp.perform(w_receiver, selector)
+            if cfg.run_twice:
+                selector = compile_code(interp, w_receiver, cfg.code)
+                cfg.selector = compile_code(
+                    interp, w_receiver, "^ self %s; %s" % (selector, selector))
+            else:
+                cfg.selector = compile_code(interp, w_receiver, cfg.code)
         s_frame = create_context(interp, w_receiver, cfg.selector, cfg.stringarg)
         if cfg.headless:
             space.headless.activate()
@@ -496,7 +546,7 @@ def result_string(w_result):
 
 def compile_code(interp, w_receiver, code, isclass=False, make_selector=True):
     if make_selector:
-        selector = "DoIt%d\r\n" % int(time.time())
+        selector = "DoIt%d\r\n" % (int(time.time()) + len(code))
     else:
         selector = ""
     space = interp.space
