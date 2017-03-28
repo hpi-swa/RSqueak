@@ -140,7 +140,7 @@ class Optargs(object):
           of 32k ops. This is alreay quite a long trace, we don't want to blow
           it up too much.
         """
-        self.max_squeak_unroll_count = 2
+        self.max_squeak_unroll_count = 1
         self.squeak_unroll_trace_limit = 32000
 
 
