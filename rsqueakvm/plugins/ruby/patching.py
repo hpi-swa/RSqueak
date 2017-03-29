@@ -1,10 +1,13 @@
 from rsqueakvm.plugins.ruby.model import W_RubyObject
 from rsqueakvm.plugins.ruby.process import W_RubyProcess
+from rsqueakvm.plugins.ruby.switching import (
+    interrupt_counter, switch_to_smalltalk)
 from rsqueakvm.util.cells import QuasiConstant
 
-from topaz.frame import Frame as TopazFrame
+from topaz import frame as topaz_frame
 from topaz.interpreter import (
     ApplicationException, Interpreter as TopazInterpreter)
+from topaz.objects.codeobject import W_CodeObject
 from topaz.objspace import ObjectSpace as TopazObjectSpace
 
 from rpython.rlib import jit
@@ -12,43 +15,20 @@ from rpython.rlib import jit
 old_handle_bytecode = TopazInterpreter.handle_bytecode
 old_handle_ruby_error = TopazInterpreter.handle_ruby_error
 old_jump = TopazInterpreter.jump
+old_compile = TopazObjectSpace.compile
 old_getexecutioncontext = TopazObjectSpace.getexecutioncontext
 
 
-class InterruptCounter:
-    counter_size = 10000
-
-    def __init__(self):
-        self.reset()
-
-    def reset(self):
-        self._counter = self.counter_size
-
-    def triggers(self, decr_by=1):
-        self._counter -= decr_by
-        if self._counter <= 0:
-            self._counter = self.counter_size
-            return True
-        return False
+def base_frame_get_code_source(self):
+    raise NotImplementedError
 
 
-interrupt_counter = InterruptCounter()
+def frame_get_code_source(self):
+    return self.bytecode.source
 
 
-def switch_to_smalltalk(ruby_process):
-    # import pdb; pdb.set_trace()
-    if ruby_process is None:
-        return
-    runner = ruby_process.runner()
-    if runner is None:
-        return
-
-    # print 'Ruby yield'
-    runner.return_to_smalltalk()
-    # print 'Ruby continue'
-
-    # error has been in Smalltalk land, clear it now to allow resuming
-    ruby_process.reset_error()
+def builtin_frame_get_code_source(self):
+    return self.name
 
 
 def block_handles_exception(self, block, error_type):
@@ -60,7 +40,7 @@ def has_exception_handler(self, error):
     "Returns True if this frame or one of its parents are able to handle operr"
     frame = self
     while frame is not None:
-        if isinstance(frame, TopazFrame):  # skip BaseFrames
+        if isinstance(frame, topaz_frame.Frame):  # skip BaseFrames
             block = frame.lastblock
             while block is not None:
                 # block needs to be an ExceptBlock and able to handle operr
@@ -97,6 +77,20 @@ def new_jump(self, space, bytecode, frame, cur_pc, target_pc):
     return old_jump(self, space, bytecode, frame, cur_pc, target_pc)
 
 
+def annotate_code_object(w_code, source):
+    if not isinstance(w_code, W_CodeObject):
+        return
+    w_code.source = source
+    for const_w in w_code.consts_w:
+        annotate_code_object(const_w, source)
+
+
+def new_compile(self, source, filepath, initial_lineno=1, symtable=None):
+    bc = old_compile(self, source, filepath, initial_lineno, symtable)
+    annotate_code_object(bc, source)
+    return bc
+
+
 def new_getexecutioncontext(self):
     current_ruby_process = self.current_ruby_process.get()
     if current_ruby_process is not None:
@@ -107,16 +101,22 @@ def new_getexecutioncontext(self):
 def patch_topaz():
     # Patch-out virtualizables from Topaz so that translation works
     try:
-        delattr(TopazFrame, "_virtualizable_")
+        delattr(topaz_frame.Frame, "_virtualizable_")
         delattr(TopazInterpreter.jitdriver, "virtualizables")
     except AttributeError:
         pass  # this is fine
 
-    TopazFrame.has_exception_handler = has_exception_handler
-    TopazFrame.block_handles_exception = block_handles_exception
+    W_CodeObject._immutable_fields_.append('source')
+    topaz_frame.BaseFrame.get_code_source = base_frame_get_code_source
+    topaz_frame.Frame.get_code_source = frame_get_code_source
+    topaz_frame.BuiltinFrame.get_code_source = builtin_frame_get_code_source
+
+    topaz_frame.Frame.has_exception_handler = has_exception_handler
+    topaz_frame.Frame.block_handles_exception = block_handles_exception
     TopazInterpreter.handle_bytecode = new_handle_bytecode
     TopazInterpreter.handle_ruby_error = new_handle_ruby_error
     TopazInterpreter.jump = new_jump
 
+    TopazObjectSpace.compile = new_compile
     TopazObjectSpace.current_ruby_process = QuasiConstant(None, W_RubyProcess)
     TopazObjectSpace.getexecutioncontext = new_getexecutioncontext

@@ -6,8 +6,11 @@ from rsqueakvm.util.cells import QuasiConstant
 
 from pypy.interpreter.pycode import PyCode, default_magic
 from pypy.interpreter.pyopcode import SApplicationException
+from pypy.interpreter.typedef import interp_attrproperty
+from pypy.interpreter.pycompiler import PythonAstCompiler
 from pypy.module.pypyjit.interp_jit import PyFrame, PyPyJitDriver
 from pypy.objspace.std import StdObjSpace as PyStdObjSpace
+from pypy.objspace.std.typeobject import TypeCache
 from pypy.tool.stdlib_opcode import bytecode_spec
 
 from rpython.rlib.rarithmetic import intmask
@@ -19,6 +22,8 @@ old_execute_frame = PyFrame.execute_frame
 old_handle_operation_error = PyFrame.handle_operation_error
 old_init_pycode = PyCode.__init__
 old_getexecutioncontext = PyStdObjSpace.getexecutioncontext
+old_compile = PythonAstCompiler.compile
+old_compile_ast = PythonAstCompiler.compile_ast
 
 ATTRIBUTE_ERROR_FORBIDDEN_NAMES = ['getattr']
 STOP_ITERATION_FORBIDDEN_NAMES = ['next']
@@ -56,7 +61,7 @@ def block_handles_exception(self, block, operr_type):
         if prev_opcode == opcodedesc.JUMP_FORWARD.index:
             return True
     elif current_opcode != opcodedesc.DUP_TOP.index:
-        print "Unknown case; expected DUP_TOP"
+        print "Unknown case; expected DUP_TOP, got: %s" % current_opcode
         return True  # unknown, so assume it handles exception
     next_opcode_idx = block.handlerposition + 1
     next_opcode = ord(self.pycode.co_code[next_opcode_idx])
@@ -131,6 +136,7 @@ def __init__pycode(self, space, argcount, nlocals, stacksize, flags,
                    name, firstlineno, lnotab, freevars, cellvars,
                    hidden_applevel=False, magic=default_magic):
     self._co_names = names
+    self.co_source = None
     old_init_pycode(self, space, argcount, nlocals, stacksize, flags,
                     code, consts, names, varnames, filename,
                     name, firstlineno, lnotab, freevars, cellvars,
@@ -144,6 +150,20 @@ def new_getexecutioncontext(self):
     return old_getexecutioncontext(self)
 
 
+def annotate_pycode(w_code, source):
+    if not isinstance(w_code, PyCode):
+        return
+    w_code.co_source = source
+    for const_w in w_code.co_consts_w:
+        annotate_pycode(const_w, source)
+
+
+def new_compile(self, source, filename, mode, flags, hidden_applevel=False):
+    w_code = old_compile(self, source, filename, mode, flags, hidden_applevel)
+    annotate_pycode(w_code, source)
+    return w_code
+
+
 def patch_pypy():
     # Patch-out virtualizables from PyPy so that translation works
     try:
@@ -153,6 +173,9 @@ def patch_pypy():
     except AttributeError:
         pass
 
+    PyStdObjSpace.current_python_process = QuasiConstant(None, W_PythonProcess)
+    PyStdObjSpace.getexecutioncontext = new_getexecutioncontext
+
     PyFrame.__init__ = __init__frame
     PyFrame.execute_frame = new_execute_frame
     PyFrame.block_handles_exception = block_handles_exception
@@ -160,7 +183,11 @@ def patch_pypy():
     PyFrame.handle_operation_error = new_handle_operation_error
 
     PyCode.__init__ = __init__pycode
-    PyCode._immutable_fields_.append('_co_names[*]')
+    PyCode._immutable_fields_.extend(['_co_names[*]', 'co_source'])
 
-    PyStdObjSpace.current_python_process = QuasiConstant(None, W_PythonProcess)
-    PyStdObjSpace.getexecutioncontext = new_getexecutioncontext
+    # Add app-level `co_source` to PyCode (this is hacky)
+    w_code_type = py_space.fromcache(TypeCache).getorbuild(PyCode.typedef)
+    w_code_type.dict_w['co_source'] = interp_attrproperty(
+        'co_source', cls=PyCode, wrapfn="newtext_or_none")
+
+    PythonAstCompiler.compile = new_compile

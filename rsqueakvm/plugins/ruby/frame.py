@@ -44,3 +44,7 @@ class WR_FrameObject(WR_BaseObject):
     @classdef.method('get_code_name')
     def method_get_code_name(self, space):
         return space.newstr_fromstr(self.frame_object.get_code_name())
+
+    @classdef.method('get_code_source')
+    def method_get_code_source(self, space):
+        return space.newstr_fromstr(self.frame_object.get_code_source())
