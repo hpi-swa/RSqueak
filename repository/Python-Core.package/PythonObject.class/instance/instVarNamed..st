@@ -1,3 +1,3 @@
 overrides
 instVarNamed: aName
-	^ Python builtins getattr: self attrName: aName
+	^ Python builtins getattr __call__: self attrName: aName

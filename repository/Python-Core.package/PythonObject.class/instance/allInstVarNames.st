@@ -1,3 +1,3 @@
 overrides
 allInstVarNames
-	^ (Python builtins dir: self) asSmalltalk
+	^ (Python builtins dir __call__: self) asSmalltalk

@@ -1,7 +1,7 @@
 debugging
 miniexample
 	"Use user interrupt to interrupt while loop"
-	^ Python pexec: '
+	^ Python exec: '
 x = 0
 
 def start():

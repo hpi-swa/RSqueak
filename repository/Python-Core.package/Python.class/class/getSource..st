@@ -3,6 +3,7 @@ getSource: pyFrame
 	| pyCode filename contents |
 	pyCode := pyFrame f_code.
 	filename := pyCode co_filename asSmalltalk.
-	filename = '<string>' ifTrue: [ ^ 'Unable to get source.' ].
-	contents := self getContentsOf: filename.
+	contents := (FileStream isAFileNamed: filename)
+		ifTrue: [ self getContentsOf: filename ]
+		ifFalse: [ pyCode co_source asSmalltalk ifNil: [ 'unknown' ] ].
 	^ self filterPySource: contents lineno: pyCode co_firstlineno asSmalltalk

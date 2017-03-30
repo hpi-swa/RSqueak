@@ -1,6 +1,6 @@
 debugging
 fibonacci9
-	Python pexec: '
+	Python exec: '
 def fibonacci9():
     number = 9
     lookup_table = [0]

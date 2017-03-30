@@ -1,3 +1,3 @@
 overrides
 at: aKeyOrIndex
-	^ self __getitem__: aKeyOrIndex
+	^ self __getitem__ __call__: aKeyOrIndex

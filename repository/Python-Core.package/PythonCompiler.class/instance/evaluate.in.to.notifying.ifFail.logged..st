@@ -4,23 +4,16 @@ evaluate: textOrStream in: aContext to: receiver notifying: aRequestor ifFail: f
 	pyCode := textOrStream contents.
 	
 	Python exec: 'rcvr_locals = dict()'.
-	(Python eval: 'rcvr_locals') setdefault: 'self' to: receiver.
+	(Python eval: 'rcvr_locals') setdefault __call__: 'self' to: receiver.
 	
 	(Python isExpression: pyCode)
 		ifTrue: [
-			^ Python builtins
-				eval: pyCode
+			^ Python builtins eval
+				__call__: pyCode
 				globals: (Python eval: 'globals()')
 				locals: (Python eval: 'rcvr_locals')]
 		ifFalse: [
-			^ Python builtins
-				exec: pyCode
+			^ Python builtins exec
+				__call__: pyCode
 				globals: (Python eval: 'globals()')
 				locals: (Python eval: 'rcvr_locals')]
-
-	"pyCode := pyCode copyReplaceAll: 'self.' with: ''.
-	method := (pyCode copyUpTo: $() asSymbol.
-	args := ((((pyCode copyAfter: $() copyUpTo: $))
-		findTokens: {$,})
-			collect: [ :ea | ea withBlanksTrimmed ]) asArray.
-	^ receiver perform: method withArguments: args"

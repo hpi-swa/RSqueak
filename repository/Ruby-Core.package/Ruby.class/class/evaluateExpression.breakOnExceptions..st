@@ -1,3 +1,3 @@
 execution
 evaluateExpression: selection breakOnExceptions: aBool
-	^ Ruby peval: selection asString breakOnExceptions: aBool
+	^ Ruby eval: selection asString breakOnExceptions: aBool

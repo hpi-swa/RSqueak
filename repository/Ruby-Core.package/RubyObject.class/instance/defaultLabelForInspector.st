@@ -1,3 +1,3 @@
 overrides
-defaultTitleForInspector
+defaultLabelForInspector
 	^ self _class asString, ': ', self asString

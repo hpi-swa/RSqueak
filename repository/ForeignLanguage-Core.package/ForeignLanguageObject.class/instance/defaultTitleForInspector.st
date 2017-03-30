@@ -1,3 +1,0 @@
-overrides
-defaultTitleForInspector
-	self subclassResponsibility

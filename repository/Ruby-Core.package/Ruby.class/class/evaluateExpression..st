@@ -1,3 +1,3 @@
 execution
 evaluateExpression: selection
-	^ Ruby peval: selection asString
+	^ Ruby eval: selection asString

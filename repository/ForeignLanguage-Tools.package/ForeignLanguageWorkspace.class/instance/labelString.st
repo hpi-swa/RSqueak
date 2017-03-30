@@ -1,9 +1,7 @@
 foreign-language-support
 labelString
-	| breakOnExceptionsText |
-	breakOnExceptionsText := self breakOnExceptions
-		ifTrue: [ 'break on exceptions' ]
-		ifFalse: [ 'no break on exceptions' ].
-	^ self languageSymbol asString, ' ',
-		self class windowTitlePrefix, ' (', breakOnExceptionsText, ')'
-	
+	| title |
+	title := self languageSymbol asString, ' ', self class windowTitlePrefix.
+	^ self breakOnExceptions
+		ifTrue: [ title, ' (break on exceptions)' ]
+		ifFalse: [ title ]

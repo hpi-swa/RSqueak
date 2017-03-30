@@ -1,4 +1,4 @@
 execution
 evaluateExpression: selection breakOnExceptions: aBool
-	^ Python prun: selection asString breakOnExceptions: aBool
+	^ Python run: selection asString breakOnExceptions: aBool
 	

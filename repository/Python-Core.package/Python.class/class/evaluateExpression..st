@@ -1,4 +1,3 @@
 execution
 evaluateExpression: selection
-	^ Python prun: selection asString
-	
+	^ Python run: selection asString

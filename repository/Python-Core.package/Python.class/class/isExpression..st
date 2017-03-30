@@ -1,4 +1,3 @@
 helpers
 isExpression: aPySource
-	^ (self eval: '_isExpression("""',
-aPySource, '""")') asSmalltalk
+	^ ((Python globals __getitem__ __call__: '_is_expression') __call__: aPySource) asSmalltalk

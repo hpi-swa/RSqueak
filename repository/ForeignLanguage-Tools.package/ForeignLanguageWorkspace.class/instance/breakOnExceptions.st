@@ -1,3 +1,3 @@
 accessing
 breakOnExceptions
-	^ breakOnExceptions ifNil: [ breakOnExceptions := true ]
+	^ breakOnExceptions ifNil: [ breakOnExceptions := false ]

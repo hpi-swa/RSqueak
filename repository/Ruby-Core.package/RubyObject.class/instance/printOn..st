@@ -1,3 +1,3 @@
 overrides
 printOn: aStream
-	aStream nextPutAll: self _inspect asSmalltalk
+	aStream nextPutAll: 'Ruby ', self _inspect asSmalltalk

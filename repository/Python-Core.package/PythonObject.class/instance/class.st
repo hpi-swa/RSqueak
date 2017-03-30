@@ -1,3 +1,3 @@
 overrides
 class
-	^ Python builtins type: self
+	^ Python builtins type __call__: self

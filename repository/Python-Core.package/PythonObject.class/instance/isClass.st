@@ -1,3 +1,3 @@
 helpers
 isClass
-	^ (Python builtins isinstance: self and: Python type) asSmalltalk
+	^ (Python builtins isinstance __call__: self and: Python type) asSmalltalk

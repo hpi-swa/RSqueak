@@ -1,6 +1,6 @@
 debugging
 fibonacci: x
-	Python pexec: '
+	Python exec: '
 def fibonacci(number):
     lookup_table = [0]
     for i in range(2, number + 1):

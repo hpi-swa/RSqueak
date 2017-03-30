@@ -12,7 +12,7 @@ sys.path = ["', Smalltalk image imagePath, '",
 	"', Smalltalk image imagePath, '/pypy/lib-python/2.7/plat-mac/lib-scriptpackages",
 	"', Smalltalk image imagePath, '/site-packages",
 	"." ]
-def _isExpression(x):
+def _is_expression(x):
 	try:
 		compile(x, "<string>", "eval")
 		return True
