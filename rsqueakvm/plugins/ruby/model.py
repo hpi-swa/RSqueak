@@ -4,14 +4,13 @@ from rsqueakvm.plugins.ruby.objspace import ruby_space
 
 
 class W_RubyObject(W_ForeignLanguageObject):
-    _attrs_ = ['wr_object', 's_class']
-    _immutable_fields_ = ['wr_object', 's_class?']
+    _attrs_ = ['wr_object']
+    _immutable_fields_ = ['wr_object']
     repr_classname = 'W_RubyObject'
 
     def __init__(self, wr_object):
         W_ForeignLanguageObject.__init__(self)
         self.wr_object = wr_object
-        self.s_class = None
 
     def getclass(self, space):
         return W_RubyObject(self.wr_object.getclass(ruby_space))

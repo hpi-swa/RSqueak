@@ -15,8 +15,6 @@ try:
 
     from pypy.interpreter.argument import Arguments
     from pypy.interpreter.error import OperationError
-    from pypy.interpreter.function import (
-        Function, Method, StaticMethod, ClassMethod)
 
     IMPORT_FAILED = False
 except ImportError:
@@ -87,38 +85,27 @@ class PythonPlugin(ForeignLanguagePlugin):
         idx = attrname.find(':')
         if idx > 0:
             attrname = attrname[0:idx]
-        wp_result = None
+        wp_attrname = py_space.newtext(attrname)
+        # import pdb; pdb.set_trace()
         try:
-            py_attr = py_space.getattr(wp_rcvr, py_space.newtext(attrname))
-            if (isinstance(py_attr, Function) or
-                    isinstance(py_attr, Method) or
-                    isinstance(py_attr, StaticMethod) or
-                    isinstance(py_attr, ClassMethod)):
+            if attrname == '__call__':  # special __call__ case
+                w_meth = py_space.getattr(wp_rcvr, wp_attrname)
                 args_wp = [utils.smalltalk_to_python(space, a) for a in args_w]
                 # use call_args() to allow variable number of args_w
                 # (but this disables speed hacks in Pypy)
-                w_meth = py_space.getattr(wp_rcvr, py_space.newtext(attrname))
                 args = Arguments(py_space, args_wp)
-                wp_result = py_space.call_args(w_meth, args)
-            else:
-                if len(args_w) == 1:
-                    wp_value = utils.smalltalk_to_python(space, args_w[0])
-                    py_space.setattr(wp_rcvr, py_space.newtext(attrname),
-                                     wp_value)
-                    wp_result = py_space.w_None
-                else:
-                    wp_result = py_attr
+                return W_PythonObject(py_space.call_args(w_meth, args))
+            elif len(args_w) == 1:  # setattr when one argument
+                wp_value = utils.smalltalk_to_python(space, args_w[0])
+                py_space.setattr(wp_rcvr, wp_attrname, wp_value)
+                return W_PythonObject(py_space.w_None)
+            else:  # otherwise getattr
+                return W_PythonObject(py_space.getattr(wp_rcvr, wp_attrname))
         except OperationError as operr:
             return utils.operr_to_w_object(operr)
         except Exception as e:
             print 'Unable to call %s on %s: %s' % (attrname, wp_rcvr, e)
-            raise PrimitiveFailedError
-        if wp_result is None:
-            # import pdb; pdb.set_trace()
-            print ('No result in send primitive (wp_rcvr: %s, attrname: %s)'
-                   % (wp_rcvr, attrname))
-            raise PrimitiveFailedError
-        return W_PythonObject(wp_result)
+        raise PrimitiveFailedError
 
     @staticmethod
     def to_w_object(space, foreign_object):
