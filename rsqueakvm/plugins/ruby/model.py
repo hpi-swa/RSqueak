@@ -15,15 +15,21 @@ class W_RubyObject(W_ForeignLanguageObject):
     def getclass(self, space):
         return W_RubyObject(self.wr_object.getclass(ruby_space))
 
-    def getforeignclass(self, space):
+    def getforeignclass(self):
         return ruby_space.getclass(self.wr_object)
+
+    def guess_classname(self):
+        return self.getforeignclass().name
+
+    def str_content(self):
+        return ruby_space.str_w(ruby_space.send(self.wr_object, 'inspect'))
 
     def is_same_object(self, other):
         return (isinstance(other, W_RubyObject) and
                 other.wr_object is self.wr_object)
 
     def make_class_shadow(self, space):
-        return RubyClassShadow(space, self.getforeignclass(space))
+        return RubyClassShadow(space, self.getforeignclass())
 
 
 class RubyClassShadow(ForeignLanguageClassShadow):

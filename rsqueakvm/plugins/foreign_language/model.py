@@ -18,7 +18,7 @@ class W_ForeignLanguageObjectMeta(type):
 
             @jit.elidable
             def pure_class_shadow(self, space):
-                wf_class = self.getforeignclass(space)
+                wf_class = self.getforeignclass()
                 shadow = self.make_class_shadow(space)
                 return class_shadow_cache.setdefault(wf_class, shadow)
 
@@ -53,7 +53,7 @@ class W_ForeignLanguageObject(W_AbstractObjectWithIdentityHash):
     def getclass(self, space):
         raise NotImplementedError
 
-    def getforeignclass(self, space):
+    def getforeignclass(self):
         raise NotImplementedError
 
     def class_shadow(self, space):

@@ -17,25 +17,29 @@ class W_PythonObject(W_ForeignLanguageObject):
     def getclass(self, space):
         return W_PythonObject(self.wp_object.getclass(py_space))
 
-    def getforeignclass(self, space):
+    def getforeignclass(self):
         return py_space.type(self.wp_object)
+
+    def guess_classname(self):
+        return self.getforeignclass().getname(py_space)
+
+    def str_content(self):
+        return str(self.wp_object)
 
     def is_same_object(self, other):
         return (isinstance(other, W_PythonObject) and
                 other.wp_object is self.wp_object)
 
     def make_class_shadow(self, space):
-        return PythonClassShadow(
-            space, self.getforeignclass(space), self.wp_object)
+        return PythonClassShadow(space, self.wp_object)
 
 
 class PythonClassShadow(ForeignLanguageClassShadow):
     _attrs_ = ['wp_object']
-    _immutable_fields_ = []
+    _immutable_fields_ = ['wp_object']
 
-    def __init__(self, space, wp_class, wp_object):
+    def __init__(self, space, wp_object):
         self.wp_object = wp_object
-        self.name = wp_class.name
         ForeignLanguageClassShadow.__init__(self, space)
 
     def method_exists(self, w_selector):
