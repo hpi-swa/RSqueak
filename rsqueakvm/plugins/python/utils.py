@@ -11,11 +11,14 @@ from pypy.interpreter.main import ensure__main__, compilecode
 from pypy.interpreter.module import Module
 from pypy.interpreter.pycode import PyCode
 from pypy.module.__builtin__ import compiling as py_compiling
+from pypy.module.exceptions.interp_exceptions import (
+    W_BaseException as WP_BaseException)
 from pypy.objspace.std.bytesobject import W_BytesObject as WP_BytesObject
 from pypy.objspace.std.floatobject import W_FloatObject as WP_FloatObject
 from pypy.objspace.std.intobject import W_IntObject as WP_IntObject
 from pypy.objspace.std.listobject import W_ListObject as WP_ListObject
-from pypy.objspace.std.tupleobject import W_TupleObject as WP_TupleObject
+from pypy.objspace.std.tupleobject import (
+    W_AbstractTupleObject as WP_AbstractTupleObject)
 from pypy.objspace.std.unicodeobject import W_UnicodeObject as WP_UnicodeObject
 
 from rpython.rlib import objectmodel
@@ -60,7 +63,7 @@ def python_to_smalltalk(space, wp_object):
     elif isinstance(wp_object, WP_ListObject):
         return space.wrap_list(
             [python_to_smalltalk(space, x) for x in wp_object.getitems()])
-    elif isinstance(wp_object, WP_TupleObject):
+    elif isinstance(wp_object, WP_AbstractTupleObject):
         return space.wrap_list(
             [python_to_smalltalk(space, x) for x in wp_object.tolist()])
     elif wp_object is None or wp_object is py_space.w_None:
@@ -72,6 +75,10 @@ def python_to_smalltalk(space, wp_object):
         elif wp_object is py_space.w_True:
             return space.w_true
         return space.wrap_int(py_space.int_w(wp_object))
+    elif isinstance(wp_object, WP_BaseException):
+        w_name = space.wrap_string(py_space.type(wp_object).getname(py_space))
+        w_error_str = python_to_smalltalk(space, wp_object.descr_str(py_space))
+        return space.wrap_list([w_name, w_error_str])
     print 'Cannot convert %s to Smalltalk' % wp_object
     raise PrimitiveFailedError
 
