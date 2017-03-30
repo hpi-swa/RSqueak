@@ -89,8 +89,11 @@ class W_ForeignLanguageProcess(W_AbstractObjectWithIdentityHash):
     def run(self):
         raise NotImplementedError
 
-    def set_current(self):
-        raise NotImplementedError
+    def pre_resume(self):  # called on every switch to language process
+        pass
+
+    def post_resume(self):  # called as soon as Smalltalk continues
+        pass
 
     def w_top_frame(self):
         raise NotImplementedError
@@ -148,6 +151,8 @@ class W_ForeignLanguageProcess(W_AbstractObjectWithIdentityHash):
 
     def switch_to_smalltalk(self, interp, s_frame, first_call=False):
         from rsqueakvm.storage_contexts import ContextPartShadow
+
+        self.post_resume()
 
         # print 'Switch to Smalltalk'
         if self.is_done():

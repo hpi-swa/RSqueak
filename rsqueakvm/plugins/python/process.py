@@ -20,9 +20,6 @@ class W_PythonProcess(W_ForeignLanguageProcess):
     def run(self):
         print 'Python start'
         try:
-            # switch back to Squeak before executing Python code
-            self.runner().return_to_smalltalk()
-
             retval = _run_eval_string(self.source, self.filename, self.cmd)
             self.set_result(W_PythonObject(retval))
         except OperationError as operr:
@@ -30,8 +27,12 @@ class W_PythonProcess(W_ForeignLanguageProcess):
             # save Python error as result instead.
             self.set_result(operr_to_w_object(operr))
 
-    def set_current(self):
+    def pre_resume(self):
         py_space.current_python_process.set(self)
+
+    def post_resume(self):
+        # unset `current_python_process` to restore original behavior
+        py_space.current_python_process.set(None)
 
     def w_top_frame(self):
         if self.ec is None:

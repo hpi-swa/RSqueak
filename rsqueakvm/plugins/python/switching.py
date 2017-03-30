@@ -13,9 +13,14 @@ class SwitchToSmalltalkAction(PeriodicAsyncAction):
         # import pdb; pdb.set_trace()
         process = self.space.current_python_process.get()
         if process is None:
+            print 'no language process'
             return
         runner = process.runner()
         if runner is None:
+            print 'no runner'
+            return
+        if not runner.resumable():
+            print 'not resumable'
             return
 
         # print 'Python yield'

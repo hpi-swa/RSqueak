@@ -121,11 +121,11 @@ def new_handle_operation_error(self, ec, operr, attach_tb=True):
     if isinstance(operr, RestartException):
         print 'Re-raising RestartException'
         raise operr
-    language = self.space.current_python_process.get()
-    if (language is not None and language.break_on_exceptions() and
+    python_process = self.space.current_python_process.get()
+    if (python_process is not None and python_process.break_on_exceptions() and
             not self.has_exception_handler(operr)):
         # import pdb; pdb.set_trace()
-        language.set_error(operr_to_w_object(operr))
+        python_process.set_error(operr_to_w_object(operr))
         print 'Python error caught'
         switch_action.perform(ec, self)
     return old_handle_operation_error(self, ec, operr, attach_tb)

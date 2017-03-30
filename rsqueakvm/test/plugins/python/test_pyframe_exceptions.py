@@ -20,9 +20,11 @@ def has_exception_handler(code):
 def no_error_caught(code, cmd):
     pycode = compilecode(py_space, code, '<string>', cmd)
     py_frame = py_space.FrameClass(py_space, pycode, py_space.newdict(), None)
-    py_frame.run()
-    process = py_space.current_python_process.get()
-    return process is not None and process.get_error() is None
+    try:
+        py_frame.run()
+        return True
+    except:
+        return False
 
 
 def test_simple_exception():

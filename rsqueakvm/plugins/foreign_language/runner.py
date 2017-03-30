@@ -3,76 +3,90 @@ from rpython.rlib import rstacklet
 
 class AbstractLanguageRunner():
 
-    def __init__(self, language):
-        self._language = language
+    def __init__(self, language_process):
+        self._language_process = language_process
 
-    def language(self):
-        return self._language
+    def language_process(self):
+        return self._language_process
 
     def start(self):
-        self.language().set_current()
+        self.language_process().pre_resume()
         self.start_thread()
+
+    def resume(self):
+        self.language_process().pre_resume()
+        self.resume_thread()
+
+    def return_to_smalltalk(self):
+        self.yield_thread()
 
     def start_thread(self):
         raise NotImplementedError
 
-    def resume(self):
-        self.language().set_current()
-        self.resume_thread()
-
     def resume_thread(self):
         raise NotImplementedError
 
-    def return_to_smalltalk(self):
+    def resumable(self):
+        raise NotImplementedError
+
+    def yield_thread(self):
         raise NotImplementedError
 
 
 class StackletLanguageRunner(AbstractLanguageRunner):
     sthread = None
 
-    def __init__(self, language):
-        AbstractLanguageRunner.__init__(self, language)
-        self.sthread = self.ensure_sthread()
-        self.language_handle = self.sthread.get_null_handle()
-        self.smalltalk_handle = self.sthread.get_null_handle()
-
-    def ensure_sthread(self):
-        if self.sthread is None:
-            self.sthread = rstacklet.StackletThread()
-        return self.sthread
+    def __init__(self, language_process):
+        AbstractLanguageRunner.__init__(self, language_process)
+        self.sthread = rstacklet.StackletThread()
+        # there can only be one valid handle at a time (main or foreign thread)
+        self.handle = self.sthread.get_null_handle()
 
     def start_thread(self):
         global_execution_state.origin = self
-        self.language_handle = self.sthread.new(
-            self.__class__.new_stacklet_callback)
+        self.handle = self.sthread.new(self.__class__.new_stacklet_callback)
 
     def resume_thread(self):
-        if not self._is_valid_handle(self.language_handle):
-            print 'language_handle not valid'
-            return
-        self.language_handle = self.sthread.switch(self.language_handle)
+        self.switch_to_handle()
 
-    def return_to_smalltalk(self):
-        if not self._is_valid_handle(self.smalltalk_handle):
-            print 'smalltalk_handle not valid'
-            return
-        self.smalltalk_handle = self.sthread.switch(self.smalltalk_handle)
+    def resumable(self):
+        return self._has_valid_handle()
 
-    def _is_valid_handle(self, h):
-        if (h is None or self.sthread.is_empty_handle(h) or
-                h == self.sthread.get_null_handle()):
+    def yield_thread(self):
+        self.switch_to_handle()
+
+    def switch_to_handle(self):
+        if not self._has_valid_handle():
+            print 'handle not valid: %s' % self.handle
+            return
+        self.handle = self.sthread.switch(self.handle)
+        if self.handle is self.sthread.get_null_handle():
+            print 'language_process thread has finished1'
+        if self.sthread.is_empty_handle(self.handle):
+            print 'language_process thread has finished2'
+
+    def _has_valid_handle(self):
+        # TODO: make less verbose when this proved to work
+        if not bool(self.handle):
+            print 'handle evaluates to False: %s' % self.handle
+            return False
+        if self.sthread.is_empty_handle(self.handle):
+            print 'handle is empty: %s' % self.handle
+            return False
+        if self.handle is self.sthread.get_null_handle():
+            print 'handle is null handle: %s' % self.handle
             return False
         return True
 
     @staticmethod
     def new_stacklet_callback(h, arg):
-        print 'new_stacklet_callback:', h, arg
+        print 'new_stacklet_callback:', h
         self = global_execution_state.origin
-        self.smalltalk_handle = h
+        self.handle = h
         global_execution_state.clear()
-        self.language().run_safe()
+        self.language_process().run_safe()
         global_execution_state.origin = self
-        return self.smalltalk_handle  # return to Smalltalk when done
+        return self.handle  # return to Smalltalk when done
 
 
 class GreenletLanguageRunner(AbstractLanguageRunner):
@@ -85,14 +99,17 @@ class GreenletLanguageRunner(AbstractLanguageRunner):
     def resume_thread(self):
         self.greenlet.switch()
 
-    def return_to_smalltalk(self):
+    def resumable(self):
+        return not self.greenlet.dead
+
+    def yield_thread(self):
         self.greenlet.parent.switch()
 
     @staticmethod
     def new_greenlet_callback():
         print 'new_greenlet_callback'
         self = global_execution_state.origin
-        return self.language().run_safe
+        return self.language_process().run_safe
 
 
 class GlobalState:

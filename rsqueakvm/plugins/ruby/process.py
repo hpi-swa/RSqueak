@@ -25,8 +25,12 @@ class W_RubyProcess(W_ForeignLanguageProcess):
         except RubyError as e:
             self.set_result(W_RubyObject(e.w_value))
 
-    def set_current(self):
+    def pre_resume(self):
         ruby_space.current_ruby_process.set(self)
+
+    def post_resume(self):
+        # unset `current_ruby_process` to restore original behavior
+        ruby_space.current_ruby_process.set(None)
 
     def w_top_frame(self):
         if self.ec is None:
