@@ -13,6 +13,10 @@ from rpython.rlib.rjitlog import rjitlog
 
 
 class ProfilerPlugin(Plugin):
+
+    def is_optional(self):
+        return True
+
     def patch(self):
         patch_interpreter()
 
