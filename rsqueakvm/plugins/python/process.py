@@ -17,13 +17,13 @@ class W_PythonProcess(W_ForeignLanguageProcess):
         W_ForeignLanguageProcess.__init__(
             self, space, w_rcvr, method_name, args_w,
             is_send, break_on_exceptions)
-        self.source = source
-        self.filename = filename
-        self.cmd = cmd
+        self.source = source or ''
+        self.filename = filename or ''
+        self.cmd = cmd or ''
         self.ec = py_space.createexecutioncontext()
 
     def eval(self):
-        if self.source is None or self.filename is None or self.cmd is None:
+        if self.source == '' or self.filename == '' or self.cmd == '':
             return self.fail('Invalid Python eval')
         print 'Python start'
         try:

@@ -43,8 +43,8 @@ class W_ForeignLanguageProcess(W_AbstractObjectWithIdentityHash):
         W_AbstractObjectWithIdentityHash.__init__(self)
         self._space = space
         self.w_rcvr = w_rcvr
-        self.method_name = method_name
-        self.args_w = args_w
+        self.method_name = method_name or ''
+        self.args_w = args_w or []
         self._done = False
         self.w_result = None
         self.w_error = None
@@ -126,8 +126,7 @@ class W_ForeignLanguageProcess(W_AbstractObjectWithIdentityHash):
             self._done = True
 
     def guarded_send(self):
-        if (self.w_rcvr is None or self.method_name is None or
-                self.args_w is None):
+        if (self.w_rcvr is None or self.method_name == ''):
             error_msg = 'Invalid send (w_rcvr: %s, method: %s, args_w: %s)' % (
                 self.w_rcvr, self.method_name, self.args_w)
             print error_msg

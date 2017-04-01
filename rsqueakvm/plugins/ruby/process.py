@@ -18,12 +18,12 @@ class W_RubyProcess(W_ForeignLanguageProcess):
         W_ForeignLanguageProcess.__init__(
             self, space, w_rcvr, method_name, args_w,
             is_send, break_on_exceptions)
-        self.source = source
+        self.source = source or ''
         self.filepath = filepath or '-e'
         self.ec = ExecutionContext()
 
     def run(self):
-        if self.source is None:
+        if self.source == '':
             return self.fail('Invalid Ruby eval')
         print 'Ruby start'
         try:
