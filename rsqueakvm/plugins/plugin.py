@@ -28,6 +28,8 @@ class Plugin(object):
         return False
 
     def is_enabled(self):
+        if self.name() in system.disabled_plugins:
+            return False
         if self.is_optional():
             return (self.name() in system.optional_plugins or system.IS_SPHINX)
         return True  # enabled by default
