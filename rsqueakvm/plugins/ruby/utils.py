@@ -12,6 +12,7 @@ from topaz.objects.symbolobject import W_SymbolObject as WR_SymbolObject
 from rpython.rlib import objectmodel
 
 
+@objectmodel.specialize.argtype(0)
 def ruby_to_smalltalk(space, wr_object):
     if isinstance(wr_object, WR_FloatObject):
         return space.wrap_float(ruby_space.float_w(wr_object))
@@ -32,7 +33,7 @@ def ruby_to_smalltalk(space, wr_object):
             [ruby_to_smalltalk(space, x) for x in
                 wr_object.listview(ruby_space)])
     print 'Cannot convert %s to Smalltalk' % wr_object
-    return None
+    return space.w_nil
 
 
 @objectmodel.specialize.argtype(0)
@@ -57,4 +58,4 @@ def smalltalk_to_ruby(space, w_object):
             if w_object.getclass(space).is_same_object(w_Symbol):
                 return ruby_space.newsymbol(space.unwrap_string(w_object))
     print 'Cannot convert %s to Ruby' % w_object
-    return None
+    return ruby_space.w_nil

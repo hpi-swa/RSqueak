@@ -33,15 +33,9 @@ class W_RubyProcess(W_ForeignLanguageProcess):
             self.set_result(W_RubyObject(e.w_value))
 
     def send(self):
-        wr_rcvr = utils.smalltalk_to_ruby(self.space(), self.w_rcvr)
-        if wr_rcvr is None:
-            return self.fail('wr_rcvr is None')
-        args_rw = []
-        for w_arg in self.args_w:
-            arg_wr = utils.smalltalk_to_ruby(self.space(), w_arg)
-            if wr_rcvr is None:
-                return self.fail('wr_rcvr is None')
-            args_rw.append(arg_wr)
+        st_to_rb = utils.smalltalk_to_ruby
+        wr_rcvr = st_to_rb(self.space(), self.w_rcvr)
+        args_rw = [st_to_rb(self.space(), w_arg) for w_arg in self.args_w]
         try:
             wr_result = ruby_space.send(
                 wr_rcvr, self.method_name, args_w=args_rw)

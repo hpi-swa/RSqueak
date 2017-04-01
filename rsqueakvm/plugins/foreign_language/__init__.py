@@ -110,10 +110,7 @@ class ForeignLanguagePlugin(Plugin):
         def asSmalltalk(interp, s_frame, w_rcvr):
             if not isinstance(w_rcvr, self.w_object_class()):
                 raise PrimitiveFailedError
-            w_result = self.to_w_object(interp.space, w_rcvr)
-            if w_result is None:
-                raise PrimitiveFailedError
-            return w_result
+            return self.to_w_object(interp.space, w_rcvr)
 
         @self.expose_primitive(unwrap_spec=[object, object])
         def registerSpecificClass(interp, s_frame, w_rcvr, language_obj):

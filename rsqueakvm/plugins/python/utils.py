@@ -79,7 +79,7 @@ def python_to_smalltalk(space, wp_object):
         w_error_str = python_to_smalltalk(space, wp_object.descr_str(py_space))
         return space.wrap_list([w_name, w_error_str])
     print 'Cannot convert %s to Smalltalk' % wp_object
-    return None
+    return space.w_nil
 
 
 @objectmodel.specialize.argtype(0)
@@ -101,7 +101,7 @@ def smalltalk_to_python(space, w_object):
         return py_space.newtext(space.unwrap_string(w_object))
     # import pdb; pdb.set_trace()
     print 'Cannot convert %s to Python' % w_object
-    return None
+    return py_space.w_None
 
 
 def get_restart_pycode(source, filename='<string>', cmd='exec'):
