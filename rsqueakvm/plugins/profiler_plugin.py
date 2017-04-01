@@ -12,18 +12,9 @@ from rpython.rlib import rvmprof, jit
 from rpython.rlib.rjitlog import rjitlog
 
 
-class ProfilerPlugin(Plugin):
-
-    def patch(self):
-        patch_interpreter()
-
-plugin = ProfilerPlugin()
-
-# ____________________________________________________________
-
 def patch_interpreter():
-    from rpython.rlib import rvmprof
     from rsqueakvm.interpreter import Interpreter
+
     def _get_code(interp, s_frame, s_sender, may_context_switch=True):
         return s_frame.w_method()
     _decorator = rvmprof.vmprof_execute_code("rsqueak", _get_code)
@@ -42,17 +33,29 @@ def _get_full_name(w_cm):
     # must not be longer than 255 chars
     return "st:%s:0:/img" % _safe(w_cm.safe_identifier_string())
 
-rvmprof.register_code_object_class(W_CompiledMethod, _get_full_name)
-
 
 def patch_compiled_method():
     def _my_post_init(self):
         from rpython.rlib import rvmprof
         rvmprof.register_code(self, _get_full_name)
     W_CompiledMethod.post_init = _my_post_init
-patch_compiled_method()
 
 # ____________________________________________________________
+
+
+class ProfilerPlugin(Plugin):
+
+    def is_optional(self):
+        return True
+
+    def setup(self):
+        rvmprof.register_code_object_class(W_CompiledMethod, _get_full_name)
+
+    def patch(self):
+        patch_interpreter()
+        patch_compiled_method()
+
+plugin = ProfilerPlugin()
 
 
 @plugin.expose_primitive(unwrap_spec=[object, int, float])
