@@ -29,14 +29,17 @@ def target(driver, args):
     config.translating = True
 
     system.expose_options(driver.config)
+
+    if 'PythonPlugin' in system.optional_plugins:
+        # Disable vmprof, because it causes compiling errors
+        system.disabled_plugins += ',ProfilerPlugin'
+
     # We must not import this before the config was exposed
     from rsqueakvm.main import safe_entry_point
-    if "PythonPlugin" in system.optional_plugins:
+    if 'PythonPlugin' in system.optional_plugins:
         from rsqueakvm.plugins.python.utils import entry_point
         from pypy.tool.ann_override import PyPyAnnotatorPolicy
         ann_policy = PyPyAnnotatorPolicy()
-        # Disable vmprof, because it causes compiling errors
-        system.disabled_plugins += ',ProfilerPlugin'
         return entry_point, None, ann_policy
     return safe_entry_point, None, None
 
