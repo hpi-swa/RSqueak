@@ -1,4 +1,3 @@
-from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger
 from rsqueakvm.plugins.ruby.model import W_RubyObject
 from rsqueakvm.plugins.ruby.objspace import ruby_space
@@ -33,14 +32,14 @@ def ruby_to_smalltalk(space, wr_object):
             [ruby_to_smalltalk(space, x) for x in
                 wr_object.listview(ruby_space)])
     print 'Cannot convert %s to Smalltalk' % wr_object
-    raise PrimitiveFailedError
+    return None
 
 
 @objectmodel.specialize.argtype(0)
 def smalltalk_to_ruby(space, w_object):
     if isinstance(w_object, W_RubyObject):
         return w_object.wr_object
-    elif w_object is None or w_object is space.w_nil:
+    elif w_object is space.w_nil:
         return ruby_space.w_nil
     elif w_object is space.w_true:
         return ruby_space.w_true
@@ -58,4 +57,4 @@ def smalltalk_to_ruby(space, w_object):
             if w_object.getclass(space).is_same_object(w_Symbol):
                 return ruby_space.newsymbol(space.unwrap_string(w_object))
     print 'Cannot convert %s to Ruby' % w_object
-    raise PrimitiveFailedError
+    return None

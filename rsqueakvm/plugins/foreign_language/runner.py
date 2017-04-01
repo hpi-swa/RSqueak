@@ -84,7 +84,7 @@ class StackletLanguageRunner(AbstractLanguageRunner):
         self = global_execution_state.origin
         self.handle = h
         global_execution_state.clear()
-        self.language_process().run_safe()
+        self.language_process().safe_run()
         global_execution_state.origin = self
         return self.handle  # return to Smalltalk when done
 
@@ -109,7 +109,7 @@ class GreenletLanguageRunner(AbstractLanguageRunner):
     def new_greenlet_callback():
         print 'new_greenlet_callback'
         self = global_execution_state.origin
-        return self.language_process().run_safe
+        return self.language_process().safe_run
 
 
 class GlobalState:

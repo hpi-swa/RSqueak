@@ -13,9 +13,6 @@ try:
     from rsqueakvm.plugins.python.process import W_PythonProcess
     from rsqueakvm.plugins.python.switching import PyFrameRestartInfo
 
-    from pypy.interpreter.argument import Arguments
-    from pypy.interpreter.error import OperationError
-
     IMPORT_FAILED = False
 except ImportError:
     try:
@@ -59,7 +56,7 @@ class PythonPlugin(ForeignLanguagePlugin):
         py_space.startup()
 
     @staticmethod
-    def new_language_process(space, args_w):
+    def new_eval_process(space, args_w):
         if len(args_w) != 4:
             raise PrimitiveFailedError
         source_w = args_w[0]
@@ -73,39 +70,19 @@ class PythonPlugin(ForeignLanguagePlugin):
         filename = space.unwrap_string(filename_w)
         cmd = space.unwrap_string(cmd_w)
         break_on_exceptions = args_w[3] is space.w_true
-        return W_PythonProcess(source, filename, cmd, break_on_exceptions)
+        return W_PythonProcess(
+            space, source=source, filename=filename, cmd=cmd,
+            break_on_exceptions=break_on_exceptions)
+
+    @staticmethod
+    def new_send_process(space, w_rcvr, method_name, args_w):
+        return W_PythonProcess(
+            space, is_send=True,
+            w_rcvr=w_rcvr, method_name=method_name, args_w=args_w)
 
     @staticmethod
     def w_object_class():
         return W_PythonObject
-
-    @staticmethod
-    def perform_send(space, w_rcvr, attrname, args_w):
-        wp_rcvr = utils.smalltalk_to_python(space, w_rcvr)
-        idx = attrname.find(':')
-        if idx > 0:
-            attrname = attrname[0:idx]
-        wp_attrname = py_space.newtext(attrname)
-        # import pdb; pdb.set_trace()
-        try:
-            if attrname == '__call__':  # special __call__ case
-                w_meth = py_space.getattr(wp_rcvr, wp_attrname)
-                args_wp = [utils.smalltalk_to_python(space, a) for a in args_w]
-                # use call_args() to allow variable number of args_w
-                # (but this disables speed hacks in Pypy)
-                args = Arguments(py_space, args_wp)
-                return W_PythonObject(py_space.call_args(w_meth, args))
-            elif len(args_w) == 1:  # setattr when one argument
-                wp_value = utils.smalltalk_to_python(space, args_w[0])
-                py_space.setattr(wp_rcvr, wp_attrname, wp_value)
-                return W_PythonObject(py_space.w_None)
-            else:  # otherwise getattr
-                return W_PythonObject(py_space.getattr(wp_rcvr, wp_attrname))
-        except OperationError as operr:
-            return utils.operr_to_w_object(operr)
-        except Exception as e:
-            print 'Unable to call %s on %s: %s' % (attrname, wp_rcvr, e)
-        raise PrimitiveFailedError
 
     @staticmethod
     def to_w_object(space, foreign_object):

@@ -1,6 +1,5 @@
 import os
 
-from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger
 from rsqueakvm.plugins.python.model import W_PythonObject
 from rsqueakvm.plugins.python.objspace import py_space
@@ -66,7 +65,7 @@ def python_to_smalltalk(space, wp_object):
     elif isinstance(wp_object, WP_AbstractTupleObject):
         return space.wrap_list(
             [python_to_smalltalk(space, x) for x in wp_object.tolist()])
-    elif wp_object is None or wp_object is py_space.w_None:
+    elif wp_object is py_space.w_None:
         return space.w_nil
     elif isinstance(wp_object, WP_IntObject):
         # WP_BoolObject inherits from WP_IntObject
@@ -80,14 +79,14 @@ def python_to_smalltalk(space, wp_object):
         w_error_str = python_to_smalltalk(space, wp_object.descr_str(py_space))
         return space.wrap_list([w_name, w_error_str])
     print 'Cannot convert %s to Smalltalk' % wp_object
-    raise PrimitiveFailedError
+    return None
 
 
 @objectmodel.specialize.argtype(0)
 def smalltalk_to_python(space, w_object):
     if isinstance(w_object, W_PythonObject):
         return w_object.wp_object
-    elif w_object is None or w_object is space.w_nil:
+    elif w_object is space.w_nil:
         return py_space.w_None
     elif w_object is space.w_true:
         return py_space.w_True
@@ -102,7 +101,7 @@ def smalltalk_to_python(space, w_object):
         return py_space.newtext(space.unwrap_string(w_object))
     # import pdb; pdb.set_trace()
     print 'Cannot convert %s to Python' % w_object
-    raise PrimitiveFailedError
+    return None
 
 
 def get_restart_pycode(source, filename='<string>', cmd='exec'):
@@ -127,7 +126,6 @@ def get_restart_pycode(source, filename='<string>', cmd='exec'):
     except OperationError as e:
         # import pdb; pdb.set_trace()
         print 'Failed to compile new frame: %s' % e.errorstr(py_space)
-    return
 
 
 def operr_to_w_object(operr):

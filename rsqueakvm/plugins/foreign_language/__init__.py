@@ -4,8 +4,6 @@ from rsqueakvm.plugins.foreign_language.model import W_ForeignLanguageObject
 from rsqueakvm.plugins.foreign_language.process import W_ForeignLanguageProcess
 from rsqueakvm.plugins.plugin import Plugin
 
-from rpython.rlib import jit
-
 
 class ForeignLanguagePlugin(Plugin):
 
@@ -24,7 +22,11 @@ class ForeignLanguagePlugin(Plugin):
         raise NotImplementedError
 
     @staticmethod
-    def new_language_process(space, args_w):
+    def new_eval_process(space, args_w):
+        raise NotImplementedError
+
+    @staticmethod
+    def new_send_process(space, w_rcvr, method_name, args_w):
         raise NotImplementedError
 
     @staticmethod
@@ -44,9 +46,31 @@ class ForeignLanguagePlugin(Plugin):
                 raise PrimitiveFailedError
             # import pdb; pdb.set_trace()
             args_w = s_frame.peek_n(argcount)
-            language_process = self.new_language_process(interp.space, args_w)
+            language_process = self.new_eval_process(interp.space, args_w)
             language_process.start()
             # when we are here, the foreign language process has yielded
+            frame = language_process.switch_to_smalltalk(
+                interp, s_frame, first_call=True)
+            s_frame.pop_n(argcount + 1)
+            return frame
+
+        @self.expose_primitive(result_is_new_frame=True, compiled_method=True)
+        def send(interp, s_frame, argcount, w_method):
+            if not self.is_operational():
+                raise PrimitiveFailedError
+            # import pdb; pdb.set_trace()
+            args_w = s_frame.peek_n(argcount)
+            w_rcvr = s_frame.peek(argcount)
+            w_selector_name = w_method.literalat0(interp.space, 2)
+            if not isinstance(w_selector_name, W_BytesObject):
+                raise PrimitiveFailedError
+            method_name = interp.space.unwrap_string(w_selector_name)
+            idx = method_name.find(':')
+            if idx > 0:
+                method_name = method_name[0:idx]
+            language_process = self.new_send_process(
+                interp.space, w_rcvr, method_name, args_w)
+            language_process.start()
             frame = language_process.switch_to_smalltalk(
                 interp, s_frame, first_call=True)
             s_frame.pop_n(argcount + 1)
@@ -62,21 +86,6 @@ class ForeignLanguagePlugin(Plugin):
             if not language_process.resume():
                 raise PrimitiveFailedError
             return language_process.switch_to_smalltalk(interp, s_frame)
-
-        @self.expose_primitive(compiled_method=True)
-        @jit.unroll_safe
-        def send(interp, s_frame, argcount, w_method):
-            # import pdb; pdb.set_trace()
-            space = interp.space
-            args_w = s_frame.peek_n(argcount)
-            w_rcvr = s_frame.peek(argcount)
-            w_selector_name = w_method.literalat0(space, 2)
-            if not isinstance(w_selector_name, W_BytesObject):
-                raise PrimitiveFailedError
-            method_name = space.unwrap_string(w_selector_name)
-            w_result = self.perform_send(space, w_rcvr, method_name, args_w)
-            s_frame.pop_n(argcount + 1)
-            return w_result
 
         @self.expose_primitive(unwrap_spec=[object, object])
         def lastError(interp, s_frame, w_rcvr, language_process):
@@ -101,7 +110,10 @@ class ForeignLanguagePlugin(Plugin):
         def asSmalltalk(interp, s_frame, w_rcvr):
             if not isinstance(w_rcvr, self.w_object_class()):
                 raise PrimitiveFailedError
-            return self.to_w_object(interp.space, w_rcvr)
+            w_result = self.to_w_object(interp.space, w_rcvr)
+            if w_result is None:
+                raise PrimitiveFailedError
+            return w_result
 
         @self.expose_primitive(unwrap_spec=[object, object])
         def registerSpecificClass(interp, s_frame, w_rcvr, language_obj):

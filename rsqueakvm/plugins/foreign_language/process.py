@@ -33,19 +33,30 @@ class ForeignLanguageProcessMeta(type):
 class W_ForeignLanguageProcess(W_AbstractObjectWithIdentityHash):
     __metaclass__ = ForeignLanguageProcessMeta
     _attrs_ = [
-        '_runner', '_done', 'w_result', 'w_error', '_break_on_exceptions']
+        '_runner', '_done', 'w_result', 'w_error',
+        '_space', 'w_rcvr', 'method_name', 'args_w',
+        '_is_send', '_break_on_exceptions']
     repr_classname = 'W_ForeignLanguageProcess'
 
-    def __init__(self, break_on_exceptions=True):
+    def __init__(self, space, w_rcvr=None, method_name=None, args_w=None,
+                 is_send=False, break_on_exceptions=False):
         W_AbstractObjectWithIdentityHash.__init__(self)
+        self._space = space
+        self.w_rcvr = w_rcvr
+        self.method_name = method_name
+        self.args_w = args_w
         self._done = False
         self.w_result = None
         self.w_error = None
+        self._is_send = is_send
         self._break_on_exceptions = break_on_exceptions
         if objectmodel.we_are_translated():
             self._runner = runner.StackletLanguageRunner(self)
         else:
             self._runner = runner.GreenletLanguageRunner(self)
+
+    def space(self):
+        return self._space
 
     @staticmethod
     def load_special_objects(cls, language_name, space):
@@ -86,7 +97,10 @@ class W_ForeignLanguageProcess(W_AbstractObjectWithIdentityHash):
 
     # Abstract methods
 
-    def run(self):
+    def eval(self):
+        raise NotImplementedError
+
+    def send(self):
         raise NotImplementedError
 
     def pre_resume(self):  # called on every switch to language process
@@ -100,13 +114,26 @@ class W_ForeignLanguageProcess(W_AbstractObjectWithIdentityHash):
 
     # Helpers
 
-    def run_safe(self):
+    def safe_run(self):
         try:
-            self.run()
+            if self._is_send:
+                self.guarded_send()
+            else:
+                self.eval()
         except Exception as e:
             print 'Unknown error in thread: %s' % e
         finally:
             self._done = True
+
+    def guarded_send(self):
+        if (self.w_rcvr is None or self.method_name is None or
+                self.args_w is None):
+            error_msg = 'Invalid send (w_rcvr: %s, method: %s, args_w: %s)' % (
+                self.w_rcvr, self.method_name, self.args_w)
+            print error_msg
+            self.set_error(self.space().wrap_string(error_msg))
+            return
+        self.send()
 
     def start(self):
         self.runner().start()
@@ -128,6 +155,10 @@ class W_ForeignLanguageProcess(W_AbstractObjectWithIdentityHash):
 
     def is_done(self):
         return self._done
+
+    def fail(self, error_msg):
+        print error_msg
+        self.set_error(self.space().wrap_string(error_msg))
 
     def get_result(self):
         return self.w_result

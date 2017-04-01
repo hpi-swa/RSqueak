@@ -10,8 +10,6 @@ try:
     from rsqueakvm.plugins.ruby.patching import patch_topaz
     from rsqueakvm.plugins.ruby.process import W_RubyProcess
 
-    from topaz.error import RubyError, print_traceback
-
     IMPORT_FAILED = False
 except ImportError as e:
     try:
@@ -51,7 +49,7 @@ class RubyPlugin(ForeignLanguagePlugin):
         ruby_space.setup(argv[0])
 
     @staticmethod
-    def new_language_process(space, args_w):
+    def new_eval_process(space, args_w):
         if (len(args_w) != 3):
             raise PrimitiveFailedError
         source_w = args_w[0]
@@ -62,31 +60,19 @@ class RubyPlugin(ForeignLanguagePlugin):
         source = space.unwrap_string(source_w)
         filepath = space.unwrap_string(filepath_w)
         break_on_exceptions = args_w[2] is space.w_true
-        return W_RubyProcess(source, filepath, break_on_exceptions)
+        return W_RubyProcess(
+            space, source=source, filepath=filepath,
+            break_on_exceptions=break_on_exceptions)
+
+    @staticmethod
+    def new_send_process(space, w_rcvr, method_name, args_w):
+        return W_RubyProcess(
+            space, w_rcvr=w_rcvr, method_name=method_name, args_w=args_w,
+            is_send=True)
 
     @staticmethod
     def w_object_class():
         return W_RubyObject
-
-    @staticmethod
-    def perform_send(space, w_rcvr, methodname, args_w):
-        wr_rcvr = utils.smalltalk_to_ruby(space, w_rcvr)
-        args_rw = [utils.smalltalk_to_ruby(space, w_arg) for w_arg in args_w]
-        idx = methodname.find(':')
-        if idx > 0:
-            methodname = methodname[0:idx]
-        wr_result = None
-        try:
-            wr_result = ruby_space.send(wr_rcvr, methodname, args_w=args_rw)
-        except RubyError as e:
-            print_traceback(ruby_space, e.w_value)
-            raise PrimitiveFailedError
-        if wr_result is None:
-            # import pdb; pdb.set_trace()
-            print ('No result in send primitive (wr_rcvr: %s, methodname: %s)'
-                   % (wr_rcvr, methodname))
-            raise PrimitiveFailedError
-        return W_RubyObject(wr_result)
 
     @staticmethod
     def to_w_object(space, foreign_object):
