@@ -66,6 +66,12 @@ def _usage(argv):
           Execution:
             -r|--run <code>  - Code will be compiled and executed in
                                headless mode, result printed.
+            -rr <code>       - Code will be compiled and executed in
+                               headless mode, twice, the second result printed.
+                               This is a workaround for making jittests and
+                               benchmarking easier, because do-its are not JIT'ed
+                               right now, due to the dynamic frame size
+                               calculation.
             -m|--method <selector>
                              - Selector will be sent to nil in
                                headless mode, result printed.
@@ -79,6 +85,9 @@ def _usage(argv):
                                synthetic high-prio Process.
             -u|--stop-ui     - Only with -m or -r. Try to stop UI-process at
                                startup. Can help benchmarking.
+            --run-file       - Run the .st file supplied as first argument. No
+                               display will be created, but stdin/stdout will
+                               be connected so terminal input/output will work.
             --shell          - Stop after loading the image. Any code typed is
                                compiled an run.
             --simulate-numeric-primitives
@@ -93,13 +102,24 @@ def _usage(argv):
 
           Other:
             -j|--jit <jitargs> - jitargs will be passed to the jit config.
+            -o|--opt <optargs> - custom optimization heuristics for the RSqueak
+                                 interpreter. Comma-separated list of:
+                                     max_squeak_unroll_count (default: 1)
+                                         How many extra times we should try
+                                         to unroll loops.
+                                     squeak_unroll_trace_limit (default: 32000)
+                                         Trace length after which we should not
+                                         unroll any more Squeak loops.
             -p|--poll          - Actively poll for events. Try this if the
                                  image is not responding well.
             -i|--no-interrupts - Disable timer interrupt.
                                  Disables non-cooperative scheduling.
             -S|--no-storage    - Disable specialized storage strategies.
                                  Always use generic ListStrategy. Probably slower.
-            --hacks            - Enable Spy hacks. Set display color depth to 8
+            -M|--no-maps       - Disable Self-style maps for small fixed pointer
+                                 objects and revert to storage strategies.
+            --maps-limit <num> - Number of fields an object can have to be
+                                 eligible for use with maps.
 
           Logging:
             -t|--trace       - Output a trace of each message, primitive,
@@ -190,6 +210,8 @@ class Config(object):
         self.got_lone_path = False
         self.selector = None
         self.code = ""
+        self.run_file = False
+        self.run_twice = False
         self.number = 0
         self.have_number = False
         self.stringarg = None
@@ -201,6 +223,7 @@ class Config(object):
         self.extra_arguments_idx = len(argv)
         self.log_image_loading = False
         self.shell = False
+        self.optargs = interpreter.Optargs()
 
     def parse_args(self, argv, skip_bad=False):
         idx = 1
@@ -229,6 +252,11 @@ class Config(object):
             # Execution
             elif arg in ["-r", "--run"]:
                 self.code, idx = get_parameter(argv, idx, arg)
+            elif arg == "-rr":
+                self.code, idx = get_parameter(argv, idx, arg)
+                self.run_twice = True
+            elif arg in ["--run-file"]:
+                self.run_file = True
             elif arg in ["-m", "--method"]:
                 self.selector, idx = get_parameter(argv, idx, arg)
             elif arg in ["-n", "--number"]:
@@ -263,12 +291,28 @@ class Config(object):
                     jit.set_param(interpreter.Interpreter.jit_driver, "trace_limit", int(limit.split("=")[1]))
                 if len(parts) > 0:
                     jit.set_user_param(interpreter.Interpreter.jit_driver, ",".join(parts))
+            elif arg in ["-o", "--opt"]:
+                optarg, idx = get_parameter(argv, idx, arg)
+                parts = optarg.split(",")
+                for part in parts:
+                    key, value = part.split("=")
+                    if "max_squeak_unroll_count" == key:
+                        self.optargs.max_squeak_unroll_count = int(value)
+                    elif "squeak_unroll_trace_limit" == key:
+                        self.optargs.squeak_unroll_trace_limit == int(value)
+                    else:
+                        raise Exception("Wrong argument to %s: %s" % (arg, part))
             elif arg in ["-p", "--poll"]:
                 self.poll = True
             elif arg in ["-i", "--no-interrupts"]:
                 self.interrupts = False
             elif arg in ["-S", "--no-storage"]:
                 self.space.strategy_factory.no_specialized_storage.activate()
+            elif arg in ["-M", "--no-maps"]:
+                self.space.use_maps.deactivate()
+            elif arg in ["--maps-limit"]:
+                limit, idx = get_int_parameter(argv, idx, arg)
+                self.space.maps_limit.set(limit)
             # Logging
             elif arg in ["-t", "--trace"]:
                 self.trace = True
@@ -333,6 +377,30 @@ class Config(object):
 
     def sanitize(self):
         self.ensure_path()
+        if self.run_file:
+            if self.code:
+                raise error.Exit("Cannot handle both --run-file and -r.")
+            try:
+                codefile = self.argv[self.extra_arguments_idx]
+            except IndexError:
+                raise error.Exit("Cannot handle --run-file without a file argument.")
+            try:
+                f = streamio.open_file_as_stream(codefile, mode="r", buffering=0)
+            except OSError as e:
+                raise error.Exit("Cannot read %s" % codefile)
+            try:
+                source = list(f.readall())
+            finally:
+                f.close()
+            if len(source) == 0:
+                raise error.Exit("Empty source file given")
+            idx = len(source) - 1
+            assert idx > 0
+            while source[idx].isspace():
+                idx -= 1
+            if source[idx] == "!":
+                source[idx] = " "
+            self.code = "".join(source)
         if self.code and self.selector:
             raise error.Exit("Cannot handle both -r and -m.")
 
@@ -426,7 +494,8 @@ def entry_point(argv):
     image = squeakimage.ImageReader(space, stream, cfg.log_image_loading).create_image()
     interp = interpreter.Interpreter(space, image,
                 trace=cfg.trace, trace_important=cfg.trace_important,
-                evented=not cfg.poll, interrupts=cfg.interrupts)
+                evented=not cfg.poll, interrupts=cfg.interrupts,
+                optargs=cfg.optargs)
     space.runtime_setup(interp, cfg.exepath, argv, cfg.path, cfg.extra_arguments_idx)
     print_error("") # Line break after image-loading characters
 
@@ -443,7 +512,17 @@ def entry_point(argv):
         else:
             w_receiver = space.wrap_int(cfg.number)
         if cfg.code:
-            cfg.selector = compile_code(interp, w_receiver, cfg.code)
+            if cfg.run_file: # connect the stdio streams
+                selector = compile_code(
+                    interp, w_receiver, "FileStream startUp: true")
+                with objspace.ForceHeadless(space):
+                    interp.perform(w_receiver, selector)
+            if cfg.run_twice:
+                selector = compile_code(interp, w_receiver, cfg.code)
+                cfg.selector = compile_code(
+                    interp, w_receiver, "^ self %s; %s" % (selector, selector))
+            else:
+                cfg.selector = compile_code(interp, w_receiver, cfg.code)
         s_frame = create_context(interp, w_receiver, cfg.selector, cfg.stringarg)
         if cfg.headless:
             space.headless.activate()
@@ -467,7 +546,7 @@ def result_string(w_result):
 
 def compile_code(interp, w_receiver, code, isclass=False, make_selector=True):
     if make_selector:
-        selector = "DoIt%d\r\n" % int(time.time())
+        selector = "DoIt%d\r\n" % (int(time.time()) + len(code))
     else:
         selector = ""
     space = interp.space

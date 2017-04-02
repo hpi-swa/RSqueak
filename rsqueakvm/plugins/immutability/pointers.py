@@ -39,7 +39,7 @@ class W_AbstractImmutable_PointersObject(W_PointersObject):
     repr_classname = ('%s_AbstractImmutable' %
                       W_PointersObject.repr_classname)
 
-    def __init__(self, space, w_cls):
+    def __init__(self, space, w_cls, pointers_w):
         """
         Initialize immutable pointers object, but avoid initializing storage
         by calling `W_AbstractObjectWithIdentityHash.__init__(self)` instead of
@@ -68,6 +68,12 @@ class W_AbstractImmutable_PointersObject(W_PointersObject):
         """:raises: NotImplementedError"""
         raise NotImplementedError('abstract base class')
 
+    def clone(self, space):
+        my_pointers = self.fetch_all(space)
+        w_result = self.__class__(space, self.getclass(space), my_pointers)
+        w_result.store_all(space, my_pointers)
+        return w_result
+
 
 class W_Immutable_PointersObject(W_AbstractImmutable_PointersObject):
     """`W_PointersObject` subclass with immutable storage of variable size."""
@@ -77,7 +83,7 @@ class W_Immutable_PointersObject(W_AbstractImmutable_PointersObject):
         staticmethod, rerased.new_erasing_pair('storage_eraser'))
 
     def __init__(self, space, w_cls, pointers_w):
-        W_AbstractImmutable_PointersObject.__init__(self, space, w_cls)
+        W_AbstractImmutable_PointersObject.__init__(self, space, w_cls, pointers_w)
         self._storage = self.erase(pointers_w)
 
     def size(self):
@@ -105,7 +111,7 @@ def generate_fixed_immutable_subclass(n_storage):
         repr_classname = cls_name
 
         def __init__(self, space, w_cls, pointers_w):
-            W_AbstractImmutable_PointersObject.__init__(self, space, w_cls)
+            W_AbstractImmutable_PointersObject.__init__(self, space, w_cls, pointers_w)
             for x in storage_iter:
                 setattr(self, STORAGE_ATTR_TEMPLATE % x, pointers_w[x])
 

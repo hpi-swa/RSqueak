@@ -1,8 +1,9 @@
 from rsqueakvm import constants, error, wrapper
+from rsqueakvm.model.base import W_Object
 from rsqueakvm.model.compiled_methods import W_CompiledMethod
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.model.block_closure import W_BlockClosure
-from rsqueakvm.storage import AbstractStrategy, ShadowMixin
+from rsqueakvm.storage import AbstractStrategy, ShadowMixin, StrategyMetaclass
 
 from rpython.rlib import jit, objectmodel, unroll
 from rpython.rlib.objectmodel import import_from_mixin, always_inline
@@ -33,16 +34,20 @@ InactiveContext = ContextState("InactiveContext")
 ActiveContext = ContextState("ActiveContext")
 DirtyContext = ContextState("DirtyContext")
 
-class ExtendableStrategyMetaclass(extendabletype, rstrat.StrategyMetaclass):
+class ExtendableStrategyMetaclass(extendabletype, StrategyMetaclass):
     pass
 
 
-class ExtraContextAttributes(object):
+class ExtraContextAttributes(W_Object):
     _attrs_ = [
         # Cache for allInstances
         'instances_w',
         # Fallback for failed primitives
         '_s_fallback',
+        # Dynamically extended stack space
+        '_overflow_stack',
+        # Home method of first block argument
+        'blockmethod',
         # From block-context
         '_w_home', '_initialip', '_eargc']
 
@@ -52,6 +57,8 @@ class ExtraContextAttributes(object):
         self._w_home = None
         self._initialip = 0
         self._eargc = 0
+        self._overflow_stack = None
+        self.blockmethod = None
 
 
 state_mask     = r_uint(0b00111111111111111111111111111111)
@@ -77,24 +84,22 @@ class ContextPartShadow(AbstractStrategy):
     __metaclass__ = ExtendableStrategyMetaclass
     import_from_mixin(ShadowMixin)
 
-    _attrs_ = ['_w_self', '_w_self_size',
+    _attrs_ = ['_w_self',
                '_state_stackptr_pc',
                # Core context data
                '_s_sender', '_temps_and_stack',
                # MethodContext data
-               'blockmethod',
                'closure', '_w_receiver', '_w_method',
                # Extra data
-               'extra_data'
+               'extra_data_or_blockmethod'
                ]
 
     _virtualizable_ = [
-        "_w_self", "_w_self_size",
+        "_w_self",
         '_state_stackptr_pc',
         '_s_sender', "_temps_and_stack[*]",
-        'blockmethod',
         'closure', '_w_receiver', '_w_method',
-        'extra_data'
+        'extra_data_or_blockmethod'
     ]
 
     # ______________________________________________________________________
@@ -107,21 +112,16 @@ class ContextPartShadow(AbstractStrategy):
 
         self._state_stackptr_pc = r_uint(0)
         self._s_sender = jit.vref_None
-        if w_self is not None:
-            self._w_self_size = w_self.size()
-        else:
-            self._w_self_size = size
         self._w_self = w_self
         self.set_state(InactiveContext)
         self.store_pc(0)
 
         # From MethodContext
-        self.blockmethod = None
         self.closure = None
         self._w_method = None
         self._w_receiver = None
         # Extra data
-        self.extra_data = None
+        self.extra_data_or_blockmethod = None
 
     def _initialize_storage(self, w_self, initial_size):
         # The context object holds all of its storage itself.
@@ -167,15 +167,26 @@ class ContextPartShadow(AbstractStrategy):
             return (n0 == self.privileged_method_fields[0]) | (n0 == self.privileged_method_fields[1])
 
     def get_extra_data(self):
-        if self.extra_data is None:
-            self.extra_data = ExtraContextAttributes()
-        return self.extra_data
+        extra_data = self.extra_data_or_blockmethod
+        if isinstance(extra_data, ExtraContextAttributes):
+            return extra_data
+        else:
+            new_extra_data = ExtraContextAttributes()
+            new_extra_data.blockmethod = extra_data
+            self.extra_data_or_blockmethod = new_extra_data
+            return new_extra_data
+
+    def extra_data(self):
+        extra_data = self.extra_data_or_blockmethod
+        if isinstance(extra_data, ExtraContextAttributes):
+            return extra_data
+        return None
 
     def get_fallback(self):
-        if self.extra_data is None:
+        if self.extra_data() is None:
             return None
         else:
-            return self.extra_data._s_fallback
+            return self.get_extra_data()._s_fallback
 
     @always_inline
     def _get_state_stackptr_pc(self):
@@ -200,7 +211,7 @@ class ContextPartShadow(AbstractStrategy):
             return False
 
     def size(self, ignored_w_self):
-        return self._w_self_size
+        return self.external_size()
 
     def fetch(self, ignored_w_self, n0):
         if self.pure_is_block_context():
@@ -253,7 +264,7 @@ class ContextPartShadow(AbstractStrategy):
             return
         else:
             # XXX later should store tail out of known context part as well
-            raise error.WrapperException("Index in context out of bounds")
+            return
 
     # === Sender ===
 
@@ -311,8 +322,7 @@ class ContextPartShadow(AbstractStrategy):
             assert size >= 0, "trying to store negative stackpointer"
             self.pop_n(depth - size)
         else:
-            for i in range(depth, size):
-                self.push(self.space.w_nil)
+            self.store_stack_ptr(size)
 
     def stackdepth(self):
         return self.stack_ptr()
@@ -452,7 +462,21 @@ class ContextPartShadow(AbstractStrategy):
 
     def stackend(self):
         # XXX this is incorrect when there is subclassing
-        return self._w_self_size
+        return self.external_size()
+
+    def external_size(self):
+        """
+        The size of this context pointer object, as it would be seen by Squeak.
+        There is possibly less _temps_and_stack allocated, if the code
+        dynamically stores more than that, we overflow into
+        the get_extra_data()._overflow_stack and update the size to use for
+        _temps_and_stack in the w_method, so the next time _temps_and_stack will
+        be the right size (see update_stacksize and its callers)
+        """
+        if self.pure_is_block_context():
+            return ContextPartShadow.size_context_for_home(self.s_home())
+        else:
+            return ContextPartShadow.size_context_for_method(self.w_method())
 
     def fetch_next_bytecode(self):
         pc = jit.promote(self.pc())
@@ -472,35 +496,70 @@ class ContextPartShadow(AbstractStrategy):
 
     def full_stacksize(self):
         if not self.pure_is_block_context():
-            # Magic numbers... Takes care of cases where reflective
-            # code writes more than actual stack size
             method = self.w_method()
             assert isinstance(method, W_CompiledMethod), "context method is not a W_CompiledMethod"
-            stacksize = method.compute_frame_size()
+            stacksize = method.frame_size()
         else:
-            # TODO why not use method.compute_frame_size for BlockContext too?
             stacksize = self.stacksize()  # no temps
         return stacksize
 
     def init_temps_and_stack(self):
         self = fresh_virtualizable(self)
         stacksize = self.full_stacksize()
-        self._temps_and_stack = [None] * stacksize
+        self._temps_and_stack = [self.space.w_nil] * stacksize
         tempsize = self.tempsize()
         self.store_stack_ptr(tempsize)  # we point after the last element
 
     def stack_get(self, index0):
         assert index0 >= 0, "trying to stack_get negative index"
-        return self._temps_and_stack[index0] or self.space.w_nil
+        if self.update_stacksize(index0):
+            return self.overflow_stack_get(index0)
+        return self._temps_and_stack[index0]
+
+    def overflow_stack_get(self, index0):
+        overflow_index = index0 - len(self._temps_and_stack)
+        return self.get_extra_data()._overflow_stack[overflow_index] or self.space.w_nil
 
     def stack_put(self, index0, w_val):
         assert w_val is not None, "trying to put None on the stack"
         assert index0 >= 0, "trying to stack_put at negative index"
+        if self.update_stacksize(index0):
+            return self.overflow_stack_put(index0, w_val)
         self._temps_and_stack[index0] = w_val
+
+    def overflow_stack_put(self, index0, w_val):
+        overflow_index = index0 - len(self._temps_and_stack)
+        self.get_extra_data()._overflow_stack[overflow_index] = w_val
+
+    def has_overflow_stack(self):
+        extra_data = self.extra_data()
+        if extra_data:
+            return extra_data._overflow_stack is not None
+        return False
+
+    @jit.unroll_safe
+    def update_stacksize(self, index0):
+        stacksize = len(self._temps_and_stack)
+        if stacksize <= index0:
+            self.w_method().update_frame_size(index0 + 1)
+            extra_data = self.get_extra_data()
+            overflow_stack = extra_data._overflow_stack
+            overflow_index = index0 - stacksize
+            if overflow_stack is None:
+                extra_data._overflow_stack = [None] * (overflow_index + 1)
+            else:
+                while len(overflow_stack) <= overflow_index:
+                    overflow_stack.append(None)
+            return True
+        return False
 
     @objectmodel.not_rpython # this is only for testing.
     def stack(self):
-        return self._temps_and_stack[self.tempsize():self.stack_ptr()]
+        stacksize = len(self._temps_and_stack)
+        stack = self._temps_and_stack[self.tempsize():stacksize]
+        if self.has_overflow_stack():
+            stack.extend(self.get_extra_data()._overflow_stack[self.tempsize() - stacksize:self.stack_ptr()])
+        return stack
 
     def pop(self):
         # HACK HACK HACK (3 times)
@@ -609,7 +668,6 @@ class ContextPartShadow(AbstractStrategy):
         argcount = self.w_method().argsize
         j = 0
         for w_obj in self._temps_and_stack[:self.stack_ptr()]:
-            w_obj = self.space.w_nil if w_obj is None else w_obj
             if j == argcount:
                 retval += "\nTemps:---------------"
             if j == self.tempsize():
@@ -677,8 +735,12 @@ class __extend__(ContextPartShadow):
     # === Initialization ===
 
     @staticmethod
+    def size_context_for_home(s_home):
+        return s_home.own_size() - s_home.tempsize()
+
+    @staticmethod
     def build_block_context(space, s_home, argcnt, pc):
-        size = s_home.own_size() - s_home.tempsize()
+        size = ContextPartShadow.size_context_for_home(s_home)
         w_self = W_PointersObject(space, space.w_BlockContext, size)
 
         ctx = ContextPartShadow(space, w_self, size, space.w_BlockContext)
@@ -686,7 +748,7 @@ class __extend__(ContextPartShadow):
         ctx.store_w_home(s_home.w_self())
         ctx.store_initialip(pc)
         ctx.store_pc(pc)
-        w_self.store_strategy(ctx)
+        w_self._set_strategy(ctx)
         ctx.init_temps_and_stack()
         return ctx
 
@@ -801,10 +863,14 @@ class __extend__(ContextPartShadow):
     # === Initialization ===
 
     @staticmethod
+    def size_context_for_method(w_method):
+        return w_method.squeak_frame_size() + constants.MTHDCTX_TEMP_FRAME_START
+
+    @staticmethod
     def build_method_context(space, w_method, w_receiver, arguments=[],
                              closure=None, s_fallback=None):
         w_method = jit.promote(w_method)
-        size = w_method.compute_frame_size() + constants.MTHDCTX_TEMP_FRAME_START
+        size = ContextPartShadow.size_context_for_method(w_method)
 
         ctx = ContextPartShadow(space, None, size, space.w_MethodContext)
         if s_fallback is not None:
@@ -816,18 +882,34 @@ class __extend__(ContextPartShadow):
         ctx.initialize_temps(space, arguments)
         return ctx
 
+    def blockmethod(self):
+        w_bm = self.extra_data_or_blockmethod
+        if isinstance(w_bm, ExtraContextAttributes):
+            w_bm = w_bm.blockmethod
+        if isinstance(w_bm, W_CompiledMethod):
+            return w_bm
+        return None
+
+    def set_blockmethod(self, w_obj):
+        assert isinstance(w_obj, W_CompiledMethod)
+        w_bm = self.extra_data_or_blockmethod
+        if isinstance(w_bm, ExtraContextAttributes):
+            w_bm.blockmethod = w_obj
+        else:
+            self.extra_data_or_blockmethod = w_obj
+
     @jit.unroll_safe
     def initialize_temps(self, space, arguments):
         argc = len(arguments)
         for i0 in range(argc):
             w_arg = arguments[i0]
-            if isinstance(w_arg, W_BlockClosure) and self.blockmethod is None:
+            if isinstance(w_arg, W_BlockClosure) and self.blockmethod() is None:
                 # If our first argument is a block, we use its home method to
                 # distinguish the context from others that receive a different
                 # block argument to the same method (e.g. so that all the
                 # collection methods are specialized based on where the block
                 # that was passed in came from
-                self.blockmethod = w_arg.w_method()
+                self.set_blockmethod(w_arg.w_method())
             self.settemp(i0, w_arg)
         closure = self.closure
         if closure:
@@ -836,7 +918,7 @@ class __extend__(ContextPartShadow):
             self.store_pc(pc)
             for i0 in range(closure.varsize()):
                 w_obj = closure.at0(space, i0)
-                if isinstance(w_obj, W_BlockClosure) and self.blockmethod is None:
+                if isinstance(w_obj, W_BlockClosure) and self.blockmethod() is None:
                     # for some methods (see Collection>>do: or detect:ifNone:)
                     # the user code passes in a block, and the block closure
                     # captures that block and is then called in a loop. So if we
@@ -844,7 +926,7 @@ class __extend__(ContextPartShadow):
                     # loop, we really want to specialize on the first temp of
                     # that block, which represents the block passed in from user
                     # code into detect:ifNone:
-                    self.blockmethod = w_obj.w_method()
+                    self.set_blockmethod(w_obj.w_method())
                 self.settemp(i0+argc, w_obj)
 
     # === Accessing object fields ===
@@ -938,8 +1020,8 @@ class __extend__(ContextPartShadow):
             return self._w_self
         else:
             space = self.space
-            w_self = W_PointersObject(space, space.w_MethodContext, self._w_self_size)
-            w_self.store_strategy(self)
+            w_self = W_PointersObject(space, space.w_MethodContext, self.external_size())
+            w_self._set_strategy(self)
             self._w_self = w_self
             return w_self
 
@@ -960,5 +1042,3 @@ class __extend__(ContextPartShadow):
     def method_str_method_context(self):
         block = '[] in ' if self.is_closure_context() else ''
         return '%s%s' % (block, self.w_method().get_identifier_string())
-
-ContextPartShadow.instantiate_type = ContextPartShadow

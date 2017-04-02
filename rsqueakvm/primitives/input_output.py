@@ -57,7 +57,7 @@ def func(interp, s_frame, _):
 @expose_primitive(MOUSE_POINT, unwrap_spec=[object])
 def func(interp, s_frame, w_rcvr):
     x, y = interp.space.display().mouse_point()
-    w_point = W_PointersObject(interp.space, interp.space.w_Point, 2)
+    w_point = interp.space.w_Point.as_class_get_shadow(interp.space).new()
     w_point.store(interp.space, 0, interp.space.wrap_int(x))
     w_point.store(interp.space, 1, interp.space.wrap_int(y))
     return w_point
@@ -97,7 +97,7 @@ def func(interp, s_frame, argcount, w_method):
 
 @expose_primitive(SNAPSHOT, clean_stack=False, no_result=True)
 def func(interp, s_frame, argcount):
-    s_frame.pop_n(argcount)
+    s_frame.pop_n(argcount + 1)
     s_frame.push(interp.space.w_true)
     # leaving true on the frame as return value for resuming image
     from rsqueakvm.squeakimage import SpurImageWriter

@@ -20,9 +20,9 @@ def assert_class(interp, w_obj, w_class):
 def assert_valid_index(space, n0, w_obj):
     if not int_between(0, n0, w_obj.varsize()):
         raise PrimitiveFailedError()
-    # return the index, since from here on the annotator knows that
-    # n0 cannot be negative
-    return n0
+    else: # n0 cannot be negative due to the if condition. help the annotator.
+        assert n0 >= 0
+        return n0
 
 def assert_valid_inst_index(space, n0, w_obj):
     if not int_between(0, n0, w_obj.size()):
@@ -236,7 +236,7 @@ def expose_alternative_primitive(code, **kwargs):
 # arguments, an interp and an argument_count
 # completes, and returns a result, or throws a PrimitiveFailedError.
 def make_simulation(code):
-    p_code = jit.promote(code)
+    p_code = code
     @wrap_primitive(clean_stack=False, no_result=True, compiled_method=True)
     def try_simulation(interp, s_frame, argument_count, w_method=None):
         if interp.space.simulate_numeric_primitives.is_set():

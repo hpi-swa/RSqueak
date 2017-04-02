@@ -23,11 +23,13 @@ plugin = ProfilerPlugin()
 def patch_interpreter():
     from rpython.rlib import rvmprof
     from rsqueakvm.interpreter import Interpreter
-    def _get_code(interp, s_frame, s_sender, may_context_switch=True):
+    def _get_code(interp, s_frame, s_sender, may_context_switch):
         return s_frame.w_method()
     _decorator = rvmprof.vmprof_execute_code("rsqueak", _get_code)
     _my_stack_frame = _decorator(Interpreter.stack_frame)
     Interpreter.stack_frame = _my_stack_frame
+    Interpreter.jit_driver.get_location = get_location
+    Interpreter.jit_driver.get_unique_id = get_unique_id
     print "Interpreter was patched for vmprof"
 
 
@@ -41,6 +43,7 @@ def _get_full_name(w_cm):
     # must not be longer than 255 chars
     return "st:%s:0:/img" % _safe(w_cm.safe_identifier_string())
 
+
 rvmprof.register_code_object_class(W_CompiledMethod, _get_full_name)
 
 
@@ -50,6 +53,25 @@ def patch_compiled_method():
         rvmprof.register_code(self, _get_full_name)
     W_CompiledMethod.post_init = _my_post_init
 patch_compiled_method()
+
+
+@rjitlog.returns(rjitlog.MP_FILENAME, rjitlog.MP_LINENO,
+                 rjitlog.MP_SCOPE, rjitlog.MP_INDEX, rjitlog.MP_OPCODE)
+def get_location(pc, jump_back_pc, unrollings, frame_size, self, method, w_class, blockmethod):
+    from rsqueakvm.interpreter_bytecodes import BYTECODE_NAMES
+    classname = "string://%s" % _safe(method.safe_class_string())
+    methodname = _safe(method.safe_method_string())
+    bc = ord(method.bytes[pc])
+    bcname = BYTECODE_NAMES[bc]
+    return (classname, pc, methodname, bc, bcname)
+
+
+def get_unique_id(pc, jump_back_pc, unrollings, frame_size, self, method, w_class, blockmethod):
+    # XXX: this is patched too late in the annotation process, so we cannot use
+    # rvmprof.get_unique_id because that'll call _was_registered which is a
+    # specialize.memo that then happens too late in the annotation process
+    return method._vmprof_unique_id
+
 
 # ____________________________________________________________
 

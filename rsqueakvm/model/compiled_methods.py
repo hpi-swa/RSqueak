@@ -1,6 +1,7 @@
 from rsqueakvm import constants, error
 from rsqueakvm.model.base import W_Object, W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.model.variable import W_BytesObject
 
 from rpython.rlib import jit
 from rpython.rlib.objectmodel import not_rpython, we_are_translated
@@ -58,7 +59,8 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
                 # Main method content
                 "bytes", "literals",
                 # Additional info about the method
-                "lookup_selector", "compiledin_class", "lookup_class" ]
+                "lookup_selector", "compiledin_class", "lookup_class", "_frame_size" ]
+    _immutable_fields_ = ["_frame_size?"]
     lookup_selector = "<unknown>"
     lookup_class = None
 
@@ -95,6 +97,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         W_AbstractObjectWithIdentityHash.__init__(self)
         self.lookup_selector = "unknown%d" % self.gethash()
         self.bytes = ["\x00"] * bytecount
+        self._frame_size = 0
         self.setheader(space, header, initializing=True)
         self.post_init()
 
@@ -102,9 +105,13 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         W_AbstractObjectWithIdentityHash.fillin(self, space, g_self)
         self.lookup_selector = "unknown%d" % self.gethash()
         self.bytes = [] # make sure the attribute is defined
+        self._frame_size = 0
+        for g_obj in g_self.pointers:
+            g_obj.fillin(space)
         # Implicitly sets the header, including self.literalsize
         for i, w_object in enumerate(g_self.get_pointers()):
             self.literalatput0(space, i, w_object, initializing=True)
+        self.update_selector_from_literals()
         self.setbytes(g_self.get_bytes()[self.bytecodeoffset():])
         self.post_init()
 
@@ -184,8 +191,15 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def primitive(self):
         return self._primitive
 
+    def frame_size(self):
+        return self._frame_size
+
+    def update_frame_size(self, size):
+        if self._frame_size < size:
+            self._frame_size = size
+
     @jit.elidable_promote()
-    def compute_frame_size(self):
+    def squeak_frame_size(self):
         # From blue book: normal mc have place for 12 temps+maxstack
         # mc for methods with islarge flag turned on 32
         return 16 + self.islarge * 40 + self.argsize
@@ -205,8 +219,10 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 
     @jit.elidable_promote()
     def fetch_bytecode(self, pc):
-        assert pc >= 0 and pc < len(self.bytes)
-        return self.bytes[pc]
+        try:
+            return self.bytes[pc]
+        except IndexError:
+            return chr(120) # returnReceiverBytecode
 
     def compiled_in(self):
         # This method cannot be constant/elidable. Looking up the compiledin-class from
@@ -282,13 +298,22 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 
     # === Misc ===
 
+    def update_selector_from_literals(self):
+        # Second-to-last of the literals is either the symbol selector or an
+        # object the selector in the second slot
+        literals = self.literals
+        if literals and len(literals) > 1:
+            w_symbol = literals[-2]
+            if isinstance(w_symbol, W_BytesObject):
+                self.lookup_selector = "".join(w_symbol.getbytes())
+
     def update_compiledin_class_from_literals(self):
         # (Blue book, p 607) Last of the literals is either the containing class
         # or an association with compiledin as a class
         literals = self.literals
         if literals and len(literals) > 0:
             w_literal = literals[-1]
-            if isinstance(w_literal, W_PointersObject) and w_literal.has_space():
+            if isinstance(w_literal, W_PointersObject):
                 space = w_literal.space()  # Not pretty to steal the space from another object.
                 compiledin_class = None
                 if w_literal.is_class(space):
@@ -309,6 +334,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         self._primitive, w_other._primitive = w_other._primitive, self._primitive
         self.literals, w_other.literals = w_other.literals, self.literals
         self._tempsize, w_other._tempsize = w_other._tempsize, self._tempsize
+        self._frame_size, w_other._frame_size = w_other._frame_size, self._frame_size
         self.bytes, w_other.bytes = w_other.bytes, self.bytes
         self.header, w_other.header = w_other.header, self.header
         self.literalsize, w_other.literalsize = w_other.literalsize, self.literalsize
@@ -326,6 +352,7 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def clone(self, space):
         copy = self.__class__(space, 0, self.getheader())
         copy.bytes = list(self.bytes)
+        copy._frame_size = self._frame_size
         copy.literals = list(self.literals)
         copy.compiledin_class = self.compiledin_class
         copy.lookup_selector = self.lookup_selector
@@ -364,11 +391,11 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
     def bytecode_string(self, markBytecode=0):
         from rsqueakvm.interpreter_bytecodes import BYTECODE_TABLE
         retval = "Bytecode:------------"
-        j = 1
+        j = 0
         for i in self.bytes:
             retval += '\n'
-            retval += '->' if j is markBytecode else '  '
-            retval += ('%0.2i: 0x%0.2x(%0.3i) ' % (j, ord(i), ord(i))) + BYTECODE_TABLE[ord(i)].__name__
+            retval += '->' if j + 1 is markBytecode else '  '
+            retval += ('%0.2i: 0x%0.2x(%0.3i) ' % (j + 1, ord(i), ord(i))) + BYTECODE_TABLE[ord(i)].__name__
             j += 1
         retval += "\n---------------------"
         return retval
@@ -380,26 +407,32 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
 
     def guess_containing_classname(self):
         w_class = self.compiled_in()
-        if w_class and w_class.has_space():
-            # Not pretty to steal the space from another object.
-            return w_class.as_class_get_shadow(w_class.space()).getname()
-        return "? (no compiledin-info)"
+        if w_class is None:
+            return "? (no compiledin-info)"
+        # Not pretty to steal the space from another object.
+        return w_class.as_class_get_shadow(w_class.space()).getname()
 
     def get_identifier_string(self):
         return "%s >> #%s" % (self.guess_containing_classname(), self.lookup_selector)
+
+    def safe_class_string(self):
+        w_class = self.safe_compiled_in()
+        if isinstance(w_class, W_PointersObject):
+            from rsqueakvm.storage_classes import ClassShadow
+            s_class = w_class.strategy
+            if isinstance(s_class, ClassShadow):
+                return s_class.getname()
+        return "UnknownClass"
+
+    def safe_method_string(self):
+        return self.lookup_selector
 
     def safe_identifier_string(self):
         if not we_are_translated():
             return self.get_identifier_string()
         # This has the same functionality as get_identifier_string, but without calling any
         # methods in order to avoid side effects that prevent translation.
-        w_class = self.safe_compiled_in()
-        if isinstance(w_class, W_PointersObject):
-            from rsqueakvm.storage_classes import ClassShadow
-            s_class = w_class.strategy
-            if isinstance(s_class, ClassShadow):
-                return "%s >> #%s" % (s_class.getname(), self.lookup_selector)
-        return "#%s" % self.lookup_selector
+        return "%s >> #%s" % (self.safe_class_string(), self.safe_method_string())
 
 
 class W_SpurCompiledMethod(W_CompiledMethod):
@@ -418,6 +451,7 @@ class W_SpurCompiledMethod(W_CompiledMethod):
             self.update_primitive_index()
         else:
             self._primitive = 0
+        self.update_frame_size(self.argsize + self._tempsize)
 
     def setbytes(self, bytes):
         W_CompiledMethod.setbytes(self, bytes)
@@ -447,3 +481,4 @@ class W_PreSpurCompiledMethod(W_CompiledMethod):
         self._primitive = decoded_header.primitive_index
         self.islarge = decoded_header.large_frame
         self.compiledin_class = None
+        self.update_frame_size(self.argsize + self._tempsize)

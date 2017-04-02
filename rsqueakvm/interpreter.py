@@ -126,9 +126,27 @@ class ProcessSwitch(ContextSwitchException):
         ContextSwitchException.__init__(self, s_new_context)
         self.forced = forced
 
+class Optargs(object):
+    _attrs_ = ["max_squeak_unroll_count", "squeak_unroll_trace_limit"]
+    _immutable_fields_ = ["max_squeak_unroll_count", "squeak_unroll_trace_limit"]
+    def __init__(self):
+        """
+        - max_squeak_unroll_count: How many times to unroll a loop before
+          JIT'ing. The default (2) was chosen because it "felt right".
+        - squeak_unroll_trace_limit: After how many operations we should never
+          unroll. This tries to avoid trace_too_long aborts, and should kind of
+          be synchronized with the default trace_limit. Imagine you have a long
+          loop, and you unroll it twice, then we're at 86k ops with the default
+          of 32k ops. This is alreay quite a long trace, we don't want to blow
+          it up too much.
+        """
+        self.max_squeak_unroll_count = 1
+        self.squeak_unroll_trace_limit = 32000
+
+
 UNROLLING_BYTECODE_RANGES = unroll.unrolling_iterable(interpreter_bytecodes.BYTECODE_RANGES)
 
-def get_printable_location(pc, self, method, w_class, blockmethod):
+def get_printable_location(pc, jump_back_pc, unrollings, frame_size, self, method, w_class, blockmethod):
     bc = ord(method.bytes[pc])
     name = method.safe_identifier_string()
     classname = "???"
@@ -143,8 +161,8 @@ def get_printable_location(pc, self, method, w_class, blockmethod):
         blockname = blockmethod.safe_identifier_string()
         return '%s(%s): (%s) [%d]: <%s>%s' % (classname, name, blockname, pc, hex(bc), interpreter_bytecodes.BYTECODE_NAMES[bc])
 
-def resume_get_printable_location(pc, self, method, w_class):
-    return "resume: %s" % get_printable_location(pc, self, method, w_class, None)
+def resume_get_printable_location(pc, frame_size, self, method, w_class):
+    return "resume: %s" % get_printable_location(pc, 0, 0, frame_size, self, method, w_class, None)
 
 # def confirm_enter_jit(pc, self, method, w_class, s_context):
 #     print get_printable_location(pc, self, method, w_class)
@@ -161,11 +179,13 @@ class Interpreter(object):
                           "evented",
                           "interrupts",
                           "trace_important",
-                          "trace"]
+                          "trace",
+                          "optargs"]
 
     jit_driver = jit.JitDriver(
         name=jit_driver_name,
-        greens=['pc', 'self', 'method', 'w_class', 'blockmethod'],
+        greens=['pc', 'jump_back_pc', 'unrollings', 'frame_size', 'self',
+                'method', 'w_class', 'blockmethod'],
         reds=['s_context'],
         virtualizables=['s_context'],
         get_printable_location=get_printable_location,
@@ -174,7 +194,7 @@ class Interpreter(object):
 
     resume_driver = jit.JitDriver(
         name=jit_driver_name + "_resume",
-        greens=['pc', 'self', 'method', 'w_class'],
+        greens=['pc', 'frame_size', 'self', 'method', 'w_class'],
         reds=['s_context'],
         # virtualizables=['s_context'],
         get_printable_location=resume_get_printable_location,
@@ -182,7 +202,7 @@ class Interpreter(object):
     )
 
     def __init__(self, space, image=None, trace_important=False,
-                 trace=False, evented=True, interrupts=True):
+                 trace=False, evented=True, interrupts=True, optargs=None):
         # === Initialize immutable variables
         self.space = space
         self.image = image
@@ -199,6 +219,7 @@ class Interpreter(object):
             self.interrupt_counter_size = constants.INTERRUPT_COUNTER_SIZE
         self.last_check = self.time_now()
         self.trace = trace
+        self.optargs = optargs or Optargs()
 
         # === Initialize mutable variables
         self.interrupt_check_counter = self.interrupt_counter_size
@@ -217,16 +238,18 @@ class Interpreter(object):
         s_context = w_active_context.as_context_get_shadow(self.space)
         while True:
             method = s_context.w_method()
+            frame_size = method.frame_size()
             pc = s_context.pc()
             self.resume_driver.jit_merge_point(
                 pc=pc,
+                frame_size=frame_size,
                 self=self,
                 method=method,
                 w_class=self.getreceiverclass(s_context),
                 s_context=s_context)
             s_sender = s_context.s_sender()
             try:
-                self.stack_frame(s_context, None)
+                self.stack_frame(s_context, None, True)
                 raise Exception("loop_bytecodes left without raising...")
             except ProcessSwitch, e:
                 if self.is_tracing() or self.trace_important:
@@ -239,6 +262,7 @@ class Interpreter(object):
                     self.resume_driver.can_enter_jit(
                         pc=pc,
                         self=self,
+                        frame_size=frame_size,
                         method=method,
                         w_class=self.getreceiverclass(s_context),
                         s_context=s_context)
@@ -264,7 +288,7 @@ class Interpreter(object):
 
     # This is a wrapper around loop_bytecodes that cleanly enters/leaves the frame,
     # handles the stack overflow protection mechanism and handles/dispatches Returns.
-    def stack_frame(self, s_frame, s_sender, may_context_switch=True):
+    def stack_frame(self, s_frame, s_sender, may_context_switch):
         if self.is_tracing():
             self.stack_depth += 1
         vref = s_frame.enter_virtual_frame(s_sender)
@@ -304,27 +328,60 @@ class Interpreter(object):
         return s_context.w_receiver().safe_getclass(self.space)
 
     def getblockmethod(self, s_context):
-        return s_context.blockmethod
+        return s_context.blockmethod()
 
-    def loop_bytecodes(self, s_context, may_context_switch=True):
+    def loop_bytecodes(self, s_context, may_context_switch):
         old_pc = 0
+        jump_back_pc = 0
+        unrollings = 0
         if not jit.we_are_jitted() and may_context_switch:
             self.quick_check_for_interrupt(s_context)
         method = s_context.w_method()
+        frame_size = method.frame_size()
         while True:
             pc = s_context.pc()
             if pc < old_pc:
-                if jit.we_are_jitted():
-                    # Do the interrupt-check at the end of a loop, don't interrupt loops midway.
-                    self.jitted_check_for_interrupt(s_context)
-                self.jit_driver.can_enter_jit(
-                    pc=pc, self=self, method=method,
-                    w_class=self.getreceiverclass(s_context),
-                    blockmethod=self.getblockmethod(s_context),
-                    s_context=s_context)
+                if jump_back_pc == old_pc:
+                    if (unrollings < self.optargs.max_squeak_unroll_count and
+                        jit.current_trace_length() < self.optargs.squeak_unroll_trace_limit):
+                        unrollings += 1
+                    else:
+                        if jit.we_are_jitted():
+                            # Do the interrupt-check at the end of a loop, don't
+                            # interrupt loops midway.
+                            self.jitted_check_for_interrupt(s_context)
+                        if not s_context.has_overflow_stack():
+                            self.jit_driver.can_enter_jit(
+                                pc=pc,
+                                jump_back_pc=jump_back_pc,
+                                unrollings=unrollings,
+                                frame_size=frame_size,
+                                self=self, method=method,
+                                w_class=self.getreceiverclass(s_context),
+                                blockmethod=self.getblockmethod(s_context),
+                                s_context=s_context)
+                else:
+                    jump_back_pc = old_pc
+                    unrollings = 1
+                    # we jumped back from the end of a loop. Instead of allowing
+                    # to enter the JIT here, we instead wait for the second time
+                    # this loop runs and call can_enter_jit only then
+                    # (effectively unrolling at least two iterations). This is
+                    # because the way the Squeak compiler generates loop
+                    # bytecodes: we get the branch condition in the header and a
+                    # conditional jump forward in case it is false. Then the
+                    # loop body and an unconditional jump back. In the case of 1
+                    # to: 1 do: or other loops that run for exactly one
+                    # iteration, we will still generate a call_assembler in that
+                    # case, which we work around with this. There are indeed a
+                    # few examples of loops that run exactly one iteration
             old_pc = pc
             self.jit_driver.jit_merge_point(
-                pc=pc, self=self, method=method,
+                pc=pc,
+                jump_back_pc=jump_back_pc,
+                unrollings=unrollings,
+                frame_size=frame_size,
+                self=self, method=method,
                 w_class=self.getreceiverclass(s_context),
                 blockmethod=self.getblockmethod(s_context),
                 s_context=s_context)

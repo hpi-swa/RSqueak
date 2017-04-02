@@ -49,7 +49,7 @@ class SimulationPlugin(Plugin):
         oldinterrupt_check_ctr = interp.interrupt_check_counter
         interp.interrupt_check_counter = constants.MAXINT
         try:
-            interp.stack_frame(s_sim_frame, s_frame)
+            interp.stack_frame(s_sim_frame, s_frame, True)
         finally:
             interp.interrupt_check_counter = oldinterrupt_check_ctr -  1
 

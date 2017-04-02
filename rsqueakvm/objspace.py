@@ -3,7 +3,7 @@ from rsqueakvm.constants import SYSTEM_ATTRIBUTE_IMAGE_NAME_INDEX, SYSTEM_ATTRIB
 from rsqueakvm.error import WrappingError, UnwrappingError
 from rsqueakvm.model.character import W_Character
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargeIntegerWord, W_LargeIntegerBig
-from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.model.pointers import W_PointersObject, W_FixedPointersObject
 from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.model.block_closure import W_BlockClosure
 from rsqueakvm.util.version import Version
@@ -13,8 +13,13 @@ from rpython.rlib import jit, rbigint
 from rpython.rlib.objectmodel import instantiate, specialize, import_from_mixin, we_are_translated, always_inline
 from rpython.rlib.rarithmetic import intmask, r_uint, r_uint32, is_valid_int, r_ulonglong, r_longlong, r_int64
 
-def empty_object():
+def empty_variable_object():
     return instantiate(W_PointersObject)
+
+def empty_fixed_object():
+    w_new = instantiate(W_FixedPointersObject)
+    w_new._size = 0 # XXX
+    return w_new
 
 def empty_symbol():
     return instantiate(W_BytesObject)
@@ -44,6 +49,8 @@ class ObjSpace(object):
         self.is_spur = QuasiConstant(False)
         self.uses_block_contexts = QuasiConstant(False)
         self.simulate_numeric_primitives = QuasiConstant(False)
+        self.use_maps = QuasiConstant(True)
+        self.maps_limit = QuasiConstant(16)
 
         self.system_attributes = {}
         self._system_attribute_version = QuasiConstant(Version())
@@ -65,11 +72,13 @@ class ObjSpace(object):
         self.w_zero = W_SmallInteger(0)
         self.w_one = W_SmallInteger(1)
         self.w_two = W_SmallInteger(2)
-        self.w_special_objects = empty_object()
+        self.w_special_objects = empty_variable_object()
         # no add all of those special objects that we assume constant while the image is running
         for name, (idx, t) in constants.constant_objects_in_special_object_table.items():
             if t == "POINTERS":
-                setattr(self, "w_" + name, empty_object())
+                setattr(self, "w_" + name, empty_variable_object())
+            elif t == "FIXED":
+                setattr(self, "w_" + name, empty_fixed_object())
             elif t == "BYTES":
                 setattr(self, "w_" + name, empty_symbol())
             else:
@@ -299,7 +308,7 @@ class ObjSpace(object):
                     self.altf4quit.is_set()
                 )
             self._display.set(disp)
-        return jit.promote(disp)
+        return disp
 
     def smalltalk_at(self, string):
         """A helper to find a class by name in modern Squeak images"""

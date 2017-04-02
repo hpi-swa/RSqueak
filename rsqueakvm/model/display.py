@@ -58,12 +58,10 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
     # === Object access
 
     def at0(self, space, index0):
-        self = jit.promote(self)
         val = self.getword(index0)
         return space.wrap_int(r_uint(val))
 
     def atput0(self, space, index0, w_value):
-        self = jit.promote(self)
         word = space.unwrap_uint(w_value)
         self.setword(index0, word)
 
@@ -94,7 +92,7 @@ class W_DisplayBitmap(W_AbstractObjectWithIdentityHash):
     # === Graphics
 
     def display(self):
-        return jit.promote(self._display)
+        return self._display
 
     def take_over_display(self):
         self.is_display = True

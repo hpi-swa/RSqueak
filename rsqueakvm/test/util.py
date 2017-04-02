@@ -1,10 +1,10 @@
 import py
 import sys
 
-from rsqueakvm import storage_classes, interpreter, objspace, util, constants, squeakimage, interpreter_bytecodes
+from rsqueakvm import storage_classes, interpreter, objspace, util, constants, squeakimage, interpreter_bytecodes, storage
 from rsqueakvm.model.base import W_Object
 from rsqueakvm.model.compiled_methods import W_PreSpurCompiledMethod
-from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.model.pointers import W_PointersObject, W_FixedPointersObject
 from rsqueakvm.primitives import prim_table
 from rsqueakvm.primitives.constants import EXTERNAL_CALL
 
@@ -158,7 +158,7 @@ class InterpreterForTest(interpreter.Interpreter):
         self._loop = True
         return interpreter.Interpreter.loop(self, w_active_context)
 
-    def stack_frame(self, s_new_frame, s_sender, may_context_switch=True):
+    def stack_frame(self, s_new_frame, s_sender, may_context_switch):
         if not self._loop:
             # this test is done to not loop in test, but rather step just once where wanted
             # Unfortunately, we have to mimick some of the original behaviour.
@@ -247,13 +247,10 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         for nm, idx in constants.constant_objects_in_special_object_table_wo_types.items():
             w_cls_obj = getattr(self, "w_" + nm)
             if nm[0].isupper():
-                if w_cls_obj.getclass(None) is None:
-                    if w_cls_obj.strategy is None:
-                        w_cls_obj._initialize_storage(self, self.w_Metaclass, 0)
-                    elif w_cls_obj.strategy.w_class is None:
-                        w_cls_obj.strategy.w_class = self.w_Metaclass
-                    else:
-                        import pdb; pdb.set_trace()
+                if w_cls_obj.strategy is None:
+                    w_cls_obj._initialize_storage(self, self.w_Metaclass, 0)
+                elif w_cls_obj.strategy.w_class is None:
+                    w_cls_obj.strategy.w_class = self.w_Metaclass
 
     def patch_bootstrap_classes(self):
         # Create all classes in the class hierarchies of the classes in the special objects array.
@@ -339,15 +336,18 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         patch_bootstrap_object(self.w_special_selectors, self.w_Array, len(constants.SPECIAL_SELECTORS) * 2)
         special_objects_w = [self.w_nil] * (constants.SPECIAL_OBJECTS_SIZE * 2)
         for name, idx in constants.constant_objects_in_special_object_table_wo_types.items():
-            special_objects_w[idx] = getattr(self, "w_" + name)
+            w_sp_obj = getattr(self, "w_" + name)
+            if (not isinstance(w_sp_obj, W_PointersObject)) or (getattr(w_sp_obj, "strategy") is not None):
+                special_objects_w[idx] = w_sp_obj
         self.w_special_objects = self.wrap_list(special_objects_w)
+        self.w_Processor = self.wrap_list([ # scheduler
+            self.w_nil,
+            self.wrap_list([self.w_nil, self.w_nil]) # active proc
+        ])
         self.w_schedulerassociationpointer = (
             self.wrap_list([ # assoc
                 self.w_nil,
-                self.wrap_list([ # scheduler
-                    self.w_nil,
-                    self.wrap_list([self.w_nil, self.w_nil]) # active proc
-                ])
+                self.w_Processor
             ])
         )
 
@@ -355,24 +355,24 @@ class BootstrappedObjSpace(objspace.ObjSpace):
                         name='?', format=storage_classes.POINTERS, varsized=False):
         s = instantiate(storage_classes.ClassShadow)
         s.space = self
-        s.w_class = w_metaclass
+        s.w_class = w_metaclass or self.w_nil
         s.version = util.version.Version()
         s._w_self = w_class
         s.subclass_s = {}
         s._s_superclass = None
-        s.store_w_superclass(w_superclass)
+        s.store_w_superclass(w_superclass or self.w_nil)
         s.name = name
         s._instance_size = instsize
         s.instance_kind = format
         s._s_methoddict = None
         s.instance_varsized = varsized or format != storage_classes.POINTERS
-        w_class.store_strategy(s)
+        w_class._set_strategy(s)
         s._initialize_storage(w_class, 6)
 
     def bootstrap_class(self, instsize, w_superclass=None, w_metaclass=None,
                         name='?', format=storage_classes.POINTERS, varsized=False):
-        w_class = W_PointersObject(self, w_metaclass, 6)
-        self.patch_class(w_class, instsize, w_superclass, w_metaclass, name, format, varsized)
+        w_class = W_FixedPointersObject(self, w_metaclass or self.w_nil, 6)
+        self.patch_class(w_class, instsize, w_superclass or self.w_nil, w_metaclass or self.w_nil, name, format, varsized)
         return w_class
 
     def w(self, any):
@@ -404,7 +404,7 @@ class BootstrappedObjSpace(objspace.ObjSpace):
         interp.perform(w_class, w_selector=initialize_symbol)
 
     def find_symbol_in_methoddict(self, string, cls, fail=True):
-        if isinstance(cls, W_PointersObject):
+        if isinstance(cls, W_FixedPointersObject):
             cls = cls.as_class_get_shadow(self)
         s_methoddict = cls.s_methoddict()
         s_methoddict.sync_method_cache()

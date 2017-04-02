@@ -27,3 +27,4 @@ exclude_paths:
   - "repository/*"
   - "scripts/**/*"
   - "scripts/*"
+

@@ -2,15 +2,13 @@ from rsqueakvm import constants, error
 from rsqueakvm.model.base import W_Object
 from rsqueakvm.model.compiled_methods import W_CompiledMethod, W_PreSpurCompiledMethod, W_SpurCompiledMethod
 from rsqueakvm.model.numeric import W_MutableFloat, W_SmallInteger, W_LargeIntegerWord, W_LargeIntegerBig
-from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.model.pointers import W_PointersObject, W_FixedPointersObject
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.storage import AbstractCachingShadow, AbstractGenericShadow
 from rsqueakvm.util.version import elidable_for_version, Version
 
 from rpython.rlib import jit, objectmodel
 from rpython.rlib.rbigint import NULLRBIGINT
-
-import pdb
 
 POINTERS = 0
 BYTES = 1
@@ -253,7 +251,13 @@ class ClassShadow(AbstractCachingShadow):
         return w_new
 
     def make_pointers_object(self, w_cls, size):
-        return W_PointersObject(self.space, w_cls, size)
+        if (not self.space.use_maps.is_set() or
+            self.space.maps_limit.get() < size or
+            self.isvariable()):
+            return W_PointersObject(self.space, w_cls, size)
+        else:
+            assert size == self.instsize()
+            return W_FixedPointersObject(self.space, w_cls, size)
 
     @elidable_for_version(0)
     def get_instance_kind(self):
@@ -330,8 +334,8 @@ class ClassShadow(AbstractCachingShadow):
     @objectmodel.not_rpython # this is only for testing.
     def initialize_methoddict(self):
         if self._s_methoddict is None:
-            w_methoddict = W_PointersObject(self.space, None, 2)
-            w_methoddict.store(self.space, constants.METHODDICT_VALUES_INDEX, W_PointersObject(self.space, None, 0))
+            w_methoddict = W_PointersObject(self.space, self.space.w_Array, 2)
+            w_methoddict.store(self.space, constants.METHODDICT_VALUES_INDEX, W_PointersObject(self.space, self.space.w_Array, 0))
             self.store_s_methoddict(w_methoddict.as_methoddict_get_shadow(self.space))
 
     @objectmodel.not_rpython # this is only for testing.
@@ -341,7 +345,6 @@ class ClassShadow(AbstractCachingShadow):
         self.s_methoddict().methoddict[w_selector] = w_method
         if isinstance(w_method, W_CompiledMethod):
             w_method.compiledin_class = self.w_self()
-ClassShadow.instantiate_type = ClassShadow
 
 
 class MethodDictionaryShadow(AbstractGenericShadow):
@@ -429,4 +432,3 @@ class MethodDictionaryShadow(AbstractGenericShadow):
                         w_compiledmethod.set_lookup_class_and_name(self.s_class.w_self(), selector)
         if self.s_class:
             self.s_class.changed()
-MethodDictionaryShadow.instantiate_type = MethodDictionaryShadow

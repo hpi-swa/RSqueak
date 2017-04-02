@@ -6,7 +6,7 @@ from rsqueakvm.model.character import W_Character
 from rsqueakvm.model.compiled_methods import W_CompiledMethod, W_PreSpurCompiledMethod, W_SpurCompiledMethod
 from rsqueakvm.model.display import W_DisplayBitmap
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger, W_LargeIntegerWord, W_LargeIntegerBig, W_LargeInteger
-from rsqueakvm.model.pointers import W_PointersObject
+from rsqueakvm.model.pointers import W_PointersObject, W_FixedPointersObject
 from rsqueakvm.model.block_closure import W_BlockClosure
 from rsqueakvm.model.variable import W_BytesObject, W_WordsObject
 from rsqueakvm.util import stream, system
@@ -356,6 +356,11 @@ class BaseReaderStrategy(object):
                 bytes.append(chr((each >> 24) & 0xff))
         return bytes
 
+    def isfixed(self, g_object):
+        return (self.space.use_maps.is_set() and
+                g_object.format == 1 and
+                len(g_object.pointers) <= self.space.maps_limit.get())
+
     def isfloat(self, g_object):
         return self.iswords(g_object) and self.space.w_Float.is_same_object(g_object.g_class.w_object)
 
@@ -514,6 +519,8 @@ class NonSpurReader(BaseReaderStrategy):
             return objectmodel.instantiate(W_Character)
         elif self.isblockclosure(g_object):
             return objectmodel.instantiate(W_BlockClosure)
+        elif self.isfixed(g_object):
+            return objectmodel.instantiate(W_FixedPointersObject)
         elif self.ispointers(g_object):
             return objectmodel.instantiate(W_PointersObject)
         elif g_object.format == 5:
@@ -730,6 +737,8 @@ class SpurReader(BaseReaderStrategy):
             return objectmodel.instantiate(W_Character)
         elif self.isblockclosure(g_object):
             return objectmodel.instantiate(W_BlockClosure)
+        elif self.isfixed(g_object):
+            return objectmodel.instantiate(W_FixedPointersObject)
         elif self.ispointers(g_object):
             return objectmodel.instantiate(W_PointersObject)
         elif self.isfloat(g_object):
@@ -1040,7 +1049,7 @@ class SpurImageWriter(object):
         if obj.getclass(self.space).is_same_object(self.space.w_MethodContext):
             w_method = obj.fetch(self.space, constants.MTHDCTX_METHOD)
             if not w_method.is_nil(self.space):
-                w_method.compute_frame_size()
+                w_method.squeak_frame_size()
         elif obj.getclass(self.space).is_same_object(self.space.w_BlockContext):
             w_home = obj.fetch(self.space, constants.BLKCTX_HOME_INDEX)
             return self.frame_size_for(w_home)

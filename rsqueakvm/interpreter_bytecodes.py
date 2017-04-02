@@ -349,7 +349,7 @@ class __extend__(ContextPartShadow):
         if interp.is_tracing():
             interp.print_padded('-> ' + s_frame.short_str())
 
-        return interp.stack_frame(s_frame, self)
+        return interp.stack_frame(s_frame, self, True)
 
     def _invokeObjectAsMethod(self, w_selector, argcount, interp, w_receiver):
         args_w = self.pop_and_return_n(argcount)
@@ -365,7 +365,7 @@ class __extend__(ContextPartShadow):
 
     @objectmodel.specialize.arg(3)
     def _sendSpecialSelector(self, interp, receiver, special_selector, w_args=[]):
-        space = jit.promote(self.space)
+        space = self.space
         w_special_selector = getattr(space, "w_" + special_selector)
         s_class = receiver.class_shadow(space)
 
@@ -390,7 +390,7 @@ class __extend__(ContextPartShadow):
         if interp.is_tracing():
             interp.print_padded('-> %s %s' % (special_selector, s_frame.short_str()))
 
-        return interp.stack_frame(s_frame, self)
+        return interp.stack_frame(s_frame, self, True)
 
     def _doesNotUnderstand(self, w_selector, argcount, interp, receiver):
         arguments = self.pop_and_return_n(argcount)

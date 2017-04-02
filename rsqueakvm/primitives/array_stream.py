@@ -8,13 +8,13 @@ from rsqueakvm.primitives.constants import *
 # Array and Stream Primitives
 
 @expose_primitive(AT, unwrap_spec=[object, index1_0])
-def func(interp, s_frame, w_obj, n0):
-    n0 = assert_valid_index(interp.space, n0, w_obj)
+def func(interp, s_frame, w_obj, i0):
+    n0 = assert_valid_index(interp.space, i0, w_obj)
     return w_obj.at0(interp.space, n0)
 
 @expose_primitive(AT_PUT, unwrap_spec=[object, index1_0, object])
-def func(interp, s_frame, w_obj, n0, w_val):
-    n0 = assert_valid_index(interp.space, n0, w_obj)
+def func(interp, s_frame, w_obj, i0, w_val):
+    n0 = assert_valid_index(interp.space, i0, w_obj)
     w_obj.atput0(interp.space, n0, w_val)
     return w_val
 
@@ -25,8 +25,8 @@ def func(interp, s_frame, w_obj):
     return interp.space.wrap_int(w_obj.varsize())
 
 @expose_primitive(STRING_AT, unwrap_spec=[object, index1_0])
-def func(interp, s_frame, w_obj, n0):
-    n0 = assert_valid_index(interp.space, n0, w_obj)
+def func(interp, s_frame, w_obj, i0):
+    n0 = assert_valid_index(interp.space, i0, w_obj)
     # TODO: This can actually be called on any indexable object...
     if not (isinstance(w_obj, W_BytesObject) or
             isinstance(w_obj, W_WordsObject)):
@@ -34,9 +34,9 @@ def func(interp, s_frame, w_obj, n0):
     return interp.space.wrap_char(w_obj.getchar(n0))
 
 @expose_primitive(STRING_AT_PUT, unwrap_spec=[object, index1_0, object])
-def func(interp, s_frame, w_obj, n0, w_val):
+def func(interp, s_frame, w_obj, i0, w_val):
     val = interp.space.unwrap_char_as_byte(w_val)
-    n0 = assert_valid_index(interp.space, n0, w_obj)
+    n0 = assert_valid_index(interp.space, i0, w_obj)
     if not (isinstance(w_obj, W_CompiledMethod) or
             isinstance(w_obj, W_BytesObject) or
             isinstance(w_obj, W_WordsObject)):
