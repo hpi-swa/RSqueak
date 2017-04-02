@@ -14,18 +14,12 @@ class ForeignLanguageProcessMeta(type):
 
         if name != 'W_ForeignLanguageProcess':
             w_foreign_class = QuasiConstant(None, cls=W_PointersObject)
-            w_foreign_resume = QuasiConstant(None, cls=W_PointersObject)
 
             def foreign_class(self):
                 return w_foreign_class.get()
 
-            def resume_method(self):
-                return w_foreign_resume.get()
-
             attrs['w_foreign_class'] = w_foreign_class
-            attrs['w_foreign_resume'] = w_foreign_resume
             attrs['foreign_class'] = foreign_class
-            attrs['resume_method'] = resume_method
 
         return type.__new__(cls, name, bases, attrs)
 
@@ -38,12 +32,15 @@ class W_ForeignLanguageProcess(W_AbstractObjectWithIdentityHash):
         '_is_send', '_break_on_exceptions']
     repr_classname = 'W_ForeignLanguageProcess'
 
-    def __init__(self, space, w_rcvr=None, method_name=None, args_w=None,
+    eval_method = QuasiConstant(None, cls=W_PointersObject)
+    resume_method = QuasiConstant(None, cls=W_PointersObject)
+
+    def __init__(self, space, w_rcvr=None, method_name='', args_w=None,
                  is_send=False, break_on_exceptions=False):
         W_AbstractObjectWithIdentityHash.__init__(self)
         self._space = space
         self.w_rcvr = w_rcvr
-        self.method_name = method_name or ''
+        self.method_name = method_name
         self.args_w = args_w or []
         self._done = False
         self.w_result = None
@@ -60,19 +57,31 @@ class W_ForeignLanguageProcess(W_AbstractObjectWithIdentityHash):
 
     @staticmethod
     def load_special_objects(cls, language_name, space):
-        foreign_class = space.smalltalk_at(language_name)
-        if foreign_class is None:
+        language_class = space.smalltalk_at(language_name)
+        if language_class is None:
             # disable plugin?
             print '%s class not found.' % language_name
-        cls.w_foreign_class.set(foreign_class)
+        cls.w_foreign_class.set(language_class)
 
-        resume_method_symbol = space.wrap_symbol('resume:')
+        # this part is called twice -> make better
+        foreign_class = space.smalltalk_at('ForeignLanguage')
+
+        eval_method_symbol = space.wrap_symbol('vmEval:')
         foreign_cls_cls_s = foreign_class.getclass(
             space).as_class_get_shadow(space)
-        resume_method = foreign_cls_cls_s.lookup(resume_method_symbol)
+        eval_method = foreign_cls_cls_s.lookup(eval_method_symbol)
+        if eval_method is None:
+            print '%s class>>vmEval: method not found.' % language_name
+        W_ForeignLanguageProcess.eval_method.set(eval_method)
+
+        resume_method_symbol = space.wrap_symbol('vmResume:')
+        foreign_cls_cls_s = foreign_class.getclass(
+            space).as_class_get_shadow(space)
+        resume_method = foreign_cls_cls_s.lookup(
+            resume_method_symbol)
         if resume_method is None:
-            print '%s class>>resume: method not found.' % language_name
-        cls.w_foreign_resume.set(resume_method)
+            print '%s class>>vmResume: method not found.' % language_name
+        W_ForeignLanguageProcess.resume_method.set(resume_method)
 
     # W_AbstractObjectWithIdentityHash overrides
 
@@ -180,45 +189,44 @@ class W_ForeignLanguageProcess(W_AbstractObjectWithIdentityHash):
     # Switching
 
     def switch_to_smalltalk(self, interp, s_frame, first_call=False):
-        from rsqueakvm.storage_contexts import ContextPartShadow
-
         self.post_resume()
 
-        # print 'Switch to Smalltalk'
         if self.is_done():
             return self._create_return_frame(interp.space)
 
-        s_resume_frame = ContextPartShadow.build_method_context(
-            interp.space,
-            self.resume_method(),
-            self.foreign_class(),
-            [self]
-        )
         # import pdb; pdb.set_trace()
         if first_call:  # attach s_frame with resume method for the first time
+            s_resume_frame = self._build_resume_method(
+                interp.space, is_eval=True)
             s_resume_frame.store_s_sender(s_frame)
-        elif s_frame.w_method() is self.resume_method():
-            if s_frame.closure is None:
-                resume_frame = s_frame
-            else:
-                # up up, because there is an #on:do: in between
-                resume_frame = s_frame.s_sender().s_sender()
+        elif s_frame.w_method() is self.resume_method.get():
+            s_resume_frame = self._build_resume_method(interp.space)
+            eval_frame = s_frame.s_sender()
             # Ensure #resume: method with closure = nil
-            if (resume_frame.w_method() is self.resume_method() and
-                    resume_frame.closure is None):
+            if (eval_frame.w_method() is self.eval_method.get() and
+                    eval_frame.closure is not None):
                 # instead of chaining resume frames, store original sender
-                s_resume_frame.store_s_sender(resume_frame.s_sender())
+                s_resume_frame.store_s_sender(eval_frame)
             else:
-                print ('Unexpected resume_frame found:\n%s' %
+                print ('Unexpected eval_frame found:\n%s' %
                        s_frame.print_stack())
                 s_resume_frame.store_s_sender(s_frame)
         else:
             print 'Unexpected s_frame found:\n%s' % s_frame.print_stack()
-            s_resume_frame.store_s_sender(s_frame)
+            s_resume_frame = s_frame
         interp.quick_check_for_interrupt(s_resume_frame,
                                          dec=interp.interrupt_counter_size)
         # this will raise a ProcessSwitch if there are interrupts or timers ...
         return s_resume_frame
+
+    def _build_resume_method(self, space, is_eval=False):
+        from rsqueakvm.storage_contexts import ContextPartShadow
+        if is_eval:
+            method = self.eval_method.get()
+        else:
+            method = self.resume_method.get()
+        return ContextPartShadow.build_method_context(
+            space, method, self.foreign_class(), [self])
 
     def _create_return_frame(self, space):
         from rsqueakvm.storage_contexts import ContextPartShadow
