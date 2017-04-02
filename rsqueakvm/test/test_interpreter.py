@@ -1016,7 +1016,7 @@ def test_raise_NonVirtualReturn_on_dirty_frame():
 
     interp._loop = True
     def do_test():
-        interp.stack_frame(s_frame, None)
+        interp.stack_frame(s_frame, None, True)
     py.test.raises(interpreter.NonVirtualReturn, do_test)
 
 

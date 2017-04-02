@@ -15,7 +15,7 @@ from rpython.rlib.rjitlog import rjitlog
 def patch_interpreter():
     from rsqueakvm.interpreter import Interpreter
 
-    def _get_code(interp, s_frame, s_sender, may_context_switch=True):
+    def _get_code(interp, s_frame, s_sender, may_context_switch):
         return s_frame.w_method()
     _decorator = rvmprof.vmprof_execute_code("rsqueak", _get_code)
     _my_stack_frame = _decorator(Interpreter.stack_frame)
