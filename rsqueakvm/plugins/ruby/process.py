@@ -12,20 +12,19 @@ class W_RubyProcess(W_ForeignLanguageProcess):
     _attrs_ = ['source', 'filepath', 'ec']
     repr_classname = 'W_RubyProcess'
 
-    def __init__(self, space, w_rcvr=None, method_name=None, args_w=None,
-                 source=None, filepath=None,
+    def __init__(self, space, w_rcvr=None, method_name='', args_w=None,
+                 source='', filepath='-e',
                  is_send=False, break_on_exceptions=False):
         W_ForeignLanguageProcess.__init__(
             self, space, w_rcvr, method_name, args_w,
             is_send, break_on_exceptions)
-        self.source = source or ''
-        self.filepath = filepath or '-e'
+        self.source = source
+        self.filepath = filepath
         self.ec = ExecutionContext()
 
-    def run(self):
+    def eval(self):
         if self.source == '':
             return self.fail('Invalid Ruby eval')
-        print 'Ruby start'
         try:
             retval = ruby_space.execute(self.source, filepath=self.filepath)
             self.set_result(W_RubyObject(retval))
@@ -62,3 +61,6 @@ class W_RubyProcess(W_ForeignLanguageProcess):
         if topframe is None:
             return None
         return W_RubyObject(WR_FrameObject(topframe))
+
+    def guess_classname(self):
+        return self.repr_classname

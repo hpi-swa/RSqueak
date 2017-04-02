@@ -11,21 +11,20 @@ class W_PythonProcess(W_ForeignLanguageProcess):
     _attrs_ = ['source', 'filename', 'cmd', 'ec']
     repr_classname = 'W_PythonProcess'
 
-    def __init__(self, space, w_rcvr=None, method_name=None, args_w=None,
-                 source=None, filename=None, cmd=None,
+    def __init__(self, space, w_rcvr=None, method_name='', args_w=None,
+                 source='', filename='', cmd='',
                  is_send=False, break_on_exceptions=False):
         W_ForeignLanguageProcess.__init__(
             self, space, w_rcvr, method_name, args_w,
             is_send, break_on_exceptions)
-        self.source = source or ''
-        self.filename = filename or ''
-        self.cmd = cmd or ''
+        self.source = source
+        self.filename = filename
+        self.cmd = cmd
         self.ec = py_space.createexecutioncontext()
 
     def eval(self):
         if self.source == '' or self.filename == '' or self.cmd == '':
             return self.fail('Invalid Python eval')
-        print 'Python start'
         try:
             retval = utils._run_eval_string(
                 self.source, self.filename, self.cmd)
@@ -75,3 +74,9 @@ class W_PythonProcess(W_ForeignLanguageProcess):
         if topframe is None:
             return None
         return W_PythonObject(topframe)
+
+    def guess_classname(self):
+        return self.repr_classname
+
+    def str_content(self):
+        return self.cmd

@@ -1,3 +1,5 @@
+from rsqueakvm.plugins.foreign_language.utils import log
+
 from rpython.rlib import rstacklet
 
 
@@ -10,10 +12,12 @@ class AbstractLanguageRunner():
         return self._language_process
 
     def start(self):
+        log('Starting %s...' % self.language_process())
         self.language_process().pre_resume()
         self.start_thread()
 
     def resume(self):
+        log('Resuming %s...' % self.language_process())
         self.language_process().pre_resume()
         self.resume_thread()
 
@@ -61,9 +65,9 @@ class StackletLanguageRunner(AbstractLanguageRunner):
             return
         self.handle = self.sthread.switch(self.handle)
         if self.handle is self.sthread.get_null_handle():
-            print 'language_process thread has finished1'
+            log('language_process thread has finished (handle is null)')
         if self.sthread.is_empty_handle(self.handle):
-            print 'language_process thread has finished2'
+            log('language_process thread has finished (handle is empty)')
 
     def _has_valid_handle(self):
         # TODO: make less verbose when this proved to work
@@ -80,7 +84,7 @@ class StackletLanguageRunner(AbstractLanguageRunner):
 
     @staticmethod
     def new_stacklet_callback(h, arg):
-        print 'new_stacklet_callback:', h
+        log('new_stacklet_callback: %s' % h)
         self = global_execution_state.origin
         self.handle = h
         global_execution_state.clear()

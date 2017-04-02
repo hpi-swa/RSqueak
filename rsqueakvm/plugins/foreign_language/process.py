@@ -1,4 +1,5 @@
 from rsqueakvm.plugins.foreign_language import runner
+from rsqueakvm.plugins.foreign_language.utils import log
 from rsqueakvm.model.base import W_AbstractObjectWithIdentityHash
 from rsqueakvm.model.compiled_methods import (
     W_PreSpurCompiledMethod, W_SpurCompiledMethod)
@@ -190,6 +191,7 @@ class W_ForeignLanguageProcess(W_AbstractObjectWithIdentityHash):
 
     def switch_to_smalltalk(self, interp, s_frame, first_call=False):
         self.post_resume()
+        log('Switching to Smalltalk...')
 
         if self.is_done():
             return self._create_return_frame(interp.space)
@@ -230,7 +232,7 @@ class W_ForeignLanguageProcess(W_AbstractObjectWithIdentityHash):
 
     def _create_return_frame(self, space):
         from rsqueakvm.storage_contexts import ContextPartShadow
-        print 'Language has finished and returned a result.'
+        log('Language has finished and returned a result.')
         # we want evalInThread and resumePython to return new frames,
         # so we don't build up stack, but we also don't raise to the
         # top-level loop all the time.
