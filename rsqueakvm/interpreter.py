@@ -249,7 +249,7 @@ class Interpreter(object):
                 s_context=s_context)
             s_sender = s_context.s_sender()
             try:
-                self.stack_frame(s_context, None)
+                self.stack_frame(s_context, None, True)
                 raise Exception("loop_bytecodes left without raising...")
             except ProcessSwitch, e:
                 if self.is_tracing() or self.trace_important:
@@ -288,7 +288,7 @@ class Interpreter(object):
 
     # This is a wrapper around loop_bytecodes that cleanly enters/leaves the frame,
     # handles the stack overflow protection mechanism and handles/dispatches Returns.
-    def stack_frame(self, s_frame, s_sender, may_context_switch=True):
+    def stack_frame(self, s_frame, s_sender, may_context_switch):
         if self.is_tracing():
             self.stack_depth += 1
         vref = s_frame.enter_virtual_frame(s_sender)
@@ -330,7 +330,7 @@ class Interpreter(object):
     def getblockmethod(self, s_context):
         return s_context.blockmethod()
 
-    def loop_bytecodes(self, s_context, may_context_switch=True):
+    def loop_bytecodes(self, s_context, may_context_switch):
         old_pc = 0
         jump_back_pc = 0
         unrollings = 0
