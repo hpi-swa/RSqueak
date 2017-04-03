@@ -1,6 +1,7 @@
 import os
 
 from rsqueakvm.model.numeric import W_Float, W_SmallInteger
+from rsqueakvm.plugins.foreign_language.utils import log
 from rsqueakvm.plugins.python.model import W_PythonObject
 from rsqueakvm.plugins.python.objspace import py_space
 from rsqueakvm.model.variable import W_BytesObject
@@ -105,7 +106,7 @@ def smalltalk_to_python(space, w_object):
 
 
 def get_restart_pycode(source, filename='<string>', cmd='exec'):
-    print 'Trying to patch:\n%s' % source
+    log('Trying to patch:\n%s' % source)
     try:
         py_code = py_compiling.compile(py_space, py_space.newtext(source),
                                        filename, cmd)
@@ -117,10 +118,10 @@ def get_restart_pycode(source, filename='<string>', cmd='exec'):
         co_consts_w_len = len(py_code.co_consts_w)
         if co_consts_w_len >= 1:
             if co_consts_w_len > 1:
-                print 'More than 1 const produced: %s' % co_consts_w_len
+                log('More than 1 const produced: %s' % co_consts_w_len)
             first_consts_w = py_code.co_consts_w[0]
             if not isinstance(first_consts_w, PyCode):
-                print 'First const is not a PyCode'
+                log('First const is not a PyCode')
                 return py_code
             return first_consts_w
     except OperationError as e:
