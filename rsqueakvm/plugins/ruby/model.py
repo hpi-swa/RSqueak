@@ -12,11 +12,11 @@ class W_RubyObject(W_ForeignLanguageObject):
         W_ForeignLanguageObject.__init__(self)
         self.wr_object = wr_object
 
-    def getclass(self, space):
-        return W_RubyObject(self.wr_object.getclass(ruby_space))
-
     def getforeignclass(self):
         return ruby_space.getclass(self.wr_object)
+
+    def initialize_w_class(self):
+        self.w_class = W_RubyObject(self.wr_object.getclass(ruby_space))
 
     def guess_classname(self):
         return self.getforeignclass().name

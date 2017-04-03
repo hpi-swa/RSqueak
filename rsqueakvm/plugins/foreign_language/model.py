@@ -28,11 +28,20 @@ class W_ForeignLanguageObjectMeta(type):
         return type.__new__(cls, name, bases, attrs)
 
 
+def _initialize_w_class(foreign_obj):
+    foreign_obj.initialize_w_class()
+    return foreign_obj.w_class
+
+
 class W_ForeignLanguageObject(W_AbstractObjectWithIdentityHash):
     __metaclass__ = W_ForeignLanguageObjectMeta
-    _attrs_ = []
-    _immutable_fields_ = []
+    _attrs_ = ['w_class']
+    _immutable_fields_ = ['w_class']
     repr_classname = 'W_ForeignLanguageObject'
+
+    def __init__(self):
+        W_AbstractObjectWithIdentityHash.__init__(self)
+        self.w_class = None
 
     # W_AbstractObjectWithIdentityHash overrides
 
@@ -48,16 +57,24 @@ class W_ForeignLanguageObject(W_AbstractObjectWithIdentityHash):
     def store(self, space, n0, w_value):
         pass
 
-    # Abstract methods
+    def trace_pointers(self, space):
+        "allInstances not supported"
+        return []
 
     def getclass(self, space):
-        raise NotImplementedError
+        return jit.conditional_call_elidable(
+            self.w_class, _initialize_w_class, self)
+
+    def class_shadow(self, space):
+        return self.pure_class_shadow(space)
+
+    # Abstract methods
 
     def getforeignclass(self):
         raise NotImplementedError
 
-    def class_shadow(self, space):
-        return self.pure_class_shadow(space)
+    def initialize_w_class(self):
+        raise NotImplementedError
 
     def is_same_object(self, other):
         raise NotImplementedError

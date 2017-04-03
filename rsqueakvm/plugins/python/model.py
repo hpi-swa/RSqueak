@@ -14,11 +14,11 @@ class W_PythonObject(W_ForeignLanguageObject):
         W_ForeignLanguageObject.__init__(self)
         self.wp_object = wp_object
 
-    def getclass(self, space):
-        return W_PythonObject(self.wp_object.getclass(py_space))
-
     def getforeignclass(self):
         return py_space.type(self.wp_object)
+
+    def initialize_w_class(self):
+        self.w_class = W_PythonObject(self.wp_object.getclass(py_space))
 
     def guess_classname(self):
         return self.getforeignclass().getname(py_space)
