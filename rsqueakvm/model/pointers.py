@@ -25,6 +25,10 @@ class W_PointersObject(W_AbstractObjectWithIdentityHash):
         storage_type = space.strategy_factory.empty_storage_type(self, size, weak)
         space.strategy_factory.set_initial_strategy(self, storage_type, w_class, size)
 
+    def trace_pointers(self, space):
+        ptrs = W_AbstractObjectWithIdentityHash.trace_pointers(self, space)
+        return ptrs + self.fetch_all(space)
+
     def fillin(self, space, g_self):
         W_AbstractObjectWithIdentityHash.fillin(self, space, g_self)
         # Recursive fillin required to enable specialized storage strategies.
