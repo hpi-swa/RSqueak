@@ -42,10 +42,11 @@ class W_RubyProcess(W_ForeignLanguageProcess):
         except RubyError as e:
             print_traceback(ruby_space, e.w_value)
             self.set_result(W_RubyObject(e.w_value))
-        except:
+        except Exception as e:
             # import pdb; pdb.set_trace()
-            self.fail('No result in send prim (wr_rcvr: %s, methodname: %s)'
-                      % (wr_rcvr, self.method_name))
+            self.fail(
+                'No result in send prim (wr_rcvr: %s, methodname: %s, "%s")'
+                % (wr_rcvr, self.method_name, e))
 
     def pre_resume(self):
         ruby_space.current_ruby_process.set(self)
