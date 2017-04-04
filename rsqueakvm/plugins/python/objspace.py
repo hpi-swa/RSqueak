@@ -20,9 +20,6 @@ def new_pypy_objspace():
     pypy_config.objspace.usemodules.micronumpy = False
     pypy_config.objspace.usemodules.cppyy = False
 
-    # disable vmprof
-    pypy_config.objspace.usemodules._vmprof = False
-
     # cpyext causes a lot of 'Undefined symbols for architecture x86_64' errors
     pypy_config.objspace.usemodules.cpyext = False
 
