@@ -12,8 +12,8 @@ class ForeignLanguagePlugin(Plugin):
         self.register_default_primitives()
 
     @staticmethod
-    def load_special_objects(space, language_name, language_cls, shadow_cls):
-        language_cls.load_special_objects(language_cls, language_name, space)
+    def load_special_objects(space, language_name, process_cls, shadow_cls):
+        process_cls.load_special_objects(process_cls, language_name, space)
         shadow_cls.load_special_objects(shadow_cls, language_name, space)
 
     # Abstract methods

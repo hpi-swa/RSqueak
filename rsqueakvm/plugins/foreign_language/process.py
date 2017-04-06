@@ -67,6 +67,10 @@ class W_ForeignLanguageProcess(W_AbstractObjectWithIdentityHash):
         # this part is called twice -> make better
         foreign_class = space.smalltalk_at('ForeignLanguage')
 
+        if foreign_class is None:
+            print 'ForeignLanguage class not found.'
+            return
+
         eval_method_symbol = space.wrap_symbol('vmEval:')
         foreign_cls_cls_s = foreign_class.getclass(
             space).as_class_get_shadow(space)
