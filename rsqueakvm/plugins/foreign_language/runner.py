@@ -1,6 +1,6 @@
 from rsqueakvm.plugins.foreign_language.utils import log
 
-from rpython.rlib import rstacklet
+from rpython.rlib.rstacklet import StackletThread
 
 
 class AbstractLanguageRunner():
@@ -14,26 +14,26 @@ class AbstractLanguageRunner():
     def start(self):
         log('Starting %s...' % self.language_process())
         self.language_process().pre_resume()
-        self.start_thread()
+        self._start_thread()
 
     def resume(self):
         log('Resuming %s...' % self.language_process())
         self.language_process().pre_resume()
-        self.resume_thread()
+        self._resume_thread()
 
     def return_to_smalltalk(self):
-        self.yield_thread()
-
-    def start_thread(self):
-        raise NotImplementedError
-
-    def resume_thread(self):
-        raise NotImplementedError
+        self._yield_thread()
 
     def resumable(self):
         raise NotImplementedError
 
-    def yield_thread(self):
+    def _start_thread(self):
+        raise NotImplementedError
+
+    def _resume_thread(self):
+        raise NotImplementedError
+
+    def _yield_thread(self):
         raise NotImplementedError
 
 
@@ -42,24 +42,24 @@ class StackletLanguageRunner(AbstractLanguageRunner):
 
     def __init__(self, language_process):
         AbstractLanguageRunner.__init__(self, language_process)
-        self.sthread = rstacklet.StackletThread()
+        self.sthread = StackletThread()
         # there can only be one valid handle at a time (main or foreign thread)
         self.handle = self.sthread.get_null_handle()
-
-    def start_thread(self):
-        global_execution_state.origin = self
-        self.handle = self.sthread.new(self.__class__.new_stacklet_callback)
-
-    def resume_thread(self):
-        self.switch_to_handle()
 
     def resumable(self):
         return self._has_valid_handle()
 
-    def yield_thread(self):
-        self.switch_to_handle()
+    def _start_thread(self):
+        global_execution_state.origin = self
+        self.handle = self.sthread.new(self.__class__.new_stacklet_callback)
 
-    def switch_to_handle(self):
+    def _resume_thread(self):
+        self._switch_to_handle()
+
+    def _yield_thread(self):
+        self._switch_to_handle()
+
+    def _switch_to_handle(self):
         if not self._has_valid_handle():
             print 'handle not valid: %s' % self.handle
             return
@@ -94,19 +94,19 @@ class StackletLanguageRunner(AbstractLanguageRunner):
 
 
 class GreenletLanguageRunner(AbstractLanguageRunner):
-    def start_thread(self):
+    def _start_thread(self):
         from greenlet import greenlet
         global_execution_state.origin = self
         self.greenlet = greenlet(self.__class__.new_greenlet_callback())
         self.resume()  # stacklets also start immediately
 
-    def resume_thread(self):
-        self.greenlet.switch()
-
     def resumable(self):
         return not self.greenlet.dead
 
-    def yield_thread(self):
+    def _resume_thread(self):
+        self.greenlet.switch()
+
+    def _yield_thread(self):
         self.greenlet.parent.switch()
 
     @staticmethod
