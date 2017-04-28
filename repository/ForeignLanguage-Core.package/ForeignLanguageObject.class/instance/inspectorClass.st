@@ -1,3 +1,3 @@
 overrides
 inspectorClass
-	^ ForeignLanguageInspector
+	^ FLInspector

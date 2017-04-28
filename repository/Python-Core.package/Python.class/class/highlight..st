@@ -1,3 +1,3 @@
 styling
 highlight: aText
-	^ ForeignLanguageTextStyler highlightPython: aText
+	^ FLTextStyler highlightPython: aText

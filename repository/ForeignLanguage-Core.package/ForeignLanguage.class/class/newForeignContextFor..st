@@ -1,3 +1,3 @@
 helpers
 newForeignContextFor: foreignFrame
-	^ ForeignLanguageMethodContext newFor: foreignFrame
+	^ FLMethodContext newFor: foreignFrame

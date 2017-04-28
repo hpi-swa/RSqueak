@@ -1,3 +1,0 @@
-inspecting
-openForeignLanguageWorkspace
-	ForeignLanguageWorkspace open

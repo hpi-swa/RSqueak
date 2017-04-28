@@ -1,3 +1,3 @@
 styling
 highlight: aText
-	^ ForeignLanguageTextStyler highlightRuby: aText
+	^ FLTextStyler highlightRuby: aText

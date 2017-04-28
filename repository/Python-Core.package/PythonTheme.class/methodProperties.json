@@ -4,7 +4,7 @@
 		"addDialogs:" : "fn 2/21/2017 18:33",
 		"addFonts:" : "fn 2/10/2017 10:26",
 		"addMenusAndDockingBars:" : "fn 2/10/2017 14:23",
-		"addScrollables:" : "fn 3/13/2017 17:12",
+		"addScrollables:" : "fn 4/28/2017 16:08",
 		"addSyntaxHighlighting:" : "fn 2/10/2017 14:03",
 		"addToolColors:" : "fn 2/10/2017 11:58",
 		"addWindowColors:" : "fn 2/10/2017 11:59",
@@ -34,4 +34,4 @@
 		"windowColor" : "fn 2/10/2017 11:02",
 		"yellow" : "fn 2/10/2017 11:58" },
 	"instance" : {
-		"stylerClass" : "fn 3/13/2017 17:12" } }
+		"stylerClass" : "fn 4/28/2017 16:08" } }

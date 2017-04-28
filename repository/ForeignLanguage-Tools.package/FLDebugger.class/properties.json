@@ -1,0 +1,14 @@
+{
+	"category" : "ForeignLanguage-Tools",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "FLDebugger",
+	"pools" : [
+		 ],
+	"super" : "Debugger",
+	"type" : "normal" }

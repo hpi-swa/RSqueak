@@ -1,3 +1,3 @@
 overrides
 explore
-	^ForeignLanguageToolSet explore: self
+	^FLToolSet explore: self

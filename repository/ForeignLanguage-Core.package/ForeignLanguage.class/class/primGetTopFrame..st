@@ -1,3 +1,4 @@
 system primitives
 primGetTopFrame: languageProcess
-	self subclassResponsibility
+	<primitive: 'getTopFrame' module: '{ForeignLanguage}Plugin'>
+	self primitiveFailed.

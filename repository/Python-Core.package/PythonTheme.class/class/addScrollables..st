@@ -66,6 +66,6 @@ addScrollables: theme
 		set: #adornmentDiffEdit for: #PluggableTextMorph to: Color yellow;
 		set: #frameAdornmentWidth for: #PluggableTextMorph to: 1.
 	theme
-		set: #stylerClass for: #PluggableTextMorphPlus to: ForeignLanguageTextStyler;
+		set: #stylerClass for: #PluggableTextMorphPlus to: FLTextStyler;
 		set: #balloonTextColor for: #PluggableTextMorphPlus to: (Color gray: 0.7);
 		derive: #balloonTextFont for: #PluggableTextMorphPlus from: #PluggableTextMorph at: #font.

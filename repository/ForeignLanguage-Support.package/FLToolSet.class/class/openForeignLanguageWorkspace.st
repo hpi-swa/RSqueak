@@ -1,0 +1,3 @@
+inspecting
+openForeignLanguageWorkspace
+	FLWorkspace open

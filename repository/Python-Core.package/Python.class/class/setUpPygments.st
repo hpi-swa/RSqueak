@@ -12,7 +12,7 @@ try:
 	_pygments_lexer_smalltalk = pygments.lexers.get_lexer_by_name(
 		"smalltalk", encoding="utf-8", stripnl=False, ensurenl=False)
 	_pygments_formatter = pygments.formatters.get_formatter_by_name(
-		"html", encoding="utf-8", style="colorful", nowrap=True, noclasses=True, lineseparator="<br>")
+		"html", encoding="utf-8", style="squeak", nowrap=True, noclasses=True, lineseparator="<br>")
 except ImportError:
 	pass
 ' breakOnExceptions: false.

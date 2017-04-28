@@ -1,0 +1,18 @@
+{
+	"class" : {
+		"browse:selector:" : "fn 4/28/2017 16:05",
+		"browseClass:" : "fn 4/28/2017 16:05",
+		"browseClass:category:" : "fn 4/28/2017 16:05",
+		"browseMessageCategory:inClass:" : "fn 4/28/2017 16:05",
+		"debug:context:label:contents:fullView:" : "fn 4/28/2017 16:06",
+		"debugContext:label:contents:" : "fn 4/28/2017 16:06",
+		"explore:" : "fn 4/28/2017 16:06",
+		"initialize" : "fn 1/16/2017 18:52",
+		"inspectorClassOf:" : "fn 4/28/2017 16:06",
+		"interrupt:label:" : "fn 4/28/2017 16:06",
+		"menuItems" : "fn 3/13/2017 17:56",
+		"openClassBrowser" : "fn 4/28/2017 16:05",
+		"openForeignLanguageBrowser" : "fn 4/28/2017 16:05",
+		"openForeignLanguageWorkspace" : "fn 4/28/2017 16:06" },
+	"instance" : {
+		 } }
