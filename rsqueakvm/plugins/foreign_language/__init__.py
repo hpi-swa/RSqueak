@@ -49,10 +49,24 @@ class ForeignLanguagePlugin(Plugin):
             language_process = self.new_eval_process(interp.space, args_w)
             language_process.start()
             # when we are here, the foreign language process has yielded
+            if language_process.error_detected():
+                raise PrimitiveFailedError
             frame = language_process.switch_to_smalltalk(
                 interp, s_frame, first_call=True)
             s_frame.pop_n(argcount + 1)
             return frame
+
+        @self.expose_primitive(unwrap_spec=[object, object],
+                               result_is_new_frame=True)
+        def resume(interp, s_frame, w_rcvr, language_process):
+            # print 'Smalltalk yield'
+            # import pdb; pdb.set_trace()
+            if not isinstance(language_process, W_ForeignLanguageProcess):
+                raise PrimitiveFailedError
+            language_process.resume()
+            if language_process.error_detected():
+                raise PrimitiveFailedError
+            return language_process.switch_to_smalltalk(interp, s_frame)
 
         @self.expose_primitive(result_is_new_frame=True, compiled_method=True)
         def send(interp, s_frame, argcount, w_method):
@@ -75,17 +89,6 @@ class ForeignLanguagePlugin(Plugin):
                 interp, s_frame, first_call=True)
             s_frame.pop_n(argcount + 1)
             return frame
-
-        @self.expose_primitive(unwrap_spec=[object, object],
-                               result_is_new_frame=True)
-        def resume(interp, s_frame, w_rcvr, language_process):
-            # print 'Smalltalk yield'
-            # import pdb; pdb.set_trace()
-            if not isinstance(language_process, W_ForeignLanguageProcess):
-                raise PrimitiveFailedError
-            if not language_process.resume():
-                raise PrimitiveFailedError
-            return language_process.switch_to_smalltalk(interp, s_frame)
 
         @self.expose_primitive(unwrap_spec=[object, object])
         def lastError(interp, s_frame, w_rcvr, language_process):

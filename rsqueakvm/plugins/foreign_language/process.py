@@ -157,11 +157,11 @@ class W_ForeignLanguageProcess(W_AbstractObjectWithIdentityHash):
             print 'The runner is done and cannot be resumed'
             return False
         self.runner().resume()
+
+    def error_detected(self):
         if not self.break_on_exceptions():
-            # resume is always successful in this case, otherwise the image
-            # would start looking for an error
-            return True
-        return self.get_error() is None
+            return False  # pretend everything is ok and move on
+        return self.get_error() is not None
 
     def runner(self):
         return self._runner

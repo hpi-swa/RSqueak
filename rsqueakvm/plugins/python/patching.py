@@ -95,13 +95,13 @@ def block_handles_exception(self, block, operr_type):
 
 def has_exception_handler(self, operr):
     "Returns True if this frame or one of its parents are able to handle operr"
-    frame = self
     error_type = operr.w_type.getname(py_space)
     forbidden_names = []
     if error_type == 'AttributeError':
         forbidden_names = ATTRIBUTE_ERROR_FORBIDDEN_NAMES
     elif error_type == 'StopIteration':
         forbidden_names = STOP_ITERATION_FORBIDDEN_NAMES
+    frame = self
     while frame is not None:
         for name in forbidden_names:
             if name in frame.pycode._co_names:
