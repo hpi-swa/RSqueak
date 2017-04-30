@@ -92,3 +92,28 @@ class PythonPlugin(ForeignLanguagePlugin):
     def set_py_frame_restart_info(frame, py_code):
         PythonPlugin.py_frame_restart_info.set(
             PyFrameRestartInfo(frame, py_code))
+
+    @staticmethod
+    def restart_specific_frame(space, args_w):
+        frame_w = args_w[0]
+        source_w = args_w[1]
+        filename_w = args_w[2]
+        cmd_w = args_w[3]
+
+        if not (isinstance(frame_w, W_PythonObject) and
+                isinstance(source_w, W_BytesObject) and
+                isinstance(filename_w, W_BytesObject) and
+                isinstance(cmd_w, W_BytesObject)):
+            return False
+        frame = frame_w.wp_object
+        source = space.unwrap_string(source_w)
+        filename = space.unwrap_string(filename_w)
+        cmd = space.unwrap_string(cmd_w)
+
+        py_code = None
+        if source:
+            py_code = utils.get_restart_pycode(source, filename, cmd)
+            if py_code is None:
+                return False
+        PythonPlugin.set_py_frame_restart_info(frame, py_code)
+        return True

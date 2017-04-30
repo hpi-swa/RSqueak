@@ -77,3 +77,8 @@ class RubyPlugin(ForeignLanguagePlugin):
     @staticmethod
     def to_w_object(space, foreign_object):
         return utils.ruby_to_smalltalk(space, foreign_object.wr_object)
+
+    @staticmethod
+    def restart_specific_frame(space, args_w):
+        print 'Not yet implemented for Topaz'
+        return False

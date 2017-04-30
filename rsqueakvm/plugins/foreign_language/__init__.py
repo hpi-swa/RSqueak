@@ -37,6 +37,10 @@ class ForeignLanguagePlugin(Plugin):
     def to_w_object(foreign_object):
         raise NotImplementedError
 
+    @staticmethod
+    def restart_specific_frame(space, args_w):
+        raise NotImplementedError
+
     # Default primitives
 
     def register_default_primitives(self):
@@ -114,6 +118,14 @@ class ForeignLanguagePlugin(Plugin):
             if not isinstance(w_rcvr, self.w_object_class()):
                 raise PrimitiveFailedError
             return self.to_w_object(interp.space, w_rcvr)
+
+        @self.expose_primitive()
+        def restartSpecificFrame(interp, s_frame, argcount):
+            # import pdb; pdb.set_trace()
+            args_w = s_frame.peek_n(argcount)
+            result = self.restart_specific_frame(interp.space, args_w)
+            s_frame.pop_n(argcount + 1)
+            return interp.space.wrap_bool(result)
 
         @self.expose_primitive(unwrap_spec=[object, object])
         def registerSpecificClass(interp, s_frame, w_rcvr, language_obj):
