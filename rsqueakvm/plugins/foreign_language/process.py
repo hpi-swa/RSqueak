@@ -155,7 +155,7 @@ class W_ForeignLanguageProcess(W_AbstractObjectWithIdentityHash):
         if self.is_done():
             # import pdb; pdb.set_trace()
             print 'The runner is done and cannot be resumed'
-            return False
+            return
         self.runner().resume()
 
     def error_detected(self):
