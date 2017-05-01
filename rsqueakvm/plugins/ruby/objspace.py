@@ -11,6 +11,7 @@ def new_topaz_objspace():
     config = get_combined_translation_config(translating=translating)
     config.set(**get_topaz_config_options())
     config.translation.suggest(check_str_without_nul=True)
+    config.objspace.usemodules._vmprof = False
     return ObjectSpace(config)
 
 ruby_space = new_topaz_objspace()
