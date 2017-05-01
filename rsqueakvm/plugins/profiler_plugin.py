@@ -36,7 +36,6 @@ def _get_full_name(w_cm):
 
 def patch_compiled_method():
     def _my_post_init(self):
-        from rpython.rlib import rvmprof
         rvmprof.register_code(self, _get_full_name)
     W_CompiledMethod.post_init = _my_post_init
 
