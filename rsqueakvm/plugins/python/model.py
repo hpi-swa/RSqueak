@@ -42,18 +42,14 @@ class PythonClassShadow(ForeignLanguageClassShadow):
         self.wp_object = wp_object
         ForeignLanguageClassShadow.__init__(self, space)
 
-    def method_exists(self, w_selector):
+    def method_exists(self, method_name):
         # import pdb; pdb.set_trace()
-        methodname = self.space.unwrap_string(w_selector)
-        idx = methodname.find(':')
-        if idx > 0:
-            methodname = methodname[0:idx]
-        wp_methodname = py_space.newtext(methodname)
+        wp_method_name = py_space.newtext(method_name)
         try:
-            if py_space.getattr(self.wp_object, wp_methodname) is not None:
+            if py_space.getattr(self.wp_object, wp_method_name) is not None:
                 return True
         except OperationError as operror:
             print operror.errorstr(py_space)
         except Exception as e:
-            print 'Unable to create method %s: %s' % (methodname, e)
+            print 'Unable to create method %s: %s' % (method_name, e)
         return False

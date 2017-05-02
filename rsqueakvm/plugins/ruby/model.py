@@ -41,10 +41,5 @@ class RubyClassShadow(ForeignLanguageClassShadow):
         self.name = wr_class.name
         ForeignLanguageClassShadow.__init__(self, space)
 
-    def method_exists(self, w_selector):
-        methodname = self.space.unwrap_string(w_selector)
-        idx = methodname.find(':')
-        if idx > 0:
-            methodname = methodname[0:idx]
-        ruby_method = self.wr_class.find_method(ruby_space, methodname)
-        return ruby_method is not None
+    def method_exists(self, method_name):
+        return self.wr_class.find_method(ruby_space, method_name) is not None

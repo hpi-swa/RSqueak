@@ -136,20 +136,24 @@ class ForeignLanguageClassShadow(ClassShadow):
         w_cm = lookup_cls.as_class_get_shadow(self.space).lookup(w_selector)
         if w_cm is not None:
             return w_cm
-        if self.method_exists(w_selector):
+        method_name = w_selector.unwrap_string(self.space)
+        idx = method_name.find(':')
+        if idx > 0:
+            method_name = method_name[0:idx]
+        if self.method_exists(method_name):
             return self.make_method(w_selector)
         # try underscore fallback
-        methodname = w_selector.unwrap_string(self.space)
-        if len(methodname) > 1 and methodname[0] == '_':
-            w_fallback_selector = self.space.wrap_symbol(methodname[1:])
-            if self.method_exists(w_fallback_selector):
-                return self.make_method(w_fallback_selector)
+        if len(method_name) > 1 and method_name[0] == '_':
+            fallback_method_name = method_name[1:]
+            if self.method_exists(fallback_method_name):
+                return self.make_method(
+                    self.space.wrap_symbol(fallback_method_name))
 
         return None  # triggers a MNU
 
     # Abstract methods
 
-    def method_exists(self, w_selector):
+    def method_exists(self, method_name):
         raise NotImplementedError
 
     # Helpers
