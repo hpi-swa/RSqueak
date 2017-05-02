@@ -60,9 +60,9 @@ class ForeignLanguagePlugin(Plugin):
             s_frame.pop_n(argcount + 1)
             return frame
 
-        @self.expose_primitive(unwrap_spec=[object, object],
+        @self.expose_primitive(unwrap_spec=[object],
                                result_is_new_frame=True)
-        def resume(interp, s_frame, w_rcvr, language_process):
+        def resume(interp, s_frame, language_process):
             # print 'Smalltalk yield'
             # import pdb; pdb.set_trace()
             if not isinstance(language_process, W_ForeignLanguageProcess):
@@ -94,8 +94,8 @@ class ForeignLanguagePlugin(Plugin):
             s_frame.pop_n(argcount + 1)
             return frame
 
-        @self.expose_primitive(unwrap_spec=[object, object])
-        def lastError(interp, s_frame, w_rcvr, language_process):
+        @self.expose_primitive(unwrap_spec=[object])
+        def lastError(interp, s_frame, language_process):
             if not isinstance(language_process, W_ForeignLanguageProcess):
                 raise PrimitiveFailedError
             w_error = language_process.get_error()
@@ -104,8 +104,8 @@ class ForeignLanguagePlugin(Plugin):
                 raise PrimitiveFailedError
             return w_error
 
-        @self.expose_primitive(unwrap_spec=[object, object])
-        def getTopFrame(interp, s_frame, w_rcvr, language_process):
+        @self.expose_primitive(unwrap_spec=[object])
+        def getTopFrame(interp, s_frame, language_process):
             if not isinstance(language_process, W_ForeignLanguageProcess):
                 raise PrimitiveFailedError
             w_top_frame = language_process.w_top_frame()
