@@ -100,6 +100,9 @@ def smalltalk_to_python(space, w_object):
     elif isinstance(w_object, W_BytesObject):
         # if w_object.getclass(space).is_same_object(space.w_String):
         return py_space.newtext(space.unwrap_string(w_object))
+    elif w_object.getclass(space).is_same_object(space.w_Array):
+        return py_space.newtuple([smalltalk_to_python(space, x)
+                                 for x in space.unwrap_array(w_object)])
     # import pdb; pdb.set_trace()
     print 'Cannot convert %s to Python' % w_object
     return py_space.w_None
