@@ -1,7 +1,6 @@
 {
 	"class" : {
 		"debuggerPrintItem:on:" : "fn 4/2/2017 19:58",
-		"debuggerTitle:" : "fn 3/16/2017 22:47",
 		"eval:" : "fn 3/16/2017 13:41",
 		"eval:breakOnExceptions:" : "fn 3/23/2017 08:59",
 		"eval:filePath:" : "fn 3/23/2017 08:59",
@@ -10,7 +9,6 @@
 		"evaluateExpression:breakOnExceptions:" : "fn 3/27/2017 23:53",
 		"fileExtension" : "fn 3/17/2017 10:20",
 		"getFilename:" : "fn 4/2/2017 19:33",
-		"getForeignFrames:" : "fn 3/16/2017 22:22",
 		"getSource:" : "fn 3/27/2017 23:54",
 		"highlight:" : "fn 4/28/2017 16:08",
 		"kernel" : "tfel 8/16/2016 07:04",
@@ -19,9 +17,6 @@
 		"pcRange:" : "fn 4/2/2017 19:58",
 		"primEval:" : "tfel 8/16/2016 07:03",
 		"primEval:filePath:breakOnExceptions:" : "fn 3/16/2017 13:40",
-		"primGetTopFrame:" : "fn 3/22/2017 15:12",
-		"primLastError:" : "fn 3/22/2017 15:13",
-		"primResume:" : "fn 3/22/2017 15:13",
 		"primSend:to:with:" : "tfel 8/16/2016 07:03",
 		"restartFrame:with:" : "fn 3/16/2017 22:22",
 		"sourceCodeTemplate" : "fn 3/14/2017 11:22",

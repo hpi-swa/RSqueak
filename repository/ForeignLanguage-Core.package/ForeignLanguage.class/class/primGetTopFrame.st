@@ -1,4 +1,4 @@
 system primitives
-primGetTopFrame: languageProcess
+primGetTopFrame
 	<primitive: 'getTopFrame' module: '{ForeignLanguage}Plugin'>
 	self primitiveFailed.

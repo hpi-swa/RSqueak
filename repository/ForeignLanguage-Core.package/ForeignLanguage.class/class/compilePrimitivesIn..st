@@ -1,6 +1,7 @@
 initialize-release
 compilePrimitivesIn: newClass
 	| primitiveSelectors |
+	self flag: #instanceSidePrimitives.
 	primitiveSelectors := ForeignLanguage class organization listAtCategoryNamed: 'system primitives'.
 	primitiveSelectors do: [:selector | | template |
 		template := (ForeignLanguage class >> selector) getSource asString.

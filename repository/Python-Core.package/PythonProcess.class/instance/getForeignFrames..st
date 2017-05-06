@@ -1,4 +1,4 @@
-debugging
+helpers
 getForeignFrames: topPyFrame
 	| currentPyFrame newFrames |
 	currentPyFrame := topPyFrame.

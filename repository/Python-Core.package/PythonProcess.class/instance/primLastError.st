@@ -1,4 +1,4 @@
 system primitives
-primLastError: pyProcess
+primLastError
 	<primitive: 'lastError' module: 'PythonPlugin'>
 	^ nil

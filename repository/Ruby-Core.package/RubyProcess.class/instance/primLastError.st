@@ -1,4 +1,4 @@
 system primitives
-primLastError: rbProcess
+primLastError
 	<primitive: 'lastError' module: 'RubyPlugin'>
 	^ nil

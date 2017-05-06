@@ -1,4 +1,4 @@
 system primitives
-primResume: pyProcess
+primResume
 	<primitive: 'resume' module: 'PythonPlugin'>
 	self primitiveFailed

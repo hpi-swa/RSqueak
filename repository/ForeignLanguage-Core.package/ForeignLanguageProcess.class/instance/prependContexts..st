@@ -1,7 +1,7 @@
-debugging
-prependContexts: resumeContext languageProcess: languageProcess
+helpers
+prependContexts: resumeContext
 	| topForeignFrame newFrames |
-	[ topForeignFrame := self primGetTopFrame: languageProcess ]
+	[ topForeignFrame := self primTopFrame ]
 		on: Error do: [ ^ resumeContext ].
 	newFrames := ((self getForeignFrames: topForeignFrame)
 		collect: [ :ea | self newForeignContextFor: ea ])

@@ -1,4 +1,4 @@
 system primitives
-primResume: languageProcess
+primResume
 	<primitive: 'resume' module: '{ForeignLanguage}Plugin'>
 	^ nil

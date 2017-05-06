@@ -1,5 +1,5 @@
 special methods
-vmResume: languageProcess
+vmResume
 	"Magic method that is called by vm (cached in vm)"
 	Processor yield.
-	^ self primResume: languageProcess
+	^ self primResume

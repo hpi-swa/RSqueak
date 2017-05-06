@@ -1,4 +1,4 @@
 system primitives
-primLastError: languageProcess
+primLastError
 	<primitive: 'lastError' module: '{ForeignLanguage}Plugin'>
 	^ nil

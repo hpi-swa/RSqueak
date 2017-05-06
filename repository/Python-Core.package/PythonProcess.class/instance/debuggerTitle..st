@@ -1,4 +1,4 @@
-debugging
+helpers
 debuggerTitle: pyError
 	| error |
 	error := pyError asSmalltalk.

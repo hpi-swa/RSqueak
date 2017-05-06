@@ -1,4 +1,4 @@
 system primitives
-primResume: rbProcess
+primResume
 	<primitive: 'resume' module: 'RubyPlugin'>
 	self primitiveFailed
