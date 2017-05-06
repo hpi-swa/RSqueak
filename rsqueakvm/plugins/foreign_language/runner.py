@@ -6,15 +6,11 @@ from rpython.rlib.rstacklet import StackletThread
 class AbstractLanguageRunner():
 
     def __init__(self, language_process):
+        log('Starting %s...' % language_process)
         self._language_process = language_process
 
     def language_process(self):
         return self._language_process
-
-    def start(self):
-        log('Starting %s...' % self.language_process())
-        self.language_process().pre_resume()
-        self._start_thread()
 
     def resume(self):
         log('Resuming %s...' % self.language_process())
@@ -25,9 +21,6 @@ class AbstractLanguageRunner():
         self._yield_thread()
 
     def resumable(self):
-        raise NotImplementedError
-
-    def _start_thread(self):
         raise NotImplementedError
 
     def _resume_thread(self):
@@ -43,15 +36,12 @@ class StackletLanguageRunner(AbstractLanguageRunner):
     def __init__(self, language_process):
         AbstractLanguageRunner.__init__(self, language_process)
         self.sthread = StackletThread()
+        global_execution_state.origin = self
         # there can only be one valid handle at a time (main or foreign thread)
-        self.handle = self.sthread.get_null_handle()
+        self.handle = self.sthread.new(self.__class__.new_stacklet_callback)
 
     def resumable(self):
         return self._has_valid_handle()
-
-    def _start_thread(self):
-        global_execution_state.origin = self
-        self.handle = self.sthread.new(self.__class__.new_stacklet_callback)
 
     def _resume_thread(self):
         self._switch_to_handle()
@@ -88,17 +78,23 @@ class StackletLanguageRunner(AbstractLanguageRunner):
         self = global_execution_state.origin
         self.handle = h
         global_execution_state.clear()
+        # stacklets start immediate, so yield back before executing any code,
+        # code is only executed when the resume primitive is used,
+        # eval primitive only creates a new language process
+        self.return_to_smalltalk()
         self.language_process().safe_run()
         global_execution_state.origin = self
         return self.handle  # return to Smalltalk when done
 
 
 class GreenletLanguageRunner(AbstractLanguageRunner):
-    def _start_thread(self):
+
+    def __init__(self, language_process):
         from greenlet import greenlet
+
+        AbstractLanguageRunner.__init__(self, language_process)
         global_execution_state.origin = self
         self.greenlet = greenlet(self.__class__.new_greenlet_callback())
-        self.resume()  # stacklets also start immediately
 
     def resumable(self):
         return not self.greenlet.dead

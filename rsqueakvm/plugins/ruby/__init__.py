@@ -34,7 +34,7 @@ class RubyPlugin(ForeignLanguagePlugin):
         return ForeignLanguagePlugin.is_enabled(self)
 
     def is_operational(self):
-        return (W_RubyProcess.w_foreign_class.get() is not None and
+        return (W_RubyProcess.w_foreign_process_class.get() is not None and
                 RubyClassShadow.w_foreign_class.get() is not None)
 
     def setup(self):

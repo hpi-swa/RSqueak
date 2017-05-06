@@ -21,6 +21,7 @@ class W_PythonProcess(W_ForeignLanguageProcess):
         self.filename = filename
         self.cmd = cmd
         self.ec = py_space.createexecutioncontext()
+        self.init_runner()
 
     def eval(self):
         if self.source == '' or self.filename == '' or self.cmd == '':
@@ -79,4 +80,4 @@ class W_PythonProcess(W_ForeignLanguageProcess):
         return self.repr_classname
 
     def str_content(self):
-        return self.cmd
+        return '%s: "%s"' % (self.cmd, self.source)

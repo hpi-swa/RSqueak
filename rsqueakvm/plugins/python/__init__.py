@@ -39,7 +39,7 @@ class PythonPlugin(ForeignLanguagePlugin):
         return ForeignLanguagePlugin.is_enabled(self)
 
     def is_operational(self):
-        return (W_PythonProcess.w_foreign_class.get() is not None and
+        return (W_PythonProcess.w_foreign_process_class.get() is not None and
                 PythonClassShadow.w_foreign_class.get() is not None)
 
     def setup(self):

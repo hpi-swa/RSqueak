@@ -21,6 +21,7 @@ class W_RubyProcess(W_ForeignLanguageProcess):
         self.source = source
         self.filepath = filepath
         self.ec = ExecutionContext()
+        self.init_runner()
 
     def eval(self):
         if self.source == '':

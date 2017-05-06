@@ -14,13 +14,13 @@ class ForeignLanguageProcessMeta(type):
         # import pdb; pdb.set_trace()
 
         if name != 'W_ForeignLanguageProcess':
-            w_foreign_class = QuasiConstant(None, cls=W_PointersObject)
+            w_foreign_process_class = QuasiConstant(None, cls=W_PointersObject)
 
-            def foreign_class(self):
-                return w_foreign_class.get()
+            def foreign_process_class(self):
+                return w_foreign_process_class.get()
 
-            attrs['w_foreign_class'] = w_foreign_class
-            attrs['foreign_class'] = foreign_class
+            attrs['w_foreign_process_class'] = w_foreign_process_class
+            attrs['foreign_process_class'] = foreign_process_class
 
         return type.__new__(cls, name, bases, attrs)
 
@@ -48,6 +48,8 @@ class W_ForeignLanguageProcess(W_AbstractObjectWithIdentityHash):
         self.w_error = None
         self._is_send = is_send
         self._break_on_exceptions = break_on_exceptions
+
+    def init_runner(self):
         if objectmodel.we_are_translated():
             self._runner = runner.StackletLanguageRunner(self)
         else:
@@ -58,34 +60,34 @@ class W_ForeignLanguageProcess(W_AbstractObjectWithIdentityHash):
 
     @staticmethod
     def load_special_objects(cls, language_name, space):
-        language_class = space.smalltalk_at(language_name)
-        if language_class is None:
+        language_process_class = space.smalltalk_at(
+            '%sProcess' % language_name)
+        if language_process_class is None:
             # disable plugin?
             print '%s class not found.' % language_name
-        cls.w_foreign_class.set(language_class)
+        cls.w_foreign_process_class.set(language_process_class)
 
         # this part is called twice -> make better
-        foreign_class = space.smalltalk_at('ForeignLanguage')
+        foreign_class = space.smalltalk_at('ForeignLanguageProcess')
 
         if foreign_class is None:
             print 'ForeignLanguage class not found.'
             return
 
-        eval_method_symbol = space.wrap_symbol('vmEval:')
-        foreign_cls_cls_s = foreign_class.getclass(
-            space).as_class_get_shadow(space)
-        eval_method = foreign_cls_cls_s.lookup(eval_method_symbol)
+        language_process_class_s = language_process_class.as_class_get_shadow(
+            space)
+
+        eval_method_symbol = space.wrap_symbol('vmEval')
+        eval_method = language_process_class_s.lookup(eval_method_symbol)
         if eval_method is None:
-            print '%s class>>vmEval: method not found.' % language_name
+            print 'ForeignLanguageProcess>>vmEval method not found.'
         W_ForeignLanguageProcess.eval_method.set(eval_method)
 
-        resume_method_symbol = space.wrap_symbol('vmResume:')
-        foreign_cls_cls_s = foreign_class.getclass(
-            space).as_class_get_shadow(space)
-        resume_method = foreign_cls_cls_s.lookup(
+        resume_method_symbol = space.wrap_symbol('vmResume')
+        resume_method = language_process_class_s.lookup(
             resume_method_symbol)
         if resume_method is None:
-            print '%s class>>vmResume: method not found.' % language_name
+            print 'ForeignLanguageProcess>>vmResume: method not found.'
         W_ForeignLanguageProcess.resume_method.set(resume_method)
 
     # W_AbstractObjectWithIdentityHash overrides
@@ -107,7 +109,7 @@ class W_ForeignLanguageProcess(W_AbstractObjectWithIdentityHash):
         pass
 
     def getclass(self, space):
-        return self.foreign_class()
+        return self.foreign_process_class()
 
     # Abstract methods
 
@@ -147,9 +149,6 @@ class W_ForeignLanguageProcess(W_AbstractObjectWithIdentityHash):
             self.set_error(self.space().wrap_string(error_msg))
             return
         self.send()
-
-    def start(self):
-        self.runner().start()
 
     def resume(self):
         if self.is_done():
@@ -231,8 +230,7 @@ class W_ForeignLanguageProcess(W_AbstractObjectWithIdentityHash):
             method = self.eval_method.get()
         else:
             method = self.resume_method.get()
-        return ContextPartShadow.build_method_context(
-            space, method, self.foreign_class(), [self])
+        return ContextPartShadow.build_method_context(space, method, self)
 
     def _create_return_frame(self, space):
         from rsqueakvm.storage_contexts import ContextPartShadow
@@ -250,7 +248,7 @@ class W_ForeignLanguageProcess(W_AbstractObjectWithIdentityHash):
             w_cm = objectmodel.instantiate(W_SpurCompiledMethod)
         else:
             w_cm = objectmodel.instantiate(W_PreSpurCompiledMethod)
-        w_resume_class = self.foreign_class()
+        w_resume_class = self.foreign_process_class()
         w_cm.header = 0
         w_cm._primitive = 0
         w_cm.literalsize = 3

@@ -51,10 +51,7 @@ class ForeignLanguagePlugin(Plugin):
             # import pdb; pdb.set_trace()
             args_w = s_frame.peek_n(argcount)
             language_process = self.new_eval_process(interp.space, args_w)
-            language_process.start()
             # when we are here, the foreign language process has yielded
-            if language_process.error_detected():
-                raise PrimitiveFailedError
             frame = language_process.switch_to_smalltalk(
                 interp, s_frame, first_call=True)
             s_frame.pop_n(argcount + 1)
@@ -88,7 +85,6 @@ class ForeignLanguagePlugin(Plugin):
                 method_name = method_name[0:idx]
             language_process = self.new_send_process(
                 interp.space, w_rcvr, method_name, args_w)
-            language_process.start()
             frame = language_process.switch_to_smalltalk(
                 interp, s_frame, first_call=True)
             s_frame.pop_n(argcount + 1)
@@ -105,7 +101,7 @@ class ForeignLanguagePlugin(Plugin):
             return w_error
 
         @self.expose_primitive(unwrap_spec=[object])
-        def getTopFrame(interp, s_frame, language_process):
+        def topFrame(interp, s_frame, language_process):
             if not isinstance(language_process, W_ForeignLanguageProcess):
                 raise PrimitiveFailedError
             w_top_frame = language_process.w_top_frame()
