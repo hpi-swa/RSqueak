@@ -1,6 +1,7 @@
 from rsqueakvm.error import PrimitiveFailedError
 from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.plugins.foreign_language import ForeignLanguagePlugin
+from rsqueakvm.plugins.ruby.switching import interrupt_counter
 from rsqueakvm.util import system
 
 try:
@@ -47,6 +48,7 @@ class RubyPlugin(ForeignLanguagePlugin):
         ForeignLanguagePlugin.load_special_objects(
             space, RubyPlugin.language_name, W_RubyProcess, RubyClassShadow)
         ruby_space.setup(argv[0])
+        interrupt_counter.setup()
 
     @staticmethod
     def new_eval_process(space, args_w):
