@@ -1,7 +1,6 @@
 {
 	"class" : {
-		"highlightPython:" : "fn 3/30/2017 22:17",
-		"highlightRuby:" : "fn 3/30/2017 22:17" },
+		"highlight:lexer:" : "fn 5/17/2017 10:13" },
 	"instance" : {
 		"isForeign" : "fn 3/14/2017 18:28",
 		"languageClass" : "fn 3/16/2017 22:41",
@@ -9,5 +8,5 @@
 		"languageSymbol:" : "fn 3/13/2017 17:13",
 		"privateFormat:" : "fn 3/16/2017 22:42",
 		"style:" : "fn 3/16/2017 22:42",
-		"style:foreignClass:" : "fn 3/14/2017 11:30",
+		"style:foreignClass:" : "fn 5/16/2017 17:49",
 		"styleInBackgroundProcess:" : "fn 3/21/2017 11:25" } }

@@ -1,8 +1,7 @@
 overrides
 process: aProcess controller: aController context: aContext
 	| ctx |
-	(aContext method selector = #vmResume: and: [
-		aContext receiver inheritsFrom: ForeignLanguageProcess ])
+	(aContext method selector = #vmResume)
 			ifFalse: [ ^ super process: aProcess controller: aController context: aContext].
 	ctx := aContext receiver prependContexts: aContext.
-	super process: aProcess controller: aController context: ctx
+	^ super process: aProcess controller: aController context: ctx

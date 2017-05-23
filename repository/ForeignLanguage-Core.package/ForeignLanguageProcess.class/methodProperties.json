@@ -4,10 +4,10 @@
 	"instance" : {
 		"checkForException" : "fn 5/6/2017 16:38",
 		"debuggerTitle:" : "fn 5/6/2017 16:42",
-		"findResumeFrame:" : "fn 5/6/2017 16:44",
+		"findResumeContext:" : "fn 5/14/2017 19:30",
 		"getForeignFrames:" : "fn 5/6/2017 16:48",
 		"newForeignContextFor:" : "fn 5/6/2017 16:47",
-		"openDebuggerOn:" : "fn 5/6/2017 16:40",
+		"openDebuggerOn:" : "fn 5/14/2017 19:31",
 		"prependContexts:" : "fn 5/6/2017 16:47",
 		"primLastError" : "fn 5/6/2017 14:14",
 		"primResume" : "fn 5/6/2017 14:14",

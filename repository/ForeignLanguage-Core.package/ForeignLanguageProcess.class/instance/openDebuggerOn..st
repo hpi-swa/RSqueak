@@ -1,10 +1,8 @@
 helpers
 openDebuggerOn: foreignError
-	| resumeCtx |
-	resumeCtx := self findResumeFrame: thisContext sender.
 	FLDebugger
 		openOn: Processor activeProcess
-		context: (self prependContexts: resumeCtx)
+		context: (self findResumeContext: thisContext sender)
 		label: (self debuggerTitle: foreignError)
 		contents: nil
 		fullView: true

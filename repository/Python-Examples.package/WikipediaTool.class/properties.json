@@ -1,0 +1,14 @@
+{
+	"category" : "Python-Examples",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"searchTerm" ],
+	"name" : "WikipediaTool",
+	"pools" : [
+		 ],
+	"super" : "Object",
+	"type" : "normal" }

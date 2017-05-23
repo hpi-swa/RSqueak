@@ -1,0 +1,3 @@
+styling
+pygmentsLexer
+	^ Python pyLexerPython

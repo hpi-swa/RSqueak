@@ -1,7 +1,7 @@
 as yet unclassified
-highlightRuby: aText
+highlight: aText lexer: aLexer
 	Python vmSpeaksLanguage ifFalse: [ ^ aText ].
 	^ (Python pygmentsHighlight
 		__call__: aText string
-		lexer: Python pyLexerRuby
-		formatter: Python pyFormatter) asSmalltalk asTextFromHtml
+		lexer: aLexer
+		formatter: Python htmlFormatter) asSmalltalk asTextFromHtml

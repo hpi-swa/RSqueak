@@ -1,3 +1,3 @@
 styling
-highlight: aText
+pygmentsLexer
 	self subclassResponsibility

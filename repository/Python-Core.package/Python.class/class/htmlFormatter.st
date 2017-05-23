@@ -1,3 +1,3 @@
 special objects
-pyFormatter
+htmlFormatter
 	^ self fromObjectCache: '_pygments_formatter'

@@ -1,9 +1,9 @@
 helpers
-findResumeFrame: aContext
+findResumeContext: aContext
 	| currentCtx |
 	currentCtx := aContext.
 	[ currentCtx notNil ] whileTrue: [
-		(currentCtx method selector = #vmEval "special selector"
+		(currentCtx method selector = #vmResume "special selector"
 			and: [ currentCtx closure isNil ])
 				ifTrue: [ ^ currentCtx ].
 		currentCtx := currentCtx sender ].
