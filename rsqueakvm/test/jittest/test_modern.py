@@ -1064,8 +1064,6 @@ i := n' classified: 'none' withStamp: nil notifying: nil logSource: false.
         i128 = int_sub(i125, 1)
         i129 = uint_lt(i128, i94)
         guard_true(i129, descr=<Guard0x55a7d4bccd58>)
-        i131 = int_lt(i128, 0)
-        guard_false(i131, descr=<Guard0x55a7d4bccda0>)
         p132 = getarrayitem_gc_r(p93, i128, descr=<ArrayP 8>)
         guard_nonnull_class(p132, 94179238574960, descr=<Guard0x55a7d3b0edf0>)
         leave_portal_frame(1)
