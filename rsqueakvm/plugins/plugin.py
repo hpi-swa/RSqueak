@@ -28,9 +28,14 @@ class Plugin(object):
         return False
 
     def is_enabled(self):
-        if self.is_optional():
-            return (self.name() in system.optional_plugins or system.IS_SPHINX)
-        return True  # enabled by default
+        if system.IS_SPHINX:
+            return True
+        elif self.is_optional():
+            return self.name() in system.optional_plugins
+        elif self.name() in system.disabled_plugins:
+            return False
+        else:
+            return True  # enabled by default
 
     @not_rpython
     def setup(self):

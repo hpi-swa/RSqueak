@@ -39,7 +39,7 @@ def translation_options():
                 "disabled_plugins",
                 "Which default plugins should be disabled (a comma-separated "\
                 "list, e.g. 'LargeIntegers,SocketPlugin,SqueakSSL')",
-                default="", cmdline="--disable_plugins"
+                default="", cmdline="--disabled_plugins"
             ),
             BoolOption(
                 "without_plugins",
