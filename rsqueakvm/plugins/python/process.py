@@ -56,7 +56,10 @@ class W_PythonProcess(W_ForeignLanguageProcess):
                 self.set_result(W_PythonObject(
                     py_space.getattr(wp_rcvr, wp_attrname)))
         except OperationError as operr:
-            self.set_result(utils.operr_to_w_object(operr))
+            print 'Python error caught: %s' % operr
+            error = utils.operr_to_w_object(operr)
+            self.set_error(error)
+            self.set_result(error)
         except Exception as e:
             self.fail('Unable to call %s on %s: %s' % (
                 self.method_name, wp_rcvr, e))

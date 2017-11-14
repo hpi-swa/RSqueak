@@ -42,7 +42,9 @@ class W_RubyProcess(W_ForeignLanguageProcess):
             self.set_result(W_RubyObject(wr_result))
         except RubyError as e:
             print_traceback(ruby_space, e.w_value)
-            self.set_result(W_RubyObject(e.w_value))
+            error = W_RubyObject(e.w_value)
+            self.set_error(error)
+            self.set_result(error)
         except Exception as e:
             # import pdb; pdb.set_trace()
             self.fail(

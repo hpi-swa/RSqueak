@@ -75,10 +75,12 @@ class PythonPlugin(ForeignLanguagePlugin):
             break_on_exceptions=break_on_exceptions)
 
     @staticmethod
-    def new_send_process(space, w_rcvr, method_name, args_w):
+    def new_send_process(space, w_rcvr, method_name, args_w,
+                         break_on_exceptions):
         return W_PythonProcess(
             space, is_send=True,
-            w_rcvr=w_rcvr, method_name=method_name, args_w=args_w)
+            w_rcvr=w_rcvr, method_name=method_name, args_w=args_w,
+            break_on_exceptions=break_on_exceptions)
 
     @staticmethod
     def w_object_class():

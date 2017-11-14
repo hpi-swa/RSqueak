@@ -3,13 +3,16 @@ from rsqueakvm.model.variable import W_BytesObject
 from rsqueakvm.plugins.foreign_language.model import W_ForeignLanguageObject
 from rsqueakvm.plugins.foreign_language.process import W_ForeignLanguageProcess
 from rsqueakvm.plugins.plugin import Plugin
+from rsqueakvm.util.cells import Cell
 
 
 class ForeignLanguagePlugin(Plugin):
+    _attrs_ = ['_break_on_exceptions_during_sends']
 
     def __init__(self):
         Plugin.__init__(self)
         self.register_default_primitives()
+        self._break_on_exceptions_during_sends = Cell(False)
 
     @staticmethod
     def load_special_objects(space, language_name, process_cls, shadow_cls):
@@ -26,7 +29,8 @@ class ForeignLanguagePlugin(Plugin):
         raise NotImplementedError
 
     @staticmethod
-    def new_send_process(space, w_rcvr, method_name, args_w):
+    def new_send_process(space, w_rcvr, method_name, args_w,
+                         break_on_exceptions):
         raise NotImplementedError
 
     @staticmethod
@@ -84,7 +88,8 @@ class ForeignLanguagePlugin(Plugin):
             if idx > 0:
                 method_name = method_name[0:idx]
             language_process = self.new_send_process(
-                interp.space, w_rcvr, method_name, args_w)
+                interp.space, w_rcvr, method_name, args_w,
+                self._break_on_exceptions_during_sends.get())
             frame = language_process.switch_to_smalltalk(
                 interp, s_frame, first_call=True)
             s_frame.pop_n(argcount + 1)
@@ -128,3 +133,8 @@ class ForeignLanguagePlugin(Plugin):
             if not isinstance(language_obj, W_ForeignLanguageObject):
                 raise PrimitiveFailedError
             language_obj.class_shadow(interp.space).set_specific_class(w_rcvr)
+
+        @self.expose_primitive(unwrap_spec=[object, bool])
+        def setBreakOnExceptionsDuringSends(interp, s_frame, w_rcvr, value):
+            self._break_on_exceptions_during_sends.set(value)
+            return interp.space.wrap_bool(value)
