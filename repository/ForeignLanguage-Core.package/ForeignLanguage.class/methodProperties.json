@@ -10,6 +10,7 @@
 		"getSource:" : "fn 3/16/2017 21:57",
 		"pcRange:" : "fn 3/16/2017 22:03",
 		"persistEvalCode:" : "fn 3/17/2017 10:23",
+		"primBreakOnExceptionsDuringSends:" : "fn 11/13/2017 18:09",
 		"primEval:" : "fn 4/28/2017 15:30",
 		"primRestartSpecificFrame:" : "fn 4/28/2017 15:31",
 		"pygmentsLexer" : "fn 5/16/2017 17:47",

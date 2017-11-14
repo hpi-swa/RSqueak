@@ -1,7 +1,8 @@
 helpers
 checkForException
 	Smalltalk isHeadless ifTrue: [ ^ self ].
-	(self primLastError) ifNotNil: [ :e |
+	(self primLastError) ifNotNil: [ :error |
 		FLException new
-			action: [ self openDebuggerOn: e ];
+			languageProcess: self;
+			foreignError: error;
 			signal ]

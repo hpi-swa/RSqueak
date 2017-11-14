@@ -6,7 +6,8 @@
 		 ],
 	"commentStamp" : "",
 	"instvars" : [
-		"action" ],
+		"languageProcess",
+		"foreignError" ],
 	"name" : "FLException",
 	"pools" : [
 		 ],

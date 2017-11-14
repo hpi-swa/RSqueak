@@ -16,6 +16,7 @@
 		"nil" : "fn 3/16/2017 13:37",
 		"object" : "tfel 8/16/2016 07:04",
 		"pcRange:" : "fn 4/2/2017 19:58",
+		"primBreakOnExceptionsDuringSends:" : "fn 11/13/2017 18:09",
 		"primEval:" : "tfel 8/16/2016 07:03",
 		"primEval:filePath:breakOnExceptions:" : "fn 3/16/2017 13:40",
 		"primSend:to:with:" : "tfel 8/16/2016 07:03",

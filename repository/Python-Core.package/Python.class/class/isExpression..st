@@ -1,3 +1,4 @@
 helpers
 isExpression: aPySource
-	^ ((Python globals __getitem__ __call__: '_is_expression') __call__: aPySource) asSmalltalk
+	^ [ self compile __call__: aPySource filename: '<string>' cmd: 'eval'. true ]
+			on: FLException do: [:ex | (ex foreignError at: 0) asSmalltalk ~= 'SyntaxError' ]

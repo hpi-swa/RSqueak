@@ -1,3 +1,3 @@
 accessing
 defaultAction
-	self action value
+	self languageProcess openDebuggerOn: self foreignError
