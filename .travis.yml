@@ -3,7 +3,7 @@ rvm:
   2.3.1
 
 env:
-  - REPOSITORY=HPI-SWA-Lab/RSqueak VM=rsqueak USE_SHA=1
+  - REPOSITORY=hpi-swa/RSqueak VM=rsqueak USE_SHA=1
   - REPOSITORY=OpenSmalltalk/opensmalltalk-vm VM=cog
   - REPOSITORY=OpenSmalltalk/opensmalltalk-vm VM=stack
   - REPOSITORY=OpenSmalltalk/opensmalltalk-vm VM=sista
