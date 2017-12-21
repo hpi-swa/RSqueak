@@ -165,6 +165,7 @@ class Shell(object):
         self.current_code = [line.strip() for line in source.split("\n")]
 
     @untranslated_cmd
+    @objectmodel.not_rpython
     def reload(self, code):
         "!reload rsqueakvm.abc.xyz... to reload some VM code"
         code = code.split(" ", 1)
