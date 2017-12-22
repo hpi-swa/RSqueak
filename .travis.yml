@@ -1,5 +1,5 @@
 language: python
-python: pypy-5.7.1
+python: pypy
 sudo: required
 dist: trusty
 group: edge
@@ -14,25 +14,18 @@ branches:
   except:
     - /^v[0-9]/  # Ignore version tags
     - windows-build
-env:
-  global:
-    - SB2="$PWD/raspbian_arm"
-    - SB2NAME="rasp"
-  matrix:
-    - BUILD_ARCH=32bit TEST_TYPE=default
-    - BUILD_ARCH=32bit
-    - BUILD_ARCH=32bit TEST_TYPE=coverage
-    # - BUILD_ARCH=lldebug
-    - BUILD_ARCH=64bit TEST_TYPE=default
-    - BUILD_ARCH=64bit
-    - BUILD_ARCH=armv6
-    - BUILD_ARCH=armv7-a
-    - BUILD_ARCH=armv8-a
-    # - BUILD_ARCH=64bit PLUGINS=DatabasePlugin
-    - BUILD_ARCH=64bit PLUGINS=RubyPlugin
-matrix:
+jobs:
   include:
-    - os: osx
+    - stage: "Main builds"
+      env: BUILD_ARCH=32bit TEST_TYPE=default
+    - env: BUILD_ARCH=32bit
+    - env: BUILD_ARCH=32bit TEST_TYPE=coverage
+    # - env: BUILD_ARCH=lldebug
+    - env: BUILD_ARCH=64bit TEST_TYPE=default
+    - env: BUILD_ARCH=64bit
+
+    - stage: "Mac builds"
+      os: osx
       osx_image: xcode7.3
       language: cpp
       env: BUILD_ARCH=64bit TEST_TYPE=default
@@ -40,10 +33,19 @@ matrix:
       osx_image: xcode7.3
       language: cpp
       env: BUILD_ARCH=64bit
+
+    - stage: "Plugin builds"
+      env: BUILD_ARCH=64bit PLUGINS=RubyPlugin
     - os: osx
       osx_image: xcode7.3
       language: cpp
       env: BUILD_ARCH=64bit PLUGINS=RubyPlugin
+    # - env: BUILD_ARCH=64bit PLUGINS=DatabasePlugin
+
+    - stage: "ARM builds"
+      env: SB2="$PWD/raspbian_arm" SB2NAME="rasp" BUILD_ARCH=armv6
+    - env: SB2="$PWD/raspbian_arm" SB2NAME="rasp" BUILD_ARCH=armv7-a
+    - env: SB2="$PWD/raspbian_arm" SB2NAME="rasp" BUILD_ARCH=armv8-a
   allow_failures:
     # - env: BUILD_ARCH=64bit PLUGINS=DatabasePlugin
     - env: BUILD_ARCH=64bit PLUGINS=RubyPlugin
