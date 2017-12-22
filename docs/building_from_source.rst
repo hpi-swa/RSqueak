@@ -27,7 +27,7 @@ The packages provided in the link install it to the default paths. If you
 already have the compiler and SDK, you can also just update the paths in
 `.build/buildconfig.ini`.
 
-.. _Microsoft C compiler V90 plus Windows SDK 7: https://github.com/HPI-SWA-Lab/RSqueak/releases/download/Dependencies/vc_stdx86.zip
+.. _Microsoft C compiler V90 plus Windows SDK 7: https://github.com/hpi-swa/RSqueak/releases/download/Dependencies/vc_stdx86.zip
 .. _Python 2.7 Visual Studio compiler package: https://aka.ms/vcpython27
 
 Linux

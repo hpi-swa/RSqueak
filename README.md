@@ -51,8 +51,8 @@ version if you want to keep the original around.
 [benchmarks]: http://speed.squeak.org/
 [benchmarks_badge]: https://img.shields.io/badge/benchmarks-open-yellowgreen.svg
 [build_from_source]: http://rsqueak.readthedocs.io/en/latest/building_from_source.html
-[coveralls]: https://coveralls.io/github/HPI-SWA-Lab/RSqueak?branch=master
-[coveralls_badge]: https://coveralls.io/repos/github/HPI-SWA-Lab/RSqueak/badge.svg?branch=master
+[coveralls]: https://coveralls.io/github/hpi-swa/RSqueak?branch=master
+[coveralls_badge]: https://coveralls.io/repos/github/hpi-swa/RSqueak/badge.svg?branch=master
 [development]: http://rsqueak.readthedocs.io/en/latest/development.html
 [dl_linux64]: https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/rsqueak-linux-x86_64-latest
 [dl_linux64_badge]: https://img.shields.io/badge/Download-Linux_x86__64-blue.svg
@@ -76,5 +76,5 @@ version if you want to keep the original around.
 [dl_zip_badge]: https://img.shields.io/badge/Download-zip-blue.svg
 [docs]: http://rsqueak.readthedocs.io/en/latest/?badge=latest
 [docs_badge]: https://readthedocs.org/projects/rsqueak/badge/?version=latest
-[travis]: https://travis-ci.org/HPI-SWA-Lab/RSqueak
-[travis_badge]: https://travis-ci.org/HPI-SWA-Lab/RSqueak.svg?branch=master
+[travis]: https://travis-ci.org/hpi-swa/RSqueak
+[travis_badge]: https://travis-ci.org/hpi-swa/RSqueak.svg?branch=master
