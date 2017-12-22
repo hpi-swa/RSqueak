@@ -183,12 +183,12 @@ DEPS = [
     Dependency("https://github.com/ActiveState/appdirs/archive/master.zip", "appdirs", test=plugin("RubyPlugin")),
     Dependency("https://github.com/topazproject/topaz/archive/master.zip", "topaz", test=plugin("RubyPlugin")),
 
-    Dependency("https://bitbucket.org/pypy/pypy/downloads/pypy-4.0.1-win32.zip", "Windows/pypybin", test=windows, callback=pypywin32),
+    Dependency("https://bitbucket.org/pypy/pypy/downloads/pypy2-v5.7.1-win32.zip", "Windows/pypybin", test=windows, callback=pypywin32),
     Dependency("http://libsdl.org/release/SDL2-devel-2.0.5-VC.zip", "Windows/SDL", test=windows),
     Dependency("https://bitbucket.org/pypy/pypy/downloads/local_2.4.zip", "Windows/pypyextlibs", test=windows),
     Dependency("http://www.graphviz.org/pub/graphviz/stable/windows/graphviz-2.38.zip", "Windows/Graphviz", test=local_windows),
 
-    Dependency("https://bitbucket.org/pypy/pypy/downloads/pypy-4.0.1-linux.tar.bz2", "Linux/pypybin", test=linux32, callback=pypylinux32),
+    Dependency("https://bitbucket.org/pypy/pypy/downloads/pypy2-v5.7.1-linux32.tar.bz2", "Linux/pypybin", test=linux32, callback=pypylinux32),
     Dependency("https://github.com/CTPUG/pygame_cffi/archive/master.zip", "Linux/pygame_cffi", test=linux32),
     Dependency("http://libsdl.org/release/SDL2-2.0.5.tar.gz", "Linux/SDL32", test=linux32, callback=buildsdl32),
     Dependency("http://libsdl.org/release/SDL2-2.0.5.tar.gz", "Linux/SDL64", test=linux64, callback=buildsdl),

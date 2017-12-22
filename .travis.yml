@@ -1,5 +1,5 @@
 language: python
-python: pypy-5.3.1
+python: pypy-5.7.1
 sudo: required
 dist: trusty
 group: edge

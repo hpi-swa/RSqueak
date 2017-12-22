@@ -32,7 +32,7 @@ def get_plugins():
 
     files = os.listdir(os.path.join(
         os.path.dirname(__file__), '..', 'plugins'))
-    disabled_names = []
+    disabled_names = [name.strip() for name in system.disabled_plugins.split(',')]
 
     # special...
     if 'JitHooks' not in system.optional_plugins:

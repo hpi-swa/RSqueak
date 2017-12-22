@@ -92,6 +92,29 @@ def prepare_environment_variables():
             os.environ["SDL_PREFIX"] = subprocess.check_output(['sdl2-config', '--prefix']).strip()
         except:
             pass
+        try:
+            mac_ver, _ignore, _ignore2 = platform.mac_ver()
+            if len(mac_ver) != 0:
+                mac_maj, mac_min, mac_point = mac_ver.split('.')[:3]
+                if int(mac_min) >= 11 and not (
+                    os.path.isdir('/usr/include/openssl/ssl.h') or
+                    os.path.isdir('/usr/local/include/openssl/ssl.h')):
+                    #
+                    # Since 10.11, OS X no longer ships
+                    # openssl system-wide, and Homebrew does not install it system-wide.
+                    #
+                    # see if header is there:
+                    if len(subprocess.check_output(["pkg-config", "openssl", "--cflags-only-I"]).strip()) == 0:
+                        if os.path.isdir('/usr/local/opt/openssl/lib/pkgconfig'):
+                            if 'PKG_CONFIG_PATH' in os.environ:
+                                os.environ['PKG_CONFIG_PATH'] =  '/usr/local/opt/openssl/lib/pkgconfig:' + os.environ['PKG_CONFIG_PATH']
+                            else:
+                                os.environ['PKG_CONFIG_PATH'] = '/usr/local/opt/openssl/lib/pkgconfig'
+                    else:
+                        # works nonetheless, ignore
+                        pass
+        except:
+            pass
     else:
         raise AssertionError("Unsupported platform")
     for dependency in ["pypy", "rsdl", "sqpyte", "topaz", "rply", "appdirs"]:

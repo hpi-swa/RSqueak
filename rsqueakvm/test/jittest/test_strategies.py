@@ -109,8 +109,6 @@ class TestBasic(BaseJITTest):
         i131 = int_sub(i128, 1)
         i132 = uint_lt(i131, i102)
         guard_true(i132, descr=<Guard0x55eaf77bc9f8>)
-        i134 = int_lt(i131, 0)
-        guard_false(i134, descr=<Guard0x55eaf77bca40>)
         i135 = getarrayitem_gc_i(p101, i131, descr=<ArrayS 8>)
         i137 = int_eq(i135, 9223372036854775807)
         guard_false(i137, descr=<Guard0x55eaf77bcad0>)

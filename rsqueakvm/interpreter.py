@@ -226,7 +226,7 @@ class Interpreter(object):
                 s_context=s_context)
             s_sender = s_context.s_sender()
             try:
-                self.stack_frame(s_context, None)
+                self.stack_frame(s_context, None, True)
                 raise Exception("loop_bytecodes left without raising...")
             except ProcessSwitch, e:
                 if self.is_tracing() or self.trace_important:
