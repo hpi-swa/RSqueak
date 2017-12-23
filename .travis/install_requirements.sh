@@ -6,16 +6,8 @@ readonly BASE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export OPTIONS=""
 
 setup_osx() {
-    case "${BUILD_ARCH}" in
-      64bit)
-      # brew update
-
-      # Use PyPy2 v5.4.0
-      brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/c5a201f49c9da47d4771ebc544d10b3f9c579021/Formula/pypy.rb
-
-      brew install sdl2
-      ;;
-    esac
+    brew update
+    brew install pypy sdl2
 }
 
 setup_linux() {
