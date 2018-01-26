@@ -18,7 +18,6 @@ from rsqueakvm.primitives import prim_table
 from rsqueakvm.primitives.constants import *
 
 from rpython.rlib.rarithmetic import intmask, r_uint, r_int64
-from rpython.rlib.rfloat import isinf, isnan
 
 from .util import (create_space, copy_to_module, cleanup_module,
                    InterpreterForTest, very_slow_test)
@@ -514,8 +513,8 @@ def test_primitive_log_n():
     assert prim(FLOAT_LOG_N, [1.0]).value == 0.0
     assert prim(FLOAT_LOG_N, [math.e]).value == 1.0
     assert float_equals(prim(FLOAT_LOG_N, [10.0]), math.log(10))
-    assert isinf(prim(FLOAT_LOG_N, [0.0]).value)  # works also for negative infinity
-    assert isnan(prim(FLOAT_LOG_N, [-1.0]).value)
+    assert math.isinf(prim(FLOAT_LOG_N, [0.0]).value)  # works also for negative infinity
+    assert math.isnan(prim(FLOAT_LOG_N, [-1.0]).value)
 
 def test_primitive_exp():
     assert float_equals(prim(FLOAT_EXP, [-1.0]), 1/math.e)
