@@ -1,0 +1,14 @@
+{
+	"category" : "Ruby-Core",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "RubyObject",
+	"pools" : [
+		 ],
+	"super" : "ForeignLanguageObject",
+	"type" : "normal" }

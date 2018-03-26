@@ -1,0 +1,14 @@
+{
+	"category" : "Python-Core",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "PythonCompiler",
+	"pools" : [
+		 ],
+	"super" : "Compiler",
+	"type" : "normal" }

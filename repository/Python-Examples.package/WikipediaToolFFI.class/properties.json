@@ -1,0 +1,14 @@
+{
+	"category" : "Python-Examples",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "WikipediaToolFFI",
+	"pools" : [
+		 ],
+	"super" : "WikipediaTool",
+	"type" : "normal" }

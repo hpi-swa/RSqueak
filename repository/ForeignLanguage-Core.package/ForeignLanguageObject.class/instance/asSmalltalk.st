@@ -1,0 +1,3 @@
+abstract
+asSmalltalk
+	self subclassResponsibility

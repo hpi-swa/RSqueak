@@ -1,0 +1,17 @@
+{
+	"class" : {
+		 },
+	"instance" : {
+		"aboutToStyle:" : "fn 3/14/2017 01:31",
+		"buildCodePaneWith:" : "fn 4/28/2017 16:07",
+		"contents:notifying:" : "fn 4/2/2017 23:26",
+		"defaultStylerClass" : "fn 4/28/2017 16:07",
+		"expandStack" : "fn 4/28/2017 16:06",
+		"guessTypeForName:" : "fn 3/14/2017 01:31",
+		"isPython" : "fn 3/14/2017 01:33",
+		"isRuby" : "fn 3/14/2017 01:33",
+		"languageSymbol" : "fn 3/14/2017 01:32",
+		"messageIconAt:" : "fn 3/16/2017 22:18",
+		"pcRange" : "fn 3/16/2017 22:18",
+		"process:controller:context:" : "fn 5/14/2017 19:34",
+		"selectedMessage" : "fn 5/14/2017 21:50" } }

@@ -1,0 +1,16 @@
+{
+	"class" : {
+		 },
+	"instance" : {
+		"checkForException" : "fn 5/24/2017 08:07",
+		"debuggerTitle:" : "fn 5/6/2017 16:42",
+		"findResumeContext:" : "fn 5/14/2017 19:30",
+		"getForeignFrames:" : "fn 5/6/2017 16:48",
+		"newForeignContextFor:" : "fn 5/6/2017 16:47",
+		"openDebuggerOn:" : "fn 5/14/2017 19:31",
+		"prependContexts:" : "fn 5/6/2017 16:47",
+		"primLastError" : "fn 5/6/2017 14:14",
+		"primResume" : "fn 5/6/2017 14:14",
+		"primTopFrame" : "fn 5/6/2017 14:14",
+		"vmEval" : "fn 5/6/2017 14:12",
+		"vmResume" : "fn 5/6/2017 14:11" } }

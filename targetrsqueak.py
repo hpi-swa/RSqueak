@@ -12,7 +12,6 @@ from rpython.rlib import objectmodel
 
 sys.setrecursionlimit(15000)
 
-
 def target(driver, args):
     driver.exe_name = "rsqueak"
     config = driver.config
@@ -30,12 +29,26 @@ def target(driver, args):
     config.translating = True
 
     system.expose_options(driver.config)
+
+    if 'PythonPlugin' in system.optional_plugins:
+        # Disable vmprof, because it causes compiling errors
+        system.disabled_plugins += ',ProfilerPlugin'
+
     # We must not import this before the config was exposed
     from rsqueakvm.main import safe_entry_point
-    return safe_entry_point, None
+    if 'PythonPlugin' in system.optional_plugins:
+        from rsqueakvm.plugins.python.utils import entry_point
+        from pypy.tool.ann_override import PyPyAnnotatorPolicy
+        ann_policy = PyPyAnnotatorPolicy()
+        return entry_point, None, ann_policy
+    return safe_entry_point, None, None
 
 def jitpolicy(self):
-    if "JitHooks" in system.optional_plugins:
+    if "PythonPlugin" in system.optional_plugins:
+        from pypy.module.pypyjit.policy import PyPyJitPolicy
+        from pypy.module.pypyjit.hooks import pypy_hooks
+        return PyPyJitPolicy(pypy_hooks)
+    elif "JitHooks" in system.optional_plugins:
         from rsqueakvm.plugins.vmdebugging.hooks import jitiface
         return JitPolicy(jitiface)
     else:
@@ -65,7 +78,7 @@ if __name__ == '__main__':
         configargs, args = sys.argv[0:idx], sys.argv[idx:]
     else:
         configargs, args = [], sys.argv
-    f, _ = target(driver, configargs)
+    f, _, _ = target(driver, configargs)
     try:
         sys.exit(f(args))
     except SystemExit:

@@ -181,18 +181,9 @@ def get_instances_array_trace(interp, w_class, some_instance=False):
                             return [w_obj]
                         else:
                             result_w.append(w_obj)
-            pending.extend(_trace_pointers(interp.space, w_obj))
+            pending.extend(w_obj.trace_pointers(interp.space))
     return result_w
 
-def _trace_pointers(space, w_obj):
-    p_w = [w_obj.getclass(space)]
-    if isinstance(w_obj, W_CompiledMethod):
-        p_w.extend(w_obj.literals)
-    elif isinstance(w_obj, W_PointersObject):
-        p_w.extend(w_obj.fetch_all(space))
-    elif isinstance(w_obj, W_BlockClosure):
-        p_w.extend(w_obj.fetch_all(space))
-    return p_w
 
 def get_instances_array(interp, s_frame, w_class=None, store=True,
                         some_instance=False):

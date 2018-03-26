@@ -162,7 +162,7 @@ class Shell(object):
             source = f.readall()
         finally:
             f.close()
-        self.current_code = [line.strip() for line in source.split("\n")]
+        self.current_code = source.split("\n")
 
     @untranslated_cmd
     @objectmodel.not_rpython
@@ -228,11 +228,13 @@ class Shell(object):
 
     def raw_input(self, delim):
         if len(self.current_code) > 0:
-            return self.current_code.pop(0)
+            new_line = self.current_code.pop(0)
+            print new_line
+            return new_line
         self.set_readline()
         try:
             if not objectmodel.we_are_translated():
-                return raw_input(delim).strip()
+                return raw_input(delim)
 
             os.write(1, delim)
             line = []
@@ -240,7 +242,7 @@ class Shell(object):
             while c != "\n":
                 line.append(c)
                 c = os.read(0, 1)
-            return "".join(line).strip()
+            return "".join(line)
         finally:
             self.reset_readline()
 
@@ -254,11 +256,6 @@ class Shell(object):
             srcline = ""
             while srcline != "!!":
                 srcline = self.raw_input("%s| " % parts[1])
-                if srcline and not objectmodel.we_are_translated():
-                    # don't record method source as history
-                    readline.remove_history_item(
-                        readline.get_current_history_length() - 1
-                    )
                 methodsrc.append(srcline)
             from rsqueakvm.main import compile_code
             methodsrc.pop()  # remove trailing !!
@@ -271,7 +268,7 @@ class Shell(object):
     def run(self):
         print "You're in a Smalltalk REPL. Type `!exit' to quit, !help for help."
         while True:
-            code = self.raw_input("$ ")
+            code = self.raw_input("$ ").strip()
             if code.startswith("!"):
                 method = code[1:].split(" ")[0]
                 for n in UNROLLING_COMMANDS:

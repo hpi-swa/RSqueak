@@ -1,0 +1,3 @@
+system primitives
+primLastError
+	self subclassResponsibility

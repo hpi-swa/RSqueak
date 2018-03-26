@@ -38,7 +38,7 @@ def _patch_interpreter():
     from rsqueakvm.interpreter import Interpreter
     original_stack_frame = Interpreter.stack_frame
     @jit.unroll_safe
-    def stack_frame(self, s_frame, old_s_frame, may_context_switch=True):
+    def stack_frame(self, s_frame, old_s_frame, may_context_switch):
         if old_s_frame.is_tailcall_context() \
            and s_frame.w_method() is old_s_frame.w_method() \
            and old_s_frame.pc() == s_frame.w_method.end_pc():

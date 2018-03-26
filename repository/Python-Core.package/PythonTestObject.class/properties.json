@@ -1,0 +1,15 @@
+{
+	"category" : "Python-Core",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"bar",
+		"foo" ],
+	"name" : "PythonTestObject",
+	"pools" : [
+		 ],
+	"super" : "PythonObject",
+	"type" : "normal" }

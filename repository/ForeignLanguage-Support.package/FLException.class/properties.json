@@ -1,0 +1,15 @@
+{
+	"category" : "ForeignLanguage-Support",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"languageProcess",
+		"foreignError" ],
+	"name" : "FLException",
+	"pools" : [
+		 ],
+	"super" : "Exception",
+	"type" : "normal" }

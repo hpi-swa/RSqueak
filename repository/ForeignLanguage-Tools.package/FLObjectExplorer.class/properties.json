@@ -1,0 +1,14 @@
+{
+	"category" : "ForeignLanguage-Tools",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "FLObjectExplorer",
+	"pools" : [
+		 ],
+	"super" : "ObjectExplorer",
+	"type" : "normal" }

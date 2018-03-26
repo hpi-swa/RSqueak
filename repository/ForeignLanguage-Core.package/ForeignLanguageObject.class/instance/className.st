@@ -1,0 +1,3 @@
+abstract
+className
+	self subclassResponsibility

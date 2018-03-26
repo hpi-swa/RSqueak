@@ -1,0 +1,3 @@
+helpers
+getForeignFrames: topForeignFrame
+	self subclassResponsibility

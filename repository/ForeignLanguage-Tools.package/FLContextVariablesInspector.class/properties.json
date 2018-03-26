@@ -1,0 +1,14 @@
+{
+	"category" : "ForeignLanguage-Tools",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "FLContextVariablesInspector",
+	"pools" : [
+		 ],
+	"super" : "ContextVariablesInspector",
+	"type" : "normal" }

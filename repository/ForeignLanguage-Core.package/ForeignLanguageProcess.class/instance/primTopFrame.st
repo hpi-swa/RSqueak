@@ -1,0 +1,3 @@
+system primitives
+primTopFrame
+	self subclassResponsibility

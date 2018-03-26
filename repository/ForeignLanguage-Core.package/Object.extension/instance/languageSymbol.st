@@ -1,0 +1,3 @@
+*ForeignLanguage-Core
+languageSymbol
+	^ #Smalltalk

@@ -1,0 +1,3 @@
+system primitives
+primResume
+	self subclassResponsibility
