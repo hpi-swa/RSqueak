@@ -1,3 +1,4 @@
+import py
 from rsqueakvm.model.base import W_Object
 from rsqueakvm.model.numeric import W_SmallInteger
 from rsqueakvm.model.pointers import W_PointersObject
@@ -5,7 +6,8 @@ from rsqueakvm.plugins.python import PythonPlugin
 from rsqueakvm.plugins.python.model import W_PythonObject
 from rsqueakvm.plugins.python.objspace import py_space
 from rsqueakvm.plugins.python.patching import patch_pypy
-from rsqueakvm.test.util import create_space, cleanup_module, read_image
+from rsqueakvm.test.util import (create_space, cleanup_module, read_image,
+                                 image_path)
 
 
 def test_space():
@@ -28,9 +30,14 @@ def perform(receiver, selector, *args):
         return interp.perform(receiver, selector, w_selector, list(args))
 
 
+pytestmark = py.test.mark.skipIf('not image_path("pypy.image").exists()')
+
 def setup_module():
     global space, interp, perform, w
-    space, interp, image, reader = read_image('pypy.image')
+    try:
+        space, interp, image, reader = read_image('pypy.image')
+    except OSError:
+        py.test.skip()
     w = space.w
     space.runtime_setup(interp, '', [], '', 0)
     space.headless.activate()

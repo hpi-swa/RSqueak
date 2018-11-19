@@ -18,7 +18,8 @@ def new_pypy_objspace():
 
     # disable dispensable modules (to save compile time)
     pypy_config.objspace.usemodules.micronumpy = False
-    pypy_config.objspace.usemodules.cppyy = False
+    pypy_config.objspace.usemodules._cppyy = False
+    pypy_config.objspace.usemodules._vmprof = False
 
     # cpyext causes a lot of 'Undefined symbols for architecture x86_64' errors
     pypy_config.objspace.usemodules.cpyext = False
@@ -42,9 +43,6 @@ def new_pypy_objspace():
     pypy_config.translation.continuation = True
     pypy_config.objspace.usemodules._continuation = True
     pypy_config.objspace.usemodules.thread = True
-
-    # Enable immutable (and fast) module.Module
-    pypy_config.objspace.std.suggest(withcelldict=True)
 
     # Enable more optimizations for PyPy's jit
     set_pypy_opt_level(pypy_config, 'jit')

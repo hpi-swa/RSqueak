@@ -9,7 +9,7 @@ from rsqueakvm.util.system import IS_WINDOWS
 class UnixOSProcessPlugin(Plugin):
 
     def is_enabled(self):
-        return not IS_WINDOWS
+        return Plugin.is_enabled(self) and not IS_WINDOWS
 
 plugin = UnixOSProcessPlugin()
 
@@ -25,7 +25,7 @@ def primitiveEnvironmentAt(interp, s_frame, w_rcvr, index):
 class Win32OSProcessPlugin(Plugin):
 
     def is_enabled(self):
-        return IS_WINDOWS
+        return Plugin.is_enabled(self) and IS_WINDOWS
 
 plugin = Win32OSProcessPlugin()
 

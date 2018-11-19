@@ -8,11 +8,11 @@ from rsqueakvm.primitives.constants import (
     VM_CLEAR_PROFILE, VM_DUMP_PROFILE, VM_START_PROFILING, VM_STOP_PROFILING)
 from rsqueakvm.util import system
 
-from rpython.rlib import rvmprof, jit
-from rpython.rlib.rjitlog import rjitlog
+from rpython.rlib import jit
 
 
 def patch_interpreter():
+    from rpython.rlib import rvmprof
     from rsqueakvm.interpreter import Interpreter
 
     def _get_code(interp, s_frame, s_sender, may_context_switch):
@@ -35,6 +35,7 @@ def _get_full_name(w_cm):
 
 
 def patch_compiled_method():
+    from rpython.rlib import rvmprof
     def _my_post_init(self):
         rvmprof.register_code(self, _get_full_name)
     W_CompiledMethod.post_init = _my_post_init
@@ -48,6 +49,7 @@ class ProfilerPlugin(Plugin):
         return True
 
     def setup(self):
+        from rpython.rlib import rvmprof
         rvmprof.register_code_object_class(W_CompiledMethod, _get_full_name)
 
     def patch(self):
@@ -60,6 +62,7 @@ plugin = ProfilerPlugin()
 @plugin.expose_primitive(unwrap_spec=[object, int, float])
 @jit.dont_look_inside
 def enableProfiler(interp, s_frame, w_rcvr, fileno, period):
+    from rpython.rlib import rvmprof
     try:
         rvmprof.enable(fileno, period)
     except rvmprof.VMProfError as e:
@@ -71,6 +74,7 @@ def enableProfiler(interp, s_frame, w_rcvr, fileno, period):
 @plugin.expose_primitive(unwrap_spec=[object])
 @jit.dont_look_inside
 def disableProfiler(interp, s_frame, w_rcvr):
+    from rpython.rlib import rvmprof
     try:
         rvmprof.disable()
     except rvmprof.VMProfError as e:
@@ -82,6 +86,7 @@ def disableProfiler(interp, s_frame, w_rcvr):
 @plugin.expose_primitive(unwrap_spec=[object, int])
 @jit.dont_look_inside
 def enableJitlog(interp, s_frame, w_rcvr, fileno):
+    from rpython.rlib.rjitlog import rjitlog
     try:
         rjitlog.enable_jitlog(fileno)
     except rjitlog.JitlogError as e:
@@ -93,6 +98,7 @@ def enableJitlog(interp, s_frame, w_rcvr, fileno):
 @plugin.expose_primitive(unwrap_spec=[object])
 @jit.dont_look_inside
 def disableJitlog(interp, s_frame, w_rcvr):
+    from rpython.rlib.rjitlog import rjitlog
     rjitlog.disable_jitlog()
     return w_rcvr
 
@@ -119,6 +125,8 @@ vmproflogfile = LogFile()
 @expose_primitive(VM_STOP_PROFILING, unwrap_spec=[object])
 @jit.dont_look_inside
 def func(interp, s_frame, w_rcvr):
+    from rpython.rlib.rjitlog import rjitlog
+    from rpython.rlib import rvmprof
     from rsqueakvm.plugins.profiler_plugin import vmproflogfile, jitlogfile
     if vmproflogfile.isopen():
         try:
@@ -135,6 +143,8 @@ DEFAULT_PERIOD = 0.001
 @expose_primitive(VM_START_PROFILING, unwrap_spec=[object])
 @jit.dont_look_inside
 def func(interp, s_frame, w_rcvr):
+    from rpython.rlib.rjitlog import rjitlog
+    from rpython.rlib import rvmprof
     from rsqueakvm.plugins.profiler_plugin import vmproflogfile, jitlogfile
     if not vmproflogfile.isopen():
         vmproflogfile.open("SqueakProfile")
