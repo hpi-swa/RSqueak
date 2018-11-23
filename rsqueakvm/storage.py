@@ -14,6 +14,7 @@ from rsqueakvm.util.cells import QuasiConstant
 from rpython.rlib import jit
 from rpython.rlib.objectmodel import import_from_mixin
 from rpython.rlib.rstrategies import rstrategies as rstrat
+from rpython.tool.pairtype import extendabletype
 
 """
 A note on terminology:
@@ -32,6 +33,9 @@ required to implement the language semantics. ShadowMixin is used by ContextPart
 in storage_classes.py.
 """
 
+class ExtendableStrategyMetaclass(extendabletype, rstrat.StrategyMetaclass):
+    pass
+
 class AbstractStrategy(object):
     """Subclasses of this handle the information contained in Smalltalk objects.
     The common API allows to store and fetch elements from object slots.
@@ -44,7 +48,7 @@ class AbstractStrategy(object):
     _immutable_fields_ = ['space', 'w_class']
     provides_getname = False
     repr_classname = "AbstractStrategy"
-    __metaclass__ = rstrat.StrategyMetaclass
+    __metaclass__ = ExtendableStrategyMetaclass
     import_from_mixin(rstrat.AbstractStrategy)
 
     def __init__(self, space, w_self, size, w_class):

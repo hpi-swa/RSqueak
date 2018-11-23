@@ -7,8 +7,6 @@ from rsqueakvm.storage import AbstractStrategy, ShadowMixin
 from rpython.rlib import jit, objectmodel, unroll
 from rpython.rlib.objectmodel import import_from_mixin, always_inline
 from rpython.rlib.rarithmetic import r_uint, intmask
-from rpython.rlib.rstrategies import rstrategies as rstrat
-from rpython.tool.pairtype import extendabletype
 
 
 @objectmodel.specialize.call_location()
@@ -32,9 +30,6 @@ class ContextState(object):
 InactiveContext = ContextState("InactiveContext")
 ActiveContext = ContextState("ActiveContext")
 DirtyContext = ContextState("DirtyContext")
-
-class ExtendableStrategyMetaclass(extendabletype, rstrat.StrategyMetaclass):
-    pass
 
 
 class ExtraContextAttributes(object):
@@ -74,7 +69,6 @@ class ContextPartShadow(AbstractStrategy):
     """
     repr_classname = "ContextPartShadow"
 
-    __metaclass__ = ExtendableStrategyMetaclass
     import_from_mixin(ShadowMixin)
 
     _attrs_ = ['_w_self', '_w_self_size',
