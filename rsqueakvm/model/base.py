@@ -4,13 +4,14 @@ from rsqueakvm import constants, error
 
 from rpython.rlib import jit, rrandom, signature, objectmodel
 from rpython.rlib.rarithmetic import intmask
-
+from rpython.tool.pairtype import extendabletype
 
 class W_Object(object):
     """Root of Squeak model, abstract."""
     _attrs_ = []    # no RPython-level instance variables allowed in W_Object
     _settled_ = True
     repr_classname = "W_Object"
+    __metaclass__ = extendabletype
     bytes_per_slot = constants.BYTES_PER_WORD
 
     def size(self):
