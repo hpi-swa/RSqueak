@@ -5,11 +5,12 @@ from rsqueakvm.model.compiled_methods import (
     W_PreSpurCompiledMethod, W_SpurCompiledMethod)
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.util.cells import QuasiConstant
+from rpython.tool.pairtype import extendabletype
 
 from rpython.rlib import objectmodel
 
 
-class ForeignLanguageProcessMeta(type):
+class ForeignLanguageProcessMeta(extendabletype):
     def __new__(cls, name, bases, attrs):
         # import pdb; pdb.set_trace()
 
@@ -22,7 +23,7 @@ class ForeignLanguageProcessMeta(type):
             attrs['w_foreign_process_class'] = w_foreign_process_class
             attrs['foreign_process_class'] = foreign_process_class
 
-        return type.__new__(cls, name, bases, attrs)
+        return extendabletype.__new__(cls, name, bases, attrs)
 
 
 class W_ForeignLanguageProcess(W_AbstractObjectWithIdentityHash):

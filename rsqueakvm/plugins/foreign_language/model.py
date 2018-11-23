@@ -4,13 +4,13 @@ from rsqueakvm.model.compiled_methods import (
 from rsqueakvm.model.pointers import W_PointersObject
 from rsqueakvm.primitives.constants import EXTERNAL_CALL
 from rsqueakvm.storage_classes import AbstractCachingShadow, ClassShadow
+from rsqueakvm.storage import ExtendableStrategyMetaclass
 from rsqueakvm.util.cells import QuasiConstant
 
 from rpython.rlib import jit, objectmodel
-from rpython.rlib.rstrategies.rstrategies import StrategyMetaclass
+from rpython.tool.pairtype import extendabletype
 
-
-class W_ForeignLanguageObjectMeta(type):
+class W_ForeignLanguageObjectMeta(extendabletype):
     def __new__(cls, name, bases, attrs):
         # import pdb; pdb.set_trace()
         if name != 'W_ForeignLanguageObject':
@@ -25,7 +25,7 @@ class W_ForeignLanguageObjectMeta(type):
             attrs['class_shadow_cache'] = class_shadow_cache
             attrs['pure_class_shadow'] = pure_class_shadow
 
-        return type.__new__(cls, name, bases, attrs)
+        return extendabletype.__new__(cls, name, bases, attrs)
 
 
 def _initialize_w_class(foreign_obj):
@@ -83,7 +83,7 @@ class W_ForeignLanguageObject(W_AbstractObjectWithIdentityHash):
         raise NotImplementedError
 
 
-class ForeignLanguageClassShadowMeta(StrategyMetaclass):
+class ForeignLanguageClassShadowMeta(ExtendableStrategyMetaclass):
     def __new__(cls, name, bases, attrs):
         # import pdb; pdb.set_trace()
         if name != 'ForeignLanguageClassShadow':
@@ -93,7 +93,7 @@ class ForeignLanguageClassShadowMeta(StrategyMetaclass):
             attrs['w_foreign_object_class'] = QuasiConstant(
                 None, cls=W_PointersObject)
 
-        return type.__new__(cls, name, bases, attrs)
+        return ExtendableStrategyMetaclass.__new__(cls, name, bases, attrs)
 
 
 class ForeignLanguageClassShadow(ClassShadow):
