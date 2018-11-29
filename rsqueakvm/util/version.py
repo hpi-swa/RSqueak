@@ -58,7 +58,7 @@ class Version(object):
 class VersionMixin(object):
     # Concrete class must define a pseudo immutable field like the following:
     # _attrs_ = ['version']
-    # _immutable_fields_ = ['version?']
+    _immutable_fields_ = ['version?']
 
     version = Version()
 

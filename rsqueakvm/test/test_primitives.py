@@ -614,7 +614,7 @@ def test_clone():
     w_obj.atput0(space, 0, space.wrap_int(2))
     assert space.unwrap_int(w_v.at0(space, 0)) == 1
 
-@py.test.mark.skipif("True")
+@py.test.mark.xfail('Change-class bytes->array not yet implemented')
 def test_change_class():
     w_obj = prim(IMAGE_NAME, [2])
     w_v = prim(CLASS, [w_obj])

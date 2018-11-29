@@ -13,7 +13,9 @@ from rsqueakvm.test.util import (create_space, cleanup_module, read_image,
 def test_space():
     return create_space(bootstrap=True)
 
-patch_pypy()
+@py.test.fixture(scope='session', autouse=True)
+def patch_rsqueak(request):
+    patch_pypy()
 space = interp = perform = w = None
 NAME_TEMPLATE = 'getPy%s'
 CALL_COUNTER = 0
