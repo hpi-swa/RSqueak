@@ -1,0 +1,4 @@
+monokai
+blue
+
+	^ self globalColor

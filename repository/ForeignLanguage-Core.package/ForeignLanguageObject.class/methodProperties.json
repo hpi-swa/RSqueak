@@ -1,0 +1,19 @@
+{
+	"class" : {
+		"isVariable" : "fn 4/28/2017 17:09" },
+	"instance" : {
+		"allInstVarNames" : "fn 3/14/2017 12:02",
+		"asSmalltalk" : "fn 3/12/2017 19:22",
+		"class" : "fn 3/12/2017 19:22",
+		"className" : "fn 3/12/2017 19:22",
+		"defaultLabelForInspector" : "fn 3/28/2017 15:00",
+		"environment" : "fn 3/12/2017 19:21",
+		"explore" : "fn 4/28/2017 16:08",
+		"inspect" : "fn 4/28/2017 16:08",
+		"inspectorClass" : "fn 4/28/2017 16:06",
+		"instVarAt:" : "fn 3/14/2017 12:06",
+		"instVarNamed:" : "fn 3/14/2017 12:06",
+		"instVarNames" : "fn 3/30/2017 23:33",
+		"isForeign" : "fn 3/12/2017 19:24",
+		"languageSymbol" : "fn 3/13/2017 17:10",
+		"printOn:" : "fn 3/12/2017 19:22" } }

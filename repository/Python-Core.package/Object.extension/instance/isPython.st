@@ -1,0 +1,3 @@
+*Python-Core
+isPython
+	^ false

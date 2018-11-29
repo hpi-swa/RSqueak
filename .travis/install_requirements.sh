@@ -2,6 +2,9 @@
 set -ex
 
 readonly BASE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly BUILD_DIR="${BASE}/../.build"
+readonly TEST_IMAGES_BASE="${TRAVIS_BUILD_DIR}/rsqueakvm/test/images"
+readonly TEST_IMAGES_BASE_URL="https://www.hpi.uni-potsdam.de/hirschfeld/artefacts/rsqueak/testing/images"
 
 export OPTIONS=""
 
@@ -95,6 +98,21 @@ setup_linux() {
     fi
 }
 
+load_test_images() {
+  local target
+  local url
+
+  if [[ -z "${TEST_TYPE}" ]]; then
+    return
+  fi
+
+  if [[ "${PLUGINS}" = "PythonPlugin" ]]; then
+    target="${TEST_IMAGES_BASE}/pypy.image"
+    url="${TEST_IMAGES_BASE_URL}/pypy.image"
+    curl -f -s -L --retry 3 -o "${target}" "${url}" 
+  fi
+}
+
 # Only build arm on master
 if [[ "${TRAVIS_BRANCH}" != "master" ]] && [[ "${BUILD_ARCH}" = arm* ]]; then
     exit 0
@@ -102,6 +120,8 @@ fi
 
 setup_$TRAVIS_OS_NAME
 python .build/download_dependencies.py $OPTIONS
+
+load_test_images
 
 if [[ -d ".build/sqpyte" ]]; then
   # Make sqlite/sqpyte for DatabasePlugin

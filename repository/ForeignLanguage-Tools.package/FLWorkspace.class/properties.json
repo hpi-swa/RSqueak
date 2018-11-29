@@ -1,0 +1,15 @@
+{
+	"category" : "ForeignLanguage-Tools",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"breakOnExceptions",
+		"languageSymbol" ],
+	"name" : "FLWorkspace",
+	"pools" : [
+		 ],
+	"super" : "Workspace",
+	"type" : "normal" }

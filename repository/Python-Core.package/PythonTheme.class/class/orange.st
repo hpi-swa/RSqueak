@@ -1,0 +1,4 @@
+monokai
+orange
+
+	^ self argumentColor

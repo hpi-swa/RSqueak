@@ -1,0 +1,14 @@
+{
+	"category" : "Ruby-Core",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "RubyProcess",
+	"pools" : [
+		 ],
+	"super" : "ForeignLanguageProcess",
+	"type" : "normal" }

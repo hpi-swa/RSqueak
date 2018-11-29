@@ -112,6 +112,10 @@ class W_CompiledMethod(W_AbstractObjectWithIdentityHash):
         # A hook, usually left empty, but patched e.g. in profiler_plugin
         pass
 
+    def trace_pointers(self, space):
+        ptrs = W_AbstractObjectWithIdentityHash.trace_pointers(self, space)
+        return ptrs + self.literals
+
     # === Setters ===
 
     def setheader(self, space, header, initializing=False):

@@ -275,3 +275,4 @@ images/
 .build/rply
 .build/topaz
 docs/_build
+rsqueakvm/test/images/pypy.image

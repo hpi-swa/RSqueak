@@ -1,0 +1,16 @@
+{
+	"category" : "Python-Core",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		"BreakOnExceptions",
+		"ObjectCache",
+		"VMSpeaksPython" ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "Python",
+	"pools" : [
+		 ],
+	"super" : "ForeignLanguage",
+	"type" : "normal" }

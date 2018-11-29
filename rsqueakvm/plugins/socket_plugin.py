@@ -44,6 +44,8 @@ class SocketPlugin(Plugin):
     # cannot overload call (plugins are PBCs) so we decorate the decorator
     @objectmodel.not_rpython
     def expose_primitive(self, wrap_func=None, **kwargs):
+        if not self.is_enabled():
+            return lambda x: x  # do not install primitives when disabled
         original_decorator = Plugin.expose_primitive(self, wrap_func=wrap_func, **kwargs)
         def decorator(func):
             original_decorator(func)

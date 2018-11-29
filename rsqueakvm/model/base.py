@@ -84,6 +84,9 @@ class W_Object(object):
         consult the Blue Book)."""
         raise NotImplementedError()
 
+    def trace_pointers(self, space):
+        return [self.getclass(space)]
+
     def fillin(self, space, g_self):
         raise NotImplementedError()
 

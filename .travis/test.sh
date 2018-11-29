@@ -1,11 +1,17 @@
 #!/bin/sh
 set -ex
 
+testscript="unittests.py"
+
 case "${TEST_TYPE}" in
-  default) testflag="-S" ;;
-  quick) testflag="-Q" ;;
-  slow) testflag="-S" ;;
-  coverage) testflag="-v -S --cov=rsqueakvm --cov-append " ;;
+  default) testflag="-s -S" ;;
+  quick) testflag="-s -Q" ;;
+  slow) testflag="-s -S" ;;
+  coverage) testflag="-s -v -S --cov=rsqueakvm --cov-append " ;;
+  plugin)
+    testscript="plugintests.py"
+    testflag="--plugins=${PLUGINS} --plugin-dir=${PLUGIN_DIR}"
+    ;;
   *)
     echo "Wrong TEST_TYPE value (${TEST_TYPE}), not executing tests"
     exit 0
@@ -17,4 +23,4 @@ case "${BUILD_ARCH}" in
   *) ;;
 esac
 
-pypy ".build/unittests.py" -s ${testflag}
+pypy ".build/${testscript}" -s ${testflag}

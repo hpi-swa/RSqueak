@@ -1,0 +1,14 @@
+{
+	"category" : "ForeignLanguage-Support",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"foreignFrame" ],
+	"name" : "FLMethodContext",
+	"pools" : [
+		 ],
+	"super" : "MethodContext",
+	"type" : "variable" }

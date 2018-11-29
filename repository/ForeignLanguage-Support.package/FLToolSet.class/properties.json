@@ -1,0 +1,14 @@
+{
+	"category" : "ForeignLanguage-Support",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "FLToolSet",
+	"pools" : [
+		 ],
+	"super" : "StandardToolSet",
+	"type" : "normal" }

@@ -1,0 +1,13 @@
+{
+	"class" : {
+		"open" : "fn 5/5/2017 23:09" },
+	"instance" : {
+		"buildSearchBar:" : "fn 5/6/2017 11:55",
+		"buildSearchClearButton:" : "fn 5/5/2017 23:15",
+		"buildSearchPanel:" : "fn 5/6/2017 11:54",
+		"buildSummary:" : "fn 5/5/2017 23:14",
+		"buildWith:" : "fn 5/5/2017 23:15",
+		"contents" : "fn 5/5/2017 23:22",
+		"label" : "fn 5/5/2017 23:09",
+		"searchTerm" : "fn 5/5/2017 23:17",
+		"searchTerm:" : "fn 5/5/2017 23:16" } }

@@ -1,0 +1,14 @@
+{
+	"category" : "ForeignLanguage-Core",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "ForeignLanguageObject",
+	"pools" : [
+		 ],
+	"super" : "Object",
+	"type" : "normal" }

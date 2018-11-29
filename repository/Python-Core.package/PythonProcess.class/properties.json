@@ -1,0 +1,14 @@
+{
+	"category" : "Python-Core",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "PythonProcess",
+	"pools" : [
+		 ],
+	"super" : "ForeignLanguageProcess",
+	"type" : "normal" }

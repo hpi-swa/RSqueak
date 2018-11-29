@@ -67,6 +67,10 @@ class W_BlockClosure(W_AbstractObjectWithIdentityHash):
         self._fillin_w_method(space)
         self._fillin_w_receiver(space)
 
+    def trace_pointers(self, space):
+        ptrs = W_AbstractObjectWithIdentityHash.trace_pointers(self, space)
+        return ptrs + self.fetch_all(space)
+
     def fillin(self, space, g_self):
         W_AbstractObjectWithIdentityHash.fillin(self, space, g_self)
         self._startpc_stacklen_args = r_uint(0)

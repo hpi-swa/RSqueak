@@ -1,5 +1,5 @@
-import os
 import sys
+import py
 
 from rsqueakvm.util import system
 
@@ -30,18 +30,9 @@ def get_plugins():
         print 'Plugins have been disabled'
         return [], []
 
-    files = os.listdir(os.path.join(
-        os.path.dirname(__file__), '..', 'plugins'))
-    disabled_names = [name.strip() for name in system.disabled_plugins.split(',')]
-
-    # special...
-    if 'JitHooks' not in system.optional_plugins:
-        disabled_names.append('JitHooks')
-
-    for filename in files:
-        if filename.startswith('_') or not filename.endswith('.py'):
-            continue
-        modulename = filename.replace('.py', '')
+    this_dir = py.path.local(__file__).dirpath()
+    for filename in this_dir.listdir(should_load_plugin):
+        modulename = filename.purebasename
         try:
             module_string = 'rsqueakvm.plugins.%s' % modulename
             if module_string not in sys.modules:
@@ -52,12 +43,27 @@ def get_plugins():
             print e
             import pdb; pdb.set_trace()
 
-    disabled_names += PluginRegistry.disabled_names
-
+    print_plugin_overview()
     if not system.IS_SHELL:
         # remove data which is not needed during translation
         del PluginRegistry.disabled_names
+    return PluginRegistry.enabled_names, PluginRegistry.enabled_plugins
 
+def should_load_plugin(localfile):
+    if not localfile.fnmatch('[!_]*.py'): # "normal" py files only
+        return False
+    # The profiler plugin cannot be non-loaded safely once imported, hence
+    # an early check
+    if localfile.basename == 'profiler_plugin.py' and \
+       'ProfilerPlugin' not in system.optional_plugins:
+        return False
+    return True
+
+def print_plugin_overview():
+    disabled_names = [name.strip() for name in system.disabled_plugins.split(',')]
+    # special...
+    if 'JitHooks' not in system.optional_plugins:
+        disabled_names.append('JitHooks')
+    disabled_names += PluginRegistry.disabled_names
     print 'Building with\n\t' + '\n\t'.join(PluginRegistry.enabled_names)
     print 'Disabled plugins\n\t' + '\n\t'.join(disabled_names)
-    return PluginRegistry.enabled_names, PluginRegistry.enabled_plugins

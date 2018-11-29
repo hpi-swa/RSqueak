@@ -1,0 +1,3 @@
+*ForeignLanguage-Core
+isForeign
+	^ false

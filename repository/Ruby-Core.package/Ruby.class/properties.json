@@ -1,0 +1,15 @@
+{
+	"category" : "Ruby-Core",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		"BreakOnExceptions",
+		"VMSpeaksRuby" ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "Ruby",
+	"pools" : [
+		 ],
+	"super" : "ForeignLanguage",
+	"type" : "normal" }
