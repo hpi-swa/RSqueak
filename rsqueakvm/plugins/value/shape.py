@@ -34,75 +34,54 @@ def _splice(array, array_len, index, insertion, insertion_len):
 
 class _Tag(object):
     tags = {}
-    _attrs_ = _immutable_fields_ = ['name', '_arity', 'default_shape']
+    _attrs_ = _immutable_fields_ = ['shadow', '_arity', 'default_shape']
 
-    def __init__(self, name, arity):
-        # from lamb.expression import W_ConstructorCursor
-        self.name = name
+    def __init__(self, shadow, arity):
+        self.shadow = shadow
         assert arity >= 0
         self._arity = arity
-        # self._cursor = W_ConstructorCursor(self)
         self.default_shape = default_shape(self, arity)
 
     def arity(self):
         return self._arity
 
-    def instantiate(self, children):
-        raise NotImplementedError("abstract method")
+    @jit.elidable
+    def name(self):
+        return self.shadow.name
 
+    @jit.elidable
+    def w_cls(self):
+        return self.shadow.w_self()
+    def getclass(self, space=None):
+        return self.w_cls()
+
+    def class_shadow(self):
+        return self.shadow
+
+    @jit.elidable
+    def space(self):
+        return self.shadow.space
+
+    
 @objectmodel.not_rpython
 def _reset_tags():
     _Tag.tags = {}
 
-# def tag(name, arity, payload=None):
-#     assert isinstance(name, str)
-#     assert isinstance(arity, int)
-#     tag_ = (name, arity, payload)
-#     tag = _Tag.tags.get(tag_ , None)
-#     if tag is None:
-#         tag = _Tag(name, arity)
-#         _Tag.tags[tag_] = tag
-
-#     assert isinstance(tag, _Tag)
-#     return tag
-
-class ObjectTag(_Tag):
-
-    _attrs_ = _immutable_fields_ = ['_w_cls', '_s_cls']
-    def __init__(self, arity, w_cls, s_cls):
-        name = s_cls.name
-        arity = arity
-        _Tag.__init__(self, name, arity)
-        self._w_cls = w_cls
-        self._s_cls = s_cls
-
-    def w_cls(self):
-        return self._w_cls
-    getclass = w_cls
-    def s_cls(self):
-        return self._s_cls
-    class_shadow = s_cls
 
 @jit.elidable    
-def object_tag(name, arity, cls=None, shadow=None):
-    assert isinstance(name, str)
+def tag(shadow, arity):
+    from rsqueakvm.storage_classes import ClassShadow
+    assert isinstance(shadow, ClassShadow)
     assert isinstance(arity, int)
-    tag_ = (name, arity, cls, shadow)
+    tag_ = (shadow, arity)
     tag = _Tag.tags.get(tag_ , None)
     if tag is None:
         assert type is not None
-        tag = ObjectTag(arity, cls, shadow)
+        tag = _Tag(shadow, arity)
         _Tag.tags[tag_] = tag
 
     assert isinstance(tag, _Tag)
     return tag
-
-@jit.elidable    
-def get_object_tag(space, w_cls, arity):
-    shadow = w_cls.as_class_get_shadow(space)
-    name = shadow.name
-    arity = arity
-    return object_tag(name, arity, w_cls, shadow)
 
 class Shape(object):
 
@@ -265,7 +244,7 @@ class CompoundShape(Shape):
         self.transformation_rules[i, shape] = new_shape
         if self._config.log_transformations:
             print "%s/%d\t(%d,%s)\n\t->%s" % (
-                self._tag.name, self._tag.arity(),
+                self._tag.name(), self._tag.arity(),
                 i, shape.merge_point_string(),
                 new_shape.merge_point_string())
 
@@ -277,9 +256,11 @@ class CompoundShape(Shape):
         new_shape, new_storage = self.merge(storage)
         return (new_shape, new_storage)
 
-    def instantiate(self, children):
+    def instantiate(self, children, space=None):
         from rsqueakvm.plugins.value.pointers import W_PointersValue
-        return W_PointersValue.make_basic(children, self._tag._s_cls.space, self)
+        if space is None:
+            space = self._tag.space()
+        return W_PointersValue.make_basic(children, space, self)
  
 
     #
@@ -352,7 +333,7 @@ class CompoundShape(Shape):
     #
     def merge_point_string_seen(self, seen):
         seen.append(self)
-        res  = "%s%d{" % (self._tag.name, self._tag.arity())
+        res  = "%s%d{" % (self._tag.name(), self._tag.arity())
         first = True
         for subshape in self._structure:
             if first:
@@ -380,11 +361,11 @@ class CompoundShape(Shape):
             shape.print_hist()
             shape.print_transforms()
 
-    def __eq__(self, other):
-        return self is other or (
-            self.__class__  == other.__class__ and
-            self._tag       == other._tag and
-            self._structure == other._structure)
+    # def __eq__(self, other):
+    #     return self is other or (
+    #         self.__class__  == other.__class__ and
+    #         self._tag       == other._tag and
+    #         self._structure == other._structure)
 
 
 class InStorageShape(Shape):
@@ -418,6 +399,10 @@ class InStorageShape(Shape):
 
     def merge_point_string_seen(self, seen):
         return "|"
+
+    # can't cause superclass cannot freeze
+    # def _freeze_(self):
+    #     return True
 
 in_storage_shape = InStorageShape()
 

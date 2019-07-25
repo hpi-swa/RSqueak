@@ -578,5 +578,9 @@ class Interpreter(object):
         print (' ' * self.stack_depth) + str
 
 
+    # ============== Other stuff ==================================
+    def _freeze_(self):
+        # there's only ever one true Interpreter, lets have it PBC
+        return True
 # Uncomment this to load debugging facilities at startup.
 #from rsqueakvm import interpreter_debugging; Interpreter.__init__ = interpreter_debugging.activating_init(Interpreter.__init__)

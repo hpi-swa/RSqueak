@@ -29,12 +29,11 @@ class W_PointersValue(W_Value):
 
     @staticmethod
     def make(objects_w, space, w_class):
-        from .shape import get_object_tag
-        tag = get_object_tag(space, w_class, len(objects_w))
-        (shape, storage) = tag.default_shape.fusion(objects_w)
+        from .shape import tag
+        s_class = w_class.as_class_get_shadow(space)
+        _tag = tag(s_class, len(objects_w))
+        (shape, storage) = _tag.default_shape.fusion(objects_w)
         return W_PointersValue.make_basic(storage, space, shape)
-        
-        
             
     def __init__(self, space, shape):
         W_Value.__init__(self)
@@ -77,20 +76,16 @@ class W_PointersValue(W_Value):
         return self.class_shadow(None).instsize()
 
 
-    def _tag(self):
-        return self.shape()._tag
-
     def getclass(self, space):
-        return self._tag().getclass()
+        return self.get_tag().w_cls()
     
     def class_shadow(self, space):
-        class_shadow = self._tag().class_shadow()
-        assert isinstance(class_shadow, ClassShadow)
-        return class_shadow
+        return self.get_tag().class_shadow()
     
     def clone(self, space):
-        (shape, storage) = self._tag().default_shape.fusion(self.get_children())
-        return W_PointersValue.make_basic(storage, space, shape)
+        default_shape = self.get_tag().default_shape
+        (shape, storage) = default_shape.fusion(self.get_children())
+        return shape.instantiate(storage, space)
 
     # stubs to catch WONTFIX cases
     def fillin(self, space, g_self):
@@ -105,7 +100,7 @@ class W_PointersValue(W_Value):
         assert False, "to become or not to become. the latter, tho"
 
     def space(self):
-        assert False, "where should I get that from?"
+        return self.get_tag().space()
         
 
     # non-supported cases
@@ -117,7 +112,7 @@ class W_PointersValue(W_Value):
         return self.getclass(space)
 
     def guess_classname(self):
-        return self._tag().name
+        return self.get_tag().name()
 
     # we do not unwrap most stuff
     def unwrap_char(self, space):
