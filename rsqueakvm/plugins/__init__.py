@@ -50,7 +50,7 @@ def get_plugins():
     return PluginRegistry.enabled_names, PluginRegistry.enabled_plugins
 
 def should_load_plugin(localfile):
-    if not localfile.fnmatch('[!_]*.py'): # "normal" py files only
+    if not localfile.fnmatch('[!._]*.py'): # "normal" py files only
         return False
     # The profiler plugin cannot be non-loaded safely once imported, hence
     # an early check

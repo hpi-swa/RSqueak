@@ -266,7 +266,7 @@ class Shell(object):
             print "Wrong syntax, type !help for help"
 
     def run(self):
-        print "You're in a Smalltalk REPL. Type `!exit' to quit, !help for help."
+        print "You're in a Smalltalk REPL. Type `!q' to quit, !help for help."
         while True:
             code = self.raw_input("$ ").strip()
             if code.startswith("!"):
@@ -287,7 +287,7 @@ class Shell(object):
                 except:
                     if not objectmodel.we_are_translated():
                         print traceback.format_exc()
-                        import pdb; pdb.set_trace()
+                        import pdb; pdb.post_mortem()
                     else:
                         print "Error"
                 if w_result:
