@@ -1,0 +1,14 @@
+{
+	"category" : "Values-Structures",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "VVector",
+	"pools" : [
+		 ],
+	"super" : "ArrayedCollection",
+	"type" : "variable" }

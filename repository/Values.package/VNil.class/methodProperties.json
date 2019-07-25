@@ -1,0 +1,14 @@
+{
+	"class" : {
+		"nil" : "topa 7/19/2019 11:51" },
+	"instance" : {
+		"=" : "topa 7/19/2019 13:05",
+		"append:" : "topa 7/19/2019 11:57",
+		"filter:" : "topa 7/19/2019 11:57",
+		"findf:ifNone:" : "topa 7/19/2019 11:57",
+		"foldl:withInit:" : "topa 7/19/2019 11:57",
+		"foldr:withInit:" : "topa 7/19/2019 11:57",
+		"hash" : "topa 7/19/2019 13:06",
+		"isCons" : "topa 7/19/2019 11:57",
+		"map:" : "topa 7/19/2019 11:57",
+		"reverse:" : "topa 7/19/2019 11:57" } }

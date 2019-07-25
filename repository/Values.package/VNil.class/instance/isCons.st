@@ -1,0 +1,3 @@
+cons interface
+isCons
+	^ true

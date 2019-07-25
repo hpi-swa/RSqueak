@@ -1,0 +1,14 @@
+{
+	"category" : "Values-ListNanos",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "VConsNanoBenchmark",
+	"pools" : [
+		 ],
+	"super" : "SMarkCollectionNanoBenchmark",
+	"type" : "normal" }

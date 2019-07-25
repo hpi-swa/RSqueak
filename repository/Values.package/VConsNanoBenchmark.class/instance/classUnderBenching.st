@@ -1,0 +1,4 @@
+benchmark hooks
+classUnderBenching
+
+	^ VCons

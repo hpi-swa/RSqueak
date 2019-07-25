@@ -1,0 +1,14 @@
+{
+	"category" : "Values-Structures",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		 ],
+	"name" : "VNil",
+	"pools" : [
+		 ],
+	"super" : "Object",
+	"type" : "normal" }

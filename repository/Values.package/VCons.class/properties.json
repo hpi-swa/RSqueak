@@ -1,0 +1,15 @@
+{
+	"category" : "Values-Structures",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"car",
+		"cdr" ],
+	"name" : "VCons",
+	"pools" : [
+		 ],
+	"super" : "SequenceableCollection",
+	"type" : "normal" }
