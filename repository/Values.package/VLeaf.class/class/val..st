@@ -1,7 +1,9 @@
 instance creation
-nil
+val: anObject
 
 	<primitive: 'primitiveValueFromArgs' module: 'ValuePlugin'>
 	" Fallback for non-immutable "
 
-	^ self basicNew initialize
+	^ self basicNew
+		instVarNamed: 'val' put: anObject;
+		initialize

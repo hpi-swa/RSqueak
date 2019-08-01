@@ -1,0 +1,14 @@
+{
+	"category" : "Values-Structures",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"val" ],
+	"name" : "VLeaf",
+	"pools" : [
+		 ],
+	"super" : "Object",
+	"type" : "variable" }

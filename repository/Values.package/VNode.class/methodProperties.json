@@ -1,0 +1,14 @@
+{
+	"class" : {
+		"left:val:right:" : "topa 7/29/2019 14:55",
+		"make:through:" : "topa 7/29/2019 15:06",
+		"new" : "topa 7/29/2019 14:56",
+		"treeWithMin:max:element:" : "topa 8/1/2019 15:56" },
+	"instance" : {
+		"=" : "topa 7/29/2019 15:01",
+		"check" : "topa 7/29/2019 15:21",
+		"hash" : "topa 7/29/2019 15:02",
+		"isLeaf" : "topa 7/29/2019 14:59",
+		"left" : "topa 7/29/2019 14:59",
+		"right" : "topa 7/29/2019 14:59",
+		"val" : "topa 7/29/2019 14:59" } }

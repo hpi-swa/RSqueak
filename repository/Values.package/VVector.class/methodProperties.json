@@ -2,8 +2,8 @@
 	"class" : {
 		"new" : "topa 7/17/2019 15:10",
 		"new:" : "topa 12/5/2016 09:29",
-		"new:withAll:" : "topa 12/5/2016 09:33",
-		"newFrom:" : "topa 12/5/2016 09:40",
+		"new:withAll:" : "topa 7/29/2019 15:56",
+		"newFrom:" : "topa 7/29/2019 15:56",
 		"newFromStream:" : "topa 12/5/2016 09:35",
 		"primValueFrom:" : "topa 7/18/2019 16:23",
 		"with:" : "topa 7/17/2019 15:10",
@@ -15,6 +15,7 @@
 		"withAll:" : "topa 7/18/2019 16:23" },
 	"instance" : {
 		"," : "topa 12/5/2016 15:53",
+		"=" : "topa 7/29/2019 14:48",
 		"at:incrementBy:" : "topa 12/5/2016 15:12",
 		"atAll:put:" : "topa 12/5/2016 15:12",
 		"atAll:putAll:" : "topa 12/5/2016 15:12",
@@ -31,6 +32,7 @@
 		"copyWithoutIndex:" : "topa 12/5/2016 16:07",
 		"from:to:put:" : "topa 12/5/2016 16:10",
 		"grownBy:" : "topa 12/5/2016 16:10",
+		"hash" : "topa 7/29/2019 14:49",
 		"integerAt:put:" : "topa 12/5/2016 16:10",
 		"pvtAt:put:" : "topa 12/5/2016 15:35",
 		"replace:" : "topa 12/5/2016 16:12",

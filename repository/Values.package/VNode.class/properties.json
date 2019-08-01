@@ -1,0 +1,16 @@
+{
+	"category" : "Values-Structures",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		 ],
+	"commentStamp" : "",
+	"instvars" : [
+		"left",
+		"val",
+		"right" ],
+	"name" : "VNode",
+	"pools" : [
+		 ],
+	"super" : "Object",
+	"type" : "variable" }
