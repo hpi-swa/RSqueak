@@ -1,4 +1,4 @@
-from rpython.rlib import jit, objectmodel
+from rpython.rlib import jit, objectmodel, rgc
 
 from rsqueakvm import constants
 from rsqueakvm.error import PrimitiveFailedError
@@ -43,6 +43,36 @@ def func(interp, s_frame, w_rcvr, primFailFlag):
         s_fallback.set_state(DirtyContext)
         return s_fallback
     raise PrimitiveFailedError
+
+
+def translated_or_default(default):
+    def decorator(func):
+        def wrapped(*args):
+            if objectmodel.we_are_translated():
+                val = func(*args)
+            else:
+                val = default
+            return val
+        wrapped.__name__ = func.__name__
+        return jit.dont_look_inside(wrapped)
+    return decorator
+
+@translated_or_default(0)
+def current_gc_time():
+    return rgc.get_stats(rgc.TOTAL_GC_TIME)
+
+@translated_or_default(0)
+def current_gc_total_mem():
+    return rgc.get_stats(rgc.TOTAL_MEMORY)
+
+@translated_or_default(0)
+def current_gc_young_mem():
+    return rgc.get_stats(rgc.NURSERY_SIZE)
+
+@translated_or_default(0)
+def current_gc_old_mem():
+    return rgc.get_stats(rgc.TOTAL_MEMORY) - rgc.get_stats(rgc.NURSERY_SIZE)
+
 
 @expose_primitive(VM_PARAMETERS)
 @jit.dont_look_inside
@@ -126,8 +156,16 @@ def func(interp, s_frame, argcount):
 
     vm_w_params = [interp.space.wrap_int(0)] * 71
 
-    vm_w_params[2] = interp.space.wrap_int(1)  # must be 1 for VM Stats view to work
+    vm_w_params[0] = interp.space.wrap_int(current_gc_old_mem())
+    vm_w_params[1] = interp.space.wrap_int(current_gc_young_mem())
+    vm_w_params[2] = interp.space.wrap_int(current_gc_total_mem())
+    vm_w_params[6] = interp.space.wrap_int(1)
+    vm_w_params[7] = interp.space.wrap_int(current_gc_time())
     vm_w_params[8] = interp.space.wrap_int(1)  # must be 1 for VM Stats view to work
+    # vm_w_params[9] = interp.space.wrap_int(0)
+
+
+
 
     vm_w_params[25] = interp.space.wrap_int(interp.interrupt_counter_size) # check for interrupts roughly every N bytecodes
 
