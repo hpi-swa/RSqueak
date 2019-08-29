@@ -2,6 +2,6 @@ comparing
 = other
 
 	" value semantics "
-	^ other isKindOf: self class
+	^ other class  == self class
 
 	
