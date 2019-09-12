@@ -6,7 +6,7 @@ make: anObject through: aNumber
 		ifFalse: 
 			[ | down |
 			down := aNumber - 1.
-			VNode
+			self
 				left: (self make: anObject through: down)
 				val: anObject
 				right: (self make: anObject through: down)]

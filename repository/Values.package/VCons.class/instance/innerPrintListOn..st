@@ -1,4 +1,4 @@
-testing
+printing
 innerPrintListOn: aStream
 
 	self car printOn: aStream.

@@ -1,0 +1,4 @@
+cons interface
+isEmpty
+
+	^ true

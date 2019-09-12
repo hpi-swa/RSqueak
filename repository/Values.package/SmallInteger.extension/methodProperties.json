@@ -3,8 +3,13 @@
 		 },
 	"instance" : {
 		"valuesBenchAppend" : "topa 7/29/2019 13:47",
+		"valuesBenchCollect" : "topa 9/2/2019 11:33",
+		"valuesBenchConcat" : "topa 9/2/2019 11:46",
 		"valuesBenchFilter" : "topa 7/29/2019 14:49",
 		"valuesBenchMap" : "topa 7/29/2019 14:52",
 		"valuesBenchReverse" : "topa 7/29/2019 13:45",
+		"valuesBenchReversed" : "topa 9/2/2019 11:12",
+		"valuesBenchReversedn" : "topa 9/2/2019 11:32",
 		"valuesBenchReversen" : "topa 7/29/2019 13:42",
+		"valuesBenchSelect" : "topa 9/2/2019 11:15",
 		"valuesBenchTree" : "topa 8/1/2019 15:13" } }

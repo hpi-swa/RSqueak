@@ -1,4 +1,4 @@
-accessing
+collection api
 first
 
 	^ self car
