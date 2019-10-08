@@ -14,7 +14,7 @@ from .small_list import inline_small_list
 from rpython.rlib import rerased, objectmodel, jit
 from rpython.rlib.unroll import unrolling_iterable
 
-MAX_SLOTS = 9
+MAX_SLOTS = 31
 
 
 @inline_small_list(sizemax=MAX_SLOTS, immutable=True, nonull=True,
