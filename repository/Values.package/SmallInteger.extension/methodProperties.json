@@ -3,13 +3,20 @@
 		 },
 	"instance" : {
 		"valuesBenchAppend" : "topa 7/29/2019 13:47",
+		"valuesBenchAppendn" : "topa 9/19/2019 13:23",
 		"valuesBenchCollect" : "topa 9/2/2019 11:33",
+		"valuesBenchCollectn" : "topa 9/19/2019 13:24",
 		"valuesBenchConcat" : "topa 9/2/2019 11:46",
+		"valuesBenchConcatn" : "topa 9/19/2019 13:24",
 		"valuesBenchFilter" : "topa 7/29/2019 14:49",
+		"valuesBenchFiltern" : "topa 9/19/2019 13:25",
 		"valuesBenchMap" : "topa 7/29/2019 14:52",
+		"valuesBenchMapn" : "topa 9/19/2019 13:25",
 		"valuesBenchReverse" : "topa 7/29/2019 13:45",
 		"valuesBenchReversed" : "topa 9/2/2019 11:12",
 		"valuesBenchReversedn" : "topa 9/2/2019 11:32",
 		"valuesBenchReversen" : "topa 7/29/2019 13:42",
 		"valuesBenchSelect" : "topa 9/2/2019 11:15",
-		"valuesBenchTree" : "topa 8/1/2019 15:13" } }
+		"valuesBenchSelectn" : "topa 9/19/2019 13:25",
+		"valuesBenchTree" : "topa 8/1/2019 15:13",
+		"valuesBenchTreen" : "topa 9/19/2019 13:25" } }
