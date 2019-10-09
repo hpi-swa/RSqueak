@@ -217,12 +217,11 @@ class CompoundShape(Shape):
                 return CompoundShape(self._tag, structure)
             storage_index -= child.storage_width()
 
-    @jit.unroll_safe
     def record_shape(self, child, i):
-        shape = child.shape()
-        # TODO: is_compund?
-        if shape is in_storage_shape:
+        from rsqueakvm.plugins.value.pointers import W_PointersValue
+        if not isinstance(child, W_PointersValue):
             return
+        shape = child.shape()
 
         key = (i, shape)
         count = self._hist[key] if key in self._hist else 0
