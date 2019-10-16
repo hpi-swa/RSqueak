@@ -290,6 +290,19 @@ class Config(object):
                 self.space.title.set(title)
             elif arg in ["--EnableAltF4Quit"]:
                 self.space.altf4quit.activate()
+            elif arg in ["--shapes-s"]:
+                from rsqueakvm.plugins.value.shape import CompoundShape
+                val, idx = get_int_parameter(argv, idx, arg)
+                if val <= 1: raise error.Exit("substitution threshold must be greater than 1")
+                CompoundShape._config.substitution_threshold = val
+            elif arg in ["--shapes-w"]:
+                from rsqueakvm.plugins.value.shape import CompoundShape
+                val, idx = get_int_parameter(argv, idx, arg)
+                CompoundShape._config.max_storage_width = val
+            elif arg in ["--shapes-d"]:
+                from rsqueakvm.plugins.value.shape import CompoundShape
+                val, idx = get_int_parameter(argv, idx, arg)
+                CompoundShape._config.max_shape_depth = val
             # Default
             elif arg in ["--"]:
                 print "Image arguments: %s" % ", ".join(argv[idx:])
