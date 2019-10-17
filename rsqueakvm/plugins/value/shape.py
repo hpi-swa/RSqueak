@@ -304,6 +304,7 @@ class CompoundShape(Shape):
                 #     child_storage = child._get_storage()
                 # else:
                 #     child_storage = [child]
+                assert isinstance(child, W_PointersValue)
                 child_storage = child._get_raw_storage()
                 # assert isinstance(child_storage, list)
                 new_storage = _splice(current_storage, storage_len, index,
