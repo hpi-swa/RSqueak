@@ -270,7 +270,8 @@ class CompoundShape(Shape):
         """
         fusion := Shape × [W_Object] -> Shape' × [W_Object]'
         """
-    
+        from rsqueakvm.plugins.value.pointers import W_PointersValue
+
         current_storage = storage
         index = 0
         shape = self
